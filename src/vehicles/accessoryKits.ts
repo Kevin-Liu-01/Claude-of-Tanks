@@ -24,9 +24,17 @@ export interface AccessoryPainter {
   paint(geometry: THREE.BufferGeometry, rgb: RGB, ao?: number): void;
   /** Canvas family; `rgb` tints the fabric base colour (1,1,1 = the nation's issue canvas). */
   cloth(geometry: THREE.BufferGeometry, tone?: number, rgb?: RGB): void;
+  /**
+   * Woven webbing (straps, ties, handles): the issue canvas through a darker, greener webbing tint, drawn in the
+   * painted-hardware ('cans') family so a strap never adds a canvas draw to a frame that carries no soft goods.
+   */
+  strap(geometry: THREE.BufferGeometry, tone?: number): void;
   burlap(geometry: THREE.BufferGeometry, tone?: number): void;
   steel(geometry: THREE.BufferGeometry, tone?: number): void;
+  /** Wood family (grained): crates, beams, logs. */
   wood(geometry: THREE.BufferGeometry, tone?: number): void;
+  /** Small wooden parts (tool handles, reel flanges, cut stems): the wood's colour in the painted-hardware draw. */
+  trim(geometry: THREE.BufferGeometry, tone?: number): void;
   rubber(geometry: THREE.BufferGeometry, tone?: number): void;
   kit(geometry: THREE.BufferGeometry, tone?: number): void;
   lens(geometry: THREE.BufferGeometry): void;
@@ -42,8 +50,7 @@ export interface EquipmentColours {
 
 const near = (P: AccessoryPainter): boolean => P.detail === 1;
 /** Woven webbing (straps, ties, handles) shares the canvas family: a darker, greener tint of the issue fabric. */
-const WEBBING: RGB = [0.5, 0.56, 0.44];
-const webbing = (P: AccessoryPainter, geometry: THREE.BufferGeometry, tone = 0.6): void => P.cloth(geometry, tone, WEBBING);
+const webbing = (P: AccessoryPainter, geometry: THREE.BufferGeometry, tone = 0.6): void => P.strap(geometry, tone);
 /** Molded black plastic / rubber hardware on painted cases (latches, grips) rides the case's own paint family. */
 const BLACK_PLASTIC: RGB = [0.05, 0.052, 0.05];
 const scaleRgb = (rgb: RGB, k: number): RGB => [rgb[0] * k, rgb[1] * k, rgb[2] * k];
@@ -311,10 +318,11 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
       flatten: 0.3, wrinkle: 0.08, seg: 12, stations: 6, cinch: [0.17], cinchDepth: 0.18, seed: 53 };
     bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.3, 0.52, [0.9, 1.0, 0.82]);
     if (near(P)) {
-      // garnish tufts escaping the drawstring end
-      for (let i = 0; i < 3; i++) {
-        const tuft = new THREE.PlaneGeometry(0.16, 0.11, 1, 1).toNonIndexed();
-        P.net(place(tuft, 0.25 + i * 0.012, 0.14 + i * 0.02, (i - 1) * 0.05, -0.3 + i * 0.4, 0.9 + i, 0.4), 0.95);
+      // the net's garnish spilling from the drawstring end: two lumpy lobes in the bag's own (canvas) draw
+      for (let i = 0; i < 2; i++) {
+        const lobe: FabricSpec = { len: 0.13, hw: 0.06, hh: 0.035, exponent: 2, endScale: 0.5, endLength: 0.3, flatten: 0.5,
+          wrinkle: 0.22, seg: 6, stations: 3, seed: 57 + i };
+        P.cloth(place(fabricBody(lobe), 0.27 + i * 0.03, 0.15 + i * 0.03, (i - 0.5) * 0.08, 0.3 - i * 0.5, 0.6 + i * 1.1, 0.35), 0.48, [0.86, 1.02, 0.74]);
       }
     }
     break;
@@ -409,7 +417,7 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
   case 'cable-reel': {
     const fr = 0.18, core = 0.08, w = 0.3;
     const seg = near(P) ? 14 : 8;
-    for (const x of [-w / 2, w / 2]) P.wood(place(latheY([[0.0005, 0], [fr, 0], [fr, 0.034], [0.0005, 0.034]], seg), x - 0.017, fr, 0, 0, 0, -Math.PI / 2), 0.66);
+    for (const x of [-w / 2, w / 2]) P.trim(place(latheY([[0.0005, 0], [fr, 0], [fr, 0.034], [0.0005, 0.034]], seg), x - 0.017, fr, 0, 0, 0, -Math.PI / 2), 0.66);
     P.steel(place(latheY([[0.0005, 0], [core + 0.07, 0], [core + 0.075, 0.03], [core + 0.07, w - 0.06], [core + 0.075, w - 0.034],
       [0.0005, w - 0.034]], seg), -w / 2 + 0.017, fr, 0, 0, 0, -Math.PI / 2), 0.4);
     P.steel(sweptTube([[0.04, fr + core + 0.07, 0], [0.12, fr + 0.06, 0.12], [0.16, 0.03, 0.22], [0.24, 0.015, 0.28]], 0.012,
@@ -570,19 +578,19 @@ export function buildTools(P: AccessoryPainter, set: readonly string[]): void {
     const dz = (jitter - 0.5) * 0.1;
     const seg = near(P) ? 6 : 4;
     if (tool === 'shovel') {
-      P.wood(roundBar([lane, 0.03, -0.42 + dz], [lane, 0.03, 0.34 + dz], 0.017, seg), tone);
+      P.trim(roundBar([lane, 0.03, -0.42 + dz], [lane, 0.03, 0.34 + dz], 0.017, seg), tone);
       // D-grip
-      if (near(P)) P.wood(sweptTube([[lane - 0.05, 0.03, -0.42 + dz], [lane - 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.42 + dz]], 0.012, 4, 6), tone * 0.9);
+      if (near(P)) P.trim(sweptTube([[lane - 0.05, 0.03, -0.42 + dz], [lane - 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.42 + dz]], 0.012, 4, 6), tone * 0.9);
       // dished blade: a shallow bent plate tapering to a point
       const blade = latheY([[0.0005, 0], [0.075, 0.02], [0.08, 0.17], [0.05, 0.25], [0.0005, 0.27]], near(P) ? 8 : 5);
       blade.scale(1, 1, 0.12);
       P.steel(place(blade, lane, 0.036, 0.33 + dz, Math.PI / 2, 0, 0), 0.55);
     } else if (tool === 'axe') {
-      P.wood(roundBar([lane, 0.03, -0.3 + dz], [lane, 0.03, 0.32 + dz], 0.016, seg), tone);
+      P.trim(roundBar([lane, 0.03, -0.3 + dz], [lane, 0.03, 0.32 + dz], 0.016, seg), tone);
       P.steel(place(moldedBox(0.04, 0.05, 0.17, 0.008, 1, 0.006), lane, 0.032, 0.3 + dz), 0.55);
       P.steel(place(block(0.012, 0.05, 0.11), lane + 0.03, 0.032, 0.33 + dz, 0, -0.25, 0), 0.62);
     } else if (tool === 'sledge') {
-      P.wood(roundBar([lane, 0.035, -0.35 + dz], [lane, 0.035, 0.32 + dz], 0.017, seg), tone);
+      P.trim(roundBar([lane, 0.035, -0.35 + dz], [lane, 0.035, 0.32 + dz], 0.017, seg), tone);
       P.steel(place(moldedBox(0.075, 0.075, 0.15, 0.01, 1, 0.008), lane, 0.038, 0.33 + dz), 0.48);
     } else {
       P.steel(sweptTube([[lane, 0.026, -0.38 + dz], [lane, 0.026, 0.3 + dz], [lane, 0.04, 0.36 + dz], [lane, 0.07, 0.38 + dz]], 0.012, 5, 6), 0.5);
@@ -662,7 +670,7 @@ export function buildBranchBundle(P: AccessoryPainter, variant: 'upright' | 'lyi
     // the woody stem: a tapered bent rod, thick at the cut end
     const mid = [base[0] + dir.x * len * 0.5, base[1] + dir.y * len * 0.5 - (variant === 'lying' ? 0 : 0.02), base[2] + dir.z * len * 0.5 + 0.015];
     const stem = sweptTube([base, mid, tip], 0.011, near(P) ? 5 : 4, near(P) ? 4 : 2);
-    P.wood(stem, 0.5 + f * 0.15);
+    P.trim(stem, 0.5 + f * 0.15);
     for (let k = 0; k < sprays; k++) {
       const t = 0.42 + (k / Math.max(1, sprays - 1)) * 0.5;
       const at: [number, number, number] = [base[0] + dir.x * len * t, base[1] + dir.y * len * t, base[2] + dir.z * len * t];

@@ -63,7 +63,12 @@ values before any `detail` branch, with a coarse level (`detail: 0`) in the
 same envelope. Each material family draws its near forms to 28 m, its coarse
 forms to 150 m, nothing beyond; the mobile tier builds only the coarse forms.
 Cosmetic decor is `combatHitboxRole: 'nonArmor'` so battle distance detail may
-drop it; the smoke banks are working equipment in their own resident group.
+drop it; the smoke banks are working equipment in their own resident group,
+which also carries the camo-painted hard kit (one `kit` draw per frame). Keep
+decor draws per tank at or below the pre-rebuild count
+(`decorDrawBudget.selftest.mjs`): webbing (`strap`) and small wooden parts
+(`trim`) ride the painted-hardware draw, glass and tyre rubber fold into steel
+and hardware, and a new family on a frame needs a reason.
 Leaves on vehicles (suit garnish, the per-spec opt-in branch bundles) are spray
 cards on the trees lane's atlases through `vehicleFoliage.ts`, never a second
 foliage system. The Browning-family roof gun is one construction,

@@ -999,10 +999,21 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
       const uv = boxUV(geo, 2.5);
       parts.push({ mat: 'canvas', geo: rgb ? bakeTint(uv, rgb[0] * tone, rgb[1] * tone, rgb[2] * tone, 0.32) : bakeShade(uv, tone, 0.32) });
     },
+    // Webbing rides the painted-hardware draw, which nearly every frame with cargo already carries (2026-10-05 draw
+    // audit: canvas webbing on rear-rack cans and drums added a canvas draw to 37 hulls with no soft goods). Colour:
+    // the nation's issue canvas through the webbing tint (0.5, 0.56, 0.44), times the weave map's ground over the
+    // lighter hardware map's (#b9b2a4 over #cbc9c1, linear), so the strap reads as it did in the canvas family.
+    strap(geo, tone = 0.6) {
+      const c = new THREE.Color(palette.canvas);
+      parts.push({ mat: 'cans', geo: bakeTint(geo, c.r * 0.5 * 0.8 * tone, c.g * 0.56 * 0.78 * tone, c.b * 0.44 * 0.7 * tone, 0.3) });
+    },
     // Burlap shares the canvas draw (same weave map, near-identical finish): a warmer tint of the issue fabric.
     burlap(geo, tone = 0.9) { parts.push({ mat: 'canvas', geo: bakeTint(boxUV(geo, 2.8), 1.42 * tone, 1.16 * tone, 0.94 * tone, 0.3) }); },
     steel(geo, tone = 0.55) { parts.push({ mat: 'steel', geo: bakeShade(geo, tone) }); },
     wood(geo, tone = 0.8) { parts.push({ mat: 'wood', geo: bakeShade(boxUV(geo, 2.2), tone) }); },
+    // Small wooden parts ride the painted-hardware draw (grain does not read on a handle; 2026-10-05 draw audit): the
+    // wood family's colour, woodTex ground #8d7a5e x 0x97815f over the hardware map's #cbc9c1 (linear).
+    trim(geo, tone = 0.7) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.138 * tone, 0.0735 * tone, 0.0242 * tone, 0.28) }); },
     rubber(geo, tone = 0.6) { parts.push({ mat: 'rubber', geo: bakeShade(geo, tone) }); },
     kit(geo, tone = 0.92) { parts.push({ mat: 'kit', geo: bakeShade(geo, tone) }); },
     lens(geo) { parts.push({ mat: 'lens', geo: bakeShade(geo, 0.9) }); },
@@ -2803,6 +2814,41 @@ const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
 /**
+ * Camo-painted hard kit (bins, boxes, the smoke banks' own finish) rides the resident group with the working smoke
+ * banks: it reads as part of the vehicle, it was resident before the 2026-10-05 retag, and sharing that draw keeps
+ * every tank's decor draws at or below the old count (a separate cosmetic 'kit' draw beside the smoke banks' added one
+ * per turret). Past 150 m a tank draws this one decor call; every other family drops.
+ */
+const RESIDENT_FAMILIES: ReadonlySet<DecorMaterialKey> = new Set<DecorMaterialKey>(['kit']);
+
+/**
+ * Small flat-colour families folded into a host family's draw (2026-10-05 draw audit: a searchlight's glass or a
+ * spare wheel's tyre each opened a draw of its own). The vertex-colour multiplier keeps the colour: optic glass
+ * (0x161d23) in the gunmetal steel draw, over the nation's steel colour; tyre rubber (0x232425) in the painted-
+ * hardware draw, over the hardware map's ground (#cbc9c1). Linear values.
+ */
+function decorFamilyFolds(palette: FleetEquipmentPalette): ReadonlyMap<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }> {
+  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(0x161d23), rubber = new THREE.Color(0x232425);
+  const ground = new THREE.Color(0xcbc9c1);
+  return new Map<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }>([
+    ['lens', { to: 'steel', k: [glass.r / steel.r, glass.g / steel.g, glass.b / steel.b] }],
+    ['rubber', { to: 'cans', k: [rubber.r / ground.r, rubber.g / ground.g, rubber.b / ground.b] }],
+  ]);
+}
+
+function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFolds>): void {
+  const fold = folds.get(part.mat);
+  if (!fold) return;
+  const color = part.geo.getAttribute('color');
+  if (color) {
+    for (let i = 0; i < color.count; i++) {
+      color.setXYZ(i, color.getX(i) * fold.k[0], color.getY(i) * fold.k[1], color.getZ(i) * fold.k[2]);
+    }
+    color.needsUpdate = true;
+  }
+  part.mat = fold.to;
+}
+/**
  * Attach the decoration kit to a built tank visual.
  *
  * Called by tankFactory's seam (procedural tanks: at build; GLB tanks: after
@@ -3201,6 +3247,7 @@ export function* attachTankDecorationsSteps(
       turret: new Map(),
     };
     const lowTier = opts.geometryQuality === 'low';
+    const familyFolds = decorFamilyFolds(equipmentPaletteForNation(spec.nation || ''));
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
@@ -3318,26 +3365,25 @@ export function* attachTankDecorationsSteps(
       budget.tris += tris;
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const functional = FUNCTIONAL_KITS.has(name);
-      const map = (functional ? functionalBuckets : buckets)[frame];
       for (const p of parts) {
+        foldDecorPart(p, familyFolds);
         p.geo.applyMatrix4(m);
+        const map = (functional || RESIDENT_FAMILIES.has(p.mat) ? functionalBuckets : buckets)[frame];
         if (!map.has(p.mat)) map.set(p.mat, []);
         map.get(p.mat)!.push(p.geo);
         resources.ownGeometry(p.geo);
       }
       if (parts.coarse) {
-        // Working equipment stays resident at its near level; a cosmetic piece's coarse copy is
+        // The resident group keeps its near forms at every range; a cosmetic family's coarse copy is
         // seated with exactly the near copy's matrix.
-        if (functional) {
-          disposePartList(parts.coarse);
-        } else {
-          const coarseMap = coarseBuckets[frame];
-          for (const p of parts.coarse) {
-            p.geo.applyMatrix4(m);
-            if (!coarseMap.has(p.mat)) coarseMap.set(p.mat, []);
-            coarseMap.get(p.mat)!.push(p.geo);
-            resources.ownGeometry(p.geo);
-          }
+        const coarseMap = coarseBuckets[frame];
+        for (const p of parts.coarse) {
+          foldDecorPart(p, familyFolds);
+          if (functional || RESIDENT_FAMILIES.has(p.mat)) { resources.releaseGeometry(p.geo); continue; }
+          p.geo.applyMatrix4(m);
+          if (!coarseMap.has(p.mat)) coarseMap.set(p.mat, []);
+          coarseMap.get(p.mat)!.push(p.geo);
+          resources.ownGeometry(p.geo);
         }
         delete parts.coarse;
       }
