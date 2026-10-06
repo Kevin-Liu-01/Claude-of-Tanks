@@ -1,5 +1,6 @@
 import { t } from '../ui/i18n.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
+import { createStudioCrushes, planStudioCrushes, type StudioCrushEvent, type StudioCrushHull } from './studioCrush.ts';
 import type { WaterDisturbance } from '../world/shallowWater.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -155,6 +156,9 @@ interface StudioFxRuntime {
     resolveSubject: (id: RuntimeValue) => StudioActor | null,
   ): void;
   muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
+  /** A hull toppling a pole or dressing (the battle's crush burst) and kicking loose dressing (effects.ts). */
+  propCrush?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
+  loosePropHit?(position: THREE.Vector3, direction: THREE.Vector3, heightM?: number): void;
   destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string, wreckOf?: string | null,
     opts?: { shellBurst?: boolean }): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
@@ -2433,6 +2437,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clockMs = target;
     timeScale = savedScale;
     applyStoryboardFrame(target, 0);
+    settleCrushes(target);
     const w = getWorld();
     if (w) w.setWindTime(0.35 + target / 1000);
     panel.refreshAll();
@@ -2475,6 +2480,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const target = exact
       ? Math.min(storyboard.durationMs, clockMs + Math.max(0, ms))
       : clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
+    const fromMs = clockMs;
     let due = nextPendingEffect(target);
     while (due) {
       advanceFx(Math.max(0, due.tMs - clockMs));
@@ -2486,6 +2492,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clockMs = target;
     getWorld()?.setWindTime(0.35 + clockMs / 1000);
     applyStoryboardFrame(target, 0);
+    advanceCrushes(fromMs, target);
     if (clockMs >= storyboard.durationMs) timeScale = 0;
     ctx.getStudioLight?.()?.update(camera.position); // blue-hour / night lamps follow the posed actors and camera
     return Math.round(clockMs);
@@ -2573,6 +2580,88 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const a = findActor(track.actor);
       if (a) a.timelineTrack = track;
     }
+  }
+
+  // --- hulls crush what they overrun (studioCrush.ts) ------------------------------------------------------------
+  // The plan follows the storyboard (every edit replaces it), the battlefield and the tracked hulls' specs; a new plan
+  // stands the old one's crushes back up and lays its own up to the playhead.
+  const crushes = createStudioCrushes();
+  let crushStoryboard: Storyboard | null = null;
+  let crushWorld: WorldRuntime | null = null;
+  const crushSpecs: unknown[] = [];
+  const _crushSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
+  function crushPlanCurrent(world: WorldRuntime | null): boolean {
+    if (crushStoryboard !== storyboard || crushWorld !== world) return false;
+    let n = 0;
+    for (const a of actors) {
+      if (!actorTrackFor(a)) continue;
+      if (crushSpecs[n++] !== a.spec) return false;
+    }
+    return n === crushSpecs.length;
+  }
+  function syncCrushPlan(world: WorldRuntime | null): void {
+    if (crushPlanCurrent(world)) return;
+    if (crushWorld !== world) crushes.restore(crushWorld);
+    crushStoryboard = storyboard;
+    crushWorld = world;
+    crushSpecs.length = 0;
+    const hulls: StudioCrushHull[] = [];
+    for (const a of actors) {
+      const keys = actorTrackFor(a)?.keys;
+      if (!keys) continue;
+      crushSpecs.push(a.spec);
+      const rect = tankContactRect(a.spec);
+      hulls.push({
+        halfLength: rect.halfLength,
+        halfWidth: rect.halfWidth,
+        crushReach: a.spec.dims.hullLengthM * 0.5 + 0.5, // battlePresentationRuntime.ts crushNearbyProps
+        poseAt(tMs, out) {
+          if (!sampleActorTrack(keys, tMs, _crushSample)) return false;
+          out.x = _crushSample.x ?? 0; out.z = _crushSample.z ?? 0;
+          out.yawRad = (_crushSample.facingDeg ?? 0) * DEG;
+          return true;
+        },
+      });
+    }
+    crushes.setPlan(world, world && hulls.length
+      ? planStudioCrushes(hulls, storyboard.durationMs, world.queryObstacles, world.crushables) : []);
+    if (world) crushes.settleTo(world, clockMs);
+  }
+  const _crushPos = new THREE.Vector3(), _crushDir = new THREE.Vector3();
+  /** A toppled pole's or dressing's burst, as the battle adds it after world.crushProp (crushNearbyProps). */
+  function crushBurst(event: StudioCrushEvent): void {
+    const prop = getWorld()?.crushables[event.crushable];
+    if (!prop) return;
+    _crushPos.set(prop.x, prop.y, prop.z);
+    _crushDir.set(event.dirX, 0, event.dirZ);
+    if (prop.dynamic && fx.loosePropHit) fx.loosePropHit(_crushPos, _crushDir, prop.h);
+    else fx.propCrush?.(_crushPos, _crushDir, prop.h);
+  }
+  /** Playback from `fromMs` to `toMs`: each crush fires at its own time and the falls run exactly to `toMs`. */
+  function advanceCrushes(fromMs: number, toMs: number): void {
+    const world = getWorld();
+    if (!world) return;
+    syncCrushPlan(world);
+    let cursor = fromMs;
+    for (let next = crushes.nextTime(); next <= toMs; next = crushes.nextTime()) {
+      if (next > cursor) { world.advanceDestruction((next - cursor) / 1000); cursor = next; }
+      crushes.advanceTo(world, next, crushBurst);
+    }
+    if (toMs > cursor) world.advanceDestruction((toMs - cursor) / 1000);
+  }
+  /** Studio exit: the battlefield's props stand again before it can host anything else, and the plan is forgotten. */
+  function releaseCrushes(): void {
+    crushes.restore(crushWorld);
+    crushStoryboard = null;
+    crushWorld = null;
+    crushSpecs.length = 0;
+  }
+  /** A seek: the crushes up to `timeMs` lie at their final poses, the later ones stand. */
+  function settleCrushes(timeMs: number): void {
+    const world = getWorld();
+    if (!world) return;
+    syncCrushPlan(world);
+    crushes.settleTo(world, timeMs);
   }
 
   function applyStoryboardCamera(timeMs: number): boolean {
@@ -4321,6 +4410,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     dragActor = null;
     dragging = false;
     keys.clear();
+    releaseCrushes();
     clearActors();
     shells.length = 0;
     effectLog.length = 0;
@@ -4368,6 +4458,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const wdt = 0; // Water uses the fixed Studio timeline; camera/LOD maintenance stays render-driven.
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
+    if (!animating) syncCrushPlan(w); // a paused edit re-plans the crushes at the playhead
     if (animating) {
       // MediaRecorder timestamps follow elapsed wall time. The interactive
       // frame delta is capped at 100 ms, so using it here stretches recordings
@@ -4486,6 +4577,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       smoking: !!a.smoking, burning: !!a.burning,
       camo: a.camo || null, camoSeed: a.camoSeed,
     })),
+    /** The hulls' crushes over the take (studioCrush.ts): when, what, where and how fast, for scores and shot tools. */
+    crushEvents: () => {
+      const world = getWorld();
+      syncCrushPlan(world);
+      return crushes.events.map((e) => {
+        if (e.record) {
+          return {
+            tMs: Math.round(e.tMs), kind: e.record.kind ?? 'obstacle', speedMps: r2(e.speedMps),
+            pos: [r2((e.record.min[0] + e.record.max[0]) / 2), r2(e.record.min[1]), r2((e.record.min[2] + e.record.max[2]) / 2)],
+            heightM: r2(e.record.max[1] - e.record.min[1]),
+          };
+        }
+        const prop = world?.crushables[e.crushable];
+        return {
+          tMs: Math.round(e.tMs), kind: prop?.kind ?? (prop?.index != null ? 'pole' : 'prop'), speedMps: r2(e.speedMps),
+          pos: prop ? [r2(prop.x), r2(prop.y), r2(prop.z)] : [0, 0, 0], heightM: r2(prop?.h ?? 0),
+        };
+      });
+    },
     state: stateJson,
     // session control
     enter: (opts: EnterOptions = {}) => enter(opts),

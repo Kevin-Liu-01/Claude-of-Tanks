@@ -30,7 +30,7 @@ function fixture() {
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){}};
     let poolSweepAcc=0,frameDirty=false,lastFov=60;
     const camera={fov:60,position:{},getWorldDirection(){}},_fwd={},perf={skippedFrames:0,renderedFrames:0};
-    const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;};
+    const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;},syncCrushPlan=()=>{};
     const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}});
     ${functions}
     ${tickFunction}

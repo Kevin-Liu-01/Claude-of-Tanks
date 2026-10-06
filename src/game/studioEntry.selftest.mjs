@@ -64,6 +64,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     transition: { run: async (work) => { calls.push('transition'); return work(noop); } },
     syncRoute: noop, docBrand: noop, marker: { group: { visible: true } }, keys: new Set(),
     clearActors: () => calls.push('actors-cleared'), shells: [], effectLog: [], activeEffectIds: new Set(),
+    releaseCrushes: () => calls.push('crushes-released'),
     fx: { resetAll: noop, setFrozen: noop }, normalizeStoryboard: () => ({}),
     releaseStudioFx: () => calls.push('studio-fx-released'),
     rail: { rebuild: noop, updateVisibility: noop }, unsweepPool: noop,
@@ -109,6 +110,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.equal(game.phase, 'garage');
   assert.equal(studio.active(), false);
   assert.ok(calls.indexOf('actors-cleared') < calls.indexOf('enter-garage'));
+  assert.ok(calls.includes('crushes-released') && calls.indexOf('crushes-released') < calls.indexOf('enter-garage'),
+    'the props the Studio\'s hulls crushed stand again before the Garage returns (studioCrush.ts)');
   assert.ok(calls.includes('picture-disposed') && calls.indexOf('picture-disposed') < calls.indexOf('enter-garage'),
     'Studio picture passes leave the composer before the Garage renders');
   assert.ok(calls.indexOf('studio-fx-released') > calls.indexOf('actors-cleared')
