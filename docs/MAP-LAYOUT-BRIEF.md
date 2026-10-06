@@ -464,6 +464,7 @@ region, registered in `index.ts`:
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
 | `navajo` | Monument Valley (Oljato, Goulding's): juniper-log hogans facing east, a two-storey sandstone trading post, stone ranch houses under tin, camps with shade houses and stockade corrals, windmills and the chapter's water tower | Titan Gorge |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
+| `shanghai` | Shanghai, 1937, both banks of Suzhou Creek: shikumen lanes behind their stone gates, shophouses under stepped fire walls, the Settlement's brick blocks, godowns, a cotton mill, a fire station, a guild hall; the Bund's banks and Art Deco towers (Broadway Mansions, the Park Hotel, Sassoon House, the Bank of China, the Customs House) and the Joint Trust warehouse in the landmarks' footprints | Suzhou Creek |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
 | `saar` | The Völklingen ironworks, Saar, 1945: blast furnaces with their ore bunkers, skip hoists and Cowper stoves; sawtooth rolling mills and workshops; column-guided gas holders behind their walls; conveyor galleries; the colliery headframe and its winding-engine house; the works office; the miners' houses (Bergmannshäuser) | Ironworks |
@@ -533,6 +534,45 @@ of its timber dressing by the same cells (70, 60 and 45 m on its three presets);
 only, so a desktop with it culls as above. Mark a new part fine when it is under about 10 cm across, or when only its
 face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
 regional receipt holds that fine joinery is receive-only dressing a phone never builds.
+
+**The facade craft.** October 5, 2026 (facades & skyline lane). On a desktop build every kit's houses are finished by
+`src/world/maps/regional/facade.ts`, the way a mason, a joiner and a thatcher finish a real house. Every kit inherits
+the rain shadow under its eaves (the top storey's top row of wall vertices darkened by the overhang's depth: no new
+vertex), the dirt run off its sills (two streaks from each sill's ends, stopped at the opening below), the hangers of
+its gutters and the hopper heads, clips and shoes of its downpipes, the oversailing course under every stack's cap, and
+on every straw roof the thatcher's stepped eave (three courses of butt ends, the lift wandering along them) and two
+course lines up the slope (`RoofSpec.thatch`: `'rows'` for a palm or grass thatch, `'none'` to keep the plain slab). A
+kit opts into the vocabulary: `WindowStyle.carved` (the Russian nalichnik: a crest cut to a gable, an arch or a step,
+its carved field and rosettes, an apron cut to a drop), `WindowStyle.head` (a lintel, a hood, a pediment or a
+segmental arch with its keystone, taking the place of a surround's flat lintel), `WindowStyle.shutters.paint` (a
+border and a diamond or a heart), painted render bands and Faschen (`paintBand`, `paintSurround`: render 2 cm proud
+under `EmitOptions.tint`, a per-vertex paint the weathering pass folds into the building's tint and damp), cornices and
+string courses with their returns (`trimRun`, `trimRing`), pilasters, brick dentil cornices, door canopies, roof
+dormers (`roofDormers`), ridge riders on a thatch, hollyhocks, and spalled render showing clay (`HouseSpec.spallTint`,
+`spallScale`). Three laws keep every map's world as it was, held by `facade.selftest.mjs` for every builder: the craft
+is dressing only (the structural geometry with it is the craftless build's byte for byte, so collision and the shards
+do not move), it is desktop only (a phone's build is byte for byte its craftless build), and it draws from its own
+stream (index.ts forks it from the wear seed) or hashes positions, so a kit's build and look streams draw exactly as
+often with it as without it. Its fine metal and render work (hangers, fittings, streaks, the edges of trims) join the
+fine-detail cells: on a desktop build `structureMetal` and the three `regionalPlaster` buckets batch like the timber and
+stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
+`facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
+
+**The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
+tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
+Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
+finials, a copper pyramid, a finned ziggurat or a needle), `curtainTower` (the post-war glass tower over a recessed
+lobby), `modernSlab` (ribbon windows, blank stair-core ends, painted loggias), `stalinistTower` (wings, tiers under
+cornices and pinnacles, the drum, the spire and its star), `industrialHall` (brick under sawtooth north lights, a works
+chimney), `gasHolder`, `stationHall` (the head building's lunette and clock tower before a glass train shed) and
+`cathedral` (aisles, flying buttresses, transept, apse, rose windows, west towers). Every builder takes `damage` (0
+intact, 1 shelled, 2 burnt floors and a bay blown to the slabs, 3 a collapsed corner with its slab ends and rubble), by
+default drawn from the building's stream. A tower is a few structural prisms — its dark core is the body and the
+collision, and shows behind every missing pane — under coarse dressing that is its silhouette at any range (tiers,
+crowns, the fronts of piers and spandrels, the glass) and fine dressing drawn near the camera only (mullions, pier
+sides, tracery, bracing). `SKYLINE_CITY` binds the kit to the generic `megatower`, `arcology`, `needletower`,
+`terracetower`, `parkingdeck` and `civichall`: `builders: { ...SKYLINE_CITY, ...own }`, then regenerate the map's shard.
+`skyline.selftest.mjs` builds every builder at every damage state on two plots (and the binding on Blackglass's plots).
 
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after

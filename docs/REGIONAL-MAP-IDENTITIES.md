@@ -38,7 +38,7 @@ the fictional map reproduces a particular real-world location.
 | caldera | The Aso caldera, Kyushu (settlement and trees 2026-10-05): an off-centre, breached volcanic rim with unequal shelves and radial drainage over a farmed and settled floor; not red mesas recoloured black. |
 | foundry | The Völklingen ironworks on the Saar, March 1945 (the map-revival lane 2026-10-05): the blast furnaces and their Cowper stoves, the rolling mills under north lights, gas holders, conveyor galleries and the colliery headframe in an industrial basin with low regional shoulders; the works remain the landmarks. |
 | ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
-| blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
+| blackglass | Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane 2026-10-05), the creek between the International Settlement and burning Zhabei with four bridges; Art Deco towers and the Bund's banks over shikumen lanes and shophouses; a flat delta horizon. |
 | titan_gorge | Monument Valley (layout 2026-10-03, settlement and land cover 2026-10-05): stepped sandstone shelves with cliff bands over talus, buttes standing free on a sand floor, braided dry washes; the Oljato chapter's hogans and trading posts. |
 | skybridge | Glen Canyon above Lake Powell (layout 2026-10-03, settlement 2026-10-05): opposing plateau shoulders aligned with the drowned gorge, the dam's concrete works and Page; preserve crossing approaches. |
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |

@@ -15,6 +15,7 @@ import { getDeviceTier } from '../../../engine/quality.ts';
 import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
 import { withWear } from './house.ts';
+import { withFacade } from './facade.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
@@ -35,6 +36,7 @@ import { QUEENSTOWN_STYLE } from './queenstown.ts';
 import { GLENCANYON_STYLE } from './glencanyon.ts';
 import { NAVAJO_STYLE } from './navajo.ts';
 import { SAAR_STYLE } from './saar.ts';
+import { SHANGHAI_STYLE } from './shanghai.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -61,6 +63,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   glencanyon: GLENCANYON_STYLE,
   navajo: NAVAJO_STYLE,
   saar: SAAR_STYLE,
+  shanghai: SHANGHAI_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -107,8 +110,12 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
+  // the facade craft (facade.ts: window heads, thatch courses, gutter brackets ...) on desktop builds, its choices from a
+  // stream of its own forked from the same seed: the build, look, wear and weather streams draw exactly as before
+  const facade = { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0) };
   const tints = pickWeatherTints(palette, weatherRng);
-  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  const parts = weatherRegionalParts(withFacade(facade, () => withWear(wear, () => builder(ctx))), tints,
+    { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
   // it is dressing, so the collision stays the desktop's
   if (ctx.tier === 'mobile') {

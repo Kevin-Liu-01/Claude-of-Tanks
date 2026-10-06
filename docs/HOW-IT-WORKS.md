@@ -190,7 +190,7 @@ Twenty authored battlefields are generated from code. The original eight are
 Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford,
 Tarkhan Steppe, and Cinder Junction; Frontier Basin, Nordhavn Fjord, Jade River
 Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, and
-Ironworks form the second set; Ruinspires, Blackglass District, Titan Gorge,
+Ironworks form the second set; Ruinspires, Suzhou Creek, Titan Gorge,
 and Skybridge Chasm complete the current roster. Each owns a height field, material palette,
 roads, foliage, structures, collision, concealment, destructibles, lighting,
 sky, and minimap. Shared structure, wreck, loose-prop, utility-network,
