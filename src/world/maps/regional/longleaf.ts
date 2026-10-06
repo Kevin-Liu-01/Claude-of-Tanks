@@ -200,7 +200,9 @@ const workerHouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng, look = st.look;
   const fp = footprint(ctx);
-  const lift = 0.7, wallH = 2.7 + rng() * 0.2;
+  // (gauntlet wave 124, the houses view: "neither house shows the brick piers … walls running straight to grade"): the
+  // floor a metre up, so the piers and the dark crawlspace between them show over the grass and the ground's fall
+  const lift = 1.0, wallH = 2.7 + rng() * 0.2;
   const sheet = pick(rng, TIN);
   const whitewashed = rng() < 0.45;
   const wall: RegionalBucket = whitewashed ? 'plaster' : 'wood';
