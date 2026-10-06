@@ -2644,10 +2644,11 @@ const FIELD_TREE_ROAD_VERGE_M = 18;
 /** Trees round 5: the least distance between two moved field trees' trunks (a hedgerow's standards, m). */
 const FIELD_TREE_SPACING_M = 5;
 
-function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false): TreeGeometryPair {
+function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false,
+  open = false): TreeGeometryPair {
   const profile = TREE_GROWTH_PROFILES[species];
   const rng = mulberry32(seed);
-  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest });
+  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest, open });
   const parts: THREE.BufferGeometry[] = [emitBranchGeometry(skeleton, {
     tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng, tier: 'desktop',
   })];
@@ -5301,7 +5302,9 @@ function* vegetationBuildSteps(
         const fp = formPal(pal);
         return makeSprayAtlas(grownFormSprayKind(growth, fp), r, texSize(512), (fp.snow ?? 0) > 0.05 ? null : fp.texTone || null, fp.snow ?? 0);
       },
-      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS),
+      // (trees round 6: the open variant beside the forest-grown pair grows open-grown — broad and low, GROWTH_OPEN_FORM)
+      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS,
+        forestSpecies.has(species) && k >= FOREST_NEAR_VARIANTS),
       nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
       far: legacy.far,
     };

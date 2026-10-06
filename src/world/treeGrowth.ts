@@ -612,6 +612,8 @@ interface GrowthOptions {
   tier?: 'desktop' | 'mobile';
   /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
   forest?: boolean;
+  /** Trees round 6: grown in the open beside a closed wood's forest-grown trees (openGrownProfile). */
+  open?: boolean;
 }
 
 /**
@@ -632,6 +634,32 @@ export const GROWTH_FOREST_FORM = Object.freeze({
   leaderCrownBase: 0.56,
 });
 const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/**
+ * Trees round 6 (2026-10-05, the gauntlet's wave 122: "no frame shows a lone or hedge tree with a broad, low crown"):
+ * how a broadleaf grown in the open — a field's hedge tree, a wood's margin — differs from the stock profile on a map
+ * whose woods close: the light from every side spreads its crown wider (crownR), its scaffolds fork lower (fork) and
+ * lean further out (scaffoldAngle), and it stands a little lower for its spread (height). A conifer, a palm, a snag, a
+ * grass-stage seedling and an orchard tree keep their own.
+ */
+const GROWTH_OPEN_FORM = Object.freeze({ crownR: 1.16, fork: 0.86, scaffoldAngle: 1.1, height: 0.96 });
+const openProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/** A profile's open-grown form (GROWTH_OPEN_FORM): the broadleaves' and the birches'; any other profile keeps its own. */
+export function openGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+  if ((p.family !== 'broadleaf' && p.family !== 'birch') || p.fountain || p.orchard) return p;
+  const cached = openProfiles.get(p);
+  if (cached) return cached;
+  const f = GROWTH_OPEN_FORM;
+  const open = P({
+    ...p,
+    height: p.height * f.height,
+    crownR: p.crownR * f.crownR,
+    forkAt: p.form === 'decurrent' ? [p.forkAt[0] * f.fork, p.forkAt[1] * f.fork] : p.forkAt,
+    scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, Math.min(1.45, p.scaffoldAngle[1] * f.scaffoldAngle)],
+    crownBase: p.form === 'excurrent' ? p.crownBase * f.fork : p.crownBase,
+  });
+  openProfiles.set(p, open);
+  return open;
+}
 /** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag or a grass-stage seedling keeps its own. */
 export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
   if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard) return p;
@@ -1549,7 +1577,7 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
   // form's plum young and small, its apple in its middle years, its pear old and tall)
   const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
-  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
+  const profile = options.forest ? forestGrownProfile(shaped) : options.open ? openGrownProfile(shaped) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
