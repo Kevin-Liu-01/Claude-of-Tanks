@@ -61,8 +61,8 @@
       "concealers": 1091
     },
     "frontier": {
-      "bytes": 2001457,
-      "sha256": "ac842feb19cab5e69446f758a82707d125ee7161831f293e782237faf68e3d91",
+      "bytes": 1990738,
+      "sha256": "a30037642b37db22e742ce8c92ac05f103aab9722d887286406e992258c98d3b",
       "obstacles": 6068,
       "colliders": 5970,
       "concealers": 6296
@@ -208,8 +208,8 @@
       "concealers": 3408
     },
     "reservoir": {
-      "bytes": 1357006,
-      "sha256": "27d1d86dd57aa80b5c73f7d8adbcefc10a311ec8ad0d296e38bdd21461d7a589",
+      "bytes": 1355861,
+      "sha256": "d86c52fde02607424cd5a8b3ee61e543939b8b6f491bb3f74b3bb3e9f81396c4",
       "obstacles": 5121,
       "colliders": 5017,
       "concealers": 5943
