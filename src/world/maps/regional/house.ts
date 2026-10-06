@@ -542,11 +542,15 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   // the overhang's depth; a gable, a flat roof's parapet or a bare eave casts none
   const rainShadow: Record<FaceName, number> = { front: 1, right: 1, back: 1, left: 1 };
   if (facadeOn() && spec.roof.eave >= 0.15 && rg.kind !== 'flat') {
-    const k = 1 - Math.min(0.24, 0.1 + 0.22 * spec.roof.eave);
+    // (wave 116: "almost nothing shows weathering": deep enough to read at 30 m)
+    const k = 1 - Math.min(0.34, 0.14 + 0.3 * spec.roof.eave);
     if (rg.kind === 'shed') rainShadow.right = k;
     else { rainShadow.left = k; rainShadow.right = k; }
     if (rg.kind === 'hip') { rainShadow.front = k; rainShadow.back = k; }
   }
+  // the grime where the ground storey meets the ground (facade craft, desktop; wave 116: "almost nothing shows weathering
+  // or grime where walls meet the ground"): its bottom row of corners darker, fading up to the next row it has
+  const footGrime = facadeOn() ? 0.7 : 1;
   // the storey bodies: four faces cut by their openings (with reveals), the top, and a jetty's underside
   bodies.forEach((b, i) => {
     const wall = spec.storeys[i].wall;
@@ -567,7 +571,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
       });
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
-        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1);
+        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
     }
     sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
     // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
@@ -739,7 +743,7 @@ export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom:
  * occlusion shade for the weathering pass. Strips and reveals share their corners exactly (welded solids).
  */
 export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, rect: WallRect, holes: readonly HoleRect[], reveal: number,
-  stains: readonly Stain[] = [], revealShade: readonly number[] = [], topShade = 1): void {
+  stains: readonly Stain[] = [], revealShade: readonly number[] = [], topShade = 1, bottomShade = 1): void {
   const m = 0.04;
   const kept: number[] = [];
   const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
@@ -768,14 +772,16 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
         if (b - a <= 1e-5) continue;
         const mid = (a + b) / 2;
         const inStain = live.filter((t) => mid > t.u0 && mid < t.u1);
-        // the rain shadow under the eaves (facade craft): the wall's top row of corners darker, on the vertices it has
+        // the rain shadow under the eaves (facade craft): the wall's top row of corners darker, on the vertices it has;
+        // and the grime where the wall meets the ground (splash and rising damp), its bottom row of corners darker
         const top = topShade !== 1 && yb >= rect.y1 - 1e-6 ? topShade : 1;
+        const foot = bottomShade !== 1 && ya <= rect.y0 + 1e-6 ? bottomShade : 1;
         if (!inStain.length) {
-          if (top === 1) sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb));
-          else sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] >= rect.y1 - 1e-6 ? top : 1) });
+          if (top === 1 && foot === 1) sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb));
+          else sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] >= rect.y1 - 1e-6 ? top : q[1] <= rect.y0 + 1e-6 ? foot : 1) });
           continue;
         }
-        const lo = inStain.reduce((v, t) => v * stainAt(t, ya), 1), hi = inStain.reduce((v, t) => v * stainAt(t, yb), 1) * top;
+        const lo = inStain.reduce((v, t) => v * stainAt(t, ya), 1) * foot, hi = inStain.reduce((v, t) => v * stainAt(t, yb), 1) * top;
         // each row of corners carries its own shade: the stain fades along the face
         const midY = (ya + yb) / 2;
         sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] < midY ? lo : hi) });
