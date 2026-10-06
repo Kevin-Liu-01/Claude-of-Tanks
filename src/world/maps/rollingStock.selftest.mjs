@@ -3,11 +3,13 @@ import { createHash } from 'node:crypto';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock } from './rollingStock.ts';
 import { railStockPlacements } from '../railSpurs.ts';
 import railyard from './railyard.ts';
+import { MAP_IDS, getMapConfig } from './index.ts';
 
 // The map-vehicles lane (P5, 2026-10-06): the rolling stock is built at its real dimensions in the painted bucket's
 // streams, stands with its treads on the rail head (y = 0), keeps its triangles bounded and rebuilds byte for byte;
 // Cinder Junction's standing cuts keep the yard's rotational symmetry, stay on the straight between the throats and
-// clear of the station square, and leave room between cuts to cross the yard.
+// clear of the station square, and leave room between cuts to cross the yard. The Soviet bogie stock (1950s) runs on
+// 1520 mm: a spur that stands it is laid to that gauge, and the yards' DB stock keeps the default.
 
 const digest = (g) => {
   const hash = createHash('sha256');
@@ -18,6 +20,7 @@ const digest = (g) => {
   return hash.digest('hex');
 };
 
+const SOVIET = new Set(['covered4', 'gondola4', 'tank4', 'tem1']);
 let worst = 0;
 for (const kind of Object.keys(ROLLING_STOCK_LENGTH)) {
   const g = buildRollingStock(kind);
@@ -34,7 +37,8 @@ for (const kind of Object.keys(ROLLING_STOCK_LENGTH)) {
     assert.ok(b.max.y <= body.h + 0.5 && b.max.y >= body.h - 0.4, `${kind}: its height over the rail (${b.max.y.toFixed(2)})`);
     const tris = g.index.count / 3;
     worst = Math.max(worst, tris);
-    assert.ok(tris <= 5000, `${kind}: ${tris} triangles within the budget`);
+    const budget = SOVIET.has(kind) ? 6000 : 5000;
+    assert.ok(tris <= budget, `${kind}: ${tris} triangles within the budget (${budget})`);
     const again = buildRollingStock(kind);
     assert.equal(digest(again), digest(g), `${kind}: a rebuild is byte-identical`);
     again.dispose();
@@ -63,5 +67,20 @@ for (const spur of spurs) {
   for (let k = 1; k < ends.length; k++) assert.ok(ends[k][0] - ends[k - 1][1] >= 20, 'a 20 m gap between cuts');
 }
 
+// the gauge each spur's stock runs on
+let soviet = 0;
+for (const mapId of MAP_IDS) {
+  for (const spur of getMapConfig(mapId).terrain?.railSpurs ?? []) {
+    const kinds = (spur.stock ?? []).flatMap((cut) => cut.kinds);
+    for (const kind of kinds) assert.ok(ROLLING_STOCK_LENGTH[kind], `${mapId}: ${kind} is built`);
+    const su = kinds.filter((kind) => SOVIET.has(kind)).length;
+    soviet += su;
+    if (su) assert.equal(spur.gauge, 1.52, `${mapId}: the spur that stands Soviet stock is laid to 1520 mm`);
+    assert.ok(su === 0 || su === kinds.length, `${mapId}: one railway's stock to a spur`);
+    if (kinds.length && !su) assert.equal(spur.gauge ?? 1.44, 1.44, `${mapId}: the standard-gauge stock on the default spur`);
+  }
+}
+
 console.log(`rollingStock.selftest: ${Object.keys(ROLLING_STOCK_LENGTH).length} vehicles at their dimensions on the rail, bounded `
-  + `(worst ${worst} triangles), byte-identical; Cinder Junction's ${placed.length} standing vehicles symmetric about the square`);
+  + `(worst ${worst} triangles), byte-identical; Cinder Junction's ${placed.length} standing vehicles symmetric about the square; `
+  + `${soviet} Soviet vehicle(s) on 1520 mm spurs`);

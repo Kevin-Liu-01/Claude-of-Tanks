@@ -16,13 +16,16 @@ import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type Ve
 
 type Mat = VehicleMaterial;
 
-export type RollingStockKind = 'omm' | 'g10' | 'tank' | 'v60';
+export type RollingStockKind = 'omm' | 'g10' | 'tank' | 'v60' | 'covered4' | 'gondola4' | 'tank4' | 'tem1';
 
 /** Length over buffers (m): consecutive vehicles in a cut stand buffer to buffer. */
-export const ROLLING_STOCK_LENGTH: Readonly<Record<RollingStockKind, number>> = { omm: 10.0, g10: 9.1, tank: 9.0, v60: 10.45 };
+export const ROLLING_STOCK_LENGTH: Readonly<Record<RollingStockKind, number>> = {
+  omm: 10.0, g10: 9.1, tank: 9.0, v60: 10.45, covered4: 14.73, gondola4: 13.92, tank4: 12.02, tem1: 16.9,
+};
 /** Width of the body (m) and its height over the rail head (m): the collision record's box. */
 export const ROLLING_STOCK_BODY: Readonly<Record<RollingStockKind, { w: number; h: number }>> = {
   omm: { w: 2.92, h: 2.86 }, g10: { w: 2.82, h: 3.9 }, tank: { w: 2.6, h: 3.6 }, v60: { w: 3.1, h: 4.2 },
+  covered4: { w: 3.0, h: 4.6 }, gondola4: { w: 3.13, h: 3.48 }, tank4: { w: 3.0, h: 4.4 }, tem1: { w: 3.2, h: 4.7 },
 };
 
 // ---------------------------------------------------------------------------------------------------- materials
@@ -78,13 +81,13 @@ function beam(mesh: VehicleMesh, a: Vec3, b: Vec3, w: number, d: number, m: Mat,
 // ---------------------------------------------------------------------------------------------------- running gear
 
 /** A wheelset at z: two flanged wheels on their axle, the rail head at y = 0 under the treads. */
-function wheelset(mesh: VehicleMesh, z: number, r: number, spoked: boolean): void {
-  const gaugeHalf = 0.7175, tread = 0.135;
+function wheelset(mesh: VehicleMesh, z: number, r: number, spoked: boolean, gaugeHalf = 0.7175, seg = 14): void {
+  const tread = 0.135;
   for (const side of [1, -1]) {
     mesh.push().translate(side * gaugeHalf, r, z).scale(side, 1, 1);
     // the tyre: its tread over the rail, the flange inside
     mesh.lathe([[r - 0.05, tread * 0.62], [r - 0.004, tread * 0.62], [r, tread * 0.2], [r, -tread * 0.3], [r + 0.028, -tread * 0.36],
-      [r + 0.028, -tread * 0.42], [r - 0.06, -tread * 0.42]], 14, (k) => (k >= 1 && k <= 3 ? TYRE_BRIGHT : WHEEL_STEEL), { creases: [1, 3, 4, 5] });
+      [r + 0.028, -tread * 0.42], [r - 0.06, -tread * 0.42]], seg, (k) => (k >= 1 && k <= 3 ? TYRE_BRIGHT : WHEEL_STEEL), { creases: [1, 3, 4, 5] });
     // the centre: a dished disc or six spokes, and the boss
     if (spoked) {
       for (let k = 0; k < 6; k++) {
@@ -93,10 +96,10 @@ function wheelset(mesh: VehicleMesh, z: number, r: number, spoked: boolean): voi
         mesh.pop();
       }
     } else {
-      mesh.lathe([[r - 0.05, 0.06], [r * 0.55, 0.03], [r * 0.25, 0.08], [r * 0.25, -0.06], [r * 0.55, -0.02], [r - 0.05, -0.04]], 12,
+      mesh.lathe([[r - 0.05, 0.06], [r * 0.55, 0.03], [r * 0.25, 0.08], [r * 0.25, -0.06], [r * 0.55, -0.02], [r - 0.05, -0.04]], seg - 2,
         () => WHEEL_STEEL, { creases: [2, 3] });
     }
-    mesh.lathe([[0.0001, 0.15], [0.1, 0.15], [0.12, 0.05], [0.12, -0.08], [0.0001, -0.08]], 8, () => WHEEL_STEEL);
+    mesh.lathe([[0.0001, 0.15], [0.1, 0.15], [0.12, 0.05], [0.12, -0.08], [0.0001, -0.08]], seg >= 14 ? 8 : 6, () => WHEEL_STEEL);
     mesh.pop();
   }
   // the axle
@@ -144,6 +147,179 @@ function underframe(mesh: VehicleMesh, frameHalf: number, width: number, y: numb
   }
   // cross bearers between the solebars
   for (const z of [-frameHalf * 0.55, 0, frameHalf * 0.55]) mesh.box(0, y - depth * 0.6, z, width - 0.3, depth * 0.5, 0.1, FRAME_BLACK, 0);
+}
+
+// ---------------------------------------------------------------------------------------------------- the Soviet stock (1950s)
+
+/** The 1520 mm gauge's wheel centres (the spur that carries Soviet stock is laid to it: railSpurs.ts `gauge: 1.52`). */
+const RU_GAUGE_HALF = 0.76;
+const SU_BROWN = material('paint', linearHex(0x6a3828), 0.72, 0.05, 0, 1);
+const SU_GREEN = material('paint', linearHex(0x2f5a3c), 0.55, 0.05, 0, 1);
+const SU_YELLOW = material('paint', linearHex(0xc8a43a), 0.55, 0, 0, 1);
+
+/** A two- or three-axle bogie at z: cast side frames over their axle boxes and springs, the bolster, the wheelsets. */
+function bogie(mesh: VehicleMesh, z: number, r: number, axles: number, base: number): void {
+  const zs = axles === 2 ? [-base / 2, base / 2] : [-base, 0, base];
+  // the wheels sit half hidden behind the cast side frames: fewer facets than the two-axle stock's open wheels
+  for (const az of zs) wheelset(mesh, z + az, r, false, RU_GAUGE_HALF, 10);
+  for (const side of [1, -1]) {
+    const x = side * (RU_GAUGE_HALF + 0.3);
+    mesh.box(x, r + 0.05, z, 0.16, 0.42, (zs[zs.length - 1] - zs[0]) + 0.9, FRAME_BLACK, 0.02);
+    for (const az of zs) mesh.box(x, r, z + az, 0.22, 0.3, 0.32, FRAME_BLACK, 0.02);
+    for (let k = 0; k < 3; k++) mesh.box(x, r + 0.32, z - 0.18 + k * 0.18, 0.12, 0.2, 0.1, FRAME_BLACK, 0);
+  }
+  mesh.box(0, r + 0.3, z, 2.2, 0.26, 0.4, FRAME_BLACK, 0.02);
+}
+
+/** The Soviet underframe: a centre sill and side sills, the end beams, the automatic SA-3 couplers (no side buffers). */
+function suUnderframe(mesh: VehicleMesh, frameHalf: number, width: number, y: number, overCouplers: number): void {
+  for (const side of [1, -1]) mesh.box(side * (width / 2 - 0.08), y - 0.12, 0, 0.06, 0.24, frameHalf * 2, FRAME_BLACK, 0);
+  mesh.box(0, y - 0.2, 0, 0.36, 0.36, frameHalf * 2, FRAME_BLACK, 0);
+  for (const end of [1, -1]) {
+    const z = end * frameHalf, reach = overCouplers / 2 - frameHalf;
+    mesh.box(0, y - 0.18, z, width - 0.1, 0.36, 0.14, FRAME_BLACK, 0.01);
+    // the coupler: the shank and the knuckle head at the end of the reach
+    mesh.box(0, 1.06, z + end * reach * 0.45, 0.16, 0.16, reach * 0.9, FRAME_BLACK, 0);
+    mesh.box(0, 1.06, z + end * (reach - 0.12), 0.36, 0.3, 0.26, FRAME_BLACK, 0.03);
+    // the uncoupling lever across the end
+    beam(mesh, [-0.9, 1.25, z + end * 0.1], [0.3, 1.25, z + end * 0.1], 0.03, 0.03, FRAME_BLACK);
+  }
+}
+
+function covered4(mesh: VehicleMesh, coarse: boolean): void {
+  const L = ROLLING_STOCK_LENGTH.covered4, W = ROLLING_STOCK_BODY.covered4.w, frameHalf = 6.92, floorY = 1.3, eave = 3.95, ridge = 4.6;
+  for (const z of [-5.0, 5.0]) bogie(mesh, z, 0.475, 2, 1.85);
+  suUnderframe(mesh, frameHalf, W, floorY, L);
+  const hw = W / 2, h = eave - floorY, bodyL = frameHalf * 2;
+  for (const side of [1, -1]) {
+    mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.05, h, bodyL, SU_BROWN, 0);
+    // the steel frame's posts and braces outside the sheathing, the sliding door on its rails
+    const posts = coarse ? 6 : 12;
+    for (let k = 0; k <= posts; k++) {
+      const z = -bodyL / 2 + 0.05 + (k / posts) * (bodyL - 0.1);
+      if (Math.abs(z) < 1.05) continue;
+      mesh.box(side * (hw + 0.015), floorY + h / 2, z, 0.04, h, 0.08, SU_BROWN, coarse ? 0 : 0.008);
+    }
+    mesh.box(side * (hw + 0.02), eave - 0.05, 0, 0.06, 0.1, bodyL, SU_BROWN, 0);
+    mesh.box(side * (hw + 0.06), floorY + h / 2 - 0.05, 0, 0.05, h - 0.2, 2.0, SU_BROWN, coarse ? 0 : 0.01);
+    mesh.box(side * (hw + 0.1), eave - 0.15, 0, 0.05, 0.06, 4.2, FRAME_BLACK, 0);
+    // the hatch windows high on the side (the wagon's vents)
+    if (!coarse) for (const z of [-4.5, 4.5]) mesh.box(side * (hw + 0.02), eave - 0.5, z, 0.02, 0.4, 0.6, FRAME_BLACK, 0);
+  }
+  for (const end of [1, -1]) mesh.box(0, floorY + h / 2, end * (bodyL / 2 - 0.03), W - 0.06, h, 0.05, SU_BROWN, 0);
+  const ar = coarse ? 8 : 14;
+  for (const [inset, flip] of [[0, false], [0.008, true]] as const) {
+    mesh.grid(4, ar, (i, j, out) => {
+      const a = Math.PI * (j / ar);
+      out[0] = Math.cos(a) * (hw + 0.06 - inset);
+      out[1] = eave - 0.02 - inset + (ridge - eave + 0.02) * Math.sin(a);
+      out[2] = (i / 4 - 0.5) * (bodyL + 0.12);
+    }, () => ROOF_GREY, { flip });
+  }
+  for (const end of [1, -1]) {
+    const pts: Vec3[] = [];
+    const n = coarse ? 4 : 8;
+    for (let k = 0; k <= n; k++) { const a = Math.PI * (k / n); pts.push([Math.cos(a) * hw, eave + (ridge - eave) * Math.sin(a), end * (bodyL / 2 - 0.03)]); }
+    const c = mesh.vert(0, eave, end * (bodyL / 2 - 0.03), 0, 0, end, SU_BROWN);
+    const ring = pts.map((q) => mesh.vert(q[0], q[1], q[2], 0, 0, end, SU_BROWN));
+    for (let k = 0; k < n; k++) end > 0 ? mesh.tri(c, ring[k], ring[k + 1]) : mesh.tri(c, ring[k + 1], ring[k]);
+  }
+}
+
+function gondola4(mesh: VehicleMesh, coarse: boolean): void {
+  const L = ROLLING_STOCK_LENGTH.gondola4, W = ROLLING_STOCK_BODY.gondola4.w, frameHalf = 6.35, floorY = 1.38, top = 3.48;
+  for (const z of [-4.4, 4.4]) bogie(mesh, z, 0.475, 2, 1.85);
+  suUnderframe(mesh, frameHalf, W, floorY, L);
+  const hw = W / 2, h = top - floorY;
+  for (const side of [1, -1]) {
+    mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.03, h, frameHalf * 2, SU_BROWN, 0);
+    mesh.box(side * (hw - 0.08), floorY + h / 2, 0, 0.01, h, frameHalf * 2 - 0.1, SU_BROWN, 0);
+    const n = coarse ? 7 : 13;
+    for (let k = 0; k < n; k++) {
+      const z = -frameHalf + 0.2 + (k / (n - 1)) * (frameHalf * 2 - 0.4);
+      mesh.box(side * (hw + 0.03), floorY + h / 2, z, 0.06, h, 0.1, SU_BROWN, coarse ? 0 : 0.01);
+    }
+    mesh.box(side * (hw + 0.02), top - 0.04, 0, 0.1, 0.08, frameHalf * 2, SU_BROWN, 0.01);
+  }
+  for (const end of [1, -1]) {
+    mesh.box(0, floorY + h / 2, end * (frameHalf - 0.02), W - 0.04, h, 0.04, SU_BROWN, 0);
+    for (const x of [-1.0, 0, 1.0]) mesh.box(x, floorY + h / 2, end * (frameHalf + 0.03), 0.1, h, 0.06, SU_BROWN, coarse ? 0 : 0.01);
+  }
+  mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0);
+  // the load: grain under a tarpaulin's ridge? coal: the yard's coal, heaped
+  const nu = coarse ? 6 : 12, nv = coarse ? 6 : 10;
+  mesh.grid(nu, nv, (i, j, out) => {
+    const u = i / nu, v = j / nv;
+    const z = (u - 0.5) * (frameHalf * 2 - 0.25), x = (v - 0.5) * (W - 0.2);
+    const ridge = Math.sin(v * Math.PI) * Math.pow(Math.sin(u * Math.PI), 0.4);
+    const lump = Math.sin(z * 2.1 + x * 3.3) * 0.04 + Math.sin(z * 5.3 - x * 4.1) * 0.025;
+    out[0] = x; out[1] = top - 0.3 + ridge * 0.6 + lump * ridge; out[2] = z;
+  }, () => COAL, { flip: true });
+}
+
+function tank4(mesh: VehicleMesh, coarse: boolean): void {
+  const L = ROLLING_STOCK_LENGTH.tank4, W = 3.0, frameHalf = 5.4, floorY = 1.3, R = 1.4, axisY = floorY + 0.15 + R;
+  for (const z of [-3.85, 3.85]) bogie(mesh, z, 0.475, 2, 1.85);
+  suUnderframe(mesh, frameHalf, W, floorY, L);
+  const half = 4.9;
+  // the saddles over the bolsters that carry the barrel, and the barrel's hold-down bands
+  for (const z of [-3.85, 3.85]) {
+    mesh.box(0, floorY + 0.12, z, 2.2, 0.24, 0.5, FRAME_BLACK, 0.02);
+    for (const side of [1, -1]) mesh.box(side * 0.95, floorY + 0.38, z, 0.3, 0.5, 0.4, FRAME_BLACK, 0.02);
+  }
+  mesh.push().translate(0, axisY, 0).rotateY(Math.PI / 2);
+  mesh.lathe([[0.0001, -half - 0.35], [R * 0.55, -half - 0.28], [R * 0.88, -half - 0.13], [R, -half], [R, half], [R * 0.88, half + 0.13],
+    [R * 0.55, half + 0.28], [0.0001, half + 0.35]], coarse ? 12 : 18, () => TANK_BLACK);
+  mesh.pop();
+  for (const z of [-3.6, 0, 3.6]) {
+    if (!coarse) mesh.dressing(() => {
+      const strap: Vec3[] = [];
+      for (let k = 0; k <= 10; k++) { const a = Math.PI * (k / 10); strap.push([Math.cos(a) * (R + 0.012), axisY + Math.sin(a) * (R + 0.012), z]); }
+      mesh.tube(strap, 0.012, 4, FRAME_BLACK, { caps: true });
+    });
+  }
+  mesh.push().translate(0, axisY + R - 0.05, 0);
+  mesh.lathe([[0.45, 0], [0.45, 0.45], [0.38, 0.52], [0.0001, 0.55]], coarse ? 10 : 16, () => TANK_BLACK, { flip: true });
+  mesh.pop();
+  mesh.box(0, axisY + R + 0.02, 1.6, 0.6, 0.04, 2.2, FRAME_BLACK, 0);
+  for (const side of [1, -1]) beam(mesh, [side * 0.26, axisY + R + 0.04, 0.6], [side * 0.26, axisY + R + 0.4, 0.6], 0.03, 0.03, FRAME_BLACK);
+}
+
+function tem1(mesh: VehicleMesh, coarse: boolean): void {
+  const L = ROLLING_STOCK_LENGTH.tem1, W = ROLLING_STOCK_BODY.tem1.w, frameHalf = 7.75, frameTop = 1.55;
+  for (const z of [-4.6, 4.6]) bogie(mesh, z, 0.525, 3, 1.85);
+  suUnderframe(mesh, frameHalf, W, frameTop, L);
+  mesh.box(0, frameTop + 0.03, 0, W, 0.06, frameHalf * 2, FRAME_BLACK, 0.01);
+  // the long hood ahead (the engine and generator), the cab astern of it, the short hood behind
+  const hood = (z0: number, z1: number, h: number, w: number) => {
+    mesh.box(0, frameTop + h / 2, (z0 + z1) / 2, w, h, z1 - z0, SU_GREEN, coarse ? 0 : 0.07);
+    if (!coarse) mesh.dressing(() => {
+      for (const side of [1, -1]) {
+        mesh.box(side * (w / 2 + 0.004), frameTop + 0.35, (z0 + z1) / 2, 0.008, 0.08, z1 - z0 - 0.1, SU_YELLOW, 0);
+        for (let k = 0; k < Math.floor((z1 - z0) / 0.9); k++) mesh.box(side * (w / 2 + 0.004), frameTop + h * 0.6, z0 + 0.45 + k * 0.9, 0.008, h * 0.45, 0.6, linearMat(0x24452e), 0);
+      }
+    });
+  };
+  hood(-2.6, 7.4, 2.45, 2.3);
+  hood(-7.5, -5.4, 2.1, 2.3);
+  const cz0 = -5.4, cz1 = -2.6, cabTop = 4.65;
+  mesh.box(0, frameTop + (cabTop - frameTop) / 2, (cz0 + cz1) / 2, W - 0.1, cabTop - frameTop, cz1 - cz0, SU_GREEN, coarse ? 0 : 0.05);
+  mesh.box(0, cabTop + 0.06, (cz0 + cz1) / 2, W - 0.02, 0.12, cz1 - cz0 + 0.2, FRAME_BLACK, coarse ? 0 : 0.05);
+  for (const side of [1, -1]) for (const z of [-4.8, -3.3]) mesh.box(side * ((W - 0.1) / 2 + 0.006), cabTop - 0.7, z, 0.012, 0.75, 0.9, GLASS, 0);
+  for (const end of [1, -1]) for (const x of [-0.85, 0.85]) mesh.box(x, cabTop - 0.75, end > 0 ? cz1 + 0.006 : cz0 - 0.006, 0.7, 0.7, 0.012, GLASS, 0);
+  // the headlamps and the pilots, the handrails along the walkway
+  for (const end of [1, -1]) {
+    const z = end > 0 ? 7.4 : -7.5;
+    mesh.push().translate(0, frameTop + (end > 0 ? 2.25 : 1.95), z).rotateY(end > 0 ? -Math.PI / 2 : Math.PI / 2);
+    mesh.lathe([[0.15, 0], [0.15, 0.1], [0.0001, 0.12]], 10, () => linearMat(0xd8d2b8), { flip: true });
+    mesh.pop();
+    mesh.box(0, 0.5, end * (frameHalf + 0.1), 2.6, 0.5, 0.12, FRAME_BLACK, 0.02);
+  }
+  for (const side of [1, -1]) for (const [z0, z1] of [[-7.4, cz0 - 0.05], [cz1 + 0.05, 7.6]]) {
+    const x = side * (W / 2 - 0.05);
+    beam(mesh, [x, frameTop + 0.9, z0], [x, frameTop + 0.9, z1], 0.03, 0.03, SU_YELLOW);
+    for (const z of [z0, z1]) beam(mesh, [x, frameTop + 0.06, z], [x, frameTop + 0.9, z], 0.025, 0.025, SU_YELLOW);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------- the vehicles
@@ -362,9 +538,17 @@ export function buildRollingStock(kind: RollingStockKind, opts: { coarse?: boole
   if (kind === 'omm') omm(mesh, coarse);
   else if (kind === 'g10') g10(mesh, coarse);
   else if (kind === 'tank') tank(mesh, coarse);
-  else v60(mesh, coarse);
-  const r = kind === 'v60' ? 0.625 : 0.5;
-  const axles = kind === 'v60' ? [-2.2, 0, 2.2] : kind === 'omm' ? [-3, 3] : kind === 'g10' ? [-2, 2] : [-2.25, 2.25];
+  else if (kind === 'v60') v60(mesh, coarse);
+  else if (kind === 'covered4') covered4(mesh, coarse);
+  else if (kind === 'gondola4') gondola4(mesh, coarse);
+  else if (kind === 'tank4') tank4(mesh, coarse);
+  else tem1(mesh, coarse);
+  const AXLES: Record<RollingStockKind, number[]> = {
+    omm: [-3, 3], g10: [-2, 2], tank: [-2.25, 2.25], v60: [-2.2, 0, 2.2], covered4: [-5.9, -4.1, 4.1, 5.9],
+    gondola4: [-5.3, -3.5, 3.5, 5.3], tank4: [-4.8, -2.9, 2.9, 4.8], tem1: [-6.45, -4.6, -2.75, 2.75, 4.6, 6.45],
+  };
+  const r = kind === 'v60' ? 0.625 : kind === 'tem1' ? 0.525 : kind === 'covered4' || kind === 'gondola4' || kind === 'tank4' ? 0.475 : 0.5;
+  const axles = AXLES[kind];
   const g = mesh.build(vehicleWeathering({
     dirtRgb: linearHex(0x2a2622), dirt: 0.75, dirtTop: 1.4, dustRgb: linearHex(0x3a3632), dust: 0.25,
     rust: kind === 'v60' ? 0.25 : 0.6, wheels: axles.map((z) => ({ z, y: r, r })), seed: (opts.seed ?? 7) + kind.length * 31, voxelAo: !coarse,
