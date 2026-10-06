@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  SHADED_SWARD_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
+  SHADED_SWARD_GLSL, SWARD_CANOPY_GLSL, SWARD_LIFT_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
 } from './tallGrass.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
@@ -343,8 +343,54 @@ assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'
   assert.ok(vegetationSource.includes('const SHADED_SWARD_GLSL = /* glsl */ `' + SHADED_SWARD_GLSL + '`;'), 'the carpet carries the same shaded-sward light');
   const tallGrassSource = readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8');
   for (const source of [tallGrassSource, vegetationSource]) {
-    assert.ok(source.replace(/\s+/g, '').includes("replace('#include<lights_fragment_end>',`#include<lights_fragment_end>\\n${SHADED_SWARD_GLSL}`)"),
-      'appended after the chunk (after the engine\'s shadow dim and bounce), not before it');
+    assert.ok(source.replace(/\s+/g, '').includes("replace('#include<lights_fragment_end>',`#include<lights_fragment_end>\\n${SHADED_SWARD_GLSL}\\n${SWARD_CANOPY_GLSL}`)"),
+      'appended after the chunk (after the engine\'s shadow dim and bounce), not before it, the sward\'s own shade after it');
   }
 }
-console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');
+
+// ground lane (2026-10-06, blade-scale shadowing): the sward shades itself — the sun down the canopy by Beer–Lambert,
+// its path 1 / sin of the rig's sun elevation, floored at the root; the sky a root sees; the root's albedo lift. Both
+// tiers carry the same text and numbers, each its own height for cotSwardT; the tall grass publishes the uniform.
+{
+  const flat = (t) => t.replace(/\s+/g, ' ');
+  for (const line of [
+    'float cotQ = uSwardShade.x / max( cotSinE, 0.25 );',
+    'float cotPenMean = ( cotI0 - 0.72 * ( cotI0 - cotI1 ) ) / 0.64;',
+    'float cotVis = 1.0 - smoothstep( 0.15, 0.40, fwidth( cotSwardT ) );',
+    'reflectedLight.directDiffuse *= mix( 1.0, mix( uSwardShade.y, 1.0, cotPen ) / mix( uSwardShade.y, 1.0, cotPenMean ), cotVis );',
+    'reflectedLight.indirectDiffuse *= mix( 1.0, mix( uSwardShade.z, 1.0, pow( cotSwardT, 0.7 ) ) / mix( uSwardShade.z, 1.0, 0.5024 ), cotVis );',
+    'float cotSinE = uCotBounceSun.y;',
+  ]) assert.ok(flat(SWARD_CANOPY_GLSL).includes(flat(line)), `the sward's own shade: ${line}`);
+  assert.ok(SWARD_LIFT_GLSL.includes('diffuseColor.rgb *= mix( uSwardShade.w, 1.0, cotSwardT );'), 'the root\'s albedo lift');
+  const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
+  const tallGrassSource = readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8');
+  assert.ok(vegetationSource.includes('const SWARD_CANOPY_GLSL = /* glsl */ `' + SWARD_CANOPY_GLSL + '`;')
+    && vegetationSource.includes('const SWARD_LIFT_GLSL = /* glsl */ `' + SWARD_LIFT_GLSL + '`;'), 'the tufts carry the same text');
+  const sh = TALL_GRASS.swardShade;
+  const copy = /const SWARD_SHADE = Object\.freeze\(\{ extinction: ([\d.]+), rootSun: ([\d.]+), rootSky: ([\d.]+), rootLift: ([\d.]+) \} as const\);/.exec(vegetationSource);
+  assert.ok(copy && [1, 2, 3, 4].every((i) => Number(copy[i]) === [sh.extinction, sh.rootSun, sh.rootSky, sh.rootLift][i - 1]), 'and the same numbers');
+  assert.ok(tallGrassSource.includes('float cotSwardT = clamp( vBladeT, 0.0, 1.0 );'), 'a blade\'s height for the tall grass');
+  assert.ok(vegetationSource.includes('float cotSwardT = clamp( vMapUv.y, 0.0, 1.0 );'), 'the card\'s height for a tuft');
+  // the law's numbers: the tip in full sun, the root never under its floor (wave 71's black stems), the lower sun the
+  // darker root, the light rising up the blade
+  // (the terms divided by their means over the blade's AREA — the strip narrows 72 % to its tip, so t weighs (1 − 0.72 t):
+  // the light moves from the foot to the tip and the blade's own mean is kept)
+  const raw = (t, sinE) => sh.rootSun + (1 - sh.rootSun) * Math.exp(-sh.extinction * (1 - t) / Math.max(sinE, 0.25));
+  const sun = (t, sinE) => {
+    const q = sh.extinction / Math.max(sinE, 0.25), e = Math.exp(-q), i0 = (1 - e) / q, i1 = (1 - e * (1 + q)) / (q * q);
+    return raw(t, sinE) / (sh.rootSun + (1 - sh.rootSun) * (i0 - 0.72 * (i0 - i1)) / 0.64);
+  };
+  const areaMean = (f) => { let m = 0, w = 0; for (let i = 0; i < 2000; i++) { const t = (i + 0.5) / 2000, wt = 1 - 0.72 * t; m += f(t) * wt; w += wt; } return m / w; };
+  for (const sinE of [0.1, 0.42, 0.87]) {
+    const m = areaMean((t) => sun(t, sinE));
+    assert.ok(Math.abs(m - 1) < 1e-3, `the sun's term keeps the blade's area mean (sin elevation ${sinE}: ${m.toFixed(4)})`);
+  }
+  const sky = (t) => (sh.rootSky + (1 - sh.rootSky) * Math.pow(t, 0.7)) / (sh.rootSky + (1 - sh.rootSky) * 0.5024);
+  { const m = areaMean(sky); assert.ok(Math.abs(m - 1) < 2e-3, `the sky's term keeps the blade's area mean (${m.toFixed(4)})`); }
+  assert.ok(sun(1, 0.5) > 1 && sun(0, 0.5) < 1 && raw(0, 0) >= sh.rootSun && sh.rootSun >= 0.3, 'the tip over its mean, the foot under it, never under its floor');
+  assert.ok(sun(1, 0.26) / sun(0, 0.26) > sun(1, 0.87) / sun(0, 0.87) && sun(0.3, 0.5) < sun(0.6, 0.5),
+    'a lower sun parts the tip from the foot more; the light rises up the blade');
+  assert.ok(sh.rootSky >= 0.5 && sh.rootLift >= 1, 'the root keeps half its sky or more; the lift never darkens');
+  assert.deepEqual(grass.swardShade.value.toArray(), [sh.extinction, sh.rootSun, sh.rootSky, sh.rootLift], 'the tall grass publishes its shade');
+}
+console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the sward shade, the engine hooks and the world wiring passed');
