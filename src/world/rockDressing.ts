@@ -1368,10 +1368,15 @@ ${ROCK_BUMP_GLSL}`);
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.052, 0.058), flint);
     }
     if (uRockSurface.z > 0.0) {
-      float stainTop = 0.5 + (texture2D(uGrime, vGrimeW.xz * 0.6).g - 0.5) * 0.45;
-      float stain = uRockSurface.z * (1.0 - smoothstep(0.0, stainTop, vRockAbove));
+      // (b19; wave 121, Verdant's chalk: "an even pink-brown gradient painted up its lower third ... a colour ramp
+      // rather than soil"): the damp a pale stone draws up from the ground, a tide line — its edge ragged and soft, a
+      // fifth to two fifths of a metre up — the stain patchy below it, not a ramp
+      float stainTop = 0.28 + (texture2D(uGrime, vGrimeW.xz * 0.6).g - 0.5) * 0.4
+        + (texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y) * 1.3 + 0.17).b - 0.5) * 0.16;
+      float stain = uRockSurface.z * (1.0 - smoothstep(stainTop - 0.07, stainTop + 0.03, vRockAbove))
+        * (0.55 + 0.45 * smoothstep(0.38, 0.62, texture2D(uGrime, vGrimeW.xz * 2.3 + vGrimeW.y * 1.1).r));
       vec3 stainTint = uRockSoil / max(dot(uRockSoil, vec3(0.3333)), 0.01);
-      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * stainTint * 0.6, stain * 0.75);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * mix(stainTint, vec3(0.92, 0.95, 0.9), 0.5) * 0.66, stain * 0.62);
     }
 ${ROCK_BEDS_GLSL}
 ${ROCK_FABRIC_GLSL}
@@ -1430,10 +1435,17 @@ ${ROCK_FABRIC_GLSL}
   // dust: a pale cap on the upward faces and a skirt at the base of arid maps
   float dustMask = uRockDust * (0.4 * smoothstep(0.35, 0.9, vGrimeN.y) + 0.6 * (1.0 - smoothstep(0.0, 1.1, vRockAbove)));
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil * 1.35, dustMask * 0.65);
-  // the base sits in the ground: soil climbs the lower third of a metre, its top wandering a hand up and down (wave 57:
-  // "a ruler-straight base line"), broken by the grime field
+  // the base sits in the ground: the soil a band at its foot, its top a ragged line a hand up and down (wave 57: "a
+  // ruler-straight base line"), and over it the rain's splashes, specks of soil thinning out over the next third of a
+  // metre (b19; wave 121, Verdant: "an even pink-brown gradient painted up its lower third ... a colour ramp rather than
+  // soil, grass and burial"), broken by the grime field
   float soilTop = (texture2D(uGrime, vGrimeW.xz * 0.47 + vGrimeW.y * 0.11).g - 0.5) * 0.3;
-  float soilMask = (1.0 - smoothstep(-0.12 + soilTop, 0.34 + soilTop, vRockAbove)) * (0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
+  float soilEdge = 0.07 + soilTop * 0.35 + (texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y) * 1.9).b - 0.5) * 0.1;
+  float soilBand = 1.0 - smoothstep(soilEdge - 0.03, soilEdge + 0.02, vRockAbove);
+  float splashN = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y) * 5.7 + vGrimeW.xz * 0.9).r;
+  float splashH = 1.0 - smoothstep(soilEdge, soilEdge + 0.32, vRockAbove);
+  float splash = smoothstep(0.6 - 0.1 * splashH, 0.66 - 0.1 * splashH, splashN) * splashH;
+  float soilMask = max(soilBand, splash * 0.75) * (0.62 + 0.38 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92);
   // and a boulder darkens where it meets the ground (the occlusion of the turf and the soil round its foot); on a dusty
   // map less and softer (b12, wave 72 on Redrock: "a uniformly dark crisp ring"): drifted sand fills the foot and

@@ -492,6 +492,12 @@ assert.ok(frag.indexOf('float lichen =') < frag.indexOf('float mossMask'), 'the 
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('float rockSnow') && frag.includes('if (vRockSeed >= 0.0 && uRockLichen.z > 0.5)'), 'a snow map\'s boulders take their snow after their tone');
 assert.match(frag, /float soilTop = \(texture2D\(uGrime, vGrimeW\.xz \* 0\.47 \+ vGrimeW\.y \* 0\.11\)\.g - 0\.5\) \* 0\.3;/, 'the soil band\'s top wanders (wave 57: "a ruler-straight base line")');
 assert.ok(frag.indexOf('float soilMask') < frag.indexOf('float contactK = 0.45 * (1.0 - 0.6 * uRockDust);'), 'the contact darkening over the soil band, boulders only');
+// (b19) the soil a band at the foot with a ragged top a hand up and the rain's splashes over it, thinning out over a
+// third of a metre — no ramp up the lower third
+assert.match(frag, /float soilBand = 1\.0 - smoothstep\(soilEdge - 0\.03, soilEdge \+ 0\.02, vRockAbove\);/, 'the soil a band with a sharp, ragged top');
+assert.match(frag, /float splashH = 1\.0 - smoothstep\(soilEdge, soilEdge \+ 0\.32, vRockAbove\);/, 'its splashes thinning out over a third of a metre');
+assert.match(frag, /float soilMask = max\(soilBand, splash \* 0\.75\)/, 'the band and its splashes, nothing else');
+assert.ok(!/smoothstep\(-0\.12 \+ soilTop, 0\.34 \+ soilTop, vRockAbove\)/.test(frag), 'no ramp up the lower third');
 assert.match(frag, /diffuseColor\.rgb \*= \(1\.0 - contactK\) \+ contactK \* smoothstep\(-0\.04 \+ soilTop \* 0\.5, 0\.3 \+ 0\.25 \* uRockDust \+ soilTop \* 0\.5, vRockAbove\);/,
   'softer and wider on a dusty map (b12, wave 72: Redrock\'s "uniformly dark crisp ring")');
 // (b12, Sonnet, wave 74: "identical banding recognisable") each boulder its own cut of the stone: its frame turned and
@@ -504,7 +510,10 @@ assert.ok(frag.includes('texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x'), 'th
 // the carbonate surface (b12): the rind on the tops and the weather side, the flints in bands, the stain up the foot
 assert.match(frag, /float rind = uRockSurface\.y \* smoothstep\(0\.25, 0\.95, 0\.5 \+ 0\.45 \* vGrimeN\.y/, 'the rind');
 assert.match(frag, /float flint = uRockSurface\.x \* \(1\.0 - smoothstep\(0\.07, 0\.17, flintBand\)\)/, 'the flints in their bands');
-assert.match(frag, /float stain = uRockSurface\.z \* \(1\.0 - smoothstep\(0\.0, stainTop, vRockAbove\)\);/, 'the stain');
+// (b19; wave 121, Verdant: "an even pink-brown gradient painted up its lower third ... a colour ramp rather than soil")
+// the stain a tide line, its edge ragged and soft over a tenth of a metre, patchy below it — no ramp from the foot
+assert.match(frag, /float stain = uRockSurface\.z \* \(1\.0 - smoothstep\(stainTop - 0\.07, stainTop \+ 0\.03, vRockAbove\)\)/, 'the stain a tide line, not a ramp');
+assert.match(frag, /float stainTop = 0\.28 \+ /, 'a fifth to two fifths of a metre up');
 assert.ok(frag.indexOf('float rind') < frag.indexOf('float lichen ='), 'the lichen over the rind');
 assert.ok(!frag.includes('#include <normal_fragment_maps>') && frag.includes('texture2D(normalMap, rockPw.yz)'), 'the tangent-frame chunk is replaced by the triplanar perturbation');
 const untiled = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
