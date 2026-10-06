@@ -62,7 +62,7 @@ import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buil
 import { fieldStoneLithologyFor, liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
-import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
+import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS, type HaystackStyle } from './maps/haystackKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -79,6 +79,7 @@ import {
   DESTRUCTIBLE_TYPES,
   DRY_STONE_KIND,
   FENCE_SEG,
+  HAYCOCK_BALE,
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
@@ -2860,7 +2861,8 @@ function autumnHarvestDonors(records: readonly DestructibleRecord[], first: numb
 function autumnHarvestRadius(record: DestructibleRecord): number {
   // Actual intact geometry envelopes, not the smaller ground-contact radius:
   // horizontal bale cylinder (half-length .725, radius .72), or six leaned
-  // stook stems (center .22 + bottom radius .16 + .625*sin(.34)).
+  // stook stems (center .22 + bottom radius .16 + .625*sin(.34)). (b22: Amberford's
+  // 'bale' is the haycock, inside the same envelope: haystackKit HAYCOCK_REACH.)
   const envelope = record.kind === 'bale' ? Math.hypot(.725, .72) : .22 + .16 + .625 * Math.sin(.34);
   return Math.max(record.r, envelope * record.sc) + .25;
 }
@@ -3647,6 +3649,9 @@ ${snowCap ? `
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
+    // (b22; waves 147, 154 and 157: "modern round bales" on the WW2 and 1950s maps — the round baler came in the 1970s)
+    // the period's 'bale' a haycock: same kind, record, placements and broken heap; the round bale on the modern maps
+    ...(ROUND_BALE_MAPS.has(mapId) ? {} : { bale: HAYCOCK_BALE }),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
@@ -8857,8 +8862,11 @@ ${snowCap ? `
     // walls (including their later terrain fit) and trees retain the cheap path.
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
+    // (b22) a kind's convex stand-in where it has one (the haycock: its dome's sections ear-clip into dozens of parts)
+    const proxy = source ? null : pool.meta.contactProxy?.() ?? null;
     const contactBand = source?.profile.contact
-      ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
+      ?? deriveRuntimeStructureContactBand({ baked: [proxy ?? geometry] });
+    proxy?.dispose();
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined

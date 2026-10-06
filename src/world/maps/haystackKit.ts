@@ -568,6 +568,69 @@ export function buildKopna(): THREE.BufferGeometry {
 }
 
 /**
+ * The haycock (b22; the coordinator, from gauntlet waves 147, 154 and 157: "modern round bales" on the WW2 and 1950s
+ * maps, Verdant's 1943 farmyard, the Polders and Amberford in 1944, the steppe in the 1950s; the round baler came in the
+ * 1970s): the period's hay in the meadow and by the yard. A haymaker forks it up into cocks to sweat a few days before
+ * it is carted to the rick: a dome of loose hay about a man's height, combed down its sides to shed the rain and drawn
+ * up to a tuft, built by hand like the kopna (its slump, its twist, its proud locks). It stands on the round bale's
+ * record: inside its height (h 1.45), its foot over its collider (collisionR 0.75), its reach inside the Autumn
+ * harvest's bale envelope (props.ts autumnHarvestRadius). From a stream of its own: the round bale's build draws
+ * nothing, so neither does this one, and every later pool keeps its geometry.
+ */
+export function buildHaycock(): THREE.BufferGeometry {
+  const SEED = 0x4c0c6, rng = ownStream(SEED), R = 0.84 + rng() * 0.03, H = 1.3 + rng() * 0.08, segs = 12;
+  const face = (y: number) => bandV(HAY_FACE_V, y / H), tiles = 2;
+  const profile: ProfilePoint[] = [
+    [R * 0.95, -0.08, face(0), 0.02], [R, 0.08, face(0.08), 0.03], [R * 1.03, H * 0.3, face(H * 0.3), 0.05],
+    [R * 0.9, H * 0.52, face(H * 0.52), 0.06],
+  ];
+  // the top: drawn in to a tuft, rounder than the kopna's
+  for (let i = 1; i <= 3; i++) {
+    const t = i / 3, y = H * 0.52 + H * 0.48 * t;
+    profile.push([R * 0.9 * Math.pow(Math.cos((t * Math.PI) / 2), 0.7) + 0.04, y, face(y), 0.05 * (1 - t) + 0.015]);
+  }
+  // the hand's touch at about half a stog's: turn() sets the sway and the proud locks in metres, and on a cock this
+  // small they leaned the whole of it over. The same body is turned plain as well (the same tables, from a stream at
+  // the same place) and the two meet a little past half way, vertex by vertex
+  const handed = turn(profile, segs, rng, tiles, HAYCOCK_REACH);
+  const plainRng = ownStream(SEED);
+  plainRng(); plainRng();
+  const plain = turn(profile, segs, plainRng, tiles), hp = handed.attributes.position, pp = plain.attributes.position;
+  for (let i = 0; i < hp.count; i++) {
+    hp.setXYZ(i, pp.getX(i) + (hp.getX(i) - pp.getX(i)) * HAYCOCK_HAND, hp.getY(i), pp.getZ(i) + (hp.getZ(i) - pp.getZ(i)) * HAYCOCK_HAND);
+  }
+  handed.computeVertexNormals();
+  // (the seam column's normals the mean of its two sides', as turn() leaves them)
+  const n = handed.attributes.normal as THREE.BufferAttribute;
+  for (let k = 0; k < profile.length; k++) {
+    const a = k * (segs + 1), b = a + segs;
+    const x = n.getX(a) + n.getX(b), yy = n.getY(a) + n.getY(b), z = n.getZ(a) + n.getZ(b), l = Math.hypot(x, yy, z) || 1;
+    n.setXYZ(a, x / l, yy / l, z / l); n.setXYZ(b, x / l, yy / l, z / l);
+  }
+  plain.dispose();
+  return merge([handed, footSkirt(R * 0.92, 0.08, segs, rng, tiles)]);
+}
+/**
+ * The haycock's contact stand-in (inhabitKit HAYCOCK_BALE contactProxy): an upright twelve-sided prism of the round
+ * bale's collider radius (0.75) and the cock's height, inside its hay at the ground and convex, so the colliders refit
+ * from it are one outline.
+ */
+export function buildHaycockContactProxy(): THREE.BufferGeometry {
+  return new THREE.CylinderGeometry(0.75, 0.75, 1.3, 12, 1).translate(0, 0.65, 0);
+}
+/** The share of the hand's touch a haycock keeps (the stog's is whole). */
+const HAYCOCK_HAND = 0.55;
+/** The haycock's reach (m): no vertex past it (the Autumn harvest's bale envelope is hypot(0.725, 0.72), 1.02 m). */
+export const HAYCOCK_REACH = 0.98;
+
+/**
+ * The maps whose 'bale' is the round bale (b22): the modern ones — Kestrel Airfield (Hostomel, 2022) and Frontier
+ * Basin (the Fulda Gap in the 1980s). Every other map's 'bale' is the haycock (inhabitKit HAYCOCK_BALE; props.ts swaps
+ * it in): same kind, record, placements and broken heap, the period's form.
+ */
+export const ROUND_BALE_MAPS: ReadonlySet<string> = new Set(['airfield', 'frontier']);
+
+/**
  * The field stacks' destructible kinds (merged into the props type registry after the scenery's, so no existing kind
  * moves; not landmarks: the haystack pass places them, never a map's scenery plan).
  * Shoot-through crushable obstacles like the legacy stack. r is the hay's reach above its skirt (the stog's belly, the

@@ -22,7 +22,7 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
-import { buildKopna, buildStook, mapToBand } from './haystackKit.ts';
+import { buildHaycock, buildHaycockContactProxy, buildKopna, buildStook, mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -53,6 +53,10 @@ export interface DestructiblePropType {
   keep?: number;
   crushMin?: number;
   explosive?: boolean;
+  /** (b22) A convex stand-in the pool's colliders are refit from in place of its build (props.ts
+   * refitDestructibleColliders): a lumpy straw form's sections ear-clip into dozens of parts, each a shard record's
+   * polygon and a contact test, where one convex outline does for a crushable, shoot-through prop. */
+  contactProxy?: () => THREE.BufferGeometry;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
@@ -1896,6 +1900,16 @@ export const DESTRUCTIBLE_TYPES = {
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  hw: 0.66, hl: 0.76, build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
 } satisfies Record<string, DestructiblePropType>;
+
+/**
+ * The period's 'bale' (b22): the haycock (haystackKit buildHaycock) on the round bale's record, contact and burst heap.
+ * props.ts swaps it in on every map but the modern ones (haystackKit ROUND_BALE_MAPS). The round bale's build draws
+ * nothing from the stream, nor does the haycock's. Its colliders are refit from a convex stand-in, as the round bale's
+ * were from its convex cylinder (one outline, not the dome's ear-clipped dozens).
+ */
+export const HAYCOCK_BALE: DestructiblePropType = {
+  ...DESTRUCTIBLE_TYPES.bale, build: () => buildHaycock(), contactProxy: () => buildHaycockContactProxy(),
+};
 
 /** The coursed wall module the brick-print maps keep (see bWallStone): the stone wall's record with its original
  * courses and remnant. */

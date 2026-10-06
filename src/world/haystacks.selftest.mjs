@@ -16,15 +16,21 @@
 //   5. (b21; wave 139: "a perfectly smooth, symmetric beehive silhouette", "a straight-edged, four-sided pyramid", "a
 //      base that isn't settled or trodden") the hand-built stacks no solids of revolution — the stog, the plast, the
 //      meule and the kopna slumped to a side through the belly, inside their reach; the legacy cone the kopna, its draws
-//      spent as the cone's; the trodden straw round every stack's foot.
+//      spent as the cone's; the trodden straw round every stack's foot;
+//   6. (b22; waves 147, 154 and 157: "modern round bales" on the WW2 and 1950s maps) the period's 'bale', the haycock: on
+//      the round bale's record, contact and burst heap, drawing what it draws (nothing), a man's height inside the
+//      bale's height, its reach inside the Autumn harvest's envelope, its collider inside its hay at the ground, built
+//      by hand, its colliders refit from one convex stand-in; the round bale on the modern maps alone (Kestrel Airfield,
+//      Frontier Basin), swapped in by props.ts.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V, HAY_WOOD_V, paintHayBuffers } from './hayPrint.ts';
-import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS } from './maps/haystackKit.ts';
-import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
+import { HAYCOCK_REACH, HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS } from './maps/haystackKit.ts';
+import { DESTRUCTIBLE_TYPES, HAYCOCK_BALE } from './maps/inhabitKit.ts';
 import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { MAP_IDS } from './maps/index.ts';
+import { deriveRuntimeStructureContactBand } from './structureCollision.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return s.value; };
@@ -196,4 +202,57 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
   assert.match(props, /addDecalMesh\(strawDiscs, makeGroundDecalTexture\(noi, aniso, 'straw'\), \{\n\s*decalKind: 'straw-litter',/, 'one decal layer for every stack\'s straw');
 }
 
-console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept; built by hand, the kopna for the cone, the trodden straw');
+// ---------------------------------------------------------------------------------------------- 6. the period's bale
+{
+  const props6 = () => readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  const bale = DESTRUCTIBLE_TYPES.bale, cock = HAYCOCK_BALE;
+  for (const key of ['cls', 'mat', 'contact', 'r', 'h', 'shape', 'collisionR', 'broken']) {
+    assert.equal(cock[key], bale[key], `the haycock keeps the round bale's ${key}`);
+  }
+  let draws = 0, baleDraws = 0;
+  cock.build(() => { draws++; return 0.5; });
+  bale.build(() => { baleDraws++; return 0.5; });
+  assert.equal(draws, baleDraws, `the haycock draws what the round bale draws (${baleDraws}): every later pool keeps its geometry`);
+  const g = cock.build(mulberry32(1)), p = g.attributes.position, uv = g.attributes.uv;
+  assert.deepEqual(Array.from(p.array), Array.from(cock.build(mulberry32(99)).attributes.position.array), 'from a stream of its own');
+  assert.ok(uv && uv.count === p.count && g.attributes.normal, 'position, normal and uv');
+  const tris = (g.index ? g.index.count : p.count) / 3;
+  assert.ok(tris <= 260, `within its budget (${tris} triangles)`);
+  for (let i = 0; i < uv.count; i++) assert.ok(inBands(uv.getY(i)), `its print in the bands (v ${uv.getY(i).toFixed(3)})`);
+  let top = 0, body = 0, all = 0;
+  const ground = new Float64Array(12), belly = new Float64Array(16);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z), turn = Math.atan2(z, x) / (Math.PI * 2) + 1;
+    top = Math.max(top, y); all = Math.max(all, r);
+    if (y > 0.3) body = Math.max(body, r);
+    if (y >= 0 && y <= 0.25) { const b = Math.round(turn * 12) % 12; ground[b] = Math.max(ground[b], r); }
+    if (y > 0.25 && y < 0.6) { const b = Math.floor(turn * 16) % 16; belly[b] = Math.max(belly[b], r); }
+  }
+  assert.ok(top > 1.2 && top <= bale.h, `a man's height, inside the bale's height (${top.toFixed(2)} of ${bale.h})`);
+  const envelope = Math.hypot(0.725, 0.72); // props.ts autumnHarvestRadius, the bale's
+  assert.ok(body <= HAYCOCK_REACH + 1e-6 && all <= envelope, `its hay inside its reach and the harvest envelope (${body.toFixed(3)}, ${all.toFixed(3)} of ${envelope.toFixed(3)})`);
+  assert.ok(Math.min(...ground) >= bale.collisionR, `its collider inside its hay at the ground (${bale.collisionR} of ${Math.min(...ground).toFixed(3)})`);
+  // its colliders refit from a convex stand-in (props.ts refitDestructibleColliders): one outline inside its hay at
+  // the ground and up to its height, not the dome's ear-clipped dozens
+  const proxy = cock.contactProxy();
+  proxy.computeBoundingBox();
+  const pb = proxy.boundingBox, pr = Math.max(pb.max.x, pb.max.z, -pb.min.x, -pb.min.z);
+  assert.ok(pr <= Math.min(...ground) && pr >= bale.collisionR - 1e-6 && Math.abs(pb.max.y - top) < 0.05 && Math.abs(pb.min.y) < 1e-6,
+    `the stand-in inside its hay at the ground, up to its height (${pr.toFixed(3)} m, ${pb.max.y.toFixed(2)} m)`);
+  const band = deriveRuntimeStructureContactBand({ baked: [proxy] });
+  assert.equal(band.parts.length, 1, 'one outline');
+  assert.match(props6(), /const proxy = source \? null : pool\.meta\.contactProxy\?\.\(\) \?\? null;\n\s*const contactBand = source\?\.profile\.contact\n\s*\?\? deriveRuntimeStructureContactBand\(\{ baked: \[proxy \?\? geometry\] \}\);/,
+    'props refits a kind\'s colliders from its stand-in where it has one');
+  const filled = [...belly].filter((r) => r > 0), lean = Math.max(...filled) / Math.min(...filled);
+  assert.ok(filled.length >= 10 && lean > 1.06 && lean < 1.4, `built by hand, its slump tempered to its size (${lean.toFixed(3)})`);
+  // the maps: the round bale on the modern maps alone, the haycock swapped in on every other
+  assert.deepEqual([...ROUND_BALE_MAPS].sort(), ['airfield', 'frontier'], 'the round bale on Kestrel Airfield (2022) and Frontier Basin (the 1980s)');
+  for (const m of ROUND_BALE_MAPS) assert.ok(MAP_IDS.includes(m), `${m}: a map`);
+  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  assert.match(props, /\.\.\.\(ROUND_BALE_MAPS\.has\(mapId\) \? \{\} : \{ bale: HAYCOCK_BALE \}\),/, 'props swaps the haycock in for the bale, the modern maps aside');
+  const local = props.slice(props.indexOf('const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {'));
+  assert.ok(local.indexOf('bale: HAYCOCK_BALE') > 0 && local.indexOf('bale: HAYCOCK_BALE') < local.indexOf('REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id]'),
+    'before the regional kinds and the map\'s own variants (they may still name their own)');
+}
+
+console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept; built by hand, the kopna for the cone, the trodden straw; the haycock for the round bale off the modern maps');
