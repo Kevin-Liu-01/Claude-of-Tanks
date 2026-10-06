@@ -32,6 +32,7 @@ const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
   ['caldera', 2], ['polders', 2], // round 47 (2026-09-23): the two bland rings with a skyline impostor gain a second rank
+  ['longleaf', 2], // the map-revival lane (2026-10-05, gauntlet wave 124): the flatwoods' pines close Longleaf's ring in two rows
 ]);
 const polePolicyByMap = new Map();
 const battlefieldWrecks = new Set();
