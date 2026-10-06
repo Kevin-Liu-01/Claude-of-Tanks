@@ -113,7 +113,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |
 | Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green |
-| Jade River Delta | Braided channels, floodplain agriculture and raised compounds; vegetation follows water |
+| Jade River Delta | Braided channels, floodplain agriculture and raised compounds; vegetation follows water; the terracotta aat-chala temple by the market (the landmarks lane, 2026-10-05) |
 | Mangrove Reach | Tidal islands, exposed mud, root thickets and raised access; avoid generic grassy countryside |
 | Monsoon Ridge | Humid jungle ridges and weathered valley settlement; darker understory and muddy drainage |
 | Sirocco Wadi | Dry watercourse organizes settlement and palms; windward sand against eroded rock |
@@ -7236,6 +7236,16 @@ It was dropped before a wave, and the PR head's far range stays.**
 Frames: `$SP/p2/mountains/pair-wo/{before,after}/frames/whiteout/` and the sheet `handover-wo/sheets/whiteout.jpg`. The
 lab: `lab4/out/wo-bird-check.png` (game / bake / bake without the fill's sun term) and `wo-bird-ring-vs-noring.png` (the
 shell alone, no apron).
+
+### 2026-10-05 — Jade River Delta: the terracotta aat-chala temple by the market (the landmarks lane)
+
+The market village's temple in the yard west of the square, north of the village's yard wall: the square brick cella on
+its plinth under the curved four-sided roof, the smaller cella and its roof above (eight slopes), the kalasa finial, the
+triple-arched front faced with terracotta plaques turned toward the square (a 9 m cella, 2 182 desktop triangles).
+Census [6575, 6226, 8252]; every structure, non-tree record and tree where it stood. Pacing (4 seeds) 244/173/150/271 s
+against the head's 179/223/160/246 s. Cost: the establishing shot −0.45 ± 0.58 ms and chase −0.88 ± 0.38 (accept); the
+temple's view 0.32 ± 0.48 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.08 ms, no long task
+and no program compiled during a slot.
 
 ### 2026-10-05 — no lens flare under a closed deck; the ghosts and the halo turned down (the skies lane)
 
