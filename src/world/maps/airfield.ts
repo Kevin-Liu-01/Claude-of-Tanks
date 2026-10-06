@@ -67,6 +67,19 @@ const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: num
 // between the rows, the yards' fenced gardens and sheds round them. The shoulder there is the plateau's smoothest edge
 // (under 1.6 m of relief across a house), 25 m and more off the access road and 15 m clear of the marshes below it.
 // Appended after the airport's sites, so those keep their order and every pose.
+// 2026-10-05 (the map-revival lane; gauntlet wave 113: "sparse lollipop trees scattered over even green … like savanna"
+// where the Polissia is massed, closed-canopy pine on sand with hard edges against the meadow): the Scots pine
+// plantations past the runway's ends — rows 7 m apart, a tree every 6–7 m along them, few losses — as vegetation.ts
+// belts, so each block stands as one dark wood with a ruled edge (and its rotation pair)
+function plantation(x0: number, x1: number, z0: number, z1: number, rowGap = 7, gap = 6.5) {
+  const rows: Array<{ x0: number; z0: number; x1: number; z1: number; gap: number; jitter: number; skip: number; species: 'pine' }> = [];
+  for (let x = x0; x <= x1 + 1e-6; x += rowGap) rows.push({ x0: x, z0, x1: x, z1, gap, jitter: 1.2, skip: 0.05, species: 'pine' });
+  return rows;
+}
+const PLANTATIONS = [
+  ...plantation(376, 440, -236, -96),  // east end, south of the perimeter road
+  ...plantation(376, 440, 92, 236),    // east end, north of it
+];
 const DACHAS = [40, 70, 100, 130].flatMap((x) => [
   { structure: 'cottage', x, z: -252, yawDeg: 180 },
   { structure: 'cottage', x, z: -278, yawDeg: 0 },
@@ -144,7 +157,10 @@ export default {
       { x: 0, z: -403 }, { x: -60, z: -434 }, { x: -120, z: -401 },
     ],
   },
-  splat: { sourcedPalette: 'railyard', pavedRoads: true, roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54],
+  splat: { sourcedPalette: 'railyard', pavedRoads: true,
+    // (2026-10-05, the map-revival lane; gauntlet wave 113: "bare-soil patches tinted pink-mauve instead of sandy tan")
+    // the valleys' bog floors in a peaty tan over the Polissia's sand
+    mudTone: (_h: number, s: number, l: number) => [0.11, Math.min(1, s * 0.6), Math.min(1, l * 1.3)], roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54],
     // 2026-10-03 (maps lane B, gauntlet wave 28: the cargo apron "reads as a cobbled plaza"): the runway, taxiways,
     // aprons and the access roads are airfield concrete — 6 m slabs with sealed expansion joints, a tone per pour, oil
     // and fuel stains and tyre rubber along the runway's axis (terrain.ts uPaveSlab) — in place of the sett print
@@ -153,9 +169,12 @@ export default {
     // 2026-10-05 (the map-revival lane): the Polissia's woods round the plateau — Scots pine stands with birch at their
     // edges, down the valley sides and past the runway's ends (no tree stands inside the graded airfield: vegetation.ts
     // keeps every tree 24 m off the settlement rect, here the whole plateau); toward Verdant's 72 / 185 / 102
-    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.68], ['birch', 0.26], ['poplar', 0.06]],
-    loneMix: [['birch', 0.45], ['pine', 0.42], ['poplar', 0.13]], rimMix: [['pine', 0.74], ['birch', 0.21], ['poplar', 0.05]],
-    clusterCount: 60, loneCount: 120, rimCount: 108, grassDensity: 0.72, bushCount: 0.9, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub
+    // (gauntlet wave 113: fewer, larger, denser stands — the loose trees thin to the woods' edges, the woodlots fewer,
+    // the plantations below and a closed rim; the field shrubs young pines, not the birch sprays read as cactus)
+    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.74], ['birch', 0.22], ['poplar', 0.04]],
+    loneMix: [['birch', 0.45], ['pine', 0.45], ['poplar', 0.10]], rimMix: [['pine', 0.78], ['birch', 0.19], ['poplar', 0.03]],
+    clusterCount: 44, loneCount: 30, rimCount: 140, grassDensity: 0.72, bushCount: 0.7, bushSpecies: 'pine',
+    belts: [...PLANTATIONS, ...PLANTATIONS.map((b) => ({ ...b, x0: -b.x0, z0: -b.z0, x1: -b.x1, z1: -b.z1 }))],
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
   },
@@ -202,7 +221,10 @@ export default {
 
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): an airfield plain: low swells,
   // tree lines
-  horizon: { baseHex: 0x6f795e, amp: 0.3, style: 'rolling', treeline: 0.60, panorama: { regional: 'plain' }, forestHex: 0x394e37, rockHex: 0x7a7c70, haze: 0.90, grain: 0.42 },
+  // 2026-10-05 (the map-revival lane; gauntlet wave 113: "a wave-textured band reading as open sea with surf" past the
+  // ring in every elevated view, where Hostomel lies 100 km inland): the Polissia's woods close the ring in two rows and
+  // the far country is low forested swells under the haze, not the plain's flat field band
+  horizon: { baseHex: 0x6f795e, amp: 0.3, style: 'rolling', treeline: 0.94, treelineLayers: 2, panorama: { regional: 'upland', ampM: 150 }, forestHex: 0x2f4630, rockHex: 0x7a7c70, haze: 0.90, grain: 0.42 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.38, streets: 0.35, contrails: 1, contrailAge: 0.45, nightGlow: 0.45, nightGlowHex: 0xffc27a },
   sky: { sunElevationDeg: 30, sunAzimuthDeg: 142, turbidity: 3.8, rayleigh: 1.5, mieCoefficient: 0.005, mieDirectionalG: 0.81, fogDensity: 0.00048, fogTintHex: 0x92a9b7, fogMix: 0.46, envIntensity: 0.24, cloudOpacity: 0.85, cloudOpacity2: 0.45, cloudTintHex: 0xf1f2ed, sunIntensity: 4.0, sunColorHex: 0xffedda, hemiIntensity: 0.40 },

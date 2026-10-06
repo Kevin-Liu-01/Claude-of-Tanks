@@ -253,6 +253,30 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
  * doors across most of the apron gable (one leaf run open), a band of translucent panels under the eaves, a block
  * workshop lean-to down one side where the plot allows it.
  */
+/**
+ * A painted numeral on a face (an airfield's hangar and stand numbers): seven-segment strokes of white paint, `h` tall
+ * with its foot at y, centred at u (dressing).
+ */
+const SEGMENTS: Readonly<Record<number, string>> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcfgd' };
+function paintedNumeral(sink: PartSink, face: Face, u: number, y: number, h: number, digit: number, colour: Rgb, o = 0.05): void {
+  const w = h * 0.55, t = h * 0.12;
+  const seg: Record<string, [number, number, number, number]> = {
+    a: [u, y + h - t / 2, w, t], d: [u, y + t / 2, w, t], g: [u, y + h / 2, w, t],
+    f: [u - w / 2 + t / 2, y + h * 0.75, t, h / 2], b: [u + w / 2 - t / 2, y + h * 0.75, t, h / 2],
+    e: [u - w / 2 + t / 2, y + h * 0.25, t, h / 2], c: [u + w / 2 - t / 2, y + h * 0.25, t, h / 2],
+  };
+  for (const k of SEGMENTS[digit] ?? '') { const [su, sy, sw, sh] = seg[k]; faceBox(sink, 'structureMetal', face, su, sy, o, sw, sh, 0.02, { colour, decor: true }); }
+}
+
+/** Rust and grime run down a sheet wall from its eave: darker streaks of the livery at irregular spacing (dressing). */
+function sheetStreaks(sink: PartSink, face: Face, eave: number, livery: Rgb, look: () => number): void {
+  const n = Math.max(2, Math.round(face.width / 5));
+  for (let k = 0; k < n; k++) {
+    const u = -face.width / 2 + face.width * (k + 0.2 + look() * 0.6) / n, len = 1.2 + look() * 2.4, w = 0.35 + look() * 0.6;
+    faceBox(sink, 'structureMetal', face, u, eave - len / 2 - 0.3, 0.07, w, len, 0.01, { colour: shade(livery, 0.68 + look() * 0.12), decor: true });
+  }
+}
+
 const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, mobile = ctx.tier === 'mobile';
@@ -277,6 +301,10 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
     for (const f of sides) {
       if (!mobile) for (let u = -D / 2 + 1.5; u < D / 2 - 0.5; u += 3) faceBox(sink, 'structureMetal', f, u, (He + 1.0) / 2, 0.03, 0.1, He - 1.0, 0.06, { colour: shade(livery, 0.8), decor: true });
       for (let u = -D / 2 + 2.2; u < D / 2 - 1.5; u += 4.4) facePanel(sink, 'glass', f, u, He - 0.8, 0.065, 3.0, 0.7, { decor: true });
+      // (2026-10-05, the map-revival lane; gauntlet wave 113: "plain flat-textured boxes") the sheet's own weather: a
+      // darker band of the livery over the block plinth, rust and grime streaks down from the eave
+      faceBox(sink, 'structureMetal', f, 0, 1.45, 0.05, D - 0.2, 0.9, 0.02, { colour: shade(livery, 0.82), decor: true });
+      sheetStreaks(sink, f, He - 1.3, livery, ctx.variant);
     }
     // the apron gable's sliding doors, one leaf run across the other, the dark hangar in the gap
     const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
@@ -290,6 +318,11 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
       faceBox(sink, 'structureMetal', front, u, Hd * 0.5, u > 0 ? 0.24 : 0.42, lw - 0.3, 0.12, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
       facePanel(sink, 'glass', front, u, Hd * 0.72, u > 0 ? 0.215 : 0.395, lw * 0.6, 0.6, { decor: true });
     }
+    // the leaves' bottom track along the apron and the hangar's painted number on its gable over the doors
+    faceBox(sink, 'structureMetal', front, 0, 0.04, 0.45, Wd + 1.2, 0.08, 0.5, { colour: RIB, decor: true });
+    // (on the fixed leaf, the gable's pitch too shallow to carry it)
+    const num = 1 + Math.floor(ctx.variant() * 9), nh = Math.min(2.2, Hd * 0.34);
+    paintedNumeral(sink, front, Wd / 2 - lw / 2, Hd * 0.3, nh, num, rgb(0xe8e6de), 0.225);
     // a personnel door in the back gable
     const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
     doorUnit(sink, back, W * 0.25, 0, 1.0, 2.2, { leaf: pick(rng, STEEL_DOORS), frame: { bucket: 'structureMetal', width: 0.1, out: 0.05, colour: RIB }, steps: null, leafKind: 'plank' }, 0);
