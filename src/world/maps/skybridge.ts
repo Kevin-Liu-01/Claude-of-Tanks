@@ -19,6 +19,14 @@
 // butte that screens it down the gorge's axis, and each block, its segments, its butte and its strongpoints are the
 // other's rotation there. The zone-control discs stand on the line of equal driven distance: the west lane's yard, the
 // gorge's west shore (also the turbo-ball kickoff) and the east lane's yard.
+//
+// The control district (the map-revival lane, 2026-10-05): the Bureau of Reclamation's works at Glen Canyon Dam and
+// its town, Page, built where the town plan seats them in the glencanyon kit (maps/regional/glencanyon.ts). The
+// powerhouse of board-formed concrete with its penstocks coming down from the anchor block and the catwalk truss broken
+// between them (the broken high crossing); the control building, the surge tower, the switchyard's lattice dead-end
+// towers and the transformer yards; the microwave relay tower; the gate-hoist houses and the penstock runs on their
+// saddles; the visitor centre with its overlook, or the town's school; the field offices and steel warehouses; and
+// Page's ranch houses under shingled gables with their carports, its fire station and its water tower.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
@@ -34,9 +42,12 @@ export default {
     // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
     marshes: [],
+    // (Skybridge round 2's canyon: the lakes pulled in off the old banks to the trough's floor and pinned at one waterline
+    // 11 m under the plain, their banks a tight 0.98 so the canyon's walls meet the water instead of a graded strand;
+    // the two sheets still overlap, one surface)
     lakes: [
-      { x: -34, z: 62, r: 92, depth: 2.2 },
-      { x: 36, z: 146, r: 88, depth: 2.2 },
+      { x: -30, z: 50, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
+      { x: -14, z: 136, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
     ],
     // three aprons for the zone-control discs on the line of equal driven distance: the west lane's yard, the gorge's
     // west shore between the lake and the west middle segment (tilted to its ground) and the east lane's yard (tilted
@@ -77,6 +88,17 @@ export default {
       // the drowned gorge's basin under the lakes
       { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72,
         geology: { outline: 0.2, rough: 0.4 } },
+      // (the map-revival lane, 2026-10-06, Skybridge round 2 item 2; gauntlet wave 107: "no drowned canyon, no dam and no
+      // bedded red sandstone wall anywhere: the reservoir is a pond lying flush with a flat sand plain") the reservoir
+      // sinks into Glen Canyon: a trough round both lakes (a canyon knoll, landformGeology.ts) whose cross-bedded Navajo
+      // sandstone walls stand 10-13 m from the plain's rim to the water, side canyons biting into them, the talus at
+      // their feet under the water; the rim stays at plain level, clear of the west shore's apron, the district's roads
+      // and the north road; two boat ramps cut the wall down to the waterline, one from the west lane's shore and one from
+      // the district's road
+      { kind: 'knoll', x: -20, z: 92, rx: 85, rz: 140, height: -10, yawDeg: -10, corridorScale: 1, settlementScale: 1, wetScale: 1,
+        geology: { profile: 'canyon' as const, wall: [0.74, 0.8] as const, apron: 0.3, outline: 0.12, rough: 0.4,
+          strata: { stepM: 2.4, riser: 0.4 }, gullies: { count: 16, depthM: 1.4, width: 0.4 },
+          ramps: [{ bearingDeg: 180, halfWidthDeg: 6, runM: 40 }, { bearingDeg: 0, halfWidthDeg: 6, runM: 40 }] } },
     ],
   },
   spawns: {
@@ -116,8 +138,14 @@ export default {
     loneMix: [['poplar', 0.44], ['pine', 0.31], ['cedar', 0.25]], rimMix: [['pine', 0.40], ['cedar', 0.34], ['poplar', 0.26]],
     clusterCount: 24, loneCount: 42, rimCount: 34, grassDensity: 0.30,
     clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'poplar',
+    // (Skybridge round 2, the map-revival lane: Glen Canyon's bunchgrass is cured straw on the slickrock's sand, as Titan
+    // Gorge's; the default tufts were the meadow's green)
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
+    // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
+    architecture: 'glencanyon',
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
       'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',
@@ -149,9 +177,8 @@ export default {
     townPlan: TOWN_PLANS.skybridge,
     townLightPlan: TOWN_LIGHT_PLANS.skybridge,
     roadBuildingClearance: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90,
-    }),
+    // the kit owns the renders' tones; the field walls keep the city preset's stone
+    tones: { stone: makeRealisticCityBuildingTones({ value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90 }).stone },
     buildingLat: [13, 7], sideSkip: 0.07, spacingPad: 3.5, maxSpread: 4.2,
     wallRuns: [
       [-312, -148, -214, -112, 2], [-306, 138, -208, 174, 3],
@@ -172,6 +199,13 @@ export default {
   },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
+    // (the map-revival lane, Skybridge round 2, gauntlet wave 120: "a repeating sawtooth ridge silhouette" — the mesa
+    // character's far country stood as a row of rounded hazy peaks behind the ring. Glen Canyon's far skyline is the
+    // slickrock plateau's long flat-topped escarpments and lone buttes (Kaiparowits, Tower Butte): the far country
+    // becomes sheer flat-capped massifs on the plain with the sky between them, broad mesas rather than Wadi Rum's
+    // fluted, bossed jebels)
+    panorama: { regional: 'jebel', jebelBossM: 0, jebelRim: 0.95, jebelFlutes: 4, jebelFluteDepth: 0.12, jebelApron: 0.3,
+      jebelFoot: 0.64, jebelM: 380, jebelRadiusM: 900, jebelShare: 0.6, jebelFootVary: 0.08, jebelVarnish: 0.4 },
     // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
     // the map's horizon draws no more triangles than before that relief work
     outlandRocks: 0.94,

@@ -82,6 +82,16 @@ const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
 });
 
+/**
+ * The Arizona uplands' dusty greens: every form keeps its own hue (the juniper's grey-blue, the pinyon's dark green, the
+ * mesquite's olive) at three fifths of its saturation, a little lighter, under a nearly neutral card tint (gauntlet
+ * wave 28: "green broadleaf and fir clumps on sand").
+ */
+const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.09,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -141,6 +151,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
+  // Glen Canyon and Page, Arizona (the map-revival lane, 2026-10-05, Skybridge round 2; look only: the slots keep their
+  // seats): the plateau's Utah juniper (the cedar slot) and Colorado pinyon (the pine slot) in the Arizona uplands'
+  // dusty greens, the Fremont cottonwoods and the town's planted poplars staying poplars, the scrub between them the
+  // broom form's switches (blackbrush, Mormon tea)
+  skybridge: B('Glen Canyon and Page, Arizona', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */

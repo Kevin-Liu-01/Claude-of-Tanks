@@ -31,6 +31,7 @@ import { KOHIMA_STYLE } from './kohima.ts';
 import { HOSTOMEL_STYLE } from './hostomel.ts';
 import { KYUSHU_STYLE } from './kyushu.ts';
 import { QUEENSTOWN_STYLE } from './queenstown.ts';
+import { GLENCANYON_STYLE } from './glencanyon.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -52,6 +53,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   hostomel: HOSTOMEL_STYLE,
   kyushu: KYUSHU_STYLE,
   queenstown: QUEENSTOWN_STYLE,
+  glencanyon: GLENCANYON_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));

@@ -453,6 +453,7 @@ region, registered in `index.ts`:
 | `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
 | `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
 | `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
+| `glencanyon` | Glen Canyon Dam and Page, Arizona (the Bureau of Reclamation, 1957-66; its plaster2 walls painted as board-formed concrete, `surfaces.concrete`): a board-formed concrete powerhouse with its penstocks, the control building, the surge tower, walled switchyards and transformer yards, the microwave relay, the visitor centre or the school, ranch houses with carports | Skybridge Chasm |
 | `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
 | `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
@@ -480,7 +481,9 @@ swaps it in through `LOCAL_TYPES`.
   (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and re-pins its census in
   `server/dedicatedWorldCollision.selftest.mjs` (obstacles and concealers do not move; colliders do).
 - The map's roof and masonry textures become the kit's painted surfaces (`src/world/regionalSurfaces.ts`); the
-  plaster and timber photo sets stay when the kit opts in.
+  plaster and timber photo sets stay when the kit opts in. A kit whose plaster2 walls are poured names a concrete
+  print (`surfaces.concrete`, so far `'boardFormed'`: formwork boards, lift lines, tie holes), toned by the plaster2
+  tone as the render was.
 - Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
   more than the base map, whatever the number of buildings, and one multi-draw batch each for the fine timber and

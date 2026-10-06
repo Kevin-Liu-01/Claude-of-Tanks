@@ -156,7 +156,7 @@ import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitectu
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
-import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
+import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -3107,13 +3107,20 @@ function* propsBuildSteps(
       Math.max(0, Math.min(1, bs * ds)),
       Math.max(0, Math.min(1, bl * dl))];
   };
-  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  // the map-revival lane (2026-10-05, Skybridge round 2): a kit that pours its concrete paints plaster2 as that
+  // concrete (glencanyon: board-formed, its formwork's boards, lift lines and tie holes), toned as the render was
+  const plaster2Tone = T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90);
+  const pouredConcrete = regionalArchitecture?.surfaces.concrete;
+  const plaster2 = pouredConcrete
+    ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
+    : makePlaster(noi, aniso, plaster2Tone);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
   // final disposal. Primary plaster stays exclusive for sourced image swaps.
+  // (a poured plaster2's relief is the formwork's: plaster3 keeps a render's own)
   const plaster3 = makePlaster(noi, aniso,
-    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
+    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
   yield { fine: true };
   const roofT = regionalArchitecture
     ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
