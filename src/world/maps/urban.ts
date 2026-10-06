@@ -287,10 +287,9 @@ export default {
     lampposts: true, hedgehogs: 8, // 2026-10-01: 16 -> 8, roadblocks at the gates rather than every crossing
     // DESTRUCTIBLES r1: modern hulks in the streets (baked roster tanks) —
     // the shelled-town read finally includes the armor that died taking it
-    tankWrecks: {
-      era: 'modern', count: 6, debris: true,
-      ids: ['leclerc_xlr', 'bmpt_t90', 'challenger2', 'm1a2', 't90m', 'leo2a7v'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): the inner-German border of the 1980s: the Bundeswehr's
+    // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a4', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
     sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work

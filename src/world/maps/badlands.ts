@@ -165,8 +165,9 @@ export default {
     // hanging on its face" in all four of its Redrock frames; 278 of the map's 931 boulders hung on a wall, a ledge's lip
     // or a narrow bench. The law is every map's default since 2026-10-04: rockTalusDeg names another angle)
     hedgehogs: 22, sandbagLines: 24,
-    tankWrecks: { era: 'modern', count: 7, debris: true,
-      ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Jordan: the Al-Hussein (Challenger 1), the M60A3, the
+    // Khalid's Chieftain and the Tariq's Centurion
+    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1', 'm60a3', 'chieftain5', 'centurion5'] },
     inhabit: {
       stalls: 4, benches: 2, coreClutter: 26, drums: 12, pots: 7,
       trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,

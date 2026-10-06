@@ -128,8 +128,9 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 330, outcrops: 72, craters: 66, rubblePiles: 20, // map pass 2026-09-12: exposed windward stone on the snowfields
     sandbagLines: 20, hedgehogs: 18,
-    tankWrecks: { era: 'modern', count: 6, debris: true,
-      ids: ['kf51', 'ariete', 'leo2a7v', 'cv90', 'strv122', 'leclerc_xlr'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
+    // front's war; the war shows through the burnt period trucks and carts
+    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: {
       stalls: 2, benches: 3, coreClutter: 20, sleds: 14,
       trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,

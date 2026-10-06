@@ -82,8 +82,9 @@ export default {
     wallRuns: [[-210, -112, -94, -84, 3], [-212, 22, -112, 48, 3], [92, 54, 242, 78, 3], [108, 110, 266, 130, 2], [-108, 90, -108, 142, 2], [122, -116, 262, -98, 3]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 12, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Lebanon, 1982: the Merkava Mk 1, Magach (M60A1) and
+    // Sho't (Centurion), Syria's T-62s and T-72M
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['merkava1b', 'm60a1', 'centurion5', 't62mv1', 't72m1_jaguar'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 8, stooks: 8, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a cultivated Japanese valley's

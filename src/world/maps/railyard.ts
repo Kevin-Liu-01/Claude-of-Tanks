@@ -294,10 +294,9 @@ export default {
     lampposts: true, hedgehogs: 8,
     // Legacy-map quality backport: modern hulks on the yard aprons (baked roster tanks) —
     // the armor that fought over the railhead
-    tankWrecks: {
-      era: 'modern', count: 6, debris: true,
-      ids: ['k1a1', 'type90', 'kf51', 'challenger2', 'leclerc', 'leo2a7v'],
-    },
+    // the map-vehicles lane (2026-10-06, the period ruling): a German coalfield junction in the 1960s: the
+    // Bundeswehr's M48s and M47s, the Rhine Army's Centurions
+    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48', 'centurion5', 'm47_patton'] },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot

@@ -86,8 +86,9 @@ export default {
     wallRuns: [[38, -40, 38, 18, 2], [108, -106, 168, -106, 2], [248, 12, 248, 84, 3], [176, 90, 248, 90, 2], [-108, 280, -32, 280, 3], [-108, 216, -108, 280, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: false,
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['merkava4b', 'm60a3', 'merkava3d', 'm1a2', 't90a'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Egypt: the M60A3 and M1A1, the T-62 and T-55 (its Type
+    // 59 copy)
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'm1a1', 't62mv1', 'type59'] },
     inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62

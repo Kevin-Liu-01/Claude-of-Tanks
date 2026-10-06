@@ -155,8 +155,9 @@ export default {
       [60, -150, 140, -160, 2], [60, 170, 140, 180, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 188, outcrops: 30, craters: 48, rubblePiles: 12, cropFields: 4, sandbagLines: 14, hedgehogs: 8,
-    tankWrecks: { era: 'modern', count: 5, debris: true,
-      ids: ['ariete', 'leclerc_xlr', 'm60a3', 'merkava4b', 'm2a2_bradley'] },
+    // the map-vehicles lane (2026-10-06, the period ruling): Dalmatia in the 1990s: the M-84's parent T-72M1, the
+    // T-55 (its Type 59 copy) and the BMP
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the karst. Bare limestone
