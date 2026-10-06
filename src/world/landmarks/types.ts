@@ -13,7 +13,7 @@ import type { WeatherTints } from '../maps/regional/weather.ts';
 /** Every kind the library builds, by family. */
 export type LandmarkKind =
   // bridges
-  | 'stoneArchBridge' | 'trussBridge' | 'trestleBridge' | 'baileyBridge' | 'viaduct'
+  | 'stoneArchBridge' | 'trussBridge' | 'trestleBridge' | 'baileyBridge' | 'viaduct' | 'liftBridge'
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
@@ -24,6 +24,8 @@ export type LandmarkKind =
   | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
+  // a hill station's colonial pieces
+  | 'colonialBungalow' | 'tennisCourt'
   // wrecks
   | 'aircraftWreck';
 

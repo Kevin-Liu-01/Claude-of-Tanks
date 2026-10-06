@@ -1,7 +1,8 @@
 // src/world/landmarks/index.ts — the set-piece builders by kind (the landmarks lane, 2026-10-05). A map authors its set
 // pieces in `props.landmarks` (types.ts LandmarkPlacement); plan.ts holds each kind's parameters and footprint,
 // compose.ts places them in the props build. Every builder draws the piece in its own frame from its own streams.
-import { baileyBridge, stoneArchBridge, trestleBridge, trussBridge, viaduct } from './bridges.ts';
+import { baileyBridge, liftBridge, stoneArchBridge, trestleBridge, trussBridge, viaduct } from './bridges.ts';
+import { colonialBungalow, tennisCourt } from './colonial.ts';
 import { church, grainElevator, granary, marketHall, stationHall, townHall } from './civic.ts';
 import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
@@ -17,6 +18,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   belfry,
   campanile,
   church,
+  colonialBungalow,
   columnMonument,
   equestrianStatue,
   fireLookout,
@@ -24,6 +26,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   grainElevator,
   granary,
   kolkhozArch,
+  liftBridge,
   marketHall,
   memorialWall,
   obelisk,
@@ -32,6 +35,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   statue,
   stationHall,
   stoneArchBridge,
+  tennisCourt,
   torii,
   townGate,
   townHall,

@@ -87,8 +87,8 @@ const BUDGET = {
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
-  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000,
-  aircraftWreck: 9000,
+  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
+  aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -205,7 +205,7 @@ for (const kind of ['kolkhozArch', 'townGate', 'triumphalArch', 'torii', 'parkGa
 });
 
 // ---------------------------------------------------------------------------------------------------------- bridges
-for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge']) {
+for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge', 'liftBridge']) {
   for (const gully of [4, 7]) check(`${kind} over a ${gully} m gully`, () => {
     const params = resolveLandmarkParams({ kind, x: 0, z: 0 });
     const span = kind === 'baileyBridge' ? Number(params.bays) * 3.048 : Number(params.span);
