@@ -263,7 +263,10 @@ and keep variant 2 open-grown, the woods' trees take the pair and the field tree
 impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes). On a map with a field system
 a field tree stands on a hedged boundary, a field's edge or a wood's edge, never in a field's interior (`addFieldTree`,
 `fieldTreeMove`: the draws stay, only the seats move; a conifer form stands in the open only at a wood's edge; the
-census is `group.userData.fieldTreeLaw`).
+census is `group.userData.fieldTreeLaw`). A map's `vegetation.bare` stands its deciduous broadleaves leafless
+(`BARE_SPRAY_KINDS`: each form's winter twigs in its own habit, the birch's lattice, the oak's crooked twigs, the
+poplar's climbing shoots, the buddleia's winter canes under dry panicles; `bareFormPalette` drops the leaf colours and
+`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

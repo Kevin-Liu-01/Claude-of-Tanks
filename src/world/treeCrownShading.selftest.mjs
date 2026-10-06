@@ -19,7 +19,7 @@ import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILE
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
 import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
-import { grownTintLaw } from './vegetation.ts';
+import { BARE_SPRAY_KINDS, bareFormPalette, grownFormSprayKind, grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 
@@ -491,6 +491,64 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
       assert.ok(seat > 0, `${kind}: the stems stand on the card's seat`);
       report.shrubAtlas[kind] = { steps: +shrubSteps.toFixed(3), crownSteps: +crownSteps.toFixed(3), stems: +(stem.area / (T * T)).toFixed(3) };
     }
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
+}
+
+// Trees lane (2026-10-05, the cities lane's Ironworks in March 1945): a bare map (VegetationConfig `bare`) stands its
+// deciduous broadleaves leafless — each form's winter twigs in its own habit, the twigs' grey-brown, the twigs' open
+// shadow — while the conifers and the evergreen broadleaves keep their leaves, and a map in leaf is unchanged.
+{
+  for (const form of ['birch', 'aspen', 'willow', 'beech', 'oak', 'chestnut', 'poplar', 'buddleia']) {
+    assert.ok(BARE_SPRAY_KINDS[form], `${form}: a deciduous form has its winter twigs`);
+    assert.equal(grownFormSprayKind(form, { bare: true }), BARE_SPRAY_KINDS[form]);
+  }
+  assert.equal(grownFormSprayKind('birch', { bare: true, birchLeaves: true }), 'birch-bare', 'bare wins over a slot\'s leaves');
+  for (const form of ['olive', 'holmOak', 'eucalyptus', 'mangrove', 'acacia', 'pine', 'spruce', 'fir', 'cedar', 'larch', 'broom']) {
+    assert.equal(BARE_SPRAY_KINDS[form], undefined, `${form}: keeps its leaves or needles`);
+    assert.equal(grownFormSprayKind(form, { bare: true }), grownFormSprayKind(form, {}));
+  }
+  assert.equal(grownFormSprayKind('oak', {}), 'oak', 'a map in leaf keeps its leaves');
+  assert.equal(grownFormSprayKind('birch', { birchLeaves: true }), 'birch');
+  const leafPal = { cardHue: 0.24, cardSat: 0.3, texTone: null, birchLeaves: true, snow: 0 };
+  assert.deepEqual(bareFormPalette(leafPal, 'oak', false), leafPal, 'unset: the palette as it was');
+  assert.equal(bareFormPalette(leafPal, 'olive', true), leafPal, 'an evergreen form keeps its palette');
+  const barePal = bareFormPalette(leafPal, 'oak', true);
+  assert.ok(barePal.bare === true && barePal.birchLeaves === false && barePal.cardHue === undefined && barePal.cardSat === undefined,
+    'a bare form drops the leaf colours its map tuned');
+  for (const family of ['broadleaf', 'birch']) {
+    assert.deepEqual(grownTintLaw(family, true, true), grownTintLaw('birch', false), `${family}: bare twigs take the twig law`);
+  }
+  assert.deepEqual(grownTintLaw('broadleaf', false, false), grownTintLaw('broadleaf'), 'a crown in leaf keeps its law');
+  // the painted winter tiles: no green leaf, the twigs grey-brown; the poplar's shoots climb narrower than the oak's
+  // spreading twigs; the buddleia's winter canes carry last summer's dry, rust-brown panicles, no violet
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const stats = {};
+    for (const kind of ['oak-bare', 'poplar-bare', 'buddleia-bare']) {
+      const image = makeSprayAtlas(kind, mulberry32(7), 256, null, 0).image;
+      const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+      const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+      let opaque = 0, green = 0, rust = 0, violet = 0, sx = 0, sxx = 0;
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { // the first tile
+        const i = (y * 256 + x) * 4;
+        if (data[i + 3] < 200) continue;
+        opaque++; sx += x; sxx += x * x;
+        c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+        if (hsl.h > 0.17 && hsl.h < 0.45 && hsl.s > 0.25) green++;
+        if (hsl.h > 0.02 && hsl.h < 0.12 && hsl.s > 0.2) rust++;
+        if (hsl.h > 0.7 && hsl.h < 0.85 && hsl.s > 0.3) violet++;
+      }
+      stats[kind] = { opaque, green: green / opaque, rust: rust / opaque, violet: violet / opaque, spread: Math.sqrt(sxx / opaque - (sx / opaque) ** 2) };
+      assert.ok(opaque > 200 && green / opaque < 0.02, `${kind}: no green leaf (${JSON.stringify(stats[kind])})`);
+    }
+    assert.ok(stats['poplar-bare'].spread < stats['oak-bare'].spread, `the poplar's shoots climb narrower than the oak's twigs spread (${stats['poplar-bare'].spread.toFixed(1)} < ${stats['oak-bare'].spread.toFixed(1)} px)`);
+    assert.ok(stats['buddleia-bare'].rust > 0.2 && stats['buddleia-bare'].violet < 0.005, `the buddleia's winter panicles dry and rust-brown, no flowers (${JSON.stringify(stats['buddleia-bare'])})`);
+    report.bare = stats;
   } finally {
     globalThis.document = savedDocument;
     globalThis.ImageData = savedImageData;

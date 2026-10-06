@@ -97,6 +97,8 @@ interface CanopyPalette {
 interface VegetationPalette {
   /** Leaf-bearing birch/aspen; omitted for the existing bare winter crowns. */
   birchLeaves?: boolean;
+  /** Trees lane: a bare form's winter twigs (the map's `vegetation.bare`; set by the grown definitions, never by a map). */
+  bare?: boolean;
   /** Trees round 2: the regional form the slot grows as on the desktop tiers (treeBiomes.ts; the map's word wins). */
   form?: GrowthSpecies;
   canopy?: CanopyPalette;
@@ -196,6 +198,15 @@ interface VegetationConfig {
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
+  /**
+   * Trees lane (2026-10-05, the cities lane's Ironworks in March 1945): the map's deciduous broadleaves stand bare —
+   * each grows its own trunk, limbs and twigs, its sprays painted as winter twigs in the species' habit (the birch's fine
+   * lattice, the oak's crooked twigs and clustered buds, the poplar's straight climbing shoots; BARE_SPRAY_KINDS), at the
+   * twigs' grey-brown, their shadow as open as the twigs. A shrub of such a form goes bare too (the buddleia's winter
+   * canes under last summer's dry panicles). Conifers and the evergreen broadleaves (olive, holm oak, eucalyptus, the
+   * mangrove, the acacia) keep their leaves. The desktop grown builds; the phones keep their cards.
+   */
+  bare?: boolean;
   /**
    * Trees round 5: the map's own shrub form (a shrub-only growth form: 'broom', 'longleafSeedling', 'buddleia'), over its
    * place's (treeBiomes.ts `shrub`); the desktop grown builds only. The bush slot keeps its records, seeds and mobile look.
@@ -2396,11 +2407,32 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
   return grownFormSprayKind(species as GrowthSpecies, palette);
 }
 
+/**
+ * Trees lane (2026-10-05): the winter twigs a deciduous form paints on a bare map (VegetationConfig `bare`): the
+ * birch's fine lattice for the slender-twigged (birch, aspen, willow, beech), the oak's crooked twigs for the stout
+ * (oak, chestnut), the poplar's climbing shoots, the buddleia's winter canes. A form not named keeps its leaves.
+ */
+export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>>> = Object.freeze({
+  birch: 'birch-bare', aspen: 'birch-bare', willow: 'birch-bare', beech: 'birch-bare',
+  oak: 'oak-bare', chestnut: 'oak-bare', poplar: 'poplar-bare', buddleia: 'buddleia-bare',
+});
+
 /** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
- * says so (a slot's biome entry can say so too, through palOf). */
+ * says so (a slot's biome entry can say so too, through palOf); a bare palette's form its winter twigs. */
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
+  if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
   return growth as SprayKind;
+}
+
+/**
+ * Trees lane: the palette a form grows with on a bare map — its winter twigs (`bare`), without the leaf colours a map
+ * palette tunes for its crowns (the twigs take the twig law, grownTintLaw); unchanged for a form that keeps its leaves
+ * or on a map in leaf.
+ */
+export function bareFormPalette<P extends VegetationPalette>(pal: P, growth: GrowthSpecies, bare: boolean): P {
+  if (!bare || !BARE_SPRAY_KINDS[growth]) return pal;
+  return { ...pal, bare: true, birchLeaves: false, cardHue: undefined, cardSat: undefined };
 }
 
 /**
@@ -2481,7 +2513,9 @@ const FOLIAGE_SHRUB_THIN = 0.011;
  * card colour (Prokhorovka's pine and willow slots, the Fulda Gap's aspens, the junction's birches) fell back to the
  * twigs' law and grew olive-brown crowns among the green ones (the round-2 hand-over's Verdant and Frontier frames).
  */
-export function grownTintLaw(family: string, leafy = false): readonly [number, number, number] {
+export function grownTintLaw(family: string, leafy = false, bare = false): readonly [number, number, number] {
+  // trees lane: a bare form's winter twigs take the birch twigs' warm grey, whatever its family
+  if (bare) return [0.08, 0.06, 1.8];
   if (family === 'conifer') return [0.30, 0.18, 1.95];
   if (family === 'birch') return leafy ? [0.228, 0.19, 1.8] : [0.08, 0.06, 1.8];
   if (family === 'dead') return [0.08, 0.05, 1.7];
@@ -2516,7 +2550,7 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
     // trees round 5: the sprays keep to the shrub atlas' leaf tiles (its last is the stems')
     skeleton.leaves.forEach((site, i) => { if (site.tile === SHRUB_STEM_TILE) site.tile = i % SHRUB_STEM_TILE; });
   }
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true, pal.bare === true);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
   // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
@@ -2736,7 +2770,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
   // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
   // ones.
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true, pal.bare === true);
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
@@ -5201,6 +5235,9 @@ function* vegetationBuildSteps(
   const forestSpecies = new Set<Species>(grownTrees && treeBiomeWoodSpread(cfg?.id) > 1 && !/[?&]forestForm=0(&|$)/.test(forestQuery)
     ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm') : []);
   const forestAB = forestSpecies.size > 0 && /[?&]forestAB=1(&|$)/.test(forestQuery);
+  // trees lane (2026-10-05): a bare map's deciduous broadleaves and shrubs stand leafless (VegetationConfig `bare`;
+  // `?bare=1` stands any map's bare, the probes' same-build A/B)
+  const bareMap = grownTrees && (veg.bare === true || /[?&]bare=1(&|$)/.test(forestQuery));
   function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
@@ -5213,7 +5250,9 @@ function* vegetationBuildSteps(
     const family = TREE_GROWTH_PROFILES[growth].family;
     const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
     const placeColour = treeBiomeColour(cfg?.id);
-    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily, placeColour);
+    // (trees lane, 2026-10-05: on a bare map a deciduous form's palette is its winter twigs')
+    const formPal = (pal: VegetationPalette): VegetationPalette => bareFormPalette(treeBiomePalette(pal, form, crossFamily, placeColour),
+      growth, bareMap);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
@@ -6917,12 +6956,18 @@ function* vegetationBuildSteps(
     // trees round 4: a place's own shrub colour (treeBiomes.ts shrubColour) wins over the bush slot's palette, as a form's
     // own colour does over its slot's (the Las Cañadas broom ash-dulled, where the slot's acacia palette read green)
     const shrubColour = grownTrees ? treeBiomeShrubColour(cfg?.id) : null;
-    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id))
-      : palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
-    const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null;
+    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
+      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
+    // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
+    const bushPal = grownTrees
+      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
+        shrubGrowth, bareMap)
+      : palOf(bushSpecies);
+    const shrubMats = shrubMaterials(shrubForm, bushPal);
     // trees round 4: a shrub grown from its slot's sprays shares that slot's crowns' texture and program but not their
     // near reach (FOLIAGE_NEAR_REACH): its own material over the one program, with the shrub hook's uniform — made when
     // the first shrub is planted (a world without shrubs registers none)
@@ -6963,8 +7008,6 @@ function* vegetationBuildSteps(
       }
       return bushMatCache;
     };
-    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
-      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas),
         buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas)]

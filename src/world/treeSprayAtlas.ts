@@ -27,13 +27,19 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   // Lebanon, the Aso caldera's sugi and Japanese red pine
   | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine'
   // trees round 5: the ruderal buddleia of waste ground, slag and rail sidings (a shrub form)
-  | 'buddleia';
+  | 'buddleia'
+  // the winter kinds (a map's `vegetation.bare`): the oak's and the poplar's bare twigs, the buddleia's winter canes
+  | 'oak-bare' | 'poplar-bare' | 'buddleia-bare';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
+// the winter kinds' opaque shares (measured as the table's)
+const OAK_BARE_COVERAGE = 0.122;
+const POPLAR_BARE_COVERAGE = 0.118;
+const BUDDLEIA_BARE_COVERAGE = 0.084;
 /**
  * Trees round 2 (2026-10-03): each atlas's opaque share, the mean alpha over its painted 512 px atlas
  * (treeCrownShading.selftest.mjs paints them again and holds the table to it). The crown shadow hull's porosity reads
@@ -45,6 +51,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   beech: 0.292, chestnut: 0.337, holmOak: 0.198, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
+  'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
 });
 
 /**
@@ -109,6 +116,11 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
   // the buddleia's grey-green, felted leaves
   buddleia: { hue: 0.25, sat: 0.2, light: 0.21 },
+  // the winter kinds: the oak's grey-brown twigs, the poplar's olive-brown shoots, the buddleia's dry rust-brown
+  // panicles on pale canes
+  'oak-bare': { hue: 0.075, sat: 0.1, light: 0.2 },
+  'poplar-bare': { hue: 0.1, sat: 0.14, light: 0.24 },
+  'buddleia-bare': { hue: 0.065, sat: 0.45, light: 0.17 },
   lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
   sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
   redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
@@ -1045,6 +1057,170 @@ function paintBuddleiaTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): 
   return shoots;
 }
 
+// ------------------------------------------------------------------------------------------------ the bare flag
+// Trees lane (2026-10-05, the cities lane's Ironworks in March 1945): a map's `vegetation.bare` stands its deciduous
+// broadleaves leafless. Their sprays paint winter twigs in each species' own habit (the birch keeps its fine lattice,
+// paintBareTile); a shrub's its winter canes.
+
+/** A winter twig habit: the main twigs from the seat, their forks, their kinks and their buds. */
+interface BareHabit {
+  /** main twigs from the seat, and their fan either side of upright (rad) */
+  readonly stems: number;
+  readonly spread: number;
+  /** a main twig's length and base width (shares of the tile) */
+  readonly length: number;
+  readonly width: number;
+  /** fork depth, a fork's angle off its parent's line (rad) and its jitter, a fork's length over its parent's */
+  readonly depth: number;
+  readonly forkAngle: number;
+  readonly forkJitter: number;
+  readonly lenDecay: number;
+  /** forks per twig: the least and the random extra */
+  readonly forks: readonly [number, number];
+  /** how far each fork's heading is drawn back toward upright (0 none, 1 straight up): the twigs climb toward the light */
+  readonly rise: number;
+  /** the turn either side of its line a twig takes at each node, alternating (rad): the oak's zigzag */
+  readonly kink: number;
+  /** the terminal bud's size (a share of the tile) and how many cluster at a tip */
+  readonly bud: number;
+  readonly budCluster: number;
+  /** the haze of sub-pixel twigs (discs of it) a minified card keeps */
+  readonly gauze: number;
+}
+const BARE_HABITS: Readonly<Record<'oak-bare' | 'poplar-bare', BareHabit>> = Object.freeze({
+  // the oak: stout twigs crooked at every node, spreading forks at wide angles, short internodes, small clustered buds
+  'oak-bare': Object.freeze({ stems: 2, spread: 0.55, length: 0.4, width: 0.019, depth: 3, forkAngle: 0.85, forkJitter: 0.3,
+    lenDecay: 0.58, forks: [2, 1] as const, rise: 0.3, kink: 0.32, bud: 0.0055, budCluster: 3, gauze: 12 }),
+  // the poplar: straight, stout shoots climbing at narrow angles, a long pointed bud at each tip
+  'poplar-bare': Object.freeze({ stems: 3, spread: 0.32, length: 0.48, width: 0.015, depth: 4, forkAngle: 0.36, forkJitter: 0.18,
+    lenDecay: 0.62, forks: [1, 2] as const, rise: 0.4, kink: 0.06, bud: 0.008, budCluster: 1, gauze: 8 }),
+});
+
+/** A twig along `line` (canvas radians; -PI/2 = up) from p0, turning either side of the line at each node by up to `kink`. */
+function kinkedTwig(p0: Pt, line: number, length: number, kink: number, steps: number, rng: Rng): Pt[] {
+  const pts: Pt[] = [p0];
+  let x = p0.x, y = p0.y, side = rng() < 0.5 ? -1 : 1;
+  const step = length / steps;
+  for (let i = 0; i < steps; i++) {
+    const a = line + side * kink * (0.4 + 0.6 * rng());
+    side = -side;
+    x += Math.cos(a) * step; y += Math.sin(a) * step;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+/** The oak's or the poplar's winter twigs on one tile (the habit's), the haze a minified card keeps behind them. */
+function paintBareHabitTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: 'oak-bare' | 'poplar-bare'): Pt[][] {
+  const base = LEAF_COLOR[kind], habit = BARE_HABITS[kind];
+  const tips: Pt[][] = [];
+  for (let k = 0; k < habit.gauze; k++) {
+    const x = S * (0.28 + rng() * 0.44), y = S * (0.22 + rng() * 0.5), r = S * (0.08 + rng() * 0.12);
+    const gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, css(base.hue, base.sat, base.light * 0.9, 0.3));
+    gr.addColorStop(1, css(base.hue, base.sat, base.light * 0.9, 0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  const UP = -Math.PI / 2;
+  const twig = (p: Pt, line: number, len: number, w: number, depth: number): void => {
+    const steps = Math.max(3, Math.round(len / (S * 0.045)));
+    const pts = kinkedTwig(p, line, len, habit.kink, steps, rng);
+    taperStroke(ctx, pts, w, w * 0.62, css(base.hue + (rng() - 0.5) * 0.02, base.sat, base.light * (0.75 + rng() * 0.45)));
+    if (depth <= 0 || len < S * 0.035) {
+      tips.push(pts);
+      // the buds: a small cluster at the oak's tip, one long pointed bud at the poplar's
+      const end = pts[pts.length - 1];
+      for (let b = 0; b < habit.budCluster; b++) {
+        const ba = line + (habit.budCluster > 1 ? (b - (habit.budCluster - 1) / 2) * 0.7 + (rng() - 0.5) * 0.3 : 0);
+        ctx.save();
+        ctx.translate(end.x, end.y);
+        ctx.rotate(ba);
+        ctx.fillStyle = css(base.hue + 0.01, base.sat * 1.4, base.light * 0.7);
+        ctx.beginPath();
+        ctx.ellipse(S * habit.bud * 0.6, 0, S * habit.bud * (habit.budCluster > 1 ? 0.8 : 1.3), S * habit.bud * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      return;
+    }
+    const forks = habit.forks[0] + ((rng() * (habit.forks[1] + 1)) | 0);
+    for (let k = 0; k < forks; k++) {
+      const at = pointAt(pts, 0.3 + rng() * 0.65), side = k % 2 === 0 ? -1 : 1;
+      let heading = line + side * (habit.forkAngle + (rng() - 0.5) * 2 * habit.forkJitter);
+      heading += (UP - heading) * habit.rise;
+      twig(at.p, heading, len * (habit.lenDecay + (rng() - 0.5) * 0.16), w * 0.66, depth - 1);
+    }
+    // the leader carries on past its forks
+    if (rng() < 0.6) twig(pts[pts.length - 1], line + (UP - line) * habit.rise * 0.5, len * habit.lenDecay * 0.8, w * 0.7, depth - 1);
+  };
+  for (let k = 0; k < habit.stems; k++) {
+    const off = habit.stems > 1 ? k / (habit.stems - 1) * 2 - 1 : 0;
+    twig({ x: S * (0.5 + off * 0.03), y: S * 0.96 }, UP + off * habit.spread + (rng() - 0.5) * 0.16,
+      S * (habit.length + rng() * 0.08), S * habit.width, habit.depth);
+  }
+  return tips;
+}
+
+/**
+ * The buddleia in winter: two arching canes from the seat, pale and peeling, bare but for a few shrivelled leaves near
+ * their tips, each cane and some side shoots ending in last summer's panicle, dry, rust-brown and nodding, its
+ * capsules open.
+ */
+function paintBuddleiaWinterTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR['buddleia-bare'];
+  const shoots: Pt[][] = [], tipsOf: Array<{ sh: Pt[]; main: boolean }> = [];
+  for (let c = 0; c < 2; c++) {
+    const lean = (c === 0 ? -1 : 1) * (0.12 + rng() * 0.18);
+    const cane = twigPoints({ x: S * (0.5 + lean * 0.2), y: S * 0.96 }, -Math.PI / 2 + lean, S * (0.52 + rng() * 0.1), lean * 1.4, 10);
+    shoots.push(cane); tipsOf.push({ sh: cane, main: true });
+    const sides = 2 + ((rng() * 2) | 0);
+    for (let k = 0; k < sides; k++) {
+      const at = pointAt(cane, 0.32 + (k + rng() * 0.6) / sides * 0.5), side = k % 2 === 0 ? -1 : 1;
+      const sh = twigPoints(at.p, at.a + side * (0.45 + rng() * 0.3), S * (0.18 + rng() * 0.12), -side * 0.5, 6);
+      shoots.push(sh); tipsOf.push({ sh, main: false });
+    }
+  }
+  for (const sh of shoots) taperStroke(ctx, sh, sh.length > 8 ? S * 0.016 : S * 0.009, S * 0.005, css(0.085, 0.12, 0.26));
+  // a few shrivelled leaves hang on near the shoots' tips, curled and grey-brown
+  for (const sh of shoots) {
+    const n = (rng() * 3) | 0;
+    for (let k = 0; k < n; k++) {
+      const at = pointAt(sh, 0.7 + rng() * 0.25), side = rng() < 0.5 ? -1 : 1, L = S * (0.06 + rng() * 0.05);
+      ctx.save();
+      ctx.translate(at.p.x, at.p.y);
+      ctx.rotate(at.a + side * (1.1 + rng() * 0.5) + 0.5);
+      ctx.fillStyle = css(0.08, 0.18, 0.17 * (0.8 + rng() * 0.4));
+      leafPath(ctx, 'lance', L, L * 0.18, rng);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  // last summer's panicles: dry, rust-brown, nodding with their shoots, the capsules open
+  for (const { sh, main } of tipsOf) {
+    if (!main && rng() > 0.55) continue;
+    const tip = pointAt(sh, 0.98), len = S * (main ? 0.3 + rng() * 0.1 : 0.16 + rng() * 0.07);
+    const nod = tip.a > -Math.PI / 2 ? 1 : -1;
+    const axis = twigPoints(tip.p, tip.a + nod * 0.3, len, nod * 0.7, 8);
+    taperStroke(ctx, axis, S * 0.006, S * 0.003, css(base.hue, base.sat * 0.6, base.light * 0.8));
+    const capsules = Math.round(len / S * 900);
+    for (let k = 0; k < capsules; k++) {
+      const t = Math.pow(rng(), 0.75), at = pointAt(axis, t), girth = len * 0.2 * (1 - t * 0.75) + S * 0.005;
+      const off = (rng() - 0.5) * 2 * girth, nx = -Math.sin(at.a), ny = Math.cos(at.a);
+      ctx.fillStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), base.light * (0.65 + rng() * 0.6));
+      ctx.beginPath();
+      ctx.arc(at.p.x + nx * off, at.p.y + ny * off, S * (0.006 + rng() * 0.004), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  return shoots;
+}
+
+const BARE_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
+  'oak-bare': (ctx, S, rng) => paintBareHabitTile(ctx, S, rng, 'oak-bare'),
+  'poplar-bare': (ctx, S, rng) => paintBareHabitTile(ctx, S, rng, 'poplar-bare'),
+  'buddleia-bare': paintBuddleiaWinterTile,
+});
+
 const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
   buddleia: paintBuddleiaTile,
   longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
@@ -1146,12 +1322,13 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     ctx.translate(tx * S, ty * S);
     const twigs = shrub && ty * T + tx === SHRUB_STEM_TILE ? paintShrubStemTile(ctx, S, rng)
       : kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
+      : BARE_PAINTERS[kind] ? BARE_PAINTERS[kind](ctx, S, rng)
       : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng)
       : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind], shrub)
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats
     // take (vegetation.ts buildGrownTree); the bottom row stays bare (its own stream: the leaf painting never moves)
-    if (snow > 0.05 && ty === 0) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' ? 0.035 : 0.07), snow, snowRng);
+    if (snow > 0.05 && ty === 0) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' || BARE_PAINTERS[kind] ? 0.035 : 0.07), snow, snowRng);
     ctx.restore();
   }
   const image = ctx.getImageData(0, 0, s, s);
