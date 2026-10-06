@@ -198,4 +198,7 @@ export default {
     roadCasing: 'rgba(20,25,29,.96)', roadFill: 'rgba(91,101,107,.95)', buildingFill: '#b9b8b4',
   },
   shot: { pos: [-344, 48, -308], look: [18, 12, 46] },
+  // the creek's sea state (round 66's FFT ocean runs on every water sheet): a slow, silted tidal creek between quays —
+  // a light breeze down its length, short fetch, low swell-free chop, no foam, and little light reaching the mud
+  ocean: { windSpeed: 2.2, windDirDeg: 80, fetchKm: 1.5, amplitude: 0.5, foam: 0, breakers: 0.05, caustics: 0.15 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
