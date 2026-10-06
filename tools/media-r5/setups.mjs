@@ -42,7 +42,9 @@ export function buildScene(s) {
     const eOffsets = FORMATIONS[e.formation ?? 'line'];
     for (let i = 0; i < Math.min(e.count ?? 3, eOffsets.length); i++) {
       const [lat, lon] = eOffsets[i];
-      const base = fr.at((e.lat ?? 0) + lat * (e.spread ?? 1), (e.along ?? 160) - lon * (e.spread ?? 1) * 0.5);
+      // `nudge[i]`: a world-space shift off the props (site50.mjs parkNudges), applied before every gun aims at it
+      const at = fr.at((e.lat ?? 0) + lat * (e.spread ?? 1), (e.along ?? 160) - lon * (e.spread ?? 1) * 0.5), shift = e.nudge?.[i];
+      const base = shift ? [at[0] + shift[0], at[1] + shift[1]] : at;
       const facing = yawTo(base, s.anchor) + (e.yaw ?? 0);
       const st = e.states?.[i];
       foes.push({ id: (e.lineup ?? lineup)[i % (e.lineup ?? lineup).length], name: `foe${i}`, pos: base, facingDeg: facing,

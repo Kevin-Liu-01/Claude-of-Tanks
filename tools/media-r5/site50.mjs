@@ -13,6 +13,9 @@ import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
 import { choreograph } from './turret-choreo.mjs';
+import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { worldModel } from './world-model.mjs';
+import { hullOf, waterBlocks } from './route-check.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
@@ -204,7 +207,7 @@ export const SHOTS = [
   // ---------------------------------------------------------------- battles: firefights, hits and knockouts
   [16, 'street-duel', 'battle', 'Street duel at night: a KF51 Panther trades fire down a Steinburg street', S.stWest,
     // a low front quarter in the street: every round goes out at the lens, the answering fire lands around the hero
-    { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-6, 60), 90), burn('foe1', 0), smoke('foe1', 0), fireField(H(4, -20), 0, { radiusM: 3 }), fire('hero', 1400), ...incoming('foe0', -4, -6, 2500), mg('ally1', 3200, 9), ...knockout('hero', 'foe0', 4200)],
+    { time: 'night', speed: 0, effects: [NIGHT_FLARE(H(-6, 60), 90), burn('foe1', 0), smoke('foe1', 0), fireField(H(4, -20), 0, { radiusM: 3 }), fire('hero', 1400), ...incoming('foe0', -4, -6, 2500), mg('ally1', 3200, 9), ...knockout('hero', 'foe0', 4200)],
       cam: hold({ side: 4.5, along: 11, lift: 1.5, fov: 36, lookHero: [-0.4, 0, 1.7] }, { side: 4.1, along: 10, lift: 1.5, fov: 34, lookHero: [-0.4, 0, 1.7] }) },
     { tMs: 4460, exposureMs: 16 }],
   [17, 'crossroads-fire', 'battle', 'Fire at the Steinburg crossroads at noon', S.stCross,
@@ -213,7 +216,7 @@ export const SHOTS = [
     { tMs: 1380, exposureMs: 16 }],
   [18, 'street-knockout', 'battle', 'A T-90A is knocked out at the end of a Steinburg street at night', S.stSouth,
     // from behind the T-90A as the round strikes it, the shooter's flash down the street (the duel staged at 42 m)
-    { time: 'night', picture: { exposure: 0.3 }, speed: 0, enemies: pair(CAST.t90a, CAST.t72b, ['intact', 'burning'], { along: 42, lat: 1 }),
+    { time: 'night', speed: 0, enemies: pair(CAST.t90a, CAST.t72b, ['intact', 'burning'], { along: 42, lat: 1 }),
       effects: [NIGHT_FLARE(H(4, 30), 90), ...wreck('foe1'), ...knockout('hero', 'foe0', 1700), mg('ally1', 3000, 9), fire('ally1', 4400)], cam: REVERSE(1, 42) },
     { tMs: 2060, exposureMs: 16 }],
   [19, 'roof-tiles', 'battle', 'Roof tiles rain down as a Leopard 2A6 fires up the street', S.stMain,
@@ -229,7 +232,7 @@ export const SHOTS = [
     { tMs: 3720, exposureMs: 25 }],
   [22, 'walking-barrage', 'battle', 'Artillery walks across the fields toward the wedge at night', S.vAssault,
     // from high ahead of the wedge: the barrage walks in off the left flank toward the tanks' fronts
-    { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-10, 20), 100), ...wreck('foe0'), barrage(H(-40, 10), 800, 6, 14), barrage(H(-24, 4), 2200, 6, 14), barrage(H(-10, -2), 3600, 5, 12), fire('hero', 4600)],
+    { time: 'night', speed: 0, effects: [NIGHT_FLARE(H(-10, 20), 100), ...wreck('foe0'), barrage(H(-40, 10), 800, 6, 14), barrage(H(-24, 4), 2200, 6, 14), barrage(H(-10, -2), 3600, 5, 12), fire('hero', 4600)],
       cam: hold({ side: 16, along: 24, lift: 10, fov: 46, lookHero: [-10, 0, 1] }, { side: 15, along: 22.5, lift: 9.4, fov: 44, lookHero: [-10, 0, 1] }) },
     { tMs: 3700, exposureMs: 25 }],
   [23, 'village-crossroads', 'battle', 'T-14 and T-90M tanks hold the village crossroads', S.vVillage,
@@ -277,10 +280,10 @@ export const SHOTS = [
       cam: hold({ side: 12, along: 15, lift: 2.6, fov: 40, lookHero: [-6, -4, 1.5] }, { side: 11, along: 13.6, lift: 2.5, fov: 38, lookHero: [-6, -4, 1.5] }) },
     { tMs: 1380, exposureMs: 16 }],
   [33, 'water-tower', 'battle', 'The line advances past the burning water tower at night', S.rFactory,
-    { count: 2, time: 'night', picture: { exposure: 0.6 }, speed: 2.2, effects: [NIGHT_FLARE(H(-4, 40), 90), ...wreck('foe0'), fireField(H(-12, 18), 0, { radiusM: 5 }), fireField(H(9, -16), 0, { radiusM: 4 }), ...hitNear(7, -10, 1900), fire('hero', 3600)], cam: FRONT34(-1) },
+    { count: 2, time: 'night', speed: 2.2, effects: [NIGHT_FLARE(H(-4, 40), 90), ...wreck('foe0'), fireField(H(-12, 18), 0, { radiusM: 5 }), fireField(H(9, -16), 0, { radiusM: 4 }), ...hitNear(7, -10, 1900), fire('hero', 3600)], cam: FRONT34(-1) },
     { tMs: 3680, exposureMs: 25 }],
   [34, 'furnace-salvo', 'battle', 'T-14 Armatas fire a rippling salvo in the Ironworks yard at night', S.iYard,
-    { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(0, 30), 70), ...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), embers(H(-7, 10), 0), fire('hero', 1100), fire('ally1', 1900), fire('ally2', 2700), fire('ally3', 3500)],
+    { time: 'night', speed: 0, effects: [NIGHT_FLARE(H(0, 30), 70), ...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), embers(H(-7, 10), 0), fire('hero', 1100), fire('ally1', 1900), fire('ally2', 2700), fire('ally3', 3500)],
       cam: hold({ side: 9.2, along: 14.4, lift: 2.4, fov: 40, lookHero: [-9, 0, 1.8] }, { side: 8.2, along: 12.6, lift: 2.4, fov: 38, lookHero: [-9, 0, 1.8] }) },
     { tMs: 1180, exposureMs: 16 }],
   [35, 'farm-village', 'battle', 'A Type 90 and a Type 89 fight through the farm village of Frontier Basin', S.frVillage,
@@ -296,7 +299,7 @@ export const SHOTS = [
     { tMs: 1480, exposureMs: 16 }],
   [38, 'church-knockout', 'battle', 'A Leopard 2A6 is knocked out beside the onion-domed church at night', S.wChurch,
     // one of the few rear lenses kept: the knockout happens beside the church ahead of the hero
-    { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-6, 55), 95), ...wreck('foe1'), ...knockout('hero', 'foe0', 1900), fire('ally1', 3800), mg('ally1', 4800, 9)], cam: OG_HOLD() },
+    { time: 'night', speed: 0, effects: [NIGHT_FLARE(H(-6, 55), 95), ...wreck('foe1'), ...knockout('hero', 'foe0', 1900), fire('ally1', 3800), mg('ally1', 4800, 9)], cam: OG_HOLD() },
     { tMs: 2060, exposureMs: 16 }],
   [39, 'lakeside-village', 'battle', 'A Chieftain Mk 10 fires across the village at Highland Reservoir', S.reVillage,
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', -9, 3, 2700), fire('hero', 3300), fire('ally1', 3800)], cam: PROFILE_HOLD() },
@@ -319,7 +322,7 @@ export const SHOTS = [
   [41, 'church-tower', 'scene', 'The night street fight seen from the church tower', S.stMain,
     // the tower view, 24 m up between the church and the street: the tanks' fronts from above, the street lit by the flare
     // (at 16 m the lens hovered inside the main street's tall houses, review 2026-10-05)
-    { lineup: [CAST.leo2a6, CAST.puma, CAST.leo2a6], time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-8, 20), 100), ...wreck('foe0'), fire('hero', 1500), fire('ally1', 2500), ...incoming('foe1', -4, 10, 3500), fire('ally2', 4700)],
+    { lineup: [CAST.leo2a6, CAST.puma, CAST.leo2a6], time: 'night', speed: 0, effects: [NIGHT_FLARE(H(-8, 20), 100), ...wreck('foe0'), fire('hero', 1500), fire('ally1', 2500), ...incoming('foe1', -4, 10, 3500), fire('ally2', 4700)],
       cam: hold({ side: -18, along: 20, lift: 24, fov: 40, lookHero: [0, 6, 0] }, { side: -17, along: 18.5, lift: 23, fov: 39, lookHero: [0, 6, 0] }) },
     { tMs: 2700, exposureMs: 16 }],
   [42, 'assault-above', 'scene', 'Verdant Fields from above as the assault rolls in', S.vAssault,
@@ -350,7 +353,7 @@ export const SHOTS = [
     { tMs: 3300, exposureMs: 25 }],
   [47, 'ironworks-crane', 'scene', 'Ironworks at night: the yard burns between the smoke stacks', S.iYard,
     // a crane rising ahead of the hero over the burning yard
-    { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(6, 20), 90), ...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), fireField(H(-8, -10), 0, { radiusM: 3 }), fireField(H(14, -6), 0, { radiusM: 3 }), fire('hero', 1500), fire('ally2', 3200), barrage(H(4, -36), 3800, 5, 14)],
+    { time: 'night', speed: 0, effects: [NIGHT_FLARE(H(6, 20), 90), ...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), fireField(H(-8, -10), 0, { radiusM: 3 }), fireField(H(14, -6), 0, { radiusM: 3 }), fire('hero', 1500), fire('ally2', 3200), barrage(H(4, -36), 3800, 5, 14)],
       cam: RIG.crane({ side: 6, along: [12, 18], lift: [1.8, 10], fov: 46, look: [0, -12, 1] }) },
     { tMs: 4600, exposureMs: 25 }],
   [48, 'delta-crane', 'scene', 'Jade River Delta: the river village under fire, mountains beyond', S.dVillage,
@@ -381,17 +384,17 @@ export const PAINT = Object.freeze({
   7: ['winterbands', 'service_soviet_coldwar'], 8: ['chocchip', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
   10: ['sig_type100', 'rasputitsa'], 11: ['desert', 'paint_ru_t80u_modern'], 12: ['sig_t90ms', 'summer'],
   13: ['sig_k2b', null], 14: ['winter', 'merdcwinter'], 15: ['autumn', 'service_soviet_coldwar'],
-  16: ['dazzle', 'sig_t90a'], 17: ['service_strv122', 'sig_t72m1_jaguar'], 18: ['digitaldesert', 'service_soviet_coldwar'],
-  19: ['ambushdot', 'paint_ru_t80u_modern'], 20: ['rasputitsa', 'merdc'], 21: ['sig_t90sm', 'service_leo2a6m'],
-  22: ['sig_tos1a_tagil', 'summer'], 23: ['hexfield', 'service_usa_desert'], 24: ['merdcwinter', 'sig_t90a_vladimir'],
+  16: ['dazzle', 'sig_t90a'], 17: ['sig_challenger_3x', 'sig_t72m1_jaguar'], 18: ['digitaldesert', 'service_soviet_coldwar'],
+  19: ['sig_pl01_105', 'paint_ru_t80u_modern'], 20: ['sig_ua_challenger2', 'sig_t90'], 21: ['sig_t90sm', 'service_leo2a6m'],
+  22: ['sig_ua_t64bv', 'sig_t90a'], 23: ['paint_pl_t80u_modern', 'service_soviet_coldwar'], 24: ['merdcwinter', 'sig_t90a_vladimir'],
   25: ['washworn', 'service_soviet_coldwar'], 26: ['sig_merkava3c', 'paint_amx40'], 27: ['sig_merkava4b', 'sig_t90ms'],
-  28: ['paint_cv90_mkiv', 'sig_t90'], 29: ['tigerstripe', 'sig_t90a_vladimir'], 30: ['jungleops', 'sig_t72m1_jaguar'],
+  28: ['sig_challenger2e', 'sig_t90'], 29: ['tigerstripe', 'sig_t90a_vladimir'], 30: ['jungleops', 'sig_t72m1_jaguar'],
   31: ['service_type99a', 'rasputitsa'], 32: ['service_usa_desert', 'sig_t90a'], 33: ['sig_ua_m1a1', 'sig_t90m'],
-  34: ['sig_bmpt_t90', 'service_leo2a6m'], 35: ['sig_type90a', 'service_soviet_coldwar'], 36: ['amoeba', 'paint_ru_t80u_modern'],
-  37: ['sig_ztz100_x', 'sig_t90'], 38: ['ardennes44', 'merdcwinter'], 39: ['dpm', 'sig_t90a'],
-  40: ['sig_amx56', 'service_soviet_coldwar'], 41: ['sig_sabra_mk2_x', 'sig_t90'], 42: ['paint_ru_t80u_modern', 'service_leo2a6m'],
-  43: ['m90', 'winter'], 44: ['pinkdesert', 'sig_t90ms'], 45: ['naval', 'sig_t90a'],
-  46: ['tropic', 'rasputitsa'], 47: ['sig_t90a', 'summer'], 48: ['sig_ztz85_iii', 'sig_t72m1_jaguar'],
+  34: ['sig_tos1a_tagil', 'service_leo2a6m'], 35: ['sig_type90a', 'service_soviet_coldwar'], 36: ['amoeba', 'paint_ru_t80u_modern'],
+  37: ['sig_ztz99a2', 'sig_t90'], 38: ['ardennes44', 'merdcwinter'], 39: ['dpm', 'sig_t90a'],
+  40: ['sig_amx56', 'service_soviet_coldwar'], 41: ['sig_leo2a6_ua', 'sig_t90'], 42: ['merdc', 'paint_ru_t80u_modern'],
+  43: ['sig_m551_sheridan', 'winter'], 44: ['sig_abramsx', 'sig_t90ms'], 45: ['naval', 'sig_t90a'],
+  46: ['tropic', 'rasputitsa'], 47: ['sig_t90a_burlak', 'summer'], 48: ['sig_ztz85_iii', 'sig_t72m1_jaguar'],
   49: ['oakleaf', 'service_soviet_coldwar'], 50: ['service_challenger_3', 'paint_ru_t80u_modern'],
 });
 
@@ -412,6 +415,66 @@ const tuckCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: k.side
 const MOTION_PLAN_FILE = join(dirname(fileURLToPath(import.meta.url)), 'site50-motion.json');
 const MOTION_PLAN = process.env.SITE50_MOTION !== '0' && existsSync(MOTION_PLAN_FILE) ? JSON.parse(readFileSync(MOTION_PLAN_FILE, 'utf8')) : {};
 const OWN_MOTION = ['speed', 'curveDegS', 'foeSpeed', 'pinMs', 'cam', 'turrets', 'guns', 'turretKeys', 'turretSweep', 'keepWidth', 'frame', 'lookFrame', 'ease', 'stepMs'];
+// Owner 2026-10-06 ("id like to see … as well!"): every vehicle on the list leads a take. A hero that led several takes
+// (the Stridsvagn 122 five, the T-14 four, the Leopard 2A6 and the T-90SM three, six more two) keeps its first; the
+// others go to the list, each on a battlefield and among allies of its own nation and kind, against an opposing
+// force (`foes`, where the take's own enemies were the hero's side).
+const RU_FOES = [CAST.t72b3, CAST.t90a, CAST.t80u];
+const RECAST = {
+  16: { lineup: [CAST.griffin, CAST.sepv2] },
+  17: { lineup: [CAST.challenger3, CAST.challenger2e, CAST.warrior] },
+  19: { lineup: [CAST.pl01, CAST.husarz, CAST.leo2a5] },
+  20: { lineup: [CAST.challenger2UA, CAST.leo2a6UA, CAST.hetman2], foes: [CAST.t72b3, CAST.t90m, CAST.t80u] },
+  22: { lineup: [CAST.hetman2, CAST.challenger2UA, CAST.leo2a6UA], foes: RU_FOES },
+  23: { lineup: [CAST.husarz, CAST.pl01, CAST.leo2a5], foes: [CAST.t90a, CAST.t72b3] },
+  24: { lineup: [CAST.warrior, CAST.challenger2e, CAST.ajax] },
+  28: { lineup: [CAST.challenger2e, CAST.challenger3, CAST.ajax] },
+  34: { lineup: [CAST.tos1a, CAST.t90m, CAST.t90ms] },
+  37: { lineup: [CAST.vt4a1, CAST.type96_72m, CAST.ztz100] },
+  41: { lineup: [CAST.leo2a6UA, CAST.challenger2UA, CAST.abramsUA] },
+  42: { lineup: [CAST.sepv2, CAST.sepv3, CAST.m1a3], foes: RU_FOES },
+  43: { lineup: [CAST.m551, CAST.griffin] },
+  44: { lineup: [CAST.m1a3, CAST.sepv3, CAST.griffin] },
+  45: { lineup: [CAST.ajax, CAST.warrior, CAST.challenger3] },
+  47: { lineup: [CAST.burlak, CAST.t90a, CAST.t14] },
+  48: { lineup: [CAST.type96_72m, CAST.vt4a1, CAST.type96b] },
+};
+// The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
+// MEDIA_R5_FEATURES points at another dump (a fresh one under review).
+const models = new Map();
+const modelOf = (map) => {
+  if (!models.has(map)) {
+    const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
+    models.set(map, existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
+  }
+  return models.get(map);
+};
+/**
+ * Where each parked foe moves to stand clear (lab.mjs autoPlace's spiral, offline, against the records): its own
+ * contact rectangle (hull-dims.json) with 0.8 m to spare touches no record, the ground is under 0.2 slope, dry unless the set drives on
+ * water, and 9 m from every other tank where it starts. [dx, dz] per foe index, or null when every foe is clear.
+ */
+function parkNudges(scene, model) {
+  const water = waterBlocks(scene), half = (model.size ?? 1024) / 2 - 60, contacts = [];
+  const others = scene.actors.filter((a) => !a.name.startsWith('foe')).map((a) => a.pos);
+  const clear = (x, z, yawRad, [hl, hw]) => Math.abs(x) < half && Math.abs(z) < half && model.slopeAt(x, z) < 0.2
+    && (!water || model.wetAt(x, z) < 0.3) && !model.hullContacts(x, z, yawRad, hl + 0.8, hw + 0.8, contacts).length
+    && others.every(([ox, oz]) => Math.hypot(ox - x, oz - z) > 9);
+  let moved = false;
+  const nudge = scene.actors.filter((a) => a.name.startsWith('foe')).map((a) => {
+    const [x, z] = a.pos, yaw = (a.facingDeg ?? 0) * Math.PI / 180, hull = hullOf(a.id);
+    let spot = clear(x, z, yaw, hull) ? [x, z] : null;
+    for (let ring = 1; ring < 14 && !spot; ring++) for (let k = 0; k < 16 && !spot; k++) {
+      const ang = k / 16 * Math.PI * 2 + ring * 0.37, px = x + Math.cos(ang) * ring * 3, pz = z + Math.sin(ang) * ring * 3;
+      if (clear(px, pz, yaw, hull)) spot = [px, pz];
+    }
+    others.push(spot ?? [x, z]);
+    if (!spot || (spot[0] === x && spot[1] === z)) return [0, 0];
+    moved = true;
+    return [+(spot[0] - x).toFixed(2), +(spot[1] - z).toFixed(2)];
+  });
+  return moved ? nudge : null;
+}
 export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   const planned = !ownFilm.routes ? MOTION_PLAN[n] : null;
   const film = planned ? { ...Object.fromEntries(Object.entries(ownFilm).filter(([k]) => !OWN_MOTION.includes(k))), ...Object.fromEntries(Object.entries(planned).filter(([k]) => k !== 'note' && k !== 'checks')) } : ownFilm;
@@ -421,9 +484,21 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     ...(film.formation ? { formation: film.formation } : {}), ...(film.count ? { count: film.count } : {}),
     ...(film.lineup ? { lineup: film.lineup } : {}), ...('enemies' in film ? { enemies: film.enemies } : {}),
     ...(film.anchor ? { anchor: film.anchor } : {}), ...(film.heading != null ? { heading: film.heading } : {}) };
+  const recast = RECAST[n];
+  if (recast) {
+    base.lineup = recast.lineup;
+    if (recast.foes && base.enemies) base.enemies = { ...base.enemies, lineup: recast.foes };
+  }
   const [camo, foeCamo] = PAINT[n] ?? [];
   if (camo) base.camo = camo;
   if (foeCamo && base.enemies) base.enemies = { ...base.enemies, camo: foeCamo };
+  // parked foes stand clear of the props (2026-10-06: with the lab's spiral nudge off for routed takes, two stood in
+  // Verdant's schoolhouse): placed off them here, against the battlefield's own records, before any gun aims at them
+  const model = base.enemies ? modelOf(set.map) : null;
+  if (model) {
+    const nudge = parkNudges(buildShot(base, { durMs: DUR, ...film, still }), model);
+    if (nudge) base.enemies = { ...base.enemies, nudge };
+  }
   // the lens must clear the battlefield's buildings: a camera path inside a wall or blind behind one is mirrored to the
   // hero's other side, tucked in and raised, or both — whichever clears the most (camera-clearance.mjs)
   let scene = buildShot(base, { durMs: DUR, ...film, still }), cameraFix = null, lens = film.cam;
@@ -444,7 +519,9 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     : choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
   scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
     effects: [...(film.effects ?? []), ...choreo.effects] });
-  if (set.autoPlace === false) scene.autoPlace = false;
+  // a routed take is placed and checked against the props by the planner (route-check.mjs propProblems): the lab's
+  // spiral nudge would shift its routes off the checked lines
+  if (set.autoPlace === false || film.routes) scene.autoPlace = false;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };

@@ -149,7 +149,8 @@ export const SETS = [
     films: [
       { id: 't16-fjord-passby', durMs: 3200, speed: 8, pinMs: 1400, effects: [], cam: RIG.passby({ side: 8.5, along: 0, lift: 0.6, fov: 44, look: [0, 0, 1.6] }) },
     ] },
-  { id: 'ironworks-night-yard', map: 'foundry', time: 'night', seed: 413, anchor: [40, -150], heading: 0, formation: 'line', picture: { exposure: 0.8 },
+  // (2026-10-06: no picture exposure lift — the Studio night's own camera sets its level, docs/STUDIO.md "The night's camera")
+  { id: 'ironworks-night-yard', map: 'foundry', time: 'night', seed: 413, anchor: [40, -150], heading: 0, formation: 'line',
     lineup: [CAST.t14, CAST.t90m, CAST.t14, CAST.t90m], camo: 'factory', count: 4,
     still: { fxTime: 920, effects: [flare([40, -60], 0, { heightM: 110, burnS: 40, intensity: 1.3, driftMps: 1.2 }), fireField([60, -110], 0), embers([60, -110], 0), fire('hero', 860), fire('ally2', 700), dust('hero', 500, 10, 0.9)], cameras: [{ name: 'front-low', side: 4, along: 16, lift: 0.7, fov: 38 }, { name: 'stacks', side: -20, along: -30, lift: 4, fov: 40, lookHero: [0, 40, 6] }] },
     films: [
