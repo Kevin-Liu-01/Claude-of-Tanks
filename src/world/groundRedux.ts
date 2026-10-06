@@ -225,7 +225,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   titan_gorge: { ...ARID, grass: null },
   skybridge: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.4, swashLines: 0.3, grass: null },
   polders: { ...STILL_WATER, grass: reed(0.7, 1.5, 0.85, 0.7) },
-  copper_mesa: { ...ARID, grass: null },
+  // (the map-revival lane, Copper Mesa round 2: Queenstown's bare conglomerate — no wind's patchwork or ripples, the
+  // rills' hollows darker and damper, scree at the slopes' feet)
+  copper_mesa: { ...ARID, patchwork: 0, windRipple: 0, foldMoist: 0.5, foldAO: 0.65, scree: 0.45, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
   oasis: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.2) },
   // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice

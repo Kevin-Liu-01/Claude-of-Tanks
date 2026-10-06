@@ -217,7 +217,7 @@ const newMapPalettes = {
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],
   polders: ['verdant', 'coastal'],
-  copper_mesa: ['badlands', 'foundry'],
+  copper_mesa: ['copper_mesa', 'foundry'],
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
   whiteout: ['winter', 'winter'],
@@ -302,7 +302,14 @@ for (let i = 0; i < winterRgb.length; i++) {
   assert.ok(Math.abs(gradedRgb[i] - expected) <= 1, `graded snow byte ${i}: ${gradedRgb[i]} vs winter ${winterRgb[i]} × ${whiteoutSnowTint[i % 3]}`);
 }
 assert.equal(snowRgb(winterLayer).length, winterRgb.length, 'grading Whiteout leaves the winter composite bytes in place');
-for (const mapId of ['oasis', 'copper_mesa', 'titan_gorge', 'skybridge']) {
+// (2026-10-05, the map-revival lane's Copper Mesa round 2: Queenstown's hills are pink-grey conglomerate, not
+// sandstone — its rock layer is the sourced rock set toned pink-grey, below)
+{
+  const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+  await applySourcedTerrain('copper_mesa', layers, getMapConfig('copper_mesa').splat);
+  assert.equal(layers.R.albedo.disposeCount, 1, 'copper_mesa: the conglomerate is the sourced rock set, toned pink-grey');
+}
+for (const mapId of ['oasis', 'titan_gorge', 'skybridge']) {
   const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
   await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
   assert.equal(layers.G.albedo.disposeCount, 1, `${mapId}: sand replaces the base fallback`);
@@ -366,7 +373,8 @@ for (const name of ['albedo', 'normal', 'surface']) {
 }
 for (const bucket of ['plaster', 'wood']) assert.deepEqual(sourcedBuildingTintPolicy('orchard', bucket),
   sourcedBuildingTintPolicy('autumn', bucket), 'the Orchard-only change does not recolor its other building surfaces');
-for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['copper_mesa', 'desert']]) {
+// (2026-10-05, the map-revival lane: Copper Mesa is Queenstown's button grass now, no longer the desert's tones)
+for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert']]) {
   const vegetation = getMapConfig(mapId).vegetation;
   const parentVegetation = getMapConfig(parent).vegetation;
   assert.equal(vegetation.grassTexTone, parentVegetation.grassTexTone,
