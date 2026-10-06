@@ -7407,6 +7407,28 @@ carrying 42 % of the clear light. Three scaled laws, all at 1 on the 28 maps wit
   82 returning; 2 % keeps the share where it was. A deck with gaps keeps its clear sun in the gaps.
 QA knobs of the same names.
 
+### 2026-10-05 — one wind per battlefield (the skies lane)
+
+**The combat FX lane:** on Verdant the volumetric clouds drifted toward ~205° while the trees and the grass swayed toward
+~37° — the cloud layer fell back to a drift derived from the sun's azimuth (+90°) where a map authored none, the
+vegetation to its ground profile's prevailing wind, and on most maps the two nearly opposed (smoke follows the clouds, so
+a kill's column leaned against the trees' sway).
+
+**One surface wind per map** (`world/sceneWind.ts`, a table every reader can import without a map config): the ocean
+block's authored wind (the waves are the most visible wind on a coast), else the ground profile's grass wind, else the
+clouds' authored drift un-veered, else the legacy drift un-veered; its speed the ocean's, else 0.6 of the cloud regime's
+wind aloft, else 4 m/s. **The clouds' drift is that wind veered 25° with height** (`SCENE_WIND_VEER_DEG`: real winds veer
+through the friction layer, a few tens of degrees; they never oppose): the battle's sky preset carries the map's scene
+wind beside its cloudscape (main.ts, worldActivationRuntime.ts) and the cloud layer's derivation takes it in place of both
+the sun-derived drift and a cloudscape's own (`cloudPresets.ts`). A stub with no map id carries none. Mars drifts as it
+did (its authored drift is its scene wind's). Street rows are axial, so a reversed drift turns them only by the
+difference modulo 180°.
+
+**Readers:** the clouds read it now; the vegetation sway (`treeClimate.ts`), the grass (`tallGrass.ts`'s profile wind),
+the smoke and the ocean read `sceneWindFor(mapId)` as their lanes adopt it. `sceneWind.selftest` re-derives every row from
+its sources and pins every map's cloud drift to its surface wind plus the veer (within 45°; the old drift was more than
+90° from it on 15 maps).
+
 
 ## Acceptance is visual and measured
 
