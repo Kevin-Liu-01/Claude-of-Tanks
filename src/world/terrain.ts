@@ -4769,7 +4769,10 @@ void splatCompute() {
       // (the tier, landUseTierOf: Low reads the bake alone, Medium adds the field's wet and dry, High everything)
       // (farmland: the rows' bend is a field's contour over tens of metres — one coarse read of the noise, no detail
       // octave: at its own level of detail the 77 m read wobbled the furrows into wood grain beside the tank)
-      float nBend = bendW > 0.001 && uLandTier > 1.5 ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
+      // (2026-10-06, the urban fast path: a town's lots are 8–24 m across — the rows' bend over tens of metres never shows
+      // in one, so an urban land use skips its read)
+      bool luUrb = uLandE.w > 0.5;
+      float nBend = bendW > 0.001 && uLandTier > 1.5 && !luUrb ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
       landW *= step(crop, 30.5); // (a zoned land use's texel in no zone — landUse.ts LAND_CROP_NONE: no field there)
@@ -4788,7 +4791,9 @@ void splatCompute() {
       bool luEdge = bnd < 1.5 && edgeM < 9.0 + 1.3 * uLandB.y;
       float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
-      if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
+      // (the urban fast path: a lot ends on its line — its wander a sixth of a field's, no headland and no hedge bank — so
+      // an urban land use's edge zone reads none of the three)
+      if (luEdge && luNear > 0.001 && uLandTier > 1.5 && !luUrb) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
         nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
       bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 17.5);
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
@@ -5014,23 +5019,32 @@ void splatCompute() {
         vec2 hq = vec2(dot(wp.xz, rowDir), dot(wp.xz, vec2(-rowDir.y, rowDir.x)));
         bool concretePour = fract(jit * 7.31 + 0.13) > 0.64;
         vec3 hard = concretePour ? vec3(0.150, 0.147, 0.140) : vec3(0.084, 0.084, 0.087);
-        float hGrain = uLandTier > 0.5 ? nz(uv, 1.9, vec2(0.31, 0.57)).r : 0.5;
+        // (the urban fast path: each pattern is drawn while its period spans pixels and stands at its mean past that — the
+        // grain's read skipped once its half metre is under ~4 px, the slabs' and the repairs' tones by their cells')
+        bool hFast = luUrb; // (every hardstanding is a town's; the old path kept for any other)
+        float hGrain = uLandTier > 0.5 && (!hFast || tileVis(0.53) > 0.004) ? nz(uv, 1.9, vec2(0.31, 0.57)).r : 0.5;
         hard *= 0.92 + 0.16 * hGrain;
         if (concretePour) {
           vec2 sl = fract(hq / 4.0);
           vec2 sd = min(sl, 1.0 - sl) * 4.0;
           hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
-          hard *= 0.92 + 0.16 * cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x;
+          float slabV = hFast ? tileVis(4.0) : 1.0;
+          float slabH = slabV > 0.004 ? cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x : 0.5;
+          hard *= 0.92 + 0.16 * mix(0.5, slabH, slabV);
         }
         vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
-        vec2 hh = cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0));
+        // (past its cells' visibility a repaired surface is its mean: three tenths repaired, half of them darker, half paler)
+        float repV = hFast ? tileVis(3.1) : 1.0;
+        vec2 hh = repV > 0.004 ? cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0)) : vec2(1.0, 0.0);
         float repair = step(hh.x, 0.30);
         vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
         float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
-        hard = mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair);
+        vec3 hardMean = hard * (0.70 + 0.30 * 0.5 * (0.78 + 0.5)) + 0.30 * 0.5 * 0.5 * vec3(0.13, 0.128, 0.122);
+        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair), repV);
         hard *= 1.0 - 0.45 * seamH;
-        float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
-          * (1.0 - repair) * tileVis(0.5) : 0.0;
+        float crackV = tileVis(0.5);
+        float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
+          * (1.0 - repair) * crackV : 0.0;
         hard = mix(hard * (1.0 - 0.45 * crackH), vec3(0.060, 0.070, 0.036), crackH * 0.35 * (1.0 - smoothstep(0.03, 0.08, gFootM)));
         float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, nzq(uv, 0.17, vec2(0.37, 0.83)).x) : 0.0;
         hard *= 1.0 - 0.22 * hStain;
@@ -5072,7 +5086,8 @@ void splatCompute() {
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
       // along the edge (the tall-grass tier flattens and weeds the same strip; the margin itself grows rank and tall)
-      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5) {
+      // (the urban fast path: a lot ends on its line, a kerb or a fence — no drill turned in it, so no headland)
+      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5 && !luUrb) {
         float headW = 3.0 + 2.5 * nEdge.y;
         float into = edgeW - marginM;
         float headL = inField * (1.0 - smoothstep(headW - 1.2, headW, into)) * (1.0 - track);
