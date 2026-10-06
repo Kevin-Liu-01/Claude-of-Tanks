@@ -128,6 +128,7 @@ import {
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint } from './wrecks.ts';
+import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -429,6 +430,8 @@ interface PropsSettings {
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
   tankWrecks?: TankWreckSettings;
+  /** The map-vehicles lane (P5): single vehicles the map authors at a spot (maps/vehicleSetPieces.ts), laid by the kits. */
+  vehicleSetPieces?: readonly VehicleSetPiece[];
   rockSink?: number;
   /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
    *  gauntlet wave 48 on Redrock: boulders hanging on the jebels' walls). Default TALUS_DEG (35); null: no limit. */
@@ -8009,7 +8012,7 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders, animated: animatedDressing,
+    obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces,
   });
   yield { fine: true, stage: 'map-extras' };
 

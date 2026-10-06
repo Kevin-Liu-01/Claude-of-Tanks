@@ -97,6 +97,12 @@ export default {
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
     tankWrecks: { era: 'modern', count: 3, debris: true, ids: ['m1a2','type10','m551_sheridan'] },
+    // 2026-10-06 (the map-vehicles lane, P5): Apollo 17's rover where the crews left it — the Lunar Roving Vehicle by
+    // the ascent stage, its twin by the landing pad at the outpost's rotation (maps/vehicleSetPieces.ts)
+    vehicleSetPieces: [
+      { kind: 'lrv' as const, x: 108, z: -64, yawDeg: 215 },
+      { kind: 'lrv' as const, x: -108, z: 64, yawDeg: 35 },
+    ],
     // The outpost round the landing field, each module paired with one at its rotation.
     orbitalSettlement: [
       { id: 'lunar-control', structure: 'missioncontrol', x: 58, z: 54, yawDeg: 0 },

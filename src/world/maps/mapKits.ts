@@ -32,6 +32,8 @@ import {
 import { createSnowDrift } from './snowDrift.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
+import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
+import { SET_PIECE_SIZE, buildSetPiece, type VehicleSetPiece } from './vehicleSetPieces.ts';
 import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
 } from '../collision.ts';
@@ -40,7 +42,7 @@ import {
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
 import {
-  RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength,
+  RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
 
@@ -154,6 +156,8 @@ interface DressingContext {
   colliders?: CollisionRecord[];
   /** Round 67: the renderer's sink for dressing it poses every frame (the moored hulls); omitted, the kit is static. */
   animated?: AnimatedDressing[];
+  /** The map-vehicles lane (P5): the map's authored vehicle set pieces (vehicleSetPieces.ts). */
+  vehicleSetPieces?: readonly VehicleSetPiece[];
 }
 
 type FocusedDressingContext = Pick<
@@ -1118,7 +1122,7 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated,
+  obstacles, colliders, animated, vehicleSetPieces,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
@@ -1145,6 +1149,62 @@ export function dressMapExtras({
   // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
   // its earlier dressing; a map without one draws nothing here.
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
+  // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
+  if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+}
+
+// The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
+// under its footprint's corners (pitched and rolled to the plane through them), into the painted bucket, with a solid
+// convex record over its footprint from the ground to its top (a shell collider where the kind stops shells).
+function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly VehicleSetPiece[]): void {
+  const { heightField, buckets } = ctx;
+  if (!buckets.baked) return;
+  type Built = { geo: THREE.BufferGeometry; hull: number[]; top: number };
+  const built = new Map<string, Built>();
+  const solidOf = (kind: VehicleSetPiece['kind'], wrecked: boolean): Built => {
+    const key = `${kind}${wrecked ? '/w' : ''}`;
+    const known = built.get(key);
+    if (known) return known;
+    const geo = buildSetPiece(kind, { wrecked });
+    // the record: the hull of the solids in plan (the dressing — wings, door leaves, lashings — left out) and their top
+    const p = geo.getAttribute('position'), skip = geo.userData.noCollisionVertices as Uint8Array | undefined;
+    const pts: Array<[number, number]> = [];
+    let top = 0;
+    for (let i = 0; i < p.count; i++) {
+      if (skip && skip[i]) continue;
+      pts.push([p.getX(i), p.getZ(i)]);
+      top = Math.max(top, p.getY(i));
+    }
+    const made = { geo, hull: convexHull2(pts), top };
+    built.set(key, made);
+    return made;
+  };
+  for (const piece of pieces) {
+    const solid = solidOf(piece.kind, !!piece.wrecked), geo = solid.geo;
+    const size = SET_PIECE_SIZE[piece.kind], yaw = (piece.yawDeg * Math.PI) / 180;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw), sx = fz, sz = -fx;
+    const at = (a: number, b: number): [number, number] => [piece.x + sx * a * size.hw + fx * b * size.hl, piece.z + sz * a * size.hw + fz * b * size.hl];
+    const h = (a: number, b: number) => { const [x, z] = at(a, b); return heightField.getHeightAt(x, z); };
+    const hFL = h(-1, 1), hFR = h(1, 1), hBL = h(-1, -1), hBR = h(1, -1);
+    const pitch = Math.atan2((hFL + hFR - hBL - hBR) / 2, size.hl * 2), roll = Math.atan2((hFR + hBR - hFL - hBL) / 2, size.hw * 2);
+    const y = (hFL + hFR + hBL + hBR) / 4;
+    const g = geo.clone();
+    g.rotateZ(roll);
+    g.rotateX(-pitch);
+    g.rotateY(yaw);
+    g.translate(piece.x, y, piece.z);
+    buckets.baked.push(g);
+    const footprint: Array<[number, number]> = [];
+    for (let k = 0; k + 1 < solid.hull.length; k += 2) {
+      const lx = solid.hull[k], lz = solid.hull[k + 1];
+      footprint.push([piece.x + sx * lx + fx * lz, piece.z + sz * lx + fz * lz]);
+    }
+    const ground = Math.min(hFL, hFR, hBL, hBR) - 0.1;
+    const record = setConvexShape({ min: [0, ground, 0], max: [0, y + solid.top, 0], kind: `set-piece-${piece.kind}` }, convexHull2(footprint));
+    ctx.obstacles?.push(record);
+    if (size.collider) ctx.colliders?.push(cloneCollisionRecord(record));
+  }
+  for (const e of built.values()) e.geo.dispose();
 }
 
 // =============================================================================
@@ -2227,6 +2287,8 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     }
     // 2026-10-01: a coal stage beside the stub (after its stops, so a spur without one keeps its draws)
     if (spur.coalStage) addSpurCoalStage(ctx, spur);
+    // 2026-10-06 (the map-vehicles lane, P5): the rolling stock standing on it (no draws)
+    if (spur.stock?.length) addSpurRollingStock(ctx, spur);
     // A spur that leaves the square through a cutting runs on in the open past the edge (railSpurs.ts RAIL_OPEN_*; the
     // round-67 tunnel portal is retired): the kit lays its first RAIL_OPEN_KIT_M on the open line's bed, after the
     // stops, so the square's dressing keeps its draws.
@@ -2435,6 +2497,40 @@ function dressRailYard(
   addRailYardLines(heightField, rng, buckets, washoutLiquid);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets);
+}
+
+// 2026-10-06 (the map-vehicles lane, P5): a spur's standing rolling stock (railSpurs.ts railStockPlacements,
+// rollingStock.ts): each vehicle on the rails over its end axles (pitched to the ground there), into the painted bucket,
+// with a solid convex record from the ground to its top over its body (the buffers stand clear) that blocks shells.
+// No stream draws: the yard's dressing keeps its own.
+const RAIL_HEAD_Y = 0.335;
+function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig): void {
+  const { heightField, buckets } = ctx;
+  if (!buckets.baked) return;
+  const built = new Map<string, THREE.BufferGeometry>();
+  for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
+    const kind = p.kind as RollingStockKind;
+    let geo = built.get(kind);
+    if (!geo) { geo = buildRollingStock(kind); built.set(kind, geo); }
+    const L = ROLLING_STOCK_LENGTH[kind], reach = L * 0.3;
+    const yF = heightField.getHeightAt(p.x + p.ux * reach, p.z + p.uz * reach);
+    const yB = heightField.getHeightAt(p.x - p.ux * reach, p.z - p.uz * reach);
+    const pitch = Math.atan2(yF - yB, reach * 2), y = (yF + yB) / 2 + RAIL_HEAD_Y;
+    const g = geo.clone();
+    g.rotateX(-pitch);
+    g.rotateY(Math.atan2(p.ux, p.uz));
+    g.translate(p.x, y, p.z);
+    buckets.baked.push(g);
+    const body = ROLLING_STOCK_BODY[kind], hw = body.w / 2, hl = L / 2 - 0.62;
+    const sx = p.uz, sz = -p.ux; // the vehicle's right in the plane
+    const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) =>
+      [p.x + sx * a * hw + p.ux * b * hl, p.z + sz * a * hw + p.uz * b * hl] as [number, number]);
+    const ground = Math.min(yF, yB) - 0.1;
+    const record = setConvexShape({ min: [0, ground, 0], max: [0, y + body.h, 0], kind: 'rolling-stock' }, convexHull2(corners));
+    ctx.obstacles?.push(record);
+    ctx.colliders?.push(cloneCollisionRecord(record));
+  }
+  for (const g of built.values()) g.dispose();
 }
 
 // 2026-10-01 (Cinder Junction): the stockpiles of a spur's coal stage (railSpurs.ts railCoalStageStations): the yards'
