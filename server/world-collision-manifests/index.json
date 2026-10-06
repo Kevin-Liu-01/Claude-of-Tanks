@@ -160,7 +160,7 @@
     },
     "airfield": {
       "bytes": 904692,
-      "sha256": "f854acb0110065099a76700de2522038b4b3db6ea0b13ef13b796a529bef4ddd",
+      "sha256": "cafcd2afb71f3d540c9ab6ee673e835e07b6b9374c04e46224e09d2f0276abfd",
       "obstacles": 2481,
       "colliders": 2483,
       "concealers": 1967
