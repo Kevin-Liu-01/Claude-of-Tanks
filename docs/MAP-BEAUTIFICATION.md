@@ -7244,8 +7244,8 @@ its plinth under the curved four-sided roof, the smaller cella and its roof abov
 triple-arched front faced with terracotta plaques turned toward the square (a 9 m cella, 2 182 desktop triangles).
 Census [6575, 6226, 8252]; every structure, non-tree record and tree where it stood. Pacing (4 seeds) 244/173/150/271 s
 against the head's 179/223/160/246 s. Cost: the establishing shot −0.45 ± 0.58 ms and chase −0.88 ± 0.38 (accept); the
-temple's view 0.32 ± 0.48 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.08 ms, no long task
-and no program compiled during a slot.
+temple's view 0.32 ± 0.48, and on its quiet-window re-run 0.02 ± 0.43 (accept); every CPU median within 0.08 ms, no long
+task and no program compiled during a slot.
 
 ### 2026-10-05 — no lens flare under a closed deck; the ghosts and the halo turned down (the skies lane)
 
