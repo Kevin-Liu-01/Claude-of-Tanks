@@ -2112,6 +2112,31 @@ function makeGoralBacowka(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('saunahut', out);
 }
 
+/**
+ * The Podhale's log house for the alpine refuge (map revival lane 2, round 2; gauntlet wave 110b: "American round-log
+ * cabins mixed into the village"): square-hewn spruce courses notched at the corners, the side logs and the end logs
+ * running past them in turn, a steep shingle gable over a deep verge, the door and its threshold, a small window.
+ * Inside the refuge type's footprint and height.
+ */
+function makeGoralChata(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.goralLog;
+  // the courses stand on a granite footing course; the build keeps inside the family's height band (0 to 5.8 m)
+  const w = 5.6, d = 7.2, course = 0.26, n = 10, foot = 0.22, wallH = foot + course * n, roofH = 2.95;
+  colored(out, box(w + 0.1, foot, d + 0.1).translate(0, foot / 2, 0), 0x77736b, rng, 0.06);
+  for (let k = 0; k < n; k++) {
+    const y = foot + k * course + course / 2, h = course * 0.94, tone = k % 2 ? p[0] : p[1], sides = k % 2 === 0;
+    for (const s of [-1, 1]) {
+      colored(out, box(0.26, h, sides ? d + 0.5 : d - 0.52).translate(s * (w / 2 - 0.13), y, 0), tone, rng, 0.06);
+      colored(out, box(sides ? w - 0.52 : w + 0.5, h, 0.26).translate(0, y, s * (d / 2 - 0.13)), tone, rng, 0.06);
+    }
+  }
+  colored(out, gable(w + 1.0, roofH, d + 0.8).translate(0, wallH - 0.05, 0), p[2], rng, 0.08);
+  colored(out, box(0.9, 1.75, 0.06).translate(-1.0, foot + 0.88, d / 2 + 0.02), 0x2a2018, rng, 0.04);
+  colored(out, box(1.2, foot, 0.6).translate(-1.0, foot / 2, d / 2 + 0.33), 0x77736b, rng, 0.08);
+  colored(out, markWorldAperture(box(0.7, 0.62, 0.06), [0, 0, 1]).translate(1.3, foot + 1.45, d / 2 + 0.02), 0x2b3236, rng, 0.04);
+  return mergeConnectedStructure('alpinerefuge', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2123,6 +2148,8 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     // the Podhale, 1945: the sauna hut is a shepherds' bacówka on the meadow
     goral: Object.freeze({
       saunahut: variant('saunahut', REGIONAL_PAL.goralLog, makeGoralBacowka),
+      // the strongpoint's refuge: a goral log house, not the generic cabin
+      alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.goralLog, makeGoralChata),
     }),
     bengal: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),

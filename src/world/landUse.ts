@@ -143,7 +143,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   strip: [[0, 0.16], [1, 0.20], [2, 0.12], [3, 0.14], [4, 0.14], [7, 0.12], [5, 0.12]],
   // the Podhale's strip fields in January (map revival lane 2, 2026-10-05): oats and potatoes ploughed in, the furrows
   // showing through a thin snow; the stubble of the rye and the oats; the hay meadows; a strip of barley stubble
-  podhale: [[4, 0.34], [5, 0.30], [13, 0.22], [2, 0.14]],
+  // (round 2, gauntlet wave 110b: "hard-edged dirt rectangles ... the strips read as yellow bands") the snow lies on all
+  // of them: the plough's share small, the stubble and the meadows most of the rotation, the whole under half the strength
+  podhale: [[4, 0.08], [5, 0.40], [13, 0.40], [2, 0.12]],
   // the chars of the Jamuna: small paddies, flooded, green and ripe, jute and a little grazing
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
@@ -226,7 +228,7 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // trace over the snowpack (strength 0.3), the furrows and the stubble grey and straw through a thin cover, the hay
   // meadows white; a track along some of the strips' long lines, a few balks grown up with scrub
   winter: {
-    strength: 0.3, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.25, hedgeShare: 0.12,
+    strength: 0.14, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.25, hedgeShare: 0.12,
     warpM: 14, region: 'podhale', salt: 107,
   },
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)

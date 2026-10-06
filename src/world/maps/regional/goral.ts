@@ -78,6 +78,19 @@ function dialect(st: GoralState): HouseDialect {
 }
 
 /** The shingle roof: steep, a small hip at the top of each gable, wide eaves. */
+/**
+ * January's snow lying on a roof (round 2, gauntlet wave 110b: "the log houses are clean mid-brown with almost no snow
+ * on the roofs"): a second covering over the shingles, the roof's own shape lifted onto their top, its edge showing at
+ * the eaves and verges; at 45–55° the props' snow cap (slope-masked) left these roofs bare. Dressing, on a snowbound map.
+ */
+function roofSnow(sink: PartSink, frame: HouseFrame): void {
+  const roof = frame.spec.roof;
+  if (roof.kind === 'flat') return;
+  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.16, decor: true, ridge: null };
+  const lift = roof.thickness / Math.cos(roof.pitchDeg * Math.PI / 180) + 0.012;
+  emitRoof(sink, roofGeometry(frame.spec.w, frame.spec.d, frame.eaveY + lift, snow), snow);
+}
+
 const gont = (pitch: number, eave: number, verge: number, kind: RoofSpec['kind'] = 'halfhip'): RoofSpec =>
   ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.14, bucket: 'roof', ridge: 'saddle', hipFrac: 0.3, hipPitchDeg: 60 });
 
@@ -181,6 +194,7 @@ function chalupa(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Retur
       chimneys: [{ x: (rng() - 0.5) * W * 0.3, z: (rng() - 0.5) * D * 0.3, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster', cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.22, spall: null,
     }, dialect(st));
+    if (ctx.snowCap) roofSnow(sink, frame);
     logWork(sink, frame, big ? [0, 1] : [0], look);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
@@ -226,6 +240,7 @@ const willa: RegionalBuilder = (ctx) => {
       chimneys: [{ x: -W * 0.2, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' },
         { x: W * 0.2, z: D * 0.18, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' }],
     }, dialect(st));
+    if (ctx.snowCap) roofSnow(sink, frame);
     logWork(sink, frame, [0, 1], look);
     const f = frame.faces.front;
     if (!st.mobile) { gableBoards(sink, f, frame); gableBoards(sink, frame.faces.back, frame); }
@@ -272,6 +287,7 @@ const szkola: RegionalBuilder = (ctx) => {
       roof: gont(45, 0.7, 0.6, 'halfhip'), gableBucket: 'wood', openings, gutters: null, verge: null, reveal: 0.24, spall: null,
       chimneys: [{ x: 0, z: -D * 0.25, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'slab' }],
     }, dialect(st));
+    if (ctx.snowCap) roofSnow(sink, frame);
     logWork(sink, frame, [0, 1], look);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
@@ -302,12 +318,14 @@ const kosciol: RegionalBuilder = (ctx) => {
   for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 1.4, sill: 1.6, spacing: 2.4, margin: 1.2, max: 3 })) openings.push(o);
   sink.placed(0, 0, 0, nz1 - D / 2, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'roof' }],
+      // (round 2, wave 110b: the shingle-clad walls read as "a brick-textured church") the nave's hewn logs
+      w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
       roof: gont(55, 0.55, 0.4, 'halfhip'), gableBucket: 'roof', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
       frame: WHITE, frameWidth: 0.05, frameOut: 0.03, bars: 'six', surround: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: PALE },
       sill: { bucket: 'structureWood', out: 0.08, colour: PALE }, shutters: null,
     }, st.rng, 0.3) });
+    if (ctx.snowCap) roofSnow(sink, frame);
     // the turret on the ridge: a little boarded lantern and its bulb
     const ry = frame.roof.ridgeY, tzz = -D * 0.15;
     sink.span('wood', -0.4, ry - 0.4, tzz - 0.4, 0.4, ry + 1.0, tzz + 0.4);
@@ -318,7 +336,7 @@ const kosciol: RegionalBuilder = (ctx) => {
   // the tower: battered shingled walls (a square frustum, closed), the boarded chamber, the bulb, the cross
   const h0 = 1.75, h1 = 1.35, shaft = 8.5;
   sink.span('stone', -h0 - 0.1, -0.4, tz - h0 - 0.1, h0 + 0.1, 0.45, tz + h0 + 0.1);
-  sink.cylinder('roof', [0, 0.45, tz], 'y', shaft - 0.45, h0 * Math.SQRT2, 4, {}, h1 * Math.SQRT2, true, Math.PI / 4);
+  sink.cylinder('wood', [0, 0.45, tz], 'y', shaft - 0.45, h0 * Math.SQRT2, 4, {}, h1 * Math.SQRT2, true, Math.PI / 4);
   // the door into the tower and the boarded chamber oversailing the shaft
   const tf: Face = { origin: [0, 0, tz + h0 - 0.06], u: [1, 0, 0], out: [0, 0, 1], width: 2 * h0 };
   doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.14, out: 0.06, colour: PALE }, steps: null, leafKind: 'plank' });
@@ -357,6 +375,7 @@ const stodola: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
       roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
     }, dialect({ ...st, litShare: 0 }));
+    if (ctx.snowCap) roofSnow(sink, frame);
     // the boards' battens down every face, broken at the doors
     if (!st.mobile) {
       const faces = storeyFaces(frame, 0);
@@ -462,6 +481,7 @@ const sklad: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: 'wood' }],
       roof: gont(40, 0.6, 0.5, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
     }, dialect({ ...st, litShare: 0 }));
+    if (ctx.snowCap) roofSnow(sink, frame);
     if (!st.mobile) {
       const faces = storeyFaces(frame, 0);
       for (const name of ['front', 'right', 'back', 'left'] as const) {
@@ -508,6 +528,9 @@ export const GORAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   rangerlodge: willa,
   schoolhouse: szkola,
   onionchurch: kosciol,
+  // the border's hamlets build their church from a kit's chapel (borderFarmsteads kitRoles): the wooden church, not the
+  // generic stone nave and spire
+  chapel: kosciol,
   barn: stodola,
   woodshed: drewutnia,
   depot: tartak,
@@ -528,7 +551,8 @@ export const GORAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
       // the stacks' whitewash
       plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.2), Math.min(1, l * 1.15 + 0.1)],
       // the logs: hewn spruce darkened by the smoke and the weather, honey where it is newer
-      wood: (h, s, l) => [h, Math.min(1, s * 0.85), Math.min(1, l * 0.78)],
+      // (round 2, wave 110b: "clean mid-brown") silvered and darkened by sixty winters, a few newer
+      wood: (h, s, l) => [h, Math.min(1, s * 0.6), Math.min(1, l * 0.64)],
     },
   },
   builders: GORAL_BUILDERS,

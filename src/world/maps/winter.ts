@@ -200,11 +200,13 @@ export default {
     species: ['birch', 'spruce', 'fir', 'aspen'],
     // round 48: spruce-led stands — the forest blocks on the ridge slopes are
     // Carpathian spruce with fir, birch and aspen on the lower ground
-    clusterMix: [['spruce', 0.40], ['fir', 0.24], ['birch', 0.24], ['aspen', 0.12]],
+    // map revival lane 2, round 2 (gauntlet wave 110b: "spruce stands as lone trees instead of massed forest"): the
+    // Carpathian spruce massed in its stands, the broadleaves a fringe
+    clusterMix: [['spruce', 0.56], ['fir', 0.26], ['birch', 0.12], ['aspen', 0.06]],
     loneMix: [['birch', 0.34], ['aspen', 0.28], ['spruce', 0.23], ['fir', 0.15]],
     rimMix: [['spruce', 0.48], ['fir', 0.27], ['birch', 0.15], ['aspen', 0.10]],
-    clusterCount: 74, // denser stands on the two ridge arms and the moraine (was 66)
-    loneCount: 92,
+    clusterCount: 96, // massed stands on the two ridge arms and the moraine (round 2: was 74, before it 66)
+    loneCount: 36, // (round 2: was 92, the lone trees salted over the snowfield)
     rimCount: 64,
     // round 48: the sawmill's cut blocks — no random stand lands in the four
     // clearings (three cuts on the ridge arms, the open saddle pass)
@@ -223,6 +225,11 @@ export default {
       // two crossings
       { x0: 22, z0: -330, x1: 30, z1: -196, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
       { x0: -34, z0: 300, x1: -44, z1: 384, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      // round 2 (wave 110b: "no trees around the settlement core"): the birches and spruces behind the houses on both
+      // sides of the street village, broken where the yards and the lanes reach them
+      { x0: -214, z0: -140, x1: -218, z1: 140, gap: 9, jitter: 4, skip: 0.32, species: 'birch' },
+      { x0: -44, z0: -140, x1: -40, z1: 140, gap: 9, jitter: 4, skip: 0.32, species: 'birch' },
+      { x0: -226, z0: -120, x1: -230, z1: 120, gap: 10, jitter: 4, skip: 0.4, species: 'spruce' },
     ],
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
     // speckle noise across the snowfield in wide shots (r5 -> r7 -> r8: 0.24
@@ -353,9 +360,11 @@ export default {
     wallStyle: 'fieldstone',
     inhabit: {
       stalls: 1, benches: 1, coreClutter: 6,
-      sleds: 6, bales: 8,
+      // (round 2, wave 110b: "a modern round hay bale") the meadows' hay stands in its stacks (stogi), no round bales
+      sleds: 6, bales: 0,
       troughs: 1, handcarts: 1, carts: 2,
-      roadFence: 'fencerail', yardFence: 'fenceplank',
+      // (round 2, wave 110b: "saturated orange rail fences") the lanes fenced in split spruce boards, as the yards
+      roadFence: 'fenceplank', yardFence: 'fenceplank',
       // DESTRUCTIBLES r1: a frozen supply column + winter bivouacs
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
       modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
