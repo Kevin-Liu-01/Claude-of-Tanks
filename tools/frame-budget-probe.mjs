@@ -28,7 +28,8 @@
 // its twin — the same dist — 369 and 3.20 M, and the twin's "null" of −8.3 ms compared two scenes): every slot reads its
 // scene's draws and triangles at the first pose before it measures, with a census of its visible meshes, and
 // judgeScenes holds it against the slots before it. Scene identity is the twins' triangles (slots of one root) within
-// --twin-tris-tol (3 %); draws may wander --draws-tol (10 %, dynamic culling); another build's own delta is accepted
+// --twin-tris-tol (3 %); draws may wander --draws-tol (25 %: dynamic culling moves them ±11 % within one dist, and
+// they only need to catch a gross difference such as hold 51's 46 %); another build's own delta is accepted
 // once two of its stagings in a row repeat their triangles within --stable-tol (1 %). A slot that fails is staged again
 // before it measures (three readings at most); an earlier slot the judgement implicates is measured again at the end of
 // the run; a slot whose measured counts leave its staged reading, or a report whose slots disagree at a pose, is VOID.
@@ -57,7 +58,7 @@ const DEFAULTS = Object.freeze({
   pattern: 'ABBA', views: ['chase', 'centre-far'], viewports: ['1600x900', '1920x1080'], frames: 240, block: 30,
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
-  twinTrisTol: 3, drawsTol: 10, stableTol: 1, sceneCheck: true,
+  twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -373,7 +374,7 @@ const pctOff = (a, b) => (a > 0 && b > 0 ? Math.abs(a - b) / Math.min(a, b) * 10
  * the judgement. Returns { verdict: 'agree' | 'restage' | 'void', restage: [key], accepted: [{ key, trisPct, drawsPct }],
  * pending: [key], notes }.
  */
-export function judgeScenes(pages, { twinTris = 3, draws = 10, stable = 1, maxReadings = 3, expectMore = [], baseRoot = pages[0]?.root } = {}) {
+export function judgeScenes(pages, { twinTris = 3, draws = 25, stable = 1, maxReadings = 3, expectMore = [], baseRoot = pages[0]?.root } = {}) {
   const notes = [], restage = new Set(), accepted = [], pending = [];
   let voided = false;
   const last = (p) => p.history[p.history.length - 1] ?? {};

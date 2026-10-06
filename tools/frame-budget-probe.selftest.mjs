@@ -189,7 +189,7 @@ assert.equal(stats([]).med, null);
     'a moving view glides at <m/s>');
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase@0']), /moving view/);
   // the pages' agreement: the coordinator's defaults (twins' triangles 3 %, draws 10 %, a delta repeated within 1 %), on
-  assert.deepEqual([o.twinTrisTol, o.drawsTol, o.stableTol, o.sceneCheck], [3, 10, 1, true]);
+  assert.deepEqual([o.twinTrisTol, o.drawsTol, o.stableTol, o.sceneCheck], [3, 25, 1, true]);
   const t = parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--twin-tris-tol=2', '--draws-tol=12', '--stable-tol=0.5', '--scene-check=off']);
   assert.deepEqual([t.twinTrisTol, t.drawsTol, t.stableTol, t.sceneCheck], [2, 12, 0.5, false]);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--draws-tol=x']), /percentages/);

@@ -596,8 +596,9 @@ the prefix decomposition through `tools/frame-pass-timer.mjs`:
   base drew 685 scene draws and 3.50 M triangles there, its twin 369 and 3.20 M, and the twin's −8.3 ms "null" compared
   the two — so every slot reads its scene's draws and triangles at the first pose before it measures, with a census of
   its visible meshes by subtree, and `judgeScenes` holds it against the slots before it. Scene identity is the twins'
-  triangles (slots of one root) within `--twin-tris-tol` (3 %); draws may wander `--draws-tol` (10 %: dynamic culling
-  moved them 3.8–5.9 % cycle to cycle within one dist while the triangles held within 1 %); another build's own delta is
+  triangles (slots of one root) within `--twin-tris-tol` (3 %); draws may wander `--draws-tol` (25 %: dynamic culling
+  moved them 3.8–5.9 % cycle to cycle within one dist on Verdant and ±11 % on mr2's chase pages while the triangles held
+  within 1–3 %, and the draws only need to catch a gross difference such as hold 51's 46 %); another build's own delta is
   accepted once two of its stagings in a row repeat its triangles within `--stable-tol` (1 %). A slot that fails is
   staged again before it measures (three readings at most), an earlier slot the judgement implicates measures again at
   the end of the run, and a slot whose measured counts leave its staged reading, or a report row whose slots disagree,
