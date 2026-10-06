@@ -449,3 +449,27 @@ dragging, keyboard movement, hiding/restoring, saving, canceling, reset, reload
 persistence, Escape ownership and minimal HUD visibility. The DOM-only matrix
 uses production HUD components at 1440×900, 390×844, 667×375 and 568×256. It does
 not claim native-device touch or rendered ballistic-scene validation.
+
+
+## Service Record and battle debrief
+
+Garage → Service Record uses the shared modal, with keyboard tabs for Overview,
+Medals, Achievements and History. Medals have larger ribbons, engraved symbols,
+laurels and recognizable tier finishes. Hover, keyboard focus or tap reveals
+the actual award requirements. Tooltips sit above scrolling content, stay in
+the viewport and dismiss before the modal on Escape. Locked awards remain
+inspectable. First-earned dates and counts come from the saved record.
+
+Victory, defeat and draw use a common after-action report: personal damage,
+kills and accuracy, followed by named awards and the best shot. Expand combat
+details for penetration, blocked/received damage, deaths and the kill ledger.
+The Battle Outcome tab includes every team member. Garage/Battle Again remain
+accessible while report content scrolls. Multiplayer readiness lives inside
+the report, so short screens can reach both readiness and the footer.
+
+`node tools/service-record.browser.mjs` runs the production Garage entry and
+four record tabs at desktop, 390×844, 320×568, 667×375, 568×256 and Chinese
+landscape. `node tools/end-screen-presentation.browser.mjs` runs victory,
+defeat, draw, empty awards and multiplayer readiness, with 21-member teams.
+Both tools are DOM-only regressions: they verify layout, interaction and
+keyboard focus without claiming rendered battle or native mobile performance.

@@ -124,8 +124,8 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
   const reasoning = MEDALS.filter((medal) => medal.group === 'reasoning');
   const reasoningTiles = reasoning.map((medal) => {
     const tally = view.medals[medal.id];
-    return `<div class="cot-record-reason${tally ? ' is-earned' : ''}">${medalSVG(medal, 46, { locked: !tally })}` +
-      `<div><strong>${medalName(medal.id)}</strong><small>${tally ? `×${num(tally.count)}` : t('garage.record.notEarned')}</small></div></div>`;
+    return `<button type="button" class="cot-record-reason${tally ? ' is-earned' : ''}" data-medal-tip="${medal.id}">${medalSVG(medal, 64, { locked: !tally })}` +
+      `<div><strong>${medalName(medal.id)}</strong><small>${tally ? `×${num(tally.count)}` : t('garage.record.notEarned')}</small></div></button>`;
   }).join('');
   const reasoningCard = `<section class="cot-record-card cot-record-reasoning">` +
     `<header class="cot-record-card-head">${uiIconSVG('lightbulb', 15)}<strong>${t('service.group.reasoning')}</strong>` +
@@ -144,8 +144,8 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
     `<header class="cot-record-card-head">${uiIconSVG('gold', 15)}<strong>${t('garage.record.latestMedals')}</strong></header>` +
     (latest.length
       ? `<div class="cot-record-latest-row">${latest.map((medal) =>
-        `<div class="cot-record-latest-medal" title="${safe(medalName(medal.id))}">${medalSVG(medal, 34)}` +
-        `<span>${medalName(medal.id)}</span></div>`).join('')}</div>`
+        `<button type="button" class="cot-record-latest-medal" data-medal-tip="${medal.id}">${medalSVG(medal, 48)}` +
+        `<span>${medalName(medal.id)}</span></button>`).join('')}</div>`
       : `<div class="cot-record-empty">${t('garage.record.noMedals')}</div>`) +
     `</section>`;
 
@@ -184,9 +184,8 @@ function medals(view: ServiceRecordView): string {
       const tally = view.medals[medal.id];
       const fresh = unseen.has(`medal:${medal.id}`);
       return `<article class="cot-record-medal${tally ? ' is-earned' : ' is-locked'}${fresh ? ' is-new' : ''}" data-medal="${medal.id}">` +
-        `<div class="cot-record-medal-art">${medalSVG(medal, 52, { locked: !tally })}</div>` +
+        `<div class="cot-record-medal-art"><button type="button" class="cot-record-medal-inspect" data-medal-tip="${medal.id}" aria-label="${safe(medalName(medal.id))} — ${safe(t('garage.record.requirement'))}">${medalSVG(medal, 88, { locked: !tally })}</button></div>` +
         `<div class="cot-record-medal-copy"><strong>${medalName(medal.id)}</strong>` +
-        `<p>${t(`service.medal.${medal.id}.desc`)}</p>` +
         (tally
           ? `<span class="cot-record-medal-count">×${num(tally.count)}<small>${t('garage.record.firstEarned', { date: when(tally.first) })}</small></span>`
           : `<span class="cot-record-medal-count none">${t('garage.record.notEarned')}</span>`) +
@@ -204,11 +203,11 @@ function achievementCard(entry: AchievementProgress, fresh: boolean): string {
   const floor = tier > 0 ? def.tiers[tier - 1] : 0;
   const pct = next == null ? 100 : Math.max(0, Math.min(100, ((value - floor) / Math.max(1, next - floor)) * 100));
   return `<article class="cot-record-ach tier-${tier}${fresh ? ' is-new' : ''}" data-achievement="${def.id}">` +
-    `<div class="cot-record-ach-art">${achievementSVG(def, tier, 42)}</div>` +
+    `<button type="button" class="cot-record-ach-art" data-achievement-tip="${def.id}" data-award-tier="${tier || 1}" aria-label="${safe(t(`service.achievement.${def.id}.name`))}">${achievementSVG(def, tier, 64)}</button>` +
     `<div class="cot-record-ach-copy"><div class="cot-record-ach-title"><strong>${t(`service.achievement.${def.id}.name`)}</strong>` +
     `<span class="cot-record-tier">${tier ? ROMAN[tier] : '—'}</span></div>` +
     `<p>${t(`service.achievement.${def.id}.desc`, { target: num(target) })}</p>` +
-    `<div class="cot-record-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${pct.toFixed(1)}%"></i></div>` +
+    `<div class="cot-record-bar" role="progressbar" aria-label="${safe(t(`service.achievement.${def.id}.name`))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${pct.toFixed(1)}%"></i></div>` +
     `<div class="cot-record-ach-meta"><span>${num(Math.min(value, target))} / ${num(target)}</span>` +
     `<span>${next == null ? t('garage.record.complete') : t('garage.record.nextTier', { tier: ROMAN[tier + 1] })}</span></div></div>` +
     `${fresh ? `<span class="cot-record-new">${t('garage.record.new')}</span>` : ''}</article>`;
@@ -240,11 +239,11 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
   const rows = view.history.map((battle) => {
     const medalArt = battle.medals.map((id) => {
       const medal = MEDALS.find((entry) => entry.id === id);
-      return medal ? `<span title="${safe(medalName(id))}">${medalSVG(medal, 20)}</span>` : '';
+      return medal ? `<span tabindex="0" data-medal-tip="${id}" aria-label="${safe(medalName(id))}">${medalSVG(medal, 28)}</span>` : '';
     }).join('');
     const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '—';
     return `<li><details class="cot-record-battle result-${battle.result}">` +
-      `<summary><span class="cot-record-battle-row"><span class="cot-record-result">${resultLabel(battle.result)}</span>` +
+      `<summary tabindex="0"><span class="cot-record-battle-row"><span class="cot-record-result">${resultLabel(battle.result)}</span>` +
       `<span class="cot-record-battle-what"><b>${safe(names.vehicle(battle.vehicleId))}</b>` +
       `<small>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))} · ${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</small></span>` +
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${t('garage.record.kills')}</small></span>` +

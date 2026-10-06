@@ -3986,5 +3986,12 @@
   "hudEditor.fire": "开火按钮",
   "hudEditor.scopeButton": "瞄具按钮",
   "hudEditor.autoAim": "自动瞄准",
-  "hudEditor.loadError": "无法打开界面编辑器，请重试。"
+  "hudEditor.loadError": "无法打开界面编辑器，请重试。",
+  "garage.record.requirement": "获得条件",
+  "garage.record.inspectHint": "悬停、聚焦或轻触勋章，查看获得条件。",
+  "garage.record.awardedCount": "已获得 {count} 次",
+  "garage.record.loadError": "无法打开服役记录，请重试。",
+  "endScreen.combatDetails": "战斗明细与击毁车辆",
+  "endScreen.reportViews": "战斗报告视图",
+  "endScreen.awardedThisBattle": "本场战斗获得"
 }

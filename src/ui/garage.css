@@ -192,22 +192,6 @@
 /* LOCAL SERVICE RECORD: career totals, the medal case, achievement tiers and
    the last battles (serviceRecordView.ts) behind the top-bar Record control.
    The dialog keeps one height across tabs; only its body scrolls. */
-.cot-record-modal{--record-cond:'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
-  position:absolute;inset:0;z-index:90;display:none;place-items:center;
-  padding:24px;pointer-events:auto;background:rgba(3,6,9,.76);
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-.cot-record-modal.open{display:grid;}
-.cot-record-dialog{position:relative;display:flex;flex-direction:column;width:min(940px,calc(100vw - 48px));
-  height:min(780px,calc(var(--cot-viewport-height,100dvh) - 48px));overflow:hidden;color:#dce6ee;
-  background:linear-gradient(155deg,rgba(18,24,30,.99),rgba(7,11,15,.99) 70%);
-  border:1px solid rgba(166,184,199,.38);
-  box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 0 1px rgba(0,0,0,.6) inset;}
-.cot-record-dialog::before{content:'';position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(circle at 12% 0,rgba(240,160,48,.12),transparent 38%),
-    linear-gradient(115deg,transparent 0 63%,rgba(255,255,255,.022) 63% 64%,transparent 64%);}
-.cot-record-head{position:relative;flex:0 0 auto;display:flex;align-items:flex-start;gap:16px;padding:20px 24px 14px;}
-.cot-record-title{min-width:0;flex:1 1 auto;}
-.cot-record-head .eyebrow{font:900 8px var(--record-cond);letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
 .cot-sidebar-section-title{display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:7px;
   color:#8a97a3;font:700 10px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.24em;text-transform:uppercase;}
@@ -215,191 +199,8 @@
 .cot-sidebar-section-title > span{min-width:0;flex:1 1 auto;white-space:nowrap;}
 .cot-sidebar-section-title .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px;
   flex:0 0 24px;margin-left:0;letter-spacing:0;}
-.cot-record-head h2{margin-top:5px;font-size:24px;letter-spacing:.025em;color:#f3f7fa;}
-.cot-record-head p{margin-top:5px;font:700 9px var(--record-cond);letter-spacing:.12em;
-  text-transform:uppercase;color:#8293a1;}
-.cot-record-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-self:center;}
-.cot-record-chip{display:grid;grid-template-columns:auto auto;column-gap:7px;align-items:center;justify-content:start;
-  min-width:96px;padding:7px 10px;background:rgba(8,12,16,.72);border:1px solid rgba(146,164,180,.2);}
-.cot-record-chip svg{grid-row:1 / span 2;color:#f0b04a;}
-.cot-record-chip b{font-size:15px;line-height:1;color:#eef4f9;font-variant-numeric:tabular-nums;}
-.cot-record-chip small{margin-top:3px;font:800 7px var(--record-cond);letter-spacing:.14em;text-transform:uppercase;color:#7f909e;}
-.cot-record-chip.signature{border-color:rgba(240,160,48,.45);
-  background:linear-gradient(135deg,rgba(240,160,48,.16),rgba(8,12,16,.72));}
-.cot-record-close{flex:0 0 auto;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;
-  color:#9fb0bf;background:rgba(8,12,16,.72);border:1px solid rgba(146,164,180,.28);
-  font:400 22px/1 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;transition:color .12s,border-color .12s,background .12s;}
-.cot-record-close:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);background:rgba(35,24,10,.8);}
-.cot-record-tabs{position:relative;flex:0 0 auto;display:flex;gap:2px;padding:0 18px;border-bottom:1px solid rgba(146,164,180,.18);
-  overflow-x:auto;scrollbar-width:none;}
-.cot-record-tabs::-webkit-scrollbar{display:none;}
-.cot-record-tabs [role='tab']{position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:6px;padding:11px 14px 10px;
-  cursor:pointer;color:#8a9aa7;background:none;border:0;font:900 9.5px var(--record-cond);letter-spacing:.18em;
-  text-transform:uppercase;transition:color .12s;}
-.cot-record-tabs [role='tab']::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:transparent;}
-.cot-record-tabs [role='tab']:hover{color:#dce6ee;}
-.cot-record-tabs [role='tab'][aria-selected='true']{color:#ffd27a;}
-.cot-record-tabs [role='tab'][aria-selected='true']::after{background:#f0a030;}
-.cot-record-tabs [role='tab']:focus-visible{outline:2px solid #f0a030;outline-offset:-2px;}
-.cot-record-tab-count{font:800 8px var(--record-cond);letter-spacing:.06em;color:#66788a;}
-.cot-record-tabs [role='tab'].has-new::before{content:'';position:absolute;top:8px;right:5px;width:6px;height:6px;border-radius:50%;
-  background:#f0a030;box-shadow:0 0 8px rgba(240,160,48,.8);}
-.cot-record-body{position:relative;flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px 24px;
-  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
-.cot-record-body:focus{outline:none;}
-.cot-record-body:focus-visible{box-shadow:inset 0 0 0 2px rgba(240,160,48,.55);}
-.cot-record-body::-webkit-scrollbar{width:5px;}
-.cot-record-body::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
-.cot-record-body::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
-.cot-record-overview{display:grid;grid-template-columns:180px 1fr;gap:22px;align-items:center;}
-.cot-record-ring{--record-pct:0;position:relative;width:164px;aspect-ratio:1;border-radius:50%;
-  display:grid;place-items:center;margin:auto;
-  background:conic-gradient(#f0a030 calc(var(--record-pct) * 1%),rgba(255,255,255,.075) 0);
-  box-shadow:0 0 34px rgba(240,160,48,.1);}
-.cot-record-ring::before{content:'';position:absolute;inset:10px;border-radius:50%;
-  background:radial-gradient(circle at 50% 35%,#141b22,#090d11 70%);
-  border:1px solid rgba(146,164,180,.22);}
-.cot-record-ring-copy{position:relative;text-align:center;}
-.cot-record-ring-copy strong{display:block;color:#f4f7fa;font-size:37px;line-height:1;
-  font-variant-numeric:tabular-nums;letter-spacing:-.04em;}
-.cot-record-ring-copy span{display:block;margin-top:7px;color:#8fa0ad;font:900 8px var(--record-cond);
-  letter-spacing:.22em;text-transform:uppercase;}
-.cot-record-outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.cot-record-outcome,.cot-record-metric{padding:12px 13px;
-  background:linear-gradient(180deg,rgba(23,30,37,.72),rgba(10,14,18,.82));
-  border:1px solid rgba(146,164,180,.18);}
-.cot-record-outcome span,.cot-record-metric span{display:block;color:#7f909e;font:900 7.5px var(--record-cond);
-  letter-spacing:.17em;text-transform:uppercase;}
-.cot-record-outcome strong{display:block;margin-top:6px;font-size:20px;color:#eef4f9;
-  font-variant-numeric:tabular-nums;}
-.cot-record-outcome.win strong{color:#ffc66c;}
-.cot-record-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
-.cot-record-metric{min-height:77px;}
-.cot-record-metric strong{display:block;margin-top:8px;color:#eef4f9;font-size:18px;
-  line-height:1;font-variant-numeric:tabular-nums;}
-.cot-record-metric small{display:block;margin-top:5px;color:#6f808d;font:700 7px var(--record-cond);
-  letter-spacing:.08em;text-transform:uppercase;}
-.cot-record-cards{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:10px;margin-top:18px;}
-.cot-record-card{min-width:0;padding:13px 14px 14px;
-  background:linear-gradient(180deg,rgba(23,30,37,.72),rgba(10,14,18,.82));border:1px solid rgba(146,164,180,.18);}
-.cot-record-card-head{display:flex;align-items:center;gap:7px;margin-bottom:12px;color:#f0b04a;}
-.cot-record-card-head svg{flex:0 0 auto;}
-.cot-record-card-head strong{font:900 9px var(--record-cond);letter-spacing:.2em;text-transform:uppercase;color:#f3f7fa;}
-.cot-record-card-head small{margin-left:auto;font:700 7.5px var(--record-cond);letter-spacing:.1em;text-transform:uppercase;
-  color:#7f909e;text-align:right;}
-.cot-record-reasoning{border-color:rgba(240,160,48,.38);
-  background:radial-gradient(120% 90% at 0 0,rgba(240,160,48,.13),transparent 60%),
-    linear-gradient(180deg,rgba(23,30,37,.72),rgba(10,14,18,.82));}
-.cot-record-reason-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
-.cot-record-reason{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center;}
-.cot-record-reason strong{display:block;font:800 8.5px/1.25 var(--record-cond);letter-spacing:.06em;text-transform:uppercase;color:#cfd9e2;}
-.cot-record-reason small{display:block;margin-top:3px;font:800 8px var(--record-cond);letter-spacing:.08em;text-transform:uppercase;color:#66788a;}
-.cot-record-reason.is-earned small{font-size:11px;color:#ffd27a;}
-.cot-record-reason-stats{display:flex;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(146,164,180,.14);}
-.cot-record-reason-stats span{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px;font:800 7px var(--record-cond);
-  letter-spacing:.14em;text-transform:uppercase;color:#7f909e;}
-.cot-record-reason-stats b{font-size:13px;letter-spacing:.02em;color:#eef4f9;font-variant-numeric:tabular-nums;}
-.cot-record-latest-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px 6px;}
-.cot-record-latest-medal{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;text-align:center;}
-.cot-record-latest-medal span{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  font:800 7px/1.25 var(--record-cond);letter-spacing:.06em;text-transform:uppercase;color:#aebbc6;}
 .cot-medal-art,.cot-achievement-art{display:block;flex:0 0 auto;overflow:visible;filter:drop-shadow(0 4px 6px rgba(0,0,0,.55));}
 .cot-medal-art.is-locked,.cot-achievement-art.is-locked{filter:none;opacity:.6;}
-.cot-last-battle{margin-top:18px;padding:15px 16px;
-  background:linear-gradient(90deg,rgba(240,160,48,.075),rgba(13,18,23,.72));
-  border:1px solid rgba(146,164,180,.18);border-left:2px solid #f0a030;}
-.cot-last-battle-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
-  margin-bottom:11px;color:#8a9aa7;font:900 7.5px var(--record-cond);letter-spacing:.18em;text-transform:uppercase;}
-.cot-last-battle-head strong{color:#f0b04a;font-size:9px;}.cot-last-battle-head time{letter-spacing:.08em;}
-.cot-last-battle-grid{display:grid;grid-template-columns:minmax(130px,1.4fr) repeat(3,1fr);gap:12px;}
-.cot-last-battle-grid div{min-width:0;}.cot-last-battle-grid span{display:block;color:#758592;
-  font:900 7px var(--record-cond);letter-spacing:.15em;text-transform:uppercase;}
-.cot-last-battle-grid b{display:block;margin-top:5px;color:#dfe8ef;font-size:11px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.cot-record-empty{padding:28px;text-align:center;color:#8293a1;font:800 10px var(--record-cond);
-  letter-spacing:.12em;text-transform:uppercase;border:1px dashed rgba(146,164,180,.24);}
-.cot-record-card .cot-record-empty{padding:18px 14px;font-size:9px;line-height:1.5;}
-.cot-record-new{position:absolute;top:7px;right:8px;padding:2px 6px;font:900 7px var(--record-cond);letter-spacing:.18em;
-  text-transform:uppercase;color:#1a1004;background:#f0a030;box-shadow:0 0 10px rgba(240,160,48,.45);}
-/* medals */
-.cot-record-medal-group + .cot-record-medal-group{margin-top:20px;}
-.cot-record-medal-group h3{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 9px;padding-bottom:7px;
-  border-bottom:1px solid rgba(146,164,180,.18);font:900 9px var(--record-cond);letter-spacing:.22em;text-transform:uppercase;color:#f3f7fa;}
-.cot-record-medal-group h3 small{font:800 8px var(--record-cond);letter-spacing:.1em;color:#7f909e;}
-.cot-record-medal-group[data-group='reasoning'] h3{color:#ffd27a;border-bottom-color:rgba(240,160,48,.42);}
-.cot-record-medal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:8px;}
-.cot-record-medal{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;
-  background:linear-gradient(180deg,rgba(23,30,37,.66),rgba(10,14,18,.8));border:1px solid rgba(146,164,180,.16);}
-.cot-record-medal.is-earned{border-color:rgba(240,176,74,.3);}
-.cot-record-medal.is-new{border-color:rgba(240,160,48,.7);box-shadow:0 0 18px rgba(240,160,48,.14) inset;}
-.cot-record-medal-copy{min-width:0;padding-right:28px;}
-.cot-record-medal-copy strong{display:block;font-size:12px;letter-spacing:.02em;color:#f1f6fa;}
-.cot-record-medal.is-locked .cot-record-medal-copy strong{color:#9aa9b5;}
-.cot-record-medal-copy p{margin:3px 0 0;font-size:10.5px;line-height:1.38;color:#8fa0ad;}
-.cot-record-medal-count{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 8px;margin-top:6px;font:800 13px var(--record-cond);
-  color:#ffd27a;font-variant-numeric:tabular-nums;}
-.cot-record-medal-count small{font:700 7.5px var(--record-cond);letter-spacing:.1em;text-transform:uppercase;color:#6f808d;}
-.cot-record-medal-count.none{font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#5f707e;}
-/* achievements */
-.cot-record-ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:8px;}
-.cot-record-ach{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:11px 12px;
-  background:linear-gradient(180deg,rgba(23,30,37,.66),rgba(10,14,18,.8));border:1px solid rgba(146,164,180,.16);}
-.cot-record-ach.tier-3{border-color:rgba(230,177,74,.45);}
-.cot-record-ach.is-new{border-color:rgba(240,160,48,.7);}
-.cot-record-ach-copy{min-width:0;}
-.cot-record-ach-title{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
-.cot-record-ach.is-new .cot-record-ach-title{padding-right:36px;}
-.cot-record-ach-title strong{font-size:12px;letter-spacing:.02em;color:#f1f6fa;}
-.cot-record-tier{font:900 11px var(--record-cond);letter-spacing:.08em;color:#ffd27a;}
-.cot-record-ach.tier-0 .cot-record-tier{color:#5f707e;}
-.cot-record-ach-copy p{margin:3px 0 7px;font-size:10.5px;line-height:1.38;color:#8fa0ad;}
-.cot-record-bar{height:4px;overflow:hidden;background:rgba(255,255,255,.07);}
-.cot-record-bar i{display:block;height:100%;background:linear-gradient(90deg,#c27a2a,#f0a030 60%,#ffd27a);}
-.cot-record-ach-meta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;font:800 7.5px var(--record-cond);
-  letter-spacing:.12em;text-transform:uppercase;color:#7f909e;font-variant-numeric:tabular-nums;}
-/* history: each battle opens onto its kills, laid out as a chain of thought */
-.cot-record-history{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;}
-.cot-record-battle{background:linear-gradient(180deg,rgba(23,30,37,.66),rgba(10,14,18,.8));
-  border:1px solid rgba(146,164,180,.16);border-left:2px solid #5f707e;}
-.cot-record-battle.result-victory{border-left-color:#f0a030;}
-.cot-record-battle.result-defeat{border-left-color:#c2564c;}
-.cot-record-battle summary{display:block;padding:9px 12px;cursor:pointer;list-style:none;}
-.cot-record-battle-row{display:grid;grid-template-columns:70px minmax(0,1.6fr) 58px 72px minmax(0,1fr) auto;
-  align-items:center;gap:12px;}
-.cot-record-battle summary::-webkit-details-marker{display:none;}
-.cot-record-battle summary:hover{background:rgba(255,255,255,.025);}
-.cot-record-battle summary:focus-visible{outline:2px solid #f0a030;outline-offset:-2px;}
-.cot-record-result{font:900 8.5px var(--record-cond);letter-spacing:.16em;text-transform:uppercase;color:#8a9aa7;}
-.result-victory .cot-record-result{color:#ffc66c;}
-.result-defeat .cot-record-result{color:#e68a80;}
-.cot-record-battle-what{min-width:0;}
-.cot-record-battle-what b{display:block;overflow:hidden;font-size:12px;color:#eef4f9;text-overflow:ellipsis;white-space:nowrap;}
-.cot-record-battle-what small{display:flex;align-items:center;gap:5px;margin-top:3px;overflow:hidden;font:700 8px var(--record-cond);
-  letter-spacing:.1em;text-transform:uppercase;color:#7f909e;white-space:nowrap;text-overflow:ellipsis;}
-.cot-record-battle-what small svg{flex:0 0 auto;color:#f0b04a;}
-.cot-record-battle-num b{display:block;font-size:13px;color:#eef4f9;font-variant-numeric:tabular-nums;}
-.cot-record-battle-num small{display:block;margin-top:2px;font:800 7px var(--record-cond);letter-spacing:.14em;text-transform:uppercase;color:#6f808d;}
-.cot-record-battle-medals{display:flex;flex-wrap:wrap;gap:2px;min-width:0;}
-.cot-record-battle-medals .cot-medal-art{filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
-.cot-record-battle time{font:800 8px var(--record-cond);letter-spacing:.06em;color:#7f909e;text-align:right;white-space:nowrap;}
-.cot-record-battle-body{padding:2px 14px 14px;border-top:1px solid rgba(146,164,180,.12);}
-.cot-record-trace-head{display:flex;align-items:center;gap:7px;margin:10px 0 8px;color:#f0b04a;}
-.cot-record-trace-head strong{font:900 8.5px var(--record-cond);letter-spacing:.2em;text-transform:uppercase;color:#f3f7fa;}
-.cot-record-trace-head span{margin-left:auto;font:800 7.5px var(--record-cond);letter-spacing:.12em;text-transform:uppercase;color:#7f909e;}
-.cot-record-trace{position:relative;margin:0;padding:0 0 0 16px;list-style:none;}
-.cot-record-trace::before{content:'';position:absolute;left:4px;top:10px;bottom:10px;width:1px;background:rgba(146,164,180,.25);}
-.cot-record-trace li{position:relative;display:grid;grid-template-columns:54px 38px minmax(0,1fr) auto 42px;align-items:baseline;gap:10px;padding:5px 0;}
-.cot-record-trace li::before{content:'';position:absolute;left:-16px;top:9px;width:9px;height:9px;border-radius:50%;
-  background:#0b1015;border:1px solid #8a9aa7;}
-.cot-record-trace li.linked::before{background:#f0a030;border-color:#ffd27a;box-shadow:0 0 8px rgba(240,160,48,.6);}
-.cot-record-trace li.linked::after{content:'';position:absolute;left:-12px;top:-14px;width:2px;height:24px;background:#f0a030;}
-.cot-record-step{font:900 8px var(--record-cond);letter-spacing:.14em;text-transform:uppercase;color:#8a9aa7;}
-.cot-record-trace li.linked .cot-record-step{color:#ffd27a;}
-.cot-record-step-time{font:800 10px var(--record-cond);color:#aebbc6;font-variant-numeric:tabular-nums;}
-.cot-record-trace b{overflow:hidden;font-size:11.5px;color:#eef4f9;text-overflow:ellipsis;white-space:nowrap;}
-.cot-record-trace small{font:700 8px var(--record-cond);letter-spacing:.08em;text-transform:uppercase;color:#7f909e;white-space:nowrap;}
-.cot-record-step-gap{font:900 8px var(--record-cond);letter-spacing:.1em;color:#f0a030;text-align:right;}
-.cot-record-trace-empty{padding:8px 0 2px;font:800 9px var(--record-cond);letter-spacing:.1em;text-transform:uppercase;color:#7f909e;}
 /* r7: ONE flat orange plate, no gloss, no bevel highlight, no text shadow —
    the r5 two-stop gradient + inset bevels + letterform shadow still read as
    2012 Flash-game chrome, and the clip-path chamfer aliased at 1080p. The
@@ -1278,14 +1079,6 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   font-weight:800;line-height:1.3;letter-spacing:.09em;text-transform:uppercase;}
 body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
 @media (hover:none) and (pointer:coarse){.cot-eqtooltip{display:none!important;}}
-
-/* garage polish (spacing/focus only): keyboard-visible focus affordance on
-   the interactive chrome — one quiet amber ring, outline-based so nothing
-   shifts layout. Mouse clicks stay ring-free via :focus-visible. */
-.cot-battle:focus-visible,.cot-battle-mode:focus-visible,.cot-battle-choice:focus-visible,
-.cot-country-chip:focus-visible,.cot-country-edge:focus-visible,.cot-car-arrow:focus-visible,.cot-record-trigger:focus-visible,
-.cot-github:focus-visible,.cot-record-close:focus-visible{
-  outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
 .cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
   outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
 
@@ -1700,28 +1493,6 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow 
 }
 body[data-cot-width='phone'] .cot-card{width:102px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
-body[data-cot-width='phone'] .cot-record-overview{grid-template-columns:1fr}
-body[data-cot-width='phone'] .cot-record-modal{padding:10px}
-body[data-cot-width='phone'] .cot-record-dialog{width:100%;height:calc(var(--cot-viewport-height,100dvh) - 20px)}
-body[data-cot-width='phone'] .cot-record-tab-count{display:none}
-body[data-cot-width='phone'] .cot-record-head{flex-wrap:wrap;gap:10px;padding:15px 14px 10px}
-body[data-cot-width='phone'] .cot-record-summary{order:3;width:100%;justify-content:flex-start}
-body[data-cot-width='phone'] .cot-record-chip{flex:1 1 0;min-width:0}
-body[data-cot-width='phone'] .cot-record-tabs{padding:0 6px}
-body[data-cot-width='phone'] .cot-record-tabs [role='tab']{padding:10px 9px 9px;letter-spacing:.12em}
-body[data-cot-width='phone'] .cot-record-body{padding:14px}
-body[data-cot-width='phone'] .cot-record-ring{width:116px}
-body[data-cot-width='phone'] .cot-record-cards{grid-template-columns:1fr}
-body[data-cot-width='phone'] .cot-record-metrics,
-body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-body[data-cot-width='phone'] .cot-record-medal-grid,
-body[data-cot-width='phone'] .cot-record-ach-grid{grid-template-columns:1fr}
-body[data-cot-width='phone'] .cot-record-battle-row{grid-template-columns:56px minmax(0,1fr) auto;row-gap:6px}
-body[data-cot-width='phone'] .cot-record-battle-num.damage{display:none}
-body[data-cot-width='phone'] .cot-record-battle-medals{grid-column:2 / 3}
-body[data-cot-width='phone'] .cot-record-battle time{grid-column:3 / 4}
-body[data-cot-width='phone'] .cot-record-trace li{grid-template-columns:46px 34px minmax(0,1fr) auto}
-body[data-cot-width='phone'] .cot-record-trace small{display:none}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 245px)}
@@ -1929,9 +1700,6 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cgrid.camo{max-height:none;overflow:visible;flex:none}
 body[data-cot-input='coarse'] :is(.cot-camo-tag,.cot-camo-collection){font-size:11px}
 body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:80}
-body[data-cot-panels='overlay'] .cot-record-modal{padding:8px}
-body[data-cot-panels='overlay'] .cot-record-dialog{box-sizing:border-box;max-width:100%;min-width:0}
-body[data-cot-input='coarse'] .cot-record-close{width:44px;height:44px;min-width:44px;flex-shrink:0}
 
 body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){min-width:44px;min-height:44px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}

@@ -1,3 +1,5 @@
+import '../../src/ui/endScreenPresentation.css';
+import '../../src/ui/richTooltip.css';
 // Real production components, deterministic presentation data, no WebGL/simulation.
 import '../../src/ui/motion.css';
 import '../../src/ui/battleUiVisibility.css';

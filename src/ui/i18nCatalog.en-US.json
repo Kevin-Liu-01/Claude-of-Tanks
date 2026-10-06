@@ -3986,5 +3986,12 @@
   "hudEditor.fire": "Fire button",
   "hudEditor.scopeButton": "Scope button",
   "hudEditor.autoAim": "Auto aim",
-  "hudEditor.loadError": "Could not open the HUD editor. Try again."
+  "hudEditor.loadError": "Could not open the HUD editor. Try again.",
+  "garage.record.requirement": "Requirements",
+  "garage.record.inspectHint": "Hover, focus or tap a medal to view its requirements.",
+  "garage.record.awardedCount": "Awarded {count} times",
+  "garage.record.loadError": "Could not open Service Record. Try again.",
+  "endScreen.combatDetails": "Combat breakdown & destroyed vehicles",
+  "endScreen.reportViews": "Battle report views",
+  "endScreen.awardedThisBattle": "Earned in this battle"
 }
