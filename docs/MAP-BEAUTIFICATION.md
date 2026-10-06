@@ -7363,6 +7363,78 @@ facade craft") lists the vocabulary.
   Cinder Junction +47k) is drawn within the fine-detail distance only: on a desktop build the metalwork and the main
   render batch by the 120 m cells like the timber and stone (the metal's batch replaces its always-drawn mesh).
 
+### 2026-10-05 — Blackglass becomes Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane, mr1)
+
+**The district stands where PR #9's head (5d2461283) seated it, and Suzhou Creek now runs through it.** The International
+Settlement is on the creek's south bank and Zhabei, the Chinese district the Japanese shelled and burnt, on the north.
+The map keeps its id (`blackglass`); its name is Suzhou Creek in every catalogue, the roster docs and the manual reference.
+- *The creek* (`terrain.marshes`, createMarshChannel): it is 28–29 m of open water, narrowing to about 17 m at its four
+  bridges, which carry roads 4 and 5 and the two diagonals. Each deck rests on terrain.ts's bridge stations
+  (`crossing: 'bridge'`); the arched spans, parapets and deck collision come from mapKits.ts. The water is soft and wadeable
+  (about 0.55 m), so the bridges are preferred routes, not hard chokepoints.
+- *The re-siting*: the district replays the head's record (TOWN_PLANS, TOWN_LIGHT_PLANS and the new TOWN_ROW_PLANS for the
+  street rows; tools/record-town-plan.mjs). Only what the water reaches changes (props.ts `settlementOverWater`):
+  - five landmarks move to the nearest dry seat: the civic hall (16.9, 80.3) → (3.3, 67.8), the needle tower
+    (37.9, 100.3) → (39.2, 131.7), a ruin (84.7, 93.0) → (84.5, 81.0), the terrace tower (62.1, 116.3) → (44.4, 178.8)
+    and the foundry office (109.1, 109.3) → (99.9, 73.0);
+  - three street rows are left out.
+
+  townPlans.selftest holds this record diff. Against the head: 137 structures keep their seats (within 1.9 m), the
+  head's 5 carriageway movers stand where the head moved them, the 5 landmarks are off the water and the 3 rows are gone.
+  Nothing else moves.
+- *The `shanghai` regional kit* (`maps/regional/shanghai*.ts`):
+  - the street rows by bank: shikumen lanes behind courtyard walls with granite-framed lacquer gates and carved
+    pediments, stepped fire walls and tiger-window dormers; Chinese shophouses with plank shutters, counters, name boards,
+    lattice casements, vertical signboards and lanterns (Zhabei's often burnt out); the Settlement's brick blocks with
+    sash windows, string courses, crest panels, balconies, folding iron gates, awnings and sandbags;
+  - the ruins: shells with their piers and spandrels standing, collapsed houses with a chimney, burnt shophouse frames;
+  - a tram depot, brick godowns, a cotton mill with its water tower, a fire station with its watch tower, and a guild
+    hall under a swept hip-and-gable roof;
+  - the landmarks: the Bund's towers in the skyline kit's deco grammar (Sassoon House's copper pyramid; the stepped
+    crowns of Broadway Mansions and the Park Hotel); the Bank of China's green-tiled pyramid; the Customs House's clock
+    tower; the Bund's banks (dome, portico or turrets); Zhabei's civic hall as North Station (the skyline kit's
+    terminus, damaged, its depth held to the plot); the Joint Trust ("Sihang") warehouse, sandbagged and holed on the
+    wall that faced the attack.
+- *The street kit* (`maps/shanghaiStreets.ts`): the tram line down the Settlement's avenue (road 2), with its catenary
+  and two burnt trams, each clear of every road's core and of the objective ground; sandbagged posts at both ends of
+  every bridge; sampans moored in rafts along both banks.
+- *The look*: oaks (for the plane trees and camphors), willows and poplars replace the cedars and cypresses. The
+  horizon becomes the flat Yangtze delta (`relief: 'coastal'`, panorama `plain`), replacing the volcanic field. The creek
+  is a water sheet (`splat.seaLake`) with its own contact profile (waterContact.ts `SUZHOU_CREEK`: silted olive-brown,
+  a slow eastward flow) and a calm authored sea state (`ocean`: Hs 0.021 m, the calmest sheet in the fleet).
+- *Footprints*: on the map every kit body stands within the base's measured reach on every side, by −0.40 to −0.04 m.
+  The one exception is the street rows' front, −1.25 to −0.84 m: the base's porches and canopies reach past the plot's
+  street edge, and the rows' fronts stand on it. The shard is regenerated at [2713, 3124, 1492] (colliders 5,064 → 3,124:
+  a landmark is a few prisms where a megacity shell was many).
+- *Fairness* (tools/map-layout-metrics.mjs, driven metres from each team's anchor):
+  - bridges: alpha reaches road 4's bridge first (407 against 503) and bravo the other three (336/571, 332/625, 381/696);
+  - zone discs: (−285, 33) on Zhabei's bank, 517 against 487; (34, −50), 490/503; (140, −34), 546/525; the kickoff
+    (−97, −7), 457/458;
+  - objective symmetry 1.04 (the head's 1.055). Alpha must cross the creek for one disc and bravo for two discs and the
+    kickoff, and every disc's routes are within 6 % of each other.
+
+  Every brief band holds except relief (std 3.06 → 2.70 m, under its 3 m band). Blackglass is not on the brief's roster.
+- *Fording* (bots on seeds 38000–38002): 6 crossings by the ford and 1 by a bridge; the longest spell in the water was 18 s
+  and no tank stayed in it longer than 25 s.
+- *Pacing* (20 seeds, 38000–38019, with the kit): median 246 s, p10 185 s, minimum 95 s, one match under 120 s, no
+  timeouts. The PR head gives 220 / 145 / 89, with one match under 90 s; the creek alone gave 208 / 168 / 145. The full
+  core run (132 matches) passes: median 191 s, p10 148 s, 4 under 120 s, no timeouts; Suzhou Creek's four matches ran
+  132 / 387 / 408 / 182 s.
+- *Cost* (the A B C C B A gate, the PR head's dist twice against the candidate's, 1920 × 1080 High, the coordinator's
+  rules for a loaded machine: the p25 GPU frame's increment, mean + 2 SE under 1 ms, and a CPU bound):
+  - the chase passes: GPU p25 −0.10 ± 0.34 ms, CPU p25 +0.01 ± 0.23 ms;
+  - the establishing view was ambiguous at a mean load of 432 (GPU p25 +0.51 ± 0.39 ms, CPU p25 +0.87 ± 0.12 ms), and
+    is re-run in a quieter window.
+- *Receipts* that encoded the old district:
+  - townPlans holds the record diff;
+  - the census is [2713, 3124, 1492];
+  - railCoalStockpiles counts Suzhou Creek's bridges and trams;
+  - shoreline reads the creek's authored cells as Amberford's;
+  - oceanFft counts the twelfth water sheet;
+  - horizonRelief reads the coastal relief;
+  - matchPlacement's counting field and its independent route grid carry the world's bridge decks, as every
+    production caller's height field does. Without them the creek split the map, and four modes found no placement.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
