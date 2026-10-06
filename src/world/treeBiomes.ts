@@ -82,16 +82,6 @@ const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
 });
 
-/**
- * The Arizona uplands' dusty greens: every form keeps its own hue (the juniper's grey-blue, the pinyon's dark green, the
- * mesquite's olive) at three fifths of its saturation, a little lighter, under a nearly neutral card tint (gauntlet
- * wave 28: "green broadleaf and fir clumps on sand").
- */
-const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.24, cardSat: 0.09,
-  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
-});
-
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
