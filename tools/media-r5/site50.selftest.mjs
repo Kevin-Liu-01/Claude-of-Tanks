@@ -4,7 +4,9 @@ import { CAST } from './cast.mjs';
 import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
 import { DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
-import { routeProblems, waterBlocks } from './route-check.mjs';
+import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
+import { worldModel } from './world-model.mjs';
+import { lensReport } from './lens-check.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -58,6 +60,15 @@ for (const shot of SHOTS) {
   if (features && scene.storyboard.actorTracks?.length) {
     const bad = routeProblems(scene, features, { water: waterBlocks(scene) }).filter((p) => !/^foe\d+(\+foe\d+)?$/.test(p.actor));
     assert.deepEqual(bad, [], `${id}: the routes clear walls, woods, water and the other hulls`);
+  }
+  // the engine review (2026-10-06): against every prop the battlefield holds (a features dump that carries them), a
+  // routed hull crushes what it can at its speed and meets nothing else, and the lens sees the hero all the way
+  const model = features && worldModel(features);
+  if (model && scene.storyboard.actorTracks?.length) {
+    const props = propProblems(scene, model).filter((p) => !/^foe\d+$/.test(p.actor));
+    assert.deepEqual(props, [], `${id}: the routes crush what they can and meet nothing else`);
+    const lens = lensReport(scene, model);
+    assert.ok(lens.blocked <= 0.05, `${id}: the lens sees the hero past the props (${(lens.blocked * 100).toFixed(0)} % blocked: ${lens.worst.map((w) => `${w.tMs} ms ${w.by}`).join(', ')})`);
   }
   assert.ok(scene.meta.still.tMs > 0 && scene.meta.still.tMs < dur, `${id}: the still moment lies inside the take`);
   for (const a of scene.actors.filter(a => !a.name.startsWith('foe'))) assert.ok(cast.has(a.id), `${id}: ${a.name} is a cast tank (${a.id})`);

@@ -153,6 +153,12 @@ function sfxEvent(e) {
   if (e.kind === 'nonpen') return play('nonpen_heavy', e.t, { gain: level, pan: p, send: 0.2 });
   if (e.kind === 'ricochet') return play(e.heavy === false ? 'ricochet_light' : 'ricochet_heavy', e.t, { gain: level * 0.9, pan: p, send: 0.25 });
   if (e.kind === 'dirt') return play('ground_dirt', e.t, { gain: level, pan: p, send: 0.2 });
+  if (e.kind === 'prop') {
+    // a hull crushing cover, as audioEngine.ts onProp plays it: the kind's sound at -1 dB, a tall tree's fall after it
+    play(e.asset, e.t, { gain: level * db(-1), pan: p, send: 0.25 });
+    if (e.follow) play(e.follow, e.t, { gain: level * db(-2), pan: p, delayS: 0.45 + (seedOf(`fall@${e.t}`) % 300) / 1000, send: 0.3 });
+    return;
+  }
   if (e.kind === 'sample') return play(e.name, e.t, { gain: g, pan: p, send: e.send ?? 0.2 });
   if (e.kind === 'drive') return drive(e);
   if (e.kind === 'bed') return bed(e);
@@ -278,6 +284,50 @@ const rmsDb = (b, a0, a1) => { let s = 0, n = 0; for (let i = Math.max(0, a0); i
 const radioLevels = transmissions.map(([a, b], i) => { const a0 = Math.round(a * SR), a1 = Math.round(b * SR), cue = (cues.sfx ?? []).filter((e) => e.kind === 'radio')[i];
   return { t: +a.toFixed(2), lang: cue?.lang, line: cue?.line, speechDb: rmsDb(radio, a0, a1), underDb: rmsDb(sfx, a0, a1) }; });
 mix(sfx.L, radio.L, 0, 1); mix(sfx.R, radio.R, 0, 1);
+// the sheet's hits (kit.mjs, Eleven sound effects): braams in their chords, booms and taiko on their downbeats, risers
+// and swells peaking on theirs, all on the frame the generated bed only approximates; a stop cuts the music dead.
+// They ride the music bus, so the ducks and the end fade shape them too.
+const KIT = resolve(args.kit ?? join(ROOT, 'shots/media-r5/score-kit'));
+const kit = existsSync(join(KIT, 'kit.json')) ? JSON.parse(readFileSync(join(KIT, 'kit.json'), 'utf8')) : null;
+const kitDecoded = new Map();
+/** A kit variant (48 kHz stereo WAV) as [L, R]. */
+function kitSound(variant) {
+  if (kitDecoded.has(variant.file)) return kitDecoded.get(variant.file);
+  if (!existsSync(variant.file)) throw Error(`score: missing kit sound ${variant.file}`);
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', variant.file, '-f', 'f32le', '-ac', '2', '-ar', String(SR), '-'], { maxBuffer: 1 << 28 });
+  const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
+  const out = [all.filter((_, i) => i % 2 === 0), all.filter((_, i) => i % 2 === 1)];
+  kitDecoded.set(variant.file, out); return out;
+}
+const HIT_DB = { braam: -2, boom: 0, taiko: -3, riser: -4, swell: -4 };
+const hitsPlayed = [];
+for (const h of cues.hits ?? []) {
+  if (h.kind === 'stop') {
+    const a = Math.round(h.t * SR), fade = Math.round(0.015 * SR);
+    for (let i = Math.max(0, a - fade); i < N; i++) { const k = i >= a ? 0 : (a - i) / fade; music.L[i] *= k; music.R[i] *= k; }
+    hitsPlayed.push({ t: h.t, kind: 'stop' });
+    continue;
+  }
+  if (!kit) continue;
+  const sound = kit.sounds[h.kind === 'braam' ? `braam_${h.chord ?? 'Dm'}` : h.kind] ?? (h.kind === 'braam' ? kit.sounds.braam_Dm : null);
+  if (!sound) continue;
+  const k = seedOf(`${h.kind}@${h.t}`) % sound.variants.length, variant = sound.variants[k], [L, R] = kitSound(variant);
+  const gain = db(HIT_DB[h.kind] ?? 0) * (h.gain ?? 1);
+  if (h.kind === 'riser' || h.kind === 'swell') {
+    // its peak on the downbeat, cut there; a sheet lead (`sec`) shorter than the build skips the head
+    const peak = Math.round(variant.peakS * SR), lead = Math.min(variant.peakS, h.sec ?? variant.peakS), from = peak - Math.round(lead * SR);
+    const end = Math.min(L.length, peak + Math.round(0.03 * SR)), cutL = L.slice(from, end), cutR = R.slice(from, end);
+    for (let i = 0, f = Math.round(0.03 * SR); i < f; i++) { const g = i / f, j = cutL.length - 1 - i; cutL[j] *= g; cutR[j] *= g; }
+    putStereo(music, cutL, cutR, h.t - lead, gain);
+  } else {
+    // a hit starts on its downbeat, held for the sheet's `sec` and then faded over 0.6 s
+    const hold = h.sec != null ? Math.min(L.length, Math.round((h.sec + 0.6) * SR)) : L.length, fade = Math.round(0.6 * SR);
+    const cutL = L.slice(0, hold), cutR = R.slice(0, hold);
+    if (h.sec != null) for (let i = 0; i < Math.min(fade, hold); i++) { const g = i / fade, j = hold - 1 - i; cutL[j] *= g; cutR[j] *= g; }
+    putStereo(music, cutL, cutR, h.t, gain);
+  }
+  hitsPlayed.push({ t: h.t, kind: h.kind, sound: h.kind === 'braam' ? `braam_${h.chord ?? 'Dm'}` : h.kind, variant: k });
+}
 // ducks: automation gain windows on the music bus
 for (const d of cues.ducks ?? []) {
   const a = Math.round(d.from * SR), b = Math.round(d.to * SR), fade = Math.round((d.fade ?? 0.25) * SR), g = db(d.db);
@@ -325,6 +375,7 @@ const receipt = { tool: 'media-r5 score', toolSha256: sha(fileURLToPath(import.m
   outputs: Object.fromEntries(['mix.wav', 'music.wav', 'sfx-raw.wav'].map(f => [f, sha(join(OUT, f))])),
   recordings: [...new Set([...decoded.keys()].map(k => k.split('#')[0]))].sort(),
   radio: { transmissions: transmissions.length, seconds: +transmissions.reduce((s, [a, b]) => s + b - a, 0).toFixed(2), lines: radioLevels },
-  provenance: 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Crew voices: the game\'s recorded crew radio (public/audio/voice, ElevenLabs speech; docs/AUDIO.md) through the engine\'s intercom chain. Nothing synthesized.' };
+  hits: { kit: kit ? join(KIT, 'kit.json') : null, played: hitsPlayed },
+  provenance: 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Crew voices: the game\'s recorded crew radio (public/audio/voice, ElevenLabs speech; docs/AUDIO.md) through the engine\'s intercom chain. Hits: Eleven sound effects (ElevenLabs) from the film kit (kit.mjs). Nothing synthesized.' };
 writeFileSync(join(OUT, 'score-receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(`[score] ${DUR}s · ${integrated} LUFS · true peak ${truePeak} dBFS · ${receipt.recordings.length} recordings -> ${OUT}`);

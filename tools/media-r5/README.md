@@ -51,8 +51,14 @@ Run from the repo root.
    chain (recorded key-up, static and release) and ducks the beds under speech, metering every
    call against what plays under it in the receipt; `score/music.mjs --cues=<cues>` turns the cue
    sheet into an Eleven Music composition plan and generates the bed
-   (`ELEVENLABS_API_KEY_FILE`, cached with a credit ledger); `score/score.mjs --cues=<cues>
-   --music=<music-gen.wav>` mixes it under the game's recorded SFX and masters it.
+   (`ELEVENLABS_API_KEY_FILE`, cached with a credit ledger); `score/kit.mjs` generates the
+   films' sound-design kit (braams in the sheets' chords, a sub boom, a riser, a reverse swell,
+   taiko) as Eleven sound effects, several takes each, the best measured take mastered to
+   `shots/media-r5/score-kit/kit.json`; `score/score.mjs --cues=<cues> --music=<music-gen.wav>`
+   mixes the bed and the sheet's hits from the kit (each on its downbeat; risers and swells
+   peaking on theirs; a stop cuts the music) under the game's recorded SFX and masters it. The
+   music bills on the account, not in its response headers: read the account's subscription
+   for the true spend.
 6. **Kit** — `kit-assemble.mjs` collects films, frames, key art, posters and the site
    fifty into `shots/media-r5/kit/manifest.json`; `kit-page.mjs` renders its `index.html`.
 

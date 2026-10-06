@@ -45,6 +45,23 @@ const actorAt = (scene, name, tMs) => {
   return scene.actors.find(a => a.name === name)?.pos ?? null;
 };
 const TURBINE = /^(m1a|ua_m1|t80u|leclerc)/;
+/** A crushed prop's recorded sound by its kind, as audioEngine.ts propAsset picks it (a tall tree's fall follows). */
+function propAsset(kind, height = 0) {
+  const k = String(kind).toLowerCase();
+  if (/tree|sapling|stump|trunk|palm|pine|bush|shrub/.test(k)) return { asset: 'tree_snap', ...(height > 4 ? { follow: 'tree_fall' } : {}) };
+  if (/chain|wire|barbed/.test(k)) return { asset: 'wire_snag' };
+  if (/fence|rail|gate|post/.test(k)) return { asset: /metal|steel|iron|chain/.test(k) ? 'fence_metal' : 'fence_wood' };
+  if (/car|truck|van|bus|jeep|vehicle|tractor/.test(k)) return { asset: 'car_crush' };
+  if (/container|barrel|drum|tank|cylinder/.test(k)) return { asset: 'container_crush' };
+  if (/hedgehog|obstacle|tetra/.test(k)) return { asset: 'hedgehog_clang' };
+  if (/sandbag|bag/.test(k)) return { asset: 'sandbag_thump' };
+  if (/rubble|rock|stone|debris|brick/.test(k)) return { asset: 'rubble_crunch' };
+  if (/glass|window|greenhouse/.test(k)) return { asset: 'glass_shatter' };
+  if (/wall|pillar|column/.test(k)) return { asset: 'wall_brick' };
+  if (/house|building|hut|shed|barn|tower|kiosk|shack|silo/.test(k)) return { asset: 'building_collapse' };
+  if (/aagun|gun/.test(k)) return { asset: 'he_armor', follow: 'debris_metal' };
+  return { asset: 'crate_break' };
+}
 const sfx = [], calls = [];
 const seedOf = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 /**
@@ -107,6 +124,13 @@ for (const cut of edl.shots) {
   const env = sceneForMap(scene.map);
   sfx.push({ kind: 'bed', t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), asset: env.bed, db: env.bedDb, ...(env.layer ? { layer: env.layer.asset, layerDb: env.layer.db } : {}) });
   calls.push(...crewCalls(scene, cut, edl.shots.indexOf(cut), inMs, outMs, rate));
+  // the hulls' crushes (the lab's resolved scene carries the Studio's plan, studioCrush.ts): each prop sounds as it goes
+  for (const c of scene.crushes ?? []) {
+    if (c.tMs < inMs || c.tMs >= outMs) continue;
+    if (c.kind === 'pole') continue; // the battle topples a utility pole silently (crushNearbyProps emits no sound event)
+    const cam = camAt(scene.storyboard ?? {}, c.tMs), d = cam ? Math.hypot(cam[0] - c.pos[0], cam[2] - c.pos[2]) : 40;
+    sfx.push({ kind: 'prop', t: +(cut.start + (c.tMs - inMs) / 1000 / rate).toFixed(3), ...propAsset(c.kind, c.heightM), distM: +d.toFixed(1) });
+  }
   for (const e of scene.effects ?? []) {
     if (e.tMs < inMs || e.tMs >= outMs) continue;
     const t = +(cut.start + (e.tMs - inMs) / 1000 / rate).toFixed(3);

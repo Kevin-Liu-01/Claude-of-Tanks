@@ -182,11 +182,38 @@ try {
         const W = window.__DEBUG.world, hf = W.heightField, f = W.getMinimapFeatures(), sp = W.spawnPoints;
         const v = hf._layout?.village;
         const pick = o => Object.fromEntries(Object.entries(o).filter(([, val]) => ['number', 'string', 'boolean'].includes(typeof val)));
+        // 2026-10-06 (the engine review): the battlefield as the engine holds it, for world-model.mjs — every collision
+        // record with its footprint, height and overrun speed, the trees' canopies (their concealment discs), and 4 m
+        // height and water grids — so routes and lenses are checked against the props, not only the footprints
+        const r2 = x => Math.round(x * 100) / 100;
+        const shapeOf = s => !s ? null : s.kind === 'obb' ? ['o', r2(s.cx), r2(s.cz), r2(s.hw), r2(s.hl), +s.yaw.toFixed(4)]
+          : s.kind === 'circle' ? ['c', r2(s.cx), r2(s.cz), r2(s.r)] : s.kind === 'convex' ? ['v', s.points.map(r2)]
+          : s.kind === 'compound' ? ['m', s.parts.map(p => [shapeOf(p), p.y0 == null ? null : r2(p.y0), p.y1 == null ? null : r2(p.y1)])] : null;
+        const canopy = new Map((W.getConcealment?.() ?? []).map(c => [`${r2(c.x)},${r2(c.z)}`, r2(c.r)]));
+        const obstacles = W.getObstacles().filter(r => !r.dead && !r.crushed).map(r => {
+          const o = { k: r.kind ?? '', b: [...r.min, ...r.max].map(r2) };
+          if (r.crushable) o.c = r.crushMin ?? null;
+          if (r.shape2) o.s = shapeOf(r.shape2);
+          if (r.treeIdx != null) { o.t = 1; const cr = canopy.get(`${r2((r.min[0] + r.max[0]) / 2)},${r2((r.min[2] + r.max[2]) / 2)}`); if (cr) o.cr = cr; }
+          return o;
+        });
+        const STEP = 4, n = Math.floor(hf.size / STEP) + 1, h0 = -hf.size / 2;
+        const heights = new Int16Array(n * n), wet = new Uint8Array(n * n);
+        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+          const x = h0 + i * STEP, z = h0 + j * STEP;
+          heights[j * n + i] = Math.round(hf.getHeightAt(x, z) * 10);
+          wet[j * n + i] = Math.round(255 * Math.min(1, Math.max(0, hf.getWaterMaskAt ? hf.getWaterMaskAt(x, z) : 0)));
+        }
+        const b64 = a => { const u = new Uint8Array(a.buffer); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+        // the presentation crushables a hull topples without a collision record (utility poles, loop-class dressing):
+        // [x, y, z, r, h, kind, dynamic]
+        const crushables = (W.crushables ?? []).map(c => [r2(c.x), r2(c.y), r2(c.z), r2(c.r), r2(c.h), c.kind ?? (c.index != null ? 'pole' : 'prop'), c.dynamic ? 1 : 0]);
         return { map: W.mapId, size: hf.size, roads: f.roads, buildings: f.buildings.map(pick), tacticalBeats: f.tacticalBeats.map(pick),
           treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft.map(pick),
           spawns: [[sp.player.pos[0], sp.player.pos[2], 'ally'], ...sp.enemies.map(e => [e.pos[0], e.pos[2], 'enemy'])],
           village: v && Number.isFinite(v.cx) ? [v.cx, v.cz, v.x0, v.z0, v.x1, v.z1] : null, shot: W.config.shot ?? null,
-          sky: W.config.sky ?? null };
+          sky: W.config.sky ?? null, obstacles, crushables,
+          grid: { step: STEP, n, origin: h0, heightDm: b64(heights), water255: b64(wet) } };
       });
       writeFileSync(join(out, `features-${map}.json`), JSON.stringify(feats));
       console.log(`[lab] ${map}: features (${feats.buildings.length} buildings, ${feats.treeClusters.length} clusters)`);
@@ -287,8 +314,20 @@ try {
         try {
           const resolved = await page.evaluate(() => window.__STUDIO.state());
           if (job.scene.meta) resolved.meta = job.scene.meta;
+          // the hulls' crushes as the Studio planned them (studioCrush.ts): the film score sounds each one
+          resolved.crushes = await page.evaluate(() => window.__STUDIO.crushEvents?.() ?? []);
+          if (resolved.crushes.length) console.log(`[lab] ${job.name}: ${resolved.crushes.length} crushes (${[...new Set(resolved.crushes.map(c => c.kind))].join(', ')})`);
           writeFileSync(join(out, `${job.name}.resolved.json`), JSON.stringify(resolved, null, 1));
         } catch (error) { console.warn(`[lab] ${job.name}: state() failed ${error.message}`); }
+        // --probe=<file>: an async function body run on the loaded scene, before any capture (stills, films and tracks
+        // continue past the end of this loop body, so the probe sits here)
+        if (args.probe) {
+          const code = readFileSync(resolve(args.probe), 'utf8');
+          const res = await page.evaluate(new Function(`return (async () => { ${code} })();`));
+          console.log(`[lab] probe ${job.name}: ${JSON.stringify(res)}`);
+          writeFileSync(join(out, `${job.name}.probe.json`), JSON.stringify(res, null, 1));
+          if (args['probe-only']) continue;
+        }
         if (args['resolve-only']) {
           // final-render prep: the resolved scene + its source (still timing, variants) and absolute variant cameras
           const hdr = await page.evaluate(() => window.__LAB_HERO_DELTA ?? [0, 0]);
@@ -400,13 +439,6 @@ try {
           results.push({ map, name: job.name, tag: 'ui', file: shotFile });
           console.log(`[lab] ${job.name}: ui screenshot`);
           if (args['ui-only']) continue;
-        }
-        if (args.probe) {
-          const code = readFileSync(resolve(args.probe), 'utf8');
-          const res = await page.evaluate(new Function(`return (async () => { ${code} })();`));
-          console.log(`[lab] probe ${job.name}: ${JSON.stringify(res)}`);
-          writeFileSync(join(out, `${job.name}.probe.json`), JSON.stringify(res, null, 1));
-          if (args['probe-only']) continue;
         }
         const notes = await page.evaluate(() => window.__LAB_NOTES ?? []);
         if (notes.length) console.log(`[lab] ${job.name}: ${notes.join(', ')}`);

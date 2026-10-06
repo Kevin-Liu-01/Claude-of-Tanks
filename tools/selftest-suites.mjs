@@ -516,6 +516,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/motion-type.selftest.mjs',
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
+    'tools/media-r5/world-model.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',

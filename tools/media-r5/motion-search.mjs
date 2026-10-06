@@ -16,7 +16,9 @@ import { join } from 'node:path';
 import { SHOTS, siteScene } from './site50.mjs';
 import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
-import { routeProblems, waterBlocks } from './route-check.mjs';
+import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
+import { worldModel } from './world-model.mjs';
+import { lensReport } from './lens-check.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { sampleActorTrack } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -145,6 +147,7 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
   if (IDS.length && !IDS.includes(n)) continue;
   const features = featuresOf(set.map);
   if (!features) { console.log(`s${n}: no features for ${set.map}, skipped`); continue; }
+  const model = worldModel(features);
   const t0 = Date.now();
   const baseOwn = Object.fromEntries(Object.entries(film).filter(([k]) => !MOTION_FIELDS.includes(k)));
   const town = TOWNS.has(set.map), speed = town ? 9 : 15, len = speed * DUR / 1000 + 25;
@@ -195,6 +198,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
       try { probe = siteScene([n, id, kind, title, set, { ...base, ...MOTION, routes, ...(aim ? { aim } : {}), cam: lensMoves(kind, town)[0][1] }, still]); } catch { reject('build'); continue; }
       const problems = routeProblems(probe, features, { water: waterBlocks(probe) }).filter((p) => !/^foe\d+\+foe\d+$/.test(p.actor) && !/^foe\d+$/.test(p.actor));
       if (problems.length) { for (const p of problems) reject(`${p.actor.replace(/\d+/g, '')}: ${p.what.replace(/[\d.]+ m/g, '#').replace(/ at \[.*\]/, '')}`); continue; }
+      // the props (world-model.mjs, from a features dump that carries them): crush what the hull can, hit nothing else
+      const props = model ? propProblems(probe, model).filter((p) => !/^foe\d+$/.test(p.actor)) : [];
+      if (props.length) { for (const p of props) reject(`${p.actor.replace(/\d+/g, '')}: ${p.what.replace(/[\d.]+ m\/s/g, '#').replace(/[\d.]+ slope/, 'steep slope')}`); continue; }
       const tracks = new Map(probe.storyboard.actorTracks.map((t) => [t.actor, t.keys])), o = {};
       const foes = probe.actors.filter((a) => a.name.startsWith('foe'));
       let foeGap = Infinity;
@@ -217,13 +223,23 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
       for (const [lens, cam] of [...lensMoves(kind, town), ...(town ? lensMoves(kind) : [])]) {
         let scene;
         try { scene = siteScene([n, id, kind, title, set, { ...base, ...MOTION, routes, ...(aim ? { aim } : {}), cam }, still]); } catch { reject('build'); continue; }
-        const blocked = blockedFraction(scene), inFrame = heroInFrameFraction(scene);
-        if (blocked > 0.05 || inFrame < 0.9) { reject(blocked > 0.05 ? 'lens blocked' : 'hero out of frame'); continue; }
+        const footprintBlocked = blockedFraction(scene), inFrame = heroInFrameFraction(scene);
+        if (footprintBlocked > 0.05 || inFrame < 0.9) { reject(footprintBlocked > 0.05 ? 'lens blocked' : 'hero out of frame'); continue; }
+        // the rail as the Studio plays it, against every prop, canopy and roof (lens-check.mjs)
+        const lensSeen = model ? lensReport(scene, model) : null;
+        if (lensSeen && (lensSeen.blocked > 0.05 || lensSeen.outOfFrame > 0.1)) { reject(lensSeen.blocked > 0.05 ? `lens blocked by ${lensSeen.worst[0]?.by.replace(/^a /, '') ?? 'props'}` : 'hero out of frame between keys'); continue; }
+        const blocked = Math.max(footprintBlocked, lensSeen?.blocked ?? 0);
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
+        // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
+        // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
+        const wrapD = (d) => ((d % 360) + 540) % 360 - 180;
+        const heroKeys = scene.storyboard.actorTracks.find((t) => t.actor === 'hero')?.keys ?? [];
+        const flankSwing = scene.meta.turrets?.style === 'flank' && heroKeys.some((k) => Math.abs(wrapD(k.turretDeg)) >= 40) ? 1 : 0;
         // a move family (left and right alike) and a route family used before cost the next shot, so the fifty mix
         const moveFamily = lens.replace(/[LR]$/, ''), routeFamily = family.split(/[[+-]/)[0];
         const score = 1.2 * Math.min(range, 7) / 7 + 0.8 * Math.min(m.climb, 30) / 30 + 1.0 * m.front + 0.5 * Math.min(m.speed, speed) / speed + 0.3 * closing
-          + 0.5 * inFrame - 2 * blocked - 0.5 * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0);
+          + 0.5 * inFrame - 2 * blocked - 0.5 * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
+          + 0.6 * flankSwing;
         results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null });
       }
     }
