@@ -449,6 +449,11 @@ function pnoiseXY(x: number, y: number, size: number, cellsX: number, cellsY: nu
  * 60 cm grid, small dark cones, a rust tear under some; broad pour mottling and the odd blowhole. Neutral grey: the
  * style's plaster2 tone colours it. Canvas rows run DOWN the wall (the canvas is flipped on upload: a wall's v rises
  * with its height), so a bleed or a tear runs to larger y. Every feature ends on the tile edge.
+ * (Skybridge round 3, gauntlet wave 133: "a bright cream plank texture with evenly spaced nail-head dots and identical
+ * stacked repeats, reading as painted timber siding rather than weathered 1960s board-formed concrete": sixty years of
+ * weather took the print down — the boards' fins and planes, the butt joints and the lift lines at a third to a half of
+ * their contrast, the ties grouted (pale cones, not dark holes) and a rust tear under one in five, and the runoff's dark
+ * streaks down the wall over the broad pour mottling.)
  */
 function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
@@ -464,29 +469,31 @@ function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSli
       const i = y * s + x, j = i * 4;
       // the board: its plane and tone, the grain of its timber printed along it (long along x, fine across)
       const grain = smooth(0.6, 0.86, pnoiseXY(x, y, s, 5, 64, seed + 7 + b * 13));
-      let v = 0.47 + (tone - 0.5) * 0.05 + (mottle(x, y) - 0.5) * 0.1 - grain * 0.04;
-      let h = 0.45 + (plane - 0.5) * 0.2 - grain * 0.06;
+      // the runoff: dark streaks down the wall from the lift lines, a few to a tile
+      const runoff = smooth(0.55, 0.92, pnoiseXY(x, y, s, 9, 2, seed + 19));
+      let v = 0.47 + (tone - 0.5) * 0.03 + (mottle(x, y) - 0.5) * 0.1 - grain * 0.022 - runoff * 0.06;
+      let h = 0.45 + (plane - 0.5) * 0.12 - grain * 0.05;
       let r = 0.86 + (pores(x, y) - 0.5) * 0.1;
       // the fin where it met the board above, and the shadow line under the board below's fin
-      if (yb < k) { v += 0.035; h += 0.16; r -= 0.04; } else if (yb >= bh - k) { v -= 0.03; h -= 0.05; }
+      if (yb < k) { v += 0.012; h += 0.08; r -= 0.03; } else if (yb >= bh - k) { v -= 0.012; h -= 0.04; }
       // the butt joint
       const db = Math.abs(wrap(x - butt + s / 2) - s / 2);
-      if (db < 0.75 * k) { v -= 0.045; h -= 0.1; }
+      if (db < 0.75 * k) { v -= 0.02; h -= 0.06; }
       // the lift line: the groove of the cold joint, a lime bleed in streaks below it
-      if (below < 2 * k) { v -= 0.1; h = 0.1; r = 0.96; } else if (below < bleed) {
+      if (below < 2 * k) { v -= 0.05; h = 0.2; r = 0.96; } else if (below < bleed) {
         const t = 1 - (below - 2 * k) / (bleed - 2 * k);
         const streak = smooth(0.45, 0.8, pnoiseXY(x, 0, s, 28, 1, seed + 11));
-        v += 0.075 * t * t * streak; r += 0.03 * t * streak;
+        v += 0.04 * t * t * streak; r += 0.03 * t * streak;
       }
       // the form ties: a hole on the 60 cm grid, its patched rim, a rust tear under every other one
       // (a tie's cell starts a quarter cell above it: the hole whole inside, the tear below it too)
       const m = Math.floor(x / tie), n = Math.floor(wrap(y - bh * 1.5 + tie * 0.25) / tie);
       const cx = (m + 0.5) * tie, cy = wrap(n * tie + bh * 1.5);
       const dx = x - cx, dyTie = wrap(y - cy + s / 2) - s / 2, d = Math.hypot(dx, dyTie);
-      if (d < tieR) { v *= 0.55; h = 0.05; r = 0.97; } else if (d < tieR + 1.2 * k) { v += 0.04; h += 0.08; }
-      else if (hash2(m, n, seed + 13) > 0.5) {
+      if (d < tieR) { v = v * 0.9 + 0.035; h = 0.3; r = 0.93; } else if (d < tieR + 1.2 * k) { v += 0.01; h += 0.03; }
+      else if (hash2(m, n, seed + 13) > 0.8) {
         const len = (10 + hash2(m, n, seed + 15) * 22) * k, dyTear = wrap(y - cy), t = (dyTear - tieR) / len;
-        if (t > 0 && t < 1 && Math.abs(dx) < 1.3 * k * (1 - t * 0.6)) v -= 0.07 * (1 - t);
+        if (t > 0 && t < 1 && Math.abs(dx) < 1.3 * k * (1 - t * 0.6)) v -= 0.035 * (1 - t);
       }
       // a blowhole (an air void at the form face)
       if (hash2(x, y, seed + 17) > 0.996) { v -= 0.12; h -= 0.2; r = 0.97; }

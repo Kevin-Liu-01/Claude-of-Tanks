@@ -11,7 +11,7 @@
 // walls, with no collision: it stands some 650 m past the playable edge.
 import * as THREE from 'three';
 import { SHADOW_CASTER_LAST_CASCADE, setShadowCasterCascades } from '../engine/renderLayers.ts';
-import { suppressNeedles } from './horizonMassif.ts';
+import { markHorizonCut, settleHorizonCut } from './horizonTablelands.ts';
 
 export interface HorizonDamSettings {
   /** The crest's middle (m). The canyon's axis runs out from the map's centre through it. */
@@ -88,49 +88,28 @@ function canyonHeightAt(f: DamFrame, x: number, z: number): number {
   return h;
 }
 
-/** The cut settles by the tableland stair's laws (horizonEscarpment.ts): the radial cliff bound, no one-column needle. */
-const MAX_SLOPE = 3.6;
-
 /**
  * Cut the dam's canyon into the ring (heights only; a vertex is only ever lowered). Then the cut settles as the bed
- * stair settles its own: beside the walls a column the cut left standing alone between the canyon and a fall on its
- * other side would draw as a spike, so it comes down to one arc step over the higher of its neighbours, and the 3.6:1
- * radial cliff bound holds — each law by lowering the higher vertex, over the cut and its neighbours, in a few rounds.
+ * stair settles its own (horizonTablelands.ts settleHorizonCut): beside the walls a column the cut left standing alone
+ * between the canyon and a fall on its other side comes down to one arc step over the higher of its neighbours, and
+ * the 3.6:1 radial cliff bound holds.
  */
 export function carveHorizonDamCanyon(
   ring: { positions: Float32Array; heights: Float32Array; maxHeight: number }, dam: HorizonDamSettings, columns: number,
 ): void {
   const f = damFrame(dam);
-  const h = ring.heights, p = ring.positions, n = columns, rowCount = h.length / n;
+  const h = ring.heights, p = ring.positions;
   const mask = new Float32Array(h.length);
   let carved = false;
   for (let i = 0; i < h.length; i++) {
     const cut = canyonHeightAt(f, p[i * 3], p[i * 3 + 2]);
     if (!(cut < h[i])) continue;
     h[i] = cut;
+    markHorizonCut(mask, i, columns);
     carved = true;
-    const row = (i / n) | 0, k = i % n;
-    mask[i] = 1;
-    mask[row * n + (k + 1) % n] = 1;
-    mask[row * n + (k + n - 1) % n] = 1;
-    if (row > 0) mask[i - n] = 1;
-    if (row < rowCount - 1) mask[i + n] = 1;
   }
   if (!carved) return;
-  const rOf = (i: number): number => Math.hypot(p[i * 3], p[i * 3 + 2]);
-  const lowerTo = (i: number, j: number): void => {
-    const lim = MAX_SLOPE * Math.max(1, Math.abs(rOf(i) - rOf(j)));
-    if (h[i] > h[j] + lim) { h[i] = h[j] + lim; mask[i] = 1; }
-  };
-  for (let round = 0; round < 3; round++) {
-    for (let row = 0; row < rowCount; row++) suppressNeedles(h, p, row * n, n, mask);
-    for (let row = 1; row < rowCount; row++) {
-      for (let k = 0; k < n; k++) {
-        const i = row * n + k, j = i - n;
-        if (mask[i] > 0 || mask[j] > 0) { lowerTo(i, j); lowerTo(j, i); }
-      }
-    }
-  }
+  settleHorizonCut(h, p, columns, mask);
   ring.maxHeight = 1;
   for (let i = 0; i < h.length; i++) {
     p[i * 3 + 1] = h[i];
@@ -161,9 +140,10 @@ export function floodHorizonDamReservoir(
 }
 
 // the concrete (linear albedo): weathered buff-grey, darker toward the wet foot; the deck and its fascia a shade
-// paler; the powerhouse's walls and its gravel roof
-const CONCRETE: readonly [number, number, number] = [0.50, 0.47, 0.41];
-const DECK: readonly [number, number, number] = [0.56, 0.54, 0.49];
+// paler; the powerhouse's walls and its gravel roof (Skybridge round 3: h18's frames drew the face 0.50 as a flat white
+// sheet under the desert sun — a shade darker, and its pour blocks and lifts in it)
+const CONCRETE: readonly [number, number, number] = [0.42, 0.40, 0.355];
+const DECK: readonly [number, number, number] = [0.48, 0.465, 0.43];
 const POWERHOUSE: readonly [number, number, number] = [0.53, 0.50, 0.45];
 const ROOF: readonly [number, number, number] = [0.33, 0.32, 0.30];
 
@@ -289,7 +269,12 @@ export function buildHorizonDam(
       return at(t, thick(y), y);
     }));
   }
-  addStrip(out, faceRows, (r, j) => tone(CONCRETE, faceRows[r][j].y), downstream.clone().add(up.clone().multiplyScalar(0.35)).normalize());
+  // (the pour: the arch's blocks a slice wide, each its own shade, and the lifts' bands down the face)
+  const block = (j: number, r: number): readonly [number, number, number] => {
+    const c = tone(CONCRETE, faceRows[r][j].y), k = 1 + 0.04 * Math.sin(j * 2.4 + 0.7) + 0.025 * (r % 2 ? 1 : -1);
+    return [c[0] * k, c[1] * k, c[2] * k];
+  };
+  addStrip(out, faceRows, (r, j) => block(j, r), downstream.clone().add(up.clone().multiplyScalar(0.35)).normalize());
   // the ends, sunk into the walls: each slice's section closed flat
   for (const [j, side] of [[0, -1], [N, 1]] as const) {
     const t = thetas[j];

@@ -53,6 +53,7 @@ import { resolveBorderLandform, type BorderLandformSettings } from '../borderLan
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
+import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -116,6 +117,9 @@ interface HorizonConfig {
   /** The map-revival lane (2026-10-06): a dam across a canyon cut through the ring (horizonDam.ts) — Skybridge's Glen
    * Canyon Dam, the gorge's axis run on through the north ring to an arch under the plateau's rim. */
   dam?: HorizonDamSettings;
+  /** The map-revival lane (2026-10-06): the tableland ring's outer ranges capped into flat-topped mesas past a radius
+   * (horizonTablelands.ts) — the mesa stack's saddle, summits and shoulder otherwise stand as domes and spires. */
+  summitCap?: HorizonSummitCapSettings;
   /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
    * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
    * peaks (no far plateaus). */
@@ -2194,6 +2198,7 @@ export function sampleHorizonGeometry(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
+  if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
   if (horizon.dam) carveHorizonDamCanyon(ring, horizon.dam, HORIZON_SEGMENTS);
   openHorizonToSea(ring, openings, ground);
   return ring;
@@ -3618,7 +3623,9 @@ export function* buildHorizonRingSteps(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
-  // the map-revival lane (2026-10-06): the dam's canyon, and its reservoir as the ring's water (horizonDam.ts)
+  // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
+  // and its reservoir as the ring's water (horizonDam.ts)
+  if (H.summitCap) capHorizonSummits(ring, H.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
   if (H.dam) carveHorizonDamCanyon(ring, H.dam, HORIZON_SEGMENTS);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   if (H.dam) floodHorizonDamReservoir(ring, sea, H.dam);
