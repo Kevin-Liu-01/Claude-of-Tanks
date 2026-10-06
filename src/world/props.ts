@@ -4931,10 +4931,19 @@ ${snowCap ? `
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
   // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  // (b18; gauntlet wave 121, Verdant's yard walls: "it meets the turf in a clean line with no settling or weeds at its
+  // foot") the soil and turf banked against the dry-stone walls' feet (fieldWallDressing buildWallTurf), for the
+  // ground's own material beside the boulders' beds — not on a snow map (its drifts), a sandy one (its dust), a
+  // brick-print one (its coursed module), nor the phones
+  const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
+  const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
+    turf: wallTurfOn ? {
+      meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
+    } : undefined,
   });
   function addWallRun(
     x0: number,
@@ -6324,6 +6333,26 @@ ${snowCap ? `
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
+  // (b18) and the turf banked against the dry-stone walls' feet, merged by 256 m cell, the same ground material's
+  if (wallDressing.turfs.length) {
+    const turfCells = new Map<number, THREE.BufferGeometry[]>();
+    for (const turf of wallDressing.turfs) {
+      turf.computeBoundingSphere();
+      const c = turf.boundingSphere!.center, key = Math.floor((c.x + 512) / 256) * 64 + Math.floor((c.z + 512) / 256);
+      const list = turfCells.get(key);
+      if (list) list.push(turf); else turfCells.set(key, [turf]);
+    }
+    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+    for (const list of turfCells.values()) {
+      const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
+      if (!merged) continue;
+      if (merged !== list[0]) for (const g of list) g.dispose();
+      merged.computeBoundingSphere();
+      beds.push(merged);
+    }
+    group.userData.rockBeds = beds;
+    wallDressing.turfs.length = 0;
+  }
 
   yield { fine: true, stage: 'rock-instances' };
 
