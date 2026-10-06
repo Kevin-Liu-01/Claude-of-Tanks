@@ -130,7 +130,8 @@ export default {
     // and the scrub takes the desert's dusty sage
     species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
     loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
-    clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.22,
+    // (Titan round 2, the ground lane's wave-115 finding: Monument Valley's bunchgrass is sparse — 0.22 -> 0.12)
+    clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.12,
     clusterScrub: 1.7, bushCount: 0.46, bushSpecies: 'oak',
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
     tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
