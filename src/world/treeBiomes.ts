@@ -117,6 +117,15 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
 });
 
+/**
+ * Trees lane (2026-10-06): the bamboo's fresh yellow-green (the willow's lances it paints are a greyer green): the hue
+ * turned a little toward green and a third again of the leaves' saturation.
+ */
+const BAMBOO_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.2,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.235, Math.min(1, s * 1.35), Math.min(1, l * 1.02)],
+});
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -160,6 +169,13 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
   // the Alps: spruce and larch
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
+  // Kohima in the Naga Hills (the trees lane, 2026-10-06, the gauntlet's wave 157: "built almost entirely from one
+  // repeating tropical fan-palm", the wrong flora for a hill station on a saddle at about 1,450 m): Khasi pine on the
+  // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
+  // (Castanopsis) and oaks (the tall eucalyptus slot and the low willow slot, the oak a dark evergreen oak, never the
+  // Mediterranean's grey), bamboo clumps (the oak slot) and the evergreen oak's shrubs in the understorey
+  monsoon: B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'chestnut' },
+    willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher

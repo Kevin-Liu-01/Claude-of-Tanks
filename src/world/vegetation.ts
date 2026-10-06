@@ -2424,6 +2424,10 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
+  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts)
+  if (growth === 'khasiPine') return 'redPine';
+  if (growth === 'bamboo') return 'willow';
   return growth as SprayKind;
 }
 

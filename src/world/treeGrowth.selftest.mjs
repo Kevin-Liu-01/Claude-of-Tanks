@@ -246,6 +246,32 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
   assert.ok(shape.redPine.aspect > shape.pine.aspect && TREE_GROWTH_PROFILES.redPine.gnarl > 0,
     `the Japanese red pine broad and crooked (${JSON.stringify(shape.redPine)})`);
   for (const form of ['longleafPine', 'lebanonCedar', 'sugi', 'redPine']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+  // the trees lane (2026-10-06, the gauntlet's wave 157 on Monsoon Ridge): the Naga Hills' forms — the Khasi pine taller
+  // and straighter than the red pine whose needles it paints, the bamboo a clump of culms from one rootstock, bare at the
+  // foot, never forking, arching out over the top, the same in a wood as in the open
+  {
+    const kp = TREE_GROWTH_PROFILES.khasiPine, rp = TREE_GROWTH_PROFILES.redPine, bb = TREE_GROWTH_PROFILES.bamboo;
+    for (const form of ['khasiPine', 'bamboo']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+    assert.ok(kp.family === 'conifer' && kp.height > rp.height && (kp.gnarl ?? 0) < (rp.gnarl ?? 0) / 2,
+      'the Khasi pine stands taller and straighter than the red pine');
+    assert.ok(bb.clump === true && forestGrownProfile(bb) === bb, 'a clump keeps its own form in a wood');
+    for (let variant = 0; variant < 3; variant++) {
+      const { skeleton } = grow('bamboo', variant);
+      const culms = skeleton.branches.filter((b) => b.order === 1);
+      assert.ok(culms.length >= 10, `bamboo/${variant}: a clump of ${culms.length} culms`);
+      assert.ok(culms.every((c) => c.parent === 0), `bamboo/${variant}: no culm forks`);
+      let foot = 0, tip = 0;
+      for (const c of culms) {
+        const [n0, n1] = c.nodes, last = c.nodes.at(-1), prev = c.nodes.at(-2);
+        assert.ok(n0.y < 0.6 && Math.hypot(n0.x, n0.z) < 0.15, `bamboo/${variant}: every culm from the rootstock`);
+        foot += Math.atan2(Math.hypot(n1.x - n0.x, n1.z - n0.z), n1.y - n0.y) / culms.length;
+        tip += Math.atan2(Math.hypot(last.x - prev.x, last.z - prev.z), last.y - prev.y) / culms.length;
+      }
+      assert.ok(foot < 0.45 && tip > foot + 0.5, `bamboo/${variant}: upright at the foot (${foot.toFixed(2)} rad), arched at the tip (${tip.toFixed(2)})`);
+      const lowest = Math.min(...skeleton.leaves.map((l) => l.y));
+      assert.ok(lowest > 0.25 * skeleton.height, `bamboo/${variant}: the culms bare at the foot (the lowest spray at ${lowest.toFixed(2)} m)`);
+    }
+  }
   // the longleaf's grass stage: a shrub-only form (never a tree slot) whose sprays fan from a few seats on the ground
   assert.ok(!GROWTH_SPECIES.includes('longleafSeedling') && TREE_GROWTH_PROFILES.longleafSeedling.fountain, 'the grass stage is a shrub form');
   for (const kind of ['bush', 'understorey']) {
