@@ -323,6 +323,12 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  /**
+   * The map-revival lane (2026-10-06, Frontier's round 3; the facades lane, wave 150: "the church stands on a flat
+   * bare-dirt pad"): the trodden-earth disc under each building (radius max(w, d) × 1.2) scaled by `scale`, and none under
+   * the `none` structures (a church in its churchyard turf). Absent, every building keeps the 1.2 disc.
+   */
+  foundationDiscs?: { scale?: number; none?: readonly string[] };
   /** regional-buildings lane: the regional architecture kit of this map's settlements (maps/regional/index.ts). */
   architecture?: string;
   bathhouseStyle?: 'timber';
@@ -7573,13 +7579,16 @@ ${snowCap ? `
       dirtDiscs: THREE.BufferGeometry[],
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
+      // (a foundry-donor map keeps every disc at 1.2: its reconform below indexes the discs by building)
+      const discs = foundryDonors ? undefined : P.foundationDiscs;
+      const discScale = 1.2 * (discs?.scale ?? 1), discNone = discs?.none ?? [];
       for (const building of buildingFeatures) {
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
-        } else {
+        } else if (!building.kind || !discNone.includes(building.kind)) {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+            Math.max(building.w, building.d) * discScale, [0.05, 0.05, 0.05, 0.04]));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
