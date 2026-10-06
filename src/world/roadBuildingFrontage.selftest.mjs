@@ -172,7 +172,9 @@ for (const id of MAP_IDS) {
     'Saltwind accepts its complete authored plan on real dry supported road parcels');
   if (id === 'verdant') assert.deepEqual(after, before, 'Verdant geometry, placement and RNG remain exact');
   else {
-    if (['coastal', 'saltwind', 'desert'].includes(id)) assert.ok(after.receipt.some(r => r.status === 'corrected'), `${id}: real production sites improve`);
+    // (2026-10-06: Saltmere Bay's bourg is authored — the roadside builder places nothing there, so no site of its is
+    // corrected; the frontage rule keeps its two other production witnesses)
+    if (['saltwind', 'desert'].includes(id)) assert.ok(after.receipt.some(r => r.status === 'corrected'), `${id}: real production sites improve`);
     for (const row of after.receipt) if (row.status === 'corrected') {
       assert.ok(buildingFootprintClearsRoads(row.after, row.w, row.d, createHeightField(1337, config)._layout.roads));
       assert.notEqual(row.before.rot, row.after.rot);

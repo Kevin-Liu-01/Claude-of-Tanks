@@ -27,6 +27,48 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
 const inlandRoadAt = (z: number): [number, number] => [-90 + Math.sin(z * 0.011 + 0 * 2.3) * 2.2, z];
 
+// 2026-10-06 (the map-revival lane; the coordinator approved the plan: Kerlouan, Brignogan-Plages and Meneham on the
+// Pays de Léon coast, late summer 1944): the bourg is rebuilt as the Léon's granite fishing bourgs stand. The roadside
+// builder places nothing; the sites below are authored (and mirrored across the axis, z = 22). The high street is the
+// coast road between the two shore lanes, lined both sides with two-storey granite houses in terraces (the Breton kit's
+// bourg house), the inn among them; the chapel stands in its walled enclos on the street's west side at the axis, the
+// covered market opposite it; the cannery and the fish hall stand at the shore lanes' ends by the strand, the
+// boathouses on the sand, the fishermen's cottages between them and the street; the longère farms with their walled
+// yards stand along the lanes inland.
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+type Site = { structure: string; x: number; z: number; yawDeg: number };
+/** The site's mirror across the map's axis (z = 22), its heading mirrored with it: the bourg's other half. */
+const mirrorSite = (site: Site): Site => ({ ...site, z: round1(44 - site.z), yawDeg: round1(180 - site.yawDeg) });
+/** The coast road through the bourg (grid road 1, x 168 under its jitter law). */
+const STREET_X = 168;
+/** A building on the high street, its front `setback` m off the road's line and `d` deep, facing the street (`side` +1
+ * east of it, -1 west). */
+const onStreet = (structure: string, z: number, side: 1 | -1, d: number, setback = 6.5): Site =>
+  ({ structure, x: round1(STREET_X + side * (setback + d / 2)), z, yawDeg: side > 0 ? -90 : 90 });
+/** The south shore lane (grid road z -52; its mirror is the north lane, z 96). */
+const LANE_Z = -52;
+/** A building on the south shore lane, its front `setback` m off the lane's line and `d` deep, facing it (`side` +1 north of
+ * it, toward the axis; -1 south). */
+const onLane = (structure: string, x: number, side: 1 | -1, d: number, setback = 7): Site =>
+  ({ structure, x, z: round1(LANE_Z + side * (setback + d / 2)), yawDeg: side > 0 ? 180 : 0 });
+/** The south half of the bourg (the north half is its mirror). */
+const BOURG_HALF: Site[] = [
+  // the high street's terraces, west and east of the road, from the south lane's corner to the square
+  // (the inn last of the west row: a site keeps its pad from the buildings placed before it, and the inn's is wide)
+  onStreet('cornershop', -36, -1, 9.8), onStreet('cornershop', -25.5, -1, 9.8), onStreet('cornershop', -1.5, -1, 9.8),
+  onStreet('tavern', -13, -1, 14.7),
+  onStreet('cornershop', -36, 1, 9.8), onStreet('cornershop', -25.5, 1, 9.8), onStreet('cornershop', -15, 1, 9.8),
+  onStreet('cottage', -5, 1, 8.4),
+  // the harbour end of the shore lane: the cannery on its south side by the strand, the fishermen's cottages on its
+  // north side, the boathouses on the sand (their doors to the water)
+  // (on the dune's dry edge: the strand's sand past x ~246 takes no building, and the cannery stands where the ground
+  // falls less than the kit's 2.2 m across it)
+  onLane('fishery', 214, -1, 20), onLane('cottage', 198, 1, 8.4), onLane('cottage', 212, 1, 8.4),
+  { structure: 'boatshed', x: 242, z: -34, yawDeg: 90 }, { structure: 'boatshed', x: 242, z: -18, yawDeg: 90 },
+  // the longère farms along the lane inland, their yards walled (the kit's yard)
+  onLane('farmhouse', 112, 1, 10.6), onLane('barn', 100, -1, 12.5), onLane('cottage', 128, -1, 8.4),
+];
+
 export default {
   id: 'coastal',
   name: 'Saltmere Bay',
@@ -61,16 +103,14 @@ export default {
     // (r2: the mesa bluffs are OUT — the noise-placed walls landed as grey
     // slab cliffs mid-meadow and read as artifacts, not headlands)
     village: { x0: 40, x1: 250, z0: -80, z1: 150, cx: 150, cz: 30, feather: 45, flatten: 0.86 },
-    villageWear: 'activity-patches',
+    // 2026-10-06 (the map-revival lane): the bourg's ground in its plots — the walled yards, gardens and courts behind
+    // the houses (terrain.ts createVillagePlotWear), not wear patches round lone houses
+    villageWear: 'plots',
     workedGround: [
       // Sandy turning courts explain the two shore-road termini. They meet
       // the existing capped lanes on dry land without paving across the bay.
       { feather: 4, strength: 0.9, boundary: [[247, -66], [261, -70], [276, -63], [280, -50], [270, -37], [251, -38], [241, -49]] },
       { feather: 4, strength: 0.9, boundary: [[245, 81], [262, 78], [277, 86], [280, 99], [269, 112], [250, 110], [241, 96]] },
-      // Market stalls flank the actual road junction (163.77, 95.66).
-      { feather: 8, strength: 0.92, boundary: [[140, 76], [174, 71], [192, 88], [185, 113], [149, 118], [136, 99]] },
-      // Fishery/boatshed frontages on both sides of the x≈168 coast road.
-      { feather: 7, strength: 0.82, boundary: [[141, -77], [171, -77], [197, -45], [190, 7], [199, 40], [176, 51], [141, 45], [145, 9], [134, -28]] },
     ],
     landforms: [
       // The granite downs, south and north: long swells that screen each pad from the axis.
@@ -124,12 +164,6 @@ export default {
       [inlandRoadAt(-448), [inlandRoadAt(-448)[0], -449]],
     ] },
   },
-
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'one fishing-village frontage building at the shore lane\'s junction with the coast road, '
-      + 'unchanged from the original map (whose village frontage its shore receipts pin), stands 1.4 m into the coast '
-      + 'road\'s carriageway',
-  } },
 
   spawns: {
     // Alpha deploys behind the southern downs; bravo's seven pads (two rows) stand behind the northern downs, their
@@ -202,10 +236,9 @@ export default {
   props: {
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
     architecture: 'breton',
-    // world-dressing r1: + chapel and granary in the fishing village
-    plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
-      'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
-      'netyard', 'cottage', 'tower', 'cottage'],
+    // 2026-10-06 (the map-revival lane): the roadside builder places nothing — the bourg is authored (BOURG_HALF and
+    // its mirror, the chapel and the market hall on the axis); the harbour lights are the landmarks lane's, on the mole
+    plan: [],
     destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
     tacticalBeats: [
       { id: 'south-bocage-croft', role: 'brawl', x: -260, z: -103, yawDeg: 0,
@@ -228,8 +261,13 @@ export default {
       { structure: 'farmhouse', x: -138, z: 154, yawDeg: 180 }, { structure: 'barn', x: -186, z: 166, yawDeg: 270 },
       // the field barns on the hedge banks between the bocage lane and the coast lane
       { structure: 'barn', x: -50, z: -102, yawDeg: 90 }, { structure: 'barn', x: -20, z: 146, yawDeg: 270 },
+      // the bourg (2026-10-06): the chapel in its walled enclos on the high street's west side at the axis, the covered
+      // market opposite it across the street, the two halves either side
+      { structure: 'chapel', x: 136, z: 22, yawDeg: 90 }, { structure: 'market', x: 182, z: 22, yawDeg: -90 },
+      ...BOURG_HALF, ...BOURG_HALF.map(mirrorSite),
     ],
-    sideSkip: 0.12, spacingPad: 7,
+    // the bourg's terraces stand a metre apart (the roadside builder's 7 m pad was for lone houses)
+    sideSkip: 0.12, spacingPad: 2,
     buildingLat: [11, 4.5], maxSpread: 2.2,
     tones: {
       plaster: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.35), clamp01(l * 1.10 + 0.08)], // whitewash
@@ -241,9 +279,8 @@ export default {
     rockTone: (h: number, s: number, l: number) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
     wallStoneChance: 0.85,
     wallRuns: [
-      // village crofts
-      [60, -34, 118, -34, 2], [196, 60, 196, 116, 3], [80, 120, 140, 120, 1],
-      [126, -64, 126, -18, 2],
+      // the chapel's enclos (2026-10-06): its wall round three sides, open to the square
+      [122, 8, 150, 8, 2], [122, 36, 150, 36, 2], [122, 8, 122, 36, 2],
       // bocage field walls on the hedge banks, each with its reflection across the axis
       [-320, -170, -250, -170, 3], [-320, 214, -250, 214, 3],
       [-120, -60, -60, -60, 2], [-120, 104, -60, 104, 2],
