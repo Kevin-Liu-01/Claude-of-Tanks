@@ -141,7 +141,10 @@ export default {
     species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
     loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
     // (Titan round 2, the ground lane's wave-115 finding: Monument Valley's bunchgrass is sparse — 0.22 -> 0.12)
-    clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.12,
+    // (Titan round 3c: the round-3 buttes' taller rock deepened the 30 m hollows the arid groves seat in and re-seated
+    // them 1266 -> 1424 trees, their alpha-tested shadows most of round 3's chase cost (h15 with the head's overcast:
+    // +1.2 ms p25); 16 -> 14 groves brings the valley back to 1189, Monument Valley's sparse juniper)
+    clusterCount: 14, loneCount: 34, rimCount: 18, grassDensity: 0.12,
     // (Titan round 3: no juniper stand on a butte's cap — a clump of trees on top read as a stump with a wig, and
     // Monument Valley's caps are bare caprock; the discs cover each cap and wall, the talus below keeps its trees)
     avoid: [{ x: -188, z: -120, r: 23 }, { x: 188, z: 120, r: 23 }, { x: -140, z: 280, r: 20 }, { x: 140, z: -280, r: 20 },
