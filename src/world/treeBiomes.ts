@@ -95,9 +95,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
-  // Longleaf, Louisiana (the map-revival lane, 2026-10-05): the longleaf pine flatwoods over the grass-stage seedlings
-  // and wiregrass of a burned understorey (the map's bushes)
-  longleaf: B('the longleaf pine flatwoods, Rapides Parish, Louisiana', { pine: { form: 'longleafPine' } }, 'longleafSeedling'),
+  // Longleaf, Louisiana (the map-revival lane, 2026-10-05; the trees lane's row for round 2, gauntlet wave 124): the Gulf
+  // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
+  // the wiregrass, the cutover's young pines in their grass stage (the map's bushes)
+  longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine' } }, 'longleafSeedling', undefined, undefined, true),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch

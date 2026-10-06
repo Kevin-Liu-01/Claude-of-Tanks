@@ -457,9 +457,13 @@ function millShed(sink: PartSink, W: number, D: number, h: number, monitor: bool
   }
   if (monitor) {
     // the monitor along the ridge: a raised slot of louvres under its own small roof (dressing over the main roof)
-    const top = frame.roof.ridgeY, L = D * 0.7;
-    sink.span('structureWood', -0.9, top - 0.25, -L / 2, 0.9, top + 0.9, L / 2, { colour: shade(WEATHERED, 0.9), decor: true });
-    sink.placed(0, 0, 0, 0, () => buildRoofOnly(sink, 2.2, L + 0.2, top + 0.9, tin('shed', 14, 0.1, 0.1), sheet));
+    const top = frame.roof.ridgeY, L = D * 0.7, T = top + 0.9, tanP = Math.tan(14 * Math.PI / 180);
+    sink.span('structureWood', -0.9, top - 0.25, -L / 2, 0.9, T, L / 2, { colour: shade(WEATHERED, 0.9), decor: true });
+    // (round 2, gauntlet wave 124: "a mis-seated floating cupola"): the shed roof's rise over the louvre box is boarded
+    // in, so the roof sits on the monitor instead of hovering over a slot of sky
+    sink.prism('structureWood', [[-0.9, T - 0.02, -L / 2], [0.9, T - 0.02, -L / 2], [0.9, T + 0.2 * tanP, -L / 2],
+      [-0.9, T + 2.0 * tanP, -L / 2]], [0, 0, 1], L, { colour: shade(WEATHERED, 0.9), decor: true });
+    sink.placed(0, 0, 0, 0, () => buildRoofOnly(sink, 2.2, L + 0.2, T, tin('shed', 14, 0.1, 0.1), sheet));
   }
   return frame;
 }
@@ -666,6 +670,46 @@ const burnt: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * The town's church (the map-revival lane, 2026-10-05, round 2; gauntlet wave 124 saw the border villages' generic
+ * stone church as "a stone pebble-dash tower"): a white weatherboard nave on brick piers under tin, the double door in
+ * the gable front with a window over it, tall windows down both sides, and the square belfry over the front gable with
+ * its louvred stage under a pyramid cap.
+ */
+const church: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx), rng = st.rng;
+  const fp = footprint(ctx);
+  const plat = 0.8, h = 4.8;
+  const sheet = pick(rng, TIN);
+  onLot(sink, fp, (Wf, Df, turned) => {
+    const W = Wf - 0.1, D = Df - 0.1;
+    const street: FaceName = turned ? 'left' : 'front';
+    const streetLen = turned ? D : W, sideLen = turned ? W : D;
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: plat, out: 0.05, bucket: 'stone' }, storeys: [{ h, wall: 'plaster' }], roof: tin('gable', 38, 0.35, 0.3),
+      roofColour: sheet, gableBucket: 'plaster',
+      openings: [
+        { face: street, storey: 0, kind: 'door', u: 0, w: 1.8, y0: 0, h: 2.6 },
+        { face: street, storey: 0, kind: 'window', u: 0, w: 1.0, y0: 3.2, h: 1.1 },
+        ...windowRhythm(turned ? 'front' : 'left', 0, sideLen, { w: 0.9, h: 2.3, sill: 1.1, spacing: 3.0, margin: 1.4, max: 5 }),
+        ...windowRhythm(turned ? 'back' : 'right', 0, sideLen, { w: 0.9, h: 2.3, sill: 1.1, spacing: 3.0, margin: 1.4, max: 5 }),
+      ],
+      chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.08, spall: null,
+    }, dialect(st, shade(st.trim, 0.9)));
+    // the belfry over the front gable: a square tower rising through the ridge, its louvred stage, the pyramid cap
+    const sf = frame.faces[street];
+    const inset = 1.8, b = Math.min(2.6, streetLen * 0.32);
+    const cx = sf.origin[0] - sf.out[0] * inset, cz = sf.origin[2] - sf.out[2] * inset;
+    const y0 = frame.eaveY + 0.4, y1 = frame.roof.ridgeY + 2.6;
+    sink.span('plaster', cx - b / 2, y0, cz - b / 2, cx + b / 2, y1, cz + b / 2);
+    sink.span('structureWood', cx - b / 2 - 0.06, y1 - 1.6, cz - b / 2 - 0.06, cx + b / 2 + 0.06, y1 - 0.4, cz + b / 2 + 0.06, { colour: shade(WEATHERED, 0.7), decor: true });
+    sink.span('structureWood', cx - b / 2 - 0.12, y1 - 0.06, cz - b / 2 - 0.12, cx + b / 2 + 0.12, y1 + 0.1, cz + b / 2 + 0.12, { colour: WHITE, decor: true });
+    sink.cylinder('structureMetal', [cx, y1 + 0.1, cz], 'y', b * 1.15, b * 0.78, 4, { colour: sheet }, 0.03, true, Math.PI / 4);
+  });
+  return sink.finish();
+};
+
 export const LONGLEAF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   logcabin: workerHouse,
   farmhouse: managerHouse,
@@ -677,6 +721,7 @@ export const LONGLEAF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   granary: waterTank,
   woodshed,
   ruin: burnt,
+  church,
 });
 
 export const LONGLEAF_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
