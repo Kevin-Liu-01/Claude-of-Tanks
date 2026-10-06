@@ -105,7 +105,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
 | Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
-| Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
+| Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads; the valve tower standing in the lake and its arched footbridge from the bank (the landmarks lane, 2026-10-05) |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
 | Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow. Map revival lane 2 (2026-10-05): the Col du Mont-Cenis in April 1945 — the Savoyard kit (rubble and lauze, larch galleries, mazots, the hospice, the frontier barracks, the Vallo Alpino's works) and the Grande Croix. Round 2 (wave 109b): grey gneiss rubble and blue-grey lauzes 0.34 m thick, the roughcast greyer and the ochre duller, snow banked against every wall, the hospice in rubble with whitewashed reveals and a swept apron, the bulb in larch shingle, the shelled house's stepped breaks, heaps, fallen lauzes and burnt frame, larch-board yard fences, the lake drifted over, the col nearly treeless (34 stands, 40 lone trees); pacing 184/210/226/185 s (median 210 s) |
@@ -7278,6 +7278,20 @@ pixels the flare lifts by more than 3 levels 32.5 % / 34.1 % → 0.00 %; Caldera
 floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3 % → 0.03 %; Saltwind and Redrock facing
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
+
+### 2026-10-05 — Highland Reservoir: the valve tower and its footbridge (the landmarks lane)
+
+The basin is closed by its ridges and holds no dam, so the Roer dams' set piece is the one that stands off their walls:
+the valve tower in the middle lobe off the west bank, south of the waterworks — a round greywacke tower battered at its
+foot, its valve chamber a storey over the bridge's floor with round-headed windows in dressed surrounds, a corbelled
+cornice and a slated bell roof — reached by an arched masonry footbridge from the bank (2 495 desktop triangles). Census
+[5128, 5058, 5942]; every structure, non-tree record and tree where it stood. The layout brief's solidPropsInWater
+exception names it beside the waterworks' manifold and intake. Pacing (4 seeds) 155/280/190/173 s, the head's to the
+second. Cost: establishing 0.19 ± 0.42 ms, chase 0.36 ± 0.40 and the tower's view 0.15 ± 0.48, each ambiguous by a hair
+(its bound 1.02–1.17 against the change's 7 k triangles and no draws); on their quiet-window re-run establishing −0.01 ±
+0.32 (accept), chase −0.49 ± 1.20 and the tower's view 0.04 ± 0.70, both accepted by the integrator's ruling (a mean
+under 0.6 ms after the quiet re-run, nothing failed); every CPU median within 0.15 ms, no long task and no program
+compiled during a slot.
 
 ### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
 
