@@ -7273,9 +7273,11 @@ foot, its valve chamber a storey over the bridge's floor with round-headed windo
 cornice and a slated bell roof — reached by an arched masonry footbridge from the bank (2 495 desktop triangles). Census
 [5128, 5058, 5942]; every structure, non-tree record and tree where it stood. The layout brief's solidPropsInWater
 exception names it beside the waterworks' manifold and intake. Pacing (4 seeds) 155/280/190/173 s, the head's to the
-second. Cost: establishing 0.19 ± 0.42 ms, chase 0.36 ± 0.40 and the tower's view 0.15 ± 0.48 (each ambiguous by a hair,
-its bound 1.02–1.17 against the change's 7 k triangles and no draws; their quiet-window re-run is queued); every CPU
-median within 0.15 ms, no long task and no program compiled during a slot.
+second. Cost: establishing 0.19 ± 0.42 ms, chase 0.36 ± 0.40 and the tower's view 0.15 ± 0.48, each ambiguous by a hair
+(its bound 1.02–1.17 against the change's 7 k triangles and no draws); on their quiet-window re-run establishing −0.01 ±
+0.32 (accept), chase −0.49 ± 1.20 and the tower's view 0.04 ± 0.70, both accepted by the integrator's ruling (a mean
+under 0.6 ms after the quiet re-run, nothing failed); every CPU median within 0.15 ms, no long task and no program
+compiled during a slot.
 
 ### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
 
