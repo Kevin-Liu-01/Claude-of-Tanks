@@ -7507,7 +7507,21 @@ now a hill town's, laid out with the spur's crest. The battlefield outside the t
   - the PR head on the same seeds: 247 / 154 / 125;
   - the full core run (132 matches) passes: median 190.8 s, p10 148 s, no timeouts; Steinburg's four ran 147 / 295 /
     149 / 254 s. authoritativeBots passes.
-- *The census*: the shard is regenerated at [2535, 5616, 2259] (was [2690, 6647, 2254]).
+- *The church* (wave 150's close views found it on bare ground): the block fill's fifth plot had set the town church
+  outside the town wall, south-east of the town. It is now a planned site on the market square's north side
+  (`{ structure: 'church', x: -76, z: 52, yawDeg: 186 }`): the tower and west door face the square, square to the
+  apron's turned north edge and 4 m off its paving, since an apron is a road and the brief keeps every solid 3.5 m out
+  of a road's core (at 0.9 m it read as solidPropsInRoad 1). The fifth block-fill plot takes a rowhouse. The facades
+  lane's churchyard (its yard system, `churchyard: true`, on facades 573445fe5) takes the church's free west or north
+  side once it is on the PR head.
+- *The census*: the shard is regenerated at [2547, 5429, 2259] (was [2690, 6647, 2254]; [2535, 5616, 2259] before
+  the church moved).
+- *Pacing with the church on the square* (bbdc84a0e): 20 seeds, median 208 s, p10 173 s, minimum 133 s, none under
+  120 s, no timeouts. Every layout band holds (solidPropsInRoad 0, objective symmetry 1.03, 4 lanes).
+- *Cost* (capture ticket 8; A the Ruinspires + Suzhou base 0b2ddee00, B d11deb201 with the church at its first seat,
+  ABCCBA × 8 at mean load 261, GPU p25 verdict): the chase view accepts, −1.10 ± 0.54 ms; the establishing view is
+  ambiguous, +0.45 ± 1.15 ms (bound 2.75 ms), on a lighter scene (716 against 727 draws, 4.83 against 5.12 M
+  triangles, stable across a re-stage), CPU +0.02 ± 0.08 ms; it takes one re-run in a quiet window.
 - *botRouteClearance*: the Steinburg courtyard case starts in the yard behind the north lane's rows, since the old
   courtyard is gone. Its comment names the receipt's conservatism: the edge-offset containment overstates a rotated
   corner (1.41 times the margin), so a leg passing under one reads short of the clearance it keeps.
