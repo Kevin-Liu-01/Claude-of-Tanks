@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
 import { streamFrom } from './geometry.ts';
 import { setFacadeCraft } from './facade.ts';
-import { paintLimewash, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
+import { paintDressedStoneBuffers, paintLimewash } from '../../regionalSurfaces.ts';
 
 const BUDGET = 12000;
 function counted(seed) {
@@ -123,8 +123,8 @@ for (const seed of [0x11a1, 0x11a2]) {
 }
 {
   const run = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
-  const a = run(paintRegionalSurfaceBuffers('stone', 'sandstone', [0.64, 0.52, 0.42], 0x51a7, true));
-  const b = run(paintRegionalSurfaceBuffers('stone', 'sandstone', [0.64, 0.52, 0.42], 0x51a7, true));
+  const a = run(paintDressedStoneBuffers('sandstone', [0.64, 0.52, 0.42], 0x51a7));
+  const b = run(paintDressedStoneBuffers('sandstone', [0.64, 0.52, 0.42], 0x51a7));
   assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), 'dressed stone: deterministic pixels');
   seamless('dressed stone', a.size, a.px);
 }

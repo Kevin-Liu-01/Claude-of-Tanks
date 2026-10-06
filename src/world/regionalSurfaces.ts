@@ -544,13 +544,20 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
-export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone', kind: RoofSurfaceKind | StoneSurfaceKind, tint: Tint, seed: number, dressed = false):
+export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone', kind: RoofSurfaceKind | StoneSurfaceKind, tint: Tint, seed: number):
   Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
   if (target === 'roof') {
     const painter = kind === 'shingle' ? ROOF_PAINTERS.slate : ROOF_PAINTERS[kind as keyof typeof ROOF_PAINTERS];
     const [px, hgt, rough] = yield* painter(256, tint, seed);
     return { size: 256, px, hgt, rough };
   }
-  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed, dressed);
+  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed);
+  return { size: 512, px, hgt, rough };
+}
+
+/** Paint-only access for receipts (no canvas): a town's dressed stone (`stone.dressed`) over a kind's recipe. */
+export function* paintDressedStoneBuffers(kind: StoneSurfaceKind, tint: Tint, seed: number):
+  Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+  const [px, hgt, rough] = yield* masonry(512, kind, tint, seed, true);
   return { size: 512, px, hgt, rough };
 }
