@@ -84,26 +84,56 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
   });
 }
 
-/** A steel H-frame bus structure across z at x (two columns and a beam), with three insulator strings on the beam. */
+/**
+ * A steel bus structure across z at x (round 2, the gauntlet's wave 120: "chunky box-section goalpost gantries"): two
+ * latticed columns (four angle chords each, braced), a latticed beam across their heads, three insulator strings of
+ * porcelain discs hung from it and the aluminium bus tubes along x from each string.
+ */
 function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, colour: Rgb): void {
-  for (const z of [z0, z1]) sink.member('structureMetal', [x, -0.3, z], [x, h, z], 0.3, 0.3, [1, 0, 0], { colour, exposed: true }, 0);
-  sink.member('structureMetal', [x, h - 0.2, z0 - 0.3], [x, h - 0.2, z1 + 0.3], 0.35, 0.4, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
+  const c = 0.22;
+  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 2.4);
+  // the beam: two chords and the web between them
+  for (const dy of [0, -0.5]) sink.member('structureMetal', [x, h - 0.15 + dy, z0 - 0.3], [x, h - 0.15 + dy, z1 + 0.3], 0.07, 0.07, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
+  const n = Math.max(3, Math.round((z1 - z0 + 0.6) / 0.6));
+  for (let k = 0; k < n; k++) {
+    const za = z0 - 0.3 + (z1 - z0 + 0.6) * k / n, zb = z0 - 0.3 + (z1 - z0 + 0.6) * (k + 1) / n;
+    sink.member('structureMetal', [x, h - 0.15, za], [x, h - 0.65, zb], 0.045, 0.045, [1, 0, 0], { colour, decor: true, exposed: true, fine: true }, 0);
+  }
   for (let k = 0; k < 3; k++) {
     const z = z0 + (z1 - z0) * (k + 0.5) / 3;
-    sink.cylinder('structureMetal', [x, h - 1.6, z], 'y', 1.4, 0.12, 6, { colour: PORCELAIN, decor: true }, 0.12);
+    // the string: a stack of discs on its rod, the clamp and the bus tube along x
+    sink.member('structureMetal', [x, h - 0.7, z], [x, h - 1.9, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 8, { colour: PORCELAIN, decor: true }, 0.14);
+    pipe(sink, 'structureMetal', [x - 2.6, h - 2.0, z], [x + 2.6, h - 2.0, z], 0.07, 6, { colour: ALUMINIUM, decor: true });
   }
 }
 
-/** Chain-link fence posts and three wires along a polyline from `y0`, `h` high (dressing): a yard's perimeter. */
+/**
+ * Chain-link along a polyline from `y0`, `h` high (dressing): posts every 2.5 m, a top and a bottom rail, the mesh's
+ * wires as a fine grain of verticals every 0.3 m (near the camera only), and on each post an arm carrying three strands of barbed
+ * wire.
+ */
 function fenceLine(sink: PartSink, pts: ReadonlyArray<readonly [number, number]>, y0 = 0, h = 2.2): void {
   for (let i = 0; i + 1 < pts.length; i++) {
     const [x0, z0] = pts[i], [x1, z1] = pts[i + 1];
-    const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 3));
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    if (len < 0.1) continue;
+    const ux = (x1 - x0) / len, uz = (z1 - z0) / len, n = Math.max(1, Math.round(len / 2.5));
     for (let k = 0; k <= n; k++) {
       const x = x0 + (x1 - x0) * k / n, z = z0 + (z1 - z0) * k / n;
-      sink.cylinder('structureMetal', [x, y0, z], 'y', h, 0.04, 5, { colour: GALV, decor: true });
+      sink.cylinder('structureMetal', [x, y0, z], 'y', h + 0.45, 0.04, 5, { colour: GALV, decor: true });
     }
-    for (const f of [0.14, 0.55, 0.98]) sink.member('structureMetal', [x0, y0 + h * f, z0], [x1, y0 + h * f, z1], 0.025, 0.025, [0, 1, 0], { colour: GALV, decor: true, exposed: true, fine: true }, 0);
+    for (const f of [0.03, 0.98]) sink.member('structureMetal', [x0, y0 + h * f, z0], [x1, y0 + h * f, z1], 0.03, 0.03, [0, 1, 0], { colour: GALV, decor: true, exposed: true }, 0);
+    for (const dy of [0.15, 0.3, 0.45]) sink.member('structureMetal', [x0, y0 + h + dy, z0], [x1, y0 + h + dy, z1], 0.012, 0.012, [0, 1, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+    // the mesh: thin dark verticals every 0.3 m, a single quad each (both faces), near the camera only
+    const m = Math.max(2, Math.round(len / 0.3));
+    for (let k = 0; k < m; k++) {
+      const x = x0 + (x1 - x0) * (k + 0.5) / m, z = z0 + (z1 - z0) * (k + 0.5) / m, w = 0.008;
+      const a: Vec3 = [x - ux * w, y0 + 0.05, z - uz * w], b: Vec3 = [x + ux * w, y0 + 0.05, z + uz * w];
+      const c: Vec3 = [x + ux * w, y0 + h, z + uz * w], d: Vec3 = [x - ux * w, y0 + h, z - uz * w];
+      sink.quad('structureMetal', a, b, c, d, { colour: shade(GALV, 0.7), decor: true, fine: true });
+      sink.quad('structureMetal', b, a, d, c, { colour: shade(GALV, 0.7), decor: true, fine: true });
+    }
   }
 }
 
@@ -114,23 +144,23 @@ function reach(ctx: RegionalBuildContext): { W: number; D: number; cx: number; c
 }
 
 /**
- * A works yard's perimeter, W x D about the local origin: a wall of block (structure: a yard standing where a solid
- * building stood keeps its ground closed, so no lane opens through it), a shut steel gate in the front (+z) wall
- * centred at `gx`, a coping and chain-link along the top (dressing).
+ * A works yard's perimeter, W x D about the local origin (round 2, the gauntlet's wave 120: the block walls read as "a
+ * cinder-block pen"): a poured kerb 0.9 m high (structure: higher than a hull steps, HULL_STEP_UP_M 0.55, so a yard
+ * standing where a solid building stood keeps its ground closed), the chain-link over it on steel posts with a top
+ * rail and three strands of barbed wire on their arms (dressing), a shut steel gate in the front (+z) side centred at
+ * `gx`.
  */
 function yardWall(sink: PartSink, W: number, D: number, gx: number, gw: number, tier: RegionalBuildContext['tier']): void {
-  const t = 0.25, h = 2.0, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2;
-  sink.span(BLOCK, x0, -0.3, z0, x1, h, z0 + t);
-  sink.span(BLOCK, x0, -0.3, z0 + t, x0 + t, h, z1);
-  sink.span(BLOCK, x1 - t, -0.3, z0 + t, x1, h, z1);
+  const t = 0.3, h = 0.9, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2;
+  sink.span(CONCRETE, x0, -0.3, z0, x1, h, z0 + t);
+  sink.span(CONCRETE, x0, -0.3, z0 + t, x0 + t, h, z1);
+  sink.span(CONCRETE, x1 - t, -0.3, z0 + t, x1, h, z1);
   const ga = Math.max(x0 + t, gx - gw / 2), gb = Math.min(x1 - t, gx + gw / 2);
-  if (ga - (x0 + t) > 0.2) sink.span(BLOCK, x0 + t, -0.3, z1 - t, ga, h, z1);
-  if (x1 - t - gb > 0.2) sink.span(BLOCK, gb, -0.3, z1 - t, x1 - t, h, z1);
-  sink.span('structureMetal', ga, 0.04, z1 - t / 2 - 0.04, gb, h + 0.25, z1 - t / 2 + 0.04, { colour: GALV });
-  for (const [a, b, c, d] of [[x0, z0, x1, z0 + t], [x0, z0 + t, x0 + t, z1], [x1 - t, z0 + t, x1, z1], [x0 + t, z1 - t, ga, z1], [gb, z1 - t, x1 - t, z1]] as const) {
-    if (c - a > 0.2 && d - b > 0.1) sink.span(CONCRETE, a - 0.03, h, b - 0.03, c + 0.03, h + 0.08, d + 0.03, { decor: true });
-  }
-  if (tier !== 'mobile') fenceLine(sink, [[ga, z1 - t / 2], [x0 + t / 2, z1 - t / 2], [x0 + t / 2, z0 + t / 2], [x1 - t / 2, z0 + t / 2], [x1 - t / 2, z1 - t / 2], [gb, z1 - t / 2]], h + 0.08, 1.4);
+  if (ga - (x0 + t) > 0.2) sink.span(CONCRETE, x0 + t, -0.3, z1 - t, ga, h, z1);
+  if (x1 - t - gb > 0.2) sink.span(CONCRETE, gb, -0.3, z1 - t, x1 - t, h, z1);
+  // the gate: a steel frame of tube with its mesh, shut, from the ground to the fence's top
+  sink.span('structureMetal', ga, 0.04, z1 - t / 2 - 0.04, gb, 3.0, z1 - t / 2 + 0.04, { colour: GALV });
+  if (tier !== 'mobile') fenceLine(sink, [[ga, z1 - t / 2], [x0 + t / 2, z1 - t / 2], [x0 + t / 2, z0 + t / 2], [x1 - t / 2, z0 + t / 2], [x1 - t / 2, z1 - t / 2], [gb, z1 - t / 2]], h, 2.1);
 }
 
 /** Aluminium sash and steel windows of the Bureau's buildings and the town's houses. */
@@ -184,6 +214,15 @@ const powerhouse: RegionalBuilder = (ctx) => {
   // load context" and is gone; its livery's draw and its place's are kept, so every later draw holds)
   pick(rng, [rgb(0xc9a24a), STEEL_GREEN, rgb(0xb8302a)]);
   look();
+  // the rooftop plant (round 2, the gauntlet's wave 120): the stair house, the ventilators' housings in a row along the
+  // ridge line and the air handlers, behind the parapet (dressing)
+  sink.span(CONCRETE, W * 0.22, H, zb + 1.2, W * 0.22 + 3.2, H + 3.0, zb + 4.6, { decor: true });
+  for (let k = 0; k < 4; k++) {
+    const x = -W * 0.32 + k * W * 0.16;
+    sink.span('structureMetal', x - 0.7, H, (zb + zf) / 2 - 0.7, x + 0.7, H + 1.5, (zb + zf) / 2 + 0.7, { colour: STEEL_GREY, decor: true });
+    sink.cylinder('structureMetal', [x, H + 1.5, (zb + zf) / 2], 'y', 0.5, 0.45, 10, { colour: shade(STEEL_GREY, 0.85), decor: true }, 0.25);
+  }
+  for (const sx of [-1, 1]) sink.span('structureMetal', sx * W * 0.12 - 1.6, H, zf - 3.4, sx * W * 0.12 + 1.6, H + 1.9, zf - 1.6, { colour: shade(GALV, 0.92), decor: true });
   // the anchor block and the penstocks
   const ab0 = -PD / 2 + 0.3, ab1 = ab0 + Math.max(2.8, Math.min(4.0, PD - hallD - 7));
   const abH = 9.5 + rng() * 2;
@@ -238,7 +277,10 @@ const controlBuilding: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: CONCRETE }, storeys: [{ h: 4.2, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.4, bucket: CONCRETE, parapet: 0.9 }, gableBucket: CONCRETE,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
-    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.45, 'glazed', ctx.variant));
+    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.15, 'glazed', ctx.variant));
+    // (round 2, the gauntlet's wave 120: curtained ribbon windows read as "orange grid trim"; clear glass in most of
+    // these buildings, and a dark plinth band under the board-formed walls)
+    sink.band(PAINTED, -W / 2 - 0.14, -0.3, -D / 2 - 0.14, W / 2 + 0.14, 1.1, D / 2 + 0.14, { decor: true, shade: 0.7 });
     // the spandrel bands proud of the windows, and the fins on the entrance front
     for (let s = 1; s < 4; s++) {
       const y = frame.floors[s];
@@ -301,7 +343,8 @@ const switchyard: RegionalBuilder = (ctx) => {
   // the yard fills the old tower's reach (its bounds), walled round its edge
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
-    sink.span(CONCRETE, -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { decor: true });
+    // the pad: crushed rock over the yard (round 2: "a gravel pad"), the kerb round it
+    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { colour: rgb(0x8e877a), decor: true });
     const steel = GALV, h = 20 + rng() * 4;
     for (const sx of [-1, 1]) latticeTower(sink, sx * W * 0.28, -D / 2 + 2.6, 1.6, 0.6, h, steel);
     // the cross-arm between the towers and the line's insulator strings
