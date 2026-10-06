@@ -31,6 +31,7 @@ import {
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
+import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
 } from '../collision.ts';
@@ -131,7 +132,7 @@ interface GroundingReceipt {
  */
 export interface AnimatedDressing {
   kind: 'moored-hull';
-  bucket: 'wood';
+  bucket: 'wood' | 'baked';
   x: number;
   y: number;
   z: number;
@@ -158,7 +159,30 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
-> & { shore?: ShoreLedger };
+> & { shore?: ShoreLedger; boats?: BoatFamily };
+
+/** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
+ * painted bucket (the map-vehicles lane, P2). */
+function pushBoat(buckets: DressingBuckets, hull: THREE.BufferGeometry, timber = false): 'baked' | 'wood' {
+  if (buckets.baked && !timber) { buckets.baked.push(hull); return 'baked'; }
+  hull.deleteAttribute('color');
+  buckets.wood.push(hull);
+  return 'wood';
+}
+
+/** Seat a posed hull on the ground under it: the lowest clearance over its keel and bilge vertices. */
+function hullSupportY(hull: THREE.BufferGeometry, heightField: DressingHeightField, x: number, z: number): number {
+  const p = hull.attributes.position;
+  let low = Infinity;
+  for (let i = 0; i < p.count; i++) low = Math.min(low, p.getY(i));
+  let support = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    const py = p.getY(i);
+    if (py > low + 0.16) continue;
+    support = Math.max(support, heightField.getHeightAt(x + p.getX(i), z + p.getZ(i)) - py);
+  }
+  return support;
+}
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
 const _groundRight = new THREE.Vector3(1, 0, 0);
@@ -844,37 +868,21 @@ function frozenRowboat(
   z: number,
   yaw: number,
   groundingReceipts?: GroundingReceipt[] | null,
+  boats: BoatFamily = BOAT_FAMILIES.lakeboat,
 ): void {
-  const parts: THREE.BufferGeometry[] = [];
-  const L = 3.4, W = 1.25, H = 0.52;
+  const L = 3.4, W = 1.25;
   const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.10);
-  for (const s of [-1, 1]) { // side planks (two lapped strakes each)
-    for (let r = 0; r < 2; r++) {
-      const pl = box(L - r * 0.5, 0.20, 0.06, 1.2);
-      pl.rotateZ((rng() - 0.5) * 0.03);
-      pl.translate(0, 0.14 + r * 0.18, s * (W / 2 - r * 0.06));
-      parts.push(pl);
-    }
-  }
-  const bow = box(0.07, H * 0.8, W * 0.8, 1.2);
-  bow.rotateY(Math.PI / 4);
-  bow.translate(L / 2 - 0.12, H * 0.42, 0);
-  parts.push(bow);
-  const transom = box(0.07, H * 0.75, W * 0.9, 1.2);
-  transom.translate(-L / 2 + 0.1, H * 0.4, 0);
-  parts.push(transom);
-  for (const tx of [-0.7, 0.55]) { // thwarts
-    const th = box(0.26, 0.05, W * 0.94, 1.2);
-    th.translate(tx, H * 0.62, 0);
-    parts.push(th);
-  }
-  for (const g of parts) {
-    g.rotateZ(0.06 + rng() * 0.05); // frozen-in list
-    g.rotateY(yaw);
-    applyGroundNormal(g, pose);
-    g.translate(x, pose.y, z);    // hull bitten into the ice
-    buckets.wood.push(jitterUV(g, rng));
-  }
+  // the box-built boat's 44 draws (four strake tilts, eight parts' list and UV jitter) keep the stream where it was
+  for (let k = 0; k < 4; k++) rng();
+  const draws: number[] = [];
+  for (let k = 0; k < 40; k++) draws.push(rng());
+  const hull = familyBoat(boats, L, Math.floor(draws[1] * 97), false);
+  hull.rotateZ(0.06 + draws[0] * 0.05); // frozen-in list
+  hull.rotateY(yaw + Math.PI / 2);      // the hull's length on the kit's local X
+  applyGroundNormal(hull, pose);
+  hull.translate(x, pose.y - 0.1, z);   // bitten into the ice
+  // the lake kit draws in the plaster, timber and reed families only: the frozen boat's weathered planking is timber
+  pushBoat(buckets, hull, true);
   groundingReceipts?.push({
     kind: 'frozen-rowboat', x, y: pose.y, z, relief: pose.spread,
     baseClearance: pose.maxFloat, supportMin: pose.min, supportMax: pose.max,
@@ -1071,12 +1079,13 @@ function addWinterLakeLandmark(
   rng: Rng,
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
+  boats?: BoatFamily,
 ): void {
   const boatAngle = Math.PI * 1.32 + rng() * 0.2;
   const boatX = lake.x + Math.cos(boatAngle) * lake.r * 0.86;
   const boatZ = lake.z + Math.sin(boatAngle) * lake.r * 0.86;
   frozenRowboat(buckets, rng, heightField, boatX, boatZ,
-    boatAngle + Math.PI / 2, groundingReceipts);
+    boatAngle + Math.PI / 2, groundingReceipts, boats);
   const jettyAngle = boatAngle + 0.45;
   const jettyX = lake.x + Math.cos(jettyAngle) * lake.r * 1.02;
   const jettyZ = lake.z + Math.sin(jettyAngle) * lake.r * 1.02;
@@ -1085,7 +1094,7 @@ function addWinterLakeLandmark(
 }
 
 function dressWinterLakes({
-  L, heightField, rng, buckets, groundingReceipts,
+  L, heightField, rng, buckets, groundingReceipts, boats,
 }: FocusedDressingContext): void {
   for (const lake of L.lakes || []) {
     const big = lake.r >= 80;
@@ -1094,7 +1103,7 @@ function dressWinterLakes({
     addWinterPressureRidges(lake, big, heightField, rng, buckets);
     addWinterInteriorDrifts(lake, big, heightField, rng, buckets);
     addWinterRimDrifts(lake, big, heightField, rng, buckets);
-    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts);
+    if (big) addWinterLakeLandmark(lake, heightField, rng, buckets, groundingReceipts, boats);
   }
 }
 
@@ -1113,7 +1122,7 @@ export function dressMapExtras({
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated };
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? '') };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1142,34 +1151,6 @@ export function dressMapExtras({
 // maps r1 — COASTAL SHORE dressing (beached boats, driftwood, buoys, jetty)
 // =============================================================================
 
-// The kit's open clinker hull in its own frame (length along local X, the keel line at y = 0): three lapped strakes a
-// side, bow, transom and two thwarts — ten parts, six tilt draws. Shared by the beached hulls and the boats moored at
-// the jetties (round 58), so both read as the same working fleet.
-function clinkerHull(rng: Rng, L: number, W: number, H: number): THREE.BufferGeometry[] {
-  const parts: THREE.BufferGeometry[] = [];
-  for (const s of [-1, 1]) {
-    for (let r = 0; r < 3; r++) { // three lapped strakes each side
-      const pl = box(L - r * 0.55, 0.20, 0.07, 1.2);
-      pl.rotateZ((rng() - 0.5) * 0.03);
-      pl.translate(0, 0.16 + r * 0.20, s * (W / 2 - r * 0.07));
-      parts.push(pl);
-    }
-  }
-  const bow = box(0.08, H * 0.9, W * 0.8, 1.2);
-  bow.rotateY(Math.PI / 4);
-  bow.translate(L / 2 - 0.14, H * 0.45, 0);
-  parts.push(bow);
-  const transom = box(0.08, H * 0.8, W * 0.9, 1.2);
-  transom.translate(-L / 2 + 0.12, H * 0.42, 0);
-  parts.push(transom);
-  for (const tx of [-L * 0.24, L * 0.18]) {
-    const th = box(0.30, 0.06, W * 0.94, 1.2);
-    th.translate(tx, H * 0.68, 0);
-    parts.push(th);
-  }
-  return parts;
-}
-
 // Open clinker fishing boat beached above the surf: planked sides, transom,
 // thwarts, a short mast with a furled boom. Reads "working beach" at range.
 function beachedBoat(
@@ -1181,56 +1162,25 @@ function beachedBoat(
   yaw: number,
   withMast: boolean,
   groundingReceipts?: GroundingReceipt[] | null,
+  boats: BoatFamily = BOAT_FAMILIES.canot,
 ): void {
-  const L = 4.6 + rng() * 1.2, W = 1.6, H = 0.72;
+  const L = 4.6 + rng() * 1.2, W = 1.6;
   const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.06);
-  const parts = clinkerHull(rng, L, W, H);
-  const keelList = 0.10 + rng() * 0.08; // beached hulls heel over a touch
-  for (const g of parts) {
-    // Length is local X: a Z rotation pitches/buries the bow and stern.
-    g.rotateX(keelList);
-    g.rotateY(yaw);
-    applyGroundNormal(g, pose);
-  }
-  // Seat the rigid hull using its emitted lower faces AFTER heel and ground
-  // alignment, not the unheeled OBB support plane. The opposite gunwale is
-  // intentionally higher; don't deform both sides down into the beach.
-  let supportY = -Infinity;
-  for (const i of [0, 3, 6, 7]) { // two lowest strakes, bow and transom
-    const g = parts[i] as THREE.BoxGeometry, p = g.attributes.position;
-    const across = Math.max(1, Math.ceil(g.parameters.width / 0.35));
-    const along = Math.max(1, Math.ceil(g.parameters.depth / 0.35));
-    for (let a = 0; a <= across; a++) for (let b = 0; b <= along; b++) {
-      const u = a / across, v = b / along;
-      const px = p.getX(12) + (p.getX(13) - p.getX(12)) * u + (p.getX(14) - p.getX(12)) * v;
-      const py = p.getY(12) + (p.getY(13) - p.getY(12)) * u + (p.getY(14) - p.getY(12)) * v;
-      const pz = p.getZ(12) + (p.getZ(13) - p.getZ(12)) * u + (p.getZ(14) - p.getZ(12)) * v;
-      supportY = Math.max(supportY, heightField.getHeightAt(x + px, z + pz) - py);
-    }
-  }
+  // the box-built boat's draws (six strake tilts, the heel, ten parts' UV jitter; the boom's swing with a mast) keep the
+  // stream where it was: the heel takes the draw it always took
+  const draws: number[] = [];
+  for (let k = 0; k < 47 + (withMast ? 1 : 0); k++) draws.push(rng());
+  const keelList = 0.10 + draws[6] * 0.08; // beached hulls heel over a touch
+  const hull = familyBoat(boats, L, Math.floor(draws[7] * 97), withMast);
+  hull.rotateZ(keelList);                 // the hull's length is its local Z: a roll about it
+  hull.rotateY(yaw + Math.PI / 2);        // and the kit's yaw laid that length on local X
+  applyGroundNormal(hull, pose);
+  // Seat the rigid hull on its own keel and bilge AFTER the heel and the ground alignment: the opposite gunwale is
+  // higher, as a beached boat lies; nothing deforms into the beach.
+  const supportY = hullSupportY(hull, heightField, x, z);
   const boatY = supportY - 0.035;
-  for (const g of parts) {
-    g.translate(x, boatY, z);
-    buckets.wood.push(jitterUV(g, rng));
-  }
-  if (withMast) {
-    const mast = box(0.11, 3.4, 0.11, 2.0);
-    // Plant the foot on the actual forward thwart, not in the floorless hull.
-    mast.translate(L * 0.18, H * 0.68 + 0.03 + 1.7, 0);
-    mast.rotateX(keelList);
-    mast.rotateY(yaw);
-    applyGroundNormal(mast, pose);
-    mast.translate(x, boatY, z);
-    buckets.wood.push(mast);
-    const boom = box(0.08, 0.08, 2.3, 2.0);
-    boom.rotateY((rng() - 0.5) * 0.4);
-    boom.translate(L * 0.18, 1.21, 0);
-    boom.rotateX(keelList);
-    boom.rotateY(yaw);
-    applyGroundNormal(boom, pose);
-    boom.translate(x, boatY, z);
-    buckets.wood.push(boom);
-  }
+  hull.translate(x, boatY, z);
+  pushBoat(buckets, hull);
   groundingReceipts?.push({
     kind: 'beached-boat', x, y: boatY, z, relief: pose.spread,
     baseClearance: boatY - supportY, supportMin: pose.min, supportMax: pose.max,
@@ -1245,6 +1195,7 @@ function addCoastalBoats(
   buckets: DressingBuckets,
   groundingReceipts?: GroundingReceipt[] | null,
   shore?: ShoreLedger,
+  boats?: BoatFamily,
 ): void {
   const boatCount = lake.boats ?? (big ? 3 : 1);
   for (let i = 0; i < boatCount; i++) {
@@ -1254,7 +1205,7 @@ function addCoastalBoats(
     const z = lake.z + Math.sin(angle) * radius;
     if (!isDressingPointClear(heightField, x, z, 470, 7)) continue;
     beachedBoat(buckets, rng, heightField, x, z,
-      angle + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts);
+      angle + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts, boats);
     shore?.keepOut.push({ x, z, r: 4.2 });
   }
 }
@@ -1379,6 +1330,8 @@ function jettyGangway(
 
 interface MooredBoat {
   x: number; z: number; yaw: number; L: number; keelY: number; bow: 1 | -1;
+  /** The bucket the hull went into (the painted one, or the timber one where a kit has none). */
+  bucket: 'baked' | 'wood';
   /** Round 67: the hull's pieces (strakes, bow, transom, thwarts, a mast and boom on some) — the same objects the
    * wood bucket holds — so the renderer can pose the hull as one animated mesh. */
   geometries: THREE.BufferGeometry[];
@@ -1388,49 +1341,38 @@ interface MooredBoat {
  * bed lies 0.72 m below it), parallel to the deck, a slight list, a mast on some. */
 function mooredBoat(
   buckets: DressingBuckets, rng: Rng, heightField: DressingHeightField, plan: ShoreJettyPlan,
-  groundingReceipts?: GroundingReceipt[] | null,
+  groundingReceipts?: GroundingReceipt[] | null, boats: BoatFamily = BOAT_FAMILIES.canot,
 ): MooredBoat | null {
   if (!plan.boat) return null;
   const dx = Math.cos(plan.angle), dz = Math.sin(plan.angle), ax = -dz, az = dx;
   const across = plan.boat.side * (JETTY_DECK_HALF_WIDTH_M + MOORED_BOAT_GAP_M + MOORED_BOAT_HALF_BEAM_M);
   const x = plan.x + dx * plan.boat.along + ax * across, z = plan.z + dz * plan.boat.along + az * across;
-  const L = 4.6 + rng() * 1.2, W = 1.6, H = 0.72;
-  const parts = clinkerHull(rng, L, W, H);
+  const L = 4.6 + rng() * 1.2;
+  // the box-built boat's draws, in their order: six strake tilts, the list, the bow, the yaw's swing, ten parts' UV
+  // jitter, the mast, the boom's swing
+  for (let k = 0; k < 6; k++) rng();
   const list = (rng() - 0.5) * 0.08;
   const bow: 1 | -1 = rng() < 0.5 ? 1 : -1; // bow to sea or to shore
   const yaw = -Math.atan2(dz, dx) + (bow > 0 ? 0 : Math.PI) + (rng() - 0.5) * 0.05;
+  const draws: number[] = [];
+  for (let k = 0; k < 40; k++) draws.push(rng());
+  const mast = rng() < 0.55;
+  if (mast) rng();
   const keelY = plan.surface - MOORED_BOAT_DRAFT_M;
-  const geometries: THREE.BufferGeometry[] = [];
-  for (const g of parts) {
-    g.rotateX(list);
-    g.rotateY(yaw);
-    g.translate(x, keelY, z);
-    buckets.wood.push(jitterUV(g, rng));
-    geometries.push(g);
-  }
-  if (rng() < 0.55) {
-    const mast = box(0.11, 3.4, 0.11, 2.0);
-    mast.translate(L * 0.18, H * 0.68 + 0.03 + 1.7, 0);
-    mast.rotateX(list);
-    mast.rotateY(yaw);
-    mast.translate(x, keelY, z);
-    buckets.wood.push(mast);
-    geometries.push(mast);
-    const boom = box(0.08, 0.08, 2.3, 2.0);
-    boom.rotateY((rng() - 0.5) * 0.4);
-    boom.translate(L * 0.18, 1.21, 0);
-    boom.rotateX(list);
-    boom.rotateY(yaw);
-    boom.translate(x, keelY, z);
-    buckets.wood.push(boom);
-    geometries.push(boom);
-  }
+  // a moored hull keeps its beam inside the fender gap the jetty allows
+  const family = { ...boats, hull: { ...boats.hull, beam: Math.min(boats.hull.beam, MOORED_BOAT_HALF_BEAM_M * 2.1) } };
+  const hull = familyBoat(family, L, Math.floor(draws[0] * 97), mast);
+  hull.rotateZ(list);
+  hull.rotateY(yaw + Math.PI / 2);
+  hull.translate(x, keelY, z);
+  const bucket = pushBoat(buckets, hull);
+  const geometries = [hull];
   const bed = heightField.getHeightAt(x, z);
   groundingReceipts?.push({
     kind: 'moored-boat', x, y: keelY, z, relief: 0, baseClearance: keelY - plan.surface,
     supportMin: bed, supportMax: bed,
   });
-  return { x, z, yaw, L, keelY, bow, geometries };
+  return { x, z, yaw, L, keelY, bow, geometries, bucket };
 }
 
 /** Two bollards on the deck edge beside the moored hull and a line from each to the nearer gunwale. */
@@ -1464,14 +1406,15 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
 function dressShoreLanding(
   buckets: DressingBuckets, heightField: DressingHeightField, plan: ShoreJettyPlan,
   groundingReceipts?: GroundingReceipt[] | null, rng: Rng = landingStream(plan), animated?: AnimatedDressing[],
+  boats?: BoatFamily,
 ): void {
   jettyGangway(buckets, rng, plan, groundingReceipts);
-  const boat = mooredBoat(buckets, rng, heightField, plan, groundingReceipts);
+  const boat = mooredBoat(buckets, rng, heightField, plan, groundingReceipts, boats);
   if (boat) jettyMoorings(buckets, rng, plan, boat);
   // Round 67: the renderer poses the hull from the world clock (mooredHullMotion.ts); the mooring lines stay with the
   // bollards — a few centimetres of heave on a tarred line is nothing the eye reads
   if (boat && animated) {
-    animated.push({ kind: 'moored-hull', bucket: 'wood', x: boat.x, y: boat.keelY, z: boat.z, yaw: boat.yaw,
+    animated.push({ kind: 'moored-hull', bucket: boat.bucket, x: boat.x, y: boat.keelY, z: boat.z, yaw: boat.yaw,
       phase: mooredHullPhase(boat.x, boat.z), geometries: boat.geometries });
   }
 }
@@ -1497,6 +1440,7 @@ function addCoastalJetty(
   groundingReceipts: GroundingReceipt[] | null | undefined,
   spawns: readonly { x: number; z: number }[] | undefined,
   animated?: AnimatedDressing[],
+  boats?: BoatFamily,
 ): void {
   // Round 58 (2026-09-24): the jetty stood at 1.05 R of the disc with fixed-height piles and a sagging deck — 15–30 m
   // inland on Saltmere's flat strand, ten metres up the bank on Nordhavn's heads. It now stands where the strand law
@@ -1518,12 +1462,12 @@ function addCoastalJetty(
   if (!plan) return;
   const stream = landingStream(plan);
   jetty(buckets, stream, plan.x, plan.z, plan.angle, plan.deckY - 0.82, plan.length, heightField, groundingReceipts);
-  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream, animated);
+  dressShoreLanding(buckets, heightField, plan, groundingReceipts, stream, animated, boats);
   registerShoreLanding(shore, plan);
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats,
 }: FocusedDressingContext): void {
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
@@ -1533,10 +1477,10 @@ function dressCoastalShore({
   };
   for (const lake of L.lakes || []) {
     const big = lake.r >= 110;
-    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore);
+    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats);
     addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
     addCoastalBuoys(lake, big, heightField, rng, buckets);
-    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated);
+    if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats);
   }
 }
 
@@ -1979,7 +1923,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -1988,11 +1932,11 @@ function dressLakeRiverLandings(
     const landing = planRiverLanding(heightField, L.lakes ?? [], anchor);
     if (!landing) continue;
     beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
-      landing.boatYaw, false, groundingReceipts);
+      landing.boatYaw, false, groundingReceipts, boats);
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
       landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
     // Round 58: on a sea strand the pier takes the gangway, moored boat and bollards of the derived landing
-    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated);
+    if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated, boats);
     if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
     shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
     if (landing.shore) registerShoreLanding(shore, landing.shore);

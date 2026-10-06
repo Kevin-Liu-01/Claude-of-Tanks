@@ -8000,6 +8000,7 @@ ${snowCap ? `
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing pushes into existing buckets; small coal piles share rock collision.
   const wharfDressingStart = buckets.wood.length;
+  const wharfPaintedStart = buckets.baked.length; // the map-vehicles lane (P2): the creek boat is a painted hull
   // Round 67 (2026-09-24): dressing the renderer poses every frame (the moored hulls, maps/mooredHullMotion.ts) —
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
@@ -8035,7 +8036,7 @@ ${snowCap ? `
     if (mapId !== 'mangrove') return;
     group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
       P.riverLandings?.find(site => site.lakeIndex === FISHERY_WHARF_LAKE_INDEX), [...obstacles, ...colliders],
-      vegetation, buckets.wood.slice(wharfDressingStart));
+      vegetation, [...buckets.wood.slice(wharfDressingStart), ...buckets.baked.slice(wharfPaintedStart)]);
     wharfFishery = null;
   }
   composeAuthoredFisheryWharf();
