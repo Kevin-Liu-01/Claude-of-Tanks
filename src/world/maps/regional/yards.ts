@@ -252,7 +252,7 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
       plan.shed = { x, z, yaw: yawAlong([-n[0], -n[1]]), w: sw, d: sdp };
     }
   }
-  if (style.garden) {
+  if (style.garden || style.graves) {
     const room = length - (plan.shed ? sw + 1.2 : 0.8);
     const gw = Math.min(4.2, room - 0.4), gd = Math.min(3.2, depth - 1.1);
     if (gw >= 1.8 && gd >= 1.4) {
@@ -268,6 +268,45 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
 }
 
 const SOIL: readonly Rgb[] = [0x4a3a2a, 0x54402e, 0x3f3226].map(rgb);
+const IRON: Rgb = rgb(0x1e1c1a);
+
+/**
+ * A churchyard's graves (dressing, in the area the planner keeps for a yard's beds): rows of graves facing east, each a
+ * headstone — a plain slab, a slab under a cross, or an iron cross — at the head of a low kerbed bed, the older ones
+ * leaning; the paths between the rows left as the yard's ground. The stone takes the kit's own masonry print.
+ */
+export function graveParts(w: number, d: number, look: () => number, drop = 0): RegionalParts {
+  const sink = new PartSink([look() * 5.3, look() * 3.1]);
+  const dec = { decor: true } as const;
+  const rows = Math.max(1, Math.floor((d - 0.4) / 2.1)), per = Math.max(1, Math.floor((w - 0.4) / 1.15));
+  for (let r = 0; r < rows; r++) {
+    const z = -d / 2 + 0.2 + (d - 0.4) * (r + 0.5) / rows;
+    for (let k = 0; k < per; k++) {
+      if (look() < 0.12) continue; // an empty plot in the row
+      const x = -w / 2 + 0.2 + (w - 0.4) * (k + 0.5) / per;
+      // the bed: a low stone kerb round a mound of earth
+      sink.span('stone', x - 0.36, -0.05 - drop, z - 0.9, x + 0.36, 0.1, z + 0.75, dec);
+      sink.span('structureWood', x - 0.3, 0.05, z - 0.84, x + 0.3, 0.14, z + 0.66, { ...dec, colour: shade(SOIL[k % SOIL.length], 0.9) });
+      const kind = look(), lean = (look() - 0.5) * 0.12, hz = z - 0.92;
+      if (kind < 0.55) {
+        // a slab headstone, a shoulder cut at its top
+        const hw = 0.24 + look() * 0.1, hh = 0.55 + look() * 0.35;
+        sink.span('stone', x - hw, -0.05 - drop, hz - 0.07, x + hw, hh, hz + 0.07, dec);
+        sink.span('stone', x - hw * 0.7, hh, hz - 0.06, x + hw * 0.7, hh + 0.08, hz + 0.06, dec);
+      } else if (kind < 0.8) {
+        // a stone cross on a plinth
+        sink.span('stone', x - 0.2, -0.05 - drop, hz - 0.12, x + 0.2, 0.25, hz + 0.12, dec);
+        sink.span('stone', x - 0.05, 0.25, hz - 0.05, x + 0.05, 1.05 + lean, hz + 0.05, dec);
+        sink.span('stone', x - 0.22, 0.72, hz - 0.05, x + 0.22, 0.82, hz + 0.05, dec);
+      } else {
+        // an iron cross
+        sink.span('structureMetal', x - 0.025, -drop, hz - 0.025, x + 0.025, 1.0, hz + 0.025, { ...dec, colour: IRON });
+        sink.span('structureMetal', x - 0.18, 0.7, hz - 0.02, x + 0.18, 0.74, hz + 0.02, { ...dec, colour: IRON });
+      }
+    }
+  }
+  return sink.finish();
+}
 const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].map(rgb);
 
 /**

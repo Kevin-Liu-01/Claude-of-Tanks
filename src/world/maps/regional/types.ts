@@ -65,6 +65,12 @@ export interface ArchitectureStyle {
   wear?: number;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
+  /**
+   * the churchyard round the kit's church (the facades lane, 2026-10-06; wave 150: "both German churches stand on bare
+   * dirt"): a yard on the church's freest side walled like a house's, its graves in place of the beds. A map opts in
+   * (props `churchyard: true`): its walls are destructibles with colliders, so the map's collision shard regenerates
+   */
+  churchyard?: YardStyle;
 }
 
 /**
@@ -86,6 +92,8 @@ export interface YardStyle {
   shedSize?: readonly [number, number];
   /** kitchen-garden beds in the yard */
   garden: boolean;
+  /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
+  graves?: boolean;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

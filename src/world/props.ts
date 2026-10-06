@@ -144,7 +144,8 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
-import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { YARD_SHED, gardenParts, graveParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import type { YardStyle } from './maps/regional/types.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
@@ -377,6 +378,9 @@ interface PropsSettings {
   cropFields: number;
   cropForm?: 'harvest' | 'wet-upright' | 'grain';
   lampposts: boolean;
+  /** the kit's churchyard round its church (maps/regional/types.ts ArchitectureStyle.churchyard; the facades lane): its
+   *  walls are destructibles with colliders, so a map opting in regenerates its collision shard */
+  churchyard?: boolean;
   hedgehogs: number;
   destructibleBuildings: string[];
   orbitalSettlement?: readonly OrbitalPlacement[];
@@ -7084,13 +7088,18 @@ ${snowCap ? `
   // gate, an outbuilding the kit builds and kitchen-garden beds, each placed only where it clears the road frontage,
   // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
   function placeRegionalYards(): void {
-    const yard = regionalArchitecture?.yard;
-    if (!yard || !regionalArchitecture) return;
+    if (!regionalArchitecture) return;
+    if (regionalArchitecture.yard) placeYards(regionalArchitecture.yard, seed + 1307, 'regionalYards');
+    // (the facades lane, 2026-10-06) the churchyard after the house yards, on a stream of its own: they stand as before
+    if (P.churchyard && regionalArchitecture.churchyard) placeYards(regionalArchitecture.churchyard, seed + 1311, 'regionalChurchyards');
+  }
+  function placeYards(yard: YardStyle, streamSeed: number, statsKey: string): void {
+    if (!regionalArchitecture) return;
     const style = regionalArchitecture;
     const kinds = new Set(yard.kinds);
     const houses = buildingFeatures.filter((b) => b.kind && kinds.has(b.kind));
     if (!houses.length) return;
-    const yrngYard = mulberry32(seed + 1307);
+    const yrngYard = mulberry32(streamSeed);
     const keepOut = yardKeepOut(mapId, L.spawns,
       (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
       heightField.bridgeDecks ?? []);
@@ -7106,11 +7115,11 @@ ${snowCap ? `
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
     // the stage's counts on the props group (receipts and captures read them)
     const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
-    group.userData.regionalYards = stats;
+    group.userData[statsKey] = stats;
     // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
     // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
     // the field's wheat, its beds hidden in it)
-    const holes: Array<{ x: number; z: number; r: number }> = [];
+    const holes: Array<{ x: number; z: number; r: number }> = group.userData.regionalYardHoles ?? [];
     group.userData.regionalYardHoles = holes;
     /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
     const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
@@ -7183,7 +7192,7 @@ ${snowCap ? `
         const { x, z, yaw, w, d } = plan.garden;
         const fit = groundFit(x, z, w, d, yaw);
         if (fit.spread <= 0.5) {
-          const parts = gardenParts(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          const parts = (yard.graves ? graveParts : gardenParts)(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
           _quat.setFromAxisAngle(_upAxis, yaw);
           _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
           mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
