@@ -310,6 +310,12 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /\} else if \(!wantStones && wallJob\?\.cell === cell\) \{\n\s*wallJob\.steps\.return\(null\);/, 'dropped when the camera turns away before it is done');
   assert.match(props, /if \(cell\.stones\) \{ group\.remove\(cell\.stones\); cell\.stones\.geometry\.dispose\(\); \}/, 'let go (its geometry, never the shared material) when the camera leaves');
   assert.match(props, /mesh\.castShadow = false; mesh\.receiveShadow = true; mesh\.matrixAutoUpdate = false;/, 'casting no shadow, as the other forms');
+  // the readiness the probes wait on: the cells still to build, as the grass's work state (a snapshot, no work done)
+  assert.match(props, /if \(wantStones && cell\.stones === null\) pending\+\+;/, 'the cells still wanting their stones counted');
+  assert.match(props, /lod\.pending = pending;/, 'at every switch');
+  const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  assert.match(map, /getFieldWallWorkState: \(\) => \(\{ pending: \(props\.group\.userData\.fieldWallLod as \{ pending\?: number \} \| undefined\)\?\.pending \?\? 0 \}\),/,
+    'the world reports them (a capture waits for the stones before it shoots)');
   const fineTable = /const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = \{([^}]+)\}/.exec(props)[1];
   const fine = Object.fromEntries([...fineTable.matchAll(/'?([a-z-]+)'?: (\d+)/g)].map((m) => [m[1], Number(m[2])]));
   assert.ok(fine.high > 0 && fine.high <= 30 && fine.ultra <= 45 && fine.low === 0 && fine['mobile-high'] === 0 && fine.mobile === 0 && fine['mobile-low'] === 0,

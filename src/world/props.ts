@@ -240,6 +240,8 @@ interface FieldWallLod {
   /** (b17) What the stone forms are built from (null on a phone), and the walls' material they share. */
   fine: FieldWallFineSource | null;
   material: THREE.Material;
+  /** (b17) The cells that want their stone form and have none yet, at the last switch (map.ts getFieldWallWorkState). */
+  pending?: number;
 }
 
 interface GeneratedSurfaceTextures {
@@ -9596,6 +9598,7 @@ ${snowCap ? `
         } else cell.stones = false;
       }
     }
+    let pending = 0;
     for (const cell of cells) {
       const b = cell.box;
       const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
@@ -9612,6 +9615,7 @@ ${snowCap ? `
         if (cell.stones) { group.remove(cell.stones); cell.stones.geometry.dispose(); }
         cell.stones = null;
       }
+      if (wantStones && cell.stones === null) pending++;
       const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
       const midShown = show && !cell.stones;
       if (midShown !== cell.midShown) { cell.midShown = midShown; if (near && cell.near >= 0) near.setVisibleAt(cell.near, midShown); }
@@ -9619,6 +9623,7 @@ ${snowCap ? `
       cell.nearShown = show;
       if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
     }
+    lod.pending = pending;
   }
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {

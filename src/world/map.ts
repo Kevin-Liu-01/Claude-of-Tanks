@@ -156,6 +156,9 @@ export interface WorldRuntime {
   dispose(): void;
   /** Readiness snapshot only; never performs streaming work. */
   getGrassWorkState: VegetationRuntime['getGrassWorkState'];
+  /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
+   *  a readiness snapshot only, as the grass's. */
+  getFieldWallWorkState(): { pending: number };
   config: BattlefieldMapConfig;
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
@@ -609,6 +612,7 @@ function assembleWorld(
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
     getGrassWorkState: () => vegetation.getGrassWorkState(),
+    getFieldWallWorkState: () => ({ pending: (props.group.userData.fieldWallLod as { pending?: number } | undefined)?.pending ?? 0 }),
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     raycast,
