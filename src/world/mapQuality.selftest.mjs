@@ -291,7 +291,12 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
   assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
-  assert.ok(config.props.inhabit.modernClutter >= 18,
+  // an authored mix counts its pieces: a period map keeps the budget in the families of its year (Nordhavn 1940 and
+  // Glacier Pass 1945 have cable reels and direction signs, no traffic cones, Jersey barriers or pad transformers)
+  const modernClutter = config.props.inhabit.modernClutter;
+  const modernBudget = typeof modernClutter === 'object' && modernClutter
+    ? Object.values(modernClutter).reduce((sum, count) => sum + count, 0) : modernClutter;
+  assert.ok(modernBudget >= 18,
     `${mapId}: modern roadside and checkpoint clutter budget`);
   assert.ok(config.props.craters >= 48, `${mapId}: battlefield scarring budget`);
   assert.ok(config.props.wallRuns?.length >= 6,

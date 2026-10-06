@@ -113,7 +113,10 @@ export default {
     // be nearly treeless above the treeline"): the col stands at 2,080 m, above the larches; a few stands on the floor,
     // the forest on the slopes round it (the rim's ring)
     clusterCount: 12, loneCount: 10, rimCount: 30, grassDensity: 0.36,
-    bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
+    // map pass 2026-09-12: exposed stone/scrub on the snowfields (0.62)
+    // (round 3, gauntlet wave 127: "a saturated summer-green broadleaf bush ... cannot grow on a 2,000 m col in April"):
+    // no shrub layer above the larches
+    bushCount: 0, bushSpecies: 'spruce',
   },
   props: {
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
@@ -170,8 +173,11 @@ export default {
     tankWrecks: { era: 'modern', count: 6, debris: true,
       ids: ['kf51', 'ariete', 'leo2a7v', 'cv90', 'strv122', 'leclerc_xlr'] },
     inhabit: {
-      stalls: 2, benches: 3, coreClutter: 20, sleds: 14,
-      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,
+      // (round 3, gauntlet waves 127 and 129: "traffic cones", "a modern candy-striped stall"): April 1945 at the
+      // frontier — no market stalls, the cable reels and direction signs of the army's line works, no cones, Jersey
+      // barriers or pad transformers
+      stalls: 0, benches: 2, coreClutter: 20, sleds: 14,
+      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: { cablespool: 10, roadsign: 8 },
       // Populate the pass with recoverable tools/cans/roadside hardware.
       // Existing instanced loose-prop families absorb these extra sleepers,
       // so the lived-in threshold rises without another draw/material family.
