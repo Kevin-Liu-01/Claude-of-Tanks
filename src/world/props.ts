@@ -6411,17 +6411,30 @@ ${snowCap ? `
     // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
     // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
     const landAt = heightField._landUseAt;
+    // the plot as it stands in its field: along its rows (fw) and across them (fd)
+    let fw = pw, fd = pd;
     if (landAt) {
       const f = landAt(cx, cz, cropLandSample);
-      if (!f.active || (f.crop !== 1 && f.crop !== 2) || f.edgeM - f.marginM < Math.max(pw, pd) * 0.5 + 2) supported = false;
-      else { dx = f.rowX; dz = f.rowZ; }
+      if (!f.active || (f.crop !== 1 && f.crop !== 2)) supported = false;
+      else {
+        // (mr4, 2026-10-06: a strip field 36 m across never held a plot of 34–60 × 26–48 m, so an openfield's or a Gewann's
+        // strips carried no standing grain at all — Amberford 8 plots → 0, Frontier's Gewann row 2 → 0) the plot fits its
+        // field instead of being refused by it: across its rows to the field's nearer edge, along them to the nearer row
+        // end, each 2 m inside the margin; a field that leaves less than 12 m across or 20 m along holds none. A plot that
+        // fitted before keeps its size (the fit only shortens what the edge would have refused), and the draws are the ones
+        // they were (the plots' own stream)
+        fd = Math.min(pd, 2 * (f.edgeM - f.marginM - 2));
+        fw = Math.min(pw, 2 * (f.endM - f.marginM - 2));
+        if (fd < 12 || fw < 20) supported = false;
+        else { dx = f.rowX; dz = f.rowZ; }
+      }
     }
     const px2 = -dz, pz2 = dx;
-    if (supported && !cropPlotCornersAreLevel(cx, cz, pw, pd, dx, dz, px2, pz2)) {
+    if (supported && !cropPlotCornersAreLevel(cx, cz, fw, fd, dx, dz, px2, pz2)) {
       supported = false;
     }
     if (!supported) return false;
-    appendCropRows(cropGeos, crng, cx, cz, pw, pd, dx, dz, px2, pz2);
+    appendCropRows(cropGeos, crng, cx, cz, fw, fd, dx, dz, px2, pz2);
     return true;
   }
 
