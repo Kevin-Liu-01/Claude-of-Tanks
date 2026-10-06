@@ -51,12 +51,15 @@ let tower = null;
 for (let i = 0; i < fp.count; i++) {
   const x = fp.getX(i), y = fp.getY(i), z = fp.getZ(i);
   if (z < 512 || Math.abs(Math.atan2(x, z - 442)) > 44 * Math.PI / 180) continue;
-  // a spire's apex: a vertex 25 m or more over the lowest vertex near it
+  // a tower's apex: a vertex 12 m or more over the lowest vertex near it
+  // (map revival lane 2, 2026-10-05: the hamlets past Frosthollow's edge are built in its goral kit, so the church is the
+  // Podhale's wooden one — an 8.5 m shingled tower, the boarded belfry chamber, the bulb and the cross, 14.3 m in all;
+  // the generic set's stone spire rose 25 m and more)
   let low = Infinity;
   for (let j = 0; j < fp.count; j += 3) if (Math.abs(fp.getX(j) - x) < 6 && Math.abs(fp.getZ(j) - z) < 6) low = Math.min(low, fp.getY(j));
-  if (y - low > 25 && (!tower || y - low > tower.rise)) tower = { x, z, rise: y - low };
+  if (y - low > 12 && (!tower || y - low > tower.rise)) tower = { x, z, rise: y - low };
 }
-assert.ok(tower, 'a church spire stands in Frosthollow\'s north view');
+assert.ok(tower, 'a church tower stands in Frosthollow\'s north view');
 assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFixed(0)} m out)`);
 
 // gauntlet wave 30, Ironworks' edge-e-up ("the new hamlets read as American red barns"): a map with a regional building
