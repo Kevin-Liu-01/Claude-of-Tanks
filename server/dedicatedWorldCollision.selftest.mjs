@@ -411,9 +411,11 @@ function assertLoggingYard(mapWorld, independentWorld) {
   // The original sites below still detect phantom copies after relocation.
   // 2026-10-02 (maps lane B): Longleaf Crossing's gentler relief moves the same two donors (src/world/loggingYard
   // .selftest.mjs replays them) and two props fewer precede them; was propIdx 309 / 310, heights 2.0045 / 1.9813 from
-  // (-149.2308, -173.9215) and (-80.6038, 239.7031).
-  const donors = [{ propIdx: 307, height: 2.0045, old: [-149.2563437955792, -173.84073125534042] },
-    { propIdx: 308, height: 1.9812, old: [-80.53000567837782, 239.67939683819532] }];
+  // (-149.2308, -173.9215) and (-80.6038, 239.7031). 2026-10-05 (the map-revival lane, Longleaf round 2): the same two
+  // donors at the same heights and origins, with 121 props fewer before them — the fieldstone wall runs and the
+  // outcrops gone, the scattered rocks 30 (was propIdx 307 / 308).
+  const donors = [{ propIdx: 186, height: 2.0045, old: [-149.2563437955792, -173.84073125534042] },
+    { propIdx: 187, height: 1.9812, old: [-80.53000567837782, 239.67939683819532] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;
