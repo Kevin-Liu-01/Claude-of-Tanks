@@ -96,11 +96,11 @@
       "concealers": 9700
     },
     "alpine": {
-      "bytes": 1303972,
-      "sha256": "6471062d19a7128a3647aaa2ad9fa66b5a3bf33b05544d218f00f42410b4fb06",
-      "obstacles": 4262,
-      "colliders": 4018,
-      "concealers": 2992
+      "bytes": 921918,
+      "sha256": "9060cfec092ed40188ae2a26e58656cd0388e9bbcf8387cbe2865610abb11726",
+      "obstacles": 2079,
+      "colliders": 1908,
+      "concealers": 882
     },
     "caldera": {
       "bytes": 1044791,
