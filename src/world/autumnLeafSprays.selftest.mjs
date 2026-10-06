@@ -63,7 +63,8 @@ const autumn = getMapConfig('autumn'), optIns = [];
 for (const id of MAP_IDS) for (const [species, palette] of Object.entries(getMapConfig(id).vegetation.palettes ?? {})) {
   if (palette.birchLeaves !== undefined) { assert.equal(palette.birchLeaves, true); optIns.push(`${id}/${species}`); }
 }
-assert.deepEqual(optIns.sort(), ['autumn/aspen', 'autumn/birch'], 'exact map/species opt-in scope');
+// (map revival lane 2, Nordhavn round 2, 2026-10-05: Ofoten's downy birch in May, its leaves just breaking, opts in)
+assert.deepEqual(optIns.sort(), ['autumn/aspen', 'autumn/birch', 'fjord/birch'], 'exact map/species opt-in scope');
 const originalInput = {...autumn.vegetation, palettes: Object.fromEntries(Object.entries(autumn.vegetation.palettes)
   .map(([species, palette]) => [species, {...palette, birchLeaves: false}]))};
 // p2 trees lane (2026-10-01): the desktop tiers grow their trees and paint branch-spray atlases (treeSprayAtlas.ts —
