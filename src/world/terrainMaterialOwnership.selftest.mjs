@@ -133,6 +133,7 @@ function checkSourceContract(text) {
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+    'uRoadPuddle', // ground lane (2026-10-05): the map's share of the ruts' puddles and their mud (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
     'uSunDirW', 'uWallSkyLift',

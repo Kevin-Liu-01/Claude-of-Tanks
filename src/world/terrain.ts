@@ -348,6 +348,9 @@ interface SplatConfig {
    * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
    * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
   ringCaprockM?: number;
+  /** Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road"):
+   * the share of the water standing in a vegetated map's ruts and the mud ringing it (default 1; a dry month's roads 0). */
+  roadPuddles?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -3628,6 +3631,7 @@ uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over 
 uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the lower formation's paling, the upper's reddening); x < -1e8 = one formation
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
+uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -5604,7 +5608,7 @@ void splatCompute() {
           vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
           a = mix(a, cg * vec4(0.92, 0.95, 0.85, 1.0), crownGrass * 0.80);
         }
-        float wet = rut * dW * (1.0 - farM * 0.6);
+        float wet = rut * dW * (1.0 - farM * 0.6) * uRoadPuddle;
         float pool = smoothstep(0.62, 0.78, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18);
         gRoadPuddle = wet * pool;
         float mud = wet * smoothstep(0.52, 0.66, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18) * (1.0 - gRoadPuddle);
@@ -6104,7 +6108,10 @@ void splatCompute() {
   // when its albedo and normal detail were correct. Ice and open water keep
   // their authored response through iceW; every dry texel is >= 0.92.
   gSplatRough = max(rough0, 0.92 * (1.0 - iceW) + shoreW * -0.04);
-  gSplatRough = mix(gSplatRough, 0.12, gRoadPuddle); // ground lane: a puddle is still water — it mirrors the sky
+  // ground lane: a puddle is still water — it mirrors the sky; (Longleaf's wave, "a mirror-like specular streak … regardless
+  // of viewing angle") past ~20 m its mirror at a grazing view was a bright streak down every road: there it is wet
+  // ground (a damp matte by ~36 m), only a near puddle holding the sky
+  gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);
   gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
@@ -6396,6 +6403,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPloughLift = { value: S.ploughLift ?? 1 };
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
+    shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
