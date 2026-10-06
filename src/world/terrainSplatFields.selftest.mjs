@@ -71,7 +71,7 @@ function fixture({ closeThrows = false } = {}) {
   const functions = [
     declaration('mulberry32'), declaration('splatFields'), declaration('splatFieldSteps'),
     ...['fieldSample', 'wrapUnit', 'sampleSplatNoise', 'makeShaderNoiseTexture',
-      'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps', 'stackLandUseBake'].map(declaration),
+      'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps', 'stackLandUseBake', 'snowRockHoldLine'].map(declaration),
     material,
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
@@ -79,7 +79,7 @@ function fixture({ closeThrows = false } = {}) {
     'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
-    const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '';
+    const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
     let _splatFields = null;
     function* buildHorizonRingSteps() { return new THREE.Group(); }
     function* buildFineGridSteps() { return {}; }

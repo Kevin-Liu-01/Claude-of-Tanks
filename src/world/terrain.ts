@@ -348,6 +348,13 @@ interface SplatConfig {
    * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
    * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
   ringCaprockM?: number;
+  /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
+   * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
+   * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
+   * law (45.6°, 63.9°, 0.12) in today's exact shader text: the fields swap the numbers into the source only when set. */
+  snowRockSlopeDeg?: number;
+  snowRockFadeDeg?: number;
+  snowRockCrest?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -6182,6 +6189,23 @@ export function selectTerrainLandformMask(
   return splat?.seaLake || splat?.iceLake ? null : landform;
 }
 
+/** The snow-on-rock hold as the shader carries it (terrain.ts SPLAT_COMMON_FRAG): slope 0.30 (45.6°) to 0.56 (63.9°). */
+export const SNOW_ROCK_HOLD_LINE = 'float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);';
+/**
+ * Ground lane (2026-10-05): a map's own snow-on-rock law — the hold line with its slope thresholds (degrees turned to the
+ * shader's 1 − n.y) and its crest weight, each field it leaves out at today's value — or null when it sets none of
+ * them, so its material compiles the shared source unchanged.
+ */
+export function snowRockHoldLine(S: Pick<SplatConfig, 'snowRockSlopeDeg' | 'snowRockFadeDeg' | 'snowRockCrest'> | null | undefined): string | null {
+  if (S?.snowRockSlopeDeg === undefined && S?.snowRockFadeDeg === undefined && S?.snowRockCrest === undefined) return null;
+  const slopeOf = (deg: number): number => 1 - Math.cos(deg * Math.PI / 180);
+  const s0 = S.snowRockSlopeDeg !== undefined ? slopeOf(S.snowRockSlopeDeg) : 0.30;
+  const s1 = S.snowRockFadeDeg !== undefined ? slopeOf(S.snowRockFadeDeg) : 0.56;
+  const k = S.snowRockCrest ?? 0.12;
+  if (!(s1 > s0) || !(k >= 0)) throw new Error(`snowRock: the fade must end past its start and the crest weight be non-negative (${s0}, ${s1}, ${k})`);
+  return `float hold = 1.0 - smoothstep(${s0.toFixed(4)}, ${s1.toFixed(4)}, slope + (0.5 - gully) * 0.40 - vFold * ${k.toFixed(4)});`;
+}
+
 function createWetSplatLayer(S: SplatConfig, aniso: number): TerrainTextureLayer {
   return S.iceLake
     ? makeIceLayer(3003, aniso)
@@ -6219,6 +6243,8 @@ function* createSplatMaterialSteps(
   sourcedReady?: Promise<void>;
 }, void> {
   const S = splatCfg || {};
+  // ground lane (2026-10-05): the map's own snow-on-rock law, or null — today's exact source (snowRockHoldLine)
+  const snowHold = snowRockHoldLine(S);
   // ground lane: the two-formation bedrock's boundary — the build sets it from the field's height span (S.formation)
   const formationUniform = { value: new THREE.Vector4(-1e9, 0, 0, 0) };
   const ringCapUniform = { value: new THREE.Vector2(1e9, 1e9 + 1) }; // ground lane (wave 65): off until the build sets it
@@ -6533,7 +6559,7 @@ function* createSplatMaterialSteps(
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
       '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;\nvRailExit = railExit;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\n' + SPLAT_COMMON_FRAG);
+      '#include <common>\n' + (snowHold ? _mustReplace(SPLAT_COMMON_FRAG, SNOW_ROCK_HOLD_LINE, snowHold) : SPLAT_COMMON_FRAG));
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
       'splatCompute();\ndiffuseColor.rgb *= gSplatAlbedo;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <roughnessmap_fragment>',
@@ -6565,7 +6591,8 @@ function* createSplatMaterialSteps(
   // caster at the contact (lighting.ts RECEIVER_ONLY_SHADOW_NOTE)
   mat.userData.cotShadowReceiverOnly = true;
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}`; // terrain v3 (2026-10-02): v54
+  // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
+  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
   mat.userData.ringCapUniform = ringCapUniform;
