@@ -1923,11 +1923,11 @@ const REGIONAL_PAL = {
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
   thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
+  // map revival lane 2 (round 2): the Serranía's limewash, its canal tiles, the grey of a dado
+  cal: [0xe6e1d6, 0xa65a36, 0x8a8478],
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
-  // map revival lane 2 (round 2): the Serranía's limewash, its canal tiles, the grey of a dado
-  cal: [0xe6e1d6, 0xa65a36, 0x8a8478],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
