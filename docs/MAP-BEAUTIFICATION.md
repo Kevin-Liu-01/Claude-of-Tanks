@@ -115,7 +115,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green |
 | Jade River Delta | Braided channels, floodplain agriculture and raised compounds; vegetation follows water |
 | Mangrove Reach | Tidal islands, exposed mud, root thickets and raised access; avoid generic grassy countryside |
-| Monsoon Ridge | Humid jungle ridges and weathered valley settlement; darker understory and muddy drainage |
+| Monsoon Ridge | Humid jungle ridges and weathered valley settlement; darker understory and muddy drainage; the Deputy Commissioner's bungalow and the terraced tennis court on Garrison Hill (the landmarks lane, 2026-10-05) |
 | Sirocco Wadi | Dry watercourse organizes settlement and palms; windward sand against eroded rock |
 | Sunscar Oasis | Spring-centered grove, caravan compounds, wet bank and bare surrounding dunes |
 | Redrock Divide | Stratified escarpments, talus and logistics outpost; controlled arid palette |
@@ -7209,6 +7209,19 @@ any real deck. Every deck regime carries `lumps 0` and `deckDetail 0`, and White
 - The guarantees hold on every variant: no near-white pixel and no blue pixel in the sky region facing the sun, the
   forward lobe kept (the brightest 2 % over the median 1.07–1.09).
 - *GPU* (the coordinator's rule, the load gate shut past two hours: in-page on the branch, the deck knobs against the regime's own, 8 interleaved quartets per arm against a null control, 1920 × 1080 high, the establishing view; `$SP/p2/costrule/deck-*`): Whiteout −0.24 ± 0.25 ms p50 (+0.02 ± 0.23 p25), the bound +0.26 / +0.49 ms; Titan Gorge +0.36 ± 0.22 ms p50 (+0.14 ± 0.18 p25), the bound +0.81 / +0.50 ms — both under +1 ms (frames 11.3 and 12.7 ms). The light's change is one multiply on a lit fragment and the light model's resolve, no pass.
+
+### 2026-10-05 — Monsoon Ridge: the DC's bungalow and the tennis court on Garrison Hill (the landmarks lane)
+
+Garrison Hill's west shoulder, where the siege lines of April 1944 lay across the Deputy Commissioner's tennis court a
+grenade's throw apart: the court on its terrace (the clay, the lines, the net, the wire, the retaining wall and the
+trench dug across it; 2 784 desktop triangles) and above its west end the DC's bungalow, whitewashed under red tin with
+verandas on three sides, the siege on its veranda roof and plaster (6 054), its porch toward the valley. Census [7310,
+7073, 9654]; every structure and non-tree record where it stood (the library's souk-picker hook keeps the town's pots on
+their picks), 25 trees and 21 scrub clumps off their ground. Pacing (4 seeds) 163/166/160/278 s against the head's
+157/160/160/215 s. Cost: the hill's view −0.28 ± 0.39 ms (accept); the establishing shot 0.58 ± 0.37 and chase 0.17 ±
+0.58 (ambiguous, the pieces out of frame in both: the establishing shot draws 11 k more triangles and no more draws;
+their quiet-window re-run is queued); every CPU median within 0.33 ms, no long task and no program compiled during a
+slot.
 
 ### 2026-10-04 — Whiteout's ice sheet re-candidated and dropped; the shell's apron read sky (the mountains lane)
 
