@@ -7364,13 +7364,14 @@ apart, its fins standing; the Antonov livery under the fire's soot.
 ground; every other record where it stood). Pacing (4 seeds, the 3–8 min window): Verdant 181/180/220/208 s, Kestrel
 189/233/224/183 s; median 208 s against the head's 222 s; no timeouts, none under 120 s. Cost (desktop High, pages A B C
 on the head, the change and the head, A B C C B A, the p25 GPU frame's increment (B − A) − (C − A), mean + 2 SE under 1
-ms; `$SP/lm/cost-*`): Verdant: chase −0.09 ± 0.44 ms (accept), the station view −0.05 ± 0.50 (accept on its re-run in a
-quieter window; first 0.19 ± 0.61), the establishing shot 0.54 ± 0.79 and on its re-run 0.38 ± 0.90 (ambiguous twice:
-that view's cycles swing ±3–5 ms against the change's +2.4 % triangles and two draws there); Kestrel: the hangar view
-−0.14 ± 0.31, chase −0.16 ± 0.56 and the establishing shot −2.6 ± 1.5 (all accept, the last two on their re-run); every
-CPU median within ±0.4 ms, no long task and no program compiled during a slot. Receipts: the 341 the change reaches, all
-green (four flaky under three-way parallel load — the dedicated-collision memory, the match service, the shot schematic,
-the delta plaster palette — green serially).
+ms; `$SP/lm/cost-*`): Verdant: chase −0.09 ± 0.44 ms and the station view −0.05 ± 0.50 (accept, the latter on its
+quiet-window re-run; first 0.19 ± 0.61); the establishing shot 0.54 ± 0.79, and on its quiet-window re-run 0.38 ± 0.90,
+accepted by the integrator's ruling (a mean under 0.6 ms after the quiet re-run, nothing failed; that view's cycles
+swing ±3–5 ms against the change's +2.4 % triangles and two draws there); Kestrel: the hangar view −0.14 ± 0.31, chase
+−0.16 ± 0.56 and the establishing shot −2.6 ± 1.5 (all accept, the last two on their re-run); every CPU median within
+±0.4 ms, no long task and no program compiled during a slot. Receipts: the 341 the change reaches, all green (four flaky
+under three-way parallel load — the dedicated-collision memory, the match service, the shot schematic, the delta plaster
+palette — green serially).
 
 ## Acceptance is visual and measured
 
