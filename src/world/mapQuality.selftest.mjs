@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
+import { ARCHITECTURE_STYLES } from './maps/regional/index.ts';
 import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
@@ -214,6 +215,15 @@ for (const mapId of cityMaterialMaps) {
   const config = getMapConfig(mapId);
   const tones = config.props.tones;
   assert.ok(tones, `${mapId}: city structures have an authored material palette`);
+  // a map whose regional kit owns its renders' tones (props.architecture; the map keeps only its field walls' stone,
+  // props.ts lays the kit's tones under the map's): the kit's palette is the city palette, and its painters are
+  // regionalArchitecture.selftest's (the map-revival lanes, 2026-10-05)
+  const kit = config.props.architecture ? ARCHITECTURE_STYLES.find((style) => style.id === config.props.architecture) : null;
+  if (kit && !tones.plaster) {
+    assert.ok(['plaster', 'plaster2', 'plaster3'].every((bucket) => typeof kit.surfaces.tones?.[bucket] === 'function')
+      && typeof tones.stone === 'function', `${mapId}: the ${kit.id} kit owns the renders' tones and the map keeps its field walls' stone`);
+    continue;
+  }
   const samples = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof']
     .map((bucket) => tones[bucket](0.5, 0.34, 0.55));
   assert.ok(samples.every(([hue, saturation, lightness]) => (

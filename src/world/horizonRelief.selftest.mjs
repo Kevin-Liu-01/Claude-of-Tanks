@@ -34,7 +34,8 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
 }
 // the per-map keys: identity first, the style second, the authored key over both
 const expectedCharacter = {
-  whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
+  // (2026-10-05, the map-revival lane's Caldera round 2: Aso's rim is a wooded, grassy wall, authored `relief: 'rolling'`)
+  whiteout: 'polar', winter: 'polar', caldera: 'rolling', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
   coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
   desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'mesa',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',

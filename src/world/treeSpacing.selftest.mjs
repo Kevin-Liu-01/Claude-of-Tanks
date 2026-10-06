@@ -9,8 +9,8 @@
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
 //   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
 //   broadleaf ... on the foreground dune");
-// - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
-//   "evenly spaced, grid-like" stands);
+// - Aso (Obsidian Caldera, the map-revival lane's round 2; was Las Cañadas' few open groves): sugi in closed plantation
+//   blocks, the farmed floor open between them (wave 114: "low-poly shrubs spread evenly");
 // - Copper Mesa (the Arizona uplands, wave 28: "green broadleaf and fir clumps on sand"): juniper and pinyon on the
 //   higher ground only, mesquite in the low ground only, few of either;
 // - Whiteout Station (an ice sheet, wave 28): no tree, no shrub.
@@ -145,19 +145,21 @@ try {
       }
     } finally { world.dispose(); }
   }
-  // Las Cañadas: a few open groves, scattered pines, the broom carrying the floor
+  // Aso: a dozen or so sugi blocks, most of them closed woods (a wood's members over its ground no sparser than 120 m² a
+  // tree on its bounding radius — an open grove is past it), the farmed floor open between them
   {
     const { world } = produce('caldera');
     try {
       const trees = world._trees.filter(inside), groves = world._clusters;
-      assert.ok(trees.length < 250, `the caldera floor carries few trees (${trees.length})`);
-      assert.ok(groves.length <= 6, `a few groves (${groves.length})`);
-      // open: a grove's trees over twice a wood's ground each (the woodlots' 48-84 m² a tree)
+      assert.ok(groves.length >= 8 && groves.length <= 16, `a dozen or so sugi blocks (${groves.length})`);
+      assert.ok(trees.length < 1000, `the farmed floor stays open between them (${trees.length} trees)`);
+      let closed = 0;
       for (let i = 0; i < groves.length; i++) {
         const g = groves[i], members = trees.filter((t) => world._standOutline(i, t.x, t.z) <= 1).length;
-        assert.ok(members > 2 && (Math.PI * g.r * g.r) / members > 90, `grove ${i} is open (${members} trees on ${(Math.PI * g.r * g.r).toFixed(0)} m²)`);
+        if (members > 2 && (Math.PI * g.r * g.r) / members <= 120) closed++;
       }
-      report.caldera = { trees: trees.length, groves: groves.length };
+      assert.ok(closed >= groves.length * 0.75, `most blocks are closed woods (${closed} of ${groves.length})`);
+      report.caldera = { trees: trees.length, groves: groves.length, closed };
     } finally { world.dispose(); }
   }
   // Copper Mesa: each form in its zone of the square's heights (the top two fifths for the juniper and the pinyon, the

@@ -159,8 +159,10 @@ for (const id of MAP_IDS) {
 assert.equal(resolveGroundReduxProfile('moon').exposure, 0, 'airless regolith: nothing follows the sun');
 assert.equal(resolveGroundReduxProfile('moon').windRipple, 0, 'and no wind ripples on it');
 // 2026-10-03 the ground lane: a volcanic basin (Caldera, groundRedux VOLCANIC) takes no wind's ripples either
-assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the volcanic basin');
-assert.equal(resolveGroundReduxProfile('caldera').patchwork, 0, 'and no blown-sand patchwork');
+// (2026-10-05, the map-revival lane's Caldera round 2: Aso's grassland — still no sand ripples, and the land's own
+// patchwork of greens)
+assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the caldera');
+assert.equal(resolveGroundReduxProfile('caldera').patchwork, 1, 'Aso\'s grassland keeps the land\'s patchwork');
 for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
 // the sand trains: no global phase over a per-position wind (the round-43 marble), the cell function in its place
 assert.ok(!/float rphase = dot\(uv, wind\)/.test(active(terrain)), 'the global ripple phase over a turned wind is gone');

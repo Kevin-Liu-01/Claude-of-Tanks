@@ -259,7 +259,8 @@ for (const [mapId, settings, sourceName] of [
   ['whiteout', { sourcedPalette: 'winter', sourcedTint: { G: [0.88, 0.885, 0.895] } }, 'Snow010A'],
   ['unknown-map', {}, 'Grass004'],
   // 2026-10-03 the ground lane: Caldera's ash and cinder are the sand set (the dirt set's twigs read as wind ripple)
-  ['caldera', {}, 'Ground093C'],
+  // (2026-10-05, the map-revival lane's Caldera round 2: Aso's floor is the grass set)
+  ['caldera', {}, 'Grass004'],
 ]) await withFixture(async f => {
   const preparation = f.prepareSourcedTerrain(mapId, settings);
   await f.settle(); await preparation.ready;

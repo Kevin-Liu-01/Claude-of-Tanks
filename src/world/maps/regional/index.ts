@@ -29,6 +29,7 @@ import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
 import { HOSTOMEL_STYLE } from './hostomel.ts';
+import { KYUSHU_STYLE } from './kyushu.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -48,6 +49,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   ruhr: RUHR_STYLE,
   kohima: KOHIMA_STYLE,
   hostomel: HOSTOMEL_STYLE,
+  kyushu: KYUSHU_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
