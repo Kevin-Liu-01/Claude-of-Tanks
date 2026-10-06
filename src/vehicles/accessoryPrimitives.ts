@@ -229,14 +229,24 @@ export function fabricBody(spec: FabricSpec): THREE.BufferGeometry {
   return withBoxUV(flat);
 }
 
+/** How deep a strap's edges sink into the fabric it cinches (m). */
+const STRAP_SINK = 0.004;
+
 /**
- * A webbing strap wrapping a fabric body at one of its `cinch` stations: an open band on the cinched section, a few
- * millimetres proud, outward faces only (its edges sit in the fabric's bulge). Width along Z in metres.
+ * A webbing strap wrapping a fabric body at one of its `cinch` stations: a band on the cinched section, its crown a
+ * few millimetres proud and both edges sunk into the fabric. Width along Z in metres. 2026-10-06 (the finish lane):
+ * the band's edges were proud too, so where the body tapers its inside showed past them, and the sealed-hull census
+ * counts an inside seen from outside as a hole (seven hulls regressed through rack loads and profile stowage). With
+ * its edges buried, the band's inside is enclosed by the fabric from every exterior view; the crown ring keeps the
+ * webbing's proud face.
  */
 export function fabricStrap(spec: FabricSpec, z: number, width = 0.03, proud = 0.005): THREE.BufferGeometry {
   const seg = fabricSegments(spec);
-  return loftZ([{ z: z - width / 2, ring: fabricRing(spec, z - width / 2, seg, 0, proud) },
-    { z: z + width / 2, ring: fabricRing(spec, z + width / 2, seg, 0, proud) }], false, false);
+  return loftZ([
+    { z: z - width / 2, ring: fabricRing(spec, z - width / 2, seg, 0, -STRAP_SINK) },
+    { z, ring: fabricRing(spec, z, seg, 0, proud) },
+    { z: z + width / 2, ring: fabricRing(spec, z + width / 2, seg, 0, -STRAP_SINK) },
+  ], false, false);
 }
 
 /**
@@ -280,23 +290,99 @@ export function roundBar(a: readonly number[], b: readonly number[], r: number, 
   return flat;
 }
 
-/** A swept tube through points (centripetal Catmull-Rom): cables, rope handles, hoses, bent bars. */
+/**
+ * A swept tube through points (centripetal Catmull-Rom): cables, rope handles, hoses, bent bars. An open tube ends in
+ * flat caps (2026-10-06, the finish lane: an uncapped end showed its inside, which the sealed-hull census counts as a
+ * hole in the vehicle; seven hulls regressed through grips, handles and belts).
+ */
 export function sweptTube(points: ReadonlyArray<readonly number[]>, r: number, radial = 6, along = 12,
   closed = false): THREE.BufferGeometry {
   const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])), closed, 'centripetal');
   const geometry = new THREE.TubeGeometry(curve, along, r, radial, closed);
   const flat = geometry.toNonIndexed();
+  if (closed) { geometry.dispose(); return flat; }
+  const position = geometry.getAttribute('position');
+  const ringAt = (station: number): THREE.Vector3[] => {
+    const ring: THREE.Vector3[] = [];
+    for (let j = 0; j <= radial; j++) {
+      const v = station * (radial + 1) + j;
+      ring.push(new THREE.Vector3(position.getX(v), position.getY(v), position.getZ(v)));
+    }
+    return ring;
+  };
+  const caps = [
+    { center: curve.getPointAt(0), ring: ringAt(0), outward: curve.getTangentAt(0).negate() },
+    { center: curve.getPointAt(1), ring: ringAt(along), outward: curve.getTangentAt(1) },
+  ];
   geometry.dispose();
-  return flat;
+  return withFanCaps(flat, caps);
 }
 
-/** A lathe about +Y from (radius, y) stations (bottom to top), closed with flat caps when the ends are off-axis. */
+/**
+ * A lathe about +Y from (radius, y) stations (bottom to top), closed with flat caps when the ends are off-axis
+ * (2026-10-06, the finish lane: the caps this promised were never built, so a jacket, a muzzle device or a cupola foot
+ * stood open and the sealed-hull census counted its inside as holes). Each cap faces away from the profile's body.
+ */
 export function latheY(profile: readonly XY[], seg = 16): THREE.BufferGeometry {
   const pts = profile.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.0005), y));
   const geometry = new THREE.LatheGeometry(pts, seg);
   const flat = geometry.toNonIndexed();
   geometry.dispose();
-  return flat;
+  const meanY = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+  const caps: FanCap[] = [];
+  for (const [index, fallback] of [[0, -1], [pts.length - 1, 1]] as const) {
+    const { x: r, y } = pts[index];
+    if (r <= LATHE_AXIS_R) continue;
+    const ring: THREE.Vector3[] = [];
+    for (let i = 0; i <= seg; i++) {
+      const phi = (i / seg) * TAU; // LatheGeometry's own stations: the cap's rim is the surface's rim
+      ring.push(new THREE.Vector3(r * Math.sin(phi), y, r * Math.cos(phi)));
+    }
+    caps.push({ center: new THREE.Vector3(0, y, 0), ring, outward: new THREE.Vector3(0, Math.sign(y - meanY) || fallback, 0) });
+  }
+  return withFanCaps(flat, caps);
+}
+
+/** A profile station this close to the axis is on it: the lathe closes there by itself and needs no cap (m). */
+const LATHE_AXIS_R = 0.002;
+
+interface FanCap { center: THREE.Vector3; ring: readonly THREE.Vector3[]; outward: THREE.Vector3 }
+
+/**
+ * Close a non-indexed surface's open end rings with flat fans (the ring repeats its first point last). Each fan
+ * triangle is wound to face `outward` and carries its normal; uv is planar over the fan.
+ */
+function withFanCaps(geometry: THREE.BufferGeometry, caps: readonly FanCap[]): THREE.BufferGeometry {
+  if (!caps.length) return geometry;
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const uv = geometry.getAttribute('uv');
+  const positions = Array.from(position.array as ArrayLike<number>);
+  const normals = normal ? Array.from(normal.array as ArrayLike<number>) : null;
+  const uvs = uv ? Array.from(uv.array as ArrayLike<number>) : null;
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), face = new THREE.Vector3();
+  for (const { center, ring, outward } of caps) {
+    const n = outward.clone().normalize();
+    let radius = 0;
+    for (const v of ring) radius = Math.max(radius, v.distanceTo(center));
+    for (let i = 0; i < ring.length - 1; i++) {
+      let a = ring[i], b = ring[i + 1];
+      face.crossVectors(ab.subVectors(a, center), ac.subVectors(b, center));
+      if (face.lengthSq() < 1e-18) continue;
+      if (face.dot(n) < 0) [a, b] = [b, a];
+      for (const v of [center, a, b]) {
+        positions.push(v.x, v.y, v.z);
+        normals?.push(n.x, n.y, n.z);
+        uvs?.push(0.5 + (v.x - center.x) / (2 * radius || 1), 0.5 + (v.z - center.z + v.y - center.y) / (2 * radius || 1));
+      }
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  if (normals) out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  if (uvs) out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.dispose();
+  return out;
 }
 
 /** Apply translation/rotation (XYZ Euler) to a geometry in place and return it (builder ergonomics). */
