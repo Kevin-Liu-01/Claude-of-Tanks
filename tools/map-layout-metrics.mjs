@@ -785,7 +785,8 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
     if (record.treeIdx != null) continue;
     const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
     const kind = record.kind ?? 'rock-or-wall';
-    if (buildingKinds.has(record.kind)) {
+    // (a set piece, landmarks/compose.ts, is no settlement building: a mill on a crest stands off every road by design)
+    if (buildingKinds.has(record.kind) && !record.landmark) {
       buildings++;
       if (roadDistance(cx, cz) > ORPHAN_ROAD_M) orphans++;
     }
