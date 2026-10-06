@@ -7,12 +7,12 @@
 // world/scenery.selftest.mjs holds them equal.
 import type { StructureClearance } from './vegetationClearance.ts';
 
-export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate';
+export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate' | 'tuff';
 /**
  * The rock forms: what made the rock decides its shape. The last three are rock that people shaped — a standing stone,
  * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock.
  */
-export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary';
+export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'chimney';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {
@@ -147,6 +147,8 @@ export const FIELD_FORMS: Readonly<Record<RockGeology, ReadonlyArray<readonly [R
   sandstone: [['outcrop', 0.65], ['scree', 0.2], ['pavement', 0.15]],
   limestone: [['pavement', 0.55], ['outcrop', 0.35], ['scree', 0.1]],
   slate: [['crag', 0.55], ['scree', 0.45]],
+  // the map-revival lane (2026-10-05): Cappadocia's tuff weathers into fairy chimneys
+  tuff: [['chimney', 1]],
 });
 
 /** The map-level contract: a top-level `scenery` block beside terrain / vegetation / props. */

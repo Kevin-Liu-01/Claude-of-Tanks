@@ -14,6 +14,9 @@
 //            the cleavage, scree below (the Eifel's Rur valley);
 //   scree    an angular fan, its fines at the apex and its big blocks rolled farthest;
 //   hoodoo   a sandstone pedestal waisted by the sand blast under a broad hard cap (the mushroom rocks of Wadi Rum);
+//   chimney  a fairy chimney of soft tuff: a cone, a bell or a pillar fluted by the rain, pinched to a neck under a cap
+//            of the harder bed, alone, in twins or a triplet on one mound, or a bare point with its fallen cap at its
+//            foot (Göreme's peri bacaları; the map-revival lane, 2026-10-05);
 //   menhir, cairn, calvary — rock that people shaped: a standing stone, a clearance cairn, a granite wayside calvary.
 //
 // Everything is welded world-space geometry in one vertex-coloured family that the props rock material draws (its
@@ -84,7 +87,10 @@ const GEOLOGY_TONE: Readonly<Record<RockGeology, readonly [number, number, numbe
   sandstone: [0.035, 0.42, 0.42], // Buntsandstein / desert red
   limestone: [0.11, 0.08, 0.66], // pale grey-cream
   slate: [0.58, 0.07, 0.27],     // blue-grey
+  tuff: [0.085, 0.24, 0.74],      // Cappadocia's ignimbrite: cream, its bands rose and grey-white (the map-revival lane)
 });
+/** A piece's layer at or past this is the hard cap rock over a soft formation (a fairy chimney's basalt cap). */
+const CAP_LAYER = 100;
 
 const _c = new THREE.Color();
 function hsl(h: number, s: number, l: number): [number, number, number] {
@@ -370,6 +376,21 @@ function finish(
         s *= soft ? 1.08 : 0.82;
         l *= soft ? 0.84 : 1.06 + (bed % 3 === 0 ? 0.08 : 0);
         l *= 0.94 + 0.06 * Math.sin((y + fine * 0.6) * 9.5);
+      } else if (geology === 'tuff') {
+        if (piece.layer >= CAP_LAYER) {
+          // the cap: the harder welded bed or basalt, dark grey-brown, its top weathered paler
+          h = 0.07; s = 0.1; l = 0.2 * (0.9 + mott * 0.12 + fine * 0.06 + up * 0.25);
+        } else {
+          // the ignimbrite's flows: bands a metre or two thick, cream, rose and grey-white, wavering round the cone;
+          // the rain's streaks down the flutes, the dust at the foot
+          const band = Math.sin((y - gy) * 2.1 + mott * 1.6 + salt * 3.1) + 0.6 * Math.sin((y - gy) * 0.83 + salt * 1.7);
+          const rose = smooth(0.35, 1.1, band), white = smooth(0.4, 1.2, -band);
+          h += -0.045 * rose; s += 0.1 * rose - 0.08 * white; l *= 1 + 0.07 * white - 0.05 * rose;
+          const vertical = 1 - Math.abs(ny);
+          const streak = smooth(0.45, 0.85, noise.noise((x + z) * 0.9 + salt, y * 0.12) * 0.5 + 0.5) * vertical;
+          l *= 1 - streak * 0.1;
+          l *= 0.9 + 0.1 * smooth(0, 1.6, y - gy);
+        }
       } else if (geology === 'limestone') {
         // black biofilm runs down the vertical faces; the tops bleach
         const vertical = 1 - Math.abs(ny);
@@ -701,6 +722,144 @@ function hoodoo(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise
   }
 }
 
+/**
+ * A revolved surface: rings of `sides` vertices at the heights `ys`, each vertex's radius from `radiusAt(ring, angle)`
+ * and the ring's centre offset (a lean); closed under the lowest ring and over the highest by a fan to `apexY` (a point
+ * when it stands above the ring, a flat lid when it is the ring's own height). Welded and indexed for finish().
+ */
+function lathe(ys: readonly number[], sides: number, radiusAt: (ring: number, angle: number) => number,
+  offsetAt: (ring: number) => readonly [number, number], apexY: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const index: number[] = [];
+  for (let k = 0; k < ys.length; k++) {
+    const [ox, oz] = offsetAt(k);
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2, r = Math.max(0.03, radiusAt(k, a));
+      positions.push(ox + Math.cos(a) * r, ys[k], oz + Math.sin(a) * r);
+    }
+  }
+  const [tx, tz] = offsetAt(ys.length - 1), [bx, bz] = offsetAt(0);
+  positions.push(tx, apexY, tz);
+  const top = positions.length / 3 - 1;
+  positions.push(bx, ys[0], bz);
+  const bottom = positions.length / 3 - 1;
+  for (let k = 0; k + 1 < ys.length; k++) {
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      const a0 = k * sides + i, a1 = k * sides + j, c0 = a0 + sides, c1 = a1 + sides;
+      index.push(a0, c1, a1, a0, c0, c1);
+    }
+  }
+  const last = (ys.length - 1) * sides;
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    index.push(last + i, top, last + j);
+    index.push(i, j, bottom);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(index);
+  return g;
+}
+
+/** One fairy chimney's profile: the radius as a share of its base radius at height share t (0 foot, 1 under the neck). */
+type ChimneyProfile = 'cone' | 'bell' | 'pillar' | 'waisted';
+function chimneyRadius(profile: ChimneyProfile, t: number): number {
+  if (profile === 'bell') return 0.16 + 0.84 * Math.pow(1 - t, 1.7);
+  if (profile === 'pillar') return 0.72 - 0.3 * t + 0.28 * Math.pow(1 - t, 6);
+  if (profile === 'waisted') return 0.3 + 0.7 * Math.pow(1 - t, 1.25) - 0.1 * Math.sin(t * Math.PI) + 0.08 * smooth(0.55, 0.85, t);
+  return 0.2 + 0.8 * Math.pow(1 - t, 1.05);
+}
+
+/**
+ * One cone of soft tuff at (x, z) standing from `foot`: `H` tall to its tip (or to the top of its cap), base radius
+ * `R`, the profile, the rain's flutes (a few to a dozen, deepest at the foot, wandering as they climb), a lean, and
+ * either a neck pinched under a cap of the hard bed (tilted a little, overhanging) or a bare weathered point.
+ */
+function chimneyCone(x: number, z: number, foot: number, H: number, R: number, profile: ChimneyProfile, capped: boolean,
+  noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  const sides = mobile ? 11 : 20, rings = mobile ? 8 : 15;
+  const flutes = 5 + Math.floor(rng() * 8), fluteDepth = 0.05 + rng() * 0.12, flutePow = 2 + rng() * 3, phase = rng() * 6.283;
+  const seed = rng() * 100;
+  const leanA = rng() * Math.PI * 2, lean = (rng() * rng()) * 0.05;
+  const capT = capped ? Math.max(0.5, Math.min(1.4, H * (0.05 + rng() * 0.04))) : 0;
+  const coneH = H - capT;
+  const neck = capped ? 0.2 + rng() * 0.14 : 0;
+  const ys: number[] = [];
+  for (let k = 0; k < rings; k++) {
+    // more rings toward the top, where the neck pinches
+    const t = Math.pow(k / (rings - 1), 0.82);
+    ys.push(foot - 0.7 + t * (coneH + 0.7));
+  }
+  const tAt = (k: number) => Math.max(0, (ys[k] - foot) / coneH);
+  const radiusAt = (k: number, a: number): number => {
+    const t = tAt(k);
+    let rr = chimneyRadius(profile, Math.min(1, t));
+    if (capped) rr = rr + (neck - rr) * smooth(0.84, 1, t) * 0.85; else rr *= 1 - smooth(0.8, 1, t) * 0.92;
+    if (k === 0) rr *= 1.12;
+    const wander = noise.noise(t * 2.2 + seed, seed * 0.3) * 0.5;
+    const groove = Math.pow(0.5 + 0.5 * Math.cos(flutes * (a + wander) + phase), flutePow);
+    const fl = 1 - fluteDepth * groove * (0.35 + 0.65 * Math.pow(1 - Math.min(1, t), 0.7));
+    const wob = 1 + noise.noise3d(Math.cos(a) * 1.4 + seed, t * 3.1, Math.sin(a) * 1.4 - seed) * 0.08
+      + noise.noise3d(Math.cos(a) * 4 - seed, t * 9, Math.sin(a) * 4) * 0.025;
+    return R * rr * fl * wob;
+  };
+  const offsetAt = (k: number): readonly [number, number] => {
+    const t = tAt(k), d = lean * t * coneH;
+    return [Math.cos(leanA) * d, Math.sin(leanA) * d];
+  };
+  const tipY = capped ? ys[rings - 1] + 0.05 : ys[rings - 1] + Math.max(0.4, R * 0.18);
+  const g = lathe(ys, sides, radiusAt, offsetAt, tipY);
+  pieces.push({ geometry: place(g, x, 0, z, 0), layer: -1, standing: true });
+  if (capped) {
+    // the cap: a slab of the hard bed over the neck, wider than it, a little tilted, its rim broken
+    const [ox, oz] = offsetAt(rings - 1);
+    const neckR = R * neck;
+    const capR = Math.max(neckR * 1.7, R * (0.3 + rng() * 0.22));
+    const cap = beddedSlab(capR, capR * (0.72 + rng() * 0.22), capT, 0.08, sides, noise, seed + 11,
+      { roughness: 0.24, overhang: 0.08, squareness: 2.2, topWobble: 0.1 });
+    pieces.push({ geometry: place(cap, x + ox, ys[rings - 1] - capT * 0.15, z + oz, rng() * 6.283, (rng() - 0.5) * 0.12, (rng() - 0.5) * 0.12),
+      layer: CAP_LAYER, standing: true });
+  }
+}
+
+function fairyChimney(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  // Göreme's fairy chimneys: the soft ignimbrite eroded into cones wherever a cap of the harder bed shielded it; each
+  // its own height, girth, profile and flutes. A group shares one mound of the tuff it rose from; a chimney whose cap
+  // fell keeps a bare point and its cap lies broken at the foot.
+  const R = spec.radius, H = spec.height * (0.8 + rng() * 0.4);
+  const { min } = lowestGround(ground, spec.x, spec.z, R * 0.6);
+  const profiles: readonly ChimneyProfile[] = ['cone', 'cone', 'bell', 'pillar', 'waisted'];
+  const pick = () => profiles[Math.floor(rng() * profiles.length)];
+  const kind = rng();
+  if (kind < 0.62) {
+    chimneyCone(spec.x, spec.z, min, H, R, pick(), true, noise, rng, mobile, pieces);
+  } else if (kind < 0.9) {
+    // twins or a triplet on a shared mound, each its own height and lean
+    const n = kind < 0.8 ? 2 : 3, yaw = rng() * Math.PI * 2;
+    const mound = lathe([min - 0.6, min + 0.4, min + H * 0.12], mobile ? 10 : 16,
+      (k, a) => R * [1.25, 1.05, 0.7][k] * (1 + noise.noise(Math.cos(a) * 1.2 + spec.x, Math.sin(a) * 1.2) * 0.1), () => [0, 0], min + H * 0.12);
+    pieces.push({ geometry: place(mound, spec.x, 0, spec.z, 0), layer: -1, standing: true });
+    for (let i = 0; i < n; i++) {
+      const a = yaw + (i / n) * Math.PI * 2, d = R * (0.42 + rng() * 0.12);
+      const x = spec.x + Math.cos(a) * d, z = spec.z + Math.sin(a) * d;
+      chimneyCone(x, z, min + 0.2, H * (0.55 + rng() * 0.45), R * (0.48 + rng() * 0.16), pick(), rng() < 0.85, noise, rng, mobile, pieces);
+    }
+  } else {
+    // a bare point: the cap fallen and broken at the foot
+    chimneyCone(spec.x, spec.z, min, H * 0.85, R, rng() < 0.5 ? 'cone' : 'bell', false, noise, rng, mobile, pieces);
+    const a0 = rng() * Math.PI * 2;
+    for (let i = 0; i < (mobile ? 2 : 4); i++) {
+      const a = a0 + (rng() - 0.5) * 1.6, rr = R * (1.05 + rng() * 0.8);
+      const x = spec.x + Math.cos(a) * rr, z = spec.z + Math.sin(a) * rr;
+      const size = R * (0.12 + rng() * 0.16);
+      const g = roundedBlock(size, size * 0.42, size * 0.8, 0.18, 2, noise, rng, { weather: 0.08, cuts: 2, cutDepth: 0.7, seedOffset: 700 + i });
+      pieces.push({ geometry: place(g, x, ground.getHeightAt(x, z) + size * 0.12, z, rng() * 3, (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.6),
+        layer: CAP_LAYER, standing: false });
+    }
+  }
+}
+
 function menhir(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
   // a standing stone: a split slab set on end, leaning a little, its top broken by the quarrying; packing stones round
   // its foot
@@ -826,6 +985,8 @@ const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, num
   limestone: [2.5, 6, 0.45],
   granite: [4, 10, 0.8],
   slate: [1.5, 4, 0.3],
+  // welded ignimbrite: wide cooling joints, broad clefts where the soft tuff below washes out
+  tuff: [3, 8, 0.6],
 });
 
 /**
@@ -1202,7 +1363,7 @@ export function buildBedrock(
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
   tor: graniteTor, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
-  menhir, cairn, calvary,
+  menhir, cairn, calvary, chimney: fairyChimney,
 });
 
 /**
