@@ -2473,6 +2473,15 @@ const GROWN_LEAF_BILLBOARD = 1;
  */
 const CANOPY_NEAR_DISSOLVE = Object.freeze([2.5, 8.0] as const);
 /**
+ * The bark's near-camera dissolve band (m from the camera; the trunks, the limbs and the twigs). Trees lane (2026-10-05,
+ * the gauntlet's wave 122 on round 5's close frames: the near tree's trunk "a see-through dotted tube", "trunk bark
+ * reads as a see-through fishnet mesh", "solid branch stubs float in the sky above it"): the band was 1.5-4.2 m, so a
+ * trunk a camera rested 2-4 m from stood half dithered in every close view while its limbs past the band stayed solid.
+ * It now lies below any distance a pose holds the camera from bark: from the camera's near plane (0.5 m, main.ts) to
+ * 1 m. Bark dissolves only as the camera grazes it, and stands solid at rest.
+ */
+const BARK_NEAR_DISSOLVE = Object.freeze([0.5, 1.0] as const);
+/**
  * Trees round 4: the near dissolve's reach per material (uCotNearReach, over CANOPY_NEAR_DISSOLVE and the crown's size):
  * a crown's whole band, a shrub's half of it — a 6 m field bush keeps its clusters to about 3.5 m from the camera and
  * thins by whole clusters inside that (the coordinator's 0.5 over the first 0.3: a bush filling half the screen and
@@ -4512,7 +4521,7 @@ function* vegetationBuildSteps(
   // forest routes hide the player tank behind full-screen canopy walls, and
   // cards inside the orbit radius degrade to giant flat unlit sheets.
   // camo_spotting r3: per-hook near-camera dissolve — trunks keep the tight
-  // 1.5-4.2 m band (a trunk 5 m away SHOULD block the view), CANOPY fragments
+  // band (BARK_NEAR_DISSOLVE: since the trees lane's 2026-10-05 fix, only as the camera grazes bark), CANOPY fragments
   // (leaf cards + far-LOD lobes) dissolve out to ~8 m so the in-clump chase
   // camera is never smothered by unfaded sheets.
   // r2: wrap is now an AMOUNT (0 = off). Trunks get a moderate 0.30 wrap so
@@ -4702,7 +4711,7 @@ function* vegetationBuildSteps(
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
     applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
   };
-  const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
+  const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
   const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
@@ -4991,7 +5000,7 @@ function* vegetationBuildSteps(
   barkMat.normalScale.set(0.85, 0.85);
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, barkHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v11'; // trees round 4: fine wood's reach (round 77: the wind law and the moss)
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v12'; // trees lane: the near dissolve only as the camera grazes bark (round 4: fine wood's reach; round 77: the wind law and the moss)
   barkMat.userData.cotWoodFineFar = uWoodFineFar; // the frame probe's same-page A/B (its wood-fine toggle)
   yield { stage: 'treePrep', fine: true };
 
