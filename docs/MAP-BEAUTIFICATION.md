@@ -119,7 +119,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Sirocco Wadi | Dry watercourse organizes settlement and palms; windward sand against eroded rock |
 | Sunscar Oasis | Siwa: a spring-centred grove and palm gardens, wet banks and bare surrounding dunes; old Shali's kershef houses, the mud minaret and the springs in the `siwa` variant of the ksar kit |
 | Redrock Divide | Stratified escarpments, talus and logistics outpost; controlled arid palette |
-| Titan Gorge | Immense canyon crossroads, branching dry channels and ledges; do not grass over every rock shelf |
+| Titan Gorge | Monument Valley: a sand floor between stepped sandstone shelves, free-standing buttes, dry washes; a Navajo community in the `navajo` kit (hogans, trading posts, camps, windmills); sagebrush and juniper, the grass cured to straw; do not grass over every rock shelf; cost: rule v3 over on the sunny regime's cascade work only; kit share within bounds; owner-accepted regime exception, 2026-10-06 |
 | Copper Mesa Mine | Extraction benches, haul roads and ore-loading courts; human cuts distinct from natural cliffs |
 | Cinder Junction | Rail ballast, freight platforms, graded service routes and storage blocks |
 | Ironworks | Connected loading courts, factory service yards, soot gradients and workers' streets |

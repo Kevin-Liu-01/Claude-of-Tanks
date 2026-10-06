@@ -134,6 +134,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // white broom, Retama raetam, grey-green switches, as Wadi Rum's)
   desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
   oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  // Monument Valley (the map-revival lane, 2026-10-05; round 2 on trees round 5's forms): Utah and one-seed juniper,
+  // low, multi-stemmed and grey-green, for the cedar and acacia slots; pinyon for the oak; the scrub as the white broom
+  // standing in for sagebrush; the Arizona uplands' dusty greens. The placement stays the map's (no arid or upland
+  // flag: they move the stands)
+  titan_gorge: B('Monument Valley, Colorado Plateau', { cedar: { form: 'juniper' }, acacia: { form: 'juniper' }, oak: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,

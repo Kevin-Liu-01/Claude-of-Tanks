@@ -462,6 +462,7 @@ region, registered in `index.ts`:
 | `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
 | `siwa` (in `ksar.ts`) | Siwa: kershef houses heaped in old Shali's battered blocks, palm-beam ends, the tapering mud minaret, a spring in its stone rim, palm-rib souk stalls (the ksar's stall and helpers shared; the ksar's output byte-identical) | Sunscar Oasis |
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
+| `navajo` | Monument Valley (Oljato, Goulding's): juniper-log hogans facing east, a two-storey sandstone trading post, stone ranch houses under tin, camps with shade houses and stockade corrals, windmills and the chapter's water tower | Titan Gorge |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
@@ -492,6 +493,15 @@ swaps it in through `LOCAL_TYPES`.
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
   for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
   collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
+- **Footprint coverage** (map-revival lanes, 2026-10-05). The same receipt fails a builder of any kit added after
+  October 4 whose collision-bearing parts stop more than 0.5 m short of a side of the base's measured reach
+  (`ctx.bounds`). A narrower kit body opens a lane: Titan Gorge's first wool barn, 2.4 m shorter than the warehouse it
+  replaced, opened a tank-wide gap that the bots drove through, and the pacing receipt's matches ended a minute early.
+  Size the main bodies from `ctx.bounds`, not `ctx.info`, because the base's reach often stands off the plot's centre
+  (a market row's by 2.75 m, a depot's by 1.5 m). The fourteen earlier kits are allowlisted and their shortfalls are
+  printed. `RegionalBuildContext` also carries the building's world pose (`x`, `z`, `yaw`) for look and form choices
+  only (a hogan's door to the sunrise, a stack beside its works). A kit never draws from the placement stream with it
+  and never changes the footprint with it.
 - Layout metrics do not move with a kit (the cover and sightline bands read the collision manifest: rerun
   `tools/map-layout-metrics.mjs` for the map after its shard is regenerated, and report any band that moves).
 

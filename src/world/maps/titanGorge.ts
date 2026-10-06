@@ -24,7 +24,17 @@
 // Landmarks: the West Shelf, the East Shelf, the four buttes, the gate buttes, the wash, the old town's crossroads, the western
 // switchback, the dry-river camp and the eastern shelf battery. The horizon ring still carries the gigantic stacked
 // escarpments beyond the edge without collision or draw calls.
+//
+// The settlement (the map-revival lane, 2026-10-05): the town is a Navajo community of the Oljato chapter round its
+// trading posts, built in the navajo kit (maps/regional/navajo.ts) where the town plan seats its buildings. Two trading
+// posts in the manner of Goulding's, two storeys of red sandstone with the trader's rooms above the store; a general
+// store with its false front and gas pump; family camps of a hogan, a stone house, a shade house and a sheep corral;
+// hogans of juniper logs and earth with their doors to the sunrise; the chapter's water tower and the windmills over
+// their stock tanks; a BIA day school, one long storey of field stone under tin; the wool barns, equipment sheds, hay
+// sheds and trailers of a working valley; the jewellery stands by the road; abandoned camps. The valley floor is sand
+// under juniper and sagebrush, the grass on it cured to straw.
 
+import desert from './desert.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -57,20 +67,37 @@ export default {
       // and east sides (landformGeology.ts).
       // Both ends of each shelf are cliffs, so no taper ramps up onto its cap (bots drove up the tapers and fell off the
       // walls), and the shelves stop short of the deployments.
-      ...[[-390, 0], [390, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 22, yawDeg: 90,
-        corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.35, 0.55] as const, apron: 0.3, cliffEnd: 'both' as const,
-          strata: { stepM: 4.5, riser: 0.35 }, outline: 0.25, rough: 0.8, gullies: { count: 2, depthM: 2, width: 0.5 } } })),
+      // (Titan round 2: the cap broader and the wall steeper over the same footprint, [0.35, 0.55] -> [0.46, 0.56].
+      // Round 3, gauntlet wave 119, "the shelves as smooth 30 degree ramps": one sheer wall of massive sandstone over
+      // the shale's concave talus, as Monument Valley's walls stand — the wall band narrowed to [0.5, 0.545] of the
+      // half-width, the talus a third of the height, 28 m high over the same footprint; thicker beds with smaller
+      // risers and less knobbly relief, so the wall reads as one cliff instead of a banded slope)
+      ...[[-390, 0], [390, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 28, yawDeg: 90,
+        corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.5, 0.545] as const, apron: 0.34, cliffEnd: 'both' as const,
+          strata: { stepM: 8, riser: 0.25 }, outline: 0.25, rough: 0.45, gullies: { count: 2, depthM: 1.5, width: 0.45 } } })),
       // buttes standing free on the valley floor, the shelves' outliers, in pairs that are each other's rotation about the
       // centre (the west lane's and the east lane's between the roads and the town)
-      ...[[-188, -120, 30, 40, 18], [188, 120, 30, 40, 18], [-140, 280, 34, 34, 14], [140, -280, 34, 34, 14]].map(([x, z, rx, rz, height]) => ({
+      // (Titan round 2, gauntlet wave 104: "flat-capped, sheer-walled buttes over a talus skirt": the sheer jebel's
+      // section, a level cap to 0.88 of the wall's foot, the wall near-vertical down to a talus skirt, shallow flutes;
+      // the footprint, the height and the toe are the old butte's.
+      // Round 3, gauntlet wave 119: "squat truncated cones or stumps with smeared wavy banding, none has a sheer cliff
+      // standing on a talus slope", "obviously tiled vertical ribbing": over the same footprints and toes the buttes
+      // stand two thirds taller (18 -> 30 m, 14 -> 24 m), as tall as they are wide at the wall; the cap runs to 0.94 of
+      // the wall's foot, a sharp rim; the wall's foot comes in to 0.55 of the radius so the concave talus apron takes a
+      // third of the height; six shallow grooves for ten deep flutes, thicker beds, half the knobbly relief)
+      ...[[-188, -120, 30, 40, 30], [188, 120, 30, 40, 30], [-140, 280, 34, 34, 24], [140, -280, 34, 34, 24]].map(([x, z, rx, rz, height]) => ({
         kind: 'knoll', x, z, rx, rz, height, corridorScale: 0.44,
-        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.22,
-          rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+        geology: { profile: 'inselberg' as const, outline: 0.22, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
+          flutes: { count: 6, depth: 0.12 }, rough: 0.45, boulders: 18, strata: { stepM: 8, riser: 0.2 },
+          gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the gate buttes: one in front of each deployment, each the other's rotation about the centre, screening the
       // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
-      ...[[-12, -300], [12, 300]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 24, rz: 22, height: 20, corridorScale: 1,
-        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.2,
-          rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+      // (Titan round 2: the same sheer section as the free buttes, over the same footprint; round 3: 20 -> 28 m and the
+      // free buttes' round-3 section)
+      ...[[-12, -300], [12, 300]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 24, rz: 22, height: 28, corridorScale: 1,
+        geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
+          flutes: { count: 5, depth: 0.12 }, rough: 0.45, boulders: 14, strata: { stepM: 8, riser: 0.2 },
+          gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the wadi's floor, where the valley's streams braid
       { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68,
         geology: { outline: 0.2, rough: 0.4 } },
@@ -106,12 +133,30 @@ export default {
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
+    // the map-revival lane (2026-10-05): the slots and their placement stay (their trunks, concealment and the pacing
+    // that rests on them); Monument Valley's look comes from the trees' biome row (treeBiomes.ts: Utah juniper for the
+    // cedar and acacia slots, pinyon for the oak, sagebrush for the scrub). The bunchgrass is cured straw: the gauntlet's
+    // wave 93 read the default tufts as "lime-green tufts evenly over orange sand", a cartoon desert (Redrock's tones),
+    // and the scrub takes the desert's dusty sage
     species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
     loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
-    clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.22,
+    // (Titan round 2, the ground lane's wave-115 finding: Monument Valley's bunchgrass is sparse — 0.22 -> 0.12)
+    // (Titan round 3c: the round-3 buttes' taller rock deepened the 30 m hollows the arid groves seat in and re-seated
+    // them 1266 -> 1424 trees, their alpha-tested shadows most of round 3's chase cost (h15 with the head's overcast:
+    // +1.2 ms p25); 16 -> 14 groves brings the valley back to 1189, Monument Valley's sparse juniper)
+    clusterCount: 14, loneCount: 34, rimCount: 18, grassDensity: 0.12,
+    // (Titan round 3: no juniper stand on a butte's cap — a clump of trees on top read as a stump with a wig, and
+    // Monument Valley's caps are bare caprock; the discs cover each cap and wall, the talus below keeps its trees)
+    avoid: [{ x: -188, z: -120, r: 23 }, { x: 188, z: 120, r: 23 }, { x: -140, z: 280, r: 20 }, { x: 140, z: -280, r: 20 },
+      { x: -12, z: -300, r: 14 }, { x: 12, z: 300, r: 14 }],
     clusterScrub: 1.7, bushCount: 0.46, bushSpecies: 'oak',
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
+    palettes: { oak: desert.vegetation.palettes.oak },
   },
   props: {
+    // the map-revival lane (2026-10-05): the Navajo Nation's Monument Valley kit (maps/regional/navajo.ts)
+    architecture: 'navajo',
     plan: [
       'caravanserai', 'compound', 'depot', 'ruin', 'marketRow', 'watertower',
       'adobe', 'compoundSouk', 'factory', 'ruin', 'containerRow', 'minaret',
@@ -154,7 +199,24 @@ export default {
     },
   },
   horizon: {
+    // (the map-revival lane, 2026-10-05, Titan round 2; gauntlet wave 104: "continuous pointed, smoothly sloped mauve
+    // mountains wall the valley ... Monument Valley's isolated, flat-capped, sheer-walled buttes standing apart on an
+    // open plain"): the far country beyond the ring's tables becomes sheer, flat-topped massifs standing out of the
+    // plain with the sky between them ('jebel'). (A lower ring loses the escarpment's cliffs: at amp 1.0-1.2 the far
+    // rise keeps no tiered column, so the ring's own tables stay at 2.15.)
     baseHex: 0x7d3f2c, amp: 2.15, style: 'mesa', treeline: 0.03,
+    // (Titan round 3, gauntlet wave 119: the backdrop still read as "alpine peaks and domes rather than isolated
+    // flat-capped mesas": the far country's jebels lose their Wadi Rum bosses and deep flutes — level caps to a
+    // sharp rim (0.95 of the wall's foot), a sheer wall, five shallow grooves, and the Organ Rock talus a third of
+    // the height)
+    panorama: { regional: 'jebel', jebelBossM: 0, jebelRim: 0.95, jebelFlutes: 5, jebelFluteDepth: 0.15, jebelApron: 0.33,
+      jebelFoot: 0.62, jebelM: 420, jebelRadiusM: 620, jebelShare: 0.55, jebelFootVary: 0.08 },
+    // (Titan round 3: the ring's tables stood as tiered cones, a stair of thin beds (26-50 m) each a short cliff over
+    // a talus bench. Monument Valley's walls are one bed: the De Chelly sandstone a sheer cliff 100-200 m high over
+    // the Organ Rock shale's concave talus slope, the Shinarump caprock a sharp rim. Thick beds (110-150 m) whose
+    // cliff takes a sixth to a quarter of each bed's input range stand the tables up as single sheer walls on concave
+    // aprons, and their caps at a few bed tops; the beds barely dip, and the rims meander less)
+    escarpment: { bedM: [110, 150], cliffShare: [0.16, 0.26], talusRise: 0.34, talusCurve: 3.0, dipPerKm: 10, meanderM: 36, meanderWavelengthM: 360 },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the orange sandstone
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
@@ -163,8 +225,9 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is
   // closed — coverage 1 at the map, as Whiteout's stratus (the regime row's 0.96 left the broad field's gaps open)
-  // (2026-10-04, the skies lane's deck structure: soft base lumps and slightly stronger cells read at establishing range)
-  clouds: { regime: 'dense-overcast', coverage: 1, rain: 0.25, virga: 0.55, lumps: 0.7, cells: 0.7 },
+  // (the map-revival lane, 2026-10-05, Titan round 2: Monument Valley's sky is mostly clear, the critics' wave 104 read
+  // the closed deck as "a flat grey overcast"; the fair-weather cumulus regime, whole)
+  clouds: { regime: 'fair-weather-cumulus' },
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
     mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,

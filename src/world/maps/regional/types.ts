@@ -50,7 +50,7 @@ export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
 /** An HSL remap of a procedural surface (props.ts ToneFunction). */
 export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
 /** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
 export type ConcreteSurfaceKind = 'boardFormed';
 
