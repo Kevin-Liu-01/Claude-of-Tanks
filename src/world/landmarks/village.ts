@@ -14,6 +14,7 @@
 import { PartSink, bodyFaces, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { archedFace, archedSlab, bar, cornerPilasters, extrude, moulding, type ArchHole } from './kit.ts';
+import { ageWall } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const TIMBER = rgb(0x5f4a36), DOOR = rgb(0x4d3324), IRON = rgb(0x2a2c2d);
@@ -67,6 +68,19 @@ export const lavoir: LandmarkBuilder = (ctx) => {
   // the low hipped roof of canal tiles, its ridge along the length
   const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.55, verge: 0.55, thickness: 0.12, bucket: 'roof', ridge: 'round' };
   sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, L, h, roof), roof));
+  // its age (age.ts): the render fallen from the rubble at the wall foot, the grime run down from the eaves
+  if (ctx.age) {
+    const outside: Face[] = [
+      { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: L },
+      { origin: [L / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
+      { origin: [-L / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
+    ];
+    outside.forEach((face, k) => {
+      const half = (k === 0 ? L : D) / 2 - 0.5;
+      ageWall(sink, ctx.age!, { face, bucket: 'plaster', area: { u0: -half, u1: half, y0: floor, y1: h - 0.3 }, ledge: h - 0.24, spall: 'stone',
+        spallCount: k === 0 ? 3 : 2, grime: 0.3 });
+    });
+  }
   return { parts: sink.finish(), tints: { plaster: [0.98, 0.92, 0.8] } };
 };
 
@@ -128,6 +142,9 @@ export const khan: LandmarkBuilder = (ctx) => {
         spring: floor + g1 + 2.1, form: 'flat' as const })).filter((wd) => !gate.length || Math.abs(wd.u) > 2.4);
       archedFace(sink, wall, fc, { u0, u1, y0: floor, y1: floor + g1 }, gate, 1.0, { segments: 10 });
       archedFace(sink, wall, fc, { u0, u1, y0: floor + g1, y1: H - 0.3 }, windows, 0.35);
+      // its age (age.ts): the grime run down the sandstone from the string course and the windows' sills
+      if (ctx.age) ageWall(sink, ctx.age, { face: fc, bucket: wall, area: { u0: u0 + 0.3, u1: u1 - 0.3, y0: floor, y1: H - 0.4 },
+        openings: [...gate, ...windows], ledge: H - 0.22, grime: 0.28 });
       for (const wd of windows) {
         for (let k = 1; k < 4; k++) {
           const u = wd.u - wd.w / 2 + wd.w * k / 4;
