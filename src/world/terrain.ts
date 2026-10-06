@@ -4005,14 +4005,16 @@ void splatCompute() {
   vec3 wn = normalize(vWNormal);
   vec2 mUV = wp.xz / uMaskSize + 0.5;
   vec4 mk = maskAt(mUV);
+  // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
+  vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
+  if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
+  // map revival lane 2 (townPaving): the paved town rect reads as a textured road (after the two fetches above, which
+  // go out together)
   gRoadTex = uRoadTex;
   if (uTownPave.z > 0.0) {
     vec2 townQ = abs(wp.xz - uTownPave.xy) - uTownPave.zw;
     gRoadTex = max(gRoadTex, 1.0 - smoothstep(0.0, 6.0, max(townQ.x, townQ.y)));
   }
-  // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
-  vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
-  if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
   // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
   // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
