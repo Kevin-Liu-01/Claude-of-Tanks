@@ -65,18 +65,24 @@ assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFix
 assert.equal(resolveBorderArchitecture('foundry', undefined, false)?.style.id, 'ruhr', 'Ironworks: the coalfield workers\' houses');
 assert.equal(resolveBorderArchitecture('frontier', 'hessian', false)?.style.id, 'hessian', 'a square\'s own kit');
 assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit: the generic farm set');
-// ... and a kit that builds no dwelling (Kestrel Airfield's Hostomel hangars) leaves the generic set, its church in the
-// generic stone
+// ... and Kestrel Airfield's Hostomel kit — hangars and a terminal until the map-revival lane (2026-10-05) gave it the
+// garden cooperatives' dacha and shed — builds its hamlets from that dacha: a house to a yard (the kit has no barn, so
+// no shed either), never a hangar, and none of the generic set's barns
 {
   const airfield = getMapConfig('airfield');
   const arch = resolveBorderArchitecture('airfield', airfield.props?.architecture, false);
   assert.equal(arch?.style.id, 'hostomel', 'Kestrel Airfield resolves its hangar kit');
   const plain = buildBorderFarmsteads({ ...options, sites });
-  const hangars = buildBorderFarmsteads({ ...options, sites, architecture: arch });
-  assert.deepEqual(Array.from(hangars.geometry.getAttribute('position').array), Array.from(plain.geometry.getAttribute('position').array),
-    'the hangar kit builds the generic yards');
-  assert.deepEqual(Array.from(hangars.geometry.getAttribute('color').array), Array.from(plain.geometry.getAttribute('color').array),
-    'in the generic colours');
+  const dachas = buildBorderFarmsteads({ ...options, sites, architecture: arch });
+  assert.notDeepEqual(Array.from(dachas.geometry.getAttribute('position').array), Array.from(plain.geometry.getAttribute('position').array),
+    'the dacha builds the yards');
+  const barnWall = [[0.46, 0.20, 0.15], [0.37, 0.30, 0.23], [0.62, 0.55, 0.45]].map((c) => c.map((v) => Math.pow(v * 0.8, 2.2) * 0.9));
+  const dc = dachas.geometry.getAttribute('color');
+  let barns = 0;
+  for (let i = 0; i < dc.count; i++) {
+    if (barnWall.some((c) => Math.abs(dc.getX(i) - c[0]) < 2e-3 && Math.abs(dc.getY(i) - c[1]) < 2e-3 && Math.abs(dc.getZ(i) - c[2]) < 2e-3)) barns++;
+  }
+  assert.equal(barns, 0, 'no generic barn in the dacha yards');
 }
 const foundry = getMapConfig('foundry');
 const foundryFarms = buildHorizonRing(null, foundry, 1337, createHeightField(1337, foundry)).getObjectByName('border-farmsteads');
