@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { LANDMARK_BUILDERS } from './index.ts';
-import { LANDMARK_KINDS, landmarkClearances, landmarkFootprint, resolveLandmarkParams } from './plan.ts';
+import { LANDMARK_KINDS, isDressingPiece, landmarkClearances, landmarkFootprint, resolveLandmarkParams } from './plan.ts';
 import { composeLandmarks, hasStructure, landmarkObjectiveDiscs } from './compose.ts';
 import { REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
 import { auditStructureAssembly } from '../maps/structureAssemblyAudit.ts';
@@ -85,7 +85,7 @@ const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
-  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
+  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
@@ -99,7 +99,10 @@ const VARIANTS = {
   waterTower: [{ style: 'rozhnovsky', height: 22 }, { style: 'trestle' }],
   townHall: [{ frame: true, width: 20, depth: 12, storeys: 3, tower: 28 }],
   belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }, { style: 'podhale', height: 15, side: 5.4 }],
-  obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }],
+  obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }, { height: 5.5, inscription: 'БОРЦАМ ЗА|ВЛАСТЬ|СОВЕТОВ|1918 – 1920' }],
+  kolkhozArch: [{ wings: 6, sign: 'СОВХОЗ «ЦЕЛИННЫЙ»', span: 13.2 }, { sign: '' }],
+  churchyard: [{ holyGate: false, tradition: 'latin', fence: 'wallstone', graves: 8, back: 'fence' }, { graves: 0, path: 0 }],
+  path: [{ surface: 'gravel', length: 30, width: 2.4 }, { surface: 'earth', length: 6 }],
   statue: [{ metal: 'silver', pose: 'robe' }],
   parkSquare: [{ centre: 'obelisk', railing: 'picket' }, { paths: 'ring', centre: 'fountain' }, { paths: 'diagonal', railing: false }],
   triumphalArch: [{ arches: 3 }],
@@ -112,10 +115,10 @@ const VARIANTS = {
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
-function build(kind, params, { seed = 11, tier = 'desktop', ground, groundFall = 0 } = {}) {
+function build(kind, params, { seed = 11, tier = 'desktop', ground, groundFall = 0, age = true } = {}) {
   const resolved = resolveLandmarkParams({ kind, x: 0, z: 0, params });
-  return LANDMARK_BUILDERS[kind]({ kind, params: resolved, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), tier, groundFall,
-    brick: false, snowCap: false, mapId: 'selftest', ground });
+  return LANDMARK_BUILDERS[kind]({ kind, params: resolved, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), ...(age ? { age: streamFrom(seed * 13 + 5) } : {}),
+    tier, groundFall, brick: false, snowCap: false, mapId: 'selftest', ground });
 }
 /** A band's parts within the packed manifest's limits (server/collisionManifestFormat.ts): 64 parts, 64 corners each. */
 function packedBandsOk(profile, label) {
@@ -178,7 +181,7 @@ for (const kind of KINDS) {
         : deriveRuntimeStructureCollisionProfile(dropFine(mobile.parts));
       assert.equal(JSON.stringify(mobileProfile), JSON.stringify(profile), `${label}: mobile collision equals desktop`);
     } else {
-      assert.equal(kind, 'parkSquare', `${label}: only a square is all dressing`);
+      assert.ok(LANDMARK_KINDS[kind].dressing?.(resolveLandmarkParams({ kind, x: 0, z: 0, params })), `${label}: only a dressing kind is all dressing`);
     }
     // the footprint holds the piece (its vegetation clearance and reserved ground cover what stands)
     const [hw, hl] = landmarkFootprint({ kind, x: 0, z: 0, params });
@@ -208,6 +211,62 @@ for (const kind of ['kolkhozArch', 'townGate', 'triumphalArch', 'torii', 'parkGa
   const shell = deriveRuntimeStructureCollisionProfile(parts).shell;
   if (kind !== 'parkGate') assert.ok(shell.some((band) => band.minY > 3 && band.parts.some((part) => pointInsideCollisionRecord(record, part, 0, 0))), `${kind}: a shell meets the arch over the passage`);
   for (const g of geometries(parts)) g.dispose();
+});
+
+// the kolkhoz arch's banner (gauntlet wave 154: "garbled, mirror-reversed pseudo-Cyrillic"): the farm's name in strokes
+// a few millimetres proud of both faces, each face's line reading left to right from its own side (its first glyph's
+// strokes at the face's left as seen from outside: -x in front, +x behind); no sign, no strokes; the wings are the
+// props' fence modules along the arch's line, outside the passage
+check('kolkhozArch lettering', () => {
+  const strokes = (parts, side) => {
+    const xs = [];
+    for (const g of parts.structureWood ?? []) {
+      const p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i += 3) {
+        const zs = [p.getZ(i), p.getZ(i + 1), p.getZ(i + 2)];
+        if (zs.every((z) => Math.abs(z - side * 0.074) < 0.0015)) xs.push((p.getX(i) + p.getX(i + 1) + p.getX(i + 2)) / 3);
+      }
+    }
+    return xs;
+  };
+  const signed = build('kolkhozArch', {}).parts, blank = build('kolkhozArch', { sign: '' }).parts;
+  const front = strokes(signed, 1), back = strokes(signed, -1);
+  assert.ok(front.length > 100 && front.length === back.length, `both faces lettered alike (${front.length} / ${back.length} stroke triangles)`);
+  assert.equal(strokes(blank, 1).length + strokes(blank, -1).length, 0, 'no sign, no strokes');
+  // 'К' opens the name: its stem is the leftmost stroke on each face as read from that face's side
+  const f0 = Math.min(...front), b0 = Math.max(...back);
+  assert.ok(f0 < -3 && b0 > 3 && Math.abs(f0 + b0) < 0.05, `each face starts at its own left (front ${f0.toFixed(2)}, back ${b0.toFixed(2)})`);
+  const { destructibles = [] } = build('kolkhozArch', { wings: 6 });
+  assert.ok(destructibles.length >= 4 && destructibles.every((d) => d.kind === 'fencepicket' && Math.abs(d.z) < 1e-9 && Math.abs(d.x) > 6),
+    'the wings: picket modules on the arch line, outside the pillars');
+  const [hw] = landmarkFootprint({ kind: 'kolkhozArch', x: 0, z: 0, params: { wings: 6 } });
+  assert.ok(destructibles.every((d) => Math.abs(d.x) + 1.25 * (d.scale ?? 1) <= hw + 1e-6), 'the wings inside the footprint');
+});
+
+// the churchyard: its fence modules and gate inside its footprint, the graves inside the fence and off the path, the
+// gate's gap at the front's centre (a plain gate) or the holy gateway's piers there
+check('churchyard grounds', () => {
+  for (const params of [{}, { holyGate: false, back: 'fence', graves: 30 }]) {
+    const resolved = resolveLandmarkParams({ kind: 'churchyard', x: 0, z: 0, params });
+    const [hw, hl] = landmarkFootprint({ kind: 'churchyard', x: 0, z: 0, params });
+    const { destructibles = [], parts } = build('churchyard', params);
+    for (const d of destructibles) assert.ok(Math.abs(d.x) <= hw && Math.abs(d.z) <= hl, `${JSON.stringify(params)}: ${d.kind} at (${d.x.toFixed(2)}, ${d.z.toFixed(2)}) inside the footprint`);
+    const gates = destructibles.filter((d) => d.kind === 'gate');
+    assert.equal(gates.length, params.holyGate === false ? 1 : 0, `${JSON.stringify(params)}: a plain gate only without the holy gateway`);
+    if (params.holyGate !== false) assert.ok(!hasStructure(parts) || deriveRuntimeStructureCollisionProfile(parts).contact.parts.length >= 1, 'the holy gateway stands');
+    assert.ok(destructibles.filter((d) => d.kind === resolved.fence).length >= 8, `${JSON.stringify(params)}: the fence runs round the open sides`);
+    for (const g of geometries(parts)) g.dispose();
+  }
+});
+
+// a piece's age (age.ts) draws from its own stream and is dressing: with or without it, a piece's solids are the same
+check('age is dressing', () => {
+  for (const kind of ['church', 'churchyard']) {
+    const aged = build(kind, {}), plain = build(kind, {}, { age: false });
+    const solids = (parts) => REGIONAL_BUCKETS.map((name) => (parts[name] ?? []).filter((g) => !g.userData.noCollision).map((g) => Array.from(g.getAttribute('position').array)));
+    assert.deepEqual(solids(aged.parts), solids(plain.parts), `${kind}: the same solids with and without its age`);
+    assert.ok(triangles(aged.parts) >= triangles(plain.parts), `${kind}: its age only adds dressing`);
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------- bridges
@@ -425,7 +484,7 @@ for (const id of MAP_IDS) {
     }
     const margin = placement.roadMargin ?? LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
     if (!LANDMARK_KINDS[placement.kind].spansRoad && margin > 0) assert.ok(field._roadDist(placement.x, placement.z) > margin, `${label}: out of the road core`);
-    if (placement.kind !== 'parkSquare') {
+    if (!isDressingPiece(placement)) {
       const stood = structures.some((record) => {
         const cx = (record.b[0] + record.b[3]) / 2, cz = (record.b[2] + record.b[5]) / 2;
         return Math.hypot(cx - placement.x, cz - placement.z) < Math.max(hw, hl);

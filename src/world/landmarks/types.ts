@@ -17,7 +17,7 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
@@ -67,6 +67,11 @@ export interface LandmarkBuildContext {
   rng: () => number;
   /** A second stream for look-only choices: a new choice never reshuffles the geometry drawn after it. */
   variant: () => number;
+  /**
+   * A third stream for the piece's age (age.ts: spalled render, rain streaks, soot), so a piece's weathering never
+   * moves its geometry or its look choices. Absent in receipts that build without the composer.
+   */
+  age?: () => number;
   /** 'mobile' builds leave out the finest dressing (never a structural part: the collision is tier-independent). */
   tier: 'desktop' | 'mobile';
   /** The ground's fall under the footprint (m): the plinths reach this far below the base on a slope. */

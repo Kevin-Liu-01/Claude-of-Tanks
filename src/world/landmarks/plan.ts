@@ -20,6 +20,13 @@ interface LandmarkKindSpec {
   /** The piece stands in the water and reaches its bank (a reservoir's valve tower and its bridge): the composer admits
    *  water under its footprint and the bank's fall above its foot, as it does a bridge's. */
   inWater?: boolean;
+  /** The piece is all dressing (a square's green, a path, a churchyard without its gateway): no solid, no collision record. */
+  dressing?: (p: LandmarkParams) => boolean;
+}
+
+/** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
+export function isDressingPiece(placement: LandmarkPlacement): boolean {
+  return LANDMARK_KINDS[placement.kind].dressing?.(resolveLandmarkParams(placement)) ?? false;
 }
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
@@ -52,7 +59,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
   // ------------------------------------------------------------------------------------------------ monuments
-  obelisk: { family: 'monument', defaults: { height: 9, finial: 'star', railing: true },
+  obelisk: { family: 'monument', defaults: { height: 9, finial: 'star', railing: true, inscription: '' },
     footprint: (p) => { const r = 1.6 + num(p, 'height') * 0.12 + (p.railing ? 1.4 : 0); return [r, r]; } },
   columnMonument: { family: 'monument', defaults: { height: 16 },
     footprint: (p) => { const r = 2.2 + num(p, 'height') * 0.1; return [r, r]; } },
@@ -72,16 +79,28 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   parkGate: { family: 'park', spansRoad: true, defaults: { width: 4.4, railing: 10 },
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'railing') + 2.3, 2.2] },
   // a square: a lawn, its paths and railing, benches and lamps (the props destructibles) round a centre piece
-  parkSquare: { family: 'park', defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
+  parkSquare: { family: 'park', dressing: () => true, defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
+  // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
+  // the graves (the gateway's piers and cornice 0.35 m past the front fence)
+  churchyard: { family: 'park', dressing: (p) => p.holyGate === false, defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
+    graves: 10, tradition: 'orthodox', back: 'open' },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
+  // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
+  // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
+  // it leaves (no road margin) and stands on nothing.
+  path: { family: 'park', roadMargin: 0, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
+    footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
     footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6] },
   triumphalArch: { family: 'gate', spansRoad: true, defaults: { passage: 7, height: 16, arches: 1 },
     footprint: (p) => [(num(p, 'arches') > 1 ? num(p, 'passage') * 1.9 : num(p, 'passage') / 2 + 3.4) + 0.4, 3.4] },
   // (the flags stream a metre past the pillars)
-  kolkhozArch: { family: 'gate', spansRoad: true, defaults: { span: 10, height: 6.2 },
-    footprint: (p) => [num(p, 'span') / 2 + 1.7, 0.9] },
+  // (`sign`: the farm's name on the banner, both faces; `wings`: a fence run of that length off each pillar, the props'
+  // own destructible `wingFence` modules)
+  kolkhozArch: { family: 'gate', spansRoad: true, defaults: { span: 10, height: 6.2, sign: 'КОЛХОЗ «КРАСНЫЙ ОКТЯБРЬ»', wings: 0, wingFence: 'fencepicket' },
+    footprint: (p) => [num(p, 'span') / 2 + 1.7 + Math.max(0, num(p, 'wings')), 0.9] },
   torii: { family: 'gate', spansRoad: true, defaults: { span: 6, height: 7.5 },
     footprint: (p) => [num(p, 'span') / 2 + 1.6, 0.9] },
   // ------------------------------------------------------------------------------------------------ towers

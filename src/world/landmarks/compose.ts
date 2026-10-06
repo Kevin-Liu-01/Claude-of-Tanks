@@ -235,6 +235,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       kind: placement.kind, params,
       rng: streamFrom(hashSeed(`landmark:${ctx.mapId}:${placement.kind}`, ...identity)),
       variant: streamFrom(hashSeed(`landmark:variant:${ctx.mapId}:${placement.kind}`, ...identity)),
+      age: streamFrom(hashSeed(`landmark:age:${ctx.mapId}:${placement.kind}`, ...identity)),
       tier: ctx.tier, groundFall: ground.spread, brick: ctx.architecture?.surfaces.stone.kind === 'brick',
       ground: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);

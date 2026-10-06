@@ -2,7 +2,9 @@
 // park gate with its railings, and the square that gathers them — a green with its paths and railing, the props'
 // destructible benches and lamps along the paths, and a centre piece (an obelisk, a statue, a fountain, a bandstand).
 import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, railing, revolve } from './kit.ts';
+import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
+import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smoothRender } from './kit.ts';
+import { drapedPath, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
@@ -137,10 +139,8 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   const benches = Math.max(0, Math.round(Number(ctx.params.benches))), lamps = Math.max(0, Math.round(Number(ctx.params.lamps)));
   const centre = String(ctx.params.centre), pw = 2.4;
   const gravel: RegionalBucket = 'plaster3';
-  // the gravel paths: shallow beds whose skirts reach into the ground
-  const bed = (a: readonly [number, number], b: readonly [number, number], w: number) => {
-    sink.member(gravel, [a[0], -0.25, a[1]], [b[0], -0.25, b[1]], w, 0.3, [0, 1, 0], { decor: true, exposed: true }, 0);
-  };
+  // the gravel paths, draped over the ground (2026-10-06: level beds at the base sank under the green's high side)
+  const bed = (a: readonly [number, number], b: readonly [number, number], w: number) => drapedPath(sink, gravel, ctx.ground, a, b, w, { lift: 0.04 });
   const exits: Array<[number, number]> = [];
   if (paths === 'cross' || paths === 'ring') {
     bed([-W / 2, 0], [W / 2, 0], pw); bed([0, -D / 2], [0, D / 2], pw);
@@ -199,7 +199,9 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   // the centre piece inside the square's own railing; `centreHeight` (when set) sizes it — a village's memorial obelisk
   // stands a third lower than a town square's
   const centreHeight = Number(ctx.params.centreHeight) > 0 ? { height: Number(ctx.params.centreHeight) } : {};
-  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight } : centreHeight });
+  // (`inscription`: the centre piece's, an obelisk's plaque)
+  const inscription = ctx.params.inscription ? { inscription: String(ctx.params.inscription) } : {};
+  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight, ...inscription } : centreHeight });
   return { parts: sink.finish(), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
 };
 
@@ -219,3 +221,81 @@ function picketRun(sink: PartSink, a: readonly [number, number], b: readonly [nu
     sink.span('structureWood', p[0] - 0.035, 0.08, p[2] - 0.035, p[0] + 0.035, 0.98 + (k % 2) * 0.04, p[2] + 0.035, { colour, decor: true, fine: true });
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------- paths
+
+/** The tints of a path's surfaces in the plaster3 bucket (the props' gravel convention: parkSquare's paths). */
+const PATH_TINT: Readonly<Record<string, Rgb>> = Object.freeze({ gravel: [0.95, 0.86, 0.68], earth: [0.52, 0.42, 0.32] });
+
+/**
+ * A path (gauntlet waves 154-158: "no approach path"): a strip draped over the ground from the piece's origin `length`
+ * metres along its +z, `width` wide — flagstones or setts in the map's masonry (`surface: 'stone'`), gravel, or beaten
+ * earth. Dressing only: a hull drives over it as over the ground.
+ */
+export const path: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
+  const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
+  drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
+};
+
+// ---------------------------------------------------------------------------------------------------------- churchyard
+
+const GREEN_IRON = rgb(0x4f7d5a);
+
+/**
+ * The churchyard (gauntlet waves 154-158: "the church stands straight in the grass … with no churchyard, fence or
+ * approach path"): the ground before a church's front (the piece's +z the gate, the church closing its -z side), its
+ * fence round the three open sides as the props' destructible modules (a hull breaks them as any fence); in the front
+ * fence the holy gate of a Russian church — a whitewashed brick gateway, its arch, a cornice and a small iron roof under
+ * a cross — or a plain gate; the flagstone path from the gate to the church door, and on from the gate toward the road
+ * (a `path` piece of its own); the graves either side of the path under their crosses.
+ */
+export const churchyard: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(8, Number(ctx.params.width)), D = Math.max(6, Number(ctx.params.depth));
+  const fence = String(ctx.params.fence || 'fencepicket'), holy = ctx.params.holyGate !== false;
+  const pathW = Math.max(0, Number(ctx.params.path) || 0);
+  const orthodox = String(ctx.params.tradition || 'orthodox') === 'orthodox';
+  const hw = W / 2, hd = D / 2, gateW = 2.2, pier = 0.85;
+  const destructibles: GroundsDestructible[] = [];
+  // the fence: the two sides from the church to the front, the front either side of the gate (the back is the church's)
+  fenceRun(destructibles, fence, [hw, -hd], [hw, hd]);
+  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
+  if (String(ctx.params.back) === 'fence') fenceRun(destructibles, fence, [-hw, -hd], [hw, -hd]);
+  if (holy) {
+    const gx = gateW / 2 + pier;
+    fenceRun(destructibles, fence, [hw, hd], [gx + 0.15, hd]);
+    fenceRun(destructibles, fence, [-gx - 0.15, hd], [-hw, hd]);
+    // the holy gate: the gateway (its passage along z), the cornice over it, a low gabled iron roof and the cross
+    const H = 3.4, t = 0.8;
+    sink.placed(0, 0, 0, hd, () => {
+      archedSlab(sink, 'plaster', -gx, gx, -0.5 - ctx.groundFall, H, t, [{ u: 0, w: gateW, y0: 0, spring: 2.25, form: 'round' }], { ends: true, top: true });
+      moulding(sink, 'plaster', gx * 2, t, H - 0.02, 0.16, 0.12);
+      const roof: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.3, verge: 0.3, thickness: 0.08, bucket: 'structureMetal', ridge: null };
+      const rg = roofGeometry(t + 0.24, gx * 2 + 0.24, H + 0.14, roof);
+      sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, rg, roof, GREEN_IRON));
+      cross(sink, 'structureMetal', 0, rg.ridgeTopY - 0.04, 0, 1.1, orthodox ? 'orthodox' : 'latin', rgb(0xb8933e));
+    });
+  } else {
+    fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
+  }
+  // the path from the gate to the church door (the way on to the road is a `path` piece of its own)
+  if (pathW > 0) drapedPath(sink, 'stone', ctx.ground, [0, hd + 0.4], [0, -hd], pathW);
+  // the graves either side of the path, in rows across the yard, their markers toward the church
+  const max = Math.max(0, Math.round(Number(ctx.params.graves) || 0));
+  const markers: readonly GraveMarker[] = orthodox ? ['orthodox', 'orthodox', 'orthodox', 'railed'] : ['latin', 'latin', 'stone', 'stone'];
+  let placed = 0;
+  for (let z = -hd + 3.2; z < hd - 2.4 && placed < max; z += 3.1) {
+    for (const side of [-1, 1]) {
+      for (let x = pathW / 2 + 1.5; x < hw - 1.0 && placed < max; x += 2.3) {
+        if (ctx.variant() < 0.3) continue;
+        const jx = (ctx.variant() - 0.5) * 0.5, jz = (ctx.variant() - 0.5) * 0.6, yaw = (ctx.variant() - 0.5) * 0.08;
+        grave(sink, ctx.ground, side * x + jx, z + jz, yaw, markers[Math.floor(ctx.variant() * markers.length)]);
+        placed++;
+      }
+    }
+  }
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+};

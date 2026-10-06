@@ -9,6 +9,7 @@ import {
   LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
   type ArchHole, type FaceName,
 } from './kit.ts';
+import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 
 const GREEN_IRON = rgb(0x4f7d5a), DOME_GREEN = rgb(0x3f7a52), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
@@ -220,6 +221,24 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     const cap = dome(sink, 'structureMetal', 0, octTop, zt, R3 * 0.98, 'helm', 12, { colour: DOME_GREEN });
     const tip = needle(sink, 0, cap - 0.2, zt, R3 * 0.22, Math.max(3, towerTop - cap - 1.6));
     cross(sink, 'structureMetal', 0, tip - 0.1, zt, 1.5, 'orthodox', GILT);
+  }
+  // ---- its age (age.ts; gauntlet wave 154: "pristine … no socle, staining, cracking or peeling"): the render fallen
+  // from the brick at the wall foot and under the sills, the grime run down from the cornices and the sills
+  const age = ctx.age;
+  if (age) for (const name of ['left', 'right'] as const) {
+    const porch = { u: 0, w: Math.min(6.6, W * 0.6) + 0.8, y0: plinthTop, spring: Hc * 0.6 + 1.4, form: 'flat' };
+    ageWall(sink, age, { face: cubeFaces[name], bucket: wall, area: { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: plinthTop, y1: Hc - 0.6 },
+      openings: [...(cubeHoles[name] ?? []), porch], ledge: Hc - 0.5, spall: 'stone', spallCount: 3, grime: 0.3 });
+    ageWall(sink, age, { face: refFaces[name], bucket: wall, area: { u0: -Lr / 2 + 0.4, u1: Lr / 2 - 0.4, y0: plinthTop, y1: Hr - 0.5 },
+      openings: refHoles[name] ?? [], ledge: Hr - 0.4, spall: 'stone', grime: 0.3 });
+  }
+  if (age) for (const [u0, u1] of [[-W / 2 + 0.5, -Ra - 0.3], [Ra + 0.3, W / 2 - 0.5]] as const) {
+    ageWall(sink, age, { face: cubeFaces.back, bucket: wall, area: { u0, u1, y0: plinthTop, y1: Hc - 0.6 }, openings: cubeHoles.back ?? [],
+      ledge: Hc - 0.5, spall: 'stone', spallCount: 1, grime: 0.3 });
+  }
+  if (age) for (const name of ['front', 'left', 'right'] as const) {
+    ageWall(sink, age, { face: towerFaces[name], bucket: wall, area: { u0: -T / 2 + 0.5, u1: T / 2 - 0.5, y0: plinthTop, y1: H1 - 0.5 },
+      openings: towerHoles[name] ?? [], ledge: H1 - 0.4, spall: 'stone', grime: 0.3 });
   }
   return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [1.0, 1.0, 0.99], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
 }

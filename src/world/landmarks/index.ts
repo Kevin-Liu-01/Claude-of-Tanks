@@ -9,7 +9,7 @@ import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
 import { lighthouse, mole } from './harbour.ts';
 import { khan, lavoir } from './village.ts';
-import { bandstand, fountain, parkGate, parkSquare } from './parks.ts';
+import { bandstand, churchyard, fountain, parkGate, parkSquare, path } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
@@ -22,6 +22,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   bengalTemple,
   campanile,
   church,
+  churchyard,
   colonialBungalow,
   columnMonument,
   equestrianStatue,
@@ -40,6 +41,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   obelisk,
   parkGate,
   parkSquare,
+  path,
   statue,
   stationHall,
   stoneArchBridge,
