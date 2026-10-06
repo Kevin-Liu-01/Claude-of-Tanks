@@ -607,6 +607,14 @@ export function extrude(sink: PartSink, bucket: RegionalBucket, points: readonly
  * cottage's rough clay at the houses' scale — spreads into the soft mottling of a church's or a monument's limewash
  * (the first capture read the village print on 30 m of church wall as "speckled granite"). Same material, no new draw.
  */
+/**
+ * The UV scale of a limewashed or painted surface (smoothRender): the regional plaster and metal tiles carry a grey noise
+ * that reads as granite on a whitewashed church (at the tile's own density) or as blotches (at a fifth of it); at this
+ * scale a whole wall samples a few texels of the tile, so the limewash reads as one coat and its weathering (the
+ * occlusion and damp the weathering pass paints per vertex) shows on it.
+ */
+export const LIMEWASH_UV = 0.006;
+
 export function smoothRender(parts: RegionalParts, k: number, buckets: readonly RegionalBucket[] = ['plaster', 'plaster2', 'plaster3']): RegionalParts {
   for (const name of buckets) {
     for (const geometry of parts[name] ?? []) {

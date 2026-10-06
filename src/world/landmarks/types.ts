@@ -26,6 +26,8 @@ export type LandmarkKind =
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
   // a hill station's colonial pieces
   | 'colonialBungalow' | 'tennisCourt'
+  // temples
+  | 'bengalTemple'
   // wrecks
   | 'aircraftWreck';
 
