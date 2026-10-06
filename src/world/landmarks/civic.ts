@@ -401,6 +401,13 @@ export const stationHall: LandmarkBuilder = (ctx) => {
         archSurround(sink, surround.bucket, faces[name], h, surround.width, surround.out);
       }
     }
+    // its age: the soot and the rain run down the brick from the cornice and the sills
+    if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+      const len = name === 'front' || name === 'back' ? Ww : D;
+      if (!holes[name] && name !== (side < 0 ? 'left' : 'right')) continue;
+      ageWall(sink, ctx.age, { face: faces[name], bucket: wall, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth, y1: Hw - 0.7 },
+        openings: holes[name] ?? [], ledge: Hw - 0.62, grime: 0.28 });
+    }
     // the corbelled cornice: a brick band stepped out under a white frieze
     sink.placed(0, cx, 0, 0, () => {
       moulding(sink, trim, Ww, D, Hw - 0.62, 0.3, 0.04);
@@ -434,6 +441,14 @@ export const stationHall: LandmarkBuilder = (ctx) => {
     }
   }
   cornerPilasters(sink, trim, 0, 0, Wc, Dc, plinth, H2 - 0.6, 0.5, 0.07);
+  if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? Wc : Dc;
+    // each storey runs off its own ledge: the string course and the cornice
+    ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: plinth, y1: H1 - 0.1 },
+      openings: (cHoles[name] ?? []).filter((h) => h.y0 < H1), ledge: H1 - 0.02, grime: 0.24 });
+    ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: H1 + 0.35, y1: H2 - 0.7 },
+      openings: (cHoles[name] ?? []).filter((h) => h.y0 >= H1), ledge: H2 - 0.66, grime: 0.28 });
+  }
   // the string course between the storeys and the cornice
   moulding(sink, trim, Wc, Dc, H1 + 0.05, 0.26, 0.08);
   moulding(sink, trim, Wc, Dc, H2 - 0.64, 0.32, 0.04);
@@ -743,7 +758,8 @@ export const granary: LandmarkBuilder = (ctx) => {
   const L = Math.max(14, Number(ctx.params.length)), W = Math.max(7, Number(ctx.params.width)), timber = String(ctx.params.walls) === 'timber';
   const base = -0.6 - ctx.groundFall, plinth = 0.9, H = plinth + 3.8;
   const wall: RegionalBucket = timber ? 'structureWood' : 'stone', wallOpts = timber ? { colour: rgb(0x6f5f4c) } : {};
-  sink.span('stone', -L / 2 - 0.1, base, -W / 2 - 0.1, L / 2 + 0.1, plinth, W / 2 + 0.1);
+  // (gauntlet wave 155: "no plinth, mortar loss, damp or soot staining") the plinth in a dark cement render
+  sink.span(timber ? 'stone' : 'plaster2', -L / 2 - 0.1, base, -W / 2 - 0.1, L / 2 + 0.1, plinth, W / 2 + 0.1);
   const doors = Math.max(2, Math.round(L / 9)), du = (i: number) => -L / 2 + L * (i + 0.5) / doors;
   const front: ArchHole[] = Array.from({ length: doors }, (_, i) => ({ u: du(i), w: 2.6, y0: plinth, spring: plinth + 2.8, form: 'flat' as const }));
   const vents = (len: number) => Array.from({ length: Math.round(len / 3.2) }, (_, i) => ({ u: -len / 2 + 1.6 + i * 3.2, w: 0.6, y0: H - 1.0, spring: H - 0.6, form: 'flat' as const }));
@@ -758,6 +774,11 @@ export const granary: LandmarkBuilder = (ctx) => {
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.6, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
   sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(W, L, H, roof), roof));
   if (!timber) moulding(sink, 'stone', L, W, H - 0.25, 0.25, 0.1);
+  if (ctx.age && !timber) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? L : W;
+    ageWall(sink, ctx.age, { face: f[name], bucket: wall, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth, y1: H - 0.3 },
+      openings: holes[name] ?? [], ledge: H - 0.26, grime: 0.3 });
+  }
   // the hoist gable over the middle door: a small cross gable, its loft door and the beam out of its peak
   const hg: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.2, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: null };
   sink.placed(0, 0, 0, W / 2 - 1.2, () => {
@@ -766,7 +787,7 @@ export const granary: LandmarkBuilder = (ctx) => {
     emitRoof(sink, roofGeometry(3.2, 2.6, H + 1.6, hg), hg);
     bar(sink, 'structureWood', [0, H + 2.4, 1.0], [0, H + 2.4, 2.6], 0.2, { colour: rgb(0x4a3b2e), decor: true });
   });
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), tints: { plaster2: [0.6, 0.58, 0.55] } };
 };
 
 /** A double plank door hung in a flat-headed opening. */
