@@ -15,7 +15,7 @@
 // panels and the arch footings (structural); the ribs, the engines and the debris are dressing.
 import * as THREE from 'three';
 import { BUCKET_UV_DENSITY, PartSink, rgb, shade, type EmitOptions, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, settleOnGround } from './kit.ts';
+import { bar, settleOnGround, LIMEWASH_UV, smoothRender } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const WHITE = rgb(0xe9e9e6), GREY_BELLY = rgb(0xb9bcbf), BLUE = rgb(0x2c5aa0), YELLOW = rgb(0xf0c22c), SOOT = rgb(0x1c1a18), ASH = rgb(0x6a6560);
@@ -319,5 +319,6 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     sink.polygon('structureMetal', ring, { colour: lerp(ASH, SOOT, 0.6), decor: true });
   }
   // the wreckage lies on the floor it fell on (the plot falls 2 m to its back corner at Hostomel)
-  return { parts: settleOnGround(finishWreck(sink), ctx.ground) };
+  // the painted skin and the hangar's steel: the metal tile's grey noise read as a speckled hull (kit.ts LIMEWASH_UV)
+  return { parts: settleOnGround(smoothRender(finishWreck(sink), LIMEWASH_UV, ['structureMetal']), ctx.ground) };
 };

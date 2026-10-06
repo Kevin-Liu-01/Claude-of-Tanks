@@ -3,6 +3,7 @@
 // compose.ts places them in the props build. Every builder draws the piece in its own frame from its own streams.
 import { baileyBridge, liftBridge, stoneArchBridge, trestleBridge, trussBridge, viaduct } from './bridges.ts';
 import { colonialBungalow, tennisCourt } from './colonial.ts';
+import { bengalTemple } from './temples.ts';
 import { church, grainElevator, granary, marketHall, stationHall, townHall } from './civic.ts';
 import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
@@ -16,6 +17,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   baileyBridge,
   bandstand,
   belfry,
+  bengalTemple,
   campanile,
   church,
   colonialBungalow,

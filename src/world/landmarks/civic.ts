@@ -6,7 +6,7 @@
 import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
-  archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
+  LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
   type ArchHole, type FaceName,
 } from './kit.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
@@ -225,7 +225,7 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
 }
 
 /** The UV scale of a church's and a monument's lime render over the village print (kit.ts smoothRender). */
-const RENDER_SMOOTH = 0.18;
+const RENDER_SMOOTH = LIMEWASH_UV;
 
 /**
  * The Western hall church (Hesse, Franconia, Brittany, the Low Countries): the nave under a steep roof between stepped
