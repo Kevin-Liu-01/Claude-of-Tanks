@@ -209,6 +209,11 @@ export default {
     // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
     // the map's horizon draws no more triangles than before that relief work
     outlandRocks: 0.94,
+    // (the map-revival lane, 2026-10-06, Skybridge round 2; gauntlet wave 107: "no drowned canyon, no dam"): Glen Canyon
+    // Dam. The gorge's axis runs on out of the square through the north ring as a canyon cut into the plateau, and a
+    // concrete arch closes it 1.2 km out under the plateau's rim — 145 m from the tailwater's bed to its crest, the
+    // reservoir behind it a few metres under the crest, so the skyline opens over the arch (horizonDam.ts)
+    dam: { x: 5, z: 1200, crestM: 155, floorM: 10, mouthM: 790, archRadiusM: 220 },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the beige-brown
     // chasm walls (the style default 0.16 left the abutment cliffs nearly unbedded)
     banding: 0.20,
