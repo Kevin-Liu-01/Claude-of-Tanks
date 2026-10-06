@@ -1155,6 +1155,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/fieldTrenchTerrain.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',

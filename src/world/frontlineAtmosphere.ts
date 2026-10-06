@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
 import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
+import { buildFlyover, flyoversForMap, type FlyoverType } from './flyoverAircraft.ts';
 
 interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
@@ -262,7 +263,7 @@ void main() {
 // ---------------------------------------------------------------- factory ----
 
 interface Aircraft {
-  root: THREE.Object3D;
+  root: THREE.Mesh;
   p0: THREE.Vector3;
   v: THREE.Vector3;
   t0: number;
@@ -328,6 +329,14 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     for (const g of parts) g.dispose();
     return merged;
   })();
+  // the map-vehicles lane (P6, 2026-10-06): each map's front flies its own types (flyoverAircraft.ts), built on first
+  // use and kept for the battle; a map with none keeps the generic twin above
+  const flyoverGeometries = new Map<FlyoverType, THREE.BufferGeometry>();
+  const flyoverGeometry = (type: FlyoverType): THREE.BufferGeometry => {
+    let g = flyoverGeometries.get(type);
+    if (!g) { g = buildFlyover(type); flyoverGeometries.set(type, g); }
+    return g;
+  };
   const aircraft: Aircraft[] = [];
   for (let i = 0; i < FRONTLINE_LIMITS.aircraftCap; i++) {
     const root = new THREE.Mesh(aircraftGeometry, aircraftMaterial);
@@ -690,6 +699,9 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     nextArtillery = 2 + rng() * 4;
     nextFlak = 6 + rng() * 10;
     nextFlyover = 20 + rng() * 40;
+    // the map's aircraft, slot by slot (no draws: the front's stream is unchanged)
+    const types = flyoversForMap(mapId);
+    aircraft.forEach((plane, i) => { plane.root.geometry = types.length ? flyoverGeometry(types[i % types.length]) : aircraftGeometry; });
     prepared = intensity > 0.001;
     group.visible = prepared;
   }
@@ -728,6 +740,8 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     quad.dispose();
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
     aircraftGeometry.dispose(); aaBaseGeometry.dispose(); aaHeadGeometry.dispose(); tracerGeometry.dispose();
+    for (const g of flyoverGeometries.values()) g.dispose();
+    flyoverGeometries.clear();
     flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
     options.releaseMaterial?.(aaMaterial);
     aaMaterial.dispose(); tracerMaterial.dispose();
