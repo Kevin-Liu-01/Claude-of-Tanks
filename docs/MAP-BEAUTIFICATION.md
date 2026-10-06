@@ -7108,9 +7108,10 @@ stone arcade, two storeys of render in an oak frame, the framed gables, two corn
 to the square (7 410 desktop triangles); the village church with its west tower, clock and spire toward the square, the
 nave and the chancel to the east (5 778). Census [6091, 6015, 6294]; the yards' own stream re-plans round the new
 footprints (three yard sheds moved, five stood). Pacing (4 seeds) 189/178/269/192 s against the head's 221/300/248/181
-s. Cost: the establishing shot −0.18 ± 0.46 ms (accept); chase 1.06 ± 0.70 and the square's view −0.48 ± 0.77 ms
-(ambiguous at a load of 160; their quiet-window re-run is queued); every CPU median within 0.07 ms, no long task and no
-program compiled during a slot.
+s. Cost (rule v3): census close (v3) at every view — the establishing shot +4 draws and +1.25 % triangles, chase +3 and
++0.98 %, the square's view +6 and +1.47 % (the timing besides: the establishing shot −0.18 ± 0.46 ms; chase 1.06 ± 0.70,
+then 0.59 ± 0.45 in a quiet window; the square's view −0.48 ± 0.77, then −0.81 ± 0.34); no long task and no program
+compiled during a slot.
 
 ### 2026-10-04 — the cumulus item, shelved: what it learned (the skies lane)
 
