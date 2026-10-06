@@ -126,8 +126,8 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
-| Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
-| Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
+| Ruinspires | Sarajevo under siege (1992–96): the boulevard's tram line between Austro-Hungarian blocks and Yugoslav towers, the mahalas on the flanks, the siege on every building (the `sarajevo` kit, 2026-10-05); the ground's land use and the roads' surfaces are the ground lane's next |
+| Suzhou Creek (`blackglass`) | Shanghai, autumn 1937: the creek and its four bridges between the Settlement's lanes, blocks and Art Deco towers and Zhabei's burnt shophouses; brick, granite and grey canal tiles |
 | Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
 
 ## Order of work and visible checkpoints
@@ -7329,6 +7329,152 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
 - *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
+
+### 2026-10-05 — Ruinspires as Sarajevo under siege (the map-revival lane, mr1)
+
+**The `sarajevo` regional kit replaces all 14 structure ids the map draws in place, and the street kit
+(`extraKits: ['sarajevo']`) lays the boulevard's tram line and the cemeteries.** The kit
+(`maps/regional/sarajevo*.ts`) builds Austro-Hungarian blocks (gable or zinc-mansard roofs over firewalls, one in nine
+with a collapsed end), Yugoslav infill blocks, mahala houses with doksats and walled gardens, the twin office towers,
+the Holiday Inn, the parliament, the newspaper's gutted core, estate and slab towers, the museum and the Vijećnica,
+mosques, the Orthodox and Catholic churches, the market hall and the čaršija. It adds shell pocks, UNHCR sheeting and
+sandbagged windows. The street kit lays the double track in its bed with the catenary, two burnt trams shoved against
+the kerbs and 8 container screens at the crossings, every one clear of the roads' cores (3.9 m from a road's line) and
+of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kickoff and the aprons stay open).
+- *Footprints:* every builder fills the base's measured reach (`ctx.bounds`): −0.30 to 0.00 m on every side. The one
+  exception is the row houses' street side, −1.25 to −0.85 m: those are the base's shop canopies and balconies, 2.7 to
+  3.1 m up, while the fronts stand on the plot's street edge. The 392 structure records match the PR head's one for one,
+  every footprint centre within 0.58 m, so no building moved. The census's colliders went from 8,349 to 6,232 (the
+  structure shells from 7,158 to 5,040), and the shard is re-pinned at [1933, 6232, 462].
+- *Pacing* (20 seeds, 37000–37019): median 325 s, p10 229 s, minimum 190 s, none under 120 s, no timeouts. The PR head
+  gives 263 / 183 / 162. The kit's solid bodies conceal more than the base's ragged low ruins did; with 17 screens
+  (some on the squares' edges) the median was 447 s.
+- *Frame pacing* (one hold at load ~90, single runs, no long tasks in any). PR head, chase / establishing p50/p95/p99:
+  Ruinspires 16.9/22.7/32.1 and 16.6/22.1/31.4 ms; Verdant 18.4/31.0/37.8 and 17.1/33.5/49.5 ms. The owner's
+  "choppiness" is not Ruinspires' frame pacing on the PR head. The candidate gave 17.5/30.1/40.9 and 16.8/36.3/58.8 ms
+  at 682 calls and 2.93 M triangles in the chase (head: 679 and 2.83 M). The A B C C B A ×8 cost gate waits for a quiet
+  machine.
+- *Cost* (the GPU frame's increment over the PR head; each variant against the head, two pages, 3 × A B B A after a
+  chase visit, a quiet window at load 24–31):
+
+  | Variant | Establishing | Chase |
+  |---|---|---|
+  | the kit, the ground lane's land use and the streets' surfaces | +2.63 ± 0.40 ms | +0.99 ± 0.16 ms |
+  | without the streets' surfaces (`pathStyles`) | −0.60 ± 0.32 ms | +0.52 ± 0.53 ms |
+  | without the `sarajevo` kits | +1.08 ± 0.72 ms | +0.18 ± 1.52 ms |
+  | head and candidate both at `?ground=legacy` (no land use) | −0.62 ± 0.67 ms | +1.17 ± 0.66 ms |
+
+  The increment needs the streets' surfaces and the urban land use together; either alone is within the budget. The
+  map ships without its streets' own surfaces (the boulevard's asphalt, the trunks patched, setts on the terrace and
+  cross streets: ruinspires.ts keeps them in a comment) until the ground lane's fix. On the A B C C B A gate the chase
+  passed (GPU p25 +0.16 ± 0.37 ms); that gate's establishing reading, +11.5 ms with three full worlds in one browser,
+  read about +2 ms with two.
+
+### 2026-10-05 — the facade craft: every kit's houses finished like real ones (the facades & skyline lane)
+
+The owner, after Verdant: "you already know we need better buildings ... you are capable of making a lot more beautiful
+buildings then we have". One shared layer (`maps/regional/facade.ts`, hooks in `house.ts`, `openings.ts`, `weather.ts`,
+`geometry.ts`) finishes every regional kit's houses on a desktop build; the kit guide (docs/MAP-LAYOUT-BRIEF.md, "The
+facade craft") lists the vocabulary.
+
+- **Every kit:** the rain shadow under the eaves (the top row of the top storey's wall vertices darkened by the
+  overhang: no new vertex), two dirt streaks off each sill's ends, gutter hangers, hopper heads, clips and shoes, the
+  stacks' oversailing course; on every straw roof the thatcher's stepped eave course and two course lines (Kohima's and
+  the Mekong's palm thatch: rows only).
+- **Verdant (kolkhoz):** carved nalichniki on most khatas (a crest cut to a gable, an arch or a step, its carved field
+  and rosettes, an apron cut to a drop), painted shutters (a border and a diamond or a heart), the painted line over
+  the plinth, painted bands round the board surrounds of the others, lime worn to the clay, two or three riders over
+  a thatch ridge, hollyhocks; the cowshed's brick piers, dentil cornice, segmental arches and gable vents; the church's
+  pilasters, cornice, arched brows and its drum's bands and windows; the club's cornice, water table and hoods; the
+  granary's carved gable (prichelina and towel board). The calibration pair read "the same village, finer".
+- **Steinburg (franconian):** rendered fronts with Faschen, sandstone string courses and cornices, first-floor hoods,
+  door canopies; dormers along the slopes a row shows. **Frontier, Highland Reservoir (Fachwerk):** door canopies,
+  sandstone lintels on the stone storeys, dormers on the inns and schools; the dam company's cornice and hoods.
+  **Cinder Junction (ruhr):** yellow-brick segmental arches with keystones, dentil cornices, brick piers, gable vents.
+  **Saltwind (dalmatian):** limestone quoins on the rendered houses, a string course on the three-storey ones, a
+  balconette on half the houses. **Tidegate (polder):** brick arches, the white board gutter cornice, wall anchors.
+- **Laws** (`facade.selftest.mjs`, 600 builds; 750 more against the PR head's trees): dressing only (the structural
+  geometry is the craftless build's byte for byte, so collision and every shard stay), desktop only (a phone's build is
+  byte for byte the PR head's), its own stream (the build and look streams draw as often with it). Every map lane's kit
+  branch (Sarajevo, Andalusian, Kyushu, Bisbee, Glen Canyon, Navajo, Tselina) merges onto it with the laws holding.
+- **Cost** (headless props build against the PR head; always drawn / shadow casting / meshes): Verdant +1.9k (+4.95 %)
+  / +1.6k (+4.4 %) / +2; Steinburg +6.3k (+1.8 %) / +18.5k (+6.9 %) / +1; Frontier -1.1k / +0.4k / +1; Cinder Junction
+  +6.5k (+2.0 %) / +9.2k (+2.9 %) / 0; Saltwind +1.9k (+3.0 %) / +1.8k (+3.2 %) / +1. The fine dressing (Steinburg +89k,
+  Cinder Junction +47k) is drawn within the fine-detail distance only: on a desktop build the metalwork and the main
+  render batch by the 120 m cells like the timber and stone (the metal's batch replaces its always-drawn mesh).
+
+### 2026-10-05 — Blackglass becomes Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane, mr1)
+
+**The district stands where PR #9's head (5d2461283) seated it, and Suzhou Creek now runs through it.** The International
+Settlement is on the creek's south bank and Zhabei, the Chinese district the Japanese shelled and burnt, on the north.
+The map keeps its id (`blackglass`); its name is Suzhou Creek in every catalogue, the roster docs and the manual reference.
+- *The creek* (`terrain.marshes`, createMarshChannel): it is 28–29 m of open water, narrowing to about 17 m at its four
+  bridges, which carry roads 4 and 5 and the two diagonals. Each deck rests on terrain.ts's bridge stations
+  (`crossing: 'bridge'`); the arched spans, parapets and deck collision come from mapKits.ts. The water is soft and wadeable
+  (about 0.55 m), so the bridges are preferred routes, not hard chokepoints.
+- *The re-siting*: the district replays the head's record (TOWN_PLANS, TOWN_LIGHT_PLANS and the new TOWN_ROW_PLANS for the
+  street rows; tools/record-town-plan.mjs). Only what the water reaches changes (props.ts `settlementOverWater`):
+  - five landmarks move to the nearest dry seat: the civic hall (16.9, 80.3) → (3.3, 67.8), the needle tower
+    (37.9, 100.3) → (39.2, 131.7), a ruin (84.7, 93.0) → (84.5, 81.0), the terrace tower (62.1, 116.3) → (44.4, 178.8)
+    and the foundry office (109.1, 109.3) → (99.9, 73.0);
+  - three street rows are left out.
+
+  townPlans.selftest holds this record diff. Against the head: 137 structures keep their seats (within 1.9 m), the
+  head's 5 carriageway movers stand where the head moved them, the 5 landmarks are off the water and the 3 rows are gone.
+  Nothing else moves.
+- *The `shanghai` regional kit* (`maps/regional/shanghai*.ts`):
+  - the street rows by bank: shikumen lanes behind courtyard walls with granite-framed lacquer gates and carved
+    pediments, stepped fire walls and tiger-window dormers; Chinese shophouses with plank shutters, counters, name boards,
+    lattice casements, vertical signboards and lanterns (Zhabei's often burnt out); the Settlement's brick blocks with
+    sash windows, string courses, crest panels, balconies, folding iron gates, awnings and sandbags;
+  - the ruins: shells with their piers and spandrels standing, collapsed houses with a chimney, burnt shophouse frames;
+  - a tram depot, brick godowns, a cotton mill with its water tower, a fire station with its watch tower, and a guild
+    hall under a swept hip-and-gable roof;
+  - the landmarks: the Bund's towers in the skyline kit's deco grammar (Sassoon House's copper pyramid; the stepped
+    crowns of Broadway Mansions and the Park Hotel); the Bank of China's green-tiled pyramid; the Customs House's clock
+    tower; the Bund's banks (dome, portico or turrets); Zhabei's civic hall as North Station (the skyline kit's
+    terminus, damaged, its depth held to the plot); the Joint Trust ("Sihang") warehouse, sandbagged and holed on the
+    wall that faced the attack.
+- *The street kit* (`maps/shanghaiStreets.ts`): the tram line down the Settlement's avenue (road 2), with its catenary
+  and two burnt trams, each clear of every road's core and of the objective ground; sandbagged posts at both ends of
+  every bridge; sampans moored in rafts along both banks.
+- *The look*: oaks (for the plane trees and camphors), willows and poplars replace the cedars and cypresses. The
+  horizon becomes the flat Yangtze delta (`relief: 'coastal'`, panorama `plain`), replacing the volcanic field. The creek
+  is a water sheet (`splat.seaLake`) with its own contact profile (waterContact.ts `SUZHOU_CREEK`: silted olive-brown,
+  a slow eastward flow) and a calm authored sea state (`ocean`: Hs 0.021 m, the calmest sheet in the fleet).
+- *Footprints*: on the map every kit body stands within the base's measured reach on every side, by −0.40 to −0.04 m.
+  The one exception is the street rows' front, −1.25 to −0.84 m: the base's porches and canopies reach past the plot's
+  street edge, and the rows' fronts stand on it. The shard is regenerated at [2713, 3124, 1492] (colliders 5,064 → 3,124:
+  a landmark is a few prisms where a megacity shell was many).
+- *Fairness* (tools/map-layout-metrics.mjs, driven metres from each team's anchor):
+  - bridges: alpha reaches road 4's bridge first (407 against 503) and bravo the other three (336/571, 332/625, 381/696);
+  - zone discs: (−285, 33) on Zhabei's bank, 517 against 487; (34, −50), 490/503; (140, −34), 546/525; the kickoff
+    (−97, −7), 457/458;
+  - objective symmetry 1.04 (the head's 1.055). Alpha must cross the creek for one disc and bravo for two discs and the
+    kickoff, and every disc's routes are within 6 % of each other.
+
+  Every brief band holds except relief (std 3.06 → 2.70 m, under its 3 m band). Blackglass is not on the brief's roster.
+- *Fording* (bots on seeds 38000–38002): 6 crossings by the ford and 1 by a bridge; the longest spell in the water was 18 s
+  and no tank stayed in it longer than 25 s.
+- *Pacing* (20 seeds, 38000–38019, with the kit): median 246 s, p10 185 s, minimum 95 s, one match under 120 s, no
+  timeouts. The PR head gives 220 / 145 / 89, with one match under 90 s; the creek alone gave 208 / 168 / 145. The full
+  core run (132 matches) passes: median 191 s, p10 148 s, 4 under 120 s, no timeouts; Suzhou Creek's four matches ran
+  132 / 387 / 408 / 182 s.
+- *Cost* (the A B C C B A gate, the PR head's dist twice against the candidate's, 1920 × 1080 High, the coordinator's
+  rules for a loaded machine: the p25 GPU frame's increment, mean + 2 SE under 1 ms, and a CPU bound):
+  - the chase passes: GPU p25 −0.10 ± 0.34 ms, CPU p25 +0.01 ± 0.23 ms;
+  - the establishing view passes in a quiet window (mean load 36, the median GPU frame's verdict): GPU median −0.07 ±
+    0.51 ms (bound 0.95 ms), p25 −0.73 ± 0.38 ms, CPU p25 +0.04 ± 0.02 ms. Under load it had read ambiguous twice: at a
+    mean load of 432 (GPU p25 +0.51 ± 0.39 ms) and at 130 (GPU p25 +0.36 ± 0.60 ms).
+- *Receipts* that encoded the old district:
+  - townPlans holds the record diff;
+  - the census is [2713, 3124, 1492];
+  - railCoalStockpiles counts Suzhou Creek's bridges and trams;
+  - shoreline reads the creek's authored cells as Amberford's;
+  - oceanFft counts the twelfth water sheet;
+  - horizonRelief reads the coastal relief;
+  - matchPlacement's counting field and its independent route grid carry the world's bridge decks, as every
+    production caller's height field does. Without them the creek split the map, and four modes found no placement.
 
 ### 2026-10-05 — Steinburg's old town becomes a hill town, and the kerb sits on the carriageway (the map-revival lane, mr1)
 
