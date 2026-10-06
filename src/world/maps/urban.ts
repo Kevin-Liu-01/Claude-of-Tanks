@@ -189,6 +189,16 @@ export default {
   props: {
     // regional-buildings lane: the Franconian town kit (maps/regional/franconian.ts)
     architecture: 'franconian',
+    // The landmarks lane (2026-10-05; src/world/landmarks/): the old town's two gate towers where the trade road passes
+    // the town wall, north and south (Kronach's Tore: a square tower over the vaulted passage, its clock to the road
+    // outside, a steep hipped roof, a stub of crenellated wall each side), each in the wall's gap with room to pass
+    // beside it; and a Franconian Brunnen at the Hauptstrasse's west corner (the market square is the zone's disc and
+    // stays open).
+    landmarks: [
+      { kind: 'townGate', x: -51, z: 96, yawDeg: 0, name: 'the north gate', params: { passage: 6.5, walls: 2, height: 22 } },
+      { kind: 'townGate', x: -50, z: -96, yawDeg: 180, name: 'the south gate', params: { passage: 6.5, walls: 2, height: 22 } },
+      { kind: 'fountain', x: -191, z: -21, yawDeg: 0, name: 'the Brunnen at the west corner', params: { radius: 3.5, tiers: 2 } },
+    ],
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
