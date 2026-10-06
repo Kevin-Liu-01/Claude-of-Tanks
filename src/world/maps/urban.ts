@@ -122,10 +122,13 @@ export default {
       [[-49, 77], [-15, 72], [15, 62], [40, 40], [50, -2]],
       [[-200, 4], [-185, -30], [-155, -62], [-110, -80], [-52, -74]],
       [[-52, -74], [-10, -80], [20, -66], [42, -38], [50, -2]],
-      // 10–13 — the alleys from the Hauptstrasse to the back lanes, two a side at uneven spacing
+      // 10–13 — the alleys from the Hauptstrasse to the back lanes, two a side at uneven spacing. No alley meets the
+      // Hauptstrasse within 100 m west of the market: the network grade solve levels a road 32 m either side of each
+      // crossing (roadGradeSmoothing.ts), and a crossing nearer the square would leave the street's 1.8 m fall to the
+      // apron to its 14 m bank (19 % at x = -97; the layout brief's road grade law is 18 %)
       [[-150, 4], [-146, 40], [-150, 70]],
       [[0, -2], [3, 30], [5, 65]],
-      [[-110, 1], [-108, -40], [-110, -80]],
+      [[-166, 5], [-163, -27], [-166, -50.27]],
       [[22, -4], [20, -35], [20, -66]],
     ] },
     // The market square and the farm crossing: level paved aprons the zone-control placement seats its 30 m discs on
