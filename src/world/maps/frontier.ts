@@ -143,7 +143,8 @@ export default {
     rimH: 31,
     marshes: [],
     // 2026-10-05 (the map-revival lane; the coordinator's river (a): the signs of the river): each mill's pond, the water held
-    // back above the wheel, beside the mill on the valley floor (rotation pair), liquid water
+    // back above the wheel, beside the mill on the valley floor (rotation pair), liquid water (round 3: the splat's
+    // open-water mode makes it water: until then the ponds drew as the legacy mud layer)
     softLakes: true,
     lakes: [{ x: -392, z: 84, r: 13, depth: 1.0, boats: 0 }, { x: 392, z: -84, r: 13, depth: 1.0, boats: 0 }],
     // The village: one graded rect around the crossroads.
@@ -215,11 +216,19 @@ export default {
     // red-sandstone soils"): the loam warmer at its own luminance (~0.157 / 0.096 / 0.052) and its plough a warm mid
     // brown (~0.12 / 0.070 / 0.036), not the chernozem's near-black
     soilTint: [1.22, 0.98, 0.78], ploughLift: 1.3,
+    // round 3 (2026-10-06, gauntlet wave 138: "no readable river, water meadows or mills"): the mill ponds are liquid
+    // water — the open-water mode, tuned as Amberford's river: bank riffles only, a tight ramp, narrow muddy banks
+    seaLake: true, seaFoam: 0.12, seaRamp: [0.10, 0.45], iceDrift: 0.06, marshGloss: 0.85, iceSky: [0.26, 0.34, 0.42],
   },
   vegetation: {
     species: ['pine', 'spruce', 'oak', 'aspen'], clusterMix: [['pine', 0.36], ['spruce', 0.28], ['oak', 0.24], ['aspen', 0.12]],
     loneMix: [['oak', 0.34], ['aspen', 0.26], ['pine', 0.22], ['spruce', 0.18]], rimMix: [['pine', 0.38], ['spruce', 0.34], ['oak', 0.18], ['aspen', 0.10]],
-    clusterCount: 78, loneCount: 188, rimCount: 116, grassDensity: 1.08,
+    // (round 3, gauntlet wave 138: "a savanna-like scatter of lone trees on tan ground") the loose field trees halved —
+    // the basin's field trees stand in its lines, the lynchet oaks and the river's alders (was 188)
+    clusterCount: 78, loneCount: 100, rimCount: 116, grassDensity: 1.08,
+    // (round 3, wave 138's chase view: a woodlot stood on the main road's southern approach once the mill ponds reseated
+    // the tree stream) the main road's approach to the village, south and its rotation north, open ground
+    avoid: [{ x: -20, z: -115, r: 40 }, { x: 20, z: 115, r: 40 }],
     bushCount: 1.18, bushSpecies: 'oak',
     // the lynchet banks' field trees and the river's line (2026-10-05; LYNCHET_HEDGES, RIVER_TREES above)
     belts: [...LYNCHET_HEDGES, ...RIVER_TREES],
@@ -231,6 +240,10 @@ export default {
     plan: [],
     // the courts' buildings stand a few metres apart (the planned-site spacing was the roadside builder's 9 m)
     spacingPad: 2,
+    // (round 3; wave 138 "houses stand alone on lawns and mud", the facades lane's wave 150 "the church stands on a flat
+    // bare-dirt pad") the trodden disc under a building half its old reach — the courts and the plots lay the village's
+    // ground — and none under the church and the chapel, which stand in their churchyards' turf
+    foundationDiscs: { scale: 0.6, none: ['church', 'chapel'] },
     // The landmarks: the church on the square, the two mills on the river, the farm estates on the slopes.
     plannedSites: [
       { structure: 'church', x: -34, z: 40, yawDeg: 180 }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0 },
@@ -336,4 +349,7 @@ export default {
   },
   // from the southern saddle over the estate and the lynchets to the village, the river and the northern ridge
   shot: { pos: [150, 40, -330], look: [-20, 2, 40] },
+  // round 3 (2026-10-06): the mill ponds' water sheet (splat.seaLake) — still ponds: a breath of the westerly over a few
+  // hundred metres of fetch, no foam or breakers, the stream's gravel faintly lit under it
+  ocean: { windSpeed: 2.2, windDirDeg: 250, fetchKm: 0.4, amplitude: 0.45, foam: 0, breakers: 0, caustics: 0.3 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
