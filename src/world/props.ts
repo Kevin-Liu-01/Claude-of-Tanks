@@ -49,7 +49,10 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
-import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
+import {
+  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
+  rockDressingFor, rockLithologyFor,
+} from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
@@ -58,6 +61,8 @@ type SceneryHardstand = { x: number; z: number; width: number; length: number; y
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
+import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
+import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
@@ -69,6 +74,7 @@ import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
+  DRY_STONE_KIND,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
@@ -112,7 +118,7 @@ import {
   deriveRuntimeStructureContactBand,
 } from './structureCollision.ts';
 import {
-  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
+  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
   type GroundCoverSolidProfile,
 } from './groundCoverClearance.ts';
 import {
@@ -3307,7 +3313,7 @@ function* propsBuildSteps(
   // uGrime is also invisible to a mesh/material-property traversal. Declare
   // both on their world owner so eviction releases every shadow registration
   // and texture, while GPU suspension retains the same reusable CPU objects.
-  const retainedSurfaceMaterials = Object.values(mats);
+  const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
   registerRetainedObject3DResources(group, {
     materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
   });
@@ -3391,8 +3397,12 @@ ${snowCap ? `
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
   // instanced modules shift; the merged heads and foot stones keep their windows.
+  // (b14; gauntlet wave 97: "a dead-level top", "stacked ... slabs"): and the dry-stone modules' stones settle, their
+  // copes drop and lichen grows by world place (stoneWallShader.ts); the module's top is the pool geometry's
+  const stoneShape: THREE.IUniform<THREE.Vector4> = { value: new THREE.Vector4(1.15, STONE_SETTLE_M, snowCap ? 0 : 1, 0) };
   const fieldStoneHook: MaterialShaderHook = (shader) => {
     grimeHook(shader);
+    applyStoneWallHook(shader, stoneShape);
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
 #ifdef USE_INSTANCING
 {
@@ -3412,14 +3422,22 @@ ${snowCap ? `
 }
 #endif`);
   };
+  // the scenery lane (b14; gauntlet wave 97: the mud walls' "wave-top silhouette and rust-colored staining repeat
+  // identically roughly eight times across the frame", "stamped rectangle decals"): the pool draws one module for every
+  // module, so the mud material lays the crown's slumps, the render's losses over the courses and the rain's stains in
+  // world space (mudWallShader.ts). The module's top and shoulder are the pool geometry's (set when it is built); the
+  // shadow pass runs the same crown (its depth material).
+  const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
+  const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
-      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
-      // programs; the field print has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+      // (the hessian is the canvas's shader with another map: they share their programs; the field print has its own,
+      // for the modules' shifted windows, and the mud print its own, for its world-space weathering)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3543,6 +3561,12 @@ ${snowCap ? `
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
     const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
     const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    // (b14: the snow load settles with the wall vertex by vertex: its stone tag is the snow's kind)
+    if (wall.getAttribute('aStone')) {
+      const n = snow.attributes.position.count, tag = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) tag[i * 4 + 3] = DRY_STONE_KIND.snow;
+      snow.setAttribute('aStone', new THREE.BufferAttribute(tag, 4));
+    }
     const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
     wall.dispose(); snow.dispose();
     if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
@@ -5835,7 +5859,12 @@ ${snowCap ? `
     }
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
-    _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(sc, scaleY, sc));
+    // (b14; Sonnet, wave 97: "the smaller boulders … identical in shape and size") one of the stone's horizontal axes
+    // drawn in by its place's hash, to three quarters: three forms read as many, and the stone stays inside the hull its
+    // collider carries (no draw, so every later placement keeps its seat)
+    const stretchRoll = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+    const stretch = 0.74 + 0.26 * ((stretchRoll * 7.31) % 1);
+    _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(stretchRoll < 0.5 ? sc * stretch : sc, scaleY, stretchRoll < 0.5 ? sc : sc * stretch));
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     addPlacedRock(x, z, reach, footprint);
@@ -5857,6 +5886,7 @@ ${snowCap ? `
         { min: [x, y, z], max: [x, y + sc * 1.1, z] }, points);
       const col = cloneCollisionRecord(rec);
       obstacles.push(rec); colliders.push(col);
+      letGroundCoverLap(rec); // (b14: the turf grows against the stone's foot)
       if (isLooseSurfaceRock(sc, sink, tactical)) {
         rec.kind = col.kind = 'small-rock';
         const clutter = new CrushableClutter('small-rock', x, y + sink * sc, z, sc, sc * 1.1, [rec], [col]);
@@ -5968,7 +5998,7 @@ ${snowCap ? `
     for (let k = 0; k < hull.length; k += 2) reach = Math.max(reach, Math.hypot(hull[k], hull[k + 1]));
     for (let i = 0; i < ground.length; i++) {
       const e = rockPlacements[vi][i].elements, x = e[12], z = e[14];
-      const r = Math.max(0.5, reach * Math.hypot(e[0], e[1], e[2]));
+      const r = Math.max(0.5, reach * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10])));
       ground[i] = heightField.getHeightAt(x, z);
       slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
       slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
@@ -5984,6 +6014,8 @@ ${snowCap ? `
       const mesh = new THREE.InstancedMesh(geometry, mats.rock, count);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      // (b14, wave 96: "an 8-16 px seam of lit sand" at a stone's shaded foot) drawn a little inside itself in the shadows
+      mesh.customDepthMaterial = rockDepth;
       mesh.matrixAutoUpdate = false;
       mesh.name = name; // round 75: the probes and captures find the boulders by name
       return mesh;
@@ -6053,13 +6085,117 @@ ${snowCap ? `
     }
   }
   }
+  /**
+   * The scenery lane (b14; gauntlet wave 97: "no burial, soil lip, or grass and moss creeping up its skirt", "sitting on
+   * the dune along a clean seam instead of in drifted sand"): every boulder's bed — the ground built up against its
+   * foot: a soil lip all round, uneven; on a sandy map the sand drifted up its windward side and trailing in its lee
+   * (the map's wind, its ripples' rippleDir); on a snowy map the snow banked the same way. A ring of the ground's own
+   * surface round the stone: from inside the stone (hidden) out along each of 24 directions — the stone's face at the
+   * lip's height (its section there, boulderSections; the lip never climbs where the stone draws in), then the lip
+   * falling away as a fillet to 5 cm under the drawn ground a lip's width out (the ground covers its edge, and the two
+   * cross steeply enough to keep their depths apart) — conformed to the nearest terrain mesh at every vertex. Merged
+   * world-space geometry in 256 m cells, which the world draws with the terrain's material, so the bed's colour, grain
+   * and light are the ground's at that place; it casts nothing. Not under the crushable stones (a tank flattens them),
+   * nor on the phones.
+   */
+  function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
+    const SEGMENTS = 24, CELL = 256, RINGS = 5;
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z);
+    const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
+    const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
+    const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
+    const sections = rockGeos.map((g) => boulderSections(g));
+    const cells = new Map<number, { pos: number[]; idx: number[] }>();
+    const radius = new Float64Array(SEGMENTS), ground = new Float64Array(SEGMENTS), local = new Float64Array(SEGMENTS * 3);
+    let built = 0;
+    for (let vi = 0; vi < 3; vi++) {
+      for (const placement of rockPlacements[vi]) {
+        if (rockClutter.has(placement)) continue;
+        const e = placement.elements, px = e[12], py = e[13], pz = e[14];
+        const sx = Math.hypot(e[0], e[1], e[2]), sy = Math.hypot(e[4], e[5], e[6]), sz = Math.hypot(e[8], e[9], e[10]);
+        const c = e[0] / sx, sn = -e[2] / sx; // the yaw's cosine and sine (three's rotation about +y)
+        const salt = Math.abs(Math.sin(px * 3.1 + pz * 7.7) * 4375.85) % 1;
+        // the stone's foot round it: its section at the ground under each direction (twice: the ground where the face is)
+        let meanR = 0;
+        for (let k = 0; k < SEGMENTS; k++) {
+          const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
+          const lx = c * dx - sn * dz, lz = sn * dx + c * dz;
+          const ux = lx / sx, uz = lz / sz, toWorld = 1 / Math.hypot(ux, uz), theta = Math.atan2(uz, ux);
+          let r = boulderSectionRadius(sections[vi], (meshAt(px, pz) - py) / sy, theta) * toWorld, g = 0;
+          for (let it = 0; it < 2; it++) {
+            g = meshAt(px + dx * r, pz + dz * r);
+            r = boulderSectionRadius(sections[vi], (g - py) / sy, theta) * toWorld;
+          }
+          radius[k] = r; ground[k] = g; local[k * 3] = theta; local[k * 3 + 1] = toWorld; local[k * 3 + 2] = 0;
+          meanR += r / SEGMENTS;
+        }
+        if (meanR < 0.3) continue;
+        const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
+        const key = Math.floor((px + 512) / CELL) * 64 + Math.floor((pz + 512) / CELL);
+        let cell = cells.get(key);
+        if (!cell) cells.set(key, cell = { pos: [], idx: [] });
+        const base = cell.pos.length / 3;
+        for (let k = 0; k < SEGMENTS; k++) {
+          const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
+          const windward = Math.max(0, -(dx * wx + dz * wz)), lee = Math.max(0, dx * wx + dz * wz);
+          const wobble = 0.5 + 0.3 * Math.sin(phi * 2 + salt * 6.3) + 0.2 * Math.sin(phi * 3 + salt * 17.1);
+          let lip: number, width: number;
+          if (sandy) {
+            lip = size * (0.04 + 0.2 * windward * windward + 0.07 * lee * lee * lee) * (0.8 + 0.4 * wobble);
+            width = 0.3 + size * (0.9 * windward * windward + 0.6 * lee * lee * lee) + 0.1 * wobble;
+          } else if (snowy) {
+            lip = size * (0.07 + 0.16 * windward * windward) * (0.8 + 0.4 * wobble);
+            width = 0.35 + size * 0.6 * windward * windward + 0.1 * wobble;
+          } else {
+            lip = size * (0.035 + 0.05 * wobble);
+            width = 0.24 + 0.2 * size + 0.12 * wobble;
+          }
+          const r = radius[k], theta = local[k * 3], toWorld = local[k * 3 + 1];
+          // (the lip never climbs past where the stone draws in: at most where its section is 85 % of its foot's)
+          let atLip = boulderSectionRadius(sections[vi], (ground[k] + lip - py) / sy, theta) * toWorld;
+          for (let it = 0; it < 4 && atLip < r * 0.85; it++) {
+            lip *= 0.6;
+            atLip = boulderSectionRadius(sections[vi], (ground[k] + lip - py) / sy, theta) * toWorld;
+          }
+          // the face at the lip's top, a hair inside the stone, and the ring inside it
+          const face = atLip - 0.015;
+          const ringR = [face * 0.7, face, r + width * 0.25, r + width * 0.55, r + width];
+          const ringY = [lip, lip, lip * 0.5625, lip * 0.2025, -0.05];
+          for (let j = 0; j < RINGS; j++) {
+            const x = px + dx * ringR[j], z = pz + dz * ringR[j];
+            cell.pos.push(x, (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j], z);
+          }
+        }
+        for (let k = 0; k < SEGMENTS; k++) {
+          const a = base + k * RINGS, b = base + ((k + 1) % SEGMENTS) * RINGS;
+          for (let j = 0; j < RINGS - 1; j++) cell.idx.push(a + j, b + j, a + j + 1, a + j + 1, b + j, b + j + 1);
+        }
+        if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
+      }
+    }
+    const out: THREE.BufferGeometry[] = [];
+    for (const { pos, idx } of cells.values()) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geometry.setIndex(idx);
+      geometry.computeVertexNormals();
+      geometry.computeBoundingSphere();
+      out.push(geometry);
+    }
+    return out;
+  }
+
   // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar"): every boulder's contact
   // patch, a ragged disc of soil a fifth to a third wider than its reach, to the ground decals below (none on a snow map,
   // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
   const rockContact = !snowCap && rockDressing.dust < 0.5;
   const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  const rockDepth = createRockDepthMaterial();
+  retainedSurfaceMaterials.push(rockDepth);
   const rockLod: RockLodPools[] = [];
   instantiateRockVariants();
+  // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
+  if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
 
   yield { fine: true, stage: 'rock-instances' };
@@ -8605,6 +8741,22 @@ ${snowCap ? `
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
+    if (material === mats.fieldStone && kind === 'wallstone' && geoI.getAttribute('aStone')) {
+      // (b14: the dry-stone walls' settling and copes by world place, and the same in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      stoneShapeFor(geoI.boundingBox!, snowCap, stoneShape.value);
+      const depth = createStoneWallDepthMaterial(grimeTex, stoneShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
+    if (material === mats.fieldMud && kind === 'walladobe') {
+      // (b14: the mud walls' crown in world space: the module's top and shoulder, and the same crown in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      mudShapeFor(geoI.boundingBox!, mudShape.value);
+      const depth = createMudWallDepthMaterial(grimeTex, mudShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
     const castsDynamicShadow = destructibleCastsShadow(meta);
@@ -8676,7 +8828,10 @@ ${snowCap ? `
         vertexColors: true, roughness: 1, metalness: 0,
       });
       wallMaterial.name = 'props-field-walls';
-      engineCtx.setupShadowMaterial(wallMaterial);
+      // (b14, wave 97: "uniform polygon cells": the print's two-metre tile varies by world place under the props' grime,
+      // and lichen grows by world place, as on the dry-stone modules)
+      engineCtx.setupShadowMaterial(wallMaterial, (shader) => { grimeHook(shader); applyStoneWallHook(shader, stoneShape); });
+      wallMaterial.customProgramCacheKey = () => 'world-props-field-walls-v1';
       retainedSurfaceMaterials.push(wallMaterial);
       // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
       // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and

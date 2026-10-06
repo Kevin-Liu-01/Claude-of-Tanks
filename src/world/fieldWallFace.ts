@@ -104,15 +104,17 @@ function hslToRgb(h: number, s: number, l: number, out: Float32Array): void {
   out[0] = channel(h + 1 / 3); out[1] = channel(h); out[2] = channel(h - 1 / 3);
 }
 
+/** The stones' bed: the vertical is stretched this much, so a stone is laid longer than it stands. */
+const FACE_BED = 1.4;
+
 interface CourseStone {
   u: number; y: number; // the stone's site (metres along, metres up from the foot)
   halfL: number; halfH: number; // its half extents as laid
   weight: number; // its claim (an additively weighted cell: a bigger stone takes more of the face)
+  bed: number; // its own anisotropy (b14: a slab long on its bed, a block nearly round)
   tone: number; cool: number; lichen: number; orange: boolean; seed: number;
 }
 
-/** The anisotropy of the cells: a stone is laid on its bed, longer than it is tall. */
-const BED_K = 1.55;
 
 /**
  * The courses (metres up from the foot): a waller lays the biggest stones at the foot and smaller ones above; each
@@ -129,20 +131,26 @@ function layCourses(r: () => number): CourseStone[] {
     const start = r() * 0.4;
     let u = start;
     while (u < start + W - 0.001) {
-      let len = y < 0.22 ? 0.26 + r() * 0.36 : y < 0.58 ? 0.18 + r() * 0.3 : 0.14 + r() * 0.24;
+      // (b14, wave 97: "uniform polygon cells": lengths from a hand to most of a metre, skewed small — a big stone
+      // among a run of small ones — each stone its own height in the course, its own bed and weight)
+      const big = r() < (y < 0.22 ? 0.3 : y < 0.58 ? 0.15 : 0.05); // (the waller's big stones at the foot)
+      let len = big ? (y < 0.58 ? 0.5 + r() * 0.4 : 0.36 + r() * 0.24)
+        : (y < 0.22 ? 0.12 : 0.08) + Math.pow(r(), 1.7) * (y < 0.22 ? 0.5 : y < 0.58 ? 0.4 : 0.3);
       const left = start + W - u;
       if (left - len < 0.1) len = left; // the last stone closes the run on the first (the wrap)
-      // a stone a little high or low, a little long, tipped on its bed by its neighbours (the site wanders)
-      const halfL = len / 2, halfH = ch / 2 * (0.82 + r() * 0.3);
+      // a stone a little high or low, a little long, tipped on its bed by its neighbours (the site wanders); a big one
+      // stands into the course above
+      const halfL = len / 2, halfH = ch / 2 * (big ? 1.25 + r() * 0.35 : 0.62 + r() * 0.55);
+      const bed = 1.05 + r() * 1.1;
       stones.push({
-        u: u + halfL + (r() - 0.5) * len * 0.18, y: y + ch / 2 + (r() - 0.5) * ch * 0.3, halfL, halfH,
-        weight: Math.min(halfL / BED_K, halfH) * 0.55 * BED_K,
+        u: u + halfL + (r() - 0.5) * len * 0.22, y: y + ch / 2 + (big ? ch * 0.18 : (r() - 0.5) * ch * 0.4), halfL, halfH,
+        weight: Math.min(halfL, halfH * FACE_BED) * (0.5 + r() * 0.4) * (0.9 + bed * 0.1), bed,
         tone: r(), cool: r(), lichen: r(), orange: r() < 0.1, seed: (n++ * 7919) | 0,
       });
       // now and then a pinning stone wedged into the joint after it, low in the course
-      if (r() < 0.09 && u + len < start + W - 0.12) {
+      if (r() < 0.16 && u + len < start + W - 0.12) {
         stones.push({
-          u: u + len + 0.005, y: y + ch * (0.25 + r() * 0.5), halfL: 0.04, halfH: 0.03, weight: 0,
+          u: u + len + 0.005, y: y + ch * (0.25 + r() * 0.5), halfL: 0.04, halfH: 0.03, weight: 0, bed: 1.3,
           tone: r(), cool: r(), lichen: r() * 0.5, orange: false, seed: (n++ * 7919) | 0,
         });
       }
@@ -162,6 +170,8 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
   const W = DRY_WALL_TILE_M;
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), joint = new Uint8Array(size * size);
   const stones = layCourses(mulberry32(seed));
+  const copes: number[] = [];
+  { const cr = mulberry32(seed + 77); let cu = 0; while (cu < W - 0.03) { copes.push(cu); cu += 0.05 + Math.pow(cr(), 1.4) * 0.11; } }
   // (the fields at 128 texels a tile or less: their precompute is a few tens of milliseconds, not a long task)
   const wobbleF = periodicField(96, 24, 2, seed + 3), faceF = periodicField(64, 10, 2, seed + 5);
   const grainF = periodicField(128, 48, 1, seed + 7), mottleF = periodicField(64, 16, 2, seed + 9);
@@ -191,7 +201,10 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
         // is the joint; inside the nearest, its stone
         const wobble = (wobbleF(u, v) - 0.5) * 0.012;
         const cu = Math.floor(um / CELL), cv = Math.floor((ym + 0.1) / CELL);
-        let d1 = Infinity, d2 = Infinity, k1 = -1;
+        // (b14, wave 97: "uniform polygon cells": a power diagram — each stone's claim is its weight squared off its
+        // squared distance, so the cells are polygons with straight joints, the big stones' large and the small ones'
+        // small; one bed for all, so no joint curves)
+        let d1 = Infinity, d2 = Infinity, k1 = -1, k2 = -1;
         for (let dv = -1; dv <= 1; dv++) {
           const gv = cv + dv;
           if (gv < 0 || gv >= CV) continue;
@@ -201,13 +214,20 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
               const k = list[n], s = stones[k];
               let dx = um - s.u;
               if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
-              const dy = (ym - s.y) * BED_K;
-              const d = Math.sqrt(dx * dx + dy * dy) - s.weight;
-              if (d < d1) { d2 = d1; d1 = d; k1 = k; } else if (d < d2) d2 = d;
+              const dy = (ym - s.y) * FACE_BED;
+              const d = dx * dx + dy * dy - s.weight * s.weight;
+              if (d < d1) { d2 = d1; k2 = k1; d1 = d; k1 = k; } else if (d < d2) { d2 = d; k2 = k; }
             }
           }
         }
-        const border = (d2 - d1) * 0.5 + wobble; // about the distance to the stone's outline
+        // the distance to the joint (the two sites' power bisector): the difference over twice the sites' spacing
+        let gap = 1;
+        if (k1 >= 0 && k2 >= 0) {
+          let sx = stones[k2].u - stones[k1].u;
+          if (sx > W / 2) sx -= W; else if (sx < -W / 2) sx += W;
+          gap = Math.max(1e-3, 2 * Math.hypot(sx, (stones[k2].y - stones[k1].y) * FACE_BED));
+        }
+        const border = (d2 - d1) / gap + wobble; // about the distance to the stone's outline
         const stone = k1 >= 0 ? stones[k1] : null;
         // a joint's width wanders along it: here two stones all but touch, there a gap opens deep into the wall
         const open = jointF(u, v);
@@ -252,16 +272,23 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
           hgt[i] = clamp01(0.52 + edge * 0.22 + tip * 0.07 + (facet - 0.5) * 0.08 + (grain - 0.5) * 0.05 + pale * 0.02);
         }
       } else {
-        // the crown band (and the margins round it): a top stone's skin, its tone drifting, its lichen thick
+        // the crown band (and the margins round it): (b14, wave 97: "a dead-level top") the coping seen from above — stones
+        // on edge across the wall, 5-16 cm thick along it, each its own tone, dark joints between them, their lichen thick
+        let ci = 0;
+        while (ci + 1 < copes.length && copes[ci + 1] <= um) ci++;
+        const c0 = copes[ci], c1 = ci + 1 < copes.length ? copes[ci + 1] : W + copes[0];
+        const cEdge = Math.min(um - c0, c1 - um);
+        const cTone = hash(ci, 17, seed + 61);
+        const cJoint = 1 - smooth(0.004, 0.011, cEdge);
         const t = smooth(0.25, 0.75, skinF(u, v)), mottle = mottleF(u, v);
-        const light = (0.76 + t * 0.12 + (mottle - 0.5) * 0.1 + (grain - 0.5) * 0.07);
+        const light = (0.72 + cTone * 0.18 + t * 0.06 + (mottle - 0.5) * 0.1 + (grain - 0.5) * 0.07) * (1 - cJoint * 0.62);
         hslToRgb(0.1, 0.045, light, rgb);
         const crust = lichenF(u, v) * 0.7 + crustF(u, v) * 0.3;
         const pale = smooth(0.52, 0.62, crust) * smooth(0.35, 0.6, patchF(u, v));
         if (pale > 0) { rgb[0] += (0.9 - rgb[0]) * pale * 0.35; rgb[1] += (0.9 - rgb[1]) * pale * 0.35; rgb[2] += (0.86 - rgb[2]) * pale * 0.35; }
         const dots = smooth(0.9, 0.95, dotF(u, v));
         if (dots > 0) { const k = 1 - dots * 0.4; rgb[0] *= k; rgb[1] *= k; rgb[2] *= k; }
-        hgt[i] = clamp01(0.55 + (mottle - 0.5) * 0.28 + (grain - 0.5) * 0.2 + pale * 0.04);
+        hgt[i] = clamp01(0.55 + (mottle - 0.5) * 0.2 + (grain - 0.5) * 0.16 + pale * 0.04 - cJoint * 0.4 + (cTone - 0.5) * 0.1);
       }
       px[j4] = clamp01(rgb[0]) * 255; px[j4 + 1] = clamp01(rgb[1]) * 255; px[j4 + 2] = clamp01(rgb[2]) * 255; px[j4 + 3] = 255;
     }

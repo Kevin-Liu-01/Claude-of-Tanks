@@ -463,18 +463,21 @@ export function* buildFieldWorks(
     // the stations: each slot boundary's centre, direction, half widths and ground (a station is shared by the two
     // slots either side, so the base and the course line are continuous)
     const cache = new Map<number, Station>();
-    type Station = { x: number; z: number; ax: number; az: number; hb: number; ht: number; sink: number };
+    type Station = { x: number; z: number; ax: number; az: number; hb: number; ht: number; hm: number; sink: number };
     const station = (sv: number): Station => {
       const key = Math.round(sv * 1e4);
       let st = cache.get(key);
       if (st) return st;
       const [x, z, dx, dz] = at(sv);
       const wob = noise.noise(x * 0.7 + 11.3, z * 0.7 - 4.1);
-      const hb = (mobile ? 0.44 : 0.43 + wob * 0.03) + (rand() - 0.5) * 0.03;
-      const ht = 0.2 + (rand() - 0.5) * 0.05;
+      // (b14, wave 97: "extruded kerbs": the wall's width and batter wander station by station, and its faces bulge
+      // where a stone stands proud or sag where one has settled)
+      const hb = (mobile ? 0.44 : 0.43 + wob * 0.04) + (rand() - 0.5) * 0.08;
+      const ht = 0.2 + (rand() - 0.5) * 0.08;
+      const hm = (hb + ht) / 2 + (rand() - 0.5) * 0.07;
       // the foot sunk into the drawn ground, deeper on a slope (the terrain mesh strays further from its height field)
       const sink = 0.15 + 0.6 * Math.min(0.1, 1 - ground.getNormalAt(x, z).y);
-      st = { x, z, ax: -dz, az: dx, hb, ht, sink };
+      st = { x, z, ax: -dz, az: dx, hb, ht, hm, sink };
       cache.set(key, st);
       return st;
     };
@@ -549,13 +552,17 @@ export function* buildFieldWorks(
       for (const side of [-1, 1]) {
         const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
         const ca = C(A, side, sl.h0 + side * sl.lean), cb = C(B, side, sl.h1 + side * sl.lean);
+        // the mid row at 45 % of the slot's height, each station's bulge its own (shared by the slots either side; the
+        // phones keep one quad a face)
+        const ma = mobile ? null : P(A, side, A.hm, 0.45 * (sl.h0 + side * sl.lean));
+        const mb = mobile ? null : P(B, side, B.hm, 0.45 * (sl.h1 + side * sl.lean));
         const uvA = faceUv(side, sl.s0, A.sink), uvB = faceUv(side, sl.s1, B.sink);
-        const uvOf = (p: number[]) => (p === ba || p === ca ? uvA(p) : uvB(p));
+        const uvOf = (p: number[]) => (p === ba || p === ca || p === ma ? uvA(p) : uvB(p));
         // (the faces wound outward: the right face (side +1) sees +across)
         const sideQuad = (p0: number[], p1: number[], q1: number[], q0: number[]) => {
           if (side > 0) quad(buf, p0, p1, q1, q0, col, uvOf); else quad(buf, p0, q0, q1, p1, col, uvOf);
         };
-        sideQuad(ba, bb, cb, ca);
+        if (ma && mb) { sideQuad(ba, bb, mb, ma); sideQuad(ma, mb, cb, ca); } else sideQuad(ba, bb, cb, ca);
       }
       // the top stone, and the step up or down to the next one
       const la = C(A, -1, sl.h0 - sl.lean), ra = C(A, 1, sl.h0 + sl.lean);
@@ -601,11 +608,14 @@ export function* buildFieldWorks(
     layFar();
 
     /** A wall head: the section's outline at the slot's start (facing back) or end (facing ahead), fanned from its foot. */
-    function endFace(sl: Slot, atEnd: boolean): void {
+    function endFace(sl: Slot, atEnd: boolean, withMid = !mobile): void {
       const st = station(atEnd ? sl.s1 : sl.s0), h = atEnd ? sl.h1 : sl.h0;
       const outline: number[][] = [];
       for (const side of [-1, 1]) {
-        const ring = [P(st, side, st.hb, -st.sink), C(st, side, h + side * sl.lean)];
+        // (the head's outline through the face's mid row, so the faces' bulge meets it; a far segment's faces have none)
+        const ring = !withMid
+          ? [P(st, side, st.hb, -st.sink), C(st, side, h + side * sl.lean)]
+          : [P(st, side, st.hb, -st.sink), P(st, side, st.hm, 0.45 * (h + side * sl.lean)), C(st, side, h + side * sl.lean)];
         // (the ridge's point only where the top stone has one: a flat top's head is three triangles)
         if (side < 0) outline.push(...ring, ...(sl.crest > 0 ? [R(st, sl.ridge, h + sl.crest)] : [])); else outline.push(...ring.reverse());
       }
@@ -659,7 +669,7 @@ export function* buildFieldWorks(
         for (let k = 0; k < segs.length; k++) {
           const { sg, cell } = segs[k];
           buf = cell;
-          if (k === 0) endFace(sg, false);
+          if (k === 0) endFace(sg, false, false);
           const A = station(sg.s0), B = station(sg.s1), col = tone(sg.tone);
           for (const side of [-1, 1]) {
             const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
@@ -675,7 +685,7 @@ export function* buildFieldWorks(
             return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
           };
           quad(buf, la, ra, rb, lb, col, topUv);
-          if (k === segs.length - 1) endFace(sg, true);
+          if (k === segs.length - 1) endFace(sg, true, false);
         }
         i = j + 1;
       }
