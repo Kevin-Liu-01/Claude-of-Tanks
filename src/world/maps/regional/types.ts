@@ -60,7 +60,15 @@ export interface ArchitectureStyle {
   wear?: number;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
+  /**
+   * The map-revival lane (2026-10-06, Frontier's round 3): the kit's own destructible kinds — a court's wall and gate
+   * the yard hook places (props.ts adds them to the map's local kinds; absent, a kit adds none).
+   */
+  destructibles?: Readonly<Record<string, RegionalDestructibleType>>;
 }
+
+/** A kit's own destructible kind: the props kit's (inhabitKit.ts DestructiblePropType) on any of the props' materials. */
+export type RegionalDestructibleType = Omit<import('../inhabitKit.ts').DestructiblePropType, 'mat'> & { mat: string };
 
 /**
  * What a kit puts in the free ground round its houses (yards.ts plans it, props.ts places it): a yard on the house's

@@ -104,6 +104,30 @@ for (const m of court.plan.modules) {
   const [lx, lz] = toLocal(barn, m.x, m.z);
   assert.ok(Math.abs(lx) > barn.w / 2 || Math.abs(lz) > barn.d / 2, 'no wall module on the barn');
 }
+// (round 3, gauntlet wave 138: the courts did not read as closed) no run of the court's wall opens a joint: along each
+// run (the gate in its own) the modules stand at most one module apart, except where one is left out on the barn; the
+// gate's slot is one module wide, a module flush with each post
+const runs = new Map();
+for (const m of [...court.plan.modules, court.plan.gate]) {
+  const ux = Math.abs(Math.sin(m.yaw)), uz = Math.abs(Math.cos(m.yaw));
+  const key = `${ux.toFixed(3)},${uz.toFixed(3)}|${(-m.x * uz + m.z * ux).toFixed(2)}`;
+  if (!runs.has(key)) runs.set(key, []);
+  runs.get(key).push({ m, at: m.x * ux + m.z * uz });
+}
+assert.ok(runs.size >= 2, `the court's wall stands in runs (${runs.size})`);
+for (const run of runs.values()) {
+  run.sort((a, b) => a.at - b.at);
+  for (let i = 1; i < run.length; i++) {
+    if (run[i].at - run[i - 1].at <= 3.0 + 1e-6) continue;
+    const [lx, lz] = toLocal(barn, (run[i].m.x + run[i - 1].m.x) / 2, (run[i].m.z + run[i - 1].m.z) / 2);
+    assert.ok(Math.abs(lx) < barn.w / 2 + 1.5 && Math.abs(lz) < barn.d / 2 + 1.5,
+      `a joint opens ${(run[i].at - run[i - 1].at - 3).toFixed(2)} m in the court's wall off the barn`);
+  }
+}
+const gate = court.plan.gate, gux = Math.sin(gate.yaw), guz = Math.cos(gate.yaw);
+const flush = court.plan.modules.filter((m) => Math.abs(Math.abs((m.x - gate.x) * guz - (m.z - gate.z) * gux)) < 0.01)
+  .map((m) => (m.x - gate.x) * gux + (m.z - gate.z) * guz).filter((d) => Math.abs(d) < 3.0 + 1e-6);
+assert.deepEqual(flush.map((d) => Math.abs(d).toFixed(3)).sort(), ['3.000', '3.000'], `a module flush with each of the gate's posts (${flush})`);
 const [nx, nz] = local(farm, -40, 0);
 const neighbour = { ...farm, x: nx, z: nz };
 const shared = planCourt(neighbour, world({ plots: [farm, barn, neighbour] }), COURT, 3.0, farmBody);

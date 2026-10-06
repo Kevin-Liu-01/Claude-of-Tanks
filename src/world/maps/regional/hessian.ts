@@ -15,6 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { HESSIAN_COURT_TYPES } from './hessianCourt.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -778,7 +779,10 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   // faces its own barn or granary keeps the court between them (yards.ts planCourt) — the sandstone wall on the lane with
   // the gate in it, the buildings round the rest — and its kitchen garden and woodshed stand behind the barn
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true,
-    court: { kinds: ['farmhouse'], partners: ['barn', 'granary'], reach: 16, wall: 'wallstone', gate: 'gate' } },
+    // (round 3, gauntlet wave 138: the courts did not read) the court's street side is the kit's own: the red sandstone
+    // wall two metres to its coping and the Hoftor under its roof (hessianCourt.ts)
+    court: { kinds: ['farmhouse'], partners: ['barn', 'granary'], reach: 16, wall: 'hessiancourtwall', gate: 'hoftor' } },
+  destructibles: HESSIAN_COURT_TYPES,
 });
 
 export { hashSeed };

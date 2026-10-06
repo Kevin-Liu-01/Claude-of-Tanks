@@ -344,23 +344,42 @@ export function planCourt(house: YardPlot, world: YardWorld, court: YardCourtSty
     shift[1] + sd.t[1] * a + sd.n[1] * (offset + d));
   const yawAlong = (d: readonly [number, number]) => Math.atan2(d[0], d[1]);
   const plan: YardPlan = { side: sd.side, street: true, depth, length, modules: [], gate: null, shed: null, garden: null };
-  const outerN = Math.max(1, Math.round(length / seg)), endN = Math.max(1, Math.round(depth / seg));
-  // the street end: the run nearer the road, its middle module the gate
+  // the street end: the run nearer the road, the gate in its middle
   const streetEnd = world.ground.roadDist(...at(-length / 2, depth / 2)) < world.ground.roadDist(...at(length / 2, depth / 2)) ? -1 : 1;
-  const gateAt = Math.floor(endN / 2);
   const free = (x: number, z: number) => pointClear(world, house, x, z, ROAD_FRONTAGE_CLEARANCE, 0.15, 0);
-  for (let i = 0; i < outerN; i++) {
-    const [x, z] = at(-length / 2 + (i + 0.5) * length / outerN, depth);
+  // (round 3, gauntlet wave 138: the courts did not read as closed) every run is covered without a joint open: as many
+  // modules as cover it, flush with its ends, overlapping a little where the run is not a whole number of them (they
+  // were spread a run's length apart, up to half a metre open between them). The outer run reaches past the corners by
+  // a wall's half thickness, closing them. The gate's slot is exactly one module wide, the modules either side flush
+  // with its posts and the run's ends (a side shorter than a module: one flush with the post, over the run's end; under
+  // half a module: none)
+  const cover = (lo: number, hi: number): number[] => {
+    const k = Math.max(1, Math.ceil((hi - lo) / seg - 0.04));
+    return k === 1 ? [(lo + hi) / 2] : Array.from({ length: k }, (_, i) => lo + seg / 2 + i * (hi - lo - seg) / (k - 1));
+  };
+  const beside = (lo: number, hi: number, post: number): number[] => (hi - lo < seg / 2 ? []
+    : hi - lo < seg ? [post === hi ? hi - seg / 2 : lo + seg / 2] : cover(lo, hi));
+  for (const a of cover(-length / 2 - COURT_CORNER, length / 2 + COURT_CORNER)) {
+    const [x, z] = at(a, depth);
     if (free(x, z)) plan.modules.push({ x, z, yaw: yawAlong(t) });
   }
-  for (const end of [-1, 1]) for (let i = 0; i < endN; i++) {
-    const [x, z] = at(end * length / 2, (i + 0.5) * depth / endN);
-    if (!free(x, z)) continue;
-    if (end === streetEnd && i === gateAt) { if (court.gate) plan.gate = { x, z, yaw: yawAlong(n) }; continue; }
-    plan.modules.push({ x, z, yaw: yawAlong(n) });
+  for (const end of [-1, 1]) {
+    const gated = end === streetEnd && !!court.gate;
+    const g0 = depth / 2 - Math.min(seg, depth) / 2, g1 = depth / 2 + Math.min(seg, depth) / 2;
+    const runs = gated ? [...beside(0, g0, g0), ...beside(g1, depth, g1)] : cover(0, depth);
+    for (const d of runs) {
+      const [x, z] = at(end * length / 2, d);
+      if (free(x, z)) plan.modules.push({ x, z, yaw: yawAlong(n) });
+    }
+    if (gated) {
+      const [x, z] = at(end * length / 2, depth / 2);
+      if (free(x, z)) plan.gate = { x, z, yaw: yawAlong(n) };
+    }
   }
   return { plan, partner };
 }
+/** How far a court's outer run reaches past its corners (a wall's half thickness: the corner closes). */
+const COURT_CORNER = 0.25;
 
 /**
  * Whether a court's ground is free: inside the square, off the road frontage, dry and level, off every other plot (with

@@ -3501,6 +3501,8 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // the map-revival lane (2026-10-06): a kit's own destructible kinds (the Hessian court's wall and Hoftor)
+    ...(regionalArchitecture?.destructibles ?? {}),
   };
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
