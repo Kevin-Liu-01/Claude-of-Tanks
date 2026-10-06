@@ -80,6 +80,58 @@ const PLANTATIONS = [
   ...plantation(376, 440, -236, -96),  // east end, south of the perimeter road
   ...plantation(376, 440, 92, 236),    // east end, north of it
 ];
+// The taxiway's western half (path 3 below), from the runway's west end along the cargo apron to the runway's centre; the
+// eastern half (path 4) is its rotation.
+const TAXIWAY: Array<[number, number]> = [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96],
+  [-56, -92], [-30, -74], [-12, -46], [-3, -20], [0, 0]];
+const rotatePoint = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
+// The concrete's slabs (the splat pavement) — the paint breaks at their joints.
+const SLAB_M = 6;
+// 2026-10-05 (the map-revival lane; the coordinator: the apron markings as receive-only decal strips, "faded paint with
+// breaks at the joints. Taxi centrelines, stand numbers and lead-in lines are enough"): two stands on each apron, nose
+// toward the hangars — a lead-in line curving off the taxiway's centreline (14 m radius) to a stop bar 8 m short of the
+// cargo apron's back strip (the An-225 set piece's debris; its rotation on the terminal apron), the stand's number in
+// yellow on a black box on the pilot's right, reading toward the stand.
+function cargoStand(xs: number, label: string) {
+  const R = 14, zTaxi = -98, zStop = -172;
+  const arc: Array<[number, number]> = [];
+  for (let k = 0; k <= 8; k++) {
+    const a = Math.PI / 2 + (k / 8) * (Math.PI / 2);
+    arc.push([xs + R + R * Math.cos(a), zTaxi - R + R * Math.sin(a)]);
+  }
+  return {
+    lines: [
+      { points: [...arc, [xs, zStop]] as Array<[number, number]>, width: 0.3, paint: 'yellow' as const },
+      { points: [[xs - 2.6, zStop], [xs + 2.6, zStop]] as Array<[number, number]>, width: 0.5, paint: 'yellow' as const },
+    ],
+    number: { x: xs + 5.2, z: -124, headingDeg: 180, text: label, height: 2.2, paint: 'yellow' as const, box: 'black' as const },
+  };
+}
+const CARGO_STANDS = [cargoStand(-236, '11'), cargoStand(-200, '12')];
+const TERMINAL_STANDS = [['21', 0], ['22', 1]].map(([label, i]) => {
+  const stand = CARGO_STANDS[i as number];
+  return {
+    lines: stand.lines.map((line) => ({ ...line, points: line.points.map(rotatePoint) })),
+    number: { ...stand.number, x: -stand.number.x, z: -stand.number.z, headingDeg: 0, text: label as string },
+  };
+});
+const APRON_MARKINGS = {
+  lines: [
+    // the taxiway's centreline, each half, stopping 3.5 m short of the runway's edge (the keep-out below)
+    { points: TAXIWAY, width: 0.32, paint: 'yellow' as const },
+    { points: TAXIWAY.map(rotatePoint), width: 0.32, paint: 'yellow' as const },
+    ...[...CARGO_STANDS, ...TERMINAL_STANDS].flatMap((stand) => stand.lines),
+  ],
+  numbers: [...CARGO_STANDS, ...TERMINAL_STANDS].map((stand) => stand.number),
+  keepOut: [
+    // the runway
+    { x0: -330, x1: 330, z0: -26, z1: 26 },
+    // the cargo hangar's plot and the apron's back strip (the An-225 set piece), and their rotation
+    { x0: -263, x1: -187, z0: -230, z1: -180 },
+    { x0: 187, x1: 263, z0: 180, z1: 230 },
+  ],
+  slabM: SLAB_M,
+};
 const DACHAS = [40, 70, 100, 130].flatMap((x) => [
   { structure: 'cottage', x, z: -252, yawDeg: 180 },
   { structure: 'cottage', x, z: -278, yawDeg: 0 },
@@ -114,8 +166,8 @@ export default {
         [338, 80], [338, 0]],
       // 3 / 4 — the taxiway halves: from the runway's end along the south (west half) or the north (east half) side to
       // the runway's centre, past the cargo or the terminal apron.
-      [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96], [-56, -92], [-30, -74], [-12, -46], [-3, -20], [0, 0]],
-      [[310, 0], [300, 48], [276, 88], [230, 98], [160, 98], [90, 96], [56, 92], [30, 74], [12, 46], [3, 20], [0, 0]],
+      TAXIWAY,
+      TAXIWAY.map(rotatePoint),
     ] },
     // The boggy floors of the two valleys (rotation pair), the Irpin's floodplain: every way between a team's assembly
     // ground and the plateau crosses soft ground, except the access roads' causeways.
@@ -164,7 +216,7 @@ export default {
     // 2026-10-03 (maps lane B, gauntlet wave 28: the cargo apron "reads as a cobbled plaza"): the runway, taxiways,
     // aprons and the access roads are airfield concrete — 6 m slabs with sealed expansion joints, a tone per pour, oil
     // and fuel stains and tyre rubber along the runway's axis (terrain.ts uPaveSlab) — in place of the sett print
-    pavement: { slabM: 6, jointM: 0.04, stains: 1, tyres: 1 } },
+    pavement: { slabM: SLAB_M, jointM: 0.04, stains: 1, tyres: 1 } },
   vegetation: {
     // 2026-10-05 (the map-revival lane): the Polissia's woods round the plateau — Scots pine stands with birch at their
     // edges, down the valley sides and past the runway's ends (no tree stands inside the graded airfield: vegetation.ts
@@ -190,6 +242,8 @@ export default {
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
     plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
+    // the taxiway centrelines and the apron stands' paint (world/groundMarkings.ts; above)
+    groundMarkings: APRON_MARKINGS,
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
