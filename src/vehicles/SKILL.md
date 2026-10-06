@@ -67,8 +67,14 @@ drop it; the smoke banks are working equipment in their own resident group.
 Leaves on vehicles (suit garnish, the per-spec opt-in branch bundles) are spray
 cards on the trees lane's atlases through `vehicleFoliage.ts`, never a second
 foliage system. The Browning-family roof gun is one construction,
-`machineGunGeometry.ts`, shared by `KIT.fittings.pintleMG` and the decor roof
-gun: keep envelopes and muzzle points when changing it (remote parity).
+`machineGunGeometry.ts`, shared by `KIT.fittings.pintleMG`, the legacy
+`KIT.pintleMG` and the decor roof gun: keep envelopes and muzzle points when
+changing it (remote parity). The 20 L jerrycan is one construction too
+(`accessoryKits.ts` `jerrycanParts`: decor cans, `KIT.jerryCan`,
+`FITTINGS.jerryCans`), and the profile kit's soft stowage, tarp rolls, ammo
+cans, shovels and stowage-rack loads use the same primitives inside their old
+envelopes and random draws. Decor probes skip running gear by name
+(`isDecorRunningGearName`); track guards and skirts are supports and obstacles.
 For player-reported Garage defects, also verify the actual carousel/pedestal
 path with its live engine context, AI geometry quality, static batching and
 cache return. Bare procedural or Gallery captures are insufficient. Record

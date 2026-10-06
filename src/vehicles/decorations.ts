@@ -2355,7 +2355,16 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
 const DECOR_LOD_DIST = 150; // same greeble horizon tankFactory uses
 /** Past this camera range each cosmetic material family draws its coarse forms (fewer segments, no small hardware). */
 const DECOR_COARSE_DIST = 28;
-const GEAR_NAME_RE = /wheel|sprocket|idler|roller|road|track|tread/i;
+// Running gear by name: wheels, sprockets, idlers, rollers, the track run and its pads. The track GUARDS
+// (hullTrackGuardL/R: the mudguards and side skirts) are hull-fixed equipment that decor seats on and is blocked by.
+// Until 2026-10-05 the bare /track/ caught them too, so a side piece could seat on the hull BEHIND a skirt, and the
+// skirt's bucket (rubber or painted) decided decor admission (burlakFixedSidePaint.selftest).
+const GEAR_NAME_RE = /wheel|sprocket|idler|roller|road|track(?!guard)|tread/i;
+
+/** True for running-gear meshes, which decor never probes or seats on (the track guards are not running gear). */
+export function isDecorRunningGearName(name: string): boolean {
+  return GEAR_NAME_RE.test(name);
+}
 
 // probe target collector: visible, color-writing, non-instanced meshes under
 // `group`, excluding running gear (by name), decor itself, and LOD levels > 0.
@@ -2368,7 +2377,7 @@ function probeTargets(group: THREE.Group): SurfaceMesh[] {
     if (o instanceof THREE.LOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
     if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry) {
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (m && m.colorWrite !== false && !GEAR_NAME_RE.test(o.name || '')
+      if (m && m.colorWrite !== false && !isDecorRunningGearName(o.name || '')
           && !Array.isArray(o.material)) out.push(o as SurfaceMesh);
     }
     for (const c of o.children) visit(c);
@@ -3137,7 +3146,7 @@ export function* attachTankDecorationsSteps(
       const s = new THREE.Vector3();
       hullG.traverse((o) => {
         if (!(o instanceof THREE.Mesh) || !o.geometry) return;
-        const wheelish = o instanceof THREE.InstancedMesh || GEAR_NAME_RE.test(o.name || '');
+        const wheelish = o instanceof THREE.InstancedMesh || isDecorRunningGearName(o.name || '');
         if (!wheelish) return;
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
         if (!o.geometry.boundingBox) return;

@@ -10,7 +10,7 @@
 // so both levels of one piece always agree (the placement engine seats the coarse copy with the near copy's matrix).
 import * as THREE from 'three';
 import {
-  block, fabricBody, fabricStrap, latheY, moldedBox, place, roundBar, sweptTube,
+  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, roundBar, sweptTube,
   type AccessoryDetail, type FabricSpec,
 } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer } from './vehicleFoliage.ts';
@@ -115,34 +115,59 @@ export function hardCase(P: AccessoryPainter, c: CaseSpec): void {
  * the broad faces, the three-handle comb across the top and the offset spout. `outer` picks which broad face carries
  * the stamped X (the hidden inner faces of a pair carry none).
  */
-export function jerrycan(P: AccessoryPainter, x: number, rgb: RGB, scale = 1, outer: -1 | 0 | 1 = 0): void {
+/** The fleet's one 20 L jerrycan as role-tagged parts, so the decor kit, the profile kit and the fittings share it. */
+export interface JerrycanParts {
+  readonly body: THREE.BufferGeometry;
+  /** the stamped X on each requested broad face (near level only) */
+  readonly stamps: readonly THREE.BufferGeometry[];
+  /** the pressed handle spine (near), or the coarse level's one handle block */
+  readonly spine: THREE.BufferGeometry;
+  readonly grips: readonly THREE.BufferGeometry[];
+  readonly spout: THREE.BufferGeometry | null;
+}
+
+/**
+ * A pressed 20 L can, base on y = 0, broad faces on +-X, spout on the forward (+Z) shoulder: filleted body, the
+ * stamped X on the requested broad faces (-1, +1), the three-grip handle comb on its spine, and the spout with its
+ * bayonet cap. `nearLevel` false returns the coarse can: body and one handle block.
+ */
+export function jerrycanParts(scale = 1, faces: readonly number[] = [-1, 1], nearLevel = true): JerrycanParts {
   const t = 0.165 * scale, h = 0.44 * scale, w = 0.345 * scale;
-  const seg = near(P) ? 1 : 0;
-  P.paint(place(moldedBox(t, h, w, 0.022 * scale, seg, 0.012 * scale), x, h / 2, 0), rgb, 0.28);
-  if (!near(P)) {
-    P.paint(place(moldedBox(t * 0.5, 0.03 * scale, w * 0.62, 0, 0, 0.004), x, h + 0.015 * scale, -w * 0.06), scaleRgb(rgb, 0.9));
-    return;
+  const body = place(moldedBox(t, h, w, 0.022 * scale, nearLevel ? 1 : 0, 0.012 * scale), 0, h / 2, 0);
+  if (!nearLevel) {
+    const spine = place(moldedBox(t * 0.5, 0.03 * scale, w * 0.62, 0, 0, 0.004), 0, h + 0.015 * scale, -w * 0.06);
+    return { body, stamps: [], spine, grips: [], spout: null };
   }
-  const faces: number[] = outer === 0 ? [-1, 1] : [outer];
-  const rib = scaleRgb(rgb, 1.1);
   const diag = Math.atan2(h * 0.62, w * 0.62);
   const ribLen = Math.hypot(h * 0.62, w * 0.62);
+  const stamps: THREE.BufferGeometry[] = [];
   for (const f of faces) {
     for (const s of [-1, 1]) {
-      P.paint(place(block(0.006, ribLen, 0.026 * scale),
-        x + f * (t / 2 + 0.002), h * 0.47, 0, s * (Math.PI / 2 - diag), 0, 0), rib, 0.2);
+      stamps.push(place(block(0.006, ribLen, 0.026 * scale), f * (t / 2 + 0.002), h * 0.47, 0, s * (Math.PI / 2 - diag), 0, 0));
     }
   }
-  // handle comb: a pressed spine along the top and three grips across it
+  // handle comb: a pressed spine along the top and three grips across it, behind the spout, inside the top's outline
   const top = h + 0.004 * scale;
-  P.paint(place(block(t * 0.42, 0.024 * scale, w * 0.58), x, top + 0.008 * scale, -w * 0.08), scaleRgb(rgb, 0.92), 0.3);
-  for (const z of [-0.2, -0.08, 0.04]) {
-    P.paint(roundBar([x - t * 0.36, top + 0.03 * scale, z * scale], [x + t * 0.36, top + 0.03 * scale, z * scale], 0.0085 * scale, 4),
-      scaleRgb(rgb, 0.95), 0.25);
-  }
+  const spine = place(block(t * 0.42, 0.024 * scale, w * 0.5), 0, top + 0.008 * scale, -w * 0.17);
+  const grips = [-0.125, -0.06, 0.005].map((z) =>
+    roundBar([-t * 0.36, top + 0.03 * scale, z * scale], [t * 0.36, top + 0.03 * scale, z * scale], 0.0085 * scale, 4));
   // spout and bayonet cap on the forward shoulder
-  P.paint(place(latheY([[0.024, 0], [0.026, 0.03], [0.03, 0.034], [0.03, 0.05], [0.001, 0.052]], 6),
-    x, h - 0.02 * scale, w * 0.36, 0.42, 0, 0, scale), scaleRgb(rgb, 0.85), 0.3);
+  const spout = place(latheY([[0.024, 0], [0.026, 0.03], [0.03, 0.034], [0.03, 0.05], [0.001, 0.052]], 6),
+    0, h - 0.02 * scale, w * 0.36, 0.42, 0, 0, scale);
+  return { body, stamps, spine, grips, spout };
+}
+
+export function jerrycan(P: AccessoryPainter, x: number, rgb: RGB, scale = 1, outer: -1 | 0 | 1 = 0): void {
+  const can = jerrycanParts(scale, outer === 0 ? [-1, 1] : [outer], near(P));
+  P.paint(can.body.translate(x, 0, 0), rgb, 0.28);
+  if (!can.spout) {
+    P.paint(can.spine.translate(x, 0, 0), scaleRgb(rgb, 0.9));
+    return;
+  }
+  for (const stamp of can.stamps) P.paint(stamp.translate(x, 0, 0), scaleRgb(rgb, 1.1), 0.2);
+  P.paint(can.spine.translate(x, 0, 0), scaleRgb(rgb, 0.92), 0.3);
+  for (const grip of can.grips) P.paint(grip.translate(x, 0, 0), scaleRgb(rgb, 0.95), 0.25);
+  P.paint(can.spout.translate(x, 0, 0), scaleRgb(rgb, 0.85), 0.3);
 }
 
 function canPair(P: AccessoryPainter, a: RGB, b: RGB, scale: number, cradle: boolean): void {
@@ -207,13 +232,9 @@ export function bedroll(P: AccessoryPainter, len: number, radius: number, at: re
     flatten: 0.14, wrinkle: 0.035, seg: 10, stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.1, seed };
   const { lift } = bag(P, spec, at, yaw, tone, rgb, 0.5);
   if (!near(P)) return;
-  // the rolled end: a slightly sunken, darker spiral face on each end
-  for (const side of [-1, 1]) {
-    const c = Math.cos(yaw), s = Math.sin(yaw);
-    const ex = side * (len / 2 - 0.004);
-    const ring = place(new THREE.RingGeometry(radius * 0.3, radius * 0.62, 8, 1).toNonIndexed(),
-      at[0] + ex * c * 1.004, at[1] + lift, at[2] - ex * s * 1.004, 0, side * Math.PI / 2 + yaw, 0);
-    P.cloth(ring, tone * 0.62, rgb);
+  // the rolled layers at each end (the roll lies along X in the piece frame, as bag() turns it)
+  for (const layer of rolledEndLayers(radius, len)) {
+    P.cloth(place(place(layer, 0, 0, 0, 0, Math.PI / 2, 0), at[0], at[1] + lift, at[2], 0, yaw, 0), tone * 0.62, rgb);
   }
 }
 
@@ -477,13 +498,9 @@ export function buildPackCluster(P: AccessoryPainter, n: number): number {
 export function buildTarpRoll(P: AccessoryPainter, len: number, radius: number, tone: number, seed = 71): void {
   const spec: FabricSpec = { len, hw: radius, hh: radius * 0.94, exponent: 2.1, endScale: 0.92, endLength: 0.04,
     flatten: 0.16, wrinkle: 0.03, seg: 10, stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.1, seed };
-  bag(P, spec, [0, 0, 0], 0, tone);
+  const { lift } = bag(P, spec, [0, 0, 0], 0, tone);
   if (!near(P)) return;
-  for (const side of [-1, 1]) {
-    const ring = place(new THREE.RingGeometry(radius * 0.28, radius * 0.6, 8, 1).toNonIndexed(),
-      side * (len / 2 + 0.002), radius * 0.86, 0, 0, side * Math.PI / 2, 0);
-    P.cloth(ring, tone * 0.6);
-  }
+  for (const layer of rolledEndLayers(radius, len)) P.cloth(place(layer, 0, lift, 0, 0, Math.PI / 2, 0), tone * 0.6);
 }
 
 /** Rolled camouflage net: a lumpy, gathered bundle with the net's garnish skin over its upper half and three ties. */

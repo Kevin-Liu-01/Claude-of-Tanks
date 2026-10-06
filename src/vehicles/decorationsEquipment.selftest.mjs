@@ -6,6 +6,7 @@ import {
   attachTankDecorations,
   decorManifestFor,
   fleetEquipmentNationStyle,
+  isDecorRunningGearName,
   resolveDecorMode,
   roofMountEuler,
   roofMountPosition,
@@ -408,6 +409,17 @@ try {
   decorHullGeometry.dispose();
   decorTurretGeometry.dispose();
   decorMaterial.dispose();
+}
+
+// Decor never probes or seats on running gear, but the track GUARDS (mudguards, side skirts) are hull equipment it
+// must seat on and be blocked by (2026-10-05: the bare /track/ caught hullTrackGuardL/R, so a side piece could seat on
+// the hull behind a skirt and the skirt's bucket decided admission; burlakFixedSidePaint.selftest is the fleet case).
+for (const name of ['gearTrackBandL', 'gearTrackPads', 'gearTrackPadsSimplified', 'trackL', 'track_R',
+  'hullRunningGearTrack', 'roadWheelsL', 'sprocketR', 'idlerL', 'returnRollerR']) {
+  assert.equal(isDecorRunningGearName(name), true, `${name} is running gear`);
+}
+for (const name of ['hullTrackGuardL', 'hullTrackGuardR', 'hull', 'turret', 'hullExternalArmor']) {
+  assert.equal(isDecorRunningGearName(name), false, `${name} is a decor support and obstacle`);
 }
 
 console.log(`decorationsEquipment.selftest: ${FLEET_EQUIPMENT_VARIANTS.length} authored variants, `

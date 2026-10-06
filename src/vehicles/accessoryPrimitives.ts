@@ -239,6 +239,25 @@ export function fabricStrap(spec: FabricSpec, z: number, width = 0.03, proud = 0
     { z: z + width / 2, ring: fabricRing(spec, z + width / 2, seg, 0, proud) }], false, false);
 }
 
+/**
+ * The rolled face at each end of a roll lying along Z (length `len`, radius `r`, axis through the origin): two thin
+ * concentric layer lines a couple of millimetres proud of each end cap, facing outward. Rolled layers rather than a
+ * solid disc or a single ring (which read as a nut). Four 16-triangle rings.
+ */
+export function rolledEndLayers(r: number, len: number, segments = 8): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  for (const end of [-1, 1]) {
+    for (const [inner, outer] of [[0.3, 0.37], [0.6, 0.67]] as const) {
+      const ring = new THREE.RingGeometry(r * inner, r * outer, segments, 1);
+      const flat = ring.toNonIndexed();
+      ring.dispose();
+      flat.computeVertexNormals();
+      out.push(withBoxUV(place(flat, 0, 0, end * (len / 2 + 0.002), 0, end > 0 ? 0 : Math.PI, 0)));
+    }
+  }
+  return out;
+}
+
 /** A plain six-face block (12 triangles) for small hardware where a fillet would not read: latches, clips, ribs. */
 export function block(w: number, h: number, d: number): THREE.BufferGeometry {
   const geometry = new THREE.BoxGeometry(w, h, d);

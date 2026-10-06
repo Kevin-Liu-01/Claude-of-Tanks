@@ -16,6 +16,8 @@ import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
   createPintleLayout, type PintleLayout,
 } from '../machineGunGeometry.ts';
+import { block, fabricBody, fabricStrap, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
+import { jerrycanParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -2444,6 +2446,25 @@ function addStowageRackFrame(
   return {floorCross,floorStrings,nPosts};
 }
 
+// 2026-10-05 (tank-accessories lane): the rack's load in the sewn / molded grammar of the newest equipment
+// (accessoryPrimitives.ts): nailed crates with steel bands, rolled bedrolls with their rolled layers showing, sewn
+// duffels cinched by their straps with a lid flap and a front pocket, and a strapped tarp roll over the load. The
+// random draws, slots, seats and envelopes are the v2 rack's.
+
+/** A fabric part along +Z turned to lie along X, its pressed base on `floor`; straps on its cinch stations. */
+function addRackFabric(parts: FittingParts, slot: string, spec: FabricSpec, x: number, floor: number, z: number,
+  yaw: number): { lift: number; top: number } {
+  const body = place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0);
+  body.computeBoundingBox();
+  const lift = floor - body.boundingBox!.min.y;
+  const top = lift + body.boundingBox!.max.y;
+  parts.add(slot, body, x, lift, z, 0, yaw, 0);
+  for (const station of spec.cinch ?? []) {
+    parts.add('dark', place(fabricStrap(spec, station), 0, 0, 0, 0, Math.PI / 2, 0), x, lift, z, 0, yaw, 0);
+  }
+  return { lift, top };
+}
+
 function addStowageRackBundle(
   parts: FittingParts,
   rng: () => number,
@@ -2452,40 +2473,48 @@ function addStowageRackBundle(
   index: number,
   count: number,
 ): boolean {
-  const {box,cylX,sph,xform}=KIT;
   const x=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
     + (rng() - 0.5) * 0.03;
   const slots=['canvasCloth','wood','canvasCloth','detail'];
   const slot=slots[index % slots.length];
   const yaw=(rng() - 0.5) * 0.16;
+  const z=d * 0.04;
   if (slot === 'wood') {
     const bw=0.24 + rng() * 0.06;
     const bh=0.16 + rng() * 0.05;
-    parts.add('wood',box(bw,bh,d * 0.62),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
-    parts.add('dark',box(bw * 1.03,bh * 0.16,0.02),x,bh * 0.5 + 0.02,d * 0.33,0,yaw,0);
+    const bd=d * 0.62;
+    // a nailed crate with two steel bands girdling it
+    parts.add('wood',moldedBox(bw,bh,bd,0.008,1,0.006),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    for (const band of [-0.3,0.3]) {
+      parts.add('dark',place(block(0.02,bh * 1.03,bd * 1.03),band * bw,0,0),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    }
     return false;
   }
   if (index % 3 === 0) {
     const r=0.10 + rng() * 0.035;
     const len=0.22 + rng() * 0.10;
-    parts.add(slot,cylX(r,len,10),x,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
-    parts.add('dark',cylX(r * 1.05,0.022,10),x - len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
-    parts.add('dark',cylX(r * 1.05,0.022,10),x + len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
+    // a rolled bedroll: two straps, its rolled layers showing at the ends
+    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.14,
+      wrinkle: 0.035, seg: 10, stations: 4, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.1, seed: 31 + index };
+    const { lift }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
+    for (const layer of rolledEndLayers(r,len)) parts.add('dark',place(layer,0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
     return true;
   }
   const bw=0.22 + rng() * 0.08;
   const bh=0.16 + rng() * 0.06;
   const bd=d * (0.46 + rng() * 0.16);
-  // A low-poly ellipsoid produces an irregular, compressible duffel
-  // silhouette. A raised flap, pockets and real straps explain how the
-  // load stays in the lattice instead of reading as another gray box.
-  parts.add(slot,xform(sph(0.5,10),0,0,0,0,yaw,0,[bw,bh,bd]),x,bh * 0.48 + 0.02,d * 0.04);
-  parts.add(slot,box(bw * 0.76,0.026,bd * 0.54),x,bh * 0.88 + 0.02,d * 0.02,0,yaw,0);
-  parts.add(slot,box(bw * 0.56,bh * 0.34,0.024),x,bh * 0.46 + 0.02,d * 0.18,0,yaw,0);
-  for (const sx of [-0.24,0.24]) {
-    parts.add('dark',box(0.018,bh * 1.06,bd * 1.02),
-      x + sx * bw,bh * 0.49 + 0.02,d * 0.04,0,yaw,0);
-  }
+  // a sewn duffel lying across the rack: cinched by two straps, a lid flap over its top, a pocket on its face
+  const duffel: FabricSpec = { len: bw, hw: bd / 2 / 1.05, hh: bh / (2 + 0.05 - 0.82 * 0.32), exponent: 3,
+    endScale: 0.62, endLength: 0.14, flatten: 0.32, wrinkle: 0.05, seg: 10, stations: 5,
+    cinch: [-bw * 0.24, bw * 0.24], seed: 47 + index };
+  const { top }=addRackFabric(parts,slot,duffel,x,0.02,z,yaw);
+  const flap: FabricSpec = { len: bw * 0.62, hw: bd * 0.27, hh: 0.018, exponent: 3, endScale: 0.8, endLength: 0.1,
+    flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: 53 + index };
+  addRackFabric(parts,slot,flap,x,top - 0.022,z,yaw);
+  const pocket: FabricSpec = { len: bw * 0.46, hw: 0.028, hh: bh * 0.22, exponent: 3.4, endScale: 0.7, endLength: 0.2,
+    flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: 59 + index };
+  const pocketGeometry=place(fabricBody(pocket),0,0,0,0,Math.PI / 2,0).translate(0,0.02 + bh * 0.42,bd * 0.47);
+  parts.add(slot,pocketGeometry,x,0,z,0,yaw,0);
   return true;
 }
 
@@ -2497,7 +2526,6 @@ function addStowageRackFill(
   h: number,
   rng: () => number,
 ): number {
-  const {cylX}=KIT;
   const fill=opts.fill ?? 0.75;
   if (fill <= 0) return 0;
   const count=Math.max(1,Math.round(fill * w / 0.26));
@@ -2507,10 +2535,13 @@ function addStowageRackFill(
   }
   // One long tarp roll across wide racks, over the bundles.
   if (w > 0.8 && fill >= 0.5) {
-    const r=0.085;
-    parts.add('canvasCloth',cylX(r,w * 0.55,10),0,h * 0.9 + r * 0.4,d * 0.02);
-    parts.add('dark',cylX(r * 1.06,0.024,10),-w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
-    parts.add('dark',cylX(r * 1.06,0.024,10),w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
+    const r=0.085, len=w * 0.55, axisY=h * 0.9 + r * 0.4;
+    const tarp: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0.1,
+      wrinkle: 0.03, seg: 10, stations: 5, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.1, seed: 67 };
+    const alongX=(geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry,0,0,0,0,Math.PI / 2,0);
+    parts.add('canvasCloth',alongX(fabricBody(tarp)),0,axisY,d * 0.02);
+    for (const station of tarp.cinch ?? []) parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
+    for (const layer of rolledEndLayers(r,len)) parts.add('dark',alongX(layer),0,axisY,d * 0.02);
   }
   return softBundleCount;
 }
@@ -2533,6 +2564,7 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.mountingFeet = 2;
   fitting.userData.softBundleCount = softBundleCount;
   fitting.userData.fabricProfiles = ['rolled-tarp', 'duffel', 'ruck-with-flap'];
+  fitting.userData.loadFamily = 'cot-sewn-rack-load-v3';
   fitting.userData.rackEnvelope = { widthM: w, depthM: d, heightM: h };
   return fitting;
 }
@@ -2572,10 +2604,9 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
  * @param {object} opts  mats; count=2; gap=0.05; slot='detail'
  *   ('detail' pale metal | 'canvasCloth' olive | 'hull' scheme-painted);
  *   strap=true; seed, shadows, rotation
- * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
+ * Envelope: x ±(count*(0.16+gap))/2, y 0..0.49, z ±0.19 (2026-10-05: the shared pressed can).
  */
 function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY } = KIT;
   const requestedCount = Math.max(2, Math.floor(opts.count ?? 2));
   const count = requestedCount % 2 === 0 ? requestedCount : requestedCount + 1;
   const gap = opts.gap ?? 0.05;
@@ -2588,36 +2619,24 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
   for (let i = 0; i < count; i++) {
     const x = (i - (count - 1) / 2) * pitchX;
     const yaw = (rng() - 0.5) * 0.10;
-    parts.add(slot, box(0.16, 0.44, 0.32), x, 0.22, 0, 0, yaw, 0);
-    // Stamped X ribs on both broad faces; these are shallow equipment
-    // details, never armor plates or floating decals.
-    for (const face of [-1, 1]) {
-      for (const rz of [-0.48, 0.48]) {
-        parts.add(slot, box(0.014, 0.29, 0.020), x, 0.22, face * 0.166, 0, yaw, rz);
-      }
-    }
-    // Triple bridge handle and offset threaded spout.
-    for (const hx of [-0.045, 0, 0.045]) {
-      parts.add(slot, box(0.020, 0.055, 0.12), x + hx, 0.465, 0, 0, yaw, 0);
-    }
-    parts.add(slot, box(0.11, 0.018, 0.020), x, 0.495, -0.050, 0, yaw, 0);
-    parts.add(slot, cylY(0.030, 0.033, 0.050, 10), x + 0.045, 0.463, 0.105, 0, yaw, 0);
-    parts.add('dark', cylY(0.027, 0.027, 0.018, 10), x + 0.045, 0.496, 0.105, 0, yaw, 0);
-    // Foot seam and lower corner protectors seat every can in the rack.
-    parts.add('dark', box(0.15, 0.018, 0.31), x, 0.018, 0, 0, yaw, 0);
-    for (const sx of [-1, 1]) parts.add('dark', box(0.018, 0.08, 0.034),
-      x + sx * 0.071, 0.055, 0.145, 0, yaw, 0);
+    // 2026-10-05: the fleet's one pressed 20 L can (accessoryKits.ts jerrycanParts): the stamped X on both
+    // broad faces (the gap shows the inner ones), the three-grip handle comb, the spout and its cap.
+    const can = jerrycanParts(1, [-1, 1]);
+    for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) parts.add(slot, part, x, 0, 0, 0, yaw, 0);
+    if (can.spout) parts.add('dark', can.spout, x, 0, 0, 0, yaw, 0);
+    // two foot rails seat every can in the rack
+    for (const rail of [-0.11, 0.11]) parts.add('dark', place(block(0.15, 0.018, 0.04), 0, 0.009, rail), x, 0, 0, 0, yaw, 0);
   }
   if (opts.strap !== false) {
     const w = count * pitchX + 0.02;
-    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, 0.168);
-    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, -0.168);
-    parts.add('dark', box(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
-    parts.add('dark', box(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
-    parts.add('detail', box(0.055, 0.045, 0.030), 0, 0.30, 0.182);
+    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, 0.1795);
+    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, -0.1795);
+    parts.add('dark', block(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
+    parts.add('dark', block(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
+    parts.add('detail', block(0.055, 0.045, 0.024), 0, 0.30, 0.1975);
   }
   const fitting = fitAssemble('jerryCans', parts, opts);
-  fitting.userData.designFamily = 'cot-jerry-can-rack-v2';
+  fitting.userData.designFamily = 'cot-jerry-can-rack-v3';
   fitting.userData.requestedCanCount = requestedCount;
   fitting.userData.canCount = count;
   fitting.userData.paired = true;
