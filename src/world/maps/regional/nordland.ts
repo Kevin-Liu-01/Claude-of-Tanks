@@ -719,6 +719,10 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
       // ochre
       plaster3: (_h, s, l) => [0.105, Math.min(1, 0.45 + s * 0.2), Math.min(1, l * 0.4 + 0.3)],
     },
+    // round 2 (the render canvas read as stucco on the painted board houses: the white church "popcorn" from the road):
+    // linseed paint on sawn boards is a smooth skin, so the canvas's grain is all but gone and the boards' own lines (the
+    // cladding's battens and laps, the corner boards) carry the wall (surfaces.relief)
+    relief: { plasterUv: 2.8, normal: 0.1, ao: 0.25 },
   },
   builders: NORDLAND_BUILDERS,
   // paint weathered by salt and the long winters, the slates greyed with lichen, a wet coast

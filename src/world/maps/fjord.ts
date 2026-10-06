@@ -166,7 +166,9 @@ export default {
       ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {
       stalls: 1, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
-      drumClusters: 6, camps: 2, modernClutter: 20,
+      // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
+      // vocabulary is the wharf's cable reels, the transformer cabinets of the harbour's power and the road signs
+      drumClusters: 6, camps: 2, modernClutter: { cablespool: 8, transformer: 4, roadsign: 6 },
       roadFence: 'fencerail', yardFence: 'fencepicket',
     },
   },

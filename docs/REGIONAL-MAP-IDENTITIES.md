@@ -30,7 +30,7 @@ the fictional map reproduces a particular real-world location.
 | steppe | Open skyline, isolated distant rises and long shallow folds through grassland. |
 | railyard | Graded brownfield with low distant uplands and broad drainage grades. |
 | frontier | Farming basin with branching ridges; carry the playable watershed language into the outland. |
-| fjord | The arms of the Ofotfjord and Bjerkvik (Nordland), map revival 2026-10-05: an open eastern water axis between unequal glacial walls; the harbour town in the nordland kit (board houses in white lead, falu red and ochre under slate, glassed verandas, the landhandel, red sjøhus on granite quays, the fish plant on its piles, naust, hjell, the white chapel, the houses burnt in 1940); retain cliff-road supports. |
+| fjord | The arms of the Ofotfjord and Bjerkvik (Nordland), map revival 2026-10-05: an open eastern water axis between unequal glacial walls; the harbour town in the nordland kit (board houses in white lead, falu red and ochre under slate, glassed verandas, the landhandel, red sjøhus on granite quays, the fish plant on its piles, naust, hjell, the white chapel, the houses burnt in 1940); retain cliff-road supports. Round 2: linseed paint smooth on the boards, the roadsides of 1940 (cable reels, transformer cabinets, signs). |
 | delta | Low braided floodplain, elongated levees and islands; limited distant uplands. |
 | badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
