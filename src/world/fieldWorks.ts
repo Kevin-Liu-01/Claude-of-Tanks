@@ -20,7 +20,7 @@
 // nothing of it; a map without a field system, or a world built without the hook, builds nothing.
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
-import { DRY_WALL_CROWN_MID_V, DRY_WALL_TILE_M } from './fieldWallFace.ts';
+import { DRY_WALL_CROWN_MID_V, DRY_WALL_STONE_MID_V, DRY_WALL_TILE_M } from './fieldWallFace.ts';
 
 /** The land-use sample fields this pass reads (landUse.ts LandFieldSample). */
 interface FieldSample { active: number; edgeM: number; boundary: number; track: number; hedge: number }
@@ -53,6 +53,10 @@ export interface FieldWorksKeepOut {
 const FIELD_WORKS_MAX_M = 1.0;
 /** A wall's batter: its faces run from the foot's half width to the crown's at this height over the ground (m). */
 const BATTER_H = 0.9;
+/** (b17) How far the body's faces stand back behind the stones laid over them: the dry joints' depth (m). */
+const JOINT_DEPTH = 0.045;
+/** (b17) The body's faces seen in a joint: the stone's colour this much darker (a dry joint is the dark between stones). */
+const JOINT_SHADE = 0.5;
 
 interface FieldWorksOptions {
   walls: boolean;
@@ -93,6 +97,21 @@ export interface FieldWallCell {
   box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
   near: THREE.BufferGeometry | null;
   far: THREE.BufferGeometry | null;
+  /** (b17) The cell's key: buildFieldWallFine builds its stone form by it. */
+  key: number;
+}
+
+/** (b17) What a cell's stone form is rebuilt from when the camera comes near (buildFieldWallFine): the wall lines, the
+ * lines that touch each cell, and what they were laid against. */
+export interface FieldWallFineSource {
+  lines: number[][];
+  cellLines: Map<number, number[]>;
+  env: Omit<WallEnv, 'stones' | 'receipt'>;
+}
+
+/** The key of the wall cell holding a point (FIELD_WALL_CELL_M square). */
+function wallCellKey(x: number, z: number): number {
+  return (Math.floor(x / FIELD_WALL_CELL_M) + 512) * 1024 + (Math.floor(z / FIELD_WALL_CELL_M) + 512);
 }
 
 type FieldWorksSlice = { fine: true; progress: false; stage: string };
@@ -108,6 +127,8 @@ export interface FieldWorksBuilt {
   wallFarGeometry: THREE.BufferGeometry | null;
   bankGeometry: THREE.BufferGeometry | null;
   receipt: FieldWorksReceipt;
+  /** (b17) The source of the cells' stone forms (desktop; null on a phone or without walls). */
+  fine: FieldWallFineSource | null;
 }
 
 const SQUARE = 466;
@@ -126,6 +147,641 @@ function hsl(h: number, s: number, l: number): [number, number, number] {
   return [_c.r, _c.g, _c.b];
 }
 
+function newBuffers() {
+  return { positions: [] as number[], normals: [] as number[], colors: [] as number[], grounds: [] as number[], uvs: [] as number[], index: [] as number[] };
+}
+type Buffers = ReturnType<typeof newBuffers>;
+type Tone = (p: number[]) => [number, number, number];
+type Uv = (p: number[]) => [number, number];
+/** (b17) Where a cell's stone form sends what falls in another cell: nothing is computed into it, nothing kept. */
+const NULL_BUF: Buffers = newBuffers();
+/** (b17) The point a dry pass hands back (its slot laid into NULL_BUF: no ground sampled). */
+const DRY_POINT: readonly number[] = [0, 0, 0, 0];
+
+/** Vertices of one flat face (its normal given), indexed from `base`. */
+function face(buf: Buffers, pts: number[][], nx: number, ny: number, nz: number, col: Tone, uv: Uv): number {
+  if (buf === NULL_BUF) return 0;
+  const base = buf.positions.length / 3;
+  for (const p of pts) {
+    buf.positions.push(p[0], p[1], p[2]); buf.normals.push(nx, ny, nz); buf.grounds.push(p[3]);
+    const [r, g, bb] = col(p); buf.colors.push(r, g, bb);
+    const [u, v] = uv(p); buf.uvs.push(u, v);
+  }
+  return base;
+}
+
+/** One triangle, its normal flat, its colour from the tone, its uv as given. */
+function tri(buf: Buffers, a: number[], b: number[], c: number[], col: Tone, uv: Uv): void {
+  if (buf === NULL_BUF) return;
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  const l = Math.hypot(nx, ny, nz);
+  if (!(l > 1e-9)) return; // a degenerate sliver draws nothing
+  const base = face(buf, [a, b, c], nx / l, ny / l, nz / l, col, uv);
+  buf.index.push(base, base + 1, base + 2);
+}
+
+/**
+ * (b17) A stone's face: a fan from its swelling middle to its corners, the normals smooth — the middle's the face's, each
+ * corner's turned out toward its own corner — so the face reads as a rounded stone, not four facets. `n` the face's
+ * outward normal; the triangles wound to face it.
+ */
+function stoneFan(buf: Buffers, mid: number[], ring: number[][], n: readonly [number, number, number], col: Tone, uv: Uv): void {
+  if (buf === NULL_BUF) return;
+  const base = buf.positions.length / 3;
+  const push = (p: number[], nx: number, ny: number, nz: number) => {
+    buf.positions.push(p[0], p[1], p[2]); buf.normals.push(nx, ny, nz); buf.grounds.push(p[3]);
+    const [r, g, b] = col(p); buf.colors.push(r, g, b);
+    const [u, v] = uv(p); buf.uvs.push(u, v);
+  };
+  push(mid, n[0], n[1], n[2]);
+  for (const p of ring) {
+    let dx = p[0] - mid[0], dy = p[1] - mid[1], dz = p[2] - mid[2];
+    const along = dx * n[0] + dy * n[1] + dz * n[2]; dx -= along * n[0]; dy -= along * n[1]; dz -= along * n[2]; // (in the face's plane)
+    const l = Math.hypot(dx, dy, dz) || 1;
+    let nx = n[0] + 0.32 * dx / l, ny = n[1] + 0.32 * dy / l, nz = n[2] + 0.32 * dz / l;
+    const m = Math.hypot(nx, ny, nz) || 1; nx /= m; ny /= m; nz /= m;
+    push(p, nx, ny, nz);
+  }
+  for (let k = 0; k < ring.length; k++) {
+    const a = ring[k], b = ring[(k + 1) % ring.length];
+    const ux = a[0] - mid[0], uy = a[1] - mid[1], uz = a[2] - mid[2], vx = b[0] - mid[0], vy = b[1] - mid[1], vz = b[2] - mid[2];
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    const i = base + 1 + k, j = base + 1 + ((k + 1) % ring.length);
+    if (cx * n[0] + cy * n[1] + cz * n[2] >= 0) buf.index.push(base, i, j); else buf.index.push(base, j, i);
+  }
+}
+
+/** One quad (a b c d wound as the triangles a b c and a c d), four vertices sharing the normal its diagonals give. */
+function quad(buf: Buffers, a: number[], b: number[], c: number[], d: number[], col: Tone, uv: Uv): void {
+  if (buf === NULL_BUF) return;
+  const px = c[0] - a[0], py = c[1] - a[1], pz = c[2] - a[2], qx = d[0] - b[0], qy = d[1] - b[1], qz = d[2] - b[2];
+  const nx = py * qz - pz * qy, ny = pz * qx - px * qz, nz = px * qy - py * qx;
+  const l = Math.hypot(nx, ny, nz);
+  if (!(l > 1e-9)) return;
+  const base = face(buf, [a, b, c, d], nx / l, ny / l, nz / l, col, uv);
+  buf.index.push(base, base + 1, base + 2, base, base + 2, base + 3);
+}
+
+
+/** (b17) What a wall is laid against: the ground, the noise, the receipt, the tone, and whether it is laid stone by stone. */
+interface WallEnv {
+  ground: FieldWorksGround;
+  noise: SimplexNoise;
+  heightAt: (x: number, z: number) => number;
+  receipt: FieldWorksReceipt;
+  wallTone: readonly [number, number, number];
+  mobile: boolean;
+  /** The stone form (a cell's near form when the camera comes near: buildFieldWallFine), else the mid and far forms. */
+  stones: boolean;
+  /** (b17) The one cell the stone form is laid for: a stone, a through-stone or a slab elsewhere draws its randoms (so
+   *  every stone is the same whichever cell is laid) and is never computed. */
+  only?: number;
+}
+
+/** A piece's own stream for its stones: seeded by the line's start and the piece's first slot. */
+function pieceRng(x0: number, z0: number, first: number): () => number {
+  let a = (Math.round(x0 * 100) * 73856093 ^ Math.round(z0 * 100) * 19349663 ^ Math.imul(first + 1, 0x9e3779b1)) | 0;
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
+ * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
+ * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
+ * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
+ * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
+ * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
+ * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
+ */
+function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): Generator<FieldWorksSlice, void, void> {
+  const { ground, noise, heightAt, receipt } = env;
+  const [wh, ws, wl] = env.wallTone;
+  const stones = env.stones;
+  const n = pts.length / 2;
+  const S = [0];
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
+  const L = S[n - 1];
+  if (L < 1.0) return;
+  // the direction at each point from its neighbours (smooth along the line)
+  const dir: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
+    let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    dir.push(dx, dz);
+  }
+  let seg = 0;
+  const at = (s: number): [number, number, number, number] => {
+    while (seg < n - 2 && S[seg + 1] < s) seg++;
+    while (seg > 0 && S[seg] > s) seg--;
+    const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
+    const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
+    let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    return [x, z, dx, dz];
+  };
+  const rand = lineRng(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]);
+  const mobile = env.mobile;
+  // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
+  let buf: Buffers = cellOf(pts[0], pts[1], false);
+  const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
+  const H0 = 0.8 + rand() * 0.12;
+  const uFace = rand() * 7, uTop = rand() * 7;
+  // the slots, and what each is: whole, fallen in (its height a share of the wall's) or a breach (none)
+  type Slot = { s0: number; s1: number; h0: number; h1: number; lean: number; tone: number; kind: 0 | 1 | 2; ridge: number; crest: number };
+  const slots: Slot[] = [];
+  let s = 0, fallUntil = -1, fallH = 1, breachUntil = -1;
+  while (s < L - 1e-3) {
+    let len = mobile ? 1.0 + rand() * 1.0 : 0.34 + rand() * 0.5;
+    if (L - (s + len) < (mobile ? 0.6 : 0.22)) len = L - s;
+    const mid = s + len / 2;
+    const inner = s > 2 && L - (s + len) > 2;
+    if (inner && s >= fallUntil && s >= breachUntil) {
+      const r = rand();
+      if (r < len / 55) breachUntil = s + 0.7 + rand() * 0.9;
+      else if (r < len / 55 + len / 30) { fallUntil = s + 1.4 + rand() * 2.8; fallH = 0.28 + rand() * 0.27; }
+    }
+    const kind: 0 | 1 | 2 = s < breachUntil ? 2 : s < fallUntil ? 1 : 0;
+    // the height: the wall's, breathing along it, lower toward its heads; a stone standing high, a dip
+    const head = Math.min(1, Math.min(mid, L - mid) / 1.2);
+    let h = H0 * (0.93 + 0.14 * (noise.noise(mid * 0.09 + pts[0] * 0.01, 3.1) * 0.5 + 0.5)) * (0.72 + 0.28 * head);
+    const pick = rand();
+    if (kind === 0 && pick < 0.07) h += 0.06 + rand() * 0.05; else if (kind === 0 && pick < 0.13) h -= 0.06 + rand() * 0.07;
+    if (kind === 1) h *= fallH * (0.8 + rand() * 0.4);
+    const tilt = (rand() - 0.5) * 0.05;
+    // (its top rounded: a ridge a little off the wall's middle, 2.5-6 cm above its edges)
+    slots.push({ s0: s, s1: s + len, h0: h + tilt, h1: h - tilt, lean: (rand() - 0.5) * 0.04, tone: rand(), kind,
+      ridge: (rand() - 0.5) * 0.12, crest: mobile ? 0 : 0.025 + rand() * 0.035 });
+    s += len;
+  }
+  // (a phone's crown is continuous: each slot starts where the last ended, upright, so it draws no step)
+  if (mobile) for (let i = 0; i < slots.length; i++) {
+    slots[i].lean = 0;
+    if (i > 0 && slots[i - 1].kind !== 2 && slots[i].kind !== 2) slots[i].h0 = slots[i - 1].h1;
+  }
+  // a fallen stretch eases in and out over a slot (the courses step down, not a cliff)
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i].kind !== 0) continue;
+    const prev = slots[i - 1], next = slots[i + 1];
+    if (prev && prev.kind === 1) slots[i].h0 = (slots[i].h0 + prev.h1) / 2;
+    if (next && next.kind === 1) slots[i].h1 = (slots[i].h1 + next.h0) / 2;
+  }
+  // the stations: each slot boundary's centre, direction, half widths and ground (a station is shared by the two
+  // slots either side, so the base and the course line are continuous)
+  const cache = new Map<number, Station>();
+  type Station = { x: number; z: number; ax: number; az: number; hb: number; ht: number; hm: number; sink: number };
+  const station = (sv: number): Station => {
+    const key = Math.round(sv * 1e4);
+    let st = cache.get(key);
+    if (st) return st;
+    const [x, z, dx, dz] = at(sv);
+    const wob = noise.noise(x * 0.7 + 11.3, z * 0.7 - 4.1);
+    // (b14, wave 97: "extruded kerbs": the wall's width and batter wander station by station, and its faces bulge
+    // where a stone stands proud or sag where one has settled)
+    const hb = (mobile ? 0.44 : 0.43 + wob * 0.04) + (rand() - 0.5) * 0.08;
+    const ht = 0.2 + (rand() - 0.5) * 0.08;
+    const hm = (hb + ht) / 2 + (rand() - 0.5) * 0.07;
+    // the foot sunk into the drawn ground, deeper on a slope (the terrain mesh strays further from its height field)
+    const sink = 0.15 + 0.6 * Math.min(0.1, 1 - ground.getNormalAt(x, z).y);
+    st = { x, z, ax: -dz, az: dx, hb, ht, hm, sink };
+    cache.set(key, st);
+    return st;
+  };
+  // a point of the wall: the station, the side (-1 left, +1 right), the half width, the height over its own ground
+  const P = (st: Station, side: number, half: number, above: number): number[] => {
+    if (buf === NULL_BUF) return DRY_POINT as number[];
+    const px = st.x + st.ax * half * side, pz = st.z + st.az * half * side;
+    const g = heightAt(px, pz);
+    return [px, g + Math.min(FIELD_WORKS_MAX_M - 0.01, above), pz, g];
+  };
+  /** A crown point: on the station's batter line (foot hb at -sink to ht at BATTER_H), so every crown at a station
+   *  lies on one line and two slots' faces meet along it whatever their heights (no sliver opens between them). */
+  const C = (st: Station, side: number, above: number, inset = 0): number[] =>
+    P(st, side, st.hb + (st.ht - st.hb) * Math.min(1.15, Math.max(0, (above + st.sink) / (BATTER_H + st.sink))) - inset, above);
+  const R = (st: Station, across: number, above: number): number[] => {
+    if (buf === NULL_BUF) return DRY_POINT as number[];
+    const px = st.x + st.ax * across, pz = st.z + st.az * across;
+    const g = heightAt(px, pz);
+    return [px, g + Math.min(FIELD_WORKS_MAX_M - 0.01, above), pz, g];
+  };
+  /** A quad turned to face (fx, fz) (a riser between two top stones). */
+  const facing = (a: number[], b: number[], c: number[], d: number[], fx: number, fz: number, col: Tone, uv: Uv) => {
+    const px = c[0] - a[0], py = c[1] - a[1], pz = c[2] - a[2], qx = d[0] - b[0], qy = d[1] - b[1], qz = d[2] - b[2];
+    const nx = py * qz - pz * qy, nz = px * qy - py * qx;
+    if (nx * fx + nz * fz < 0) quad(buf, a, d, c, b, col, uv); else quad(buf, a, b, c, d, col, uv);
+  };
+  const tone = (slotTone: number) => (p: number[]): [number, number, number] => {
+    const above = p[1] - p[3];
+    const mott = noise.noise(p[0] * 1.3 + 31, p[2] * 1.3 - 17) * 0.5 + 0.5;
+    return hsl(wh + (mott - 0.5) * 0.02 + (slotTone - 0.5) * 0.012, ws * (0.8 + mott * 0.4),
+      wl * (0.86 + mott * 0.12 + (slotTone - 0.5) * 0.08) * (0.66 + 0.34 * smooth(-0.1, 0.3, above)));
+  };
+  const fallen = (cx: number, cz: number, size: number, slotTone: number): void => {
+    // a fallen stone: a squat, knocked octahedron half sunk where it fell (at most 0.22 m across its plan from its
+    // middle: with its offset, every stone lies within 0.86 m of the wall's line)
+    const a = size * (0.7 + rand() * 0.3), b = size * (0.55 + rand() * 0.3), c = size * (0.45 + rand() * 0.3);
+    const yaw = rand() * Math.PI, cy = Math.cos(yaw), sy = Math.sin(yaw);
+    const dry = buf === NULL_BUF; // (its draws taken all the same)
+    const g0 = dry ? 0 : heightAt(cx, cz);
+    const v = (lx: number, ly: number, lz: number): number[] => {
+      const j = 0.85 + rand() * 0.3;
+      const x = cx + (lx * cy - lz * sy) * j, z = cz + (lx * sy + lz * cy) * j;
+      return [x, g0 - c * 0.4 + ly * j, z, dry ? 0 : heightAt(x, z)];
+    };
+    const top = v(0, c, 0), bot = v(0, -c * 0.7, 0), e = v(a, 0, 0), w = v(-a, 0, 0), nn = v(0, 0, b), ss = v(0, 0, -b);
+    const col = tone(slotTone * 0.6);
+    const uv = (p: number[]): [number, number] => [p[0] / DRY_WALL_TILE_M + uTop, DRY_WALL_CROWN_MID_V + ((p[2] / DRY_WALL_TILE_M) % 0.1)];
+    // (its lower half lies under the ground: only the upper faces are drawn)
+    void bot;
+    for (const [p, q] of [[e, nn], [nn, w], [w, ss], [ss, e]]) tri(buf, top, q, p, col, uv);
+  };
+  // the face print's uv: along the wall (the left face runs the other way, so the two faces are not one stamp) and
+  // up from the sunk foot; the crown's top across its centre line
+  const faceUv = (side: number, sv: number, sink: number) => (p: number[]): [number, number] =>
+    [side > 0 ? uFace + sv / DRY_WALL_TILE_M : uFace + 0.37 - sv / DRY_WALL_TILE_M, Math.max(0, p[1] - p[3] + sink) / DRY_WALL_TILE_M];
+  // (b17; gauntlet wave 121, Saltwind: "a smooth extruded strip with a blue-grey crazy-paving texture", "mortared, not
+  // dry-stone"; "dry-stone needs individual stones with gaps, a batter and a coping") the near form is built stone by
+  // stone (layStones, below): the body's faces stand back as the dark of the dry joints, the stones laid over them in
+  // courses, through-stones jutting from both faces, a coping of slabs set on edge along the top. A whole slot's body
+  // stands a coping's height under the wall's crown; the far form and the phones' walls keep the swept body.
+  const copeDraws = slots.map((sl) => (sl.kind === 0 ? 0.18 + rand() * 0.07 : 0));
+  const COPE = stones ? copeDraws : null;
+  const body = (k: number): Slot => (COPE && COPE[k] > 0
+    ? { ...slots[k], h0: slots[k].h0 - COPE[k], h1: slots[k].h1 - COPE[k], crest: 0, ridge: 0 } : slots[k]);
+  const inset = stones ? JOINT_DEPTH : 0;
+  let piece = false, pieceFirst = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (stones && i % 24 === 23) yield { fine: true, progress: false, stage: 'field-wall-stones' };
+    const sl = body(i);
+    if (sl.kind === 2) {
+      // (the piece before a breach closed with its head at its last slot, below)
+      buf = slotCell(sl.s0, sl.s1, false);
+      // the breach's stones lie in the gap and spill to either side
+      if (!mobile || rand() < 0.5) for (let k = 0, m = 1 + Math.floor(rand() * 2); k < m; k++) {
+        const [x, z] = at(sl.s0 + rand() * (sl.s1 - sl.s0));
+        const st = station(sl.s0);
+        const off = (rand() - 0.5) * 1.1;
+        fallen(x + st.ax * off, z + st.az * off, 0.12 + rand() * 0.08, sl.tone);
+      }
+      continue;
+    }
+    buf = slotCell(sl.s0, sl.s1, false);
+    if (!piece) { startFace(sl); piece = true; pieceFirst = i; receipt.wallPieces++; }
+    const A = station(sl.s0), B = station(sl.s1);
+    const col = tone(sl.tone);
+    // (b17) the body's faces, behind the stones: the joints' dark
+    const faceCol: Tone = inset ? (p) => { const c = col(p); return [c[0] * JOINT_SHADE, c[1] * JOINT_SHADE, c[2] * JOINT_SHADE]; } : col;
+    for (const side of [-1, 1]) {
+      const ba = P(A, side, A.hb - inset, -A.sink), bb = P(B, side, B.hb - inset, -B.sink);
+      const ca = C(A, side, sl.h0 + side * sl.lean, inset), cb = C(B, side, sl.h1 + side * sl.lean, inset);
+      // the mid row at 45 % of the slot's height, each station's bulge its own (shared by the slots either side; the
+      // phones keep one quad a face)
+      const ma = mobile ? null : P(A, side, A.hm - inset, 0.45 * (sl.h0 + side * sl.lean));
+      const mb = mobile ? null : P(B, side, B.hm - inset, 0.45 * (sl.h1 + side * sl.lean));
+      const uvA = faceUv(side, sl.s0, A.sink), uvB = faceUv(side, sl.s1, B.sink);
+      const uvOf = (p: number[]) => (p === ba || p === ca || p === ma ? uvA(p) : uvB(p));
+      // (the faces wound outward: the right face (side +1) sees +across)
+      const sideQuad = (p0: number[], p1: number[], q1: number[], q0: number[]) => {
+        if (side > 0) quad(buf, p0, p1, q1, q0, faceCol, uvOf); else quad(buf, p0, q0, q1, p1, faceCol, uvOf);
+      };
+      if (ma && mb) { sideQuad(ba, bb, mb, ma); sideQuad(ma, mb, cb, ca); } else sideQuad(ba, bb, cb, ca);
+    }
+    // the top stone, and the step up or down to the next one
+    const la = C(A, -1, sl.h0 - sl.lean), ra = C(A, 1, sl.h0 + sl.lean);
+    const lb = C(B, -1, sl.h1 - sl.lean), rb = C(B, 1, sl.h1 + sl.lean);
+    const topUv = (p: number[]): [number, number] => {
+      const across = (p[0] - A.x) * A.ax + (p[2] - A.z) * A.az;
+      const along = sl.s0 + (p[0] - A.x) * -A.az + (p[2] - A.z) * A.ax;
+      return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
+    };
+    // (the top wound to face up — left at A, right at A, right at B — in two halves either side of its ridge)
+    const ka = R(A, sl.ridge, sl.h0 + sl.crest), kb = R(B, sl.ridge, sl.h1 + sl.crest);
+    if (sl.crest > 0) { quad(buf, la, ka, kb, lb, col, topUv); quad(buf, ka, ra, rb, kb, col, topUv); }
+    else quad(buf, la, ra, rb, lb, col, topUv);
+    const nx = i + 1 < slots.length ? body(i + 1) : undefined;
+    if (nx && nx.kind !== 2) {
+      const nl = C(B, -1, nx.h0 - nx.lean), nr = C(B, 1, nx.h0 + nx.lean), nk = R(B, nx.ridge, nx.h0 + nx.crest);
+      const rise = (nx.h0 - sl.h1);
+      const riserUv = (p: number[]): [number, number] => {
+        const across = (p[0] - B.x) * B.ax + (p[2] - B.z) * B.az;
+        return [uTop + 0.5 + across / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + 0.08 + (p[1] - p[3]) / DRY_WALL_TILE_M * 0.5];
+      };
+      // the riser faces the lower top stone: back along the wall when the next one stands higher, ahead when lower
+      if (Math.abs(rise) > 0.004) {
+        const f = rise > 0 ? -1 : 1, fx = B.az * f, fz = -B.ax * f; // along the wall is (az, -ax) at a station
+        facing(lb, kb, nk, nl, fx, fz, col, riserUv); facing(kb, rb, nr, nk, fx, fz, col, riserUv);
+      }
+    } else {
+      endFace(sl, true);
+      piece = false;
+      if (stones) yield* layStones(pieceFirst, i);
+    }
+    receipt.wallM += sl.s1 - sl.s0;
+    // the fallen stones: below a fallen stretch two or three a metre on one side, and now and then at a sound foot
+    const lenS = sl.s1 - sl.s0;
+    const nFallen = sl.kind === 1 ? Math.round(lenS * (mobile ? 1 : 2.4) * (0.6 + rand() * 0.8)) : (!mobile && rand() < lenS * 0.12 ? 1 : 0);
+    const fallSide = (Math.floor(sl.s0 * 0.31 + pts[0]) & 1) ? 1 : -1;
+    for (let k = 0; k < nFallen; k++) {
+      const sv = sl.s0 + rand() * lenS, [x, z] = at(sv), st = station(sl.s0);
+      const off = (sl.kind === 1 ? fallSide : rand() < 0.5 ? -1 : 1) * (0.5 + rand() * 0.14);
+      fallen(x + st.ax * off, z + st.az * off, sl.kind === 1 ? 0.1 + rand() * 0.09 : 0.08 + rand() * 0.06, sl.tone);
+    }
+  }
+  if (piece) { endFace(body(slots.length - 1), true); if (stones) yield* layStones(pieceFirst, slots.length - 1); }
+  // (the stone form is a cell's alone, built when the camera comes near: the far form is the load's)
+  if (!stones) layFar();
+
+  /** A quad wound to face (fx, fy, fz) (a stone's face, its bevels, a slab's sides). */
+  function quadToward(a: number[], b: number[], c: number[], d: number[], fx: number, fy: number, fz: number, col: Tone, uv: Uv): void {
+    const px = c[0] - a[0], py = c[1] - a[1], pz = c[2] - a[2], qx = d[0] - b[0], qy = d[1] - b[1], qz = d[2] - b[2];
+    const nx = py * qz - pz * qy, ny = pz * qx - px * qz, nz = px * qy - py * qx;
+    if (nx * fx + ny * fy + nz * fz < 0) quad(buf, a, d, c, b, col, uv); else quad(buf, a, b, c, d, col, uv);
+  }
+
+  /**
+   * (b17) A piece's stones (its slots first..last, a breach either side of it or the wall's heads): on each face,
+   * courses from the sunk foot up to the body's crown, the lowest the biggest, each stone its own length, its joints
+   * dry and staggered against the course below, standing a little proud of the body or not, its own tone, its top
+   * and bottom bevelled back to the body (the dark of the joint); a through-stone jutting from both faces now and
+   * then; on a whole slot, a coping of slabs set on edge across the top, a cock among the hens now and then, the run
+   * leaning one way. Every stone keeps to the face's batter, and nothing stands above a metre.
+   */
+  function* layStones(first: number, last: number): Generator<FieldWorksSlice, void, void> {
+    const sStart = slots[first].s0, sEnd = slots[last].s1;
+    const rand = pieceRng(pts[0], pts[1], first);
+    // (each stone goes to its own cell's buffer; the slot being laid gets its own back after: its fallen stones follow)
+    const slotBuf = buf;
+    try { yield* layPieceStones(); } finally { buf = slotBuf; }
+    function* layPieceStones(): Generator<FieldWorksSlice, void, void> {
+      let work = 0;
+      let si = first;
+      const slotAt = (sv: number): number => {
+        while (si < last && slots[si].s1 <= sv) si++;
+        while (si > first && slots[si].s0 > sv) si--;
+        return si;
+      };
+      /** The body's crown along the piece (a fallen slot's its tumbled top), at most the metre's cap. */
+      const crownAt = (sv: number): number => {
+        const k = slotAt(sv), b = body(k), t = Math.min(1, Math.max(0, (sv - b.s0) / Math.max(1e-6, b.s1 - b.s0)));
+        return Math.min(FIELD_WORKS_MAX_M - 0.02, b.h0 + (b.h1 - b.h0) * t);
+      };
+      /** A point on a face: along the piece, the side, the height over the ground, standing `out` beyond the batter. */
+      /** (the ground under the stone being laid, sampled once at its middle: a stone is under a metre long) */
+      let ground0 = 0;
+      const faceAt = (sv: number, side: number, above: number, out: number): number[] => {
+        const k = slotAt(sv), A = station(slots[k].s0), B = station(slots[k].s1);
+        const t = Math.min(1, Math.max(0, (sv - slots[k].s0) / Math.max(1e-6, slots[k].s1 - slots[k].s0)));
+        const [x, z, dx, dz] = at(sv);
+        const hb = A.hb + (B.hb - A.hb) * t, ht = A.ht + (B.ht - A.ht) * t, sink = A.sink + (B.sink - A.sink) * t;
+        const half = hb + (ht - hb) * Math.min(1.15, Math.max(0, (above + sink) / (BATTER_H + sink))) + out;
+        const px = x - dz * half * side, pz = z + dx * half * side;
+        return [px, ground0 + Math.min(FIELD_WORKS_MAX_M - 0.01, above), pz, ground0];
+      };
+      /** Whether a stone over [sa, sb] falls in the cell being laid; if so the ground under its middle is sampled. */
+      const inCell = (sa: number, sb: number, side: number): boolean => {
+        const [x, z, dx, dz] = at((sa + sb) / 2);
+        if (env.only !== undefined && wallCellKey(x, z) !== env.only) return false;
+        ground0 = heightAt(x - dz * 0.3 * side, z + dx * 0.3 * side);
+        return true;
+      };
+      const shaded = (base: Tone, k: number): Tone => (p) => { const c = base(p); return [Math.min(1, c[0] * k), Math.min(1, c[1] * k), Math.min(1, c[2] * k)]; };
+      let maxCrown = 0;
+      for (let k = first; k <= last; k++) maxCrown = Math.max(maxCrown, body(k).h0, body(k).h1);
+      maxCrown = Math.min(FIELD_WORKS_MAX_M - 0.02, maxCrown);
+
+      /** A course boundary's wander up and down along the wall (m): the stones' beds are never ruled. */
+      const bedWander: Array<(sv: number) => number> = [];
+      const bed = (k: number, sv: number): number => {
+        while (bedWander.length <= k) {
+          const amp = bedWander.length === 0 ? 0 : 0.012 + rand() * 0.02, f = 1.3 + rand() * 2.2, ph = rand() * 6.3, f2 = 4 + rand() * 4, ph2 = rand() * 6.3;
+          bedWander.push((x) => amp * (0.7 * Math.sin(x * f + ph) + 0.3 * Math.sin(x * f2 + ph2)));
+        }
+        return bedWander[k](sv);
+      };
+
+      /**
+       * One stone on a face over [sa, sb] along, between course k's bed and the next (from ya to yb, each wandering):
+       * its corners knocked about, its face swelling to a rounded middle, its top and bottom bevelled back to the body.
+       */
+      const stone = (side: number, k: number, sa: number, sb: number, ya: number, yb: number, slotTone: number): void => {
+        // (the joints between stones of a course narrower than the beds between courses: stones butt up, they rest on beds)
+        const len = sb - sa, gap = 0.01 + rand() * 0.012, butt = 0.004 + rand() * 0.008, proud = rand() < 0.2 ? 0.018 + rand() * 0.02 : rand() * 0.014;
+        const jS = Math.min(0.045, len * 0.14), jY = Math.min(0.022, (yb - ya) * 0.14);
+        const s0 = sa + butt + (rand() - 0.3) * jS, s1 = sb - butt - (rand() - 0.3) * jS;
+        const s2 = sb - butt - (rand() - 0.3) * jS, s3 = sa + butt + (rand() - 0.3) * jS;
+        const y0 = ya + bed(k, s0) + gap + (rand() - 0.5) * jY, y1 = ya + bed(k, s1) + gap + (rand() - 0.5) * jY;
+        const y2 = Math.min(yb, yb + bed(k + 1, s2) - gap * 0.6 + (rand() - 0.5) * jY), y3 = Math.min(yb, yb + bed(k + 1, s3) - gap * 0.6 + (rand() - 0.5) * jY);
+        if (Math.min(y2 - y1, y3 - y0) < 0.05 || Math.min(s1 - s0, s2 - s3) < 0.06) return;
+        const shade = 0.8 + rand() * 0.34, u0 = rand() * 7, ymid = (y0 + y1 + y2 + y3) / 4, smid = (s0 + s1 + s2 + s3) / 4;
+        const toneJ = (rand() - 0.5) * 0.5, midS = (rand() - 0.5) * len * 0.2, midY = (rand() - 0.5) * 0.02, midO = 0.012 + rand() * 0.014;
+        if (!inCell(s0, s1, side)) return;
+        buf = slotCell(s0, s1, false);
+        const col = shaded(tone(slotTone + toneJ), shade);
+        const sOf = new Map<number[], number>();
+        const v = (sv: number, y: number, o: number): number[] => { const q = faceAt(sv, side, y, o); sOf.set(q, sv); return q; };
+        const uvS = (p: number[]): [number, number] => [u0 + ((sOf.get(p) ?? smid) - smid) / DRY_WALL_TILE_M, DRY_WALL_STONE_MID_V + (p[1] - p[3] - ymid) / DRY_WALL_TILE_M];
+        const fA = v(s0, y0, proud), fB = v(s1, y1, proud), tB = v(s2, y2, proud), tA = v(s3, y3, proud);
+        const mid = v(smid + midS, ymid + midY, proud + midO);
+        const along = at(smid), ox = -along[3] * side, oz = along[2] * side; // the face's outward horizontal
+        // the face's normal from its diagonals, turned outward (the batter tips it a little up)
+        let fnx = (tB[1] - fA[1]) * (tA[2] - fB[2]) - (tB[2] - fA[2]) * (tA[1] - fB[1]);
+        let fny = (tB[2] - fA[2]) * (tA[0] - fB[0]) - (tB[0] - fA[0]) * (tA[2] - fB[2]);
+        let fnz = (tB[0] - fA[0]) * (tA[1] - fB[1]) - (tB[1] - fA[1]) * (tA[0] - fB[0]);
+        const fl = Math.hypot(fnx, fny, fnz) || 1, fs = (fnx * ox + fnz * oz) < 0 ? -1 / fl : 1 / fl;
+        fnx *= fs; fny *= fs; fnz *= fs;
+        // (one colour a stone, taken at its middle: its mottle is the print's, its tone its own)
+        const c0 = col(mid), c1: [number, number, number] = [c0[0] * 0.8, c0[1] * 0.8, c0[2] * 0.8];
+        const flat: Tone = () => c0, flatDark: Tone = () => c1;
+        stoneFan(buf, mid, [fA, fB, tB, tA], [fnx, fny, fnz], flat, uvS);
+        // its top and bottom, back to the body (the joint's depth behind the batter)
+        const kA = faceAt(s3, side, y3 + gap * 0.4, -JOINT_DEPTH), kB = faceAt(s2, side, y2 + gap * 0.4, -JOINT_DEPTH);
+        const jA = faceAt(s0, side, y0 - gap * 0.4, -JOINT_DEPTH), jB = faceAt(s1, side, y1 - gap * 0.4, -JOINT_DEPTH);
+        const uvB = (p: number[]): [number, number] => [u0 + 0.3 + (p[0] + p[2]) * 0.11, DRY_WALL_STONE_MID_V + 0.1];
+        quadToward(tA, tB, kB, kA, ox * 0.3, 1, oz * 0.3, flat, uvB);
+        quadToward(fA, jA, jB, fB, ox * 0.3, -1, oz * 0.3, flatDark, uvB);
+      };
+
+      for (const side of [-1, 1]) {
+        let y = -0.07, course = 0;
+        while (y < maxCrown - 0.06 && course < 8) {
+          const hC = (course === 0 ? 0.2 : 0.13) + rand() * 0.1;
+          const y1 = y + hC;
+          let sv = sStart - (course % 2 ? 0.08 + rand() * 0.18 : rand() * 0.06);
+          while (sv < sEnd - 0.04) {
+            const len = course === 0 ? 0.4 + rand() * 0.45 : 0.28 + rand() * 0.42;
+            const sa = Math.max(sStart, sv), sb = Math.min(sEnd, sv + len);
+            sv += len;
+            if (sb - sa < 0.1) continue;
+            const crown = Math.min(crownAt(sa + 0.02), crownAt((sa + sb) / 2), crownAt(sb - 0.02));
+            const yb = Math.min(y1, crown - 0.006);
+            if (yb - y < 0.07) continue;
+            stone(side, course, sa, sb, y, yb, slots[slotAt((sa + sb) / 2)].tone);
+            // (a slice every few dozen stones: a cell's stone form is built across frames, its mid form showing meanwhile)
+            if (++work % 40 === 0) yield { fine: true, progress: false, stage: 'field-wall-stones' };
+          }
+          y = y1; course++;
+        }
+      }
+
+      // the through-stones: one every metre or two, a little under half the body's height, jutting from both faces
+      for (let sv = sStart + 0.6 + rand() * 0.8; sv < sEnd - 0.5; sv += 1.1 + rand() * 0.9) {
+        const k = slotAt(sv);
+        if (slots[k].kind !== 0) continue;
+        const len = 0.24 + rand() * 0.14, hgt = 0.11 + rand() * 0.06, sa = sv - len / 2, sb = sv + len / 2;
+        const crown = Math.min(crownAt(sa), crownAt(sb));
+        const ya = crown * (0.36 + rand() * 0.14), yb = ya + hgt;
+        if (yb > crown - 0.05) continue;
+        const toneJ = (rand() - 0.5) * 0.4, shadeT = 0.92 + rand() * 0.2, u0 = rand() * 7, outs = [0.07 + rand() * 0.05, 0.07 + rand() * 0.05];
+        if (!inCell(sa, sb, 0)) continue;
+        buf = slotCell(sa, sb, false);
+        const tc = shaded(tone(slots[k].tone + toneJ), shadeT)(faceAt(sv, 1, ya, 0));
+        const col: Tone = () => tc;
+        const uvT = (p: number[]): [number, number] => [u0 + (p[0] - p[2]) * 0.37, DRY_WALL_STONE_MID_V + (p[1] - p[3] - ya) / DRY_WALL_TILE_M];
+        for (const side of [-1, 1]) {
+          const out = outs[side > 0 ? 1 : 0];
+          const along = at(sv), ox = -along[3] * side, oz = along[2] * side, tx = along[2], tz = along[3];
+          const f = (s0: number, y0: number, o: number) => faceAt(s0, side, y0, o);
+          const a0 = f(sa, ya, out), a1 = f(sb, ya, out), a2 = f(sb, yb, out), a3 = f(sa, yb, out);
+          const b0 = f(sa, ya, -JOINT_DEPTH), b1 = f(sb, ya, -JOINT_DEPTH), b2 = f(sb, yb, -JOINT_DEPTH), b3 = f(sa, yb, -JOINT_DEPTH);
+          quadToward(a0, a1, a2, a3, ox, 0, oz, col, uvT); // its end
+          quadToward(a3, a2, b2, b3, 0, 1, 0, col, uvT); // its top
+          quadToward(a0, b0, b1, a1, 0, -1, 0, shaded(col, 0.8), uvT); // its underside
+          quadToward(a1, b1, b2, a2, tx, 0, tz, shaded(col, 0.9), uvT); // its two sides
+          quadToward(a0, a3, b3, b0, -tx, 0, -tz, shaded(col, 0.9), uvT);
+        }
+      }
+
+      // the coping: slabs on edge across the top of every whole slot, seated in the body's crown
+      const leanRun = (rand() - 0.5) * 0.12;
+      for (let k = first; k <= last; k++) {
+        if (slots[k].kind !== 0 || !COPE || !(COPE[k] > 0)) continue;
+        let sv = slots[k].s0 + rand() * 0.02, n = 0;
+        while (sv < slots[k].s1 - 0.05) {
+          const thick = 0.08 + rand() * 0.08, gap = 0.006 + rand() * 0.016;
+          const sa = sv, sb = Math.min(slots[k].s1 - 0.005, sv + thick);
+          sv += thick + gap;
+          if (sb - sa < 0.04) continue;
+          const mid = (sa + sb) / 2, base = crownAt(mid) - 0.03;
+          const cock = (n++ % 3 === 2 && rand() < 0.6) ? 1.22 : 1;
+          const top = Math.min(FIELD_WORKS_MAX_M - 0.012, base + COPE[k] * cock * (0.86 + rand() * 0.24));
+          if (top - base < 0.08) continue;
+          const lean = (leanRun + (rand() - 0.5) * 0.08) * (top - base);
+          const toneJ = (rand() - 0.5) * 0.45, shadeC = 0.86 + rand() * 0.26, u0 = rand() * 7, over = 0.015 + rand() * 0.02;
+          // (its top edge broken: each corner its own height; now and then the slab skewed across the wall)
+          const skew = rand() < 0.3 ? (rand() - 0.5) * 0.05 : 0;
+          const tops = [top - rand() * 0.035, top - rand() * 0.035, top - rand() * 0.035, top - rand() * 0.035];
+          if (!inCell(sa, sb, 0)) continue;
+          buf = slotCell(sa, sb, false);
+          const cc = shaded(tone(slots[k].tone + toneJ), shadeC)(faceAt(mid, 1, base, 0));
+          const col: Tone = () => cc;
+          const uvC = (p: number[]): [number, number] => [u0 + (p[0] + p[2]) * 0.29, DRY_WALL_STONE_MID_V + (p[1] - p[3] - base) / DRY_WALL_TILE_M - 0.06];
+          // its eight corners: across the top, at the base and the (leaning) top
+          const c = (s0: number, side: number, y0: number, shift: number) => faceAt(s0 + shift, side, y0, over - (y0 > base + 0.01 ? 0.01 : 0));
+          const l0 = c(sa, -1, base, 0), l1 = c(sb, -1, base, 0), r0 = c(sa, 1, base, 0), r1 = c(sb, 1, base, 0);
+          const L0 = c(sa, -1, tops[0], lean - skew), L1 = c(sb, -1, tops[1], lean - skew), R0 = c(sa, 1, tops[2], lean + skew), R1 = c(sb, 1, tops[3], lean + skew);
+          const along = at(mid), tx = along[2], tz = along[3], ax = -tz, az = tx;
+          quadToward(L0, L1, R1, R0, 0, 1, 0, col, uvC); // its top edge
+          quadToward(l0, l1, L1, L0, -ax, 0, -az, col, uvC); // its two faces (across the wall)
+          quadToward(r0, R0, R1, r1, ax, 0, az, col, uvC);
+          quadToward(l1, r1, R1, L1, tx, 0, tz, shaded(col, 0.86), uvC); // its two edges (along the wall)
+          quadToward(l0, L0, R0, r0, -tx, 0, -tz, shaded(col, 0.86), uvC);
+        }
+      }
+    }
+  }
+
+  /** A wall head: the section's outline at the slot's start (facing back) or end (facing ahead), fanned from its foot. */
+  function endFace(sl: Slot, atEnd: boolean, withMid = !mobile): void {
+    const st = station(atEnd ? sl.s1 : sl.s0), h = atEnd ? sl.h1 : sl.h0;
+    const outline: number[][] = [];
+    for (const side of [-1, 1]) {
+      // (the head's outline through the face's mid row, so the faces' bulge meets it; a far segment's faces have none)
+      const ring = !withMid
+        ? [P(st, side, st.hb, -st.sink), C(st, side, h + side * sl.lean)]
+        : [P(st, side, st.hb, -st.sink), P(st, side, st.hm, 0.45 * (h + side * sl.lean)), C(st, side, h + side * sl.lean)];
+      // (the ridge's point only where the top stone has one: a flat top's head is three triangles)
+      if (side < 0) outline.push(...ring, ...(sl.crest > 0 ? [R(st, sl.ridge, h + sl.crest)] : [])); else outline.push(...ring.reverse());
+    }
+    // the outline runs left foot, up, across the crown, down to the right foot (fanned from the foot's middle: the
+    // start's fan wound to face back along the wall, the end's ahead)
+    if (buf === NULL_BUF) return;
+    const centre = [st.x, (outline[0][1] + outline[outline.length - 1][1]) / 2, st.z, heightAt(st.x, st.z)];
+    const col = tone(sl.tone);
+    const uv = (p: number[]): [number, number] => {
+      const across = (p[0] - st.x) * st.ax + (p[2] - st.z) * st.az;
+      return [uFace + 0.71 + across / DRY_WALL_TILE_M, Math.max(0, p[1] - p[3] + st.sink) / DRY_WALL_TILE_M];
+    };
+    for (let k = 0; k + 1 < outline.length; k++) {
+      if (atEnd) tri(buf, centre, outline[k], outline[k + 1], col, uv); else tri(buf, centre, outline[k + 1], outline[k], col, uv);
+    }
+  }
+  function startFace(sl: Slot): void { endFace(sl, false); }
+
+  /**
+   * The far form (the scenery lane, b13; the coordinator: "full stones within a near radius, merged per cell, with a
+   * simpler mid and far form"): the same wall on the same stations — its breaches, its fallen stretches and heads
+   * where the near form has them — as segments of a few slots (3.6 m; a phone's 6 m) with a continuous upright crown
+   * and no ridge, step or fallen stone: two faces and a top a segment. A segment never spans a cell or a change from
+   * whole to fallen, so a cell's far form stands exactly where its near form does.
+   */
+  function layFar(): void {
+    const SEG = mobile ? 6 : 3.6;
+    let i = 0;
+    while (i < slots.length) {
+      if (slots[i].kind === 2) { i++; continue; }
+      // a piece: the slots up to the next breach
+      let j = i;
+      while (j + 1 < slots.length && slots[j + 1].kind !== 2) j++;
+      // its segments, the crown continuous: each boundary at the mean of the near form's two crowns there
+      const crownAt = (k: number): number => {
+        if (k <= i) return slots[i].h0;
+        if (k > j) return slots[j].h1;
+        return (slots[k - 1].h1 + slots[k].h0) / 2;
+      };
+      let a = i;
+      // (a segment is laid in its slots' cell, the cell their near form is in)
+      const segs: Array<{ sg: Slot; cell: Buffers }> = [];
+      while (a <= j) {
+        let b = a;
+        const cellA = slotCell(slots[a].s0, slots[a].s1, true);
+        while (b + 1 <= j && slots[b + 1].s1 - slots[a].s0 <= SEG && slots[b + 1].kind === slots[a].kind
+          && slotCell(slots[b + 1].s0, slots[b + 1].s1, true) === cellA) b++;
+        segs.push({ cell: cellA, sg: { s0: slots[a].s0, s1: slots[b].s1, h0: crownAt(a), h1: crownAt(b + 1), lean: 0,
+          tone: slots[a].tone, kind: slots[a].kind, ridge: 0, crest: 0 } });
+        a = b + 1;
+      }
+      for (let k = 0; k < segs.length; k++) {
+        const { sg, cell } = segs[k];
+        buf = cell;
+        if (k === 0) endFace(sg, false, false);
+        const A = station(sg.s0), B = station(sg.s1), col = tone(sg.tone);
+        for (const side of [-1, 1]) {
+          const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
+          const ca = C(A, side, sg.h0), cb = C(B, side, sg.h1);
+          const uvA = faceUv(side, sg.s0, A.sink), uvB = faceUv(side, sg.s1, B.sink);
+          const uvOf = (p: number[]) => (p === ba || p === ca ? uvA(p) : uvB(p));
+          if (side > 0) quad(buf, ba, bb, cb, ca, col, uvOf); else quad(buf, ba, ca, cb, bb, col, uvOf);
+        }
+        const la = C(A, -1, sg.h0), ra = C(A, 1, sg.h0), lb = C(B, -1, sg.h1), rb = C(B, 1, sg.h1);
+        const topUv = (p: number[]): [number, number] => {
+          const across = (p[0] - A.x) * A.ax + (p[2] - A.z) * A.az;
+          const along = sg.s0 + (p[0] - A.x) * -A.az + (p[2] - A.z) * A.ax;
+          return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
+        };
+        quad(buf, la, ra, rb, lb, col, topUv);
+        if (k === segs.length - 1) endFace(sg, true, false);
+      }
+      i = j + 1;
+    }
+  }
+}
+
 /**
  * Lay the map's field-boundary works. A grid at 1.5 m (2 m on phones) finds the boundary band (a wall's band, or a
  * hedge line's on a margin boundary); each point in it drops onto the boundary's line down the distance field's
@@ -138,7 +794,7 @@ export function* buildFieldWorks(
 ): Generator<FieldWorksSlice, FieldWorksBuilt, void> {
   const receipt: FieldWorksReceipt = { wallPieces: 0, bankPieces: 0, wallM: 0, bankM: 0, triangles: 0, farTriangles: 0, cells: 0, scanned: 0 };
   const landAt = ground._landUseAt;
-  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt };
+  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt, fine: null };
   const s: FieldSample = { active: 0, edgeM: 0, boundary: 0, track: 0, hedge: 0 };
   const edgeAt = (x: number, z: number) => landAt(x, z, s).edgeM;
   const heightAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
@@ -327,369 +983,24 @@ export function* buildFieldWorks(
 
   // walls first, then banks: two groups, the walls on their own stone, the banks on the props rock material
   // (b13: the walls by cell, a near form and a far form each; the banks one buffer)
-  const wallCells = new Map<number, { fine: Buffers; coarse: Buffers }>();
+  const wallCells = new Map<number, { fine: Buffers; coarse: Buffers; lines: Set<number> }>();
+  let wallLine = -1;
   const cellOf = (x: number, z: number, coarse: boolean): Buffers => {
-    const key = (Math.floor(x / FIELD_WALL_CELL_M) + 512) * 1024 + (Math.floor(z / FIELD_WALL_CELL_M) + 512);
+    const key = wallCellKey(x, z);
     let cell = wallCells.get(key);
-    if (!cell) { cell = { fine: newBuffers(), coarse: newBuffers() }; wallCells.set(key, cell); }
+    if (!cell) { cell = { fine: newBuffers(), coarse: newBuffers(), lines: new Set() }; wallCells.set(key, cell); }
+    if (wallLine >= 0) cell.lines.add(wallLine);
     return coarse ? cell.coarse : cell.fine;
   };
+  const wallLines: number[][] = [];
   const bankBuf = newBuffers();
   const [wh, ws, wl] = options.wallTone ?? [0.11, 0.06, 0.8];
   const [bh, bs, bl] = options.bankTone ?? [0.2, 0.28, 0.24];
   let lineIndex = 0;
+  const env: WallEnv = { ground, noise, heightAt, receipt, wallTone: [wh, ws, wl], mobile: options.mobile, stones: false };
   for (const line of lines) {
-    if (line.wall) layWall(line.pts, cellOf); else sweepBank(line.pts, bankBuf);
+    if (line.wall) { wallLine = wallLines.length; wallLines.push(line.pts); yield* layWall(env, line.pts, cellOf); wallLine = -1; } else sweepBank(line.pts, bankBuf);
     if (++lineIndex % 20 === 0) yield { fine: true, progress: false, stage: 'field-works' };
-  }
-
-  function newBuffers() {
-    return { positions: [] as number[], normals: [] as number[], colors: [] as number[], grounds: [] as number[], uvs: [] as number[], index: [] as number[] };
-  }
-  type Buffers = ReturnType<typeof newBuffers>;
-  type Tone = (p: number[]) => [number, number, number];
-  type Uv = (p: number[]) => [number, number];
-
-  /** Vertices of one flat face (its normal given), indexed from `base`. */
-  function face(buf: Buffers, pts: number[][], nx: number, ny: number, nz: number, col: Tone, uv: Uv): number {
-    const base = buf.positions.length / 3;
-    for (const p of pts) {
-      buf.positions.push(p[0], p[1], p[2]); buf.normals.push(nx, ny, nz); buf.grounds.push(p[3]);
-      const [r, g, bb] = col(p); buf.colors.push(r, g, bb);
-      const [u, v] = uv(p); buf.uvs.push(u, v);
-    }
-    return base;
-  }
-
-  /** One triangle, its normal flat, its colour from the tone, its uv as given. */
-  function tri(buf: Buffers, a: number[], b: number[], c: number[], col: Tone, uv: Uv): void {
-    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const l = Math.hypot(nx, ny, nz);
-    if (!(l > 1e-9)) return; // a degenerate sliver draws nothing
-    const base = face(buf, [a, b, c], nx / l, ny / l, nz / l, col, uv);
-    buf.index.push(base, base + 1, base + 2);
-  }
-
-  /** One quad (a b c d wound as the triangles a b c and a c d), four vertices sharing the normal its diagonals give. */
-  function quad(buf: Buffers, a: number[], b: number[], c: number[], d: number[], col: Tone, uv: Uv): void {
-    const px = c[0] - a[0], py = c[1] - a[1], pz = c[2] - a[2], qx = d[0] - b[0], qy = d[1] - b[1], qz = d[2] - b[2];
-    const nx = py * qz - pz * qy, ny = pz * qx - px * qz, nz = px * qy - py * qx;
-    const l = Math.hypot(nx, ny, nz);
-    if (!(l > 1e-9)) return;
-    const base = face(buf, [a, b, c, d], nx / l, ny / l, nz / l, col, uv);
-    buf.index.push(base, base + 1, base + 2, base, base + 2, base + 3);
-  }
-
-  /**
-   * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
-   * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
-   * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
-   * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
-   * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
-   * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
-   * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
-   */
-  function layWall(pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): void {
-    const n = pts.length / 2;
-    const S = [0];
-    for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
-    const L = S[n - 1];
-    if (L < 1.0) return;
-    // the direction at each point from its neighbours (smooth along the line)
-    const dir: number[] = [];
-    for (let k = 0; k < n; k++) {
-      const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
-      let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
-      const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-      dir.push(dx, dz);
-    }
-    let seg = 0;
-    const at = (s: number): [number, number, number, number] => {
-      while (seg < n - 2 && S[seg + 1] < s) seg++;
-      while (seg > 0 && S[seg] > s) seg--;
-      const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
-      const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
-      let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
-      const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-      return [x, z, dx, dz];
-    };
-    const rand = lineRng(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]);
-    const mobile = options.mobile;
-    // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
-    let buf: Buffers = cellOf(pts[0], pts[1], false);
-    const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
-    const H0 = 0.8 + rand() * 0.12;
-    const uFace = rand() * 7, uTop = rand() * 7;
-    // the slots, and what each is: whole, fallen in (its height a share of the wall's) or a breach (none)
-    type Slot = { s0: number; s1: number; h0: number; h1: number; lean: number; tone: number; kind: 0 | 1 | 2; ridge: number; crest: number };
-    const slots: Slot[] = [];
-    let s = 0, fallUntil = -1, fallH = 1, breachUntil = -1;
-    while (s < L - 1e-3) {
-      let len = mobile ? 1.0 + rand() * 1.0 : 0.34 + rand() * 0.5;
-      if (L - (s + len) < (mobile ? 0.6 : 0.22)) len = L - s;
-      const mid = s + len / 2;
-      const inner = s > 2 && L - (s + len) > 2;
-      if (inner && s >= fallUntil && s >= breachUntil) {
-        const r = rand();
-        if (r < len / 55) breachUntil = s + 0.7 + rand() * 0.9;
-        else if (r < len / 55 + len / 30) { fallUntil = s + 1.4 + rand() * 2.8; fallH = 0.28 + rand() * 0.27; }
-      }
-      const kind: 0 | 1 | 2 = s < breachUntil ? 2 : s < fallUntil ? 1 : 0;
-      // the height: the wall's, breathing along it, lower toward its heads; a stone standing high, a dip
-      const head = Math.min(1, Math.min(mid, L - mid) / 1.2);
-      let h = H0 * (0.93 + 0.14 * (noise.noise(mid * 0.09 + pts[0] * 0.01, 3.1) * 0.5 + 0.5)) * (0.72 + 0.28 * head);
-      const pick = rand();
-      if (kind === 0 && pick < 0.07) h += 0.06 + rand() * 0.05; else if (kind === 0 && pick < 0.13) h -= 0.06 + rand() * 0.07;
-      if (kind === 1) h *= fallH * (0.8 + rand() * 0.4);
-      const tilt = (rand() - 0.5) * 0.05;
-      // (its top rounded: a ridge a little off the wall's middle, 2.5-6 cm above its edges)
-      slots.push({ s0: s, s1: s + len, h0: h + tilt, h1: h - tilt, lean: (rand() - 0.5) * 0.04, tone: rand(), kind,
-        ridge: (rand() - 0.5) * 0.12, crest: mobile ? 0 : 0.025 + rand() * 0.035 });
-      s += len;
-    }
-    // (a phone's crown is continuous: each slot starts where the last ended, upright, so it draws no step)
-    if (mobile) for (let i = 0; i < slots.length; i++) {
-      slots[i].lean = 0;
-      if (i > 0 && slots[i - 1].kind !== 2 && slots[i].kind !== 2) slots[i].h0 = slots[i - 1].h1;
-    }
-    // a fallen stretch eases in and out over a slot (the courses step down, not a cliff)
-    for (let i = 0; i < slots.length; i++) {
-      if (slots[i].kind !== 0) continue;
-      const prev = slots[i - 1], next = slots[i + 1];
-      if (prev && prev.kind === 1) slots[i].h0 = (slots[i].h0 + prev.h1) / 2;
-      if (next && next.kind === 1) slots[i].h1 = (slots[i].h1 + next.h0) / 2;
-    }
-    // the stations: each slot boundary's centre, direction, half widths and ground (a station is shared by the two
-    // slots either side, so the base and the course line are continuous)
-    const cache = new Map<number, Station>();
-    type Station = { x: number; z: number; ax: number; az: number; hb: number; ht: number; hm: number; sink: number };
-    const station = (sv: number): Station => {
-      const key = Math.round(sv * 1e4);
-      let st = cache.get(key);
-      if (st) return st;
-      const [x, z, dx, dz] = at(sv);
-      const wob = noise.noise(x * 0.7 + 11.3, z * 0.7 - 4.1);
-      // (b14, wave 97: "extruded kerbs": the wall's width and batter wander station by station, and its faces bulge
-      // where a stone stands proud or sag where one has settled)
-      const hb = (mobile ? 0.44 : 0.43 + wob * 0.04) + (rand() - 0.5) * 0.08;
-      const ht = 0.2 + (rand() - 0.5) * 0.08;
-      const hm = (hb + ht) / 2 + (rand() - 0.5) * 0.07;
-      // the foot sunk into the drawn ground, deeper on a slope (the terrain mesh strays further from its height field)
-      const sink = 0.15 + 0.6 * Math.min(0.1, 1 - ground.getNormalAt(x, z).y);
-      st = { x, z, ax: -dz, az: dx, hb, ht, hm, sink };
-      cache.set(key, st);
-      return st;
-    };
-    // a point of the wall: the station, the side (-1 left, +1 right), the half width, the height over its own ground
-    const P = (st: Station, side: number, half: number, above: number): number[] => {
-      const px = st.x + st.ax * half * side, pz = st.z + st.az * half * side;
-      const g = heightAt(px, pz);
-      return [px, g + Math.min(FIELD_WORKS_MAX_M - 0.01, above), pz, g];
-    };
-    /** A crown point: on the station's batter line (foot hb at -sink to ht at BATTER_H), so every crown at a station
-     *  lies on one line and two slots' faces meet along it whatever their heights (no sliver opens between them). */
-    const C = (st: Station, side: number, above: number): number[] =>
-      P(st, side, st.hb + (st.ht - st.hb) * Math.min(1.15, Math.max(0, (above + st.sink) / (BATTER_H + st.sink))), above);
-    const R = (st: Station, across: number, above: number): number[] => {
-      const px = st.x + st.ax * across, pz = st.z + st.az * across;
-      const g = heightAt(px, pz);
-      return [px, g + Math.min(FIELD_WORKS_MAX_M - 0.01, above), pz, g];
-    };
-    /** A quad turned to face (fx, fz) (a riser between two top stones). */
-    const facing = (a: number[], b: number[], c: number[], d: number[], fx: number, fz: number, col: Tone, uv: Uv) => {
-      const px = c[0] - a[0], py = c[1] - a[1], pz = c[2] - a[2], qx = d[0] - b[0], qy = d[1] - b[1], qz = d[2] - b[2];
-      const nx = py * qz - pz * qy, nz = px * qy - py * qx;
-      if (nx * fx + nz * fz < 0) quad(buf, a, d, c, b, col, uv); else quad(buf, a, b, c, d, col, uv);
-    };
-    const tone = (slotTone: number) => (p: number[]): [number, number, number] => {
-      const above = p[1] - p[3];
-      const mott = noise.noise(p[0] * 1.3 + 31, p[2] * 1.3 - 17) * 0.5 + 0.5;
-      return hsl(wh + (mott - 0.5) * 0.02 + (slotTone - 0.5) * 0.012, ws * (0.8 + mott * 0.4),
-        wl * (0.86 + mott * 0.12 + (slotTone - 0.5) * 0.08) * (0.66 + 0.34 * smooth(-0.1, 0.3, above)));
-    };
-    const fallen = (cx: number, cz: number, size: number, slotTone: number): void => {
-      // a fallen stone: a squat, knocked octahedron half sunk where it fell (at most 0.22 m across its plan from its
-      // middle: with its offset, every stone lies within 0.86 m of the wall's line)
-      const a = size * (0.7 + rand() * 0.3), b = size * (0.55 + rand() * 0.3), c = size * (0.45 + rand() * 0.3);
-      const yaw = rand() * Math.PI, cy = Math.cos(yaw), sy = Math.sin(yaw);
-      const g0 = heightAt(cx, cz);
-      const v = (lx: number, ly: number, lz: number): number[] => {
-        const j = 0.85 + rand() * 0.3;
-        const x = cx + (lx * cy - lz * sy) * j, z = cz + (lx * sy + lz * cy) * j;
-        return [x, g0 - c * 0.4 + ly * j, z, heightAt(x, z)];
-      };
-      const top = v(0, c, 0), bot = v(0, -c * 0.7, 0), e = v(a, 0, 0), w = v(-a, 0, 0), nn = v(0, 0, b), ss = v(0, 0, -b);
-      const col = tone(slotTone * 0.6);
-      const uv = (p: number[]): [number, number] => [p[0] / DRY_WALL_TILE_M + uTop, DRY_WALL_CROWN_MID_V + ((p[2] / DRY_WALL_TILE_M) % 0.1)];
-      // (its lower half lies under the ground: only the upper faces are drawn)
-      void bot;
-      for (const [p, q] of [[e, nn], [nn, w], [w, ss], [ss, e]]) tri(buf, top, q, p, col, uv);
-    };
-    // the face print's uv: along the wall (the left face runs the other way, so the two faces are not one stamp) and
-    // up from the sunk foot; the crown's top across its centre line
-    const faceUv = (side: number, sv: number, sink: number) => (p: number[]): [number, number] =>
-      [side > 0 ? uFace + sv / DRY_WALL_TILE_M : uFace + 0.37 - sv / DRY_WALL_TILE_M, Math.max(0, p[1] - p[3] + sink) / DRY_WALL_TILE_M];
-    let piece = false;
-    for (let i = 0; i < slots.length; i++) {
-      const sl = slots[i];
-      if (sl.kind === 2) {
-        // (the piece before a breach closed with its head at its last slot, below)
-        buf = slotCell(sl.s0, sl.s1, false);
-        // the breach's stones lie in the gap and spill to either side
-        if (!mobile || rand() < 0.5) for (let k = 0, m = 1 + Math.floor(rand() * 2); k < m; k++) {
-          const [x, z] = at(sl.s0 + rand() * (sl.s1 - sl.s0));
-          const st = station(sl.s0);
-          const off = (rand() - 0.5) * 1.1;
-          fallen(x + st.ax * off, z + st.az * off, 0.12 + rand() * 0.08, sl.tone);
-        }
-        continue;
-      }
-      buf = slotCell(sl.s0, sl.s1, false);
-      if (!piece) { startFace(sl); piece = true; receipt.wallPieces++; }
-      const A = station(sl.s0), B = station(sl.s1);
-      const col = tone(sl.tone);
-      for (const side of [-1, 1]) {
-        const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
-        const ca = C(A, side, sl.h0 + side * sl.lean), cb = C(B, side, sl.h1 + side * sl.lean);
-        // the mid row at 45 % of the slot's height, each station's bulge its own (shared by the slots either side; the
-        // phones keep one quad a face)
-        const ma = mobile ? null : P(A, side, A.hm, 0.45 * (sl.h0 + side * sl.lean));
-        const mb = mobile ? null : P(B, side, B.hm, 0.45 * (sl.h1 + side * sl.lean));
-        const uvA = faceUv(side, sl.s0, A.sink), uvB = faceUv(side, sl.s1, B.sink);
-        const uvOf = (p: number[]) => (p === ba || p === ca || p === ma ? uvA(p) : uvB(p));
-        // (the faces wound outward: the right face (side +1) sees +across)
-        const sideQuad = (p0: number[], p1: number[], q1: number[], q0: number[]) => {
-          if (side > 0) quad(buf, p0, p1, q1, q0, col, uvOf); else quad(buf, p0, q0, q1, p1, col, uvOf);
-        };
-        if (ma && mb) { sideQuad(ba, bb, mb, ma); sideQuad(ma, mb, cb, ca); } else sideQuad(ba, bb, cb, ca);
-      }
-      // the top stone, and the step up or down to the next one
-      const la = C(A, -1, sl.h0 - sl.lean), ra = C(A, 1, sl.h0 + sl.lean);
-      const lb = C(B, -1, sl.h1 - sl.lean), rb = C(B, 1, sl.h1 + sl.lean);
-      const topUv = (p: number[]): [number, number] => {
-        const across = (p[0] - A.x) * A.ax + (p[2] - A.z) * A.az;
-        const along = sl.s0 + (p[0] - A.x) * -A.az + (p[2] - A.z) * A.ax;
-        return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
-      };
-      // (the top wound to face up — left at A, right at A, right at B — in two halves either side of its ridge)
-      const ka = R(A, sl.ridge, sl.h0 + sl.crest), kb = R(B, sl.ridge, sl.h1 + sl.crest);
-      if (sl.crest > 0) { quad(buf, la, ka, kb, lb, col, topUv); quad(buf, ka, ra, rb, kb, col, topUv); }
-      else quad(buf, la, ra, rb, lb, col, topUv);
-      const nx = slots[i + 1];
-      if (nx && nx.kind !== 2) {
-        const nl = C(B, -1, nx.h0 - nx.lean), nr = C(B, 1, nx.h0 + nx.lean), nk = R(B, nx.ridge, nx.h0 + nx.crest);
-        const rise = (nx.h0 - sl.h1);
-        const riserUv = (p: number[]): [number, number] => {
-          const across = (p[0] - B.x) * B.ax + (p[2] - B.z) * B.az;
-          return [uTop + 0.5 + across / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + 0.08 + (p[1] - p[3]) / DRY_WALL_TILE_M * 0.5];
-        };
-        // the riser faces the lower top stone: back along the wall when the next one stands higher, ahead when lower
-        if (Math.abs(rise) > 0.004) {
-          const f = rise > 0 ? -1 : 1, fx = B.az * f, fz = -B.ax * f; // along the wall is (az, -ax) at a station
-          facing(lb, kb, nk, nl, fx, fz, col, riserUv); facing(kb, rb, nr, nk, fx, fz, col, riserUv);
-        }
-      } else {
-        endFace(sl, true);
-        piece = false;
-      }
-      receipt.wallM += sl.s1 - sl.s0;
-      // the fallen stones: below a fallen stretch two or three a metre on one side, and now and then at a sound foot
-      const lenS = sl.s1 - sl.s0;
-      const nFallen = sl.kind === 1 ? Math.round(lenS * (mobile ? 1 : 2.4) * (0.6 + rand() * 0.8)) : (!mobile && rand() < lenS * 0.12 ? 1 : 0);
-      const fallSide = (Math.floor(sl.s0 * 0.31 + pts[0]) & 1) ? 1 : -1;
-      for (let k = 0; k < nFallen; k++) {
-        const sv = sl.s0 + rand() * lenS, [x, z] = at(sv), st = station(sl.s0);
-        const off = (sl.kind === 1 ? fallSide : rand() < 0.5 ? -1 : 1) * (0.5 + rand() * 0.14);
-        fallen(x + st.ax * off, z + st.az * off, sl.kind === 1 ? 0.1 + rand() * 0.09 : 0.08 + rand() * 0.06, sl.tone);
-      }
-    }
-    if (piece) endFace(slots[slots.length - 1], true);
-    layFar();
-
-    /** A wall head: the section's outline at the slot's start (facing back) or end (facing ahead), fanned from its foot. */
-    function endFace(sl: Slot, atEnd: boolean, withMid = !mobile): void {
-      const st = station(atEnd ? sl.s1 : sl.s0), h = atEnd ? sl.h1 : sl.h0;
-      const outline: number[][] = [];
-      for (const side of [-1, 1]) {
-        // (the head's outline through the face's mid row, so the faces' bulge meets it; a far segment's faces have none)
-        const ring = !withMid
-          ? [P(st, side, st.hb, -st.sink), C(st, side, h + side * sl.lean)]
-          : [P(st, side, st.hb, -st.sink), P(st, side, st.hm, 0.45 * (h + side * sl.lean)), C(st, side, h + side * sl.lean)];
-        // (the ridge's point only where the top stone has one: a flat top's head is three triangles)
-        if (side < 0) outline.push(...ring, ...(sl.crest > 0 ? [R(st, sl.ridge, h + sl.crest)] : [])); else outline.push(...ring.reverse());
-      }
-      // the outline runs left foot, up, across the crown, down to the right foot (fanned from the foot's middle: the
-      // start's fan wound to face back along the wall, the end's ahead)
-      const centre = [st.x, (outline[0][1] + outline[outline.length - 1][1]) / 2, st.z, heightAt(st.x, st.z)];
-      const col = tone(sl.tone);
-      const uv = (p: number[]): [number, number] => {
-        const across = (p[0] - st.x) * st.ax + (p[2] - st.z) * st.az;
-        return [uFace + 0.71 + across / DRY_WALL_TILE_M, Math.max(0, p[1] - p[3] + st.sink) / DRY_WALL_TILE_M];
-      };
-      for (let k = 0; k + 1 < outline.length; k++) {
-        if (atEnd) tri(buf, centre, outline[k], outline[k + 1], col, uv); else tri(buf, centre, outline[k + 1], outline[k], col, uv);
-      }
-    }
-    function startFace(sl: Slot): void { endFace(sl, false); }
-
-    /**
-     * The far form (the scenery lane, b13; the coordinator: "full stones within a near radius, merged per cell, with a
-     * simpler mid and far form"): the same wall on the same stations — its breaches, its fallen stretches and heads
-     * where the near form has them — as segments of a few slots (3.6 m; a phone's 6 m) with a continuous upright crown
-     * and no ridge, step or fallen stone: two faces and a top a segment. A segment never spans a cell or a change from
-     * whole to fallen, so a cell's far form stands exactly where its near form does.
-     */
-    function layFar(): void {
-      const SEG = mobile ? 6 : 3.6;
-      let i = 0;
-      while (i < slots.length) {
-        if (slots[i].kind === 2) { i++; continue; }
-        // a piece: the slots up to the next breach
-        let j = i;
-        while (j + 1 < slots.length && slots[j + 1].kind !== 2) j++;
-        // its segments, the crown continuous: each boundary at the mean of the near form's two crowns there
-        const crownAt = (k: number): number => {
-          if (k <= i) return slots[i].h0;
-          if (k > j) return slots[j].h1;
-          return (slots[k - 1].h1 + slots[k].h0) / 2;
-        };
-        let a = i;
-        // (a segment is laid in its slots' cell, the cell their near form is in)
-        const segs: Array<{ sg: Slot; cell: Buffers }> = [];
-        while (a <= j) {
-          let b = a;
-          const cellA = slotCell(slots[a].s0, slots[a].s1, true);
-          while (b + 1 <= j && slots[b + 1].s1 - slots[a].s0 <= SEG && slots[b + 1].kind === slots[a].kind
-            && slotCell(slots[b + 1].s0, slots[b + 1].s1, true) === cellA) b++;
-          segs.push({ cell: cellA, sg: { s0: slots[a].s0, s1: slots[b].s1, h0: crownAt(a), h1: crownAt(b + 1), lean: 0,
-            tone: slots[a].tone, kind: slots[a].kind, ridge: 0, crest: 0 } });
-          a = b + 1;
-        }
-        for (let k = 0; k < segs.length; k++) {
-          const { sg, cell } = segs[k];
-          buf = cell;
-          if (k === 0) endFace(sg, false, false);
-          const A = station(sg.s0), B = station(sg.s1), col = tone(sg.tone);
-          for (const side of [-1, 1]) {
-            const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
-            const ca = C(A, side, sg.h0), cb = C(B, side, sg.h1);
-            const uvA = faceUv(side, sg.s0, A.sink), uvB = faceUv(side, sg.s1, B.sink);
-            const uvOf = (p: number[]) => (p === ba || p === ca ? uvA(p) : uvB(p));
-            if (side > 0) quad(buf, ba, bb, cb, ca, col, uvOf); else quad(buf, ba, ca, cb, bb, col, uvOf);
-          }
-          const la = C(A, -1, sg.h0), ra = C(A, 1, sg.h0), lb = C(B, -1, sg.h1), rb = C(B, 1, sg.h1);
-          const topUv = (p: number[]): [number, number] => {
-            const across = (p[0] - A.x) * A.ax + (p[2] - A.z) * A.az;
-            const along = sg.s0 + (p[0] - A.x) * -A.az + (p[2] - A.z) * A.ax;
-            return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
-          };
-          quad(buf, la, ra, rb, lb, col, topUv);
-          if (k === segs.length - 1) endFace(sg, true, false);
-        }
-        i = j + 1;
-      }
-    }
   }
 
   /**
@@ -787,13 +1098,15 @@ export function* buildFieldWorks(
   };
   yield { fine: true, progress: false, stage: 'field-works' };
   const wallCellList: FieldWallCell[] = [];
-  for (const cell of wallCells.values()) {
+  const cellLines = new Map<number, number[]>();
+  for (const [key, cell] of wallCells) {
     const near = yield* build(cell.fine, true), far = yield* build(cell.coarse, true);
     if (!near && !far) continue;
     const box = new THREE.Box3();
     if (near) box.union(near.boundingBox!);
     if (far) box.union(far.boundingBox!);
-    wallCellList.push({ near, far, box: { minX: box.min.x, maxX: box.max.x, minY: box.min.y, maxY: box.max.y, minZ: box.min.z, maxZ: box.max.z } });
+    wallCellList.push({ near, far, key, box: { minX: box.min.x, maxX: box.max.x, minY: box.min.y, maxY: box.max.y, minZ: box.min.z, maxZ: box.max.z } });
+    cellLines.set(key, [...cell.lines]);
     receipt.triangles += cell.fine.index.length / 3;
     receipt.farTriangles += cell.coarse.index.length / 3;
   }
@@ -803,7 +1116,51 @@ export function* buildFieldWorks(
   const wallFarGeometry = options.merged ? yield* build(concat(cellBuffers.map((c) => c.coarse)), true) : null;
   const bankGeometry = yield* build(bankBuf, false);
   if (bankGeometry) receipt.triangles += bankBuf.index.length / 3;
-  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt };
+  // (b17) the cells' stone forms are built when the camera comes near (props.ts updateFieldWallLod), from the lines
+  const fine = !options.mobile && wallLines.length
+    ? { lines: wallLines, cellLines, env: { ground, noise, heightAt, wallTone: [wh, ws, wl] as const, mobile: false } } : null;
+  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine };
+}
+
+/**
+ * (b17) A wall cell's stone form, built when the camera comes near: every line that touches the cell or its neighbours
+ * laid again stone by stone (layWall with stones on: the same line stream, so the same slots, stations, heads and
+ * fallen stones as the cell's mid form, and each piece's stones from its own stream), what falls in the cell kept and
+ * the rest let go. Deterministic: the same cell builds the same stones every time. Null when nothing falls in it.
+ */
+export function buildFieldWallFine(source: FieldWallFineSource, key: number): THREE.BufferGeometry | null {
+  const steps = buildFieldWallFineSteps(source, key);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** (b17) buildFieldWallFine in slices (a few dozen stones each): the props' switch runs it within a frame budget. */
+export function* buildFieldWallFineSteps(source: FieldWallFineSource, key: number): Generator<FieldWorksSlice, THREE.BufferGeometry | null, void> {
+  const target = newBuffers();
+  const receipt: FieldWorksReceipt = { wallPieces: 0, bankPieces: 0, wallM: 0, bankM: 0, triangles: 0, farTriangles: 0, cells: 0, scanned: 0 };
+  const env: WallEnv = { ...source.env, stones: true, receipt, only: key };
+  const cellOf = (x: number, z: number, coarse: boolean): Buffers => (!coarse && wallCellKey(x, z) === key ? target : NULL_BUF);
+  const lines = new Set<number>();
+  for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (const li of source.cellLines.get(key + dx * 1024 + dz) ?? []) lines.add(li);
+  for (const li of [...lines].sort((a, b) => a - b)) {
+    yield* layWall(env, source.lines[li], cellOf);
+    yield { fine: true, progress: false, stage: 'field-wall-stones' };
+  }
+  if (!target.index.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(target.positions), 3));
+  yield { fine: true, progress: false, stage: 'field-wall-stones' };
+  g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(target.normals), 3));
+  yield { fine: true, progress: false, stage: 'field-wall-stones' };
+  const colors = new Uint8Array(target.colors.length);
+  for (let i = 0; i < colors.length; i++) { const v = target.colors[i]; colors[i] = Math.round((v < 0 ? 0 : v > 1 ? 1 : v) * 255); }
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+  yield { fine: true, progress: false, stage: 'field-wall-stones' };
+  g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(target.uvs), 2));
+  g.setIndex(new THREE.BufferAttribute(Uint32Array.from(target.index), 1));
+  g.computeBoundingBox(); g.computeBoundingSphere();
+  return g;
 }
 
 /** A line's own stream: seeded by its two ends' places (never by the order the scan walked it). */

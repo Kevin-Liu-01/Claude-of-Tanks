@@ -8,8 +8,15 @@
 //   2. the walls (fieldWorks.ts): a stepped, uneven crown (top stones of their own heights, never above a metre), its
 //      heads wound to face out, fallen stretches and breaches along a long wall, fallen stones at its foot within the
 //      line's band, a line that overshoots the wall it meets cut back to it, indexed, the phones' fewer and longer;
+//   2b. the stone form (b17; gauntlet wave 121: "a smooth extruded strip with a blue-grey crazy-paving texture",
+//      "mortared, not dry-stone"): a cell's near form stone by stone, built when the camera comes near — its stones
+//      proud of the body's darkened faces (the dry joints), courses bigger at the foot, through-stones jutting from both
+//      faces, a coping of slabs on edge over the body, never above a metre, within the wall's band; the same stones
+//      whichever cell is laid first and however often; a cell's stones in its own square; within its triangle budget; the
+//      phones without it;
 //   3. the wiring: the walls on their own lit material (the print, the cascades), no shadow cast, the banks on the rock
-//      material; Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round;
+//      material; the stone tier built on demand near the camera, one cell a frame, the mid form hidden under it;
+//      Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round;
 //   4. the uploads (the ground lane's orientation audit, 2026-10-05): the three wall prints built by their real code
 //      (props.ts makeFieldStone, makeFieldMud, makeDryWall: the painters, the reversal, the canvas upload) and read the
 //      way WebGL samples them, against the painters' own rows.
@@ -19,8 +26,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { buildFieldWorks, trimFieldWorksOvershoots } from './fieldWorks.ts';
-import { DRY_WALL_FACE_V, DRY_WALL_TILE_M, paintDryWallBuffers } from './fieldWallFace.ts';
+import { buildFieldWallFine, buildFieldWallFineSteps, buildFieldWorks, trimFieldWorksOvershoots } from './fieldWorks.ts';
+import { DRY_WALL_CROWN_V, DRY_WALL_FACE_V, DRY_WALL_STONE_MID_V, DRY_WALL_STONE_V, DRY_WALL_TILE_M, paintDryWallBuffers } from './fieldWallFace.ts';
 import { FIELD_STONE_HEARTING_V, liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { FIELD_MUD_PLAIN_V, mudEarthOfGround, paintFieldMudBuffers, tintFieldMudToEarth } from './fieldMudSurface.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralTexture.ts';
@@ -59,6 +66,27 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
   }
   assert.ok(seam < inner * 2.5, `the print wraps along the wall (seam ${seam} against a column step ${inner})`);
   assert.equal(DRY_WALL_TILE_M, 2);
+  // (b17) the stone band: one stone's skin for the stone form's stones — no joint, no cell edge, a pale mottled stone;
+  // its own band, clear of the face's and the crown's, room for the tallest stone (0.34 m) about its middle
+  assert.ok(DRY_WALL_FACE_V[1] < DRY_WALL_CROWN_V[0] && DRY_WALL_CROWN_V[1] < DRY_WALL_STONE_V[0] && DRY_WALL_STONE_V[1] <= 1, 'three bands, apart');
+  assert.ok(DRY_WALL_STONE_MID_V - 0.17 / DRY_WALL_TILE_M >= DRY_WALL_STONE_V[0] - 1e-9 && DRY_WALL_STONE_MID_V + 0.17 / DRY_WALL_TILE_M <= DRY_WALL_STONE_V[1] + 1e-9,
+    'a 0.34 m stone fits the stone band about its middle');
+  let skinJoints = 0, skinLum = 0, skinN = 0, steps = 0;
+  for (let y = 0; y < size; y++) {
+    const v = 1 - (y + 0.5) / size;
+    if (v < DRY_WALL_STONE_V[0] || v > DRY_WALL_STONE_V[1]) continue;
+    for (let x = 0; x < size; x++) {
+      const i = y * size + x;
+      skinJoints += a.joint[i]; skinN++;
+      const l = (a.px[i * 4] + a.px[i * 4 + 1] + a.px[i * 4 + 2]) / 765;
+      skinLum += l;
+      // a joint is a sharp dark step along u: none in a stone's skin
+      if (x > 0) { const p = ((a.px[(i - 1) * 4] + a.px[(i - 1) * 4 + 1] + a.px[(i - 1) * 4 + 2]) / 765); if (p - l > 0.25) steps++; }
+    }
+  }
+  assert.equal(skinJoints, 0, 'no joint in the stone band');
+  assert.ok(steps < skinN * 0.002, `no cell edge either: no sharp dark step across it (${steps} of ${skinN})`);
+  assert.ok(skinLum / skinN > 0.62 && skinLum / skinN < 0.86, `a pale stone under the map's tone (${(skinLum / skinN).toFixed(3)})`);
 }
 
 // ---------------------------------------------------------------------------------------------- 2. the walls
@@ -124,7 +152,8 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.ok(built.receipt.farTriangles < built.receipt.triangles * 0.25, `the far form a quarter of the near or less (${built.receipt.farTriangles} against ${built.receipt.triangles})`);
   const fp = built.wallFarGeometry.attributes.position.array;
   let farOff = 0, farHigh = 0;
-  for (let i = 0; i < fp.length; i += 3) { if (Math.abs(fp[i + 2]) > 0.5) farOff++; if (fp[i + 1] - 2 > 1.0) farHigh++; }
+  // (the foot's half width reaches 0.51 m: 0.43 + 0.04 of wander + 0.04 of a station's own)
+  for (let i = 0; i < fp.length; i += 3) { if (Math.abs(fp[i + 2]) > 0.52) farOff++; if (fp[i + 1] - 2 > 1.0) farHigh++; }
   assert.equal(farOff, 0, 'the far form is the wall alone: no fallen stone, within its foot');
   assert.equal(farHigh, 0, 'the far form never above a metre');
   assert.ok(phone.receipt.farTriangles < built.receipt.farTriangles, 'the phones\' far form is fewer still');
@@ -132,6 +161,70 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
     b.wallGeometry.dispose(); b.wallFarGeometry.dispose();
     for (const c of b.wallCells) { c.near?.dispose(); c.far?.dispose(); }
   }
+}
+// (b17) the stone form: every cell of the long wall laid stone by stone, as the camera's coming near lays it
+{
+  const built = lay([[-200, 0, 200, 0]]);
+  assert.ok(built.fine && built.fine.lines.length === 1, 'the stone form\'s source: the wall lines and the cells they touch');
+  assert.equal(lay([[-200, 0, 200, 0]], true).fine, null, 'none on a phone');
+  const keys = built.wallCells.map((c) => c.key);
+  const forms = keys.map((key) => buildFieldWallFine(built.fine, key));
+  // the same stones whichever cell is laid first, and however often
+  const again = [...keys].reverse().map((key) => buildFieldWallFine(built.fine, key)).reverse();
+  forms.forEach((g, i) => assert.deepEqual(Array.from(g?.attributes.position.array ?? []), Array.from(again[i]?.attributes.position.array ?? []), 'deterministic, cell by cell'));
+  let tris = 0, high = 0, off = 0, outOfCell = 0, copeTops = 0, jut = 0;
+  const faceLum = [];
+  const CELL = 64;
+  forms.forEach((g, i) => {
+    if (!g) return;
+    tris += g.index.count / 3;
+    const p = g.attributes.position.array, n = g.attributes.normal.array, c = g.attributes.color.array;
+    const cx = (Math.floor(keys[i] / 1024) - 512) * CELL;
+    for (let v = 0; v < p.length / 3; v++) {
+      const x = p[v * 3], y = p[v * 3 + 1] - 2, z = p[v * 3 + 2];
+      if (y > 1.0) high++;
+      if (Math.abs(z) > 0.9) off++;
+      if (x < cx - 1 || x > cx + CELL + 1) outOfCell++;
+      // the faces seen across the wall (|normal.z| high): the body's (dark, the joint) and the stones' (bright, proud)
+      if (Math.abs(n[v * 3 + 2]) > 0.8 && y > 0.1 && y < 0.6) {
+        faceLum.push((0.2126 * c[v * 3] + 0.7152 * c[v * 3 + 1] + 0.0722 * c[v * 3 + 2]) / 255);
+
+      }
+      // the coping's top edges, over the body (whose crown and stones stand a coping's height lower)
+      if (n[v * 3 + 1] > 0.85 && y > 0.75) copeTops++;
+      // a through-stone's sides: faces along the wall, out past the body's faces, under the coping and off the heads (the
+      // stones on the faces have no sides, only their faces and their bevels)
+      if (Math.abs(n[v * 3]) > 0.9 && y > 0.1 && y < 0.55 && Math.abs(z) > 0.22 && Math.abs(x) < 195) jut++;
+    }
+  });
+  const metres = built.receipt.wallM;
+  assert.ok(forms.filter(Boolean).length >= built.wallCells.length - 1, 'every cell of a whole wall has its stone form');
+  assert.equal(high, 0, 'never above a metre');
+  assert.equal(off, 0, 'within 0.9 m of the wall\'s line');
+  assert.equal(outOfCell, 0, 'a cell\'s stones in its own square (a stone over its edge belongs to the cell of its middle)');
+  // the faces seen across the wall: the stones' (most of them) and, in the joints between, the body's at JOINT_SHADE of
+  // the stone (the dark of a dry joint, about half as bright as the stones round it)
+  faceLum.sort((a, b) => a - b);
+  const med = faceLum[faceLum.length >> 1], dark = faceLum.filter((l) => l < med * 0.6);
+  const darkMean = dark.reduce((a, b) => a + b, 0) / Math.max(1, dark.length);
+  assert.ok(dark.length > 0 && dark.length < faceLum.length * 0.35 && darkMean < med * 0.62,
+    `the stones over the body's darkened faces, the dark only in the joints (${dark.length} of ${faceLum.length} face vertices at ${(darkMean / med).toFixed(2)} of the median)`);
+  assert.ok(jut >= metres * 3, `through-stones jut from both faces (${jut} side vertices over ${metres.toFixed(0)} m)`);
+  assert.ok(copeTops >= metres * 6, `a coping of slabs on edge along the top (${copeTops} top vertices over 0.75 m over ${metres.toFixed(0)} m)`);
+  assert.ok(tris / metres < 330, `within its budget (${(tris / metres).toFixed(0)} triangles a metre)`);
+  assert.ok(tris > built.receipt.triangles * 3, `stone by stone: several times the mid form (${tris} against ${built.receipt.triangles})`);
+  // built in slices (the props' switch runs them within a frame budget): every few dozen stones a slice
+  {
+    const steps = buildFieldWallFineSteps(built.fine, keys[2]);
+    let slices = 0, step = steps.next();
+    while (!step.done) { slices++; step = steps.next(); }
+    const stones = step.value.index.count / 3 / 8;
+    assert.ok(slices >= stones / 80, `the stone form in slices (${slices} slices for about ${stones.toFixed(0)} stones)`);
+    step.value.dispose();
+  }
+  for (const g of [...forms, ...again]) g?.dispose();
+  built.wallGeometry.dispose(); built.wallFarGeometry.dispose();
+  for (const c of built.wallCells) { c.near?.dispose(); c.far?.dispose(); }
 }
 // a short wall (no breach, no fallen stretch): its two heads face out of it
 {
@@ -207,7 +300,20 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /batch\.castShadow = false;\n\s*batch\.receiveShadow = true;/, 'neither casts a shadow');
   assert.match(props, /batch\.perObjectFrustumCulled = true;/, 'a cell outside the frustum is culled');
   assert.match(props, /updateFineDetail\(cameraPos\);\n\s*updateFieldWallLod\(cameraPos\);/, 'the switch runs with the props\' other distances');
-  assert.match(props, /if \(near && cell\.near >= 0\) near\.setVisibleAt\(cell\.near, show\);\n\s*if \(far && cell\.far >= 0\) far\.setVisibleAt\(cell\.far, !show\);/, 'a cell shows one form or the other');
+  assert.match(props, /const midShown = show && !cell\.stones;\n\s*if \(midShown !== cell\.midShown\) \{ cell\.midShown = midShown; if \(near && cell\.near >= 0\) near\.setVisibleAt\(cell\.near, midShown\); \}/,
+    'a cell shows its stone form, its mid form or its far form: the mid hidden under the stones');
+  assert.match(props, /if \(far && cell\.far >= 0\) far\.setVisibleAt\(cell\.far, !show\);/, 'the far form past the near distance');
+  // (b17) the stone tier: built when the camera comes within its distance, one cell a frame, let go when it leaves
+  assert.match(props, /if \(wantStones && cell\.stones === null && !wallJob && lod\.fine\) \{\n\s*wallJob = \{ cell, steps: buildFieldWallFineSteps\(lod\.fine, cell\.key\) \};/, 'one cell\'s stone form at a time');
+  assert.match(props, /while \(!step\.done && performance\.now\(\) - start < FIELD_WALL_STONE_BUDGET_MS\) step = wallJob\.steps\.next\(\);/, 'built a few milliseconds a frame');
+  assert.ok(Number(/const FIELD_WALL_STONE_BUDGET_MS = (\d+(?:\.\d+)?);/.exec(props)[1]) <= 3, 'within a small share of a frame');
+  assert.match(props, /\} else if \(!wantStones && wallJob\?\.cell === cell\) \{\n\s*wallJob\.steps\.return\(null\);/, 'dropped when the camera turns away before it is done');
+  assert.match(props, /if \(cell\.stones\) \{ group\.remove\(cell\.stones\); cell\.stones\.geometry\.dispose\(\); \}/, 'let go (its geometry, never the shared material) when the camera leaves');
+  assert.match(props, /mesh\.castShadow = false; mesh\.receiveShadow = true; mesh\.matrixAutoUpdate = false;/, 'casting no shadow, as the other forms');
+  const fineTable = /const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = \{([^}]+)\}/.exec(props)[1];
+  const fine = Object.fromEntries([...fineTable.matchAll(/'?([a-z-]+)'?: (\d+)/g)].map((m) => [m[1], Number(m[2])]));
+  assert.ok(fine.high > 0 && fine.high <= 30 && fine.ultra <= 45 && fine.low === 0 && fine['mobile-high'] === 0 && fine.mobile === 0 && fine['mobile-low'] === 0,
+    `the stones within a shorter radius than the mid form, none at Low or on a phone (${JSON.stringify(fine)})`);
   const table = /const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = \{([^}]+)\}/.exec(props)[1];
   const near = Object.fromEntries([...table.matchAll(/'?([a-z-]+)'?: (\d+)/g)].map((m) => [m[1], Number(m[2])]));
   assert.ok(near.high <= 80 && near.ultra <= 110 && near['mobile-high'] <= 45 && near.mobile <= 35 && near['mobile-low'] <= 25,
