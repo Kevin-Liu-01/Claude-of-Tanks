@@ -258,7 +258,8 @@ const bundBank: RegionalBuilder = (ctx) => {
         const x = -pw / 2 + 0.8 + k * (pw - 1.6) / (cols - 1);
         sink.cylinder('plaster3', [x, ground, D / 2 - 0.6], 'y', top - ground - 0.5, 0.48, 10, SHADOWED, 0.42);
       }
-      sink.prism('plaster3', [facePoint(front, -pw / 2, top), facePoint(front, pw / 2, top), facePoint(front, 0, top + 2.4)], [0, 0, -1], 1.4, SHADOWED);
+      // the pediment over the columns, from 1.4 m back to the front's plane (counter-clockwise seen from the street)
+      sink.prism('plaster3', [facePoint(front, -pw / 2, top, -1.4), facePoint(front, pw / 2, top, -1.4), facePoint(front, 0, top + 2.4, -1.4)], front.out, 1.4, SHADOWED);
       const recess: Face = { origin: [0, 0, D / 2 - rec], u: [1, 0, 0], out: [0, 0, 1], width: pw };
       facePanel(sink, 'glass', recess, 0, 2.6, 0.02, pw - 1.6, 3.6, { decor: true, window: recess.out });
       for (let st = 0; st < 2; st++) for (let k = 0; k < 5; k++) windowUnit(sink, recess, -pw / 2 + 1.4 + k * (pw - 2.8) / 4, ground + st * sh + 0.7, 1.1, 2.2, BUND_WINDOW, look, 0.25);

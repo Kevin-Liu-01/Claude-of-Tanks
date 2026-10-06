@@ -789,9 +789,10 @@ const guildHall: RegionalBuilder = (ctx) => {
     const tanP = Math.tan(roof.pitchDeg * DEG), gh = Math.min(1.5, (rg.ridgeY - hallH) * 0.55), gb = gh / tanP;
     for (const side of [-1, 1]) {
       const gx = side * (rg.ridgeHalf + 0.05);
+      // the gablet's outer face is the cap the prism starts from: counter-clockwise seen from inside the hall
       const pts: Vec3[] = side > 0
-        ? [[gx, rg.ridgeTopY - gh, hzc + gb], [gx, rg.ridgeTopY - gh, hzc - gb], [gx, rg.ridgeTopY, hzc]]
-        : [[gx, rg.ridgeTopY - gh, hzc - gb], [gx, rg.ridgeTopY - gh, hzc + gb], [gx, rg.ridgeTopY, hzc]];
+        ? [[gx, rg.ridgeTopY - gh, hzc - gb], [gx, rg.ridgeTopY - gh, hzc + gb], [gx, rg.ridgeTopY, hzc]]
+        : [[gx, rg.ridgeTopY - gh, hzc + gb], [gx, rg.ridgeTopY - gh, hzc - gb], [gx, rg.ridgeTopY, hzc]];
       sink.prism('plaster', pts, [-side, 0, 0], 0.16, SHADOWED);
     }
     const ex = hx + roof.eave, ez = (hz1 - hz0) / 2 + roof.eave, low = hallH - roof.eave * tanP;
