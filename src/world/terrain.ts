@@ -4703,11 +4703,22 @@ void splatCompute() {
       // whole, the headland gone and the hedge far whatever the noise reads, and a bund's or a wall's field never reads
       // them — so the field's interior skips the three reads, exactly; and the wander, the headland's width and the
       // hedge bank's break are a pixel's detail: past a 1–2 m footprint they stand at their means and skip them too)
-      bool luEdge = bnd < 1.5 && edgeM < 9.0 + 1.3 * uLandB.y;
+      // (9.5 m: the far wander below hands over from the near one, their amplitudes a read's — the headland's 5.5 m is
+      // gone past the threshold whichever of them moves the edge)
+      bool luEdge = bnd < 1.5 && edgeM < 9.5 + 1.3 * uLandB.y;
       float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
       if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
         nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
+      // (mr4, the critics' aerial views, waves 100 and 106: "hard-edged unblended fallow colour masks") past the near
+      // wander's 1–2 m footprint every edge ran ruled and a plough was one flat mean. The far path keeps its own: a
+      // coarse wander of the boundary, ±3 m over 30–80 m (as the near wander hands over: their amplitudes sum to one
+      // read's), and the plough's far mottle — one read of the noise at its coarse level (an 84 m tile at level 2:
+      // mip-stable), Medium and High, only where a far pixel lies within 12 m + 1.3 margins of an edge or on a plough
+      float farW = 1.0 - luNear;
+      vec2 nFar = vec2(0.5);
+      if (farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5)))
+        nFar = textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0).rg;
       bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
       // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
@@ -4717,7 +4728,7 @@ void splatCompute() {
         || (track > 0.01 && (bnd < 0.5 || bnd > 1.5)) || (bnd > 1.5 && bnd < 2.5 && edgeM < 0.56);
       vec4 soil = uMeanD;
       if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), luNear);
-      float edgeW = edgeM + (n1h - 0.5) * 1.6 + (nEdge.x - 0.5) * 4.4;
+      float edgeW = edgeM + (n1h - 0.5) * 1.6 + (nEdge.x - 0.5) * 4.4 + (nFar.x - 0.5) * 6.0 * farW;
       // (waves 46–47, frontier's establishing view: "a smudged mosaic … without crisp parcel edges") the crop's 4 m
       // ragged thinning into its margin is a near-field read; past a footprint of a few decimetres it narrows to a
       // pixel or two, so a field ends on its edge seen from the ridge
@@ -4819,6 +4830,9 @@ void splatCompute() {
         float clodVis = uLandTier > 1.5 ? smoothstep(2.5, 6.0, clodL / max(footA, 1e-4)) * furrowVis : 0.0;
         float crack = 1.0 - smoothstep(0.0, 0.14, min(clodF, 1.0 - clodF));
         cropCol *= 1.0 + ((hC - 0.5) * 0.36 - crack * 0.45) * clodVis - 0.03 * (1.0 - clodVis);
+        // (mr4) its far mottle: the turned earth's damp and dry, its clods' clusters, ±16 % over 10–40 m where the
+        // furrows have gone to their mean (the coarse read above; a pixel's own furrows near the camera keep it off)
+        cropCol *= 1.0 + (nFar.y - 0.5) * 0.32 * farW * (1.0 - furrowVis);
         // the slice's own light and shade, not a breath of the rows' tone: its profile (sin x + 0.5 sin 2x + 0.22 sin 3x,
         // a lit gentle face and a steep shaded one, the higher harmonics faded with the pixel) shades its trough by the
         // soil's own occlusion and pales its dry crest, so a furrow reads as a ridge and a groove wherever it spans pixels

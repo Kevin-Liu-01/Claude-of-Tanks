@@ -220,11 +220,14 @@ function checkLandUseCut(text) {
   // (wave 83: a standing crop's canopy between the grass tier's blades — two reads of the noise at its own level, near
   // the camera only, Medium and High: the crop's own grain; the soil pass, 2026-10-05: the plough's clods are exact cells
   // of an integer hash, no read — its crumbs one read, High, near; the stubble's straw one read, High, near)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', ...Array(6).fill('nzq'), 'textureLod'],
-    'the block reads six noise fields, the canopy\'s two near reads, the crumbs\' and the straw\'s near reads, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (mr4, the far path: the edge's coarse wander and the plough's far mottle — one coarse read, Medium and High)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', ...Array(6).fill('nzq'), 'textureLod', 'textureLod'],
+    'the block reads six noise fields, the canopy\'s two near reads, the crumbs\' and the straw\'s near reads, the bend\'s and the far path\'s coarse levels and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
+    ['if (farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5))) nFar = ',
+      'textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0)'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
@@ -246,8 +249,14 @@ function checkLandUseCut(text) {
   const num = (re, label) => { const m = re.exec(block); assert.ok(m, label); return m.slice(1).map(Number); };
   const [t0, t1] = num(/bool luEdge = bnd < 1\.5 && edgeM < ([\d.]+) \+ ([\d.]+) \* uLandB\.y;/, 'the interior threshold');
   const [m0, m1] = num(/float marginM = uLandB\.y \* \(([\d.]+) \+ ([\d.]+) \* n1h\);/, 'the margin');
-  const [n1hAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the edge breaker');
-  const [, wanderAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the wander');
+  // (mr4: the far wander hands over from the near one — nEdge is mixed back to its mean by luNear, the far term weighed
+  // by farW = 1 − luNear — so the edge moves by the larger of their amplitudes, never their sum)
+  const [n1hAmp, nearAmp, farAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+) \+ \(nFar\.x - 0\.5\) \* ([\d.]+) \* farW;/, 'the edge breaker and the wanders');
+  assert.ok(/float farW = 1\.0 - luNear;/.test(block) && /nEdge = mix\(vec3\(0\.5\), vec3\(/.test(block) && /, luNear\);/.test(block),
+    'the near wander fades with luNear and the far one comes in with 1 − luNear');
+  const wanderAmp = Math.max(nearAmp, farAmp);
+  const [f0, f1] = num(/edgeM < ([\d.]+) \+ ([\d.]+) \* uLandB\.y\) \|\| \(crop > 3\.5 && crop < 4\.5\)\)\)\s*nFar = /, 'the far read\'s zone');
+  assert.ok(f0 >= t0 && f1 >= t1, 'the far read\'s zone holds the near one');
   // (farmland: the fade narrows with the footprint, never past the near field's width — the proof takes that cap)
   assert.ok(/smoothstep\(marginM, marginM \+ fadeM, edgeW\)/.test(block), 'the crop fades into the margin over fadeM');
   const [fade] = num(/float fadeM = min\(([\d.]+), /, 'the crop\'s fade into the margin, at its widest');
