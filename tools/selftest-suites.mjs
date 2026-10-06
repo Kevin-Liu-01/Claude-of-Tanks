@@ -771,6 +771,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainWetLayer.selftest.mjs',
     'src/world/groundContrastStep2.selftest.mjs',
     'src/world/snowRockSlope.selftest.mjs',
+    'src/world/roadPuddleGloss.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
