@@ -81,6 +81,10 @@ export interface ArchitectureStyle {
 export interface YardStyle {
   /** the plan kinds that keep a yard */
   kinds: readonly string[];
+  /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
+  graves?: boolean;
+  /** the yard never takes the plot's front (+z, the door's side): a church's approach stays open */
+  keepFront?: boolean;
   /** the destructible kind of the enclosure's modules (a fence or a low wall) */
   fence: string;
   /** the destructible hung in the gate's gap, or none (an open gap) */
@@ -92,10 +96,6 @@ export interface YardStyle {
   shedSize?: readonly [number, number];
   /** kitchen-garden beds in the yard */
   garden: boolean;
-  /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
-  graves?: boolean;
-  /** the yard never takes the plot's front (+z, the door's side): a church's approach stays open */
-  keepFront?: boolean;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

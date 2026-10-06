@@ -555,6 +555,13 @@ where it does not fit. No house body or plot moves. The props group carries the 
 `yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
 its census (obstacles rise by the modules, gates and sheds).
 
+**The churchyard.** A kit that names `churchyard` (a `YardStyle` with `graves` and `keepFront`: the Hessian and the
+Franconian kits) walls one round its church on a map that opts in (props `churchyard: true`): the yards' planner and
+clearances on the church's freest side but its front (the door's side, the approach), the kit's stone wall with a gate,
+and graves where a yard has its beds (`graveParts`: kerbed beds under slabs, stone crosses and iron crosses; dressing,
+left out on phones). It runs after the house yards on a stream of its own, so they stand as before; the props group
+carries its counts (`userData.regionalChurchyards`), and a map that opts in regenerates its shard and re-pins its census.
+
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
 dressing. Plots are not all deep: a market row is 12 × 5.2 m, a yard shed 11.7 × 7.2 m, a farmhouse lot 15 × 9 m. A

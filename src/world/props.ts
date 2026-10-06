@@ -17,6 +17,8 @@ import {
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
 import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
+import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
+import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
@@ -144,8 +146,7 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
-import { YARD_SHED, gardenParts, graveParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
-import type { YardStyle } from './maps/regional/types.ts';
+import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
@@ -7089,11 +7090,19 @@ ${snowCap ? `
   // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
   function placeRegionalYards(): void {
     if (!regionalArchitecture) return;
-    if (regionalArchitecture.yard) placeYards(regionalArchitecture.yard, seed + 1307, 'regionalYards');
-    // (the facades lane, 2026-10-06) the churchyard after the house yards, on a stream of its own: they stand as before
-    if (P.churchyard && regionalArchitecture.churchyard) placeYards(regionalArchitecture.churchyard, seed + 1311, 'regionalChurchyards');
+    if (regionalArchitecture.yard) placeYards(regionalArchitecture.yard, seed + 1307);
+    // (the facades lane, 2026-10-06) the churchyard after the house yards, on a stream of its own (they stand as before),
+    // its counts under their own key
+    if (P.churchyard && regionalArchitecture.churchyard) {
+      const houseYards = group.userData.regionalYards;
+      delete group.userData.regionalYards;
+      placeYards(regionalArchitecture.churchyard, seed + 1311);
+      group.userData.regionalChurchyards = group.userData.regionalYards;
+      if (houseYards) group.userData.regionalYards = houseYards;
+      else delete group.userData.regionalYards;
+    }
   }
-  function placeYards(yard: YardStyle, streamSeed: number, statsKey: string): void {
+  function placeYards(yard: YardStyle, streamSeed: number): void {
     if (!regionalArchitecture) return;
     const style = regionalArchitecture;
     const kinds = new Set(yard.kinds);
@@ -7115,7 +7124,7 @@ ${snowCap ? `
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
     // the stage's counts on the props group (receipts and captures read them)
     const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
-    group.userData[statsKey] = stats;
+    group.userData.regionalYards = stats;
     // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
     // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
     // the field's wheat, its beds hidden in it)

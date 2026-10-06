@@ -817,6 +817,9 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     sourced: { plaster: true, wood: true },
   },
   builders: HESSIAN_BUILDERS,
+  // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
+  // (yards.ts; a map opts in: props `churchyard: true`; the facades lane, 2026-10-06)
+  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
   // limewash from white to pale ochre, plain tiles from new red to old brown, a wet upland climate
   weather: {
     plaster: [[1, 1, 1], [1, 0.97, 0.9], [1, 0.94, 0.84], [0.97, 0.96, 0.93], [1, 0.93, 0.89]],
@@ -827,9 +830,6 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   wear: 0.22,
   // the farmyards: a picket fence round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
-  // the churchyard on the church's freest side, walled in stone, its graves in place of beds (a map opts in: props
-  // `churchyard: true`; the facades lane, 2026-10-06)
-  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
 });
 
 export { hashSeed };
