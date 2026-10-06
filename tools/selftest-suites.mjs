@@ -824,6 +824,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
+    'src/engine/shadowReceiverOnly.selftest.mjs', // 2026-10-04 (visual/shadow-bias): the ground takes no caster's acne terms
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
@@ -1188,6 +1189,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    // the scenery lane (after wave 57): the telegraph poles' weathered timber
+    'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
@@ -1250,6 +1253,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
     'src/world/horizonMassif.selftest.mjs',
     'src/world/horizonPanorama.selftest.mjs',
+    // the mountains lane (2026-10-05): the far earth's deck greying is the dome's (sky.ts keeps it inline, so the copy is held here)
+    'src/world/horizonPanoramaDeck.selftest.mjs',
+    // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
+    'src/world/horizonPanoramaClouds.selftest.mjs',
+    'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
