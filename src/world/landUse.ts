@@ -49,9 +49,9 @@ export interface LandUseProfile {
   region: LandRegion;
   /** Salt of the field hash (two maps with one layout still crop differently). */
   salt: number;
-  /** The map-revival lane (2026-10-05, Frontier Basin): a river floor's water meadows — every field point within
-   * `halfWidthM` of the segment (ax, az)–(bx, bz) is a hay meadow or a pasture (by the field's hash), whatever the
-   * block's rotation. Absent: none. */
+  /** The map-revival lane (2026-10-05, Frontier Basin): a river floor's water meadows — every field whose centre lies
+   * within `halfWidthM` of the segment (ax, az)–(bx, bz) is a hay meadow or a pasture (by the field's hash), whatever
+   * the block's rotation; a whole field, never a band cut across one. Absent: none. */
   meadow?: { ax: number; az: number; bx: number; bz: number; halfWidthM: number };
 }
 
@@ -203,7 +203,7 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     // off the lanes, hedges on many short ends (the lynchet banks carry their own), and the river's floor in water meadows
     strength: 1, heading: 0.95, blockU: 200, blockV: 45, maxSplit: 4, marginM: 1.6, trackShare: 0.5, hedgeShare: 0.55,
     warpM: 18, region: 'strip', salt: 41,
-    meadow: { ax: -512, az: 34, bx: 512, bz: -34, halfWidthM: 46 },
+    meadow: { ax: -512, az: 34, bx: 512, bz: -34, halfWidthM: 60 },
   },
   // 2026-10-03, the rebuilt maps' regions (the maps lane through the coordinator). Each heading follows the map's own
   // roads (the length-weighted dominant road direction inside the square), so the fields line up with the lanes.
@@ -464,9 +464,15 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   let crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
   const meadow = profile.meadow;
   if (meadow) {
+    // the field's centre in the block frame (its block's row, its column's cut k), back through the grid's rotation to
+    // the warped plane (the warp's few metres are left aside: the test is the field's, so every point of it agrees)
+    const w = (alongU ? blockU : blockV) / split;
+    const uc = (alongU ? col * blockU + (k + 0.5) * w : (col + 0.5) * blockU) - shift;
+    const vc = alongU ? (row + 0.5) * blockV : row * blockV + (k + 0.5) * w;
+    const cx = ch * uc - sh * vc, cz = sh * uc + ch * vc;
     const ex = meadow.bx - meadow.ax, ez = meadow.bz - meadow.az, len2 = ex * ex + ez * ez;
-    const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - meadow.ax) * ex + (z - meadow.az) * ez) / len2)) : 0;
-    if (Math.hypot(x - meadow.ax - ex * t, z - meadow.az - ez * t) < meadow.halfWidthM) {
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - meadow.ax) * ex + (cz - meadow.az) * ez) / len2)) : 0;
+    if (Math.hypot(cx - meadow.ax - ex * t, cz - meadow.az - ez * t) < meadow.halfWidthM) {
       crop = (luRand(fieldA, fieldB, salt + 53) < 0.6 ? LAND_CROP.hay : LAND_CROP.pasture) as LandCropId;
     }
   }
