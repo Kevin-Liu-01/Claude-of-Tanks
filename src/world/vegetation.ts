@@ -802,7 +802,14 @@ export function makeGrassCardTexture(
   const nBlades = variant === 0 ? 22 : 18;
   for (let b = 0; b < nBlades; b++) {
     const dry = rng() < dryChance;
-    const bx = 4 + rng() * (s - 8);
+    // (ground lane, wave 87: "a crisp dark X-shaped mark on the ground … a leftover editor or debug marker") a sparse dry
+    // card spread its blades' bases over its whole width, so its densest band — the one that survives the alpha test at
+    // range — was a horizontal stripe low on the card, and a lone dry tuft's two crossed cards drew two crossed stripes on
+    // bare soil (the cards' roots and a squashed tuft were ruled out in the lab: neither a faded foot nor a sunk card moved
+    // the mark). A dry tuft is a tuft: its blades rise from the card's middle third and fan out, so at range it is a narrow
+    // dense foot under a spreading crown; the meadow's card keeps its strip of sward
+    const bu = rng();
+    const bx = variant === 0 ? 4 + bu * (s - 8) : s * 0.5 + (bu - 0.5) * 0.34 * s;
     // Each metre-wide card holds a sward, not a cluster of broad spear leaves.
     // Ground cover 2026-09-12: 70 % of the 1049e4e blade width (2.1-4.9 px on
     // the 128 px card, was 1.35-3.15). The 45 % blades were too thin to
@@ -810,8 +817,9 @@ export function makeGrassCardTexture(
     // pasture read as a bare sheet where the reference showed dark turf.
     const bw = 2.1 + rng() * 2.8;
     const tall = rng();
-    const tipX = bx + (rng() - 0.5) * (variant === 0 ? 45 : 65);
     const tipY = s - (0.35 + 0.62 * tall) * s;
+    const lean = rng() - 0.5;
+    const tipX = variant === 0 ? bx + lean * 45 : Math.min(s - 3, Math.max(3, bx + (bx - s * 0.5) * 1.2 + lean * 0.5 * (s - tipY)));
     const cpX = bx + (tipX - bx) * (0.25 + rng() * 0.3);
     const cpY = s - (s - tipY) * (0.45 + rng() * 0.2);
     const grad = ctx.createLinearGradient(0, s, 0, tipY);
@@ -843,7 +851,9 @@ export function makeGrassCardTexture(
     for (let f = 0; f < 3; f++) {
       const fx = 6 + rng() * (s - 12), fy = s - (0.45 + 0.4 * rng()) * s;
       const warm = rng() < 0.55;
-      ctx.fillStyle = warm ? css(0.13, 0.75, 0.62) : css(0.14, 0.12, 0.86);
+      // (ground lane, wave 87: "pale, colorless specks … at a uniform size and density") the pale accents a cream at the
+      // grass's own value, not paper white
+      ctx.fillStyle = warm ? css(0.13, 0.75, 0.62) : css(0.13, 0.32, 0.64);
       for (let p = 0; p < 4; p++) {
         ctx.beginPath();
         ctx.arc(fx + (rng() - 0.5) * 3, fy + (rng() - 0.5) * 2, 0.7 + rng() * 0.8, 0, Math.PI * 2);
@@ -3909,7 +3919,9 @@ function* vegetationBuildSteps(
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
-    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight * cropHeight;
+    // (ground lane, wave 87) a low crop's tuft — stubble, a karst field's weeds, a vineyard's — was squashed to a third of
+    // its height at its full width, two crossed cards lying almost flat; it keeps its aspect now (narrower as it is lower)
+    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28) * Math.min(1, Math.pow(cropHeight, 0.8)); t[5] = tuftHeight * cropHeight;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }

@@ -494,8 +494,9 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
 
 /**
  * A farm track's wheel lanes (wave 83, Verdant: "crisp, uniform dark-grey stripes straight into the distance like painted
- * rails"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's, and its half-width swells and
- * narrows 0.19–0.29 m along the track, the two lanes on their own phases. u is the track's along coordinate — the
+ * rails"; wave 86: "constant-width strips"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's
+ * (and a few centimetres by the metre), and its half-width swells and narrows 0.12–0.36 m along the track over 5–17 m
+ * (wave 88: the swell of centimetres was not visible at the camera's range), the two lanes on their own phases. u is the track's along coordinate — the
  * unwarped grid's u (the slow boundary warp turns a track by well under a degree across a lane) — and side ±1 the side
  * of the track's line (the sign of sV). LAND_USE_GLSL's lu_laneC and lu_laneW are the same sums; the material sinks
  * the lanes there and the grass tiers keep them bare (tallGrass.ts, vegetation.ts: laneQ).
@@ -507,10 +508,10 @@ export function trackLaneMeander(u: number): number {
 }
 export function trackLaneCentre(u: number, side: number): number {
   return 0.85 + 0.11 * (0.50 * Math.sin(u * 0.53 + side * 1.9) + 0.32 * Math.sin(u * 1.37 + side * 0.7 + 1.1)
-    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4));
+    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4)) + 0.025 * Math.sin(u * 7.9 + side * 3.1);
 }
 export function trackLaneHalfWidth(u: number, side: number): number {
-  return 0.24 * (1 + 0.22 * Math.sin(u * 0.91 + side * 2.6 + 0.4));
+  return 0.24 * (1 + 0.32 * Math.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * Math.sin(u * 1.13 + side * 1.3 + 2.0));
 }
 
 function smooth(a: number, b: number, x: number): number {
@@ -664,9 +665,10 @@ float lu_sV(vec2 p, vec4 b, vec4 k, ivec2 t) {
 // at the along coordinate u = dot(p, uLandRot), side ±1 the mid-line's side (landUse.ts trackLaneCentre /
 // trackLaneHalfWidth / trackLaneMeander)
 float lu_laneC(float u, float side) {
-  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4));
+  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4))
+    + 0.025 * sin(u * 7.9 + side * 3.1);
 }
-float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.22 * sin(u * 0.91 + side * 2.6 + 0.4)); }
+float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.32 * sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * sin(u * 1.13 + side * 1.3 + 2.0)); }
 float lu_laneM(float u) { return 0.30 * sin(u * 0.105 + 0.7) + 0.18 * sin(u * 0.043 + 2.3); } // the lanes' common meander
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
   vec4 a, b, k; ivec2 t;
