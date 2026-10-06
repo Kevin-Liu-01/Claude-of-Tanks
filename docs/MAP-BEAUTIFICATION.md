@@ -7334,6 +7334,29 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
 
+### 2026-10-05 — one wind per battlefield (the skies lane)
+
+**The combat FX lane:** on Verdant the volumetric clouds drifted toward ~205° while the trees and the grass swayed toward
+~37° — the cloud layer fell back to a drift derived from the sun's azimuth (+90°) where a map authored none, the
+vegetation to its ground profile's prevailing wind, and on most maps the two nearly opposed (smoke follows the clouds, so
+a kill's column leaned against the trees' sway).
+
+**One surface wind per map** (`world/sceneWind.ts`, a table every reader can import without a map config): the ocean
+block's authored wind (the waves are the most visible wind on a coast), else the ground profile's grass wind, else the
+clouds' authored drift un-veered, else the legacy drift un-veered; its speed the ocean's, else 0.6 of the cloud regime's
+wind aloft, else 4 m/s. **The clouds' drift is that wind veered 25° with height** (`SCENE_WIND_VEER_DEG`: real winds veer
+through the friction layer, a few tens of degrees; they never oppose): the battle's sky preset carries the map's scene
+wind beside its cloudscape (main.ts, worldActivationRuntime.ts) and the cloud layer's derivation takes it in place of both
+the sun-derived drift and a cloudscape's own (`cloudPresets.ts`). A stub with no map id carries none. Mars drifts as it
+did (its authored drift is its scene wind's). Street rows are axial, so a reversed drift turns them only by the
+difference modulo 180°.
+
+**Readers:** the clouds read it now; the vegetation sway (`treeClimate.ts`), the grass (`tallGrass.ts`'s profile wind),
+the smoke and the ocean read `sceneWindFor(mapId)` as their lanes adopt it. `sceneWind.selftest` re-derives every row from
+its sources and pins every map's cloud drift to its surface wind plus the veer (within 45°; the old drift was more than
+90° from it on 15 maps).
+
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

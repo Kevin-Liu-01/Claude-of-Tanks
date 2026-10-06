@@ -827,6 +827,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
+    // clouds' drift veered from it (never opposed)
+    'src/world/sceneWind.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
     'src/engine/cloudShadeMap.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): the terrain's program counted as the GPU binds it — the expanded
