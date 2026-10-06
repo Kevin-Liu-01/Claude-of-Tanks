@@ -68,6 +68,12 @@ const post = here('./post.ts'), sky = here('./sky.ts'), clouds = here('./volumet
 assert.match(post, /bool hazeLaw = uAtmo > 0\.5 && uHazeLaw\.x > 0\.0;/, 'the law runs over the physically based sky only');
 assert.match(post, /vec3 trans = hazeTransmittance\( sig, rayT, hazeLayerMean\( hzY0 \* uHazeLaw\.y, hzY1 \* uHazeLaw\.y \), uHazeChroma \);\s*texel\.rgb = texel\.rgb \* trans \+ hazeCol \* \( 1\.0 - trans \);/);
 assert.match(post, /float hzD = max\( -viewZ - 85\.0, 0\.0 \);/, 'the legacy law stays for the mobile tier');
+// 2026-10-05 (the skies lane; the ground lane's local-contrast attribution): the middle distances' QA knobs default to the
+// law itself — w0 1, so hazeMiddle returns the law's colour untouched — and run after it, whole again by AERIAL_MID_FAR_M
+assert.match(post, /const AERIAL_MID_W0 = 1;\s*const AERIAL_MID_FAR_M = 1200;\s*const AERIAL_MID_HUE = 0;/, 'the knobs default to the law');
+assert.match(post, /if \( uHazeMid\.x >= 0\.999 \) return hazed;/, 'at w0 1 the law\'s colour is returned untouched');
+assert.match(post, /texel\.rgb = texel\.rgb \* trans \+ hazeCol \* \( 1\.0 - trans \);\s*texel\.rgb = hazeMiddle\( texel\.rgb, hzSurface, hazeCol, sig, rayT, hzY0, hzY1 \);/, 'after the law, from the surface it hazed');
+assert.match(post, /lightTune\('AERIAL_MID_W0', AERIAL_MID_W0\)/, 'live through the QA hook');
 assert.match(post, /law\.set\(\s*hazeSigma\(atmosphere\.fogDensity\),\s*hazeLayerInverseScale\(\),/, 'σ from the map\'s air, every frame');
 assert.match(post, /\(u\.uHazeLaw\.value as THREE\.Vector4\)\.x = 0;/, 'the legacy dome switches the law off');
 assert.match(post, /\* \( hazeLaw \? uDetailW : 1\.0 \)/, 'the green hue clamp keeps only its sniper-scope share on the law');

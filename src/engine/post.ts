@@ -424,6 +424,18 @@ const AERIAL_HAZE_LUM_CAP = 0.385;
 // the share of the authored fog tint, the legacy directional tints' strength and the cap (lightTune A/B hooks).
 const AERIAL_FOG_MIX_SCALE = 1;
 const AERIAL_TINT_MIX = 1;
+/**
+ * 2026-10-05 (the skies lane; the ground lane's local-contrast attribution: the aerial pass the largest loss at
+ * 100-600 m — Railyard's middle bands 0.14-0.28 against the photographs' 0.47-0.54 — and the coordinator's brief: less
+ * transmittance loss there, the hue shift and the distance cue kept): the haze law's middle distances, as QA knobs whose
+ * defaults are the law itself. The optical depth takes w(d) = mix(AERIAL_MID_W0, 1, smoothstep(0, AERIAL_MID_FAR_M, d)):
+ * lighter near the camera, the whole law again by AERIAL_MID_FAR_M, so the far ranges, the panorama's bake and the cloud
+ * banks (which share the law) keep theirs. AERIAL_MID_HUE 1 applies w to the luminance only: the hazed colour keeps the
+ * full law's chromaticity — the hue shift — at the lighter veil's level.
+ */
+const AERIAL_MID_W0 = 1;
+const AERIAL_MID_FAR_M = 1200;
+const AERIAL_MID_HUE = 0;
 // r9 SNIPER DE-HAZE: main.ts already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -981,6 +993,9 @@ const AerialShader = {
     uHazeLaw: { value: new THREE.Vector4(0, 1 / HAZE_LAYER_SCALE_M, HAZE_TINT_SHARE, HAZE_TARGET_SKY_K) },
     uHazeZoom: { value: 1 },
     uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+    // 2026-10-05: the middle distances' knobs (AERIAL_MID_*): x the optical depth's scale at the camera, y where the law is
+    // whole again (m), z 1 for the luminance only (the full law's chromaticity kept)
+    uHazeMid: { value: new THREE.Vector3(AERIAL_MID_W0, AERIAL_MID_FAR_M, AERIAL_MID_HUE) },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
     uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
     // aa-r1: composer-buffer texel size for the firefly clamp's diagonal
@@ -1033,6 +1048,7 @@ const AerialShader = {
     uniform vec4 uHazeLaw;
     uniform float uHazeZoom;
     uniform vec3 uHazeChroma;
+    uniform vec3 uHazeMid;
     uniform float uDetailW;
     uniform float uCloudShade;
     uniform vec2 uInvSize;
@@ -1042,6 +1058,17 @@ const AerialShader = {
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
+    // 2026-10-05 (AERIAL_MID_*, the law by default): the middle distances' optical depth × w(d), whole again by
+    // uHazeMid.y; with uHazeMid.z the lighter veil's luminance at the full law's chromaticity (its hue shift kept)
+    vec3 hazeMiddle( vec3 hazed, vec3 surface, vec3 hazeCol, float sig, float rayT, float hzY0, float hzY1 ) {
+      if ( uHazeMid.x >= 0.999 ) return hazed;
+      float w = mix( uHazeMid.x, 1.0, smoothstep( 0.0, uHazeMid.y, rayT ) );
+      vec3 transW = hazeTransmittance( sig * w, rayT, hazeLayerMean( hzY0 * uHazeLaw.y, hzY1 * uHazeLaw.y ), uHazeChroma );
+      vec3 hazedW = surface * transW + hazeCol * ( 1.0 - transW );
+      if ( uHazeMid.z < 0.5 ) return hazedW;
+      vec3 lw = vec3( 0.2126, 0.7152, 0.0722 );
+      return hazed * ( dot( hazedW, lw ) / max( dot( hazed, lw ), 1e-5 ) );
+    }
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -1193,8 +1220,10 @@ const AerialShader = {
           // length times the layer's path-averaged density between the camera's height and the surface's (1 at the
           // datum); the sniper de-haze scales σ and the far band keeps half of it (the uHazeFull note)
           float sig = uHazeLaw.x * max( uHazeZoom, 0.5 * smoothstep( 430.0, 780.0, rayT ) );
+          vec3 hzSurface = texel.rgb;
           vec3 trans = hazeTransmittance( sig, rayT, hazeLayerMean( hzY0 * uHazeLaw.y, hzY1 * uHazeLaw.y ), uHazeChroma );
           texel.rgb = texel.rgb * trans + hazeCol * ( 1.0 - trans );
+          texel.rgb = hazeMiddle( texel.rgb, hzSurface, hazeCol, sig, rayT, hzY0, hzY1 );
         } else {
           float x = -viewZ * uDensity * hzLayer;
           float f = 1.0 - exp( -x * x );
@@ -2781,6 +2810,8 @@ export function createPost(
       const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
       law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
       hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
+      (u.uHazeMid.value as THREE.Vector3).set(lightTune('AERIAL_MID_W0', AERIAL_MID_W0),
+        Math.max(1, lightTune('AERIAL_MID_FAR_M', AERIAL_MID_FAR_M)), lightTune('AERIAL_MID_HUE', AERIAL_MID_HUE));
     } else {
       (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }
