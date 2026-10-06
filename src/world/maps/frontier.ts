@@ -128,12 +128,27 @@ export default {
   props: {
     // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
     architecture: 'hessian',
+    // The landmarks lane (2026-10-05; src/world/landmarks/): on the square's north-west plot the Rathaus of a Hessian
+    // market village — Alsfeld's kind: the stone arcade, two storeys of render in an oak frame, the framed gables and
+    // the two corner turrets under slate spires, its front to the square; on the south-east plot the village church,
+    // its west tower with the clock and the spire toward the square, the nave and the chancel to the east. Each within
+    // the agreed 24 × 16 m plot.
+    landmarks: [
+      // (each at the edge of the square's paved apron, a stamped road out to 32 m, as the plot's old building stood:
+      // a 0.5 m road-core margin; the church turned so its length lies along the plot's 24 m, its tower to the square)
+      { kind: 'townHall', x: -34, z: 40, yawDeg: 180, name: 'the Rathaus on the square', roadMargin: 0.5,
+        params: { frame: true, width: 20, depth: 11, storeys: 3, tower: 28 } },
+      { kind: 'church', x: 34, z: -40, yawDeg: -90, name: 'the village church', roadMargin: 0.5,
+        params: { tradition: 'western', length: 15.8, width: 9.5, tower: 30, walls: 'render' } },
+    ],
     plan: ['farmhouse', 'tavern', 'barn', 'schoolhouse', 'cottage', 'granary', 'depot', 'cottage', 'farmhouse',
       'woodshed', 'cornershop', 'barn', 'cottage', 'ruin', 'farmhouse', 'depot', 'cottage', 'granary', 'barn',
       'woodshed', 'cottage', 'ruin'],
     // The landmarks: the church on the square, the two mills on the river, the farm estates on the slopes.
+    // The landmarks lane (2026-10-05, the plots agreed with the map-revival lane): the church's and the chapel's plots
+    // carry the set pieces below — vacated here, so every other site keeps its draws and stands where it stood.
     plannedSites: [
-      { structure: 'church', x: -34, z: 40, yawDeg: 180 }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0 },
+      { structure: 'church', x: -34, z: 40, yawDeg: 180, vacated: true }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0, vacated: true },
       { structure: 'mill', x: -370, z: 58, yawDeg: 180 }, { structure: 'mill', x: 352, z: -64, yawDeg: 0 },
       // the farm estates by the farm lanes: house, barn and granary round a yard (sited on the slope's level shelves,
       // so the halves differ by a few metres)
