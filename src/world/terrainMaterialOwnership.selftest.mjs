@@ -174,6 +174,9 @@ function checkSourceContract(text) {
     'uSaltCrust',
     // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
     'uPaveSlab',
+    // ground lane (2026-10-05, the road styles): the road layer's size and first row in the mask stack, on when a styled
+    // net bakes one (vec4, no sampler — the layer rides in uMask's unit, fetched exactly)
+    'uRoadClass',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -219,8 +222,10 @@ function checkLandUseCut(text) {
   // (wave 69's field layout: a field's wet and dry follow its fold and its own draw — the round 43 m noise is gone)
   // (wave 83: a standing crop's canopy between the grass tier's blades — two reads of the noise at its own level, near
   // the camera only, Medium and High: the crop's own grain)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', ...Array(6).fill('nzq'), 'textureLod'],
-    'the block reads six noise fields, the canopy\'s two near reads, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (2026-10-05, Ruinspires' hardstanding: its grain and stains, Medium and High; its cracks, High; Ironworks' slag,
+  // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(7).fill('nzq'), 'textureLod'],
+    'the block reads six noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
@@ -230,6 +235,10 @@ function checkLandUseCut(text) {
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
     ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
       'nz(uv, 1.7, vec2(0.31, 0.77))'],
+    ['float hGrain = uLandTier > 0.5 ? ', 'nz(uv, 1.9, vec2(0.31, 0.57))'],
+    ['float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(', 'nz(uv, 0.9, vec2(0.71, 0.29))'],
+    ['float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, ', 'nzq(uv, 0.17, vec2(0.37, 0.83))'],
+    ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
