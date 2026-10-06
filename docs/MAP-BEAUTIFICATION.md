@@ -7330,6 +7330,30 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
 
+### 2026-10-06 — the haze's middle distances: less veil at 100–1200 m, the hue shift and the distance cue kept (the skies lane)
+
+**The ground lane's local-contrast attribution** (local contrast: the std of log luminance against its 25 px mean, the
+ground below the production frame's skyline, eight bands far to near): the aerial pass was the largest single loss — the
+establishing views' middle bands at 0.14–0.28 against the photographs' 0.47–0.54 (Railyard against rail_yard_1), the pass
+off +48 to +62 %. Measured on the same frames and metric (`$SP/p2/aerial/lc1`, Railyard, Verdant, Frontier and Foundry
+establishing; variants set at runtime on one lab root):
+- **The loss is the haze law's in-scatter veil.** The law off (σ → 0, the rest of the pass on) equals the pass off to the
+  third decimal (+57.0 against +56.9 %); the world-anchored cloud-shade patches +0.5 %; extinction alone (the target
+  black) recovers the same +56 % but takes the distance cue with it (the far third 9–16 L* darker against the near).
+- **The middle distances** (`post.ts hazeMiddle`, `AERIAL_MID_*`): the optical depth × w(d), from `AERIAL_MID_W0` at the
+  camera to the whole law by `AERIAL_MID_FAR_M` (1200 m — the far ranges, the panorama's bake and the cloud banks keep
+  theirs), on the luminance only (`AERIAL_MID_HUE` 1: the hazed colour keeps the law's chromaticity at the lighter veil's
+  level). Mean over the four frames: w0 0.4 +16 %; **w0 0.2 +23 %** (Railyard +19, Verdant +26, Frontier +28, Foundry
+  +19 %); the distance cue +1.4 L* (kept), the far third's hue shift within 0.3 b* (kept; the optical-depth form without
+  the luminance rule shifted it 2.9 b*), the darkest 1 % 7–14 levels deeper (Railyard 61 → 52, Verdant 46 → 32), the
+  jitter meter +1.4 points (the pass off +2.55), the far bands unchanged. A global σ × 0.6 gave +15 % and cost the cue
+  (−1.3 L*); a dimmer deck target (0.21) +14 % on the deck maps and −4.4 L* of cue.
+- Railyard's middle bands 0.23/0.28/0.23 → 0.29/0.35/0.27: part of the way; with the ground lane's own fixes (its
+  `allground` factors) the four frames gain +37 % together (Verdant +52 %).
+QA knobs of the same names (1 / 1200 / 0: the plain law). Receipt: `hazeLaw.selftest` (the defaults; the function run
+through the GLSL subset with the law's own chunk — the plain law at w0 1, less veil near the camera, the whole law from
+1200 m, the law's chromaticity on the luminance rule, every branch).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

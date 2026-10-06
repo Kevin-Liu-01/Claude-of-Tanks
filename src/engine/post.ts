@@ -427,15 +427,19 @@ const AERIAL_TINT_MIX = 1;
 /**
  * 2026-10-05 (the skies lane; the ground lane's local-contrast attribution: the aerial pass the largest loss at
  * 100-600 m — Railyard's middle bands 0.14-0.28 against the photographs' 0.47-0.54 — and the coordinator's brief: less
- * transmittance loss there, the hue shift and the distance cue kept): the haze law's middle distances, as QA knobs whose
- * defaults are the law itself. The optical depth takes w(d) = mix(AERIAL_MID_W0, 1, smoothstep(0, AERIAL_MID_FAR_M, d)):
- * lighter near the camera, the whole law again by AERIAL_MID_FAR_M, so the far ranges, the panorama's bake and the cloud
- * banks (which share the law) keep theirs. AERIAL_MID_HUE 1 applies w to the luminance only: the hazed colour keeps the
- * full law's chromaticity — the hue shift — at the lighter veil's level.
+ * transmittance loss there, the hue shift and the distance cue kept): the haze law's middle distances. The optical depth
+ * takes w(d) = mix(AERIAL_MID_W0, 1, smoothstep(0, AERIAL_MID_FAR_M, d)): lighter near the camera, the whole law again by
+ * AERIAL_MID_FAR_M, so the far ranges, the panorama's bake and the cloud banks keep theirs. AERIAL_MID_HUE 1 applies w to
+ * the luminance only: the hazed colour keeps the full law's chromaticity — the hue shift — at the lighter veil's level.
+ * 2026-10-06, measured on the ground lane's frames and metric (Railyard, Verdant, Frontier, Foundry establishing; QA knobs
+ * of the same names, 1 / 1200 / 0 the plain law): the law's in-scatter veil was the whole loss (the law off = the pass
+ * off, +57 % local contrast; extinction alone loses nothing but the distance cue); w0 0.4 gave +16 %, w0 0.2 +23 % (+19
+ * to +28 % per map), the far third's lift over the near (the distance cue) +1.4 L* and its hue shift within 0.3 b*,
+ * the darkest 1 % 7-14 levels deeper, the far bands untouched; a global σ × 0.6 gave +15 % at the cost of the cue.
  */
-const AERIAL_MID_W0 = 1;
+const AERIAL_MID_W0 = 0.2;
 const AERIAL_MID_FAR_M = 1200;
-const AERIAL_MID_HUE = 0;
+const AERIAL_MID_HUE = 1;
 // r9 SNIPER DE-HAZE: main.ts already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends

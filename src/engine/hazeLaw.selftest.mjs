@@ -13,6 +13,7 @@ import {
   HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeExtinctionChroma, hazeLayerInverseScale, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
+import { closingBrace, parseGlsl, runGlslFunction } from '../world/glslSubset.test-support.mjs';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
@@ -68,12 +69,48 @@ const post = here('./post.ts'), sky = here('./sky.ts'), clouds = here('./volumet
 assert.match(post, /bool hazeLaw = uAtmo > 0\.5 && uHazeLaw\.x > 0\.0;/, 'the law runs over the physically based sky only');
 assert.match(post, /vec3 trans = hazeTransmittance\( sig, rayT, hazeLayerMean\( hzY0 \* uHazeLaw\.y, hzY1 \* uHazeLaw\.y \), uHazeChroma \);\s*texel\.rgb = texel\.rgb \* trans \+ hazeCol \* \( 1\.0 - trans \);/);
 assert.match(post, /float hzD = max\( -viewZ - 85\.0, 0\.0 \);/, 'the legacy law stays for the mobile tier');
-// 2026-10-05 (the skies lane; the ground lane's local-contrast attribution): the middle distances' QA knobs default to the
-// law itself — w0 1, so hazeMiddle returns the law's colour untouched — and run after it, whole again by AERIAL_MID_FAR_M
-assert.match(post, /const AERIAL_MID_W0 = 1;\s*const AERIAL_MID_FAR_M = 1200;\s*const AERIAL_MID_HUE = 0;/, 'the knobs default to the law');
+// 2026-10-05/06 (the skies lane; the ground lane's local-contrast attribution): the middle distances — the optical depth
+// × w(d) from 0.2 at the camera to the whole law by 1200 m, on the luminance only (the law's chromaticity kept); the knobs
+// at 1 / 1200 / 0 return the plain law
+assert.match(post, /const AERIAL_MID_W0 = 0\.2;\s*const AERIAL_MID_FAR_M = 1200;\s*const AERIAL_MID_HUE = 1;/, 'w0 0.2, whole by 1200 m, the luminance only');
 assert.match(post, /if \( uHazeMid\.x >= 0\.999 \) return hazed;/, 'at w0 1 the law\'s colour is returned untouched');
 assert.match(post, /texel\.rgb = texel\.rgb \* trans \+ hazeCol \* \( 1\.0 - trans \);\s*texel\.rgb = hazeMiddle\( texel\.rgb, hzSurface, hazeCol, sig, rayT, hzY0, hzY1 \);/, 'after the law, from the surface it hazed');
 assert.match(post, /lightTune\('AERIAL_MID_W0', AERIAL_MID_W0\)/, 'live through the QA hook');
+// the middle distances' function run through the GLSL subset with the law's own chunk (HAZE_LAW_GLSL), so the receipt reads
+// both and decides nothing about either: the plain law at w0 1; less veil near the camera; the whole law again by the far
+// distance; on the luminance only, the law's chromaticity at the lighter veil's level
+{
+  const body = (text, header) => { const at = text.indexOf(header); assert.ok(at >= 0, header); const open = text.indexOf('{', at + header.length - 1); return text.slice(open + 1, closingBrace(text, open)); };
+  const middle = parseGlsl(body(post, 'vec3 hazeMiddle( vec3 hazed, vec3 surface, vec3 hazeCol, float sig, float rayT, float hzY0, float hzY1 ) {'));
+  const layerMean = parseGlsl(body(HAZE_LAW_GLSL, 'float hazeLayerMean( float a0, float a1 ) {'));
+  const transmittance = parseGlsl(body(HAZE_LAW_GLSL, 'vec3 hazeTransmittance( float sigma, float d, float layerMean, vec3 chroma ) {'));
+  const taken = new Set();
+  const fns = {
+    hazeLayerMean: (a0, a1) => runGlslFunction(layerMean, { a0, a1 }, {}, new Set()),
+    hazeTransmittance: (sigma, d, mean, chroma) => runGlslFunction(transmittance, { sigma, d, layerMean: mean, chroma }, {}, new Set()),
+  };
+  const lumOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const law = { uHazeLaw: [3.1e-4, 1 / 400, 0.4, 0.92], uHazeChroma: [...HAZE_EXT_CHROMA] };
+  const surface = [0.08, 0.11, 0.05], hazeCol = [0.55, 0.62, 0.78], hzY0 = 2, hzY1 = 0;
+  const lawAt = (d) => {
+    const T = fns.hazeTransmittance(law.uHazeLaw[0], d, fns.hazeLayerMean(hzY0 * law.uHazeLaw[1], hzY1 * law.uHazeLaw[1]), law.uHazeChroma);
+    return surface.map((s, c) => s * T[c] + hazeCol[c] * (1 - T[c]));
+  };
+  const run = (mid, d) => runGlslFunction(middle, { hazed: lawAt(d), surface, hazeCol, sig: law.uHazeLaw[0], rayT: d, hzY0, hzY1, uHazeMid: mid, ...law }, fns, taken);
+  const gap = (a) => Math.hypot(...a.map((v, c) => v - surface[c]));
+  for (const d of [50, 300, 600, 900, 1200, 2500]) {
+    assert.deepEqual(run([1, 1200, 0], d), lawAt(d), `w0 1 at ${d} m: the plain law`);
+    const depth = run([0.2, 1200, 0], d), luma = run([0.2, 1200, 1], d), full = lawAt(d);
+    if (d >= 1200) {
+      for (const [what, v] of [['the optical depth', depth], ['the luminance', luma]]) assert.ok(Math.max(...v.map((x, c) => Math.abs(x - full[c]))) < 1e-12, `${what} at ${d} m: the whole law again`);
+    } else {
+      assert.ok(gap(depth) < gap(full) - 1e-6, `${d} m: less veil than the law`);
+      for (let c = 0; c < 3; c++) assert.ok(Math.abs(luma[c] / lumOf(luma) - full[c] / lumOf(full)) < 1e-9, `${d} m: the law's chromaticity kept`);
+      assert.ok(Math.abs(lumOf(luma) - lumOf(depth)) < 1e-12, `${d} m: at the lighter veil's luminance`);
+    }
+  }
+  assert.equal(taken.size, 4, `every branch of hazeMiddle ran (${[...taken].join(', ')})`);
+}
 assert.match(post, /law\.set\(\s*hazeSigma\(atmosphere\.fogDensity\),\s*hazeLayerInverseScale\(\),/, 'σ from the map\'s air, every frame');
 assert.match(post, /\(u\.uHazeLaw\.value as THREE\.Vector4\)\.x = 0;/, 'the legacy dome switches the law off');
 assert.match(post, /\* \( hazeLaw \? uDetailW : 1\.0 \)/, 'the green hue clamp keeps only its sniper-scope share on the law');
