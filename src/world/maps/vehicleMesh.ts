@@ -131,6 +131,9 @@ export class VehicleMesh {
   private readonly mat: number[] = [];
   private readonly idx: number[] = [];
   private readonly materials: VehicleMaterial[] = [];
+  /** Vertex indices emitted inside `outboard` (mirrors) and `dressing` (seams, handles, trim): from, to pairs. */
+  private readonly outboardRuns: number[] = [];
+  private readonly dressingRuns: number[] = [];
   private readonly materialIds = new Map<VehicleMaterial, number>();
   private m: Mat34 = identity();
   private readonly stack: Mat34[] = [];
@@ -168,6 +171,27 @@ export class VehicleMesh {
   rotateZ(r: number): this { const c = Math.cos(r), s = Math.sin(r); return this.apply(new Float64Array([c, -s, 0, 0, s, c, 0, 0, 0, 0, 1, 0])); }
 
   /** Emit the same parts twice: as authored and mirrored across x = 0 (the vehicle's centre plane). */
+  /**
+   * Parts outside the body that neither fit nor collide (the mirrors on their arms): drawn as any other part, kept out
+   * of the body box the fit reads (`geometry.userData.bodyBox`) and out of the solid the collision is taken from.
+   */
+  outboard(emit: () => void): void {
+    const from = this.pos.length / 3;
+    emit();
+    this.outboardRuns.push(from, this.pos.length / 3);
+  }
+
+  /**
+   * Surface dressing a few millimetres proud of the body (door seams, handles, trim strips, wipers): drawn as any other
+   * part and left out of the collision solids (`geometry.userData.noCollisionVertices`, read by structureCollision.ts
+   * like a separate noCollision geometry).
+   */
+  dressing(emit: () => void): void {
+    const from = this.pos.length / 3;
+    emit();
+    this.dressingRuns.push(from, this.pos.length / 3);
+  }
+
   mirrored(emit: (side: 1 | -1) => void): void {
     emit(1);
     this.push().scale(-1, 1, 1);
@@ -460,6 +484,18 @@ export class VehicleMesh {
     geometry.setIndex(new THREE.BufferAttribute(count <= 65535 ? new Uint16Array(this.idx) : new Uint32Array(this.idx), 1));
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
+    // the body's own box (the outboard parts left out) and the outboard vertex runs, for the fit and the collision
+    const outboard = new Uint8Array(count);
+    for (let k = 0; k < this.outboardRuns.length; k += 2) outboard.fill(1, this.outboardRuns[k], this.outboardRuns[k + 1]);
+    const body = new THREE.Box3(), at = new THREE.Vector3();
+    for (let v = 0; v < count; v++) if (!outboard[v]) body.expandByPoint(at.set(position[v * 3], position[v * 3 + 1], position[v * 3 + 2]));
+    geometry.userData.bodyBox = body;
+    if (this.outboardRuns.length) geometry.userData.outboard = outboard;
+    if (this.outboardRuns.length || this.dressingRuns.length) {
+      const noCollision = outboard.slice();
+      for (let k = 0; k < this.dressingRuns.length; k += 2) noCollision.fill(1, this.dressingRuns[k], this.dressingRuns[k + 1]);
+      geometry.userData.noCollisionVertices = noCollision;
+    }
     return geometry;
   }
 }

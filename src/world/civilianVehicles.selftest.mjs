@@ -10,14 +10,15 @@ import {
   pickCivilianVehicleKindForPlacement,
   visibleCivilianVehicleCount,
 } from './maps/civilianVehicleKit.ts';
-import { LEGACY_CONTACT_BANDS, LEGACY_DRAWS } from './maps/civilianVehicleLegacy.ts';
+import { LEGACY_DRAWS } from './maps/civilianVehicleLegacy.ts';
 import { DEFAULT_FLEET, FLEETS, fleetForMap } from './maps/vehicleFleets.ts';
 import { DESTRUCTIBLE_TYPES, civilianVehicleTypes } from './maps/inhabitKit.ts';
 import { MAP_IDS } from './maps/index.ts';
 
-// The map-vehicles lane (2026-10-05): the eight roles keep their records — the placement boxes, the legacy contact
-// band every pool refits its obstacles to, the legacy builders' draws from the destructible stream — while each map's
-// fleet builds them as real types. Every fleet's every role is held to the role's box (a canvas tilt or a box van may
+// The map-vehicles lane (2026-10-05): the eight roles keep their record fields and the legacy builders' draws from the
+// destructible stream while each map's fleet builds them as real types, and each role collides as its real model does:
+// its footprint is the model's visible half extents and its obstacle refits to the model's own contact band, the same
+// on desktop and mobile. Every fleet's every role is held to the role's largest box (a canvas tilt or a box van may
 // rise over the record by the role's allowance), the tier budgets, the surface stream (the paint mask on the intact
 // body only) and the stream budget.
 
@@ -45,9 +46,11 @@ for (const [kind, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) {
   assert.equal(metadata.mat, 'vehicle', `${kind} uses the shared textured vehicle PBR material`);
   assert.equal(metadata.build, receipt.build, `${kind} registry keeps the kit's default builder`);
   assert.equal(metadata.broken, receipt.broken, `${kind} registry keeps the kit's default burnt builder`);
-  assert.equal(metadata.contactBand, LEGACY_CONTACT_BANDS[kind], `${kind} refits to the legacy contact band (collision unchanged)`);
-  assert.equal(metadata.hw, receipt.halfWidth, `${kind}: the record's half-width is the role box's`);
-  assert.equal(metadata.hl, receipt.halfLength, `${kind}: the record's half-length is the role box's`);
+  const footprint = receipt.footprint();
+  assert.equal(metadata.contactBand, footprint.contactBand, `${kind} refits to the default fleet's own contact band`);
+  assert.equal(metadata.hw, footprint.hw, `${kind}: the table's half-width is the default model's`);
+  assert.equal(metadata.hl, footprint.hl, `${kind}: the table's half-length is the default model's`);
+  assert.ok(footprint.hw <= receipt.halfWidth + 1e-6 && footprint.hl <= receipt.halfLength + 1e-6, `${kind}: inside the role's box`);
   assert.equal(metadata.h, receipt.height, `${kind}: the record's height is the role box's`);
 }
 
@@ -66,10 +69,11 @@ function checkRole(label, kind, geometry, burnt, mobile) {
   assert.ok(triangles <= (mobile ? MOBILE_BUDGET : Math.min(DESKTOP_BUDGET, receipt.triangleBudget)),
     `${label}: ${triangles} triangles within the ${mobile ? 'mobile' : 'desktop'} budget`);
   geometry.computeBoundingBox();
-  const b = geometry.boundingBox;
+  const b = geometry.boundingBox, body = geometry.userData.bodyBox;
   assert.ok(Math.abs(b.min.y) < 0.001, `${label}: the tyres (or the burnt rims) stand on the ground plane (${b.min.y})`);
-  assert.ok(Math.max(-b.min.x, b.max.x) <= receipt.halfWidth + 0.001, `${label}: inside the role's width`);
-  assert.ok(Math.max(-b.min.z, b.max.z) <= receipt.halfLength + 0.001, `${label}: inside the role's length`);
+  assert.ok(body && Math.max(-body.min.x, body.max.x) <= receipt.halfWidth + 0.001, `${label}: the body inside the role's width`);
+  assert.ok(Math.max(-body.min.z, body.max.z) <= receipt.halfLength + 0.001, `${label}: the body inside the role's length`);
+  assert.ok(Math.max(-b.min.x, b.max.x) <= receipt.halfWidth + 0.35, `${label}: the mirrors a hand's breadth outside it at most`);
   assert.ok(b.max.y <= receipt.height + receipt.rise + 0.001, `${label}: under the role's height and allowance`);
   const surf = geometry.getAttribute('surf');
   let painted = 0, glossy = 0;
@@ -97,10 +101,12 @@ const checkedFleets = new Set();
 for (const mapId of MAP_IDS) {
   const fleet = fleetForMap(mapId);
   assert.ok(fleet && FLEETS[fleet.id] === fleet, `${mapId} dresses in a catalogued fleet`);
-  const types = civilianVehicleTypes(mapId, false);
+  const types = civilianVehicleTypes(mapId, false), mobileTypes = civilianVehicleTypes(mapId, true);
   for (const kind of kinds) {
-    assert.equal(types[kind].contactBand, LEGACY_CONTACT_BANDS[kind], `${mapId}/${kind}: same contact band`);
-    assert.equal(types[kind].hw, DESTRUCTIBLE_TYPES[kind].hw, `${mapId}/${kind}: same record`);
+    // the coarse tier never changes a vehicle's collision
+    assert.deepEqual(mobileTypes[kind].contactBand, types[kind].contactBand, `${mapId}/${kind}: one contact band on both tiers`);
+    assert.deepEqual([mobileTypes[kind].hw, mobileTypes[kind].hl], [types[kind].hw, types[kind].hl], `${mapId}/${kind}: one footprint on both tiers`);
+    assert.equal(types[kind].h, DESTRUCTIBLE_TYPES[kind].h, `${mapId}/${kind}: the record's height`);
     assert.equal(typeof types[kind].instancePaint, 'function', `${mapId}/${kind}: liveries`);
   }
   if (checkedFleets.has(fleet.id)) continue;
@@ -114,6 +120,15 @@ for (const mapId of MAP_IDS) {
         assert.equal(rng.calls, LEGACY_DRAWS[kind][burnt ? 'broken' : 'build'],
           `${fleet.id}/${kind}${burnt ? '/burnt' : ''}: spends the legacy builder's draws from the stream`);
         checkRole(`${fleet.id}/${kind}${burnt ? '/burnt' : ''}${mobile ? '/mobile' : ''}`, kind, geometry, burnt, mobile);
+        if (!burnt) {
+          // the collision footprint is the visible body's (taken from the coarse solid, which differs from the full one by
+          // a tyre's or a step's facets): never more than 3 cm outside it, or inside it
+          const b = geometry.userData.bodyBox, own = overrides[kind];
+          assert.ok(Math.abs(Math.max(-b.min.x, b.max.x) - own.hw) <= 0.03 && Math.abs(Math.max(-b.min.z, b.max.z) - own.hl) <= 0.03,
+            `${fleet.id}/${kind}${mobile ? '/mobile' : ''}: footprint ${own.hw} x ${own.hl} follows the body (${Math.max(-b.min.x, b.max.x).toFixed(3)} x ${Math.max(-b.min.z, b.max.z).toFixed(3)})`);
+          const reach = Math.max(...own.contactBand.parts.flatMap((part) => part.points ?? [Math.abs(part.cx) + (part.hw ?? part.r ?? 0)]).map(Math.abs));
+          assert.ok(reach <= Math.max(own.hw, own.hl) + 0.05, `${fleet.id}/${kind}: the contact band stays inside the footprint`);
+        }
         geometry.dispose();
       }
       // the shadow passes draw a stand-in on desktop tiers: the coarse build, positions only, at most half the body's
@@ -190,4 +205,5 @@ assert.equal(CIVILIAN_VEHICLES_PER_CLUSTER, 4,
   'each grouped traffic pocket has enough vehicles to read as a convoy or parking row');
 
 console.log(`civilianVehicles.selftest: ${MAP_IDS.length} maps on ${checkedFleets.size} fleets, both tiers, burnt states, `
-  + 'legacy records, contact bands and stream draws, liveries, shadow stand-ins, footprints and budgets passed');
+  + 'records and stream draws, collision following each model (one footprint and contact band on both tiers), liveries, '
+  + 'shadow stand-ins and budgets passed');

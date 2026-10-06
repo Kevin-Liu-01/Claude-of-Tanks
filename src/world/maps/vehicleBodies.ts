@@ -656,8 +656,10 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   if (m.mirrors !== false) {
     mesh.mirrored(() => {
       const z = m.cab.zF - 0.08, y = m.cab.belt + 0.25, x = m.cab.hw;
-      mesh.tube([[x - 0.02, m.cab.belt + 0.05, z], [x + 0.2, y + 0.05, z], [x + 0.22, y + 0.3, z]], 0.012, 5, TRIM);
-      mesh.box(x + 0.25, y + 0.18, z - 0.02, 0.05, 0.26, 0.15, TRIM, 0.01);
+      mesh.outboard(() => {
+        mesh.tube([[x - 0.02, m.cab.belt + 0.05, z], [x + 0.2, y + 0.05, z], [x + 0.22, y + 0.3, z]], 0.012, 5, TRIM);
+        mesh.box(x + 0.25, y + 0.18, z - 0.02, 0.05, 0.26, 0.15, TRIM, 0.01);
+      });
     });
   }
   if (m.fuelTank === 'side') {
@@ -682,9 +684,11 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
     }
   }
   if (!coarse) {
+    // the mudflaps behind the last axle, across the tyre (both twins of a dual) and never wider than it
     for (const side of [1, -1]) {
       const z = m.rearAxles[m.rearAxles.length - 1] - m.wheelR - 0.12;
-      mesh.box(side * m.trackR / 2, m.wheelR * 0.62, z, m.tyreW * (m.dualRear ? 2.3 : 1.3), m.wheelR * 0.9, 0.012, RUBBER);
+      const across = m.tyreW * (m.dualRear ? 2.0 : 0.96), mid = m.trackR / 2 - (m.dualRear ? m.tyreW * 0.52 : 0);
+      mesh.box(side * mid, m.wheelR * 0.62, z, across, m.wheelR * 0.9, 0.012, RUBBER);
     }
   }
   void zTail;

@@ -8356,7 +8356,7 @@ ${snowCap ? `
     // walls (including their later terrain fit) and trees retain the cheap path.
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
-    const contactBand = source?.profile.contact ?? pool.meta.contactBand
+    const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     for (const record of pool.records) {
       if (!record.ob) continue;
@@ -8542,7 +8542,10 @@ ${snowCap ? `
   yield* finalizeDestructiblePools();
   // the map-vehicles lane (2026-10-05): the ground darkened under every parked vehicle (desktop tiers)
   if (!mobileProps) {
-    const contact = buildVehicleContactShadows(destructibles, heightField, aniso);
+    const contact = buildVehicleContactShadows(destructibles, heightField, aniso, (kind) => {
+      const meta = LOCAL_TYPES[kind];
+      return meta?.instancePaint && meta.hw !== undefined && meta.hl !== undefined ? { hw: meta.hw, hl: meta.hl } : null;
+    });
     if (contact) group.add(contact);
   }
 

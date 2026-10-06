@@ -1865,6 +1865,31 @@ function bDrumRedBroken(rng: Rng): THREE.BufferGeometry {
  *   hw/hl: authored local half-width/half-length for a tight oriented box;
  *   shape: 'circle' plus optional collisionR for genuinely round footprints.
  */
+/** The vehicle roles' record fields (class, material, contact, radius, height, collider, crush rules); a role's
+ * footprint, contact band and builders come from its fleet (civilianVehicleKit.ts). */
+const VEHICLE_RECORD_FIELDS = {
+  truck: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.3, collider: true, keep: 0.88, crushMin: 2.0 },
+  jeep: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 2.10, h: 1.73, keep: 0.94 },
+  sedan: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.61, keep: 0.95 },
+  wagon: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.69, keep: 0.95 },
+  pickup: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 2.72, h: 1.77, keep: 0.93 },
+  van: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, collider: true, keep: 0.92, crushMin: 1.8 },
+  truckbox: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, collider: true, keep: 0.87, crushMin: 2.0 },
+  truckflatbed: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, collider: true, keep: 0.87, crushMin: 2.0 },
+} satisfies Record<string, Omit<DestructiblePropType, 'build' | 'broken'>>;
+
+/** The table's own vehicle entry: the default fleet's builders, and its footprint and contact band read on first use
+ * (each map's props override every vehicle role with its own fleet: civilianVehicleTypes). */
+function vehicleEntry(kind: keyof typeof VEHICLE_RECORD_FIELDS): DestructiblePropType {
+  const receipt = CIVILIAN_VEHICLE_RECEIPTS[kind];
+  const entry = { ...VEHICLE_RECORD_FIELDS[kind], build: receipt.build, broken: receipt.broken } as DestructiblePropType;
+  return Object.defineProperties(entry, {
+    hw: { enumerable: true, get: () => receipt.footprint().hw },
+    hl: { enumerable: true, get: () => receipt.footprint().hl },
+    contactBand: { enumerable: true, get: () => receipt.footprint().contactBand },
+  });
+}
+
 export const DESTRUCTIBLE_TYPES = {
   barrel:      { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.40, h: 1.0,  build: bBarrel,      broken: bBarrelBroken },
   crate:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.62, h: 1.1,  hw: 0.51, hl: 0.51, build: bCrate, broken: bCrateBroken },
@@ -1898,14 +1923,14 @@ export const DESTRUCTIBLE_TYPES = {
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, hw: 0.30, hl: 1.54, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },
   walladobe:   { cls: 'break',  mat: 'plaster', contact: 'ob', r: 1.6,  h: 1.2,  hw: 0.28, hl: 1.53, build: bWallAdobe,  broken: bWallAdobeBroken, wall: true, collider: true, keep: 0.86, crushMin: 2.0 },
-  truck:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.3,  hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truck.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truck.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truck.contactBand, collider: true, keep: 0.88, crushMin: 2.0 },
-  jeep:        { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.10, h: 1.73, hw: 0.94, hl: 1.88, build: CIVILIAN_VEHICLE_RECEIPTS.jeep.build, broken: CIVILIAN_VEHICLE_RECEIPTS.jeep.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.jeep.contactBand, keep: 0.94 },
-  sedan:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.61, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.sedan.build, broken: CIVILIAN_VEHICLE_RECEIPTS.sedan.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.sedan.contactBand, keep: 0.95 },
-  wagon:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.69, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.wagon.build, broken: CIVILIAN_VEHICLE_RECEIPTS.wagon.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.wagon.contactBand, keep: 0.95 },
-  pickup:      { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.72, h: 1.77, hw: 1.11, hl: 2.47, build: CIVILIAN_VEHICLE_RECEIPTS.pickup.build, broken: CIVILIAN_VEHICLE_RECEIPTS.pickup.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.pickup.contactBand, keep: 0.93 },
-  van:         { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, hw: 1.11, hl: 2.38, build: CIVILIAN_VEHICLE_RECEIPTS.van.build, broken: CIVILIAN_VEHICLE_RECEIPTS.van.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.van.contactBand, collider: true, keep: 0.92, crushMin: 1.8 },
-  truckbox:    { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckbox.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckbox.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truckbox.contactBand, collider: true, keep: 0.87, crushMin: 2.0 },
-  truckflatbed:{ cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.contactBand, collider: true, keep: 0.87, crushMin: 2.0 },
+  truck: vehicleEntry('truck'),
+  jeep: vehicleEntry('jeep'),
+  sedan: vehicleEntry('sedan'),
+  wagon: vehicleEntry('wagon'),
+  pickup: vehicleEntry('pickup'),
+  van: vehicleEntry('van'),
+  truckbox: vehicleEntry('truckbox'),
+  truckflatbed: vehicleEntry('truckflatbed'),
   ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  hw: 1.28, hl: 1.90, build: bTent, broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
@@ -1926,7 +1951,7 @@ export const DESTRUCTIBLE_TYPES = {
 export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<string, DestructiblePropType> {
   const out: Record<string, DestructiblePropType> = {};
   for (const [kind, override] of Object.entries(civilianVehicleOverrides(mapId, mobile))) {
-    out[kind] = { ...DESTRUCTIBLE_TYPES[kind as keyof typeof DESTRUCTIBLE_TYPES], ...override };
+    out[kind] = { ...VEHICLE_RECORD_FIELDS[kind as keyof typeof VEHICLE_RECORD_FIELDS], ...override };
   }
   return out;
 }

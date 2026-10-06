@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { markShadowOnly, setShadowCasterProfile } from '../../engine/renderLayers.ts';
-import { vehicleContactFootprint } from './civilianVehicleKit.ts';
+import { vehicleContactPatch } from './civilianVehicleKit.ts';
 
 const SHADOW_CASTER_MATERIAL = new THREE.MeshBasicMaterial({ name: 'VehicleShadowCaster', colorWrite: false, depthWrite: false });
 
@@ -68,14 +68,17 @@ function contactTexture(anisotropy: number): THREE.Texture {
   return texture;
 }
 
-/** One mesh of contact patches under every vehicle record (null when the map places none). */
-export function buildVehicleContactShadows(records: readonly ContactRecord[], field: ContactField, anisotropy: number): THREE.Mesh | null {
+/** One mesh of contact patches under every vehicle record (null when the map places none); `footprint` is a vehicle
+ * kind's footprint on this map (null: not a vehicle). */
+export function buildVehicleContactShadows(records: readonly ContactRecord[], field: ContactField, anisotropy: number,
+  footprint: (kind: string) => { hw: number; hl: number } | null): THREE.Mesh | null {
   const nx = 5, nz = 7;
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
   let patches = 0;
   for (const r of records) {
-    const fp = vehicleContactFootprint(r.kind);
-    if (!fp) continue;
+    const own = footprint(r.kind);
+    if (!own) continue;
+    const fp = vehicleContactPatch(own.hw, own.hl);
     const hw = fp.hw * r.sc, hl = fp.hl * r.sc, c = Math.cos(r.yaw), s = Math.sin(r.yaw);
     const base = pos.length / 3;
     for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) {

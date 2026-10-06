@@ -412,8 +412,11 @@ function assertLoggingYard(mapWorld, independentWorld) {
   // 2026-10-02 (maps lane B): Longleaf Crossing's gentler relief moves the same two donors (src/world/loggingYard
   // .selftest.mjs replays them) and two props fewer precede them; was propIdx 309 / 310, heights 2.0045 / 1.9813 from
   // (-149.2308, -173.9215) and (-80.6038, 239.7031).
+  // 2026-10-05 (the map-vehicles lane): the flatbeds collide as the Louisiana fleet's real flatbed does — its own contact
+  // band (21 ground-bearing parts: wheels, axles, chassis, cab, bed) in place of the legacy kit's box truck (9 parts);
+  // the donors, their loading bays and their scaled heights are unchanged (308's band top rounds 0.1 mm higher)
   const donors = [{ propIdx: 307, height: 2.0045, old: [-149.2563437955792, -173.84073125534042] },
-    { propIdx: 308, height: 1.9812, old: [-80.53000567837782, 239.67939683819532] }];
+    { propIdx: 308, height: 1.9813, old: [-80.53000567837782, 239.67939683819532] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;
@@ -421,7 +424,7 @@ function assertLoggingYard(mapWorld, independentWorld) {
   for (const [index, obstacle] of flatbeds.entries()) {
     const { x, z } = sites[index], donor = donors[index], collider = colliders[index];
     assert.equal(obstacle.shape2?.kind, 'compound', 'final ground-bearing flatbed refit survives capture');
-    assert.equal(obstacle.shape2.parts.length, 9, 'all original ground-bearing flatbed parts survive');
+    assert.equal(obstacle.shape2.parts.length, 21, 'all the flatbed\'s ground-bearing parts survive the relocation');
     assert.ok(Math.hypot(obstacle.shape2.cx - x, obstacle.shape2.cz - z) < 0.3,
       `Longleaf propIdx${donor.propIdx} is missing from its authored loading bay; regenerate its native collision shard`);
     assert.deepEqual(collider, obstacle, 'movement and shell copies share the relocated bounds, shape and identity');

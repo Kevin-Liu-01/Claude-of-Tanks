@@ -611,14 +611,14 @@ export function carDetails(mesh: VehicleMesh, prof: CarProfile, d: CarDetailSpec
           pts.push([prof.sideX(z, y), y, z]);
           ns.push([1, 0, 0]);
         }
-        seam(mesh, pts, ns, 0.01);
+        mesh.dressing(() => seam(mesh, pts, ns, 0.01));
       }
     }
     if (d.handles) {
       for (let k = 0; k + 1 < s.doorCuts.length; k++) {
         const z = s.doorCuts[k + 1] + 0.16, y = prof.belt(z) - 0.09;
         const x = prof.sideX(z, y);
-        mesh.box(x + 0.012, y, z, 0.02, 0.025, 0.13, d.handles, 0.006);
+        mesh.dressing(() => mesh.box(x + 0.012, y, z, 0.02, 0.025, 0.13, d.handles!, 0.006));
       }
     }
     if (d.sideTrim) {
@@ -628,7 +628,7 @@ export function carDetails(mesh: VehicleMesh, prof: CarProfile, d: CarDetailSpec
         if (a - b < 0.1 || prof.archTop((a + b) / 2) > y) continue;
         const pts: Vec3[] = [], ns: Vec3[] = [];
         for (let k = 0; k <= 4; k++) { const z = lerp(a, b, k / 4); pts.push([prof.sideX(z, y) + 0.004, y, z]); ns.push([1, 0, 0]); }
-        seam(mesh, pts, ns, 0.022, d.sideTrim.mat);
+        mesh.dressing(() => seam(mesh, pts, ns, 0.022, d.sideTrim!.mat));
       }
     }
     if (d.mirrors && d.mirrors !== 'none') {
@@ -636,15 +636,17 @@ export function carDetails(mesh: VehicleMesh, prof: CarProfile, d: CarDetailSpec
       const z = d.mirrors === 'door' ? s.cowlZ - 0.1 : s.frontAxle - s.archR * 0.2;
       const y = d.mirrors === 'door' ? prof.belt(z) + 0.06 : prof.topY(z) + 0.05;
       const x = d.mirrors === 'door' ? prof.ghBase(z) + 0.02 : prof.halfW(z) - 0.12;
-      mesh.box(x + 0.06, y, z, 0.12, 0.025, 0.03, m);
-      mesh.box(x + 0.13, y + 0.04, z - 0.01, 0.05, 0.09, 0.13, m, 0.012);
+      mesh.outboard(() => {
+        mesh.box(x + 0.06, y, z, 0.12, 0.025, 0.03, m);
+        mesh.box(x + 0.13, y + 0.04, z - 0.01, 0.05, 0.09, 0.13, m, 0.012);
+      });
     }
   });
   if (d.wipers && !coarse) {
     for (const x of [-0.18, 0.28]) {
       const z = s.cowlZ - 0.03, y = prof.belt(z) + 0.04;
       mesh.push().translate(x, y, z).rotateZ(0.12).rotateX(-0.45);
-      mesh.box(0, 0, 0, 0.42, 0.012, 0.012, TRIM);
+      mesh.dressing(() => mesh.box(0, 0, 0, 0.42, 0.012, 0.012, TRIM));
       mesh.pop();
     }
   }

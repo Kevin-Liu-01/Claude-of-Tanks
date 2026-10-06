@@ -8,12 +8,13 @@
 // mask (vehicleSurface.ts). The burnt state is the same vehicle burnt out: char and oxide, the glass gone, the tyres
 // burnt to the rims and the body settled on them.
 //
-// Collision, exactly as before: a role's obstacle is refitted to the contact band its LEGACY geometry produced
-// (civilianVehicleLegacy.ts, carried on the destructible meta as `contactBand`), and each builder spends exactly the
-// draws the legacy builder spent from the destructible stream, so every later pool builds from the same stream; every
-// map's dedicated shard stays byte-identical. A model larger than its role's box is scaled down into it; a canvas tilt
-// or box rises over the record's height (the record keeps it). Local +Z is the nose, the footprint is XZ-centred and
-// the lowest tyre point is y = 0.
+// Collision follows the vehicle each map really parks (2026-10-05, approved with the coordinator): a role's footprint
+// (hw, hl) is its model's visible half extents and its obstacle refits to the contact band the model's own solids bear
+// on the ground, both taken from the coarse build fitted as every tier fits it, so desktop and mobile collide
+// identically (roleFootprint). The legacy kit's one generous box per role left 0.2-1.1 m of collision outside most
+// real vehicles. Each builder still spends exactly the draws the legacy builder spent from the destructible stream, so
+// every later pool builds from the same stream and no vehicle moves. A model larger than its role's box is scaled down
+// into it. Local +Z is the nose, the footprint is XZ-centred and the lowest tyre point is y = 0.
 
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
@@ -21,8 +22,8 @@ import { buildModel, modelWheels } from './vehicleBodies.ts';
 import {
   DEFAULT_FLEET, FLEETS, climateForMap, fleetForMap, type CivilianRole, type Fleet, type FleetEntry, type VehicleClimate,
 } from './vehicleFleets.ts';
-import { LEGACY_CONTACT_BANDS, LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
-import type { StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
+import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -42,13 +43,14 @@ interface RoleBox {
   triangleBudget: number;
 }
 
-/** The roles' placement boxes (props / inhabitKit DESTRUCTIBLE_TYPES hw, hl, h), unchanged since the legacy kit. */
+/** The roles' largest boxes (the legacy kit's placement boxes): a model is scaled down into its role's; its own
+ * footprint (roleFootprint) is what collides. */
 const ROLE_BOXES: Readonly<Record<CivilianVehicleKind, RoleBox>> = {
   truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, rise: 1.05, triangleBudget: 9000 },
   jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7000 },
   sedan: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.61, rise: 0.2, triangleBudget: 8500 },
   wagon: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.69, rise: 0.2, triangleBudget: 8500 },
-  pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, rise: 0.2, triangleBudget: 8500 },
+  pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, rise: 0.3, triangleBudget: 8500 },
   van: { lane: 'light', halfWidth: 1.11, halfLength: 2.38, height: 2.08, rise: 0.25, triangleBudget: 8500 },
   truckbox: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.47, rise: 0.85, triangleBudget: 9000 },
   truckflatbed: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 1.96, rise: 1.1, triangleBudget: 9000 },
@@ -62,18 +64,14 @@ interface BuildContext {
 }
 
 /** Scale a built body into its role's box (a uniform scale about the centre, never up) and seat its tyres on y = 0. */
-/** A role's fit into its box: the scale and the lift that sets the lowest tyre point on y = 0. */
-interface RoleFit { s: number; lift: number }
-
-/** Scale a model into its role's box (or by a given fit: a shadow proxy takes its body's). */
-function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox, given?: RoleFit): RoleFit {
+/** Scale a model into its role's box, by its footprint only (the tiers differ in height, a roof rack or a load, never
+ * in plan: their fits agree), and set its lowest tyre point on y = 0. */
+function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox): void {
   geometry.computeBoundingBox();
-  const b = geometry.boundingBox!;
+  const b = (geometry.userData.bodyBox as THREE.Box3 | undefined) ?? geometry.boundingBox!;
   const sx = box.halfWidth / Math.max(1e-6, Math.max(-b.min.x, b.max.x));
   const sz = box.halfLength / Math.max(1e-6, Math.max(-b.min.z, b.max.z));
-  const sy = (box.height + box.rise) / Math.max(1e-6, b.max.y - b.min.y);
-  const fit = given ?? { s: Math.min(1, sx, sz, sy), lift: -b.min.y };
-  const { s, lift } = fit;
+  const s = Math.min(1, sx, sz), lift = -geometry.boundingBox!.min.y;
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < position.count; i++) {
     position.setXYZ(i, position.getX(i) * s, (position.getY(i) + lift) * s, position.getZ(i) * s);
@@ -81,12 +79,12 @@ function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox, given?: RoleFit
   position.needsUpdate = true;
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return fit;
+  const body = geometry.userData.bodyBox as THREE.Box3 | undefined;
+  if (body) { body.min.set(body.min.x * s, (body.min.y + lift) * s, body.min.z * s); body.max.set(body.max.x * s, (body.max.y + lift) * s, body.max.z * s); }
 }
 
 /** One role's geometry on a fleet: intact or burnt out. */
-function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number,
-  fitOut?: (fit: RoleFit) => void): THREE.BufferGeometry {
+function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   mesh.coarse = ctx.coarse;
   buildModel(mesh, entry.model, { coarse: ctx.coarse, burnt });
@@ -95,24 +93,58 @@ function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildConte
     dustRgb: linearHex(ctx.climate.dust), dust: ctx.climate.dustAmount,
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
   }));
-  const fit = fitToRole(geometry, ROLE_BOXES[role]);
-  fitOut?.(fit);
+  fitToRole(geometry, ROLE_BOXES[role]);
+  delete geometry.userData.outboard;
   return geometry;
 }
 
 /**
- * The role's shadow caster: the coarse tier of the same model, positions only, fitted exactly as its intact body
- * was (the mirrors the coarse tier drops would otherwise change the scale). The shadow passes draw this in place of
- * the full body, about two fifths of its triangles (props.ts: one shadow-only instanced mesh on the pool's matrices).
+ * A role's canonical solid: the coarse build of its model, positions only, fitted into the role's box. Every tier
+ * fits a model by the same rule and the tiers share the footprint (the coarse build keeps the body, the mirrors and the
+ * wheels), so this is where the role's collision comes from on desktop and mobile alike, and it is the shadow passes'
+ * stand-in for the full body on desktop: about two fifths of its triangles (props.ts: one shadow-only instanced mesh on
+ * the pool's matrices).
  */
-function buildShadowCaster(entry: FleetEntry, role: CivilianVehicleKind, fit: RoleFit | null): THREE.BufferGeometry {
+function canonicalSolid(entry: FleetEntry, role: CivilianVehicleKind): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   mesh.coarse = true;
   buildModel(mesh, entry.model, { coarse: true, burnt: false });
   const geometry = mesh.build(vehicleWeathering({ wheels: modelWheels(entry.model), seed: 1, voxelAo: false }));
   for (const name of Object.keys(geometry.attributes)) if (name !== 'position') geometry.deleteAttribute(name);
-  fitToRole(geometry, ROLE_BOXES[role], fit ?? undefined);
+  // the mirrors and the surface dressing neither collide nor cast: their triangles leave the solid
+  const skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
+  if (skip) {
+    const index = geometry.index!.array, kept: number[] = [];
+    for (let t = 0; t < index.length; t += 3) {
+      if (!(skip[index[t]] && skip[index[t + 1]] && skip[index[t + 2]])) kept.push(index[t], index[t + 1], index[t + 2]);
+    }
+    geometry.setIndex(kept);
+  }
+  delete geometry.userData.outboard;
+  delete geometry.userData.noCollisionVertices;
+  fitToRole(geometry, ROLE_BOXES[role]);
   return geometry;
+}
+
+/** A role's collision on a fleet: its visible half extents and the contact band of its solids. */
+export interface VehicleFootprint { hw: number; hl: number; contactBand: StructureCollisionRuntimeBand }
+const FOOTPRINTS = new Map<string, VehicleFootprint>();
+const mm = (v: number) => Math.round(v * 1000) / 1000;
+
+/** The footprint a fleet's role collides with (once per fleet and role in a session: maps share fleets). */
+function roleFootprint(fleet: Fleet, role: CivilianVehicleKind): VehicleFootprint {
+  const key = `${fleet.id}/${role}`;
+  const known = FOOTPRINTS.get(key);
+  if (known) return known;
+  const solid = canonicalSolid(fleet.roles[role], role);
+  const b = solid.userData.bodyBox as THREE.Box3;
+  const footprint = {
+    hw: mm(Math.max(-b.min.x, b.max.x)), hl: mm(Math.max(-b.min.z, b.max.z)),
+    contactBand: deriveRuntimeStructureContactBand({ baked: [solid] }),
+  };
+  solid.dispose();
+  FOOTPRINTS.set(key, footprint);
+  return footprint;
 }
 
 /**
@@ -132,12 +164,11 @@ function spending(draws: number, make: (seed: number) => THREE.BufferGeometry): 
 
 function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'shadowBuild'> {
   const entry = ctx.fleet.roles[role];
-  let fit: RoleFit | null = null;
   return {
-    build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed, (f) => { fit = f; })),
+    build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed)),
     broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(entry, role, ctx, true, seed)),
     // the mobile tier's body is already the coarse one: it casts itself
-    ...(ctx.coarse ? {} : { shadowBuild: () => buildShadowCaster(entry, role, fit) }),
+    ...(ctx.coarse ? {} : { shadowBuild: () => canonicalSolid(entry, role) }),
   };
 }
 
@@ -163,7 +194,7 @@ const DEFAULT_CONTEXT: BuildContext = { fleet: FLEETS[DEFAULT_FLEET], climate: c
 function receipt(role: CivilianVehicleKind) {
   const box = ROLE_BOXES[role];
   const { build, broken } = roleBuilders(role, DEFAULT_CONTEXT);
-  return { ...box, build, broken, contactBand: LEGACY_CONTACT_BANDS[role] as StructureCollisionRuntimeBand };
+  return { ...box, build, broken, footprint: () => roleFootprint(DEFAULT_CONTEXT.fleet, role) };
 }
 
 /** The roles with the default fleet's builders (the destructible table's own entries; each map overrides them). */
@@ -176,7 +207,7 @@ export const CIVILIAN_VEHICLE_RECEIPTS = {
   van: receipt('van'),
   truckbox: receipt('truckbox'),
   truckflatbed: receipt('truckflatbed'),
-} satisfies Record<CivilianVehicleKind, RoleBox & { build: Builder; broken: Builder; contactBand: StructureCollisionRuntimeBand }>;
+} satisfies Record<CivilianVehicleKind, RoleBox & { build: Builder; broken: Builder; footprint: () => VehicleFootprint }>;
 
 export interface CivilianVehicleOverride {
   build: Builder;
@@ -184,11 +215,15 @@ export interface CivilianVehicleOverride {
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** Desktop tiers: the shadow caster that stands in for the full body in the shadow passes (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** The role's footprint and contact band on this map's fleet (the same on every tier). */
+  hw: number;
+  hl: number;
+  contactBand: StructureCollisionRuntimeBand;
 }
 
 /**
- * One map's vehicles: each role's builders from the map's fleet and soil, and its copies' liveries. `mobile` builds
- * the coarse tier (collision never depends on it: the contact band is the legacy one on every tier).
+ * One map's vehicles: each role's builders from the map's fleet and soil, its copies' liveries and its collision.
+ * `mobile` builds the coarse tier (collision never depends on it: roleFootprint is the same on every tier).
  */
 export function civilianVehicleOverrides(mapId: string, mobile: boolean): Record<CivilianVehicleKind, CivilianVehicleOverride> {
   const ctx: BuildContext = { fleet: fleetForMap(mapId), climate: climateForMap(mapId), coarse: mobile };
@@ -196,15 +231,17 @@ export function civilianVehicleOverrides(mapId: string, mobile: boolean): Record
   for (let i = 0; i < mapId.length; i++) salt = (Math.imul(salt, 31) + mapId.charCodeAt(i)) | 0;
   const out = {} as Record<CivilianVehicleKind, CivilianVehicleOverride>;
   for (const role of Object.keys(ROLE_BOXES) as CivilianVehicleKind[]) {
-    out[role] = { ...roleBuilders(role, ctx), instancePaint: paintPicker(ctx.fleet.roles[role], salt + role.length * 101) };
+    out[role] = {
+      ...roleBuilders(role, ctx), ...roleFootprint(ctx.fleet, role),
+      instancePaint: paintPicker(ctx.fleet.roles[role], salt + role.length * 101),
+    };
   }
   return out;
 }
 
-/** The ground patch a role's contact shadow covers (its box, a little in from the corners). */
-export function vehicleContactFootprint(kind: string): { hw: number; hl: number } | null {
-  const box = (ROLE_BOXES as Record<string, RoleBox | undefined>)[kind];
-  return box ? { hw: box.halfWidth * 0.92 + 0.15, hl: box.halfLength * 0.94 + 0.2 } : null;
+/** The ground patch a vehicle's contact shadow covers: its footprint, a little in from the corners and out round it. */
+export function vehicleContactPatch(hw: number, hl: number): { hw: number; hl: number } {
+  return { hw: hw * 0.92 + 0.15, hl: hl * 0.94 + 0.2 };
 }
 
 // ---------------------------------------------------------------------------------------------------- placement
