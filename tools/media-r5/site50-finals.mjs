@@ -13,7 +13,8 @@
 // cinema.mjs holds the shared capture lock for a whole job list, so the films go in chunks (default 10 per lease) and
 // other sessions' captures get the GPU between them.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
-// still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/.
+// still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/;
+// --tag=<round> writes renders-<round>/ and deliver-<round>/ instead, so every round's renders stay (owner 2026-10-03).
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -22,7 +23,8 @@ import { SHOTS, TOOL } from './paths.mjs';
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
 const resolved = resolve(args.find(a => !a.startsWith('--')) ?? join(SHOTS, 'site50/review2'));
-const scenes = join(SHOTS, 'site50/scenes'), renders = join(SHOTS, 'site50/renders');
+const tag = flags.tag ? `-${flags.tag}` : '';
+const scenes = join(SHOTS, 'site50/scenes'), renders = join(SHOTS, `site50/renders${tag}`), deliver = join(SHOTS, `site50/deliver${tag}`);
 const cacheDir = join(SHOTS, '.vite-cinema');
 const run = (label, cmd, cmdArgs) => {
   console.log(`[finals] ${label}: ${cmd} ${cmdArgs.join(' ')}`);
@@ -57,7 +59,7 @@ let encodeChain = Promise.resolve();
 const encodeLoops = part => {
   encodeChain = encodeChain.then(() => new Promise((done, fail) => {
     console.log(`[finals] loops for ${[...part][0]}… (background)`);
-    const child = spawn('nice', ['-n', '10', 'node', join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(','),
+    const child = spawn('nice', ['-n', '10', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
       ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
     child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
   }));
