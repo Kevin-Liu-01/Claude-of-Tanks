@@ -111,7 +111,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v4', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean
+    programKey: 'world-tall-grass-near-v5', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean; v5: the grain's ears
   }),
   far: Object.freeze({
     cellM: 24,
@@ -119,7 +119,7 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 192, 240] as const),
     cap: 84000,       // covers all 529 cells at the maximum 1.3 density without dropping the outer ring
-    programKey: 'world-tall-grass-far-v5', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean
+    programKey: 'world-tall-grass-far-v6', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean; v6: the grain's ears
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -288,7 +288,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
 uniform float uWindTime; uniform vec3 uCamPos; uniform vec3 uCamFwd; uniform float uSniperFade;
 uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; uniform vec4 uGrassFade; uniform float uBend;
 attribute vec4 aBlade;
-varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
+varying float vBladeT; varying float vBladeCrush; varying float vBladeTone; varying float vBladeGrain;`);
     // the blade's own normal: its face turned by the yaw, leaning toward the sky so the strip never lights as a wall
     // (wave 71, every grass view: "thin black stems poking up everywhere") — leaned 29° off the zenith, a blade turned
     // from a low sun took none of it (N·L ≈ 0 at 27° of elevation against 0.83 for its neighbour turned toward it): one
@@ -319,7 +319,12 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
         // and its own tone (the fragment cures a fifth of them to straw)
         float bR = fract(sin(position.z * 91.7 + aBlade.w * 437.3) * 43758.5453);
         float bR2 = fract(bR * 7.31 + aBlade.w * 3.17);
-        hgt *= 0.62 + 0.62 * bR;
+        // (the grass pass, wave 100: wheat and barley "a random scatter of knee-high blade cards with no rows, ears or
+        // cut tops") a ripe grain's stems stand stiff and even, their ears level across the field: a grain blade (its
+        // seed carried a whole turn up, aBlade.w ≥ 1 — admit) takes a tenth of the sward's height swing and a third of its
+        // lean, and its top quarter is its ear (the fragment)
+        float cotGrain = step(1.0, aBlade.w);
+        hgt *= mix(0.62 + 0.62 * bR, 0.92 + 0.14 * bR, cotGrain);
         // the press at the root: how flat, which way, how bruised
         float press = 0.0; vec2 pdir = vec2(0.0, 1.0); float crush = 0.0;
         if (uPressParams.w > 0.5) {
@@ -342,13 +347,14 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
         float ang = press * uBend;
         vec3 up = vec3(pdir.x * sin(ang), cos(ang), pdir.y * sin(ang));
         float leanA = aBlade.w * 6.2832 + (bR2 - 0.5) * 2.4;
-        vec2 lean = vec2(cos(leanA), sin(leanA)) * (0.10 + 0.34 * bR2);
+        vec2 lean = vec2(cos(leanA), sin(leanA)) * mix(0.10 + 0.34 * bR2, 0.04 + 0.10 * bR2, cotGrain);
         pos += up * (t * hgt * (1.0 - 0.30 * dot(lean, lean) * t));
         pos.xz += (lean * (1.0 - press) + wind + pdir * press * 0.35) * t * t * hgt;
         transformed = pos;
         vBladeT = t;
         vBladeCrush = crush;
         vBladeTone = bR2;
+        vBladeGrain = cotGrain;
       }`);
     // the round-13 rule: the cascade shadow is read at the blade's root, so a swaying tip keeps one shadow state
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <shadowmap_vertex>', /* glsl */`
@@ -363,7 +369,7 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone; varying float vBladeGrain;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
     // sward): a shaded blade's light is the sky's own — strongly blue, cooled again by the engine's shadow dim, and a 1.4
@@ -385,7 +391,11 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
       + `\n  diffuseColor.rgb *= 0.80 + 0.40 * fract(vBladeTone * 3.7);`
       // (a cured blade's foot is straw, not a burnt stub: wave 71's dark sticks)
-      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.72, 1.0, vBladeT) * uBladeLift, cure); }`);
+      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.72, 1.0, vBladeT) * uBladeLift, cure); }`
+      // (the grass pass) a grain's ear: its top quarter paler and warmer where the kernels catch the light, under it the
+      // neck a shade darker — the field's ears a level layer over its stems
+      + `\nif (vBladeGrain > 0.5) { float ear = smoothstep(0.70, 0.77, vBladeT), neck = smoothstep(0.60, 0.67, vBladeT) * (1.0 - ear);`
+      + `\n  diffuseColor.rgb *= (1.0 - 0.24 * neck) * mix(vec3(1.0), vec3(1.20, 1.10, 0.90), ear); }`);
   };
 }
 
@@ -592,6 +602,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
     let cropTint: readonly [number, number, number] | null = null;
     let pastureDry = -1;
+    let cutStubble = false; // a stubble field's own stalks (not its weeds): cut at one height by the combine
+    let grainEar = false; // a ripe grain's own stems (not its weeds): stiff, even, an ear on each (the shader: aBlade.w ≥ 1)
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
       field._landUseAt(x, z, _field);
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
@@ -629,6 +641,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
         } else {
           const crop = _field.crop;
           if (!_field.sward) return; // a plough, turned red earth, a paddy's water
+          // (the field-structure pass) a sown crop's tramlines: its two wheel tracks bare (landUse.ts tramQ; terrain.ts
+          // draws their soil)
+          if (Math.abs(_field.tramQ ?? 1e9) < 1.1) return;
           if (_field.cropKeep >= 0) keep = _field.cropKeep; // a sown field has no bare dirt patches
           heightScale *= _field.cropHeight;
           // the crop's own colour (landUse.ts LAND_CROP_ALBEDO, measured: ripe wheat 0.30/0.22/0.075, barley
@@ -641,7 +656,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             // its blades the sward's own, most of them along its edge, where the crop thins into the margin over three
             // metres instead of stopping on a line (vegetation.ts makeTuft: the same law for the tufts)
             const weedP = 0.12 + 0.73 * (1 - smoothstep(0, 3.0, _field.edgeM - _field.marginM));
-            if (((tintR * 7.31 + hR * 3.17) % 1) >= weedP) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+            if (((tintR * 7.31 + hR * 3.17) % 1) >= weedP) {
+              cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+              cutStubble = crop === LAND_CROP.stubble;
+              grainEar = crop === LAND_CROP.wheat || crop === LAND_CROP.barley;
+            }
           } else {
             // (wave 69: "near-circular blotches … rather than the rectilinear plots") a pasture's straw is its own, by
             // the field's draw (terrain.ts and vegetation.ts makeTuft: the same, at the bake's six bits) — not the
@@ -670,6 +689,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (!cropTint && b.kind !== 'reed') {
       keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
       heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);
+    } else if (cutStubble) {
+      // (wave 100, fa29's Verdant tree and Frontier chase views: "a random scatter of knee-high blade cards with no rows,
+      // ears or cut tops", "randomly scattered, knee-high straw tufts") a combine cuts a field at one height: its stubble
+      // stands even — a tenth of the crop's height swing, a quarter of the sward's own — and as thick across the field
+      keep *= 0.85 + 0.15 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
+      heightScale *= 0.92 + 0.16 * swardNoise(x, z, 6.5, 0x2c3d);
     } else if (cropTint) {
       // (wave 14, verdant chase: a sown field read as "a uniform carpet … at one height and spacing, like artificial
       // turf") a crop stands evenly but not as a mat: thinner and shorter in its wet and poor patches, every few metres
@@ -679,7 +704,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
-    const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (2 * hR - 1)));
+    const heightM = Math.min(1.9, b.heightM * heightScale * (1 + b.heightVar * (cutStubble ? 0.25 : 1) * (2 * hR - 1)));
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
@@ -696,7 +721,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (cropTint) {
       // a crop's own colour (a multiplier on the biome's root-to-tip ramp, like every clump's tint), its lum jitter kept
       const cl = 0.90 + 0.20 * tintR;
-      list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM, rnd, cropTint[0] * cl, cropTint[1] * cl, cropTint[2] * cl);
+      list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM, rnd + (grainEar ? 1 : 0), cropTint[0] * cl, cropTint[1] * cl, cropTint[2] * cl);
       return;
     }
     list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM * (reedTint ? 1.25 : 1), rnd,

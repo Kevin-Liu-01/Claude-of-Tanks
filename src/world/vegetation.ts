@@ -3856,7 +3856,17 @@ function* vegetationBuildSteps(
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
-          else if (f.weed) dry = Math.max(dry, 0.75); // a bare field's weeds: the tuft's own straw, not the soil's colour
+          // (the field-structure pass) a sown crop's tramlines: no tuft over its two wheel tracks (a tuft's half-metre
+          // reach kept off them; landUse.ts tramQ)
+          else if (Math.abs(f.tramQ ?? 1e9) < 2.4) return null;
+          else if (f.weed) {
+            // a bare field's weeds: the tuft's own straw, not the soil's colour — and only its weeds: (the soil pass, wave
+            // 100, fa29's Saltwind chase: the terra rossa "evenly interleaved with lush green grass") the tufts stood at
+            // the meadow's full carpet on turned red earth, ballast and a vineyard's rows; they keep the field's own share
+            // now, as the tall grass does (landUse.ts LAND_CROP_GROWTH keep: a twelfth on red earth, a third in the vines)
+            if (((varJ * 7.13 + roll * 3.31) % 1) >= f.cropKeep) return null;
+            dry = Math.max(dry, 0.75);
+          }
           else if (f.crop !== 0) {
             // (wave 71: "… and green among straw") a sown field carries its weeds — an eighth of its tufts the sward's
             // own, most of them along its edge, where the crop thins into the margin over three metres instead of
@@ -3913,7 +3923,9 @@ function* vegetationBuildSteps(
     if (crop > 0) {
       const lj = -(0.90 + 0.20 * lumJ);
       _c.setRGB(_landScratch.tintR * lj, _landScratch.tintG * lj, _landScratch.tintB * lj);
-      cropHeight = Math.max(0.3, Math.min(1.4, _landScratch.cropHeight));
+      // (the soil pass, wave 100: a stubble's tufts "knee-high") a cut field's tuft stands at its own height (0.24), not
+      // the low crops' 0.3 floor — narrower with it, as the aspect law below keeps it
+      cropHeight = Math.max(crop === 5 /* LAND_CROP.stubble */ ? 0.2 : 0.3, Math.min(1.4, _landScratch.cropHeight));
     }
     const t = _tuftScratch;
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note

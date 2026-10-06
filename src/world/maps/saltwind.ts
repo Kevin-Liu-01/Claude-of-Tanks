@@ -116,7 +116,9 @@ export default {
     // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks — it takes the
     // karst's terra rossa; the strand and the white gravel roads keep the sand. (wave 83: "pastel pink, mauve and beige
     // rather than rust-red terra rossa" — the dull brick ~0.16 / 0.10 / 0.075 read mauve) a red-brown, ~0.20 / 0.088 / 0.048
-    soilTint: [0.37, 0.21, 0.22] },
+    // (wave 100, the chase: "flat, oversaturated orange-red paint" — the grade drew ~0.20 / 0.088 / 0.048 at ~131 / 52 / 22
+    // sRGB) terra rossa's rust red-brown, a dry summer surface: ~0.25 / 0.118 / 0.072, red to green 2.1, green to blue 1.6
+    soilTint: [0.455, 0.281, 0.327] },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],

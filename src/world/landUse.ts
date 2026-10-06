@@ -112,7 +112,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   2: { sward: true, height: 1.0, keep: 0.75 },
   3: { sward: true, height: 0.75, keep: 0.65 },
   4: { sward: false, height: 0, keep: 0 },
-  5: { sward: true, height: 0.24, keep: 0.55 },
+  // (the soil pass: a stubble stands even — tallGrass.ts thins it by a sixth where a crop thins by up to three fifths —
+  // so its keep falls by a quarter and the field draws the blades it drew)
+  5: { sward: true, height: 0.24, keep: 0.42 },
   6: { sward: true, height: 1.6, keep: 0.7 },
   7: { sward: true, height: 0.55, keep: 0.45 },
   8: { sward: false, height: 0, keep: 0 },
@@ -365,6 +367,12 @@ export interface LandFieldSample {
    * Optional: a sandboxed harness's own field sample may leave it out (the readers fall back to the straight lanes).
    */
   laneQ?: number;
+  /**
+   * In a sown crop (wheat, barley, a young green crop): the signed offset from the nearer of its tramlines' two wheel
+   * tracks, in the track's half-widths (|tramQ| < 1 on the bare 0.45 m track; the material draws the same, terrain.ts);
+   * 1e9 elsewhere. Optional: a harness's own sample may leave it out (the readers then see no tramline).
+   */
+  tramQ?: number;
 }
 
 export function createLandFieldSample(): LandFieldSample {
@@ -420,7 +428,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.laneQ = 1e9;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.laneQ = 1e9; out.tramQ = 1e9;
   if (!profile || !(profile.strength > 0)) return out;
   const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum, kinds, boundary } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
@@ -481,6 +489,14 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const ra = (luRand(fieldA, fieldB, salt + 41) - 0.5) * 0.7, rc = Math.cos(ra), rs = Math.sin(ra);
   out.rowX = r0x * rc - r0z * rs; out.rowZ = r0x * rs + r0z * rc;
   out.jitter = luRand(fieldA, fieldB, salt + 29);
+  // (the field-structure pass, 2026-10-05) a sown crop's tramlines: the sprayer's two wheel tracks 1.8 m apart, a pair
+  // every 18–26 m straight down the field, 0.45 m each (the material's own: terrain.ts) — read at the bake's six-bit
+  // jitter; the row direction exact, within 3 cm of the bake's 16-bit turn at the square's corners
+  if (crop >= 1 && crop <= 3) {
+    const jq = Math.min(63, Math.round(out.jitter * 63)) / 63, period = 18 + Math.floor(jq * 4) * 2;
+    const v = -out.rowZ * x + out.rowX * z + jq * 37;
+    out.tramQ = (Math.abs(v - period * Math.floor(v / period) - period * 0.5) - 0.9) / 0.225;
+  }
   // the margin the material draws: a grass margin's own width; a bund's and a wall's fixed footing (LAND_USE_GLSL's
   // users in terrain.ts: the field starts at 0.85 m past a bund, 1.45 m past a wall)
   out.marginM = boundary > 2.5 ? 1.2 : boundary > 1.5 ? 0.7 : marginM * (0.7 + 0.6 * out.jitter);
