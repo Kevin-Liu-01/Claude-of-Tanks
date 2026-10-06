@@ -88,7 +88,7 @@ const BUDGET = {
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
-  aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000,
+  aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -104,6 +104,8 @@ const VARIANTS = {
   triumphalArch: [{ arches: 3 }],
   granary: [{ walls: 'timber' }],
   trussBridge: [{ spans: 2, span: 60 }],
+  lighthouse: [{ paint: 'green', base: 'rock' }],
+  mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -292,6 +294,39 @@ check('valveTower over a reservoir bank', () => {
   packedBandsOk(profile, 'valveTower');
   assert.ok(profile.contact.parts.length > 0, 'the tower and its bridge meet the hulls');
   for (const g of geometries(parts)) g.dispose();
+});
+
+// the harbour works (harbour.ts): the mole is one solid from its root to its head, its deck well over a step from the
+// bed (no hull climbs onto it), and its light stands on the head with no gap between them for a hull to wedge into; the
+// lantern's panes are night windows
+check('the mole and its light', () => {
+  const params = resolveLandmarkParams({ kind: 'mole', x: 0, z: 0, params: { length: 42, sea: 'left', light: 'red' } });
+  const [, hl] = LANDMARK_KINDS.mole.footprint(params);
+  const { parts } = build('mole', { length: 42, sea: 'left', light: 'red' });
+  const profile = deriveRuntimeStructureCollisionProfile(parts);
+  packedBandsOk(profile, 'mole');
+  const spans = profile.contact.parts.map((part) => {
+    if (part.kind === 'circle') return [part.cz - part.r, part.cz + part.r];
+    if (part.kind === 'obb') { const e = Math.abs(part.hl * Math.cos(part.yaw)) + Math.abs(part.hw * Math.sin(part.yaw)); return [part.cz - e, part.cz + e]; }
+    const zs = part.points.filter((_, i) => i % 2 === 1);
+    return [Math.min(...zs), Math.max(...zs)];
+  }).sort((a, b) => a[0] - b[0]);
+  const Rh = Number(params.width) / 2 + 1.6, zr = -(Number(params.length) + Rh) / 2, zh = zr + Number(params.length) + Rh;
+  let reach = spans[0][0];
+  assert.ok(reach <= zr + 0.6, `the solid starts at the root (${reach.toFixed(2)} for ${zr.toFixed(2)})`);
+  for (const [a, b] of spans) {
+    assert.ok(a <= reach + 0.05, `no gap along the mole (${reach.toFixed(2)} to ${a.toFixed(2)})`);
+    reach = Math.max(reach, b);
+  }
+  assert.ok(reach >= zh - 0.6, `the solid reaches the head's end (${reach.toFixed(2)} for ${zh.toFixed(2)})`);
+  assert.ok(reach <= hl + 1e-6, 'within the footprint');
+  assert.ok(profile.contact.maxY >= Number(params.deck) - 0.05 && profile.contact.maxY > HULL_STEP_UP_M * 3,
+    `the solid stands to the deck, well over a step (${profile.contact.maxY.toFixed(2)})`);
+  assert.ok(parts.curtain.length > 0, 'the lantern panes are night windows');
+  for (const g of geometries(parts)) g.dispose();
+  const alone = build('lighthouse', { base: 'rock', paint: 'green' });
+  assert.ok(alone.parts.curtain.length > 0, "the lone light's lantern panes are night windows");
+  for (const g of geometries(alone.parts)) g.dispose();
 });
 
 // ---------------------------------------------------------------------------------------------------------- composer

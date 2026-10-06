@@ -28,6 +28,8 @@ export type LandmarkKind =
   | 'colonialBungalow' | 'tennisCourt'
   // temples
   | 'bengalTemple'
+  // harbour works
+  | 'lighthouse' | 'mole'
   // wrecks
   | 'aircraftWreck';
 

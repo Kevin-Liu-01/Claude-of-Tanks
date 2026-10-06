@@ -4,7 +4,7 @@
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
 
-type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck';
+type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour';
 
 interface LandmarkKindSpec {
   family: LandmarkFamily;
@@ -92,6 +92,15 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => { const r = p.style === 'railway' ? 4.6 : p.style === 'rozhnovsky' ? 3.4 : 4.2; return [r, r]; } },
   fireLookout: { family: 'tower', defaults: { height: 22 },
     footprint: (p) => { const r = 2.6 + num(p, 'height') * 0.05; return [r, r]; } },
+  // ------------------------------------------------------------------------------------------------ harbour works
+  // (the light's battered plinth, and the skerry's boulders round it when it stands on a rock: harbour.ts lighthouse)
+  lighthouse: { family: 'harbour', inWater: true, defaults: { height: 11, radius: 1.6, paint: 'red', base: 'plinth', rise: 1.5 },
+    footprint: (p) => { const r = num(p, 'radius') + 1.1 + (p.base === 'rock' ? 1.3 : 0.05); return [r, r]; } },
+  // (the frame from the root's end to the round head's: the light's axis `length` from the root, the head's platform
+  // half the width and 1.6 m past it, the batter; the steps by the root stand inside the head's width)
+  mole: { family: 'harbour', inWater: true,
+    defaults: { length: 40, width: 6, deck: 2.2, sea: 'left', light: 'red', height: 11, radius: 1.6 },
+    footprint: (p) => { const Rh = num(p, 'width') / 2 + 1.6; return [Rh + 0.45, (num(p, 'length') + Rh) / 2 + 0.45]; } },
   // (the tower's axis at (bridge - radius) / 2 along its frame, the bridge's bank end at -(bridge + radius) / 2: the whole
   // piece centred on its frame; its batter, cornice and roof 1.1 m past the shaft)
   valveTower: { family: 'tower', inWater: true, defaults: { radius: 4.2, bridge: 34, width: 3.2, chamber: 5.4 },
