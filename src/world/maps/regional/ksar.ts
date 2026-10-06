@@ -333,17 +333,6 @@ function reach(ctx: RegionalBuildContext): { W: number; D: number; cx: number; c
   return { W: b.maxX - b.minX, D: b.maxZ - b.minZ, cx: (b.maxX + b.minX) / 2, cz: (b.maxZ + b.minZ) / 2, x0: b.minX, x1: b.maxX, z0: b.minZ, z1: b.maxZ };
 }
 
-/** The four faces of a box x0..x1 x z0..z1 (front +z, right +x, back -z, left -x). */
-function boxFaces(x0: number, z0: number, x1: number, z1: number): { front: Face; right: Face; back: Face; left: Face } {
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
-  return {
-    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: w },
-    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: d },
-    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: w },
-    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: d },
-  };
-}
-
 /**
  * A rounded rectangle x0..x1 x z0..z1 (each corner cut by two short faces on a circle of radius rc), ordered so a cap
  * through it faces up (counter-clockwise seen from above). Rings of one family (the same corner centres, the radius
@@ -498,7 +487,7 @@ const shaliCluster: RegionalBuilder = (ctx) => {
  * beams and slit openings near the top) or a watch tower with its door high in the wall. Kershef the
  * colour of the town (no limewash, no cap of another colour: a tall pale taper with a coloured top reads as a lighthouse).
  */
-function mudTower(sink: PartSink, S: number, H: number, rng: () => number, look: () => number, minaret: boolean): void {
+function mudTower(sink: PartSink, S: number, H: number, rng: () => number, minaret: boolean): void {
   // (round 2, the gauntlet's wave 125: "a straight-sided, crenellated castle keep") the tower is battered to its head —
   // two fifths in on a minaret, three tenths on a watch tower — its arrises rounded, a flat parapet head with a
   // bevelled crest, not merlons
@@ -534,7 +523,7 @@ const shaliMinaret: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const R = reach(ctx);
   const S = Math.max(2.6, Math.min(R.W, R.D) - 0.2);
-  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(11, Math.min(15, ctx.info.h - 0.5)), ctx.rng, ctx.variant, true));
+  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(11, Math.min(15, ctx.info.h - 0.5)), ctx.rng, true));
   return sink.finish();
 };
 
@@ -543,7 +532,7 @@ const siwaTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const R = reach(ctx);
   const S = Math.max(3.0, Math.min(R.W, R.D) - 0.2);
-  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(7.5, ctx.info.h - 1.5), ctx.rng, ctx.variant, false));
+  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(7.5, ctx.info.h - 1.5), ctx.rng, false));
   return sink.finish();
 };
 
