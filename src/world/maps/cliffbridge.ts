@@ -177,9 +177,9 @@ export default {
       // The gorge: three troughs between the same sheer walls (38 m at the bridge, a cliff the bot planner's 25 m grid
       // reads as one), each a little longer than the last, so the floor climbs in river terraces to the tableland at
       // both ends (x = ±390).
-      { kind: 'gorge', x: 0, z: 0, length: 540, width: 96, height: -16, corridorScale: 1, settlementScale: 1 },
-      { kind: 'gorge', x: 0, z: 0, length: 660, width: 96, height: -12, corridorScale: 1, settlementScale: 1 },
-      { kind: 'gorge', x: 0, z: 0, length: 780, width: 96, height: -10, corridorScale: 1, settlementScale: 1 },
+      { kind: 'gorge', x: 0, z: 0, length: 540, width: 96, height: -16, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
+      { kind: 'gorge', x: 0, z: 0, length: 660, width: 96, height: -12, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
+      { kind: 'gorge', x: 0, z: 0, length: 780, width: 96, height: -10, corridorScale: 1, settlementScale: 1, wall: [0.76, 0.86], meander: 12 },
       // The limestone rib the viaduct's piers stand on: it crosses the gorge floor under the deck, too steep to drive,
       // so the floor's west and east reaches meet only over the bridge (no hull parks on the bed under the deck).
       { kind: 'ridge', x: 0, z: 0, length: 140, width: 14, height: 6.5, yawDeg: 90, corridorScale: 1, settlementScale: 1 },
@@ -229,16 +229,28 @@ export default {
       { x: 20, z: 380 }, { x: -115, z: 425 }, { x: -25, z: 425 },
     ],
   },
-  splat: {...verdant.splat, sourcedPalette:'verdant', fieldPatch:.35,
-    // map revival lane 2, round 2 (gauntlet wave 108b: "grass reads as wet Atlantic pasture"): the sward's tints a
-    // summer's dry campiña, not a wet meadow's
-    tintA:[.98,1.0,.82],tintB:[.86,.88,.72],tintC:[1.03,1.03,.84],roadTint:[.83,.80,.70],
-    // the campiña's tierra calma over the tableland's limestone and marl, a pale warm loam (~0.21 / 0.17 / 0.12 over the
-    // shared palette's dark earth, ~0.084 / 0.058 / 0.042), not Verdant's chernozem; its plough a shade lighter
-    soilTint:[2.5,2.9,2.8], ploughLift:1.25,
+  // map revival lane 2, round 3 (gauntlet wave 108c: "velvet-green turf", "no olive grids on pale soil", "the walls
+  // smooth planar grey"): the ground is the summer campiña's. The photo sets are the steppe's (withered grass, the
+  // dirt, the rock), each graded from its linear mean: Rock058 renders at 0.08 / 0.09 / 0.11, so the gorge's walls drew
+  // a dark blue-grey that read as water from above (and the setts, which take the rock's mean, dark grey); here it is
+  // the Tajo's golden-grey calcarenite (~0.19 / 0.18 / 0.13: at ~0.29 the study pair drew chalk-white cliffs), bedded
+  // (strata: beds, partings, joint blocks, varnish). The steppe's withered grass a shade down (it read as sand at its
+  // own 0.34 / 0.25 / 0.12), its dirt (Ground071 under its tint, an orange 0.20 / 0.11 / 0.05) greyed toward the marl.
+  splat: {...verdant.splat, sourcedPalette:'steppe', fieldPatch:.35,
+    sourcedTint: { G: [0.85, 0.85, 0.8], D: [1.0, 1.15, 1.6], R: [1.9, 1.7, 1.35] }, strata: 0.16,
+    // round 2 (gauntlet wave 108b: "grass reads as wet Atlantic pasture"): the sward's tints a summer's dry campiña
+    tintA:[.98,1.0,.82],tintB:[.86,.88,.72],tintC:[1.03,1.03,.84],
+    // round 3: the caminos a dusty tan (~0.15 / 0.10 / 0.05 over the greyed dirt) and the setts a worn limestone grey
+    // (~0.14 over the rock's mean)
+    roadTint:[0.78,0.74,0.68],
+    // the campiña's tierra calma over the tableland's limestone and marl, a pale warm loam (~0.22 / 0.175 / 0.12 over
+    // the greyed dirt, ~0.196 / 0.129 / 0.072), not Verdant's chernozem; its plough a shade lighter
+    soilTint:[1.12,1.36,1.69], ploughLift:1.25,
     // the towns' streets and squares paved in setts (the empedrado of Ronda's old town), the country roads past the
-    // village rect earth (terrain.ts townPaving)
-    townPaving:true, pavement:{ slabM:0.32, jointM:0.022, stains:0.3, tyres:0 }},
+    // village rect earth (terrain.ts townPaving). Round 3 (108c: "dark-grey square-grid tile"): setts a hand across
+    // with hairline joints, so their mottle reads before their grid (the slab path's stone is the rock layer's mean,
+    // now the calcarenite's)
+    townPaving:true, pavement:{ slabM:0.16, jointM:0.006, stains:0.25, tyres:0 }},
   // map revival lane 2 (2026-10-05): the Serranía de Ronda's trees. The acacia slot grows as the olive (silver-grey), the
   // oak slot as the holm oak (the encina, dull dark grey-green), the poplars stay poplars, the cypress is the cypress;
   // the scrub grows as the olive's sprays (wild olive and lentisk)
@@ -248,6 +260,8 @@ export default {
     loneMix: [['acacia', 0.44], ['oak', 0.3], ['poplar', 0.12], ['cypress', 0.14]],
     rimMix: [['oak', 0.58], ['acacia', 0.3], ['cypress', 0.12]],
     clusterCount: 60, loneCount: 110, rimCount: 95, grassDensity: 0.45, bushCount: 0.8, bushSpecies: 'acacia',
+    // round 3 (108c: "lush green turf against the pale dry bank"): the sward's cards cured straw, the summer's
+    grassTexTone: (_h: number, s: number, l: number): [number, number, number] => [0.12, Math.min(1, s * 0.7 + 0.05), Math.min(1, l * 1.04 + 0.06)],
     palettes: {
       acacia: { form: 'olive', cardHue: 0.3, cardSat: 0.06,
         texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)] },
@@ -255,8 +269,12 @@ export default {
         texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l] },
       // round 2 (gauntlet wave 108b: "poplars still capped with flat brown leaf cards"): the river's white poplar (álamo
       // blanco), its leaves a silvery green on every card, no autumn brown in August
-      poplar: { cardHue: 0.24, cardSat: 0.14,
-        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.24, Math.min(1, s * 0.6), Math.min(1, l * 1.06)] },
+      poplar: { cardHue: 0.23, cardSat: 0.10,
+        // (round 3: duller, a summer's dusty leaf; at s 0.6 / l 1.06 they stood lime against the dry ground)
+        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.23, Math.min(1, s * 0.45), Math.min(1, l * 0.92)] },
+      // round 3 (the study pair: the hermitage's cypresses lime green): the Mediterranean cypress near-black green
+      cypress: { cardHue: 0.36, cardSat: 0.30, cardL0: 0.22, canopy: { hue: 0.36, sat: 0.28, l0: 0.17, l1: 0.30 },
+        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.34, Math.min(1, s * 0.75), Math.min(1, l * 0.55)] },
     },
     // planted lines (real cover: belts go through the tree admission), each with its mirror across the gorge: the olive
     // groves' rows on the west terraces (between the rim bank and the upper terrace, and below the lower one), the
@@ -307,7 +325,11 @@ export default {
     haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 8,
     tankWrecks: verdant.props.tankWrecks,
     wallStyle: 'fieldstone',
-    inhabit: { ...verdant.props.inhabit, stalls: 2, benches: 2, coreClutter: 6 },
+    // round 3 (108c: "a white picket fence reads as American", "three blank coloured boards on posts like placeholder
+    // swatches"): the yards fenced in cane (cañizo), the roads in post and rail where they are fenced at all, and no
+    // washing lines (their flat sheets read as swatches)
+    inhabit: { ...verdant.props.inhabit, stalls: 2, benches: 2, coreClutter: 6, laundry: 0,
+      yardFence: 'fencewattle', roadFence: 'fencerail' },
   },
   // map revival lane 2 (2026-10-05): the tableland's harvest — straw stacks on the grain fields, each with its mirror
   scenery: {
