@@ -463,6 +463,8 @@ interface PlacedBuilding {
   rot: number;
   /** Round 75: the plan id of a planned building (the yard dressing reads it); other placements carry none. */
   kind?: string;
+  /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
+  landmark?: string;
 }
 
 interface TacticalBeatFeature {
@@ -4489,7 +4491,7 @@ ${snowCap ? `
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
-      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, kind }); },
+      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
       // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
       // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
       addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
@@ -7585,7 +7587,7 @@ ${snowCap ? `
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
-        if (building.kind?.startsWith('landmark:')) continue; // a set piece is grounded by its own plinths
+        if (building.landmark) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));

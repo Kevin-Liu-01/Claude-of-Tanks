@@ -267,7 +267,7 @@ for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBr
   assert.equal(by('in the church').reason, 'solid structure', 'a piece never stands in another');
   assert.equal(receipt.placed, 3); assert.equal(receipt.skipped, 3);
   assert.equal(furniture.filter((f) => f.kind === 'bench').length, 4); assert.equal(furniture.filter((f) => f.kind === 'lamp').length, 2);
-  assert.ok(published.some((p) => p.kind === 'landmark:church' && p.rot === -Math.PI / 2), 'the minimap gets its footprint');
+  assert.ok(published.some((p) => p.kind === 'church' && p.rot === -Math.PI / 2), 'the minimap gets its footprint, under its kind');
   // the church's ground is reserved along its length (the passes after keep off it)
   for (const z of [-14, 0, 14]) {
     const x = 60 + z * Math.sin(-Math.PI / 2), wz = 40 + z * Math.cos(-Math.PI / 2);
