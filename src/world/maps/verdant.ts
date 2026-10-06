@@ -38,6 +38,19 @@ export default {
     // the default rim, stated: the authored border roads' portal shoulders size their support from it
     rimH: 24,
     marshes: [],
+    // The landmarks lane (2026-10-05): Prokhorovka station's line, on the country road's southern shoulder 7 m off its
+    // centreline (the road's own graded ground: off it the plateau folds a metre in eight), from the buffer stop by
+    // the water tower east past the station to the railhead's stop short of the east command fold. Its berth is a
+    // 'clearance' one (railSpurs.ts): out of the terrain's noVeg, so not one tree or prop of the map's placement
+    // streams moves; the trees come off it by the vegetation's clearance, the grass and litter by the berth predicate,
+    // and the line keeps clear of every solid (landmarks.selftest).
+    railSpurs: [{
+      path: [[96.7, 76.8], [105.6, 77.6], [114.5, 78.3], [123.4, 78.9], [132.3, 79.3], [141.2, 79.6], [150.1, 79.7],
+        [159, 79.7], [167.8, 79.6], [176.7, 79.3], [185.6, 78.9], [194.5, 78.3], [203.4, 77.6], [212.3, 76.8],
+        [221.2, 75.9], [230.1, 74.8], [239, 73.6], [247, 72.4], [254.9, 71.2], [262.9, 70], [270.8, 68.6], [278.8, 67.2],
+        [286.8, 65.8], [294.7, 64.3]],
+      bufferStop: 'both', berth: 'clearance',
+    }],
     // The village square and the two field greens on the swells' inner slopes: level aprons the zone-control placement
     // seats its 30 m discs on, each clear of the country roads.
     hardstands: [
@@ -144,8 +157,25 @@ export default {
     // refectory, the cube with its porticos, drum and green dome, the apse to the east — in the village's empty
     // north-western quarter between the schoolhouse and the north wall. (Not Prokhorovka's Sts Peter and Paul: that
     // church is the 1995 memorial to the battle.)
+    //
+    // Verdant v2 (the integrator's plan, 2026-10-05), every piece on empty ground, the pairs about the map's point of
+    // symmetry (10, 20): Prokhorovka station east of the village — a Kursk–Kharkov–Azov railway brick hall, its
+    // platform canopy on the line, and the railway's brick-and-timber water tower at the buffer stop; its partner the
+    // kolkhoz west of the village — the zernosklad grain store, a timber water tower, and its 1930s arch over the country
+    // road where it leaves the village; the 1920s memorial to the Civil War dead on a railed green by the crossroads;
+    // a post mill on the southern swell's crest and a smock mill on the northern, the steppe's two kinds of mill, both
+    // turned to the south-west wind. (The two kurgans keep their standing stones, the scenery lane's.)
     landmarks: [
       { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },
+      { kind: 'stationHall', x: 128, z: 66.2, yawDeg: -2.57, name: 'Prokhorovka station' },
+      { kind: 'waterTower', x: 97.5, z: 68, yawDeg: -5.14, params: { style: 'railway' }, name: 'the station water tower' },
+      { kind: 'granary', x: -90, z: -29, yawDeg: -3, name: 'the kolkhoz grain store' },
+      { kind: 'waterTower', x: -65, z: 2, yawDeg: 0, params: { style: 'trestle', height: 15 }, name: 'the kolkhoz water tower' },
+      { kind: 'kolkhozArch', x: -70, z: 60.6, yawDeg: 83.7, name: 'the kolkhoz arch' },
+      { kind: 'parkSquare', x: 43, z: 55, yawDeg: 0, name: 'the Civil War memorial',
+        params: { width: 16, depth: 14, paths: 'cross', railing: 'iron', benches: 2, lamps: 0, centre: 'obelisk', centreHeight: 5.5 } },
+      { kind: 'windmill', x: -231, z: -246, yawDeg: 210, params: { style: 'post' }, name: 'the post mill on the southern swell' },
+      { kind: 'windmill', x: 267, z: 288, yawDeg: 225, params: { style: 'smock' }, name: 'the smock mill on the northern swell' },
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
