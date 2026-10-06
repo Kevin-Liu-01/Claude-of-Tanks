@@ -476,6 +476,9 @@ export const ARCTIC_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
       // a pale blue-grey
       plaster3: (_h, s, l) => [0.56, Math.min(1, 0.1 + s * 0.1), Math.min(1, l * 0.3 + 0.44)],
     },
+    // round 2 (the render canvas read as stucco on the station's steel: the warehouse walls "popcorn" at 10 m): the
+    // painted panels nearly smooth, the canvas's grain a faint skin (surfaces.relief)
+    relief: { plasterUv: 2.6, normal: 0.14, ao: 0.3 },
   },
   builders: ARCTIC_BUILDERS,
   // painted steel under the wind and the cold: little damp, no moss, the rust at the feet
