@@ -438,6 +438,8 @@ interface ShellAir {
    *  under the camera; whether the dome's lookup is live */
   uPanoTint: THREE.IUniform<THREE.Vector3>;
   uPanoTerms: THREE.IUniform<THREE.Vector3>;
+  /** 2026-10-06 (QA PANO_FAR_EARTH_VARY): the far earth's land patches' amplitude (0 off) */
+  uPanoFarVary: THREE.IUniform<number>;
   /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
    *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
   uDeckHorizon: THREE.IUniform<THREE.Vector4>;
@@ -588,6 +590,13 @@ float panoCloudShade( vec2 cp ) {
  * 300 m). Both take the column's skyline, its farthest ground; the far earth hazed by the map's law over the reach past
  * the strip at which the camera's ray meets the ground, so it converges to the law's target toward the horizontal. A
  * ground or tank-height camera's rays to the wall's sky point above its own horizontal, so its view is unchanged. */
+/**
+ * 2026-10-06 (the skies lane; the gauntlet's waves 144-148: from a high camera an inland map's far earth reads as "a sea with a
+ * white surf line", "a flat haze sheet"): the far earth was one colour per column, constant up the ray, hazed toward the
+ * horizon. QA knob: the land the camera's ray meets there carries broad field and wood patches (two octaves, 1.4 km and
+ * 420 m, ± this share of its colour, the woods a touch greener), so it recedes as land into the haze. 0 keeps the sheet.
+ */
+const PANO_FAR_EARTH_VARY = 0;
 function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
@@ -607,6 +616,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uAtmoIntensity: { value: 1 },
     uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
     uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
+    uPanoFarVary: { value: 0 },
     uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uDeckClosed: { value: 0 },
     tClouds: { value: null },
@@ -638,7 +648,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
-uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
@@ -691,6 +701,12 @@ ${HAZE_LAW_GLSL}`)
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
             ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
+            // (QA PANO_FAR_EARTH_VARY) the land the ray meets as broad fields and woods, not one sheet per column
+            if (uPanoFarVary > 0.0) {
+              vec2 mp = cameraPosition.xz + rd.xz * meet;
+              float pn = vnoise(mp * (1.0 / 1400.0)) * 0.6 + vnoise(mp * (1.0 / 420.0) + vec2(3.1, 7.7)) * 0.4;
+              ground *= (1.0 + (pn - 0.5) * 2.0 * uPanoFarVary) * mix(vec3(1.0), vec3(0.9, 1.03, 0.88), smoothstep(0.58, 0.78, pn) * min(1.0, uPanoFarVary * 3.0));
+            }
             // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
             // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
             // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
@@ -1699,6 +1715,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const overcast = Math.min(1, Math.max(0, data.lightModel?.overcast ?? 0));
     hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
     air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
+    air.uPanoFarVary.value = lightTune('PANO_FAR_EARTH_VARY', PANO_FAR_EARTH_VARY);
     // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
     if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
     const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
