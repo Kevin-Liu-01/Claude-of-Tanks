@@ -340,8 +340,12 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
   rebuildRegionalStructure, resolveRegionalArchitecture,
 };
+// The map-revival lane (2026-10-05): Orchard Valley adopts the Chouf kit (maps/regional/chouf.ts), which rebuilds the
+// placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry
+// envelope with them). This receipt holds the variant's own contract on the base pipeline, so the fixture places it with
+// the kit off; the kit's rebuild — placements, stream and contacts on today's Orchard — is regionalArchitecture's.
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
-  const P = { maxSpread: 1.7, ...config.props, plan: ['bathhouse'] };
+  const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'] };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
   const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);
