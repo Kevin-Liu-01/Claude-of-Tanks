@@ -472,6 +472,10 @@ export interface HeightField {
    * the material's own slabs) — present on a map with a walled karst land use only; the field is _landUseAt's at (x, z),
    * normalY the terrain normal's y there, fold the baked fold (_foldAt, 0 before it is baked). */
   _karstSlabAt?(x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number;
+  /** Ground lane (2026-10-06, for the scenery lane's karst stone): the pavement's patch weight at (x, z), 0..1, before its
+   * joints (karstCoverAt) — 0 on a field track and in a sown or bare field; the roads, their shoulders, the yards, the
+   * marsh and shore and the rock layer's faces are the caller's own keep-outs. Present with _karstSlabAt, same arguments. */
+  _karstCoverAt?(x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
@@ -2800,16 +2804,14 @@ function noiseQuadTwin(x: number, z: number, s: number, ox: number, oz: number, 
 }
 
 /**
- * Ground lane (the limestone, fourth cut): the CPU twin of the terrain material's karst pavement at (x, z) — 1 on a
- * clint's face, 0 in its grike, where its slab has dropped out at the patch's edge, past the patch, on a field track and
- * in a sown or bare field — so the sward keeps to the grikes (vegetation.ts tufts, tallGrass.ts). The thin-soil field
- * reads the same float fields the shader's noise texture quantizes (level 0, sampleSplatNoise's convention: the
- * shader's level past ~0.35 m a pixel, where no tuft stands); the joints and their draws are the material's exactly.
- * normalY: the terrain normal's y; fold: the baked fold (−1 crest .. +1 hollow); field: landUseAt's at (x, z);
- * (rotC, rotS): the field grid's heading (the material's uLandRot).
+ * Ground lane (the limestone, fourth cut; 2026-10-06, published for the scenery lane's karst stone): the pavement's patch
+ * weight at (x, z), 0..1, before its joints — the material's kCover less its gates on the roads, their shoulders, the
+ * yards, the marsh and shore and the rock layer's faces (the caller's own keep-outs): 0 on a field track and in a sown or
+ * bare field, else the thin soil (the same float fields the shader's noise quantizes) with the crest's and the slope's
+ * share. karstSlabAt stands its slabs under it. normalY: the terrain normal's y; fold: the baked fold (−1 crest .. +1
+ * hollow); field: landUseAt's at (x, z).
  */
-export function karstSlabAt(x: number, z: number, normalY: number, fold: number, field: LandFieldSample,
-  rotC: number, rotS: number): number {
+export function karstCoverAt(x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number {
   const slope = 1 - Math.min(1, Math.max(0, normalY));
   if (field.active) {
     if (field.track > 0.5) return 0;
@@ -2826,7 +2828,23 @@ export function karstSlabAt(x: number, z: number, normalY: number, fold: number,
     + fieldSample(f.b, wrapUnit(rx * 0.00326 + 0.56), wrapUnit(rz * 0.00326 + 0.90)) * 0.5 + 0.5 - 1) * 0.72 + 0.5));
   const slopeK = smoothstep(0.0, 0.12, slope) * (1 - smoothstep(0.30, 0.55, slope));
   const cover = smoothstep(0.56, 0.74, thinN + 0.30 * Math.max(Math.min(1, Math.max(0, -fold)), 0.5 * slopeK));
+  return cover <= 0.003 ? 0 : cover;
+}
+
+/**
+ * Ground lane (the limestone, fourth cut): the CPU twin of the terrain material's karst pavement at (x, z) — 1 on a
+ * clint's face, 0 in its grike, where its slab has dropped out at the patch's edge, past the patch, on a field track and
+ * in a sown or bare field — so the sward keeps to the grikes (vegetation.ts tufts, tallGrass.ts). The thin-soil field
+ * reads the same float fields the shader's noise texture quantizes (level 0, sampleSplatNoise's convention: the
+ * shader's level past ~0.35 m a pixel, where no tuft stands); the joints and their draws are the material's exactly.
+ * normalY: the terrain normal's y; fold: the baked fold (−1 crest .. +1 hollow); field: landUseAt's at (x, z);
+ * (rotC, rotS): the field grid's heading (the material's uLandRot).
+ */
+export function karstSlabAt(x: number, z: number, normalY: number, fold: number, field: LandFieldSample,
+  rotC: number, rotS: number): number {
+  const cover = karstCoverAt(x, z, normalY, fold, field);
   if (cover <= 0.003) return 0;
+  const f = splatFields();
   // the joints in the grid's own frame (metres), wandering
   noiseQuadTwin(x, z, 0.012, 0.57, 0.29, _karstNoise);
   const pu = x * rotC + z * rotS + (_karstNoise[0] - 0.5) * KARST_WANDER_U;
@@ -2870,11 +2888,12 @@ export function karstSlabAt(x: number, z: number, normalY: number, fold: number,
     (cr - cu) * KARST_JOINT_U * kSec - karstCrossHw(rW) * wide);
   return e > 0 ? 1 : 0;
 }
-/** The height field's _karstSlabAt for a land use of this heading (its rotation once, as the material's uLandRot). */
-function karstSlabHook(heading: number): Pick<HeightField, '_karstSlabAt'> {
+/** The height field's _karstSlabAt for a land use of this heading (its rotation once, as the material's uLandRot), and
+ * its _karstCoverAt (the patch weight, which needs no heading). */
+function karstSlabHook(heading: number): Pick<HeightField, '_karstSlabAt' | '_karstCoverAt'> {
   const c = Math.cos(heading), s = Math.sin(heading);
   return { _karstSlabAt: (x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number =>
-    karstSlabAt(x, z, normalY, fold, field, c, s) };
+    karstSlabAt(x, z, normalY, fold, field, c, s), _karstCoverAt: karstCoverAt };
 }
 
 /**

@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
-import { karstSlabAt, terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
+import { karstCoverAt, karstSlabAt, terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -331,5 +331,21 @@ assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[ch
     bare += karstSlabAt(x, 3, 1, -1, { active: 1, track: 0, edgeM: 10, marginM: 2, crop: 5 }, c, s);
   }
   assert.equal(bare, 0, 'a field track and a sown field carry no slabs');
+  // (2026-10-06) the patch weight the scenery lane's karst stone reads (karstCoverAt, the height field's _karstCoverAt):
+  // a weight, every slab standing under it, none on a track or a sown field, published beside the slabs
+  let slabs = 0, under = 0, covered = 0, cells = 0;
+  for (let z = -470; z <= 470; z += 3.7) for (let x = -470; x <= 470; x += 3.7) {
+    const cv = karstCoverAt(x, z, 1, -1, off), sl = karstSlabAt(x, z, 1, -1, off, c, s);
+    assert.ok(cv >= 0 && cv <= 1, `the cover is a weight (${cv})`);
+    if (sl) { slabs++; if (cv > 0.003) under++; }
+    if (cv > 0.003) covered++;
+    cells++;
+  }
+  assert.ok(slabs > 100 && under === slabs && covered >= slabs && covered < cells,
+    `every slab stands under the cover (${under}/${slabs}; ${covered}/${cells} cells covered)`);
+  assert.equal(karstCoverAt(10, 3, 1, -1, { active: 1, track: 1, edgeM: 5, marginM: 2, crop: 0 })
+    + karstCoverAt(10, 3, 1, -1, { active: 1, track: 0, edgeM: 10, marginM: 2, crop: 5 }), 0, 'no cover on a track or a sown field');
+  assert.ok(flat(active(terrain)).includes(flat('karstSlabAt(x, z, normalY, fold, field, c, s), _karstCoverAt: karstCoverAt };')),
+    'the height field publishes the cover beside the slabs');
 }
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), the karst pavement's twin, ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);
