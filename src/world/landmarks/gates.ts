@@ -8,8 +8,7 @@ import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type V
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
   ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, moulding, revolve, smoothRender, star,
-  type ArchHole,
-} from './kit.ts';
+  type ArchHole, LIMEWASH_UV } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
@@ -108,7 +107,7 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) {
     bar(sink, 'structureWood', [sx * inner, beamY - 1.2, 0], [sx * (inner - 1.2), beamY, 0], 0.14, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: smoothRender(sink.finish(), 0.3), tints: { plaster: [1, 1, 0.98] } };
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
