@@ -42,9 +42,12 @@ export default {
     // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
     marshes: [],
+    // (Skybridge round 2's canyon: the lakes pulled in off the old banks to the trough's floor and pinned at one waterline
+    // 11 m under the plain, their banks a tight 0.98 so the canyon's walls meet the water instead of a graded strand;
+    // the two sheets still overlap, one surface)
     lakes: [
-      { x: -34, z: 62, r: 92, depth: 2.2 },
-      { x: 36, z: 146, r: 88, depth: 2.2 },
+      { x: -30, z: 50, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
+      { x: -14, z: 136, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
     ],
     // three aprons for the zone-control discs on the line of equal driven distance: the west lane's yard, the gorge's
     // west shore between the lake and the west middle segment (tilted to its ground) and the east lane's yard (tilted
@@ -85,6 +88,17 @@ export default {
       // the drowned gorge's basin under the lakes
       { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72,
         geology: { outline: 0.2, rough: 0.4 } },
+      // (the map-revival lane, 2026-10-06, Skybridge round 2 item 2; gauntlet wave 107: "no drowned canyon, no dam and no
+      // bedded red sandstone wall anywhere: the reservoir is a pond lying flush with a flat sand plain") the reservoir
+      // sinks into Glen Canyon: a trough round both lakes (a canyon knoll, landformGeology.ts) whose cross-bedded Navajo
+      // sandstone walls stand 10-13 m from the plain's rim to the water, side canyons biting into them, the talus at
+      // their feet under the water; the rim stays at plain level, clear of the west shore's apron, the district's roads
+      // and the north road; two boat ramps cut the wall down to the waterline, one from the west lane's shore and one from
+      // the district's road
+      { kind: 'knoll', x: -20, z: 92, rx: 85, rz: 140, height: -10, yawDeg: -10, corridorScale: 1, settlementScale: 1, wetScale: 1,
+        geology: { profile: 'canyon' as const, wall: [0.74, 0.8] as const, apron: 0.3, outline: 0.12, rough: 0.4,
+          strata: { stepM: 2.4, riser: 0.4 }, gullies: { count: 16, depthM: 1.4, width: 0.4 },
+          ramps: [{ bearingDeg: 180, halfWidthDeg: 6, runM: 40 }, { bearingDeg: 0, halfWidthDeg: 6, runM: 40 }] } },
     ],
   },
   spawns: {
