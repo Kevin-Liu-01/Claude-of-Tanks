@@ -203,6 +203,21 @@ interface LakeConfig {
   boats?: number;
 }
 
+/** One terrace zone (TerrainSettings.terraces). */
+export interface TerraceZoneConfig {
+  /** The zone's outline (x, z), metres: the steps come in over `feather` m inside it. */
+  polygon: readonly (readonly [number, number])[];
+  feather?: number;
+  /** A riser's height, metres (a bench every `stepM` of ground height). */
+  stepM: number;
+  /** The steepest a riser stands (rise per run, default 0.6): on steeper ground the risers take more of the slope. */
+  riserGrade?: number;
+  /** The ground grade (of the smooth relief) under which the steps fade out, and over which they are whole (defaults
+   * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
+  minGrade?: number;
+  fullGrade?: number;
+}
+
 interface LandformConfig {
   kind: string;
   x: number;
@@ -273,6 +288,10 @@ interface TerrainSettings {
   /** Use authored activity footprints instead of blanket settlement wear; 'plots' lays the village's ground out in
    * garden plots running back from its streets (makeMaskTexture villagePlotWear). */
   villageWear?: 'activity-patches' | 'plots';
+  /** The map-revival lane (2026-10-05, Orchard Valley's terraces): contour terraces stepped into the ground inside each
+   * zone (applyTerraces) — level benches, risers `stepM` high and no steeper than `riserGrade` — before the roads and pads
+   * are graded, so a road cuts its graded way through them. Absent: none, and every other map's field is unchanged. */
+  terraces?: readonly TerraceZoneConfig[];
   quarryBenches?: boolean;
   /** Authored Redrock regional ground participates in initial road/pad seating. */
   redrockCanyon?: boolean;
@@ -591,6 +610,47 @@ export function mulberry32(a: number): () => number {return function(){a|=0;a=a+
 
 const HALF = 512;
 const MAP_SIZE = 1024;
+
+/** A prepared terrace zone: its outline, bounds and defaults (TerraceZoneConfig). */
+interface TerraceZone {
+  xs: Float64Array; zs: Float64Array;
+  minX: number; maxX: number; minZ: number; maxZ: number;
+  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number;
+}
+interface TerraceZoneHit { zone: TerraceZone; weight: number }
+
+function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): TerraceZone[] {
+  return (zones ?? []).filter((z) => z.polygon.length >= 3 && z.stepM > 0).map((z) => {
+    const xs = Float64Array.from(z.polygon.map((p) => p[0])), zs = Float64Array.from(z.polygon.map((p) => p[1]));
+    return {
+      xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
+      feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
+      minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
+    };
+  });
+}
+
+/** The strongest terrace zone over (x, z) and its weight — 1 deeper than `feather` inside the outline, easing to 0 at it. */
+function terraceZoneWeight(zones: readonly TerraceZone[], x: number, z: number): TerraceZoneHit | null {
+  let best: TerraceZoneHit | null = null;
+  for (const zone of zones) {
+    if (x < zone.minX || x > zone.maxX || z < zone.minZ || z > zone.maxZ) continue;
+    const { xs, zs } = zone, n = xs.length;
+    let inside = false, d2 = Infinity;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = xs[i], zi = zs[i], xj = xs[j], zj = zs[j];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      const ex = xj - xi, ez = zj - zi, len2 = ex * ex + ez * ez;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - xi) * ex + (z - zi) * ez) / len2)) : 0;
+      const dx = x - xi - ex * t, dz = z - zi - ez * t;
+      d2 = Math.min(d2, dx * dx + dz * dz);
+    }
+    if (!inside) continue;
+    const weight = smoothstep(0, zone.feather, Math.sqrt(d2));
+    if (!best || weight > best.weight) best = { zone, weight };
+  }
+  return best && best.weight > 0 ? best : null;
+}
 
 function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -984,6 +1044,7 @@ function* heightFieldBuildSteps(
   let railCuttingsOn = false, railCuttingsSuspended = false;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
+  const terraceZones = prepareTerraceZones(T.terraces);
   // maps lane B (2026-10-03): a sor pan's bank — the outer share of each station's radius over which its dig deepens to
   // `dip`, as (t / SOR_BANK)² (t = 1 − distance in radii): no slope at the rim, so the bank leaves the ground smoothly,
   // and its steepest where the floor's level meets it, so the shoreline is crisp.
@@ -1852,7 +1913,11 @@ function* heightFieldBuildSteps(
       let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
+      // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
+      const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
+      if (tz) micro *= 1 - 0.85 * tz.weight;
       h += micro;
+      if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
     // and settling (~10-25 cm) so the ground stops reading as a smooth
@@ -1941,6 +2006,29 @@ function* heightFieldBuildSteps(
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
     return h;
+  }
+
+  /**
+   * The map-revival lane (2026-10-05, Orchard Valley's terraces): the ground inside a terrace zone stepped into contour
+   * benches. The levels are absolute (a bench every `stepM` of height), so the benches follow the contours; each riser
+   * takes the share of its step the slope needs to stand no steeper than `riserGrade` (a smoothstep through the top of the
+   * step), so on a gentle slope the benches are wide and on a steep one narrow. The steps fade on level ground (the smooth
+   * relief's grade, base and landforms, under `minGrade`) and where the landforms are held back — the drive corridors, the
+   * settlement, the marshes.
+   */
+  function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
+    const zone = tz.zone;
+    const protect = (1 - cw * 0.85) * (1 - vm) * (1 - marshW);
+    if (protect <= 0.001) return h;
+    const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
+    const h0 = smooth(x, z);
+    const grade = Math.hypot(smooth(x + 2, z) - h0, smooth(x, z + 2) - h0) / 2;
+    const w = tz.weight * protect * smoothstep(zone.minGrade, zone.fullGrade, grade);
+    if (w <= 0.001) return h;
+    const r = clamp(grade / zone.riserGrade, 0.12, 0.85);
+    const t = h / zone.stepM, k = Math.floor(t), f = t - k;
+    const stepped = (k + smoothstep(1 - r, 1, f)) * zone.stepM;
+    return h + (stepped - h) * w;
   }
 
   function baseTerrainHeight(x: number, z: number, corridorWeight: number, settlementWeight: number): number {
