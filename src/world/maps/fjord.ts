@@ -187,8 +187,10 @@ export default {
     buildingLat: [12, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
     roadBuildingKeepouts: [{ x: 3, z: -67, r: 12 }],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
-    // (round 3, wave 129: "a heap of white cube-shaped rubble" in the fields) the masonry heaps fewer, the town's own
-    rocks: 330, outcrops: 60, craters: 54, rubblePiles: 6, hedgehogs: 14,
+    // (round 3, wave 129: "a heap of white cube-shaped rubble"): the heaps stay (they are the burnt town's cover: at a
+    // third of them the default bot match fell to a 168 s median, under the 3-minute floor); their stone is the kit's,
+    // now a weathered gneiss grey, not a pale granite (nordland.ts)
+    rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
     sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {

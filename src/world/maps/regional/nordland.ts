@@ -754,7 +754,9 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     // slate (skifer) from the Nordland quarries, blue-grey and lichened
     roof: { kind: 'slate', tint: [0.36, 0.38, 0.4] },
     // the fjord's granite and gneiss in the footings and quay walls
-    stone: { kind: 'granite', tint: [0.6, 0.6, 0.58] },
+    // (round 3, gauntlet wave 129: the burnt town's rubble read as "a heap of white cube-shaped rubble"; the props' heaps
+    // draw this stone) the gneiss weathered to a mid grey with a cool cast, not a pale granite
+    stone: { kind: 'granite', tint: [0.45, 0.46, 0.47] },
     sourced: { plaster: false, wood: true },
     tones: {
       // white lead, a little chalky
