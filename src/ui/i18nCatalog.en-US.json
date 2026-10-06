@@ -3994,5 +3994,15 @@
   "garage.record.loadError": "Could not open Service Record. Try again.",
   "endScreen.combatDetails": "Combat breakdown & destroyed vehicles",
   "endScreen.reportViews": "Battle report views",
-  "endScreen.awardedThisBattle": "Earned in this battle"
+  "endScreen.awardedThisBattle": "Earned in this battle",
+  "hud.status.title": "Vehicle conditions",
+  "hud.status.fire": "On fire",
+  "hud.status.tracks": "Tracks",
+  "hud.status.crew": "Crew wounded",
+  "hud.status.crewCount": "{count} crew wounded",
+  "hud.status.concealed": "Concealment active",
+  "hud.status.disabled": "{name} disabled",
+  "hud.status.damaged": "{name} damaged",
+  "hud.status.repairProgress": "Repairing · {percent}%",
+  "hud.status.more": "{count} more conditions"
 }
