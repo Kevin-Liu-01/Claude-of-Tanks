@@ -3623,6 +3623,7 @@ function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number
   return new THREE.Vector3(Math.sin(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.cos(sunAz) * Math.cos(sunEl));
 }
 const SPLAT_COMMON_FRAG = /* glsl */`
+#define MID_SWARD_GAIN 0.5
 varying vec3 vWPos;
 varying vec3 vWNormal;
 uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;
@@ -5203,10 +5204,14 @@ void splatCompute() {
     // across the face, lit and shaded by a low sun — a ladder of terraces. On a slope the relief fades as the view
     // grazes it (flat ground keeps all of it)
     float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), smoothstep(0.01, 0.08, slope));
-    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * (1.0 - fMs) * midGraze;
+    // ground lane (2026-10-05, local contrast, step 2 (b''): the dapple at twice its map's scale was the second ground
+    // term, +11 % on Verdant's establishing view): a vegetated map's sward carries more of it — its tussocks' and hollows'
+    // roll — where a field (dapField) and an arid or snow map (the leopard spots under a low sun) keep their own
+    float swardGain = 1.0 + MID_SWARD_GAIN * meadowG * dapField * (1.0 - step(0.5, uReduxD.y));
+    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardGain * (1.0 - fMs) * midGraze;
     float midN2 = nz(uv, 0.0089, vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
-                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * (1.0 - fMs) * dapField;
+                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * swardGain * (1.0 - fMs) * dapField;
     // rock gets its own coarse relief so cliff faces stay craggy at range —
     // wall-plane sample takes over on steep faces (r5). Mix the SAMPLES, not
     // the coordinates: coordinate blending smeared diagonal fur across every
@@ -6159,6 +6164,7 @@ void splatCompute() {
 `;
 
 const SPLAT_NORMAL_FRAG = /* glsl */`
+#define DK_RANGE_GAIN 1.0
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
@@ -6173,6 +6179,18 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
   float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
+  // Ground lane (2026-10-05, local contrast, step 2 (b'): the ground's mid-scale contrast measured at 0.17–0.28 against
+  // photographs' 0.6–0.8; the detail normal at twice its strength was the strongest single ground term, +13 % on Verdant's
+  // establishing view): the relief the detail normal carries is raised where its shading mips flat — from ~20 m, whole by
+  // ~45 m, to ~300 m, gone by 600 m — and left as it was beside the camera (where "crumpled metal" set its strength),
+  // wherever the steep-face attenuation holds it down (the furry flanks under a low sun stay as they were) and on a field
+  {
+    float camDk = distance(vWPos, cameraPosition);
+    // (hold 54: the gain on a field's crop rows and turned soil was the shimmer — their stripes sit near the pixel's own
+    // frequency at range, +2.1 points of a one-pixel jitter's flips on Frontier's establishing view; a field keeps its own)
+    dk *= 1.0 + DK_RANGE_GAIN * smoothstep(18.0, 45.0, camDk) * (1.0 - smoothstep(300.0, 600.0, camDk))
+      * (1.0 - clamp(gSplatSteepAtt / 0.62, 0.0, 1.0)) * (1.0 - max(gCropW, gSoilW));
+  }
   // (waves 62 and 76, Caldera's rim: "white specular glints … crumpled foil" — not specular: a dry texel's roughness is
   // floored at 0.92) on a slope turned from the sun the detail normals' sun-facing facets lit full, where on the ground
   // the grains' own neighbours shade them: the bright speckle of a backlit flank. On a volcanic map the detail relief
