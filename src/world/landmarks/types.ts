@@ -21,7 +21,7 @@ export type LandmarkKind =
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
-  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill'
+  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill' | 'valveTower'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
   // a hill station's colonial pieces

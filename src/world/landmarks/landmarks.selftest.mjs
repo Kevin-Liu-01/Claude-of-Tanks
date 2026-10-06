@@ -83,7 +83,7 @@ assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'ever
 /** Desktop triangle budgets by kind (the phones build the coarse share of the same). */
 const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
-  waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 3000, fireLookout: 5000,
+  waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 3000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
@@ -268,6 +268,29 @@ for (const [label, ground] of [
   const [, hl] = LANDMARK_KINDS.liftBridge.footprint(params);
   assert.ok(movement.every((part) => Math.abs(part.cz) + (part.hl ?? part.r ?? 0) <= hl + 1e-6), 'the movement within the footprint');
   packedBandsOk({ contact: { parts: [] }, shell: deriveRuntimeStructureShellBands(parts) }, 'liftBridge long form');
+  for (const g of geometries(parts)) g.dispose();
+});
+
+// the valve tower (towers.ts valveTower; Highland Reservoir): the tower stands in the water, its footbridge's floor
+// meets the bank at its end, and the composer admits it over water as it admits a bridge
+check('valveTower over a reservoir bank', () => {
+  const params = resolveLandmarkParams({ kind: 'valveTower', x: 0, z: 0, params: { bridge: 50 } });
+  const [, hl] = LANDMARK_KINDS.valveTower.footprint(params);
+  // the water level with the bed to 30 m short of the bank end, then a bank rising 8 m over 25 m
+  const ground = (lx, lz) => { const d = lz + hl; return d >= 30 ? 0 : d <= 5 ? 8 : 8 - 8 * (d - 5) / 25; };
+  const { parts } = build('valveTower', { bridge: 50 }, { ground });
+  assert.ok(triangles(parts) <= BUDGET.valveTower, `valveTower within its budget (${triangles(parts)})`);
+  let top = -Infinity, bankEnd = Infinity, low = Infinity;
+  for (const g of geometries(parts)) {
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) { top = Math.max(top, p.getY(i)); bankEnd = Math.min(bankEnd, p.getZ(i)); low = Math.min(low, p.getY(i)); }
+  }
+  assert.ok(bankEnd >= -hl - 1e-6, `the bridge ends within the footprint (${bankEnd.toFixed(2)} of ${hl.toFixed(2)})`);
+  assert.ok(low < 0, 'the tower foots below the water');
+  assert.ok(top > 8 + 5.4 + 4, `the tower stands its chamber and its roof over the bridge's floor (${top.toFixed(1)})`);
+  const profile = deriveRuntimeStructureCollisionProfile(parts);
+  packedBandsOk(profile, 'valveTower');
+  assert.ok(profile.contact.parts.length > 0, 'the tower and its bridge meet the hulls');
   for (const g of geometries(parts)) g.dispose();
 });
 

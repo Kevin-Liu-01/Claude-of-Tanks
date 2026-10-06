@@ -1,8 +1,9 @@
 // src/world/landmarks/towers.ts — the towers (the landmarks lane, 2026-10-05): the water tower (a railway's octagonal
 // brick shaft under its timber tank house, the Soviet steel Rozhnovsky tower, a timber trestle tank), the windmills
 // (the Kursk governorate's post mill and smock mill, the Dutch brick tower mill with its stage), the free-standing
-// belfry, the Dalmatian campanile and the fire lookout. Sizes from the type: a railway water tower of the 1880s stands
-// 16-20 m, a smock mill's cap 10-12 m with sails of 9-10 m, a campanile 25-45 m.
+// belfry, the Dalmatian campanile, the fire lookout and a reservoir's valve tower with its footbridge. Sizes from the
+// type: a railway water tower of the 1880s stands 16-20 m, a smock mill's cap 10-12 m with sails of 9-10 m, a campanile
+// 25-45 m, the Roer dams' valve towers 15-20 m over the water.
 import { LocalFrame, PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
@@ -121,6 +122,62 @@ export const waterTower: LandmarkBuilder = (ctx) => {
   revolve(sink, 'structureMetal', 0, 0, [[0.8, roofTop + 0.15], [0.05, roofTop + 0.8], [0, roofTop + 0.82]], 8, { colour: IRON_RED }, OCT);
   sink.span('structureMetal', -0.025, roofTop + 0.8, -0.025, 0.025, roofTop + 1.5, 0.025, { colour: IRON, decor: true });
   return { parts: sink.finish(), tints: { stone: [1.02, 0.97, 0.94], plaster: [0.95, 0.94, 0.9] } };
+};
+
+// ---------------------------------------------------------------------------------------------------------- valve tower
+
+/**
+ * A reservoir's valve tower (the Roer dams' Schieberturm, the Urft's of 1905): a round masonry tower standing in the
+ * water, battered at its foot; its valve chamber a storey over the bridge's floor, round-headed windows under a
+ * corbelled cornice, a slated bell roof and its finial; reached from the bank by an arched masonry footbridge at the
+ * chamber's floor, its parapets coped, a string course along its spandrels. The frame: the whole piece along z, centred
+ * — the tower's axis at (bridge - radius) / 2, the bridge's bank end at -(bridge + radius) / 2; y = 0 the lowest ground
+ * under it (the water's bed); the bridge's floor meets the bank at its end (ctx.ground), 2.6 m over the water at least.
+ */
+export const valveTower: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const R = Math.max(3, Number(ctx.params.radius)), L = Math.max(R + 8, Number(ctx.params.bridge));
+  const W = Math.max(2.4, Number(ctx.params.width)), C = Math.max(3.6, Number(ctx.params.chamber));
+  const ground = (lx: number, lz: number) => (ctx.ground ? ctx.ground(lx, lz) : 0);
+  const zT = (L - R) / 2, zS = -(L + R) / 2, bed = -0.8;
+  const deckY = Math.max(2.6, ground(0, zS) + 0.05), N = 20, phase = Math.PI / N, facet = Math.cos(Math.PI / N);
+  // ---- the tower: the battered foot, the shaft, the string course at the bridge's floor, the valve chamber
+  revolve(sink, 'stone', 0, zT, [[R + 0.7, bed], [R + 0.7, 0.9], [R + 0.25, 2.1], [R, 2.4], [R, deckY - 0.35]], N, {}, phase);
+  revolve(sink, 'stone', 0, zT, [[R, deckY - 0.35], [R + 0.22, deckY - 0.35], [R + 0.22, deckY - 0.05], [R, deckY - 0.05]], N, { decor: true }, phase);
+  const top = deckY + C, rTop = R - 0.12;
+  revolve(sink, 'stone', 0, zT, [[R, deckY - 0.05], [rTop, top]], N, {}, phase);
+  // the windows round the chamber (none on the bridge's side), the door at the bridge's end
+  const face = (a: number, r: number): Face => ({ origin: [Math.sin(a) * r, 0, zT + Math.cos(a) * r], u: [Math.cos(a), 0, -Math.sin(a)],
+    out: [Math.sin(a), 0, Math.cos(a)], width: 1 });
+  for (let k = -2; k <= 2; k++) {
+    // on facet centres (every 18 degrees), the five round the side away from the bridge (at 180 degrees: the door's)
+    const a = k * (Math.PI * 2 / 5), rw = (R + (rTop - R) * 0.45) * facet + 0.02;
+    const win: ArchHole = { u: 0, w: 0.95, y0: deckY + C * 0.3, spring: deckY + C * 0.62, form: 'round' };
+    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false);
+    archSurround(sink, 'stone', face(a, rw), win, 0.2, 0.07);
+  }
+  plankDoor(sink, face(Math.PI, R * facet + 0.02), 0, deckY, 1.3, 2.4, IRON_GREEN, 0.03);
+  // the corbelled cornice and the slated bell roof with its finial
+  revolve(sink, 'stone', 0, zT, [[rTop, top], [rTop + 0.38, top + 0.3], [rTop + 0.38, top + 0.62], [rTop - 0.05, top + 0.66]], N, {}, phase);
+  const roofY = top + 0.62, rr = rTop + 0.55;
+  revolve(sink, 'roof', 0, zT, [[rr, roofY], [rr * 0.9, roofY + 0.55], [rr * 0.62, roofY + R * 0.55], [rr * 0.3, roofY + R * 1.05], [0.22, roofY + R * 1.38],
+    [0, roofY + R * 1.42]], N, {}, phase);
+  const fy = roofY + R * 1.38;
+  revolve(sink, 'structureMetal', 0, zT, [[0.12, fy], [0.3, fy + 0.35], [0.12, fy + 0.7], [0.05, fy + 1.6], [0.0, fy + 1.8]], 8, { colour: IRON, decor: true });
+  // ---- the footbridge: an arched masonry slab from the bank to the tower's door, its parapets, the string course
+  const zFace = zT - R + 0.3, Lb = zFace - zS, zMid = (zS + zFace) / 2;
+  const n = Math.max(2, Math.round(Lb / 8.5)), pier = 1.8, A = (Lb - (n + 1) * pier) / n;
+  const spring = Math.max(bed + 1.2, deckY - 1.15 - A / 2);
+  const holes: ArchHole[] = Array.from({ length: n }, (_, i) => ({ u: -Lb / 2 + pier + A / 2 + i * (A + pier), w: A, y0: bed, spring,
+    form: 'round' as const }));
+  sink.placed(-Math.PI / 2, 0, 0, zMid, () => archedSlab(sink, 'stone', -Lb / 2, Lb / 2, bed, deckY, W, holes, { ends: true, top: true }));
+  for (const sx of [-1, 1]) {
+    const x0 = sx > 0 ? W / 2 - 0.36 : -W / 2;
+    sink.span('stone', x0, deckY, zS, x0 + 0.36, deckY + 1.0, zFace);
+    sink.span('stone', x0 - 0.06, deckY + 1.0, zS, x0 + 0.42, deckY + 1.12, zFace, { decor: true });
+    sink.span('stone', sx > 0 ? W / 2 : -W / 2 - 0.12, deckY - 0.45, zS, sx > 0 ? W / 2 + 0.12 : -W / 2, deckY - 0.3, zFace, { decor: true });
+  }
+  return { parts: sink.finish() };
 };
 
 // ---------------------------------------------------------------------------------------------------------- windmills

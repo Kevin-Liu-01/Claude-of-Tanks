@@ -169,8 +169,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
   for (const s of ctx.spawns) if (discMeetsFootprint(s.x, s.z, SPAWN_CLEAR, x, z, hw, hl, yaw)) return 'spawn pad';
   for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
   if (probes.some(([px, pz]) => ctx.heightField.getWaterMaskAt(px, pz) > 0.05)) {
-    // a bridge stands over its water; every other piece keeps dry
-    if (LANDMARK_KINDS[placement.kind].family !== 'bridge') return 'water';
+    // a bridge stands over its water and a valve tower in it (plan.ts inWater); every other piece keeps dry
+    if (LANDMARK_KINDS[placement.kind].family !== 'bridge' && !LANDMARK_KINDS[placement.kind].inWater) return 'water';
   }
   const spec = LANDMARK_KINDS[placement.kind], margin = placement.roadMargin ?? spec.roadMargin ?? ROAD_CORE_M;
   if (!spec.spansRoad && margin > 0 && probes.some(([px, pz]) => ctx.heightField._roadDist(px, pz) < margin)) return 'road';
@@ -228,7 +228,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
-    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge') { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
+    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
     const built = builder({

@@ -17,6 +17,9 @@ interface LandmarkKindSpec {
   /** How far its footprint keeps from a road's line (default the carriageway's 3.5 m core): a plot a map lane hands over
    *  against an apron (whose paving the road field counts) keeps none. */
   roadMargin?: number;
+  /** The piece stands in the water and reaches its bank (a reservoir's valve tower and its bridge): the composer admits
+   *  water under its footprint and the bank's fall above its foot, as it does a bridge's. */
+  inWater?: boolean;
 }
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
@@ -89,6 +92,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => { const r = p.style === 'railway' ? 4.6 : p.style === 'rozhnovsky' ? 3.4 : 4.2; return [r, r]; } },
   fireLookout: { family: 'tower', defaults: { height: 22 },
     footprint: (p) => { const r = 2.6 + num(p, 'height') * 0.05; return [r, r]; } },
+  // (the tower's axis at (bridge - radius) / 2 along its frame, the bridge's bank end at -(bridge + radius) / 2: the whole
+  // piece centred on its frame; its batter, cornice and roof 1.1 m past the shaft)
+  valveTower: { family: 'tower', inWater: true, defaults: { radius: 4.2, bridge: 34, width: 3.2, chamber: 5.4 },
+    footprint: (p) => [Math.max(num(p, 'radius') + 1.1, num(p, 'width') / 2 + 1.2), (num(p, 'bridge') + num(p, 'radius')) / 2 + 1.1] },
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
