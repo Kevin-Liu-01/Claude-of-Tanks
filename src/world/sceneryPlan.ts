@@ -118,7 +118,10 @@ interface SceneryBedrock {
 interface SceneryFieldWorks {
   walls?: boolean;
   banks?: boolean;
-  /** sRGB HSL base tones of the wall stone and the bank's earth. */
+  /**
+   * sRGB HSL base tones of the wall stone and the bank's earth. The wall's tone multiplies its face print (near white
+   * stones, dark joints: fieldWallFace.ts), so a limestone at sRGB lightness 0.6 asks about 0.8 here.
+   */
   wallTone?: readonly [number, number, number];
   bankTone?: readonly [number, number, number];
 }

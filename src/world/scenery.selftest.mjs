@@ -495,14 +495,15 @@ function compose(scenery, solids = [], mobile = false) {
     },
   });
   const lay = (ground, options) => {
-    const steps = buildFieldWorks(ground, noise, { spawns: [{ x: 0, z: -300 }], mobile: false, ...options });
+    const steps = buildFieldWorks(ground, noise, { spawns: [{ x: 0, z: -300 }], mobile: false, merged: true, ...options });
     let step = steps.next();
     while (!step.done) step = steps.next();
     return step.value;
   };
   const walls = lay(fields(3, false), { walls: true, banks: false });
   assert.ok(walls.geometry && walls.receipt.wallM > 20000, `the walls run the field lines (${Math.round(walls.receipt.wallM)} m)`);
-  for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(walls.geometry.attributes[name], `field walls: carry ${name}`);
+  // (b13: the walls draw their own dry stone, so they carry no rock-material ground; fieldWalls.selftest pins the rubble)
+  for (const name of ['position', 'normal', 'color', 'uv']) assert.ok(walls.geometry.attributes[name], `field walls: carry ${name}`);
   const p = walls.geometry.attributes.position.array;
   let off = 0, high = 0, onRoad = 0, onPad = 0;
   for (let i = 0; i < p.length; i += 3) {
@@ -523,6 +524,7 @@ function compose(scenery, solids = [], mobile = false) {
   assert.ok(phone.receipt.triangles < walls.receipt.triangles, `field walls: the phones draw fewer (${phone.receipt.triangles} < ${walls.receipt.triangles})`);
   const banks = lay(fields(0, true), { walls: false, banks: true });
   assert.ok(banks.geometry && banks.receipt.bankM > 5000 && banks.receipt.wallM === 0, `banks run the hedge lines (${Math.round(banks.receipt.bankM)} m)`);
+  for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(banks.geometry.attributes[name], `field banks: carry ${name}`);
   const bp = banks.geometry.attributes.position.array;
   let bankOff = 0;
   for (let i = 0; i < bp.length; i += 3) { const u = ((bp[i] % 40) + 40) % 40; if (Math.min(u, 40 - u) > 1.6) bankOff++; }
@@ -649,6 +651,9 @@ for (const mapId of maps.MAP_IDS) {
   if (works) {
     const built = dressing.group.getObjectByName('props-field-works');
     assert.ok(built && receipt.fieldWorks, `${mapId}: the field works stand`);
+    // (b13: a map's walls are two batches, the cells' near forms and their far forms; both keep the clearances)
+    const far = dressing.group.getObjectByName('props-field-works-far');
+    if (far) fieldWorksClearances(mapId, config, heightField, dressing, flora, far);
     const c = fieldWorksClearances(mapId, config, heightField, dressing, flora, built);
     worksLine = `; field works ${Math.round(receipt.fieldWorks.wallM)} m walls + ${Math.round(receipt.fieldWorks.bankM)} m banks clear of ${c.discs} discs `
       + `(${c.discGap.toFixed(1)} m) and ${c.rects} aprons/yards/bridges (${c.rectGap.toFixed(1)} m), ${c.roadGap.toFixed(1)} m off the roads, `

@@ -57,6 +57,7 @@ import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
@@ -216,6 +217,13 @@ interface SurfaceTextureOptions {
   roughMin?: number;
   roughMax?: number;
   aoMin?: number;
+}
+
+/** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
+interface FieldWallLod {
+  near: THREE.BatchedMesh | null;
+  far: THREE.BatchedMesh | null;
+  cells: Array<{ box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean }>;
 }
 
 interface GeneratedSurfaceTextures {
@@ -1012,6 +1020,22 @@ function makeStraw(
 }
 
 /**
+ * The scenery lane (b13): a painted print's rows reversed for the upload. The field-stone and mud painters lay their
+ * bands with v running down the image from row 0 (fieldStoneSurface.ts, fieldMudSurface.ts), but a canvas texture is
+ * flipped on upload, row 0 landing at v = 1: the geometry's hearting band read a stone's skin, a seventh of the face
+ * stones read the hearting's voids, and the mud walls' plain band read the brick courses. Reversed here, the GPU's v is
+ * the painter's v; the painters and their receipts keep their convention.
+ */
+function flipPrintRows<T extends Uint8ClampedArray | Float32Array>(data: T, size: number, channels: number): T {
+  const row = size * channels;
+  for (let y = 0; y < size >> 1; y++) {
+    const a = y * row, b = (size - 1 - y) * row;
+    for (let k = 0; k < row; k++) { const t = data[a + k]; data[a + k] = data[b + k]; data[b + k] = t; }
+  }
+  return data;
+}
+
+/**
  * The scenery lane (2026-10-03): the dry-stone field walls' print (fieldStoneSurface.ts) under the map's stone tone —
  * one stone's skin over its face band (the module's face stones are geometry, each a window of it; wave 34 read a
  * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
@@ -1027,11 +1051,31 @@ function* makeFieldStone(
   applyTone(px, tone);
   liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
   yield { fine: true, stage: 'field-stone-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     // (a stone's skin, not stones: a gentle relief, and the occlusion the geometry's own gaps give)
     normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.72 }),
+  };
+}
+
+/**
+ * The scenery lane (b13; gauntlet wave 87, Saltwind's field walls "cast concrete rather than a drystone wall"): the
+ * field works' dry-stone walls' face print (fieldWallFace.ts) — rough courses of limestone between dark dry joints,
+ * crusted with lichen, and a top stone's skin for the crown. Neutral: the walls' vertex tone is the map's. Phones
+ * paint it at half size (the same stones).
+ */
+function* makeDryWall(
+  anisotropy: number,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintDryWallBuffers(size);
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    // (stones standing out of dark joints: a firmer relief than a stone's skin)
+    normal: normalFromHeight(hgt, size, 3.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.82, roughMax: 1.0, aoMin: 0.55 }),
   };
 }
 
@@ -1050,6 +1094,7 @@ function* makeFieldMud(
   applyTone(px, tone);
   if (earth) tintFieldMudToEarth(px, size, earth); // (wave 34: the walls and the mud at their feet are the map's earth)
   yield { fine: true, stage: 'field-mud-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),
@@ -8613,13 +8658,58 @@ ${snowCap ? `
     });
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
-    if (!built.geometry) return;
-    const works = new THREE.Mesh(built.geometry, mats.rock);
-    works.name = 'props-field-works';
-    works.castShadow = false;
-    works.receiveShadow = true;
-    works.matrixAutoUpdate = false;
-    group.add(works);
+    if (!built.wallCells.length && !built.bankGeometry) return;
+    // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
+    // banks on the rock material)
+    const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
+      const works = new THREE.Mesh(geometry, material);
+      works.name = name;
+      works.castShadow = false;
+      works.receiveShadow = true;
+      works.matrixAutoUpdate = false;
+      group.add(works);
+    };
+    if (built.wallCells.length) {
+      const print = yield* makeDryWall(aniso, mobileProps ? 256 : 512);
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        map: print.albedo, normalMap: print.normal, roughnessMap: print.surface, aoMap: print.surface,
+        vertexColors: true, roughness: 1, metalness: 0,
+      });
+      wallMaterial.name = 'props-field-walls';
+      engineCtx.setupShadowMaterial(wallMaterial);
+      retainedSurfaceMaterials.push(wallMaterial);
+      // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
+      // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and
+      // the far form's, one instance a cell in each; a cell shows its near form within the quality's near distance of
+      // the camera (updateFieldWallLod) and its far form past it. Every far instance starts shown, every near one hidden
+      // (the same material and program: the far draw links it for both)
+      const batchOf = (forms: Array<THREE.BufferGeometry | null>, name: string) => {
+        const list = forms.filter((g): g is THREE.BufferGeometry => !!g);
+        if (!list.length) return null;
+        const vertices = list.reduce((n, g) => n + g.getAttribute('position').count, 0);
+        const indices = list.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+        const batch = new THREE.BatchedMesh(list.length, vertices, Math.max(1, indices), wallMaterial);
+        batch.name = name;
+        batch.sortObjects = false;
+        // (b13's cost hold, Saltwind chase: the walls drew every cell's far form, behind the camera too; a cell outside
+        // the frustum is culled, a few hundred sphere tests a frame against the draws they save)
+        batch.perObjectFrustumCulled = true;
+        batch.castShadow = false;
+        batch.receiveShadow = true;
+        batch.matrixAutoUpdate = false;
+        const ids = forms.map((g) => (g ? batch.addInstance(batch.addGeometry(g)) : -1));
+        for (const g of list) g.dispose();
+        group.add(batch);
+        return { batch, ids };
+      };
+      const near = batchOf(built.wallCells.map((c) => c.near), 'props-field-works');
+      const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
+      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false }));
+      for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
+      // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
+      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells } satisfies FieldWallLod;
+    }
+    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;
@@ -9140,6 +9230,31 @@ ${snowCap ? `
   const FINE_DETAIL_M: Readonly<Record<string, number>> = {
     ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
   };
+  // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
+  // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
+  // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
+  const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
+    ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+  };
+  let wallNear = 80, wallFrames = 0;
+  function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
+    const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
+    if (!lod || !cameraPos) return;
+    if (wallFrames-- <= 0) { wallNear = FIELD_WALL_NEAR_M[resolvePresetName()] ?? 80; wallFrames = 60; }
+    const { near, far, cells } = lod;
+    for (const cell of cells) {
+      const b = cell.box;
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz);
+      const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
+      if (show === cell.nearShown) continue;
+      cell.nearShown = show;
+      if (near && cell.near >= 0) near.setVisibleAt(cell.near, show);
+      if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
+    }
+  }
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
     const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
@@ -9158,6 +9273,7 @@ ${snowCap ? `
     updatePoleLod(cameraPos);
     updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
+    updateFieldWallLod(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {
