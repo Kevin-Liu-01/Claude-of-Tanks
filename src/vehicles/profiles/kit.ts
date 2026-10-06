@@ -16,7 +16,7 @@ import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
   createPintleLayout, type PintleLayout,
 } from '../machineGunGeometry.ts';
-import { block, fabricBody, fabricStrap, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
+import { block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -2786,19 +2786,36 @@ function fittingAntennaWhip(opts: FittingOptions = {}): THREE.Group {
  *   shadows, rotation
  */
 function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX } = KIT;
+  const { box } = KIT;
   const len = opts.len || 2.4;
   const r = opts.r || 0.13;
   const straps = Math.max(0, opts.straps ?? 2);
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
-  parts.add('wood', cylX(r, len, 14), 0, 0, 0);
-  parts.add('detail', cylX(r * 0.94, 0.016, 14), -(len / 2 + 0.004), 0, 0);
-  parts.add('detail', cylX(r * 0.94, 0.016, 14), len / 2 + 0.004, 0, 0);
+  // 2026-10-05 (tank-accessories lane): a trunk, not a pipe. One lathe whose radius swells and tapers along the run
+  // (deterministic in the seed, so the strap draws are unchanged), pale sawn ends with growth rings, and open steel
+  // bands with their buckles; inside the old envelope (straps at 1.06 r, ends a hair past the run).
+  const phase = ((opts.seed ?? 1) * 0.7311) % (Math.PI * 2);
+  const radiusAt = (t: number): number => r * (1 - 0.05 * t) * (1 + 0.035 * Math.sin(t * 9.4 + phase) + 0.02 * Math.sin(t * 23 + phase * 2));
+  const profile: Array<readonly [number, number]> = [[0.0005, 0]];
+  for (let i = 0; i <= 8; i++) profile.push([radiusAt(i / 8), (i / 8) * len]);
+  profile.push([0.0005, len]);
+  parts.add('wood', place(latheY(profile, 14), -len / 2, 0, 0, 0, 0, -Math.PI / 2));
+  for (const side of [-1, 1]) {
+    const end = radiusAt(side < 0 ? 0 : 1);
+    const cut = new THREE.CircleGeometry(end * 0.92, 14).toNonIndexed();
+    parts.add('detail', place(cut, side * (len / 2 + 0.003), 0, 0, 0, side * Math.PI / 2, 0));       // sawn end grain
+    for (const [inner, outer] of [[0.42, 0.47], [0.68, 0.72]] as const) {
+      const ring = new THREE.RingGeometry(end * inner, end * outer, 12, 1).toNonIndexed();
+      parts.add('wood', place(ring, side * (len / 2 + 0.005), 0, 0, 0, side * Math.PI / 2, 0));       // growth rings
+    }
+  }
   for (let i = 0; i < straps; i++) {
     const x = -len / 2 + (i + 1) * (len / (straps + 1)) + (rng() - 0.5) * 0.10;
-    parts.add('dark', cylX(r * 1.06, 0.032, 14), x, 0, 0);
-    parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);
+    const band = radiusAt((x + len / 2) / len) * 1.03;
+    parts.add('dark', place(latheY([[band, 0], [band + 0.006, 0.003], [band + 0.006, 0.029], [band, 0.032]], 14),
+      x - 0.016, 0, 0, 0, 0, -Math.PI / 2));                                                            // steel band
+    parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);                // buckle
   }
   if (opts.axis !== 'z') return fitAssemble('unditchingLog', parts, opts);
   const r0 = opts.rotation || [0, 0, 0];
