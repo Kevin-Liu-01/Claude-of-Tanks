@@ -124,7 +124,11 @@ const TERRAIN_PLAN = {
     // (field pixels 124 vs 101); a cool, slightly darker tint returns the
     // deeper green the reference carried under the same sky.
     G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
-    D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
+    // ground lane (wave 79: "the soil is mostly pale and sandy, where these places call for black chernozem
+    // (Prokhorovka)"): the dirt photo's orange-tan (linear mean 0.22 / 0.14 / 0.07) half greyed and darkened to the
+    // black earth's dark brown (~0.084 / 0.057 / 0.042, luminance ~0.06; the plough's 0.03–0.06 under it; hold 27: at
+    // 0.42 / 0.40 / 0.42 it read a cool blue-black, chernozem is a warm one)
+    D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
     R: 'rock', M: null,
   },
   desert: {
@@ -155,7 +159,10 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.74, 0.73, 0.72], roughMul: 1.3 },
     // snow-dusted rock: raw Rock058 is near-black here and punched dark
     // holes into the snowfield wherever a lake bank / cut slope got steep
-    R: { set: 'rock', tint: [1.52, 1.55, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62: lifted half again and blued, its veins read as "blue-and-white swirled marble" — the rock
+    // is grey rock now, a little lifted and its veins' rust taken out, and the material lays the snow layer on it to
+    // ~45° and down the gullies to ~60°, so only the ribs and the sheer faces show it)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   urban: {
     G: { set: 'grass', tint: [0.92, 0.92, 0.88], roughMul: 1.25 },
@@ -214,7 +221,9 @@ const TERRAIN_PLAN = {
   // a year — see their rows at the end of this table.
   frontier: {
     G: { set: 'grass', tint: [0.96, 0.94, 0.76], roughMul: 1.28 },
-    D: { set: 'dirt', tint: [0.80, 0.75, 0.64], roughMul: 1.3 },
+    // ground lane (wave 79: "… brown loam (Hesse)"): the dirt photo greyed a third and darkened to a mid brown loam
+    // (~0.13 / 0.095 / 0.066, luminance ~0.10), not the pale orange sand it read as
+    D: { set: 'dirt', desat: 0.35, tint: [0.66, 0.68, 0.68], roughMul: 1.3 },
     R: { set: 'rock', tint: [1.02, 1.0, 0.92], roughMul: 1.15 }, M: null,
   },
   fjord: {
@@ -246,7 +255,8 @@ const TERRAIN_PLAN = {
   alpine: {
     G: { set: 'snow', roughMul: 1.15 },
     D: { set: 'dirt', tint: [0.70, 0.70, 0.71], roughMul: 1.32 },
-    R: { set: 'rock', tint: [1.48, 1.53, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62, street-b: the marble — as Frosthollow's rock, above)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   caldera: {
     // Charcoal ash still needs a diffuse floor: near-black sourced cavities

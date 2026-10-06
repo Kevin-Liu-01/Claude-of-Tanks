@@ -22,7 +22,7 @@ assert.deepEqual(source.match(/texSize\(\d+\)/g), [
   ...Array(6).fill('texSize(256)'), 'texSize(512)',
 ], 'terrain detail does not increase any procedural texture or mask dimensions');
 for (const detail of [
-  /n\.xy \+= dn\.xy \* ([\d.]+) \* openNear \* \(1\.0 - fMs\)/,
+  /n\.xy \+= dn\.xy \* ([\d.]+) \* dnW \* \(1\.0 - fMs\)/,
   /n\.xy \+= dn2\.xy \* ([\d.]+) \* nearG/,
   /n\.xy \+= gnF\.xy \* farG \* ([\d.]+)/,
 ]) {
@@ -44,8 +44,16 @@ for (const detail of [
     'signed normals added before x2 decode remain bounded, not giant terrain clods');
 }
 assert.match(source,
-  /n\.xy -= \(ga \* 1\.1 \+ gb \* 1\.55\)[^;]+\(1\.0 - fMs\);/, // relief pass 2 (2026-09-12): ~80 % of the 1049e4e 1.4 / 2.0, still waterline-gated
-  'mid-distance soil relief is bounded and cannot hammer the water surface');
+  /n\.xy -= \(ga \* 1\.1 \* dapField \+ gb \* 1\.55\)[^;]+\(1\.0 - fMs\) \* midGraze;/, // relief pass 2 (2026-09-12): ~80 % of the 1049e4e 1.4 / 2.0, still waterline-gated
+  'mid-distance soil relief is bounded and cannot hammer the water surface (and fades on a slope seen at a grazing angle: hold 27\'s terraces)');
+assert.match(source, /float midGraze = mix\(1\.0, smoothstep\(0\.15, 0\.55, saturate\(dot\(normalize\(cameraPosition - wp\), wn\)\)\), smoothstep\(0\.01, 0\.08, slope\)\);/,
+  'the mid relief fades as the view grazes a slope; flat ground keeps all of it');
+// ground lane (farmland): the fine octave stands down on a sown or turned field (dapField ≤ 1), never up
+assert.match(source, /float dapField = 1\.0 - 0\.9 \* max\(gCropW, gSoilW\);/, 'the dapple\'s fine octave only ever stands down');
+// ground lane (farmland): on turned earth the clod octave is a near read; both its terms stay off the carriageway
+assert.match(source,
+  /float dnW = mix\(openNear, \(1\.0 - smoothstep\(12\.0, 32\.0, camDist\)\) \* 1\.45 \* \(1\.0 - roadCore\), gSoilW\);/,
+  'the near clod octave keeps off the carriageway on a field as off it');
 assert.match(source,
   /float meadowG = [^;]+\(1\.0 - fMs\);/,
   'grass coloration cannot tint open water or lake ice');
@@ -53,11 +61,12 @@ assert.match(source,
   /float bedW = [^;]+\(1\.0 - fMs\) \* sandCoverage;/,
   'coastal water cannot inherit the neighboring sand dune bedforms');
 // ground lane (2026-10-03): the land use owns its share too — a turned field (gSoilW) clears the near turf, a sown crop
-// (gCropW) keeps 40 % of it, and both leave the far turf 15 % (terrainMaterialOwnership pins the response)
+// (gCropW) keeps 40 % of it; a sown crop leaves the far turf 15 % and a turned field none (terrainMaterialOwnership
+// pins the response)
 assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\) \* \(1\.0 - max\(gSoilW, 0\.6 \* gCropW\)\);/,
   'near turf relief uses existing dirt/projected/liquid coverage plus rock exclusion and the land use\'s cover');
 assert.match(source,
-  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\) \* \(1\.0 - 0\.85 \* max\(gCropW, gSoilW\)\);/,
+  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\) \* \(1\.0 - max\(0\.85 \* gCropW, gSoilW\)\);/,
   'distant turf relief inherits actual liquid coverage through meadowG and excludes other material owners and the fields');
 assert.match(source,
   /mb \+ mix\(0\.85, 1\.6, min\(mb \* 0\.5, 1\.0\)\)/,
