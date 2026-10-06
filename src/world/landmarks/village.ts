@@ -15,6 +15,7 @@ import { PartSink, bodyFaces, facePoint, rgb, type Face, type RegionalBucket, ty
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { archedFace, archedSlab, bar, cornerPilasters, extrude, moulding, type ArchHole } from './kit.ts';
 import { ageWall } from './age.ts';
+import { drapedRect } from './grounds.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const TIMBER = rgb(0x5f4a36), DOOR = rgb(0x4d3324), IRON = rgb(0x2a2c2d);
@@ -180,5 +181,9 @@ export const khan: LandmarkBuilder = (ctx) => {
   sink.span(wall, -W / 2 - sc, y0, -depth / 2, -W / 2, H, depth / 2, { decor: true });
   sink.span(wall, W / 2, y0, -depth / 2, W / 2 + sc, H, depth / 2, { decor: true });
   if (court) sink.span(wall, -cw / 2, floor, -cd / 2, cw / 2, floor + 0.08, cd / 2, { decor: true });
+  // the paved front between the gate and the street (`forecourt` metres deep; gauntlet waves 154-158: no square, no
+  // paving, no approach), draped over the ground
+  const fore = Math.max(0, Number(ctx.params.forecourt) || 0);
+  if (fore > 0) drapedRect(sink, wall, ctx.ground, { cx: 0, cz: depth / 2 + fore / 2, hw: W / 2 + 0.6, hd: fore / 2 }, { lift: 0.05 });
   return { parts: sink.finish(), tints: { stone: [1.04, 0.96, 0.82] } };
 };

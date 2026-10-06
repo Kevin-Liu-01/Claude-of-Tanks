@@ -118,8 +118,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   lavoir: { family: 'civic', defaults: { length: 12, depth: 7, bays: 3 },
     footprint: (p) => [num(p, 'length') / 2 + 0.6, num(p, 'depth') / 2 + 0.6] },
   // (the street range alone for `form: 'arcade'`; the gate's dressed frame 0.25 m proud of the street front)
-  khan: { family: 'civic', defaults: { width: 26, depth: 24, range: 6, form: 'court' },
-    footprint: (p) => [num(p, 'width') / 2 + 0.2, (p.form === 'arcade' ? num(p, 'range') : num(p, 'depth')) / 2 + 0.45] },
+  // (`forecourt`: a paved front that deep before the street front; the footprint keeps its depth both ways)
+  khan: { family: 'civic', defaults: { width: 26, depth: 24, range: 6, form: 'court', forecourt: 0 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.2 + (num(p, 'forecourt') > 0 ? 0.6 : 0),
+      (p.form === 'arcade' ? num(p, 'range') : num(p, 'depth')) / 2 + 0.45 + Math.max(0, num(p, 'forecourt') || 0)] },
   // ------------------------------------------------------------------------------------------------ harbour works
   // (the light's battered plinth, and the skerry's boulders round it when it stands on a rock: harbour.ts lighthouse)
   lighthouse: { family: 'harbour', inWater: true, defaults: { height: 11, radius: 1.6, paint: 'red', base: 'plinth', rise: 1.5 },
