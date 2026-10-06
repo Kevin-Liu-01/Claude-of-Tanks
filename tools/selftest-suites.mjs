@@ -761,6 +761,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainStreaming.selftest.mjs',
     'src/world/terrainSplatFields.selftest.mjs',
     'src/world/textureUploadOrientation.selftest.mjs',
+    'src/world/normalMapOrientation.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
