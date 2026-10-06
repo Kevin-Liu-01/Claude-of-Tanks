@@ -45,8 +45,10 @@ export const MUD_LOSS_GLSL = /* glsl */`
 uniform vec3 uMudShape;
 float cotMudLoss(vec2 xz) {
   // slumps where two noises of the ground plan agree, a metre or so long; the wall's height over tens of metres
+  // (b18; the b14 reshoot of Desert's walls: the crown "a sawtooth" — the second noise, half a metre across at 0.143
+  // a metre, beat against the crown's 0.45 m smoothing taps into regular teeth: it runs a metre and more across now)
   float a = texture2D(uGrime, xz * 0.061).r;
-  float b = texture2D(uGrime, xz * 0.143 + vec2(0.31, 0.67)).g;
+  float b = texture2D(uGrime, xz * 0.071 + vec2(0.31, 0.67)).g;
   float c = texture2D(uGrime, xz * 0.019 + vec2(0.13, 0.41)).b;
   // (the grime tile's channels sit about 0.5, a tenth either side: the mix passes 0.5 on half a wall's length, 0.59 on
   // a tenth and 0.62 on a twentieth: a third of a crown sags, a tenth has slumped well down, the odd stretch to depth)
@@ -122,10 +124,13 @@ float cotMudH = 1.0;
   // the render's loss: broad patches of a smooth noise of the face, their edges ragged with a finer one, more toward
   // the crown and the foot (the grime tile's channels sit about 0.5, a tenth either side: past 0.6 on about a sixth of
   // mid face, a third toward the crown)
-  float n1 = texture2D(uGrime, vec2(ms * 0.091, mh * 0.17 + 0.23)).b;
-  float n2 = texture2D(uGrime, vec2(ms * 0.311 + 0.37, mh * 0.47 + 0.11)).r;
+  // (b18; the b14 reshoot: small losses a hand or two across, their bricks outlined by the lip and the shade, read as
+  // carved glyphs — the losses broad and few now, the render gone over a metre or more where it goes, its edge ragged
+  // at a fifth of that, the bricks under it soft)
+  float n1 = texture2D(uGrime, vec2(ms * 0.06, mh * 0.12 + 0.23)).b;
+  float n2 = texture2D(uGrime, vec2(ms * 0.2 + 0.37, mh * 0.3 + 0.11)).r;
   float wear = up01 < 0.0 ? 0.0 : max(smoothstep(0.62, 0.95, up01) * 0.085, (1.0 - smoothstep(0.02, 0.26, up01)) * 0.065);
-  float field = n1 * 0.74 + n2 * 0.26 + wear;
+  float field = n1 * 0.84 + n2 * 0.16 + wear;
   const float T = 0.6;
   float fw = max(fwidth(field), 1e-4);
   float loss = smoothstep(T - 0.006 - fw, T + 0.006 + fw, field) * vertical;
@@ -141,10 +146,10 @@ float cotMudH = 1.0;
     float mortar = (1.0 - smoothstep(0.004, 0.010 + ew, edge)) * (1.0 - smoothstep(0.006, 0.02, ew));
     float tone = fract(sin(dot(vec2(brick, course), vec2(12.9898, 78.233))) * 43758.5453);
     vec3 brickCol = diffuseColor.rgb * vec3(0.88, 0.8, 0.74) * (0.82 + tone * 0.18);
-    brickCol = mix(brickCol, diffuseColor.rgb * 0.52, mortar);
+    brickCol = mix(brickCol, diffuseColor.rgb * 0.64, mortar);
     float lip = smoothstep(T - 0.03, T - 0.006, field) * (1.0 - loss);
     float shade = (1.0 - smoothstep(T + 0.006, T + 0.04, field)) * loss;
-    diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 + lip * 0.07), brickCol * (1.0 - shade * 0.22), loss);
+    diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 + lip * 0.05), brickCol * (1.0 - shade * 0.15), loss);
     cotMudH = mix(1.0, 0.55 * (1.0 - mortar) + 0.1 * smoothstep(0.0, 0.03, edge), loss);
   }
   // the rain: streaks down the faces from the crown, a damp foot
