@@ -7423,9 +7423,9 @@ The map keeps its id (`blackglass`); its name is Suzhou Creek in every catalogue
 - *Cost* (the A B C C B A gate, the PR head's dist twice against the candidate's, 1920 × 1080 High, the coordinator's
   rules for a loaded machine: the p25 GPU frame's increment, mean + 2 SE under 1 ms, and a CPU bound):
   - the chase passes: GPU p25 −0.10 ± 0.34 ms, CPU p25 +0.01 ± 0.23 ms;
-  - the establishing view was ambiguous twice: at a mean load of 432 (GPU p25 +0.51 ± 0.39 ms, CPU p25 +0.87 ± 0.12 ms)
-    and at 130 (GPU p25 +0.36 ± 0.60 ms, CPU p25 +0.29 ± 0.03 ms). Pooled over the 16 cycles the GPU increment is
-    +0.43 ± 0.35 ms (bound 1.12 ms).
+  - the establishing view passes in a quiet window (mean load 36, the median GPU frame's verdict): GPU median −0.07 ±
+    0.51 ms (bound 0.95 ms), p25 −0.73 ± 0.38 ms, CPU p25 +0.04 ± 0.02 ms. Under load it had read ambiguous twice: at a
+    mean load of 432 (GPU p25 +0.51 ± 0.39 ms) and at 130 (GPU p25 +0.36 ± 0.60 ms).
 - *Receipts* that encoded the old district:
   - townPlans holds the record diff;
   - the census is [2713, 3124, 1492];
