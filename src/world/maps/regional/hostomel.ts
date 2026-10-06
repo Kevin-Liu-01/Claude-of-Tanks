@@ -229,19 +229,56 @@ const cargoHangar = (ctx: RegionalBuildContext): RegionalParts => {
   // the sliding leaves on two tracks (alternate leaves on the outer track); one gone, the hangar's dark behind its gap
   const leaves = Math.max(4, Math.round(Wd / 5.5)), lw = Wd / leaves;
   const missing = rng() < 0.55 ? 1 + Math.floor(rng() * (leaves - 2)) : -1;
-  // the hangar's dark behind the leaves: a backing across the opening a metre and a half in (it closes the shell for
-  // the collision, so a leaf gone from its track opens no way into the hangar)
-  if (missing >= 0) sink.span('dark', -Wd / 2, -0.1, zf - 1.6, Wd / 2, Hd, zf - 1.4);
+  // (2026-10-06, the map-revival lane; gauntlet wave 154 on the PR head's frames: "the hangar's end facade facing the
+  // apron has no doors, only painted-on corrugation, frameless dark windows and X-bracing", and "the beige lower
+  // cladding and the block end-wall fail to meet, leaving a gap through which the grass behind shows") the run reads as
+  // doors: where no leaf is gone, one stands slid open over its neighbour on the other track, the dark hangar in its
+  // slot; each leaf is framed (edge stiles, rails), runs on rollers, its lights framed, a wicket in one and the hangar's
+  // number painted across two. The dark backing stands behind the whole opening in every build, the end leaves run
+  // into their pockets and a jamb closes each pocket out to the outer track, so no gap shows the ground beyond.
+  const open = missing < 0 ? 1 + Math.floor(rng() * (leaves - 2)) : -1;
+  sink.span('dark', -Wd / 2 - 0.3, -0.1, zf - 1.6, Wd / 2 + 0.3, Hd, zf - 1.4);
+  for (const side of [-1, 1]) faceBox(sink, 'stone', front, side * (Wd / 2 + 0.2), (Hd + 0.4) / 2 - 0.4, 0.5, 0.4, Hd + 0.4, 1.0);
+  const frameC = shade(doorLivery, 0.7);
   for (let k = 0; k < leaves; k++) {
-    const u = -Wd / 2 + (k + 0.5) * lw, track = k % 2 ? 0.75 : 0.32;
-    if (k === missing) continue;
-    faceBox(sink, 'structureMetal', front, u, Hd / 2 - 0.05, track, lw + 0.12, Hd + 0.1, 0.22, { colour: doorLivery });
-    if (!mobile) {
-      for (const f of [0.25, 0.5, 0.75]) faceBox(sink, 'structureMetal', front, u - lw / 2 + lw * f, Hd / 2, track + 0.14, 0.12, Hd - 0.3, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
-      faceBox(sink, 'structureMetal', front, u, Hd * 0.42, track + 0.14, lw - 0.2, 0.14, 0.06, { colour: shade(doorLivery, 0.78), decor: true });
-      // a row of small lights at two thirds of the leaf
-      for (const f of [0.3, 0.7]) facePanel(sink, paneBucket(ctx.variant, 0.2), front, u - lw / 2 + lw * f, Hd * 0.7, track + 0.115, Math.min(1.2, lw * 0.28), 0.8, { decor: true, window: [0, 0, 1] });
+    if (k === missing || k === open) continue;
+    // an open leaf stands over the next one, on the other track
+    const slid = k === open + 1 && open >= 0;
+    const track = (k % 2 ? 0.75 : 0.32), ext0 = k === 0 ? 0.3 : 0, ext1 = k === leaves - 1 ? 0.3 : 0;
+    const u = -Wd / 2 + (k + 0.5) * lw + (ext1 - ext0) / 2, w = lw + 0.12 + ext0 + ext1;
+    faceBox(sink, 'structureMetal', front, u, Hd / 2 - 0.05, track, w, Hd + 0.1, 0.22, { colour: doorLivery });
+    if (slid) {
+      // the open leaf, run across it on the other track (its frame and rollers as every leaf's)
+      const t2 = k % 2 ? 0.32 : 0.75, u2 = u - 0.25;
+      faceBox(sink, 'structureMetal', front, u2, Hd / 2 - 0.05, t2, lw + 0.12, Hd + 0.1, 0.22, { colour: shade(doorLivery, 0.96) });
     }
+    if (!mobile) {
+      for (const tr of slid ? [track, k % 2 ? 0.32 : 0.75] : [track]) {
+        const uu = tr === track ? u : u - 0.25, ww = tr === track ? w : lw + 0.12, o = tr + 0.13;
+        // the leaf's frame: edge stiles, top and bottom rails and the mid rail
+        for (const e of [-1, 1]) faceBox(sink, 'structureMetal', front, uu + e * (ww / 2 - 0.1), Hd / 2, o, 0.18, Hd - 0.1, 0.05, { colour: frameC, decor: true });
+        for (const y of [0.14, Hd - 0.16, Hd * 0.42]) faceBox(sink, 'structureMetal', front, uu, y, o, ww - 0.3, 0.18, 0.05, { colour: frameC, decor: true });
+        // the rollers on the bottom track
+        for (const e of [-0.3, 0.3]) faceBox(sink, 'structureMetal', front, uu + e * ww, 0.12, o - 0.02, 0.3, 0.22, 0.12, { colour: TRUSS, decor: true });
+        // a row of small lights at two thirds of the leaf, each in its frame
+        for (const f of [0.3, 0.7]) {
+          const lu = uu - ww / 2 + ww * f, lwid = Math.min(1.2, ww * 0.28);
+          faceBox(sink, 'structureMetal', front, lu, Hd * 0.7, o - 0.01, lwid + 0.16, 0.96, 0.04, { colour: frameC, decor: true });
+          facePanel(sink, paneBucket(ctx.variant, 0.2), front, lu, Hd * 0.7, o + 0.035, lwid, 0.8, { decor: true, window: [0, 0, 1] });
+        }
+      }
+    }
+  }
+  if (!mobile) {
+    // the wicket in the first standing leaf past the middle, and the hangar's number across the two leaves left of it
+    const kw = Math.min(leaves - 1, Math.floor(leaves / 2) + (Math.floor(leaves / 2) === missing || Math.floor(leaves / 2) === open ? 1 : 0));
+    const uw = -Wd / 2 + (kw + 0.5) * lw - lw * 0.15, ow = (kw % 2 ? 0.75 : 0.32) + 0.14;
+    faceBox(sink, 'structureMetal', front, uw, 1.1, ow, 1.2, 2.3, 0.04, { colour: frameC, decor: true });
+    faceBox(sink, 'structureMetal', front, uw, 1.05, ow + 0.03, 0.95, 2.05, 0.03, { colour: shade(doorLivery, 1.08), decor: true });
+    faceBox(sink, 'structureMetal', front, uw + 0.36, 1.05, ow + 0.06, 0.06, 0.18, 0.04, { colour: TRUSS, decor: true });
+    const num = 1 + Math.floor(ctx.variant() * 9), nh = Math.min(3.2, Hd * 0.3);
+    const kn = kw >= 2 ? kw - 1 : kw + 1;
+    paintedNumeral(sink, front, -Wd / 2 + (kn + 0.5) * lw, Hd * 0.48, nh, num, rgb(0xe8e6de), (kn % 2 ? 0.75 : 0.32) + 0.12);
   }
   // the bottom track along the apron and the scorched apron edge under a burnt leaf
   faceBox(sink, 'structureMetal', front, 0, 0.03, 0.55, Wd + 2 * pocket, 0.06, 0.9, { colour: TRUSS, decor: true });
