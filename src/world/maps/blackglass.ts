@@ -172,7 +172,7 @@ export default {
     // city's edge, the fields and their poplar rows, a far line of low hills in the haze — where the volcanic-glass
     // district kept a weathered volcanic field (the mountains lane, gauntlet wave 15); the coastal relief is the delta's
     // (horizonRelief.ts: an authored key wins over the map's identity)
-    baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55, treelineLayers: 2,
+    baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55,
     panorama: { regional: 'plain', trees: 12 },
     outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
