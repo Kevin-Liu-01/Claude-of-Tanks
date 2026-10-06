@@ -466,6 +466,7 @@ region, registered in `index.ts`:
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
+| `saar` | The Völklingen ironworks, Saar, 1945: blast furnaces with their ore bunkers, skip hoists and Cowper stoves; sawtooth rolling mills and workshops; column-guided gas holders behind their walls; conveyor galleries; the colliery headframe and its winding-engine house; the works office; the miners' houses (Bergmannshäuser) | Ironworks |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps

@@ -28,8 +28,10 @@ assert.match(terrainSource, /packedRoadN = mix\(vec2\(0\.5\), packedRoadN, 0\.30
   'the packed-earth normal stays shallow (30% of the smoothed sample)');
 assert.doesNotMatch(terrainSource, /vec4 (?:grav|roadGrit) = texture2D\(uAlbR,[\s\S]{0,180}roadCore/,
   'near dirt roads cannot mix the raw rock tile (its cavities) into the carriageway');
+// (2026-10-05, the road styles: every road term reads the styled paved share gRoadTex — the map's uRoadTex on every
+// unstyled road, a styled path's own surface on a styled one; roadPathStyles pins the decode)
 assert.match(terrainSource,
-  /clamp\(\(gvL - gvM\) \* 1\.4, -0\.16, 0\.20\) \* roadCore \* dNear \* \(1\.0 - uRoadTex\)/,
+  /clamp\(\(gvL - gvM\) \* 1\.4, -0\.16, 0\.20\) \* roadCore \* dNear \* \(1\.0 - gRoadTex\)/,
   'carriageway gravel grain is a clamped zero-mean luminance high-pass, never darker than -16%');
 assert.match(terrainSource,
   /float dapG = \(1\.0 - triW \* 0\.85\) \* \(1\.0 - roadCore \* 0\.5\);/,
@@ -49,11 +51,11 @@ assert.match(terrainSource,
 assert.match(terrainSource, /shader\.uniforms\.uLaneK = \{ value: roadLaneSharpness\(mask\.image\.width\) \};/,
   'lane sharpness follows the actual mask texel size');
 assert.match(terrainSource,
-  /min\(mix\(rut, trodMid \* 0\.55, laneFar\), 1\.0\) \* mix\(0\.34, 0\.26, uRoadTex\)/,
+  /min\(mix\(rut, trodMid \* 0\.55, laneFar\), 1\.0\) \* mix\(0\.34, 0\.26, gRoadTex\)/,
   'the two-track wear near the 1049e4e strength by the camera; past a 0.15 m footprint one trodden middle, no ruled lanes (waves 69, hold 26)');
-assert.match(terrainSource, /float laneFar = smoothstep\(0\.08, 0\.28, gFootM\) \* \(1\.0 - uRoadTex\);/,
+assert.match(terrainSource, /float laneFar = smoothstep\(0\.08, 0\.28, gFootM\) \* \(1\.0 - gRoadTex\);/,
   'the lanes hand over to the trodden middle as they shrink under three pixels');
-assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - uRoadTex\)\);/,
+assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - gRoadTex\)\);/,
   'compacted lanes run slightly less rough (damp) on dirt roads only');
 assert.match(terrainSource,
   /n\.xy \+= gradD \* laneSlope \* 0\.14 \* roadCore \* rutAmp \* \(1\.0 - df \* 0\.72\);/,

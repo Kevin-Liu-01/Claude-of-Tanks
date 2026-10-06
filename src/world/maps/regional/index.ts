@@ -34,6 +34,7 @@ import { KYUSHU_STYLE } from './kyushu.ts';
 import { QUEENSTOWN_STYLE } from './queenstown.ts';
 import { GLENCANYON_STYLE } from './glencanyon.ts';
 import { NAVAJO_STYLE } from './navajo.ts';
+import { SAAR_STYLE } from './saar.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -59,6 +60,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   queenstown: QUEENSTOWN_STYLE,
   glencanyon: GLENCANYON_STYLE,
   navajo: NAVAJO_STYLE,
+  saar: SAAR_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
