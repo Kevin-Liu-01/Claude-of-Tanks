@@ -7330,6 +7330,59 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
 
+### 2026-10-05 — Steinburg's old town becomes a hill town, and the kerb sits on the carriageway (the map-revival lane, mr1)
+
+**The gauntlet's wave 116 read Steinburg's old town as "a too-perfect symmetric hexagon".** Inside the town the plan is
+now a hill town's, laid out with the spur's crest. The battlefield outside the town keeps its mirror across the crest.
+- *The streets* (urban.ts):
+  - the Hauptstrasse (road 0) bends with the crest, within 5 m of the bot planner's z = 0 lattice line;
+  - the trade road (road 1) stays within 3 m of x = −50;
+  - both run straight through the market square, so its 30 m zone disc stays clear of the street rows;
+  - two back lanes behind the street rows (roads 6–9), crooked with the ground and unlike each other (331 and 339 m),
+    each meeting the trade road on its way round;
+  - four alleys (roads 10–13) at uneven spacing join the lanes to the Hauptstrasse;
+  - no alley meets the Hauptstrasse within 100 m west of the market. The network grade solve levels a road 32 m
+    either side of each crossing, so a crossing nearer the square left the street's 1.8 m fall to the apron's 14 m
+    bank (19 % against the brief's 18 %). The worst grades are now 15.5 / 16.5 / 17.6 % at the three terrain seeds;
+  - roadEndpoints.ts joins every lane to the Hauptstrasse.
+- *The walls*:
+  - the town wall survives in stretches outside the lanes, broken at the four gates and shot out in two places;
+  - the castle's ring wall crowns the Burgberg, open to its forecourt on the town side, with the keep, a second tower on
+    the ring's south-east corner, and a chapel (a church's 23 m nave spreads past the plot law on the rock's crown);
+  - the valley field walls keep their mirror.
+- *The objectives*:
+  - the market apron turns 6°;
+  - the west farm-crossing zone and its apron move onto the crest line (z = 4);
+  - objective symmetry goes from 1.07 to 1.03, and the layout brief's solidPropsInRoad exception is gone.
+- *Layout metrics* (tools/map-layout-metrics.mjs on the regenerated shard): every band holds, with 4 lanes, chokeMin
+  740 and no solid prop in a road.
+- *Pacing*:
+  - 20 seeds (24000–24019): median 213 s, p10 149 s, minimum 147 s, none under 120 s, no timeouts;
+  - the PR head on the same seeds: 247 / 154 / 125.
+- *The census*: the shard is regenerated at [2535, 5616, 2259] (was [2690, 6647, 2254]).
+- *botRouteClearance*: the Steinburg courtyard case starts in the yard behind the north lane's rows, since the old
+  courtyard is gone. Its comment names the receipt's conservatism: the edge-offset containment overstates a rotated
+  corner (1.41 times the margin), so a leg passing under one reads short of the clearance it keeps.
+
+**The kerb (props.ts `placeStreetCurbs`, every `curbs: true` map: Steinburg, Ruinspires, Suzhou Creek).**
+- *The problem*: the kerb stacked on the terrain (a level slab 0.19 m over the ground at its centre), and the pavement
+  was pitched to the terrain 6.35 m out. Where the ground rose behind a street, the pavement stood up to 0.5 m over the
+  road (0.9 m on Blackglass's banks): the critics' "town behind a knee-high kerb".
+- *The fix*: each piece now reads the carriageway at the kerb's face at both of its ends:
+  - the kerb shows a 12 cm face over the road and follows the road's grade;
+  - the pavement's inner edge is flush with the kerb's top, and its outer edge climbs toward rising ground by 0.25 m
+    at most;
+  - both slabs reach down into lower ground instead of floating over it;
+  - a piece on a bridge deck's span is left to the bridge's parapets.
+- *Render geometry only*: a per-record digest of the three maps against the PR head (terrain 1337, vegetation 2001,
+  props 2002):
+  - collision records, features, wreck spots, pole placements and grounding receipts are identical;
+  - the only mesh that changes is the stone bucket;
+  - its removed and added triangles (11,328 / 33,792 / 37,056, 24 per piece) all lie inside the 472 / 1,408 / 1,544
+    kerb pieces;
+  - the skipped pieces still draw their UV jitter, so every later draw of the dressing stream keeps its seat;
+  - the committed collision shards still match the tree.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
