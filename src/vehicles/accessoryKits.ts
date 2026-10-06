@@ -687,3 +687,170 @@ export function buildBranchBundle(P: AccessoryPainter, variant: 'upright' | 'lyi
   const geometry = cards.toGeometry();
   if (geometry) P.leaves(geometry);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Roof furniture (2026-10-05, Phase F): cupolas, hatches, sights, searchlights, exhausts and the travel lock in the
+// molded grammar, inside the envelopes of the pieces they replace (decor placement reads the piece's bounds). Their
+// camo-painted parts ride the resident decor group; the coarse level (`detail: 0`) is the mobile tier's form.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** A lathe authored along +Y (radius, station) turned onto +Z, its foot at local z = 0. */
+const latheZ = (profile: ReadonlyArray<readonly [number, number]>, seg: number): THREE.BufferGeometry =>
+  place(latheY(profile, seg), 0, 0, 0, Math.PI / 2, 0, 0);
+
+/** A short round boss on the X axis (trunnions, hinge knuckles): radius r, width w, centred at (x, y, z). */
+const bossX = (r: number, w: number, x: number, y: number, z: number, seg = 8): THREE.BufferGeometry =>
+  roundBar([x - w / 2, y, z], [x + w / 2, y, z], r, seg);
+
+export function buildCupola(P: AccessoryPainter, v: string, tone: number): void {
+  const seg = near(P) ? 12 : 10;
+  if (v === 'ring') {
+    // cast ring with a lip, seven vision blocks in armoured housings, a domed lid on its hinge
+    const r = 0.30;
+    P.kit(latheY([[r * 0.94, 0], [r, 0.02], [r, 0.148], [r * 0.95, 0.168], [r * 0.86, 0.172], [0.001, 0.172]], seg), tone);
+    P.kit(latheY([[r * 0.84, 0.172], [r * 0.84, 0.19], [r * 0.7, 0.212], [r * 0.36, 0.224], [0.001, 0.226]], seg), tone * 1.03);
+    P.steel(place(block(0.12, 0.024, 0.05), 0, 0.2, -r * 0.8), 0.55);                                   // hinge block
+    if (!near(P)) return;
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      P.kit(place(place(block(0.1, 0.062, 0.04), 0, 0.1, r - 0.006), 0, 0, 0, 0, a, 0), tone * 0.96);    // armoured housing
+      P.lens(place(place(block(0.074, 0.034, 0.006), 0, 0.1, r + 0.015), 0, 0, 0, 0, a, 0));
+      P.kit(place(place(block(0.11, 0.01, 0.034), 0, 0.137, r + 0.004), 0, 0, 0, 0, a, 0), tone * 0.9); // brow lip
+    }
+    P.steel(bossX(0.016, 0.05, -0.04, 0.2, -r * 0.8), 0.5);                                              // hinge knuckles
+    P.steel(bossX(0.016, 0.05, 0.04, 0.2, -r * 0.8), 0.5);
+    P.steel(sweptTube([[-0.05, 0.222, 0.08], [-0.05, 0.246, 0.1], [0.05, 0.246, 0.1], [0.05, 0.222, 0.08]], 0.008, 4, 6), 0.5); // grab handle
+  } else if (v === 'drum') {
+    // taller early drum: cast body, domed roof, five vision slits under their brows
+    const r = 0.27;
+    P.kit(latheY([[r, 0], [r, 0.24], [r * 0.95, 0.262], [r * 0.7, 0.29], [r * 0.4, 0.302], [0.001, 0.305]], seg), tone);
+    if (!near(P)) return;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + 0.3;
+      P.steel(place(place(block(0.1, 0.03, 0.012), 0, 0.17, r + 0.002), 0, 0, 0, 0, a, 0), 0.4);       // slit
+      P.kit(place(place(moldedBox(0.13, 0.02, 0.04, 0.006, 0, 0.004), 0, 0.2, r + 0.012), 0, 0, 0, 0, a, 0), tone * 0.94); // brow
+    }
+  } else {
+    // 'split': ring and an open lid leaned on its hinge
+    const r = 0.28, lidR = r * 0.55;
+    P.kit(latheY([[r * 0.95, 0], [r, 0.05], [r, 0.13], [r * 0.72, 0.155], [r * 0.6, 0.16], [0.001, 0.165]], seg), tone);
+    const lid = latheY([[lidR, 0], [lidR, 0.02], [lidR * 0.7, 0.034], [0.001, 0.04]], seg);
+    place(lid, 0, 0, lidR);                       // hinge at the disc edge
+    place(lid, 0, 0, 0, -68 * Math.PI / 180, 0, 0);
+    P.kit(place(lid, 0, 0.165, -r * 0.72), tone * 1.05);
+    P.steel(place(block(0.08, 0.03, 0.05), 0, 0.155, -r * 0.8), 0.55);                                  // hinge block
+    if (!near(P)) return;
+    P.steel(bossX(0.016, 0.06, 0, 0.17, -r * 0.8), 0.5);
+    P.steel(sweptTube([[-0.04, 0.165, r * 0.3], [-0.04, 0.19, r * 0.36], [0.04, 0.19, r * 0.36], [0.04, 0.165, r * 0.3]], 0.008, 4, 6), 0.5);
+  }
+}
+
+export function buildHatch(P: AccessoryPainter, v: string, tone: number): void {
+  const seg = near(P) ? 16 : 10;
+  if (v === 'round') {
+    const r = 0.25;
+    // pressed lid: raised rim, a shallow dome, the hinge knuckles and arm, a grab handle and the latch lug
+    P.kit(latheY([[r, 0], [r, 0.03], [r * 0.95, 0.04], [r * 0.88, 0.044], [r * 0.86, 0.052], [r * 0.5, 0.068], [0.001, 0.075]], seg), tone);
+    P.steel(place(block(0.12, 0.026, 0.05), 0, 0.02, r * 0.9), 0.6);                                    // hinge block
+    if (!near(P)) return;
+    P.steel(bossX(0.018, 0.05, -0.05, 0.03, r * 0.92), 0.55);
+    P.steel(bossX(0.018, 0.05, 0.05, 0.03, r * 0.92), 0.55);
+    P.kit(place(block(0.05, 0.012, r * 0.55), 0, 0.058, r * 0.6), tone * 0.94);                         // hinge arm
+    P.steel(sweptTube([[-0.045, 0.07, -r * 0.42], [-0.045, 0.094, -r * 0.46], [0.045, 0.094, -r * 0.46], [0.045, 0.07, -r * 0.42]], 0.009, 4, 6), 0.55);
+    P.kit(place(moldedBox(0.08, 0.02, 0.05, 0.006, 0, 0.004), 0, 0.03, -r * 0.88), tone);                // latch lug
+  } else {
+    // twin-panel rectangular hatch: two pressed leaves on their hinges, handles and a periscope stub
+    const w = 0.42, d = 0.34;
+    for (const s of [-1, 1]) P.kit(place(moldedBox(w / 2 - 0.006, 0.05, d, 0.012, near(P) ? 1 : 0, 0.008), s * (w / 4 + 0.003), 0.025, 0), tone);
+    P.kit(place(moldedBox(0.09, 0.06, 0.09, 0.01, 0, 0.006), w * 0.28, 0.08, d * 0.1), tone * 1.05);    // periscope stub
+    if (!near(P)) return;
+    for (const s of [-1, 1]) P.steel(roundBar([s * w * 0.3 - 0.035, 0.03, d / 2 + 0.015], [s * w * 0.3 + 0.035, 0.03, d / 2 + 0.015], 0.02, 6), 0.6);
+    for (const s of [-1, 1]) {
+      P.steel(sweptTube([[s * 0.06 - 0.035, 0.05, -d * 0.28], [s * 0.06 - 0.035, 0.07, -d * 0.3], [s * 0.06 + 0.035, 0.07, -d * 0.3],
+        [s * 0.06 + 0.035, 0.05, -d * 0.28]], 0.008, 4, 6), 0.62);
+    }
+    P.lens(place(block(0.06, 0.022, 0.004), w * 0.28, 0.088, d * 0.1 + 0.047));
+  }
+}
+
+export function buildSight(P: AccessoryPainter, v: string, tone: number): void {
+  if (v === 'peri') {
+    // periscope head: armoured base, tilted head, glass under its cowl
+    P.kit(place(moldedBox(0.14, 0.09, 0.12, 0.012, near(P) ? 1 : 0, 0.008), 0, 0.045, 0), tone);
+    P.kit(place(moldedBox(0.12, 0.05, 0.1, 0.01, near(P) ? 1 : 0, 0.006), 0, 0.112, -0.012, -14 * Math.PI / 180, 0, 0), tone);
+    if (!near(P)) return;
+    P.lens(place(block(0.09, 0.028, 0.008), 0, 0.112, 0.05, -14 * Math.PI / 180, 0, 0));
+    P.kit(place(block(0.124, 0.01, 0.034), 0, 0.142, 0.046, -14 * Math.PI / 180, 0, 0), tone * 0.92);   // cowl
+  } else {
+    // primary-sight doghouse: armoured hood with its sloped brow, the window, armoured doors raised, brow rail
+    P.kit(place(moldedBox(0.26, 0.14, 0.3, 0.016, near(P) ? 1 : 0, 0.01), 0, 0.07, 0), tone);
+    P.kit(place(moldedBox(0.26, 0.09, 0.12, 0.012, near(P) ? 1 : 0, 0.008), 0, 0.175, -0.07, -26 * Math.PI / 180, 0, 0), tone);
+    if (!near(P)) return;
+    P.lens(place(block(0.18, 0.05, 0.01), 0, 0.1, 0.152));
+    for (const s of [-1, 1]) P.kit(place(block(0.088, 0.012, 0.07), s * 0.046, 0.145, 0.15, -1.2, 0, 0), tone * 0.95); // visor doors raised
+    P.steel(roundBar([-0.14, 0.148, 0.14], [0.14, 0.148, 0.14], 0.008, 6), 0.6);                             // brow rail
+    for (const x of [-0.11, 0.11]) for (const z of [-0.11, 0.06]) P.steel(place(block(0.014, 0.008, 0.014), x, 0.144, z), 0.5); // bolts
+  }
+}
+
+export function buildSearchlight(P: AccessoryPainter, v: string, tone: number): void {
+  const seg = near(P) ? 14 : 9;
+  if (v === 'convoy') {
+    P.steel(roundBar([0, 0, 0], [0, 0.1, 0], near(P) ? 0.022 : 0.02, 6), 0.55);
+    P.kit(place(latheZ([[0.0005, 0], [0.04, 0.005], [0.045, 0.03], [0.045, 0.09], [0.048, 0.092]], seg), 0, 0.13, -0.037), tone);
+    P.lens(place(latheZ([[0.0005, 0], [0.039, 0], [0.039, 0.006], [0.0005, 0.008]], seg), 0, 0.13, 0.054));
+    if (near(P)) P.kit(place(block(0.1, 0.008, 0.05), 0, 0.177, 0.045, 0.2, 0, 0), tone * 0.92);           // hood
+    return;
+  }
+  const R = v === 'ir_large' ? 0.19 : 0.115;   // drum radius
+  const D = v === 'ir_large' ? 0.3 : 0.19;     // drum depth
+  const axleY = R + 0.07;
+  P.kit(place(moldedBox(0.16, 0.035, 0.16, 0.01, near(P) ? 1 : 0, 0.006), 0, 0.018, 0), tone);           // base plate
+  for (const s of [-1, 1]) P.steel(roundBar([s * (R + 0.014), 0.03, 0], [s * (R + 0.014), axleY, 0], 0.012, near(P) ? 6 : 4), 0.55); // yoke
+  // drum: domed rear cap, body and the front bezel, one lathe along the beam
+  P.kit(place(latheZ([[R * 0.55, 0], [R * 0.86, D * 0.06], [R, D * 0.18], [R, D * 0.94], [R * 1.05, D * 0.95], [R * 1.05, D], [R * 0.95, D * 1.01]], seg),
+    0, axleY, -D * 0.68), tone);
+  P.lens(place(latheZ([[0.0005, 0], [R * 0.93, 0], [R * 0.93, 0.008], [0.0005, 0.014]], seg), 0, axleY, D * 0.32));  // glass
+  if (!near(P)) return;
+  for (const s of [-1, 1]) P.steel(bossX(0.028, 0.022, s * (R + 0.01), axleY, 0), 0.5);                  // trunnions
+  if (v === 'ir_large') {
+    for (const z of [-0.28, -0.14, 0]) P.kit(place(latheZ([[R + 0.001, 0], [R + 0.012, 0.004], [R + 0.012, 0.012], [R + 0.001, 0.016]], seg), 0, axleY, z * D), tone * 0.9); // fins
+    P.steel(sweptTube([[0, axleY - R * 0.4, -D * 0.6], [0.04, axleY - R * 0.9, -D * 0.5], [R + 0.04, 0.06, 0.03], [R + 0.04, 0.03, 0.03]], 0.012, 5, 8), 0.5); // cable
+  }
+}
+
+export function buildExhaust(P: AccessoryPainter, v: string, len: number, tone: number): void {
+  const seg = near(P) ? 14 : 9;
+  if (v === 'muffler') {
+    // rolled muffler with dished ends, two strap bands on brackets and the tail pipe kicked out of the rear
+    P.kit(place(latheZ([[0.0005, 0], [0.07, 0.006], [0.1, 0.03], [0.105, 0.06], [0.105, len - 0.06], [0.1, len - 0.03], [0.07, len - 0.006], [0.0005, len]], seg),
+      0, 0.105, -len / 2), tone * 0.82);
+    P.steel(sweptTube([[0.015, 0.105, -len / 2 + 0.02], [0.015, 0.11, -len / 2 - 0.05], [0.03, 0.15, -len / 2 - 0.14]], 0.04, near(P) ? 7 : 5, near(P) ? 6 : 3), 0.42); // tail
+    if (!near(P)) return;
+    for (const s of [-0.3, 0.3]) {
+      P.steel(place(latheZ([[0.106, 0], [0.112, 0.002], [0.112, 0.028], [0.106, 0.03]], seg), 0, 0.105, s * len - 0.015), 0.4); // strap band
+      P.steel(place(block(0.03, 0.06, 0.03), 0.07, 0.03, s * len), 0.42);                                    // bracket
+    }
+  } else {
+    // pipe under a slotted heat shield on its ribs
+    P.steel(place(latheZ([[0.07, 0], [0.07, len]], seg), 0, 0.09, -len / 2), 0.4);
+    const shield = new THREE.CylinderGeometry(0.105, 0.105, len * 0.92, seg, 1, true, -Math.PI * 0.6, Math.PI * 1.2).toNonIndexed();
+    P.kit(place(shield, 0, 0.105, 0, Math.PI / 2, 0, 0), tone);
+    if (!near(P)) return;
+    for (const s of [-0.35, 0, 0.35]) P.steel(place(latheZ([[0.106, 0], [0.11, 0.002], [0.11, 0.02], [0.106, 0.022]], seg), 0, 0.105, s * len - 0.011), 0.42);
+    for (const s of [-0.25, 0.25]) P.steel(place(block(0.02, 0.09, 0.03), 0.1, 0.05, s * len), 0.45);
+  }
+}
+
+export function buildTravelLock(P: AccessoryPainter, tone: number): void {
+  // pivot base with its pin bosses, the A-frame folded aft with a cross brace, the saddle claw and its pad
+  P.kit(place(moldedBox(0.14, 0.06, 0.12, 0.01, near(P) ? 1 : 0, 0.006), 0, 0.03, 0), tone);
+  for (const s of [-1, 1]) P.kit(roundBar([s * 0.06, 0.075, -0.02], [s * 0.03, 0.075, -0.5], 0.022, near(P) ? 7 : 5), tone);
+  const claw = new THREE.TorusGeometry(0.055, 0.015, near(P) ? 5 : 4, near(P) ? 9 : 6, Math.PI).toNonIndexed();
+  P.steel(place(claw, 0, 0.06, -0.52, 0, 0, Math.PI), 0.55);
+  if (!near(P)) return;
+  P.kit(roundBar([-0.045, 0.075, -0.25], [0.045, 0.075, -0.25], 0.014, 6), tone * 0.95);              // cross brace
+  P.steel(roundBar([-0.085, 0.05, 0.03], [0.085, 0.05, 0.03], 0.015, 6), 0.55);                         // pivot pin
+  for (const s of [-1, 1]) P.steel(bossX(0.026, 0.02, s * 0.075, 0.05, 0.03), 0.5);                    // pin bosses
+  P.steel(place(block(0.06, 0.012, 0.03), 0, 0.012, -0.52), 0.35);                                      // claw pad
+}

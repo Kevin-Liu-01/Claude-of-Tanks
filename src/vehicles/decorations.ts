@@ -59,8 +59,9 @@ import {
 } from './materials.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
-  buildBranchBundle, buildCargoVariant, buildLog, buildNetDrape, buildNetRoll, buildPackCluster, buildTarpRoll,
-  buildTools, drum200, duffel, jerrycan, sandbag, type AccessoryPainter, type RGB,
+  buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
+  buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
+  sandbag, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
 import { moldedBox, place, roundBar } from './accessoryPrimitives.ts';
@@ -1034,58 +1035,18 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
 export const DECOR_KITS: Record<string, DecorKitBuilder> = {
 
   // -- commander's cupola upgrade: raised vision-block ring ------------------
-  cupola({ rng, v = 'ring' }) {
+  cupola({ rng, v = 'ring', detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.92 + rng() * 0.14;
-    if (v === 'ring') {              // low vision-block ring + closed lid
-      const r = 0.30;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r * 0.94, 0], [r, 0.02], [r, 0.16], [r * 0.9, 0.19], [r * 0.62, 0.215], [0.001, 0.225]], 16), tone) });
-      for (let i = 0; i < 7; i++) {   // vision blocks
-        const a = (i / 7) * Math.PI * 2;
-        parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.085, 0.05, 0.03), Math.sin(a) * (r - 0.006), 0.105, Math.cos(a) * (r - 0.006), 0, a, 0), 0.9) });
-      }
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.02, 0.16), 0, 0.232, -0.1), tone) }); // lid hinge spine
-    } else if (v === 'drum') {       // taller drum cupola (early pattern)
-      const r = 0.27;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r, 0], [r, 0.24], [r * 0.93, 0.27], [r * 0.5, 0.30], [0.001, 0.305]], 16), tone) });
-      for (let i = 0; i < 5; i++) {   // vision slits
-        const a = (i / 5) * Math.PI * 2 + 0.3;
-        parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.10, 0.035, 0.025), Math.sin(a) * r, 0.17, Math.cos(a) * r, 0, a, 0), 0.55) });
-      }
-    } else {                          // 'split': ring + open lid leaned on the hinge
-      const r = 0.28;
-      const lidR = r * 0.55;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r * 0.95, 0], [r, 0.05], [r, 0.13], [r * 0.6, 0.16], [0.001, 0.165]], 16), tone) });
-      // lid disc pivoted AT ITS EDGE on the ring rim (open ~68 deg)
-      const lid = cylY(lidR, lidR, 0.028, 12);
-      xform(lid, 0, 0, lidR);                        // hinge at disc edge
-      xform(lid, 0, 0, 0, -68 * D2R, 0, 0);          // swing open
-      parts.push({ mat: 'kit', geo: bakeShade(xform(lid, 0, 0.165, -r * 0.72), tone * 1.05) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.07, 0.03, 0.05), 0, 0.155, -r * 0.8), 0.55) }); // hinge block
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.04, 0.01, 8, 4), 0, 0.17, r * 0.35), 0.55) }); // grab ring
-    }
+    buildCupola(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
   // -- openable-looking hatch cover with hinges -------------------------------
-  hatch({ rng, v = 'round' }) {
-    const tone = 0.9 + rng() * 0.16;
+  hatch({ rng, v = 'round', detail = 1 }) {
     const parts: DecorPartList = [];
-    if (v === 'round') {
-      const r = 0.25;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r, 0], [r, 0.035], [r * 0.86, 0.055], [r * 0.3, 0.07], [0.001, 0.075]], 14), tone) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.028, 0.11), 0, 0.02, r * 0.9), 0.62) });    // hinge block
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.045, 0.011, 8, 4), 0, 0.078, -r * 0.4), 0.6) }); // grab ring
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.08, 0.02, 0.05), 0, 0.03, -r * 0.88), tone) });      // latch lug
-    } else { // rect twin-panel
-      const w = 0.42, d = 0.34;
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, 0.05, d), 0, 0.025, 0), tone) });
-      for (const s of [-1, 1]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.02, 0.07, 6), s * w * 0.3, 0.03, d / 2 + 0.015), 0.6) });
-      }
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.1, 0.022, 0.04), 0, 0.058, -d * 0.28), 0.65) });   // handle
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.09, 0.06, 0.09), w * 0.28, 0.08, d * 0.1), tone * 1.05) }); // periscope stub
-    }
+    const tone = 0.9 + rng() * 0.16;
+    buildHatch(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
@@ -1126,27 +1087,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- roof lights: IR searchlight (large/small) + convoy light ----------------
-  light({ rng, v = 'ir_large' }) {
+  light({ rng, v = 'ir_large', detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.12;
-    if (v === 'convoy') {
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.02, 0.024, 0.1, 6), 0, 0.05, 0), 0.55) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.045, 0.09, 8), 0, 0.13, 0.008), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(cylZ(0.038, 0.012, 8), 0, 0.13, 0.056), 1) });
-      return parts;
-    }
-    const R = v === 'ir_large' ? 0.19 : 0.115;   // drum radius
-    const D = v === 'ir_large' ? 0.30 : 0.19;    // drum depth
-    parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.16, 0.035, 0.16), 0, 0.018, 0), tone) }); // base plate
-    for (const s of [-1, 1]) { // yoke arms — stop at the drum axle line
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, R + 0.045, 0.045), s * (R + 0.014), (R + 0.045) / 2 + 0.02, 0), 0.55) });
-    }
-    parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(R, D, 14), 0, R + 0.07, -D * 0.18), tone) });            // drum
-    parts.push({ mat: 'steel', geo: bakeShade(xform(torus(R * 0.99, 0.014, 14, 4), 0, R + 0.07, D * 0.32, Math.PI / 2, 0, 0), 0.55) }); // face rim
-    parts.push({ mat: 'lens', geo: bakeShade(xform(cylZ(R * 0.93, 0.018, 14), 0, R + 0.07, D * 0.325), 1) });   // glass
-    if (v === 'ir_large') { // cable conduit
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.012, 0.012, R + 0.05, 5), R + 0.04, (R + 0.05) / 2, 0.03), 0.5) });
-    }
+    buildSearchlight(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
@@ -1173,19 +1117,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- gunner's sight head / periscope hood ------------------------------------
-  sight({ rng, v = 'peri' }) {
-    const tone = 0.92 + rng() * 0.1;
+  sight({ rng, v = 'peri', detail = 1 }) {
     const parts: DecorPartList = [];
-    if (v === 'peri') {
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.09, 0.12), 0, 0.045, 0), tone) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.12, 0.05, 0.10), 0, 0.112, -0.012, -14 * D2R), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.09, 0.028, 0.012), 0, 0.112, 0.05, -14 * D2R), 1) });
-    } else { // 'doghouse' primary-sight hood
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.26, 0.14, 0.30), 0, 0.07, 0), tone) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.26, 0.09, 0.12), 0, 0.175, -0.07, -26 * D2R), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.18, 0.05, 0.014), 0, 0.10, 0.152), 1) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.28, 0.016, 0.02), 0, 0.148, 0.14), 0.6) }); // brow rail
-    }
+    const tone = 0.92 + rng() * 0.1;
+    buildSight(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
@@ -1561,22 +1496,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- exhaust shroud / muffler (axis Z along the fender) ------------------------------
-  exhaust({ rng, v = 'muffler', len = 0.9 }) {
+  exhaust({ rng, v = 'muffler', len = 0.9, detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.7 + rng() * 0.15; // heat-scorched paint
-    if (v === 'muffler') {
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.105, len, 12), 0, 0.105, 0), tone * 0.82) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.042, 0.22, 7), 0.015, 0.12, -len / 2 - 0.06, 0.5, 0, 0), 0.42) }); // tail kick
-      for (const s of [-0.3, 0.3]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.11, 0.01, 12, 4), 0, 0.105, s * len, Math.PI / 2, 0, 0), 0.4) });
-      }
-    } else { // perforated heat shield over a pipe
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.07, len, 9), 0, 0.09, 0), 0.4) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.105, len * 0.92, 9), 0, 0.105, 0), tone) });
-      for (const s of [-0.25, 0.25]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, 0.09, 0.03), 0.1, 0.05, s * len), 0.45) });
-      }
-    }
+    buildExhaust(accessoryPainter(parts, rng, detail), v, len, tone);
     return parts;
   },
 
@@ -1635,15 +1558,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- barrel travel lock, stowed folded on the deck -----------------------------------
-  travelLock({ rng }) {
+  travelLock({ rng, detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.1;
-    parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.06, 0.12), 0, 0.03, 0), tone) });
-    for (const s of [-1, 1]) { // folded A-frame arms lying aft
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.024, 0.52, 7), s * 0.06, 0.075, -0.28, 0, s * 0.12, 0), tone) });
-    }
-    parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(0.055, 0.015, 9, 4, Math.PI), 0, 0.06, -0.52, 0, 0, Math.PI), 0.55) }); // saddle claw
-    parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.015, 0.13, 5), 0, 0.05, 0.03), 0.55) });
+    buildTravelLock(accessoryPainter(parts, rng, detail), tone);
     return parts;
   },
 
@@ -2810,7 +2728,7 @@ function clonePartList(parts: DecorPartList): DecorPartList {
  * draw must still carry every piece of that bucket.
  */
 const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 'cargo', 'basket', 'tools', 'drums',
-  'jerry', 'sandbags', 'rations', 'foliage']);
+  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
 /**

@@ -78,7 +78,8 @@ changing it (remote parity). The 20 L jerrycan is one construction too
 (`accessoryKits.ts` `jerrycanParts`: decor cans, `KIT.jerryCan`,
 `FITTINGS.jerryCans`), and the profile kit's soft stowage, tarp rolls, ammo
 cans, shovels and stowage-rack loads use the same primitives inside their old
-envelopes and random draws. Decor probes skip running gear by name
+envelopes and random draws, as do the decor roof furniture (cupolas, hatches,
+sights, searchlights, exhausts, the travel lock; `accessoryKits.ts`). Decor probes skip running gear by name
 (`isDecorRunningGearName`); track guards and skirts are supports and obstacles.
 For player-reported Garage defects, also verify the actual carousel/pedestal
 path with its live engine context, AI geometry quality, static batching and
