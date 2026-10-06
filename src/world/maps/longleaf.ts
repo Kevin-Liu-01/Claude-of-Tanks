@@ -65,6 +65,12 @@ export default {
   },
   props: {
     sourcedPalette: 'frontier',
+    // The landmarks lane (2026-10-06; src/world/landmarks/towers.ts fireLookout): the forest's fire lookout on the western
+    // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
+    // zig-zag stair inside its frame, seen over the canopy from both deployments.
+    landmarks: [
+      { kind: 'fireLookout', x: -216, z: -46, yawDeg: 0, name: 'the fire lookout on the western ridge', params: { height: 26 } },
+    ],
     loggingYard: {
       // Existing flatbeds load beside grounded cut timber inside the western
       // garage apron. The existing access loop and defensive bay stay clear.
