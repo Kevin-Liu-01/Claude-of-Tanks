@@ -5,7 +5,8 @@
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
 import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { flowerBox } from './dressing.ts';
 import { doorCanopy, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
@@ -73,16 +74,33 @@ const townHouse: RegionalBuilder = (ctx) => {
     }, hessianDialect(st));
     if (!framed && facadeOn()) townFront(sink, frame, streetFace, gableFront, render, st.door);
     if (facadeOn()) townDormers(sink, frame, gableFront, framed ? st.infill : render, st);
+    // (facade craft, desktop; wave 150 named a jettied corner house's flower boxes as what works) geraniums in boxes
+    // under most of the upper storeys' street windows on about half the houses, from the facade stream
+    if (facadeOn()) {
+      const f = facadeRng();
+      if (f() < 0.55) {
+        const box = pick(f, TOWN_BOXES), bloom = pick(f, TOWN_BLOOMS);
+        for (const o of frame.spec.openings) {
+          if (o.face !== streetFace || o.kind !== 'window' || o.state || o.storey < 1 || o.storey > 2 || f() > 0.75) continue;
+          flowerBox(sink, storeyFaces(frame, o.storey)[streetFace], o.u, frame.floors[o.storey] + o.y0, o.w, box, bloom, f, true);
+        }
+      }
+    }
     // (facade craft, desktop; wave 116 read "blank gables") the attic's windows in a rendered gable — a framed gable's
     // timbers carry its own — clear of the street gable's loft door
     if (facadeOn() && !framed && frame.roof.gable) {
       const top = frame.bodies[frame.bodies.length - 1], cx = (top.x0 + top.x1) / 2, cz = (top.z0 + top.z1) / 2, hd = (top.z1 - top.z0) / 2;
-      // (no sill: an attic light's sill would add to Steinburg's shadow casters, near their cap)
-      const f = facadeRng(), style = { ...st.window, shutters: null, bars: 'two' as const, sill: null };
+      // (no sill: an attic light's sill would add to Steinburg's shadow casters, near their cap; wave 150 read windows
+      // "set flush in the wall": each in a painted Fasche, its frame standing well out of the render)
+      const f = facadeRng(), fasche = pick(f, FASCHEN);
+      const style = { ...st.window, shutters: null, bars: 'two' as const, sill: null, frameOut: Math.max(st.window.frameOut, 0.07) };
       for (const end of [1, -1] as const) {
         const face: Face = { origin: [cx, 0, cz + end * hd], u: [end, 0, 0], out: [0, 0, end], width: top.x1 - top.x0 };
-        gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0,
-          (u, y, w, h) => windowUnit(sink, face, u, y, w, h, style, f, 0.25));
+        gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0, (u, y, w, h) => {
+          windowUnit(sink, face, u, y, w, h, style, f, 0.25);
+          // (paint in the first render family: its fine paint draws by the fine-detail cells, out of the shadow maps)
+          paintSurround(sink, 'plaster', face, u, y, w, h, 0.12, fasche);
+        });
       }
     }
     // rendered fronts: sandstone quoins and a cornice
@@ -115,6 +133,10 @@ const townHouse: RegionalBuilder = (ctx) => {
   else sink.placed(Math.PI / 2, 0, 0, 0, build);
   return sink.finish();
 };
+
+/** The town's window boxes and their geraniums (facade craft). */
+const TOWN_BOXES: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30, 0x2e3e52].map(rgb);
+const TOWN_BLOOMS: readonly Rgb[] = [0xc0242a, 0xd23a5a, 0xc8462e, 0xe0e0d8].map(rgb);
 
 /** Faschen: the render bands painted round a town house's windows, lighter or darker than its render, or a colour. */
 const FASCHEN: readonly Rgb[] = [[1.3, 1.28, 1.22], [0.72, 0.71, 0.68], [1.14, 0.84, 0.6], [0.86, 0.6, 0.5], [0.8, 0.9, 0.8], [1.25, 1.18, 1.05]];

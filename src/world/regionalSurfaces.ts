@@ -130,7 +130,7 @@ export function paintLimewash(s: number, seed: number): { px: Uint8ClampedArray;
     const cross = d >= dabs * 0.62;
     const ang = (cross ? Math.PI / 2 : 0) + (rnd() - 0.5) * 1.1;
     const len = (36 + rnd() * 60) * s / 256, wid = (9 + rnd() * 10) * s / 256;
-    const cx = rnd() * s, cy = rnd() * s, load = (rnd() - 0.5) * 0.06, phase = rnd() * 6.283, freq = 0.9 + rnd() * 0.8;
+    const cx = rnd() * s, cy = rnd() * s, load = (rnd() - 0.5) * 0.04, phase = rnd() * 6.283, freq = 0.9 + rnd() * 0.8;
     const ca = Math.cos(ang), sa = Math.sin(ang), r = Math.ceil(len / 2 + wid);
     for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
       const a = (ox * ca + oy * sa) / (len / 2), b = (-ox * sa + oy * ca) / (wid / 2);
@@ -143,14 +143,15 @@ export function paintLimewash(s: number, seed: number): { px: Uint8ClampedArray;
     }
   }
   const body = field(s, 64, 3, 3, seed + 3);
-  const thinF = field(s, 128, 5, 3, seed + 7);
+  const thinF = field(s, 128, 9, 3, seed + 7);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
     const b = body(x, y), grain = pnoise(x, y, s, 96, seed + 29);
-    // thin coats where the brush ran dry, the warm mud faintly through them
-    const thin = smooth(0.62, 0.86, thinF(x, y)) * clamp(1 - ridge[i] * 0.8);
-    const l = 0.5 + (b - 0.5) * 0.03 + clamp(lum[i], -0.06, 0.06) + (grain - 0.5) * 0.012 - thin * 0.07;
-    _lime.setHSL(0.085 - thin * 0.02, 0.1 + thin * 0.14, l);
+    // thin coats where the brush ran dry, the warm mud faintly through them: small and few, and warm rather than grey
+    // (wave 150: grey blotches made "whitewashed clay read as granite")
+    const thin = smooth(0.72, 0.92, thinF(x, y)) * clamp(1 - ridge[i] * 0.8);
+    const l = 0.5 + (b - 0.5) * 0.02 + clamp(lum[i], -0.04, 0.04) + (grain - 0.5) * 0.01 - thin * 0.035;
+    _lime.setHSL(0.085 - thin * 0.01, 0.1 + thin * 0.45, l);
     px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
     hgt[i] = clamp(0.5 + (b - 0.5) * 0.6 + clamp(ridge[i], 0, 0.6) * 0.25 - thin * 0.05);
   }
@@ -426,12 +427,14 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
 
 /**
  * A town's dressed stone over a kind's recipe (the facades lane, 2026-10-05; gauntlet wave 116 on Steinburg: "oversized
- * clean ashlar"): courses of 15-26 cm and blocks of 27-62 cm, soiled — rain runs down the face from every course, grime
- * in the joints. A style asks for it with `stone.dressed`.
+ * clean ashlar"): soiled — rain runs down the face from every course, grime in the joints. A style asks for it with
+ * `stone.dressed`.
  */
-const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 38, courseMax: 66, blockMin: 70, blockMax: 160, mortar: 1.7,
-  mortarTint: [0.55, 0.51, 0.47] as Tint, spread: 0.15, hue: 0.07, relief: 0.4, pillow: 0.22, speckle: 0.04, lichen: 0.22, grime: 0.7,
-  rubble: 0.1, mottle: 0.36, streaks: 0.55 });
+// (wave 150: courses of 15-26 cm under light mortar read as "brick at two to three times real scale") ashlar's own
+// proportions — courses of 22-34 cm, blocks of 45-90 cm — under tight dark joints, each block its own tone and bedding
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 1.1,
+  mortarTint: [0.42, 0.39, 0.36] as Tint, spread: 0.22, hue: 0.1, relief: 0.35, pillow: 0.12, speckle: 0.04, lichen: 0.22, grime: 0.7,
+  rubble: 0.15, bedding: 0.12, mottle: 0.36, streaks: 0.55 });
 
 function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
   const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];

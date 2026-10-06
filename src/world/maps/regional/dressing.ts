@@ -9,18 +9,21 @@ import type { HouseFrame } from './house.ts';
 const DECOR = { decor: true } as const;
 
 /** A planted window box on its brackets under a window (u, y: the window's bottom-centre on the face). */
-export function flowerBox(sink: PartSink, face: Face, u: number, y: number, w: number, box: Rgb, bloom: Rgb, rng: () => number): void {
+export function flowerBox(sink: PartSink, face: Face, u: number, y: number, w: number, box: Rgb, bloom: Rgb, rng: () => number,
+  fine = false): void {
+  // (`fine`: the facade craft's boxes are fine dressing, drawn within the fine-detail distance, in no shadow map)
+  const d = fine ? { ...DECOR, fine: true } : DECOR;
   const bw = w + 0.12, by = y - 0.24;
-  faceBox(sink, 'structureWood', face, u, by, 0.13, bw, 0.18, 0.2, { ...DECOR, colour: box });
-  for (const side of [-1, 1]) faceBox(sink, 'structureMetal', face, u + side * (bw / 2 - 0.08), by - 0.12, 0.08, 0.03, 0.12, 0.14, { ...DECOR, colour: [0.12, 0.12, 0.12] });
+  faceBox(sink, 'structureWood', face, u, by, 0.13, bw, 0.18, 0.2, { ...d, colour: box });
+  for (const side of [-1, 1]) faceBox(sink, 'structureMetal', face, u + side * (bw / 2 - 0.08), by - 0.12, 0.08, 0.03, 0.12, 0.14, { ...d, colour: [0.12, 0.12, 0.12] });
   // the foliage mound and the blooms above it (geraniums hang over the front edge)
   const leaf: Rgb = [0.13 + rng() * 0.04, 0.24 + rng() * 0.06, 0.08];
-  faceBox(sink, 'structureWood', face, u, by + 0.15, 0.15, bw - 0.06, 0.14, 0.24, { ...DECOR, colour: leaf });
+  faceBox(sink, 'structureWood', face, u, by + 0.15, 0.15, bw - 0.06, 0.14, 0.24, { ...d, colour: leaf });
   const n = Math.max(3, Math.round(bw / 0.22));
   for (let k = 0; k < n; k++) {
     const t = (k + 0.5) / n, uu = u - bw / 2 + 0.04 + (bw - 0.08) * t;
     const s = 0.07 + rng() * 0.05, lift = rng() * 0.06;
-    faceBox(sink, 'structureWood', face, uu, by + 0.2 + lift, 0.2 + rng() * 0.06, s, s, s, { ...DECOR, colour: bloom });
+    faceBox(sink, 'structureWood', face, uu, by + 0.2 + lift, 0.2 + rng() * 0.06, s, s, s, { ...d, colour: bloom });
   }
 }
 

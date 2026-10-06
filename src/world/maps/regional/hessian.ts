@@ -15,7 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, facadeOn, facadeRng, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
+import { doorCanopy, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -406,6 +406,17 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
       flowerBox(sink, face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, rng);
       placed++;
     });
+    // (facade craft, desktop; wave 150 named the jettied corner house's flower boxes as what works) the street
+    // windows the boxes skipped get theirs too, their blooms drawn from the facade stream
+    if (facadeOn()) {
+      const f = facadeRng();
+      spec.openings.forEach((o, k) => {
+        if (placed >= 12 || o.kind !== 'window' || o.state || o.storey > 1 || (o.face !== 'front' && o.face !== 'right') || picks[k] <= 0.7 || picks[k] > 0.94) return;
+        const face = storeyFaces(frame, o.storey)[o.face];
+        flowerBox(sink, face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, f, true);
+        placed++;
+      });
+    }
   }
   const door = spec.openings.find((o) => o.kind === 'door' && o.storey === 0);
   if (seat && door) {
@@ -434,6 +445,8 @@ export function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): vo
   faceBox(sink, 'dark', face, u, y, 0.45, 0.06, 0.06, 0.9, { decor: true });
   faceBox(sink, 'dark', face, u, y - 0.25, 0.65, 0.04, 0.5, 0.04, { decor: true });
   faceBox(sink, SW, face, u, y - 0.62, 0.8, 0.06, 0.55, 0.62, { colour: shade(st.door, 1.2), decor: true });
+  // (facade craft, desktop) the sign painted: a gilded star in a dark border, on both faces
+  if (facadeOn()) innEmblem(sink, face, u, y - 0.62, 0.8, 0.03, 0.62, 0.55);
 }
 
 /** A small slate-capped roof turret (Dachreiter) on the ridge: the school and chapel bell. */

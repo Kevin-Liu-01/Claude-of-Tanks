@@ -558,7 +558,8 @@ export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     tones: {
       plaster: limewash(whitewash, 0x11a1),
       plaster2: limewash((_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.2 + 0.1)], 0x11a2),
-      plaster3: limewash((_h, s, l) => [0.58, Math.min(1, s * 0.2 + 0.03), Math.min(1, l * 1.15 + 0.1)], 0x11a2),
+      // (wave 150: the grey-blue read as granite) the blue lime-wash a light sky blue
+      plaster3: limewash((_h, s, l) => [0.57, Math.min(1, s * 0.2 + 0.12), Math.min(1, l * 1.18 + 0.14)], 0x11a2),
       straw: (h, s, l) => [h - 0.01, Math.min(1, s * 0.62), Math.min(1, l * 0.86)],
     },
   },

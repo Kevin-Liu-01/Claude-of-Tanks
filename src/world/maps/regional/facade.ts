@@ -662,9 +662,52 @@ export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: numbe
   }
   // the fascia: a painted board over the opening's head, a moulded cornice on it, as deep as the storey leaves room for
   const foot = y + h + surround + 0.02, room = top - 0.06 - foot, board = Math.min(0.4, room - 0.08);
-  if (board < 0.2) return;
+  // (wave 150: "a blank grey shop window") the shop's name: painted along the fascia in the board's other colour, or,
+  // where the storey leaves no room for a board, gilded on the glass of the transom lights (fine: a near read)
+  const lettering = (cy: number, height: number, o: number, ink: Rgb, width: number) => {
+    const span = Math.min(width, 0.16 * Math.max(4, Math.floor(width / 0.24)));
+    let cu = u - span / 2;
+    for (let k = 0; cu < u + span / 2 - 0.06; k++) {
+      const wk = 0.07 + 0.06 * hash01(face.origin[0], face.origin[2], u, k);
+      if (cu + wk > u + span / 2) break;
+      faceBox(sink, 'structureWood', face, cu + wk / 2, cy, o, wk, height, 0.004, { ...DECOR, colour: ink, fine: true });
+      cu += wk + (k % 6 === 5 ? 0.12 : 0.035);
+    }
+  };
+  if (board < 0.2) {
+    lettering(ty + 0.21, 0.15, back + barO + 0.004, [0.86, 0.72, 0.36], w - 0.3);
+    return;
+  }
   faceBox(sink, 'structureWood', face, u, foot + board / 2, 0.05, rw + 0.3, board, 0.1, { ...panel, fineSides: true });
   faceBox(sink, 'structureWood', face, u, foot + board + 0.035, 0.09, rw + 0.44, 0.07, 0.18, { ...panel, fineSides: true });
+  const light = paint[0] + paint[1] + paint[2] > 1.2;
+  lettering(foot + board / 2, Math.min(0.2, board * 0.5), 0.101, light ? [0.06, 0.05, 0.05] : [0.86, 0.72, 0.36], rw - 0.1);
+}
+
+/**
+ * The painted emblem on an inn's hanging sign (wave 150: "a blank inn sign"): a gilded star (two crossed triangles) in
+ * a painted border on both faces of the board. (u, y) the board's centre on the wall face, `out` its centre's
+ * distance from the wall, `half` half its thickness, `w` × `h` its face (w along the wall's normal).
+ */
+export function innEmblem(sink: PartSink, face: Face, u: number, y: number, out: number, half: number, w: number, h: number): void {
+  const gold: Rgb = [0.78, 0.6, 0.22], rim: Rgb = [0.1, 0.08, 0.06];
+  for (const side of [-1, 1]) {
+    // the board's face toward `side` along the wall: a frame whose u is the wall's normal
+    const n: Vec3 = [face.u[0] * side, face.u[1] * side, face.u[2] * side];
+    const base: Vec3 = [face.origin[0] + face.u[0] * u, 0, face.origin[2] + face.u[2] * u];
+    const f: Face = { origin: base, u: [face.out[0] * -side, 0, face.out[2] * -side], out: n, width: w };
+    const c = -side * out;
+    const r = Math.min(w, h) * 0.32, cy = y;
+    faceSlab(sink, 'structureWood', f, [[c - w / 2 + 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy + h / 2 - 0.03], [c - w / 2 + 0.03, cy + h / 2 - 0.03]],
+      half, 0.004, { colour: rim, fine: true });
+    for (const turn of [0, Math.PI]) {
+      const tri: Array<[number, number]> = [0, 1, 2].map((k) => {
+        const a = turn + Math.PI / 2 + k * Math.PI * 2 / 3;
+        return [c + Math.cos(a) * r, cy + Math.sin(a) * r] as [number, number];
+      });
+      faceSlab(sink, 'structureWood', f, tri, half + 0.004, 0.003, { colour: gold, fine: true });
+    }
+  }
 }
 
 /**

@@ -305,7 +305,11 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     // fanned from the centre, 15 mm proud: the depth buffer (near 0.5 m, 24 bits) resolves that to ~280 m, where the
     // patch is a pixel; 6 mm fought the render from ~180 m in the establishing views
     const fan: Array<[number, number]> = [[cu, cy], ...ragged, ragged[0]];
-    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, shade: 0.86, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
+    // (facade craft, desktop; wave 150: "plaster loss that looks like stickers") the loss shaded deeper toward its broken
+    // edge, where the render it lost stands proud and shades it: a hollow, not a decal laid on the wall
+    const centre = facePoint(face, cu, cy, 0.015);
+    const rim = facadeOn() ? { shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.92 : 0.62) } : { shade: 0.86 };
+    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, ...rim, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
   }
 }
 
@@ -795,8 +799,11 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   }
   if (reveal <= 0) return;
   const r = -reveal;
+  // (facade craft, desktop; wave 150: "windows set flush in the wall, with no reveal depth") the reveals a third darker,
+  // as the wall's thickness shades them
+  const deep = facadeOn() ? 0.68 : 1;
   hs.forEach((h, k) => {
-    const dark = revealShade[kept[k]] ?? 1;
+    const dark = (revealShade[kept[k]] ?? 1) * deep;
     // left jamb faces +u, right jamb -u, the head down, the sill up
     sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, h.y1, r), P(h.u0, h.y1), { shade: 0.74 * dark });
     sink.quad(bucket, P(h.u1, h.y0), P(h.u1, h.y1), P(h.u1, h.y1, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
