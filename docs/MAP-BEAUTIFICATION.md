@@ -7132,8 +7132,8 @@ at the Hauptstrasse's west corner (1 438); the market square is the zone's disc 
 gaps and the Brunnen a crate's at the corner, so the passes that placed them re-plan from there (59 rubble piles, a
 truck, nine crates; wall stones and fences a few centimetres). Pacing (4 seeds) 407/296/198/182 s against the head's
 299/209/284/209 s. Cost: the establishing shot −0.50 ± 0.52 ms and chase −1.06 ± 0.37 (accept); the north gate's view
-0.23 ± 0.59 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.1 ms, no long task and no program
-compiled during a slot.
+0.23 ± 0.59, and on its quiet-window re-run −1.69 ± 1.01 (accept); every CPU median within 0.1 ms, no long task and no
+program compiled during a slot.
 
 ### 2026-10-04 — no hard sun disc through a closed deck; the deck brightens toward the sun (the skies lane)
 
