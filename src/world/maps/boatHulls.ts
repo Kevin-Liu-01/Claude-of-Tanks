@@ -5,7 +5,8 @@
 // lands stepped proud on a clinker boat, a skin of plank thickness inside, the gunwale capped, the stems carried up
 // into posts on a Nordland boat, a transom on a canot or a gajeta, thwarts, bottom boards, and the paint of its coast:
 // the Breton canots' bright topsides over a red-brown bottom, the Nordland færinger tarred, the Dalmatian gajete white
-// with a coloured band under the sheer, the Ca Mau xuồng in dark varnish with their painted eyes. One indexed geometry
+// with a coloured band under the sheer, the Ca Mau xuồng in dark varnish with their painted eyes, the Jamuna's nouka
+// on its crescent sheer under a bamboo chhoi. One indexed geometry
 // in vertex colours (the props' baked bucket, which a moored hull keeps), weathered by the toolkit: the water line's
 // grime, the salt-bleached topsides, the shade inside.
 //
@@ -15,9 +16,9 @@
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
 
-export type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat';
+type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
 
-export interface BoatSpec {
+interface BoatSpec {
   type: BoatType;
   /** Overall length, the beam at the sheer amidships, the keel-to-sheer depth amidships (m). */
   length: number;
@@ -50,10 +51,12 @@ export interface BoatSpec {
   band?: number;
   /** Painted eyes on the bow (the Mekong boats). */
   eyes?: boolean;
+  /** A woven bamboo hood (chhoi) arched over the middle of the boat (a Bengal passenger nouka). */
+  hood?: boolean;
 }
 
 /** What a kit's draws pick for one boat: a colour scheme from the region's, a mast. */
-export interface BoatVariation {
+interface BoatVariation {
   scheme: number;
   mast: boolean;
 }
@@ -68,7 +71,7 @@ const woodMat = (hex: number, scale = 1): VehicleMaterial => material('wood', li
 function beamShare(s: BoatSpec, u: number): number {
   if (u >= 0.5) {
     const t = (u - 0.5) / 0.5;
-    return Math.pow(Math.max(0, 1 - t * t), s.type === 'xuong' ? 0.55 : 0.75);
+    return Math.pow(Math.max(0, 1 - t * t), s.type === 'xuong' ? 0.55 : s.type === 'nouka' ? 0.62 : 0.75);
   }
   const t = (0.5 - u) / 0.5;
   if (s.stern === 'double') return Math.pow(Math.max(0, 1 - t * t), 0.7);
@@ -206,6 +209,29 @@ export function buildBoat(spec: BoatSpec, variation: BoatVariation, coarse = fal
       mesh.box(x * s.beam / 1.6, y + 0.03, 0, 0.12, 0.018, s.length * 0.52, inside, 0.004);
     }
   }
+  // the chhoi of a Bengal nouka: a woven bamboo mat arched over the middle third, its edges on the gunwales
+  if (s.hood) {
+    const u0 = 0.36, u1 = 0.62, rows = coarse ? 3 : 5, cols = coarse ? 6 : 10;
+    const weave = material('canvas', linearHex(0x7a6a4e), 0.95, 0, 0, 1);
+    for (const inset of [0, 0.014]) {
+      mesh.grid(rows, cols, (i, j, out) => {
+        const u = lerp(u0, u1, i / rows), [x, y] = sectionPoint(s, u, 1);
+        const a = Math.PI * (j / cols);
+        out[0] = (x + 0.02 - inset) * Math.cos(a);
+        out[1] = y + 0.015 + (0.66 - inset) * Math.pow(Math.sin(a), 0.75);
+        out[2] = (u - 0.5) * s.length;
+      }, () => weave, { flip: inset > 0 });
+    }
+    // the canes along its ends
+    for (const u of [u0, u1]) {
+      const [x, y] = sectionPoint(s, u, 1), arch: [number, number, number][] = [];
+      for (let k = 0; k <= 8; k++) {
+        const a = Math.PI * (k / 8);
+        arch.push([(x + 0.03) * Math.cos(a), y + 0.02 + 0.672 * Math.pow(Math.sin(a), 0.75), (u - 0.5) * s.length]);
+      }
+      mesh.tube(arch, 0.018, coarse ? 4 : 6, woodMat(0x7a6040), { caps: true });
+    }
+  }
   // the painted eyes of the Mekong boats, either side of the bow
   if (s.eyes) {
     const u = 0.88, [x, y] = sectionPoint(s, u, 0.72);
@@ -284,6 +310,16 @@ export const BOAT_FAMILIES: Readonly<Record<string, BoatFamily>> = {
       { topside: 0x3e5a76, sheerStrake: 0xd8d2c0, bottom: 0x2a2018, inside: 0x6a4e34, trim: 0x2e221a },
     ],
   },
+  // the Jamuna: the dinghi nouka of the chars, double-ended on a crescent sheer, tarred or oiled, some under a chhoi
+  nouka: {
+    hull: { type: 'nouka', length: 6.6, beam: 1.45, depth: 0.44, sheerAft: 0.62, sheerFwd: 0.74, rocker: 0.24, deadrise: 0.3,
+      flare: 0.12, stern: 'double', transom: 0, strakes: 4, clinker: false, posts: 0.2, thwarts: 2, hood: true },
+    schemes: [
+      { topside: 0x231d17, sheerStrake: 0x231d17, bottom: 0x1a1612, inside: 0x6e5236, trim: 0x2a221a },
+      { topside: 0x5a4430, sheerStrake: 0x2f5a86, bottom: 0x1e1914, inside: 0x7a5c3c, trim: 0x2a221a, band: 0x9a2a22 },
+      { topside: 0x3e3226, sheerStrake: 0xc8a030, bottom: 0x1a1612, inside: 0x6e5236, trim: 0x2a221a },
+    ],
+  },
   // the Alps: a lake's plank rowing boat, a flat floor and a transom, its paint faded
   lakeboat: {
     hull: { type: 'lakeboat', length: 4.2, beam: 1.4, depth: 0.5, sheerAft: 0.08, sheerFwd: 0.16, rocker: 0.06, deadrise: 0.18,
@@ -301,7 +337,8 @@ export function boatFamilyForMap(mapId: string): BoatFamily {
     case 'fjord': return BOAT_FAMILIES.faering;
     case 'coastal': return BOAT_FAMILIES.canot;
     case 'saltwind': return BOAT_FAMILIES.gajeta;
-    case 'mangrove': case 'delta': return BOAT_FAMILIES.xuong;
+    case 'mangrove': return BOAT_FAMILIES.xuong;
+    case 'delta': return BOAT_FAMILIES.nouka;
     case 'alpine': return BOAT_FAMILIES.lakeboat;
     default: return BOAT_FAMILIES.canot;
   }

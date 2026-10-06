@@ -55,6 +55,7 @@ assert.equal(boatFamilyForMap('fjord'), BOAT_FAMILIES.faering, 'Narvik: the Nord
 assert.equal(boatFamilyForMap('coastal'), BOAT_FAMILIES.canot, 'the Léon coast: the canot');
 assert.equal(boatFamilyForMap('saltwind'), BOAT_FAMILIES.gajeta, 'Dalmatia: the gajeta');
 assert.equal(boatFamilyForMap('mangrove'), BOAT_FAMILIES.xuong, 'Ca Mau: the xuồng');
+assert.equal(boatFamilyForMap('delta'), BOAT_FAMILIES.nouka, 'the Jamuna: a nouka');
 assert.equal(boatFamilyForMap('alpine'), BOAT_FAMILIES.lakeboat, 'the Mont-Cenis lake: a plank rowing boat');
 console.log(`boatHulls.selftest: ${hulls} hulls over ${Object.keys(BOAT_FAMILIES).length} families, keels on the ground, `
   + `dimensions, budgets (worst ${worst} triangles) and byte-identical rebuilds`);
