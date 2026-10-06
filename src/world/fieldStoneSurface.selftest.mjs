@@ -18,14 +18,28 @@
 //      region"): on a chalk map the print is the chalk's own and never toned — a pale warm skin about the boulders' chalk
 //      tone, seamless and joint-free, its flint nodules rare and small (never a dark line), its core the earth packed
 //      between the blocks (grey-brown loam, not a black void, with paler chalk chips in it); the phone print alike; and
-//      props.ts paints it for the map whose rock is chalk and leaves the map's stone tone to its houses.
+//      props.ts paints it for the map whose rock is chalk and leaves the map's stone tone to its houses;
+//  10. the regions' stones (b20; the coordinator: every map's walls on one table): the limestone, granite, gneiss,
+//      sandstone and slate prints each deterministic, seamless, joint-free in its face band, its skin's mean in its
+//      stone's colour (the limestone pale, the granite a speckled grey, the gneiss banded along the slab, the sandstone
+//      red-brown, the slate a blue-grey with its cleavage), its core the dry wall's voids between packing stones, the
+//      phone print alike; the fieldstone and the chalk byte for byte as they were (their digests pinned);
+//  11. the table: every battlefield on it; 'mud' exactly the mud-walled maps, 'brick' exactly the brick-print maps; a
+//      stone print for the rest, the fieldstone where a map has no region's stone; props.ts paints by it and tones only
+//      the fieldstone.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V, liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { createHash } from 'node:crypto';
+import {
+  FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V, FIELD_WALL_PRINT_BY_MAP, fieldStoneLithologyFor, liftFieldStoneMean, paintFieldStoneBuffers,
+} from './fieldStoneSurface.ts';
 import { rockLithologyFor } from './rockDressing.ts';
+import { MAP_IDS } from './maps/mapIds.ts';
+import { getMapConfig } from './maps/index.ts';
+import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 
 function drain(generator) {
   let slices = 0, step = generator.next();
@@ -271,11 +285,101 @@ const chalkPrint = drain(paintFieldStoneBuffers(512, undefined, 'chalk'));
     assert.ok(Math.abs(pHeart[ch] / cHeart[ch] - 1) < 0.08, `channel ${ch}: and the core's`);
   }
   assert.ok(Math.abs(pe / pn - earth / nn) < 0.05, 'and the core\'s earth');
-  // the wiring: props.ts paints the chalk for the chalk map, untoned
-  assert.match(source, /\? yield\* makeFieldStone\(aniso, T\.stone \|\| null, mobileProps \? 256 : 512, rockLithologyFor\(mapId\) === 'chalk' \? 'chalk' : 'fieldstone'\)/,
-    'the field walls\' print is the chalk\'s on the chalk map');
-  assert.match(source, /const \{ px, hgt \} = yield\* paintFieldStoneBuffers\(size, undefined, lithology\);\n\s*if \(lithology !== 'chalk'\) \{\n\s*applyTone\(px, tone\);\n\s*liftFieldStoneMean\(px, size\);/,
-    'and never toned by the map\'s stone tone (its houses\')');
+  // the wiring: props.ts paints the walls' print by the one table (b20), toning only the fieldstone
+  assert.match(source, /\? yield\* makeFieldStone\(aniso, T\.stone \|\| null, mobileProps \? 256 : 512, fieldStoneLithologyFor\(mapId\)\)/,
+    'the field walls\' print is the table\'s, the chalk\'s on the chalk map');
+  assert.equal(fieldStoneLithologyFor('verdant'), 'chalk', 'Verdant\'s walls the chalk');
+  assert.match(source, /const \{ px, hgt \} = yield\* paintFieldStoneBuffers\(size, undefined, lithology\);\n\s*if \(lithology === 'fieldstone'\) \{\n\s*applyTone\(px, tone\);\n\s*liftFieldStoneMean\(px, size\);/,
+    'and never toned by the map\'s stone tone (its houses\'): only the fieldstone is');
 }
 
-console.log(`fieldStoneSurface self-test passed: a seamless stone skin (no void, darkest hundredth ${(darkest / median * 100).toFixed(0)} % of its median, longest dark run ${Math.max(darkAlong, darkUp)} texels), windows differing ${(spread * 100).toFixed(1)} % stone to stone and drifting ${(drift * 100).toFixed(1)} % across one, a dark core (voids ${(voidShare * 100).toFixed(0)} %), mean colour ${faceMean.map((v, c) => (v / stoneMean[c]).toFixed(3)).join('/')} of the stone print's, the lift, the phone print alike; the chalk's own print`);
+// 10. the regions' stones
+const digest = (b) => createHash('sha256').update(Buffer.from(b.px.buffer)).update(Buffer.from(b.hgt.buffer)).update(Buffer.from(b.joint.buffer)).digest('hex').slice(0, 16);
+// (the fieldstone and the chalk as they were before b20, byte for byte at both sizes)
+assert.equal(digest(print), 'a716c49fe5d48561', 'the fieldstone print unchanged (512)');
+assert.equal(digest(drain(paintFieldStoneBuffers(256))), 'a218726a260ae0ac', 'and at 256');
+assert.equal(digest(chalkPrint), '2b3742424e33b4c0', 'the chalk print unchanged (512)');
+assert.equal(digest(drain(paintFieldStoneBuffers(256, undefined, 'chalk'))), '3613717dfd3f86aa', 'and at 256');
+const encS = (v) => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const regionStats = {};
+for (const [lith, want] of Object.entries({
+  // the skin's mean in sRGB: lightness (the channels' mean) and the warmth (red over blue) bounds
+  limestone: { light: [0.55, 0.66], warm: [1.0, 1.25] },
+  granite: { light: [0.4, 0.5], warm: [1.0, 1.18] },
+  gneiss: { light: [0.37, 0.47], warm: [1.0, 1.18] },
+  sandstone: { light: [0.38, 0.5], warm: [1.5, 1.95] },
+  slate: { light: [0.28, 0.38], warm: [0.8, 0.95] },
+})) {
+  const b = drain(paintFieldStoneBuffers(512, undefined, lith)), bpx = b.px;
+  assert.equal(b.slices, 512 / 16, `${lith}: sixteen rows a slice`);
+  assert.equal(digest(drain(paintFieldStoneBuffers(512, undefined, lith))), digest(b), `${lith}: deterministic`);
+  // seamless along the wall
+  const st = new Float64Array(size);
+  for (let c = 0; c < size; c++) { let sum = 0; for (let t = 0; t < size; t++) sum += Math.abs(luma(bpx, t * size + ((c + 1) % size)) - luma(bpx, t * size + c)); st[c] = sum / size; }
+  const inner = [...st.slice(0, size - 1)].sort((a, c) => a - c);
+  assert.ok(st[size - 1] <= inner[Math.floor(inner.length * 0.98)], `${lith}: tiles along the wall`);
+  // no joint in the skin
+  let fj = 0;
+  for (let y = faceRows[0]; y < faceRows[1]; y++) for (let x = 0; x < size; x++) fj += b.joint[y * size + x];
+  assert.equal(fj, 0, `${lith}: no joint in the face band`);
+  // the skin's colour
+  const m = meanLinear(bpx, size, F0, F1).map(encS), light = (m[0] + m[1] + m[2]) / 3, warm = m[0] / m[2];
+  assert.ok(light >= want.light[0] && light <= want.light[1], `${lith}: the skin's lightness ${light.toFixed(3)} in [${want.light}]`);
+  assert.ok(warm >= want.warm[0] && warm <= want.warm[1], `${lith}: its warmth ${warm.toFixed(3)} in [${want.warm}]`);
+  // the core: voids between packing stones, darker than them and than the skin
+  let v = 0, nn = 0, vl = 0, sl = 0;
+  for (let y = hRows[0]; y < hRows[1]; y++) for (let x = 0; x < size; x++) { const i = y * size + x, l = luma(bpx, i); nn++; if (b.joint[i]) { v++; vl += l; } else sl += l; }
+  assert.ok(v / nn > 0.2 && v / nn < 0.65 && vl / v < (sl / (nn - v)) * 0.75, `${lith}: the core's voids (${(v / nn).toFixed(2)}) darker than its packing stones`);
+  // the phone print
+  const ph = drain(paintFieldStoneBuffers(256, undefined, lith)), pm = meanLinear(ph.px, 256, F0, F1).map(encS);
+  for (let c = 0; c < 3; c++) assert.ok(Math.abs(pm[c] / m[c] - 1) < 0.03, `${lith}: the phone print's skin alike (channel ${c})`);
+  // the banding: the skin in 4 x 4 blocks (the crystals averaged out), its gradient up the stone against along it — a
+  // band changes the tone across it, wavering or straight; a speckled or mottled skin changes it alike both ways
+  const B = 4, BW = size / B, BH = Math.floor((faceRows[1] - faceRows[0]) / B), blk = new Float64Array(BW * BH);
+  for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+    let sum = 0;
+    for (let j = 0; j < B; j++) for (let i = 0; i < B; i++) sum += luma(bpx, (faceRows[0] + by * B + j) * size + bx * B + i);
+    blk[by * BW + bx] = sum / (B * B);
+  }
+  let gUp = 0, gAlong = 0;
+  for (let by = 0; by < BH - 1; by++) for (let bx = 0; bx < BW - 1; bx++) {
+    gUp += Math.abs(blk[(by + 1) * BW + bx] - blk[by * BW + bx]); gAlong += Math.abs(blk[by * BW + bx + 1] - blk[by * BW + bx]);
+  }
+  // the speckle: texels far from their neighbours' mean (a crystal's grain against the skin)
+  let speck = 0, sn = 0;
+  for (let y = faceRows[0] + 1; y < faceRows[1] - 1; y += 2) for (let x = 1; x < size - 1; x += 2) {
+    const c = luma(bpx, y * size + x), nb = (luma(bpx, y * size + x - 1) + luma(bpx, y * size + x + 1) + luma(bpx, (y - 1) * size + x) + luma(bpx, (y + 1) * size + x)) / 4;
+    if (Math.abs(c - nb) > 18) speck++; sn++;
+  }
+  regionStats[lith] = { light: +light.toFixed(3), warm: +warm.toFixed(3), band: +(gUp / Math.max(1e-6, gAlong)).toFixed(2), speck: +(speck / sn).toFixed(3) };
+}
+assert.ok(regionStats.gneiss.band > 1.1 && regionStats.sandstone.band > 1.2 && regionStats.slate.band > 2,
+  `banded along the slab: the gneiss's foliation, the sandstone's laminae, the slate's cleavage (${['gneiss', 'sandstone', 'slate'].map((l) => regionStats[l].band).join(', ')})`);
+assert.ok(regionStats.granite.band < 1.06, `the granite unbanded (${regionStats.granite.band})`);
+assert.ok(regionStats.granite.speck > regionStats.limestone.speck * 3 && regionStats.granite.speck > 0.05,
+  `the granite speckled, the limestone smooth (${regionStats.granite.speck} against ${regionStats.limestone.speck})`);
+
+// 11. the table
+{
+  assert.deepEqual(Object.keys(FIELD_WALL_PRINT_BY_MAP).sort(), [...MAP_IDS].sort(), 'every battlefield\'s walls on the one table');
+  for (const id of MAP_IDS) {
+    const P = getMapConfig(id).props || {}, adobe = (P.wallStyle || 'fieldstone') === 'adobe', brick = !adobe && sourcedStoneIsBrick(id);
+    const entry = FIELD_WALL_PRINT_BY_MAP[id];
+    assert.equal(entry === 'mud', adobe, `${id}: 'mud' exactly where its walls are mud (${entry})`);
+    assert.equal(entry === 'brick', brick, `${id}: 'brick' exactly where its print is brick (${entry})`);
+    const lith = fieldStoneLithologyFor(id);
+    assert.equal(lith, adobe || brick ? 'fieldstone' : entry, `${id}: its field walls' stone print`);
+    if (!adobe && !brick && lith !== 'fieldstone') {
+      // a region's stone where its rock is that stone, or where its wall stone is (the gneiss' and slate's countries)
+      assert.ok(['chalk', 'limestone', 'granite', 'gneiss', 'sandstone', 'slate'].includes(lith), `${id}: a region's stone`);
+    }
+  }
+  assert.deepEqual(['saltwind', 'cliffbridge'].map(fieldStoneLithologyFor), ['limestone', 'limestone'], 'the karst and Ronda\'s tableland in limestone');
+  assert.deepEqual(['fjord', 'alpine'].map(fieldStoneLithologyFor), ['gneiss', 'gneiss'], 'Norway and the Mont-Cenis in gneiss');
+  assert.equal(fieldStoneLithologyFor('reservoir'), 'slate', 'the Eifel in slate');
+  assert.equal(fieldStoneLithologyFor('frontier'), 'sandstone', 'Hesse in its red sandstone');
+  assert.equal(fieldStoneLithologyFor('coastal'), 'granite', 'Brittany in granite');
+  assert.equal(fieldStoneLithologyFor('nowhere'), 'fieldstone', 'an unknown map the fieldstone');
+}
+
+console.log(`fieldStoneSurface self-test passed: a seamless stone skin (no void, darkest hundredth ${(darkest / median * 100).toFixed(0)} % of its median, longest dark run ${Math.max(darkAlong, darkUp)} texels), windows differing ${(spread * 100).toFixed(1)} % stone to stone and drifting ${(drift * 100).toFixed(1)} % across one, a dark core (voids ${(voidShare * 100).toFixed(0)} %), mean colour ${faceMean.map((v, c) => (v / stoneMean[c]).toFixed(3)).join('/')} of the stone print's, the lift, the phone print alike; the chalk's own print; the regions' stones ${JSON.stringify(regionStats)}; the one table`);
