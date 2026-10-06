@@ -7204,6 +7204,9 @@ function* vegetationBuildSteps(
     const understoreyRng = mulberry32((seed ^ 0x77e5) >>> 0);
     const understoreyPlacements: THREE.Matrix4[] = [];
     const understoreyTints: THREE.Color[] = [];
+    // trees round 6: where the closed woods' inner understorey begins in the placements (the frame probe's same-page A/B
+    // draws the mesh short of it)
+    let innerUnderstoreyStart = -1;
     function placeUnderstorey(): void {
       if (mobileTier) return;
       // trees round 4 (2026-10-04, the coordinator's law for every shrub a player can drive up to): the understorey
@@ -7306,6 +7309,7 @@ function* vegetationBuildSteps(
         // placement keeps its draws); dressing like the rest of the understorey — the wood's own discs conceal, and one
         // out of their cover keeps its place as capped young growth
         if (treeBiomeWoodSpread(cfg?.id) > 1) {
+          innerUnderstoreyStart = understoreyPlacements.length;
           const innerRng = mulberry32((seed ^ 0x51d3) >>> 0);
           clusters.forEach((stand, index) => {
             const n = Math.round(Math.PI * (stand.r * 0.82) ** 2 / INNER_UNDERSTOREY_M2);
@@ -7345,6 +7349,7 @@ function* vegetationBuildSteps(
       m.customDepthMaterial = shrubMats?.[1] ?? shrubDepthCache ?? foliageDepthMats[bushSpecies];
       m.userData.aoExclude = true;
       m.userData.understorey = true;
+      if (innerUnderstoreyStart >= 0) m.userData.innerUnderstoreyStart = innerUnderstoreyStart;
       m.name = 'understorey';
       m.computeBoundingSphere();
       group.add(m);
