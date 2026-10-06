@@ -51,6 +51,8 @@ export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sh
 /** An HSL remap of a procedural surface (props.ts ToneFunction). */
 export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
+/** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
+export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
@@ -59,6 +61,9 @@ export interface ArchitectureSurfaces {
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
+  /** a style that pours its plaster2 walls: that bucket's print is the concrete's (its formwork's boards, lift lines and
+   *  tie holes), toned by the plaster2 tone as the render was; absent = the render canvas */
+  concrete?: ConcreteSurfaceKind;
 }
 
 export interface ArchitectureStyle {

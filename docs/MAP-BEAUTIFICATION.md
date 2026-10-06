@@ -128,7 +128,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
 | Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
-| Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
+| Skybridge Chasm | Glen Canyon above Lake Powell: bedded sandstone shoulders over the drowned gorge; the Bureau of Reclamation's 1960s works and Page in the `glencanyon` kit (powerhouse and penstocks, control building, walled switchyards and transformer yards, relay tower, ranch houses), its poured walls board-formed concrete (formwork boards, lift lines, tie holes); the plateau's juniper and pinyon with poplars by the water, the bunchgrass cured straw; crossing/abutments/control works organize the canyon; believable approaches |
 
 ## Order of work and visible checkpoints
 

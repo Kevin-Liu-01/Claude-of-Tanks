@@ -138,11 +138,11 @@
       "concealers": 1239
     },
     "skybridge": {
-      "bytes": 1455958,
-      "sha256": "29675d4094c3c52b21460cdc000cab61771f58d42105126527856dc36b7e2539",
-      "obstacles": 3514,
-      "colliders": 3781,
-      "concealers": 2181
+      "bytes": 1306126,
+      "sha256": "cd3969654a967342891c9dc818fcee88118b4c8050066d1bd3228f6956f5a6ae",
+      "obstacles": 3433,
+      "colliders": 3376,
+      "concealers": 2091
     },
     "polders": {
       "bytes": 1361007,
