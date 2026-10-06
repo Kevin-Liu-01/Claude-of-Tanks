@@ -473,3 +473,22 @@ landscape. `node tools/end-screen-presentation.browser.mjs` runs victory,
 defeat, draw, empty awards and multiplayer readiness, with 21-member teams.
 Both tools are DOM-only regressions: they verify layout, interaction and
 keyboard focus without claiming rendered battle or native mobile performance.
+
+## Objective and award banner spacing
+
+Objective event notices and earned-medal cards use six-sided outlines. Cards
+start at least 16 CSS pixels below the measured scoreboard/objective bottom,
+then clear visible detection and combat notices by 12 pixels. Their entrance
+fades in place so it cannot cross that gap. The layout observes content and
+viewport changes instead of doing work in the render loop.
+
+When a short phone has no clear lane above its controls, an award stays queued.
+Its display timer runs only while it is visible; resizing or a notice clearing
+retries placement. Combat objective alerts remain visible in their own lane.
+
+Run `node tools/objective-banner.browser.mjs` (with the same optional
+`--playwright-module` argument) for desktop, portrait, 480×270 and 568×256
+landscape, Chinese text, four objective states, rotation, and deferred awards.
+It starts and closes its own Vite server and writes receipts under `.qa-dev/`.
+The shared HUD burst fixture alternates attackers to exercise eight separate
+notifications; consecutive hits by one attacker intentionally combine.

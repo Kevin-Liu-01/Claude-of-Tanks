@@ -104,7 +104,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) return;
     observe('.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
-    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane', true);
+    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
     observe('.cot-mp-status.battle');
@@ -213,7 +213,32 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     const stack = battleSideStack(leftBottom - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
-    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 8, scoreBottom + 52);
+    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
+    // Awards use the center lane only when the actual visible HUD leaves room.
+    // Keep the card measurable while deferred; no per-frame polling is needed.
+    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
+    let bannerTop = Math.ceil(top + 16);
+    if (banner?.childElementCount) {
+      const bounds = banner.getBoundingClientRect();
+      const crosses = (box: DOMRect) => bounds.left < box.right + 8 && bounds.right > box.left - 8;
+      for (const selector of ['.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show']) {
+        const box = read(selector);
+        if (box && crosses(box) && bannerTop < box.bottom + 12 && bannerTop + bounds.height > box.top - 12) {
+          bannerTop = Math.ceil(box.bottom + 12);
+        }
+      }
+      let fits = bannerTop + bounds.height <= height - 8;
+      for (const selector of ['.cot-vehicle-controls', '.cot-shells', '.cot-dp', '.cot-minimap',
+        '.cot-touch.on .joy', '.cot-touch.on .autoaim', '.cot-touch.on .scope', '.cot-touch.on .fire', '.cot-cons']) {
+        const box = read(selector);
+        if (box && crosses(box) && bannerTop < box.bottom + 8 && bannerTop + bounds.height > box.top - 8) fits = false;
+      }
+      const placement = fits ? 'ready' : 'deferred';
+      if (banner.dataset.placement !== placement) {
+        banner.dataset.placement = placement;
+        banner.dispatchEvent(new Event('cot-banner-placement'));
+      }
+    }
     const network = !!read('.cot-mp-status.battle');
     const properties = {
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
@@ -226,7 +251,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
-      'objective-top': scoreBottom, 'objective-bottom': top,
+      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
