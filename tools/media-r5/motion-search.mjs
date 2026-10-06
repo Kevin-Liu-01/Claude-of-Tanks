@@ -200,6 +200,15 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
       let foeGap = Infinity;
       for (let t = 0; t <= DUR; t += 200) for (const name of Object.keys(routes)) { sampleActorTrack(tracks.get(name), t, o); for (const f of foes) foeGap = Math.min(foeGap, Math.hypot(o.x - f.pos[0], o.z - f.pos[1])); }
       if (foeGap < 15) { reject('within 15 m of a foe'); continue; }
+      // the fight is ahead: a hero never draws away from its nearest foe over the take (s01 'pushes up the main street'
+      // drove off from its enemy on its road's other way, 2026-10-05), and closing on it scores
+      let closing = 0;
+      if (foes.length) {
+        const heroKeys = tracks.get('hero'), near = (tMs) => { sampleActorTrack(heroKeys, tMs, o); return Math.min(...foes.map((f) => Math.hypot(o.x - f.pos[0], o.z - f.pos[1]))); };
+        const d0 = near(0), d1 = near(DUR);
+        if (d1 > d0 + 5) { reject('draws away from the enemy'); continue; }
+        closing = Math.max(0, Math.min(1, (d0 - d1) / 40));
+      }
     // a stabilised gun counter-rotates at the hull's yaw rate: a turn tighter than a turret can follow (65°/s, under the
     // selftest's 70) is out
     const wrapD = (d) => ((d % 360) + 540) % 360 - 180;
@@ -213,7 +222,7 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
         // a move family (left and right alike) and a route family used before cost the next shot, so the fifty mix
         const moveFamily = lens.replace(/[LR]$/, ''), routeFamily = family.split(/[[+-]/)[0];
-        const score = 1.2 * Math.min(range, 7) / 7 + 0.8 * Math.min(m.climb, 30) / 30 + 1.0 * m.front + 0.5 * Math.min(m.speed, speed) / speed
+        const score = 1.2 * Math.min(range, 7) / 7 + 0.8 * Math.min(m.climb, 30) / 30 + 1.0 * m.front + 0.5 * Math.min(m.speed, speed) / speed + 0.3 * closing
           + 0.5 * inFrame - 2 * blocked - 0.5 * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0);
         results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null });
       }

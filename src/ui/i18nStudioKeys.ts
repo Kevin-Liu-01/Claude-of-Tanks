@@ -14,6 +14,8 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studioPanel.picture.',
   'studioPanel.light.',
   'studioPanel.fxParam.',
+  // the Plan view (studioPlanView.ts, 2026-10-05)
+  'studioPanel.plan.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

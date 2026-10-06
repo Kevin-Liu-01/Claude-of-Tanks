@@ -22,6 +22,7 @@ import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
+import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
 import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
@@ -215,6 +216,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   getSpecInfo(id: string): StudioSpecInfo;
   getCamera(): StudioCameraState;
   getStoryboard(): StudioStoryboard;
+  /** The battlefield's plan for the Plan view (the HUD minimap's features and the map's extent). */
+  getPlanFeatures(): StudioPlanFeatures | null;
   listEffects(): readonly StudioEffect[];
   recordingStatus(): StudioRecordingStatus;
   state(): Record<string, RuntimeValue>;
@@ -1370,6 +1373,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   railRow.append(railBtn, clearTrackBtn);
   secTime.appendChild(railRow);
+  // the take from above: routes, the camera's track and its distance and height (studioPlanView.ts)
+  const planView = createPlanView(S, t);
+  let planShown = true;
+  const planBtn = el('button', null, t('studioPanel.plan.hide'));
+  planBtn.style.marginTop = '5px';
+  planBtn.addEventListener('click', () => {
+    planShown = !planShown;
+    planView.root.hidden = !planShown;
+    planBtn.textContent = planShown ? t('studioPanel.plan.hide') : t('studioPanel.plan.show');
+    planBtn.classList.toggle('on', planShown);
+    if (planShown) planView.refreshPlan();
+  });
+  planBtn.classList.add('on');
+  secTime.append(planBtn, planView.root);
   const duelBtn = el('button', 'prime', t('studio.directDuel'));
   let duelVariant = 0;
   duelBtn.style.marginTop = '6px';
@@ -1990,7 +2007,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
 
   // --- public panel API -------------------------------------------------------
-  let refreshAcc = 0;
+  let refreshAcc = 0, planAcc = 0;
   const api: StudioPanelRuntime = {
     root,
     show() { root.style.display = 'block'; productionPanel.setVisible(true); api.refreshAll(); },
@@ -2027,6 +2044,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         alist.appendChild(row);
       });
       api.refreshSelected();
+      if (planShown) planView.refreshPlan();
     },
     refreshSelected() {
       const a = S._internal.selected;
@@ -2081,6 +2099,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       for (const playhead of timelineBoard.querySelectorAll<HTMLElement>('.playhead')) {
         playhead.style.left = left;
       }
+      if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();
       recordBtn.textContent = rec.active ? t('studio.stopRecording') : t('studio.recordVideo');
       recordBtn.classList.toggle('on', rec.active);
@@ -2112,6 +2131,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       timeSelect.disabled = isRecording;
       rebuildStoryboard();
       updateFilmSummary();
+      if (planShown) planView.refreshPlan();
       api.refreshTime();
     },
     refreshMap() {
@@ -2124,6 +2144,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
       mapName.textContent = info.name || id;
       mapId.textContent = id.toUpperCase();
+      if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
       for (const [cardId, card] of mapCards) {
         card.setAttribute('aria-selected', String(cardId === id));
@@ -2141,6 +2162,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     tick(dt) {
       refreshAcc += dt;
+      planAcc += dt;
+      // the plan follows the playhead at ~15 fps while the take plays
+      if (planShown && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
       if (refreshAcc < 0.25) return;
       refreshAcc = 0;
       const c = S.getCamera();

@@ -4600,6 +4600,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get durationMs() { return storyboard.durationMs; },
     get playing() { return timeScale > 0; },
     get railVisible() { return railVisible; },
+    /** The battlefield's plan for the Studio's Plan view: the HUD minimap's features and the map's extent. */
+    getPlanFeatures() {
+      const world = getWorld();
+      if (!world) return null;
+      const f = world.getMinimapFeatures();
+      return { size: world.heightField.size, roads: f.roads, buildings: f.buildings, treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft };
+    },
     get selectedShotId() { return selectedShotId; },
     // video output
     recordVideo,
