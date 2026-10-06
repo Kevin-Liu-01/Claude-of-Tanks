@@ -263,8 +263,9 @@ for (const [mapId, biome] of Object.entries(TREE_BIOMES)) {
   }
   if (biome.shrub) assert.ok(TREE_GROWTH_PROFILES[biome.shrub], `${mapId}: its shrub form exists`);
 }
+// (2026-10-05, the map-revival lane: Caldera is the Aso caldera — sugi, Japanese red pine, the grassland's low scrub)
 assert.equal(treeBiomeShrub('caldera'), 'broom');
-assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'canaryPine');
+assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'sugi');
 assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alone grows as itself');
 {
   // the palette a form grows with (wave 6: Cinder Junction's sooty-gold twig tint painted its leafy birches orange-brown)
@@ -306,10 +307,10 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.ok(kept.cardHue === 0.3 && kept.cardSat === 0.4 && kept.texTone === named.texTone, 'a named colour wins');
   assert.equal(treeBiomeColour('verdant'), null, 'a temperate place keeps the green defaults');
   assert.equal(treeBiomeShrub('badlands'), 'broom', 'Wadi Rum\'s scrub is white broom');
-  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'canaryPine', 'no umbrella acacia on Teide');
-  // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
-  assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
-    'open groves on the caldera and the arid places only');
+  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'redPine', 'no umbrella acacia in Aso: the red pine');
+  // (Caldera round 2: Aso's sugi stand in closed plantation blocks — Las Cañadas' open groves are gone)
+  assert.ok(!treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
+    'open groves on the arid places only');
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its

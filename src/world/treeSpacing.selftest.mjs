@@ -7,8 +7,8 @@
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
 //   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
 //   broadleaf ... on the foreground dune");
-// - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
-//   "evenly spaced, grid-like" stands).
+// - Aso (Obsidian Caldera, the map-revival lane's round 2; was Las Cañadas' few open groves): sugi in closed plantation
+//   blocks, the farmed floor open between them (wave 114: "low-poly shrubs spread evenly").
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
@@ -104,19 +104,21 @@ try {
       }
     } finally { world.dispose(); }
   }
-  // Las Cañadas: a few open groves, scattered pines, the broom carrying the floor
+  // Aso: a dozen or so sugi blocks, most of them closed woods (a wood's members over its ground no sparser than 120 m² a
+  // tree on its bounding radius — an open grove is past it), the farmed floor open between them
   {
     const { world } = produce('caldera');
     try {
       const trees = world._trees.filter(inside), groves = world._clusters;
-      assert.ok(trees.length < 250, `the caldera floor carries few trees (${trees.length})`);
-      assert.ok(groves.length <= 6, `a few groves (${groves.length})`);
-      // open: a grove's trees over twice a wood's ground each (the woodlots' 48-84 m² a tree)
+      assert.ok(groves.length >= 8 && groves.length <= 16, `a dozen or so sugi blocks (${groves.length})`);
+      assert.ok(trees.length < 1000, `the farmed floor stays open between them (${trees.length} trees)`);
+      let closed = 0;
       for (let i = 0; i < groves.length; i++) {
         const g = groves[i], members = trees.filter((t) => world._standOutline(i, t.x, t.z) <= 1).length;
-        assert.ok(members > 2 && (Math.PI * g.r * g.r) / members > 90, `grove ${i} is open (${members} trees on ${(Math.PI * g.r * g.r).toFixed(0)} m²)`);
+        if (members > 2 && (Math.PI * g.r * g.r) / members <= 120) closed++;
       }
-      report.caldera = { trees: trees.length, groves: groves.length };
+      assert.ok(closed >= groves.length * 0.75, `most blocks are closed woods (${closed} of ${groves.length})`);
+      report.caldera = { trees: trees.length, groves: groves.length, closed };
     } finally { world.dispose(); }
   }
   console.log(`treeSpacing.selftest: ${JSON.stringify(report)} PASS`);
