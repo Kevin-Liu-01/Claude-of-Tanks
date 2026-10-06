@@ -225,6 +225,14 @@ interface LandformConfig {
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
+  /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
+   * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
+   * a narrow band is a sheer wall. Absent = the trough exactly as before. */
+  wall?: readonly [number, number];
+  /** Gorges only: how far the walls step in from the authored line, in metres — buttresses and bays along the gorge
+   * (a few incommensurate sines of the distance along it), the two walls together, never wider than authored, the
+   * middle 30 m either side on the authored line. Absent = straight. */
+  meander?: number;
 }
 
 interface DuneConfig {
@@ -894,7 +902,17 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   const height = form.height || 0;
   if (form.kind === 'gorge') {
     const along = 1 - smoothstep((form.length || 700) * .36, (form.length || 700) * .5, Math.abs(lx));
-    const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
+    if (!form.wall && !form.meander) {
+      const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
+      return height * along * across;
+    }
+    const w = form.width || 90, foot = form.wall ? form.wall[0] : .65, top = form.wall ? form.wall[1] : 1;
+    // the walls step in together in buttresses and bays (a mirror-symmetric layout stays symmetric; never wider than
+    // authored, so whatever stands back from the rim stays back); the middle holds the authored line (a crossing there
+    // keeps its abutments), the steps growing over 30 m either side
+    const wave = 0.55 * Math.sin(lx / 41 + 0.7) + 0.3 * Math.sin(lx / 17.3 + 2.3) + 0.15 * Math.sin(lx / 7.9 + 4.1);
+    const wander = -(form.meander || 0) * smoothstep(0, 30, Math.abs(lx)) * (0.5 + 0.5 * wave);
+    const across = 1 - smoothstep(w * foot + wander, w * top + wander, Math.abs(lz));
     return height * along * across;
   }
   if (form.kind === 'ridge') {
