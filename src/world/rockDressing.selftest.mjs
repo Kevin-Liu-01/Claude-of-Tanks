@@ -322,7 +322,7 @@ for (const mapId of MAP_IDS) {
 assert.ok(rockDressingFor('verdant', null).photo[0] < rockDressingFor('coastal', null).photo[0], 'the chalk takes the photo more softly than the granite');
 assert.ok(rockDressingFor('verdant', null).photo[2] >= rockDressingFor('saltwind', null).photo[2], 'but its relief as strongly as the limestone (b12: pitted and fractured)');
 // the lithologies' own surfaces (b12): the chalk's flints, rind and stain; the limestone's rind and stain; none on the rest
-assert.deepEqual([...rockDressingFor('verdant', null).surface], [1, 0.6, 1], 'the chalk: flints, a grey rind, the soil\'s stain');
+assert.deepEqual([...rockDressingFor('verdant', null).surface], [1, 0.45, 1], 'the chalk: flints, a grey rind (b18: a lighter one), the soil\'s stain');
 assert.ok(rockDressingFor('saltwind', null).surface[0] === 0 && rockDressingFor('saltwind', null).surface[1] > 0, 'the limestone: a rind, no flints');
 for (const mapId of MAP_IDS) {
   const d = rockDressingFor(mapId, null);
@@ -341,6 +341,21 @@ for (const mapId of MAP_IDS) {
 assert.ok(['desert', 'badlands', 'oasis'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
 assert.equal(rockDressingFor('longleaf', null).beds[2], 0, 'the wet sandstone not');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
+// (b18; wave 121: Dahar's boulders "none of the horizontal bedding planes, cross-bedded laminae or coarse sand grain",
+// Fjord's "no gneiss foliation, quartz veining") the stone's fabric: the sandstone's laminae inside its beds and its
+// grain, the gneiss's foliation and its quartz veins, the chalk's grain; nothing new on the rest
+for (const mapId of MAP_IDS) {
+  const d = rockDressingFor(mapId, null), [laminae, foliation, veins] = d.fabric;
+  assert.ok(d.fabric.length === 4 && d.fabric.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded fabric`);
+  assert.ok(!(laminae > 0) || (d.lithology === 'sandstone' && d.beds[0] > 0), `${mapId}: laminae inside a sandstone's beds only`);
+  assert.equal(foliation > 0 || veins > 0, d.lithology === 'gneiss', `${mapId}: the foliation and its veins the gneiss's`);
+  if (!['sandstone', 'gneiss', 'chalk'].includes(d.lithology)) assert.deepEqual([...d.fabric], [0, 0, 0, 0], `${mapId}: no new fabric on ${d.lithology}`);
+}
+assert.deepEqual([...rockDressingFor('desert', null).fabric], [1, 0, 0, 1], 'Dahar\'s sandstone: its laminae and its grain');
+assert.deepEqual([...rockDressingFor('fjord', null).fabric], [0, 1, 1, 0], 'Fjord\'s gneiss: its foliation and its quartz veins');
+assert.ok(rockDressingFor('verdant', null).fabric[3] > 0, 'the chalk\'s grain');
+assert.ok(rockDressingFor('desert', null).photo[0] < 0.6 && rockDressingFor('desert', null).photo[2] < 0.5,
+  'the sandstone takes the photographed stone softly (wave 121: "a continuous wrinkled skin wrapped over a smooth dome")');
 
 // --- the tiles
 globalThis.ImageData = class { constructor(data, w, h) { this.data = data; this.width = w; this.height = h; } };
@@ -395,7 +410,8 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockFabric', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(shader.uniforms.uRockFabric.value.toArray(), [...rockDressingFor('verdant', null).fabric], 'the lithology\'s fabric (b18)');
 assert.deepEqual(shader.uniforms.uRockBeds.value.toArray(), [...rockDressingFor('verdant', null).beds], 'the lithology\'s bedding and honeycomb');
 assert.deepEqual(shader.uniforms.uRockSurface.value.toArray(), [...rockDressingFor('verdant', null).surface], 'the lithology\'s own surface');
 assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
@@ -436,6 +452,30 @@ assert.match(shader.vertexShader, /vRockFace = aRockFace;/);
   assert.match(tafoni, /texture2D\(uRockLichenTile, cavP\.yz\)\.b \* rockTp\.x/, 'the honeycomb from the tile\'s blue, in the stone\'s frame');
   assert.match(tafoni, /float low = 1\.0 - smoothstep\(0\.3, 0\.75, vRockFace\.y\);/, 'low on the stone');
   assert.match(tafoni, /vRockFace\.w \* 0\.9/, 'where the weather hollowed it');
+  // (b18) the laminae inside the bed, in the beds' block: each bed its own set from its own parting to the next, the odd
+  // bed laid flat, the rest cross-bedded; the fine laminae and their bundles gone where they crowd under the pixels
+  const lam = beds.slice(beds.indexOf('if (uRockFabric.x > 0.0) {'));
+  assert.ok(beds.includes('if (uRockFabric.x > 0.0) {') && lam.length > 600, 'the laminae inside the beds\' block');
+  assert.match(lam, /float pb = cotParting\(kb\), pt = cotParting\(kb \+ 1\.0\);\n\s*float within = clamp\(\(bu - pb\) \/ max\(1e-3, pt - pb\), 0\.0, 1\.0\);/,
+    'each bed its own set, cut off at the parting above');
+  assert.match(lam, /float laidFlat = step\(cotBedHash\(kb, 3\.0\), 0\.15\);/, 'the odd bed laid flat, the rest cross-bedded');
+  assert.match(lam, /\* \(1\.0 - smoothstep\(0\.3, 0\.6, lamW\)\)/, 'the fine laminae gone where they crowd');
+  assert.match(lam, /\* \(1\.0 - smoothstep\(0\.3, 0\.6, lamCW\)\)/, 'and their bundles');
+}
+// (b18) the fabric: the grain near the eye from the stone's own picture; the foliation at each stone's own attitude, its
+// fine bands gone where they crowd; a vein gone where it is thinner than a pixel; under the varnish and the lichen
+{
+  const fabric = frag.slice(frag.indexOf('if (uRockFabric.w > 0.0) {'), frag.indexOf('// desert varnish'));
+  assert.ok(fabric.length > 1500, 'the fabric\'s block');
+  assert.ok(frag.includes('#ifdef USE_MAP\n    if (uRockFabric.w > 0.0) {'), 'the grain from the stone\'s own picture, when it has one');
+  assert.match(fabric, /float grainNear = 1\.0 - smoothstep\(4\.0, 14\.0, length\(vViewPosition\)\);/, 'the grain near the eye only');
+  assert.match(fabric, /vec3 folN = vec3\(sin\(folB\) \* cos\(folA\), cos\(folB\), sin\(folB\) \* sin\(folA\)\);/, 'the foliation at each stone\'s own attitude');
+  assert.match(fabric, /mix\(texture2D\(uGrime, vec2\(folS \* 4\.1 \+ 0\.61, 0\.71 \+ vRockSeed \* 0\.3\)\)\.g, 0\.5, smoothstep\(0\.2, 0\.5, folFineW\)\)/,
+    'its fine bands gone where they crowd');
+  assert.match(fabric, /\* \(1\.0 - smoothstep\(veinHalf \* 0\.8, veinHalf \* 2\.5, veinW\)\)/, 'a vein gone where it is thinner than a pixel');
+  assert.ok(frag.indexOf('if (uRockBeds.x > 0.0) {') < frag.indexOf('if (uRockFabric.w > 0.0) {')
+    && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float varnish =') && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float lichen ='),
+    'after the beds, under the varnish and the lichen');
 }
 // (b14; wave 97: "no … varnish streaks") the varnish hung from the crown in streaks, darkest high, none on a break
 assert.match(frag, /float hang = smoothstep\(0\.05, 0\.75, vRockFace\.y\);/, 'the streaks darkest high');
