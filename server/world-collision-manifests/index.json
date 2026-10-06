@@ -40,8 +40,8 @@
       "concealers": 3626
     },
     "autumn": {
-      "bytes": 1465444,
-      "sha256": "8f2e39057109f8941aab5df98e947af353747507800f46a59c9c9b9b15b7d156",
+      "bytes": 1465445,
+      "sha256": "92cfdceb5adfbc13e0679108dc8b81f03b55c53fce1449479645dc42be8134fb",
       "obstacles": 4775,
       "colliders": 4667,
       "concealers": 4841
@@ -104,7 +104,7 @@
     },
     "caldera": {
       "bytes": 1049892,
-      "sha256": "7d6d732ed04f7c56ed76cc2f9a4b9aa2b44349edf1b091f96668e0c7c50055f3",
+      "sha256": "b8042fd9fea083be27bdb9d1869162d6271885cbaba3296b2573d37d78820ec4",
       "obstacles": 1525,
       "colliders": 1650,
       "concealers": 979
@@ -118,7 +118,7 @@
     },
     "ruinspires": {
       "bytes": 6985335,
-      "sha256": "03979c88c7ca279d2718f6ae48572ac4a22fbdcab62719327c8455f77c3513d0",
+      "sha256": "9418bfcc5da402c3e4f1e00fbd17603771a2be58caa4cacf35bf79c00994f073",
       "obstacles": 1932,
       "colliders": 8349,
       "concealers": 462
@@ -180,8 +180,8 @@
       "concealers": 606
     },
     "orchard": {
-      "bytes": 1220838,
-      "sha256": "f93c1e797d3ff7f6ca7dad25c17f724ec46ac7b6797fbae7002afc7066cbeab7",
+      "bytes": 1220839,
+      "sha256": "352317b4a217cfc5e5f9f73e5f7fcbe92e324d89c9395f31bcc7075f042cb7b1",
       "obstacles": 3705,
       "colliders": 3471,
       "concealers": 3963
