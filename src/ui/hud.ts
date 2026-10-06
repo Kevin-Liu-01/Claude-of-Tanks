@@ -1,3 +1,4 @@
+import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
@@ -1472,7 +1473,7 @@ ${spectatorSwitcherStyles}
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
-body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
+body.cot-spectating .cot-ret{display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:900;font-size:18px;
   letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
@@ -1767,26 +1768,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-sixth::before,.cot-alert::before{content:'';position:absolute;inset:1px;z-index:-1;pointer-events:none;
   background:var(--notice-fill);clip-path:inherit;}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
-/* Concealment is a quiet positive-state chip on the damage panel. Detection
-   belongs exclusively to the authoritative sixth-sense instrument above, so
-   the same threat is never presented twice. */
-.cot-camoind{position:absolute;bottom:150px;left:14px;width:46px;height:40px;
-  display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.cot-camoind.onpanel{left:-1px;top:-29px;bottom:auto;width:36px;height:29px;
-  background:linear-gradient(180deg,rgba(12,17,22,.9),rgba(8,11,15,.78));
-  border:1px solid rgba(146,164,180,.25);border-bottom:none;}
-.cot-camoind.onpanel svg{width:21px;height:21px;}
-.cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.85));}
-/* camo_spotting r2: brighter concealed glow — the dim green closed eye was
-   nearly invisible against bright terrain at 1080p */
-.cot-camoind.hidden-in-bush svg{
-  filter:drop-shadow(0 0 6px rgba(120,225,140,.75)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
-.cot-camoind.conceal-pulse{animation:cotConcealPulse .7s ease-out 1;}
-@keyframes cotConcealPulse{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){
-  .cot-sixth.on,.cot-camoind.conceal-pulse{animation:none;}
-}
+@media(prefers-reduced-motion:reduce){.cot-sixth.on{animation:none}}
+
 `;
 
 function penColor(r: number | null | undefined): string {
@@ -2198,47 +2181,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  // Concealment has one separate, positive-state chip. Detection belongs to
-  // the delayed instrument above; rendering a second red eye here duplicated
-  // the same condition and made the damage panel look like debug telemetry.
-  const camoInd = el('div', 'cot-camoind', root);
-  camoInd.innerHTML =
-    `<svg viewBox="0 0 24 24" width="32" height="32">` +
-    `<path class="ceye" fill="none" stroke="#8a97a3" stroke-width="1.7" ` +
-    `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
-    `<path class="clid" fill="none" stroke="#9ae8a6" stroke-width="1.7" stroke-linecap="round" ` +
-    `d="M2.5 12c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 15.6l-1.5 2M12 17.6v2.3M18 15.6l1.5 2" ` +
-    `style="display:none"/>` +
-    `<circle class="cpup" cx="12" cy="12" r="3" fill="#8a97a3"/></svg>`;
-  camoInd.style.display = 'none';
-  const camoSvgEl = requireElement<SVGElement>(camoInd, 'svg');
-  const camoEyeEl = requireElement<SVGElement>(camoInd, '.ceye');
-  const camoLidEl = requireElement<SVGElement>(camoInd, '.clid');
-  const camoPupEl = requireElement<SVGElement>(camoInd, '.cpup');
-  let camoIndState: 'off' | 'concealed' = 'off';
-  function updateCamoIndicator(sp: ConcealmentView | null | undefined): void {
-    const state = sp && !sp.spotted && ((sp.inBush && !sp.fired) || (sp.camo ?? 0) >= 0.40)
-      ? 'concealed' : 'off';
-    if (state === camoIndState) return;
-    const prev = camoIndState;
-    camoIndState = state;
-    // No neutral or detected duplicate lives here. This chip appears only
-    // when concealment is actively helping the player's own tank.
-    camoInd.style.display = state === 'concealed' ? 'flex' : 'none';
-    camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
-    // One-shot entry pulse makes the off→concealed transition discoverable.
-    camoInd.classList.remove('conceal-pulse');
-    if (state === 'concealed' && prev === 'off') {
-      void camoInd.offsetWidth; // restart the animation
-      camoInd.classList.add('conceal-pulse');
-    }
-    if (state === 'concealed') {
-      camoEyeEl.style.display = 'none';   // closed eye: lid arc + lashes only
-      camoLidEl.style.display = '';
-      camoPupEl.style.display = 'none';
-      camoSvgEl.style.opacity = '0.85';
-    }
-  }
+  const vehicleStatus = createVehicleStatusStrip();
   // ======================= END SPOTTING SECTION =============================
 
   // --- shell selector + consumables ---
@@ -6264,7 +6207,7 @@ export function initHud(bus: EventBus): HudRuntime {
     updateTeams(frame);
     updateNetReadout(frame);
     updateSixthSense(frame.timeS);
-    updateCamoIndicator(frame.spotting?.player ?? null);
+    vehicleStatus.update(frame.player?.aerial?.active ? null : frame.player?.combat, frame.spotting?.player);
   }
 
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
@@ -6404,6 +6347,7 @@ export function initHud(bus: EventBus): HudRuntime {
       netLastMs = 0;
       netLastPaintMs = 0;
       if (m === 'hidden') {
+        vehicleStatus.clear();
         collapseRosters();
         preBattleOverlay.reset();
         setTouchAmmoOpen(false);
@@ -6511,10 +6455,8 @@ export function initHud(bus: EventBus): HudRuntime {
     setDamagePanel(panel: DamagePanelController) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
-        // r7: the spotted/camo lamp perches on the panel's top edge (WoT
-        // lamp placement) instead of floating in a detached box beside it
-        panel.root.appendChild(camoInd);
-        camoInd.classList.add('onpanel');
+        // Conditions travel with the damage panel, including custom HUD placement.
+        panel.root.appendChild(vehicleStatus.root);
         // r5-2: keep a handle so update() can feed the live turret bearing
         // into the panel's rotating turret/barrel schematic
         dmgPanelRef = panel;
