@@ -14,6 +14,10 @@
 // plateau through a real notch instead of stopping at the rim foot. 2026-10-03 (the map-borders lane): past the path's
 // end the line runs on in the open along its own heading (RAIL_OPEN_*), in a shallow cutting or on an embankment over
 // the land past the edge; the round-63 valley along the radial and the round-67 tunnel at its head are retired.
+//
+// 2026-10-05 (the landmarks lane): a spur may keep a stream-neutral berth (`berth: 'clearance'`, below) — Verdant's
+// Prokhorovka line, laid without moving one tree or prop of the map's placement streams.
+import type { StructureClearance } from './vegetationClearance.ts';
 
 export interface RailSpurConfig {
   /**
@@ -40,6 +44,16 @@ export interface RailSpurConfig {
    * clear-site law as the yards' heaps (roads, water, flat ground, no existing solid) and carries its convex record.
    */
   coalStage?: RailCoalStageConfig;
+  /**
+   * The landmarks lane (2026-10-05): how the berth keeps its ground. 'exclusion' (omitted) joins the height field's
+   * `_noVeg`, as every yard and siding does — and every placement pass that reads it re-rolls round a new line.
+   * 'clearance' keeps the berth out of `_noVeg`, so no placement stream moves: the trees come off it by the vegetation's
+   * post-placement clearance (railSpurBerthClearances, beside the set pieces'), the grass, tall grass and litter by the
+   * height field's `_railBerth` predicate (railBerthField), and nothing else is filtered — the map routes the line clear
+   * of every solid it would meet (landmarks.selftest asserts the berth against the committed shard). A 'clearance' spur
+   * takes no cutting (the cut is terrain work every stream reads).
+   */
+  berth?: 'exclusion' | 'clearance';
 }
 
 export interface RailCoalStageConfig {
@@ -242,6 +256,45 @@ export function railSpurDistance(spurs: readonly RailSpurConfig[], x: number, z:
  */
 export function createRailSpurExclusion(
   spurs: readonly RailSpurConfig[] | undefined, berth = RAIL_SPUR_BERTH_M,
+): ((x: number, z: number) => boolean) | null {
+  return berthPredicate(spurs?.filter((spur) => spur.berth !== 'clearance'), berth);
+}
+
+/**
+ * The landmarks lane (2026-10-05): the berth of a map's 'clearance' spurs as the height field's `_railBerth`, read by
+ * the grass, the tall grass and the litter only; an empty object on every map without one, so its field is unchanged.
+ */
+export function railBerthField(
+  spurs: readonly RailSpurConfig[] | undefined,
+): { _railBerth?: (x: number, z: number) => boolean } {
+  const clear = spurs?.filter((spur) => spur.berth === 'clearance') ?? [];
+  for (const spur of clear) if (spur.cutting) throw new Error('a clearance rail spur takes no cutting');
+  const predicate = berthPredicate(clear, RAIL_SPUR_BERTH_M);
+  return predicate ? { _railBerth: predicate } : {};
+}
+
+/**
+ * The landmarks lane (2026-10-05): the trees' clearance of a map's 'clearance' spurs (the vegetation's post-placement
+ * filter, vegetationClearance.ts): a rectangle along each edge of the path, the berth to each side and past each end.
+ */
+export function railSpurBerthClearances(spurs: readonly RailSpurConfig[] | undefined): StructureClearance[] {
+  const out: StructureClearance[] = [];
+  for (const spur of spurs ?? []) {
+    if (spur.berth !== 'clearance') continue;
+    for (let i = 1; i < spur.path.length; i++) {
+      const [ax, az] = spur.path[i - 1], [bx, bz] = spur.path[i];
+      const run = Math.hypot(bx - ax, bz - az);
+      if (!(run > 0)) continue;
+      // the clearance's local z runs along the edge: (sin, cos) is its unit direction
+      out.push({ x: (ax + bx) / 2, z: (az + bz) / 2, halfWidth: RAIL_SPUR_BERTH_M, halfLength: run / 2 + RAIL_SPUR_BERTH_M,
+        cos: (bz - az) / run, sin: (bx - ax) / run });
+    }
+  }
+  return out;
+}
+
+function berthPredicate(
+  spurs: readonly RailSpurConfig[] | undefined, berth: number,
 ): ((x: number, z: number) => boolean) | null {
   if (!spurs?.length) return null;
   const edges: number[] = [];

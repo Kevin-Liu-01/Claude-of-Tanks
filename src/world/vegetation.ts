@@ -3710,7 +3710,7 @@ function* vegetationBuildSteps(
     roll: number,
     carpet: boolean,
   ): number {
-    if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
+    if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
     // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the

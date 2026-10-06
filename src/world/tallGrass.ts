@@ -30,6 +30,7 @@ interface TallGrassField {
   _roadDist?(x: number, z: number): number;
   _villageMask?(x: number, z: number): number;
   _noVeg?(x: number, z: number): boolean;
+  _railBerth?(x: number, z: number): boolean; // the landmarks lane: a 'clearance' rail spur's berth (railSpurs.ts)
   /** The raw shore wetness ramp (the mask's B channel): a strand is 0.02..0.4 above the waterline. */
   _waterWetnessAt?(x: number, z: number): number;
   /** Round 73: the baked fold term (−1 crest .. +1 hollow) the terrain vertices carry. */
@@ -527,7 +528,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const keepOut = TALL_GRASS.roadKeepOutM + (roadD < TALL_GRASS.roadShoulderM + 3 ? swardNoise(x, z, 2.2, 0x7a11) * 2.2 : 0);
     if (roadD < keepOut) return;
     if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - keepOut) / (TALL_GRASS.roadShoulderM - keepOut);
-    if (field._noVeg && field._noVeg(x, z)) return;
+    if ((field._noVeg && field._noVeg(x, z)) || field._railBerth?.(x, z)) return;
     const ground = field.getGroundType ? field.getGroundType(x, z) : 'medium';
     if (ground === 'hard') return;
     const water = field.getWaterMaskAt ? field.getWaterMaskAt(x, z) : 0;

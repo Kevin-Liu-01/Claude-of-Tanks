@@ -19,6 +19,7 @@ interface GroundLitterField {
   getGroundType?(x: number, z: number): 'hard' | 'medium' | 'soft';
   _roadDist?(x: number, z: number): number;
   _noVeg?(x: number, z: number): boolean;
+  _railBerth?(x: number, z: number): boolean; // the landmarks lane: a 'clearance' rail spur's berth (railSpurs.ts)
   getWaterMaskAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the canopy's cover (0..1, terrain applyWoodsMask) — fallen wood lies under the stands. */
   _woodsAt?(x: number, z: number): number;
@@ -339,7 +340,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       } else {
         _n.set(0, 1, 0);
       }
-      const worked = field._noVeg ? field._noVeg(x, z) : false;
+      const worked = (field._noVeg ? field._noVeg(x, z) : false) || !!field._railBerth?.(x, z);
       const shoulder = roadD < GROUND_LITTER.shoulderM
         ? cfg.shoulders * (1 - (roadD - GROUND_LITTER.roadCoreM) / (GROUND_LITTER.shoulderM - GROUND_LITTER.roadCoreM))
         : 0;
