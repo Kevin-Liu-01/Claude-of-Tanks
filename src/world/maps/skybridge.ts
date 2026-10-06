@@ -185,6 +185,13 @@ export default {
   },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
+    // (the map-revival lane, Skybridge round 2, gauntlet wave 120: "a repeating sawtooth ridge silhouette" — the mesa
+    // character's far country stood as a row of rounded hazy peaks behind the ring. Glen Canyon's far skyline is the
+    // slickrock plateau's long flat-topped escarpments and lone buttes (Kaiparowits, Tower Butte): the far country
+    // becomes sheer flat-capped massifs on the plain with the sky between them, broad mesas rather than Wadi Rum's
+    // fluted, bossed jebels)
+    panorama: { regional: 'jebel', jebelBossM: 0, jebelRim: 0.95, jebelFlutes: 4, jebelFluteDepth: 0.12, jebelApron: 0.3,
+      jebelFoot: 0.64, jebelM: 380, jebelRadiusM: 900, jebelShare: 0.6, jebelFootVary: 0.08, jebelVarnish: 0.4 },
     // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
     // the map's horizon draws no more triangles than before that relief work
     outlandRocks: 0.94,
