@@ -1936,7 +1936,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       card.appendChild(copy);
       const transition = document.createElement('select');
       transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: shot.label }));
-      for (const id of ['smooth', 'linear', 'cut', 'bezier']) {
+      for (const id of ['smooth', 'linear', 'cut', 'bezier', 'spline']) {
         const option = document.createElement('option');
         option.value = id;
         option.textContent = id.toUpperCase();

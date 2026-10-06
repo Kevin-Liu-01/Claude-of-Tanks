@@ -426,8 +426,11 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
   }
   // turrets (turret-choreo.mjs): every gun watches its own sector, traverses to each of its targets and is home again
   // before the loop wraps; the FLANK shots swing the hero's first round out across the frame
+  // A moving shot that keys `aim` keeps its guns on their targets through the swerves (stabilised); the choreographer's
+  // hull-relative sweeps would fight that, so it stands down and the shot's own rounds go where the guns point.
   const style = turretStyle(n);
-  const choreo = choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
+  const choreo = film.aim ? { turrets: undefined, guns: undefined, effects: [], notes: ['stabilised: ' + Object.entries(film.aim).map(([a, b]) => `${a} on ${b}`).join(', ')] }
+    : choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
   scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
     effects: [...(film.effects ?? []), ...choreo.effects] });
   if (set.autoPlace === false) scene.autoPlace = false;

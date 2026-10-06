@@ -118,6 +118,59 @@ export function pathOf(anchor, heading, speed = 0, curveDegS = 0) {
     return { p: [anchor[0] + speed / w * (Math.cos(h0) - Math.cos(h0 + w * T)), anchor[1] + speed / w * (Math.sin(h0 + w * T) - Math.sin(h0))], h: heading + curveDegS * T };
   };
 }
+/**
+ * Route of a tank driving its own curve (owner 2026-10-05: "tanks should be moving in crazy directions with a lot of
+ * speed"): waypoints `pts` [[lat, lon], ...] in the frame `fr` (the set's anchor and heading at t = 0), joined by a
+ * centripetal Catmull-Rom (no cusps or loops between close points) and driven by arc length: standing until `startMs`,
+ * then from `v0` (default `speed`) toward `speed` m/s at `accel` m/s². Past the last waypoint the tank carries on along
+ * its final tangent. The hull follows the curve's tangent. Returns t (ms) → { p: [x, z], h: deg }.
+ */
+export function routePath(route, fr) {
+  const pts = route.pts.map(([lat, lon]) => fr.at(lat, lon));
+  if (pts.length < 2) throw new Error('routePath: a route needs two waypoints or more');
+  const ext = [[2 * pts[0][0] - pts[1][0], 2 * pts[0][1] - pts[1][1]], ...pts,
+    [2 * pts[pts.length - 1][0] - pts[pts.length - 2][0], 2 * pts[pts.length - 1][1] - pts[pts.length - 2][1]]];
+  const dense = [[...pts[0], 0]];
+  for (let i = 1; i < ext.length - 2; i++) {
+    const [p0, p1, p2, p3] = [ext[i - 1], ext[i], ext[i + 1], ext[i + 2]];
+    const kn = (a, b) => Math.max(1e-4, Math.hypot(b[0] - a[0], b[1] - a[1]) ** 0.5);
+    const t1 = kn(p0, p1), t2 = t1 + kn(p1, p2), t3 = t2 + kn(p2, p3);
+    const lerp2 = (a, b, ta, tb, t) => [0, 1].map((k) => ((tb - t) * a[k] + (t - ta) * b[k]) / (tb - ta));
+    const n = Math.max(4, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 0.4));
+    for (let j = 1; j <= n; j++) { // Barry-Goldman pyramid on the centripetal knots
+      const t = t1 + (t2 - t1) * j / n;
+      const a1 = lerp2(p0, p1, 0, t1, t), a2 = lerp2(p1, p2, t1, t2, t), a3 = lerp2(p2, p3, t2, t3, t);
+      const b1 = lerp2(a1, a2, 0, t2, t), b2 = lerp2(a2, a3, t1, t3, t);
+      const q = lerp2(b1, b2, t1, t2, t), last = dense[dense.length - 1];
+      dense.push([q[0], q[1], last[2] + Math.hypot(q[0] - last[0], q[1] - last[1])]);
+    }
+  }
+  const total = dense[dense.length - 1][2];
+  const end = dense[dense.length - 1], before = dense[Math.max(0, dense.length - 4)];
+  const endDir = [end[0] - before[0], end[1] - before[1]].map((v, _, d) => v / Math.max(1e-6, Math.hypot(d[0], d[1])));
+  const at = (d) => {
+    if (d >= total) return [end[0] + endDir[0] * (d - total), end[1] + endDir[1] * (d - total)];
+    if (d <= 0) return [dense[0][0], dense[0][1]];
+    let lo = 0, hi = dense.length - 1;
+    while (lo + 1 < hi) { const mid = (lo + hi) >> 1; if (dense[mid][2] <= d) lo = mid; else hi = mid; }
+    const a = dense[lo], b = dense[hi], u = (d - a[2]) / Math.max(1e-9, b[2] - a[2]);
+    return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+  };
+  const vmax = route.speed ?? 0, v0 = route.v0 ?? vmax, acc = Math.abs(route.accel ?? 0), startS = (route.startMs ?? 0) / 1000;
+  const rampS = acc > 0 ? Math.abs(vmax - v0) / acc : 0, sign = Math.sign(vmax - v0);
+  const dist = (t) => {
+    const T = Math.max(0, t / 1000 - startS);
+    if (T <= rampS) return v0 * T + 0.5 * sign * acc * T * T;
+    return v0 * rampS + 0.5 * sign * acc * rampS * rampS + vmax * (T - rampS);
+  };
+  return (t) => {
+    const d = dist(t), p = at(d);
+    const q0 = at(Math.max(0, d - 0.8)), q1 = at(d + 0.8);
+    const h = Math.atan2(q1[0] - q0[0], q1[1] - q0[1]) * 180 / Math.PI;
+    return { p, h };
+  };
+}
+
 const catmull1 = (p0, p1, p2, p3, u) => 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u);
 const CAM_FIELDS = ['side', 'along', 'lift', 'fov', 'roll', 'ls', 'la', 'll', 'orbit', 'radius'];
 /** Sample sparse camera keys (Catmull-Rom across keys, C1) at time t. */
@@ -144,9 +197,13 @@ function sampleKeys(keys, t, ease) {
  * roll, lookHero [ls, la, ll]; `orbit` (deg around the hero) + `radius` replace side/along.
  * Shot: { durMs, speed, curveDegS, foeSpeed, stepMs, ease, keepWidth, pinMs, turretSweep,
  *   turretKeys: [[tMs, deg]], turrets: { [actor]: deg | [[tMs, deg]] }, guns: { [actor]: deg | [[tMs, deg]] },
+ *   routes: { [actor]: { pts, speed, v0, accel, startMs } }, aim: { [actor]: actor }, rail,
  *   cam: [...], cues, effects, film, still: { tMs, exposureMs } }
  * `turrets` / `guns` pose any actor (turret relative to its hull, + toward the hull's left; gun elevation): a number
- * holds, keys ease (smoothstep) from one to the next. */
+ * holds, keys ease (smoothstep) from one to the next. `routes` drive actors on their own curves (routePath; waypoints in
+ * the set's frame); allies without one keep the hero-relative formation, foes without one their straight path. `aim`
+ * keeps an actor's gun on another actor's hull while it swerves (a stabilised gun). `rail: 'spline'` hands the lens keys
+ * to the Studio's time-aware spline (C1 in position, aim, lens and roll) instead of linear segments. */
 /** The Studio's storyboard caps (src/game/studioTimeline.ts): keys past them are dropped without a word. */
 export const STUDIO_MAX_ACTOR_KEYS = 64, STUDIO_MAX_CAMERA_SHOTS = 32;
 const keyAt = (spec, t) => {
@@ -162,6 +219,12 @@ export function buildShot(s, m) {
   delete scene.cameraVariants;
   const dur = m.durMs, sp = m.speed ?? 0, fsp = m.foeSpeed ?? 0, curve = m.curveDegS ?? 0;
   const keyedPose = [...Object.values(m.turrets ?? {}), ...Object.values(m.guns ?? {})].some(Array.isArray);
+  const routes = new Map(Object.entries(m.routes ?? {}).map(([name, route]) => [name, routePath(route, frame(s.anchor, s.heading))]));
+  for (const name of routes.keys()) if (!scene.actors.some(a => a.name === name)) throw new Error(`buildShot: a route for ${name}, who is not in the set`);
+  for (const a of scene.actors) { // a routed actor starts where its route does
+    const route = routes.get(a.name);
+    if (route) { const q = route(0); a.pos = q.p.map(v => +v.toFixed(2)); a.facingDeg = +q.h.toFixed(2); }
+  }
   for (const a of scene.actors) {
     if (m.turrets?.[a.name] != null) a.turretDeg = +keyAt(m.turrets[a.name], 0).toFixed(2);
     if (m.guns?.[a.name] != null) a.gunDeg = +keyAt(m.guns[a.name], 0).toFixed(2);
@@ -173,24 +236,30 @@ export function buildShot(s, m) {
   const fit = (want, max) => Math.max(want, Math.ceil(dur / (max - 4) / 10) * 10);
   const camTimes = m.cam.map(c => (c.tMs === 'end' ? dur : c.tMs));
   const sampled = st => { const g = []; for (let t = 0; t < dur; t += st) g.push(Math.round(t)); g.push(dur); for (const t of camTimes) if (!g.includes(t)) g.push(t); return g.sort((a, b) => a - b); };
-  const step = fit(m.stepMs ?? (curve || (m.cam ?? []).length > 2 || m.keepWidth || keyedPose ? 100 : 250), STUDIO_MAX_ACTOR_KEYS);
+  const step = fit(m.stepMs ?? (curve || routes.size || (m.cam ?? []).length > 2 || m.keepWidth || keyedPose ? 100 : 250), STUDIO_MAX_ACTOR_KEYS);
   const grid = sampled(step), camGrid = sampled(fit(step, STUDIO_MAX_CAMERA_SHOTS));
   if (grid.length > STUDIO_MAX_ACTOR_KEYS || camGrid.length > STUDIO_MAX_CAMERA_SHOTS) throw new Error(`buildShot: ${grid.length} track keys / ${camGrid.length} lens keys exceed the Studio's caps`);
   const hero0 = scene.actors[0];
-  const heroPath = pathOf(hero0.pos, s.heading, sp, curve);
-  // each actor: hero-relative rigid offset (allies) or its own straight path (foes)
+  const heroPath = routes.get('hero') ?? pathOf(hero0.pos, s.heading, sp, curve);
+  // each actor: its own route, else a hero-relative rigid offset (allies) or its own straight path (foes)
   const paths = new Map();
   for (const a of scene.actors) {
+    if (routes.has(a.name)) { paths.set(a.name, routes.get(a.name)); continue; }
     if (a.name.startsWith('foe')) { paths.set(a.name, pathOf(a.pos, a.facingDeg, fsp, 0)); continue; }
     const f0 = frame(hero0.pos, s.heading);
     const d = [a.pos[0] - hero0.pos[0], a.pos[1] - hero0.pos[1]];
     const lat = d[0] * f0.r[0] + d[1] * f0.r[1], lon = d[0] * f0.f[0] + d[1] * f0.f[1], yaw = a.facingDeg - s.heading;
     paths.set(a.name, t => { const hp = heroPath(t); const fr = frame(hp.p, hp.h); return { p: fr.at(lat, lon), h: hp.h + yaw }; });
   }
-  const moving = sp > 0 || fsp > 0 || m.turretKeys || m.turretSweep || keyedPose;
+  const moving = sp > 0 || fsp > 0 || routes.size > 0 || m.turretKeys || m.turretSweep || keyedPose || m.aim;
   const gunAt = (a, t) => (m.guns?.[a.name] != null ? +keyAt(m.guns[a.name], t).toFixed(2) : a.gunDeg);
   const turretAt = (a, t) => {
     if (m.turrets?.[a.name] != null) return +keyAt(m.turrets[a.name], t).toFixed(2);
+    if (m.aim?.[a.name]) { // a stabilised gun: the turret holds the target's bearing while the hull swerves
+      const own = paths.get(a.name)(t), target = paths.get(m.aim[a.name])?.(t);
+      if (!target) throw new Error(`buildShot: ${a.name} aims at ${m.aim[a.name]}, who is not in the set`);
+      return +((((yawTo(own.p, target.p) - own.h) % 360) + 540) % 360 - 180).toFixed(2);
+    }
     if (a.name === 'hero' && m.turretKeys) {
       const tk = m.turretKeys; if (t <= tk[0][0]) return tk[0][1]; if (t >= tk[tk.length - 1][0]) return tk[tk.length - 1][1];
       let i = 0; while (tk[i + 1][0] < t) i++; const u = (t - tk[i][0]) / (tk[i + 1][0] - tk[i][0]); return tk[i][1] + (tk[i + 1][1] - tk[i][1]) * (u * u * (3 - 2 * u));
@@ -208,11 +277,20 @@ export function buildShot(s, m) {
   const frameMode = c => c.frame ?? m.frame ?? 'hero';
   const lookMode = c => c.lookFrame ?? m.lookFrame ?? frameMode(c);
   const sig = c => `${frameMode(c)}|${lookMode(c)}|${c.lookActor ?? ''}|${c.actor ?? ''}|${c.pos ? 'abs' : ''}|${c.orbit != null}`;
+  // 'travel' frames ride with an actor but steer by its heading averaged over ±travelS (default 1.5 s), so a lens keyed
+  // around a swerving tank flows with its course instead of swinging with every zig-zag of the hull
+  const travelW = (m.travelS ?? 1.5) * 1000;
+  const travelHeading = (name, t) => {
+    let sx = 0, sz = 0;
+    for (let k = -4; k <= 4; k++) { const h = rad(paths.get(name)(Math.min(dur, Math.max(0, t + k * travelW / 4))).h); sx += Math.sin(h); sz += Math.cos(h); }
+    return Math.atan2(sx, sz) * 180 / Math.PI;
+  };
+  const poseFrame = (mode, name, q, t) => frame(q.p, mode === 'travel' ? travelHeading(name, t) : q.h);
   const evalKey = (c, t) => { // world pose [x, y, z, lx, ly, lz, fov, roll] of a key at time t
     const own = paths.get(c.actor ?? 'hero')(t), pinned = paths.get(c.actor ?? 'hero')(m.pinMs ?? 0);
-    const fr = frameMode(c) === 'world' ? frame(pinned.p, pinned.h) : frame(own.p, own.h);
+    const fr = frameMode(c) === 'world' ? frame(pinned.p, pinned.h) : poseFrame(frameMode(c), c.actor ?? 'hero', own, t);
     const lookP = c.lookActor ? paths.get(c.lookActor)(t) : lookMode(c) === 'world' ? pinned : own;
-    const lf = frame(lookP.p, lookP.h);
+    const lf = poseFrame(lookMode(c), c.lookActor ?? c.actor ?? 'hero', lookP, t);
     let side = c.side ?? 0, along = c.along ?? 0;
     if (c.orbit != null) { side = (c.radius ?? 12) * Math.sin(rad(c.orbit)); along = (c.radius ?? 12) * Math.cos(rad(c.orbit)); }
     const p = c.pos ? [c.pos[0], c.pos[2]] : fr.at(side, along);
@@ -234,7 +312,7 @@ export function buildShot(s, m) {
       }
     }
     const [x, y, z, lx, ly, lz, fov, roll] = pose;
-    return { id: `cam-${n}`, label: `t${t}`, tMs: t, pos: [x, y, z], lookAt: [lx, ly, lz], fov, rollDeg: roll, transition: 'linear', ...(m.absY ? { absY: true } : {}) };
+    return { id: `cam-${n}`, label: `t${t}`, tMs: t, pos: [x, y, z], lookAt: [lx, ly, lz], fov, rollDeg: roll, transition: m.rail ?? 'linear', ...(m.absY ? { absY: true } : {}) };
   });
   if (m.keepWidth) { // dolly zoom: hold the subject's framed width while the camera travels
     const d = sh => Math.hypot(sh.pos[0] - sh.lookAt[0], sh.pos[2] - sh.lookAt[2]);

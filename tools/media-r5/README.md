@@ -18,6 +18,14 @@ Run from the repo root.
    - `reveal.mjs <out>` — the lineup orbits
    - `site50.mjs <out>` — the site fifty: one continuous 6.6 s take per shot plus a still
    Set `MEDIA_R5_LIGHT=1` so times of day and sun placement use the Studio light lane.
+   Motion (owner 2026-10-05: the lens on a fully 3D track, close and far; tanks fast in every
+   direction): `moves.mjs` holds the camera moves (swoop, leadReveal, orbitRise, cable, weave,
+   overtake) and route patterns (charge, arc, crossing) for `buildShot`'s `routes` (each tank on
+   its own curve at speed), `aim` (a stabilised gun), `frame: 'travel'` (riding a swerving tank
+   without swinging with it) and `rail: 'spline'` (the Studio's C1 camera rail).
+   `route-check.mjs` clears every route of walls, woods, water and the other hulls;
+   `previz.mjs --scenes=<dir>` draws each moving scene as a schematic camera's eye beside the map
+   and the lens's distance over the take (MP4 + sheet), so choreography is judged before a GPU lease.
 2. **Lab** — `lab.mjs --scenes=<dir> --out=<dir> --film-frames=5` previews scenes under
    the shared GPU lock (`--lease=budget --lease-min=14`), with autoPlace, sightline and
    path-obstacle notes; `--scout=<maps>` and `--features=<maps>` survey new battlefields;
