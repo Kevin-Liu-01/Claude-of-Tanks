@@ -92,25 +92,6 @@ const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
 });
 
-/**
- * Las Cañadas' high, dry, volcanic light: the broom a grey-green and the pines a dull green at half their saturation
- * (the gauntlet's wave 31: "the caldera broom is lime"), each keeping its hue.
- */
-const VOLCANIC_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.25, cardSat: 0.08,
-  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.5), Math.min(1, l * 1.04)],
-});
-
-/**
- * Trees round 4 (the ground lane, on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
- * the Teide broom (Spartocytisus supranubius) on the cinder is a dry, ash-dulled grey-green — the hue turned toward olive
- * and three tenths of the sprays' saturation, a little paler, as the arid broom of Wadi Rum and the Saharan wadi.
- */
-const ASH_SCRUB: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.23, cardSat: 0.05,
-  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.22, Math.min(1, s * 0.3), Math.min(1, l * 1.07)],
-});
-
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,

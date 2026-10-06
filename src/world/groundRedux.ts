@@ -186,12 +186,10 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
 // ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — one monotone tan-brown in uniform wind-ripple
-// corrugation"): a volcanic basin takes no wind's patchwork and no ripples; its ground is zoned by its landforms
-// (volcanic), its rock greyed by lichen
+// corrugation"): a volcanic basin's rock greyed by lichen. The VOLCANIC profile it was made for (Las Cañadas: no wind's
+// patchwork or ripples, the ground zoned by its landforms) went with Caldera's Aso identity (the map-revival lane, merged
+// in batch 4, 2026-10-06); the zoning stays a profile field (`volcanic`) for the next volcanic place.
 const BASALT_LICHEN = [0.90, 0.94, 0.86] as const;
-const VOLCANIC: Omit<GroundReduxProfile, 'grass'> = {
-  ...ARID, rimTint: BASALT_LICHEN, rim: 0.7, patchwork: 0, windRipple: 0, exposure: 0.5, midAlbedo: 0.8, volcanic: 1,
-};
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
 };
