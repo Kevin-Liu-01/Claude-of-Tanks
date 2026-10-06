@@ -266,8 +266,10 @@ const TERRAIN_PLAN = {
     // ripple. The ground is now ash and cinder — the fine-grained sand set, desaturated to a warm dark grey (ash
     // ~0.15 albedo; the volcanic zoning pales it on the level, blackens and reddens it on the cones), the worn variant
     // a step darker; the rock a desaturated basalt
-    G: { set: 'sand', desat: 0.85, tint: [0.40, 0.38, 0.36], lift: 0.02, roughMul: 1.3 },
-    D: { set: 'sand', desat: 0.8, tint: [0.31, 0.29, 0.28], lift: 0.02, roughMul: 1.35 },
+    // (the map-revival lane, Caldera round 2: Aso's floor and slopes — the photo grass a muted summer green with a cured
+    // gold in it, the dirt the black volcanic Andosol of the fields and tracks, the rock the basalt as before)
+    G: { set: 'grass', tint: [0.86, 0.88, 0.66], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.4, tint: [0.42, 0.40, 0.38], roughMul: 1.3 },
     R: { set: 'rock', desat: 0.7, tint: [0.62, 0.60, 0.59], lift: 0.03, roughMul: 1.2 }, M: null,
   },
   foundry: {

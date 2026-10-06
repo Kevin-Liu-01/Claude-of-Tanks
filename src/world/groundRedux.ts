@@ -217,7 +217,10 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
     grass: meadow(0.9, 1.0, { base: [0.042, 0.090, 0.022], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
-  caldera: { ...VOLCANIC, grass: null },
+  // (the map-revival lane, Caldera round 2: Aso's floor is farmed and its slopes grazed grassland on black volcanic soil —
+  // a humid caldera's sward, not Las Cañadas's pumice and ash zoning; the rock keeps the basalt's lichen)
+  caldera: { ...TEMPERATE, rimTint: BASALT_LICHEN, scree: 0.3,
+    grass: meadow(0.9, 0.85, { base: [0.030, 0.040, 0.014], tip: [0.13, 0.17, 0.045], dry: [0.26, 0.22, 0.09] }) },
   foundry: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
   ruinspires: { ...TEMPERATE, scree: 0.2, grass: verge(0.5) },
   blackglass: { ...TEMPERATE, scree: 0.2, grass: verge(0.4) },

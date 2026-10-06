@@ -91,8 +91,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // groves where the map plants its pines and cypresses, Japanese red pine on the dry cinder where it plants its scrub
   // stand-in (the acacia slot), the bushes the evergreen broadleaf scrub of the grazed grassland (azalea, camellia) in
   // the holm oak's dark leaf; the stands stay open groves (treeBiomes open: the placement is the map's)
-  caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'holmOak',
-    undefined, undefined, true),
+  // (Caldera round 2, wave 114: the holm oak's big leaf sprays read at shrub size as "a tropical fern or palm-like
+  // shrub", and the sugi stood in open groves: the bushes are now the grassland's low twiggy scrub (the broom form: bush
+  // clover, Miyama-kirishima azalea) and the sugi stand in closed blocks)
+  caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),

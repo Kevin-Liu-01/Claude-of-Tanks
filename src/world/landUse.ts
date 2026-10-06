@@ -226,9 +226,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.19, blockU: 64, blockV: 46, maxSplit: 2, marginM: 1.2, trackShare: 0.15, hedgeShare: 0.05,
     warpM: 16, region: 'karst', salt: 79,
   },
-  // (Caldera: the maps lane rebuilt it as Las Cañadas — a volcanic basin of ash flats, cinder cones and lava flows with
-  // no fields; its ground is the volcanic zoning of groundRedux.ts, not a land use. The 'terrace' region stays for a
-  // paddy map.)
+  // Obsidian Caldera (caldera: the Aso caldera's floor, the map-revival lane's Caldera round 2; gauntlet wave 114: "a
+  // flat grey-beige plain ... Aso's floor is a patchwork of rice paddies, flooded or stubble, bunds, field roads"):
+  // rectangular paddies between earth bunds, green and flooded, vegetable plots and meadow, a field road along some of
+  // the long boundaries, a few windbreak hedges; the fields keep to the level floor (the material keeps them off the
+  // cones, the lava shelves, the roads and the village)
+  caldera: {
+    strength: 1, heading: 0.18, blockU: 96, blockV: 58, maxSplit: 3, marginM: 0.8, trackShare: 0.32, hedgeShare: 0.14,
+    warpM: 10, region: 'terrace', salt: 103,
+  },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
   // works' streets (an axis grid), birch scrub seeded along some of the plot lines, works tracks along others
   foundry: {
