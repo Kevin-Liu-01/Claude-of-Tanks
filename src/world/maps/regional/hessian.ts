@@ -226,8 +226,8 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
   }
 }
 
-/** the shop paints (facade craft): bottle green, oxblood, navy, umber, cream */
-const SHOP_PAINT: readonly Rgb[] = [[0.2, 0.32, 0.24], [0.42, 0.15, 0.12], [0.16, 0.21, 0.31], [0.33, 0.23, 0.16], [0.74, 0.69, 0.57]];
+/** the shop paints (facade craft): bottle green, oxblood, navy, umber, cream (sRGB, as the kit's door paints) */
+const SHOP_PAINT: readonly Rgb[] = [0x3d5c45, 0x6e2a22, 0x2c3a52, 0x5a4030, 0xd6ccb0].map(rgb);
 
 export function hessianDialect(st: HessianState): HouseDialect {
   return {

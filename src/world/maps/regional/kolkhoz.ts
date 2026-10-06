@@ -87,8 +87,12 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 const CLAY: Rgb = [0.8, 0.7, 0.58];
 const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
 const RIDER = rgb(0x6e6254);
-/** the plinth's clay paints (multiplied over the lime): red-brown, umber, a dark blue-grey */
-const PRYZBA: readonly Rgb[] = [[0.5, 0.31, 0.24], [0.42, 0.33, 0.25], [0.34, 0.38, 0.44]];
+/**
+ * the plinth's clay paints: red-brown, umber, a dark blue-grey (sRGB as they should read), as multipliers over the
+ * lime-wash's own albedo (~0.54 linear), so the band reads that dark — a paint in linear values over the lime read pale
+ * in the close views (2026-10-05)
+ */
+const PRYZBA: readonly Rgb[] = [0x5a3a2c, 0x524433, 0x46505c].map((hex) => shade(rgb(hex), 1 / 0.54));
 
 /**
  * The carving and paint of one khata (facade craft, desktop builds; from the facade stream, so the house's build
