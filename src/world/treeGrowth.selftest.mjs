@@ -16,7 +16,7 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
   weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
-  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows, shrubStemSites, forestGrownProfile, GROWTH_FOREST_FORM,
+  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows, shrubStemSites, forestGrownProfile, openGrownProfile, GROWTH_FOREST_FORM,
   GROWTH_DEADWOOD_TINT,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
@@ -539,6 +539,25 @@ const shrubRows = [];
   }
   assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES.oak), forestGrownProfile(TREE_GROWTH_PROFILES.oak), 'one forest profile a species');
   assert.ok(GROWTH_FOREST_FORM.forkMax <= 0.6, 'a forest decurrent never forks past three fifths of its height');
+  // trees round 6 (the gauntlet's wave 122: "no frame shows a lone or hedge tree with a broad, low crown"): the open
+  // variant beside the forest-grown pair grows open-grown — a broadleaf's crown wider for its height and lower on its
+  // stem; a conifer, a palm, a snag, a seedling and an orchard tree keep their own; deterministic
+  for (const species of ['oak', 'beech', 'birch', 'chestnut']) {
+    let stock = 0, open = 0, stockBase = 0, openBase = 0;
+    for (let k = 0; k < 3; k++) {
+      const a = growTreeSkeleton(species, mulberry32(3101 + k * 17), { variant: 2, tier: 'desktop' });
+      const b = growTreeSkeleton(species, mulberry32(3101 + k * 17), { variant: 2, tier: 'desktop', open: true });
+      assert.deepEqual(b, growTreeSkeleton(species, mulberry32(3101 + k * 17), { variant: 2, tier: 'desktop', open: true }), `${species}: the open form is deterministic`);
+      const wh = (sk) => 2 * Math.max(...sk.leaves.map((l) => Math.hypot(l.x, l.z))) / sk.height;
+      const low = (sk) => Math.min(...sk.leaves.map((l) => l.y)) / sk.height;
+      stock += wh(a); open += wh(b); stockBase += low(a); openBase += low(b);
+    }
+    assert.ok(open > stock * 1.08, `${species}: the open crown wider for its height (${(open / 3).toFixed(2)} against ${(stock / 3).toFixed(2)})`);
+    assert.ok(openBase < stockBase, `${species}: and lower on its stem (${(openBase / 3).toFixed(2)} against ${(stockBase / 3).toFixed(2)})`);
+  }
+  for (const species of ['pine', 'spruce', 'palm', 'snag', 'longleafSeedling', 'apple']) {
+    assert.strictEqual(openGrownProfile(TREE_GROWTH_PROFILES[species]), TREE_GROWTH_PROFILES[species], `${species}: no open form`);
+  }
   console.log('forest form (species, variant, open base, forest base, open reach, forest reach):', JSON.stringify(rows));
 }
 

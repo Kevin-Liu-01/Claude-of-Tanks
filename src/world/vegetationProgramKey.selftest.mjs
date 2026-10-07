@@ -721,7 +721,8 @@ try {
       const camera = new THREE.Vector3();
       delete world.scene.userData.lightModel; world.vegetation.update(1 / 60, camera); assert.equal(u.value, 0, 'no model, no transmission');
       world.scene.userData.lightModel = { mode: 'physical' }; world.vegetation.update(1 / 60, camera);
-      assert.ok(u.value > 0.2 && u.value < 0.8, `the grounded light's transmission (${u.value})`);
+      // (round 6, 2026-10-07: the back-lit woods' translucency doubled through this uniform, 0.45 -> 0.9; at most the light itself)
+      assert.ok(u.value > 0.2 && u.value <= 1, `the grounded light's transmission (${u.value})`);
       world.scene.userData.lightModel = { mode: 'legacy' }; world.vegetation.update(1 / 60, camera); assert.equal(u.value, 0, 'the legacy rig keeps its fill instead');
       delete world.scene.userData.lightModel;
     }

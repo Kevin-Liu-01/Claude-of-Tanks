@@ -45,7 +45,9 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
   treeBiomeSnagValue,
   // the trees lane (2026-10-06): a place's closed stands (Verdant's light version: its stands filled)
-  treeBiomeDenseStands };
+  treeBiomeDenseStands,
+  // trees round 6: the scratch a shaded interior trunk's tint is written through (vegetation.ts module scope)
+  _trunkShadeColor: new THREE.Color() };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
@@ -58,6 +60,9 @@ function compile(legacy) {
       const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
       const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
       const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
+      // trees round 6: the margin rank's share of a wood's outline (vegetation.ts module scope)
+      const WOOD_MARGIN_K = ${/const WOOD_MARGIN_K = ([0-9.]+);/.exec(source)[1]};
+      const WOOD_INTERIOR_TRUNK_SHADE = ${/const WOOD_INTERIOR_TRUNK_SHADE = ([0-9.]+);/.exec(source)[1]};
       ${section('  const treeNearIn =', '  let groundCoverBlocked:')}
       const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qLean = new THREE.Quaternion();
       const _axLean = new THREE.Vector3(), _pv = new THREE.Vector3(), _sv = new THREE.Vector3();

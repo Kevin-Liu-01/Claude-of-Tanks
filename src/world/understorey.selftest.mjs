@@ -119,7 +119,7 @@ function produce(id, extra = {}) {
     // outline (0.9–1.1 of it), on the stands' bound
     const ring = (discs, x, z, outline, lo, hi) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= lo - 1e-4 && r <= hi + 1e-4).sort((a, b) => a - b)[0];
-    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, cappedCount = 0, screening = 0;
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, cappedCount = 0, innerCount = 0, screening = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
@@ -132,21 +132,25 @@ function produce(id, extra = {}) {
       const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
       const mantleNear = ring(clusters, x, z, world._standOutline, 0.9, 1.1);
       const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
+      // trees round 6 (the gauntlet's wave 122: "the wood is a single row you can see through"): or a closed wood's inner
+      // understorey — young growth of scale 1.0–2.4 under its canopy, inside its edge growth's 0.82 of the outline
+      const innerNear = ring(clusters, x, z, world._standOutline, 0, 0.82);
+      const innerOk = innerNear !== undefined && sc >= 1.0 - 1e-4 && sc <= 2.4 + 1e-4 && bound <= 470 + 1e-6;
       // trees round 4: or a capped shrub — a stand's or a rim block's that the cover law below took the height of out of
       // the wood's cover, its whole form scaled down to young growth of 0.6–1.2 m (vegetation.ts UNDERSTOREY_CAP_M) at
       // its own proportions (the height jitter 0.9–1.3), inside the square
       const hyOf = e[5] / sc;
-      const cappedOk = (standNear !== undefined || rimNear !== undefined) && bound <= 470 + 1e-6
+      const cappedOk = (standNear !== undefined || rimNear !== undefined || innerNear !== undefined) && bound <= 470 + 1e-6
         && e[5] >= 0.6 - 1e-4 && e[5] <= 1.2 + 1e-4 && hyOf >= 0.9 - 1e-4 && hyOf <= 1.3 + 1e-4;
-      assert.ok(standOk || rimOk || mantleOk || cappedOk, `${id}: a stand's, a rim block's, a mantle's or a capped shrub (${x}, ${z}, scale ${sc}, height ${e[5]}, bound ${bound})`); // float32 instance matrices
-      const near = standOk ? standNear : rimOk ? rimNear : cappedOk ? (standNear ?? rimNear) : mantleNear;
-      if (standOk) standCount++; else if (rimOk) rimCount++; else if (cappedOk) cappedCount++; else mantleCount++;
+      assert.ok(standOk || rimOk || mantleOk || cappedOk || innerOk, `${id}: a stand's, a rim block's, a mantle's, an inner or a capped shrub (${x}, ${z}, scale ${sc}, height ${e[5]}, bound ${bound})`); // float32 instance matrices
+      const near = standOk ? standNear : rimOk ? rimNear : cappedOk ? (standNear ?? rimNear ?? innerNear) : mantleOk ? mantleNear : innerNear;
+      if (standOk) standCount++; else if (rimOk) rimCount++; else if (cappedOk) cappedCount++; else if (mantleOk) mantleCount++; else innerCount++;
       // trees round 4 (one law for every shrub a player can drive up to): the understorey conceals nothing, so inside
       // the playable square a shrub tall enough to screen a hull (its height scale over 1.2: vegetation.ts
       // UNDERSTOREY_SCREEN_M) — every mantle shrub, the tall growth of a stand's edge, a rim block's reaching in —
       // stands within a metre of a tree's concealment disc; the low growth may feather out of a stand
       // (the playable square: battlefieldBounds.ts PLAYABLE_HALF_EXTENT_M, 470 m, a millimetre in for the float32 matrix)
-      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk && !cappedOk);
+      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk && !cappedOk);  // (a mantle's, an inner tall one)
       if (bound <= 470 - 1e-3 && screens) {
         assert.ok(world.concealers.some((d) => d.add <= 0.1 && Math.hypot(x - d.x, z - d.z) <= d.r + 1 + 1e-4),
           `${id}: a screening shrub within a metre of the wood's cover (${x}, ${z}, height scale ${e[5]})`);
@@ -165,7 +169,14 @@ function produce(id, extra = {}) {
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
     // the cover law caps rather than clears: the woods these maps grow leave tall growth out of their cover to cap
     assert.ok(cappedCount > 0, `${id}: capped shrubs below the stands' and the rim's scale`);
-    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, capped: cappedCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
+    // trees round 6 (the gauntlet's wave 122: "a single row you can see through", "no shaded forest interior"): a wood's
+    // margin rank (vegetation.ts WOOD_MARGIN_K) and its saplings keep the open-grown form, and an interior wood tree's
+    // trunk stands in its stand's shade (WOOD_INTERIOR_TRUNK_SHADE) — a margin tree's never, a field tree's never
+    const woodTrees = world._trees.filter((t) => t.wood), margin = woodTrees.filter((t) => t.margin);
+    const shaded = world._trees.filter((t) => t.trunkShade !== undefined);
+    assert.ok(shaded.every((t) => t.wood && !t.margin && t.trunkShade > 0.5 && t.trunkShade < 1), `${id}: only interior wood trunks shade, within the law`);
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, capped: cappedCount, inner: innerCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
+      wood: woodTrees.length, margin: margin.length, shadedTrunks: shaded.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }
@@ -183,6 +194,11 @@ try {
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
   // trees round 4 (the gauntlet's wave 46: Frontier's wood edge "with no shrub mantle"): Verdant's closed woods wear one
   assert.ok(verdant.mantle >= 500, `Verdant's woods wear a mantle (${verdant.mantle})`);
+  // trees round 6: and an understorey under their canopy, a margin rank of about a third of their trees, shaded trunks
+  // in their interiors
+  assert.ok(verdant.inner >= 300, `Verdant's closed woods carry an inner understorey (${verdant.inner})`);
+  assert.ok(verdant.margin > 0.2 * verdant.wood && verdant.margin < 0.5 * verdant.wood, `Verdant's margin rank (${verdant.margin} of ${verdant.wood})`);
+  assert.ok(verdant.shadedTrunks > 0.3 * (verdant.wood - verdant.margin), `Verdant's interior trunks in shade (${verdant.shadedTrunks})`);
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
   // legacyTrees: the round-77 cards, the same placements

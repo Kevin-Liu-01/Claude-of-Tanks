@@ -61,16 +61,17 @@ try {
         continue;
       }
       const forest = new Set(forms.species);
-      const field = world._trees.filter((t) => forest.has(t.species) && !t.wood);
+      // (trees round 6: a wood's margin rank grows open-grown too — it draws the open crowns with the field trees)
+      const field = world._trees.filter((t) => forest.has(t.species) && (!t.wood || t.margin));
       for (const t of world._trees) {
         if (!forest.has(t.species)) continue;
-        if (t.wood) assert.ok(t.variant === 0 || t.variant === 1, `${mapId}: a wood tree on a forest-grown variant (${t.variant})`);
+        if (t.wood && !t.margin) assert.ok(t.variant === 0 || t.variant === 1, `${mapId}: a wood tree on a forest-grown variant (${t.variant})`);
         else assert.ok(t.variant >= 2 && t.variant <= 4, `${mapId}: a field tree on an open crown (${t.variant})`);
       }
       // the three open crowns, about a third each
       const crowns = forms.fieldCrowns;
       assert.equal(crowns.reduce((a, b) => a + b, 0), forms.open, `${mapId}: the census counts every field tree (${JSON.stringify(forms)})`);
-      assert.equal(field.length, forms.open, `${mapId}: the census's field trees`);
+      assert.equal(field.length, forms.open, `${mapId}: the census's open trees (the field and the woods' margins)`);
       if (forms.open >= 30) for (const c of crowns) assert.ok(c >= 0.18 * forms.open, `${mapId}: each open crown in use (${crowns})`);
       // a row's neighbours differ: same-species field trees within 9 m share a crown about a third of the time (every
       // pair shared one before)

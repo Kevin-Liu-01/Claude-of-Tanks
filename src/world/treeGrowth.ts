@@ -166,6 +166,17 @@ interface GrowthProfile {
    */
   clumpR?: number;
   /**
+   * Trees round 6: a decurrent broadleaf whose forest-grown form keeps its leader on through the crown (excurrent, the
+   * crown from GROWTH_FOREST_FORM.leaderCrownBase) — a forest beech's straight bole into an egg of climbing limbs, where
+   * its open-grown fork into scaffolds read as an umbrella in a wood.
+   */
+  forestLeader?: boolean;
+  /**
+   * Trees round 6: the share of a flat-sprayed crown's height over which its sprays lie level; above it they follow the
+   * climbing shoots as a broadleaf's do (unset: flat to the top).
+   */
+  flatTop?: number;
+  /**
    * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
    * variant's age as every profile is; unset, the variants are the profile at three ages.
    */
@@ -340,6 +351,10 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 3.8, leafFrom: 0.25, spray: [0.62, 0.92], aspect: 0.9, habit: 'flat', tipSprays: 2,
     cardBend: 0.1, flatRoll: 0.5, flatDroop: 0.1, bark: 2, barkTint: [0.50, 0.50, 0.48], barkTopTint: [0.55, 0.55, 0.53],
     foliageValue: 1.12,
+    // trees round 6 (the gauntlet's wave 122 on Frontier's wood: "pale smooth stems that fork low into flat-topped umbrella
+    // crowns"): in a wood its leader carries on through its crown, and its level sprays give way to the climbing shoots'
+    // over the crown's top third
+    forestLeader: true, flatTop: 0.62,
   }),
   // the sweet chestnut (the Breton bocage): a stout spirally fissured bole under a broad, high, rounded crown of long
   // serrated leaves
@@ -679,6 +694,8 @@ interface GrowthOptions {
   tier?: 'desktop' | 'mobile';
   /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
   forest?: boolean;
+  /** Trees round 6: grown in the open beside a closed wood's forest-grown trees (openGrownProfile). */
+  open?: boolean;
 }
 
 /**
@@ -704,10 +721,39 @@ export const GROWTH_DEADWOOD_TINT: readonly [number, number, number] = Object.fr
 export const GROWTH_FOREST_FORM = Object.freeze({
   height: 1.04, crownR: 1.0, trunkR: 0.95, fork: 1.15, forkMax: 0.42, crownBase: 0.30, coniferCrownBase: 0.28,
   scaffoldAngle: 0.85, gnarl: 0.5, spray: 1.15,
+  // trees round 6: where a forest-led broadleaf's crown begins (its profile's forestLeader); round 8: from a third, not
+  // over half, of its height
+  leaderCrownBase: 0.34,
 });
 /** The trees lane (2026-10-06, wave 178): a birch's forest-grown form; since round 8 the general form's own heights. */
 export const GROWTH_FOREST_BIRCH = Object.freeze({ height: 1.04, crownR: 1.0, crownBase: 0.30 });
 const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/**
+ * Trees round 6 (2026-10-05, the gauntlet's wave 122: "no frame shows a lone or hedge tree with a broad, low crown"):
+ * how a broadleaf grown in the open — a field's hedge tree, a wood's margin — differs from the stock profile on a map
+ * whose woods close: the light from every side spreads its crown wider (crownR), its scaffolds fork lower (fork) and
+ * lean further out (scaffoldAngle), and it stands a little lower for its spread (height). A conifer, a palm, a snag, a
+ * grass-stage seedling and an orchard tree keep their own.
+ */
+const GROWTH_OPEN_FORM = Object.freeze({ crownR: 1.16, fork: 0.86, scaffoldAngle: 1.1, height: 0.96 });
+const openProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/** A profile's open-grown form (GROWTH_OPEN_FORM): the broadleaves' and the birches'; any other profile keeps its own. */
+export function openGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+  if ((p.family !== 'broadleaf' && p.family !== 'birch') || p.fountain || p.orchard) return p;
+  const cached = openProfiles.get(p);
+  if (cached) return cached;
+  const f = GROWTH_OPEN_FORM;
+  const open = P({
+    ...p,
+    height: p.height * f.height,
+    crownR: p.crownR * f.crownR,
+    forkAt: p.form === 'decurrent' ? [p.forkAt[0] * f.fork, p.forkAt[1] * f.fork] : p.forkAt,
+    scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, Math.min(1.45, p.scaffoldAngle[1] * f.scaffoldAngle)],
+    crownBase: p.form === 'excurrent' ? p.crownBase * f.fork : p.crownBase,
+  });
+  openProfiles.set(p, open);
+  return open;
+}
 /** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag, a grass-stage seedling or a clump keeps its own. */
 export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
   if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard || p.clump) return p;
@@ -727,6 +773,8 @@ export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthP
     scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, p.scaffoldAngle[1] * f.scaffoldAngle],
     crownBase: p.form === 'excurrent'
       ? Math.max(p.crownBase, birch ? fb.crownBase : p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
+    // (trees round 6: a forest-led broadleaf grows its leader through its crown)
+    ...(p.forestLeader ? { form: 'excurrent' as const, crownBase: f.leaderCrownBase } : {}),
     ...(p.gnarl !== undefined ? { gnarl: p.gnarl * f.gnarl } : {}),
     // (round 8: the sprays a sixth larger, the canopy closing on the same card budget)
     spray: [p.spray[0] * f.spray, p.spray[1] * f.spray],
@@ -1160,8 +1208,11 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
       const tipSeat = t >= 0.97;
       let axis: V3, face: V3;
       const roll = (rng() - 0.5);
-      // a weeping crown's scaffolds carry the dome's sprays along them and curtains at their tips
-      const habit = profile.habit === 'hanging' && branch.order < 2 && profile.form === 'decurrent' && !tipOnly ? 'spray' : profile.habit;
+      // a weeping crown's scaffolds carry the dome's sprays along them and curtains at their tips; trees round 6: a
+      // flat-sprayed broadleaf's top (its profile's flatTop) carries a broadleaf's sprays on its climbing shoots
+      const flatTop = profile.flatTop !== undefined && profile.habit === 'flat'
+        && (at.p.y - ctx.crownBaseY) / crownSpan > profile.flatTop;
+      const habit = (profile.habit === 'hanging' && branch.order < 2 && profile.form === 'decurrent' && !tipOnly) || flatTop ? 'spray' : profile.habit;
       switch (habit) {
         case 'hanging': {
           // curtains: the spray hangs from its seat, swung outward a little
@@ -1632,7 +1683,7 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
   // form's plum young and small, its apple in its middle years, its pear old and tall)
   const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
-  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
+  const profile = options.forest ? forestGrownProfile(shaped) : options.open ? openGrownProfile(shaped) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;

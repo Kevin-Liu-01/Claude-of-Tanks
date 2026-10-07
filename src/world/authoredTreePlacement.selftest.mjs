@@ -48,6 +48,8 @@ const builder = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
+  // trees round 6: the margin rank's share of a wood's outline (vegetation.ts module scope)
+  const WOOD_MARGIN_K = ${/const WOOD_MARGIN_K = ([0-9.]+);/.exec(source)[1]};
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };
   const speciesList = veg.species, treeGeo = Object.fromEntries(speciesList.map(sp => [sp, true]));
   const L = heightField._layout, v = L.village, noVeg = heightField._noVeg;
