@@ -159,10 +159,10 @@
       "concealers": 1453
     },
     "airfield": {
-      "bytes": 904692,
-      "sha256": "cafcd2afb71f3d540c9ab6ee673e835e07b6b9374c04e46224e09d2f0276abfd",
+      "bytes": 896699,
+      "sha256": "bdd4c2d4a9b396cbe54255f8668e47194df5b212dd4a1e2e2a9b6fa881b0826b",
       "obstacles": 2481,
-      "colliders": 2483,
+      "colliders": 2484,
       "concealers": 1967
     },
     "oasis": {
