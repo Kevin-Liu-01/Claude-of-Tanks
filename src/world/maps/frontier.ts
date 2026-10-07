@@ -73,6 +73,8 @@ function along(arm: readonly (readonly [number, number])[], s: number): [number,
   return [0, 0, 1, 0];
 }
 const round1 = (v: number) => Math.round(v * 10) / 10;
+/** The landmarks' slate roofs and basalt setts (round 3): the Hessian kit's beavertail and Buntsandstein retinted. */
+const SLATE_ROOF = [0.52, 0.9, 1.2] as const, BASALT_SETTS = [0.6, 0.98, 1.2] as const;
 /**
  * A Hofreite on one side of an arm (`side` +1 / -1: the arm's left or right hand), its farmhouse's front gable 5.5 m off
  * the lane's line (round 4; was 8.3). The kit's farmhouse carries its stable wing on its local +x flank, which faces back along the arm on
@@ -254,17 +256,21 @@ export default {
       // Every piece here is set into the map-revival lane's finished village, so each vetoes its ground (types.ts
       // `ground`): the courts' yard clutter draws as on the map without the pieces and only what would stand on a
       // piece's ground is left out — keep-off discs made the yards draw again round them, and every court re-rolled)
+      // round 3 (2026-10-07; the landmarks lane's touch over the map-revival lane's round 4): the church in the kit's red
+      // Buntsandstein (its render dropped), both roofs the blue-grey of slate (the kit's roof surface retinted: types.ts
+      // tints), the market's setts dark basalt; the churchyard keeps the ground's own sward (the plots' wear is low there)
       { kind: 'townHall', x: -34, z: 40, yawDeg: 180, name: 'the Rathaus on the square', roadMargin: 0.5, ground: 'veto',
-        params: { frame: true, width: 20, depth: 11, storeys: 3, tower: 28 } },
+        params: { frame: true, width: 20, depth: 11, storeys: 3, tower: 28 }, tints: { roof: SLATE_ROOF } },
       { kind: 'church', x: 34, z: -40, yawDeg: -90, name: 'the village church', roadMargin: 0.5, ground: 'veto',
-        params: { tradition: 'western', length: 15.8, width: 9.5, tower: 30, walls: 'render' } },
+        params: { tradition: 'western', length: 15.8, width: 9.5, tower: 30 }, tints: { roof: SLATE_ROOF } },
       // round 2 (2026-10-06; gauntlet wave 156: "the Rathaus and church stand on bare mud with no market square or
       // churchyard"; the seats agreed with the map-revival lane's round 3): the market square's setts before the Rathaus
       // (x -49..-19, z 9..29, half on the square's hardstand, off the carriageways, south of the assault line's keep-out)
       // with the Franconian Marktbrunnen at its west end (clear of the carriageways' cores), the Rathaus's arcade open on the market with two stalls under it; the
       // churchyard along the church's south flank east of the hunting blind (the free ground south of the chapel site), its low stone wall, the gate
       // in its west side toward the road, the headstones and Latin crosses, the path to the church
-      { kind: 'path', x: -34, z: 19, yawDeg: 0, name: 'the market square', ground: 'veto', params: { length: 20, width: 30, surface: 'stone' } },
+      { kind: 'path', x: -34, z: 19, yawDeg: 0, name: 'the market square', ground: 'veto', params: { length: 20, width: 30, surface: 'stone' },
+        tints: { stone: BASALT_SETTS } },
       { kind: 'fountain', x: -46, z: 18, yawDeg: 0, name: 'the Marktbrunnen', ground: 'veto', params: { style: 'markt', radius: 2.6 } },
       { kind: 'churchyard', x: 38.25, z: -53.45, yawDeg: 180, name: 'the churchyard', ground: 'veto', params: { width: 17.5, depth: 14, tradition: 'latin', fence: 'wallstone',
         gate: 'right', graves: 10, path: 1.4 } },

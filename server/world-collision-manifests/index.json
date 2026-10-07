@@ -62,7 +62,7 @@
     },
     "frontier": {
       "bytes": 2832709,
-      "sha256": "ce64f2ffb2e41632fe5f2cbf40227c881e45c25e930796543eefbeb7f084c328",
+      "sha256": "c556e194d4560b7335e8f64cd8ee64a948f8bef3d9eccdaa4e613cd2fb2e97b8",
       "obstacles": 8452,
       "colliders": 8836,
       "concealers": 8528
