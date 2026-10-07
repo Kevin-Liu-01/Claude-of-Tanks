@@ -5991,7 +5991,7 @@ void splatCompute() {
       // line's hardstands are road ground, the map's brown packed earth) inside a works' floor its roads and yards are
       // trodden cinder: grey-black, a shade paler than the slag lots either side so the streets still read, their wheel
       // lanes and puddles as before
-      if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.55, 0.80 * smoothstep(0.10, 0.40, mk.a));
+      if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * smoothstep(0.10, 0.40, mk.a));
       a.rgb = mix(a.rgb, roadCol, dW);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the
@@ -6010,7 +6010,9 @@ void splatCompute() {
       a.rgb *= mix(1.0, 0.86 + drift.x * 0.28, dW);
       a.rgb = mix(a.rgb, a.rgb * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
       if (uReduxD.y < 0.5) {
-        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
+        // (2026-10-07, Ironworks round 4: no weedy green crown down a works' cinder road)
+        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4)
+          * (1.0 - step(1.5, uLandE.w));
         if (crownGrass > 0.01) {
           vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
           a = mix(a, cg * vec4(0.92, 0.95, 0.85, 1.0), crownGrass * 0.80);
@@ -6153,6 +6155,25 @@ void splatCompute() {
       // furnace line's hardstands) a works' paving carries its work: soot settled in drifts, oil and tar in blotches where
       // the wagons and the engines stood, a little glossier, and rust run-off between them (uLandE.w 2: a works' ground
       // only — every other map's paving is what it was)
+      // (2026-10-07, Ironworks round 4, wave 223: "two flat brown squares with hard edges" — the casting yard's and the
+      // furnace line's hardstands are paved, so they drew the map's cobble print) a works' paved hardstand (a pad: no
+      // centreline near it) is compacted cinder and slag ballast — black-grey, its lumps near the camera, the lorries' wheel
+      // lanes pressed along the works' axis, soot over it in broad gradients (the stains below fall on it as on the setts);
+      // a works' streets keep their setts
+      float worksPad = uLandE.w > 1.5 ? (1.0 - smoothstep(0.05, 0.25, mk.g)) : 0.0;
+      if (worksPad > 0.003 && paveCore > 0.003) {
+        vec3 cinder = worksSlag(n1h, n2, 0.5) * 1.30;
+        float lumpV = uLandTier > 1.5 ? 1.0 - smoothstep(0.02, 0.04, gFootM) : 0.0;
+        float lumpN = lumpV > 0.001 ? nz(uv, 3.1, vec2(0.29, 0.61)).r : 0.5;
+        cinder *= 1.0 + (smoothstep(0.52, 0.68, lumpN) - (1.0 - smoothstep(0.30, 0.44, lumpN))) * 0.30 * lumpV;
+        float lp = 7.0 + 2.0 * nz(uv, 0.05, vec2(0.61, 0.37)).g;
+        float lq = (abs(fract(wp.x / lp) - 0.5) * lp - 0.95) / 0.30;
+        cinder *= 1.0 - 0.20 * exp(-lq * lq) * smoothstep(0.12, 0.45, 0.45 / max(gFootM, 1e-3)) * smoothstep(0.35, 0.65, n1h);
+        vec3 tintP = gRoadClass > 0.5 && gRoadClass < 3.5 ? vec3(1.0) : uRoadTint;
+        pav.rgb = mix(pav.rgb, cinder / max(tintP, vec3(0.05)), worksPad);
+        pav.a = mix(pav.a, 0.95, worksPad);
+        pnn = mix(pnn, NRM_MEAN, worksPad * 0.7);
+      }
       if (uLandE.w > 1.5 && paveCore > 0.003) {
         vec2 sq = nzq(uv, 0.071, vec2(0.53, 0.21));
         float soot = smoothstep(0.38, 0.78, sq.x);
