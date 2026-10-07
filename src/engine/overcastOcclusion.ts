@@ -27,15 +27,15 @@ export const SKY_OCCLUSION_SIN2 = Object.freeze([0.125, 0.375, 0.625, 0.875]);
 /** The contact reach of each direction (m), cycled with the elevations. */
 export const SKY_OCCLUSION_REACH_M = Object.freeze([0.35, 0.7, 1.3, 2.4]);
 /** A hit counts within this multiple of its reach and this far above the receiver's plane (m). */
-export const SKY_OCCLUSION_HIT_SLACK = 2.0;
-export const SKY_OCCLUSION_HIT_ABOVE_M = 0.03;
+const SKY_OCCLUSION_HIT_SLACK = 2.0;
+const SKY_OCCLUSION_HIT_ABOVE_M = 0.03;
 export const SKY_OCCLUSION_RANGE_M = 50;
-export const SKY_OCCLUSION_FADE_M = 10;
+const SKY_OCCLUSION_FADE_M = 10;
 /** Strength at a closed deck (QA knob SKY_OCCLUSION) and the deck's ramp (overcast). */
 export const SKY_OCCLUSION_STRENGTH = 0.7;
 export const SKY_OCCLUSION_DECK: readonly [number, number] = [0.4, 0.9];
 
-export interface SkyOcclusionUniforms { uSkyOcc: { value: number } }
+interface SkyOcclusionUniforms { uSkyOcc: { value: number } }
 
 export function createSkyOcclusionUniforms(): SkyOcclusionUniforms {
   return { uSkyOcc: { value: 0 } };
