@@ -9,6 +9,7 @@ import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts
 import {
   archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, moulding, prismBody, railing, revolve, smoothRender, tentRoof,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
+import { ageWall } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const IRON_RED = rgb(0x7a3b2e), IRON_GREEN = rgb(0x4f7d5a), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
@@ -153,7 +154,7 @@ export const valveTower: LandmarkBuilder = (ctx) => {
     // on facet centres (every 18 degrees), the five round the side away from the bridge (at 180 degrees: the door's)
     const a = k * (Math.PI * 2 / 5), rw = (R + (rTop - R) * 0.45) * facet + 0.02;
     const win: ArchHole = { u: 0, w: 0.95, y0: deckY + C * 0.3, spring: deckY + C * 0.62, form: 'round' };
-    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false);
+    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false, { coarse: true });
     archSurround(sink, 'stone', face(a, rw), win, 0.2, 0.07);
   }
   plankDoor(sink, face(Math.PI, R * facet + 0.02), 0, deckY, 1.3, 2.4, IRON_GREEN, 0.03);
@@ -176,6 +177,16 @@ export const valveTower: LandmarkBuilder = (ctx) => {
     sink.span('stone', x0, deckY, zS, x0 + 0.36, deckY + 1.0, zFace);
     sink.span('stone', x0 - 0.06, deckY + 1.0, zS, x0 + 0.42, deckY + 1.12, zFace, { decor: true });
     sink.span('stone', sx > 0 ? W / 2 : -W / 2 - 0.12, deckY - 0.45, zS, sx > 0 ? W / 2 + 0.12 : -W / 2, deckY - 0.3, zFace, { decor: true });
+  }
+  // the abutment at the bank (gauntlet wave 158: "the footbridge simply ends at a grassy mound with no dam or
+  // abutment"): the deck's end carried on a dressed block a metre into the bank and down to the bed, a little wider than
+  // the deck, coped, with the parapets' end piers over it — inside the footprint the piece always had, so the ground it
+  // reserves (and every scatter placement round it) is the same
+  const abut = 1.0;
+  sink.span('stone', -W / 2 - 0.45, bed, zS - abut, W / 2 + 0.45, deckY - 0.02, zS + 0.05);
+  sink.span('stone', -W / 2 - 0.55, deckY - 0.02, zS - abut - 0.08, W / 2 + 0.55, deckY + 0.12, zS + 0.12, { decor: true });
+  for (const sx of [-1, 1]) {
+    sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.75, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
   }
   return { parts: sink.finish() };
 };
@@ -321,6 +332,48 @@ export const windmill: LandmarkBuilder = (ctx) => {
 // ---------------------------------------------------------------------------------------------------------- bell towers
 
 /**
+ * The Podhale belfry (a dzwonnica of the Tatra foothills' timber churches, Łopuszna's and Dębno's): the square tower's
+ * battered lower storey clad in upright larch boards, the pent roof of shingles skirting it, the bell chamber (the
+ * izbica) over it shingled all round with its tall louvred openings, the bell inside, and the steep tented roof of
+ * shingles with its iron cross. `S` the side at the foot.
+ */
+function podhaleBelfry(sink: PartSink, H: number, S: number, base: number): ReturnType<LandmarkBuilder> {
+  const q = Math.PI / 4, k = Math.SQRT2 / 2;
+  const h1 = H * 0.46, S1 = S * 0.74, Si = S1 + 0.5, h2 = h1 + Math.max(3.0, H * 0.2);
+  const boards = { colour: BOARD_GREY };
+  sink.span('stone', -S / 2 - 0.12, base, -S / 2 - 0.12, S / 2 + 0.12, 0.4, S / 2 + 0.12);
+  // the battered lower storey, its upright boards and their battens, the door
+  revolve(sink, 'structureWood', 0, 0, [[S * k, 0.4], [S1 * k, h1 + 0.12]], 4, boards, q);
+  for (const [nx, nz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+    for (let i = 1; i < 6; i++) {
+      const u = -0.5 + i / 6;
+      const a: Vec3 = [nx * S / 2 + nz * u * S, 0.45, nz * S / 2 - nx * u * S], b: Vec3 = [nx * S1 / 2 + nz * u * S1, h1 - 0.1, nz * S1 / 2 - nx * u * S1];
+      const lean = (S - S1) / 2 / (h1 - 0.4), off = 0.04 / Math.sqrt(1 + lean * lean);
+      bar(sink, 'structureWood', [a[0] + nx * off, a[1], a[2] + nz * off], [b[0] + nx * off, b[1], b[2] + nz * off], 0.06,
+        { colour: TIMBER_DARK, decor: true, fine: true });
+    }
+  }
+  {
+    const lean = (S - S1) / 2 / (h1 - 0.4), zAt = (y: number) => S / 2 - lean * (y - 0.4) + 0.02;
+    sink.quad('structureWood', [-0.55, 0.4, zAt(0.4)], [0.55, 0.4, zAt(0.4)], [0.55, 2.4, zAt(2.4)], [-0.55, 2.4, zAt(2.4)], { colour: TIMBER_DARK, decor: true });
+  }
+  // the shingled pent roof skirting the top of the lower storey
+  revolve(sink, 'roof', 0, 0, [[(Si / 2 + 0.8) * Math.SQRT2, h1 - 0.95], [(Si / 2) * Math.SQRT2, h1 + 0.12]], 4, {}, q);
+  // the izbica: shingled all round, its tall openings, the bell
+  const holes: ArchHole[] = [-0.22, 0.22].map((u) => ({ u: u * Si, w: Si * 0.16, y0: h1 + 0.75, spring: h2 - 0.65, form: 'flat' as const }));
+  archedBody(sink, 'roof', 0, 0, Si, Si, h1 + 0.1, h2, { front: holes, back: holes, left: holes, right: holes }, 0.18);
+  sink.span('structureWood', -Si / 2 + 0.2, h1 + 0.1, -Si / 2 + 0.2, Si / 2 - 0.2, h1 + 0.3, Si / 2 - 0.2, { colour: TIMBER_DARK });
+  const by = h2 - 0.75;
+  revolve(sink, 'structureMetal', 0, 0, [[0.55, by - 1.05], [0.5, by - 0.85], [0.32, by - 0.35], [0.24, by - 0.08], [0, by]], 10, { colour: BELL, decor: true });
+  sink.span('structureWood', -Si / 2 + 0.2, by, -0.1, Si / 2 - 0.2, by + 0.2, 0.1, { colour: TIMBER_DARK, decor: true });
+  // the steep tented roof of shingles and its iron cross
+  const top = h2 + Si * 1.2;
+  revolve(sink, 'roof', 0, 0, [[(Si / 2 + 0.45) * Math.SQRT2, h2 - 0.15], [(Si / 2 + 0.45) * Math.SQRT2, h2], [0, top]], 4, {}, q);
+  cross(sink, 'structureMetal', 0, top - 0.1, 0, 1.4, 'latin', IRON);
+  return { parts: sink.finish() };
+}
+
+/**
  * The free-standing belfry (a monastery's or a town square's bell tower): a square base with an arched passage or a
  * door, the open bell stage with its bells, an octagon, and a crown — an onion, a tent, a needle or a helm.
  */
@@ -328,6 +381,7 @@ export const belfry: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const H = Math.max(14, Number(ctx.params.height)), S = Math.max(4, Number(ctx.params.side)), crown = String(ctx.params.crown);
   const base = -0.6 - ctx.groundFall, wall: RegionalBucket = 'plaster';
+  if (String(ctx.params.style) === 'podhale') return podhaleBelfry(sink, Math.max(10, H), S, base);
   sink.span('stone', -S / 2 - 0.15, base, -S / 2 - 0.15, S / 2 + 0.15, 0.5, S / 2 + 0.15);
   const H1 = H * 0.36;
   const door: ArchHole = { u: 0, w: Math.min(2.2, S * 0.4), y0: 0.5, spring: Math.min(3.6, H1 - 1.5), form: 'round' };
@@ -380,6 +434,10 @@ export const campanile: LandmarkBuilder = (ctx) => {
   const H = Math.max(16, Number(ctx.params.height)), S = Math.max(3.6, Number(ctx.params.side));
   const base = -0.6 - ctx.groundFall;
   sink.span('stone', -S / 2 - 0.2, base, -S / 2 - 0.2, S / 2 + 0.2, 0.7, S / 2 + 0.2);
+  // its stepped foot (gauntlet wave 158: "rises straight out of bare sandy dirt with no plinth, steps, paving"): a broad
+  // step round the plinth and the flight up to the door
+  sink.span('stone', -S / 2 - 0.75, base, -S / 2 - 0.75, S / 2 + 0.75, 0.35, S / 2 + 0.75, { decor: true });
+  sink.span('stone', -0.9, base, S / 2 + 0.75, 0.9, 0.18, S / 2 + 1.05, { decor: true });
   const shaftTop = H * 0.68, bellTop = H * 0.82, stages = Math.max(3, Math.round(shaftTop / 6));
   const stageY = (k: number) => 0.7 + (shaftTop - 0.7) * k / stages;
   const slit = (y: number): ArchHole => ({ u: 0, w: 0.28, y0: y, spring: y + 1.1, form: 'round' });
@@ -401,6 +459,11 @@ export const campanile: LandmarkBuilder = (ctx) => {
     }
     const faces = archedBody(sink, 'stone', 0, 0, S, S, y0, y1, holes, 0.36);
     if (k === 0) front = faces;
+    // its age (age.ts): the grime washed down the stone from each string course and sill
+    if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+      ageWall(sink, ctx.age, { face: faces[name], bucket: 'stone', area: { u0: -S / 2 + 0.3, u1: S / 2 - 0.3, y0: y0 + 0.1, y1: y1 - 0.3 },
+        openings: holes[name], ledge: y1 - 0.22, grime: 0.24 });
+    }
   }
   const f = front!;
   sink.quad('structureWood', facePoint(f.front, -0.6, 0.7, -0.34), facePoint(f.front, 0.6, 0.7, -0.34), facePoint(f.front, 0.6, 2.6, -0.34),
