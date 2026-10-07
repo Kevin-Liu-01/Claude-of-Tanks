@@ -202,7 +202,26 @@ interface VegetationConfig {
    * field end, the species drawn from `mix` (the map's own slots; treeBiomes grows them as the place's forms). Ordinary
    * field trees on their own stream, after every other placement: unset, a map is placed exactly as before.
    */
-  hedgeTrees?: { mix: SpeciesMix; spacingM: number; gateM?: number };
+  hedgeTrees?: {
+    mix: SpeciesMix; spacingM: number; gateM?: number;
+    /**
+     * Trees lane (2026-10-07, the gauntlet's wave 205 on Polders: willow rows along the ditches): the lines the trees
+     * follow — 'hedge' (the default) the land use's hedges; 'boundary' its fields' own boundaries (the ditches of a
+     * ditched region, landUse `boundary` 1), each boundary planted once, from the field on its far side, `offsetM` in from
+     * it (default [1.8, 3.4] m: on the bank, clear of the ditch), and only a boundary at least `minLineM` long (default 40:
+     * a long side, not a field end).
+     */
+    along?: 'hedge' | 'boundary';
+    offsetM?: readonly [number, number];
+    minLineM?: number;
+  };
+  /**
+   * Trees lane (2026-10-07, the gauntlet's wave 205 on Polders: "free-standing trees scattered at random through the
+   * ploughed field"): a map's woods keep off its arable land. A woodlot's centre, its trees and its saplings refuse a
+   * field's cropped ground (any crop but pasture, inside its grass margin); pasture, the margins and the ground off the
+   * field system stay open to them. Unset, the woods stand as before. Census: group.userData.woodsOffArable.
+   */
+  woodsOffArable?: boolean;
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
@@ -5813,6 +5832,16 @@ function* vegetationBuildSteps(
     }
     trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
   }
+  // (the trees lane: VegetationConfig `woodsOffArable` — a field's cropped ground, read through the land use's CPU twin)
+  const arableLandAt = veg.woodsOffArable ? heightField._landUseAt ?? null : null;
+  const _arableLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0,
+    hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  const arableCensus = { centres: 0, trees: 0, saplings: 0 };
+  function onArable(x: number, z: number): boolean {
+    if (arableLandAt === null) return false;
+    const at = arableLandAt(x, z, _arableLand);
+    return at.active > 0 && at.crop !== 0 && at.edgeM > at.marginM;
+  }
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
     const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
@@ -5838,6 +5867,7 @@ function* vegetationBuildSteps(
         x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
       }
       if (!siteOk(x, z, 6)) continue;
+      if (onArable(x, z)) { arableCensus.centres++; continue; }
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
       if (!uplandZoneOk(x, z, species)) continue;
       // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
@@ -5884,6 +5914,7 @@ function* vegetationBuildSteps(
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
         if (!uplandZoneOk(px, pz, sp)) continue;
+        if (onArable(px, pz)) { arableCensus.trees++; continue; }
         if (addTree(px, pz, sp, wr, woodSpread)) {
           placed++;
           trees[trees.length - 1].wood = true;
@@ -6408,6 +6439,7 @@ function* vegetationBuildSteps(
         const variantS = (sapRng() * 3) | 0, fvS = (sapRng() * 2) | 0;
         const jr = sapRng(), jg = sapRng(), jb = sapRng();
         if (!siteOk(sx, sz, 0)) continue;
+        if (onArable(sx, sz)) { arableCensus.saplings++; continue; }
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
@@ -6451,6 +6483,7 @@ function* vegetationBuildSteps(
     }
   }
   placeSaplings();
+  if (veg.woodsOffArable) group.userData.woodsOffArable = { refused: { ...arableCensus }, landUse: arableLandAt !== null };
 
   /**
    * Trees lane (2026-10-06): a map's hedge trees (VegetationConfig `hedgeTrees`). The playable ground is read on a
@@ -6467,15 +6500,28 @@ function* vegetationBuildSteps(
     if (!profile) return;
     const hedgeRng = mulberry32((seed ^ 0x4ed9e) >>> 0);
     const ch = Math.cos(profile.heading), sh = Math.sin(profile.heading);
-    const lines = new Map<number, number[]>(); // key -> [along, x, z, |sU|]*
+    const lines = new Map<number, number[]>(); // key -> [along, x, z, the seat's miss]*
+    // (the trees lane, 2026-10-07: `along: 'boundary'` — a ditched region's willow rows: the field's own boundary across
+    // its nearer axis, planted from the field on its far side only, in a band `offsetM` in from it, off the ditch)
+    const boundaryMode = ht.along === 'boundary';
+    const [band0, band1] = ht.offsetM ?? [1.8, 3.4], bandMid = (band0 + band1) / 2;
     for (let z = -PLAYABLE_HALF_EXTENT_M + 15; z <= PLAYABLE_HALF_EXTENT_M - 15; z += HEDGE_SCAN_M) {
       for (let x = -PLAYABLE_HALF_EXTENT_M + 15; x <= PLAYABLE_HALF_EXTENT_M - 15; x += HEDGE_SCAN_M) {
         const at = hedgeLandAt(x, z, _hedgeLand);
-        if (!at.active || at.hedge < 0.98) continue;
-        const key = at.id * 2 + (at.sU >= 0 ? 0 : 1);
+        if (!at.active) continue;
+        let key: number, along: number, miss: number;
+        if (!boundaryMode) {
+          if (at.hedge < 0.98) continue;
+          key = at.id * 2 + (at.sU >= 0 ? 0 : 1); along = -sh * x + ch * z; miss = Math.abs(at.sU);
+        } else {
+          if (at.track > 0.3) continue;
+          const acrossU = Math.abs(at.sU) <= Math.abs(at.sV), off = acrossU ? at.sU : at.sV, d = Math.abs(off);
+          if (off < 0 || d < band0 || d > band1) continue;
+          key = at.id * 2 + (acrossU ? 0 : 1); along = acrossU ? -sh * x + ch * z : ch * x + sh * z; miss = Math.abs(d - bandMid);
+        }
         let line = lines.get(key);
         if (!line) { line = []; lines.set(key, line); }
-        line.push(-sh * x + ch * z, x, z, Math.abs(at.sU));
+        line.push(along, x, z, miss);
       }
     }
     // the trees already standing (the field law's 5 m), on a grid; the hedge trees join it as they stand
@@ -6498,7 +6544,7 @@ function* vegetationBuildSteps(
       if (n < 3) continue;
       const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => raw[a * 4] - raw[b * 4]);
       const a0 = raw[order[0] * 4], a1 = raw[order[n - 1] * 4];
-      if (a1 - a0 < ht.spacingM) continue;
+      if (a1 - a0 < (boundaryMode ? Math.max(ht.spacingM, ht.minLineM ?? 40) : ht.spacingM)) continue;
       census.lines++; census.km += (a1 - a0) / 1000;
       // the field gate: its centre a hash of the line, inside its middle three fifths
       const gate = a0 + (a1 - a0) * (0.2 + 0.6 * ((Math.imul(key, 2654435761) >>> 0) / 4294967296));
@@ -6523,7 +6569,8 @@ function* vegetationBuildSteps(
         census.species[species] = (census.species[species] ?? 0) + 1;
       }
     }
-    group.userData.hedgeTrees = { ...census, km: +census.km.toFixed(2), perKm: census.km > 0 ? +(census.planted / census.km).toFixed(1) : 0 };
+    group.userData.hedgeTrees = { ...census, along: boundaryMode ? 'boundary' : 'hedge', km: +census.km.toFixed(2),
+      perKm: census.km > 0 ? +(census.planted / census.km).toFixed(1) : 0 };
   }
   plantHedgeTrees();
 

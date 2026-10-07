@@ -160,8 +160,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
   // the Alps: spruce and larch
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
-  // the Scheldt polders: poplar and willow rows (the map's own slots already)
-  polders: B('the Scheldt polders, Zeeland', {}),
+  // the Scheldt polders: poplar and willow rows (the map's own slots already); the trees lane (2026-10-07, the gauntlet's
+  // wave 205: "an agave-like plant" on a dyke crest — the willow's long lances fanned from the ground as a shrub read as a
+  // yucca rosette): the dykes' and ditches' scrub the oak's small lobed leaves, a hawthorn's thicket
+  polders: B('the Scheldt polders, Zeeland', {}, 'oak'),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
   // benches, mesquite (the acacia slot's umbrella, the same bipinnate crown) in the low washes, creosote (the broom
   // form's switches) between them, in open groves

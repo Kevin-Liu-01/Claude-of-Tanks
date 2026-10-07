@@ -1243,6 +1243,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
+    // the trees lane (2026-10-07, wave 205): Polders' woods off its cropped ground, its willow rows along the field boundaries
+    'src/world/polderTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
