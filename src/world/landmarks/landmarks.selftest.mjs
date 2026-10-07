@@ -35,6 +35,7 @@ import { MAP_IDS, getMapConfig } from '../maps/index.ts';
 import { createHeightField } from '../terrain.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import { RAIL_SPUR_BERTH_M } from '../railSpurs.ts';
+import { resolveRegionalArchitecture } from '../maps/regional/index.ts';
 
 /** The least distance from a packed shard record's parts to a polyline (0 when a part covers a path point). */
 function recordGapToPath(record, path) {
@@ -476,6 +477,38 @@ check('approaches', () => {
   const [hw, hl] = landmarkFootprint({ kind: 'granary', x: 0, z: 170, params: {} });
   void hw;
   assert.ok(Math.abs(path.z - (170 + hl + 2.5 + (196.5 - (170 + hl + 2.5)) / 2)) < 0.6, `the path centred between the apron and the road (${path.z})`);
+});
+
+// ---------------------------------------------------------------------------------------------------------- tints
+// (types.ts tints; compose.ts authoredTints): a placement's own tints retint the kit's surfaces where the map's kit
+// weathers the piece — the named bucket's colours only; the geometry, every other bucket and the records unchanged
+check('tints', () => {
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const compose = (tints) => {
+    const merged = [], obstacles = [];
+    const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
+      architecture: resolveRegionalArchitecture('hessian'), snowCap: false, seed: 2002, tier: 'desktop',
+      merge: (parts) => merged.push(parts), reserve() {}, publish() {}, addDestructible() {}, veto() {},
+      landmarks: [{ kind: 'church', x: 60, z: 40, yawDeg: -90, name: 'the church', params: { tradition: 'western' }, ...(tints ? { tints } : {}) }] };
+    const it = composeLandmarks(ctx); let st = it.next(); while (!st.done) st = it.next();
+    return { merged, obstacles };
+  };
+  const plain = compose(null), slate = compose({ roof: [0.62, 0.68, 0.78] });
+  const buckets = (m) => Object.fromEntries(REGIONAL_BUCKETS.map((b) => [b, m.merged.flatMap((parts) => parts[b] ?? [])]));
+  const a = buckets(plain), b = buckets(slate);
+  assert.ok(a.regionalRoof.length > 0, 'the church has a weathered roof');
+  for (const name of REGIONAL_BUCKETS) {
+    assert.equal(b[name].length, a[name].length, `${name}: the same parts`);
+    for (let i = 0; i < a[name].length; i++) {
+      assert.deepEqual([...b[name][i].attributes.position.array], [...a[name][i].attributes.position.array], `${name}: the same geometry`);
+      const ca = a[name][i].attributes.color?.array, cb = b[name][i].attributes.color?.array;
+      if (name === 'regionalRoof') assert.notDeepEqual([...cb], [...ca], 'the roof retinted');
+      else if (ca) assert.deepEqual([...cb], [...ca], `${name}: its colours unchanged`);
+    }
+  }
+  assert.deepEqual(slate.obstacles.map((o) => [o.min, o.max]), plain.obstacles.map((o) => [o.min, o.max]), 'the records unchanged');
+  assert.throws(() => compose({ roof: [0.6, 0.6] }), /tint roof/, 'a tint is three factors');
+  assert.throws(() => compose({ stone: [0.6, 0.6, 3] }), /tint stone/, 'within 0.2-1.6');
 });
 
 // ---------------------------------------------------------------------------------------------------------- composer
