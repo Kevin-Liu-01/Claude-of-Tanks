@@ -56,7 +56,8 @@ export function rainStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
     const u = u0 + w / 2 + rng() * Math.max(0, u1 - u0 - w);
     const top = y - 0.01, bottom = Math.max(floor, top - len);
     if (top - bottom < 0.3) continue;
-    const head = top - 0.08, taper = w * (0.25 + rng() * 0.3);
+    // (a wash fans out a little and fades rather than coming to a point: a sharp taper read as dark icicles)
+    const head = top - 0.08, taper = w * (0.7 + rng() * 0.35);
     // a strip narrowing as it runs down, its head darkest
     const pts: Array<[number, number]> = [[u - w / 2, top], [u - taper / 2, bottom], [u + taper / 2, bottom], [u + w / 2, top]];
     // counter-clockwise seen from outside: down the left edge, along the bottom, up the right
