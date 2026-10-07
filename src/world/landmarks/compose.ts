@@ -286,6 +286,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         const c = Math.cos(yaw), s = Math.sin(yaw);
         return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
       },
+      water: (lx: number, lz: number) => {
+        const c = Math.cos(yaw), s = Math.sin(yaw);
+        return (ctx.heightField as HeightField).getWaterDepthAt?.(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) ?? 0;
+      },
       snowCap: ctx.snowCap, mapId: ctx.mapId,
     });
     let parts = built.parts;
@@ -360,7 +364,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
       }
     }
-    ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
+    // its plan, on the minimap and among the plots the yards keep clear of: the rectangles of its solid where the kind
+    // names them (a harbour's mole and its slipway, not the basin its footprint spans: the round-3 harbour's footprint,
+    // published whole, took the yards of the bourg's lane end and re-rolled every yard after them), else its footprint
+    if (spec.solids) for (const [rx, rz, rw, rl] of solidRects) ctx.publish(rx, rz, rw * 2, rl * 2, yaw, placement.kind);
+    else ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
     // a paved piece's ground grows no grass up through it (gauntlet round 2's captures: tall grass through Delta's brick
     // court and the paths' setts): discs over its footprint, each covering its cell, the cells no wider than the piece is
     // narrow (a path's run a metre at a time, a court's in 3 m cells)
