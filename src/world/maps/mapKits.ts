@@ -77,6 +77,8 @@ interface DressingBridgeDeck {
   bedY: number;
   waterY: number;
   route: number;
+  /** map revival lane 2 (round 4): a bridge row's elevation (absent: the arched bridge); 'puente' — Aegis's Puente Nuevo */
+  profile?: 'puente';
 }
 
 interface LayoutDisc {
@@ -1756,6 +1758,7 @@ function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext,
 ): void {
+  if (deck.profile === 'puente') { addPuenteBridge(deck, heightField, rng, buckets, ctx); return; }
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
   const width = halfWidth * 2;
@@ -1876,6 +1879,170 @@ function addArchedStoneBridge(
       hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
   }
   // Preserve exact vault bands within the 64-part server wire limit.
+  for (let offset = 0; offset < parts.length; offset += 64) {
+    const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts.slice(offset, offset + 64));
+    ctx.obstacles?.push(record);
+    ctx.colliders?.push(cloneCollisionRecord(record));
+  }
+}
+
+/** Round 4 (map revival lane 2): the Puente Nuevo's collision bands over its arch heads (its arches are metres across). */
+const PUENTE_BAND_M = 0.5;
+
+/**
+ * Map revival lane 2, round 4 (2026-10-06; gauntlet wave 160: "a low, even five-arch viaduct" where the Puente Nuevo of
+ * Ronda is "one tall central arch over a deep slot"): a bridge row's `profile: 'puente'`. One wall of masonry across the
+ * gorge from its floor to the deck; a single stilted arch deep in the slot (30 m across, its crown at seven tenths of the
+ * depth, so the slot shows under it), the old prison chamber's small arch over that crown, and short arches high in the
+ * wall near both lips; the deck slab, the parapets and the wing walls as the arched bridge's. The collision record follows
+ * the openings: the body is cut into columns along the road at every opening's edge, and up each column the solid
+ * stretches band by band (the arch heads' bands PUENTE_BAND_M) are merged wherever a run of bands is the same. The
+ * dressing stream takes the arched bridge's draws exactly, so every later draw keeps its seat.
+ */
+function addPuenteBridge(
+  deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
+  ctx: FocusedDressingContext,
+): void {
+  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY } = deck;
+  const vx = -uz, vz = ux;
+  const width = halfWidth * 2;
+  const bodyHalf = halfLength + 1.0;
+  // the wall stands on the gorge's lowest ground under the deck (the rib it springs from is higher at the centre)
+  let floor = bedY;
+  for (let along = -halfLength; along <= halfLength; along += 2) {
+    for (const across of [-halfWidth, 0, halfWidth]) {
+      floor = Math.min(floor, heightField.getHeightAt(cx + ux * along + vx * across, cz + uz * along + vz * across));
+    }
+  }
+  const bottom = floor - BRIDGE_BODY_BELOW_BED_M;
+  const top = deckY - BRIDGE_BODY_TOP_UNDER_DECK_M;
+  const crownLine = top - BRIDGE_SPANDREL_FILL_M;
+  const depth = deckY - floor;
+  // the openings along the road (x) and up the wall (y): [centre, half-chord, sill (null: open to the floor), jamb top]
+  type Opening = { x: number; r: number; sill: number | null; jamb: number };
+  const mainR = 15, mainCrown = floor + depth * 0.7;
+  const openings: Opening[] = [{ x: 0, r: mainR, sill: null, jamb: mainCrown - mainR }];
+  const chamberSill = mainCrown + 2.5;
+  openings.push({ x: 0, r: 3.5, sill: chamberSill, jamb: chamberSill + 2 });
+  const upperSill = deckY - 12;
+  for (const side of [-1, 1]) for (const at of [64, 77]) openings.push({ x: side * at, r: 4, sill: upperSill, jamb: upperSill + 2.5 });
+  const headTop = (o: Opening): number => o.jamb + o.r;
+  // the elevation: the outline with the main arch cut from the floor, the others as holes
+  const profile = new THREE.Shape();
+  profile.moveTo(-bodyHalf, bottom);
+  profile.lineTo(-bodyHalf, top);
+  profile.lineTo(bodyHalf, top);
+  profile.lineTo(bodyHalf, bottom);
+  const main = openings[0];
+  profile.lineTo(main.x + main.r, bottom);
+  profile.lineTo(main.x + main.r, main.jamb);
+  profile.absarc(main.x, main.jamb, main.r, 0, Math.PI, false);
+  profile.lineTo(main.x - main.r, bottom);
+  profile.lineTo(-bodyHalf, bottom);
+  for (const o of openings.slice(1)) {
+    const hole = new THREE.Path();
+    hole.moveTo(o.x + o.r, o.sill!);
+    hole.lineTo(o.x + o.r, o.jamb);
+    hole.absarc(o.x, o.jamb, o.r, 0, Math.PI, false);
+    hole.lineTo(o.x - o.r, o.sill!);
+    hole.lineTo(o.x + o.r, o.sill!);
+    profile.holes.push(hole);
+  }
+  let draws = 0;
+  const jitter = <T extends THREE.BufferGeometry>(g: T): T => { draws++; return jitterUV(g, rng); };
+  const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 16 });
+  body.translate(0, 0, -width / 2);
+  scaleUV(body, 0.7, 0.7);
+  jitter(body);
+  alignWidth(body, ux, uz);
+  buckets.stone.push(body.translate(cx, 0, cz));
+  const slab = slabBox(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
+  jitter(slab);
+  buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
+  const parapetHalf = bodyHalf + 0.2;
+  for (const side of [-1, 1]) {
+    const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
+    const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, 0.7);
+    jitter(parapet);
+    buckets.stone.push(alignWidth(parapet, ux, uz)
+      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side));
+    for (const end of [-1, 1]) {
+      const post = box(0.8, BRIDGE_PARAPET_HEIGHT_M + 0.4, 0.8, 0.7);
+      jitter(post);
+      buckets.stone.push(alignWidth(post, ux, uz).translate(
+        cx + ux * end * parapetHalf + vx * inset * side, deckY + (BRIDGE_PARAPET_HEIGHT_M + 0.4) / 2,
+        cz + uz * end * parapetHalf + vz * inset * side));
+    }
+  }
+  for (const end of [-1, 1]) {
+    for (const side of [-1, 1]) {
+      const wingX = cx + ux * end * (bodyHalf + 2.2) + vx * (halfWidth + 1.4) * side;
+      const wingZ = cz + uz * end * (bodyHalf + 2.2) + vz * (halfWidth + 1.4) * side;
+      const foot = heightField.getHeightAt(wingX, wingZ) - 0.5;
+      const wingTop = deckY + 0.3;
+      const wing = box(5.2, wingTop - foot, 0.9, 0.7);
+      wing.rotateY(-end * side * 0.6);
+      jitter(wing);
+      buckets.stone.push(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
+    }
+  }
+  // the arched bridge's draws on the dressing stream (its cutwaters, one pair a pier), so every later draw keeps its seat
+  const wetSpan = Math.max(4, (halfLength - 3) * 2);
+  const arches = Math.max(1, Math.round(wetSpan / (halfLength > 60 ? 32 : 11)));
+  const arched = 1 + 1 + 2 * 3 + 2 * (arches - 1) + 4;
+  for (let k = draws; k < arched; k++) for (let j = 0; j < 4; j++) rng();
+  // the record: the deck part from the crown line up, then the wall's columns
+  const yaw = Math.atan2(ux, uz);
+  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: crownLine, y1: deckY }];
+  const solid = (from: number, to: number, y0: number, y1: number): void => {
+    if (to - from < 1e-3 || y1 - y0 < 1e-3) return;
+    const at = (from + to) / 2;
+    parts.push({ kind: 'obb', cx: cx + ux * at, cz: cz + uz * at, hw: halfWidth, hl: (to - from) / 2, yaw, y0, y1 });
+  };
+  // an opening's half-width at height y (0 outside it)
+  const halfOpen = (o: Opening, y: number): number => {
+    if (o.sill !== null && y < o.sill) return 0;
+    if (y <= o.jamb) return o.r;
+    const dy = y - o.jamb;
+    return dy >= o.r ? 0 : Math.sqrt(o.r * o.r - dy * dy);
+  };
+  const edges = [...new Set([-bodyHalf, bodyHalf, ...openings.flatMap((o) => [o.x - o.r, o.x + o.r])])].sort((a, b) => a - b);
+  // the heights a column changes at: every sill, jamb and head top, and the head bands between
+  const cuts = new Set<number>([bottom, crownLine]);
+  for (const o of openings) {
+    if (o.sill !== null) cuts.add(o.sill);
+    cuts.add(o.jamb);
+    const n = Math.max(1, Math.ceil(o.r / PUENTE_BAND_M));
+    for (let b = 1; b <= n; b++) cuts.add(Math.min(headTop(o), o.jamb + o.r * b / n));
+  }
+  const heights = [...cuts].filter((y) => y >= bottom && y <= crownLine).sort((a, b) => a - b);
+  for (let e = 0; e + 1 < edges.length; e++) {
+    const x0 = edges[e], x1 = edges[e + 1];
+    // per band, the solid stretches of the column [x0, x1] at the band's middle height
+    let run: { y0: number; spans: string; list: Array<[number, number]> } | null = null;
+    const flush = (y1: number): void => { if (run) for (const [a, b] of run.list) solid(a, b, run.y0, y1); };
+    for (let h = 0; h + 1 < heights.length; h++) {
+      const y0 = heights[h], y1 = heights[h + 1], ym = (y0 + y1) / 2;
+      let spans: Array<[number, number]> = [[x0, x1]];
+      for (const o of openings) {
+        const w = halfOpen(o, ym);
+        if (w <= 0) continue;
+        const a = o.x - w, b = o.x + w;
+        spans = spans.flatMap(([p, q]): Array<[number, number]> => (b <= p || a >= q ? [[p, q]] : [[p, Math.min(q, a)], [Math.max(p, b), q]]))
+          .filter(([p, q]) => q - p > 1e-3);
+      }
+      const key = spans.map(([p, q]) => `${p.toFixed(3)}:${q.toFixed(3)}`).join('|');
+      if (run && run.spans === key) continue;
+      flush(y0);
+      run = { y0, spans: key, list: spans };
+    }
+    flush(heights[heights.length - 1]);
+  }
+  const parapetInset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
+  for (const side of [-1, 1]) {
+    parts.push({ kind: 'obb', cx: cx + vx * parapetInset * side, cz: cz + vz * parapetInset * side,
+      hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
+  }
   for (let offset = 0; offset < parts.length; offset += 64) {
     const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts.slice(offset, offset + 64));
     ctx.obstacles?.push(record);

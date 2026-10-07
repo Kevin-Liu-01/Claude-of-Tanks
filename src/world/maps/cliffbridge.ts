@@ -151,7 +151,9 @@ export default {
     ],
     // The viaduct's abutments stand on solid rock 4 m back from each lip, so a hull leaving the road at an abutment
     // stands on the rim, not on the wall.
-    bridges: [{ x: 0, z: 0, yawDeg: 90, spanM: 200, widthM: 18, approachM: 45, route: 0 }],
+    // (round 4, gauntlet wave 160: "a low, even five-arch viaduct") the Puente Nuevo: one wall across the gorge, a single
+    // stilted arch deep in the slot under it (mapKits.ts addPuenteBridge)
+    bridges: [{ x: 0, z: 0, yawDeg: 90, spanM: 200, widthM: 18, approachM: 45, route: 0, profile: 'puente' }],
     // The two market squares: level paved aprons on the main road from each abutment into its town, where the
     // zone-control discs seat. (Round 2: 72 m across, so the paving meets the house fronts of the square walls.)
     hardstands: [
@@ -179,7 +181,8 @@ export default {
       // both ends (x = ±390).
       { kind: 'gorge', x: 0, z: 0, length: 540, width: 96, height: -16, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
       { kind: 'gorge', x: 0, z: 0, length: 660, width: 96, height: -12, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
-      { kind: 'gorge', x: 0, z: 0, length: 780, width: 96, height: -10, corridorScale: 1, settlementScale: 1, wall: [0.76, 0.86], meander: 12 },
+      // (round 4, wave 160: "a shallow ditch or green swale") the floor out to the lower wall's foot is the river's dry bed
+      { kind: 'gorge', x: 0, z: 0, length: 780, width: 96, height: -10, corridorScale: 1, settlementScale: 1, wall: [0.76, 0.86], meander: 12, bed: true },
       // The limestone rib the viaduct's piers stand on: it crosses the gorge floor under the deck, too steep to drive,
       // so the floor's west and east reaches meet only over the bridge (no hull parks on the bed under the deck).
       { kind: 'ridge', x: 0, z: 0, length: 140, width: 14, height: 6.5, yawDeg: 90, corridorScale: 1, settlementScale: 1 },
