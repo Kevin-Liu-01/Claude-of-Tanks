@@ -854,6 +854,21 @@ console.log('[26] a mobile teammate flanks while its partner pins the contact');
   ok(coordinated, 'mobility election sends one partner around the target without abandoning the anchor');
 }
 
+console.log('[27] infection invalidates cached targets and aggressors');
+for(const converted of ['target','shooter']) {
+ const bot=entity('hunter','m1a2','enemy',0,0);
+ const formerEnemy=entity('converted','t90m','player',0,70,Math.PI);
+ const ctl=controller(bot,[formerEnemy],[],912);
+ tick(ctl,bot,3);
+ ok(ctl.targetId===formerEnemy.id, `${converted}: acquire the opposing tank first`);
+ if(converted==='target')formerEnemy.team=bot.team;
+ else bot.team=formerEnemy.team;
+ let fired=false;
+ for(let i=0;i<120;i++){ctl.update(SIM_DT,3+i*SIM_DT);fired ||= bot.input.fire;}
+ ok(!fired, `${converted}: never fire at a newly allied cached target`);
+ ok(ctl.targetId===null, `${converted}: forget the friendly target`);
+}
+
 // round 67 (2026-09-24): the failure count is checked at the end too — checks [14]–[22] printed FAIL and still exited 0
 if (failures) {
   console.error(`ai.selftest: ${failures} failure(s)`);

@@ -1,0 +1,3 @@
+/* Custom placement wins over automatic lanes; untouched elements keep responsive defaults. */
+body [data-hud-hidden]{display:none!important}
+body [data-hud-positioned]{position:fixed!important;left:var(--hud-user-x)!important;top:var(--hud-user-y)!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important;translate:none!important;max-width:calc(100vw - 12px)!important;max-height:calc(100dvh - 12px)!important;animation:none!important}

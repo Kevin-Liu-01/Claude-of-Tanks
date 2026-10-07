@@ -13,13 +13,19 @@
 //   6. the lift (wave 34, Verdant's black wall): a tone darker than the floor is lifted to it in linear light, hue and
 //      contrast kept; a lighter print is left alone;
 //   7. the phone print (256 px) is the same skin: its band means and void share agree with the desktop print's;
-//   8. deterministic for a seed, sixteen rows a slice.
+//   8. deterministic for a seed, sixteen rows a slice;
+//   9. the chalk (b18; wave 121, Verdant's yard walls "coal or slate bricks rather than the chalk ... of the Belgorod
+//      region"): on a chalk map the print is the chalk's own and never toned — a pale warm skin about the boulders' chalk
+//      tone, seamless and joint-free, its flint nodules rare and small (never a dark line), its core the earth packed
+//      between the blocks (grey-brown loam, not a black void, with paler chalk chips in it); the phone print alike; and
+//      props.ts paints it for the map whose rock is chalk and leaves the map's stone tone to its houses.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V, liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { rockLithologyFor } from './rockDressing.ts';
 
 function drain(generator) {
   let slices = 0, step = generator.next();
@@ -186,4 +192,90 @@ for (let c = 0; c < 3; c++) {
 }
 assert.ok(Math.abs(phoneVoids / pn - voidShare) < 0.05, `the phone print keeps the core's voids (${(phoneVoids / pn).toFixed(2)} vs ${voidShare.toFixed(2)})`);
 
-console.log(`fieldStoneSurface self-test passed: a seamless stone skin (no void, darkest hundredth ${(darkest / median * 100).toFixed(0)} % of its median, longest dark run ${Math.max(darkAlong, darkUp)} texels), windows differing ${(spread * 100).toFixed(1)} % stone to stone and drifting ${(drift * 100).toFixed(1)} % across one, a dark core (voids ${(voidShare * 100).toFixed(0)} %), mean colour ${faceMean.map((v, c) => (v / stoneMean[c]).toFixed(3)).join('/')} of the stone print's, the lift, the phone print alike`);
+// 9. the chalk
+const chalkPrint = drain(paintFieldStoneBuffers(512, undefined, 'chalk'));
+{
+  const c = chalkPrint, cpx = c.px;
+  assert.equal(c.slices, 512 / 16, 'the chalk: sixteen rows a slice');
+  assert.deepEqual(drain(paintFieldStoneBuffers(512, undefined, 'chalk')).px, cpx, 'the chalk: deterministic');
+  assert.notDeepEqual(cpx, px, 'the chalk is its own print');
+  // seamless along the wall
+  const cSteps = new Float64Array(size);
+  for (let b = 0; b < size; b++) {
+    let sum = 0;
+    for (let t = 0; t < size; t++) sum += Math.abs(luma(cpx, t * size + ((b + 1) % size)) - luma(cpx, t * size + b));
+    cSteps[b] = sum / size;
+  }
+  const cInner = [...cSteps.slice(0, size - 1)].sort((a, b) => a - b);
+  assert.ok(cSteps[size - 1] <= cInner[Math.floor(cInner.length * 0.98)], `the chalk tiles along the wall (wrap step ${cSteps[size - 1].toFixed(2)})`);
+  // a pale warm skin about the boulders' chalk (rockDressing.ts: HSL 0.11, 0.16, 0.6 in sRGB)
+  const enc = (v) => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+  const cFace = meanLinear(cpx, size, F0, F1).map(enc);
+  const want = new THREE.Color().setHSL(0.11, 0.16, 0.6); // (three's setHSL in its working space: the HSL law itself)
+  const wantRgb = [want.r, want.g, want.b];
+  assert.equal(rockLithologyFor('verdant'), 'chalk', 'Verdant\'s rock is the chalk');
+  for (let ch = 0; ch < 3; ch++) {
+    assert.ok(Math.abs(cFace[ch] - wantRgb[ch]) < 0.05, `channel ${ch}: the chalk's skin ${cFace[ch].toFixed(3)} about the boulders' chalk ${wantRgb[ch].toFixed(3)}`);
+  }
+  assert.ok(cFace[0] > cFace[1] && cFace[1] > cFace[2] && (cFace[0] - cFace[2]) / cFace[0] < 0.2, 'a warm off-white, nearly grey');
+  // no joint, no line: its darkest texels a few small nodules
+  let cJoints = 0;
+  for (let y = faceRows[0]; y < faceRows[1]; y++) for (let x = 0; x < size; x++) cJoints += c.joint[y * size + x];
+  assert.equal(cJoints, 0, 'the chalk: no joint in the face band');
+  const cl = [];
+  for (let y = faceRows[0]; y < faceRows[1]; y++) for (let x = 0; x < size; x++) cl.push(luma(cpx, y * size + x));
+  const cMedian = Float64Array.from(cl).sort()[cl.length >> 1];
+  const nodules = cl.filter((l) => l < cMedian * 0.55).length / cl.length;
+  assert.ok(nodules > 0.0003 && nodules < 0.006, `the flint nodules rare (${(nodules * 100).toFixed(2)} % of the skin)`);
+  let run = 0, longest = 0;
+  for (const along of [true, false]) for (let a = along ? faceRows[0] : 0; a < (along ? faceRows[1] : size); a++) {
+    run = 0;
+    for (let t = along ? 0 : faceRows[0]; t < (along ? size : faceRows[1]); t++) {
+      run = luma(cpx, along ? a * size + t : t * size + a) < cMedian * 0.72 ? run + 1 : 0;
+      longest = Math.max(longest, run);
+    }
+  }
+  assert.ok(longest < 30, `and small: no dark run longer than a nodule (${longest} texels)`);
+  // each window its own block
+  const cMeans = [];
+  seed = 0x51ab;
+  for (let k = 0; k < 300; k++) {
+    const u0 = rand(), v0 = F0 + rand() * (F1 - F0 - 0.18);
+    let sum = 0, nn = 0;
+    for (let y = Math.floor(v0 * size); y < Math.floor((v0 + 0.18) * size); y += 2) for (let x = Math.floor(u0 * size); x < Math.floor((u0 + 0.36) * size); x += 2) { sum += luma(cpx, y * size + (x % size)); nn++; }
+    cMeans.push(sum / nn);
+  }
+  const cMean = cMeans.reduce((a, b) => a + b, 0) / cMeans.length;
+  const cSpread = Math.sqrt(cMeans.reduce((a, b) => a + (b - cMean) ** 2, 0) / cMeans.length) / cMean;
+  assert.ok(cSpread > 0.03, `the chalk's blocks differ in tone (${(cSpread * 100).toFixed(1)} %)`);
+  // the core: the earth packed between the blocks, chalk chips in it
+  let earth = 0, nn = 0, earthL = 0, chipL = 0, earthR = 0, earthB = 0;
+  for (let y = hRows[0]; y < hRows[1]; y++) for (let x = 0; x < size; x++) {
+    const i = y * size + x, l = luma(cpx, i);
+    nn++;
+    if (c.joint[i]) { earth++; earthL += l; earthR += cpx[i * 4]; earthB += cpx[i * 4 + 2]; } else chipL += l;
+  }
+  const chips = nn - earth;
+  earthL /= earth; chipL /= chips;
+  assert.ok(earth / nn > 0.6 && earth / nn < 0.9, `the core mostly the earth (${(earth / nn).toFixed(2)})`);
+  assert.ok(earthL > 60, `the earth a grey-brown loam, never a black void (${earthL.toFixed(1)})`);
+  assert.ok(earthR / earthB > 1.1, `a warm earth (${(earthR / earthB).toFixed(2)})`);
+  assert.ok(chipL > earthL * 1.2 && chipL < cMedian, `the chalk chips in it paler than it, darker than the blocks (${chipL.toFixed(1)})`);
+  // the phone print
+  const cPhone = drain(paintFieldStoneBuffers(256, undefined, 'chalk'));
+  const pFace = meanLinear(cPhone.px, 256, F0, F1).map(enc), pHeart = meanLinear(cPhone.px, 256, H0, H1), cHeart = meanLinear(cpx, size, H0, H1);
+  let pe = 0, pn = 0;
+  for (let y = Math.ceil(H0 * 256); y < Math.floor(H1 * 256); y++) for (let x = 0; x < 256; x++) { pe += cPhone.joint[y * 256 + x]; pn++; }
+  for (let ch = 0; ch < 3; ch++) {
+    assert.ok(Math.abs(pFace[ch] / cFace[ch] - 1) < 0.02, `channel ${ch}: the phone's chalk keeps the skin's mean`);
+    assert.ok(Math.abs(pHeart[ch] / cHeart[ch] - 1) < 0.08, `channel ${ch}: and the core's`);
+  }
+  assert.ok(Math.abs(pe / pn - earth / nn) < 0.05, 'and the core\'s earth');
+  // the wiring: props.ts paints the chalk for the chalk map, untoned
+  assert.match(source, /\? yield\* makeFieldStone\(aniso, T\.stone \|\| null, mobileProps \? 256 : 512, rockLithologyFor\(mapId\) === 'chalk' \? 'chalk' : 'fieldstone'\)/,
+    'the field walls\' print is the chalk\'s on the chalk map');
+  assert.match(source, /const \{ px, hgt \} = yield\* paintFieldStoneBuffers\(size, undefined, lithology\);\n\s*if \(lithology !== 'chalk'\) \{\n\s*applyTone\(px, tone\);\n\s*liftFieldStoneMean\(px, size\);/,
+    'and never toned by the map\'s stone tone (its houses\')');
+}
+
+console.log(`fieldStoneSurface self-test passed: a seamless stone skin (no void, darkest hundredth ${(darkest / median * 100).toFixed(0)} % of its median, longest dark run ${Math.max(darkAlong, darkUp)} texels), windows differing ${(spread * 100).toFixed(1)} % stone to stone and drifting ${(drift * 100).toFixed(1)} % across one, a dark core (voids ${(voidShare * 100).toFixed(0)} %), mean colour ${faceMean.map((v, c) => (v / stoneMean[c]).toFixed(3)).join('/')} of the stone print's, the lift, the phone print alike; the chalk's own print`);

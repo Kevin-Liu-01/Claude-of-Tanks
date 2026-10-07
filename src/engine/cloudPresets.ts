@@ -132,6 +132,12 @@ export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
   cloudLayer?: Partial<CloudLayerPreset> | null;
   /** Round 71: the map's authored cloudscape (its `clouds` block, carried on the preset by main.ts). */
   cloudscape?: CloudscapeConfig | null;
+  /**
+   * 2026-10-05 (the skies lane: one scene wind, world/sceneWind.ts): the map's clouds' drift — its surface wind veered with
+   * height — carried on the preset beside the cloudscape; it replaces both the sun-derived legacy drift and a cloudscape's
+   * own windDirDeg (the table keeps an authored one's wind as the surface wind it came from)
+   */
+  sceneWind?: { cloudDirDeg: number } | null;
 }
 
 /**
@@ -273,8 +279,9 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
   const tint = tintOf(sky.cloudTintHex, overcast);
   const shadowAmp = sky.cloudShadowAmp ?? (overcast ? 0.10 : 0.22);
   const shadow = !overcast && shadowAmp >= R.shadowMinAmp && sky.skyIntensity >= R.shadowMinSkyIntensity;
-  // the wind runs across the sun (the cirrus deck's quarter turn): shadows drift sideways through the frame
-  const windDirRad = (sky.sunAzimuthDeg + 90) * Math.PI / 180;
+  // the wind runs across the sun (the cirrus deck's quarter turn): shadows drift sideways through the frame — unless the
+  // map's scene wind is carried (2026-10-05, world/sceneWind.ts: the surface wind veered with height)
+  const windDirRad = (sky.sceneWind && Number.isFinite(sky.sceneWind.cloudDirDeg) ? sky.sceneWind.cloudDirDeg : sky.sunAzimuthDeg + 90) * Math.PI / 180;
   const windSpeed = storm ? 11 : overcast ? 4 : regime === 'broken' ? 8 : 6;
   return {
     regime, coverage, baseM, thicknessM, towers, stratiform, fieldMix, density, tint, windDirRad, windSpeed,
@@ -337,7 +344,10 @@ export function loadCloudscapeLayers(): Promise<void> {
 /** Derive the layer from a sky preset; the cloudscape refines it, an authored `cloudLayer` override wins field by field. */
 export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPreset {
   const legacy = deriveLegacy(sky);
-  const derived = sky.cloudscape && cloudscape ? cloudscape(legacy, sky, sky.cloudscape) : legacy;
+  // (2026-10-05: the scene wind's drift in place of the cloudscape's own — one wind per battlefield)
+  const scape = sky.cloudscape && sky.sceneWind && Number.isFinite(sky.sceneWind.cloudDirDeg)
+    ? { ...sky.cloudscape, windDirDeg: sky.sceneWind.cloudDirDeg } : sky.cloudscape;
+  const derived = scape && cloudscape ? cloudscape(legacy, sky, scape) : legacy;
   const authored = sky.cloudLayer;
   if (!authored) return derived;
   const merged = { ...derived };

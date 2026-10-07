@@ -330,6 +330,11 @@ function suppliedTurretLauncherLayout(sources: readonly InternalLayoutSourceId[]
 }
 
 const LAYOUTS = Object.freeze({
+  linebacker: { confidence: 'owner-directed', sources: ['usArmySystems'], crew: crew(
+    ['driver','hull','frontLeft'], ['gunner','turret','frontRight'], ['commander','turret','rearLeft'],
+  ), systems: systems({ engine:{placement:'front',form:'frontDieselPowerpack'}, transmission:{placement:'front',form:'integratedFinalDrive'},
+    ammoRack:{placement:'mixed',form:'ifvAmmoBoxes'}, feedSystem:{placement:'turret',form:'dualBeltFeed'},
+    missileRack:{placement:'turret',form:'sealedMissileCanisters'} }) },
   amx10p: { confidence: 'platform-inferred', sources: ['amx10pHandbook'], crew: crew(
     ['driver','hull','frontLeft'], ['gunner','turret','frontRight'], ['commander','turret','rearLeft'],
   ), systems: systems({ engine: { placement:'front', form:'frontDieselPowerpack' },
@@ -532,6 +537,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
+  linebacker: ['m6_linebacker'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],
   ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv90_x', 'type89_x', 'ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],

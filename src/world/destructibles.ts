@@ -31,6 +31,8 @@ export interface DestroyedPropEvent {
   kind: string;
   pos: number[];
   cause: 'ram' | 'shell' | 'blast';
+  /** A loose prop (a drum, a bucket, a bin) knocked about, not destroyed: the audio layer plays its knock (2026-10-06). */
+  loose?: boolean;
 }
 
 interface ShellImpactOptions {
@@ -78,7 +80,9 @@ export function emitBreakFx(
 // DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any
 // other bus consumer) subscribes to 'prop:destroyed' without the world layer
 // ever importing the bus. main.ts wires the sink at boot; every breakRecord
-// in props.ts reports through here regardless of trigger path.
+// in props.ts reports through here regardless of trigger path, and so do the
+// telegraph poles' topples ('utility_pole') and the loose dressing's knocks
+// (`loose: true`), which until 2026-10-06 made no sound at all.
 let eventSink: DestroyedEventSink | null = null;
 
 /** main.ts registers (ev) => bus.emit('prop:destroyed', ev). */

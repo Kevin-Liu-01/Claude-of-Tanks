@@ -7,6 +7,15 @@ function entity(id='a',team='alpha',specId='m1a2'){
  return {id,team,spec:{id:specId,dims:{heightM:2.8},armor:{turretPivot:[0,1.4,0]}},state:{pos:{x:0,y:0,z:0},yaw:0,turretYaw:0,visualPitch:0,visualRoll:0},combat:{destroyed:false,reload:{t:4},ammo:[7,8,9]}};
 }
 const tank=entity();
+assert.equal(auxiliaryState(tank).gunOn,true,'equipped vehicles start with automatic fire enabled');
+assert.equal(requestAuxiliary(tank,'roofGun',0),true);
+assert.equal(auxiliaryState(tank).gunOn,false,'the first toggle turns the default-on gun off');
+assert.equal(requestAuxiliary(tank,'roofGun',0),true);
+assert.equal(auxiliaryState(tank).gunOn,true,'the second toggle restores automatic fire');
+assert.equal(auxiliaryState(entity('unsupported','alpha','missing')).gunOn,false,'unequipped vehicles stay off');
+const aircraft=entity();aircraft.aerial={kind:'gunship'};
+assert.equal(stepRoofGun(aircraft,0,1/60,{entities:[],visible:()=>{throw Error('aircraft cannot target with tank equipment');},clear:()=>true}),false);
+
 assert.equal(requestAuxiliary(tank,'smoke',0),true);
 const screen=tank.combat.auxiliary.smoke;
 assert.equal(requestAuxiliary(tank,'smoke',.1),false);
@@ -27,7 +36,7 @@ tank.combat.destroyed=true;assert.equal(requestAuxiliary(tank,'roofGun',90),fals
 assert.equal(requestAuxiliary(entity('unsupported','alpha','missing'),'roofGun',0),false);
 // No shooting through unseen enemies, hard cover, or teammates. Main ammunition is independent.
 const shooter=entity(),target=entity('b','bravo');target.state.pos.z=100;
-requestAuxiliary(shooter,'roofGun',0);
+
 const context={entities:[shooter,target],visible:()=>false,clear:()=>true};
 for(let i=0;i<120;i++)assert.equal(stepRoofGun(shooter,i/60,1/60,context),false);
 context.visible=()=>true;context.clear=()=>false;
@@ -43,7 +52,7 @@ requestAuxiliary(shooter,'roofGun',20);assert.equal(stepRoofGun(shooter,21,1/60,
 // Independent geometry math: a tilted, scaled station emits from the same
 // hierarchy as the visible mesh, including turret yaw and pitch trunnion.
 const scaled=entity('scaled','alpha','cv90');scaled.state.visualPitch=.14;scaled.state.visualRoll=-.08;scaled.state.yaw=.2;scaled.state.turretYaw=-.12;
-requestAuxiliary(scaled,'roofGun',0);context.entities=[scaled,target];
+context.entities=[scaled,target];
 let didFire=false;for(let i=0;i<500&&!didFire;i++)didFire=stepRoofGun(scaled,i/60,1/60,context);
 assert.ok(didFire);const gun=AUXILIARY_INVENTORY.cv90.guns[0],state=auxiliaryState(scaled);
 const hull=new THREE.Group(),turret=new THREE.Group(),mount=new THREE.Group(),pitch=new THREE.Group();
@@ -79,7 +88,7 @@ for (const elevation of [-8, 8]) {
 // Visibility from the pivot alone must never authorize that shot.
 const edgeShooter=entity('edge');
 const edgeTarget=entity('edge-target','bravo');edgeTarget.state.pos.z=100;
-requestAuxiliary(edgeShooter,'roofGun',0);
+
 let pivotZ=null, blockedMuzzles=0;
 const edgeContext={entities:[edgeShooter,edgeTarget],visible:()=>true,clear:from=>{
   if(pivotZ===null)pivotZ=from.z;
@@ -106,7 +115,7 @@ for (const [id, name] of [
 ]) {
   const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');
   namedTarget.state.pos.z=100;
-  requestAuxiliary(namedShooter,'roofGun',0);
+
   const namedContext={entities:[namedShooter,namedTarget],visible:()=>true,clear:()=>true};
   let emitted=false;
   for(let i=0;i<600&&!emitted;i++)emitted=stepRoofGun(namedShooter,i/60,1/60,namedContext);

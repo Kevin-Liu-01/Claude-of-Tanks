@@ -38,7 +38,8 @@ import {
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import {
-  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, cloudShadeSamplerCount, createCloudShadeUniforms,
+  CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, createCloudShadeUniforms, physicalParsWithoutDfgLut,
+  programTextureUnits,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
@@ -1517,9 +1518,19 @@ export function createLighting(
           }
           if (cloudShade) {
             attachCloudShadeUniforms(shader, cloudShadeUniforms);
-            // three counts a program's units against the fragment limit (sixteen) wherever the sampler sits: a program
-            // already at it keeps no cloud shade rather than warn on every draw (the terrain sits at fifteen)
-            if (cloudShadeSamplerCount(shader, mat, cascadeCount, !!scene.environment) + 1 > CLOUD_SHADE_SAMPLER_BUDGET) {
+            // three numbers a program's units over both stages and warns past sixteen on every bind (cloudShadeMap.ts
+            // programTextureUnits; 2026-10-05: the DFG LUT counted — the terrain sat at seventeen): a program over the
+            // budget first trades three's DFG LUT for the analytic fit (one unit back), and keeps no cloud shade only
+            // when that is not enough
+            let units = programTextureUnits(shader, mat, cascadeCount, !!scene.environment, true);
+            if (units.total > CLOUD_SHADE_SAMPLER_BUDGET && units.dfg) {
+              const pars = physicalParsWithoutDfgLut(THREE.ShaderChunk.lights_physical_pars_fragment);
+              if (pars) {
+                shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_pars_fragment>', pars);
+                units = programTextureUnits(shader, mat, cascadeCount, !!scene.environment, true);
+              }
+            }
+            if (units.total > CLOUD_SHADE_SAMPLER_BUDGET || units.fragment > CLOUD_SHADE_SAMPLER_BUDGET) {
               shader.vertexShader = `#undef COT_CLOUD_SHADE\n${shader.vertexShader}`;
               shader.fragmentShader = `#undef COT_CLOUD_SHADE\n${shader.fragmentShader}`;
             }

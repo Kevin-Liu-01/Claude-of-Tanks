@@ -213,7 +213,8 @@ let shadeRuns = 0, shaded = 0;
 {
   const hazeAt = post.indexOf('texel.rgb = texel.rgb * trans + hazeCol * ( 1.0 - trans );');
   const blockAt = post.indexOf('        if ( uCloudShade > 0.003 ) {', hazeAt);
-  assert.ok(hazeAt > 0 && blockAt > hazeAt && blockAt - hazeAt < 4000, 'post.ts shades geometry by its cloud shade after the haze');
+  // (2026-10-05: 4000 → 4500 chars for the middle distances' knob call, post.ts hazeMiddle)
+  assert.ok(hazeAt > 0 && blockAt > hazeAt && blockAt - hazeAt < 4500, 'post.ts shades geometry by its cloud shade after the haze');
   const postBlock = parseGlsl(post.slice(blockAt, closingBrace(post, post.indexOf('{', blockAt)) + 1));
   const postHash = parseGlsl(functionBody(post, '    float vhash( vec2 p ) {', 'post.ts'));
   const postNoise = parseGlsl(functionBody(post, '    float vnoise( vec2 p ) {', 'post.ts'));
