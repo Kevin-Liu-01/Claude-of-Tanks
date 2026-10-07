@@ -130,7 +130,9 @@ export function historicalShorelineConfig(cfg) {
   } };
   if (cfg.id !== 'polders') return cfg;
   const { shoreDirt: _laterOptIn, ...splat } = cfg.splat;
-  return { ...cfg, terrain: { ...cfg.terrain, lakes: [
+  // (2026-10-07, the map-revival lane, Polders step 2: the lift bridge's crossing marker, a marsh station, and the two
+  // molenbergen, terrain mounds, are step 2's; the old shoreline had neither)
+  return { ...cfg, terrain: { ...cfg.terrain, marshes: [], mounds: [], lakes: [
     ...createLakeChannel([{ x: -218, z: -312, r: 22 }, { x: -168, z: -312, r: 22 }, { x: -168, z: -240, r: 22 }], 1.4),
     ...createLakeChannel([{ x: 80, z: -220, r: 26 }, { x: 80, z: -286, r: 26 }, { x: 164, z: -286, r: 26 }], -2.6),
     ...createLakeChannel([{ x: 136, z: -36, r: 24 }, { x: 136, z: 16, r: 24 }, { x: 204, z: 16, r: 24 }], -3.3),

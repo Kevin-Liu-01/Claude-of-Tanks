@@ -180,7 +180,9 @@ for (const config of maps) {
 
 assert.ok(polders.props.plan.includes('mill') && polders.terrain.lakes.length === 5
   && polders.terrain.lakes.every(lake => lake.radii.length === 16)
-  && !polders.terrain.marshes.length && polders.terrain.softLakes,
+  // (2026-10-06, the map-revival lane, Polders step 2: the one marsh station is the lift bridge's crossing, crossing:
+  // 'bridge' inside the oxbow — no marsh cell)
+  && polders.terrain.marshes.every((marsh) => marsh.crossing === 'bridge' && marsh.r <= 8) && polders.terrain.softLakes,
   'polders couple farmland to five separately leveled irregular basins, not chains of round cells');
 assert.ok(copperMesa.terrain.landforms.some((form) => form.kind === 'basin' && form.height <= -10),
   'mine has a deep authored ore cut');

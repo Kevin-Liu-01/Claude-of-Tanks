@@ -51,7 +51,12 @@ function inspectContour(lake) {
 function inspectRoadsAndPads(field, before, beforeWater) {
   let minimumRoadNormal = 1, maximumRoadHeightDelta = 0, minimumPadNormal = 1, maximumPadMoveRoadDelta = 0;
   const padFailures = [];
-  for (const road of field._layout.roads) for (const [x, z] of road) {
+  // (2026-10-07, the map-revival lane, step 2: the oxbow lane crosses the oxbow on the lift bridge's deck plane — its grade
+  // follows the water it bridges and the deck carries it over, so the route a deck carries is exempt; every other road
+  // keeps its canonical elevation, dry)
+  const bridged = new Set((field.bridgeDecks ?? []).map((deck) => deck.route));
+  for (const [route, road] of field._layout.roads.entries()) for (const [x, z] of road) {
+    if (bridged.has(route)) continue;
     minimumRoadNormal = Math.min(minimumRoadNormal, field.getNormalAt(x, z).y);
     maximumRoadHeightDelta = Math.max(maximumRoadHeightDelta, Math.abs(field.getHeightAt(x, z) - beforeWater.getHeightAt(x, z)));
     maximumPadMoveRoadDelta = Math.max(maximumPadMoveRoadDelta, Math.abs(field.getHeightAt(x, z) - before.getHeightAt(x, z)));
@@ -113,7 +118,9 @@ function inspectBanks(field) {
   for (const lake of polders.terrain.lakes) for (let i = 0; i < 64; i++) {
     inspectBankRay(field, lake, i * Math.PI / 32, pads, receipt);
   }
-  assert.ok(receipt.coreSamples >= 600 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200);
+  // (2026-10-07, the map-revival lane, step 2: the oxbow lane's 20 m road exclusion takes the oxbow's waist out of the
+  // core samples: 560 a seed, was over 600)
+  assert.ok(receipt.coreSamples >= 540 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200);
   return receipt;
 }
 

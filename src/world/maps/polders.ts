@@ -90,6 +90,9 @@ const RAW_ROADS: readonly (readonly (readonly [number, number])[])[] = [
   [[-126, -462], [-124, -288], [-100, -140], [-26, -12], [96, 112], [218, 280], [320, 458]],
   [[370, -452], [298, -274], [266, -102], [288, 72], [338, 260], [376, 456]],
   [[-304, 104], [-220, 170], [-82, 170], [72, 202], [216, 212], [338, 260]],
+  // (step 2) the oxbow lane: off the north lane on its dyke crest, straight north along x -158 over the oxbow's waist on
+  // the landmarks lane's lift bridge (the marsh station below), and on to the west road north of the oxbow
+  [[-158, 170], [-158, 330], [-186.5, 430]],
 ];
 
 /**
@@ -176,7 +179,17 @@ export default {
         radii: [0.90, 1.00, 0.60, 0.37, 0.34, 0.34, 0.40, 0.62,
           0.89, 0.72, 0.48, 0.39, 0.35, 0.40, 0.55, 0.73] },
     ],
-    marshes: [],
+    // (step 2) the lift bridge's crossing (terrain.ts round 61): the oxbow lane crosses the water on a level deck plane
+    // instead of grading its dry band through it, the oxbow's bed and water kept under the span; the landmarks lane's
+    // lift bridge (props.landmarks liftBridge) is the deck the ride stands on (no river kit builds one on Polders)
+    // (the deck 2.47 m over the water surface, y 2.90: a fixed plane over the road's own 2.83 there, so the road's
+    // endpoint completion never moves it; the landmarks lane's boards read the banks at 2.88–2.90)
+    marshes: [{ x: -158, z: 265.5, r: 6, dip: 0, level: 0, crossing: 'bridge', deckWidthM: 6, approachM: 30, deckClearM: 2.47 }],
+    // (step 2) the molenbergen: the mounds the landmarks lane's two brick tower mills stand on (props.landmarks), 1.8 m
+    // over the ground at their centres with level crests 18 m across and batters about 1 in 3 (terrain.ts mounds: raised
+    // after the water's banks, which grade any landform this near the oxbow and the drain back to the waterline); each
+    // foot comes down 1.4–2 m from its water, the oxbow mill's on the oxbow's east bank, the drain mill's on the drain's
+    mounds: [{ x: -99, z: 262, crestR: 9, baseR: 14.4, height: 1.8 }, { x: -171, z: -316, crestR: 9, baseR: 14.4, height: 1.8 }],
     landforms: [
       ...DYKES,
       { kind: 'knoll', x: -354, z: 74, rx: 66, rz: 84, height: 4.6 },
