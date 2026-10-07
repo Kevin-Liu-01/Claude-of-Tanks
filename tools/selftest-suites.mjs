@@ -1331,8 +1331,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
-    // the map-revival lane (Chimney Valley round 2): the rooms cut into the castle and gate rocks
-    'src/world/maps/rockRooms.selftest.mjs',
+    // the map-revival lane (Chimney Valley round 3): the castle rocks' skins, their rooms, dovecotes and passages
+    'src/world/castleRock.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)

@@ -160,7 +160,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // plough (the tuff soil is pale) and no walls (margins between the plots)
   // (Chimney Valley round 2, gauntlet wave 136: "a dead-flat grid of pastel field rectangles": the vines lead, the pale
   // stubble and cured grass give way)
-  tuff: [[12, 0.42], [5, 0.12], [17, 0.14], [1, 0.10], [0, 0.14], [2, 0.08], [13, 0.0]],
+  // (round 3, wave 206: "flat, hard-edged rectangles of solid color", "stark flat white rectangles": the ripe grain and
+  // the stubble, near white on the pale soil, a twentieth each; the vines and the cured grazing take the rest)
+  tuff: [[12, 0.5], [5, 0.05], [17, 0.22], [1, 0.05], [0, 0.14], [2, 0.04], [13, 0.0]],
 });
 
 /** Each region's field boundary. */
@@ -252,9 +254,11 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // blocks along it), apricot and poplar lines on some short boundaries, tracks between some rows
   // (round 2, gauntlet wave 136: "a broad flat basin of pastel field rectangles": the plots smaller, bent harder and
   // half as strong, so the valley reads as the tuff's ground with vineyards on it rather than a cropped plain)
+  // (round 3, wave 206: still "hard polygon seams between plots": a third weaker again and bent harder, so a plot's edge
+  // is a change of tone the soil carries, not a seam)
   goreme: {
-    strength: 0.45, heading: Math.PI / 2, blockU: 52, blockV: 30, maxSplit: 3, marginM: 1.4, trackShare: 0.25, hedgeShare: 0.15,
-    warpM: 24, region: 'tuff', salt: 101,
+    strength: 0.32, heading: Math.PI / 2, blockU: 52, blockV: 30, maxSplit: 3, marginM: 1.4, trackShare: 0.25, hedgeShare: 0.15,
+    warpM: 30, region: 'tuff', salt: 101,
   },
 });
 

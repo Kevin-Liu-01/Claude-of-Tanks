@@ -195,6 +195,60 @@ function rockFaceQuad(sink: PartSink, bucket: RegionalBucket, cx: number, cz: nu
   sink.polygon(bucket, [P(a0, y0), P(a1, y1), P(a0, y1)], { decor: true, uv: UV_WORLD, ...opts });
 }
 
+/** A cut room's shadow (linear): a dark warm grey, never black (Chimney Valley round 3, wave 206: "flat pure-black
+ * planes with zero interior depth"). */
+const CUT_DARK = rgb(0x2c2622);
+
+/**
+ * An opening cut in a rock mass (round 3): the room's shadow a matte dark sunk under the face, and round it the carved
+ * surround of the rock itself standing a hand proud — jambs, sill and head — its inner faces the opening's reveal, so
+ * the cut reads as cut into the rock and catches the light on its edges.
+ */
+function rockOpening(sink: PartSink, cx: number, cz: number, radius: (a: number, y: number) => readonly [number, number],
+  a0: number, a1: number, y0: number, y1: number, frame = 0.13, proud = 0.12): void {
+  rockFaceQuad(sink, 'regionalPlaster3', cx, cz, radius, a0, a1, y0, y1, 0.02, { colour: CUT_DARK });
+  const P = (a: number, y: number, lift: number): Vec3 => {
+    const [rx, rz] = radius(a, y);
+    return [cx + Math.cos(-a) * (rx + lift), y, cz + Math.sin(-a) * (rz + lift)];
+  };
+  const [mx, mz] = radius((a0 + a1) / 2, (y0 + y1) / 2);
+  const da = frame / Math.max(0.4, (mx + mz) / 2);
+  // the surround's faces: jambs, sill and head
+  rockFaceQuad(sink, ROCK, cx, cz, radius, a0 - da, a0, y0 - frame, y1 + frame, proud);
+  rockFaceQuad(sink, ROCK, cx, cz, radius, a1, a1 + da, y0 - frame, y1 + frame, proud);
+  rockFaceQuad(sink, ROCK, cx, cz, radius, a0, a1, y0 - frame, y0, proud);
+  rockFaceQuad(sink, ROCK, cx, cz, radius, a0, a1, y1, y1 + frame, proud);
+  // the reveal: the surround's inner faces back to the rock, each wound to face the opening
+  const o = { decor: true, uv: UV_WORLD };
+  const mid = P((a0 + a1) / 2, (y0 + y1) / 2, proud * 0.5);
+  for (const quad of [
+    [P(a0, y0, 0), P(a0, y1, 0), P(a0, y1, proud), P(a0, y0, proud)],
+    [P(a1, y0, 0), P(a1, y0, proud), P(a1, y1, proud), P(a1, y1, 0)],
+    [P(a0, y0, 0), P(a0, y0, proud), P(a1, y0, proud), P(a1, y0, 0)],
+    [P(a0, y1, 0), P(a1, y1, 0), P(a1, y1, proud), P(a0, y1, proud)],
+  ] as Vec3[][]) {
+    const n = cross([quad[1][0] - quad[0][0], quad[1][1] - quad[0][1], quad[1][2] - quad[0][2]],
+      [quad[2][0] - quad[0][0], quad[2][1] - quad[0][1], quad[2][2] - quad[0][2]]);
+    const c = quad.reduce((acc, q) => [acc[0] + q[0] / 4, acc[1] + q[1] / 4, acc[2] + q[2] / 4], [0, 0, 0]);
+    const toward = n[0] * (mid[0] - c[0]) + n[1] * (mid[1] - c[1]) + n[2] * (mid[2] - c[2]);
+    sink.polygon(ROCK, toward >= 0 ? quad : [...quad].reverse(), o);
+  }
+  // the surround's outer edges back to the rock, each wound to face away from the opening (no ray slips under the frame)
+  const b0 = a0 - da, b1 = a1 + da, z0 = y0 - frame, z1 = y1 + frame;
+  for (const quad of [
+    [P(b0, z0, 0), P(b0, z1, 0), P(b0, z1, proud), P(b0, z0, proud)],
+    [P(b1, z0, 0), P(b1, z0, proud), P(b1, z1, proud), P(b1, z1, 0)],
+    [P(b0, z0, 0), P(b0, z0, proud), P(b1, z0, proud), P(b1, z0, 0)],
+    [P(b0, z1, 0), P(b1, z1, 0), P(b1, z1, proud), P(b0, z1, proud)],
+  ] as Vec3[][]) {
+    const n = cross([quad[1][0] - quad[0][0], quad[1][1] - quad[0][1], quad[1][2] - quad[0][2]],
+      [quad[2][0] - quad[0][0], quad[2][1] - quad[0][1], quad[2][2] - quad[0][2]]);
+    const c = quad.reduce((acc, q) => [acc[0] + q[0] / 4, acc[1] + q[1] / 4, acc[2] + q[2] / 4], [0, 0, 0]);
+    const toward = n[0] * (mid[0] - c[0]) + n[1] * (mid[1] - c[1]) + n[2] * (mid[2] - c[2]);
+    sink.polygon(ROCK, toward < 0 ? quad : [...quad].reverse(), o);
+  }
+}
+
 /** The pigeon holes under a roof: a whitewashed band, rows of holes, the red-ochre zigzag painted under them. */
 function dovecote(sink: PartSink, face: Face, u: number, y: number, w: number, rows: number, look: () => number): void {
   const bandH = rows * 0.36 + 0.26;
@@ -385,7 +439,9 @@ function cappHouse(sink: PartSink, rng: () => number, look: () => number, W: num
 /** A rock mass's smooth weathering: lobes round the ring and a slow twist up it (a jitter for rockMass). */
 function rockJitter(look: () => number, amp: number, flutes = 0, fluteDepth = 0): (a: number, y: number) => number {
   const p1 = look() * 6.3, p2 = look() * 6.3, p3 = look() * 6.3;
-  return (a, y) => 1 + amp * (0.55 * Math.sin(3 * a + p1 + y * 0.18) + 0.3 * Math.sin(5 * a + p2 - y * 0.35) + 0.15 * Math.sin(8 * a + p3))
+  // (round 3, wave 206: "smooth dripped wax or soft-serve": the lobes hardly twist up the rock — a twist of a third of a
+  // radian per metre turned every chimney house into a swirl)
+  return (a, y) => 1 + amp * (0.55 * Math.sin(3 * a + p1 + y * 0.05) + 0.3 * Math.sin(5 * a + p2 - y * 0.09) + 0.15 * Math.sin(8 * a + p3))
     - (flutes ? fluteDepth * (0.5 + 0.5 * Math.cos(flutes * a + p3)) : 0);
 }
 
@@ -424,8 +480,8 @@ const house: RegionalBuilder = (ctx) => {
       return [rx * j, rz * j];
     };
     for (const a of [0, Math.PI]) {
-      if (look() < 0.75) rockFaceQuad(sink, 'dark', R.cx, zc, radius, a - 0.22, a + 0.22, 0.05, 1.8, 0.06);
-      rockFaceQuad(sink, 'dark', R.cx, zc, radius, a - 0.12, a + 0.12, H * 0.62, H * 0.62 + 0.55, 0.05);
+      if (look() < 0.75) rockOpening(sink, R.cx, zc, radius, a - 0.22, a + 0.22, 0.05, 1.8);
+      rockOpening(sink, R.cx, zc, radius, a - 0.12, a + 0.12, H * 0.62, H * 0.62 + 0.55);
     }
   }
   return sink.finish();
@@ -680,7 +736,7 @@ const chimneyHouse: RegionalBuilder = (ctx) => {
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
   const neck = Math.max(6.5, Math.min(9.5, ctx.bounds.maxY - 1.6 + rng() * 1.2));
-  const flutes = 5 + Math.floor(rng() * 6), fd = 0.03 + rng() * 0.05;
+  const flutes = 5 + Math.floor(rng() * 4), fd = 0.07 + rng() * 0.07;
   const jit = rockJitter(look, 0.035, flutes, fd);
   const prof = [[1.02, -0.4], [1.0, 0.5], [0.9, neck * 0.3], [0.74, neck * 0.55], [0.55, neck * 0.78], [0.36, neck * 0.95], [0.3, neck]] as const;
   // the cone's foot fills the plot's reach (an ellipse whose axes touch its sides)
@@ -713,19 +769,19 @@ const chimneyHouse: RegionalBuilder = (ctx) => {
       const curve = archCurve(0.6, 7);
       if (fh > 2.55) { tympanum(sink, TUFF, face, 0, 2.0, curve, 0.04); voussoirs(sink, TUFF, face, 0, 2.0, curve, 0.13, 0.06); }
     } else {
-      rockFaceQuad(sink, 'dark', 0, 0, radius, front - 0.28, front + 0.28, 0.0, 1.9, 0.05);
+      rockOpening(sink, 0, 0, radius, front - 0.28, front + 0.28, 0.0, 1.9);
     }
     // windows cut on two levels round the cone, the pigeon holes under the cap with their limed rims
     for (const [a, y] of [[front + 1.1, neck * 0.36], [front - 1.3, neck * 0.4], [front + 0.2, neck * 0.55], [front + 2.6, neck * 0.5]] as const) {
       if (look() < 0.25) continue;
-      rockFaceQuad(sink, 'dark', 0, 0, radius, a - 0.16, a + 0.16, y, y + 0.62, 0.05);
+      rockOpening(sink, 0, 0, radius, a - 0.16, a + 0.16, y, y + 0.62, 0.1, 0.1);
     }
     const ring = neck * 0.82;
     for (let k = 0; k < 7; k++) {
       if (look() < 0.3) continue;
       const a = front + (k - 3) * 0.45;
       rockFaceQuad(sink, LIME, 0, 0, radius, a - 0.13, a + 0.13, ring - 0.16, ring + 0.32, 0.03);
-      rockFaceQuad(sink, 'dark', 0, 0, radius, a - 0.07, a + 0.07, ring - 0.04, ring + 0.2, 0.05);
+      rockFaceQuad(sink, 'regionalPlaster3', 0, 0, radius, a - 0.07, a + 0.07, ring - 0.04, ring + 0.2, 0.05, { colour: CUT_DARK });
     }
   });
   return sink.finish();
@@ -756,8 +812,8 @@ const rockRuin: RegionalBuilder = (ctx) => {
     };
     for (const a of [-Math.PI / 2, -Math.PI / 2 + 0.7, 0, Math.PI, Math.PI / 2 + 0.4]) {
       if (look() < 0.3) continue;
-      if (look() < 0.5) rockFaceQuad(sink, 'dark', 0, oz, radius, a - 0.16, a + 0.16, 0.0, 1.75, 0.05);
-      else rockFaceQuad(sink, 'dark', 0, oz, radius, a - 0.11, a + 0.11, H * 0.45, H * 0.45 + 0.6, 0.05);
+      if (look() < 0.5) rockOpening(sink, 0, oz, radius, a - 0.16, a + 0.16, 0.0, 1.75);
+      else rockOpening(sink, 0, oz, radius, a - 0.11, a + 0.11, H * 0.45, H * 0.45 + 0.6);
     }
     // the collapsed front: broken wall stubs of squared tuff along the front edge, blocks fallen in front of them
     const fz = rz - 0.35;

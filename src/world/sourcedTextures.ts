@@ -315,12 +315,15 @@ const TERRAIN_PLAN = {
     R: { set: 'rock', tint: [0.92, 0.98, 1.08], lift: 0.05, roughMul: 1.2 }, M: null,
   },
   // the map-revival lane (2026-10-05): Chimney Valley (Göreme) — the ignimbrite tuff's cream and rose: the sand set
-  // part desaturated under a pale warm tint, the worn variant a step rosier, and the tuff walls the rock set's blocks
-  // lifted to the pale tuff
+  // part desaturated under a pale warm tint, the worn variant a step rosier
+  // (round 3, gauntlet wave 206: Rock058 lifted to the pale tuff read as "a swirling, marbled procedural texture", "a
+  // stretched chevron marble pattern" — its slate's bright veins went white. The tuff walls are the weathered render's
+  // photo instead: matte, pitted, its damage in soft horizontal bands like the ash beds, tinted to a warm cream at a
+  // mean of 182/164/142 sRGB and half its colour kept; the boulders wear it too, applySourcedRock)
   goreme: {
     G: { set: 'sand', desat: 0.4, tint: [0.92, 0.86, 0.78], roughMul: 1.24 },
     D: { set: 'sand', desat: 0.35, tint: [0.88, 0.76, 0.70], roughMul: 1.28 },
-    R: { set: 'rock', desat: 0.85, tint: [1.62, 1.5, 1.36], lift: 0.1, roughMul: 1.2 }, M: null,
+    R: { set: 'plaster', desat: 0.45, tint: [1.093, 0.914, 0.717], roughMul: 1.3 }, M: null,
   },
 } satisfies Record<string, TerrainPlan>;
 

@@ -697,7 +697,10 @@ export function makeTimberBathhouse(rng: Rng, buckets: GeometryBuckets, wallBuck
 }
 
 export function makeCaravanserai(_rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
-  const out = parts(), w = 21.0, d = 19.0, wallH = 5.2;
+  // (the map-revival lane, 2026-10-07: an authored plot sets the footprint — Chimney Valley's Seljuk han, its court
+  // open to the sky inside a 32 m front — as the warehouse's does; the base's drawn size is the default)
+  const plot = structureBuildContext(buckets)?.plot;
+  const out = parts(), w = plot?.w ?? 21.0, d = plot?.d ?? 19.0, wallH = 5.2;
   // Courtyard plan: four occupied perimeter wings, fortified gate towers.
   out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, -d / 2 + 2.0));
   out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, d / 2 - 2.0));

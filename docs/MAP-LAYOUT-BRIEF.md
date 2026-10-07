@@ -222,6 +222,12 @@ props code shaped every layout, and the next maps should start from them:
 - **Planned sites.** A planned site is skipped when its centre is within 7.5 m of a road or on a rail berth, and
   rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
   actually stands.
+- **Dense towns and long sight lines.** A town in the battlefield's middle stands across most of its long rays. Chimney
+  Valley's round 3 town, 119 buildings out to 130 m from its square with a lane of houses up to each castle rock, took
+  `sightLongShare` from 0.035 to 0.020, and the lanes' houses more than 60 m off a road were orphans (0.18). The same
+  town within 90 m of the square (50 sites, the caravanserai and the souk's court on the square's sides) keeps 0.032.
+  Build the density inward, along the roads and round the square; keep the blocks between the arms, the big courts and
+  the ground past 90 m open.
 - **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
 - **Footprints, not centres.** The rubble, boulder, field-work, wreck and well passes keep a solid's whole footprint
   4 m from every road centreline (`src/world/roadFootprint.ts`): the 3.5 m core plus the road-distance grid's margin.
