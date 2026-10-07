@@ -87,8 +87,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
   // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
   // the graves (the gateway's piers and cornice 0.35 m past the front fence)
-  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false, defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
-    graves: 10, tradition: 'orthodox', back: 'open' },
+  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false || p.gate === 'left' || p.gate === 'right', defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
+    graves: 10, tradition: 'orthodox', back: 'open', gate: 'front' },
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
   // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
   // and the box at the path's mouth

@@ -101,7 +101,7 @@ const VARIANTS = {
   belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }, { style: 'podhale', height: 15, side: 5.4 }],
   obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }, { height: 5.5, inscription: 'БОРЦАМ ЗА|ВЛАСТЬ|СОВЕТОВ|1918 – 1920' }],
   kolkhozArch: [{ wings: 6, sign: 'СОВХОЗ «ЦЕЛИННЫЙ»', span: 13.2 }, { sign: '' }],
-  churchyard: [{ holyGate: false, tradition: 'latin', fence: 'wallstone', graves: 8, back: 'fence' }, { graves: 0, path: 0 }],
+  churchyard: [{ holyGate: false, tradition: 'latin', fence: 'wallstone', graves: 8, back: 'fence' }, { graves: 0, path: 0 }, { tradition: 'latin', fence: 'wallstone', gate: 'right', width: 14, depth: 26 }],
   path: [{ surface: 'gravel', length: 30, width: 2.4 }, { surface: 'earth', length: 6 }],
   garden: [{ back: 'fence', width: 20, depth: 12 }],
   tennisCourt: [{ damage: 1, steps: -1 }],
