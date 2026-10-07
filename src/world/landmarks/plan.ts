@@ -115,9 +115,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (style 'podhale': the timber dzwonnica, its pent roof skirting the battered lower storey inside the side at its foot)
   belfry: { family: 'tower', defaults: { height: 26, side: 6, crown: 'onion', style: 'masonry' },
     footprint: (p) => [num(p, 'side') / 2 + 0.8, num(p, 'side') / 2 + 0.8] },
-  // (its broad step 0.75 m round the plinth, the door's flight 1.05 m out)
+  // (its broad step and the door's flight are dressing within a metre of the shaft: the footprint, and the ground it
+  // reserves, stay the shaft's own)
   campanile: { family: 'tower', defaults: { height: 30, side: 5 },
-    footprint: (p) => [num(p, 'side') / 2 + 0.8, num(p, 'side') / 2 + 1.1] },
+    footprint: (p) => [num(p, 'side') / 2 + 0.5, num(p, 'side') / 2 + 0.5] },
   waterTower: { family: 'tower', defaults: { height: 18, style: 'railway' },
     footprint: (p) => { const r = p.style === 'railway' ? 4.6 : p.style === 'rozhnovsky' ? 3.4 : 4.2; return [r, r]; } },
   fireLookout: { family: 'tower', defaults: { height: 22 },
