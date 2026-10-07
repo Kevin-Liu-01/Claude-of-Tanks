@@ -33,19 +33,19 @@ export const FACADE_BOUNCE_SIN2 = Object.freeze([0.125, 0.375, 0.625, 0.875]);
 /** The reach of each direction (m), cycled with the elevations. */
 export const FACADE_BOUNCE_REACH_M = Object.freeze([3.5, 6.0, 9.5, 14.0]);
 /** A hit counts within this multiple of the direction's reach and this far above the receiver's plane (m). */
-export const FACADE_BOUNCE_HIT_SLACK = 1.6;
-export const FACADE_BOUNCE_HIT_ABOVE_M = 0.3;
+const FACADE_BOUNCE_HIT_SLACK = 1.6;
+const FACADE_BOUNCE_HIT_ABOVE_M = 0.3;
 /** Receivers: in a cast shadow (CSM visibility under this) and facing up (n.y over this). */
 export const FACADE_BOUNCE_MAX_VIS = 0.5;
 export const FACADE_BOUNCE_MIN_NY = 0.6;
 /** The lift's cap per channel (the added share of the fill) and its range. */
 export const FACADE_BOUNCE_GAIN_MAX = 1.5;
 export const FACADE_BOUNCE_RANGE_M = 60;
-export const FACADE_BOUNCE_FADE_M = 15;
+const FACADE_BOUNCE_FADE_M = 15;
 /** Default strength (QA knob FACADE_BOUNCE). */
 export const FACADE_BOUNCE_STRENGTH = 1;
 
-export interface FacadeBounceUniforms { uFacadeBounce: { value: number } }
+interface FacadeBounceUniforms { uFacadeBounce: { value: number } }
 
 export function createFacadeBounceUniforms(): FacadeBounceUniforms {
   return { uFacadeBounce: { value: 0 } };
