@@ -2913,8 +2913,13 @@ export function createTankMaterials(
   // Type 99A "flat cyan/blue rectangular patches ... leftover UI or placeholder texture". The Pershing, Challenger
   // and Leopard families had each patched it locally (the 'glass calm-down' lineage). The shared lens now takes
   // that smoked tint fleet-wide: a dark faintly green body, a soft sheen at close range, and almost no sky mirror.
+  // Round 4 (2026-10-07; wave 215 on the Type 99A turret top: "the periscope or sight housings beside the machine gun
+  // show perfectly flat blue glass with no reflection", on its broad forward windows seen from above): at grazing
+  // incidence the round-3 pane still mirrored about twice as much sky as it showed paint (three's DFG terms at N.V
+  // 0.1-0.2: sky 0.058-0.068 against paint 0.029), one flat patch of sky blue. Matte smoked glass: rougher, almost
+  // dielectric, a quarter of the sky (sky:paint 0.43 at grazing, 0.12 face-on), the same smoked tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x343b34, roughness: 0.42, metalness: 0.3, envMapIntensity: 0.3,
+    color: 0x343b34, roughness: 0.58, metalness: 0.08, envMapIntensity: 0.16,
   })));
   // Gun tube: painted in the vehicle scheme like the hull — crews paint the
   // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
