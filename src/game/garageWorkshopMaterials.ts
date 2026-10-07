@@ -110,7 +110,8 @@ export function createGarageWorkshopMaterialPalette(
   const gearShadow = standard(0x0b0c0a, 0.99, 0);
   const trackSteel = standard(0x353634, 0.96, 0.08);
   // 2026-10-07 (tank-accessories round 3: blue mirror optics read as UI placeholders): the vehicle set's matte coated glass
-  const opticGlass = standard(0x343b34, 0.42, 0.3, { envMapIntensity: 0.3 });
+  // (round 4: the rougher, almost dielectric smoked pane of materials.ts)
+  const opticGlass = standard(0x343b34, 0.58, 0.08, { envMapIntensity: 0.16 });
   const canvas = standard(0x42452f, 0.98, 0);
   const wood = standard(0x6b543a, 0.9, 0);
 
