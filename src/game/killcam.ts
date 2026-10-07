@@ -1228,7 +1228,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   letter-spacing:.18em;color:#ff8a7d;border:1px solid rgba(240,91,80,.55);
   background:linear-gradient(135deg,#602719e8,#25130fed);box-shadow:inset 0 0 16px #ff9a3b18;}
 .cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:13px;color:#ffcc92;letter-spacing:.09em;}
-@media(max-width:420px){.cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:11px;letter-spacing:.04em}}
+body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:11px;letter-spacing:.04em}
 .cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
