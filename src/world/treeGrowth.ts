@@ -277,12 +277,15 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 5.4, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.6, habit: 'upright', tipSprays: 1,
     cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
   }),
+  // (the trees lane, 2026-10-06, the gauntlet's wave 178 on Verdant: "tall, spindly, birch-like trees with narrow,
+  // see-through lime-green crowns": a little broader, its sprays from lower on each limb and a fifth larger, so a crown in
+  // leaf holds its mass at the establishing range — its budget of sprays unchanged)
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.45,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.65,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 1.35, angleHigh: 0.5,
     droop: 0.40, upturn: 0.0, sidePerM: 2.4, sideAngle: 0.65, sideRatio: 0.7, sideDroop: 1.5, twigPerM: 0,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.2, spray: [0.62, 0.94], aspect: 0.68, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.12, spray: [0.74, 1.12], aspect: 0.7, habit: 'spray', tipSprays: 3,
     cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.92, 0.91, 0.88], barkTopTint: null,
   }),
   aspen: P({
@@ -677,6 +680,8 @@ export const GROWTH_FOREST_FORM = Object.freeze({
   height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
   scaffoldAngle: 0.72, gnarl: 0.5,
 });
+/** The trees lane (2026-10-06, wave 178): a birch's forest-grown form, a lighter hand than GROWTH_FOREST_FORM's. */
+export const GROWTH_FOREST_BIRCH = Object.freeze({ height: 1.08, crownR: 0.96, crownBase: 0.4 });
 const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
 /** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag, a grass-stage seedling or a clump keeps its own. */
 export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
@@ -684,14 +689,19 @@ export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthP
   const cached = forestProfiles.get(p);
   if (cached) return cached;
   const f = GROWTH_FOREST_FORM;
+  // (the trees lane, 2026-10-06, the gauntlet's wave 178 on Verdant's birch kolki: "tall, spindly ... narrow,
+  // see-through crowns" — a birch grown in a wood keeps more of its crown: a little taller, hardly narrower, its crown
+  // from two fifths of its height: GROWTH_FOREST_BIRCH)
+  const birch = p.family === 'birch', fb = GROWTH_FOREST_BIRCH;
   const forest = P({
     ...p,
-    height: p.height * f.height,
-    crownR: p.crownR * f.crownR,
+    height: p.height * (birch ? fb.height : f.height),
+    crownR: p.crownR * (birch ? fb.crownR : f.crownR),
     trunkR: p.trunkR * f.trunkR,
     forkAt: p.form === 'decurrent' ? [Math.min(f.forkMax, p.forkAt[0] * f.fork), Math.min(f.forkMax, p.forkAt[1] * f.fork)] : p.forkAt,
     scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, p.scaffoldAngle[1] * f.scaffoldAngle],
-    crownBase: p.form === 'excurrent' ? Math.max(p.crownBase, p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
+    crownBase: p.form === 'excurrent'
+      ? Math.max(p.crownBase, birch ? fb.crownBase : p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
     ...(p.gnarl !== undefined ? { gnarl: p.gnarl * f.gnarl } : {}),
   });
   forestProfiles.set(p, forest);

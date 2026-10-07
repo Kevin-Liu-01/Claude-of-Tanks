@@ -55,6 +55,12 @@ export interface TreeBiome {
    */
   snagValue?: readonly [number, number];
   /**
+   * The trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178 — Verdant's light version, its woods
+   * where they stand): a place's stands closed — their thin patches filled from a stream of their own, and no sapling
+   * standing out in a field's interior (vegetation.ts fillStands, placeSaplings).
+   */
+  denseStands?: true;
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
@@ -156,7 +162,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
-  verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
+  // (the trees lane, 2026-10-06, wave 178: "a loose grove of tall, spindly, birch-like trees ... standing apart in the
+  // black-earth plough" — the birch kolki and oak dubravy close: denseStands)
+  verdant: Object.freeze({ ...B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
+    denseStands: true as const }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
   badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
@@ -270,6 +279,10 @@ export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
 /** The trees lane: a place's snag value range (TreeBiome.snagValue), or none (the charred grey default). */
 export function treeBiomeSnagValue(mapId: string | null | undefined): readonly [number, number] | null {
   return (mapId ? TREE_BIOMES[mapId]?.snagValue : null) ?? null;
+}
+/** The trees lane: whether a place's stands are closed (TreeBiome.denseStands). */
+export function treeBiomeDenseStands(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.denseStands);
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */
