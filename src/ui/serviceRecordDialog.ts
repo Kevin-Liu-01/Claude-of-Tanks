@@ -10,7 +10,7 @@ import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type Reco
 const TAB_ICONS = { overview: 'battleRecord', medals: 'gold', achievements: 'stamp', history: 'clock' } as const;
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
-  const modal = createModal({ title:t('garage.record.heading'), eyebrow:t('garage.record.eyebrow'),
+  const modal = createModal({ title:t('garage.record.heading'),
     subtitle:t('garage.record.description'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
