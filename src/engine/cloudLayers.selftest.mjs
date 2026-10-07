@@ -11,6 +11,7 @@ import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
+import { bakeCloudLocalWeather, CLOUD_LOCAL_SIZE } from './cloudNoise.ts';
 
 await loadCloudscapeLayers();
 
@@ -78,6 +79,40 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
 // column at their own resolved coverage — a retune of either that reopens a hole fails here
 for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cover >= 1, `${id}: a closed deck admits every column (${stacks[id].lanes[0].cover.toFixed(3)})`);
 
+// ---- a broken deck covers the sky everywhere, broken by its cells (round 6, 2026-10-07: on the stratiform field's
+// sixteen-kilometre features alone the fjord's sky-w view was clear to the horizon — 7.5 % of 10 km windows over the
+// weather tile nearly clear). Over the real local weather bake at the lane's core: the shell's admission, its ramp and
+// the cells' gaps (cloudShaders.ts cl2Shell, the cells unstretched), the share of 10 km windows under a tenth covered —
+// at most a tenth of the deck's open share.
+{
+  const N = CLOUD_LOCAL_SIZE, tex = bakeCloudLocalWeather(N), px = 48000 / N;
+  const at = (i, c) => tex[i * 4 + c] / 255;
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (const [id, st] of Object.entries(stacks)) {
+    const lane = st.lanes[0];
+    if (!(lane.flat > 0.3 && lane.cover < 1)) continue;
+    const on = new Uint8Array(N * N);
+    const gapOn = lane.cells * Math.min(1, Math.max(0, (1 - lane.cover) * 8));
+    for (let i = 0; i < N * N; i++) {
+      const w = lane.channels[0] * at(i, 0) + lane.channels[1] * at(i, 1) + lane.channels[2] * at(i, 2) + lane.channels[3] * at(i, 3);
+      let d = Math.min(1, Math.max(0, (w - (1 - lane.cover)) / Math.max(lane.cover * lane.filter, 0.02)));
+      const k = 1 + (sm(0.15, 0.85, at(i, 3)) - 1) * lane.cells;
+      d *= 1 + (sm(0.03, 0.32, k) - 1) * gapOn;
+      on[i] = d > 0.05 ? 1 : 0;
+    }
+    const win = Math.round(10000 / px), step = Math.round(win / 4);
+    let clear = 0, n = 0;
+    for (let y = 0; y < N; y += step) for (let x = 0; x < N; x += step) {
+      let c = 0, t = 0;
+      for (let j = 0; j < win; j += 2) for (let i = 0; i < win; i += 2) { c += on[((y + j) % N) * N + ((x + i) % N)]; t++; }
+      if (c / t < 0.1) clear++;
+      n++;
+    }
+    // (a tenth of the open share at most: the fjord at its 0.57 cover had 7.5 % against a bound of 4.3)
+    assert.ok(clear / n <= 0.1 * (1 - lane.cover), `${id}: a broken deck leaves ${(100 * clear / n).toFixed(1)} % of 10 km windows nearly clear`);
+  }
+}
+
 // ---- the light under the cover (2026-10-07): the open sky whole, a closed deck's share its diffuse transmittance raised
 // by the ground's bounce — over snow the whiteout's even light, over dark ground about the transmittance alone
 {
@@ -92,6 +127,9 @@ for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cove
   const w = stacks.whiteout.lanes[0];
   assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE);
   assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.titan_gorge) > 10, 'a closed deck is optically thick');
+  // the law is the closing deck's (a broken deck keeps the old law and its grey bases over snow; a convective sky too)
+  assert.ok(stacks.whiteout.closing === 1 && stacks.titan_gorge.closing === 1, 'an overcast takes the light under the cover');
+  assert.ok(stacks.fjord.closing === 0 && stacks.verdant.closing === 0 && stacks.monsoon.closing === 0 && stacks.winter.closing < 0.2, 'a broken deck and a convective sky keep the old law');
 }
 
 // ---- the packing: vec4 lanes, an absent lane without density, the channel matrix column-major as GLSL reads M * v

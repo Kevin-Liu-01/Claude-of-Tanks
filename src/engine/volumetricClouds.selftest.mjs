@@ -659,10 +659,11 @@ assert.ok(shadersSource.includes('vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mi
   && shadersSource.includes('vec4 top = uLayerBase + thick * ( 0.1 + 0.9 * k );')
   && shadersSource.includes('vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );'), 'the trace\'s cell column is the shell\'s');
 assert.match(layerSource, /const reach = cloudGroundLight\(open, this\.deckTau, /, 'the ground under the clouds takes the light the cover passes');
+assert.match(layerSource, /lightTune\('CLOUD_DECK_GROUND', 1\)\)\) \* this\.deckClosing;/, 'only under a closing deck (a broken deck keeps its grey bases)');
 // round 5 (2026-10-07): a deck's mottle — the point's own shape and detail noise (cl2Media's, no second fetch) thicken or
 // thin the column over it — taken before the sun march runs cl2Media again; the base's ground return a multiple by flatness
 {
-  for (const term of ['cl2NoiseShape = shape;', 'cl2NoiseDetail = dn;', 'tauUp *= 1.0 + uDeckTune.z * mottle;', '* mix( 1.0, uDeckTune.w, flatK );']) {
+  for (const term of ['cl2NoiseShape = shape;', 'cl2NoiseDetail = dn;', 'tauUp *= 1.0 + uDeckTune.z * mottle;', '* mix( 1.0, uDeckTune.w, smoothstep( 0.6, 1.0, flatK ) );']) {
     assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
   }
   const at = (term) => { const i = shadersSource.indexOf(term); assert.ok(i >= 0, term); return i; };

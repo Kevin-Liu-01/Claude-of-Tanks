@@ -616,6 +616,8 @@ export class VolumetricCloudLayer {
   private bsmSlices = CLOUD_BSM_SLICES;
   /** The main lane's vertical optical depth (cloudDeckTau): the cover the ground's light passes. */
   private deckTau = 0;
+  /** How far the main lane is a closing deck (CloudStack.closing): the share of the ground's light law it takes. */
+  private deckClosing = 0;
   /** The band a cascade refreshes (reused: no allocation per frame). */
   private readonly bsmBandRect = new THREE.Vector4();
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
@@ -848,6 +850,7 @@ export class VolumetricCloudLayer {
         diffuse.set(stack.lanes[0]?.diffuse ?? 0, stack.lanes[1]?.diffuse ?? 0, stack.lanes[2]?.diffuse ?? 0, stack.lanes[3]?.diffuse ?? 0);
         this.bsmSlices = cloudBsmSlices(stack);
         this.deckTau = cloudDeckTau(stack);
+        this.deckClosing = stack.closing;
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
         // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
@@ -1052,17 +1055,18 @@ export class VolumetricCloudLayer {
       .addScaledVector(this.scratch.set(hz.r, hz.g, hz.b), 0.08)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
     // the ground under the clouds as the bases see it: its albedo under the light that reaches it. 2026-10-07 (overcast with
-    // structure): under the cover the sun and the sky alike come down through the clouds — the diffuse share of the main
-    // lane's column, raised by the light the ground and the clouds' bases pass back and forth (cloudGroundLight) — where
+    // structure): under a closing deck the sun and the sky alike come down through it — the diffuse share of the main
+    // lane's column, raised by the light the ground and the deck's base pass back and forth (cloudGroundLight) — where
     // the old law let the open sky's blue irradiance through a closed deck untouched (its base lit blue, the same
-    // everywhere). QA: CLOUD_DECK_GROUND 0 the old law (the sun by the open share, the sky whole).
+    // everywhere). A broken deck and a convective sky keep the old law (round 6: over Frosthollow's snow the new one lit
+    // a broken deck's bases white, round three's grey undone). QA: CLOUD_DECK_GROUND 0 the old law everywhere.
     const model = this.scene.userData.lightModel as { groundAlbedo?: readonly number[]; overcast?: number } | undefined;
     const albedo = model?.groundAlbedo ?? [0.18, 0.18, 0.18];
     const sunUp = Math.max(0, a.sunDir.y / Math.max(1e-6, a.sunDir.length()));
     const open = 1 - Math.min(1, Math.max(0, this.preset?.coverage ?? 0));
     const ground = t.uGroundRadiance.value as THREE.Vector3;
     const sr = t.uSunRadiance.value as THREE.Vector3;
-    const lawK = Math.min(1, Math.max(0, lightTune('CLOUD_DECK_GROUND', 1)));
+    const lawK = Math.min(1, Math.max(0, lightTune('CLOUD_DECK_GROUND', 1))) * this.deckClosing;
     const reach = cloudGroundLight(open, this.deckTau, 0.2126 * albedo[0] + 0.7152 * albedo[1] + 0.0722 * albedo[2]);
     const sunK = open + (reach - open) * lawK, skyK = 1 + (reach - 1) * lawK;
     ground.set(

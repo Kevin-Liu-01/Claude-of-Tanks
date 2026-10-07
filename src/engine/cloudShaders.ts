@@ -479,7 +479,7 @@ uniform float uDeckLobe;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
 // ray's depth by its slope), y the ground's return at the deck's base as the light the deck itself passes down (0 the
 // map's ambient scale over it), z the mottle (the medium's own noise at the point thickening or thinning that column),
-// w the ground's return on a deck's base (a multiple)
+// w the ground's return on a closing deck's base (a multiple; a broken deck's lane, flat to half, keeps its grey base)
 uniform vec4 uDeckTune;
 uniform float uDebug;
 // the scene's depth the last frame left (a layer ends at a surface past the dome)
@@ -760,7 +760,7 @@ void main() {
 				// (a deck's base takes half the ground's return: over snow it lit every cell's underside alike, one white; and the
 				// return is the light the deck passes down, uGroundRadiance's own law, not the map's ambient scale over it)
 				float flatK = dot( wgt, uLayerFlat );
-				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK ) * mix( 1.0, uDeckTune.w, flatK );
+				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK ) * mix( 1.0, uDeckTune.w, smoothstep( 0.6, 1.0, flatK ) );
 				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
 				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );

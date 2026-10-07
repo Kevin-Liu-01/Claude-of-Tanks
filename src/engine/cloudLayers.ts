@@ -76,6 +76,8 @@ export interface CloudStack {
   shapePeriodM: number;
   /** the deck cells' elongation along the wind (1 round) */
   cellStretch: number;
+  /** how far the main lane is a closing deck (0 a broken deck or a convective sky, 1 an overcast): the ground's light law */
+  closing: number;
 }
 
 export const CLOUD_LANES_MAX = 4;
@@ -128,17 +130,20 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // the channel mix: a deck reads the stratiform field (its breaks), the cumuliform one blended in by its convective
   // share; a convective sky reads the cumuliform field (or the streets) and takes the large-scale field only as the
   // envelope that gathers its cells (a front's towers in bands, never one blob the size of the field's features)
-  const cu = isDeck ? clamp(1 - preset.fieldMix, 0, 1) * (1 - deck) : 1;
-  const channels: [number, number, number, number] = [cu, 0, 1 - cu, 0];
-  const envelope = isDeck ? 0 : clamp(preset.fieldMix, 0, 1) * 0.85;
-  // a deck's cells always break its column a little (an overcast has lumps and thin lines: no flat card)
-  const cellsEff = isDeck ? Math.max(cells, 0.75) : cells;
   // 2026-10-07 (the gauntlet's wave 200: decks as "airbrushed pillows and lens-shaped slabs", "flat painted sheets with
   // scalloped, hard-edged cutout silhouettes"): a broken deck is stratocumulus — lumpy domed cells on a flat base, carved
   // by the shape and detail volumes, darker where they are thick, in bands along the wind with sky between — and only a
   // closing deck the dense flat sheet (its structure the cells' thickness under it)
   const mixK = (a: number, b: number, k: number): number => a + (b - a) * k;
   const closing = isDeck ? clamp((preset.coverage - 0.85) / 0.1, 0, 1) : 0;
+  // (round 6, 2026-10-07: on the stratiform field's sixteen-kilometre features alone, a broken deck left whole views
+  // clear — the fjord's sky-w, 7.5 % of 10 km windows nearly clear over the tile; with the cumuliform field's six-kilometre
+  // cells at least half its weather, none: the deck everywhere, broken by its cells, its sky between)
+  const cu = isDeck ? Math.max(clamp(1 - preset.fieldMix, 0, 1) * (1 - deck), 0.5 * (1 - closing)) : 1;
+  const channels: [number, number, number, number] = [cu, 0, 1 - cu, 0];
+  const envelope = isDeck ? 0 : clamp(preset.fieldMix, 0, 1) * 0.85;
+  // a deck's cells always break its column a little (an overcast has lumps and thin lines: no flat card)
+  const cellsEff = isDeck ? Math.max(cells, 0.75) : cells;
   // the density's ramp over the footprint: a cumulus' whole footprint (densest at the weather's peak, the shape carving
   // it inward from the edge), a deck's first third (dense to near its breaks)
   // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
@@ -237,6 +242,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     cellStretch: isDeck ? mixK(1.7, 1.2, closing) : 1,
     // (a shallow humilis takes finer billows: at the 3.2 km period its billows were as deep as the cloud and carved it away)
     shapePeriodM: deck > 0.5 ? 1400 : clamp(3200 * preset.thicknessM / 820, 1600, 3200),
+    closing,
   };
 }
 
