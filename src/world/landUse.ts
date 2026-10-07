@@ -203,8 +203,10 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // Polders (the Scheldt polders): long parcels at right angles to the dike roads (~76°), ditches on the long lines,
   // windbreak rows on some short ones; the land barely bends
   polders: {
-    strength: 1, heading: -0.25, blockU: 260, blockV: 64, maxSplit: 2, marginM: 1.5, trackShare: 0.85, hedgeShare: 0.3,
-    warpM: 8, region: 'polder', salt: 53,
+    // (the map-revival lane, step 3; gauntlet wave 205: "no raised dykes, straight ditches or long rectangular parcels")
+    // the parcels ruled straight (warp 8 m -> 0), up to three to a block, their grass margins wider (1.5 m)
+    strength: 1, heading: -0.25, blockU: 260, blockV: 64, maxSplit: 3, marginM: 2.0, trackShare: 0.85, hedgeShare: 0.3,
+    warpM: 0, region: 'polder', salt: 53,
   },
   // Reservoir (the Roer dams, the Eifel upland): hay meadows and pasture in small hedged fields (the Monschau hedges)
   reservoir: {

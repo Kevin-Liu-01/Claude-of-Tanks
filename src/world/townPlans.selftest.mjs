@@ -115,7 +115,9 @@ const PR_HEAD = {
   // (the map-revival lane, 2026-10-06: Tidegate Polders' farm court replays PR #9's head 5d2461283 while its dykes and
   // water are rebuilt; its kit's yard sheds (the polder kit's woodshed) follow their yards, and two moved with the
   // ground round them)
-  polders: { carriageway: 0, yardSheds: 2, structures: [
+  // (2026-10-07, step 3a on the landmarks lane's round 2) the oxbow's lift bridge and the two tower mills on their terps are
+  // set pieces (props.landmarks), not the town plan's: three more buildings over 40 m² than the PR head's
+  polders: { carriageway: 0, yardSheds: 2, setPieces: 3, structures: [
     [-167.45, -83, 6.22, 6.22], [-141.65, -77.86, 11.89, 16.05], [-145.87, -49.37, 4.37, 6.89], [-120.02, -69.5, 17.52, 8.16],
     [-119.99, -49.09, 18.48, 7.55], [-95.6, -74.31, 6.54, 8.53], [-67.19, -46.35, 3.94, 5.12], [-93.73, 13, 10.12, 15.08],
     [-39.16, 70.76, 10.81, 16.12], [15.33, -6.79, 13.65, 12.41], [2.25, -45.54, 14.22, 12.42], [26.77, -34.38, 8.89, 8.03],
@@ -135,7 +137,7 @@ for (const mapId of Object.keys(TOWN_PLANS)) {
 }
 const footprint = (o) => ({ cx: (o.b[0] + o.b[3]) / 2, cz: (o.b[2] + o.b[5]) / 2, w: o.b[3] - o.b[0], d: o.b[5] - o.b[2] });
 const summary = [];
-for (const [mapId, { carriageway, structures, yardSheds = 0 }] of Object.entries(PR_HEAD)) {
+for (const [mapId, { carriageway, structures, yardSheds = 0, setPieces = 0 }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
   if (!TOWN_PLANS[mapId]) {
     assert.ok(config.props.roadBuildingClearance && !config.props.townPlan, `${mapId}: a generated plan with the road clearance`);
@@ -147,8 +149,8 @@ for (const [mapId, { carriageway, structures, yardSheds = 0 }] of Object.entries
   // every larger structure is counted exactly)
   const big = (list) => list.filter((f) => (Array.isArray(f) ? f[2] * f[3] : f.w * f.d) >= 40).length;
   if (yardSheds > 0) {
-    assert.equal(big(now), big(structures), `${mapId}: as many buildings as the PR head (${big(now)})`);
-    assert.ok(Math.abs(now.length - structures.length) <= yardSheds, `${mapId}: the yard sheds within ${yardSheds} of the PR head's (${now.length - big(now)})`);
+    assert.equal(big(now), big(structures) + setPieces, `${mapId}: as many buildings as the PR head (${big(now)}${setPieces ? `, ${setPieces} set pieces` : ''})`);
+    assert.ok(Math.abs(now.length - setPieces - structures.length) <= yardSheds, `${mapId}: the yard sheds within ${yardSheds} of the PR head's (${now.length - big(now)})`);
   } else {
     assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);
   }

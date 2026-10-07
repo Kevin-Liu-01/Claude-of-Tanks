@@ -140,7 +140,11 @@ for (const config of maps) {
     assert.ok(config.props.destructibleBuildings.includes(beat.structure), `${label}: landmark family is loaded`);
     assert.notEqual(hf.getGroundType(beat.x, beat.z), 'soft', `${label}/${beat.id}: dry strongpoint foundation`);
     assert.ok(hf.getNormalAt(beat.x, beat.z).y >= 0.86, `${label}/${beat.id}: stable strongpoint grade`);
-    assert.ok(beat.outcrop && (beat.redoubt || beat.role === 'scout'), `${label}: layered cover is intentional`);
+    // (2026-10-07, the map-revival lane; the coordinator after gauntlet wave 205: no boulders on the polder's marine clay) a
+    // map that lays no stone at all (rocks 0, outcrops 0) layers its strongpoints' cover with a redoubt or a wreck instead
+    const stoneless = config.props.rocks === 0 && config.props.outcrops === 0;
+    assert.ok((beat.outcrop || (stoneless && (beat.redoubt || beat.wreck))) && (beat.redoubt || beat.role === 'scout'),
+      `${label}: layered cover is intentional`);
   }
   for (let a = 0; a < beats.length; a++) for (let b = a + 1; b < beats.length; b++) {
     assert.ok(Math.hypot(beats[a].x - beats[b].x, beats[a].z - beats[b].z) >= 180,

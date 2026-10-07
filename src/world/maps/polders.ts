@@ -215,14 +215,25 @@ export default {
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
   splat: { sourcedPalette: 'verdant',
-    fieldPatch: 1.25, seaLake: true, seaFoam: 0.05, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
-    marshGloss: 0.82, iceSky: [0.30, 0.42, 0.43], midRelief: 0.64,
+    fieldPatch: 1.25, seaLake: true, seaFoam: 0.02, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
+    // (step 3, gauntlet wave 205: "turquoise kidney-shaped ponds", "thin neon-blue ditch lines") the polder's water dark
+    // and still under a grey North Sea sky (was [0.30, 0.42, 0.43]), the water tone less saturated and darker, no foam;
+    // (wave 205: "near-black soil") Zeeland's sea clay grey-brown, lighter than the black earth, its plough a mid brown
+    mudTone: (h: number, s: number, l: number) => [h, Math.min(1, s * 0.55), Math.min(1, l * 0.72)],
+    soilTint: [1.2, 1.1, 0.98], ploughLift: 1.2,
+    marshGloss: 0.82, iceSky: [0.21, 0.25, 0.25], midRelief: 0.64,
     tintA: [0.84, 1.01, 0.66], tintB: [0.60, 0.76, 0.51], tintC: [1.08, 1.08, 0.78], roadTint: [0.76, 0.72, 0.61],
   },
   vegetation: {
     species: ['poplar', 'willow', 'oak'], clusterMix: [['willow', 0.48], ['poplar', 0.36], ['oak', 0.16]],
     loneMix: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.10]], rimMix: [['poplar', 0.54], ['willow', 0.34], ['oak', 0.12]],
-    clusterCount: 42, loneCount: 64, rimCount: 72, grassDensity: 1.02, bushCount: 0.9, bushSpecies: 'willow',
+    // (step 3, gauntlet wave 205: "free-standing trees scattered at random through the ploughed field") Zeeland's trees
+    // stand in willow rows along the ditches, poplar windbreaks and farmyard groups: the woodlots off the cropped ground
+    // (the trees lane's woodsOffArable) and fewer of them (42), the loose field trees mostly gone (64); willow rows on the
+    // parcels' long boundaries (the hedge-tree hook's boundary mode, every 12 m, the long sides only)
+    clusterCount: 32, loneCount: 16, rimCount: 72, grassDensity: 1.02, bushCount: 0.9, bushSpecies: 'willow',
+    woodsOffArable: true,
+    hedgeTrees: { mix: [['willow', 0.8], ['poplar', 0.2]], spacingM: 12, gateM: 5, along: 'boundary', offsetM: [1.8, 3.4], minLineM: 80 },
     belts: [
       { x0: -192, z0: -182, x1: -188, z1: 208, gap: 17, jitter: 1.6, species: 'poplar' },
       { x0: 190, z0: -328, x1: 208, z1: -98, gap: 18, jitter: 1.2, species: 'willow' },
@@ -286,18 +297,22 @@ export default {
     destructibleBuildings: ['fieldhut', 'fishershack', 'transformershed', 'huntingblind'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
-      { id: 'tidegate-pump-yard', role: 'brawl', x: 250, z: 0, yawDeg: 75, structure: 'transformershed', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
-      { id: 'western-windbreak-hide', role: 'scout', x: -334, z: 22, yawDeg: 90, structure: 'huntingblind', outcrop: { count: 4, radius: 8 } },
-      { id: 'causeway-farm-store', role: 'support', x: -48, z: 228, yawDeg: 175, structure: 'fieldhut', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
+      { id: 'tidegate-pump-yard', role: 'brawl', x: 250, z: 0, yawDeg: 75, structure: 'transformershed', redoubt: true, outcrop: false, wreck: true },
+      // (step 3a: no stone on the polder clay) the hide's second cover layer a wreck in the windbreak, not an outcrop
+      { id: 'western-windbreak-hide', role: 'scout', x: -334, z: 22, yawDeg: 90, structure: 'huntingblind', outcrop: false, wreck: true },
+      { id: 'causeway-farm-store', role: 'support', x: -48, z: 228, yawDeg: 175, structure: 'fieldhut', redoubt: true, outcrop: false, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.45,
     wallRuns: [[-174, -40, -174, 16, 2], [-168, 90, -108, 90, 2], [-54, -88, 10, -88, 3], [246, 58, 246, 126, 2], [-84, 250, -14, 250, 3], [-76, 198, -76, 264, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
-    haystacks: 18, rocks: 112, outcrops: 12, craters: 48, rubblePiles: 10, cropFields: 10, sandbagLines: 14, hedgehogs: 8,
+    // (step 3, gauntlet wave 205: "potato-shaped boulders with decal lichen" on marine clay) no stone on the polder: no
+    // scattered rocks, no outcrops (and none round the tactical beats)
+    haystacks: 18, rocks: 0, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 10, sandbagLines: 14, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 'marder1a3', 'strv122', 'leclerc', 'cv90'] },
-    // (no yardFence: the white picket is gone, waves 183–184; the free-standing garden runs take the props layer's default)
-    inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank' },
+    // (step 3) the free-standing garden runs in planks, the polder kit's own yard fence: the white picket is gone (waves
+    // 183–184; the props layer's default is still the picket in this tree)
+    inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the drainage machinery of a
   // Zeeland polder. A steel windmotor stands on the bank of each low basin it lifts water out of, every rotor turned
