@@ -61,7 +61,7 @@ import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
-  sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
+  canRack, canRackStyleFor, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
 import { block, moldedBox, place, roundBar, withBoxUV } from './accessoryPrimitives.ts';
@@ -105,6 +105,11 @@ interface DecorPartMeta {
   continuousCarrier?: boolean;
   /** A camouflage net the placement lays on the surface under it (round 4: conformDrape). */
   drape?: boolean;
+  /**
+   * A load stacked on another (round 4 follow-up: stackLoad): its carrier's placed footprint and lid height in the
+   * frame, [minX, maxX, minZ, maxZ, topY], so an audit can measure the stacked piece against what carries it.
+   */
+  stackedOn?: [number, number, number, number, number];
 }
 
 interface DecorPart {
@@ -1534,7 +1539,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
       ? v as FleetEquipmentVariant : 'beer-cooler-blue';
     const parts: DecorPartList = [];
-    buildCargoVariant(variant, accessoryPainter(parts, rng, detail, nation), equipmentPaletteForNation(nation), flat);
+    // round 4 follow-up: the can pairs ride their nation's rack (canRackStyleFor)
+    buildCargoVariant(variant, accessoryPainter(parts, rng, detail, nation), equipmentPaletteForNation(nation), flat,
+      canRackStyleFor(nation));
     const safeScale = THREE.MathUtils.clamp(Number(scale) || 1, 0.72, 1);
     if (safeScale !== 1) {
       for (const part of parts) part.geo.scale(safeScale, safeScale, safeScale);
@@ -1739,7 +1746,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- jerrycan rack (fuel tan / water green), pressed 20 L cans ----------------------
-  jerry({ rng, n = 2, water = true, detail = 1 }) {
+  jerry({ rng, n = 2, water = true, nation = '', detail = 1 }) {
     const parts: DecorPartList = [];
     const painter = accessoryPainter(parts, rng, detail);
     const pairedCount = Math.max(2, Math.ceil(n / 2) * 2);
@@ -1751,20 +1758,11 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       jerrycan(painter, x, tint, 1, i === 0 ? -1 : i === pairedCount - 1 ? 1 : 0);
     }
     // Round 4 (2026-10-07, wave 217 on the T-72B3M's can rack: "flat pure-black square bars with no brackets, bolts or
-    // shading ... a thin strut ending in a loose plate"): a tray in shaded steel with four angle-stock corner posts
-    // standing on it, a top frame closed round the cans against their faces, and bolt heads at the tray's feet. The
-    // loose diagonal braces and the band floating in front of the cans are gone: the tie-downs (secureLoadParts) wrap
-    // the cans themselves.
-    const W = pairedCount * pitch + 0.05, D = 0.39, frameY = 0.3;
-    const steelPart = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 1.15) });
-    steelPart(place(moldedBox(W, 0.022, D, 0, 0, 0.004), 0, 0.011, 0));                             // tray
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      steelPart(place(block(0.025, frameY, 0.005), sx * (W / 2 - 0.0125), 0.022 + frameY / 2, sz * (D / 2 - 0.0025)));
-      steelPart(place(block(0.005, frameY, 0.025), sx * (W / 2 - 0.0025), 0.022 + frameY / 2, sz * (D / 2 - 0.0125)));
-      if (detail) steelPart(place(block(0.016, 0.008, 0.016), sx * (W / 2 - 0.03), 0.026, sz * (D / 2 - 0.03)));  // tray bolt
-    }
-    for (const sz of [-1, 1]) steelPart(place(block(W, 0.025, 0.005), 0, 0.022 + frameY, sz * (0.1725 + 0.003)));  // top frame
-    for (const sx of [-1, 1]) steelPart(place(block(0.005, 0.025, D), sx * (W / 2 - 0.0025), 0.022 + frameY, 0));
+    // shading ... a thin strut ending in a loose plate"): the rack is shaded steel, closed round the cans, and the
+    // tie-downs (secureLoadParts) wrap the cans themselves. Round 4 follow-up (wave 240: "the same generic ... jerrycan
+    // rack on several nations"): the rack is the nation's own (accessoryKits canRack: a welded Soviet frame, a NATO
+    // holder with a latch bar, Israeli end plates and retaining bars, a Chinese frame with clamp bars).
+    canRack(painter, canRackStyleFor(nation), pairedCount * pitch + 0.05, 0.39, 0.44, pairedCount);
     return parts;
   },
 
@@ -2027,8 +2025,9 @@ function appendDefaultCasemateManifest(
   manifest.push({ kit: 'aamg', p: era === 'ww2' ? 0.35 : 0.7, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.5 }, slot: ['turretRoof', { rear: true, side: -1 }] });
   manifest.push({ kit: 'packs', p: 0.8, v: { n: 2 }, slot: ['rearDeck', { spread: 0.4 }] });
   manifest.push({ kit: 'camonet', p: 0.5, v: { v: 'roll', len: 1.1 }, slot: ['rearDeck', {}] });
-  // Fixed-bore vehicles keep the rear-deck travel lock outside the gun sweep.
-  manifest.push({ kit: 'travelLock', p: 0.6, v: {}, slot: ['rearDeck', { center: true, back: true, small: true }] });
+  // Fixed-bore vehicles keep the rear-deck travel lock outside the gun sweep. Round 4 follow-up (2026-10-07): it is the
+  // gun's fitting and seats before the loose cargo (early), which on the Strv 103A had begun to take its station.
+  manifest.push({ kit: 'travelLock', p: 0.6, v: {}, slot: ['rearDeck', { center: true, back: true, small: true }], early: true });
 }
 
 function appendDefaultTurretManifest(
@@ -2325,12 +2324,13 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
-  // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): the bustle basket and
-  // its packs seat early (DecorManifestRow.early). The fleet cargo rows go first in the manifest, and their racked
-  // loads spent the triangle budget before the basket's turn, so the turret carried two loose pieces and no basket.
+  // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): bdbe29f69 seated the
+  // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
+  // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
+  // packing, six of the Leclerc's seven loads now ride its turret (the bustle, the roof and the side ledges).
   leclerc: () => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}], early: true },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }], early: true },
+    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
@@ -2341,8 +2341,8 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   leclerc_xlr: (s) => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}], early: true },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }], early: true },
+    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
@@ -3042,19 +3042,26 @@ function seatProbe(
  * and a diagonal bracket on each side from a plate foot down to the rail end. It is painted steel and rides the
  * steel draw. `plateZ` is the local z of the rear plate face; the piece occupies `bb` on its foot (y = 0).
  */
-function rearRackParts(bb: THREE.Box3, plateZ: number, detail: 0 | 1, brace = rearRackBrace(bb),
-  footZ: readonly [number, number] = [plateZ, plateZ]): DecorPart[] {
+function rearRackParts(bb: THREE.Box3, railZ: readonly [number, number], detail: 0 | 1,
+  struts: ReadonlyArray<{ b: number; z: number } | null>): DecorPart[] {
   // Round 4 (2026-10-07, wave 217 on the T-72B3M: "flat pure-black square bars with no brackets, bolts or shading, and
   // its only visible support is a thin strut ending in a loose plate below it"): the frame is angle stock in shaded
   // steel (RACK_STEEL_TONE, not near-black), each strut is round bar ending on a foot plate laid on the rear plate where
   // the plate really is at that height (`footZ`, probed by the slot: a sloped plate leans back), and every foot plate
   // carries its bolt heads.
+  // Round 4 follow-up (2026-10-07, wave 240: "rack struts ending in mid-air on the Russian tanks' rears"): each side
+  // rail runs to the plate at its own height (`railZ`, probed per side by the slot) and its upper foot is bolted there;
+  // each strut's foot is where the slot found the plate below it (`struts`). A side the slot found no plate under
+  // carries no strut, and its rail foot becomes a deeper welded bracket bolted to the plate.
   const parts: DecorPart[] = [];
   const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
-  const x0 = bb.min.x - 0.025, x1 = bb.max.x + 0.025, z0 = bb.min.z - 0.03, z1 = plateZ;
-  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const x0 = bb.min.x - 0.025, x1 = bb.max.x + 0.025, z0 = bb.min.z - 0.03, z1 = Math.min(railZ[0], railZ[1]);
+  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2;
   const rail = 0.03;
-  for (const [i, x] of [x0, x1].entries()) steel(angleStock(d, 'z', x, cz, i ? 1 : -1, rail));
+  for (const [i, x] of [x0, x1].entries()) {
+    const len = railZ[i] - z0;
+    steel(angleStock(len, 'z', x, z0 + len / 2, i ? 1 : -1, rail));
+  }
   // the short cross rails are plain bar (round 4 follow-up: the budget); the long side rails stay angle stock
   for (const z of [z0 + rail / 2, z1 - rail / 2]) steel(place(block(w + rail, rail, rail), cx, -rail / 2, z));
   // round 4 follow-up: a slat every 12 cm (it was 9; the budget is full on many hulls)
@@ -3064,12 +3071,15 @@ function rearRackParts(bb: THREE.Box3, plateZ: number, detail: 0 | 1, brace = re
     steel(place(block(w - rail, 0.008, 0.035), cx, -0.004, z));
   }
   steel(place(block(w + rail, 0.06, 0.008), cx, 0.03, z0 + 0.004));                // retaining lip at the rear edge
-  const braceTop = brace;
   for (const [i, x] of [x0, x1].entries()) {
-    const fz = footZ[i];
-    steel(roundBar([x, -rail, z0 + 0.04], [x, -braceTop, fz - 0.012], 0.012, detail ? 8 : 5));   // diagonal under-strut
-    steel(footPlate(x, -braceTop, fz, 0.07, 0.09, detail));                         // foot plate bolted to the hull
-    steel(footPlate(x, -rail / 2, z1, 0.07, 0.07, 0));                             // upper foot at the rail (under the load)
+    const strut = struts[i];
+    if (strut) {
+      steel(roundBar([x, -rail, z0 + 0.04], [x, -strut.b, strut.z - 0.012], 0.012, detail ? 8 : 5));  // diagonal under-strut
+      steel(footPlate(x, -strut.b, strut.z, 0.07, 0.09, detail));                    // foot plate bolted to the hull
+      steel(footPlate(x, -rail / 2, railZ[i], 0.07, 0.07, 0));                      // upper foot at the rail (under the load)
+    } else {
+      steel(footPlate(x, -0.06, railZ[i], 0.07, 0.14, detail));                      // welded bracket bolted to the plate
+    }
   }
   return parts;
 }
@@ -3364,6 +3374,71 @@ function contactShade(list: DecorPartList): void {
     }
     col.needsUpdate = true;
   }
+}
+
+/**
+ * Hard loads with a lid a soft load can ride on (round 4 follow-up, 2026-10-07: stackLoad). Crates, chests, cases and
+ * coolers; cans, drums and the extinguisher are round or carry handles on top.
+ */
+const STACK_CARRIERS: ReadonlySet<string> = new Set(['cargo:wood-ammo-crate', 'cargo:mechanics-tool-chest',
+  'cargo:medical-case', 'cargo:spare-optics-case', 'cargo:insulated-chest-olive', 'cargo:cooler-red',
+  'cargo:beer-cooler-blue', 'cargo:ration-case', 'cargo:thermos-crate', 'cargo:fifty-cal-ammo-can', 'rations', 'bin']);
+/** A stack (carrier and load) stands at most this tall over its carrier's foot (m). */
+const STACK_MAX_H = 0.85;
+
+/**
+ * The path of a tie over a stack (round 4 follow-up): the upper convex hull of the stack's cross-section in the
+ * crossing plane (a strap under tension bridges every hollow), sampled by nine rays down onto the stack and five
+ * heights in from each side, from a deck ring 15 mm outside the near face to one outside the far face. Returns the
+ * path with each point's outward normal (the mean of its hull edges'), or null when the stack does not answer.
+ */
+function hullTiePath(meshes: THREE.Mesh[], axis: 'x' | 'z', lateral: number, lo: number, hi: number, top: number):
+  Array<{ a: number; y: number; na: number; ny: number }> | null {
+  const ray = new THREE.Raycaster();
+  const at = (along: number, y: number): THREE.Vector3 => (axis === 'z' ? new THREE.Vector3(lateral, y, along)
+    : new THREE.Vector3(along, y, lateral));
+  const cast = (origin: THREE.Vector3, dir: THREE.Vector3): THREE.Intersection | null => {
+    ray.set(origin, dir);
+    ray.far = 3;
+    return ray.intersectObjects(meshes, false)[0] ?? null;
+  };
+  const pts: Array<[number, number]> = [];
+  const along = (p: THREE.Vector3): number => (axis === 'z' ? p.z : p.x);
+  for (let k = 0; k <= 8; k++) {
+    const hit = cast(at(lo + ((hi - lo) * k) / 8, top + 0.3), new THREE.Vector3(0, -1, 0));
+    if (hit) pts.push([along(hit.point), hit.point.y]);
+  }
+  for (let k = 0; k < 5; k++) {
+    const y = 0.015 + ((top - 0.03) * k) / 4;
+    for (const sign of [-1, 1]) {
+      const dir = axis === 'z' ? new THREE.Vector3(0, 0, -sign) : new THREE.Vector3(-sign, 0, 0);
+      const hit = cast(at(sign < 0 ? lo - 0.3 : hi + 0.3, y), dir);
+      if (hit) pts.push([along(hit.point), y]);
+    }
+  }
+  if (pts.length < 8) return null;
+  let a0 = Infinity, a1 = -Infinity;
+  for (const [a] of pts) { a0 = Math.min(a0, a); a1 = Math.max(a1, a); }
+  pts.push([a0 - 0.015, 0.003], [a1 + 0.015, 0.003]);
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const hull: Array<[number, number]> = [];
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  for (const p of pts) {
+    while (hull.length >= 2 && cross(hull[hull.length - 2], hull[hull.length - 1], p) >= 0) hull.pop();
+    hull.push(p);
+  }
+  if (hull.length < 3) return null;
+  const edgeN = (i: number): [number, number] => {
+    const [ax, ay] = hull[i], [bx, by] = hull[i + 1];
+    const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1;
+    return [-dy / l, dx / l];
+  };
+  return hull.map(([a, y], i) => {
+    const n0 = i > 0 ? edgeN(i - 1) : edgeN(0), n1 = i < hull.length - 1 ? edgeN(i) : edgeN(hull.length - 2);
+    const na = n0[0] + n1[0], ny = n0[1] + n1[1], l = Math.hypot(na, ny) || 1;
+    return { a, y, na: na / l, ny: ny / l };
+  });
 }
 
 /** A packed load sits this far off the neighbour it packs against (m; round 4): touching, never interpenetrating. */
@@ -3952,7 +4027,8 @@ export function* attachTankDecorationsSteps(
      * Seat a load on `prober` at (x, z) through supportedSeat and commit (round 4 follow-up). A keep-out disc used to
      * cost the load its station outright; it now steps the footprint straight away from the disc it met, 4-40 cm in
      * 3 cm steps to the first spot clear of every disc of its frame, and tries that station once, if `allowed` takes
-     * it. Returns true when the load is committed.
+     * it. Returns true when the load is committed. Load slots pass the solid probers (solidTurretProber,
+     * solidHullProber): a ghillie suit's net and garnish are no support, so the load nests into them on the armour.
      */
     function seatLoad(o: {
       name: string; parts: DecorPartList; frame: DecorFrame; prober: SurfaceProber; ledger: THREE.Box3[];
@@ -3965,7 +4041,10 @@ export function* attachTankDecorationsSteps(
         const seat = supportedSeat(o.prober, x, z, o.w, o.d, o.fromY, o.spread, o.soft, o.off[0], o.off[1]);
         if (!seat || !seat.n || seat.n.y < o.minNy) return false;
         if (commit(o.name, o.parts, o.frame, V(x, seat.y - o.sink, z), roofMountEuler(seat.n, o.yaw), o.ledger,
-          o.seatOpts ? { seatY: seat.y } : {})) return true;
+          o.seatOpts ? { seatY: seat.y } : {})) {
+          registerCarrier(o.name, o.frame, o.parts, o.ledger, seat.y - o.sink);
+          return true;
+        }
         const miss = keepOutMiss;
         if (attempt || !miss || miss.frame !== o.frame) return false;
         const cx = (miss.bb.min.x + miss.bb.max.x) / 2, cz = (miss.bb.min.z + miss.bb.max.z) / 2;
@@ -3981,6 +4060,88 @@ export function* attachTankDecorationsSteps(
         if (step === null) return false;
         x += ux * step; z += uz * step;
         if (o.allowed && !o.allowed(x, z)) return false;
+      }
+      return false;
+    }
+    // Round 4 follow-up (2026-10-07): hard loads seated on a deck whose lid a soft load can ride (STACK_CARRIERS):
+    // their frame, their ledger box and their placed near geometry (for the stacked load's seat and its tie).
+    const carriers: Array<{ frame: DecorFrame; box: THREE.Box3; footY: number; meshes: THREE.Mesh[]; used: boolean }> = [];
+    const carrierMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    /** `footY`: the frame height of the carrier's own foot (its deck, or its rack's slats). */
+    function registerCarrier(name: string, frame: DecorFrame, parts: DecorPartList, ledger: THREE.Box3[], footY: number): void {
+      if (!STACK_CARRIERS.has(name) || !ledger.length) return;
+      const meshes = parts.filter((p) => p.role !== 'pad').map((p) => new THREE.Mesh(p.geo, carrierMat));
+      carriers.push({ frame, box: ledger[ledger.length - 1], footY, meshes, used: false });
+    }
+    /**
+     * Stack a soft load on a hard one (round 4 follow-up, 2026-10-07; the critics on the Challenger 1: "cluster and
+     * compress what is there", and the fleet lost loads to crowded decks): when every route of a soft load is taken,
+     * it rides the lid of a crate or case already seated on a deck, under one tie over both. Its 3 x 3 footprint grid
+     * must land on the carrier, sag at most SOFT_SPREAD_M, and the stack stays under STACK_MAX_H; it then commits
+     * with every guard, keep-out and the overlap ledger (less the carrier's own box). One load per carrier.
+     */
+    function stackLoad(parts: DecorPartList, name: string): boolean {
+      const bb = partsBBox(parts);
+      const h = bb.max.y - Math.max(0, bb.min.y);
+      for (const c of carriers) {
+        if (c.used) continue;
+        const cw = c.box.max.x - c.box.min.x, cd = c.box.max.z - c.box.min.z;
+        const ccx = (c.box.min.x + c.box.max.x) / 2, ccz = (c.box.min.z + c.box.max.z) / 2;
+        for (const turn of [0, Math.PI / 2]) {
+          const yaw = turn + transitYaw(slotRng) * 0.3;
+          const e = placedBox(parts, new THREE.Vector3(), new THREE.Euler(0, yaw, 0));
+          const w = e.max.x - e.min.x, d = e.max.z - e.min.z;
+          // a soft load may overhang its carrier's box by a tenth each side and droop there
+          if (w > cw * 1.2 || d > cd * 1.2) continue;
+          const x = ccx - (e.min.x + e.max.x) / 2, z = ccz - (e.min.z + e.max.z) / 2;
+          // the lid under the middle of the load's footprint: 3 x 3 rays onto the carrier (its ties included)
+          const ray = new THREE.Raycaster();
+          const ys: number[] = [];
+          for (const fx of [-0.28, 0, 0.28]) for (const fz of [-0.28, 0, 0.28]) {
+            ray.set(new THREE.Vector3(ccx + fx * w, c.box.max.y + 0.3, ccz + fz * d), new THREE.Vector3(0, -1, 0));
+            ray.far = 1;
+            const hit = ray.intersectObjects(c.meshes, false)[0];
+            if (hit) ys.push(hit.point.y);
+          }
+          if (ys.length < 9) continue;
+          const hi = Math.max(...ys), residual = hi - Math.min(...ys);
+          if (residual > SOFT_SPREAD_M) continue;
+          const y = hi - Math.min(residual, SOFT_SAG_M) * 0.7;
+          if (y + h - c.footY > STACK_MAX_H) continue;
+          const pos = V(x, y - 0.004, z), rot = E(0, yaw, 0);
+          const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
+          // one tie over the load and down the carrier's faces to the deck, across the stack's shorter span
+          const placed = parts.filter((p) => p.role !== 'pad').map((p) => {
+            const mesh = new THREE.Mesh(p.geo.clone().applyMatrix4(m), carrierMat);
+            return mesh;
+          });
+          const meshes = [...c.meshes, ...placed];
+          const alongX = cw >= cd;
+          const footY = c.footY;
+          const shift = new THREE.Matrix4().makeTranslation(0, -footY, 0);
+          for (const mesh of meshes) mesh.geometry = mesh.geometry.clone().applyMatrix4(shift);
+          const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.box.min.z : c.box.min.x,
+            alongX ? c.box.max.z : c.box.max.x, y + h - footY);
+          for (const mesh of meshes) mesh.geometry.dispose();
+          for (const mesh of placed) mesh.geometry.dispose();
+          if (!path) continue;
+          const tie = withBoxUV(tieBand(path, alongX ? 'z' : 'x', alongX ? ccx : ccz, 0.038))
+            .applyMatrix4(new THREE.Matrix4().makeTranslation(0, footY, 0))
+            .applyMatrix4(m.clone().invert());
+          const candidate = clonePartList(parts);
+          // no contact pad on a lid: the load may overhang it, where a dark quad would hang in the air
+          for (const list of [candidate, candidate.coarse ?? []]) {
+            for (let i = list.length - 1; i >= 0; i--) if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
+          }
+          candidate.push({ mat: 'cans', geo: bakeTint(tie, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
+          candidate.meta = { ...(candidate.meta ?? {}), stackedOn: [c.box.min.x, c.box.max.x, c.box.min.z, c.box.max.z, hi] };
+          const ledger = c.frame === 'hull' ? placedHull : placedTurret;
+          const at = ledger.indexOf(c.box);
+          if (at >= 0) ledger.splice(at, 1);
+          const ok = commit(name, candidate, c.frame, pos, rot, ledger);
+          if (at >= 0) ledger.splice(at, 0, c.box);
+          if (ok) { c.used = true; disposePartList(parts); return true; }
+        }
       }
       return false;
     }
@@ -4275,6 +4436,8 @@ export function* attachTankDecorationsSteps(
             return true;
           }
         }
+        // round 4 follow-up: a soft load with no free deck rides a crate or case already seated (stackLoad)
+        if (sagsOnSupport(name) && stackLoad(parts, name)) return true;
         disposePartList(parts);
         return false;
       },
@@ -4293,7 +4456,7 @@ export function* attachTankDecorationsSteps(
           const inward = -Math.sign(xs || 1);
           // round 4: pack against a load already on the deck first (packStations), square to it
           const deckLoad = (px: number, pz: number, yaw: number): boolean => seatLoad({ name, parts, frame: 'hull',
-            prober: hullP, ledger: placedHull, x: px, z: pz, yaw, w, d, fromY: topFrom, spread: 0.28, soft,
+            prober: solidHullProber(), ledger: placedHull, x: px, z: pz, yaw, w, d, fromY: topFrom, spread: 0.28, soft,
             off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: casemate ? 0.8 : LOAD_MIN_NY, sink: 0.01,
             seatOpts: true });
           for (const station of packStations('hull', parts, xs, z0)) {
@@ -4364,7 +4527,7 @@ export function* attachTankDecorationsSteps(
           for (const dz of [0, 0.18, -0.18, 0.36, -0.36]) {
             const yaw = (rot90 ? Math.PI / 2 : 0) + transitYaw(slotRng);
             const pz = z + dz + (slotRng() - 0.5) * 0.04;
-            if (seatLoad({ name, parts, frame: 'hull', prober: hullP, ledger: placedHull, x: side * fx, z: pz, yaw, w, d,
+            if (seatLoad({ name, parts, frame: 'hull', prober: solidHullProber(), ledger: placedHull, x: side * fx, z: pz, yaw, w, d,
               fromY: topFrom, spread: 0.26, soft, off: [0, 0], minNy: LOAD_MIN_NY, sink: 0.01, seatOpts: true })) return true;
           }
           disposePartList(parts);
@@ -4495,20 +4658,44 @@ export function* attachTankDecorationsSteps(
         // round 4: the load stays on the plate's upper two thirds and the rack's strut feet 0.3 m above its lower edge
         // (the struts shorten to fit, never below 0.1 m); a rack the bore holds lower is not built and the load goes
         // on to its next station
-        const brace = Math.max(0.1, Math.min(rearRackBrace(bb), y - REAR_RACK_FOOT - rearFittingFloor()));
-        if (y < rearStowFloor() || y - brace - REAR_RACK_FOOT < rearFittingFloor()) { disposePartList(parts); return false; }
-        const h = hullP.zface((args.x || 0) * W, Math.max(H * 0.3, y + ph * 0.4), 1, sternZ - 1.4);
+        if (y < rearStowFloor()) { disposePartList(parts); return false; }
+        const px = (args.x || 0) * W;
+        const h = hullP.zface(px, Math.max(H * 0.3, y + ph * 0.4), 1, sternZ - 1.4);
         if (!isRearPlateHit(h)) { disposePartList(parts); return false; }
         // Round 3: the load rides a built cantilever rack (rearRackParts) instead of hanging in air behind the plate;
         // the rack replaces the contact pad, and it rides a few degrees off square on its slats.
+        // Round 4 follow-up (2026-10-07, wave 240: "rack struts ending in mid-air on the Russian tanks' rears"; the
+        // T-72B3M's and T-90A's racks stood 14-48 cm off their plates at the rail and 52-62 cm at the struts' feet,
+        // where the plates fall back under the overhang): the load sits clear of the plate wherever it reaches over
+        // its own height; each side rail runs to the plate at the rail's height; each strut takes the highest foot (its
+        // authored reach down to 0.1 m, never under the fitting floor) that meets the plate within 35 cm of its rail's
+        // end, or the side carries a bolted bracket instead. Where the plate steps (a box or drum mount on one side), the
+        // deeper side's rail runs on past the cross rail to the plate. A rack whose rails find no plate is not built and
+        // the load goes on to its next station.
         const gap = 0.02;
-        const pieceZ = h.p.z - gap - bb.max.z;
-        const plateZ = h.p.z - pieceZ;
-        // round 4: each strut's foot plate lands where the plate is at the foot's height (a sloped plate leans back)
-        const feet = [bb.min.x - 0.025, bb.max.x + 0.025].map((lx) => {
-          const foot = hullP.zface((args.x || 0) * W + lx, y - brace, 1, sternZ - 1.4);
-          return isRearPlateHit(foot) && Math.abs(foot.p.z - h.p.z) < 0.3 ? foot.p.z - pieceZ : plateZ;
-        }) as [number, number];
+        let plateOut = h.p.z;
+        for (const fy of [0.05, 0.5, 0.95]) {
+          const hit = hullP.zface(px, y + ph * fy, 1, sternZ - 1.4);
+          if (isRearPlateHit(hit) && hit.p.z < plateOut && hit.p.z > h.p.z - 0.25) plateOut = hit.p.z;
+        }
+        const pieceZ = plateOut - gap - bb.max.z;
+        const lxs = [bb.min.x - 0.025, bb.max.x + 0.025];
+        const railZ = lxs.map((lx) => {
+          const hit = hullP.zface(px + lx, y - 0.015, 1, sternZ - 1.4);
+          return isRearPlateHit(hit) && hit.p.z >= plateOut - 0.02 && hit.p.z <= plateOut + 0.45 ? hit.p.z - pieceZ : null;
+        });
+        if (railZ[0] === null || railZ[1] === null) { disposePartList(parts); return false; }
+        const rails: [number, number] = [railZ[0], railZ[1]];
+        const struts = lxs.map((lx, i) => {
+          for (let b = rearRackBrace(bb); b >= 0.1 - 1e-6; b -= 0.03) {
+            if (y - b - REAR_RACK_FOOT < rearFittingFloor()) continue;
+            const hit = hullP.zface(px + lx, y - b, 1, sternZ - 1.4);
+            if (!isRearPlateHit(hit)) continue;
+            const z = hit.p.z - pieceZ;
+            if (z >= rails[i] - 0.05 && z <= rails[i] + 0.35) return { b, z };
+          }
+          return null;
+        });
         const yaw = transitYaw(slotRng) * 0.5;
         const pivotX = (bb.min.x + bb.max.x) / 2, pivotZ = (bb.min.z + bb.max.z) / 2;
         const about = new THREE.Matrix4().makeTranslation(pivotX, 0, pivotZ)
@@ -4519,12 +4706,14 @@ export function* attachTankDecorationsSteps(
             if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
           }
           for (const part of list) part.geo.applyMatrix4(about);
-          list.push(...rearRackParts(bb, plateZ, detail, brace, feet));
+          list.push(...rearRackParts(bb, rails, detail, struts));
         };
         carry(parts, 1);
         if (parts.coarse) carry(parts.coarse, 0);
-        return commit(name, parts, 'hull', V((args.x || 0) * W, y, pieceZ),
-          E(), placedHull, { seatY: y, zExtra: 0.35 });
+        if (!commit(name, parts, 'hull', V(px, y, pieceZ), E(), placedHull, { seatY: y, zExtra: 0.35 })) return false;
+        // round 4 follow-up: a case on the rack can carry a soft load too (stackLoad)
+        registerCarrier(name, 'hull', parts, placedHull, y);
+        return true;
       },
       hullSide(args, parts, name) {
         const side = args.side ?? 1;
@@ -4652,7 +4841,7 @@ export function* attachTankDecorationsSteps(
           return true;
         };
         const roofLoad = (x: number, z: number, yaw: number, minN: number): boolean => seatLoad({ name, parts,
-          frame: 'turret', prober: turP, ledger: placedTurret, x, z, yaw, w, d, fromY: 3.5, spread, soft,
+          frame: 'turret', prober: solidTurretProber(), ledger: placedTurret, x, z, yaw, w, d, fromY: 3.5, spread, soft,
           off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: minN, sink: 0.006, allowed: roofAllowed });
         // round 4: a load first tries to pack against a load already on the roof (packStations), square to it
         if (load && !casemate) {
@@ -4701,7 +4890,7 @@ export function* attachTankDecorationsSteps(
           const toward = -Math.sign(x || 1);
           // round 4: pack against a load already on the bustle first (packStations), square to it
           const rearLoad = (px: number, z: number, yaw: number): boolean => seatLoad({ name, parts, frame: 'turret',
-            prober: turP, ledger: placedTurret, x: px, z, yaw, w, d, fromY: 3.5, spread: 0.2, soft,
+            prober: solidTurretProber(), ledger: placedTurret, x: px, z, yaw, w, d, fromY: 3.5, spread: 0.2, soft,
             off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: LOAD_MIN_NY, sink: 0.006 });
           for (const station of packStations('turret', parts, x, -(sweepR * 0.55 + 0.3) - d * 0.2)) {
             const yaw = transitYaw(slotRng) * 0.4;
@@ -4902,6 +5091,8 @@ export function* attachTankDecorationsSteps(
         const values = { ...(row.v || {}) };
         if (row.kit === 'wheel') values.r = wheelR;
         if (row.kit === 'drums') values._W = W;
+        // round 4 follow-up: a can rack is the nation's own (canRackStyleFor)
+        if (row.kit === 'jerry') values.nation = spec.nation || '';
         // The mobile tier builds only the coarse forms; other tiers build both levels
         // from identically seeded streams (builders draw before branching on detail).
         const variant = String(values.v ?? '');
