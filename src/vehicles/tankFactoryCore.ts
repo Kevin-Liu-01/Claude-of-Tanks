@@ -37,7 +37,7 @@ import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
-  setVehicleSootSources, VEHICLE_FIELD_WEAR_GARAGE, type VehicleSootSource,
+  setVehicleSootSources, setVehicleWearFrame, VEHICLE_FIELD_WEAR_GARAGE, type VehicleSootSource, type VehicleWearFrame,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
@@ -1557,7 +1557,9 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
  * behind or around the tubes"): every launcher mesh's tube mouths (its registered smoke sockets) grouped into banks a
  * hand-span apart, each a soot source on its own mesh so it traverses with a turret bank; the banks with the most tubes
  * win the slots. Exhausts publish none: no exhaust outlet is registered on the geometry (the battle puff is a generic
- * rear-deck point, and the Merkavas and T-series vent elsewhere), so soot there would be guessed.
+ * rear-deck point, and the Merkavas and T-series vent elsewhere), so the shader reads the exhaust soot off the hull frame
+ * instead (measureVehicleWearFrame). Round 4 (2026-10-07; critics: "no soot at the gun muzzle"): the main gun's muzzle
+ * (`rig_muzzle`, which rides the gun's elevation and recoil) leads with the carbon on the last stretch of the barrel.
  */
 function collectVehicleSootSources(root: THREE.Object3D): VehicleSootSource[] {
   const banks: Array<VehicleSootSource & { tubes: number }> = [];
@@ -1581,7 +1583,98 @@ function collectVehicleSootSources(root: THREE.Object3D): VehicleSootSource[] {
     }
   });
   banks.sort((a, b) => b.tubes - a.tubes);
-  return banks.map(({ tubes: _tubes, ...source }) => source);
+  const muzzle = root.getObjectByName('rig_muzzle');
+  // the mouth a hand-span ahead of the muzzle plane, so a brake that reaches past it is sooted to its tip
+  const carbon: VehicleSootSource[] = muzzle ? [{
+    owner: muzzle, mouth: new THREE.Vector3(0, 0, 0.15), axis: new THREE.Vector3(0, 0, 1),
+    radius: 0.3, length: 0.75, strength: 0.92,
+  }] : [];
+  return [...carbon, ...banks.map(({ tubes: _tubes, ...source }) => source)];
+}
+
+/**
+ * Round 4 field wear (2026-10-07; critics: "the rear plate and engine grilles carry no exhaust soot or oil", "no fuel
+ * stains"): the hull frame the shader reads the exhaust soot, the engine-deck oil and the climbing wear off
+ * (materials.ts setVehicleWearFrame), measured from the hull's own camouflaged plates outside the turret, in the root's
+ * frame (origin at the ground contact, +Y up, +Z forward). The rear plate is the rearmost rear-facing plate in the hull's
+ * last third with at least two fifths of the largest one's area (a rack's bars behind it are smaller, a step ahead of it
+ * does not win), the engine deck the up-facing plate with the most area in
+ * the rear half of the hull's middle (fenders and roof furniture lie outside it). A mesh contributes at most about
+ * 4,000 sampled triangles, so the measurement stays a few milliseconds. Null when the hull has no such plates.
+ */
+function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null {
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const turret = root.getObjectByName('rig_turret');
+  const local = new THREE.Matrix4();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  const rear: number[] = []; // [z, area] pairs of rear-facing plates
+  const up: number[] = []; // [y, z, |x|, area] of up-facing plates
+  let minZ = Infinity, maxZ = -Infinity, maxX = 0;
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry || mesh.visible === false) return;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    if (!materials.some((material) => material?.name === 'cot:armor-paint')) return;
+    for (let parent = mesh.parent; parent; parent = parent.parent) {
+      if (parent === turret || parent.visible === false) return;
+      const lod = parent as THREE.LOD;
+      if (lod.isLOD && lod.levels.findIndex((level) => level.object === mesh) > 0) return;
+    }
+    const position = mesh.geometry.getAttribute('position');
+    if (!position) return;
+    const index = mesh.geometry.index;
+    const count = index ? index.count : position.count;
+    const stride = Math.max(1, Math.ceil(count / 3 / 4000)) * 3;
+    local.multiplyMatrices(toRoot, mesh.matrixWorld);
+    const vertex = (out: THREE.Vector3, at: number): THREE.Vector3 =>
+      out.fromBufferAttribute(position, index ? index.getX(at) : at).applyMatrix4(local);
+    for (let at = 0; at + 2 < count; at += stride) {
+      vertex(a, at); vertex(b, at + 1); vertex(c, at + 2);
+      ab.subVectors(b, a); ac.subVectors(c, a);
+      const normal = ab.cross(ac);
+      const twice = normal.length();
+      if (!(twice > 1e-9)) continue;
+      normal.divideScalar(twice);
+      const area = twice / 2 * (stride / 3);
+      const z = (a.z + b.z + c.z) / 3;
+      minZ = Math.min(minZ, a.z, b.z, c.z);
+      maxZ = Math.max(maxZ, a.z, b.z, c.z);
+      maxX = Math.max(maxX, Math.abs(a.x), Math.abs(b.x), Math.abs(c.x));
+      if (normal.z < -0.75) rear.push(z, area);
+      else if (normal.y > 0.85) up.push((a.y + b.y + c.y) / 3, z, Math.abs(a.x + b.x + c.x) / 3, area);
+    }
+  });
+  const length = maxZ - minZ;
+  if (!(length > 1)) return null;
+  // the 5 cm bin holding the most area
+  const mode = (bins: Map<number, number>): number | null => {
+    let best: number | null = null, bestArea = 0;
+    for (const [bin, area] of bins) if (area > bestArea) { best = bin; bestArea = area; }
+    return best === null ? null : (best + 0.5) * 0.05;
+  };
+  const rearBins = new Map<number, number>();
+  for (let at = 0; at < rear.length; at += 2) {
+    if (rear[at] > minZ + length / 3) continue;
+    const bin = Math.floor(rear[at] / 0.05);
+    rearBins.set(bin, (rearBins.get(bin) ?? 0) + rear[at + 1]);
+  }
+  // the rearmost plate holding at least two fifths of the largest one's area: a step or a hatch face ahead of a smaller
+  // rear plate loses to it, a rack's bars behind it do not count
+  let sternBin: number | null = null;
+  const sternArea = Math.max(0, ...rearBins.values());
+  for (const [bin, area] of rearBins) if (area >= sternArea * 0.4 && (sternBin === null || bin < sternBin)) sternBin = bin;
+  const sternZ = sternBin === null ? minZ : (sternBin + 0.5) * 0.05;
+  const deckBins = new Map<number, number>();
+  for (let at = 0; at < up.length; at += 4) {
+    if (up[at + 1] > sternZ + (maxZ - sternZ) * 0.5 || up[at + 2] > maxX * 0.55) continue;
+    const bin = Math.floor(up[at] / 0.05);
+    deckBins.set(bin, (deckBins.get(bin) ?? 0) + up[at + 3]);
+  }
+  const deckY = mode(deckBins);
+  if (deckY === null || !(deckY > 0.3)) return null;
+  return { sternZ, bowZ: maxZ, deckY, halfWidth: maxX };
 }
 
 function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[] {
@@ -9991,6 +10084,8 @@ function* createTankOwnedSteps(
     // battle build (prepareForSimulation and resetForGaragePresentation switch it), and the vehicle publishes its soot
     root.userData.fieldWear = staticPreview ? VEHICLE_FIELD_WEAR_GARAGE : 1;
     setVehicleSootSources(root, collectVehicleSootSources(root));
+    // round 4 (2026-10-07): and the hull frame its exhaust soot, engine-deck oil and climbing wear read
+    setVehicleWearFrame(root, measureVehicleWearFrame(root));
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();
