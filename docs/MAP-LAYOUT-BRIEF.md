@@ -566,6 +566,20 @@ the tile's rows of blocky losses read as carved glyphs on the ksar walls (wave 1
 undulation and the grain kept. A new part follows the same laws: decor, behind `facadeOn()`, no draw from
 `ctx.rng` or `ctx.variant`.
 
+No two houses alike (October 7, wave 184 on Saltmere's bourg: "identical clone houses, same chimney count and window
+and shutter layout every time"). A kit's house-to-house variation draws from the look stream (`ctx.variant`), not the
+build stream. The Breton dwelling (cottage, tavern, cornershop) varies, house to house:
+- storey heights (the eaves and ridges step between neighbours);
+- window size;
+- bays: two to four down a long wall and one to three in a bourg house's street gable, irregularly spaced, the upper
+  floor over the lower or not;
+- the door's place;
+- one or two gable-end stacks: in either gable, on the apex or off it, of a height;
+- dormers on some bourg houses;
+- a lean-to against the back gable on some deep plots, the house standing forward to leave it the plot's back
+  (`breton.ts dwelling`, `bays`, `leanTo`).
+This is structure, so a phone builds it too, and the collision shards follow it.
+
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
 the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m
