@@ -1,11 +1,15 @@
 // src/world/landmarks/parks.ts — parks and squares (the landmarks lane, 2026-10-05): the fountain, the bandstand, the
 // park gate with its railings, and the square that gathers them — a green with its paths and railing, the props'
 // destructible benches and lamps along the paths, and a centre piece (an obelisk, a statue, a fountain, a bandstand).
-import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { bar, railing, revolve } from './kit.ts';
+import { PartSink, rgb, shade, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
+import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smoothRender } from './kit.ts';
+import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
+import { figure } from './monuments.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
+const SANDSTONE = rgb(0xb59a7c);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
@@ -17,6 +21,8 @@ export const fountain: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const R = Math.max(2, Number(ctx.params.radius)), tiers = Math.max(1, Math.min(3, Math.round(Number(ctx.params.tiers))));
   const base = -0.6 - ctx.groundFall;
+  if (String(ctx.params.style) === 'ottoman') return ottomanFountain(sink, R, base);
+  if (String(ctx.params.style) === 'markt') return marktFountain(sink, R, base);
   // the basin wall: a ring with its coping (outer face, top, inner face down to the water)
   revolve(sink, 'stone', 0, 0, [[R, base], [R, 0.55], [R + 0.08, 0.55], [R + 0.08, 0.7], [R - 0.42, 0.7], [R - 0.42, 0.42]], 28);
   // the water (dark glass, the sky in it) and the basin floor under it
@@ -35,6 +41,53 @@ export const fountain: LandmarkBuilder = (ctx) => {
   revolve(sink, 'stone', 0, 0, [[r * 1.3, y], [r * 1.1, y + 0.4], [r * 1.6, y + 0.6], [0, y + 0.95]], 10);
   return { parts: sink.finish() };
 };
+
+/**
+ * The Franconian market fountain (Marktbrunnen: Rothenburg's St George's, Dinkelsbühl's; gauntlet wave 156: Steinburg's
+ * Brunnen "a generic Italianate tiered fountain; a Franconian Marktbrunnen is a column on an octagonal basin"): an
+ * octagonal trough of dressed sandstone on a step, its coping waist-high, the water in it; from its middle a moulded
+ * pedestal carrying a slender column, its capital, and the saint standing on it; four iron spouts from the pedestal
+ * into the trough.
+ */
+function marktFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+  const oct = Math.PI / 8, Ro = R / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[Ro + 0.6, base], [Ro + 0.6, 0.18], [Ro, 0.18]], 8, {}, oct);
+  revolve(sink, 'stone', 0, 0, [[Ro, 0.18], [Ro, 0.82], [Ro + 0.12, 0.82], [Ro + 0.12, 1.0], [Ro - 0.3, 1.0], [Ro - 0.3, 0.5]], 8, {}, oct);
+  revolve(sink, 'glass', 0, 0, [[Ro - 0.3, 0.72], [0.62, 0.72]], 8, { decor: true }, oct);
+  const shaftTop = 4.7;
+  revolve(sink, 'stone', 0, 0, [[0.66, 0.5], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
+    [0.52, shaftTop], [0.52, shaftTop + 0.18], [0, shaftTop + 0.19]], 8, {}, oct);
+  figure(sink, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe');
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+    bar(sink, 'structureMetal', [c * 0.6, 1.05, s * 0.6], [c * 1.15, 0.98, s * 1.15], 0.05, { colour: IRON, decor: true });
+  }
+  return { parts: sink.finish(), tints: { stone: [1.04, 0.95, 0.85] } };
+}
+
+/**
+ * The Ottoman village fountain (a Levantine market square's, Deir el Qamar's on its Midan): an octagonal basin of dressed
+ * sandstone with its moulded coping, the water in it, and from its middle an octagonal pillar carrying the brass spouts
+ * on each face, a carved band, a moulded cornice and a small ribbed dome with its finial.
+ */
+function ottomanFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+  const oct = Math.PI / 8, Ro = R / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[Ro, base], [Ro, 0.62], [Ro + 0.1, 0.62], [Ro + 0.1, 0.78], [Ro - 0.36, 0.78], [Ro - 0.36, 0.45]], 8, {}, oct);
+  revolve(sink, 'glass', 0, 0, [[Ro - 0.36, 0.55], [0.6, 0.55]], 8, { decor: true }, oct);
+  // the pillar: its foot, the shaft, the band where the spouts come out, the cornice and the dome
+  const p = Math.max(0.45, R * 0.16) / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[p * 1.35, 0.45], [p * 1.35, 0.85], [p, 1.0], [p, 1.9], [p * 1.12, 1.95], [p * 1.12, 2.25], [p, 2.3], [p, 2.6],
+    [p * 1.32, 2.78], [p * 1.32, 2.92], [p * 0.95, 2.95]], 8, {}, oct);
+  revolve(sink, 'stone', 0, 0, [[p * 0.95, 2.95], [p * 0.92, 3.25], [p * 0.7, 3.55], [p * 0.36, 3.75], [0, 3.8]], 8, {}, oct);
+  revolve(sink, 'structureMetal', 0, 0, [[0.04, 3.78], [0.11, 3.88], [0.12, 4.0], [0.05, 4.1], [0.03, 4.45], [0, 4.5]], 8,
+    { colour: rgb(0xa98a46), decor: true });
+  // a brass spout from the middle of each face of the band, over the water
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, cs = Math.sin(a), cc = Math.cos(a), r0 = p * Math.cos(oct) * 1.12;
+    bar(sink, 'structureMetal', [cs * r0, 2.1, cc * r0], [cs * (r0 + 0.32), 2.04, cc * (r0 + 0.32)], 0.05, { colour: rgb(0xa98a46), decor: true });
+  }
+  return { parts: sink.finish() };
+}
 
 /**
  * The bandstand (a spa park's or a garrison town's music pavilion): an octagonal plinth with its steps, eight slender
@@ -112,10 +165,8 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   const benches = Math.max(0, Math.round(Number(ctx.params.benches))), lamps = Math.max(0, Math.round(Number(ctx.params.lamps)));
   const centre = String(ctx.params.centre), pw = 2.4;
   const gravel: RegionalBucket = 'plaster3';
-  // the gravel paths: shallow beds whose skirts reach into the ground
-  const bed = (a: readonly [number, number], b: readonly [number, number], w: number) => {
-    sink.member(gravel, [a[0], -0.25, a[1]], [b[0], -0.25, b[1]], w, 0.3, [0, 1, 0], { decor: true, exposed: true }, 0);
-  };
+  // the gravel paths, draped over the ground (2026-10-06: level beds at the base sank under the green's high side)
+  const bed = (a: readonly [number, number], b: readonly [number, number], w: number) => drapedPath(sink, gravel, ctx.ground, a, b, w, { lift: 0.04 });
   const exits: Array<[number, number]> = [];
   if (paths === 'cross' || paths === 'ring') {
     bed([-W / 2, 0], [W / 2, 0], pw); bed([0, -D / 2], [0, D / 2], pw);
@@ -174,7 +225,9 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   // the centre piece inside the square's own railing; `centreHeight` (when set) sizes it — a village's memorial obelisk
   // stands a third lower than a town square's
   const centreHeight = Number(ctx.params.centreHeight) > 0 ? { height: Number(ctx.params.centreHeight) } : {};
-  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight } : centreHeight });
+  // (`inscription`: the centre piece's, an obelisk's plaque)
+  const inscription = ctx.params.inscription ? { inscription: String(ctx.params.inscription) } : {};
+  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight, ...inscription } : centreHeight });
   return { parts: sink.finish(), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
 };
 
@@ -194,3 +247,183 @@ function picketRun(sink: PartSink, a: readonly [number, number], b: readonly [nu
     sink.span('structureWood', p[0] - 0.035, 0.08, p[2] - 0.035, p[0] + 0.035, 0.98 + (k % 2) * 0.04, p[2] + 0.035, { colour, decor: true, fine: true });
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------- paths
+
+/** The tints of a path's surfaces in the plaster3 bucket (the props' gravel convention: parkSquare's paths). */
+const PATH_TINT: Readonly<Record<string, Rgb>> = Object.freeze({ gravel: [0.95, 0.86, 0.68], earth: [0.52, 0.42, 0.32] });
+
+/**
+ * A path (gauntlet waves 154-158: "no approach path"): a strip draped over the ground from the piece's origin `length`
+ * metres along its +z, `width` wide — flagstones or setts in the map's masonry (`surface: 'stone'`), gravel, or beaten
+ * earth. Dressing only: a hull drives over it as over the ground.
+ */
+export const path: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
+  const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
+  drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
+};
+
+/**
+ * A mill's outfall (Polders round 2, the gauntlet: the mills "need a mound, a yard and a link to the water"): where the
+ * drain under a mill's terp comes out, a brick headwall at the top of the bank with the culvert's round mouth in its face,
+ * and the runnel below it pitched in stone down the bank to the water, its kerbs a course higher, the wet down its middle.
+ * The headwall stands at the piece's -z end, the runnel runs `length` metres along +z. Dressing: no solid.
+ */
+export const outfall: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.5, Number(ctx.params.width));
+  const z0 = -L / 2, z1 = L / 2, ground = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  // the headwall: brick across the runnel's head, its coping proud of it, its face (+z) toward the water
+  const half = w / 2 + 0.45, g0 = Math.min(ground(-half, z0), ground(half, z0), ground(0, z0)), top = g0 + 0.95;
+  sink.span('stone', -half, g0 - 0.35, z0 - 0.38, half, top, z0, { decor: true });
+  sink.span('stone', -half - 0.06, top, z0 - 0.44, half + 0.06, top + 0.1, z0 + 0.06, { decor: true, shade: 0.9 });
+  // the mouth: a dark disc a hair proud of the face, ringed by its voussoirs
+  const r = Math.min(0.34, w * 0.42), cy = g0 + 0.12 + r, n = 12, zf = z0 + 0.006;
+  const ringAt = (k: number, rr: number, dz: number): Vec3 => [Math.cos(k / n * Math.PI * 2) * rr, cy + Math.sin(k / n * Math.PI * 2) * rr, zf + dz];
+  const disc: Vec3[] = [];
+  for (let k = 0; k < n; k++) disc.push(ringAt(k, r, 0));
+  sink.polygon('dark', disc, { decor: true });
+  for (let k = 0; k < n; k++) {
+    sink.quad('stone', ringAt(k, r, 0.01), ringAt(k, r + 0.14, 0.03), ringAt(k + 1, r + 0.14, 0.03), ringAt(k + 1, r, 0.01), { decor: true, shade: 0.8 });
+  }
+  // the runnel: pitched stone from the headwall's foot down the bank, its kerbs, and the wet down its middle
+  drapedPath(sink, 'stone', ctx.ground, [0, z0 + 0.02], [0, z1], w, { lift: 0.04, emit: { shade: 0.86 } });
+  for (const sx of [-1, 1]) drapedPath(sink, 'stone', ctx.ground, [sx * (w / 2 + 0.09), z0], [sx * (w / 2 + 0.09), z1], 0.18, { lift: 0.085 });
+  drapedPath(sink, 'structureWood', ctx.ground, [0, z0 + 0.02], [0, z1], Math.max(0.16, w * 0.3), { lift: 0.05, emit: { colour: WET_RUNNEL } });
+  return { parts: sink.finish() };
+};
+const WET_RUNNEL: Rgb = rgb(0x2b3330);
+
+// ---------------------------------------------------------------------------------------------------------- churchyard
+
+const GREEN_IRON = rgb(0x4f7d5a);
+
+/**
+ * The churchyard (gauntlet waves 154-158: "the church stands straight in the grass … with no churchyard, fence or
+ * approach path"): the ground before a church's front (the piece's +z the gate, the church closing its -z side), its
+ * fence round the three open sides as the props' destructible modules (a hull breaks them as any fence); in the front
+ * fence the holy gate of a Russian church — a whitewashed brick gateway, its arch, a cornice and a small iron roof under
+ * a cross — or a plain gate; the flagstone path from the gate to the church door, and on from the gate toward the road
+ * (a `path` piece of its own); the graves either side of the path under their crosses.
+ */
+export const churchyard: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(8, Number(ctx.params.width)), D = Math.max(6, Number(ctx.params.depth));
+  const fence = String(ctx.params.fence || 'fencepicket'), holy = ctx.params.holyGate !== false;
+  const pathW = Math.max(0, Number(ctx.params.path) || 0);
+  const orthodox = String(ctx.params.tradition || 'orthodox') === 'orthodox';
+  const hw = W / 2, hd = D / 2, gateW = 2.2, pier = 0.85;
+  const destructibles: GroundsDestructible[] = [];
+  // the fence: the two sides from the church to the front, the front either side of the gate (the back is the church's);
+  // `gate: 'right' | 'left'` hangs a plain gate in that side instead (the front fenced through)
+  const side = String(ctx.params.gate ?? 'front');
+  fenceRun(destructibles, fence, [hw, -hd], [hw, hd], side === 'right' ? { gateAt: hd, gate: 'gate' } : {});
+  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd], side === 'left' ? { gateAt: hd, gate: 'gate' } : {});
+  if (String(ctx.params.back) === 'fence') fenceRun(destructibles, fence, [-hw, -hd], [hw, -hd]);
+  if (side === 'right' || side === 'left') fenceRun(destructibles, fence, [hw, hd], [-hw, hd]);
+  else if (holy) {
+    const gx = gateW / 2 + pier;
+    fenceRun(destructibles, fence, [hw, hd], [gx + 0.15, hd]);
+    fenceRun(destructibles, fence, [-gx - 0.15, hd], [-hw, hd]);
+    // the holy gate: the gateway (its passage along z), the cornice over it, a low gabled iron roof and the cross
+    const H = 3.4, t = 0.8;
+    sink.placed(0, 0, 0, hd, () => {
+      archedSlab(sink, 'plaster', -gx, gx, -0.5 - ctx.groundFall, H, t, [{ u: 0, w: gateW, y0: 0, spring: 2.25, form: 'round' }], { ends: true, top: true });
+      moulding(sink, 'plaster', gx * 2, t, H - 0.02, 0.16, 0.12);
+      const roof: RoofSpec = { kind: 'gable', pitchDeg: 28, eave: 0.3, verge: 0.3, thickness: 0.08, bucket: 'structureMetal', ridge: null };
+      const rg = roofGeometry(t + 0.24, gx * 2 + 0.24, H + 0.14, roof);
+      sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, rg, roof, GREEN_IRON));
+      cross(sink, 'structureMetal', 0, rg.ridgeTopY - 0.04, 0, 1.1, orthodox ? 'orthodox' : 'latin', rgb(0xb8933e));
+    });
+  } else {
+    fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
+  }
+  // the path from the gate to the church door (the way on to the road is a `path` piece of its own)
+  if (pathW > 0) {
+    if (side === 'right' || side === 'left') {
+      const sx = side === 'right' ? 1 : -1;
+      drapedPath(sink, 'stone', ctx.ground, [sx * (hw + 0.4), 0], [0, 0], pathW);
+      drapedPath(sink, 'stone', ctx.ground, [0, 0.4], [0, -hd], pathW);
+    } else drapedPath(sink, 'stone', ctx.ground, [0, hd + 0.4], [0, -hd], pathW);
+  }
+  // the graves either side of the path, in rows across the yard, their markers toward the church
+  const max = Math.max(0, Math.round(Number(ctx.params.graves) || 0));
+  const markers: readonly GraveMarker[] = orthodox ? ['orthodox', 'orthodox', 'orthodox', 'railed'] : ['latin', 'latin', 'stone', 'stone'];
+  let placed = 0;
+  for (let z = -hd + 3.2; z < hd - 2.4 && placed < max; z += 3.1) {
+    for (const side of [-1, 1]) {
+      for (let x = pathW / 2 + 1.5; x < hw - 1.0 && placed < max; x += 2.3) {
+        if (ctx.variant() < 0.3) continue;
+        const jx = (ctx.variant() - 0.5) * 0.5, jz = (ctx.variant() - 0.5) * 0.6, yaw = (ctx.variant() - 0.5) * 0.08;
+        grave(sink, ctx.ground, side * x + jx, z + jz, yaw, markers[Math.floor(ctx.variant() * markers.length)]);
+        placed++;
+      }
+    }
+  }
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+};
+
+// ---------------------------------------------------------------------------------------------------------- garden
+
+const FOLIAGE: readonly Rgb[] = [rgb(0x2f4a2c), rgb(0x3a5532), rgb(0x2a4230), rgb(0x445c36)];
+const BLOOM: readonly Rgb[] = [rgb(0xb8323c), rgb(0xd86a8a), rgb(0xe8e2d8), rgb(0xd88a2c), rgb(0x9a3a6a)];
+const SOIL_DARK = rgb(0x3a2e24), BRICK_EDGE = rgb(0x8a4a36), BOX_GREEN = rgb(0x2c4428);
+
+/**
+ * A garden (gauntlet wave 157: the bungalow "has no garden, path or sign of age"): an enclosure of the props' fence
+ * modules round a lawn (the ground's own), its gate in the front (+z) and its back (-z, toward the house) open unless
+ * `back: 'fence'`; the gravel path from the gate to the back; flower borders inside the side and front fences — beds of
+ * dug earth edged in brick, the bushes in them in leaf and flower — and two clipped box hedges at the path's mouth.
+ * Dressing, but for the fence.
+ */
+export const garden: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(6, Number(ctx.params.width)), D = Math.max(5, Number(ctx.params.depth));
+  const fence = String(ctx.params.fence || 'fencepicket'), pathW = Math.max(0, Number(ctx.params.path) || 0);
+  const destructibles: GroundsDestructible[] = [];
+  const hw = W / 2, hd = D / 2;
+  if (String(ctx.params.back) === 'fence') enclosure(destructibles, fence, { cx: 0, cz: 0, hw, hd }, { side: '+z', kind: 'gate' });
+  else {
+    fenceRun(destructibles, fence, [hw, -hd], [hw, hd]);
+    fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
+    fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
+  }
+  if (pathW > 0) drapedPath(sink, 'plaster3', ctx.ground, [0, hd + 0.3], [0, -hd - 0.6], pathW, { lift: 0.04 });
+  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them
+  const look = ctx.variant;
+  const bed = (cx: number, cz: number, bw: number, bd: number) => {
+    drapedRect(sink, 'structureWood', ctx.ground, { cx, cz, hw: bw / 2, hd: bd / 2 }, { lift: 0.07, cell: 1.5, emit: { colour: SOIL_DARK } });
+    for (const [ex, ez, ew, ed] of [[cx, cz - bd / 2, bw / 2 + 0.06, 0.06], [cx, cz + bd / 2, bw / 2 + 0.06, 0.06], [cx - bw / 2, cz, 0.06, bd / 2], [cx + bw / 2, cz, 0.06, bd / 2]] as const) {
+      drapedRect(sink, 'structureWood', ctx.ground, { cx: ex, cz: ez, hw: ew, hd: ed }, { lift: 0.13, cell: 2, skirt: 0.2, emit: { colour: BRICK_EDGE } });
+    }
+    const along = bw > bd, len = Math.max(bw, bd), n = Math.max(1, Math.floor(len / 0.85));
+    for (let k = 0; k < n; k++) {
+      if (look() < 0.15) continue;
+      const t = -len / 2 + len * (k + 0.5) / n + (look() - 0.5) * 0.3, off = (look() - 0.5) * 0.25;
+      const x = cx + (along ? t : off), z = cz + (along ? off : t), y = ctx.ground?.(x, z) ?? 0;
+      const r = 0.22 + look() * 0.2, h = 0.45 + look() * 0.55;
+      const leaf = FOLIAGE[Math.floor(look() * FOLIAGE.length) % FOLIAGE.length];
+      sink.span('structureWood', x - r, y + 0.05, z - r, x + r, y + h, z + r, { colour: leaf, decor: true });
+      if (look() < 0.7) {
+        const bloom = BLOOM[Math.floor(look() * BLOOM.length) % BLOOM.length], br = r * 0.85;
+        sink.span('structureWood', x - br, y + h - 0.02, z - br, x + br, y + h + 0.14, z + br, { colour: bloom, decor: true, fine: true });
+      }
+    }
+  };
+  // (`beds: false`: a working compound's fence alone — a lookout's, a yard's — no borders and no box)
+  if (ctx.params.beds !== false) {
+    bed(-hw + 0.75, -0.2, 1.0, D - 2.2);
+    bed(hw - 0.75, -0.2, 1.0, D - 2.2);
+    const front = (W - pathW) / 2 - 2.0;
+    if (front > 1.2) for (const sx of [-1, 1]) bed(sx * (pathW / 2 + 0.9 + front / 2), hd - 0.8, front, 0.9);
+    // the clipped box hedges either side of the path inside the gate
+    for (const sx of [-1, 1]) {
+      const x = sx * (pathW / 2 + 0.55), z = hd - 1.6, y = ctx.ground?.(x, z) ?? 0;
+      sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
+    }
+  }
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT.gravel }, destructibles };
+};

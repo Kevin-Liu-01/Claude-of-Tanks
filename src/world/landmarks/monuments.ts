@@ -5,6 +5,7 @@
 import { PartSink, facePoint, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
 import { railing, revolve, smoothRender, star, steppedBase, cross, moulding, LIMEWASH_UV } from './kit.ts';
 import type { Vec3 } from '../maps/regional/geometry.ts';
+import { letterText, measureText } from './lettering.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const STAR_RED = rgb(0xb3221c), IRON = rgb(0x26282a), GILT = rgb(0xb8933e);
@@ -28,12 +29,24 @@ export const obelisk: LandmarkBuilder = (ctx) => {
   sink.span(body, -dieW / 2, steps, -dieW / 2, dieW / 2, steps + dieH, dieW / 2);
   moulding(sink, body, dieW, dieW, steps + dieH, 0.16, 0.1);
   moulding(sink, body, dieW, dieW, steps, 0.12, 0.06);
-  // the plaque on the front and back faces
+  // the plaque on the front and back faces, and its inscription in gilt capitals (`inscription`, lines split by '|';
+  // gauntlet wave 154: "the memorial obelisk has no inscription"), set as large as the plaque allows
+  const lines = String(ctx.params.inscription ?? '').split('|').map((line) => line.trim()).filter(Boolean);
   for (const side of [1, -1]) {
     const face: Face = { origin: [0, 0, side * dieW / 2], u: [side, 0, 0], out: [0, 0, side], width: dieW };
-    const pw = dieW * 0.62, ph = dieH * 0.5, py = steps + dieH * 0.5;
+    const pw = dieW * (lines.length ? 0.84 : 0.62), ph = dieH * (lines.length ? 0.72 : 0.5), py = steps + dieH * 0.5;
     sink.quad('structureMetal', facePoint(face, -pw / 2, py - ph / 2, 0.012), facePoint(face, pw / 2, py - ph / 2, 0.012),
       facePoint(face, pw / 2, py + ph / 2, 0.012), facePoint(face, -pw / 2, py + ph / 2, 0.012), { colour: PLAQUE, decor: true });
+    if (!lines.length) continue;
+    // one cap height for every line: the line gap half a cap, the whole block inside the plaque's margins
+    const width = pw - 0.12, height = ph - 0.12;
+    const cap = Math.min(height / (lines.length * 1.5 - 0.5), ...lines.map((line) => {
+      const { width: w1 } = measureText(line, { capHeight: 1 });
+      return width / w1;
+    }));
+    const top = py + (lines.length * 1.5 - 0.5) * cap / 2;
+    lines.forEach((line, k) => letterText(sink, 'structureMetal', face, line, 0, top - cap - k * cap * 1.5,
+      { capHeight: cap, colour: GILT, proud: 0.016 }));
   }
   // the shaft: four sides tapering by a sixth, then the pyramidion
   const shaftY = steps + dieH + 0.16, shaftH = H - shaftY - 0.9, b0 = dieW * 0.7, b1 = b0 * 0.66;
@@ -63,7 +76,7 @@ export const obelisk: LandmarkBuilder = (ctx) => {
 };
 
 /** A stylised standing figure (feet at y, facing +z): a greatcoat or a robe, the head 1/7.5 of its height. */
-function figure(sink: PartSink, y: number, h: number, metal: Rgb, dark: Rgb, pose: string): void {
+export function figure(sink: PartSink, y: number, h: number, metal: Rgb, dark: Rgb, pose: string): void {
   const head = h / 7.5;
   const col = { colour: metal }, colD = { colour: dark };
   // the coat or robe: a skirt flaring to the ankles, the torso, the shoulders

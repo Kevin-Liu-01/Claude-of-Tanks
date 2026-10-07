@@ -15,12 +15,12 @@
 //   4. the weathering of the map's kit (maps/regional/weather.ts) — or, on a map without one, its plain buckets;
 //   5. the collision derived from its solids (structureCollision.ts): the ground-contact band for movement — a bridge's
 //      authored deck instead, which a hull mounts as its floor — and the 0.5 m shell bands for shells and sight;
-//   6. the merge into the props buckets at its pose (no draw of its own), its ground reserved, its footprint published
-//      to the minimap.
+//   6. the merge into the props buckets at its pose (no draw of its own), its ground reserved (or, for a piece set into
+//      a finished map, vetoed: types.ts `ground`), its footprint published to the minimap.
 // Every refusal is named in the receipt (props.group.userData.landmarks); nothing is moved silently.
 import * as THREE from 'three';
 import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
-import { cloneCollisionRecord, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
+import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
 import { REGIONAL_BUCKETS, hashSeed, streamFrom, type RegionalParts } from '../maps/regional/geometry.ts';
@@ -28,7 +28,7 @@ import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from '../maps
 import type { ArchitectureStyle } from '../maps/regional/types.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
-import { LANDMARK_KINDS, resolveLandmarkParams } from './plan.ts';
+import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.ts';
 import { LANDMARK_BUILDERS } from './index.ts';
 import type { LandmarkKind, LandmarkPlacement } from './types.ts';
 
@@ -70,6 +70,12 @@ interface LandmarkComposeContext {
   /** Reserve a disc of the piece's ground for every pass after this one (the props placement list). */
   reserve(x: number, z: number, r: number): void;
   /**
+   * Veto the piece's ground for every pass after this one (a placement's `ground: 'veto'`): its oriented footprint
+   * (centre, heading, half extents across and along), inside which the props leave out what those passes would set —
+   * their draws all taken, so nothing else they place moves for the piece. Absent where nothing places after it.
+   */
+  veto?(x: number, z: number, yaw: number, hw: number, hd: number): void;
+  /**
    * Publish the piece's footprint (the minimap's building plan) under its kind: a set piece is no planned building, so it
    * carries no plan id (the town-plan receipts and the yard dressing read those).
    */
@@ -91,6 +97,8 @@ interface LandmarkReceiptEntry {
   fall?: number;
   /** Soft records (boulders, crushables) its footprint overlaps: allowed, reported for the authoring. */
   overlaps?: string[];
+  /** Its ground vetoed rather than reserved (types.ts `ground`). */
+  ground?: 'veto';
 }
 
 interface LandmarkReceipt {
@@ -142,6 +150,25 @@ function discMeetsFootprint(dx: number, dz: number, r: number, x: number, z: num
   return ex * ex + ez * ez < r * r;
 }
 
+/**
+ * True when a record's exact footprint (its compound shape) reaches into the piece's footprint: the footprint sampled
+ * on a grid of about a metre, edges included. The coarse disc test above it stands for a record by the disc inscribed in
+ * its box, which for a large building turned on the diagonal (a khan, a church) reaches far past its walls and refused
+ * the paving laid against its front (2026-10-06, Orchard's khan).
+ */
+function footprintTouchesRecord(record: CollisionRecord, x: number, z: number, hw: number, hl: number, yaw: number): boolean {
+  if (!record.shape2) return true;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const nx = Math.max(1, Math.ceil(hw * 2)), nz = Math.max(1, Math.ceil(hl * 2));
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= nz; j++) {
+      const lx = -hw + hw * 2 * i / nx, lz = -hl + hl * 2 * j / nz;
+      if (collisionFootprintContainsPoint(record, x + lx * c + lz * s, z - lx * s + lz * c, 0.05)) return true;
+    }
+  }
+  return false;
+}
+
 /** The hard solid (by kind) standing in the footprint, and the soft ones it overlaps. */
 function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: number, hw: number, hl: number, yaw: number,
   hardKinds: ReadonlySet<string> | undefined = undefined): { hard: string | null; soft: string[] } {
@@ -153,6 +180,7 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
     const cx = (ob.min[0] + ob.max[0]) * 0.5, cz = (ob.min[2] + ob.max[2]) * 0.5;
     const r = Math.max(0.3, Math.min(ob.max[0] - ob.min[0], ob.max[2] - ob.min[2]) * 0.5);
     if (!discMeetsFootprint(cx, cz, r, x, z, hw, hl, yaw)) continue;
+    if (!footprintTouchesRecord(ob, x, z, hw, hl, yaw)) continue;
     const kind = ob.kind ?? (ob.crushable ? 'crushable' : 'rock');
     if ((!ob.crushable && !SOFT_KINDS.has(kind)) || hardKinds?.has(kind)) return { hard: kind, soft };
     if (soft.length < 8) soft.push(kind);
@@ -167,7 +195,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
   const probes = footprintProbes(x, z, hw, hl, yaw);
   if (probes.some(([px, pz]) => Math.max(Math.abs(px), Math.abs(pz)) > SQUARE)) return 'outside the square';
   for (const s of ctx.spawns) if (discMeetsFootprint(s.x, s.z, SPAWN_CLEAR, x, z, hw, hl, yaw)) return 'spawn pad';
-  for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
+  // (a dressing piece — a square's setts, a path — has no solid to change an objective's ground: it may lie in a disc)
+  if (!isDressingPiece(placement)) for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
   if (probes.some(([px, pz]) => ctx.heightField.getWaterMaskAt(px, pz) > 0.05)) {
     // a bridge stands over its water and a valve tower in it (plan.ts inWater); every other piece keeps dry
     if (LANDMARK_KINDS[placement.kind].family !== 'bridge' && !LANDMARK_KINDS[placement.kind].inWater) return 'water';
@@ -224,17 +253,28 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     const yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
     const refused = admission(ctx, discs, placement, hw, hl, yaw);
     if (refused) { skip(refused); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
-    const { hard, soft } = solidConflicts(ctx.obstacles, placement.x, placement.z, hw, hl, yaw, ctx.hardKinds);
+    // (its solid's own rectangles where the kind names them — a gate's tower and its wall stubs — else its footprint)
+    const c0 = Math.cos(yaw), s0 = Math.sin(yaw);
+    const solidRects = (spec.solids?.(params) ?? [[0, 0, hw, hl] as const]).map(([cx, cz, rw, rl]) =>
+      [placement.x + cx * c0 + cz * s0, placement.z - cx * s0 + cz * c0, rw, rl] as const);
+    let hard: string | null = null;
+    const soft: string[] = [];
+    for (const [rx, rz, rw, rl] of solidRects) {
+      const found = solidConflicts(ctx.obstacles, rx, rz, rw, rl, yaw, ctx.hardKinds);
+      for (const kind of found.soft) if (soft.length < 8) soft.push(kind);
+      if (found.hard) { hard = found.hard; break; }
+    }
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
-    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
+    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
     const built = builder({
       kind: placement.kind, params,
       rng: streamFrom(hashSeed(`landmark:${ctx.mapId}:${placement.kind}`, ...identity)),
       variant: streamFrom(hashSeed(`landmark:variant:${ctx.mapId}:${placement.kind}`, ...identity)),
+      age: streamFrom(hashSeed(`landmark:age:${ctx.mapId}:${placement.kind}`, ...identity)),
       tier: ctx.tier, groundFall: ground.spread, brick: ctx.architecture?.surfaces.stone.kind === 'brick',
       ground: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);
@@ -298,13 +338,21 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     entry.triangles = partList(parts).reduce((n, g) => n + (g.index ? g.index.count : g.getAttribute('position').count) / 3, 0);
     _matrix.compose(_position.set(placement.x, baseY, placement.z), _quaternion.setFromAxisAngle(_up, yaw), _scale);
     ctx.merge(parts, _matrix);
-    // the ground it stands on, reserved for every pass after this one: discs along its long axis
-    const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
-    const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));
-    for (let k = 0; k < reserves; k++) {
-      const t = reserves === 1 ? 0 : -long + short + (2 * (long - short)) * k / (reserves - 1);
-      const lx = along ? 0 : t, lz = along ? t : 0;
-      ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
+    // the ground it stands on, kept for it by every pass after this one: discs along its long axis in the props'
+    // placement list, which those passes keep off — or, for a piece set into a finished map (`ground: 'veto'`), its
+    // footprint handed to the props' veto: they draw as on the map without it and what they would stand on its ground
+    // is left out (an open surface, a path's setts, keeps what stands on it)
+    if (placement.ground === 'veto') {
+      entry.ground = 'veto';
+      if (!spec.open) for (const [rx, rz, rw, rl] of solidRects) ctx.veto?.(rx, rz, yaw, rw, rl);
+    } else {
+      const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
+      const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));
+      for (let k = 0; k < reserves; k++) {
+        const t = reserves === 1 ? 0 : -long + short + (2 * (long - short)) * k / (reserves - 1);
+        const lx = along ? 0 : t, lz = along ? t : 0;
+        ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
+      }
     }
     ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
     // its street furniture into the props pools, its children after it (both from its frame into the world's)

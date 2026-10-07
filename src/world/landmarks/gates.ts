@@ -9,6 +9,9 @@ import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts
 import {
   ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, moulding, revolve, smoothRender, star,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
+import { fenceRun } from './grounds.ts';
+import { letterText, measureText } from './lettering.ts';
+import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
@@ -84,16 +87,18 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
     sink.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
   }
-  // the lettering: thin white strokes along the banner on both faces (the farm's name; at range a light line of text)
-  const letters = Math.max(6, Math.round(span * 1.1)), lw = (span - 1.6) / letters, ly0 = by0 + 0.36, ly1 = by1 - 0.36;
-  for (const zs of [1, -1]) for (let k = 0; k < letters; k++) {
-    const x = -inner + 0.8 + lw * (k + 0.5), z0 = zs * 0.07 - 0.006, z1 = zs * 0.07 + 0.006, half = lw * 0.28;
-    const form = Math.floor(ctx.variant() * 3);
-    const stroke = (a: number, b: number, c: number, d: number) => sink.span('structureWood', a, b, z0, c, d, z1, { colour: WHITE, decor: true, fine: true });
-    stroke(x - half, ly0, x - half + 0.06, ly1);
-    if (form !== 1) stroke(x + half - 0.06, ly0, x + half, ly1);
-    stroke(x - half, form === 2 ? ly0 : ly1 - 0.06, x + half, form === 2 ? ly0 + 0.06 : ly1);
-    if (form === 0) stroke(x - half, (ly0 + ly1) / 2 - 0.03, x + half, (ly0 + ly1) / 2 + 0.03);
+  // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
+  // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
+  // behind)
+  const sign = String(ctx.params.sign ?? '').trim();
+  if (sign) {
+    const style = { capHeight: 0.46, maxWidth: span - 1.3, colour: WHITE };
+    const { unit } = measureText(sign, style);
+    const baseline = (by0 + by1) / 2 - 3 * unit;
+    for (const face of [
+      { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
+      { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
+    ] satisfies Face[]) letterText(sink, 'structureWood', face, sign, 0, baseline, style);
   }
   // the crest with the star
   const cy = by1 + ARCH_GAP_M, cr = 0.95;
@@ -107,7 +112,15 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) {
     bar(sink, 'structureWood', [sx * inner, beamY - 1.2, 0], [sx * (inner - 1.2), beamY, 0], 0.14, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] } };
+  // the wings (gauntlet wave 154's settings round: a gate needs a boundary): a fence run off each pillar along the
+  // arch's line, the props' own destructible modules (a hull breaks them as any fence), `wings` metres each side
+  const wings = Math.max(0, Number(ctx.params.wings) || 0);
+  const destructibles: Array<{ kind: string; x: number; z: number; yawDeg: number }> = [];
+  if (wings > 0) {
+    const kind = String(ctx.params.wingFence || 'fencepicket'), x0 = px + p / 2 + 0.25;
+    for (const sx of [-1, 1]) fenceRun(destructibles, kind, [sx * x0, 0], [sx * (x0 + wings), 0]);
+  }
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
@@ -120,7 +133,7 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
 export const townGate: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const P = Math.max(3.5, Number(ctx.params.passage)), H = Math.max(10, Number(ctx.params.height)), D = Math.max(5, Number(ctx.params.depth));
-  const walls = Math.max(0, Number(ctx.params.walls));
+  const [wallsLeft, wallsRight] = gateStubs(ctx.params);
   const base = -0.6 - ctx.groundFall, wall: RegionalBucket = 'stone';
   const W = P + 4.6, spring = Math.min(4.6, H * 0.26), passage: ArchHole = { u: 0, w: P, y0: 0, spring, form: 'round' };
   const crown = spring + archRise(passage);
@@ -174,15 +187,15 @@ export const townGate: LandmarkBuilder = (ctx) => {
   }
   // a finial on the roof's ridge
   revolve(sink, 'structureMetal', 0, 0, [[0.05, rg.ridgeTopY - 0.1], [0.16, rg.ridgeTopY + 0.3], [0.05, rg.ridgeTopY + 0.5], [0.02, rg.ridgeTopY + 1.3]], 8, { colour: GILT, decor: true });
-  // the town wall either side: rubble wall, crenellations, the wall-walk on corbels behind
-  if (walls > 0) {
-    for (const sx of [-1, 1]) {
-      const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
-      sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
-      for (let x = lo + 0.3; x + 0.9 < hi; x += 1.8) sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
-      sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
-      for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
-    }
+  // the town wall either side (each stub its own length): rubble wall, crenellations, the wall-walk on corbels behind
+  for (const sx of [-1, 1]) {
+    const walls = sx < 0 ? wallsLeft : wallsRight;
+    if (walls <= 0) continue;
+    const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
+    sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
+    for (let x = lo + 0.3; x + 0.9 < hi; x += 1.8) sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
+    sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
+    for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
   }
   return { parts: sink.finish() };
 };
