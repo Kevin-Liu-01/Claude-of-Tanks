@@ -1108,10 +1108,10 @@ function makeStraw(
  * A thatched roof's print (facades lane, round 5, 2026-10-07; wave 199 read the khatas' straw roofs as "thatch that reads
  * like carpet"): the straw laid in courses down the slope, as a thatcher lays it. Texture u runs down the slope (house.ts
  * swaps a straw roof's axes), v along the ridge; a 512 px tile is 2.2 m of roof (the straw bucket's density):
- *   - seven courses, each about 32 cm down the slope, its butt line wandering a little along the ridge, the straw
- *     thickening toward it and a shadow under its frayed edge on the course below;
- *   - bundles 8.5 cm wide along the ridge, each its own tone and bulge;
- *   - strands down the slope, 4 mm a strand, each its own tone and length;
+ *   - six courses, each about 37 cm down the slope, its butt line wandering along the ridge, the straw thickening
+ *     toward it and a soft shadow under its frayed edge on the course below;
+ *   - one combed coat within a course: strands down the slope, 7 mm a strand, each its own tone and length, and a
+ *     slow drift of tone along the ridge (no bundle edges: those read as wooden shakes);
  *   - the weather's broad clouds.
  * The colour is the straw print's own family and mean (makeStraw's hue, saturation and lightness, under the map's
  * straw tone): the structure changes, not the palette. Every pattern is periodic in the tile (integer counts, wrapped
@@ -1132,42 +1132,42 @@ function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number)
     const v = (i: number, j: number) => hash(wrap(i, cx), wrap(j, cy), salt);
     return (v(ix, iy) * (1 - sx) + v(ix + 1, iy) * sx) * (1 - sy) + (v(ix, iy + 1) * (1 - sx) + v(ix + 1, iy + 1) * sx) * sy;
   };
-  const COURSES = 7, BUNDLES = 26, STRANDS = 320;
+  // (r8 views, round 5: seven courses of 8.5 cm bundles, each its own tone and bulge, read as wooden shakes) six courses
+  // whose butt lines wander along the ridge; the straw within a course one combed coat: no bundle edges, only the
+  // strands' own tones and a slow drift of tone along the ridge
+  const COURSES = 6, STRANDS = 320;
   for (let y = 0; y < s; y++) {
     for (let x = 0; x < s; x++) {
       const i = y * s + x, j = i * 4;
       // the course: t runs 0 at its top (up the slope) to 1 at its butt line, which wanders along the ridge
-      const cu = x / s * COURSES + (vnoise(x, y, 2, 12, 3) - 0.5) * 0.18;
+      const cu = x / s * COURSES + (vnoise(x, y, 2, 10, 3) - 0.5) * 0.34 + (vnoise(x, y, 2, 40, 19) - 0.5) * 0.08;
       const c = Math.floor(cu), t = cu - c;
-      // the bundle along the ridge and the strand within it
-      const bf = y / s * BUNDLES + (vnoise(x, y, 6, 4, 5) - 0.5) * 0.5;
-      const b = Math.floor(bf), bt = bf - b;
       const strand = Math.floor(y / s * STRANDS);
-      const bundleTone = hash(wrap(b, BUNDLES), wrap(c, COURSES), 7);
       const strandTone = hash(wrap(strand, STRANDS), wrap(c, COURSES), 9);
+      // the coat's slow drift along the ridge (a handful of straw from another stack), smooth, never a step
+      const drift = vnoise(x, y, 2, 9, 7);
       // a strand's own length: some stop short of the butt line (a frayed edge)
-      const reach = 0.78 + hash(wrap(strand, STRANDS), wrap(c, COURSES), 11) * 0.22;
+      const reach = 0.8 + hash(wrap(strand, STRANDS), wrap(c, COURSES), 11) * 0.2;
       const past = t > reach;
-      const lip = smoothstep(0.82, 1, t) * (past ? 0.4 : 1);
-      // the shadow the course above casts on this one's top, under its frayed edge
-      const shade = 1 - 0.2 * (1 - smoothstep(0, 0.14, t));
+      const lip = smoothstep(0.86, 1, t) * (past ? 0.5 : 1);
+      // the soft shadow the course above casts on this one's top
+      const shade = 1 - 0.13 * (1 - smoothstep(0, 0.2, t));
       const weather = vnoise(x, y, 3, 3, 13);
-      const bulge = Math.sin(bt * Math.PI);
       // along the strand: each one's tone wanders down its length (a stalk, not a painted line)
       const along = vnoise(x, y, 28, STRANDS, 17);
       // the straw print's family and mean: hue 0.098-0.12, saturation about 0.3-0.42, lightness about 0.24-0.55
-      const light = (0.215 + strandTone * 0.11 + along * 0.06 + bundleTone * 0.045 + lip * 0.05 + bulge * 0.03) * shade
-        * (0.88 + weather * 0.22) * (past ? 0.8 : 1);
-      _col.setHSL(0.098 + bundleTone * 0.022, 0.4 - (1 - shade) * 0.25 - weather * 0.06, light);
+      const light = (0.24 + strandTone * 0.1 + along * 0.06 + drift * 0.04 + lip * 0.03) * shade
+        * (0.88 + weather * 0.22) * (past ? 0.86 : 1);
+      _col.setHSL(0.098 + drift * 0.022, 0.4 - (1 - shade) * 0.2 - weather * 0.06, light);
       px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-      hgt[i] = Math.min(1, Math.max(0, 0.2 + t * 0.5 * (past ? 0.6 : 1) + bulge * 0.12 + strandTone * 0.08 - (1 - shade) * 0.3));
+      hgt[i] = Math.min(1, Math.max(0, 0.25 + t * 0.35 * (past ? 0.7 : 1) + strandTone * 0.1 + along * 0.05 - (1 - shade) * 0.25));
     }
   }
   applyTone(px, tone);
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, 2.6, anisotropy),
-    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.86, roughMax: 1.0, aoMin: 0.7 }),
+    normal: normalFromHeight(hgt, s, 1.8, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.86, roughMax: 1.0, aoMin: 0.74 }),
   };
 }
 
