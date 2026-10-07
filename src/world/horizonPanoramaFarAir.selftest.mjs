@@ -50,6 +50,10 @@ const height = HORIZON_PANORAMA_SHADERS.height;
 assert.ok(/const PANO_NEAR_CAP = 0\.03;\s*const PANO_NEAR_SQUASH = 0\.15;\s*const PANO_NEAR_WANDER = 0;/.test(source), 'the press at rest: 0.03, 0.15, no wander');
 assert.ok(source.includes("uNearBand: { value: new THREE.Vector4(lightTune('PANO_NEAR_CAP', PANO_NEAR_CAP), lightTune('PANO_NEAR_SQUASH', PANO_NEAR_SQUASH),")
   && source.includes("lightTune('PANO_NEAR_WANDER', PANO_NEAR_WANDER), 0) },"), 'the knobs reach the height pass at each bake');
+// 3c. (2026-10-07) the layers' strength and the sea sectors' softening: QA knobs read at each bake, at rest as shipped
+assert.ok(source.includes("(ch.plinth ? -1 : 1) * lightTune('PANO_LAYERS', ch.layers)"), 'the layers\' strength a knob over the character\'s');
+assert.ok(/const PANO_SEA_SOFT_DEG = 4;/.test(source) && source.includes("lightTune('PANO_SEA_SOFT_DEG', PANO_SEA_SOFT_DEG)"), 'the sea sectors\' softening at rest 4 degrees, a knob');
+assert.ok(/function bake\(renderer: HorizonPanoramaRenderer\): void \{\s*const started = performance\.now\(\);\s*buildEdgeData\(\);/.test(source), 'the edge data rebuilt at each bake (the knob read there)');
 for (const needle of [
   'uniform vec4 uNearBand;',
   'if (uNearBand.z > 0.0) {',

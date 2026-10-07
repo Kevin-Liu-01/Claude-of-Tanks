@@ -56,6 +56,8 @@ export const HORIZON_PANORAMA = Object.freeze({
 const PANO_NEAR_CAP = 0.03;
 const PANO_NEAR_SQUASH = 0.15;
 const PANO_NEAR_WANDER = 0;
+/** The sea weight's softening round the compass at rest (QA knob PANO_SEA_SOFT_DEG, degrees each way, read at each bake). */
+const PANO_SEA_SOFT_DEG = 4;
 
 /** The far country's vocabulary per relief character (amplitudes in m; wavelengths in m). */
 export interface HorizonPanoramaCharacter {
@@ -1812,13 +1814,17 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const ringSkyline = horizonRingSkylineTan(options.ringEdge, P.eyeY);
   // the sea weight round the compass, softened over about 4 degrees each way: the far country beside a bay dropped to
   // the sea in a degree or two of azimuth — at 5 km a wall a few hundred metres wide (Nordhavn Fjord's far block)
-  const seaW = new Float32Array(EDGE_W), seaL = new Float32Array(EDGE_W);
+  // (2026-10-07, the skies lane: the softening a QA knob read at each bake, PANO_SEA_SOFT_DEG — the far country slopes into
+  // a sea sector over this many degrees each way; Nordhavn's sunward block still ended in a sheer wall at 4)
+  const rawSeaW = new Float32Array(EDGE_W), seaW = new Float32Array(EDGE_W), seaL = new Float32Array(EDGE_W);
   for (let i = 0; i < EDGE_W; i++) {
     const sea = options.seaWeightAt ? options.seaWeightAt((i / EDGE_W) * Math.PI * 2) : { weight: 0, level: 0 };
-    seaW[i] = sea.weight; seaL[i] = sea.level;
+    rawSeaW[i] = sea.weight; seaL[i] = sea.level;
   }
+  const buildEdgeData = (): void => {
+  seaW.set(rawSeaW);
   {
-    const R = Math.round(EDGE_W * 4 / 360), tmp = new Float32Array(EDGE_W);
+    const R = Math.max(1, Math.round(EDGE_W * lightTune('PANO_SEA_SOFT_DEG', PANO_SEA_SOFT_DEG) / 360)), tmp = new Float32Array(EDGE_W);
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < EDGE_W; i++) { let sum = 0; for (let d = -R; d <= R; d++) sum += seaW[(i + d + EDGE_W) % EDGE_W]; tmp[i] = sum / (2 * R + 1); }
       seaW.set(tmp);
@@ -1841,6 +1847,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(ringSkyline[k]);
     }
   }
+  };
+  buildEdgeData();
 
   const unsupported = (renderer: HorizonPanoramaRenderer): string | null => {
     if (!renderer.capabilities?.isWebGL2) return 'webgl1';
@@ -1851,6 +1859,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
 
   function bake(renderer: HorizonPanoramaRenderer): void {
     const started = performance.now();
+    buildEdgeData();
     // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
     const published = publishedSky();
     const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, options.overcast ?? published.overcast);
@@ -1876,7 +1885,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uChar0: { value: new THREE.Vector4(ch.ampM, ch.foot, ch.macroL, ch.sharp) },
       uChar1: { value: new THREE.Vector4(ch.midL, ch.gullyL, ch.gullyM, ch.warpM) },
       // .w: the layers' strength, negative for the plinth (the hill countries)
-      uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, ch.plinth ? -ch.layers : ch.layers) },
+      uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, (ch.plinth ? -1 : 1) * lightTune('PANO_LAYERS', ch.layers)) },
       // the snowline and the treeline as fractions of the amplitude the strip's law reads them by (the ring's own
       // altitudes where it has them)
       uChar3: { value: new THREE.Vector4(
