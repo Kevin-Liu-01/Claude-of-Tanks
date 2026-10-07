@@ -57,9 +57,11 @@ const PR_HEAD = {
     [19.36, 203.78, 6.89, 8.61], [19.38, 233.95, 16.6, 25.86], [-20.92, 232.94, 12.85, 20.08],
     [276.71, -231.11, 10.85, 6.89],
   ] },
-  // Blackglass generates its district (no recorded plan) with the clearance: nine of its blocks stood in a carriageway and
-  // all nine move off it, eight within 10 m and the civic hall at (-101.9, -85.8), with no clear place within 30 m, to
-  // its authored place on the avenue's north-west side (props roadClearanceTargets, 59 m)
+  // Blackglass generated its district with the clearance: nine of its blocks stood in a carriageway and all nine moved
+  // off it, eight within 10 m and the civic hall at (-101.9, -85.8), with no clear place within 30 m, to its authored
+  // place on the avenue's north-west side (props roadClearanceTargets, 59 m). As Suzhou Creek (the map-revival lane,
+  // 2026-10-05) it replays that district as PR #9's head 5d2461283 seated it (TOWN_PLANS, TOWN_ROW_PLANS), the creek
+  // through it (OVER_WATER below)
   blackglass: { carriageway: 9, structures: [
     [-254.16, -252.85, 37.15, 37.18], [-281.08, -227.61, 27.81, 28.03], [-263.82, -203.71, 34.76, 34.49],
     [-241.99, -183.91, 38.16, 37.03], [-197.23, -186.09, 11.01, 11.06], [-176.85, -167.41, 33.18, 33.27],
@@ -125,6 +127,70 @@ for (const mapId of Object.keys(TOWN_PLANS)) {
 }
 const footprint = (o) => ({ cx: (o.b[0] + o.b[3]) / 2, cz: (o.b[2] + o.b[5]) / 2, w: o.b[3] - o.b[0], d: o.b[5] - o.b[2] });
 const summary = [];
+/**
+ * A map that adopts a regional kit (props.architecture; maps/regional, the map-revival lanes, 2026-10-05). The kit
+ * rebuilds each structure in its region's architecture over the same seat, so the footprint's world box changes size
+ * with the kit's own shape, and the kit's yards add their sheds. regionalArchitecture.selftest holds the seats, the
+ * placement stream and the contact records with and without the kit, and each new kit's body within half a metre of
+ * the base's reach. Here each PR-head structure keeps a structure whose centre stands within KIT_SEAT_M of its own,
+ * one to one, or a short move off a carriageway. Every structure left over must be shed-sized (a yard's shed).
+ */
+const KIT_SEAT_M = 2.5, KIT_SHED_M = 6;
+/**
+ * The buildings a map's water reaches (props.ts settlementOverWater: Suzhou Creek laid through the Blackglass district,
+ * the map-revival lane, 2026-10-05): each landmark the creek reached moved to the nearest dry seat the district left it
+ * (its PR-head centre, its new centre; the seat holds within KIT_SEAT_M), each street row it reached is left out. With
+ * these and the carriageway's movers, every other structure keeps its PR-head seat.
+ */
+const OVER_WATER = {
+  blackglass: {
+    moved: [[[16.87, 80.28], [3.3, 67.8]], [[37.88, 100.25], [39.2, 131.7]], [[84.67, 93.03], [84.5, 81.0]],
+      [[62.08, 116.27], [44.4, 178.8]], [[109.13, 109.31], [99.9, 73.0]]],
+    dropped: [[-197.27, 3.82], [-226.62, -24.01], [-225.05, -7.68]],
+  },
+};
+function kitSeats(mapId, config, carriageway, structures, now) {
+  const water = OVER_WATER[mapId] ?? { moved: [], dropped: [] };
+  const same = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= 0.05;
+  for (const at of [...water.dropped, ...water.moved.map(([from]) => from)]) {
+    assert.ok(structures.some((s) => same(s, at)), `${mapId}: the water reaches a PR-head structure at (${at})`);
+  }
+  assert.equal(water.moved.length + water.dropped.length > 0, !!config.props.settlementOverWater,
+    `${mapId}: the structures its water reaches are listed exactly where the map lays water over its settlement`);
+  const kept = structures.filter((s) => !water.dropped.some((at) => same(s, at)));
+  assert.ok(now.length >= kept.length, `${mapId}: at least as many structures as the PR head less the rows its water reaches (${now.length} of ${kept.length})`);
+  const taken = new Set();
+  let seated = 0, moved = 0, worstSeat = 0, worstMove = 0, overWater = 0;
+  const nearest = (cx, cz, within) => {
+    let best = -1, bestD = within;
+    now.forEach((s, i) => { const d = Math.hypot(s.cx - cx, s.cz - cz); if (!taken.has(i) && d <= bestD) { best = i; bestD = d; } });
+    return [best, bestD];
+  };
+  for (const [, to] of water.moved) {
+    const [i] = nearest(to[0], to[1], KIT_SEAT_M);
+    assert.ok(i >= 0, `${mapId}: the landmark its water reached stands at its dry seat (${to})`);
+    taken.add(i); overWater++;
+  }
+  const pending = [];
+  for (const [cx, cz] of kept) {
+    if (water.moved.some(([from]) => same(from, [cx, cz]))) continue;
+    const [i, d] = nearest(cx, cz, KIT_SEAT_M);
+    if (i >= 0) { taken.add(i); seated++; worstSeat = Math.max(worstSeat, d); } else pending.push([cx, cz]);
+  }
+  for (const [cx, cz] of pending) {
+    const authored = (config.props.roadClearanceTargets ?? []).find((t) => Math.hypot(t.from[0] - cx, t.from[1] - cz) <= 1.5);
+    const [i, d] = authored ? nearest(authored.to[0], authored.to[1], KIT_SEAT_M) : nearest(cx, cz, 30);
+    assert.ok(i >= 0, `${mapId}: the structure at (${cx}, ${cz}) keeps its seat in the ${config.props.architecture} kit or a short move off a carriageway`);
+    taken.add(i); moved++; worstMove = Math.max(worstMove, d);
+  }
+  assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
+  const extra = now.filter((_, i) => !taken.has(i));
+  for (const s of extra) {
+    assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
+  }
+  summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), `
+    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${extra.length} yard sheds`);
+}
 for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
   if (!TOWN_PLANS[mapId]) {
@@ -133,6 +199,10 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const manifest = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8')));
   const now = manifest.obstacles.filter((o) => o.k === 'structure').map(footprint);
+  if (config.props.architecture) {
+    kitSeats(mapId, config, carriageway, structures, now);
+    continue;
+  }
   assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);
   let exact = 0, moved = 0, worstMove = 0;
   const taken = new Set();

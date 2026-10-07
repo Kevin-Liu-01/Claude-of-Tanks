@@ -58,6 +58,8 @@ export interface CrewRadio {
   setRadioDamage(level: 0 | 1 | 2): void;
   readonly language: string;
   readonly speaking: boolean;
+  /** Nothing waiting, and the last transmission and the gap after it are over (the same clock `say` keeps). */
+  readonly quiet: boolean;
   readonly log: readonly RadioLogEntry[];
   debugState(): { currentPri: number; currentGroup: string | null; currentEnd: number; pending: Request[] };
 }
@@ -174,6 +176,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   const log: RadioLogEntry[] = [];
   let currentEnd = -1;
   let currentPri = -1;
+  let currentYields = false;
   let currentGroup: string | null = null;
   let currentSrc: AudioBufferSourceNode | null = null;
   let currentGate: GainNode | null = null;
@@ -204,6 +207,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     }
     currentEnd = ctx.currentTime;
     currentPri = -1;
+    currentYields = false;
     currentGroup = null;
     bedGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
     mixer.duckForVoice(false);
@@ -262,6 +266,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       if (currentSrc === src) {
         currentSrc = null;
         currentPri = -1;
+        currentYields = false;
         currentGroup = null;
         mixer.duckForVoice(false);
       }
@@ -270,6 +275,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     currentGate = gate;
     currentEnd = startAt + dur + 0.02 + Math.max(0.12, Math.min(0.35, outS));
     currentPri = line.pri;
+    currentYields = !!line.yields;
     currentGroup = line.group || id;
     lastPlay.set(id, now);
     lastGroupPlay.set(currentGroup, { t: now, pri: line.pri });
@@ -309,10 +315,11 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     return true;
   }
 
-  /** Survival cuts anything below it, a decisive event cuts situational calls, and a report cuts flavour. */
+  /** Survival cuts anything below it, a decisive event cuts situational calls, a report cuts flavour, and any call cuts
+   * a line that yields. */
   function canInterrupt(pri: number, now: number): boolean {
     return !!currentSrc && currentEnd - now > 0.12
-      && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1) || (pri >= 2 && currentPri === 0));
+      && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1) || (pri >= 2 && currentPri === 0) || (pri >= 1 && currentYields));
   }
 
   function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined): boolean {
@@ -394,6 +401,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     },
     get language() { return language; },
     get speaking() { return !!currentSrc; },
+    get quiet() { return !queue.length && ctx.currentTime >= currentEnd + RADIO_DISCIPLINE.gapS; },
     log,
     debugState() {
       return { currentPri, currentGroup, currentEnd, pending: queue.map((q) => ({ ...q })) };

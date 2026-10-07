@@ -27,6 +27,11 @@ Trace the bus event, confirm the access owner is acquired before the consumer,
 confirm pool teardown/reset paths, then test live battle, killcam, and rematch
 behavior.
 
+Impact, muzzle-blast, kill and wreck-column media live in `combat/` (lit,
+wind-borne, deforming puffs, clods and craters) that `effects.ts` delegates to:
+change a recipe there and keep `combat/combatFx.selftest.mjs` green
+(docs/ARCHITECTURE.md §3.8.3).
+
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Worlds and tank visuals are reused across matches; decals and emitters must not

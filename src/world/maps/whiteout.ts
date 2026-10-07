@@ -75,7 +75,9 @@ export default {
     // increasing the deliberately sparse station's tree placement budget.
     species: ['spruce', 'birch', 'fir'], clusterMix: [['spruce', 0.55], ['birch', 0.35], ['fir', 0.10]],
     loneMix: [['birch', 0.65], ['spruce', 0.30], ['fir', 0.05]], rimMix: [['spruce', 0.65], ['birch', 0.25], ['fir', 0.10]],
-    clusterCount: 8, loneCount: 12, rimCount: 20, grassDensity: 0.20, bushCount: 0.22, bushSpecies: 'birch',
+    // Trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no tree, no shrub and no
+    // grass grows on the ice (its rock is the bare nunataks'). Was 8 / 12 / 20 trees, grass 0.20, scrub 0.22.
+    clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, bushSpecies: 'birch',
     palettes: winter.vegetation.palettes,
   },
   props: {

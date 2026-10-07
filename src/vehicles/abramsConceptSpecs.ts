@@ -49,9 +49,9 @@ function armorM1A3(): ArmorEnvelope {
     sL('modular_skirt_L', 42, 2.03, 0.52, 2.03, 1.54, -3.74, 3.72,
       { keMm: 155, ceMm: 420, kind: 'spaced' }),
     sR('slat_cage_R', 12, 2.16, 0.70, 2.16, 1.56, -3.96, -2.08,
-      { keMm: 12, ceMm: 230, kind: 'spaced' }),
+      { keMm: 12, ceMm: 230, kind: 'spaced', droneInterception: .55 }),
     sL('slat_cage_L', 12, 2.16, 0.70, 2.16, 1.56, -3.96, -2.08,
-      { keMm: 12, ceMm: 230, kind: 'spaced' }),
+      { keMm: 12, ceMm: 230, kind: 'spaced', droneInterception: .55 }),
     sR('track_R', 24, 1.75, 0.08, 1.75, 1.16, -3.88, 3.88,
       { kind: 'external', moduleLink: 'trackR' }),
     sL('track_L', 24, 1.75, 0.08, 1.75, 1.16, -3.88, 3.88,
@@ -72,16 +72,20 @@ function armorM1A3(): ArmorEnvelope {
     // behind it there). Its protection follows the shield: measured on the balance range, 520/690 left the M1A3 at
     // 0 of 12 against the AbramsX, 700/900 at 0, 800/1050 at 1 of 12, 880/1150 at 5 of 12 (reviewed band 0.2–0.8;
     // 6 of 12 before the articulation). See docs/history/sync-audit-2026-09-23.md.
+    // 2026-10-06 (integration): main's M1A3 turret taper and planar cheeks turned this plate toward the AbramsX's line
+    // of fire (impact angle 45 -> 33 deg, effective 1058 -> 906 mm at the same calibrated 774 mm), and the M1A3 fell to
+    // 1 of 12 on main and 2 of 12 here (PR head 7 of 12). Measured on the range, scaling the plate: x1.05 -> 3 of 12,
+    // x1.075 -> 6 of 12, x1.1 -> 8 of 12, x1.2 -> 11 of 12. Restored at x1.075 (880/1150 -> 946/1236).
     fr('gun_cradle', 410, 0.31, 0.06, 2.22, 0.65, 2.17,
-      { keMm: 880, ceMm: 1150, gunFollow: true }),
+      { keMm: 946, ceMm: 1236, gunFollow: true }),
     sR('turret_side_R', 330, 1.60, -0.08, 1.48, 0.73, -3.12, 1.10,
       { keMm: 470, ceMm: 720 }),
     sL('turret_side_L', 330, 1.60, -0.08, 1.48, 0.73, -3.12, 1.10,
       { keMm: 470, ceMm: 720 }),
     sR('turret_cage_R', 12, 1.86, 0.12, 1.86, 0.84, -3.34, -1.08,
-      { keMm: 12, ceMm: 230, kind: 'spaced' }),
+      { keMm: 12, ceMm: 230, kind: 'spaced', droneInterception: .55 }),
     sL('turret_cage_L', 12, 1.86, 0.12, 1.86, 0.84, -3.34, -1.08,
-      { keMm: 12, ceMm: 230, kind: 'spaced' }),
+      { keMm: 12, ceMm: 230, kind: 'spaced', droneInterception: .55 }),
     rr('isolated_autoloader_bustle', 85, 1.48, 0.04, -3.13, 0.73, -3.20,
       { keMm: 95, ceMm: 125 }),
     rf('turret_roof', 65, 1.47, 0.79, -3.12, 1.10,

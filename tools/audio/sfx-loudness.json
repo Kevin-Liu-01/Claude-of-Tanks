@@ -1,0 +1,422 @@
+{
+ "amb_adriatic": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "d5ace95e22cef4bec0eaab6efdf48cebc270df7ca6d2012888898c51844005e9",
+    "bytes": 182187,
+    "durS": 20.091,
+    "mMax": -11.6,
+    "integrated": -21,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "amb_fjord": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "9e449889a2f0d00503cb3c51023a6f18420c545e2bfb16f148c48ba606a2baa8",
+    "bytes": 179210,
+    "durS": 20.091,
+    "mMax": -12.3,
+    "integrated": -21.3,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "bell_orthodox": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8527b42510e09959faa36a16414ef1d6ed8d68766b0363dededb2cd6cfcfcada",
+    "bytes": 46353,
+    "durS": 6,
+    "mMax": -18.1,
+    "integrated": -23.1,
+    "truePeak": -5.8
+   },
+   {
+    "sha256": "e968cc978c46fbb685c802a06a0cf7ae7fc40210e21fbf88ce21c74307ae2b03",
+    "bytes": 41231,
+    "durS": 6,
+    "mMax": -18.1,
+    "integrated": -23.8,
+    "truePeak": -7.6
+   }
+  ]
+ },
+ "bell_toll": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d2ff0038e452252889915f9c220c1342f22a15006c161372edf312bd674340c8",
+    "bytes": 40458,
+    "durS": 6,
+    "mMax": -18,
+    "integrated": -25.9,
+    "truePeak": -5.8
+   },
+   {
+    "sha256": "165a8dc659b25146ed9f0e93cd0e24e849da381f5bc88c266ba557db51551277",
+    "bytes": 38225,
+    "durS": 6,
+    "mMax": -18.2,
+    "integrated": -24,
+    "truePeak": -8.9
+   }
+  ]
+ },
+ "can_knock": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "91d62c4a347533d69cbd5a09134b159ee397186314ba773f64b89a9686fbba98",
+    "bytes": 13749,
+    "durS": 1.2,
+    "mMax": -13.5,
+    "integrated": -16.9,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "b799f3292ae362696ec591dd6a1bd64a8ad5f7ec5c437f5ab636f64f0810ab2f",
+    "bytes": 12299,
+    "durS": 1.2,
+    "mMax": -12.9,
+    "integrated": -17,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "cart_break": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9e3658ed9b0bb00c7bd277bdfff4f0982a275f31b29c5029d61db2d8d573a706",
+    "bytes": 17326,
+    "durS": 1.48,
+    "mMax": -11.7,
+    "integrated": -16,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "3627329bacf357a8e3ac09ce035f8056a10ece8fdfd452a99d4b2e3e7ef6923c",
+    "bytes": 16913,
+    "durS": 1.48,
+    "mMax": -12.1,
+    "integrated": -14.1,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "flyover_bomber": {
+  "group": "ambience",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d2384610586a92ef44c06a6288a6db274e0b8c69b972169552be3d7e14239aa8",
+    "bytes": 61109,
+    "durS": 7.87,
+    "mMax": -12,
+    "integrated": -13.7,
+    "truePeak": -1
+   }
+  ]
+ },
+ "flyover_piston": {
+  "group": "ambience",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "116f83a9ef530936d612ff482064b711de9b0713e05ef322be87d0a8d18605b9",
+    "bytes": 47326,
+    "durS": 6.358,
+    "mMax": -11.9,
+    "integrated": -15.8,
+    "truePeak": -1
+   },
+   {
+    "sha256": "7c5b30c6dfa03ab4d533b13f03ac155394382aa3dc25d2be9f42d900573d37a7",
+    "bytes": 49170,
+    "durS": 6.56,
+    "mMax": -12,
+    "integrated": -16.6,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "fuel_drum_blast": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "326a5247e36e8bf8bc2b51b5838701fdfa4a1128ff12c34bfd040935d8c52b87",
+    "bytes": 23254,
+    "durS": 2.48,
+    "mMax": -10.1,
+    "integrated": -14.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "a0a86fb5bf945b3a141f8e7306dcea521f01f49d26c469213faf4b98440b4349",
+    "bytes": 22575,
+    "durS": 2.48,
+    "mMax": -10.1,
+    "integrated": -14.7,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "layer_creek": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "4e1292dd1ed96b9b18db87f00f03a592dcfab48627aadad106ebd08df178e655",
+    "bytes": 113490,
+    "durS": 12.091,
+    "mMax": -17,
+    "integrated": -21,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "layer_station": {
+  "group": "ambience",
+  "preset": "ambience",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "bfafde049c92070ead62c8ebe22d03d08020bb41777b3437e9fa530be9a488ba",
+    "bytes": 118444,
+    "durS": 12.091,
+    "mMax": -20.4,
+    "integrated": -21,
+    "truePeak": -10.7
+   }
+  ]
+ },
+ "metal_topple": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d07766559a7b114f9df15b110c06707608174554b6f246beee07bc9e623e8a54",
+    "bytes": 12583,
+    "durS": 1.04,
+    "mMax": -11.8,
+    "integrated": -14.6,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "d3a8093ed9564e900208643356448ad9efda1f01d9a9e923514506a5d745dfec",
+    "bytes": 22009,
+    "durS": 2,
+    "mMax": -10,
+    "integrated": -14.4,
+    "truePeak": -1
+   }
+  ]
+ },
+ "pole_fall": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "cc81ad8c32ff233cb89058f63a480247ddde974752dd7212b142aea087703b9f",
+    "bytes": 16458,
+    "durS": 1.48,
+    "mMax": -15.3,
+    "integrated": -17.8,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "7b5c555ec893701205550933d4e2bc95f3694a3f66ce09dd929609046eb189ea",
+    "bytes": 15935,
+    "durS": 1.48,
+    "mMax": -14.9,
+    "integrated": -18.8,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "pole_snap": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fe134c37d3bd3685aa7ae868b0de3c33b53b43d75f9a259d6eb980e60e89f746",
+    "bytes": 10918,
+    "durS": 0.8,
+    "mMax": -13.3,
+    "integrated": -18.2,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "14de187b07ac1ce2f1f3dee6677f8d77c16259f41b6b1ab258d719ccc5eeb09b",
+    "bytes": 5911,
+    "durS": 0.408,
+    "mMax": -13.2,
+    "integrated": -15.1,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "pole_wires": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bfdd5be2a82ee31940e00fef3d862374774caedbc9883f1f65a22a084e839d58",
+    "bytes": 20663,
+    "durS": 2,
+    "mMax": -13.8,
+    "integrated": -17.9,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "52cb3a589fc979e9f922feb355fc99aecb4fdee48cf41a6acb260a403634c1db",
+    "bytes": 20646,
+    "durS": 2,
+    "mMax": -11.8,
+    "integrated": -16.9,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "pottery_smash": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "abf32cf3ff5c998c0f7ce2e9caec0e97dc5ab0b2512c75118308dd24d9be47ca",
+    "bytes": 15724,
+    "durS": 1.2,
+    "mMax": -12.9,
+    "integrated": -17.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "372ee493799f7a9dd2fb1421f3e402ae241d9d488254950cd69ce44d2250a7b0",
+    "bytes": 17548,
+    "durS": 1.2,
+    "mMax": -12.9,
+    "integrated": -14,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "spot_boat_creak": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b78493036d46d7302d52d6d75fa3c028f22d4fe347736b4a70401e1ee7435875",
+    "bytes": 19249,
+    "durS": 2.644,
+    "mMax": -19.4,
+    "integrated": -22.5,
+    "truePeak": -2.6
+   },
+   {
+    "sha256": "348236d2f0eb4a420327bb60a2b3766b32318387c3f01045df0fe110cb2edaa9",
+    "bytes": 14038,
+    "durS": 2.548,
+    "mMax": -19.1,
+    "integrated": -21.6,
+    "truePeak": -2.8
+   }
+  ]
+ },
+ "spot_oystercatcher": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "21ec0cdcaf452ed4d4b2726c56e027fcc367cd17287715373e496eca6af13cf7",
+    "bytes": 16529,
+    "durS": 2.254,
+    "mMax": -18.1,
+    "integrated": -21.6,
+    "truePeak": -8.2
+   },
+   {
+    "sha256": "40a538c2e0d67a52cdbae3cfee307a67a2c8a7ee2552b66b9ea6e35137746298",
+    "bytes": 16849,
+    "durS": 2.4,
+    "mMax": -18,
+    "integrated": -23.3,
+    "truePeak": -5.1
+   }
+  ]
+ },
+ "straw_crush": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3e78717879e23a0b0e0b9f979b959566e07651d7572d9531c7fa0d773e831bda",
+    "bytes": 15238,
+    "durS": 1.48,
+    "mMax": -12.6,
+    "integrated": -16.9,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b76add806474d1da4f542213464438e4ed66ff24efa05038aed7ca9fdfa7f734",
+    "bytes": 15977,
+    "durS": 1.48,
+    "mMax": -12,
+    "integrated": -14,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "tent_collapse": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "305630e04119e2f05cb7d6934f82ab3f7dbe36fd153356e983bd18a7d10eaeed",
+    "bytes": 19598,
+    "durS": 1.84,
+    "mMax": -13.3,
+    "integrated": -17.2,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "5bff0c63bb8e134f0ba9b461ce3389b5210a06ab67b6324152f7ed3552e7520d",
+    "bytes": 19624,
+    "durS": 1.874,
+    "mMax": -13.4,
+    "integrated": -15.9,
+    "truePeak": 0.6
+   }
+  ]
+ }
+}

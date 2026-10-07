@@ -25,6 +25,7 @@ import {
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
 import { applyMovementCheckpoint } from './movementCheckpoint.ts';
+import { publishedTrackContact } from '../../sim/trackContact.ts';
 import { lerpAngle } from './interpolation.ts';
 import type { PredictionControl } from './inputStream.ts';
 
@@ -486,9 +487,12 @@ export class LocalPredictor {
 
   private restoreCheckpoint(viewer: ViewerState | null): void {
     if (!viewer || viewer.movementVersion === 0) { this.stats.checkpointsMissing++; return; }
+    // the support cache is restored against the contact the solve reads (movement.ts trackContactOf: the published
+    // receipt, else the drawn one): against another object it never matched, and the replay re-solved the support the
+    // authority had cached, 1.4 mm off at rest and 5 mm through a landing (physics lane round 8)
     const applied = applyMovementCheckpoint(this.sim.state, {
       version: viewer.movementVersion, values: viewer.movementValues, flags: viewer.movementFlags,
-    }, this.sim.contactGeom);
+    }, publishedTrackContact(this.sim.spec) ?? this.sim.contactGeom);
     if (applied) this.stats.checkpointsApplied++;
     else this.stats.checkpointsRejected++;
   }

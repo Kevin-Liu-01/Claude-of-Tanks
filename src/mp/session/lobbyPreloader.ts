@@ -67,6 +67,7 @@ export function createLobbyPreloader({
 
     const missingBuilders: string[] = [];
     for (const player of state.players || []) {
+      if (state.gameMode === 'ac130' && player.team === 'alpha') continue;
       const specId = player.specId;
       if (!specId || preparedBuilders.has(specId) || pendingBuilders.has(specId)) continue;
       pendingBuilders.add(specId);

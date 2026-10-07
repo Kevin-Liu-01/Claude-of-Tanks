@@ -69,13 +69,20 @@ try{
     await page.waitForFunction(()=>document.querySelector('.cot-drone-signal-loss').hidden);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.userData.aircraftOnly),true,'pilot never builds a tank visual');
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.children.length),0,'flight anchor contains no tank geometry');
+    const aircraftRow=await page.$eval('.cot-bl .team.ally .row.me',el=>({name:el.querySelector('.nm').textContent,tier:el.querySelector('.tier').textContent,icon:!!el.querySelector('.sil svg'),background:el.querySelector('.sil').style.backgroundImage}));
+    assert.equal(aircraftRow.name,'AC-130');assert.equal(aircraftRow.tier,'');assert.equal(aircraftRow.icon,true);assert.equal(aircraftRow.background,'');
+    await page.$eval('.cot-bl',el=>el.classList.add('on'));
+    await page.screenshot({path:resolve(out,`ac130-roster-${suffix}.png`)});
+    await page.$eval('.cot-bl',el=>el.classList.remove('on'));
     const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
     assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
     assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);
     await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
     const buttons=await page.$$eval('.flight-supply',els=>els.map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
     assert.ok(buttons.every(b=>b.w>=44&&b.h>=44),'supply controls remain accessible');
-    assert.equal(await page.$eval('.flight-telemetry',e=>getComputedStyle(e).display!=='none'),true,'gunship range and zoom stay visible');
+    assert.equal(await page.$eval('.gunship-solution-telemetry',e=>{const r=e.getBoundingClientRect();return getComputedStyle(e).display!=='none'&&r.width>0&&r.height>0;}),true,'gunship range and zoom stay visible');
     assert.equal(await page.$eval('.flight-heading',e=>{const children=[...e.children].filter(c=>c.getBoundingClientRect().width>0);return children.every((c,i)=>!i||children[i-1].getBoundingClientRect().right<=c.getBoundingClientRect().left+1);}),true,'sensor, range and supplies do not overlap');
     if(mobile)await page.tap('[data-supply="ammo"]');else await page.keyboard.press('KeyJ');
     await page.waitForFunction(()=>window.__DEBUG.game.matchModeController.state.pickups.some(p=>p.airDrop));
