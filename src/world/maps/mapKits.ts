@@ -1991,8 +1991,8 @@ interface PuenteFaceOptions {
  * every opening's sides and centre, so an arch's head runs whole across each strip it crosses (sampled every 0.6 m, inside
  * its voussoir ring); each strip stops 1.5 m under the lowest ground across it (the gorge's walls hold the rest). Every
  * strip slides the print along by its own share of a tile, so the joints never line up strip to strip while every course
- * runs level across them, and takes its own tone; down the face the damp darkens the foot (PUENTE_FOOT_TONE) and the
- * rain streaks the stone under every ledge, more on some strips than others.
+ * runs level across them; the stone's tone moves in slow waves across the face; down it the damp darkens the foot
+ * (PUENTE_FOOT_TONE) and the rain streaks the stone under every ledge, more on some strips than others.
  */
 function puenteFace(o: PuenteFaceOptions): THREE.BufferGeometry {
   const edges = new Set<number>([-o.bodyHalf, o.bodyHalf]);
@@ -2008,6 +2008,12 @@ function puenteFace(o: PuenteFaceOptions): THREE.BufferGeometry {
   const pos: number[] = [], nrm: number[] = [], uvs: number[] = [], col: number[] = [];
   const span = Math.max(1, o.deckY - o.floor);
   const z = o.side * o.halfWidth;
+  // the stone's own tone over the face: two slow waves of the face's own phases (10-90 m long), so its masses lighten and
+  // darken across the strips instead of each strip taking a tone (that printed vertical bands), a warmer cast with one
+  const ph = [o.rng() * 6.283, o.rng() * 6.283, o.rng() * 6.283];
+  const toneAt = (a: number, y: number): number => 1 + 0.045 * Math.sin(a * 0.19 + y * 0.05 + ph[0]) * Math.sin(a * 0.07 - y * 0.11 + ph[1])
+    + 0.025 * Math.sin(a * 0.41 + y * 0.23 + ph[2]);
+  const warmAt = (a: number, y: number): number => 0.025 * Math.sin(a * 0.11 + y * 0.08 + ph[1] * 1.7);
   for (const [a0, a1] of columns) {
     const mid = (a0 + a1) / 2;
     const over = o.openings.filter((op) => Math.abs(mid - op.x) < op.r);
@@ -2016,7 +2022,7 @@ function puenteFace(o: PuenteFaceOptions): THREE.BufferGeometry {
     for (let k = 0; k <= 8; k++) low = Math.min(low, o.ground(a0 + (a1 - a0) * k / 8));
     const foot = Math.max(o.bottom, low - 1.5);
     // every strip draws its stream whether or not it shows, so each keeps its own look when the ground moves
-    const slide = o.rng() * 7.31, shade = 0.93 + o.rng() * 0.14, warm = (o.rng() - 0.5) * 0.06, wash = o.rng() ** 2;
+    const slide = o.rng() * 7.31, wash = o.rng() ** 2;
     if (foot >= o.top - 0.05) continue;
     const intervalsAt = (a: number): Array<[number, number]> => {
       let list: Array<[number, number]> = [[foot, o.top]];
@@ -2038,7 +2044,7 @@ function puenteFace(o: PuenteFaceOptions): THREE.BufferGeometry {
         const d = ledge - y;
         if (d > 0 && d < PUENTE_STREAK.runM) streak = Math.max(streak, 1 - d / PUENTE_STREAK.runM);
       }
-      const k = shade * damp * (1 - PUENTE_STREAK.dark * wash * streak);
+      const k = toneAt(a, y) * damp * (1 - PUENTE_STREAK.dark * wash * streak), warm = warmAt(a, y);
       col.push(o.tone[0] * k * (1 + warm), o.tone[1] * k, o.tone[2] * k * (1 - warm));
     };
     for (let j = 0; j < m; j++) {
