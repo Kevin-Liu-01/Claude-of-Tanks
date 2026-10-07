@@ -15,7 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -247,13 +247,15 @@ export function hessianDialect(st: HessianState): HouseDialect {
         return;
       }
       if (o.kind === 'shopfront') {
+        // (wave 199: the shop windows read "opaque grey-beige, boarded-up": glass, never a drawn curtain, in a shop)
         windowUnit(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, { ...st.window, bars: 'two', shutters: null,
-          surround: { bucket: 'stone', width: 0.2, out: 0.12 } }, st.rng, 0.7);
+          surround: { bucket: 'stone', width: 0.2, out: 0.12 } }, st.rng, 0);
         // (facade craft, desktop; wave 116 read "large single-pane plate-glass shopfronts") divided lights, transom
-        // lights, a panelled stall riser and a fascia, in a shop paint from the facade stream
+        // lights, a panelled stall riser and a fascia, in a shop paint from the facade stream; the goods in the window
         if (facadeOn()) {
           shopfrontJoinery(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, 0.55, -sink.recess, pick(facadeRng(), SHOP_PAINT),
             st.window.frame, 0.2, frame.bodies[o.storey].y1);
+          shopDisplay(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, -sink.recess);
         }
         return;
       }

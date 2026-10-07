@@ -412,26 +412,44 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     const roll = rng(), a = rng(), b = rng(), c = rng();
     let cu: number, cy: number, ru: number, ry: number;
     const k = spec.spallScale ?? 1;
+    // (wave 199 on a Steinburg gable: "three near-identical pasted brick-patch decals"; on a khata, "grey blobs under the
+    // windows") each kind of loss its own shape: a band, a tongue, a lobed scar
+    let kind: 'damp' | 'drip' | 'scar';
     if (roll < 0.4 && storey === 0) {
-      // rising damp: a ragged band along the wall foot
-      ru = (0.8 + a * 1.4) * k; ry = (0.26 + b * 0.36) * k; cu = (c - 0.5) * (face.width - 2 * ru); cy = y0 + 0.03 + ry;
+      // rising damp: a ragged band along the wall foot, its top edge wandering
+      kind = 'damp';
+      // (its foot, squashed to 0.4, never dips under the wall's: the centre stands 0.55 of its height up)
+      ru = (0.8 + a * 1.4) * k; ry = (0.26 + b * 0.36) * k; cu = (c - 0.5) * (face.width - 2 * ru); cy = y0 + 0.03 + ry * 0.55;
     } else if (roll < 0.7 && windows.length) {
-      // the sill's drip has washed the render off below it
+      // the sill's drip has washed the render off below it: a tongue, flat under the sill, narrowing as it runs down
+      kind = 'drip';
       const o = windows[Math.floor(a * windows.length)];
-      ru = o.w * (0.5 + b * 0.4) * k; ry = (0.24 + c * 0.36) * k; cu = o.u + (b - 0.5) * o.w * 0.3; cy = y0 + o.y0 - 0.12 - ry;
+      // (its top, squashed to 0.5 and lobed up to 1.32, stays 12 cm under the sill, clear of the window's keep-out)
+      ru = o.w * (0.4 + b * 0.35) * k; ry = (0.3 + c * 0.45) * k; cu = o.u + (b - 0.5) * o.w * 0.3; cy = y0 + o.y0 - 0.12 - ry * 0.66;
     } else {
       // a scar in a pier: a splinter strike, a sheet come loose
-      ru = (0.3 + a * 0.6) * k; ry = ru * (0.55 + b * 0.5); cu = (c - 0.5) * (face.width - 2 * ru);
+      kind = 'scar';
+      ru = (0.3 + a * 0.6) * k; ry = ru * (0.45 + b * 0.75); cu = (c - 0.5) * (face.width - 2 * ru);
       cy = y0 + ry + 0.25 + rng() * Math.max(0, y1 - y0 - 2 * ry - 0.5);
     }
-    // a ragged outline, star-shaped about its centre (the fan below needs no more): the radius wanders vertex to vertex
+    // a ragged outline, star-shaped about its centre (the fan below needs no more): two to four lobes, and the radius
+    // wandering vertex to vertex
+    const lobes = 2 + Math.floor(rng() * 3), phase = rng() * Math.PI * 2, lobe = 0.1 + rng() * 0.22;
     const ragged: Array<[number, number]> = [];
+    let lu = Infinity, hu = -Infinity, ly = Infinity, hy = -Infinity;
     for (let j = 0; j < 11; j++) {
-      const t = (j / 11) * Math.PI * 2, r = 0.55 + rng() * 0.45;
-      ragged.push([cu + Math.cos(t) * ru * r, cy + Math.sin(t) * ry * r]);
+      const t = (j / 11) * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t);
+      const r = (0.62 + rng() * 0.38) * (1 + lobe * Math.cos(lobes * t + phase));
+      const su = kind === 'drip' && st < 0 ? 1 + 0.6 * st : 1;
+      const sv = kind === 'drip' ? (st > 0 ? 0.5 : 1.25) : kind === 'damp' ? (st > 0 ? 1 : 0.4) : 1;
+      const p: [number, number] = [cu + ct * ru * r * su, cy + st * ry * r * sv];
+      ragged.push(p);
+      lu = Math.min(lu, p[0]); hu = Math.max(hu, p[0]); ly = Math.min(ly, p[1]); hy = Math.max(hy, p[1]);
     }
-    if (Math.abs(cu) + ru > half - 0.08 || cy - ry < y0 + 0.02 || cy + ry > y1 - 0.08) continue;
-    if (keepOut.some((h) => cu + ru > h.u0 && cu - ru < h.u1 && cy + ry > h.y0 && cy - ry < h.y1)) continue;
+    if (Math.max(Math.abs(lu), Math.abs(hu)) > half - 0.08 || ly < y0 + 0.02 || hy > y1 - 0.08) continue;
+    if (keepOut.some((h) => hu > h.u0 && lu < h.u1 && hy > h.y0 && ly < h.y1)) continue;
+    // (the bounds the rings below grow from: the outline's own extent about its centre)
+    ru = Math.max(cu - lu, hu - cu); ry = Math.max(cy - ly, hy - cy);
     // fanned from the centre, 15 mm proud: the depth buffer (near 0.5 m, 24 bits) resolves that to ~280 m, where the
     // patch is a pixel; 6 mm fought the render from ~180 m in the establishing views
     const fan: Array<[number, number]> = [[cu, cy], ...ragged, ragged[0]];
@@ -448,7 +466,9 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
       layeredLoss(sink, face, wall, bucket, cu, cy, ragged, room);
       continue;
     }
-    const rim = facadeOn() ? { shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.92 : 0.62) } : { shade: 0.86 };
+    // (clay under lime: the daub keeps its own tone to the edge, where the lime's broken lip shades it only a little)
+    const edge = spec.spallTint ? 0.82 : 0.62;
+    const rim = facadeOn() ? { shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.92 : edge) } : { shade: 0.86 };
     sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, ...rim, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
   }
 }

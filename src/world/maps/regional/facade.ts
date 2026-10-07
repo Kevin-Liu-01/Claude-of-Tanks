@@ -771,6 +771,42 @@ export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: numbe
 }
 
 /**
+ * A shop window's display (wave 199 on Steinburg: "flat, opaque grey-beige rectangles with no glazing reflection or
+ * interior visible, reading as boarded-up"): the goods standing on the glazing's bottom rail and on a shelf across it a
+ * third of the way up — boxes, jars, bolts of cloth, loaves — in the narrow depth between the pane and its bars, shaded
+ * a little as through glass. (u, y) the glazing's bottom-centre, `w` x `h` its size, `back` the pane's depth (the
+ * reveal's); near fine dressing, every choice from the facade stream.
+ */
+export function shopDisplay(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, back: number): void {
+  const rng = facadeRng();
+  const near: EmitOptions = { ...DECOR, fine: 'near' };
+  const o = back + 0.032, deep = 0.03, shelfY = y + Math.min(0.42, h * 0.3);
+  faceBox(sink, 'structureWood', face, u, shelfY - 0.012, o, w - 0.12, 0.024, deep, { ...near, colour: [0.28, 0.22, 0.17] });
+  const lights = Math.max(2, Math.ceil(w / 0.8));
+  // (on the frame's bottom rail, a frame width up, and on the shelf)
+  for (const base of [y + 0.07, shelfY]) {
+    for (let k = 0; k < lights; k++) {
+      const l0 = u - w / 2 + w * k / lights + 0.07, l1 = u - w / 2 + w * (k + 1) / lights - 0.07;
+      let cu = l0 + rng() * 0.06;
+      // (three wares a light and shelf at most: the window reads stocked, and stays cheap)
+      for (let n = 0; n < 3 && cu < l1 - 0.08; n++) {
+        const kind = rng(), c = GOODS[Math.floor(rng() * GOODS.length)];
+        const tone = 0.68 + rng() * 0.2, colour: Rgb = [c[0] * tone, c[1] * tone, c[2] * tone];
+        // a box, a tall jar, a bolt of cloth lying down, a loaf
+        const [gw, gh] = kind < 0.4 ? [0.1 + rng() * 0.12, 0.08 + rng() * 0.2] : kind < 0.65 ? [0.06 + rng() * 0.03, 0.12 + rng() * 0.08]
+          : kind < 0.85 ? [0.18 + rng() * 0.08, 0.07 + rng() * 0.04] : [0.14 + rng() * 0.06, 0.06 + rng() * 0.03];
+        if (cu + gw > l1) break;
+        faceBox(sink, 'structureWood', face, cu + gw / 2, base + gh / 2, o, gw, gh, deep, { ...near, colour }, { bottom: true });
+        cu += gw + 0.015 + rng() * 0.05;
+      }
+    }
+  }
+}
+/** the goods' packaging and wares: tins, card, glass, linen, bread */
+const GOODS: readonly Rgb[] = [[0.62, 0.18, 0.14], [0.2, 0.3, 0.52], [0.78, 0.7, 0.5], [0.3, 0.42, 0.28], [0.72, 0.56, 0.3],
+  [0.85, 0.82, 0.74], [0.42, 0.3, 0.22], [0.55, 0.6, 0.62]];
+
+/**
  * The painted emblem on an inn's hanging sign (wave 150: "a blank inn sign"): a gilded star (two crossed triangles) in
  * a painted border on both faces of the board. (u, y) the board's centre on the wall face, `out` its centre's
  * distance from the wall, `half` half its thickness, `w` × `h` its face (w along the wall's normal).
@@ -864,10 +900,13 @@ export function renderedShaft(sink: PartSink, bucket: RegionalBucket, cx: number
     }
     rect(u0, u1, y, y1);
   });
+  // (wave 199: the corners read as "stripes of small red bricks") long and short stones by turns, each long one running
+  // 22 cm past the corner strip into the render on alternate faces, under joints of 1.5 cm
   for (const [sx, sz] of [[1, 1], [1, -1], [-1, -1], [-1, 1]] as const) {
     const x = cx + sx * h, z = cz + sz * h;
-    for (let y = y0; y + 0.38 <= y1 + 0.01; y += 0.41) {
-      dressedQuoin(sink, 'stone', x - sx * corner, y, z - sz * corner, x + sx * 0.03, y + 0.38, z + sz * 0.03, sx, sz, DECOR);
+    for (let y = y0, k = 0; y + 0.38 <= y1 + 0.01; y += 0.395, k++) {
+      const along = corner + (k & 1 ? 0 : 0.22), across = corner + (k & 1 ? 0.22 : 0);
+      dressedQuoin(sink, 'stone', x - sx * along, y, z - sz * across, x + sx * 0.03, y + 0.38, z + sz * 0.03, sx, sz, DECOR);
     }
   }
 }

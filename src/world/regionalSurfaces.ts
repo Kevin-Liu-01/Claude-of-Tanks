@@ -399,11 +399,22 @@ interface MasonryRecipe {
   mottle?: number;
   /** soiling: rain runs washing grime down the face from every ledge (0 none) */
   streaks?: number;
+  /**
+   * the share of its stone's own tone a joint takes (0: the recipe's mortarTint alone): lime mortar weathered to the
+   * stone it binds, so the joints read as the gaps between stones, not as a pale or dark grid drawn over them
+   */
+  mortarOfStone?: number;
+  /** the face's rise from its arris to its middle (the pillow's height; default 0.45): squared stone stays nearly flat */
+  faceRamp?: number;
 }
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
-  sandstone: { courseMin: 52, courseMax: 92, blockMin: 90, blockMax: 210, mortar: 1.8, mortarTint: [0.62, 0.57, 0.52],
-    tint: [1, 1, 1], spread: 0.18, hue: 0.08, relief: 0.45, pillow: 0.3, speckle: 0.05, lichen: 0.3, grime: 0.4, rubble: 0.2, bedding: 0.05 },
+  // (wave 199 on Frontier's red Buntsandstein: courses of 20-36 cm under pale mortar with pillowed faces read as "brick at
+  // roughly twice real size, thick pale mortar, bevelled pillow-faced bricks") squared stone's own proportions — courses of
+  // 23-44 cm, blocks of 0.4-1.0 m, some split — under tight joints in the stone's own tone, nearly flat-faced
+  sandstone: { courseMin: 58, courseMax: 112, blockMin: 104, blockMax: 260, mortar: 1.3, mortarTint: [0.62, 0.57, 0.52], mortarOfStone: 0.6,
+    tint: [1, 1, 1], spread: 0.2, hue: 0.1, relief: 0.4, pillow: 0.14, faceRamp: 0.16, speckle: 0.05, lichen: 0.3, grime: 0.4, rubble: 0.25,
+    bedding: 0.035, mottle: 0.34 },
   // 2026-10-03 gauntlet wave 0 / kits v1 captures: the first limestone and granite read as a blue-grey checkerboard (one
   // tone a block, dark pillowed joints): the stones are smaller and more irregular, the tone moves within a stone more
   // than between stones, and the joints are pale lime mortar, not shadow
@@ -432,9 +443,11 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
  */
 // (wave 150: courses of 15-26 cm under light mortar read as "brick at two to three times real scale") ashlar's own
 // proportions — courses of 22-34 cm, blocks of 45-90 cm — under tight dark joints, each block its own tone and bedding
-const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 1.1,
-  mortarTint: [0.42, 0.39, 0.36] as Tint, spread: 0.22, hue: 0.1, relief: 0.35, pillow: 0.12, speckle: 0.04, lichen: 0.22, grime: 0.7,
-  rubble: 0.15, bedding: 0.12, mottle: 0.36, streaks: 0.55 });
+// (wave 199 on Steinburg's shops: "a large-scale tan ashlar texture with heavy dark outlines") the joints thinner and in
+// the stone's own tone, darker than its face only by the shadow they hold
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 0.9,
+  mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.6, spread: 0.16, hue: 0.07, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
+  speckle: 0.04, lichen: 0.22, grime: 0.7, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55 });
 
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
 export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
@@ -483,6 +496,9 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
   const find = (edges: number[], v: number) => { let i = 0; while (edges[i + 1] <= v) i++; return i; };
   const wobF = field(s, 256, 64, 1, seed + 13), texF = field(s, s, 48, 2, seed + 5), bigF = field(s, 64, 6, 3, seed + 7);
   const lichenF = field(s, 128, 16, 3, seed + 9), bedF = field(s, 128, 24, 1, seed + 41);
+  // the joint's colour: the recipe's mortar, or that weathered toward its stone's own tone (a shade under the face)
+  const mo = R.mortarOfStone ?? 0;
+  const mortarRgb: Tint = [0, 1, 2].map((c) => R.mortarTint[c] * (1 - mo) + tint[c] * 0.78 * mo) as unknown as Tint;
   for (let y = 0; y < s; y++) {
     const r = find(rowsE, y);
     const y0 = rowsE[r], y1 = rowsE[r + 1];
@@ -514,7 +530,7 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
       let rr: number, gg: number, bb: number;
       if (joint) {
         const m = 0.85 + tex * 0.2 - grime * 0.6;
-        rr = R.mortarTint[0] * m; gg = R.mortarTint[1] * m; bb = R.mortarTint[2] * m;
+        rr = mortarRgb[0] * m; gg = mortarRgb[1] * m; bb = mortarRgb[2] * m;
         hgt[i] = clamp(0.08 + tex * 0.05);
         rough[i] = clamp(0.95);
       } else {
@@ -525,7 +541,7 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
         const h = (k2 - 0.5) * R.hue * 2;
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
         rr = rr * (1 - lichen) + 0.68 * lichen; gg = gg * (1 - lichen) + 0.64 * lichen; bb = bb * (1 - lichen) + 0.48 * lichen;
-        hgt[i] = clamp(0.3 + pill * 0.45 + (tex - 0.5) * R.relief * 0.5);
+        hgt[i] = clamp(0.3 + pill * (R.faceRamp ?? 0.45) + (tex - 0.5) * R.relief * 0.5);
         rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1);
       }
       put(px, j, rr, gg, bb);
@@ -571,7 +587,8 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
   Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
   const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
-  const relief = kind === 'brick' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
+  // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199)
+  const relief = kind === 'brick' || kind === 'sandstone' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
   return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 

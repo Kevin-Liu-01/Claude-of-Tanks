@@ -580,6 +580,22 @@ build stream. The Breton dwelling (cottage, tavern, cornershop) varies, house to
   (`breton.ts dwelling`, `bays`, `leanTo`).
 This is structure, so a phone builds it too, and the collision shards follow it.
 
+Round four (wave 199, October 7: round three scored 4.85):
+- The Hessian red sandstone was read as "brick at roughly twice real size, thick pale mortar, pillow-faced". It is now
+  squared stone: courses of 23-44 cm and blocks of 0.4-1.0 m, some split, under tight joints in the stone's own tone
+  (`MasonryRecipe.mortarOfStone`), nearly flat-faced (`faceRamp`), with softer normal relief.
+- Steinburg's dressed stone was read as "heavy dark outlines". Its joints are thinner and in the stone's tone, and its
+  blocks are less patchy.
+- A shop window is glass, never a drawn curtain, and holds a display: goods on the bottom rail and on a shelf
+  (`shopDisplay`).
+- The yard gardens are cabbage heads and rounded leafy ridges, not boxes.
+- The window boxes are a cushion of leaves with trailing stems and geranium heads in clusters.
+- The hollyhocks and hydrangeas are mounds and flower discs (`dressing.ts mound`, `bloomDisc`). Their draws from the
+  build stream are the boxes' they replace.
+- A render loss takes its own shape by kind: a band at the wall foot, a tongue under a sill, a lobed scar. A khata's
+  loss shows ochre daub, not a grey blob.
+- A rendered tower's quoins run long and short by turns.
+
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
 the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m

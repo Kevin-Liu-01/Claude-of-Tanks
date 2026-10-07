@@ -11,7 +11,8 @@
 // and the beds are checked on their own and left out where they do not fit. The planner is pure (numbers in,
 // placements out): props.ts places the modules as destructibles, builds the outbuilding with the kit and merges the
 // beds as dressing.
-import { PartSink, rgb, shade, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, rgb, shade, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { mound } from './dressing.ts';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
@@ -271,6 +272,8 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
 
 const SOIL: readonly Rgb[] = [0x4a3a2a, 0x54402e, 0x3f3226].map(rgb);
 const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].map(rgb);
+/** a cabbage's waxy blue-green */
+const CABBAGE: Rgb = rgb(0x7f9a74);
 
 /**
  * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width (cabbage and
@@ -280,29 +283,46 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
   const soil = SOIL[Math.floor(look() * SOIL.length) % SOIL.length];
-  // on a slope the bed is raised to its high side, its soil and board edging carried down to the ground (`drop`)
+  // the dug ground a few centimetres over the yard's; on a slope the bed is raised to its high side, its soil carried
+  // down to the ground (`drop`) behind a board edging (wave 199 read a level bed's edging as "a plank tray")
   sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, 0.05, d / 2, { ...dec, colour: soil });
   const board = shade(rgb(0x7a6a52), 0.8 + look() * 0.3);
-  for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.12, sz * d / 2 + 0.03, { ...dec, colour: board });
-  for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.12, d / 2 - 0.03, { ...dec, colour: board });
+  if (drop > 0.12) {
+    for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.08, sz * d / 2 + 0.03, { ...dec, colour: board });
+    for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.08, d / 2 - 0.03, { ...dec, colour: board });
+  }
   const rows = Math.max(2, Math.floor((d - 0.3) / 0.55));
+  const X: Vec3 = [1, 0, 0], Z: Vec3 = [0, 0, 1];
   for (let r = 0; r < rows; r++) {
     const z = -d / 2 + 0.3 + (d - 0.6) * (r + 0.5) / rows;
     const crop = CROP[Math.floor(look() * CROP.length) % CROP.length];
-    if (look() < 0.18) {
-      // beans on canes: a line of canes and the green climbing up them
+    const kind = look();
+    if (kind < 0.18) {
+      // beans on canes: a line of canes and the leaves climbing up them, thinning toward the tops
       for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
         sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
+        mound(sink, [x, 0.05, z], X, Z, 0.2, 0.14, 1.25, shade(crop, 0.85 + look() * 0.2), dec, look() * 6);
       }
-      sink.span('structureWood', -w / 2 + 0.25, 0.4, z - 0.09, w / 2 - 0.25, 1.3, z + 0.09, { ...dec, colour: shade(crop, 0.9) });
       continue;
     }
-    // a ridge of crops in two or three runs with gaps where a plant failed or was cut
+    if (kind < 0.5) {
+      // (wave 199: "cabbages as flat green cubes on a plank tray") cabbages: a head every 0.4-0.5 m, each a pale
+      // blue-green mound with the dark outer leaves at its foot, now and then one cut
+      for (let x = -w / 2 + 0.32; x < w / 2 - 0.25; x += 0.42 + look() * 0.1) {
+        if (look() < 0.1) continue;
+        const rr = 0.13 + look() * 0.05;
+        mound(sink, [x, 0.05, z], X, Z, rr * 1.25, rr * 1.25, rr * 0.55, shade(CABBAGE, 0.72), dec, look() * 6);
+        mound(sink, [x, 0.07, z], X, Z, rr * 0.75, rr * 0.75, rr * 1.05, shade(CABBAGE, 1.05 + look() * 0.15), dec, look() * 6, 4);
+      }
+      continue;
+    }
+    // a ridge of leafy crop (potatoes, beets, carrots) in two or three runs, gaps where a plant failed or was cut: each run
+    // a low rounded ridge, darker at its foot
     let x = -w / 2 + 0.2;
     while (x < w / 2 - 0.4) {
       const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
       const h = 0.16 + look() * 0.14;
-      sink.span('structureWood', x, 0.05, z - 0.13, x + run, 0.05 + h, z + 0.13, { ...dec, colour: shade(crop, 0.85 + look() * 0.3) });
+      mound(sink, [x + run / 2, 0.05, z], X, Z, run / 2 + 0.06, 0.17, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec, 0);
       x += run + 0.15 + look() * 0.35;
     }
   }

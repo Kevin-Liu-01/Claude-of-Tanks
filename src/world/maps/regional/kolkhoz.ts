@@ -84,7 +84,8 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 }
 
 /** Clay under the whitewash: what a khata's worn render shows (a tint on the render, facade craft). */
-const CLAY: Rgb = [0.8, 0.7, 0.58];
+// (wave 199: the losses read as "grey blob decals") the daub's own ochre-brown, not a grey under the lime
+const CLAY: Rgb = [0.76, 0.6, 0.44];
 const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
 const RIDER = rgb(0x6e6254);
 /**
