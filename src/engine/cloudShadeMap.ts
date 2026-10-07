@@ -22,9 +22,10 @@
  *   lights_fragment_end     cotSunVis × vCotCloudSun (the scene alpha, the contact shadows' sun share, the ambient dim)
  *
  * all under `COT_CLOUD_SHADE && USE_SHADOWMAP`. Phones never take the define (their tier has no volumetric layer). A
- * program that would pass sixteen samplers with the map (three counts the program's units against the fragment
- * limit) takes `#undef COT_CLOUD_SHADE` instead (lighting.ts cloudShadeSamplerCount); a material can opt out with
- * `material.userData.cotCloudShade = false` and write the varying itself.
+ * program that would pass sixteen texture units with the map (three numbers them over both stages and warns past the
+ * limit on every bind) first trades three's DFG LUT for an analytic fit and, when that is not enough, takes
+ * `#undef COT_CLOUD_SHADE` (programTextureUnits); a material can opt out with `material.userData.cotCloudShade = false`
+ * and write the varying itself.
  */
 import * as THREE from 'three';
 
@@ -121,25 +122,66 @@ const STANDARD_MAPS = Object.freeze([
 ] as const);
 
 /**
- * The samplers a CSM material's program declares before the map: its own (the `uniform sampler*` lines its patches
- * write into the shader), its standard maps, the scene environment a standard material takes without its own, and the
- * cascades' shadow maps. A declaration named after a standard map is skipped: three's physical fragment writes five of
- * them inline under their #ifdefs (specularColorMap, specularIntensityMap, sheenColorMap, sheenRoughnessMap,
- * anisotropyMap) and an unused one costs no unit — a set one is counted once, through the material's own property
- * (the ground lane's lab: counted, they put the terrain at nineteen and took its cloud shade away).
+ * 2026-10-05 (the skies lane: the terrain's seventeenth texture unit): three r185's physical fragment declares
+ * `uniform sampler2D dfgLUT` inside `#include <lights_physical_pars_fragment>` and reads it in every standard material
+ * (BRDF_GGX_Multiscatter, computeMultiscattering) — a texture unit the include hid from the count. Three allocates its
+ * units over the whole program (vertex and fragment) and warns past MAX_TEXTURE_IMAGE_UNITS (16) on every bind: the
+ * terrain sat at seventeen (ten layer samplers, four cascades, the environment, the DFG LUT, the cloud shade's vertex
+ * fetch). A program over the budget takes Karis's analytic fit of the split-sum DFG instead (three's DFGApprox before the
+ * LUT; "Physically Based Shading on Mobile") — one unit back, a few per cent on the ground's rough specular.
  */
-export function cloudShadeSamplerCount(
+const DFG_APPROX_GLSL = /* glsl */ `
+vec2 cotDfgApprox( const in float roughness, const in float dotNV ) {
+	const vec4 c0 = vec4( - 1.0, - 0.0275, - 0.572, 0.022 );
+	const vec4 c1 = vec4( 1.0, 0.0425, 1.04, - 0.04 );
+	vec4 r = roughness * c0 + c1;
+	float a004 = min( r.x * r.x, exp2( - 9.28 * dotNV ) ) * r.x + r.y;
+	return vec2( - 1.04, 1.04 ) * a004 + r.zw;
+}
+`;
+const DFG_LUT_DECL = 'uniform sampler2D dfgLUT;';
+const DFG_LUT_READ = /texture2D\( dfgLUT, vec2\( ([^,()]+), ([^,()]+) \) \)\.rg/g;
+
+/** The physical chunk with the DFG LUT swapped for the analytic fit (null when three's chunk no longer matches). */
+export function physicalParsWithoutDfgLut(chunk: string): string | null {
+  if (chunk.split(DFG_LUT_DECL).length !== 2) return null;
+  const swapped = chunk.replace(DFG_LUT_DECL, DFG_APPROX_GLSL).replace(DFG_LUT_READ, 'cotDfgApprox( $1, $2 )');
+  return swapped.includes('dfgLUT') ? null : swapped;
+}
+
+/** Whether a fragment source reads three's DFG LUT (the physical chunk, as an include or expanded). */
+function readsDfgLut(fragmentShader: string): boolean {
+  return /#include +<lights_physical_pars_fragment>/.test(fragmentShader) || fragmentShader.includes(DFG_LUT_DECL);
+}
+
+/**
+ * A CSM material's program's texture units as three binds them: the samplers each stage declares (its patches' own
+ * `uniform sampler*` lines), the material's standard maps, the scene environment a standard material takes without its
+ * own, the DFG LUT of a standard material, the cascades' shadow maps and the cloud shade's vertex fetch. Three's
+ * allocator numbers the units over the whole program. A declaration named after a standard map is skipped: three's
+ * physical fragment writes five of them inline under their #ifdefs (specularColorMap, specularIntensityMap,
+ * sheenColorMap, sheenRoughnessMap, anisotropyMap) and an unused one costs no unit — a set one is counted once, through
+ * the material's own property (the ground lane's lab: counted, they put the terrain at nineteen and took its cloud
+ * shade away). textureUnits.selftest counts the expanded programs independently, as the GPU does.
+ */
+export function programTextureUnits(
   shader: { vertexShader: string; fragmentShader: string }, material: object, cascades: number, sceneEnvironment: boolean,
-): number {
-  let n = 0;
-  const standard = new Set<string>(STANDARD_MAPS);
-  for (const src of [shader.vertexShader, shader.fragmentShader]) {
+  cloudShade: boolean,
+): { fragment: number; vertex: number; total: number; dfg: boolean } {
+  const declared = (src: string): number => {
+    let n = 0;
+    const standard = new Set<string>(STANDARD_MAPS);
     for (const m of src.matchAll(SAMPLER_DECL)) {
-      for (const name of m[1].split(',')) { const id = name.trim(); if (id && !standard.has(id)) n++; }
+      for (const name of m[1].split(',')) { const id = name.trim(); if (id && !standard.has(id) && id !== 'dfgLUT') n++; }
     }
-  }
+    return n;
+  };
   const mat = material as Record<string, unknown> & { isMeshStandardMaterial?: boolean };
-  for (const key of STANDARD_MAPS) if ((mat[key] as { isTexture?: boolean } | null | undefined)?.isTexture) n++;
-  if (sceneEnvironment && !mat.envMap && mat.isMeshStandardMaterial) n++;
-  return n + cascades;
+  let fragment = declared(shader.fragmentShader) + cascades;
+  for (const key of STANDARD_MAPS) if ((mat[key] as { isTexture?: boolean } | null | undefined)?.isTexture) fragment++;
+  if (sceneEnvironment && !mat.envMap && mat.isMeshStandardMaterial) fragment++;
+  const dfg = !!mat.isMeshStandardMaterial && readsDfgLut(shader.fragmentShader);
+  if (dfg) fragment++;
+  const vertex = declared(shader.vertexShader) + (cloudShade ? 1 : 0);
+  return { fragment, vertex, total: fragment + vertex, dfg };
 }

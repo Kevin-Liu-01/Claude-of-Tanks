@@ -1,16 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Modern main battle tank side profile">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 42h41l5 5-5 6H16l-8-5z" fill="#17242d" stroke="#edf3f7" stroke-width="2"/>
-    <path d="M18 35h27l7 7H13z" fill="#263844" stroke="#edf3f7" stroke-width="2"/>
-    <path d="M25 28h17l5 7H20z" fill="#45c7ff" stroke="#edf3f7" stroke-width="2"/>
-    <path d="M29 23h10l3 5H27z" fill="#263844" stroke="#edf3f7" stroke-width="2"/>
-    <path d="M42 29 59 24" stroke="#edf3f7" stroke-width="3"/>
-    <path d="m49 25 10-3" stroke="#f0a030" stroke-width="2"/>
-    <path d="M13 40h38" stroke="#f0a030" stroke-width="2"/>
-    <circle cx="18" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
-    <circle cx="28" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
-    <circle cx="38" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
-    <circle cx="48" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
-    <path d="M7 18h9M11.5 13.5v9" stroke="#ff4d62" stroke-width="2"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Modern main battle tank">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><g transform="translate(0 4)" ><path d="M5 39 10 34H44L53 39 49 48H11L5 43Z" fill="#0b131c" stroke="#edf3f7" stroke-width="2"/><path d="M8 39H49" fill="none" stroke="#7893a5" stroke-width="1.3"/><circle cx="13" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="22" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="31" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="40" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><path d="M11 48H48" fill="none" stroke="#45c7ff" stroke-width="1.2"/><path d="M12 34 18 29H42L49 35Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M18 28 23 19H36L43 28Z" fill="url(#cyan)" stroke="#edf3f7" stroke-width="2"/><path d="M36 22 58 17" fill="none" stroke="#edf3f7" stroke-width="2.8"/><path d="M43 20.4 57 17.2" fill="none" stroke="#f0a030" stroke-width="1.4"/><path d="M26 18V15H33V18" fill="none" stroke="#7893a5" stroke-width="1.6"/><path d="M23 25H35" fill="none" stroke="#edf3f7" stroke-width="1"/></g><path d="M9 17H18M13.5 12.5V21.5" fill="none" stroke="#ff4d62" stroke-width="1.8"/><path d="M46 53H56" fill="none" stroke="#f0a030" stroke-width="1.5"/></g>
 </svg>

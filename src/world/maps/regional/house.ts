@@ -7,6 +7,7 @@ import {
   PartSink, bodyFaces, facePoint, faceBox, normalize3,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
+import { carvedVerge, facadeOn, sillStreaks, thatchCourses, withFacade } from './facade.ts';
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -30,6 +31,11 @@ export interface RoofSpec {
   parapet?: number;
   /** dressing only (a second covering over a structural slab): no collision */
   decor?: boolean;
+  /**
+   * a straw roof's thatch craft (facade.ts thatchCourses, desktop): the eaves beaten into steps of butt ends and course
+   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), or none
+   */
+  thatch?: 'stepped' | 'rows' | 'none';
 }
 
 export interface StoreySpec {
@@ -86,8 +92,11 @@ export interface HouseSpec {
   openings: Opening[];
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
-  /** verge boards along the gable rakes */
-  verge?: { colour: Rgb; bucket: RegionalBucket } | null;
+  /**
+   * verge boards along the gable rakes; `carved` (facade craft, desktop) cuts their lower edge in scallops and hangs the
+   * carved towel board (polotentse) from the apex, in its colour
+   */
+  verge?: { colour: Rgb; bucket: RegionalBucket; carved?: Rgb } | null;
   /** the roof covering's livery when it lies in a vertex-coloured bucket (painted sheet) */
   roofColour?: Rgb;
   /**
@@ -102,6 +111,10 @@ export interface HouseSpec {
    * sill, a splinter scar): the kit's stone by default, null for none (a clay or wattle wall has no stone under it)
    */
   spall?: RegionalBucket | null;
+  /** the paint (EmitOptions.tint) of what the spalled render shows: clay under a khata's whitewash */
+  spallTint?: Rgb;
+  /** the spalled patches' size (1: the default; the draws are the same whatever it is) */
+  spallScale?: number;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -166,12 +179,14 @@ interface WearContext {
   rng: () => number;
   /** spalled render (decor only) draws from its own stream: the damage decisions above never move */
   spall?: () => number;
+  /** the facade craft's slot for the building (facade.ts withFacade), set with the wear */
+  facade?: { tier: 'desktop' | 'mobile'; rng: () => number };
 }
 let wearContext: WearContext | null = null;
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
   const prior = wearContext;
   wearContext = wear;
-  try { return build(); } finally { wearContext = prior; }
+  try { return wear?.facade ? withFacade(wear.facade, build) : build(); } finally { wearContext = prior; }
 }
 
 interface RoofPatch { side: 1 | -1; z0: number; z1: number; x0: number; x1: number }
@@ -266,16 +281,17 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
   for (let k = 0; k < n; k++) {
     const roll = rng(), a = rng(), b = rng(), c = rng();
     let cu: number, cy: number, ru: number, ry: number;
+    const k = spec.spallScale ?? 1;
     if (roll < 0.4 && storey === 0) {
       // rising damp: a ragged band along the wall foot
-      ru = 0.8 + a * 1.4; ry = 0.26 + b * 0.36; cu = (c - 0.5) * (face.width - 2 * ru); cy = y0 + 0.03 + ry;
+      ru = (0.8 + a * 1.4) * k; ry = (0.26 + b * 0.36) * k; cu = (c - 0.5) * (face.width - 2 * ru); cy = y0 + 0.03 + ry;
     } else if (roll < 0.7 && windows.length) {
       // the sill's drip has washed the render off below it
       const o = windows[Math.floor(a * windows.length)];
-      ru = o.w * (0.5 + b * 0.4); ry = 0.24 + c * 0.36; cu = o.u + (b - 0.5) * o.w * 0.3; cy = y0 + o.y0 - 0.12 - ry;
+      ru = o.w * (0.5 + b * 0.4) * k; ry = (0.24 + c * 0.36) * k; cu = o.u + (b - 0.5) * o.w * 0.3; cy = y0 + o.y0 - 0.12 - ry;
     } else {
       // a scar in a pier: a splinter strike, a sheet come loose
-      ru = 0.3 + a * 0.6; ry = ru * (0.55 + b * 0.5); cu = (c - 0.5) * (face.width - 2 * ru);
+      ru = (0.3 + a * 0.6) * k; ry = ru * (0.55 + b * 0.5); cu = (c - 0.5) * (face.width - 2 * ru);
       cy = y0 + ry + 0.25 + rng() * Math.max(0, y1 - y0 - 2 * ry - 0.5);
     }
     // a ragged outline, star-shaped about its centre (the fan below needs no more): the radius wanders vertex to vertex
@@ -289,7 +305,7 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     // fanned from the centre, 15 mm proud: the depth buffer (near 0.5 m, 24 bits) resolves that to ~280 m, where the
     // patch is a pixel; 6 mm fought the render from ~180 m in the establishing views
     const fan: Array<[number, number]> = [[cu, cy], ...ragged, ragged[0]];
-    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, shade: 0.86 });
+    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, shade: 0.86, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
   }
 }
 
@@ -415,6 +431,12 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     sink.prism(bucket, pts, n, t, dec, {
       kind: 'plane', origin: [0, ridgeY + t / cosP, 0], u: bucket === 'straw' ? down : along, v: bucket === 'straw' ? along : down,
     });
+    // a thatched slope's eave course and course lines (facade.ts), on its top surface from the eave to the ridge
+    if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
+      const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
+      thatchCourses(sink, bucket, top([side * (s + e), lo, side * D]), top([side * (s + e), lo, -side * D]),
+        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n, { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' });
+    }
   }
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
     for (const end of [1, -1]) {
@@ -428,6 +450,11 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       sink.prism(bucket, pts, n, t, dec, {
         kind: 'plane', origin: [0, ridgeY, end * ridgeHalf], u: bucket === 'straw' ? hipDown : hipAlong, v: bucket === 'straw' ? hipAlong : hipDown,
       });
+      if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
+        const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
+        const apex = top([0, ridgeY, end * ridgeHalf]);
+        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n, { stepped: roof.thatch !== 'rows' });
+      }
       // hip caps along both hip lines
       for (const sx of [1, -1]) {
         const a: Vec3 = [0, ridgeY + t / cosP + 0.02, end * ridgeHalf];
@@ -513,6 +540,19 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   const faces = frameFaces(bodies[0]);
   const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
   const roofPatch = wearHouse(spec, rg);
+  // the rain shadow under the eaves (facade craft, desktop): the top storey's eaves faces darken toward the soffit, by
+  // the overhang's depth; a gable, a flat roof's parapet or a bare eave casts none
+  const rainShadow: Record<FaceName, number> = { front: 1, right: 1, back: 1, left: 1 };
+  if (facadeOn() && spec.roof.eave >= 0.15 && rg.kind !== 'flat') {
+    // (wave 116: "almost nothing shows weathering": deep enough to read at 30 m)
+    const k = 1 - Math.min(0.34, 0.14 + 0.3 * spec.roof.eave);
+    if (rg.kind === 'shed') rainShadow.right = k;
+    else { rainShadow.left = k; rainShadow.right = k; }
+    if (rg.kind === 'hip') { rainShadow.front = k; rainShadow.back = k; }
+  }
+  // the grime where the ground storey meets the ground (facade craft, desktop; wave 116: "almost nothing shows weathering
+  // or grime where walls meet the ground"): its bottom row of corners darker, fading up to the next row it has
+  const footGrime = facadeOn() ? 0.7 : 1;
   // the storey bodies: four faces cut by their openings (with reveals), the top, and a jetty's underside
   bodies.forEach((b, i) => {
     const wall = spec.storeys[i].wall;
@@ -533,7 +573,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
       });
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
-        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)));
+        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
     }
     sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
     // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
@@ -563,6 +603,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
           const b: Vec3 = [0, rg.ridgeY - 0.02, z];
           if (rg.kind === 'gable') sink.member(spec.verge.bucket, a, b, 0.22, 0.05, [0, 0, end], { colour: spec.verge.colour, decor: true, ends: true });
         }
+        if (spec.verge.carved && rg.kind === 'gable' && facadeOn()) {
+          for (const end of [1, -1]) {
+            carvedVerge(sink, rg.s + spec.roof.eave, eaveY - spec.roof.eave * rg.tanP - 0.02, rg.ridgeY - 0.02, end * (roofD / 2 + spec.roof.verge - 0.03), end,
+              spec.verge.carved);
+          }
+        }
       }
     }
   });
@@ -585,6 +631,20 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
           else dialect.window(sink, face, o, bodies[i].y0, frame);
         }
       } finally { sink.recess = 0; }
+      // the dirt run off the sills down a rendered or masonry wall (facade craft): it stops at the opening below
+      if (facadeOn() && !storey.framed && (RENDERS.has(storey.wall) || storey.wall === 'stone')) {
+        for (const o of own) {
+          if (o.kind !== 'window' || o.state) continue;
+          const sill = bodies[i].y0 + o.y0;
+          let floor = bodies[i].y0 + 0.08;
+          for (const q of spec.openings) {
+            if (q.face !== name || q === o) continue;
+            const head = bodies[q.storey].y0 + q.y0 + q.h;
+            if (head < sill - 0.1 && Math.abs(q.u - o.u) < (q.w + o.w) / 2 + 0.1) floor = Math.max(floor, head + 0.25);
+          }
+          sillStreaks(sink, storey.wall, face, o.u, sill, o.w, floor);
+        }
+      }
     }
     // jetty dressing on the faces this storey oversails
     if (i > 0 && storey.jetty && dialect.dressJetty) {
@@ -618,6 +678,11 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     if (cap === 'pots') {
       for (const k of [-1, 1]) sink.span('roof', c.x + k * c.sx * 0.22 - 0.09, topY + 0.1, c.z - 0.09, c.x + k * c.sx * 0.22 + 0.09, topY + 0.42, c.z + 0.09);
     }
+    // the oversailing course a mason corbels out under the cap (facade craft, desktop)
+    if (facadeOn() && cap !== 'tile' && c.above >= 0.45) {
+      const o = 0.045, y = topY - 0.36;
+      sink.span(c.bucket, c.x - c.sx / 2 - o, y, c.z - c.sz / 2 - o, c.x + c.sx / 2 + o, y + 0.13, c.z + c.sz / 2 + o, { decor: true, shade: 0.9, fine: true });
+    }
   }
   // rafter feet under the eaves overhang, every 0.8 m along both eaves (dressing)
   if (spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
@@ -650,6 +715,20 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       sink.span('structureMetal', Math.min(px, gx) - 0.04, gy - 0.13, pz - 0.04, Math.max(px, gx) + 0.04, gy - 0.05, pz + 0.04, { colour, decor: true, fine: true });
       const baseY = spec.plinth ? spec.plinth.h * 0.5 : 0.15;
       sink.span('structureMetal', px - 0.045, baseY, pz - 0.045, px + 0.045, gy - 0.07, pz + 0.045, { colour, decor: true, fine: true });
+      if (facadeOn()) downpipeFittings(sink, px, pz, side, baseY, gy - 0.13, colour);
+    }
+    // the gutter's hangers under it, one every other rafter: their straps' fronts and undersides (facade craft, desktop)
+    if (facadeOn()) {
+      moveRoof(() => {
+        const n = Math.max(2, Math.round(2 * gz / 1.2)), hanger = { colour: shadeRgb(colour, 0.7), decor: true, fine: true };
+        for (const side of [1, -1]) for (let k = 0; k <= n; k++) {
+          const z = -gz + 0.12 + (2 * gz - 0.24) * k / n, x0 = side * ex - 0.08, x1 = side * ex + 0.08, y = gy - 0.085;
+          sink.quad('structureMetal', [x0, y, z + 0.02], [x0, y, z - 0.02], [x1, y, z - 0.02], [x1, y, z + 0.02], hanger);
+          const xo = side > 0 ? x1 : x0;
+          if (side > 0) sink.quad('structureMetal', [xo, y, z + 0.02], [xo, y, z - 0.02], [xo, y + 0.03, z - 0.02], [xo, y + 0.03, z + 0.02], hanger);
+          else sink.quad('structureMetal', [xo, y, z - 0.02], [xo, y, z + 0.02], [xo, y + 0.03, z + 0.02], [xo, y + 0.03, z - 0.02], hanger);
+        }
+      });
     }
   }
   return frame;
@@ -666,7 +745,7 @@ export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom:
  * occlusion shade for the weathering pass. Strips and reveals share their corners exactly (welded solids).
  */
 export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, rect: WallRect, holes: readonly HoleRect[], reveal: number,
-  stains: readonly Stain[] = [], revealShade: readonly number[] = []): void {
+  stains: readonly Stain[] = [], revealShade: readonly number[] = [], topShade = 1, bottomShade = 1): void {
   const m = 0.04;
   const kept: number[] = [];
   const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
@@ -695,8 +774,16 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
         if (b - a <= 1e-5) continue;
         const mid = (a + b) / 2;
         const inStain = live.filter((t) => mid > t.u0 && mid < t.u1);
-        if (!inStain.length) { sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb)); continue; }
-        const lo = inStain.reduce((v, t) => v * stainAt(t, ya), 1), hi = inStain.reduce((v, t) => v * stainAt(t, yb), 1);
+        // the rain shadow under the eaves (facade craft): the wall's top row of corners darker, on the vertices it has;
+        // and the grime where the wall meets the ground (splash and rising damp), its bottom row of corners darker
+        const top = topShade !== 1 && yb >= rect.y1 - 1e-6 ? topShade : 1;
+        const foot = bottomShade !== 1 && ya <= rect.y0 + 1e-6 ? bottomShade : 1;
+        if (!inStain.length) {
+          if (top === 1 && foot === 1) sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb));
+          else sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] >= rect.y1 - 1e-6 ? top : q[1] <= rect.y0 + 1e-6 ? foot : 1) });
+          continue;
+        }
+        const lo = inStain.reduce((v, t) => v * stainAt(t, ya), 1) * foot, hi = inStain.reduce((v, t) => v * stainAt(t, yb), 1) * top;
         // each row of corners carries its own shade: the stain fades along the face
         const midY = (ya + yb) / 2;
         sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] < midY ? lo : hi) });
@@ -726,6 +813,23 @@ export function wallPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, 
   const inward: Vec3 = [-face.out[0], -face.out[1], -face.out[2]];
   // prism(): points ccw seen from +dir (from inside) — the outside-ccw polygon reversed
   sink.prism(bucket, pts.reverse(), inward, depth, opts);
+}
+
+function shadeRgb(c: Rgb, k: number): Rgb {
+  return [c[0] * k, c[1] * k, c[2] * k];
+}
+
+/**
+ * A downpipe's fittings (facade craft): the hopper head under the swan neck, two clips holding it to the wall and the
+ * shoe kicking the water off at its foot. (x, z) is the pipe's axis, `side` the eaves side its wall faces (+x or -x).
+ */
+function downpipeFittings(sink: PartSink, x: number, z: number, side: number, baseY: number, topY: number, colour: Rgb): void {
+  const fine = { colour, decor: true, fine: true };
+  sink.span('structureMetal', x - 0.09, topY - 0.24, z - 0.09, x + 0.09, topY - 0.02, z + 0.09, fine);
+  const y = baseY + (topY - baseY) * 0.5;
+  sink.span('structureMetal', Math.min(x, x - side * 0.08) - 0.055, y, z - 0.055, Math.max(x, x - side * 0.08) + 0.055, y + 0.035, z + 0.055,
+    { colour: shadeRgb(colour, 0.75), decor: true, fine: true });
+  sink.span('structureMetal', Math.min(x, x + side * 0.16) - 0.045, baseY, z - 0.045, Math.max(x, x + side * 0.16) + 0.045, baseY + 0.09, z + 0.045, fine);
 }
 
 /** Small helpers shared by the dialects. */

@@ -11,6 +11,8 @@
 // with a low cloud deck keeps its far peaks under the deck (a peak inside the deck would stand in front of the
 // dome-drawn clouds). Desktop tier only; no per-frame work.
 import * as THREE from 'three';
+import { CLOUD_SHADE_PARS_GLSL } from '../engine/cloudShadeMap.ts';
+import { lightTune } from '../engine/lightModelCore.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { type SeaOpening, dominantSeaOpening, seaOpeningWeight, seaHeadlandWeight } from './edgeWater.ts';
 import type { HorizonFarRangeSettings, HorizonReliefCharacter } from './horizonRelief.ts';
@@ -357,13 +359,17 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     uFGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
     uFRock: { value: options.rock.clone() }, uFSnow: { value: options.snow.clone() }, uFFog: { value: fog.clone() },
     uFSnowline: { value: s.snowline <= 1 ? s.snowline : 2 }, uFDetailOn: { value: detail ? 1 : 0 },
+    // (Part 1, 2026-10-05: the clouds' shadows on the sun's term, as the panorama that replaces this range takes them —
+    // the layer's shared shade map, pointed at each draw; w 0 = off)
+    tCotCloudShade: { value: null as THREE.Texture | null }, uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
+    uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) },
   };
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, shading);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam;');
-    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar;\n' + shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam; vFWorld = (modelMatrix * vec4(position, 1.0)).xyz;');
+    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;\n' + CLOUD_SHADE_PARS_GLSL + shader.fragmentShader
       .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
       {
         float hT = vFPar.x, haze = vFPar.y, rib = vFPar.z, marine = vFPar.w;
@@ -407,7 +413,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         // rib / couloir cavity, the cool tint on the faces turned from the sun
         float ndl = dot(n, uFSun);
         float sky = 0.55 + 0.45 * n.y;
-        float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0);
+        float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0) * cotCloudSun(vFWorld);
         col *= shade * (1.0 + rib * 0.14);
         col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35);
         // the sea sectors are the low sky, like the ring's far apron
@@ -419,6 +425,17 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
   };
   material.customProgramCacheKey = () => 'horizon-far-range-r72c';
   const mesh = new THREE.Mesh(geo, material);
+  mesh.onBeforeRender = (_renderer, scene) => {
+    const shared = (scene.userData as { cloudShadeUniforms?: { tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
+      uCotCloudShade: THREE.IUniform<THREE.Vector4>; uCotCloudSun: THREE.IUniform<THREE.Vector4> } }).cloudShadeUniforms;
+    if (shared && shared.tCotCloudShade.value && lightTune('PANO_CLOUD_SHADE', 1) > 0) {
+      shading.tCotCloudShade.value = shared.tCotCloudShade.value;
+      shading.uCotCloudShade.value = shared.uCotCloudShade.value;
+      shading.uCotCloudSun.value = shared.uCotCloudSun.value;
+    } else if (shading.uCotCloudShade.value.w !== 0) {
+      shading.uCotCloudShade.value = new THREE.Vector4(0, 0, 1 / 12000, 0);
+    }
+  };
   mesh.name = 'horizon-far-range';
   mesh.castShadow = false;
   mesh.receiveShadow = false;

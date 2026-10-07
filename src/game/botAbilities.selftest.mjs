@@ -19,10 +19,11 @@ for (const team of ['alpha', 'bravo']) {
   entity.combat.hp = entity.combat.maxHp * .3;
   const bits = planner.update(entity, 10, context);
   assert.ok(bits & B.SMOKE, 'wounded hull screens a frontal threat');
-  assert.ok(bits & B.ROOF_GUN, 'a nearby clear spotted contact enables the actual roof gun');
+  assert.ok(auxiliaryState(entity).gunOn, 'fresh combat state enables equipped automatic guns');
+  assert.ok(!(bits & B.ROOF_GUN), 'a nearby contact keeps the default-on gun enabled');
   assert.ok(bits & B.LIGHTS_OFF, 'night lights are blacked out');
   assert.equal(requestAuxiliary(entity, 'smoke', 10), true);
-  assert.equal(requestAuxiliary(entity, 'roofGun', 10), true);
+
   assert.equal(requestAuxiliary(entity, 'lightsOff', 10), true);
   const aux = auxiliaryState(entity);
   assert.equal(aux.smokeCharges, 2);
@@ -68,7 +69,7 @@ for (const change of [
 {
   const f = fixture(); const enemy = fixture('bravo').entity;
   enemy.state.pos.set(0, 0, 80);
-  requestAuxiliary(f.entity, 'roofGun', 10);
+
   const world = { entities: [f.entity, enemy], visible: () => false, clear: () => true };
   assert.equal(stepRoofGun(f.entity, 10, .1, world), false, 'automatic gun cannot see through spotting');
   world.visible = () => true; world.clear = () => false;
@@ -77,5 +78,11 @@ for (const change of [
   let fired = false;
   for (let i = 0; i < 30; i++) fired ||= stepRoofGun(f.entity, 10.2 + i * .1, .1, world);
   assert.ok(fired, 'an exposed enemy receives a real auxiliary shot');
+}
+{
+ const f=fixture();requestAuxiliary(f.entity,'roofGun',0);
+ assert.equal(f.entity.combat.auxiliary.gunOn,false);
+ f.entity.combat=createCombatState(f.entity.spec);
+ assert.equal(f.entity.combat.auxiliary.gunOn,true,'respawn receives the enabled default');
 }
 console.log('botAbilities.selftest: team parity, smoke inventory/direction/cooldown, gun safety, lighting and grounded jump discipline passed');

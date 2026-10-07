@@ -50,7 +50,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       armorAim: { clear: () => events.push('armor:clear') },
       resetDriveAim: () => events.push('drive:reset'),
       setCamoBiome: (id) => events.push(`camo:biome:${id}`),
-      lendPlayerVisual: (id) => events.push(`pedestal:lend:${id}`),
+      lendPlayerVisual: (id, useTank = true) => events.push(`pedestal:${useTank ? 'lend' : 'park'}:${id}`),
       setupBattle: (_game, id, activeWorld, options) => {
         assert.equal(id, 'm1a2');
         assert.strictEqual(activeWorld, world);
@@ -70,7 +70,8 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       applyPlayerCamo: (id) => events.push(`camo:player:${id}`),
       applyRosterCamo: (options) => {
         assert.deepEqual(options, {
-          priorityIds: ['m1a2'], onlySpecIds: ['m1a2', 't90m'],
+          priorityIds: setupOptions.gameMode === 'ac130' ? [] : ['m1a2'],
+          onlySpecIds: setupOptions.gameMode === 'ac130' ? ['t90m'] : ['m1a2', 't90m'],
         });
         events.push('camo:roster');
         return Promise.resolve('painted');
@@ -212,3 +213,12 @@ assert.throws(
 );
 
 console.log('soloBattleStartRuntime.selftest: activation order, covered start, and failure pass');
+
+{
+ const h = createHarness();h.runtime.start('m1a2','winter',{gameMode:'ac130',deferVisuals:true});
+ assert.equal(h.game.phase,'battle');
+ for(const event of ['pedestal:lend:m1a2','camo:player:m1a2','damage:tank','damage:equipment'])
+   assert.ok(!h.events.includes(event), `aircraft entry skips ${event}`);
+ assert.ok(h.events.includes('camo:roster'),'ground escorts still prepare');
+ assert.ok(h.events.includes('pedestal:park:m1a2'),'garage hero stays out of the aircraft battlefield');
+}

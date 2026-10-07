@@ -12,7 +12,9 @@ audio without owning gameplay decisions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-Start from [`docs/AUDIO.md`](../../docs/AUDIO.md): the runtime design, the generation
+For generating or repairing sounds and crew lines, follow the
+[audio-generation skill](../../docs/audio-generation/SKILL.md) and its prompt
+cookbook. Start from [`docs/AUDIO.md`](../../docs/AUDIO.md): the runtime design, the generation
 pipeline (SFX and crew voices) and how to change or extend it.
 `audioEngine.ts` owns the bus subscriptions, listener frame, vehicle rigs,
 weapons, impacts, ambience, alarms and the `window.__COT_AUDIO` debug surface.
@@ -21,8 +23,9 @@ Doppler, atmospheres, pan), `mixPolicy.ts` (levels, snapshots, HDR, budgets,
 LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 (report classes, reload choreography), `vehicleAudioProfiles.ts` +
 `vehicleAudioModel.ts` (powertrain identity, RPM/gear/track model),
-`environmentScenes.ts` (per-map scenes), `voiceLines.ts` (radio discipline,
-crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
+`environmentScenes.ts` (per-map scenes, bells, flyovers by era),
+`propSounds.ts` (what every world prop kind sounds like), `voiceLines.ts`
+(radio discipline, crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `lazyAudio.ts` owns gesture-time context creation and mixer transfer (it makes
 no sound of its own); `listenerPoseRuntime.ts` owns
@@ -36,7 +39,10 @@ play through the pool (caps, cooldowns, priority) and stop stale sounds on
 phase or entity teardown. Every asset id the engine names must exist in the
 SFX manifest (`soundAssets.selftest.mjs` scans `play('…')` calls). New sounds
 come from the offline pipeline (`tools/audio/sfx-catalog.mjs` →
-`generate-sfx.mjs` → `build-sfx.mjs`), never hand-dropped files; voice lines
+`generate-sfx.mjs` → `build-sfx.mjs` → `loudness-receipt.mjs --ids …`, which
+records the shipped files for `sfxLoudness.selftest.mjs`), never hand-dropped
+files; a new world prop kind gets its entry in `propSounds.ts`
+(`propSounds.selftest.mjs` fails on a kind it does not name); voice lines
 from `crew-lines.json` → `build-voices.mjs`. Never synthesize a sound or add a
 fallback: every cue is a recorded asset, one still decoding stays silent
 (`soundAssets.selftest.mjs` rejects any `createOscillator`), no cue is chained in

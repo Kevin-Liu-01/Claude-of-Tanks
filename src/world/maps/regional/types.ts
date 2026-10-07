@@ -29,23 +29,46 @@ export interface RegionalBuildContext {
   snowCap: boolean;
   /** 'mobile' builds leave out the finest dressing (never a structural part: collision stays tier-independent) */
   tier: 'desktop' | 'mobile';
+  /**
+   * The building's world pose (props.ts: its position and yaw, a turn about +Y), for a kit whose buildings answer to
+   * the place rather than the plot: a hogan's door to the sunrise, a street row zoned by its distance from the valley
+   * axis. Absent outside a placed rebuild (a yard's outbuilding, the receipts' harness).
+   *
+   * The rule: a kit uses x, z and yaw only for look and form choices inside the plot. It never draws from the placement
+   * stream (the context holds no such stream; the receipt's placement harness checks the stream draws exactly as
+   * without the kit) and never changes the footprint (regionalArchitecture.selftest.mjs builds every builder at several
+   * poses and holds each pose's solid envelope to the plot and the unposed build's reach).
+   */
+  x?: number;
+  z?: number;
+  yaw?: number;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 
 /** Procedural surface painters a style selects for the roof and stone buckets (regionalSurfaces.ts). */
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
-/** An HSL remap of a procedural surface (props.ts ToneFunction). */
-export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'gneiss';
+/**
+ * An HSL remap of a procedural surface (props.ts ToneFunction). A render tone may also name its painter: `paint`
+ * lime-wash brushed over mud plaster (regionalSurfaces.ts paintLimewash, its own seed) in place of the plain render.
+ */
+export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
+  & { paint?: { kind: 'limewash'; seed: number } };
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'gneiss' | 'fieldstone';
+/** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
+export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
-  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number] };
+  /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
+  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
+  /** a style that pours its plaster2 walls: that bucket's print is the concrete's (its formwork's boards, lift lines and
+   *  tie holes), toned by the plaster2 tone as the render was; absent = the render canvas */
+  concrete?: ConcreteSurfaceKind;
   /** map revival lane 2 (2026-10-05): the walls' render finer and shallower than the shared tile (a limewash's skin, not a
    * coarse stucco): the tile repeats `plasterUv` times as often over the plaster buckets, its normal map at `normal`
    * strength and its cavities' occlusion at `ao`. Absent, the shared tile as it is (every other kit's surfaces unchanged). */

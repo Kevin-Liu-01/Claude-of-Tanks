@@ -12,6 +12,10 @@
 // own shells, so silhouettes never move; behind a real gap they read as the dark interior wall the eye expects.
 // A declared physical muzzle bore is open air by contract (2026-10-03, tools/physical-bore-air.mjs): no voxel that can
 // touch it is ever filled, so a generated box can never cap the recess the build verifies.
+// Moving-part clearance (2026-10-06, tools/moving-clearance-air.mjs): the pocket rule above is shared with the
+// watertight measurement, and the cells a declared finite clearance cuts (tools/m1a1-fill-clearance.mjs) are recorded in
+// docs/geometry-gate/moving-clearance-air.json (or <out-dir>/moving-clearance-air.json), so the gate reports exactly
+// the air this generator leaves for the moving gun apart from a leak.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -27,8 +31,10 @@ import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
+import { createM1A1FillClearance } from './m1a1-fill-clearance.mjs';
 import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
+import { CLEARANCE_AIR_FILE, encodeSpans, insideSpan, movingClearanceSpans, underMovingPart, writeDeclaredClearance } from './moving-clearance-air.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -38,7 +44,6 @@ const VOXEL = Number(opt('voxel', '0.025'));
 const CELL = Math.max(1, Math.round(Number(opt('cell', '2'))));
 // fine-pass boxes below this many voxels are slivers along sloped plates: dropped (they stay as residual)
 const MIN_FINE = Math.max(0, Number(opt('min-fine', '12')));
-const MOVING = /^(gun|gunMount|mantlet)/i;
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // --all covers the whole registered fleet (fleetManifest), not the 27 legacy specs ids (2026-09-14 fix:
 // 80 tanks had never received fills because --all read ALL_TANK_IDS).
@@ -57,42 +62,10 @@ function componentAt(grid, x, y, z) {
   return inHull ? 1 : inTurret ? 2 : 0;
 }
 
-/** Column span of the turret proper (shell groups named turret*, never gun/mantlet): a voxel inside it is
- * enclosed by the turret body itself, so a fill there stays hidden whatever the gun does. */
-function turretProperSpans(grid) {
-  const { shell, nx, ny, nz, groups } = grid;
-  const proper = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) proper[g + 1] = /^turret/i.test(groups[g]) ? 1 : 0;
-  const minY = new Int16Array(nx * nz).fill(32767), maxY = new Int16Array(nx * nz).fill(-1);
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const g = shell[(z * ny + y) * nx + x]; if (!g || !proper[g]) continue;
-    const k = z * nx + x; if (y < minY[k]) minY[k] = y; if (y > maxY[k]) maxY[k] = y;
-  }
-  return { minY, maxY };
-}
-function insideTurretProper(spans, grid, x, y, z) { const k = z * grid.nx + x; return spans.minY[k] < y && y < spans.maxY[k]; }
-/** Column span of the moving gun group (gun, gun mount, mantlet): a pocket enclosed by it rides with the gun. */
-function movingSpans(grid) {
-  const { shell, nx, ny, nz, groups } = grid;
-  const moving = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) moving[g + 1] = MOVING.test(groups[g]) ? 1 : 0;
-  const minY = new Int16Array(nx * nz).fill(32767), maxY = new Int16Array(nx * nz).fill(-1);
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const g = shell[(z * ny + y) * nx + x]; if (!g || !moving[g]) continue;
-    const k = z * nx + x; if (y < minY[k]) minY[k] = y; if (y > maxY[k]) maxY[k] = y;
-  }
-  return { minY, maxY };
-}
-
-/** True when the first shell above or below the voxel belongs to a part that moves relative to the turret body. */
-function underMovingPart(grid, x, y, z) {
-  const { shell, nx, ny, groups } = grid;
-  for (const dir of [1, -1]) {
-    for (let yy = y + dir; yy >= 0 && yy < ny; yy += dir) {
-      const g = shell[(z * ny + yy) * nx + x];
-      if (g) { if (MOVING.test(groups[g - 1])) return true; break; }
-    }
-  }
-  return false;
-}
+// The turret proper's column span (turret* shells: a voxel inside it is enclosed by the turret body itself, so a fill
+// there stays hidden whatever the gun does), the moving group's span (gun, gun mount, mantlet: a pocket it encloses
+// rides with the gun) and the under-moving-part test live in tools/moving-clearance-air.mjs, shared with the
+// watertight measurement.
 
 function greedyBoxes(cell, cnx, cny, cnz, comp) {
   const used = new Uint8Array(cell.length); const boxes = [];
@@ -141,12 +114,12 @@ async function uniformRecord(id) {
     ...(prior.g ? { g: prior.g.map(v => v * factor) } : {}) };
   return { record, factor };
 }
-const out = {}; const stats = [];
+const out = {}; const stats = []; const clearanceAir = {};
 for (const id of ids) {
   const t0 = performance.now();
   if (uniformCommit) {
     const { record, factor } = await uniformRecord(id);
-    out[id] = record;
+    out[id] = record; clearanceAir[id] = null; // a replayed lattice carries no measured clearance cells
     const boxes = ['hull','turret','gun'].reduce((n,key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
     stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, residualUnmeasured: true });
     console.log(`${id}: preserved ${boxes} fill solids at ${factor} of ${uniformCommit}; residual requires watertight check`);
@@ -159,6 +132,7 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true }); }
   catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
   const sourceAir=createBarakBayFillPolicy(id,tank.root);
+  const movingAir=createM1A1FillClearance(id,tank.root);
   // track lanes (band: two voxels of clearance, the audit samples 2 cm cells; shoe envelope: one voxel) are never
   // interior air — tools/track-lane-boxes.mjs, shared with the watertight check so both tools read the same lanes
   const laneBoxes = trackLaneBoxesForVoxel(tank.root, VOXEL);
@@ -177,7 +151,7 @@ for (const id of ids) {
     grid.groups.push(`${key}InteriorFill`); fillGroup[comp] = grid.groups.length; // shell value = index + 1
   }
   // leak voxels with component; moving-part columns skipped
-  const proper = turretProperSpans(grid), moving = movingSpans(grid);
+  const { proper, moving } = movingClearanceSpans(grid);
   const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0, bandVox = 0, boreVox = 0;
   const collectLeaks = (extNow, deepNow, first) => {
     let found = 0;
@@ -191,10 +165,17 @@ for (const id of ids) {
       // a pocket closed by the gun or mantlet: filled as turret stock when the turret body itself encloses
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
       // skipped only when neither does
-      if (underMovingPart(grid, x, y, z) && !insideTurretProper(proper, grid, x, y, z)) {
-        // whatever the gun closes rides with the gun: inside a casemate the recess is the gun's own
-        // travel space, so gun-frame stock there stays hidden through elevation (chase-to-zero)
-        vox[i] = 3; found++; if (first) skipped++; continue;
+      if (underMovingPart(grid, x, y, z) && !insideSpan(proper, grid, x, y, z)) {
+        // Seeing a gun above a voxel does not make the air below it part of
+        // the gun. Require moving shell on BOTH sides of the column before
+        // assigning gun-owned fill. Otherwise a raised trunnion acquires a
+        // long artificial skirt that rotates through its fixed deck/floor.
+        // Outside both spans the voxel is a pocket on the turret beneath the
+        // gun (moving-clearance air, reported apart by the watertight gate).
+        if (insideSpan(moving, grid, x, y, z)) {
+          vox[i] = 3; found++; if (first) skipped++;
+        }
+        continue;
       }
       vox[i] = c; found++;
     }
@@ -248,6 +229,15 @@ for (const id of ids) {
     }
   }
   }
+  const clearance=movingAir?.apply(grid,compOf,()=>greedyBoxes(compOf,nx,ny,nz,2));
+  if(clearance){
+    filledVox-=clearance.removedVoxels;
+    console.log(`${id}: moving clearance ${JSON.stringify(clearance)}`);
+    // Record the cut cells on this lattice: the watertight gate reports deep water in them apart (moving-clearance-air.mjs).
+    const cut = new Uint8Array(shell.length); for (const i of clearance.cutCells) cut[i] = 1;
+    const spans = []; for (const [x, y, z, x1, y1, z1] of greedyBoxes(cut, nx, ny, nz, 1)) spans.push(x, y, z, x1, y1, z1);
+    clearanceAir[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), voxels: clearance.cutCells.length, spans: encodeSpans(spans) };
+  } else clearanceAir[id] = null;
   // Global remesh: the rounds and the coarse/fine passes each meshed their own voxels; one greedy pass over the
   // union of every claimed voxel per component yields far fewer boxes for the same solid.
   for (const [comp, key] of [[1, 'hull'], [2, 'turret'], [3, 'gun']]) {
@@ -328,6 +318,10 @@ if (!flag('stats')) {
       '});', ''].join('\n');
     writeFileSync(loaderPath, loader);
   }
+  // The declared clearance cells go beside the fills they describe: the gate's record for the real group directory,
+  // a scratch copy for a scratch --out-dir.
+  const clearanceFile = opt('clearance-air', resolve(groupDir) === resolve('src/vehicles/interiorFillGroups') ? CLEARANCE_AIR_FILE : resolve(groupDir, 'moving-clearance-air.json'));
+  writeDeclaredClearance(clearanceAir, clearanceFile);
   console.log(`wrote ${groupNames.length} group module(s) to ${groupDir} (${(bytes / 1024).toFixed(0)} kB) and the loader map`);
 }
 if (uniformCommit) console.log('Uniform replay does not measure residual leakage; run tank-watertight-check.');

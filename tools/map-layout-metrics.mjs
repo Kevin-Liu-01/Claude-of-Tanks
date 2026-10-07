@@ -441,17 +441,18 @@ const MARINE_KINDS = new Set(['bridge', 'jetty', 'pier', 'boat', 'pontoon', 'wha
 
 /** Load everything one map's metrics read. */
 export async function loadLayoutWorld(mapId) {
-  const [{ getMapConfig }, { createHeightField }, dedicated, collision, mobility] = await Promise.all([
+  const [{ getMapConfig }, { createHeightField }, dedicated, collision, mobility, { landmarkFootprint }] = await Promise.all([
     import('../src/world/maps/index.ts'),
     import('../src/world/terrain.ts'),
     import('../server/dedicatedWorldCollision.ts'),
     import('../src/world/collision.ts'),
     import('../src/sim/terrainMobility.ts'),
+    import('../src/world/landmarks/plan.ts'),
   ]);
   const config = getMapConfig(mapId);
   const world = dedicated.createDedicatedWorldCollision(mapId);
   const heightField = world.heightField ?? createHeightField(1337, config);
-  return { mapId, config, world, heightField, footprintContains: collision.collisionFootprintContainsPoint, mobility };
+  return { mapId, config, world, heightField, footprintContains: collision.collisionFootprintContainsPoint, mobility, landmarkFootprint };
 }
 
 /**
@@ -511,10 +512,19 @@ export function buildLayoutRasters({ heightField, world, footprintContains, mobi
       deck5[j * pass.n + i] = deckIndex(-WORLD_HALF_M + i * PASS_RASTER_M, -WORLD_HALF_M + j * PASS_RASTER_M);
     }
   }
+  // a bridge's abutments run on under the approach embankment a few metres past the span, their tops at the deck's
+  // level (mapKits.ts addArchedStoneBridge): between the parapet lines they are the road's floor, not a wall (on an
+  // oblique crossing the raster's cells past the span's ends fall on them; Suzhou Creek, the map-revival lane)
+  const abutmentFloor = (x, z) => decks.some((deck) => {
+    const dx = x - deck.x, dz = z - deck.z;
+    return Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 3 && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth;
+  });
   for (const record of world.getObstacles()) {
     if (!isSolidRecord(record)) continue;
     const bridge = record.kind === 'bridge';
-    recordFootprintCells(record, pass, 1.8, (i) => { if (!(bridge && deck5 && deck5[i])) solid5[i] = 1; }, footprintContains);
+    recordFootprintCells(record, pass, 1.8, (i, x, z) => {
+      if (!(bridge && deck5 && (deck5[i] || abutmentFloor(x, z)))) solid5[i] = 1;
+    }, footprintContains);
   }
   const depthAt = typeof heightField.getWaterDepthAt === 'function' ? (x, z) => heightField.getWaterDepthAt(x, z) : null;
   const groundAt = (x, z) => (heightField.getDriveGroundType?.(x, z) ?? heightField.getGroundType?.(x, z) ?? 'medium');
@@ -620,7 +630,7 @@ export function nearestPassable(spec, passable, x, z, radiusM = 60) {
 export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
   const t0 = performance.now();
   const loaded = await loadLayoutWorld(mapId);
-  const { config, world, heightField, footprintContains } = loaded;
+  const { config, world, heightField, footprintContains, landmarkFootprint } = loaded;
   const R = buildLayoutRasters(loaded);
   const layout = heightField._layout;
   const frame = spawnFrame(layout.spawns);
@@ -779,13 +789,23 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
   // dressing logic — distances to the authored road polylines (hardstand aprons are paved squares, not roads)
   const roadDistance = roadPolylineDistance(layout.roads);
   const buildingKinds = new Set(['structure', 'bunker', ...((config.props?.destructibleBuildings) ?? [])]);
+  const setPieces = (config.props?.landmarks ?? []).map((piece) => {
+    const [hw, hl] = landmarkFootprint(piece), yaw = (piece.yawDeg ?? 0) * Math.PI / 180;
+    return { x: piece.x, z: piece.z, hw, hl, c: Math.cos(yaw), s: Math.sin(yaw) };
+  });
+  const inSetPiece = (x, z) => setPieces.some((p) => {
+    const dx = x - p.x, dz = z - p.z;
+    return Math.abs(dx * p.c - dz * p.s) <= p.hw && Math.abs(dx * p.s + dz * p.c) <= p.hl;
+  });
   let buildings = 0, orphans = 0;
   const inRoad = {}, inWater = {}, roadblocks = {};
   for (const record of world.getObstacles()) {
     if (record.treeIdx != null) continue;
     const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
     const kind = record.kind ?? 'rock-or-wall';
-    if (buildingKinds.has(record.kind)) {
+    // (a set piece, landmarks/compose.ts, is no settlement building: a mill on a crest stands off every road by design —
+    // a structure record whose centre stands in a set piece's footprint, from the map's config, is left out)
+    if (buildingKinds.has(record.kind) && !inSetPiece(cx, cz)) {
       buildings++;
       if (roadDistance(cx, cz) > ORPHAN_ROAD_M) orphans++;
     }
