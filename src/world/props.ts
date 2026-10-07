@@ -420,6 +420,9 @@ interface PropsSettings {
   rockSoilTone?: ToneFunction | null;
   inhabit?: InhabitSettings;
   wallStyle?: string;
+  /** The map-revival lane (2026-10-07): the mud walls' apron at the mobile tier's density on every tier
+   * (fieldWallDressing.ts adobeApronCoarse); unset, as before. */
+  adobeApronCoarse?: boolean;
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
@@ -4807,6 +4810,7 @@ ${snowCap ? `
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+    adobeApronCoarse: P.adobeApronCoarse === true,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
   });
   function addWallRun(

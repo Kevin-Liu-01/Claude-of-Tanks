@@ -400,6 +400,12 @@ export interface WallDressingOptions {
   /** The mud walls' bucket ('fieldMud' on their own print, else 'plaster') and that print's density and plain band. */
   adobeBucket: string;
   mudUv: number;
+  /**
+   * The map-revival lane (2026-10-07, Tarkhan's cost trim; the coordinator's ruling): a map's mud walls dressed at the
+   * mobile tier's density on every tier — the apron's 0.6 m rows and 1.2 lumps a metre (buildMudApron's `mobile`) — for
+   * a map that runs many hundreds of metres of them. Unset, every map dresses its walls as before.
+   */
+  adobeApronCoarse?: boolean;
   plainV?: readonly [number, number];
 }
 
@@ -447,7 +453,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       const out = { wall: [] as THREE.BufferGeometry[] };
       if (adobe) {
         const apron = buildMudApron(o.ground, ax, az, bx, bz, half, placeSeed(ax, az, 0xad0a),
-          { mobile: o.mobile, uvPerM: o.mudUv, plainV: o.plainV });
+          { mobile: o.mobile || o.adobeApronCoarse === true, uvPerM: o.mudUv, plainV: o.plainV });
         if (apron) out.wall.push(apron);
         if (o.sand && o.plainV) {
           // the sand ramps: the wind's sand banked a third of the way up the wall in its lee, a low ramp on the
