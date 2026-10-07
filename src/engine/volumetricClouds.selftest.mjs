@@ -659,6 +659,16 @@ assert.ok(shadersSource.includes('vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mi
   && shadersSource.includes('vec4 top = uLayerBase + thick * ( 0.1 + 0.9 * k );')
   && shadersSource.includes('vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );'), 'the trace\'s cell column is the shell\'s');
 assert.match(layerSource, /const reach = cloudGroundLight\(open, this\.deckTau, /, 'the ground under the clouds takes the light the cover passes');
+// round 5 (2026-10-07): a deck's mottle — the point's own shape and detail noise (cl2Media's, no second fetch) thicken or
+// thin the column over it — taken before the sun march runs cl2Media again; the base's ground return a multiple by flatness
+{
+  for (const term of ['cl2NoiseShape = shape;', 'cl2NoiseDetail = dn;', 'tauUp *= 1.0 + uDeckTune.z * mottle;', '* mix( 1.0, uDeckTune.w, flatK );']) {
+    assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
+  }
+  const at = (term) => { const i = shadersSource.indexOf(term); assert.ok(i >= 0, term); return i; };
+  assert.ok(at('vec4 sigma4 = cl2Media( p, shell, hf, sLod, detail );') < at('float mottle = clamp( ( cl2NoiseShape - 0.5 ) * 1.6 - ( cl2NoiseDetail - 0.5 ) * 0.8, -1.0, 1.0 );')
+    && at('float mottle = clamp(') < at('for ( int q = 0; q < CL2_SUN_STEPS; q++ )'), 'the mottle is the point\'s own noise, read before the sun march');
+}
 // 2026-10-06 (the first GPU pair: the v2 page's atmosphere fell to its Preetham fallback on the hardware): the sun mean's
 // readback holds no pack buffer across a task — three's readRenderTargetPixelsAsync keeps its buffer bound over its
 // await, and any other read in that window (the atmosphere's summary) fails

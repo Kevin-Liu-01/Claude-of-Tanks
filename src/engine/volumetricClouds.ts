@@ -84,6 +84,16 @@ const CLOUD_CIRRUS_TILE_M = 30000;
  * mean over the sky unchanged); the deck's deep diffusion carries it.
  */
 export const CLOUD_DECK_SUN_LOBE = 0.2;
+/**
+ * A deck's mottle (2026-10-07, round 5): how far the medium's shape and detail noise at a point thicken or thin the column
+ * over it in the deck's light (±0.45 at the noise's extremes) — cells within the cells, where round four drew soft ovals.
+ */
+const CLOUD_DECK_MOTTLE = 0.45;
+/**
+ * The ground's return on a deck's base, a multiple of the law's (2026-10-07, round 5): the cover's own light raised from
+ * the snow or sand under it (round four's Whiteout deck sat at 163 of 255 over a snowfield near white).
+ */
+const CLOUD_DECK_GROUND_RETURN = 2;
 /** 2026-10-01: a lightning stroke's peak glow on the cloud around it (the composite's units, after the night dimming). */
 const CLOUD_FLASH_STRENGTH = 0.9;
 /** 2026-10-01: the cirrus streak frame's warp (m): the jet's eddies bend the streaks over tens of kilometres. */
@@ -788,7 +798,7 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector2(1, 1) }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector4(1, 1, CLOUD_DECK_MOTTLE, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -1257,8 +1267,10 @@ export class VolumetricCloudLayer {
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
-    // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale)
-    (t.uDeckTune.value as THREE.Vector2).set(lightTune('CLOUD_DECK_LOCAL_TAU', 1), lightTune('CLOUD_DECK_GROUND', 1));
+    // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale), its
+    // mottle and its base's ground return
+    (t.uDeckTune.value as THREE.Vector4).set(lightTune('CLOUD_DECK_LOCAL_TAU', 1), lightTune('CLOUD_DECK_GROUND', 1),
+      lightTune('CLOUD_DECK_MOTTLE', CLOUD_DECK_MOTTLE), lightTune('CLOUD_DECK_GROUND_RETURN', CLOUD_DECK_GROUND_RETURN));
     if (t.uDebug.value !== this.debugMode) { t.uDebug.value = this.debugMode; this.resetHistory(); }
 
     // camera frame; cuts (teleports, big turns, zooms) rebuild the history at four slots a frame

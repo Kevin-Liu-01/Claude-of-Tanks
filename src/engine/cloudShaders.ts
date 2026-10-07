@@ -194,6 +194,9 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	d *= mix( vec4( 1.0 ), smoothstep( 0.03, 0.32, k ), gapOn );
 	return d * uLayerCore * inside;
 }
+// the last point's raw shape and detail noise (cl2Media writes them; the trace's deck mottle reads them, no second fetch)
+float cl2NoiseShape = 0.5;
+float cl2NoiseDetail = 0.5;
 // the extinction of every lane at a point (1/m): the shell eroded by the shape and (detail > 0) the detail, under the
 // density profile. [ported] the shape and detail remaps and the profile; the turbulence at the base is first-party.
 vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
@@ -207,10 +210,13 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 		}
 	}
 	float shape = textureLod( tShape, sp / uShapePeriod, lod ).r;
+	cl2NoiseShape = shape;
+	cl2NoiseDetail = 0.5;
 	vec4 lo = vec4( 1.0 - shape ) * uLayerShape;
 	vec4 d = clamp( ( shell - lo ) / max( 1.0 - lo, vec4( 1e-3 ) ), 0.0, 1.0 );
 	if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
+		cl2NoiseDetail = dn;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
 		vec4 topErode = mix( vec4( 1.0 - dn ), vec4( dn ), uLayerWisp );
 		vec4 modifier = mix( vec4( pow( dn, 6.0 ) ), topErode, clamp( ( hf - 0.2 ) / 0.2, 0.0, 1.0 ) ) * uLayerDetail * detail;
@@ -472,8 +478,9 @@ uniform float uOpaqueCut;
 uniform float uDeckLobe;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
 // ray's depth by its slope), y the ground's return at the deck's base as the light the deck itself passes down (0 the
-// map's ambient scale over it)
-uniform vec2 uDeckTune;
+// map's ambient scale over it), z the mottle (the medium's own noise at the point thickening or thinning that column),
+// w the ground's return on a deck's base (a multiple)
+uniform vec4 uDeckTune;
 uniform float uDebug;
 // the scene's depth the last frame left (a layer ends at a surface past the dome)
 uniform sampler2D tSceneDepth;
@@ -674,6 +681,8 @@ void main() {
 			float sLod = max( 0.0, log2( max( foot * 2.0, 1.0 ) * 128.0 / uShapePeriod ) );
 			float detail = uDebug == 12.0 ? 0.0 : 1.0 - smoothstep( uDetailRange * 0.6, uDetailRange, t );
 			vec4 sigma4 = cl2Media( p, shell, hf, sLod, detail );
+			// a deck's mottle from this point's own noise (taken now: the sun march below runs cl2Media again)
+			float mottle = clamp( ( cl2NoiseShape - 0.5 ) * 1.6 - ( cl2NoiseDetail - 0.5 ) * 0.8, -1.0, 1.0 );
 			float sigma = sigma4.x + sigma4.y + sigma4.z + sigma4.w;
 			if ( sigma > 1e-5 && prevSigma <= 1e-5 && fine == 0 ) {
 				// entering: back up half a stride and refine
@@ -725,6 +734,10 @@ void main() {
 					vec4 kc = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
 					vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );
 					float tauUp = dot( wgt, uLayerDensity * uLayerCore * max( topC - vec4( h ), vec4( 0.0 ) ) ) * ${f(CLOUD_COLUMN_SHARE)};
+					// the mottle (round 5: round four's cells were soft, airbrushed ovals with nothing inside them, Titan Gorge's
+					// overcast blurrier than the old layer's): the shape and detail noise at the point — denser there, a thicker
+					// column over it — darken it, a pocket the noise thins lightens it, cells within the cells
+					tauUp *= 1.0 + uDeckTune.z * mottle;
 					tauV = mix( tauV, tauUp, deckK );
 				}
 				// the deep diffusion of a deck: the light a thick column passes down to its base, 1 / (1 + 0.75 (1 - g) tau)
@@ -747,15 +760,15 @@ void main() {
 				// (a deck's base takes half the ground's return: over snow it lit every cell's underside alike, one white; and the
 				// return is the light the deck passes down, uGroundRadiance's own law, not the map's ambient scale over it)
 				float flatK = dot( wgt, uLayerFlat );
-				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK );
+				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK ) * mix( 1.0, uDeckTune.w, flatK );
 				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
 				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );
 				radiance *= uTint;
 				if ( uDebug == 4.0 ) radiance = vec3( 0.6 );
 				// QA: one term of the light alone (5 the optical depth to the sun / 40, 6 the octaves, 7 the deep diffusion,
-				// 8 the sky and ground, 9 the powder factor, 10 the extinction x 20, 13 the vertical depth over the point / 30;
-				// 12 draws the medium without its detail)
+				// 8 the sky and ground, 9 the powder factor, 10 the extinction x 20, 13 the vertical depth over the point / 30,
+				// 14 a deck's mottle; 12 draws the medium without its detail)
 				else if ( uDebug == 5.0 ) radiance = vec3( od / 40.0 );
 				else if ( uDebug == 6.0 ) radiance = dbgSun;
 				else if ( uDebug == 7.0 ) radiance = dbgDiffuse;
@@ -763,6 +776,7 @@ void main() {
 				else if ( uDebug == 9.0 ) radiance = vec3( 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp ) );
 				else if ( uDebug == 10.0 ) radiance = vec3( sigma * 20.0 );
 				else if ( uDebug == 13.0 ) radiance = vec3( tauV / 30.0 );
+				else if ( uDebug == 14.0 ) radiance = vec3( mottle * 0.5 + 0.5 );
 				// [ported] the energy-conserving integral of the step
 				float Tstep = exp( -sigma * ds );
 				vec3 S = radiance * sigma;
