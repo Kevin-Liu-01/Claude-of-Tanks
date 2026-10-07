@@ -2478,51 +2478,78 @@ function addRackFabric(parts: FittingParts, slot: string, spec: FabricSpec, x: n
   return { lift, top };
 }
 
+/**
+ * A tie from a load's top over to the rack's outer top rail: a webbing run (a thin ribbon) with its hook block on the
+ * rail. Round 4 (2026-10-07, wave 216 on the Strv 103A's tail rack: loads "sit loose, unstrapped").
+ */
+function addRackTie(parts: FittingParts, x: number, yTop: number, zTop: number, railY: number, railZ: number, yaw: number): void {
+  const dy = railY - yTop, dz = railZ - zTop, len = Math.hypot(dy, dz);
+  if (len < 0.02) return;
+  const strap = place(block(0.03, 0.004, len), 0, 0, 0, Math.atan2(-dy, dz), 0, 0);
+  parts.add('dark', strap, x, (yTop + railY) / 2, (zTop + railZ) / 2, 0, yaw, 0);
+  parts.add('dark', block(0.036, 0.02, 0.018), x, railY - 0.006, railZ - 0.004, 0, yaw, 0);   // hook on the rail
+}
+
+/**
+ * One load in the rack. Round 4 (2026-10-07, wave 215 on the M60A1: "the canvas bundles in the rack are rigid logs with
+ * no sag or cinch"; wave 216 on the Strv 103A: "an orange block with two olive rods jutting from a hole is no
+ * identifiable kit", "the dome and drum sit loose, unstrapped"): soft loads settle onto the rack floor (flattened
+ * bases), pinch under their webbing (a fifth of the section) and are tied over to the outer rail; every soft load is
+ * the issue canvas; the crate's bands wrap it a few millimetres proud instead of standing as plates.
+ */
 function addStowageRackBundle(
   parts: FittingParts,
   rng: () => number,
   w: number,
   d: number,
+  h: number,
   index: number,
   count: number,
-): boolean {
+): { soft: boolean; top: number } {
   const x=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
     + (rng() - 0.5) * 0.03;
-  const slots=['canvasCloth','wood','canvasCloth','detail'];
+  const slots=['canvasCloth','wood','canvasCloth','canvasCloth'];
   const slot=slots[index % slots.length];
   const yaw=(rng() - 0.5) * 0.16;
   const z=d * 0.04;
+  const railY=h * 0.95, railZ=d / 2 - 0.01;
   if (slot === 'wood') {
     const bw=0.24 + rng() * 0.06;
     const bh=0.16 + rng() * 0.05;
     const bd=d * 0.62;
-    // a nailed crate with two steel bands girdling it
+    // a nailed crate with two steel bands girdling it, 3 mm proud
     parts.add('wood',moldedBox(bw,bh,bd,0.008,1,0.006),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
     for (const band of [-0.3,0.3]) {
-      parts.add('dark',place(block(0.02,bh * 1.03,bd * 1.03),band * bw,0,0),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+      const bx=band * bw, t=0.003, wb=0.018;
+      for (const [sx,sy,sz,py,pz] of [[wb,t,bd + 2 * t,bh / 2 + t / 2,0],[wb,t,bd + 2 * t,-bh / 2 - t / 2,0],
+        [wb,bh,t,0,bd / 2 + t / 2],[wb,bh,t,0,-bd / 2 - t / 2]] as const) {
+        parts.add('dark',place(block(sx,sy,sz),bx,py,pz),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+      }
     }
-    return false;
+    return { soft: false, top: bh + 0.02 };
   }
   if (index % 3 === 0) {
     const r=0.10 + rng() * 0.035;
     const len=0.22 + rng() * 0.10;
-    // a rolled bedroll: two straps, its rolled layers showing at the ends
+    // a rolled bedroll settled on the floor bars: two straps pinch it, its rolled layers showing at the ends
     // 2026-10-07 (round 3: "rolls with eight visible facets"): sixteen sides and a wound spiral at each end
-    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.14,
-      wrinkle: 0.035, seg: RACK_ROLL_SEG, stations: 4, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.1, seed: 31 + index };
-    const { lift }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
+    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.3,
+      wrinkle: 0.05, seg: RACK_ROLL_SEG, stations: 5, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.2, seed: 31 + index };
+    const { lift, top }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
     for (const end of [-1,1] as const) {
-      parts.add('dark',place(rolledEndSpiral(r * 0.92,end * len / 2,end,16),0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
+      parts.add('dark',place(rolledEndSpiral(r * 0.88,end * len / 2,end,16),0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
     }
-    return true;
+    addRackTie(parts,x,top - 0.004,z + r * 0.35,railY,railZ,yaw);
+    return { soft: true, top };
   }
   const bw=0.22 + rng() * 0.08;
   const bh=0.16 + rng() * 0.06;
   const bd=d * (0.46 + rng() * 0.16);
-  // a sewn duffel lying across the rack: cinched by two straps, a lid flap over its top, a pocket on its face
+  // a sewn duffel lying across the rack, slumped onto the floor: cinched by two straps, a lid flap over its top, a pocket
+  // on its face, tied over to the outer rail
   const duffel: FabricSpec = { len: bw, hw: bd / 2 / 1.05, hh: bh / (2 + 0.05 - 0.82 * 0.32), exponent: 3,
-    endScale: 0.62, endLength: 0.14, flatten: 0.32, wrinkle: 0.05, seg: 10, stations: 5,
-    cinch: [-bw * 0.24, bw * 0.24], seed: 47 + index };
+    endScale: 0.62, endLength: 0.14, flatten: 0.4, wrinkle: 0.06, seg: 10, stations: 5,
+    cinch: [-bw * 0.24, bw * 0.24], cinchDepth: 0.18, seed: 47 + index };
   const { top }=addRackFabric(parts,slot,duffel,x,0.02,z,yaw);
   const flap: FabricSpec = { len: bw * 0.62, hw: bd * 0.27, hh: 0.018, exponent: 3, endScale: 0.8, endLength: 0.1,
     flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: 53 + index };
@@ -2531,7 +2558,8 @@ function addStowageRackBundle(
     flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: 59 + index };
   const pocketGeometry=place(fabricBody(pocket),0,0,0,0,Math.PI / 2,0).translate(0,0.02 + bh * 0.42,bd * 0.47);
   parts.add(slot,pocketGeometry,x,0,z,0,yaw,0);
-  return true;
+  addRackTie(parts,x,top - 0.006,z + bd * 0.3,railY,railZ,yaw);
+  return { soft: true, top };
 }
 
 function addStowageRackFill(
@@ -2545,19 +2573,25 @@ function addStowageRackFill(
   const fill=opts.fill ?? 0.75;
   if (fill <= 0) return 0;
   const count=Math.max(1,Math.round(fill * w / 0.26));
-  let softBundleCount=0;
+  let softBundleCount=0, loadTop=0;
   for (let index=0;index<count;index++) {
-    if (addStowageRackBundle(parts,rng,w,d,index,count)) softBundleCount++;
+    const load=addStowageRackBundle(parts,rng,w,d,h,index,count);
+    if (load.soft) softBundleCount++;
+    loadTop=Math.max(loadTop,load.top);
   }
-  // One long tarp roll across wide racks, over the bundles.
+  // One long tarp roll across wide racks, lying on the loads (round 4: it rested at a fixed height whatever was below,
+  // a rigid log over a gap) with a 3 cm sag over its middle, pinched under its two straps and tied to the outer rail.
   if (w > 0.8 && fill >= 0.5) {
-    const r=0.085, len=w * 0.55, axisY=h * 0.9 + r * 0.4;
-    const tarp: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0.1,
-      wrinkle: 0.03, seg: RACK_ROLL_SEG, stations: 5, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.1, seed: 67 };
+    const r=0.085, len=w * 0.55, axisY=Math.max(h * 0.62,loadTop) + r * 0.86;
+    const tarp: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0.12,
+      wrinkle: 0.04, sag: 0.03, seg: RACK_ROLL_SEG, stations: 7, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.2, seed: 67 };
     const alongX=(geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry,0,0,0,0,Math.PI / 2,0);
     parts.add('canvasCloth',alongX(fabricBody(tarp)),0,axisY,d * 0.02);
-    for (const station of tarp.cinch ?? []) parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
-    for (const end of [-1,1] as const) parts.add('dark',alongX(rolledEndSpiral(r * 0.92,end * len / 2,end,18)),0,axisY,d * 0.02);
+    for (const station of tarp.cinch ?? []) {
+      parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
+      addRackTie(parts,station,axisY + r * 0.8,d * 0.02 + r * 0.3,h * 0.95,d / 2 - 0.01,0);
+    }
+    for (const end of [-1,1] as const) parts.add('dark',alongX(rolledEndSpiral(r * 0.88,end * len / 2,end,18)),0,axisY,d * 0.02);
   }
   return softBundleCount;
 }
