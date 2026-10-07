@@ -158,6 +158,21 @@ function markingVisibilityReceipt(
   size: number,
   occluders: VehicleMesh[],
 ): MarkingVisibilityReceipt {
+  return boundedMarkingVisibilityReceipt(owner, position, quaternion, size, occluders, -1) as MarkingVisibilityReceipt;
+}
+
+/**
+ * The visibility receipt, abandoned (null) as soon as the samples left cannot lift its clear count above `mustExceed`:
+ * the search then knows the candidate cannot be chosen, and its remaining rays are never cast.
+ */
+function boundedMarkingVisibilityReceipt(
+  owner: THREE.Object3D,
+  position: THREE.Vector3,
+  quaternion: THREE.Quaternion,
+  size: number,
+  occluders: VehicleMesh[],
+  mustExceed: number,
+): MarkingVisibilityReceipt | null {
   owner.updateWorldMatrix(true, true);
   const centerWorld = owner.localToWorld(position.clone());
   const worldQuaternion = owner.getWorldQuaternion(new THREE.Quaternion()).multiply(quaternion);
@@ -168,7 +183,10 @@ function markingVisibilityReceipt(
     + SURFACE_MARKING_STYLE.surfaceLiftM;
   let clearSamples = 0;
   let maximumSurfaceErrorM = 0;
+  let measured = 0;
   for (const [u, v] of MARKING_VISIBILITY_SAMPLE_GRID) {
+    if (clearSamples + (MARKING_VISIBILITY_SAMPLE_GRID.length - measured) <= mustExceed) return null;
+    measured += 1;
     const sample = centerWorld.clone()
       .addScaledVector(tangentWorld, u * size)
       .addScaledVector(bitangentWorld, v * size);
@@ -242,6 +260,7 @@ function solveProfileMarkingSeat(
   size: number,
   avoid: readonly VehicleDecal[] = [],
   vertical = profile.vertical,
+  mustExceedClear = -1,
 ): MarkingCandidate | null {
   const bounds = markingLocalBounds(owner, meshes);
   if (bounds.isEmpty()) return null;
@@ -264,7 +283,13 @@ function solveProfileMarkingSeat(
       hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM);
     const quaternion = markingQuaternion(hit.normalLocal, tangent);
     if (markingSeatOverlaps(position, quaternion, size, ownerName, avoid)) continue;
-    const receipt = markingVisibilityReceipt(owner, position, quaternion, size, occluders);
+    // 2026-10-05 (leo2a6_ua: 724 candidates, 6,525 visibility rays per receipt build). A candidate stops casting its
+    // visibility rays once it can no longer be chosen, which leaves every seat exactly as the full search chose it: a
+    // later candidate replaces the best only with more clear samples (the offsets run outward, so a tie keeps the
+    // nearer one), and this side's result matters to the caller only above its current selection's count.
+    const floor = Math.max(best ? best.visibilityClearSamples : -1, mustExceedClear);
+    const receipt = boundedMarkingVisibilityReceipt(owner, position, quaternion, size, occluders, floor);
+    if (!receipt) continue;
     const candidate = {
       ...hit,
       position,
@@ -341,6 +366,8 @@ function bestProfileMarkingSeatForOwner(
       longitudinal,
       candidateSize,
       avoid,
+      profile.vertical,
+      selected ? selected.candidate.visibilityClearSamples : -1,
     );
     if (!candidate) continue;
     if (!selected
@@ -423,6 +450,28 @@ function addProfileVehicleDecal(
     visibilityVerified: seat.visibilityVerified,
   });
   return true;
+}
+
+/**
+ * Re-measure a seated marking's visibility on the built vehicle, as the solver measured it (the same nine-ray footprint
+ * against every other visible mesh, both faces). The fleet audit holds the generated seats to the armor this way
+ * (2026-10-05: receipt builds apply them instead of re-solving).
+ */
+export function measureSeatedMarkingVisibility(
+  root: THREE.Object3D,
+  mark: THREE.Object3D,
+): { readonly visibilitySamples: number; readonly visibilityClearSamples: number } {
+  const owner = mark.parent;
+  if (!owner) throw new Error('measureSeatedMarkingVisibility: the marking has no owner');
+  root.updateMatrixWorld(true);
+  const occluders = markingOccluderMeshes(root);
+  const restoreMaterialSides = doubleSidedMarkingRaycastScope(occluders);
+  try {
+    const receipt = markingVisibilityReceipt(owner, mark.position, mark.quaternion, mark.scale.x, occluders);
+    return { visibilitySamples: receipt.visibilitySamples, visibilityClearSamples: receipt.visibilityClearSamples };
+  } finally {
+    restoreMaterialSides();
+  }
 }
 
 export function finalizeVehicleMarkingSeats(

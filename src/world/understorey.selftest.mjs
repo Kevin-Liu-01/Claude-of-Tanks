@@ -57,14 +57,16 @@ function legacyShapeContract(geometry) {
   return { size: size.toArray().map(v => +v.toFixed(3)), minY: +box.min.y.toFixed(3) };
 }
 
-// the grown understorey: twenty two-triangle spray cards (the round-77 shrub's forty triangles; a species of narrow
-// sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown crowns' cards
+// the grown understorey: thirty-six two-triangle spray cards (trees round 4: more and smaller than round 2's twenty;
+// a species of narrow sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown
+// crowns' cards
 function grownShapeContract(geometry) {
   assert.ok(geometry.index, 'welded: indexed');
   // trees round 2 (2026-10-03): and the billboard frame its cards turn about (aAxis, aLeaf: vegetation.ts COT_LEAF_BILLBOARD)
   assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aAxis', 'aCard', 'aFlex', 'aLeaf', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position, sprays = geometry.index.count / 6;
-  assert.ok(Number.isInteger(sprays) && sprays >= 20 && sprays <= 27, `twenty to twenty-seven two-triangle sprays (${sprays})`);
+  // trees round 4: the understorey's 36 smaller sprays (GROWTH_SHRUB_SPRAYS; a narrow spray's species a third more)
+  assert.ok(Number.isInteger(sprays) && sprays >= 36 && sprays <= 48, `thirty-six to forty-eight two-triangle sprays (${sprays})`);
   assert.equal(p.count, sprays * 4, 'four vertices a spray');
   for (const name of ['position', 'normal', 'uv', 'color', 'aFlex', 'aCard']) {
     const a = geometry.attributes[name];
@@ -113,7 +115,11 @@ function produce(id, extra = {}) {
     // (world._standOutline), a rim block's against its circle
     const annulus = (discs, x, z, outline = null) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
-    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0;
+    // trees round 4 (2026-10-04): and a closed wood's mantle — taller young growth (scale 1.5–2.7) close along a stand's
+    // outline (0.9–1.1 of it), on the stands' bound
+    const ring = (discs, x, z, outline, lo, hi) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
+      .filter(r => r >= lo - 1e-4 && r <= hi + 1e-4).sort((a, b) => a - b)[0];
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, cappedCount = 0, screening = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
@@ -124,9 +130,28 @@ function produce(id, extra = {}) {
       const standNear = annulus(clusters, x, z, world._standOutline), rimNear = annulus(rimBlocks, x, z);
       const standOk = standNear !== undefined && sc >= 0.85 - 1e-4 && sc <= 1.6 + 1e-4 && bound <= 470 + 1e-6;
       const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
-      assert.ok(standOk || rimOk, `${id}: a stand's or a rim block's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
-      const near = standOk ? standNear : rimNear;
-      if (standOk) standCount++; else rimCount++;
+      const mantleNear = ring(clusters, x, z, world._standOutline, 0.9, 1.1);
+      const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
+      // trees round 4: or a capped shrub — a stand's or a rim block's that the cover law below took the height of out of
+      // the wood's cover, its whole form scaled down to young growth of 0.6–1.2 m (vegetation.ts UNDERSTOREY_CAP_M) at
+      // its own proportions (the height jitter 0.9–1.3), inside the square
+      const hyOf = e[5] / sc;
+      const cappedOk = (standNear !== undefined || rimNear !== undefined) && bound <= 470 + 1e-6
+        && e[5] >= 0.6 - 1e-4 && e[5] <= 1.2 + 1e-4 && hyOf >= 0.9 - 1e-4 && hyOf <= 1.3 + 1e-4;
+      assert.ok(standOk || rimOk || mantleOk || cappedOk, `${id}: a stand's, a rim block's, a mantle's or a capped shrub (${x}, ${z}, scale ${sc}, height ${e[5]}, bound ${bound})`); // float32 instance matrices
+      const near = standOk ? standNear : rimOk ? rimNear : cappedOk ? (standNear ?? rimNear) : mantleNear;
+      if (standOk) standCount++; else if (rimOk) rimCount++; else if (cappedOk) cappedCount++; else mantleCount++;
+      // trees round 4 (one law for every shrub a player can drive up to): the understorey conceals nothing, so inside
+      // the playable square a shrub tall enough to screen a hull (its height scale over 1.2: vegetation.ts
+      // UNDERSTOREY_SCREEN_M) — every mantle shrub, the tall growth of a stand's edge, a rim block's reaching in —
+      // stands within a metre of a tree's concealment disc; the low growth may feather out of a stand
+      // (the playable square: battlefieldBounds.ts PLAYABLE_HALF_EXTENT_M, 470 m, a millimetre in for the float32 matrix)
+      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk && !cappedOk);
+      if (bound <= 470 - 1e-3 && screens) {
+        assert.ok(world.concealers.some((d) => d.add <= 0.1 && Math.hypot(x - d.x, z - d.z) <= d.r + 1 + 1e-4),
+          `${id}: a screening shrub within a metre of the wood's cover (${x}, ${z}, height scale ${e[5]})`);
+        screening++;
+      }
       minR = Math.min(minR, near); maxR = Math.max(maxR, near);
       assert.ok(field._roadDist(x, z) >= 6, `${id}: off the roads`);
       assert.notEqual(field.getGroundType(x, z), 'soft', `${id}: off soft ground`);
@@ -138,7 +163,9 @@ function produce(id, extra = {}) {
       assert.ok(!world.treeObstacles.some(o => Math.abs((o.min[0] + o.max[0]) / 2 - x) < 1e-3 && Math.abs((o.min[2] + o.max[2]) / 2 - z) < 1e-3), `${id}: no trunk record`);
     }
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
-    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, clusters: clusters.length, rimBlocks: rimBlocks.length,
+    // the cover law caps rather than clears: the woods these maps grow leave tall growth out of their cover to cap
+    assert.ok(cappedCount > 0, `${id}: capped shrubs below the stands' and the rim's scale`);
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, capped: cappedCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }
@@ -154,6 +181,8 @@ try {
   assert.ok(verdant.stand >= 200 && verdant.stand <= 2000, `Verdant's stands plant hundreds, not thousands (${verdant.stand})`);
   assert.ok(verdant.rim >= 100 && verdant.rim <= 2500, `Verdant's rim blocks plant hundreds (${verdant.rim})`); // round 77b
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
+  // trees round 4 (the gauntlet's wave 46: Frontier's wood edge "with no shrub mantle"): Verdant's closed woods wear one
+  assert.ok(verdant.mantle >= 500, `Verdant's woods wear a mantle (${verdant.mantle})`);
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
   // legacyTrees: the round-77 cards, the same placements

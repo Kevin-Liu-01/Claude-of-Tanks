@@ -11,6 +11,7 @@ import { weaponAssembly } from './profiles/weaponStock.ts';
 import * as THREE from 'three';
 import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactoryCore.ts';
 import { FITTINGS } from './profiles/kit.ts';
+import { facetedSlab } from './profiles/facetedSlab.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
@@ -2471,10 +2472,13 @@ export function buildBradley(P: Modern3BuilderPort) {
     // owned the 0.11..0.78 plan cols +0.08); tops taper 1.36@2.90 -> 1.28 at
     // the tip (the z 3.273 side col reads ref 1.274, mine read 1.348).
     for (const sn of [-1, 1]) {
-      P.add('hull', sn > 0 ? slab(
+      // The right cap is concave in plan. A-C crosses its nose notch and
+      // flips one triangle downward; B-D stays inside the real outline.
+      P.add('hull', sn > 0 ? facetedSlab([
         [0.60, 1.24, 3.22], [0.75, 1.24, 3.22], [1.52, 1.24, 3.28], [0.60, 1.24, 2.90],
+      ],[
         [0.60, 1.355, 3.22], [0.75, 1.355, 3.22], [1.51, 1.27, 3.28], [0.60, 1.36, 2.90],
-      ) : slab(
+      ],1,'bd') : slab(
         [-0.75, 1.24, 3.22], [-0.60, 1.24, 3.22], [-0.60, 1.24, 2.90], [-1.394, 1.24, 3.28],
         [-0.75, 1.355, 3.22], [-0.60, 1.355, 3.22], [-0.60, 1.36, 2.90], [-1.386, 1.27, 3.28],
       ), 0, 0, 0);                                                                // (r5b center verts -> 3.22: the

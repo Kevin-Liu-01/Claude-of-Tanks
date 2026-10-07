@@ -453,16 +453,22 @@ region, registered in `index.ts`:
 | `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
 | `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
 | `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
+| `glencanyon` | Glen Canyon Dam and Page, Arizona (the Bureau of Reclamation, 1957-66; its plaster2 walls painted as board-formed concrete, `surfaces.concrete`): a board-formed concrete powerhouse with its penstocks, the control building, the surge tower, walled switchyards and transformer yards, the microwave relay, the visitor centre or the school, ranch houses with carports | Skybridge Chasm |
 | `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
 | `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
+| `kyushu` | The Aso caldera, Kumamoto: minka under thatch, smoked tile or painted tin with irimoya gables and the engawa, white kura on namako bases, naya barns, vinyl greenhouses, the co-op's rice warehouse, the sulphur works, the fire brigade's post and lookout, shrines with their torii | Obsidian Caldera |
 | `franconian` | Kronach, Meissen: framed and rendered town houses, plain tiles | Steinburg |
 | `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
+| `siwa` (in `ksar.ts`) | Siwa: kershef houses heaped in old Shali's battered blocks, palm-beam ends, the tapering mud minaret, a spring in its stone rim, palm-rib souk stalls (the ksar's stall and helpers shared; the ksar's output byte-identical) | Sunscar Oasis |
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
+| `navajo` | Monument Valley (Oljato, Goulding's): juniper-log hogans facing east, a two-storey sandstone trading post, stone ranch houses under tin, camps with shade houses and stockade corrals, windmills and the chapter's water tower | Titan Gorge |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
+| `shanghai` | Shanghai, 1937, both banks of Suzhou Creek: shikumen lanes behind their stone gates, shophouses under stepped fire walls, the Settlement's brick blocks, godowns, a cotton mill, a fire station, a guild hall; the Bund's banks and Art Deco towers (Broadway Mansions, the Park Hotel, Sassoon House, the Bank of China, the Customs House) and the Joint Trust warehouse in the landmarks' footprints | Suzhou Creek |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
 | `saar` | The Völklingen ironworks, Saar, 1945: blast furnaces with their ore bunkers, skip hoists and Cowper stoves; sawtooth rolling mills and workshops; column-guided gas holders behind their walls; conveyor galleries; the colliery headframe and its winding-engine house; the works office; the miners' houses (Bergmannshäuser) | Ironworks |
+| `sarajevo` | Sarajevo under siege, 1992–96: Austro-Hungarian blocks and Yugoslav towers (the twin office towers, the Holiday Inn, the parliament, the newspaper's gutted core), mahala houses with their doksats, mosques and churches, the market hall and the čaršija; shell pocks, UNHCR sheeting, sandbagged windows; the boulevard's tram line, burnt trams and container screens (`extraKits: ['sarajevo']`) | Ruinspires |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
@@ -480,7 +486,9 @@ swaps it in through `LOCAL_TYPES`.
   (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and re-pins its census in
   `server/dedicatedWorldCollision.selftest.mjs` (obstacles and concealers do not move; colliders do).
 - The map's roof and masonry textures become the kit's painted surfaces (`src/world/regionalSurfaces.ts`); the
-  plaster and timber photo sets stay when the kit opts in.
+  plaster and timber photo sets stay when the kit opts in. A kit whose plaster2 walls are poured names a concrete
+  print (`surfaces.concrete`, so far `'boardFormed'`: formwork boards, lift lines, tie holes), toned by the plaster2
+  tone as the render was.
 - Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
   more than the base map, whatever the number of buildings, and one multi-draw batch each for the fine timber and
@@ -488,6 +496,15 @@ swaps it in through `LOCAL_TYPES`.
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
   for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
   collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
+- **Footprint coverage** (map-revival lanes, 2026-10-05). The same receipt fails a builder of any kit added after
+  October 4 whose collision-bearing parts stop more than 0.5 m short of a side of the base's measured reach
+  (`ctx.bounds`). A narrower kit body opens a lane: Titan Gorge's first wool barn, 2.4 m shorter than the warehouse it
+  replaced, opened a tank-wide gap that the bots drove through, and the pacing receipt's matches ended a minute early.
+  Size the main bodies from `ctx.bounds`, not `ctx.info`, because the base's reach often stands off the plot's centre
+  (a market row's by 2.75 m, a depot's by 1.5 m). The fourteen earlier kits are allowlisted and their shortfalls are
+  printed. `RegionalBuildContext` also carries the building's world pose (`x`, `z`, `yaw`) for look and form choices
+  only (a hogan's door to the sunrise, a stack beside its works). A kit never draws from the placement stream with it
+  and never changes the footprint with it.
 - Layout metrics do not move with a kit (the cover and sightline bands read the collision manifest: rerun
   `tools/map-layout-metrics.mjs` for the map after its shard is regenerated, and report any band that moves).
 
@@ -518,6 +535,45 @@ of its timber dressing by the same cells (70, 60 and 45 m on its three presets);
 only, so a desktop with it culls as above. Mark a new part fine when it is under about 10 cm across, or when only its
 face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
 regional receipt holds that fine joinery is receive-only dressing a phone never builds.
+
+**The facade craft.** October 5, 2026 (facades & skyline lane). On a desktop build every kit's houses are finished by
+`src/world/maps/regional/facade.ts`, the way a mason, a joiner and a thatcher finish a real house. Every kit inherits
+the rain shadow under its eaves (the top storey's top row of wall vertices darkened by the overhang's depth: no new
+vertex), the dirt run off its sills (two streaks from each sill's ends, stopped at the opening below), the hangers of
+its gutters and the hopper heads, clips and shoes of its downpipes, the oversailing course under every stack's cap, and
+on every straw roof the thatcher's stepped eave (three courses of butt ends, the lift wandering along them) and two
+course lines up the slope (`RoofSpec.thatch`: `'rows'` for a palm or grass thatch, `'none'` to keep the plain slab). A
+kit opts into the vocabulary: `WindowStyle.carved` (the Russian nalichnik: a crest cut to a gable, an arch or a step,
+its carved field and rosettes, an apron cut to a drop), `WindowStyle.head` (a lintel, a hood, a pediment or a
+segmental arch with its keystone, taking the place of a surround's flat lintel), `WindowStyle.shutters.paint` (a
+border and a diamond or a heart), painted render bands and Faschen (`paintBand`, `paintSurround`: render 2 cm proud
+under `EmitOptions.tint`, a per-vertex paint the weathering pass folds into the building's tint and damp), cornices and
+string courses with their returns (`trimRun`, `trimRing`), pilasters, brick dentil cornices, door canopies, roof
+dormers (`roofDormers`), ridge riders on a thatch, hollyhocks, and spalled render showing clay (`HouseSpec.spallTint`,
+`spallScale`). Three laws keep every map's world as it was, held by `facade.selftest.mjs` for every builder: the craft
+is dressing only (the structural geometry with it is the craftless build's byte for byte, so collision and the shards
+do not move), it is desktop only (a phone's build is byte for byte its craftless build), and it draws from its own
+stream (index.ts forks it from the wear seed) or hashes positions, so a kit's build and look streams draw exactly as
+often with it as without it. Its fine metal and render work (hangers, fittings, streaks, the edges of trims) join the
+fine-detail cells: on a desktop build `structureMetal` and the three `regionalPlaster` buckets batch like the timber and
+stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
+`facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
+
+**The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
+tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
+Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
+finials, a copper pyramid, a finned ziggurat or a needle), `curtainTower` (the post-war glass tower over a recessed
+lobby), `modernSlab` (ribbon windows, blank stair-core ends, painted loggias), `stalinistTower` (wings, tiers under
+cornices and pinnacles, the drum, the spire and its star), `industrialHall` (brick under sawtooth north lights, a works
+chimney), `gasHolder`, `stationHall` (the head building's lunette and clock tower before a glass train shed) and
+`cathedral` (aisles, flying buttresses, transept, apse, rose windows, west towers). Every builder takes `damage` (0
+intact, 1 shelled, 2 burnt floors and a bay blown to the slabs, 3 a collapsed corner with its slab ends and rubble), by
+default drawn from the building's stream. A tower is a few structural prisms — its dark core is the body and the
+collision, and shows behind every missing pane — under coarse dressing that is its silhouette at any range (tiers,
+crowns, the fronts of piers and spandrels, the glass) and fine dressing drawn near the camera only (mullions, pier
+sides, tracery, bracing). `SKYLINE_CITY` binds the kit to the generic `megatower`, `arcology`, `needletower`,
+`terracetower`, `parkingdeck` and `civichall`: `builders: { ...SKYLINE_CITY, ...own }`, then regenerate the map's shard.
+`skyline.selftest.mjs` builds every builder at every damage state on two plots (and the binding on Blackglass's plots).
 
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
@@ -726,3 +782,58 @@ a sightline changes the map's cover: agree it with the map's layout owner and ru
    census in `server/dedicatedWorldCollision.selftest.mjs` with the before value, and run
    `node tools/map-layout-metrics.mjs --maps=<id> --check`.
 4. Capture the features close up by day and by night, and the map's census views, before and after.
+
+## Set pieces
+
+October 5, 2026 (the landmarks lane; the owner: "we need better buildings/random structures (like bridges or statues or
+parks or gates ANYTHING)/skyscrapers/big buildings"). A map names its set pieces in `props.landmarks`; the builders,
+their parameters and the pass that places them live in `src/world/landmarks/` (`plan.ts` the kinds, parameters and
+footprints; `kit.ts` the geometry kernel; one file per family; `compose.ts` the props pass). The map file carries only
+placements and parameters:
+
+```ts
+props: {
+  landmarks: [
+    { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },            // the front (+z) is the bell tower
+    { kind: 'parkSquare', x: 10, z: 50, params: { centre: 'obelisk', railing: 'picket' }, name: 'the green' },
+    { kind: 'stoneArchBridge', x: 0, z: -120, yawDeg: 0, params: { span: 30, arches: 3 }, name: 'the old bridge' },
+  ],
+},
+```
+
+| Family | Kinds (parameters, defaults in `plan.ts`) |
+| --- | --- |
+| Bridges | `stoneArchBridge` (span, width, arches), `trussBridge` (a camelback through truss: span, panels, spans), `trestleBridge`, `baileyBridge` (bays of 10 ft), `viaduct` (arches, archSpan, height); `drivable: false` for a footbridge |
+| Monuments | `obelisk` (height, finial: star, cross, latin, ball; railing), `columnMonument`, `memorialWall` (length, flame), `statue` (pose: greatcoat, robe; metal: bronze, silver, stone), `equestrianStatue` |
+| Parks | `fountain` (radius, tiers), `bandstand`, `parkGate` (width, railing), `parkSquare` (width, depth, paths: cross, ring, diagonal; railing: iron, picket or false; benches, lamps; centre: any other kind) |
+| Gates | `townGate` (passage, height, walls), `triumphalArch` (passage, arches: 1 or 3), `kolkhozArch` (span), `torii` |
+| Towers | `belfry` (crown: onion, tent, needle, helm), `campanile`, `waterTower` (style: railway, rozhnovsky, trestle), `fireLookout`, `windmill` (style: post, smock, tower) |
+| Civic | `church` (tradition: orthodox — bell tower, refectory, cube with porticos, drum and dome, apse; domes 1 or 5 — or western — nave, chancel, west tower with a broach spire or a helm; walls: stone or render), `townHall`, `stationHall` (length, depth, canopy on the +z track side), `marketHall`, `grainElevator`, `granary` |
+
+**What the pass does.** Once the settlement stands (every planned, recorded, row and block-fill building placed and moved
+off the carriageways) and before the strongpoints, the light buildings and every scatter pass, each piece is admitted
+(inside the square, off the spawn pads, off the objective discs, dry, out of the road cores — a gate's or a bridge's
+passage spans its road — clear of every hard solid), seated on the lowest ground under its footprint, built from a
+stream of its own, weathered with the map's kit (its plain buckets on a map without one), merged into the props buckets
+(no draw of its own), and given collision derived from its solids (`structureCollision.ts`): the ground-contact band for
+movement, the 0.5 m shell bands for shells and sight. A gate builds its piers and the arch over them as separate solids,
+so the passage stays open; a bridge authors its movement record — the deck a standable floor graded from bank to bank,
+its parapets, piers and abutments — and keeps its derived shell bands. Its ground is reserved for the later passes (no
+yard clutter, hay or rock lands in it, and the yards never dress it), the vegetation keeps off its footprint (from the
+config alone), its footprint reaches the minimap, and a square's benches and lamps join the props' destructible pools.
+Nothing placed before it moves; a map without set pieces runs nothing. Every refusal is named in
+`props.group.userData.landmarks`.
+
+**Gameplay.** A set piece is hard cover where it stands: keep the deployments' screens and the objective discs, keep cover
+symmetric where the layout is (Verdant pairs its pieces about the village), and run the pacing receipt
+(`COT_PACING_MAPS=<id>`). A bridge carrying a road over water belongs to the terrain's bridge deck (a marsh station's
+`crossing: 'bridge'`), which the navigation reads; a set-piece bridge stands where the terrain gives it a gully or a
+bank to bear on.
+
+**Procedure.** Author the entry with a name; `node src/world/landmarks/landmarks.selftest.mjs` (every authored piece's
+static admission and its record in the committed shard); rebuild the map's shard
+(`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and run `server/collisionManifestDrift`,
+`server/dedicatedWorldCollision` and the map's pacing; capture the piece close up, from the street and from the
+establishing view, before and after. Proportions come from the real buildings (a Kursk-governorate village church is
+25-32 m long and 25-30 m to its cross; a railway water tower 16-20 m; a smock mill's sails 9-10 m): check the place and
+the period before choosing a kind.

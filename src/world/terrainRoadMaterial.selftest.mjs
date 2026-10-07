@@ -31,6 +31,8 @@ assert.doesNotMatch(terrainSource, /vec4 (?:grav|roadGrit) = texture2D\(uAlbR,[\
 // (2026-10-05, the road styles: every road term reads the styled paved share gRoadTex — the map's uRoadTex on every
 // unstyled road, a styled path's own surface on a styled one; roadPathStyles pins the decode)
 assert.match(terrainSource,
+  // (map revival lane 2, Aegis Crossing, 2026-10-05: gRoadTex is uRoadTex, or 1 inside a map's paved town rect — SplatConfig
+  // townPaving — so the dirt road's grain, lanes and ruts stop at the setts as they stop on a textured road)
   /clamp\(\(gvL - gvM\) \* 1\.4, -0\.16, 0\.20\) \* roadCore \* dNear \* \(1\.0 - gRoadTex\)/,
   'carriageway gravel grain is a clamped zero-mean luminance high-pass, never darker than -16%');
 assert.match(terrainSource,

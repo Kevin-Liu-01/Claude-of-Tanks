@@ -1,7 +1,10 @@
+import { BattleKillLedger } from '../game/battleEventStats.ts';
+import { killPresentation, isDroneStrike } from './killPresentation.ts';
+import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
-import { createSpecialActionPresentationReader } from './vehicleSpecialAction.ts';
+import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
@@ -16,7 +19,7 @@ import { createElement as el, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, SCORE_BOTTOM_INSET, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
-import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
+import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
@@ -306,6 +309,7 @@ interface HudHitEvent extends HitEventPresentation {
 }
 
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
+  destroyed?: boolean;
   id?: string;
   killerId?: string;
   name?: string;
@@ -404,6 +408,8 @@ interface EarRow {
   root: HTMLDivElement;
   hp: HTMLElement;
   ic: HTMLElement;
+  kills: HTMLElement;
+  lastKills: number;
   ally: boolean;
   lastFrac: number;
   wasDead: boolean | null;
@@ -681,8 +687,7 @@ export function directionalHitValueVisible(
 
 /**
  * Convert physical aim constraints into one stable, player-facing warning.
- * A blocked bore tints immediately, but its copy appears only after the aim
- * controller's dwell gate so rough terrain cannot flicker text every frame.
+ * Bore obstruction remains a reticle tint, without a muzzle-block text overlay.
  */
 export function aimWarningState(
   view: AimWarningView | null | undefined,
@@ -696,10 +701,6 @@ export function aimWarningState(
     state.kind = 'rollover';
     state.visible = true;
     state.text = t('hud.aimWarning.selfRight', { key: view.selfRightLabel });
-  } else if (view?.blockedDistM != null) {
-    state.kind = 'blocked';
-    state.visible = !!view.blockedLabel;
-    state.text = t('hud.aimWarning.muzzleBlocked', { dist: Math.round(view.blockedDistM) });
   } else if (view?.gunLimitSpec) {
     state.kind = 'limit';
     state.visible = true;
@@ -1067,16 +1068,6 @@ function ammunitionCountText(shell: HudShellCard | null | undefined): string {
 
 function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
-}
-
-function causeLabel(key: string): string {
-  if (key === 'fire') return t('hud.fire');
-  if (key === 'ammorack') return t('hud.ammorack');
-  if (key === 'ram') return t('hud.rammed');
-  // impact physics (2026-09-25): a crash into something hard, or a landing that broke the hull
-  if (key === 'impact') return t('hud.impact');
-  if (key === 'fall') return t('hud.fall');
-  return '';
 }
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
@@ -1470,99 +1461,14 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;flex:0 0 auto;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
-/* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
-   shared icon set keep this state legible without covering the chase view. */
-.cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,14px);
-  opacity:0;display:none;pointer-events:auto;align-items:stretch;overflow:hidden;
-  grid-template-columns:88px minmax(210px,1fr) 164px 116px;column-gap:0;
-  width:min(760px,calc(100vw - 32px));min-width:0;min-height:82px;
-  color:#dce6ed;background:
-    linear-gradient(112deg,rgba(17,25,31,.985),rgba(8,13,17,.98) 62%,rgba(13,19,24,.985));
-  border:1px solid rgba(161,181,196,.32);
-  box-shadow:0 16px 46px rgba(0,0,0,.64),inset 0 1px rgba(255,255,255,.035);
-  padding:6px 7px 6px 6px;
-  transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant),
-    transform var(--cot-motion-scene) var(--cot-ease-drawer) var(--cot-motion-instant);}
-.cot-spec.show{display:grid;}
-.cot-spec.in{opacity:1;transform:translate(-50%,0);}
-.cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
-  border:1px solid rgba(161,181,196,.2);border-right-color:rgba(240,160,48,.38);
-  background:linear-gradient(145deg,rgba(99,119,133,.12),rgba(38,50,59,.035));}
-.cot-spec .portrait img{display:block;width:80px;height:66px;object-fit:contain;
-  filter:drop-shadow(0 6px 7px rgba(0,0,0,.68));}
-.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 15px;}
-.cot-spec .cursor-hint{margin-top:5px;font-size:10px;line-height:1.3;color:#bac8d2;letter-spacing:0;text-transform:none;}
-.cot-spec .cursor-hint[hidden]{display:none;}
-.cot-spec .spec-status{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-family:${FONT_COND};
-  font-size:8px;font-weight:800;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:#f0b04a;}
-.cot-spec .spec-status svg{width:13px;height:13px;display:block;flex:0 0 auto;}
-.cot-spec .spec-status::after{content:"";width:18px;height:1px;background:rgba(240,176,74,.55);}
-.cot-spec .spec-status .idx{margin-left:1px;color:#8998a4;font-size:8px;font-weight:800;
-  letter-spacing:.12em;font-variant-numeric:tabular-nums;}
-.cot-spec .who{display:flex;width:100%;min-width:0;flex-direction:column;}
-.cot-spec .who b{font-size:18px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.01em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-spec .who span{margin-top:6px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
-  letter-spacing:.14em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
-@keyframes cotSpecSw{0%{opacity:.2;transform:translateY(4px);}100%{opacity:1;transform:none;}}
-.cot-spec .who.sw{animation:cotSpecSw var(--cot-motion-base) var(--cot-ease-out);}
-.cot-spec .switch{align-self:center;justify-self:center;width:136px;height:48px;display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1fr;grid-auto-flow:column;
-  overflow:hidden;border:1px solid rgba(176,192,204,.22);border-radius:3px;
-  background:linear-gradient(180deg,rgba(139,157,171,.075),rgba(54,68,78,.035));
-  box-shadow:inset 0 1px rgba(255,255,255,.025);}
-.cot-spec .cycle{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
-  flex-flow:row nowrap;padding:0 10px;font-family:${FONT_COND};text-transform:uppercase;color:#a9b6c0;cursor:pointer;
-  border:0;border-radius:0;background:transparent;
-  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
-    background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    color var(--cot-motion-fast) ease;}
-.cot-spec .cycle+.cycle{border-left:1px solid rgba(176,192,204,.18);}
-.cot-spec .cycle-icon{display:grid;place-items:center;color:#e2ebf1;opacity:.82;
-  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
-    color var(--cot-motion-fast) ease,opacity var(--cot-motion-fast) ease;}
-.cot-spec .cycle-icon svg{display:block;width:12px;height:12px;}
-.cot-spec .cycle kbd{width:24px;height:24px;display:grid;place-items:center;padding:0;
-  font:800 10px/1 ui-monospace,SFMono-Regular,monospace;color:#ffc76b;
-  border:1px solid rgba(240,176,74,.38);border-bottom-color:rgba(240,176,74,.6);border-radius:2px;
-  background:linear-gradient(180deg,rgba(240,176,74,.15),rgba(240,160,48,.055));
-  box-shadow:inset 0 1px rgba(255,229,182,.1),0 2px 0 rgba(3,6,9,.78);
-  transition:transform var(--cot-motion-instant) var(--cot-ease-out);}
-.cot-spec .cycle:active{transform:scale(.97);}
-.cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #d9e4eb;
-  outline-offset:2px;}
-.cot-spec .gar{align-self:center;height:48px;display:flex;align-items:center;justify-content:center;gap:8px;margin:0 8px 0 0;
-  padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:9px;letter-spacing:.13em;
-  text-transform:uppercase;color:#f0b04a;cursor:pointer;border:1px solid rgba(240,176,74,.48);border-radius:2px;
-  background:linear-gradient(180deg,rgba(240,160,48,.16),rgba(240,160,48,.06));white-space:nowrap;
-  box-shadow:inset 0 1px rgba(255,224,166,.06),0 5px 18px rgba(0,0,0,.16);
-  transition:transform var(--cot-motion-fast) var(--cot-ease-out),
-    background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    color var(--cot-motion-fast) ease;}
-.cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:19px;height:19px;}
-.cot-spec .gar:active{transform:scale(.97);}
-@media (hover:hover) and (pointer:fine){
-  .cot-spec .cycle:hover{background:rgba(146,164,180,.12);color:#f2f7fb;}
-  .cot-spec .cycle:hover .cycle-icon{color:#f0b04a;opacity:1;}
-  .cot-spec .cycle:hover kbd{color:#ffd995;border-color:rgba(240,176,74,.72);
-    background:linear-gradient(180deg,rgba(240,176,74,.23),rgba(240,160,48,.09));}
-  .cot-spec .cycle.prev:hover .cycle-icon{transform:translateX(-2px);}
-  .cot-spec .cycle.next:hover .cycle-icon{transform:translateX(2px);}
-  .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,176,74,.8);color:#ffd27a;}
-}
-.cot-spec .cycle:active kbd{transform:translateY(1px);box-shadow:inset 0 1px rgba(255,229,182,.06),0 1px 0 rgba(3,6,9,.78);}
-@media (prefers-reduced-motion:reduce){
-  .cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
-    animation:none;transition:none;}
-}
+${spectatorSwitcherStyles}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
-body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
+body.cot-spectating .cot-ret{display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:900;font-size:18px;
   letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
@@ -1857,26 +1763,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-sixth::before,.cot-alert::before{content:'';position:absolute;inset:1px;z-index:-1;pointer-events:none;
   background:var(--notice-fill);clip-path:inherit;}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
-/* Concealment is a quiet positive-state chip on the damage panel. Detection
-   belongs exclusively to the authoritative sixth-sense instrument above, so
-   the same threat is never presented twice. */
-.cot-camoind{position:absolute;bottom:150px;left:14px;width:46px;height:40px;
-  display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.cot-camoind.onpanel{left:-1px;top:-29px;bottom:auto;width:36px;height:29px;
-  background:linear-gradient(180deg,rgba(12,17,22,.9),rgba(8,11,15,.78));
-  border:1px solid rgba(146,164,180,.25);border-bottom:none;}
-.cot-camoind.onpanel svg{width:21px;height:21px;}
-.cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.85));}
-/* camo_spotting r2: brighter concealed glow — the dim green closed eye was
-   nearly invisible against bright terrain at 1080p */
-.cot-camoind.hidden-in-bush svg{
-  filter:drop-shadow(0 0 6px rgba(120,225,140,.75)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
-.cot-camoind.conceal-pulse{animation:cotConcealPulse .7s ease-out 1;}
-@keyframes cotConcealPulse{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){
-  .cot-sixth.on,.cot-camoind.conceal-pulse{animation:none;}
-}
+@media(prefers-reduced-motion:reduce){.cot-sixth.on{animation:none}}
+
 `;
 
 function penColor(r: number | null | undefined): string {
@@ -2112,6 +2000,8 @@ export function initHud(bus: EventBus): HudRuntime {
     list.addEventListener('keydown', event => { if (!document.pointerLockElement) event.stopPropagation(); });
     list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
   }
+  const killLedger = new BattleKillLedger();
+  const lethalDroneTargets = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
@@ -2134,6 +2024,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
   const specBar = el('div', 'cot-spec', root);
   specBar.innerHTML = spectatorSwitcherMarkup();
+  specBar.setAttribute('role', 'region');
+  specBar.setAttribute('aria-label', t('spectator.spectating'));
   const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
   const specWho = requireElement<HTMLElement>(specBar, '.who');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
@@ -2163,6 +2055,9 @@ export function initHud(bus: EventBus): HudRuntime {
     specVeh.textContent = `${tier}${p.vehicle || t('hud.spec.unknownVehicle')}`;
     specIndex.textContent = card.position;
     specIndex.hidden = !card.position;
+    specNick.title = specNick.textContent || '';
+    specVeh.title = specVeh.textContent || '';
+    for (const button of specBar.querySelectorAll<HTMLButtonElement>('.cycle')) button.disabled = (p.count ?? 0) < 2;
     specPortrait.src = card.icon;
     specPortrait.hidden = !card.icon;
     specBar.classList.add('show');
@@ -2196,6 +2091,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // All rendering/bookkeeping lives in src/ui/shotInfo.ts; the HUD only
   // mounts the layer and forwards player identity + lifecycle below.
   const shotInfo = createShotInfo(bus);
+  shotInfo.setTeamResolver((id) => teamById.get(id));
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
   // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
@@ -2283,47 +2179,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  // Concealment has one separate, positive-state chip. Detection belongs to
-  // the delayed instrument above; rendering a second red eye here duplicated
-  // the same condition and made the damage panel look like debug telemetry.
-  const camoInd = el('div', 'cot-camoind', root);
-  camoInd.innerHTML =
-    `<svg viewBox="0 0 24 24" width="32" height="32">` +
-    `<path class="ceye" fill="none" stroke="#8a97a3" stroke-width="1.7" ` +
-    `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
-    `<path class="clid" fill="none" stroke="#9ae8a6" stroke-width="1.7" stroke-linecap="round" ` +
-    `d="M2.5 12c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 15.6l-1.5 2M12 17.6v2.3M18 15.6l1.5 2" ` +
-    `style="display:none"/>` +
-    `<circle class="cpup" cx="12" cy="12" r="3" fill="#8a97a3"/></svg>`;
-  camoInd.style.display = 'none';
-  const camoSvgEl = requireElement<SVGElement>(camoInd, 'svg');
-  const camoEyeEl = requireElement<SVGElement>(camoInd, '.ceye');
-  const camoLidEl = requireElement<SVGElement>(camoInd, '.clid');
-  const camoPupEl = requireElement<SVGElement>(camoInd, '.cpup');
-  let camoIndState: 'off' | 'concealed' = 'off';
-  function updateCamoIndicator(sp: ConcealmentView | null | undefined): void {
-    const state = sp && !sp.spotted && ((sp.inBush && !sp.fired) || (sp.camo ?? 0) >= 0.40)
-      ? 'concealed' : 'off';
-    if (state === camoIndState) return;
-    const prev = camoIndState;
-    camoIndState = state;
-    // No neutral or detected duplicate lives here. This chip appears only
-    // when concealment is actively helping the player's own tank.
-    camoInd.style.display = state === 'concealed' ? 'flex' : 'none';
-    camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
-    // One-shot entry pulse makes the off→concealed transition discoverable.
-    camoInd.classList.remove('conceal-pulse');
-    if (state === 'concealed' && prev === 'off') {
-      void camoInd.offsetWidth; // restart the animation
-      camoInd.classList.add('conceal-pulse');
-    }
-    if (state === 'concealed') {
-      camoEyeEl.style.display = 'none';   // closed eye: lid arc + lashes only
-      camoLidEl.style.display = '';
-      camoPupEl.style.display = 'none';
-      camoSvgEl.style.opacity = '0.85';
-    }
-  }
+  const vehicleStatus = createVehicleStatusStrip();
   // ======================= END SPOTTING SECTION =============================
 
   // --- shell selector + consumables ---
@@ -2434,10 +2290,13 @@ export function initHud(bus: EventBus): HudRuntime {
     missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
     missileButton.hidden=extraMissileSlot<0||specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE||!player?.spec?.gun?.shells.some(shell=>!shell.guided);
-    missileButton.disabled=!canControl;
+    const combat=player?.combat;
+    const emptyMissileLabel=depletedMissileLabel(combat,extraMissileSlot,player?.spec?.gun?.shells[extraMissileSlot]);
+    const missileEmpty=emptyMissileLabel!==null;
+    missileButton.disabled=!canControl||missileEmpty;
     const missileSelected=player?.combat?.shellSlot===extraMissileSlot;
     if(player?.combat&&!missileSelected)previousConventionalSlot=player.combat.shellSlot;
-    missileButton.classList.toggle('active',missileSelected);missileButton.setAttribute('aria-pressed',String(missileSelected));
+    missileButton.classList.toggle('active',missileSelected&&!missileEmpty);missileButton.setAttribute('aria-pressed',String(missileSelected));
     const action = player?.specialAction;
     // Missile selection is ordinary ammunition state. Keep the E shortcut
     // visibly latched for as long as that slot remains selected; 1/2/3 are
@@ -2445,22 +2304,19 @@ export function initHud(bus: EventBus): HudRuntime {
     const active = specialActionIsActive(action, player?.combat?.shellSlot);
     const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
       ? Number(action?.missileSlot) : -1;
-    const ammunition = player?.combat?.ammo;
-    const missileEmpty = Number.isInteger(missileSlot) && missileSlot >= 0
-      && Array.isArray(ammunition)
-      && (ammunition[missileSlot] || 0) <= 0;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
-    const combat=player?.combat;
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
+    missileButton.querySelector('.sl')!.textContent=emptyMissileLabel ?? (missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM');
+    missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
     const wait=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
       :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
+    specialLabel.textContent=specialMissileEmpty ? emptyMissileLabel! : wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';
-    specialButton.classList.toggle('active', active);
-    specialButton.classList.toggle('empty', missileEmpty);
+    specialButton.classList.toggle('active', active&&!specialMissileEmpty);
     specialButton.classList.remove('pending');
-    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE;
+    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialMissileEmpty;
     specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
@@ -2900,6 +2756,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
   const rosterIds: string[] = [];
   const rosterPlayers: boolean[] = [];
+  const rosterTeams: Array<string | undefined> = [];
   const teamTally: TeamTally = {
     allyAlive: 0,
     allyTotal: 0,
@@ -2911,7 +2768,7 @@ export function initHud(bus: EventBus): HudRuntime {
     let validIndex = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer) {
+      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer || rosterTeams[validIndex] !== tank.team) {
         return true;
       }
       validIndex++;
@@ -2922,10 +2779,12 @@ export function initHud(bus: EventBus): HudRuntime {
   function rebuildRosterIdentity(tanks: HudTank[]): void {
     rosterIds.length = 0;
     rosterPlayers.length = 0;
+    rosterTeams.length = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
       rosterIds.push(tank.id);
       rosterPlayers.push(!!tank.isPlayer);
+      rosterTeams.push(tank.team);
     }
   }
 
@@ -2944,7 +2803,7 @@ export function initHud(bus: EventBus): HudRuntime {
     rootEl.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
       `<span class="n"><span class="nick"></span>` +
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
-      `<div class="hpm"><i></i></div>`;
+      `<span class="kills" hidden></span><div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
     const gunship=tank.aerial?.kind==='gunship';
     if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
@@ -2964,6 +2823,8 @@ export function initHud(bus: EventBus): HudRuntime {
       root: rootEl,
       hp: requireElement<HTMLElement>(rootEl, '.hpm i'),
       ic: iconEl,
+      kills: requireElement<HTMLElement>(rootEl, '.kills'),
+      lastKills: -1,
       ally,
       lastFrac: -1,
       wasDead: null,
@@ -2975,6 +2836,14 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function updateEarRow(tank: HudTank, ally: boolean, dead: boolean): void {
     const row = earRows.get(tank.id) || createEarRow(tank, ally);
+    const kills = killLedger.count(tank.id);
+    if (kills !== row.lastKills) {
+      row.lastKills = kills;
+      row.kills.textContent = String(kills);
+      row.kills.hidden = kills === 0;
+      row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
+      row.root.title = `${nickFor(tank)} · ${tank.aerial?.kind === 'gunship' ? 'AC-130' : tank.spec?.name} · ${t('hud.roster.kills', { count: kills })}`;
+    }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
       row.wasDead = dead;
@@ -4236,7 +4105,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
     // line. The circle flips red so the player never fires into a crest.
-    // GUN-LIMIT (r2): gun pinned by the pitch clamp / muzzle-clearance floor
+    // GUN-LIMIT (r2): gun pinned by the mechanical pitch limit
     // / casemate arc — the circle greys out so an unconverged lay is visibly
     // not-ready even though the path itself is clear.
     const gunCol = draw.gunColor;
@@ -5673,15 +5542,20 @@ export function initHud(bus: EventBus): HudRuntime {
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const item = el('div', 'cot-kf', lane);
-    const cause = causeLabel(payload.cause || '');
+    const presentation = killPresentation({ cause: payload.cause, drone: lethalDroneTargets.has(payload.id || ''),
+      killerId: payload.killerId, victimId: payload.id || '', playerId,
+      killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
+    item.dataset.killCause = presentation.cause;
+    if (presentation.relation) item.dataset.relation = presentation.relation;
+    item.title = [presentation.label, presentation.relationLabel].filter(Boolean).join(' · ');
     // side-profile silhouettes of the actual tanks flank the names
     const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
       (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
-      `<span class="d">${t('hud.shell.destroyed')}</span>` +
+      `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
-      (cause ? `<span class="c">${cause}</span>` : '');
+      (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
     if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', '#f28f8f');
     requireElement<HTMLElement>(item, '.k').textContent = killer;
@@ -5873,8 +5747,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   let playerRef: HudTank | null = null;
   on('tank:destroyed', (p) => {
-    if (p.id) spotById.delete(p.id);
+    if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
+    spotById.delete(p.id);
     pushKill(p);
+    lethalDroneTargets.delete(p.id);
     reviveCountdown.onDestroyed(p.id);
   });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
@@ -6087,6 +5963,7 @@ export function initHud(bus: EventBus): HudRuntime {
     });
   });
   on('mode:respawn', ({ id }) => {
+    if (id) { killLedger.respawn(id); lethalDroneTargets.delete(id); }
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
@@ -6129,6 +6006,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
+    if (hit.destroyed && hit.targetId && isDroneStrike(hit)) lethalDroneTargets.add(hit.targetId);
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // Zero-damage and pass-through outcomes use the steel confirmation;
@@ -6331,7 +6209,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
-    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper');
+    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);
@@ -6349,7 +6227,7 @@ export function initHud(bus: EventBus): HudRuntime {
     updateTeams(frame);
     updateNetReadout(frame);
     updateSixthSense(frame.timeS);
-    updateCamoIndicator(frame.spotting?.player ?? null);
+    vehicleStatus.update(frame.player?.aerial?.active ? null : frame.player?.combat, frame.spotting?.player);
   }
 
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
@@ -6489,6 +6367,7 @@ export function initHud(bus: EventBus): HudRuntime {
       netLastMs = 0;
       netLastPaintMs = 0;
       if (m === 'hidden') {
+        vehicleStatus.clear();
         collapseRosters();
         preBattleOverlay.reset();
         setTouchAmmoOpen(false);
@@ -6506,6 +6385,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
         resetCombatPresentation();
+        killLedger.clear(); lethalDroneTargets.clear();
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();
@@ -6519,6 +6399,7 @@ export function initHud(bus: EventBus): HudRuntime {
         earRows.clear();
         rosterIds.length = 0;
         rosterPlayers.length = 0;
+        rosterTeams.length = 0;
         for (const [, bar] of hpPool) bar.root.remove();
         hpPool.clear();
         lastScore = '';
@@ -6596,10 +6477,8 @@ export function initHud(bus: EventBus): HudRuntime {
     setDamagePanel(panel: DamagePanelController) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
-        // r7: the spotted/camo lamp perches on the panel's top edge (WoT
-        // lamp placement) instead of floating in a detached box beside it
-        panel.root.appendChild(camoInd);
-        camoInd.classList.add('onpanel');
+        // Conditions travel with the damage panel, including custom HUD placement.
+        panel.root.appendChild(vehicleStatus.root);
         // r5-2: keep a handle so update() can feed the live turret bearing
         // into the panel's rotating turret/barrel schematic
         dmgPanelRef = panel;

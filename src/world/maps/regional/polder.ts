@@ -7,8 +7,9 @@ import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { facadeOn, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const GREENS: readonly Rgb[] = [0x2f6a46, 0x3c7a52, 0x2a5a40].map(rgb);
@@ -43,8 +44,11 @@ function dialect(st: PolderState): HouseDialect {
     window: (sink, face, o, y0) => {
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'cross' } : st.window,
         st.rng, o.kind === 'loft' ? 0.05 : st.litShare);
-      // the segmental brick arch over the opening (a soldier course read)
-      if (o.kind !== 'loft') faceBox(sink, 'stone', face, o.u, y0 + o.y0 + o.h + 0.11, 0.025, o.w + 0.24, 0.22, 0.05, { decor: true });
+      // the segmental brick arch over the opening (a soldier course read; on a desktop build the arch itself, facade.ts)
+      if (o.kind !== 'loft') {
+        if (facadeOn()) windowHead(sink, face, o.u, y0 + o.y0 + o.h, o.w, { kind: 'segment', bucket: 'stone', h: 0.16, out: 0.05, ext: 0.12, rise: 0.1 });
+        else faceBox(sink, 'stone', face, o.u, y0 + o.y0 + o.h + 0.11, 0.025, o.w + 0.24, 0.22, 0.05, { decor: true });
+      }
     },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
@@ -76,6 +80,28 @@ function gableStacks(sink: PartSink, rg: { ridgeTopY: number; halfD: number }, b
   }
 }
 
+/**
+ * A Zeeland house's eaves and gables (facade craft, desktop): the white-painted board gutter cornice (bakgoot) along
+ * both eaves, and the wrought-iron wall anchors (muurankers) tying the gables back to the floor beams, a pair at the
+ * attic floor of each gable.
+ */
+function zeelandEaves(sink: PartSink, frame: HouseFrame): void {
+  for (const name of ['left', 'right'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    trimRun(sink, 'structureWood', face, -half, half, frame.eaveY - 0.26, [{ h: 0.2, out: 0.06 }, { h: 0.06, out: 0.13 }], { colour: WHITE });
+  }
+  const iron: Rgb = [0.08, 0.08, 0.085];
+  for (const name of ['front', 'back'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    for (const u of [-half * 0.55, half * 0.55]) {
+      const y = frame.eaveY + 0.15;
+      faceBox(sink, 'structureMetal', face, u, y, 0.02, 0.05, 0.62, 0.04, { colour: iron, decor: true });
+      faceBox(sink, 'structureMetal', face, u, y + 0.22, 0.03, 0.22, 0.05, 0.03, { colour: iron, decor: true, fine: true });
+      faceBox(sink, 'structureMetal', face, u, y - 0.22, 0.03, 0.22, 0.05, 0.03, { colour: iron, decor: true, fine: true });
+    }
+  }
+}
+
 /** The labourer's cottage / farmhouse: brick, one storey and attic, gable to the road, pantiles. */
 function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?: number } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
@@ -100,6 +126,7 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
     chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null,
   }, dialect(st));
   gableStacks(sink, frame.roof, opts.farm === true || rng() < 0.4);
+  if (facadeOn()) zeelandEaves(sink, frame);
   if (frame.roof.gable) {
     const g = frame.roof.gable, top = Math.max(...g.map(([, y]) => y));
     if (top - frame.eaveY > 2.0) {

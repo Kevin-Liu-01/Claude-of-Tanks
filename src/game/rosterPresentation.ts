@@ -3,6 +3,7 @@ interface RosterPresentationRow {
   name: string;
   tier: string;
   isPlayer: boolean;
+  kind?: 'aircraft';
 }
 
 interface LobbyPlayer {
@@ -10,13 +11,16 @@ interface LobbyPlayer {
   specId?: string | null;
   name?: string;
   team?: string;
+  bot?: boolean;
 }
 
 interface LobbyState {
+  gameMode?: string;
   players: readonly LobbyPlayer[];
 }
 
 interface BattleRosterEntity {
+  aerial?: { kind: string };
   specId: string;
   team?: string;
   spec?: { name?: string };
@@ -40,7 +44,10 @@ export function createRosterPresentation({
 }: RosterPresentationOptions): RosterPresentation {
   const lobbyRows = (state: LobbyState, team: string, viewerId: string) => state.players
     .filter((player) => player.team === team && !!player.specId)
-    .map((player) => {
+    .map((player): RosterPresentationRow => {
+      if (state.gameMode === 'ac130' && player.team === 'alpha' && !player.bot) {
+        return { id: 'ac130', name: 'AC-130', tier: '', kind: 'aircraft', isPlayer: player.id === viewerId };
+      }
       const specId = player.specId!;
       return {
         id: specId,
@@ -52,7 +59,9 @@ export function createRosterPresentation({
 
   const battleRows = (entities: BattleRosterEntity[], team: string) => entities
     .filter((entity) => entity.team === team)
-    .map((entity) => ({
+    .map((entity): RosterPresentationRow => entity.aerial?.kind === 'gunship' ? {
+      id: 'ac130', name: 'AC-130', tier: '', kind: 'aircraft', isPlayer: !!entity.isPlayer,
+    } : ({
       id: entity.specId,
       name: entity.spec?.name || entity.specId,
       tier: getTier(entity.specId),

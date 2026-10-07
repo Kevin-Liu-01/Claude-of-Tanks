@@ -599,7 +599,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
 
     // Brand artwork stays intact on a restrained enamel substrate. This is a
     // bake-only finish, shared by the worker, synchronous path and swatches.
-    if (['claude', 'spark', 'openai', 'xai', 'gemini'].includes(visual.scheme || '')) {
+    if (['claude', 'spark', 'openai', 'xai', 'gemini', 'gt'].includes(visual.scheme || '')) {
       paintCatalogCamo(ctx, S, { ...visual, catalogPattern: 'enamel' }, rng);
     }
 
@@ -3134,7 +3134,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     // desert/summer flanks bleached toward one flat tint (r7 wash critique).
     const dustCol = rgb(scale3(mix(weather, base, 0.4), 1.14), 0.09);
     const paintDustAndOilStreaks = (): void => {
-      const finishedPaint = visual.catalogPattern || ['claude', 'spark', 'openai', 'xai', 'gemini'].includes(scheme);
+      const finishedPaint = visual.catalogPattern || ['claude', 'spark', 'openai', 'xai', 'gemini', 'gt'].includes(scheme);
       for (let i = 0; i < (finishedPaint ? 70 : 240); i++) {
         const x = rng() * S, y = rng() * S, len = S * (finishedPaint ? .015 + rng() * .06 : .03 + rng() * .12);
         ctx.strokeStyle = rng() < .45 ? (finishedPaint ? 'rgba(30,26,20,0.065)' : 'rgba(30,26,20,0.13)') : dustCol;
