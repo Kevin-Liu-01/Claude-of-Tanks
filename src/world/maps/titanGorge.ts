@@ -112,17 +112,22 @@ export default {
     enemies: [{ x: 12, z: 395 }, { x: 4, z: 395 }, { x: -4, z: 395 }, { x: -12, z: 395 }, { x: 12, z: 405 }, { x: 4, z: 405 }, { x: -4, z: 405 }],
   },
   splat: {
-    grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
+    grassTone: (h: number, s: number, l: number) => [0.055, 0.46, clamp01(0.19 + l * 0.78)],
     dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
     sandstone: true,
-    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.68), clamp01(0.45 + (l - 0.5) * 0.76)],
+    // (round 4, gauntlet wave 134: "a maroon-purple tone", "smeared, wood-grain-like wavy texture": the De Chelly
+    // sandstone's orange-red, a step more orange and saturated)
+    rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.8 + 0.04), clamp01(0.43 + (l - 0.5) * 0.8)],
     // round 47 (2026-09-23, owner: "ground patterns are too black"): without this the sourced-texture resolver fell
     // through to Verdant — photo grass/dirt and raw near-black Rock058 in place of the sandstone strata above
     sourcedPalette: 'titan_gorge',
     // round 47 (2026-09-23): tintB 0.71/0.54/0.45 (luma ×0.58 in the dark patches) → same ochre hue (18°), every
     // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black
-    tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],
-    roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
+    // (round 4, gauntlet wave 134: "a uniform golden, grass-like texture ... dry Australian or African grassland rather
+    // than red sand": the floor's macro tints a step redder)
+    tintA: [1.10, 0.80, 0.60], tintB: [0.90, 0.80, 0.76], tintC: [1.06, 0.77, 0.58],
+    // (round 4: the strata bands read as "wood grain" and "sawtooth stripes" on the buttes' round walls — 0.22 -> 0.12)
+    roadTint: [0.78, 0.61, 0.51], strata: 0.12, sandMacro: 0.82,
     // round 49 (owner audit 2026-09-23, "smooth beige ridge faces without strata"): the ring's 35–47° faces past the edge
     // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)
     ringRockSlope: [0.15, 0.36],
@@ -138,13 +143,16 @@ export default {
     // cedar and acacia slots, pinyon for the oak, sagebrush for the scrub). The bunchgrass is cured straw: the gauntlet's
     // wave 93 read the default tufts as "lime-green tufts evenly over orange sand", a cartoon desert (Redrock's tones),
     // and the scrub takes the desert's dusty sage
-    species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
-    loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
+    // (round 4, gauntlet wave 134: "branching, arm-like yucca trees ... read as Joshua trees, a Mojave Desert indicator
+    // species": the acacia slot's arms under the juniper's foliage — the juniper and the pinyon alone now)
+    species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.66], ['oak', 0.34]],
+    loneMix: [['cedar', 0.62], ['oak', 0.38]], rimMix: [['cedar', 0.70], ['oak', 0.30]],
     // (Titan round 2, the ground lane's wave-115 finding: Monument Valley's bunchgrass is sparse — 0.22 -> 0.12)
     // (Titan round 3c: the round-3 buttes' taller rock deepened the 30 m hollows the arid groves seat in and re-seated
     // them 1266 -> 1424 trees, their alpha-tested shadows most of round 3's chase cost (h15 with the head's overcast:
     // +1.2 ms p25); 16 -> 14 groves brings the valley back to 1189, Monument Valley's sparse juniper)
-    clusterCount: 14, loneCount: 34, rimCount: 18, grassDensity: 0.12,
+    // (round 4: the bunchgrass 0.12 -> 0.07, so the floor reads as red sand, not grassland)
+    clusterCount: 14, loneCount: 34, rimCount: 18, grassDensity: 0.07,
     // (Titan round 3: no juniper stand on a butte's cap — a clump of trees on top read as a stump with a wig, and
     // Monument Valley's caps are bare caprock; the discs cover each cap and wall, the talus below keeps its trees)
     avoid: [{ x: -188, z: -120, r: 23 }, { x: 188, z: 120, r: 23 }, { x: -140, z: 280, r: 20 }, { x: 140, z: -280, r: 20 },
@@ -220,7 +228,13 @@ export default {
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the orange sandstone
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
-    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.82, grain: 0.68,
+    // (Titan round 4, gauntlet wave 134: "steep, pointed, blue-tinted alpine peaks", "a smooth, blue-shaded pyramidal
+    // mountain with a pointed summit", "three rounded summits": the stack's saddle, summits and shoulder stood as
+    // domes and spires over its capped tables — past 1.1 km the outer ranges come down to their massifs' caps
+    // (horizonTablelands.ts) at a few strata round 280 m, and Monument Valley's dry air keeps them red, not blue:
+    // the ring's haze 0.82 -> 0.6)
+    summitCap: { levelM: 280, fromRadiusM: 1100, vary: 0.25, stepM: 25 },
+    forestHex: 0x4d3829, rockHex: 0xa74f32, haze: 0.6, grain: 0.68,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is
@@ -230,7 +244,8 @@ export default {
   clouds: { regime: 'fair-weather-cumulus' },
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
-    mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,
+    // (round 4: the clear desert air — 0.00046 greyed the ranges blue at a kilometre and a half)
+    mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00034,
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffc89b sun
     // (0xb88970 -> 0xb3a698: sun and haze sat in one ochre family and read as a single wash), broken altocumulus
     // (0.68 / 0.30 -> 0.82 / 0.52) on an explicit 860 m deck that keeps its texture at 2-12°, and patchy light over

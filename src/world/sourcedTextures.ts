@@ -285,8 +285,10 @@ const TERRAIN_PLAN = {
   titan_gorge: {
     // beige-ochre shelves — the map's tintA/tintC register and its authored grassTone floor (HSL 27°/0.39/0.58):
     // sand × tint ≈ 0.74/0.57/0.38 (luma 0.60), the worn variant ≈ 0.61/0.43/0.30
-    G: { set: 'sand', tint: [0.94, 0.80, 0.66], roughMul: 1.24 },
-    D: { set: 'sand', tint: [0.78, 0.60, 0.46], roughMul: 1.28 },
+    // (Titan round 4, gauntlet wave 134: "golden, grass-textured savanna rather than orange-red sand": Monument Valley's
+    // sand a step redder, G 0.94/0.80/0.66 -> 0.98/0.70/0.52, the worn variant with it)
+    G: { set: 'sand', tint: [0.98, 0.70, 0.52], roughMul: 1.24 },
+    D: { set: 'sand', tint: [0.80, 0.55, 0.41], roughMul: 1.28 },
     R: null, M: null,
   },
   skybridge: {

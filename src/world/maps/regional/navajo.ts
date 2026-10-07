@@ -1213,7 +1213,9 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     tones: {
       // stucco the colour of the sand, the red earth of the hogan roofs and the mud chinking, a white-painted trim
       plaster: (_h, s, l) => [0.075, Math.min(1, s * 0.9 + 0.2), Math.min(1, l * 1.02 + 0.1)],
-      plaster2: (_h, s, l) => [0.045, Math.min(1, s * 1.1 + 0.34), Math.min(1, l * 0.86 + 0.05)],
+      // (Titan round 4, gauntlet wave 134: "the hogan's roof reads as orange mulch": the earth heaped on the cribbing
+      // is the valley's dull red-brown, not its saturated sand — about half the saturation, a shade darker)
+      plaster2: (_h, s, l) => [0.04, Math.min(1, s * 0.6 + 0.17), Math.min(1, l * 0.76 + 0.04)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.25 + 0.12)],
     },
   },
@@ -1222,7 +1224,9 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   weather: {
     plaster: [[1, 1, 1], [1.04, 1.0, 0.95], [0.95, 0.92, 0.87], [1.02, 0.98, 0.94]],
     stone: [[1, 1, 1], [0.94, 0.9, 0.87], [1.05, 1.0, 0.95], [0.9, 0.87, 0.85]],
-    roof: [[1, 1, 1], [0.9, 0.84, 0.78], [1.04, 1.0, 0.96], [0.84, 0.78, 0.72]],
+    // (round 4, gauntlet wave 134: "the compound is identical grey gable sheds": the iron as it weathers in the valley —
+    // fresh galvanised, dulled dark, streaked with rust and rusted through to red-brown)
+    roof: [[1, 1, 1], [0.9, 0.84, 0.78], [1.04, 1.0, 0.96], [0.84, 0.78, 0.72], [0.92, 0.7, 0.56], [0.74, 0.58, 0.48], [0.7, 0.72, 0.74]],
     damp: 0.4, moss: 0.03,
   },
   wear: 0.15,

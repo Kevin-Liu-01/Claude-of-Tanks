@@ -131,11 +131,11 @@
       "concealers": 1760
     },
     "titan_gorge": {
-      "bytes": 1157842,
-      "sha256": "4231bd2f5a7b6348d59523c8d5d231ce1bd2455497ad2e23f16c5de9207bf413",
-      "obstacles": 2705,
-      "colliders": 2479,
-      "concealers": 1239
+      "bytes": 1158451,
+      "sha256": "56c0dac2b523770af655f23c28914745d2b7630dc409bf993caf6ab2a2fd12da",
+      "obstacles": 2709,
+      "colliders": 2483,
+      "concealers": 1243
     },
     "skybridge": {
       "bytes": 1306126,
