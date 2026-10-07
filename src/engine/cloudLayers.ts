@@ -85,13 +85,14 @@ const DECK_CORE = 0.82;
 
 /**
  * The coverage law: a map's coverage (the fraction of the sky its clouds cover, cloudscapes.ts) as the lane's cover, the
- * share of the equalised weather admitted at the shell's widest height. A cumulus' shape then carves a little of what is
- * admitted (the cover runs a little over the coverage); a deck's admits its coverage itself — its breaks are the weather's
+ * share of the equalised weather admitted at the shell's widest height. A cumulus' cover runs under its coverage (the
+ * authored coverages were set against the old layer, which drew about half the cloud its coverage named; at 1.15 the same
+ * Verdant drew a third of the sky overhead and a wall of puffs on the horizon); a deck's admits its coverage itself — its breaks are the weather's
  * low columns — and from the light model's closing coverage (lightModelCore.ts DECK_CLOSED_COVERAGE, 0.95) it closes.
  */
 export function cloudShellCover(coverage: number, deck: boolean): number {
   if (deck) return clamp(coverage + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
-  return clamp(coverage * 1.15, 0, 1);
+  return clamp(coverage * 0.8, 0, 1);
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */

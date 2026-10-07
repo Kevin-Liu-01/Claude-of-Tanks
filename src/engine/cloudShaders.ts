@@ -662,8 +662,9 @@ void main() {
 						sStep *= 2.0;
 					}
 					float bsm = cl2BsmDepth( p, run );
-					// past both cascades (the far field, hazed): a lit face's depth, the lane's mean over a short run
-					od += bsm >= 0.0 ? bsm : dot( wgt, uLayerDensity ) * 60.0 * hf.x;
+					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
+					// (a far tower's interior stays a cloud's, never lit through)
+					od += bsm >= 0.0 ? bsm : sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)

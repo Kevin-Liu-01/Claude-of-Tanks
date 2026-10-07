@@ -39,6 +39,7 @@ import { CLOUD_LAYER_RULES, cloudLayerKey, type CloudLayerPreset } from './cloud
 import { resolvePresetName } from './quality.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
+import { beginRgba8Readback } from './rgba8Readback.ts';
 import { hazeTargetTerms } from './hazeLaw.ts';
 import {
   CLOUD_CONTRAIL_MAX, CLOUD_FOGBANK_RANGE_M, CLOUD_RAIN_RANGE_M, CLOUD_RAIN_SAMPLES,
@@ -1090,7 +1091,18 @@ export class VolumetricCloudLayer {
         c.target = makeTarget(spec.texels, spec.texels, `clouds-beer-shadow-${i}`, THREE.HalfFloatType);
         c.target.texture.wrapS = c.target.texture.wrapT = THREE.RepeatWrapping;
       }
-      const cellX = Math.floor(this.cam.pos.x / texel) - spec.texels / 2, cellZ = Math.floor(this.cam.pos.z / texel) - spec.texels / 2;
+      // the windows hold plane coordinates (a texel is the sun's ray through the plane at it): the near one is centred on
+      // the camera (the ground's shade, the low cloud about it); the far one on the camera's point at the stack's middle
+      // height carried down the sun's ray to the plane — a point aloft lies on a texel toward the anti-sun by its height
+      // over the plane / tan(elevation), kilometres for a front's towers (centred on the camera, the far window's edge cut
+      // through every tower past ten kilometres: streaks along the sun where the map ended)
+      let ox = this.cam.pos.x, oz = this.cam.pos.z;
+      if (i > 0) {
+        const shift = Math.min(15000, (0.5 * (top - plane)) / Math.max(sun.y, 0.03));
+        const hl = Math.hypot(sun.x, sun.z);
+        if (hl > 1e-6) { ox -= (sun.x / hl) * shift; oz -= (sun.z / hl) * shift; }
+      }
+      const cellX = Math.floor(ox / texel) - spec.texels / 2, cellZ = Math.floor(oz / texel) - spec.texels / 2;
       const all = full || !c.valid;
       if (all || ++c.age >= spec.every) {
         c.age = 0;
@@ -1305,8 +1317,8 @@ export class VolumetricCloudLayer {
    */
   private updateSunMean(): void {
     if (!this.farShadeValid || this.sunMeanPending || ++this.sunMeanAge < CLOUD_SUN_MEAN_EVERY) return;
-    const renderer = this.renderer as THREE.WebGLRenderer & { readRenderTargetPixelsAsync?: (rt: THREE.WebGLRenderTarget, x: number, y: number, w: number, h: number, buffer: Uint8Array) => Promise<Uint8Array> };
-    if (typeof renderer.readRenderTargetPixelsAsync !== 'function') return;
+    const gl = this.context as WebGL2RenderingContext | null;
+    if (!gl || gl.isContextLost() || typeof gl.fenceSync !== 'function') return;
     this.sunMeanAge = 0;
     if (!this.sunMeanTarget) {
       this.sunMeanTarget = makeTarget(CLOUD_SUN_MEAN_TEXELS, CLOUD_SUN_MEAN_TEXELS, 'clouds-sun-mean', THREE.UnsignedByteType);
@@ -1318,9 +1330,17 @@ export class VolumetricCloudLayer {
     rect.set(0, 0, CLOUD_SUN_MEAN_SPAN_M);
     this.renderQuad(this.shadeMaterial, this.sunMeanTarget);
     rect.set(keepX, keepY, keepZ);
-    this.sunMeanPending = true;
+    // the house readback (rgba8Readback.ts): the target snapshotted into an owned pack buffer, no binding held across a
+    // task. (three's readRenderTargetPixelsAsync keeps its pack buffer bound across its await: on the hardware the
+    // atmosphere's summary read fell into that window and the sky dropped to its Preetham fallback.)
+    const renderer = this.renderer;
+    const prev = renderer.getRenderTarget();
     const pixels = this.sunMeanPixels!;
-    renderer.readRenderTargetPixelsAsync(this.sunMeanTarget, 0, 0, CLOUD_SUN_MEAN_TEXELS, CLOUD_SUN_MEAN_TEXELS, pixels).then(() => {
+    let read: Promise<void>;
+    renderer.setRenderTarget(this.sunMeanTarget);
+    try { read = beginRgba8Readback(gl, CLOUD_SUN_MEAN_TEXELS, CLOUD_SUN_MEAN_TEXELS, pixels); } finally { renderer.setRenderTarget(prev); }
+    this.sunMeanPending = true;
+    read.then(() => {
       let sum = 0, raw = 0, under = 0;
       const n = CLOUD_SUN_MEAN_TEXELS * CLOUD_SUN_MEAN_TEXELS;
       for (let i = 0; i < n; i++) {
@@ -1333,7 +1353,7 @@ export class VolumetricCloudLayer {
       this.sunMean.raw = raw / n;
       this.sunMean.cover = under / n;
       this.scene.userData.cloudSunMean = this.sunMean;
-    }, () => { /* a lost context: the next refresh retries */ }).finally(() => { this.sunMeanPending = false; });
+    }, () => { /* a lost context or a busy driver: the next refresh retries */ }).finally(() => { this.sunMeanPending = false; });
   }
 
   /** The shared cloud-shade uniforms while the map is live (the ring's vista samples the same map: horizonCloudShade.ts). */

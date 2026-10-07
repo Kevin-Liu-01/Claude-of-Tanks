@@ -644,6 +644,11 @@ for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.2
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
 for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);
+// 2026-10-06 (the first GPU pair: the v2 page's atmosphere fell to its Preetham fallback on the hardware): the sun mean's
+// readback holds no pack buffer across a task — three's readRenderTargetPixelsAsync keeps its buffer bound over its
+// await, and any other read in that window (the atmosphere's summary) fails
+assert.ok(!/\.readRenderTargetPixelsAsync\(/.test(layerSource), 'no three async readback (its pack buffer outlives the call)');
+assert.match(layerSource, /read = beginRgba8Readback\(gl, CLOUD_SUN_MEAN_TEXELS, CLOUD_SUN_MEAN_TEXELS, pixels\); \} finally \{ renderer\.setRenderTarget\(prev\); \}/, 'the house readback, the target restored at once');
 assert.ok(layerSource.includes('name: `VolumetricCloudTrace-${tier}`') && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'")
   && layerSource.includes("name: 'VolumetricCloudBeerShadow'") && layerSource.includes("name: 'VolumetricCloudShade'"));
 console.log('volumetricClouds.selftest: deterministic weather (four bakes), tiling, equalisation and street anisotropy, the GPU volumes\' lattice, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the tiers, the Beer shadow map\'s addressing, the shells\' band, the haze mirror and the hooks pinned');
