@@ -21,12 +21,15 @@
 //      the round bale's record, contact and burst heap, drawing what it draws (nothing), a man's height inside the
 //      bale's height, its reach inside the Autumn harvest's envelope, its collider inside its hay at the ground, built
 //      by hand, its colliders refit from one convex stand-in; the round bale on the modern maps alone (Kestrel Airfield,
-//      Frontier Basin), swapped in by props.ts.
+//      Frontier Basin), swapped in by props.ts;
+//   7. (b24) every straw kind's colliders refit from a convex stand-in: one outline each, from the ground, inside the
+//      plan footprint of its hay below the contact band's top (rasterised at 2 cm, its gaps closed, filled), so a hull
+//      never stops short of the hay it sees; every straw kind but the convex round bale names one.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V, HAY_WOOD_V, paintHayBuffers } from './hayPrint.ts';
-import { HAYCOCK_REACH, HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS } from './maps/haystackKit.ts';
+import { HAYCOCK_REACH, HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS, STRAW_STAND_IN_TOP_M } from './maps/haystackKit.ts';
 import { DESTRUCTIBLE_TYPES, HAYCOCK_BALE } from './maps/inhabitKit.ts';
 import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { MAP_IDS } from './maps/index.ts';
@@ -255,4 +258,86 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
     'before the regional kinds and the map\'s own variants (they may still name their own)');
 }
 
-console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept; built by hand, the kopna for the cone, the trodden straw; the haycock for the round bale off the modern maps');
+// ---------------------------------------------------------------------------------------------- 7. the stand-ins
+{
+  // the plan footprint of a build's hay below the contact band's top: every triangle clipped to it and rasterised at
+  // 2 cm, closed over `close` cells (a stook's sheaves read as one cone), the exterior flood-filled from the border
+  const CELL = 0.02;
+  const footprintOf = (g, half, close) => {
+    const n = Math.ceil((half * 2) / CELL), occ = new Uint8Array(n * n);
+    const p = g.attributes.position, idx = g.index ? g.index.array : null, tris = (idx ? idx.length : p.count) / 3;
+    const fill = (pts) => {
+      let z0 = Infinity, z1 = -Infinity;
+      for (const [, z] of pts) { z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+      for (let row = Math.max(0, Math.floor(z0)); row <= Math.min(n - 1, Math.ceil(z1)); row++) {
+        const zc = row + 0.5; let xa = Infinity, xb = -Infinity;
+        for (let k = 0; k < pts.length; k++) {
+          const [ax, az] = pts[k], [bx, bz] = pts[(k + 1) % pts.length];
+          if ((az <= zc && bz >= zc) || (bz <= zc && az >= zc)) { const t = Math.abs(bz - az) < 1e-9 ? 0 : (zc - az) / (bz - az), x = ax + (bx - ax) * t; xa = Math.min(xa, x); xb = Math.max(xb, x); }
+        }
+        if (xa === Infinity) continue;
+        for (let c = Math.max(0, Math.floor(xa)); c <= Math.min(n - 1, Math.floor(xb)); c++) occ[row * n + c] = 1;
+      }
+    };
+    for (let t = 0; t < tris; t++) {
+      const v = [0, 1, 2].map((k) => { const i = idx ? idx[t * 3 + k] : t * 3 + k; return [p.getX(i), p.getY(i), p.getZ(i)]; });
+      const out = [];
+      for (let k = 0; k < 3; k++) {
+        const a = v[k], b = v[(k + 1) % 3], ina = a[1] <= STRAW_STAND_IN_TOP_M, inb = b[1] <= STRAW_STAND_IN_TOP_M;
+        if (ina) out.push(a);
+        if (ina !== inb) { const u = (STRAW_STAND_IN_TOP_M - a[1]) / (b[1] - a[1]); out.push([a[0] + (b[0] - a[0]) * u, 0, a[2] + (b[2] - a[2]) * u]); }
+      }
+      if (out.length >= 3) fill(out.map(([x, , z]) => [(x + half) / CELL, (z + half) / CELL]));
+    }
+    const pass = (src, horizontal, any) => {
+      const dst = new Uint8Array(n * n);
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        let val = any ? 0 : 1;
+        for (let d = -close; d <= close; d++) {
+          const rr = horizontal ? r : r + d, cc = horizontal ? c + d : c;
+          const sv = rr >= 0 && rr < n && cc >= 0 && cc < n ? src[rr * n + cc] : 0;
+          if (any && sv) { val = 1; break; }
+          if (!any && !sv) { val = 0; break; }
+        }
+        dst[r * n + c] = val;
+      }
+      return dst;
+    };
+    const closed = pass(pass(pass(pass(occ, true, true), false, true), true, false), false, false);
+    const ext = new Uint8Array(n * n), stack = [];
+    for (let k = 0; k < n; k++) for (const i of [k, (n - 1) * n + k, k * n, k * n + n - 1]) if (!closed[i] && !ext[i]) { ext[i] = 1; stack.push(i); }
+    while (stack.length) {
+      const i = stack.pop(), r = (i / n) | 0, c = i % n;
+      for (const [rr, cc] of [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]) {
+        if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
+        const j = rr * n + cc;
+        if (!closed[j] && !ext[j]) { ext[j] = 1; stack.push(j); }
+      }
+    }
+    return { n, half, ext };
+  };
+  const REG7 = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES, haycock: HAYCOCK_BALE };
+  const straw = Object.entries(REG7).filter(([, t]) => t.mat === 'straw' && t.cls === 'break' && t.contact === 'ob');
+  for (const [kind, t] of straw) {
+    if (kind === 'bale') { assert.ok(!t.contactProxy, 'the round bale needs none: its cylinder is convex'); continue; }
+    assert.equal(typeof t.contactProxy, 'function', `${kind}: a convex stand-in for its colliders`);
+    const proxy = t.contactProxy(), pp = proxy.attributes.position;
+    assert.equal(deriveRuntimeStructureContactBand({ baked: [proxy] }).parts.length, 1, `${kind}: one outline`);
+    proxy.computeBoundingBox();
+    assert.ok(Math.abs(proxy.boundingBox.min.y) < 1e-6 && proxy.boundingBox.max.y <= Math.max(t.h, STRAW_STAND_IN_TOP_M) + 1e-6, `${kind}: from the ground`);
+    const close = kind === 'stook' ? 5 : 3;
+    for (const seed of [3, 17, 2002, 40961]) {
+      const fp = footprintOf(t.build(mulberry32(seed)), (t.r ?? 2) + 0.6, close);
+      let outside = 0;
+      for (let i = 0; i < pp.count; i++) {
+        const c = Math.floor((pp.getX(i) + fp.half) / CELL), r = Math.floor((pp.getZ(i) + fp.half) / CELL);
+        // (the stand-in's corner cell and its neighbours: none of them the hay's exterior)
+        for (const [dr, dc] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) if (fp.ext[(r + dr) * fp.n + (c + dc)]) { outside++; break; }
+      }
+      assert.equal(outside, 0, `${kind} (seed ${seed}): its stand-in inside the hay's footprint (${outside} corners out)`);
+    }
+  }
+  assert.ok(straw.length >= 9, `every straw kind measured (${straw.map(([k]) => k).join(', ')})`);
+}
+
+console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept; built by hand, the kopna for the cone, the trodden straw; the haycock for the round bale off the modern maps; every straw kind\'s colliders from a stand-in inside its hay');

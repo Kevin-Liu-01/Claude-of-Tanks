@@ -22,7 +22,7 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
-import { buildHaycock, buildHaycockContactProxy, buildKopna, buildStook, mapToBand } from './haystackKit.ts';
+import { STRAW_STAND_IN_TOP_M, buildHaycock, buildHaycockContactProxy, buildKopna, buildStook, mapToBand, prismStandIn } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -1848,7 +1848,8 @@ export const DESTRUCTIBLE_TYPES = {
   crate:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.62, h: 1.1,  hw: 0.51, hl: 0.51, build: bCrate, broken: bCrateBroken },
   pallet:      { cls: 'break',  mat: 'wood',  contact: 'loop', r: 0.62, h: 0.2,  build: bPallet,      broken: bPalletBroken },
   bale:        { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.78, h: 1.45, shape: 'circle', collisionR: 0.75, build: bBale, broken: bBaleBroken },
-  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: bStookBroken },
+  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: bStookBroken,
+    contactProxy: () => prismStandIn(0.22, 1.3) }, // (b24: inside the sheaves' cone; haystackKit prismStandIn)
   firewood:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 0.95, hw: 0.84, hl: 0.69, build: bFirewood, broken: bFirewoodBroken },
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
   stall:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
@@ -1867,7 +1868,8 @@ export const DESTRUCTIBLE_TYPES = {
   laundry:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 1.75, h: 1.95, build: bLaundry,     broken: bLaundryBroken },
   haycart:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.55, h: 2.1,  hw: 1.54, hl: 2.16, build: bHaycart, broken: bHaycartBroken },
   handcart:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.1,  hw: 0.62, hl: 1.14, build: bHandcart, broken: bHandcartBroken },
-  haystack:    { cls: 'break',  mat: 'straw', contact: 'ob',   r: 1.75, h: 2.5,  shape: 'circle', collisionR: 1.75, build: bHaystack, broken: bHaystackBroken },
+  haystack:    { cls: 'break',  mat: 'straw', contact: 'ob',   r: 1.75, h: 2.5,  shape: 'circle', collisionR: 1.75, build: bHaystack, broken: bHaystackBroken,
+    contactProxy: () => prismStandIn(1.49, STRAW_STAND_IN_TOP_M) }, // (b24: inside the kopna's foot, not the old cone's 1.75)
   fenceplank:  { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.1,  hw: 0.10, hl: 1.25, build: bFencePlank,  broken: bFencePlankBroken, fence: true },
   fencepicket: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFencePicket, broken: bFencePicketBroken, fence: true },
   fencewattle: { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFenceWattle, broken: bFenceWattleBroken, fence: true },

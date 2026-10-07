@@ -611,6 +611,25 @@ export function buildHaycock(): THREE.BufferGeometry {
   return merge([handed, footSkirt(R * 0.92, 0.08, segs, rng, tiles)]);
 }
 /**
+ * The straw kinds' contact stand-ins (b24; the coordinator: "keep each stand-in inside the visual footprint, so hulls
+ * don't stop short of the hay they see"). A stack's colliders are refit from its build (props.ts
+ * refitDestructibleColliders), and a lumpy, many-part form ear-clips into dozens of convex parts — 37 a stog, 56 a
+ * stook, 18,130 over the shards — every one a polygon each contact tests, for crushable, shoot-through props. Each kind
+ * names a convex stand-in instead: an upright prism (a box for the square stack and the rick) inside its hay's plan
+ * footprint below the contact band's top (the gaps between a stook's sheaves read as one cone), from the ground to
+ * that top or its own height. haystacks.selftest measures every one inside its footprint.
+ */
+export const STRAW_STAND_IN_TOP_M = 1.8;
+/** An upright prism of `segs` sides, radius r, from the ground to h. */
+export function prismStandIn(r: number, h: number, segs = 16): THREE.BufferGeometry {
+  return new THREE.CylinderGeometry(r, r, h, segs, 1).translate(0, h / 2, 0);
+}
+/** An upright box hw x hl (half extents) from the ground to h. */
+function boxStandIn(hw: number, hl: number, h: number): THREE.BufferGeometry {
+  return new THREE.BoxGeometry(hw * 2, h, hl * 2).translate(0, h / 2, 0);
+}
+
+/**
  * The haycock's contact stand-in (inhabitKit HAYCOCK_BALE contactProxy): an upright twelve-sided prism of the round
  * bale's collider radius (0.75) and the cock's height, inside its hay at the ground and convex, so the colliders refit
  * from it are one outline.
@@ -638,11 +657,16 @@ export const ROUND_BALE_MAPS: ReadonlySet<string> = new Set(['airfield', 'fronti
  * the ground: the stog's and the plast's foot, the hooiberg's stack, the meule's drum, the Diemen's walls.
  */
 export const HAYSTACK_DESTRUCTIBLE_TYPES = {
-  stog: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.3, h: 6.1, shape: 'circle', collisionR: 1.7, build: bStog, broken: bStogBroken },
-  plast: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.65, h: 4.25, shape: 'circle', collisionR: 1.2, build: bPlast, broken: bPlastBroken },
-  hooiberg: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.6, h: 7.45, hw: 2.15, hl: 2.15, build: bHooiberg, broken: bHooibergBroken },
-  meule: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.7, h: 5.2, shape: 'circle', collisionR: 2.2, build: bMeule, broken: bMeuleBroken },
-  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.9, h: 4.35, hw: 1.8, hl: 3.5, build: bDiemen, broken: bDiemenBroken },
+  stog: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.3, h: 6.1, shape: 'circle', collisionR: 1.7, build: bStog, broken: bStogBroken,
+    contactProxy: () => prismStandIn(2.02, STRAW_STAND_IN_TOP_M) },
+  plast: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.65, h: 4.25, shape: 'circle', collisionR: 1.2, build: bPlast, broken: bPlastBroken,
+    contactProxy: () => prismStandIn(1.45, STRAW_STAND_IN_TOP_M) },
+  hooiberg: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.6, h: 7.45, hw: 2.15, hl: 2.15, build: bHooiberg, broken: bHooibergBroken,
+    contactProxy: () => boxStandIn(1.8, 1.8, STRAW_STAND_IN_TOP_M) },
+  meule: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.7, h: 5.2, shape: 'circle', collisionR: 2.2, build: bMeule, broken: bMeuleBroken,
+    contactProxy: () => prismStandIn(2.38, STRAW_STAND_IN_TOP_M) },
+  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.9, h: 4.35, hw: 1.8, hl: 3.5, build: bDiemen, broken: bDiemenBroken,
+    contactProxy: () => boxStandIn(1.65, 3.2, STRAW_STAND_IN_TOP_M) },
 } satisfies Record<string, DestructiblePropType>;
 
 /** Each style's kind and the radius of its grounding disc (props.ts stackSpots) at scale 1. */

@@ -17,7 +17,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { DestructiblePropType } from './inhabitKit.ts';
 // (b15: the field stacks of every region, and the straw props' bands of the hay print)
 import { HAY_FACE_V, HAY_WOOD_V } from '../hayPrint.ts';
-import { mapToBand } from './haystackKit.ts';
+import { STRAW_STAND_IN_TOP_M, mapToBand, prismStandIn } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -330,7 +330,8 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   orthodoxcross: { cls: 'topple', mat: 'wood', contact: 'ob', r: 0.65, h: 3.6, shape: 'circle', collisionR: 0.18, groundR: 0.24, build: bOrthodoxCross, broken: null, keep: 0.97 },
   windpump: { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
   tomb: { cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, build: bTomb, broken: bTombBroken, collider: true, keep: 0.86, crushMin: 2.4 },
-  strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken },
+  strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken,
+    contactProxy: () => prismStandIn(1.26, STRAW_STAND_IN_TOP_M) }, // (b24: haystackKit's straw stand-ins)
 } satisfies Record<string, DestructiblePropType>;
 
 
