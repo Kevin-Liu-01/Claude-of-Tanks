@@ -138,6 +138,12 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => { const r = num(p, 'radius') + 1.1 + (p.base === 'rock' ? 1.3 : 0.05); return [r, r]; } },
   // (the frame from the root's end to the round head's: the light's axis `length` from the root, the head's platform
   // half the width and 1.6 m past it, the batter; the steps by the root stand inside the head's width)
+  // a quay wall `length` along the sea (local x), its top `top` over the lowest ground, `depth` back to the land
+  quay: { family: 'harbour', inWater: true, drapes: true, defaults: { length: 40, depth: 14, top: 1.4 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'depth') / 2 + 0.4] },
+  // a slipway running down along +z from its head into the water (dressing)
+  slipway: { family: 'harbour', inWater: true, drapes: true, dressing: () => true, defaults: { length: 12, width: 5, head: 0.2, toe: -0.6 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 0.3] },
   mole: { family: 'harbour', inWater: true,
     defaults: { length: 40, width: 6, deck: 2.2, sea: 'left', light: 'red', height: 11, radius: 1.6 },
     footprint: (p) => { const Rh = num(p, 'width') / 2 + 1.6; return [Rh + 0.45, (num(p, 'length') + Rh) / 2 + 0.45]; } },

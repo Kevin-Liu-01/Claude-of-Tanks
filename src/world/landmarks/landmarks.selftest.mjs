@@ -89,7 +89,7 @@ const BUDGET = {
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
-  lavoir: 5000, khan: 14000,
+  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -115,6 +115,8 @@ const VARIANTS = {
   khan: [{ form: 'arcade', width: 30 }],
   fountain: [{ style: 'ottoman', radius: 2.6 }, { style: 'markt', radius: 2.6 }],
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
+  quay: [{ length: 24, depth: 10, top: 1.0 }],
+  slipway: [{ length: 20, width: 6, head: 0.5, toe: -1.0 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -260,6 +262,15 @@ check('churchyard grounds', () => {
     assert.ok(destructibles.filter((d) => d.kind === resolved.fence).length >= 8, `${JSON.stringify(params)}: the fence runs round the open sides`);
     for (const g of geometries(parts)) g.dispose();
   }
+});
+
+// the quay (harbour.ts): its paved top is a standable floor a hull drives onto from the land — every movement panel's top
+// at the quay's level, the panels covering the footprint's paved area
+check('quay floor', () => {
+  const { movement = [] } = build('quay', { length: 40, depth: 14, top: 1.4 });
+  assert.ok(movement.length >= 4 && movement.every((part) => Math.abs(part.y1 - 1.4) < 1e-9), 'the top panels stand at the quay level');
+  const area = movement.reduce((n, part) => n + part.hw * part.hl * 4, 0);
+  assert.ok(Math.abs(area - 40 * 14) < 1e-6, `the panels cover the paved top (${area.toFixed(1)} m²)`);
 });
 
 // a piece's age (age.ts) draws from its own stream and is dressing: with or without it, a piece's solids are the same

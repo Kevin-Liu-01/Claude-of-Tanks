@@ -31,7 +31,7 @@ export type LandmarkKind =
   // village works
   | 'lavoir' | 'khan'
   // harbour works
-  | 'lighthouse' | 'mole'
+  | 'lighthouse' | 'mole' | 'quay' | 'slipway'
   // wrecks
   | 'aircraftWreck';
 
