@@ -3,11 +3,16 @@
 //
 // A mud-brick wall is laid in courses of sun-dried bricks and rendered with a coat of mud and straw; the rain and the
 // splash wear the render off in patches, most at the crown and the foot, and show the courses under it. One tile is
-// one wall module (3 m along, 3 m round its section, inhabitKit ADOBE_UV_PER_M): the render (a warm mud, trowel-
-// smoothed, with straw flecks and the rain's streaks down from the crown) broken in irregular
-// patches where the bricks show (32 courses of 9 cm, ten bricks of 30 cm a course, half-bond, worn round, their mud
-// mortar recessed), the render's broken lip lit along each patch. The painter is seamless (periodic noise; every
-// course and brick ends on the tile edge). Its palette is a warm mud under the map's plaster tone (props.ts applies it).
+// one wall module (3 m along, 3 m round its section, inhabitKit ADOBE_UV_PER_M): the render, a warm mud, trowel-
+// smoothed, flecked with straw, damp at the feet. The painter is seamless (periodic noise). Its palette is a warm mud
+// under the map's plaster tone (props.ts applies it).
+//
+// (b14; gauntlet wave 97: "stamped rectangle decals", "rust-colored staining repeat identically roughly eight times
+// across the frame") Every module of every mud wall draws this one tile, so a patch or a stain painted here repeats
+// every three metres. The render is now whole and unstained along the tile: its losses (with the courses under them),
+// the rain's streaks and the stains are the material's, in world space (props.ts, the mud hook). The courses are
+// still painted here, for anything that asks for them by a loss (the receipt's brick checks), but no wall face reads
+// a loss of this print.
 //
 // Pure: no DOM and no three.js. Buffers out; props.ts makes the textures, the receipt reads the buffers.
 
@@ -94,8 +99,11 @@ function wearAt(v: number): number {
   return Math.max(0.85 * Math.exp(-((d(FOOT_A) / 0.07) ** 2)), 0.85 * Math.exp(-((d(FOOT_B) / 0.07) ** 2)), 1.25 * Math.exp(-((d(CROWN) / 0.06) ** 2)));
 }
 
-/** Paint the mud print (`size` px square; 512 on desktop, 256 on phones). Deterministic; sixteen rows a slice. */
-export function* paintFieldMudBuffers(size = 512, seed = 0xad0b3):
+/**
+ * Paint the mud print (`size` px square; 512 on desktop, 256 on phones). Deterministic; sixteen rows a slice.
+ * `withLosses` paints the old tile's patches and stains (the receipt's courses); the game's print has none.
+ */
+export function* paintFieldMudBuffers(size = 512, seed = 0xad0b3, withLosses = false):
   Generator<FieldMudSlice, FieldMudBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), loss = new Uint8Array(size * size);
   const k = size / 512;
@@ -115,15 +123,16 @@ export function* paintFieldMudBuffers(size = 512, seed = 0xad0b3):
       const i = y * size + x, j4 = i * 4;
       const u = (x + 0.5) / size, v = (y + 0.5) / size;
       const plain = v > FIELD_MUD_PLAIN_V[0] - 0.005 && v < FIELD_MUD_PLAIN_V[1] + 0.005;
-      // the render's loss: broad patches, most where the wall wears most (its feet and its crown)
-      const patch = plain ? 0 : patchF(u, v) + (edgeF(u, v) - 0.5) * 0.04 + wearAt(v) * 0.26;
+      // (b14: no loss painted: the render is whole on every face; the losses are the material's, in world space)
+      const patch = plain || !withLosses ? 0 : patchF(u, v) + (edgeF(u, v) - 0.5) * 0.04 + wearAt(v) * 0.26;
       const off = patch > THRESH;
       const thin = smooth(THRESH - SOFT, THRESH, patch); // 0 full render .. 1 the render gone
       const n1 = n1F(u, v), n2 = n2F(u, v), grain = hash(x, y, seed + 29);
       // the render: a warm mud, trowel-smoothed, stained, streaked down from the crown, flecked with straw
-      const stain = smooth(0.55, 0.9, stainF(u, v));
+      // (b14: no stain or streak along the tile: they would repeat every module; the material lays them in world space)
+      const stain = withLosses ? smooth(0.55, 0.9, stainF(u, v)) : 0;
       const below = Math.min(Math.abs(v - CROWN), 1); // the streaks run away from the crown down both faces
-      const streak = smooth(0.62, 0.9, streakF(u, v)) * smooth(0.3, 0.02, below);
+      const streak = withLosses ? smooth(0.62, 0.9, streakF(u, v)) * smooth(0.3, 0.02, below) : 0;
       // the foot: damp and splashed a hand or two up from the ground on both faces
       const footD = Math.min(Math.abs(v - FOOT_A), Math.abs(v - 1 - FOOT_A), Math.abs(v - FOOT_B));
       const damp = plain ? 0 : smooth(0.09, 0.02, footD + (dampF(u, v) - 0.5) * 0.04);

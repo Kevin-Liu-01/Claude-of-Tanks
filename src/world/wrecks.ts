@@ -35,6 +35,7 @@ import {
 } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
+import { collectWreckSolids } from './wreckCollision.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -42,6 +43,7 @@ export interface WreckOptions {
 }
 
 export interface WreckBake {
+  solids: number[][];
   geo: THREE.BufferGeometry;
   shadowGeo: THREE.BufferGeometry | null;
   hx: number;
@@ -328,13 +330,17 @@ function* mergeShadowGeometrySteps(
 function wreckBakeResult(
   merged: THREE.BufferGeometry,
   shadowGeo: THREE.BufferGeometry | null,
+  solids: number[][],
 ): WreckBake {
   merged.computeBoundingBox();
   const bounds = merged.boundingBox;
   if (!bounds) throw new Error('wreck bounds unavailable');
+  const baseY = bounds.min.y;
+  for (const solid of solids) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   merged.translate(0, -bounds.min.y, 0);
   shadowGeo?.translate(0, -bounds.min.y, 0);
   return {
+    solids,
     geo: merged,
     shadowGeo,
     hx: (bounds.max.x - bounds.min.x) / 2,
@@ -424,6 +430,7 @@ function* buildTankWreckSteps(
     visual.setDestroyed({ pop: !!opts.pop, ageS: 1000 });
     const root = visual.root;
     root.updateMatrixWorld(true);
+    const solids = collectWreckSolids(root);
     const rootInv = root.matrixWorld.clone().invert();
     yield { fine: true, stage: 'construct' };
     const { geos, proxyGeos } = yield* collectWreckGeometrySteps(root, rootInv, owner);
@@ -447,7 +454,7 @@ function* buildTankWreckSteps(
     yield* paintWreckGeometrySteps(merged, rustPhase);
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
-    const result = wreckBakeResult(merged, shadowGeo);
+    const result = wreckBakeResult(merged, shadowGeo, solids);
     yield { fine: true, stage: 'finalize' };
     owner.geometries.delete(merged);
     if (shadowGeo) owner.geometries.delete(shadowGeo);

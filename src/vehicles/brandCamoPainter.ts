@@ -1,9 +1,9 @@
-import { GEMINI_BRAND_PATH, OPENAI_BRAND_PATH, X_BRAND_PATH } from './brandCamoMarks.ts';
+import { GEMINI_BRAND_PATH, GT_BRAND_PATH, OPENAI_BRAND_PATH, X_BRAND_PATH } from './brandCamoMarks.ts';
 import type { MaterialCanvasContext } from './materialPainter.ts';
 
-type Brand = 'openai' | 'xai' | 'gemini';
+type Brand = 'openai' | 'xai' | 'gemini' | 'gt';
 const paths: Partial<Record<Brand, Path2D>> = {};
-const pathData = { openai: OPENAI_BRAND_PATH, xai: X_BRAND_PATH, gemini: GEMINI_BRAND_PATH };
+const pathData = { openai: OPENAI_BRAND_PATH, xai: X_BRAND_PATH, gemini: GEMINI_BRAND_PATH, gt: GT_BRAND_PATH };
 
 function paintGeminiMark(ctx: MaterialCanvasContext, path: Path2D) {
   // The official v002 SVG's radial-gradient coordinate transform and stops.
@@ -21,14 +21,14 @@ function paintGeminiMark(ctx: MaterialCanvasContext, path: Path2D) {
   ctx.restore();
 }
 
-const isBrand = (scheme: string): scheme is Brand => scheme === 'openai' || scheme === 'xai' || scheme === 'gemini';
+const isBrand = (scheme: string): scheme is Brand => scheme === 'openai' || scheme === 'xai' || scheme === 'gemini' || scheme === 'gt';
 
 /** Complete official mark, uniformly scaled (optionally rotated and faded); no reconstruction or substituted glyph. */
 export function paintBrandMark(
   ctx: MaterialCanvasContext, brand: Brand, x: number, y: number, size: number, rotation = 0, alpha = 1,
 ) {
   const path = paths[brand] ??= new Path2D(pathData[brand]);
-  const width = brand === 'openai' ? 267.198 : brand === 'xai' ? 1227 : 28;
+  const width = brand === 'openai' ? 267.198 : brand === 'xai' ? 1227 : brand === 'gt' ? 1213 : 28;
   ctx.save();
   if (alpha < 1) ctx.globalAlpha = ctx.globalAlpha * alpha;
   ctx.translate(x, y);
@@ -36,11 +36,12 @@ export function paintBrandMark(
   ctx.scale(size / width, size / width);
   if (brand === 'openai') ctx.translate(-280.293, -359.448);
   else if (brand === 'xai') ctx.translate(-600, -613.5);
+  else if (brand === 'gt') ctx.translate(-598.5, -599.5);
   else ctx.translate(-14, -14);
   if (brand === 'gemini') paintGeminiMark(ctx, path);
   else {
     ctx.fillStyle = brand === 'openai' ? '#000000' : '#ffffff';
-    ctx.fill(path);
+    ctx.fill(path, brand === 'gt' ? 'evenodd' : 'nonzero');
   }
   ctx.restore();
 }

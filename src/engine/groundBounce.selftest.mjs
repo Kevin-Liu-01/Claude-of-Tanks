@@ -104,7 +104,16 @@ assert.ok(GROUND_BOUNCE_GLSL_PARS.includes('uniform vec3 uCotBounceRad;') && GRO
   && GROUND_BOUNCE_GLSL_PARS.includes('uniform vec3 uCotBounceSun;'));
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes(`* ${GROUND_BOUNCE_SELF_SHADE.toFixed(4)};`), 'self-shade literal');
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes(`mix( ${GROUND_BOUNCE_UNDERSIDE_LIT.toFixed(4)}, cotSide, clamp( cotNw.y + 1.0, 0.0, 1.0 ) )`), 'underside law');
-assert.ok(GROUND_BOUNCE_GLSL_TERM.includes(`mix( ${GROUND_BOUNCE_SHADOWED_RECEIVER.toFixed(4)}, 1.0, clamp( cotSunVis, 0.0, 1.0 ) )`), 'receiver law on the captured CSM visibility');
+// (2026-10-06, the skies lane: re-pinned — the receiver reads the ambient dim's facing-corrected visibility; the raw CSM
+// visibility counted a back face's self-shade twice, on top of cotSide)
+assert.ok(GROUND_BOUNCE_GLSL_TERM.includes(`mix( ${GROUND_BOUNCE_SHADOWED_RECEIVER.toFixed(4)}, 1.0, clamp( cotAmbVis, 0.0, 1.0 ) )`), 'receiver law on the facing-corrected visibility');
+assert.ok(!GROUND_BOUNCE_GLSL_TERM.includes('clamp( cotSunVis'), 'and not on the raw CSM visibility');
+{
+  // the term is inserted after lighting.ts computes cotAmbVis (it would not compile above it)
+  const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  const decl = lighting.indexOf('float cotAmbVis = cotSunVis;'), term = lighting.indexOf('${GROUND_BOUNCE_GLSL_TERM}');
+  assert.ok(decl > 0 && term > decl, 'lighting.ts declares cotAmbVis before it inserts the term');
+}
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('float cotView = clamp( 0.5 - 0.5 * cotNw.y, 0.0, 1.0 );'), 'view factor');
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('irradiance += max( uCotBounceRad * ( cotGroundLit * cotRecv ) - uCotBounceHemi, vec3( 0.0 ) ) * cotView;'), 'the excess, clamped, into the indirect diffuse');
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('( vec4( geometryNormal, 0.0 ) * viewMatrix ).xyz'), 'the world normal from the view normal');
@@ -161,7 +170,10 @@ assert.match(lighting, /const SHADOW_DIM_OVERCAST = 1;/);
 }
 assert.match(lighting, /vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotAmbVis \);/, 'the shadow\'s ambient dim rides the shared uniform');
 assert.match(lighting, /radiance \*= mix\( \$\{SHADOW_AMBIENT_SPEC_DIM\.toFixed\(3\)\}, 1\.0, cotAmbVis \);/, 'the specular dim follows the same rule');
-assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('clamp( cotSunVis, 0.0, 1.0 )'), 'the bounce receiver keeps the cascade visibility (its ground is shaded too)');
+// (2026-10-06, the skies lane: re-pinned — the bounce receiver reads the same facing-corrected visibility as the dims. A
+// face toward the sun in a cast shadow still stands on shaded ground (its receiver keeps the cascade's 0.4); a face turned
+// from the sun is in its own shadow, which cotSide already counts, so the raw visibility took its bounce twice)
+assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('clamp( cotAmbVis, 0.0, 1.0 )'), 'the bounce receiver reads the facing-corrected visibility (a cast shadow\'s ground stays shaded; a self-shaded face keeps its bounce)');
 assert.match(lighting, /groundBounceUniforms\.uCotShadowFacing\.value = lightTune\('SHADOW_DIM_FACING', SHADOW_DIM_FACING\);/, 'the grounded rig keeps the dims to sun-facing faces');
 assert.match(lighting, /groundBounceUniforms\.uCotShadowFacing\.value = 0;/, 'the legacy rig: every shadowed face, as before');
 assert.match(lighting, /const SHADOW_DIM_FACING = 1;/);

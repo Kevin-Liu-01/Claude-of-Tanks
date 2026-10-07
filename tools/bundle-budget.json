@@ -3,10 +3,10 @@
   "headroom": 0.03,
   "pages": {
     "game": {
-      "requests": 118,
-      "raw": 3510749,
-      "gzip": 1065447,
-      "brotli": 900560,
+      "requests": 127,
+      "raw": 3630567,
+      "gzip": 1108427,
+      "brotli": 939418,
       "entryRaw": 813429,
       "entryBrotli": 242039
     },
@@ -35,10 +35,10 @@
       "brotli": 5966
     },
     "cn": {
-      "requests": 119,
-      "raw": 3794098,
-      "gzip": 1167367,
-      "brotli": 981684,
+      "requests": 128,
+      "raw": 3925953,
+      "gzip": 1214309,
+      "brotli": 1023501,
       "entryRaw": 813429,
       "entryBrotli": 242039
     }

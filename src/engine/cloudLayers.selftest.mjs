@@ -75,9 +75,18 @@ assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves 
 assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
 assert.ok(stacks.monsoon.lanes.length === 2, 'a front carries its debris aloft');
 assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
-// the closed decks closed (the skies lane, 2026-10-06): Titan Gorge's dense overcast and Whiteout's stratus admit every
-// column at their own resolved coverage — a retune of either that reopens a hole fails here
-for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cover >= 1, `${id}: a closed deck admits every column (${stacks[id].lanes[0].cover.toFixed(3)})`);
+// the closed decks closed (the skies lane, 2026-10-06): Whiteout's stratus — and every deck its map closes (coverage 0.95
+// and over) — admits every column at its own resolved coverage; a retune that reopens a hole fails here. (Titan Gorge's
+// dense overcast was one until the map-revival lane gave Monument Valley its fair-weather cumulus, 2026-10-05.)
+{
+  const closed = Object.keys(stacks).filter((id) => {
+    const config = getMapConfig(id);
+    const p = deriveCloudLayerPreset(id === 'mars' ? MARS_SKY_PRESET : { ...DEFAULT_SKY_PRESET, ...config.sky, cloudscape: config.clouds ?? null });
+    return p.coverage >= 0.95 && p.stratiform >= 0.7;
+  });
+  assert.ok(closed.includes('whiteout'), `Whiteout's stratus is a closed deck (${closed.join(', ')})`);
+  for (const id of closed) assert.ok(stacks[id].lanes[0].cover >= 1, `${id}: a closed deck admits every column (${stacks[id].lanes[0].cover.toFixed(3)})`);
+}
 
 // ---- a broken deck covers the sky everywhere, broken by its cells (round 6, 2026-10-07: on the stratiform field's
 // sixteen-kilometre features alone the fjord's sky-w view was clear to the horizon — 7.5 % of 10 km windows over the
@@ -126,9 +135,9 @@ for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cove
   assert.ok(cloudGroundLight(0, 1e6, 0.99) <= 2.5 * 1e-4 + 1e-9, 'the bounce never revives a black cover');
   const w = stacks.whiteout.lanes[0];
   assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE);
-  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.titan_gorge) > 10, 'a closed deck is optically thick');
+  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.railyard) > 10, 'a closing deck is optically thick');
   // the law is the closing deck's (a broken deck keeps the old law and its grey bases over snow; a convective sky too)
-  assert.ok(stacks.whiteout.closing === 1 && stacks.titan_gorge.closing === 1, 'an overcast takes the light under the cover');
+  assert.ok(stacks.whiteout.closing === 1 && stacks.railyard.closing > 0.5, 'an overcast takes the light under the cover');
   assert.ok(stacks.fjord.closing === 0 && stacks.verdant.closing === 0 && stacks.monsoon.closing === 0 && stacks.winter.closing < 0.2, 'a broken deck and a convective sky keep the old law');
 }
 
