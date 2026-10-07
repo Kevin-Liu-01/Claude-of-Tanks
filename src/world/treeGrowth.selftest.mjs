@@ -246,6 +246,19 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
   assert.ok(shape.redPine.aspect > shape.pine.aspect && TREE_GROWTH_PROFILES.redPine.gnarl > 0,
     `the Japanese red pine broad and crooked (${JSON.stringify(shape.redPine)})`);
   for (const form of ['longleafPine', 'lebanonCedar', 'sugi', 'redPine']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+  // the trees lane (2026-10-06, the gauntlet's wave 129 on Nordhavn: Scots pines "read as parasol or palm crowns"): the
+  // Scots pine's live crown on the upper third of its bole, flat-topped — its apex shoots spread round the leader's top,
+  // no spire — and narrower than the red pine's
+  {
+    const sp = TREE_GROWTH_PROFILES.pine;
+    assert.ok(sp.flatApex === true && sp.crownBase >= 0.6 && shape.pine.crownBase >= 0.6, `the Scots pine's crown on the upper third (${JSON.stringify(shape.pine)})`);
+    for (let variant = 0; variant < 3; variant++) {
+      const { skeleton } = grow('pine', variant);
+      const top = skeleton.branches[0].nodes.at(-1).y;
+      const apex = skeleton.leaves.filter((l) => l.y > top - 1.2 && l.branch === 0);
+      assert.ok(apex.length >= 3 && apex.every((l) => l.ay < 0.8), `pine/${variant}: a flat top, its apex shoots spread (the old spire's stood at 0.89-1.0) (${apex.map((l) => l.ay.toFixed(2)).join(' ')})`);
+    }
+  }
   // the longleaf's grass stage: a shrub-only form (never a tree slot) whose sprays fan from a few seats on the ground
   assert.ok(!GROWTH_SPECIES.includes('longleafSeedling') && TREE_GROWTH_PROFILES.longleafSeedling.fountain, 'the grass stage is a shrub form');
   for (const kind of ['bush', 'understorey']) {
