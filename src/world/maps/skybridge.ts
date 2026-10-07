@@ -27,28 +27,136 @@
 // towers and the transformer yards; the microwave relay tower; the gate-hoist houses and the penstock runs on their
 // saddles; the visitor centre with its overlook, or the town's school; the field offices and steel warehouses; and
 // Page's ranch houses under shingled gables with their carports, its fire station and its water tower.
+//
+// Lake Powell's arm and Glen Canyon Dam (the map-revival lane, 2026-10-06, Skybridge round 4; gauntlet waves 170-171:
+// "the landform must be inverted into a deep, sheer-walled canyon arm holding the water against a curved dam, with the
+// township and works on the slickrock rim above"; "the reservoir reads as a pit lake or shallow milky trench in a flat
+// sand plain"). The district stands on the slickrock at the plain's level. Below it a canyon arm 68 m wide is cut 22 m
+// into the rock, with sheer walls straight into the water from a rounded head under the district's south to a square
+// end at the road across the north (road 5). The water lies wall to wall: the lake's discs are round and pulled 3 m into
+// the walls, so no dry ground lies under the waterline anywhere. The dam stands on that road (reservoirDam.ts): an arch
+// convex to the reservoir, its intakes and gantry over the water, its battered downstream face dropping 28 m into a
+// tailwater pocket that holds the powerhouse at its toe. Bots route round all water ('avoid-liquid'). Nothing can reach
+// a floor: the walls give no way down, and parapets and a kerb guard the road over the dam and the pocket's rim. The
+// ring's own dam and its canyon (round 2) are retired, so the map has one dam, in reach.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import type { ReservoirDamSite } from './reservoirDam.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+/** The canyon's section: a sheer wall from 0.86 to 0.92 of the half-width over a level floor, no talus. */
+const ARM_WALL = [0.86, 0.92] as const;
+const canyon = (extra: { cliffEnd?: 'nose' | 'both'; outline?: number }) =>
+  ({ profile: 'canyon' as const, wall: ARM_WALL, apron: 0, outline: 0.04, rough: 0, ...extra });
+/** The arm: half-width, depth, bearing (a ridge's yaw: 80 runs north-north-east) and length (m). */
+const ARM_HALF = 37, ARM_DEPTH = -22, ARM_YAW = 80, ARM_LENGTH = 250;
+/** The tailwater pocket below the dam: half-width, depth, length, and its middle along the road from the dam's (m). */
+const POCKET_HALF = 13, POCKET_DEPTH = -28, POCKET_LENGTH = 38, POCKET_ALONG = -13;
+/** Road 5's junctions either side of the arm: the dam's crest is the road between them. */
+const CREST_A = [-73.9, 235.78] as const, CREST_B = [42, 204] as const;
+const CREST_L = Math.hypot(CREST_B[0] - CREST_A[0], CREST_B[1] - CREST_A[1]);
+const CREST_U = [(CREST_B[0] - CREST_A[0]) / CREST_L, (CREST_B[1] - CREST_A[1]) / CREST_L] as const;
+/** The dam's middle on the road, and the gap from the road's centre line to the arm's end and the pocket's wall (m). */
+const DAM_X = -10, DAM_Z = CREST_A[1] + (DAM_X - CREST_A[0]) / CREST_U[0] * CREST_U[1], CREST_GAP = 6;
+/** Half the dam's chord between its abutments (m): the arm's rim. */
+const DAM_HALF_CHORD = 35;
+/** The disc cores reach this far past the walls' feet, so the water meets every wall: the arm's walls wander (their
+ * outline), the pocket's are cut straight. */
+const WATER_PAD = 2, POCKET_PAD = 0.5;
+
+function armTerrain() {
+  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)];
+  const n = [a[1], -a[0]], north = [-CREST_U[1], CREST_U[0]];
+  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP];
+  const head = [end[0] - a[0] * ARM_LENGTH, end[1] - a[1] * ARM_LENGTH];
+  const mid = [end[0] - a[0] * ARM_LENGTH / 2, end[1] - a[1] * ARM_LENGTH / 2];
+  const pocket = [DAM_X + CREST_U[0] * POCKET_ALONG + north[0] * (CREST_GAP + POCKET_HALF),
+    DAM_Z + CREST_U[1] * POCKET_ALONG + north[1] * (CREST_GAP + POCKET_HALF)];
+  const crestYaw = Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI;
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+  const scale = { corridorScale: 1, settlementScale: 1, wetScale: 1 };
+  const landforms = [
+    { kind: 'ridge' as const, x: r1(mid[0]), z: r1(mid[1]), length: ARM_LENGTH, width: ARM_HALF, height: ARM_DEPTH, yawDeg: ARM_YAW,
+      ...scale, geology: canyon({ cliffEnd: 'both' }) },
+    { kind: 'knoll' as const, x: r1(head[0]), z: r1(head[1]), rx: ARM_HALF, rz: ARM_HALF, height: ARM_DEPTH, ...scale, geology: canyon({}) },
+    { kind: 'ridge' as const, x: r1(pocket[0]), z: r1(pocket[1]), length: POCKET_LENGTH, width: POCKET_HALF, height: POCKET_DEPTH,
+      yawDeg: r1(crestYaw), ...scale, geology: canyon({ cliffEnd: 'both', outline: 0 }) },
+  ];
+  // the water: round discs (authored radii, all one) whose cores (0.96 of the radius) reach WATER_PAD past the walls'
+  // feet — one over the head, one every 12 m down the arm's axis, one by each wall where the axis discs fall short of the
+  // dam's face over the arm's square end; the pocket's along its axis and one in each corner
+  const round = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] as const;
+  const lakes: { x: number; z: number; r: number; depth: number; level: number; bankBand: number; radii: typeof round }[] = [];
+  const disc = (x: number, z: number, core: number, level: number) =>
+    lakes.push({ x: r1(x), z: r1(z), r: r1(core / 0.96), depth: 1.2, level, bankBand: 0.98, radii: round });
+  const floor = ARM_HALF * ARM_WALL[0], core = floor + WATER_PAD;
+  disc(head[0], head[1], core, ARM_DEPTH);
+  for (let t = 12; t <= ARM_LENGTH - floor; t += 12) disc(head[0] + a[0] * t, head[1] + a[1] * t, core, ARM_DEPTH);
+  // (by each wall at the square end two: a large one where the axis discs' reach along the wall ends, and a small one up
+  // to the dam's face, which stands over the end's fade)
+  const fade = ARM_LENGTH * 0.03;
+  for (const side of [-1, 1]) for (const [back, size] of [[fade + 11, 10], [fade + 3.5, 5]] as const) {
+    const across = core - size;
+    disc(end[0] - a[0] * back + n[0] * side * across, end[1] - a[1] * back + n[1] * side * across, size, ARM_DEPTH);
+  }
+  const pfloor = POCKET_HALF * ARM_WALL[0], pcore = pfloor + POCKET_PAD, pfade = POCKET_LENGTH * 0.03;
+  const pend = POCKET_LENGTH / 2 - pfade - pcore + POCKET_PAD, steps = Math.max(1, Math.round(2 * pend / 8));
+  for (let i = 0; i <= steps; i++) {
+    const t = -pend + 2 * pend * i / steps;
+    disc(pocket[0] + CREST_U[0] * t, pocket[1] + CREST_U[1] * t, pcore, POCKET_DEPTH);
+  }
+  for (const se of [-1, 1]) for (const sa of [-1, 1]) for (const size of [6, 2.5]) {
+    const t = se * (POCKET_LENGTH / 2 - pfade - size + POCKET_PAD), w = sa * (pfloor - size + POCKET_PAD);
+    disc(pocket[0] + CREST_U[0] * t + north[0] * w, pocket[1] + CREST_U[1] * t + north[1] * w, size, POCKET_DEPTH);
+  }
+  return { landforms, lakes };
+}
+const ARM = armTerrain();
+
+/** The kerbs along the arm's rims from the dam's abutments: each side, a run from the end of the road's upstream parapet
+ * (reservoirDam.ts: the dam's half-chord and 8 m) to the rim 37 m off the axis (the rim, its wander and a hull's width),
+ * then 45 m up the arm along it (the swap test, 2026-10-06: one hull slid down the west corner the road's banks grade
+ * and sat in the water by the dam for the rest of a match). */
+function armRimGuards(): (readonly [number, number, number, number])[] {
+  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)], n = [a[1], -a[0]];
+  const v = [CREST_U[1], -CREST_U[0]];
+  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP], off = 37, from = 5, to = 50;
+  const r1 = (q: number[]) => q.map((x) => Math.round(x * 10) / 10) as unknown as readonly [number, number, number, number];
+  const runs: (readonly [number, number, number, number])[] = [];
+  for (const side of [-1, 1]) {
+    const parapetEnd = [DAM_X + CREST_U[0] * side * (DAM_HALF_CHORD + 8) + v[0] * 6, DAM_Z + CREST_U[1] * side * (DAM_HALF_CHORD + 8) + v[1] * 6];
+    const rim = [end[0] + n[0] * side * off, end[1] + n[1] * side * off];
+    const start = [rim[0] - a[0] * from, rim[1] - a[1] * from], stop = [rim[0] - a[0] * to, rim[1] - a[1] * to];
+    runs.push(r1([...parapetEnd, ...start]), r1([...start, ...stop]));
+  }
+  return runs;
+}
+
+/** The dam on road 5 over the arm's end (reservoirDam.ts, laid by the 'dam' dressing kit). */
+export const SKYBRIDGE_DAM: ReservoirDamSite = {
+  x: DAM_X, z: Math.round(DAM_Z * 100) / 100, roadDeg: Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI,
+  halfChordM: DAM_HALF_CHORD, archRadiusM: 80, abutmentM: CREST_GAP + ARM_LENGTH * 0.03, roadHalfM: 5.2,
+  reservoirBedY: ARM_DEPTH, tailwaterBedY: POCKET_DEPTH,
+  pocketFromM: POCKET_ALONG - POCKET_LENGTH / 2, pocketToM: POCKET_ALONG + POCKET_LENGTH / 2,
+  pocketHalfM: POCKET_HALF * ARM_WALL[1], pocketWallM: CREST_GAP + POCKET_HALF * (1 - ARM_WALL[1]),
+  rimGuards: armRimGuards(),
+};
 
 export default {
   id: 'skybridge',
   name: 'Skybridge Chasm',
   blurb: 'A broken high crossing and fortress-scale control works span a deep flooded canyon',
+  // (round 4) the canyon's water is a barrier: bots route round it (the walls give no way down to it)
+  navigationWaterPolicy: 'avoid-liquid',
   terrain: {
     hillScale: 0.62, microScale: 0.66, rimH: 58, softLakes: true,
     // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
     marshes: [],
-    // (Skybridge round 2's canyon: the lakes pulled in off the old banks to the trough's floor and pinned at one waterline
-    // 11 m under the plain, their banks a tight 0.98 so the canyon's walls meet the water instead of a graded strand;
-    // the two sheets still overlap, one surface)
-    lakes: [
-      { x: -30, z: 50, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
-      { x: -14, z: 136, r: 58, depth: 2.2, level: -11, bankBand: 0.98 },
-    ],
+    // (round 4: the reservoir's arm and the tailwater pocket, wall to wall; armTerrain above)
+    lakes: ARM.lakes,
     // three aprons for the zone-control discs on the line of equal driven distance: the west lane's yard, the gorge's
     // west shore between the lake and the west middle segment (tilted to its ground) and the east lane's yard (tilted
     // to its ground)
@@ -90,24 +198,9 @@ export default {
         geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
           flutes: { count: 5, depth: 0.12 }, rough: 0.45, boulders: 14, strata: { stepM: 6, riser: 0.2 },
           gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
-      // the drowned gorge's basin under the lakes
-      { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72,
-        geology: { outline: 0.2, rough: 0.4 } },
-      // (the map-revival lane, 2026-10-06, Skybridge round 2 item 2; gauntlet wave 107: "no drowned canyon, no dam and no
-      // bedded red sandstone wall anywhere: the reservoir is a pond lying flush with a flat sand plain") the reservoir
-      // sinks into Glen Canyon: a trough round both lakes (a canyon knoll, landformGeology.ts) whose cross-bedded Navajo
-      // sandstone walls stand 10-13 m from the plain's rim to the water, side canyons biting into them, the talus at
-      // their feet under the water; the rim stays at plain level, clear of the west shore's apron, the district's roads
-      // and the north road; two boat ramps cut the wall down to the waterline, one from the west lane's shore and one from
-      // the district's road
-      // (round 3, gauntlet wave 133: "a smooth, evenly coloured pinkish wall of uniform height": the bedding and the
-      // red-orange come from the splat's rock below. The trough's geometry stays round 2's: sunk to 21 m the boat ramps,
-      // its only ways out, ran too steep and the pacing receipt left a bot trapped under the south wall for ten minutes;
-      // sheerer walls in thicker beds stalled one at the west rim for six — a deeper gorge needs its own access)
-      { kind: 'knoll', x: -20, z: 92, rx: 85, rz: 140, height: -10, yawDeg: -10, corridorScale: 1, settlementScale: 1, wetScale: 1,
-        geology: { profile: 'canyon' as const, wall: [0.74, 0.8] as const, apron: 0.3, outline: 0.12, rough: 0.4,
-          strata: { stepM: 2.4, riser: 0.4 }, gullies: { count: 16, depthM: 1.4, width: 0.4 },
-          ramps: [{ bearingDeg: 180, halfWidthDeg: 6, runM: 40 }, { bearingDeg: 0, halfWidthDeg: 6, runM: 40 }] } },
+      // (round 4, gauntlet waves 170-171: the basin under the lakes and the round-2 trough round them go — the reservoir
+      // is the canyon arm, its dam and the tailwater pocket; armTerrain above)
+      ...ARM.landforms,
     ],
   },
   spawns: {
@@ -189,7 +282,8 @@ export default {
     ],
     // (round 3, gauntlet wave 133: "a fan of parallel rail lines running straight down into" the reservoir, "orphan rail
     // segments describing nothing in 1960s Page": Page never had a railway — the yard's lines, coal heaps and stores go)
-    blockFill: true, extraKits: [], wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    // (round 4: the dam on road 5 over the arm's end, reservoirDam.ts by mapKits.ts dressMapExtras)
+    blockFill: true, extraKits: ['dam'], wallStyle: 'fieldstone', wallStoneChance: 0.82,
     // the control district's blocks keep their footprints off every carriageway
     // the control district stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03); a building of it
     // that stands in a carriageway moves by the least distance that clears it
@@ -235,12 +329,6 @@ export default {
     // cliff over talus
     summitCap: { levelM: 260, fromRadiusM: 1100, vary: 0.25, stepM: 25 },
     escarpment: { bedM: [60, 95], cliffShare: [0.4, 0.6], talusRise: 0.26, talusCurve: 2.6 },
-    // (the map-revival lane, 2026-10-06, Skybridge round 2; gauntlet wave 107: "no drowned canyon, no dam"): Glen Canyon
-    // Dam. The gorge's axis runs on out of the square through the north ring as a canyon cut into the plateau, and a
-    // concrete arch closes it 1.2 km out under the plateau's rim — 140 m from the tailwater's bed to its crest (round 3:
-    // 5 m lower under the tiered walls), the reservoir behind it a few metres under the crest, so the skyline opens over
-    // the arch (horizonDam.ts)
-    dam: { x: 5, z: 1200, crestM: 150, floorM: 10, mouthM: 790, archRadiusM: 220 },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the beige-brown
     // chasm walls (the style default 0.16 left the abutment cliffs nearly unbedded)
     banding: 0.20,

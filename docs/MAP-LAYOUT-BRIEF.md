@@ -329,6 +329,21 @@ props code shaped every layout, and the next maps should start from them:
   block's bots leave round it. Give a gate butte a sheer section with a rim (talus only at its foot): Olympus Basin's
   first pair, with the butte profile's climbable apron, cost a 235 hp fall in horde. After the fix, Skybridge played
   270 / 153 / 132 / 269 s and Olympus Basin 184 / 243 / 201 / 90 s at their seeds.
+- **Water in a canyon.** A lake's discs pull the ground to their level, so a disc that misses part of a canyon floor
+  leaves a dry pit under the waterline, and a disc that overlaps a wall cuts it. Skybridge's round-4 arm (68 m wide,
+  22 m deep, its walls sheer from 0.86 to 0.92 of the half-width over a level floor with no talus) lies wall to wall:
+  - the discs are round (`radii` all 1: the default shoreline cuts coves up to a fifth of the radius into a disc);
+  - each disc's core (0.96 of its radius) reaches 2 m past the walls' feet, inside the 2.2 m wall, and the cut ends
+    of the arm and its pocket take smaller discs in their corners;
+  - the floor lies at the discs' level, so a sliver a disc misses stands no lower than the bed.
+
+  Measured on a 1 m grid, no ground under a waterline stays dry (0 m² of 17,100 m²), and
+  `src/world/maps/reservoirDam.selftest.mjs` holds it. With the walls straight into water, nothing reaches a floor.
+  The bots route round the water (`navigationWaterPolicy: 'avoid-liquid'`). Parapets and a kerb guard the road over
+  the dam and the pocket's rim, and kerbs run 45 m up the arm's rims from the abutments. In the swap test, before those
+  rim kerbs, a hull slid down the corner that road 5's banks grade beside the west abutment and sat in the water for the
+  rest of a 15-minute match. An authored apron cannot ramp a 22 m drop: a hardstand's grade is held to 8 %. The
+  round-3 trial deepened the trough with boat ramps, and the pacing receipt trapped a bot under the south wall.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
@@ -453,7 +468,7 @@ region, registered in `index.ts`:
 | `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
 | `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
 | `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
-| `glencanyon` | Glen Canyon Dam and Page, Arizona (the Bureau of Reclamation, 1957-66; its plaster2 walls painted as board-formed concrete, `surfaces.concrete`): a board-formed concrete powerhouse with its penstocks, the control building, the surge tower, walled switchyards and transformer yards, the microwave relay, the visitor centre or the school, ranch houses with carports | Skybridge Chasm |
+| `glencanyon` | Glen Canyon Dam and Page, Arizona (the Bureau of Reclamation, 1957-66; its plaster2 walls painted as poured concrete with its lifts, ties and runoff, `surfaces.concrete`): a concrete powerhouse with its penstocks, the control building, the surge tower, walled switchyards and transformer yards, the microwave relay, the visitor centre or the school, ranch houses with carports | Skybridge Chasm |
 | `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
 | `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |

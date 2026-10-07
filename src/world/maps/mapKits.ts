@@ -31,6 +31,8 @@ import {
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { addWinterPressureRidges, addWinterShoreIce } from './lakeIce.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 // #16 r2 (Lane C, 2026-10-14): the waterside family's kits, their forms keyed on the coast's boats
 import { dressReedClump, reedFormForBoat, type ReedForm } from './reedBeds.ts';
@@ -988,6 +990,9 @@ export function dressMapExtras({
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
   if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+  // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
+  // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
+  if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);
 }
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
