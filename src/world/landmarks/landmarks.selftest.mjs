@@ -525,6 +525,12 @@ check('the mole and its light', () => {
     for (const [cx, cz, rw, rl] of LANDMARK_KINDS.townGate.solids(resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { walls: 8 } }))) {
       assert.ok(Math.abs(cx) + rw <= thw + 1e-9 && Math.abs(cz) + rl <= thl + 1e-9, 'each solid rectangle within the footprint');
     }
+    // a gate whose road crosses its gap off the middle: each stub its own length (wallsLeft -x, wallsRight +x)
+    const asym = resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { passage: 7.8, wallsLeft: 3, wallsRight: 9 } });
+    assert.ok(Math.abs(LANDMARK_KINDS.townGate.footprint(asym)[0] - (3.9 + 2.4 + 9)) < 1e-9, 'the footprint reaches the longer stub');
+    const stubRects = LANDMARK_KINDS.townGate.solids(asym);
+    assert.ok(stubRects.some(([cx, , rw]) => Math.abs(cx + 7.8) < 1e-9 && rw === 1.5) && stubRects.some(([cx, , rw]) => Math.abs(cx - 10.8) < 1e-9 && rw === 4.5),
+      'each stub its own length');
     for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
   }
   // a map without set pieces composes nothing
