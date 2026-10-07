@@ -219,12 +219,12 @@ function cartFit(model: CartModel, role: CartRole): CartFit {
 }
 
 /** Build a role's cart into a fresh mesh, centred on its footprint. */
-function cartMesh(e: CartEntry, role: CartRole, coarse: boolean, wrecked: boolean): VehicleMesh {
+function cartMesh(e: CartEntry, role: CartRole, coarse: boolean, wrecked: boolean, snow = false): VehicleMesh {
   const { cx, cz } = cartFit(e.model, role);
   const mesh = new VehicleMesh();
   mesh.coarse = coarse;
   mesh.push().translate(-cx, 0, -cz);
-  buildCart(mesh, e.model, { coarse, wrecked, seed: CART_SEED });
+  buildCart(mesh, e.model, { coarse, wrecked, seed: CART_SEED, snow });
   mesh.pop();
   return mesh;
 }
@@ -245,7 +245,7 @@ function applyFit(geometry: THREE.BufferGeometry, s: number): void {
 /** One role's geometry on a map: intact or wrecked. */
 function buildRole(e: CartEntry, role: CartRole, ctx: BuildContext, wrecked: boolean, seed: number): THREE.BufferGeometry {
   const { cz, s } = cartFit(e.model, role);
-  const geometry = cartMesh(e, role, ctx.coarse, wrecked).build(vehicleWeathering({
+  const geometry = cartMesh(e, role, ctx.coarse, wrecked, ctx.climate.snow ?? false).build(vehicleWeathering({
     dirtRgb: linearHex(ctx.climate.dirt), dirt: Math.min(1, ctx.climate.dirtAmount * (wrecked ? 1.3 : 1.1)), dirtTop: 0.45,
     dustRgb: linearHex(ctx.climate.dust), dust: ctx.climate.dustAmount,
     rust: 0.55, burnt: false, wheels: cartWheels(e.model).map((w) => ({ ...w, z: w.z - cz })), seed, voxelAo: !ctx.coarse,

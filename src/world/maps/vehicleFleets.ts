@@ -199,12 +199,14 @@ export interface VehicleClimate {
   /** Dust on the top faces (sRGB hex) and how much (dry maps). */
   readonly dust: number;
   readonly dustAmount: number;
+  /** A snowbound map: the sleds leave runner grooves and carry snow on their decks and loads (cartBodies.ts). */
+  readonly snow?: boolean;
 }
 
 const TEMPERATE: VehicleClimate = { dirt: 0x4a3c2c, dirtAmount: 0.5, dust: 0x8a7c66, dustAmount: 0 };
 const ARID: VehicleClimate = { dirt: 0x8c7454, dirtAmount: 0.45, dust: 0xb09872, dustAmount: 0.35 };
 const RED_ROCK: VehicleClimate = { dirt: 0x8a4e30, dirtAmount: 0.5, dust: 0xb07a52, dustAmount: 0.35 };
-const SNOW: VehicleClimate = { dirt: 0x5a5650, dirtAmount: 0.45, dust: 0x9a968c, dustAmount: 0 };
+const SNOW: VehicleClimate = { dirt: 0x5a5650, dirtAmount: 0.45, dust: 0x9a968c, dustAmount: 0, snow: true };
 const TROPICAL: VehicleClimate = { dirt: 0x6a4a30, dirtAmount: 0.6, dust: 0x8a7458, dustAmount: 0.05 };
 const ASH: VehicleClimate = { dirt: 0x2e2c2a, dirtAmount: 0.55, dust: 0x4e4a46, dustAmount: 0.25 };
 const BLACK_EARTH: VehicleClimate = { dirt: 0x2e2620, dirtAmount: 0.6, dust: 0x6a5e50, dustAmount: 0.05 };

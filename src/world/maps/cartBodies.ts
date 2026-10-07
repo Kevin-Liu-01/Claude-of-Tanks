@@ -70,6 +70,8 @@ interface Ctx {
   readonly seed: number;
   /** The model's wood shades. */
   readonly woods: readonly Mat[];
+  /** A snowbound map (VehicleClimate snow): runner grooves, snow on the decks and loads (all dressing). */
+  readonly snow?: boolean;
 }
 
 function hash01(a: number, b: number): number {
@@ -275,8 +277,9 @@ function loaf(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, 
 }
 
 /** A load of loose hay: forkfuls heaped over the bed, straw hanging in wisps round its foot. */
-function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, h: number, mats: readonly Mat[], belly = 0.18): void {
-  loaf(c, x, y0, z, hw, hl, h, mats, { belly, lump: 0.11, ends: 3 });
+function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, h: number, mats: readonly Mat[], belly = 0.18,
+  lump = 0.11, tufts = false): void {
+  loaf(c, x, y0, z, hw, hl, h, mats, { belly, lump, ends: 3 });
   if (c.coarse) return;
   // wisps: thin straw tongues hanging from the heap's skirt (two-sided)
   const n = Math.max(14, Math.round((hw + hl) * 26));
@@ -298,6 +301,32 @@ function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: numbe
       face4(c.mesh, [top0, top1, tipB, tipA], n1, m);
       face4(c.mesh, [top0, tipA, tipB, top1], [-n1[0], -n1[1], -n1[2]], m);
     });
+  }
+  if (!tufts) return;
+  // (wave 161: "a giant potato") forkfuls pulled proud of the heap: short straw tongues in rings up its shoulders, the
+  // upper ones lifting, the lower ones drooping; both faces lit as the heap's own surface there, so none shows dark
+  const rings = [0.3, 0.55, 0.78];
+  for (let ri = 0; ri < rings.length; ri++) {
+    const f = rings[ri], rr = Math.sqrt(Math.max(0.05, 1 - f * f)) * (1 + belly * 4 * f * (1 - f));
+    const m2 = Math.max(10, Math.round((hw + hl) * (14 - ri * 3)));
+    for (let k = 0; k < m2; k++) {
+      const t = (k + hash01(k + ri * 97, c.seed + 91)) / m2;
+      const a = t * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      const ex = Math.sign(ca) * Math.pow(Math.abs(ca), 0.6), ez = Math.sign(sa) * Math.pow(Math.abs(sa), 0.6);
+      const px = x + hw * rr * ex * 0.97, pz = z + hl * 0.94 * rr * ez, py = y0 + h * f * (0.97 + 0.06 * hash01(k, c.seed + ri + 93));
+      const size = Math.max(0.35, Math.min(1, h / 1.6)), len = (0.07 + 0.16 * Math.pow(hash01(k + ri * 31, c.seed + 95), 1.3)) * size;
+      const wd = (0.02 + 0.03 * hash01(k, c.seed + ri * 7 + 97)) * Math.sqrt(size);
+      const surface: Vec3 = unit([ex / Math.max(0.3, hw), f * 1.6 / Math.max(0.3, h), ez / Math.max(0.3, hl)]);
+      const out: Vec3 = unit([ex, (f - 0.5) * 1.2 + (hash01(k, c.seed + ri + 99) - 0.5) * 0.5, ez]), side: Vec3 = unit([-ez, 0, ex]);
+      const base0: Vec3 = [px - side[0] * wd, py, pz - side[2] * wd], base1: Vec3 = [px + side[0] * wd, py, pz + side[2] * wd];
+      const tip: Vec3 = [px + out[0] * len, py + out[1] * len, pz + out[2] * len];
+      const tipA: Vec3 = [tip[0] - side[0] * wd * 0.3, tip[1], tip[2] - side[2] * wd * 0.3], tipB: Vec3 = [tip[0] + side[0] * wd * 0.3, tip[1], tip[2] + side[2] * wd * 0.3];
+      const m = mats[(k + ri) % mats.length];
+      c.mesh.dressing(() => {
+        face4(c.mesh, [base0, base1, tipB, tipA], surface, m);
+        face4(c.mesh, [base0, tipA, tipB, base1], surface, m);
+      });
+    }
   }
 }
 
@@ -1604,6 +1633,45 @@ function trailer(c: Ctx, s: TrailerSpec): Assembly {
   return { wheels, body, load, debris: { w: 0.16, l: s.deckL * 0.5 } };
 }
 
+// the wave-161 sled pass (2026-10-07): on a snowbound map a sled sits in the snow it was drawn through — two grooves
+// pressed by its runners out behind it, snow lodged on its deck and settled on its load; a load is lashed down
+const SNOW_LYING = material('cargo', linearHex(0xe6ecf0), 0.92, 0, 0, 0.7);
+const SNOW_GROOVE = material('cargo', linearHex(0x8e9aa8), 0.95, 0, 0, 0.6);
+const MUTED_CANVAS = fixed(0x6a6650, 0.92, 0, 'canvas');
+const OLIVE_CAN = fixed(0x4b5132, 0.62, 0.15, 'steel');
+const ROPE = material('cargo', linearHex(0x7a6a48), 0.9, 0, 0, 0.6);
+
+/** The runners' grooves in the snow: a pressed strip under each runner, out behind the tail and a little ahead (dressing). */
+function runnerGrooves(c: Ctx, xs: readonly number[], z0: number, z1: number, width: number): void {
+  if (!c.snow || c.coarse) return;
+  for (const x of xs) {
+    c.mesh.dressing(() => c.mesh.box(x, 0.004, (z0 + z1) / 2, width, 0.008, z1 - z0, SNOW_GROOVE, 0));
+    // the ridge of snow pushed up beside each groove
+    for (const side of [-1, 1]) c.mesh.dressing(() => c.mesh.box(x + side * (width / 2 + 0.03), 0.012, (z0 + z1) / 2, 0.05, 0.024, z1 - z0, SNOW_LYING, 0.01));
+  }
+}
+
+/** Snow settled on a surface: a few uneven drifts lying on it, lumpy and thin, never one smooth lid (dressing). */
+function snowCover(c: Ctx, x: number, y: number, z: number, hw: number, hl: number, depth: number): void {
+  if (!c.snow || c.coarse) return;
+  const salt = Math.round((x * 31 + y * 17 + z * 13) * 10);
+  for (let k = 0; k < 5; k++) {
+    const u = hash01(k, c.seed + salt + 7) - 0.5, v = hash01(k, c.seed + salt + 11) - 0.5, size = 0.25 + 0.35 * hash01(k, c.seed + salt + 13);
+    c.mesh.dressing(() => loaf(c, x + u * hw * 1.3, y - 0.012 * k, z + v * hl * 1.5, hw * size, hl * size * 0.8, depth * (0.6 + 0.6 * size),
+      [SNOW_LYING], { belly: 0, lump: 0.32, ends: 1.6, seed: 401 + k * 37 + salt }));
+  }
+}
+
+/** A rope over a load from side to side: a loop over its top, its ends down to the frame (dressing). */
+function lashing(c: Ctx, z: number, hw: number, y0: number, h: number): void {
+  if (c.coarse) return;
+  c.mesh.dressing(() => {
+    const loop: Vec3[] = [];
+    for (let k = 0; k <= 12; k++) { const a = (k / 12) * Math.PI; loop.push([Math.cos(a) * hw, y0 + Math.sin(a) * h, z]); }
+    bentRod(c, loop, 0.011, ROPE, false);
+  });
+}
+
 /** A hay sledge (Podhale, January): long curled runners, posts, a ladder rack under its hay, shafts on the snow. */
 interface SledgeSpec extends Common {
   readonly kind: 'sledge';
@@ -1643,9 +1711,18 @@ function sledge(c: Ctx, s: SledgeSpec): Assembly {
     for (let k = 0; k < nb; k++) board(c, -rw + (k + 0.5) * (s.bedW / nb), bedY + 0.02, -hl * 0.1, s.bedW / nb - 0.01, 0.026, s.bedL * 0.9, woodOf(c, 14 + k));
   };
   const load = s.load === 'empty' ? undefined : () => {
-    if (s.load === 'hay') hayLoad(c, 0, bedY + 0.04, -hl * 0.1, rw + 0.42, hl * 0.92, 1.15, [HAY_A, HAY_B, HAY_C], 0.2);
-    else firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
+    if (s.load === 'hay') {
+      // (wave 161: "a giant potato" hiding its runners) a ragged heap within the rack, the runners and knees in view,
+      // held down by the binding pole and its ropes, snow settled on it
+      hayLoad(c, 0, bedY + 0.04, -hl * 0.1, rw + 0.24, hl * 0.9, 1.0, [HAY_A, HAY_B, HAY_C], 0.16, 0.16, true);
+      if (!c.coarse) {
+        c.mesh.dressing(() => rod(c, [0, bedY + 1.0, -hl * 1.0], [0, bedY + 1.02, hl * 0.82], 0.035, woodOf(c, 20), true));
+        for (const z of [-hl * 0.92, hl * 0.72]) c.mesh.dressing(() => rod(c, [0, bedY + 1.0, z], [0, bedY + 0.06, z + (z > 0 ? 0.12 : -0.12)], 0.01, ROPE, false));
+      }
+      snowCover(c, 0, bedY + 0.98, -hl * 0.1, (rw + 0.24) * 0.62, hl * 0.66, 0.1);
+    } else firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
   };
+  runnerGrooves(c, [-rw, rw], -hl - 2.4, hl + 0.2, 0.09);
   return { wheels: [], body, load, debris: { w: 0.16, l: 1.4 } };
 }
 
@@ -1661,7 +1738,8 @@ interface SledSpec extends Common {
 function sled(c: Ctx, s: SledSpec): Assembly {
   const hl = s.len / 2, rw = s.width / 2 - 0.03;
   if (s.style === 'horn') {
-    const deckY = 0.32;
+    // (wave 161: "stubby legs") the deck on slender splayed stanchions a hand's breadth higher, the rail meeting the horn
+    const deckY = 0.38;
     const body = () => {
       for (const sx of [-1, 1]) {
         // the runner rises at the front into the horn the driver steers by
@@ -1672,9 +1750,9 @@ function sled(c: Ctx, s: SledSpec): Assembly {
         if (!c.coarse) c.mesh.dressing(() => beam(c.mesh, [sx * rw, 0.006, -hl], [sx * rw, 0.006, hl * 0.4], 0.045, 0.008, IRON_WORN));
         for (let k = 0; k < 3; k++) {
           const z = -hl + 0.15 + k * hl * 0.55;
-          beam(c.mesh, [sx * rw, 0.07, z], [sx * (rw - 0.02), deckY - 0.03, z], 0.04, 0.05, woodOf(c, 3));
+          beam(c.mesh, [sx * rw, 0.06, z], [sx * (rw - 0.035), deckY - 0.03, z], 0.03, 0.036, woodOf(c, 3));
         }
-        beam(c.mesh, [sx * (rw - 0.02), deckY - 0.02, -hl + 0.04], [sx * (rw - 0.02), deckY - 0.02, hl * 0.45], 0.05, 0.05, woodOf(c, 4 + sx));
+        beam(c.mesh, [sx * (rw - 0.035), deckY - 0.02, -hl + 0.04], [sx * (rw - 0.03), deckY - 0.02, hl * 0.49], 0.045, 0.045, woodOf(c, 4 + sx));
       }
       // the cross bar between the horns, the slats
       rod(c, [-rw + 0.03, 0.62, hl * 0.82], [rw - 0.03, 0.62, hl * 0.82], 0.018, woodOf(c, 6), true);
@@ -1689,8 +1767,17 @@ function sled(c: Ctx, s: SledSpec): Assembly {
           for (let k = 0; k <= 10; k++) { const a = (k / 10) * Math.PI; loop.push([Math.cos(a) * (rw + 0.14), deckY + 0.03 + Math.sin(a) * 0.62, z]); }
           bentRod(c, loop, 0.008, TWINE, false);
         });
-      } else firewood(c, 0, deckY + 0.03, -hl * 0.25, s.width * 0.92, hl * 1.2, 3);
+        snowCover(c, 0, deckY + 0.6, -hl * 0.25, rw * 0.7, hl * 0.5, 0.06);
+      } else {
+        // a shorter stack, the slats open ahead of it and behind (wave 161: "no snow on the deck")
+        firewood(c, 0, deckY + 0.03, -hl * 0.22, s.width * 0.92, hl * 0.98, 3);
+        snowCover(c, 0, deckY + 0.39, -hl * 0.22, rw * 0.72, hl * 0.42, 0.07);
+      }
     };
+    // snow lodged on the open slats ahead of the load and behind it
+    snowCover(c, 0, deckY + 0.03, hl * 0.33, rw * 0.85, hl * 0.12, 0.04);
+    snowCover(c, 0, deckY + 0.03, -hl * 0.85, rw * 0.85, hl * 0.1, 0.035);
+    runnerGrooves(c, [-rw, rw], -hl - 2.2, hl * 0.6, 0.06);
     return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 } };
   }
   // the komatik: plank runners on edge with turned-up noses, plastic shoes, cross slats lashed on, a handle frame
@@ -1736,22 +1823,31 @@ function sled(c: Ctx, s: SledSpec): Assembly {
   };
   const load = s.load === 'empty' ? undefined : () => {
     if (s.load === 'gear') {
-      // a lashed load: a box, a tarp bundle, a jerrycan
+      // a lashed load (wave 161: "toy blocks"): a plank box, a muted canvas tarp bundle folded over its gear, an olive
+      // jerrycan; ropes over all three to the slats, snow on top
       board(c, 0, top + 0.2, -hl * 0.4, s.width * 0.8, 0.34, 0.5, woodOf(c, 40));
-      loaf(c, 0, top + 0.025, hl * 0.22, rw * 0.9, hl * 0.34, 0.32, [fixed(0x3e5a6a, 0.85, 0, 'canvas')], { belly: 0.1, lump: 0.04, ends: 2.5 });
-      canister(c, rw * 0.5, top + 0.025, hl * 0.62, 0.1, fixed(0x8a2a1a, 0.5, 0.2, 'steel'));
+      if (!c.coarse) c.mesh.dressing(() => {
+        for (let k = 1; k < 4; k++) c.mesh.box(0, top + 0.03 + k * 0.085, -hl * 0.4 - 0.252, s.width * 0.8 + 0.004, 0.008, 0.006, fixed(0x3a3226, 0.9), 0);
+        for (const sx of [-1, 1]) c.mesh.box(sx * (s.width * 0.4 - 0.03), top + 0.2, -hl * 0.4 - 0.253, 0.04, 0.34, 0.008, woodOf(c, 41), 0);
+      });
+      loaf(c, 0, top + 0.025, hl * 0.22, rw * 0.9, hl * 0.34, 0.32, [MUTED_CANVAS], { belly: 0.1, lump: 0.09, ends: 2.5 });
+      canister(c, rw * 0.5, top + 0.025, hl * 0.62, 0.1, OLIVE_CAN);
+      for (const z of [-hl * 0.52, -hl * 0.28, hl * 0.1, hl * 0.34]) lashing(c, z, rw * 0.98, top + 0.02, z < 0 ? 0.4 : 0.36);
+      snowCover(c, 0, top + 0.33, hl * 0.22, rw * 0.6, hl * 0.22, 0.05);
+      snowCover(c, 0, top + 0.37, -hl * 0.4, s.width * 0.3, 0.2, 0.04);
     } else firewood(c, 0, top + 0.025, 0, s.width * 0.9, s.len * 0.7, 2);
   };
+  runnerGrooves(c, [-rw, rw], -hl - 2.6, hl + 0.3, 0.07);
   return { wheels: [], body, load, debris: { w: 0.07, l: 0.8 } };
 }
 
 /** A sled smashed: heeled over onto one runner and slewed, its load spilled beside it. */
-function wreckSled(c: Ctx, a: Assembly, halfWidth: number): void {
+function wreckSled(c: Ctx, a: Assembly, halfWidth: number, spill = 1.9): void {
   c.mesh.push().translate(halfWidth, 0, 0).rotateZ(-0.55).rotateY(0.18).translate(-halfWidth, 0, 0);
   a.body();
   c.mesh.pop();
   if (a.load) {
-    c.mesh.push().translate(halfWidth * 1.9, 0, 0.1).scale(1.15, 0.5, 1.05);
+    c.mesh.push().translate(halfWidth * spill, 0, 0.1).scale(1.15, 0.5, 1.05);
     a.load();
     c.mesh.pop();
   }
@@ -1767,6 +1863,7 @@ interface CartBuildOptions {
   readonly coarse: boolean;
   readonly wrecked: boolean;
   readonly seed: number;
+  readonly snow?: boolean;
 }
 
 function assembly(c: Ctx, m: CartModel): Assembly {
@@ -1795,10 +1892,11 @@ function assembly(c: Ctx, m: CartModel): Assembly {
 
 /** Build a cart or sled into the mesh, intact or wrecked. */
 export function buildCart(mesh: VehicleMesh, m: CartModel, o: CartBuildOptions): void {
-  const c: Ctx = { mesh, coarse: o.coarse, seed: o.seed, woods: m.wood.map((hex) => woodMat(hex)) };
+  const c: Ctx = { mesh, coarse: o.coarse, seed: o.seed, woods: m.wood.map((hex) => woodMat(hex)), snow: o.snow };
   const a = assembly(c, m);
   if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked); return; }
-  wreckSled(c, a, m.kind === 'sled' ? m.width / 2 : m.kind === 'sledge' ? m.bedW / 2 + 0.3 : 0.3);
+  // the hay sledge's spill lies a little closer since its heap sits within the rack (the wave-161 pass)
+  wreckSled(c, a, m.kind === 'sled' ? m.width / 2 : m.kind === 'sledge' ? m.bedW / 2 + 0.3 : 0.3, m.kind === 'sledge' ? 1.6 : 1.9);
 }
 
 /** The cart's wheels (axle z, centre height, radius): the spray zones its weathering darkens. */

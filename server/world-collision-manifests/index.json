@@ -19,8 +19,8 @@
       "concealers": 1299
     },
     "winter": {
-      "bytes": 1457588,
-      "sha256": "85f78a4e5703605f0910383196bf750dc218ea378eb29e5a897c421bb48b2992",
+      "bytes": 1501632,
+      "sha256": "206993cdc14d837fdb8532d1036242c2ff14cab174191c8697b683beb8c0e3d4",
       "obstacles": 5180,
       "colliders": 5040,
       "concealers": 4178
@@ -96,8 +96,8 @@
       "concealers": 9700
     },
     "alpine": {
-      "bytes": 1932655,
-      "sha256": "d73cd6935b7b3d3b0a7895299233d0be423f376c0173e52340f0a365f01c934a",
+      "bytes": 2047982,
+      "sha256": "0858332ba4d44ba7e743c2914b77ac69ee29945702dcf8a08e28a84d40e0ca31",
       "obstacles": 6789,
       "colliders": 6717,
       "concealers": 5659
@@ -173,8 +173,8 @@
       "concealers": 674
     },
     "whiteout": {
-      "bytes": 718236,
-      "sha256": "7477e2157b7e711c21306007724f9821e047fb912042bb739c738548de07a12e",
+      "bytes": 728942,
+      "sha256": "d22457a0f6b6bbe289447627738351790907c2b06913acca8739e9d5f121cdcb",
       "obstacles": 1326,
       "colliders": 1192,
       "concealers": 606
