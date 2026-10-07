@@ -7237,6 +7237,19 @@ Frames: `$SP/p2/mountains/pair-wo/{before,after}/frames/whiteout/` and the sheet
 lab: `lab4/out/wo-bird-check.png` (game / bake / bake without the fill's sun term) and `wo-bird-ring-vs-noring.png` (the
 shell alone, no apron).
 
+### 2026-10-06 — Jade River Delta round 2: the aat-chala's bangla cornice and curved hips, its sanctum, its court (the landmarks lane)
+
+**The gauntlet's wave 158:** the temple's "rounded, dome-like roof tiers over a straight cornice", "its three arches
+filled with flat black panels", "it sits on bare lawn with no courtyard, path or village". The chala slopes now meet in
+crisp curved hips over a cornice drooping to the corners; behind the arches the sanctum's inner wall stands in shadow
+with the door's dark leaves; the temple stands on an 18 m brick court (a dressing piece authored before it). Against the
+round-1 shard: the temple's shell bands, a bush's concealment off the court's clearance; no other record moved. Census
+[6575, 6228, 8251]. Pacing (the fleet receipt's four seeds, 31000–31003) 176 / 185 / 160 / 171 s against the head's 144
+/ 185 / 170 / 158 s. Receipts: the 74 selected for the round's seven maps (the landmarks library, the collision drift
+and pins, the layout brief, the maps' world and village receipts) green but the Delta plaster palette, whose fixture
+build times out under the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3): census close at every
+view (the temple's view +9 draws, +0.31 % triangles).
+
 ### 2026-10-05 — Jade River Delta: the terracotta aat-chala temple by the market (the landmarks lane)
 
 The market village's temple in the yard west of the square, north of the village's yard wall: the square brick cella on
