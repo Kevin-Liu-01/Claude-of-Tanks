@@ -638,7 +638,7 @@ for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMat
 }
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
 assert.match(shadersSource, /uniform sampler3D tShape;\s*uniform sampler3D tDetail;/, 'the volumes are 3D textures');
-for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
+for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * powderFade * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
   'cl2Band( uCamPos, dir, lo, uLayerTop[ i ] )', 'uLayerAnvil', 'cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) )', 'L += T * ( S - S * Tstep ) / sigma;',
   'if ( lit == 0 || ( ( lit & 1 ) == 0 && T > 0.15 ) )']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);

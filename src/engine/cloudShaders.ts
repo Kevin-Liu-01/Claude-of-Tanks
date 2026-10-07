@@ -593,6 +593,9 @@ void main() {
 		vec4 phB = vec4( phaseDual( cosT, 0.0625 ), phaseDual( cosT, 0.03125 ), phaseDual( cosT, 0.015625 ), phaseDual( cosT, 0.0078125 ) );
 #endif
 		float sunUp = max( uSunDir.y, 0.0 );
+		// the powder term darkens the crevices of a face lit from behind the viewer; looking toward the sun the thin edges
+		// glow with the forward lobe (the silver lining), so it fades out there (the old layer's law, round 71b)
+		float powderFade = 1.0 - smoothstep( -0.25, 0.7, cosT );
 		// a deck's runs are marched whole; the other lanes' runs are tested first (below)
 		bool deckLane = any( greaterThanEqual( uLayerCover * step( vec4( 1e-6 ), uLayerDensity ), vec4( 0.7 ) ) );
 		bool inRun = false;
@@ -722,7 +725,7 @@ void main() {
 				float skyThrough = 1.0 / ( 1.0 + 0.1125 * od * max( sunUp, 0.2 ) );
 				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * ( ( 1.0 - skyK ) * 0.5 * uAmbientScale );
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
-				radiance *= 1.0 - uPhase.w * exp( -sigma * uPowderExp );
+				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );
 				radiance *= uTint;
 				if ( uDebug == 4.0 ) radiance = vec3( 0.6 );
 				// QA: one term of the light alone (5 the optical depth to the sun / 40, 6 the octaves, 7 the deep diffusion,
@@ -731,7 +734,7 @@ void main() {
 				else if ( uDebug == 6.0 ) radiance = dbgSun;
 				else if ( uDebug == 7.0 ) radiance = dbgDiffuse;
 				else if ( uDebug == 8.0 ) radiance = uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * ( ( 1.0 - skyK ) * 0.5 * uAmbientScale );
-				else if ( uDebug == 9.0 ) radiance = vec3( 1.0 - uPhase.w * exp( -sigma * uPowderExp ) );
+				else if ( uDebug == 9.0 ) radiance = vec3( 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp ) );
 				else if ( uDebug == 10.0 ) radiance = vec3( sigma * 20.0 );
 				// [ported] the energy-conserving integral of the step
 				float Tstep = exp( -sigma * ds );
