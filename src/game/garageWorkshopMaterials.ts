@@ -113,7 +113,8 @@ export function createGarageWorkshopMaterialPalette(
   // (round 4: the rougher, almost dielectric smoked pane of materials.ts)
   const opticGlass = standard(0x343b34, 0.58, 0.08, { envMapIntensity: 0.16 });
   const canvas = standard(0x42452f, 0.98, 0);
-  const wood = standard(0x6b543a, 0.9, 0);
+  // round 4 (2026-10-07): the vehicle set's matte, weathered issue-crate wood (materials.ts)
+  const wood = standard(0x5f5648, 0.95, 0, { envMapIntensity: 0.12 });
 
   tagVehicleMaterial(paint, 'armorPaint', 'garage-factory-paint');
   tagVehicleMaterial(wheelPaint, 'wheelPaint', 'garage-factory-wheel-paint');

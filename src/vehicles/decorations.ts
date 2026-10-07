@@ -664,17 +664,20 @@ function weaveTex() {
 }
 
 // crate wood: planks + grain
+// 2026-10-07 (tank-accessories round 4; wave 215 on the M60A1: "the crate reads as varnished mahogany furniture"): issue
+// crate wood is weathered, sun-greyed pine, not a warm stained hardwood: a grey-brown ground with greyer grain and
+// plank joints (the same random draws, so every crate keeps its grain).
 function woodTex() {
   return canvasTex('decor-wood', 128, (g, S) => {
-    g.fillStyle = '#8d7a5e'; g.fillRect(0, 0, S, S);
+    g.fillStyle = '#8f8573'; g.fillRect(0, 0, S, S);
     const rng = mulberry32(0x77d1);
     const plank = S / 4;
     for (let p = 0; p < 4; p++) {
-      g.fillStyle = `rgba(70,50,28,${0.10 + rng() * 0.12})`;
+      g.fillStyle = `rgba(62,56,46,${0.10 + rng() * 0.12})`;
       g.fillRect(0, p * plank, S, 2);
       for (let i = 0; i < 22; i++) {
         const y = p * plank + 3 + rng() * (plank - 5);
-        g.strokeStyle = `rgba(${rng() < 0.6 ? '92,68,40' : '150,120,80'},${0.12 + rng() * 0.15})`;
+        g.strokeStyle = `rgba(${rng() < 0.6 ? '84,76,62' : '156,148,130'},${0.12 + rng() * 0.15})`;
         g.lineWidth = 1;
         g.beginPath();
         g.moveTo(0, y);
@@ -1001,9 +1004,11 @@ function buildDecorMaterials(
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.35,
     }),
+    // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
+    // read as varnished mahogany): woodTex's grey-brown ground x a near-neutral multiplier, about #5f5648 in all
     wood: () => painted({
-      map: woodTex(), color: 0x97815f, roughness: 0.9, metalness: 0.02,
-      vertexColors: true, envMapIntensity: 0.15,
+      map: woodTex(), color: 0xaca8a5, roughness: 0.96, metalness: 0.0,
+      vertexColors: true, envMapIntensity: 0.08,
     }),
     canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
@@ -1121,8 +1126,9 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
       parts.push({ mat: 'wood', geo: rgb ? bakeTint(uv, rgb[0] * tone, rgb[1] * tone, rgb[2] * tone, 0.3) : bakeShade(uv, tone) });
     },
     // Small wooden parts ride the painted-hardware draw (grain does not read on a handle; 2026-10-05 draw audit): the
-    // wood family's colour, woodTex ground #8d7a5e x 0x97815f over the hardware map's #cbc9c1 (linear).
-    trim(geo, tone = 0.7) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.138 * tone, 0.0735 * tone, 0.0242 * tone, 0.28) }); },
+    // wood family's colour, woodTex ground #8f8573 x 0xaca8a5 over the hardware map's #cbc9c1 (linear; round 4,
+    // 2026-10-07: the weathered crate wood, was #8d7a5e x 0x97815f).
+    trim(geo, tone = 0.7) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.1897 * tone, 0.1572 * tone, 0.121 * tone, 0.28) }); },
     rubber(geo, tone = 0.6) { parts.push({ mat: 'rubber', geo: bakeShade(geo, tone) }); },
     kit(geo, tone = 0.92) { parts.push({ mat: 'kit', geo: bakeShade(geo, tone) }); },
     lens(geo) { parts.push({ mat: 'lens', geo: bakeShade(geo, 0.9) }); },

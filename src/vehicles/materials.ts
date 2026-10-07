@@ -2991,7 +2991,9 @@ export function createTankMaterials(
   })));
   for (const rec of paintableRecs) shared.paintable.add(rec);
   const wood = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x6b543a, roughness: 0.88, metalness: 0.0,
+    // round 4 (2026-10-07; wave 215 on the M60A1: "the crate reads as varnished mahogany furniture"): matte, greyer,
+    // weathered issue-crate wood (was 0x6b543a, a warm stain at roughness 0.88 under the full sky env)
+    color: 0x5f5648, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.12,
     bumpMap: roughTex, bumpScale: 0.3,
   })));
   // Unditching logs (2026-10-07, tank-accessories round 4; wave 214 on the T-90M: "a smooth orange or peach tube. Give
