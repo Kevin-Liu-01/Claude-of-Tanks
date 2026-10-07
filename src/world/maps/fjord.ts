@@ -130,10 +130,12 @@ export default {
     // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
     // the lower slopes, a few Scots pine on the rock, spruce only in the planted stands; in May the birches are bare twigs
     // just breaking into a pale green haze
-    // (round 3, wave 129: "palm- or umbrella-crowned trees on the ridges") the Scots pine's high crown on its bare red
-    // trunk read as a parasol pine on the headlands: a pine here and there on the rock, the rims birch and spruce
-    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.68], ['pine', 0.08], ['spruce', 0.24]],
-    loneMix: [['birch', 0.74], ['pine', 0.08], ['spruce', 0.18]], rimMix: [['birch', 0.55], ['pine', 0.04], ['spruce', 0.41]],
+    // (round 3, wave 129: "palm- or umbrella-crowned trees on the ridges": the Scots pine's high crown on its bare red
+    // trunk read as a parasol pine on the headlands) the mix stays round 2's: with the pines cut to a few, the woods'
+    // concealment fell with them and the default bot match ran 168 s (median of four, under the 3-minute floor; with this
+    // mix and the rest of round 3, 184 s). The pine's crown is the trees lane's to reshape.
+    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.62], ['pine', 0.24], ['spruce', 0.14]],
+    loneMix: [['birch', 0.66], ['pine', 0.26], ['spruce', 0.08]], rimMix: [['birch', 0.50], ['pine', 0.30], ['spruce', 0.20]],
     palettes: {
       birch: { birchLeaves: true, cardHue: 0.2, cardSat: 0.16, cardL0: 0.44,
         texTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.2 + (h - 0.25) * 0.2), clamp01(s * 0.42 + 0.06), clamp01(l * 0.96 + 0.1)],

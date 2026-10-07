@@ -68,8 +68,8 @@
       "concealers": 6296
     },
     "fjord": {
-      "bytes": 1535476,
-      "sha256": "976eb3db9f47789aea3dc8bcc50f2a5a8d64be1af91cf2ead00c7535958f7a37",
+      "bytes": 1535451,
+      "sha256": "c121bb97f9bc0d24c126e4f99c989480c07ee0b1b572089107078b3bd750419e",
       "obstacles": 5101,
       "colliders": 5088,
       "concealers": 5190
