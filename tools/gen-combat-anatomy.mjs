@@ -37,6 +37,25 @@ const COMBAT_ANATOMY_CALIBRATIONS = check
   : Object.freeze({});
 const round = (value) => Number(value.toFixed(4));
 
+// The tracks' ground contact as the builder lays it (src/sim/trackContact.ts; physics lane round 8): the flat run
+// between the road wheels, its centre, the tracks' outer edge, the lowest gear surface, the belly pan and the rise of
+// the sprocket and idler ends. The movement solve reads it wherever it runs; solo play used to read it off the drawn
+// model while the host, its Worker and the matrix ran a default support line 1.5-2.5 m longer than the track.
+function trackContactReceipt(contact, id) {
+  if (!contact || !(contact.halfLenM > 0) || !(contact.halfWidM > 0)) throw new Error(`${id}: track contact missing`);
+  const r = (value) => (value == null || !Number.isFinite(value) ? null : round(value));
+  return {
+    halfLenM: r(contact.halfLenM),
+    halfWidM: r(contact.halfWidM),
+    zCenterM: r(contact.zCenterM ?? 0),
+    bottomYM: r(contact.bottomYM ?? 0),
+    panYM: r(contact.panYM),
+    endRise: contact.endRise
+      ? { dzM: r(contact.endRise.dzM), frontM: r(contact.endRise.frontM), rearM: r(contact.endRise.rearM) }
+      : null,
+  };
+}
+
 // Geometry-derived combat shells are deliberately much coarser than the
 // presentation meshes, but they are closed volumes rather than the old set
 // of unrelated armor quads. Longitudinal convex cells preserve the changing
@@ -583,6 +602,7 @@ function receiptFor(id) {
       ...(tank.root.userData.weaponGeometryParts?.length
         ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },
+      trackContact: trackContactReceipt(tank.contactGeom, id),
     };
   } finally {
     if (stockCapture) stockCapture.dispose();

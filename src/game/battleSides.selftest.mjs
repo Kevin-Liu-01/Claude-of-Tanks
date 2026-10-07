@@ -4,7 +4,9 @@ import { planBattleParticipantIds, spawnTanks } from './rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
-import { BATTLE_FIELD_LIMIT, SIDES_PRESETS } from '../sim/matchRuleset.ts';
+import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
+import { battleRosterPlan } from './soloRosterPlan.ts';
+import { BATTLE_FIELD_LIMIT, SIDES_PRESETS, matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // Sides (owner 2026-09-18: "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
 // enter custom numbers of allies and enemies so you can do stuff like 1 v 20"): a solo battle of a symmetric mode
@@ -20,11 +22,12 @@ const play = (gameMode, playerSpecId, ordinal, arrangement, rosterSeed = 0) => {
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: {}, setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = ordinal;
-  const planned = planBattleParticipantIds(game, playerSpecId, true, [], arrangement ? arrangement.allies + arrangement.enemies : null);
+  const plan = battleRosterPlan(matchRulesetFor(gameMode,null,arrangement),null,true);
+  const planned = planBattleParticipantIds(game, playerSpecId, true, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
   setupBattle(game, playerSpecId, world, { gameMode, random: true, arrangement, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
-  const fielded = game.tanks.map((entity) => ({ id: entity.specId, team: entity.team, x: entity.state.pos.x, z: entity.state.pos.z }));
+  const fielded = game.tanks.map((entity) => ({ id: entity.specId, uid: entity.id, nation: entity.spec.nation, isPlayer: entity.isPlayer, team: entity.team, x: entity.state.pos.x, z: entity.state.pos.z }));
   return {
-    allies: fielded.filter((entry) => entry.id !== playerSpecId && entry.team === 'player'),
+    allies: fielded.filter((entry) => !entry.isPlayer && entry.team === 'player'),
     enemies: fielded.filter((entry) => entry.team === 'enemy'),
     fielded,
     planned,
@@ -80,6 +83,38 @@ try {
   const capped = play('capture_the_flag', 'leo2a7v', 4, { allies: 30, enemies: 30 });
   assert.equal(capped.enemies.length, 30, 'the typed enemy count is kept under the field limit');
   assert.equal(capped.allies.length, BATTLE_FIELD_LIMIT - 1 - 30, 'the allied bots yield to the field limit');
+
+  const korea = PRODUCTION_TANK_IDS.find(id=>getSpec(id).nation==='South Korea');
+  for(const [id,count] of [['m1a2',6],['leo2a7v',13],[korea,30]]) {
+    const battle=play('standard',id,12,{allies:count,enemies:7,alliedNation:'player'});
+    assert.equal(battle.allies.length,count,'same-nation teams keep every allied seat');
+    assert.ok(battle.allies.every(entry=>entry.nation===getSpec(id).nation));
+    assert.equal(battle.fielded.filter(entry=>entry.isPlayer).length,1);
+    assert.equal(new Set(battle.fielded.map(entry=>entry.uid)).size,battle.fielded.length,'repeated tank types have distinct identities');
+    assert.deepEqual(battle.fielded.map(entry=>entry.id),battle.planned,'loading and actual battle use the identical national roster');
+  }
+
+  const reused=createGameState({rosterSeed:7});spawnTanks(reused,{scene:{remove(){}}});
+  const stockCount=reused.allTanks.length;
+  const visual=()=>({root:{},setVisible(){},syncFromState(){},dispose(){}});
+  for(const entity of reused.allTanks)entity.visual=visual();
+  const options={gameMode:'standard',random:true,deferVisuals:true,deferCamoRepaint:true,deferOpeningRoutes:true};
+  setupBattle(reused,korea,world,{...options,arrangement:{allies:30,enemies:7,alliedNation:'player'}});
+  const extra=reused.tanks.filter(entity=>entity.id!==entity.specId);
+  assert.ok(extra.length>0);
+  assert.ok(extra.every(entity=>reused.tankById.get(entity.id)===entity));
+  assert.notEqual(extra[0].state,extra[1].state,'reinforcements own movement state');
+  assert.notEqual(extra[0].combat,extra[1].combat,'reinforcements own health and ammo');
+  let disposed=0;
+  for(const entity of extra)entity.visual={...visual(),dispose(){disposed++;}};
+  for(const entity of reused.allTanks)if(!entity.visual)entity.visual=visual();
+  setupBattle(reused,korea,world,{...options,arrangement:null});
+  assert.equal(disposed,extra.length,'next battle releases reinforcement visuals');
+  assert.equal(reused.allTanks.length,stockCount,'reinforcements do not leak into the catalog');
+  assert.ok(extra.every(entity=>!reused.tankById.has(entity.id)));
+  const nationalHorde=play('endless_horde','m1a2',13,{allies:2,enemies:14,waveSize:5,enemyNation:'germany',alliedNation:'player'});
+  assert.ok(nationalHorde.allies.every(entry=>entry.nation==='USA'));
+  assert.ok(nationalHorde.enemies.every(entry=>entry.nation==='Germany'),'enemy formation is kept separate');
   const horde = play('endless_horde', 'm1a2', 5, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
   assert.equal(horde.allies.length, 2, 'Horde keeps its arranged allied bots');
   assert.equal(horde.enemies.length, 14, 'Horde keeps its arranged pool');

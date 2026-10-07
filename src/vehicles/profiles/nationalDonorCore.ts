@@ -40,7 +40,7 @@ export function castModernizedTurret(P:TankBuilderPort,d:ModernizedCasting):void
     {z:-.54,ring:ring(d.halfWidth,d.roofY,crown)},
     {z:.05,ring:ring(d.halfWidth,d.roofY,crown)},
     {z:.34,ring:ring(d.halfWidth*.97,d.roofY-.015,crown)},
-  ]));
+  ],{centeredSideQuads:true,smoothSideEdges:Array.from({length:21},(_,i)=>i+2)}));
   // Finite left and right cast cheeks leave a genuine opening ahead of the
   // rear bulkhead. The bearing enters the stock at x±.38, z.84, y.43.
   for(const side of [-1,1]){
@@ -60,6 +60,6 @@ export function castModernizedTurret(P:TankBuilderPort,d:ModernizedCasting):void
       }
       points.push([.38,top]);
       return{z,ring:side>0?points:points.map(([x,y])=>[-x,y] as const).reverse()};
-    })));
+    }),{centeredSideQuads:true,smoothSideEdges:Array.from({length:11},(_,i)=>i+(side>0?2:0))}));
   }
 }

@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="In-engine battle screenshots">
-  <path d="M7 19V8h11M46 8h11v11M7 45v11h11m28 0h11V45" fill="none" stroke="#f0a030" stroke-width="3" stroke-linecap="round"/>
-  <path d="M13 40h32l7 7H18Z" fill="#edf3f7"/>
-  <path d="M20 34h18l7 6H16Zm8-6h9l4 6H25Z" fill="#45c7ff"/>
-  <path d="M40 22h15" stroke="#ff4d62" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="50" cy="22" r="4" fill="#f0a030"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="In-engine screenshot capture">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M7 16H20L24 10H40L44 16H57V52H7Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><circle cx="32" cy="34" r="12" fill="#0b131c" stroke="#edf3f7" stroke-width="2"/><circle cx="32" cy="34" r="7" fill="url(#cyan)" stroke="#45c7ff" stroke-width="1"/><path d="M28 32 34 27" fill="none" stroke="#edf3f7" stroke-width="1.5"/><path d="M46 22H51" fill="none" stroke="#f0a030" stroke-width="2.5"/><path d="M11 44V48H17" fill="none" stroke="#7893a5" stroke-width="1.3"/></g>
 </svg>

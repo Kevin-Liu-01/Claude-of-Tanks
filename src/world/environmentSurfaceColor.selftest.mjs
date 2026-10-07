@@ -32,8 +32,10 @@ try {
     let lightness = 0, priorLightness = 0;
     for (let i = 0; i < pixels.length; i += 4) {
       color.setRGB(pixels[i] / 255, pixels[i + 1] / 255, pixels[i + 2] / 255).getHSL(hsl);
-      assert.ok(hsl.h > 0.49 && hsl.h < 0.51, 'spring water is blue-green rather than clay brown');
-      assert.ok(hsl.s >= 0.33 && hsl.s <= 0.37 && hsl.l <= 0.423,
+      // (batch 4: maps-oasis round 2, c97a5723d, the gauntlet's wave 125 "water pale mineral": Siwa's spring is a pale,
+      // milky mineral turquoise over white sand — hue 0.47, saturation 0.28, lightness to 0.51; was 0.50 / 0.35 / 0.42)
+      assert.ok(hsl.h > 0.46 && hsl.h < 0.48, 'spring water is blue-green rather than clay brown');
+      assert.ok(hsl.s >= 0.26 && hsl.s <= 0.30 && hsl.l <= 0.52,
         'pigment remains subdued, not a fluorescent pool');
       lightness += hsl.l;
       color.setRGB(prior[i] / 255, prior[i + 1] / 255, prior[i + 2] / 255).getHSL(hsl);
@@ -41,7 +43,7 @@ try {
       assert.equal(pixels[i + 3], prior[i + 3], 'packed roughness is unchanged');
     }
     const lift = (lightness - priorLightness) / (256 * 256);
-    assert.ok(lift > 0.02 && lift <= 0.032, 'water receives only the intended small lightness lift');
+    assert.ok(lift > 0.12 && lift <= 0.14, 'water receives only the intended lift (the pale mineral spring: 0.13; was 0.02-0.032)');
     for (const layer of [spring, clay]) { layer.albedo.dispose(); layer.normal.dispose(); }
   }
 } finally {

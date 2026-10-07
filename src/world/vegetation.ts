@@ -44,8 +44,10 @@ import {
 import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
-import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import {
+  insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
+} from './authoredTreePlacement.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -195,6 +197,15 @@ interface VegetationConfig {
   palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
+  /**
+   * Trees lane (2026-10-05, Kestrel's dispersal stands): the authored stands may stand inside the settlement rect. The rect
+   * and its 24 m margin keep every tree off a map's town, and on Kestrel the rect is the whole plateau. Set, an authored
+   * station skips that one test (the avoid discs, the road verge, hardstands and soft ground, the parks, the spawns and
+   * the slope still hold) and keeps clear of the map's planned sites (authoredTreePlacement.ts plannedSiteClearances) and
+   * of the `clear` polygons it names ([x, z] rings: its aprons, yards or a town plan's lots). A map that leaves it unset
+   * is placed exactly as before.
+   */
+  authoredInSettlement?: { clear?: readonly (readonly (readonly [number, number])[])[] };
   /**
    * Trees lane (2026-10-06, the map lanes' request; Saltmere's Léon bocage first): trees along the map's land-use hedges
    * — the short field boundaries its profile hedges (landUse.ts hedgeShare), read through the CPU twin (landUseAt) —
@@ -602,7 +613,7 @@ function _nrmFromHeight(h: Float32Array, s: number, strength: number, w = s): TH
   for (let y = 0; y < s; y++) for (let x = 0; x < w; x++) {
     const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
     const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x, y - 1) + H(x + 1, y - 1));
-    v.set(-dx * strength, -dy * strength, 1).normalize();
+    v.set(-dx * strength, dy * strength, 1).normalize(); // (the canvas uploads flipped: green −∂h/∂v = +∂h/∂row, as proceduralTexture.ts)
     const i = (y * w + x) * 4;
     px[i] = v.x * 127.5 + 127.5; px[i + 1] = v.y * 127.5 + 127.5; px[i + 2] = v.z * 127.5 + 127.5; px[i + 3] = 255;
   }
@@ -1018,7 +1029,14 @@ export function makeGrassCardTexture(
   const nBlades = variant === 0 ? 22 : 18;
   for (let b = 0; b < nBlades; b++) {
     const dry = rng() < dryChance;
-    const bx = 4 + rng() * (s - 8);
+    // (ground lane, wave 87: "a crisp dark X-shaped mark on the ground … a leftover editor or debug marker") a sparse dry
+    // card spread its blades' bases over its whole width, so its densest band — the one that survives the alpha test at
+    // range — was a horizontal stripe low on the card, and a lone dry tuft's two crossed cards drew two crossed stripes on
+    // bare soil (the cards' roots and a squashed tuft were ruled out in the lab: neither a faded foot nor a sunk card moved
+    // the mark). A dry tuft is a tuft: its blades rise from the card's middle third and fan out, so at range it is a narrow
+    // dense foot under a spreading crown; the meadow's card keeps its strip of sward
+    const bu = rng();
+    const bx = variant === 0 ? 4 + bu * (s - 8) : s * 0.5 + (bu - 0.5) * 0.34 * s;
     // Each metre-wide card holds a sward, not a cluster of broad spear leaves.
     // Ground cover 2026-09-12: 70 % of the 1049e4e blade width (2.1-4.9 px on
     // the 128 px card, was 1.35-3.15). The 45 % blades were too thin to
@@ -1026,8 +1044,9 @@ export function makeGrassCardTexture(
     // pasture read as a bare sheet where the reference showed dark turf.
     const bw = 2.1 + rng() * 2.8;
     const tall = rng();
-    const tipX = bx + (rng() - 0.5) * (variant === 0 ? 45 : 65);
     const tipY = s - (0.35 + 0.62 * tall) * s;
+    const lean = rng() - 0.5;
+    const tipX = variant === 0 ? bx + lean * 45 : Math.min(s - 3, Math.max(3, bx + (bx - s * 0.5) * 1.2 + lean * 0.5 * (s - tipY)));
     const cpX = bx + (tipX - bx) * (0.25 + rng() * 0.3);
     const cpY = s - (s - tipY) * (0.45 + rng() * 0.2);
     const grad = ctx.createLinearGradient(0, s, 0, tipY);
@@ -1059,7 +1078,9 @@ export function makeGrassCardTexture(
     for (let f = 0; f < 3; f++) {
       const fx = 6 + rng() * (s - 12), fy = s - (0.45 + 0.4 * rng()) * s;
       const warm = rng() < 0.55;
-      ctx.fillStyle = warm ? css(0.13, 0.75, 0.62) : css(0.14, 0.12, 0.86);
+      // (ground lane, wave 87: "pale, colorless specks … at a uniform size and density") the pale accents a cream at the
+      // grass's own value, not paper white
+      ctx.fillStyle = warm ? css(0.13, 0.75, 0.62) : css(0.13, 0.32, 0.64);
       for (let p = 0; p < 4; p++) {
         ctx.beginPath();
         ctx.arc(fx + (rng() - 0.5) * 3, fy + (rng() - 0.5) * 2, 0.7 + rng() * 0.8, 0, Math.PI * 2);
@@ -2501,6 +2522,15 @@ const GROWN_LEAF_BILLBOARD = 1;
  * the palms' fronds, the trunks and the phones' cards keep the pixel dissolve.
  */
 const CANOPY_NEAR_DISSOLVE = Object.freeze([2.5, 8.0] as const);
+/**
+ * The bark's near-camera dissolve band (m from the camera; the trunks, the limbs and the twigs). Trees lane (2026-10-05,
+ * the gauntlet's wave 122 on round 5's close frames: the near tree's trunk "a see-through dotted tube", "trunk bark
+ * reads as a see-through fishnet mesh", "solid branch stubs float in the sky above it"): the band was 1.5-4.2 m, so a
+ * trunk a camera rested 2-4 m from stood half dithered in every close view while its limbs past the band stayed solid.
+ * It now lies below any distance a pose holds the camera from bark: from the camera's near plane (0.5 m, main.ts) to
+ * 1 m. Bark dissolves only as the camera grazes it, and stands solid at rest.
+ */
+const BARK_NEAR_DISSOLVE = Object.freeze([0.5, 1.0] as const);
 /**
  * Trees round 4: the near dissolve's reach per material (uCotNearReach, over CANOPY_NEAR_DISSOLVE and the crown's size):
  * a crown's whole band, a shrub's half of it — a 6 m field bush keeps its clusters to about 3.5 m from the camera and
@@ -4044,7 +4074,7 @@ function* vegetationBuildSteps(
   // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
   // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
   const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
@@ -4191,7 +4221,8 @@ function* vegetationBuildSteps(
     if (landUseAt !== null) {
       const f = landUseAt(x, z, _landScratch);
       if (f.active) {
-        const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
+        // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
+        const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)) * (1 - f.urban))
           * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
@@ -4273,7 +4304,9 @@ function* vegetationBuildSteps(
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
-    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight * cropHeight;
+    // (ground lane, wave 87) a low crop's tuft — stubble, a karst field's weeds, a vineyard's — was squashed to a third of
+    // its height at its full width, two crossed cards lying almost flat; it keeps its aspect now (narrower as it is lower)
+    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28) * Math.min(1, Math.pow(cropHeight, 0.8)); t[5] = tuftHeight * cropHeight;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }
@@ -4543,7 +4576,7 @@ function* vegetationBuildSteps(
   // forest routes hide the player tank behind full-screen canopy walls, and
   // cards inside the orbit radius degrade to giant flat unlit sheets.
   // camo_spotting r3: per-hook near-camera dissolve — trunks keep the tight
-  // 1.5-4.2 m band (a trunk 5 m away SHOULD block the view), CANOPY fragments
+  // band (BARK_NEAR_DISSOLVE: since the trees lane's 2026-10-05 fix, only as the camera grazes bark), CANOPY fragments
   // (leaf cards + far-LOD lobes) dissolve out to ~8 m so the in-clump chase
   // camera is never smothered by unfaded sheets.
   // r2: wrap is now an AMOUNT (0 = off). Trunks get a moderate 0.30 wrap so
@@ -4733,7 +4766,7 @@ function* vegetationBuildSteps(
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
     applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
   };
-  const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
+  const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
   const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
@@ -5022,7 +5055,7 @@ function* vegetationBuildSteps(
   barkMat.normalScale.set(0.85, 0.85);
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, barkHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v11'; // trees round 4: fine wood's reach (round 77: the wind law and the moss)
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v12'; // trees lane: the near dissolve only as the camera grazes bark (round 4: fine wood's reach; round 77: the wind law and the moss)
   barkMat.userData.cotWoodFineFar = uWoodFineFar; // the frame probe's same-page A/B (its wood-fine toggle)
   yield { stage: 'treePrep', fine: true };
 
@@ -5599,10 +5632,11 @@ function* vegetationBuildSteps(
       add: concealment,
     });
   }
-  function siteOk(x: number, z: number, margin: number): boolean {
+  /** `settled`: an opted-in map's authored station, admitted inside the settlement rect (`authoredInSettlement`). */
+  function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
-    if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
+    if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
     if (veg.parks) { // town maps: trees only inside the park belts
@@ -5727,13 +5761,12 @@ function* vegetationBuildSteps(
     const heights: number[] = [];
     for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
     heights.sort((a, b) => a - b);
-    return [heights[Math.floor(heights.length * 0.4)], heights[Math.floor(heights.length * 0.6)]] as const;
+    return uplandBandOf(heights);
   })() : null;
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
-    const h = heightField.getHeightAt(x, z);
-    return TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer' ? h >= uplandBand[1] : h <= uplandBand[0];
+    return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
   }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1): boolean {
     if (!siteOk(x, z, 0)) return false;
@@ -5950,7 +5983,7 @@ function* vegetationBuildSteps(
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
   const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
     if (hedgeLandAt === null) return _hedgeSite;
@@ -6015,7 +6048,7 @@ function* vegetationBuildSteps(
    * position-hashed, and a map without a field system grows its field trees as before.
    */
   const _fieldLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   /** Whether a point stands at a woodlot's edge: within two fifths of the stand's outline beyond it (or inside it). */
   function atWoodEdge(x: number, z: number): boolean {
     for (let i = 0; i < clusters.length; i++) if (standOutlineFraction(i, x, z) <= FIELD_TREE_WOOD_EDGE) return true;
@@ -6634,8 +6667,16 @@ function* vegetationBuildSteps(
     const seatKey = (t: TreeRecord): string => `${t.x},${t.z}`;
     const seatWood = new Map<string, boolean>(), seatOf = new Map<TreeRecord, string>();
     for (const t of trees) { const key = seatKey(t); seatWood.set(key, t.wood === true); seatOf.set(t, key); }
+    // (trees lane, 2026-10-05: a map that opts in stands its stands inside its settlement rect, clear of its planned sites
+    // and of the polygons it names; Kestrel's dispersal quarters)
+    const settled = veg.authoredInSettlement;
+    const standSite = settled
+      ? (x: number, z: number, margin: number): boolean => siteOk(x, z, margin, true) && !insideClearPolygon(settled.clear ?? [], x, z)
+      : siteOk;
+    const standClearances = settled
+      ? [...structureClearances, ...plannedSiteClearances(cfg?.props?.plannedSites ?? [])] : structureClearances;
     group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
-      authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
+      authoredTreeDonors, veg.authoredTrees, heightField, standSite, standClearances, cfg?.props?.wallRuns ?? []);
     for (const t of trees) { const key = seatKey(t); if (key !== seatOf.get(t)) t.wood = seatWood.get(key) ?? false; }
   }
 
