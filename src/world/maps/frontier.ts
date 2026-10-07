@@ -236,6 +236,32 @@ export default {
   props: {
     // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
     architecture: 'hessian',
+    // The landmarks lane (2026-10-05; src/world/landmarks/): on the square's north-west plot the Rathaus of a Hessian
+    // market village — Alsfeld's kind: the stone arcade, two storeys of render in an oak frame, the framed gables and
+    // the two corner turrets under slate spires, its front to the square; on the south-east plot the village church,
+    // its west tower with the clock and the spire toward the square, the nave and the chancel to the east. Each within
+    // the agreed 24 × 16 m plot.
+    landmarks: [
+      // (each at the edge of the square's paved apron, a stamped road out to 32 m, as the plot's old building stood:
+      // a 0.5 m road-core margin; the church turned so its length lies along the plot's 24 m, its tower to the square.
+      // Every piece here is set into the map-revival lane's finished village, so each vetoes its ground (types.ts
+      // `ground`): the courts' yard clutter draws as on the map without the pieces and only what would stand on a
+      // piece's ground is left out — keep-off discs made the yards draw again round them, and every court re-rolled)
+      { kind: 'townHall', x: -34, z: 40, yawDeg: 180, name: 'the Rathaus on the square', roadMargin: 0.5, ground: 'veto',
+        params: { frame: true, width: 20, depth: 11, storeys: 3, tower: 28 } },
+      { kind: 'church', x: 34, z: -40, yawDeg: -90, name: 'the village church', roadMargin: 0.5, ground: 'veto',
+        params: { tradition: 'western', length: 15.8, width: 9.5, tower: 30, walls: 'render' } },
+      // round 2 (2026-10-06; gauntlet wave 156: "the Rathaus and church stand on bare mud with no market square or
+      // churchyard"; the seats agreed with the map-revival lane's round 3): the market square's setts before the Rathaus
+      // (x -49..-19, z 9..29, half on the square's hardstand, off the carriageways, south of the assault line's keep-out)
+      // with the Franconian Marktbrunnen at its west end (clear of the carriageways' cores), the Rathaus's arcade open on the market with two stalls under it; the
+      // churchyard along the church's south flank east of the hunting blind (the free ground south of the chapel site), its low stone wall, the gate
+      // in its west side toward the road, the headstones and Latin crosses, the path to the church
+      { kind: 'path', x: -34, z: 19, yawDeg: 0, name: 'the market square', ground: 'veto', params: { length: 20, width: 30, surface: 'stone' } },
+      { kind: 'fountain', x: -46, z: 18, yawDeg: 0, name: 'the Marktbrunnen', ground: 'veto', params: { style: 'markt', radius: 2.6 } },
+      { kind: 'churchyard', x: 38.25, z: -53.45, yawDeg: 180, name: 'the churchyard', ground: 'veto', params: { width: 17.5, depth: 14, tradition: 'latin', fence: 'wallstone',
+        gate: 'right', graves: 10, path: 1.4 } },
+    ],
     // 2026-10-05 (the map-revival lane): the roadside builder places nothing — the village is authored (VILLAGE_HALF)
     plan: [],
     // the courts' buildings stand a few metres apart (the planned-site spacing was the roadside builder's 9 m)
@@ -245,8 +271,10 @@ export default {
     // ground — and none under the church and the chapel, which stand in their churchyards' turf
     foundationDiscs: { scale: 0.6, none: ['church', 'chapel'] },
     // The landmarks: the church on the square, the two mills on the river, the farm estates on the slopes.
+    // The landmarks lane (2026-10-05, the plots agreed with the map-revival lane): the church's and the chapel's plots
+    // carry the set pieces below — vacated here, so every other site keeps its draws and stands where it stood.
     plannedSites: [
-      { structure: 'church', x: -34, z: 40, yawDeg: 180 }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0 },
+      { structure: 'church', x: -34, z: 40, yawDeg: 180, vacated: true }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0, vacated: true },
       { structure: 'mill', x: -370, z: 58, yawDeg: 180 }, { structure: 'mill', x: 352, z: -64, yawDeg: 0 },
       // the farm estates by the farm lanes: house, barn and granary round a yard (sited on the slope's level shelves,
       // so the halves differ by a few metres)
