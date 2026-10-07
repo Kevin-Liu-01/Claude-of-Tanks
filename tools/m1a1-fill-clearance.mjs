@@ -58,10 +58,18 @@ function triangleVertices(t,origin) {
   return [[t.ax,t.ay,t.az],[t.bx,t.by,t.bz],[t.cx,t.cy,t.cz]].map(v=>sub(v,origin));
 }
 
-function namesBelow(root) {
-  const names=new Set();
-  root.traverse(o=>{if(o.isMesh)names.add(o.name||o.type);});
-  return names;
+/** The visible meshes in collectTriangles' own traversal order, so a triangle's mesh index names its object. Names
+ * cannot decide ownership: a LOW build calls the gun's static batch and the turret's left-side batch both
+ * mobileStaticBatch_0, and by name that fixed batch was swept about the trunnion as gun stock (2026-10-06: it cut
+ * m1a1's fill 2.6 m from the gun and opened 0.11 L at the turret's left flank). */
+function meshObjects(root) {
+  const objects=[];
+  root.traverseVisible(o=>{if(o.isMesh&&o.geometry?.getAttribute('position'))objects.push(o);});
+  return objects;
+}
+function below(object,node) {
+  for(let p=object;p;p=p.parent)if(p===node)return true;
+  return false;
 }
 
 function assemblyTriangles(root) {
@@ -75,14 +83,14 @@ function assemblyTriangles(root) {
   for(const [i,value] of [[0,1],[1,0],[2,0],[4,0],[5,1],[6,0],[8,0],[9,0],[10,1]])
     assert.ok(Math.abs(e[i]-value)<1e-7,'M1 fill clearance requires an unposed unit gun frame');
   const origin=gun.getWorldPosition(new Vector3()).toArray();
-  const movingNames=namesBelow(gun),recoilNames=namesBelow(recoil);
-  const all=collectTriangles(turret);
+  const all=collectTriangles(turret),objects=meshObjects(turret);
+  assert.deepEqual(objects.map(o=>o.name||o.type),all.meshes,'mesh order must follow collectTriangles');
   const moving=[],fixed=[];
   for(const t of all.tris) {
-    const name=all.meshes[t.mesh];
+    const name=all.meshes[t.mesh],object=objects[t.mesh];
     assert.ok(!/InteriorFill$/.test(name),'Clearance must be computed from authored stock, before loading fills');
-    const row={vertices:triangleVertices(t,origin),recoil:recoilNames.has(name)};
-    (movingNames.has(name)?moving:fixed).push(row);
+    const row={vertices:triangleVertices(t,origin),recoil:below(object,recoil)};
+    (below(object,gun)?moving:fixed).push(row);
   }
   assert.ok(moving.some(t=>t.recoil)&&fixed.length,'M1 fill clearance needs real barrel and fixed turret stock');
   return {origin,moving,fixed};
