@@ -108,6 +108,12 @@ interface GrowthProfile {
    */
   gnarl?: number;
   /**
+   * Trees lane (2026-10-07, the coordinator on the gauntlet's wave 177: Saltwind's pine "a tall straight red-barked
+   * trunk"): how far the bole leans, as the top's offset over its height (unset 0) — a curve from an upright foot, its
+   * way the bole's own crook; one draw of the tree's stream, a leaning form's alone.
+   */
+  lean?: number;
+  /**
    * Bark style column of the bark atlas (vegetation.ts): 0 furrowed (the legacy sheet), 1 plated, 2 smooth/banded,
    * 3 papery, 4 the grown trees' furrowed bark (trees round 4: meandering ridges and furrows, where style 0's parallel
    * zigzag fissures read as a tyre tread).
@@ -370,15 +376,17 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // the Aleppo pine (Dalmatia): a leaning grey-brown bole and a light, open, rounded crown of fine pale needles. The trees
   // lane (2026-10-06, the gauntlet's wave 177: "tall, straight red-barked trunks" — "Aleppo has a grey-red fissured bark
   // and a spreading, irregular crown, not tall straight clear boles"): shorter, its crown from a third of its height, wider
-  // and ragged, its bole and limbs crooked, its bark the grown trees' furrows in grey with red-brown up into the crown
+  // and ragged, its bole and limbs crooked, its bark the grown trees' furrows in grey with red-brown up into the crown.
+  // (2026-10-07, the coordinator: it still read as a Scots pine — "a tall straight red-barked trunk": its bole leans,
+  // a sixth of its height over at the top, and its bark is grey, a warm grey up into the crown)
   aleppoPine: P({
     family: 'conifer', height: 6.6, heightSpread: 0.14, trunkR: 0.27, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.32, crownR: 3.0,
     envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 0.8, angleLow: 1.2, angleHigh: 0.75,
     droop: 0.22, upturn: 0.5, sidePerM: 1.6, sideAngle: 0.75, sideRatio: 0.52, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.3, leafFrom: 0.4, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, ragged: 0.5, bark: 4, barkTint: [0.52, 0.43, 0.38],
-    barkTopTint: [0.62, 0.44, 0.34], foliageValue: 1.18,
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, ragged: 0.5, bark: 4, barkTint: [0.50, 0.47, 0.44],
+    barkTopTint: [0.56, 0.50, 0.45], foliageValue: 1.18, lean: 0.16,
   }),
   // trees round 5 (the cities lane's Ironworks, the Saar works): the buddleia of waste ground, slag heaps and rail sidings
   // — a ruderal shrub of arching canes, long narrow grey-green leaves and nodding purple flower spikes, only ever grown as
@@ -815,13 +823,16 @@ function growStem(ctx: GrowContext, topY: number, r0: number, r1: number, segmen
   const { rng } = ctx;
   // trees round 4: a gnarled bole crooks further
   const crookA = rng() * Math.PI * 2, crook = (0.04 + rng() * 0.05) * (1 + 2.5 * (ctx.profile.gnarl ?? 0));
+  // (the trees lane: a leaning form's bole curves over from an upright foot — the draw is its alone)
+  const lean = ctx.profile.lean ? ctx.profile.lean * (0.6 + 0.8 * rng()) * (topY + 0.04) : 0;
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const y = -0.04 + (topY + 0.04) * t;
     // a soft S-crook (two phases) that leaves the base on the axis
     const sway = Math.sin(t * Math.PI * 1.3) * crook * t + Math.sin(t * Math.PI * 2.7 + 1.1) * crook * 0.35 * t;
-    const x = Math.cos(crookA) * sway, z = Math.sin(crookA) * sway;
+    const bow = lean * Math.pow(t, 1.6);
+    const x = Math.cos(crookA) * (sway + bow), z = Math.sin(crookA) * (sway + bow);
     // the stem tapers slowly through the bole and quickly through the crown (excurrent leaders go to a whip)
     const r = lerp(r0, r1, Math.pow(t, 1.15));
     const flex = t < 0.45 ? 0 : (t - 0.45) / 0.55 * 0.12;
