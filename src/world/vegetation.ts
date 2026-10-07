@@ -194,6 +194,15 @@ interface VegetationConfig {
   palmSites?: readonly VegetationDisc[];
   palmFallback?: Species;
   clusterScrub?: number;
+  /**
+   * Trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178: "the meadows are peppered with isolated
+   * trees and small clumps like a park or savanna ... the ridges should be wooded"): a map's woods follow its landscape.
+   * A woodlot's centre stands only on the wood-zone ground — the share `zone` of the square ranked by height and slope
+   * (the ridges, their slopes, ground steeper than `slopeDeg`, default 12°) — neighbouring stands may close into one wood
+   * (their outlines overlapping by up to `merge` m, default 30), and a wood keeps no thin patches. Every stand keeps its
+   * count; the field trees keep the field law; unset, the woods stand as before.
+   */
+  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number }>;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
@@ -5713,12 +5722,38 @@ function* vegetationBuildSteps(
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
+  // the trees lane (2026-10-06): a landscape map's woods (VegetationConfig `landscapeWoods`) — the wood-zone score of a
+  // point (its height's quantile over the square, and half a point more at the zone's slope), the score a woodlot's
+  // centre needs (the share `zone` of the square's ground scores over it) and the overlap its stands may close by
+  const landscape = veg.landscapeWoods ?? null;
+  const landscapeHeights: number[] = [];
+  if (landscape) {
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) landscapeHeights.push(heightField.getHeightAt(x, z));
+    landscapeHeights.sort((a, b) => a - b);
+  }
+  const landscapeSlope = Math.tan(((landscape?.slopeDeg ?? 12) * Math.PI) / 180);
+  function woodZoneScore(x: number, z: number): number {
+    const h = heightField.getHeightAt(x, z);
+    let lo = 0, hi = landscapeHeights.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (landscapeHeights[mid] < h) lo = mid + 1; else hi = mid; }
+    const ny = Math.max(0.05, heightField.getNormalAt(x, z).y), grade = Math.sqrt(Math.max(0, 1 - ny * ny)) / ny;
+    return lo / Math.max(1, landscapeHeights.length) + 0.5 * Math.min(1, grade / landscapeSlope);
+  }
+  const landscapeThreshold: number = landscape ? (() => {
+    const scores: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) scores.push(woodZoneScore(x, z));
+    scores.sort((a, b) => a - b);
+    return scores[Math.min(scores.length - 1, Math.floor(scores.length * (1 - Math.min(1, Math.max(0, landscape.zone)))))];
+  })() : 0;
+  const landscapeMerge = landscape ? (landscape.merge ?? 30) : null;
   function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
     // trees round 2: a woodlot keeps clear of the others by a little of its own reach too (the round-1 stands by the
     // others' only). Round 2b: a tenth of it, not half — at half, the round-1-sized woodlots fitted a third fewer stands
     // on the crowded maps (Nordhavn Fjord 81 -> 49, Monsoon Ridge 120 -> 75) and their corridors lost their cover
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.1) return false;
+      // (the trees lane: a landscape map's stands may close into one wood, their outlines overlapping by its merge)
+      const need = landscapeMerge !== null ? Math.max(6, c.r + r - landscapeMerge) : c.r + 26 + r * 0.1;
+      if (Math.hypot(x - c.x, z - c.z) < need) return false;
     }
     return true;
   }
@@ -5818,7 +5853,12 @@ function* vegetationBuildSteps(
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
-    while (clusters.length < clusterTarget && attempts++ < 6000) {
+    // (the trees lane: a landscape map keeps its woods' tree budget — the target stands' mean count, a round-2b stand's
+    // 24-57 trees half again — placing stands past the target, up to a quarter more, until its stands hold it)
+    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) : 0;
+    let standTrees = 0;
+    while ((landscape ? clusters.length < clusterTarget * 1.25 && (clusters.length < clusterTarget || standTrees < standBudget)
+      : clusters.length < clusterTarget) && attempts++ < 6000) {
       // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
       // the wadi, the spring), any other anywhere on the field
       const species = pickSpecies(veg.clusterMix, wr());
@@ -5830,6 +5870,8 @@ function* vegetationBuildSteps(
         x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
       }
       if (!siteOk(x, z, 6)) continue;
+      // (the trees lane: a landscape map's woodlot stands on its wood-zone ground)
+      if (landscape && woodZoneScore(x, z) < landscapeThreshold) continue;
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
       if (!uplandZoneOk(x, z, species)) continue;
       // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
@@ -5864,14 +5906,16 @@ function* vegetationBuildSteps(
       const disc: VegetationDisc = { x, z, r };
       let cx = 0, cz = 0;
       if (clearing) { const p = standPoint(index, disc, clearing.a, clearing.k); cx = p[0]; cz = p[1]; }
-      for (let i = 0; i < n * 4 && placed < n; i++) {
+      // (the trees lane: a landscape map's stand, closing into its neighbours, tries twice as long to seat its count)
+      for (let i = 0; i < n * (landscape ? 8 : 4) && placed < n; i++) {
         // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
         const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
         const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
         const p = standPoint(index, disc, a, k);
         const px = p[0], pz = p[1];
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
-        if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        // (the trees lane: a landscape map's wood keeps no thin patches — the draw is made all the same)
+        if (!landscape && k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
         // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
@@ -5891,12 +5935,18 @@ function* vegetationBuildSteps(
         // add trees or change RNG.
         rememberAuthoredDonors(cb0, Math.floor(placed / 4));
         clusters.push(disc);
+        standTrees += placed;
       } else {
         // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
         // steep cinder left a scatter of strays over it); its draws are spent as they were
         woodlotShapes.length = index;
         trees.length = cb0; treeObstacles.length = ob0; concealers.length = cc0;
       }
+    }
+    // (the trees lane: a landscape map's census — its stands against their target, the score a centre needed)
+    if (landscape) {
+      group.userData.landscapeWoods = { stands: clusters.length, target: clusterTarget, attempts: Math.min(attempts, 6000),
+        threshold: +landscapeThreshold.toFixed(3), standTrees, standBudget: Math.round(standBudget) };
     }
   }
   placeTreeClusters();
