@@ -1902,24 +1902,31 @@ function addArchedStoneBridge(
 const PUENTE_BAND_M = 0.5;
 /**
  * Round 4b (map revival lane 2, 2026-10-07; mr2's round-4 frames: the Puente's face "one flat ashlar wall", the sandstone
- * print at the stone bucket's 0.7 per metre reading as brickwork across a 38 m wall): the face's architecture. The print
- * at 0.28 per metre on the wall, its piers, courses and rings (a monumental ashlar: courses ~0.4-0.6 m, blocks
- * ~0.6-1.5 m), at 0.45 on the parapets.
+ * print at the stone bucket's 0.7 per metre reading as brickwork across a 38 m wall): the face's architecture. Round 5
+ * (gauntlet wave 242: "one small-brick texture tiled in an obvious repeat", "no ashlar size variation"): the print at 0.2
+ * per metre on the wall, its piers, courses and rings, the masonry of a monumental work — courses ~0.5-0.9 m, blocks
+ * ~0.9-2 m — at 0.45 on the parapets.
  */
-const PUENTE_UV_PER_M = 0.28;
+const PUENTE_UV_PER_M = 0.2;
 const PUENTE_PARAPET_UV_PER_M = 0.45;
 /**
  * Round 4b: the buttress piers on both faces, mirrored about the arch — [station along the road, the three stages' widths
- * along the road, their projections from the face] (m). The great piers frame the arch's ring; the others divide the
- * side walls into bays, the upper arches in the outer two. Each stage rises to a course and is set back there under a
- * moulded cap: the gorge floor to the impost, to the chamber's course, to the cornice.
+ * along the road, their projections from the face] (m). The great piers frame the arch's ring. Each stage rises to a
+ * course and is set back there under a moulded cap: the gorge floor to the impost, to the chamber's course, to the cornice.
+ * (Round 5: the slot is 68 m across at the deck, so the side bays' piers of the 200 m wall are gone with them.)
  */
 const PUENTE_PIERS: ReadonlyArray<readonly [number, readonly number[], readonly number[]]> = [
   [20.3, [7.0, 6.2, 5.4], [3.5, 2.4, 1.4]],
-  [38, [5.0, 4.4, 3.8], [2.2, 1.6, 1.0]],
-  [56, [5.0, 4.4, 3.8], [2.2, 1.6, 1.0]],
-  [70.5, [4.4, 4.0, 3.2], [2.0, 1.5, 0.9]],
 ];
+/**
+ * Round 5: the faces in vertical strips this wide (m), each with its own run of the print — slid along by a share of the
+ * tile, so no two neighbours share their joints while every course runs level across them — and its own tone; split up
+ * the face in rows this tall (m) for the weathering's gradients.
+ */
+const PUENTE_STRIP_M = 3.2;
+const PUENTE_ROW_M = 4;
+/** Round 5: the rain's streaks under every ledge — how far down they run (m) and how dark at most. */
+const PUENTE_STREAK = { runM: 9, dark: 0.2 } as const;
 /** Round 4b: the courses, [height, projection from the face] (m) — the arch's impost, the chamber's sill course, the cornice. */
 const PUENTE_COURSE = { impost: [0.55, 0.35], chamber: [0.5, 0.3], cornice: [0.45, 0.55] } as const;
 /** Round 4b: the voussoir rings — their depth from the intrados (m), how far they stand proud of the face, how deep they run. */
@@ -1938,6 +1945,126 @@ const PUENTE_FOOT_TONE = 0.74;
 /** Round 4b: the key of the Puente's own stream (landingStream's span count; any constant). */
 const PUENTE_STREAM_KEY = 7919;
 
+/** Round 5: an extruded elevation's side walls alone (its lids dropped): the soffits and reveals of its openings, its top,
+ * foot and ends — the faces are drawn apart (puenteFace). */
+function extrudeSides(g: THREE.ExtrudeGeometry): THREE.BufferGeometry {
+  const keep: number[] = [];
+  for (const group of g.groups) {
+    if (group.materialIndex !== 1) continue;
+    for (let i = group.start; i < group.start + group.count; i++) keep.push(i);
+  }
+  const copy = (attr: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, size: number): THREE.BufferAttribute => {
+    const out = new Float32Array(keep.length * size);
+    keep.forEach((i, k) => { for (let c = 0; c < size; c++) out[k * size + c] = attr.getComponent(i, c); });
+    return new THREE.BufferAttribute(out, size);
+  };
+  const sides = new THREE.BufferGeometry();
+  sides.setAttribute('position', copy(g.getAttribute('position'), 3));
+  sides.setAttribute('normal', copy(g.getAttribute('normal'), 3));
+  sides.setAttribute('uv', copy(g.getAttribute('uv'), 2));
+  return sides;
+}
+
+interface PuenteFaceOptions {
+  /** +1 the face at +halfWidth (local +z), -1 the other. */
+  side: number;
+  halfWidth: number;
+  bodyHalf: number;
+  bottom: number;
+  top: number;
+  floor: number;
+  deckY: number;
+  openings: ReadonlyArray<{ x: number; r: number; sill: number | null; jamb: number }>;
+  /** The heights the rain runs down from: the courses, the cornice and the arches' heads. */
+  ledges: readonly number[];
+  /** The ground under this face at a station along the road. */
+  ground: (along: number) => number;
+  tone: PuenteTone;
+  coloured: boolean;
+  rng: Rng;
+}
+
+/**
+ * Round 5 (map revival lane 2, 2026-10-07; gauntlet wave 242 on the Puente: "one small-brick texture tiled in an obvious
+ * repeat", "a checkerboard repeat with no ashlar size variation"): one face of the Puente's wall in the body's frame (x
+ * along the road, y up, the face at z = side x halfWidth), as vertical strips PUENTE_STRIP_M across. The strips break at
+ * every opening's sides and centre, so an arch's head runs whole across each strip it crosses (sampled every 0.6 m, inside
+ * its voussoir ring); each strip stops 1.5 m under the lowest ground across it (the gorge's walls hold the rest). Every
+ * strip slides the print along by its own share of a tile, so the joints never line up strip to strip while every course
+ * runs level across them, and takes its own tone; down the face the damp darkens the foot (PUENTE_FOOT_TONE) and the
+ * rain streaks the stone under every ledge, more on some strips than others.
+ */
+function puenteFace(o: PuenteFaceOptions): THREE.BufferGeometry {
+  const edges = new Set<number>([-o.bodyHalf, o.bodyHalf]);
+  for (const op of o.openings) for (const e of [op.x - op.r, op.x, op.x + op.r]) if (Math.abs(e) < o.bodyHalf) edges.add(e);
+  const sorted = [...edges].sort((p, q) => p - q);
+  const columns: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < sorted.length; i++) {
+    const a = sorted[i], b = sorted[i + 1];
+    if (b - a < 1e-3) continue;
+    const n = Math.max(1, Math.ceil((b - a) / PUENTE_STRIP_M));
+    for (let k = 0; k < n; k++) columns.push([a + (b - a) * k / n, a + (b - a) * (k + 1) / n]);
+  }
+  const pos: number[] = [], nrm: number[] = [], uvs: number[] = [], col: number[] = [];
+  const span = Math.max(1, o.deckY - o.floor);
+  const z = o.side * o.halfWidth;
+  for (const [a0, a1] of columns) {
+    const mid = (a0 + a1) / 2;
+    const over = o.openings.filter((op) => Math.abs(mid - op.x) < op.r);
+    const m = over.length ? Math.max(2, Math.ceil((a1 - a0) / 0.6)) : 1;
+    let low = Infinity;
+    for (let k = 0; k <= 8; k++) low = Math.min(low, o.ground(a0 + (a1 - a0) * k / 8));
+    const foot = Math.max(o.bottom, low - 1.5);
+    // every strip draws its stream whether or not it shows, so each keeps its own look when the ground moves
+    const slide = o.rng() * 7.31, shade = 0.93 + o.rng() * 0.14, warm = (o.rng() - 0.5) * 0.06, wash = o.rng() ** 2;
+    if (foot >= o.top - 0.05) continue;
+    const intervalsAt = (a: number): Array<[number, number]> => {
+      let list: Array<[number, number]> = [[foot, o.top]];
+      for (const op of over) {
+        const dx = a - op.x, head = op.jamb + Math.sqrt(Math.max(0, op.r * op.r - dx * dx)), lo = op.sill ?? -Infinity;
+        list = list.flatMap(([p, q]): Array<[number, number]> => (head <= p || lo >= q ? [[p, q]]
+          : [[p, Math.max(p, lo)], [Math.min(q, head), q]])).filter(([p, q]) => q - p > 1e-3);
+      }
+      return list;
+    };
+    const vertex = (a: number, y: number): void => {
+      pos.push(a, y, z);
+      nrm.push(0, 0, o.side);
+      uvs.push((o.side > 0 ? a : -a) * PUENTE_UV_PER_M + slide, y * PUENTE_UV_PER_M);
+      if (!o.coloured) return;
+      const damp = PUENTE_FOOT_TONE + (1 - PUENTE_FOOT_TONE) * Math.min(1, Math.max(0, (y - o.floor) / span));
+      let streak = 0;
+      for (const ledge of o.ledges) {
+        const d = ledge - y;
+        if (d > 0 && d < PUENTE_STREAK.runM) streak = Math.max(streak, 1 - d / PUENTE_STREAK.runM);
+      }
+      const k = shade * damp * (1 - PUENTE_STREAK.dark * wash * streak);
+      col.push(o.tone[0] * k * (1 + warm), o.tone[1] * k, o.tone[2] * k * (1 - warm));
+    };
+    for (let j = 0; j < m; j++) {
+      const ua = a0 + (a1 - a0) * j / m, ub = a0 + (a1 - a0) * (j + 1) / m;
+      const A = intervalsAt(ua), B = intervalsAt(ub);
+      for (let k = 0; k < Math.min(A.length, B.length); k++) {
+        const [ya0, ya1] = A[k], [yb0, yb1] = B[k];
+        const rows = Math.max(1, Math.ceil(Math.max(ya1 - ya0, yb1 - yb0) / PUENTE_ROW_M));
+        for (let r = 0; r < rows; r++) {
+          const t0 = r / rows, t1 = (r + 1) / rows;
+          const la = ya0 + (ya1 - ya0) * t0, lb = ya0 + (ya1 - ya0) * t1, ra = yb0 + (yb1 - yb0) * t0, rb = yb0 + (yb1 - yb0) * t1;
+          // counter-clockwise seen from the face's own side
+          const quad: Array<[number, number]> = o.side > 0 ? [[ua, la], [ub, ra], [ub, rb], [ua, lb]] : [[ua, la], [ua, lb], [ub, rb], [ub, ra]];
+          for (const i of [0, 1, 2, 0, 2, 3]) vertex(quad[i][0], quad[i][1]);
+        }
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  if (o.coloured) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
+}
+
 /**
  * Map revival lane 2, round 4 (2026-10-06; gauntlet wave 160: "a low, even five-arch viaduct" where the Puente Nuevo of
  * Ronda is "one tall central arch over a deep slot"): a bridge row's `profile: 'puente'`. One wall of masonry across the
@@ -1946,7 +2073,11 @@ const PUENTE_STREAM_KEY = 7919;
  * wall near both lips; the deck slab, the parapets and the wing walls as the arched bridge's. The collision record follows
  * the openings: the body is cut into columns along the road at every opening's edge, and up each column the solid
  * stretches band by band (the arch heads' bands PUENTE_BAND_M) are merged wherever a run of bands is the same. The
- * dressing stream takes the arched bridge's draws exactly, so every later draw keeps its seat.
+ * dressing stream takes the arched bridge's draws exactly, so every later draw keeps its seat. Round 5 (2026-10-07;
+ * gauntlet wave 242: "a squat dam-like wall", "nothing like a 98 m bridge over a narrow limestone slot"): the gorge is a
+ * slot at the deck now (Aegis's waist: 68 m across, 54 m deep), so the wall stands as tall as it is wide — the one tall
+ * arch, the chamber over its crown, one upper arch each side in the bay between the great pier and the gorge's wall — and
+ * its faces are ashlar in strips (puenteFace) instead of the extrusion's two flat lids.
  */
 function addPuenteBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
@@ -1974,7 +2105,18 @@ function addPuenteBridge(
   const chamberSill = mainCrown + 2.5;
   openings.push({ x: 0, r: 3.5, sill: chamberSill, jamb: chamberSill + 2 });
   const upperSill = deckY - 12;
-  for (const side of [-1, 1]) for (const at of [64, 77]) openings.push({ x: side * at, r: 4, sill: upperSill, jamb: upperSill + 2.5 });
+  // (round 5) one upper arch each side, in the bay between the great pier and the gorge's wall at the arch's height: the
+  // wall found along the deck where the ground under either face rises past the sill
+  const faceGround = (a: number): number => Math.max(
+    heightField.getHeightAt(cx + ux * a - uz * halfWidth, cz + uz * a + ux * halfWidth),
+    heightField.getHeightAt(cx + ux * a + uz * halfWidth, cz + uz * a - ux * halfWidth));
+  const pierOuter = PUENTE_PIERS[0][0] + PUENTE_PIERS[0][1][0] / 2;
+  for (const side of [-1, 1]) {
+    let rim = pierOuter;
+    while (rim < bodyHalf && faceGround(side * rim) < upperSill - 1) rim += 0.5;
+    const r = Math.min(4, (rim - pierOuter) / 2 - 0.9);
+    if (r >= 1.5) openings.push({ x: side * (pierOuter + rim) / 2, r, sill: upperSill, jamb: upperSill + 2.5 });
+  }
   const headTop = (o: Opening): number => o.jamb + o.r;
   // the elevation: the outline with the main arch cut from the floor, the others as holes
   const profile = new THREE.Shape();
@@ -2022,7 +2164,11 @@ function addPuenteBridge(
   };
   let draws = 0;
   const jitter = <T extends THREE.BufferGeometry>(g: T): T => { draws++; return jitterUV(g, rng); };
-  const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 16 });
+  // (round 5) the body's sides only — the soffits and reveals of its openings, its top and ends; its two faces are the
+  // strips below (puenteFaces), drawn after the Puente's own stream opens
+  const extruded = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 16 });
+  const body = extrudeSides(extruded);
+  extruded.dispose();
   body.translate(0, 0, -width / 2);
   scaleUV(body, PUENTE_UV_PER_M, PUENTE_UV_PER_M);
   jitter(body);
@@ -2069,6 +2215,15 @@ function addPuenteBridge(
   const own = landingStream({ x: cx, z: cz, spans: PUENTE_STREAM_KEY });
   const at = (a: number, c: number): [number, number] => [cx + ux * a + vx * c, cz + uz * a + vz * c];
   // a block against a face (side ±1): [a0, a1] along the road, [y0, y1] up, from `embed` inside the face to `out` past it
+  // (round 5) the two faces in strips of ashlar, each strip its own run of the print and its own tone
+  const ledges = [main.jamb, chamberSill, deckY - BRIDGE_SLAB_M, ...openings.map(headTop)];
+  for (const side of [-1, 1]) {
+    const face = puenteFace({ side, halfWidth, bodyHalf, bottom, top, floor, deckY, openings, ledges,
+      ground: (a) => heightField.getHeightAt(cx + ux * a + vx * side * halfWidth, cz + uz * a + vz * side * halfWidth),
+      tone: PUENTE_TONE.wall, coloured: tinted, rng: own });
+    alignWidth(face, ux, uz);
+    sink.push(face.translate(cx, 0, cz));
+  }
   const faceBlock = (side: number, a0: number, a1: number, y0: number, y1: number, out: number, embed: number): THREE.BufferGeometry => {
     const g = slabBox(a1 - a0, y1 - y0, out + embed, PUENTE_UV_PER_M);
     jitterUV(g, own);

@@ -9,18 +9,20 @@
 // above the river bed. Below the bridge the gorge floor is a dry gravel bed in summer, and the old mill paths come down
 // to it where the walls open out.
 //
-// The story on the ground: the gorge runs east to west across the middle of the tableland. It is deepest (38 m) and
-// narrowest under the viaduct and opens out toward both ends, where its floor climbs in river terraces to the tableland
-// and the fords cross it. A dry gravel bed runs down its floor between low levees; the ruins of the old mills stand on
-// it beside the viaduct's piers. Each lip carries a bridgehead town round a market square on the main road, and the
-// viaduct's deck runs onto solid rock past both lips. Olive terraces step down the tableland on the west side, and the
+// The story on the ground: the gorge runs east to west across the middle of the tableland. It is deepest (54 m) and
+// narrowest under the viaduct — a slot 68 m across between sheer walls, the Tajo (round 5) — and opens out toward both
+// ends, where its floor climbs in river terraces to the tableland and the fords cross it. The river runs in pools down
+// the slot either side of the limestone sill the bridge stands on; beyond, a dry gravel bed runs down the floor between
+// low levees, and the ruins of the old mills stand on it near the viaduct. Each lip carries a bridgehead town round a
+// market square on the main road, its houses at the edge either side of the bridgehead, and the viaduct's deck runs onto
+// solid rock past both lips. Olive terraces step down the tableland on the west side, and the
 // river's wooded bottomlands fill the east. Swells south and north of the towns screen each team's assembly ground.
 //
 // The layout is mirror-symmetric across the gorge's axis (z = 0): alpha deploys on the south tableland, bravo on the
 // north. Three lanes cross the middle: the west ford past the olive terraces, the viaduct between the two towns, and
 // the east ford through the bottomland woods. The gorge walls cannot be driven. The routes between the deck and the
 // gorge floor run from each abutment along the rim to the river terraces at the gorge's ends and down them: about
-// 610 m from the deck's end to the floor beside the viaduct, against 200 m over the deck. The zone-control discs stand
+// 610 m from the deck's end to the floor near the viaduct, against 80 m over the deck (round 5; 200 m before). The zone-control discs stand
 // on the two market squares and on the gorge floor west of the viaduct, where the mills stood; the turbo-ball kickoff
 // on the gorge floor east of it.
 //
@@ -35,6 +37,7 @@
 // the river's bottomland, cypresses by the hermitages and on the cortijos' drives, the scrub wild olive; the grain
 // standing and stacked on the tableland.
 import verdant from './verdant.ts';
+import { createLakeChannel } from './marshChannel.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 
 /** A point's mirror across the gorge's axis (z = 0), with the yaw that faces the same way across it. */
@@ -113,9 +116,23 @@ const SQUARE_WALLS = [
   { structure: 'cottage', x: 29.83, z: -271.95, yawDeg: 20, terrace: true },
 ];
 // The ruined mills on the gorge floor beside the viaduct's piers (their mirrors stand on the north half of the floor).
+// (Round 5: drawn in toward the river with the waist's walls, where the floor is still 54 m across.)
 const MILLS = [
-  { structure: 'ruin', x: -46, z: -32, yawDeg: 0 },
-  { structure: 'ruin', x: 46, z: -30, yawDeg: 180 },
+  { structure: 'ruin', x: -52, z: -18, yawDeg: 0 },
+  { structure: 'ruin', x: 52, z: -17, yawDeg: 180 },
+];
+// Round 5 (gauntlet wave 242: "no houses massed on the cliff edge", "no cliff-edge town"): the casas colgadas — town houses
+// on each lip of the Tajo either side of the bridgehead, their backs 2 m off the edge over the 54 m drop, their fronts on
+// the tableland; the bridgehead's own 15 m either side of the road kept open (the north lip's are their mirrors). They
+// stand after every earlier site, so the buildings above keep their places and their streams; each draws from its own
+// stream and stands clear of the next by its own width (terrace sites skip the roadside spacing).
+const CLIFF_HOUSES = [
+  { structure: 'rowhouse', x: -21, z: -40.5, yawDeg: 180, terrace: true },
+  { structure: 'rowhouse', x: -33, z: -41, yawDeg: 180, terrace: true },
+  { structure: 'rowhouse', x: -45, z: -42, yawDeg: 182, terrace: true },
+  { structure: 'rowhouse', x: 21, z: -40.5, yawDeg: 180, terrace: true },
+  { structure: 'rowhouse', x: 33, z: -40.5, yawDeg: 180, terrace: true },
+  { structure: 'rowhouse', x: 45, z: -41, yawDeg: 178, terrace: true },
 ];
 // Farmsteads on the tableland: an olive farm on the west terraces and a mill farm by the east ford, each with its
 // mirror.
@@ -127,11 +144,34 @@ const SOUTH_FARMS = [
   { structure: 'barn', x: 392, z: -205, yawDeg: -60 },
 ];
 
+// Round 5 (map revival lane 2, 2026-10-07; gauntlet wave 242): the Tajo's waist at the Puente (terrain.ts gorgeWaist).
+const TAJO_WAIST = { halfWidthM: 34, innerM: 45, outerM: 140 };
+// The sill under the deck: a butte's section across the floor (landformGeology.ts), its cap wider than the bridge's
+// 18 m, bedded in 1.5 m beds, knobbly, lobed; its ends sheer inside the lower walls (60 m: at 70 they stood over the rim).
+const TAJO_SILL = { kind: 'ridge', x: 0, z: 0, length: 60, width: 20, height: 7.5, yawDeg: 90, corridorScale: 1, settlementScale: 1,
+  geology: { profile: 'butte' as const, wall: [0.42, 0.6] as const, apron: 0.22, outline: 0.12, strata: { stepM: 1.5, riser: 0.35 },
+    rough: 0.6, cliffEnd: 'both' as const } };
+// The river's cleft through the sill: 3 m across at its foot (narrower than any hull), slanting 30 degrees across the
+// gorge so no line along the floor sees through it, fading out at the sill's toes.
+const TAJO_CLEFT = { kind: 'gorge', x: 0, z: 0, length: 24, width: 2.2, height: -7.5, yawDeg: 30, corridorScale: 1, settlementScale: 1 };
+
+// Round 5 (gauntlet wave 242: "no river", "no Guadalevin on its floor"): the river in August, in the waist — a stream a
+// few metres across strung with pools along the floor either side of the sill, the plunge pool at its foot; each reach
+// one sheet at its own level (the east 0.75 m over the west: the river drops through the cleft), half a metre under its
+// floor; short of the reaches' zone-control disc and kickoff (30 m), which stay on the dry bed. Liquid water drives as
+// soft ground (terrain.softLakes); no boats.
+const GUADALEVIN = [
+  ...createLakeChannel([{ x: -22, z: 0, r: 8.5 }, { x: -33, z: 0, r: 6 }, { x: -44, z: 0, r: 5 }, { x: -55, z: 0, r: 5.5 },
+    { x: -66, z: 0, r: 7.5 }, { x: -77, z: 0, r: 5.5 }, { x: -88, z: 0, r: 5 }], -54.75),
+  ...createLakeChannel([{ x: 22, z: 0, r: 8.5 }, { x: 33, z: 0, r: 6 }, { x: 44, z: 0, r: 5 }, { x: 55, z: 0, r: 5.5 },
+    { x: 66, z: 0, r: 7.5 }, { x: 77, z: 0, r: 5.5 }, { x: 88, z: 0, r: 5 }], -54),
+].map((disc) => ({ ...disc, bankBand: 1.15, boats: 0 }));
+
 export default {
   id: 'cliffbridge', name: 'Aegis Crossing',
   blurb: 'A monumental stone viaduct spans a deep gorge between two bridgehead towns, with fords at both ends',
   terrain: {
-    hillScale: .32, microScale: .42, rimH: 32, marshes: [], lakes: [], fieldTrenches: false,
+    hillScale: .32, microScale: .42, rimH: 32, marshes: [], lakes: GUADALEVIN, softLakes: true, fieldTrenches: false,
     // The two bridgehead towns and the gorge between them (the gorge keeps its full depth: settlementScale 1). The
     // centre is the viaduct, so the spawn corridors converge on the crossing.
     village: { x0: -130, x1: 130, z0: -270, z1: 270, cx: 0, cz: 0, feather: 40, flatten: .9 },
@@ -153,7 +193,8 @@ export default {
     // stands on the rim, not on the wall.
     // (round 4, gauntlet wave 160: "a low, even five-arch viaduct") the Puente Nuevo: one wall across the gorge, a single
     // stilted arch deep in the slot under it (mapKits.ts addPuenteBridge)
-    bridges: [{ x: 0, z: 0, yawDeg: 90, spanM: 200, widthM: 18, approachM: 45, route: 0, profile: 'puente' }],
+    // (round 5: the deck spans the waist, 80 m between the abutments on the rock 6 m back from each lip; was 200)
+    bridges: [{ x: 0, z: 0, yawDeg: 90, spanM: 80, widthM: 18, approachM: 45, route: 0, profile: 'puente' }],
     // The two market squares: level paved aprons on the main road from each abutment into its town, where the
     // zone-control discs seat. (Round 2: 72 m across, so the paving meets the house fronts of the square walls.)
     hardstands: [
@@ -176,20 +217,26 @@ export default {
       [[-428, 0], [-412, 120], [-340, 230], [-220, 276], [-100, 262], [0, 250]],
     ] },
     landforms: [
-      // The gorge: three troughs between the same sheer walls (38 m at the bridge, a cliff the bot planner's 25 m grid
-      // reads as one), each a little longer than the last, so the floor climbs in river terraces to the tableland at
-      // both ends (x = ±390).
-      { kind: 'gorge', x: 0, z: 0, length: 540, width: 96, height: -16, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
-      { kind: 'gorge', x: 0, z: 0, length: 660, width: 96, height: -12, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12 },
+      // The gorge: three troughs between the same sheer walls (a cliff the bot planner's 25 m grid reads as one), each a
+      // little longer than the last, so the floor climbs in river terraces to the tableland at both ends (x = ±400).
+      // Round 5 (gauntlet wave 242: "a shallow, wide, flat-floored sandy trench ... nothing like a 100 m-deep slot"): the
+      // Tajo cut 54 m into the tableland (was 38), and narrow at the bridge — the waist (TAJO_WAIST) draws both rims in
+      // to 34 m from the axis within 45 m of it (they stood 92 m off), the walls a sheer 85 degrees, opening out to the
+      // reaches by 140 m, where the floor keeps its width for the zone-control disc and the kickoff.
+      { kind: 'gorge', x: 0, z: 0, length: 560, width: 96, height: -22, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12, waist: TAJO_WAIST },
+      { kind: 'gorge', x: 0, z: 0, length: 680, width: 96, height: -17, corridorScale: 1, settlementScale: 1, wall: [0.88, 0.96], meander: 12, waist: TAJO_WAIST },
       // (round 4, wave 160: "a shallow ditch or green swale") the floor out to the lower wall's foot is the river's dry bed
-      { kind: 'gorge', x: 0, z: 0, length: 780, width: 96, height: -10, corridorScale: 1, settlementScale: 1, wall: [0.76, 0.86], meander: 12, bed: true },
-      // The limestone rib the viaduct's piers stand on: it crosses the gorge floor under the deck, too steep to drive,
-      // so the floor's west and east reaches meet only over the bridge (no hull parks on the bed under the deck).
-      { kind: 'ridge', x: 0, z: 0, length: 140, width: 14, height: 6.5, yawDeg: 90, corridorScale: 1, settlementScale: 1 },
-      // The dry river bed's gravel levees, one each side of the stream channel, the length of the gorge and out through
-      // both fords: the hull-down lines of the gorge floor. They are cut where the mill race left the stream (the
-      // zone-control disc west of the viaduct) and at the mill pool east of it (the turbo-ball kickoff).
-      ...[[-335, 210], [0, 160], [335, 210]].flatMap(([x, length]) => [
+      { kind: 'gorge', x: 0, z: 0, length: 800, width: 96, height: -15, corridorScale: 1, settlementScale: 1, wall: [0.76, 0.86], meander: 12, bed: true, waist: TAJO_WAIST },
+      // The limestone sill the Puente stands on: it crosses the gorge floor under the deck, too steep to drive, so the
+      // floor's west and east reaches meet only over the bridge (no hull parks on the bed under the deck). Round 5
+      // (wave 242: "a smooth sand mound sweeps up into the central arch and buries its springing"): bedded rock — a butte's
+      // section, its cap under the deck, its walls at both faces, a scree apron — cut by the river's cleft (TAJO_CLEFT).
+      TAJO_SILL, TAJO_CLEFT,
+      // The dry river bed's gravel levees, one each side of the stream channel, in both reaches and out through both
+      // fords: the hull-down lines of the gorge floor. They are cut where the mill race left the stream (the
+      // zone-control disc west of the viaduct) and at the mill pool east of it (the turbo-ball kickoff). (Round 5: the
+      // pair under the bridge is gone with the floor there — the waist is the river's.)
+      ...[[-335, 210], [335, 210]].flatMap(([x, length]) => [
         { kind: 'ridge', x, z: -25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
         { kind: 'ridge', x, z: 25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
       ]),
@@ -240,6 +287,8 @@ export default {
   // (strata: beds, partings, joint blocks, varnish). The steppe's withered grass a shade down (it read as sand at its
   // own 0.34 / 0.25 / 0.12), its dirt (Ground071 under its tint, an orange 0.20 / 0.11 / 0.05) greyed toward the marl.
   splat: {...verdant.splat, sourcedPalette:'steppe', fieldPatch:.35,
+    // round 5: the river's sheets are liquid (the wet layer), a limestone stream's green
+    seaLake: true, seaFoam: 0.05, seaRamp: [0.10, 0.44], iceDrift: 0.02, marshGloss: 0.86, iceSky: [0.34, 0.47, 0.42],
     sourcedTint: { G: [0.85, 0.85, 0.8], D: [1.0, 1.15, 1.6], R: [1.9, 1.7, 1.35] }, strata: 0.16,
     // round 2 (gauntlet wave 108b: "grass reads as wet Atlantic pasture"): the sward's tints a summer's dry campiña
     tintA:[.98,1.0,.82],tintB:[.86,.88,.72],tintC:[1.03,1.03,.84],
@@ -259,25 +308,31 @@ export default {
   // the scrub grows as the olive's sprays (wild olive and lentisk)
   vegetation: {
     species: ['acacia', 'oak', 'poplar', 'cypress'],
-    clusterMix: [['acacia', 0.42], ['oak', 0.38], ['poplar', 0.2]],
-    loneMix: [['acacia', 0.44], ['oak', 0.3], ['poplar', 0.12], ['cypress', 0.14]],
-    rimMix: [['oak', 0.58], ['acacia', 0.3], ['cypress', 0.12]],
+    // (round 5, gauntlet wave 242: "spiky poplar-like 'cypresses' read as northern trees on dry Andalusian ground", "a
+    // bright-green, feathery" poplar on the tableland) the cypress kept to the hermitages' and cortijos' planted lines and a
+    // few lone ones, the poplars to the bottomland's clusters
+    clusterMix: [['acacia', 0.46], ['oak', 0.44], ['poplar', 0.1]],
+    loneMix: [['acacia', 0.52], ['oak', 0.38], ['poplar', 0.05], ['cypress', 0.05]],
+    rimMix: [['oak', 0.66], ['acacia', 0.32], ['cypress', 0.02]],
     clusterCount: 60, loneCount: 110, rimCount: 95, grassDensity: 0.45, bushCount: 0.8, bushSpecies: 'acacia',
     // round 3 (108c: "lush green turf against the pale dry bank"): the sward's cards cured straw, the summer's
     grassTexTone: (_h: number, s: number, l: number): [number, number, number] => [0.12, Math.min(1, s * 0.7 + 0.05), Math.min(1, l * 1.04 + 0.06)],
     palettes: {
       acacia: { form: 'olive', cardHue: 0.3, cardSat: 0.06,
         texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)] },
-      oak: { form: 'holmOak', cardHue: 0.25, cardSat: 0.09,
-        texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l] },
+      // (round 5, wave 242: "saturated, leafy broadleaf green ... temperate rather than the dark, dull grey-green of
+      // Andalusian encinas") the encina's leaf duller and a shade darker
+      oak: { form: 'holmOak', cardHue: 0.24, cardSat: 0.06,
+        texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.46), l * 0.9] },
       // round 2 (gauntlet wave 108b: "poplars still capped with flat brown leaf cards"): the river's white poplar (álamo
       // blanco), its leaves a silvery green on every card, no autumn brown in August
       poplar: { cardHue: 0.23, cardSat: 0.10,
         // (round 3: duller, a summer's dusty leaf; at s 0.6 / l 1.06 they stood lime against the dry ground)
         texTone: (_h: number, s: number, l: number): [number, number, number] => [0.23, Math.min(1, s * 0.45), Math.min(1, l * 0.92)] },
       // round 3 (the study pair: the hermitage's cypresses lime green): the Mediterranean cypress near-black green
-      cypress: { cardHue: 0.36, cardSat: 0.30, cardL0: 0.22, canopy: { hue: 0.36, sat: 0.28, l0: 0.17, l1: 0.30 },
-        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.34, Math.min(1, s * 0.75), Math.min(1, l * 0.55)] },
+      // (round 5, wave 242: "spiky bright-green") the cypress's dark, blue-black green, its saturation halved
+      cypress: { cardHue: 0.38, cardSat: 0.18, cardL0: 0.16, canopy: { hue: 0.38, sat: 0.16, l0: 0.12, l1: 0.23 },
+        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.36, Math.min(1, s * 0.5), Math.min(1, l * 0.45)] },
     },
     // planted lines (real cover: belts go through the tree admission), each with its mirror across the gorge: the olive
     // groves' rows on the west terraces (between the rim bank and the upper terrace, and below the lower one), the
@@ -299,7 +354,7 @@ export default {
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
       ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...SOUTH_STREETS.map(mirrorSite),
-      ...SQUARE_WALLS, ...SQUARE_WALLS.map(mirrorSite)],
+      ...SQUARE_WALLS, ...SQUARE_WALLS.map(mirrorSite), ...CLIFF_HOUSES, ...CLIFF_HOUSES.map(mirrorSite)],
     destructibleBuildings: ['guardpost', 'fieldhut', 'leanto', 'huntingblind', 'commandtent'],
     blockFill: false, extraKits: [], buildingLat: [20, 5], spacingPad: 12, sideSkip: .12, maxSpread: 3.2,
     // Three strongpoint pairs, each the other's mirror across the gorge: the tollhouses at the bridgeheads, the rim
@@ -343,9 +398,11 @@ export default {
     ]),
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
-  horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},
+  // (round 5, wave 242's bird views: "a pale grey-green haze band closing the world edge") the haze thinner, the fog a summer's
+  // pale blue rather than grey-green
+  horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.48,panorama:{regional:'upland'}},
   sky:{...verdant.sky,sunElevationDeg:34,sunAzimuthDeg:235,cloudOpacity:.56,cloudOpacity2:.2,cloudAltM:1250,
-    fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
+    fogDensity:.00028,fogTintHex:0xb6c4d0,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
   clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},
   minimap:{...verdant.minimap},
   shot:{pos:[-170,45,-170],look:[20,-4,30]},
