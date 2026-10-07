@@ -54,8 +54,8 @@
       "concealers": 703
     },
     "railyard": {
-      "bytes": 1172633,
-      "sha256": "cb3b39782c7efc14e351f32f53ef9cb2c19eaa2f3521cf19fdf105f3411e8df5",
+      "bytes": 1146867,
+      "sha256": "04e7df6aac43a629d8db1ecba3f10a85f492471ccb9fd573c412798bdfe33567",
       "obstacles": 2101,
       "colliders": 2119,
       "concealers": 1091
