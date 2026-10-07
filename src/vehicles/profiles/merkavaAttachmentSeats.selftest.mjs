@@ -65,7 +65,12 @@ function barrelContinuous(mg,scale){
   assert.ok(hit&&hit.distance<.042,`continuous MAG receiver/barrel at ${z}`);
   // 2026-10-07 (tank-accessories round 3): the bridge is the shared barrel-nut/chamber lathe (r0*1.6 -> 1.24) and the
   // breech third r0*1.12, so the first hit lies 0.008s..0.020s off the axis (the old plain cylinder was r0*1.12).
-  const p=mg.worldToLocal(hit.point.clone());assert.ok(p.x>.008*s&&p.x<.020*s,'actual narrow barrel stock');
+  // 2026-10-07 (round 4, re-pinned): barrels take their true section whatever the station's scale (machineGunGeometry.ts:
+  // r0 = barrelR 0.0155 x max(s, the MAG's own 0.78), a 24 mm barrel; round 3's r0 = 0.012 s drew an 18 mm "pencil"),
+  // so the first hit lies on that section, from the breech third (1.07 r0 across the 10-sided lathe's flat) to the
+  // barrel nut (1.52 r0), and inside the receiver's half-width (0.037 s): still a barrel, never the receiver block.
+  const r0=.0155*Math.max(s,.78),p=mg.worldToLocal(hit.point.clone());
+  assert.ok(p.x>.9*r0&&p.x<Math.min(1.65*r0,.037*s),'actual narrow barrel stock');
  }
 }
 function footSeated(mg,receivers){
