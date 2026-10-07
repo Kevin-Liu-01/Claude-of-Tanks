@@ -601,6 +601,8 @@ export class VolumetricCloudLayer {
   /** The Beer shadow map's cascades (toroidal, world-anchored) and their band schedules. */
   private readonly bsm = CLOUD_BSM_CASCADES.map(() => ({ target: null as THREE.WebGLRenderTarget | null, band: 0, age: 0, valid: false }));
   private readonly bsmKey = [NaN, NaN, NaN, NaN, NaN];
+  /** The stack's own slice count for the Beer shadow map (cloudLayers.ts cloudBsmSlices); the low tier takes 0.6 of it. */
+  private bsmSlices = CLOUD_BSM_SLICES;
   /** The band a cascade refreshes (reused: no allocation per frame). */
   private readonly bsmBandRect = new THREE.Vector4();
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
@@ -831,7 +833,7 @@ export class VolumetricCloudLayer {
         packCloudStack(stack, this.medium);
         const diffuse = this.traceMaterial.uniforms.uLayerDiffuse.value as THREE.Vector4;
         diffuse.set(stack.lanes[0]?.diffuse ?? 0, stack.lanes[1]?.diffuse ?? 0, stack.lanes[2]?.diffuse ?? 0, stack.lanes[3]?.diffuse ?? 0);
-        this.bsmMaterial.uniforms.uSlices.value = cloudBsmSlices(stack);
+        this.bsmSlices = cloudBsmSlices(stack);
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
         // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
@@ -1122,7 +1124,12 @@ export class VolumetricCloudLayer {
     const b = this.bsmMaterial.uniforms;
     (b.uBsmSunDir.value as THREE.Vector3).copy(sun);
     (b.uPlane.value as THREE.Vector2).set(plane, top);
-    for (let i = 0; i < CLOUD_BSM_CASCADES.length; i++) {
+    // the low tier (its cost at or under the old layer's): the near cascade alone, at 0.6 of the stack's slices — the far
+    // clouds take the trace's own column, and the far map is never marched
+    const low = this.traceTier === 'low';
+    b.uSlices.value = low ? Math.max(16, Math.round(this.bsmSlices * 0.6)) : this.bsmSlices;
+    if (low) { w1.w = 0; this.bsm[1].valid = false; }
+    for (let i = 0; i < (low ? 1 : CLOUD_BSM_CASCADES.length); i++) {
       const spec = CLOUD_BSM_CASCADES[i], c = this.bsm[i];
       const texel = spec.span / spec.texels;
       if (!c.target) {
@@ -1326,7 +1333,7 @@ export class VolumetricCloudLayer {
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
     const moved = !this.farShadeValid || rect.x !== cx || rect.y !== cz;
-    if (!moved && ++this.farShadeAge < CLOUD_FAR_SHADE_EVERY) return;
+    if (!moved && ++this.farShadeAge < CLOUD_FAR_SHADE_EVERY * (this.traceTier === 'low' ? 2 : 1)) return;
     if (!this.farShadeTarget) {
       this.farShadeTarget = makeTarget(CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SIZE, 'clouds-far-shade', THREE.UnsignedByteType);
     }
