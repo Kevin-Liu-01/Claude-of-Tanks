@@ -227,7 +227,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   copper_mesa: { ...ARID, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
   oasis: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.2) },
-  whiteout: { ...SNOW, scree: 0.3, grass: tundra(0.3, 0.4) },
+  // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
+  whiteout: { ...SNOW, scree: 0.3, grass: null },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
