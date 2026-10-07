@@ -7369,6 +7369,13 @@ of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kick
   cross streets: ruinspires.ts keeps them in a comment) until the ground lane's fix. On the A B C C B A gate the chase
   passed (GPU p25 +0.16 ± 0.37 ms); that gate's establishing reading, +11.5 ms with three full worlds in one browser,
   read about +2 ms with two.
+- *The streets' surfaces return* (2026-10-06, their own commit, the coordinator's ruling under cost v3): the ground
+  lane's three-page staging of the styled paths on this map (A plain, B styled, C plain twin, A B C C B A, holds 61
+  and 63, 16 valid cycles at load 129–243, identical scenes: 765 draws / 6.89 M triangles at the establishing shot)
+  reads establishing GPU p25 +0.54 ± 0.70 ms and chase −0.44 ± 0.51 ms, CPU flat: both accept. Its in-page toggles
+  (hold 58) put the styled roads' whole shader path at −0.16 ± 0.70 ms; the first gate's +2.6 ms was the urban land
+  use itself (about +1.5 ms at that shot), which the ground lane's urban fast path takes on. Render only: the shard
+  and the census are unchanged.
 
 ## Acceptance is visual and measured
 
