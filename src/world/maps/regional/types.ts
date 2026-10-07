@@ -71,6 +71,12 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
+  /**
+   * The map-revival lane (2026-10-07): draw the third plaster paint from the second's bucket under a colour ratio
+   * (weather.ts WeatherOptions.plaster3Fold; the two procedural renders share one relief): one draw and one shadow caster
+   * fewer. Absent, the kit's three plaster buckets stay as they are.
+   */
+  foldThirdPlaster?: boolean;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
 }

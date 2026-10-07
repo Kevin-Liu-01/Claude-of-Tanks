@@ -599,6 +599,9 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     damp: 0.75, moss: 0.45,
   },
   wear: 0.3,
+  // (2026-10-07, the cost trim; the coordinator's ruling) the grey lime drawn from the rose-beige's bucket under its
+  // colour ratio: the two procedural renders share one relief, so one draw and one shadow caster fewer
+  foldThirdPlaster: true,
   // the gardens behind the houses: a low stone wall, a gate, the woodshed in a corner, the kitchen garden (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.4, 2.8], garden: true },
 });

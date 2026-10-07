@@ -13,7 +13,7 @@
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
+import { DEFAULT_WEATHER, paintRatio, pickWeatherTints, weatherRegionalParts } from './weather.ts';
 import { withWear } from './house.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
@@ -85,6 +85,14 @@ function measure(buckets: Buckets): BaseBounds {
   return b;
 }
 
+/** A folding kit's third-paint ratio, once per kit (weather.ts paintRatio of its own surfaces.tones). */
+const folds = new WeakMap<ArchitectureStyle, ReturnType<typeof paintRatio>>();
+function foldOf(style: ArchitectureStyle): ReturnType<typeof paintRatio> {
+  let fold = folds.get(style);
+  if (!fold) { fold = paintRatio(style.surfaces.tones?.plaster2, style.surfaces.tones?.plaster3); folds.set(style, fold); }
+  return fold;
+}
+
 /**
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
@@ -97,7 +105,11 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
   const tints = pickWeatherTints(palette, weatherRng);
-  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
+  // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
+  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, style.foldThirdPlaster
+    ? { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, plaster3Fold: foldOf(style) }
+    : { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
   // it is dressing, so the collision stays the desktop's
   if (ctx.tier === 'mobile') {

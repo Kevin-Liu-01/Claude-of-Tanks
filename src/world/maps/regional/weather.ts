@@ -50,6 +50,33 @@ export const DEFAULT_WEATHER: WeatherPalette = Object.freeze({
   damp: 0.8, moss: 0.5,
 } as WeatherPalette);
 
+/**
+ * (the map-revival lane, 2026-10-07) one plaster paint's linear colour over another's at the plaster print's mean:
+ * props.ts makePlaster's base (hue 0.085, saturation 0.12, its mean lightness 0.49) as the texture's bytes, through each
+ * tone as terrain.ts applyTone takes it (to HSL, the tone, back), then linear — the tint a folded paint's walls take in
+ * the other's bucket. A kit's own paints (its surfaces.tones); a map that authored its own plaster2 / plaster3 tones over
+ * a folding kit's would fold by the kit's.
+ */
+export function paintRatio(from: ((h: number, s: number, l: number) => readonly [number, number, number]) | undefined,
+  to: ((h: number, s: number, l: number) => readonly [number, number, number]) | undefined): Rgb {
+  const col = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const at = (tone: typeof from): number[] => {
+    col.setHSL(0.085, 0.12, 0.49);
+    const px = new Uint8ClampedArray([col.r * 255, col.g * 255, col.b * 255]);
+    if (tone) {
+      col.setRGB(px[0] / 255, px[1] / 255, px[2] / 255);
+      col.getHSL(hsl);
+      const [h, s, l] = tone(hsl.h, hsl.s, hsl.l);
+      col.setHSL(((h % 1) + 1) % 1, Math.min(1, Math.max(0, s)), Math.min(1, Math.max(0, l)));
+      px[0] = col.r * 255; px[1] = col.g * 255; px[2] = col.b * 255;
+    }
+    return [lin(px[0] / 255), lin(px[1] / 255), lin(px[2] / 255)];
+  };
+  const a = at(from), b = at(to);
+  return [b[0] / Math.max(1e-4, a[0]), b[1] / Math.max(1e-4, a[1]), b[2] / Math.max(1e-4, a[2])];
+}
+
 /** Pick one building's tints from a palette (its own stream: the build stream is never touched). */
 export function pickWeatherTints(palette: WeatherPalette, rng: () => number): WeatherTints {
   const pick = (list: readonly Rgb[]): Rgb => list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
@@ -139,6 +166,14 @@ export interface WeatherOptions {
   damp: number;
   moss: number;
   mossTint?: Rgb;
+  /**
+   * The map-revival lane (2026-10-07, Amberford's cost trim; the coordinator's ruling): a kit that folds its third
+   * plaster paint into its second's bucket (ArchitectureStyle.foldThirdPlaster) gives its plaster3 walls the
+   * regionalPlaster2 bucket under this colour ratio (the third paint over the second at the plaster print's mean, linear:
+   * paintRatio) — the two renders share one relief and differ only in albedo tone, so one bucket draws both. Unset,
+   * every wall keeps its own bucket as before.
+   */
+  plaster3Fold?: Rgb;
 }
 
 /**
@@ -163,6 +198,9 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
     if (!list.length) continue;
     const tint = tints[source as keyof WeatherTints];
     const isRoof = source === 'roof';
+    // (the third paint folded into the second's bucket: its own tint and weathering, then the paint's colour ratio)
+    const fold = source === 'plaster3' && options.plaster3Fold ? options.plaster3Fold : null;
+    const into: RegionalBucket = fold ? 'regionalPlaster2' : target;
     for (const geometry of list) {
       const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [];
       const emit = (v: Vert) => {
@@ -183,7 +221,8 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
         else if (ny < -0.6) k = 0.62;
         else k = 1 - (1 - dampK(v.p[1])) * damp;
         k *= v.s;
-        col.push(Math.min(1.2, c[0] * k), Math.min(1.2, c[1] * k), Math.min(1.2, c[2] * k));
+        if (fold) col.push(Math.min(1.2, c[0] * k) * fold[0], Math.min(1.2, c[1] * k) * fold[1], Math.min(1.2, c[2] * k) * fold[2]);
+        else col.push(Math.min(1.2, c[0] * k), Math.min(1.2, c[1] * k), Math.min(1.2, c[2] * k));
       };
       for (const tri of readTriangles(geometry)) {
         let pieces: Vert[][] = [tri];
@@ -210,7 +249,7 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
       out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
       out.userData = { ...geometry.userData };
       geometry.dispose();
-      parts[target].push(out);
+      parts[into].push(out);
     }
     parts[source] = [];
   }
