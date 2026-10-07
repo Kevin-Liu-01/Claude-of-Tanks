@@ -878,9 +878,11 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   builders: SAVOYARD_BUILDERS,
   // the long winters: damp at the wall foot, lichen on the lauzes
   weather: {
-    plaster: [[1, 1, 1], [0.97, 0.96, 0.94], [0.94, 0.94, 0.93], [1.0, 0.98, 0.95]],
+    // (round 4, wave 188: "facades showroom-fresh, with no grime"): a third of the renders and the stones smoke- and
+    // weather-grimed, a shade or two down (one pick a building, as before: the stream draws the same)
+    plaster: [[1, 1, 1], [0.97, 0.96, 0.94], [0.94, 0.94, 0.93], [1.0, 0.98, 0.95], [0.88, 0.86, 0.82], [0.91, 0.9, 0.87]],
     // (round 3) the stone's weathering cool: the gneiss greys and blues, never the warm sandstone's buffs
-    stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91]],
+    stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91], [0.8, 0.82, 0.84], [0.84, 0.85, 0.87]],
     roof: [[1, 1, 1], [0.9, 0.88, 0.84], [1.06, 1.03, 0.98], [0.84, 0.83, 0.82]],
     // (round 4, wave 188: "showroom-fresh, no grime"): the wall foot's splash and rising damp near full
     damp: 0.95, moss: 0.5, mossTint: [0.96, 0.94, 0.8],
