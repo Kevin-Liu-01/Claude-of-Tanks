@@ -31,7 +31,12 @@ const maps = [polders, copperMesa, airfield, oasis, whiteout,
 const authoredBudgets = {
   polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18 },
   copper_mesa: { roadNodes: 166, wallM: 405, beltTrees: 0, trees: [22, 32, 40], grass: 0.36, rocks: 224, outcrops: 42, plan: 16 },
-  airfield: { roadNodes: 184, wallM: 403, beltTrees: 0, trees: [26, 42, 80], grass: 0.72, rocks: 98, outcrops: 12, plan: 16 },
+  // (the map-revival lane, Kestrel Airfield: round 2's massed Polissia pine, gauntlet wave 113, trimmed by the coordinator
+  // on hold x9 to 9 x 9 m plantations of their rows alone, 34 woodlots and a 108 rim — 512 plantation seats before their
+  // skips; the dacha cooperatives' two lanes for the layout brief's orphan rule (7 roads) and their 16 plots (42 sites);
+  // cost under rule v3 at hold x11)
+  airfield: { roadNodes: 184, wallM: 403, beltTrees: 512, trees: [34, 42, 108], grass: 0.72, rocks: 98, outcrops: 12, plan: 16,
+    roads: 7, settlement: 42 },
   // (batch 4: maps-oasis round 2, c97a5723d: Siwa's palm groves at 32 clusters and its shore palms planted closer, 13-14 m
   // apart, 38 in the two rows; wave 125 passed and its cost accepted)
   oasis: { roadNodes: 152, wallM: 421, beltTrees: 38, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
@@ -103,7 +108,7 @@ for (const config of maps) {
   assert.ok(Math.max(...sites.map(({ x }) => x)) - Math.min(...sites.map(({ x }) => x)) >= 70
     && Math.max(...sites.map(({ z }) => z)) - Math.min(...sites.map(({ z }) => z)) >= 100,
   `${label}: inhabited frontage occupies a two-dimensional court, not one remote ribbon`);
-  assert.ok(roads.length >= 5 && roads.length <= 6, `${label}: bounded multi-route layout`);
+  assert.ok(roads.length >= 5 && roads.length <= (budget.roads ?? 6), `${label}: bounded multi-route layout`);
   const points = roads.flat();
   const xs = points.map(([x]) => x), zs = points.map(([, z]) => z);
   if (label === 'reservoir') {
@@ -173,7 +178,7 @@ for (const config of maps) {
   // buildings and 6 sites plus two pairs.
   const plannedSites = config.props.plannedSites?.length ?? 0;
   const settlement = config.props.plan.length + plannedSites;
-  assert.ok(settlement >= 16 && settlement <= (plannedSites ? 26 : 18), `${label}: bounded settlement plan`);
+  assert.ok(settlement >= 16 && settlement <= (budget.settlement ?? (plannedSites ? 26 : 18)), `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
   assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
