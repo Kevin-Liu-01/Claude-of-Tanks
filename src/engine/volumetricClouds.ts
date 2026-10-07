@@ -130,9 +130,10 @@ export const CLOUD_BSM_CASCADES = Object.freeze([
 /**
  * A front's clear radius over the camera, as a share of the regime's (2026-10-07, the gauntlet's wave 198 on Monsoon: "the
  * road and trees are lit with hard, bright, clear-sky sunlight despite a heavy dark storm ceiling overhead" — at the full
- * 2.5 km the towers stood round an open battlefield in the sun): its towers stand over the field and shade it.
+ * 2.5 km the towers stood round an open battlefield in the sun; at a third, wave W's chase still stood in clear-sky sun
+ * under the towers' bases): none — a front's towers stand anywhere, over the camera too, and shade the field.
  */
-export const CLOUD_CLEAR_RADIUS_SHARE = 0.35;
+export const CLOUD_CLEAR_RADIUS_SHARE = 0;
 /** The tiers' stretch of the cascades' refresh (a band every n × `every` frames): the low tier's map turns over in a second. */
 export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1.5, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
