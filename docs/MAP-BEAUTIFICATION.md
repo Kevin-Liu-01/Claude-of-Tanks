@@ -7296,6 +7296,21 @@ Set from a sweep of one knob at a time (`$SP/p2/sea/cap4`): a 45 m colour shelf 
   sea views with the unprepared first frame in the "on" set; +0.4 to +0.6 ms without it — a texture fetch and three
   cosines a water fragment, within the run-to-run spread on a loaded machine.
 
+### 2026-10-06 — Saltwind Narrows round 2: the campanile's piazza, its broad step, its stone aged (the landmarks lane)
+
+**The gauntlet's wave 158:** the campanile "stands alone in an open red-earth field with no church, piazza, paving or
+houses at its foot", its base "rises straight out of bare sandy dirt with no plinth, steps, paving", its shaft "one
+clean, evenly tiled ashlar texture". It stands on an 18 m piazza of flagstones, on a broad step with the door's flight,
+its stone streaked from each string course and sill. The piazza lies in the zone's objective disc: the library first
+refused every piece there, then admitted a dressing piece (it has no solid to change the objective's ground), and the
+piazza is laid into the finished map (`ground: 'veto'`, an open surface: it reserves no ground — laid with the default
+reserve it re-rolled 165 records). Against the round-1 shard: a bush's concealment off the piazza's clearance; no other
+record moved. Census [3038, 2933, 3407]. Pacing (seeds 49000–49003) 158 / 189 / 182 / 199 s, the head's to the second.
+Receipts: the 74 selected for the round's seven maps (the landmarks library, the collision drift and pins, the layout
+brief, the maps' world and village receipts) green but the Delta plaster palette, whose fixture build times out under
+the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3): census close at every view (+0 draws, +0.23 to
++0.43 % triangles).
+
 ### 2026-10-05 — Saltwind Narrows: the campanile (the landmarks lane)
 
 The village's free-standing Venetian campanile, as Rab's, Hvar's and Korcula's stand apart from their churches: on the
