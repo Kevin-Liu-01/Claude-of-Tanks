@@ -45,7 +45,9 @@ function exactCrossings(roads) {
 }
 // 2026-10-02 Saltwind Narrows redesign: the southern hairpin road (the northern one's reflection) adds its three
 // crossings, 6 -> 9.
-const crossingCounts = { polders: 6, copper_mesa: 4, oasis: 6, whiteout: 6, orchard: 6, longleaf: 7, saltwind: 9 };
+// 2026-10-07 Tidegate Polders step 2 (the map-revival lane): the oxbow lane's two junctions, the north lane and the west
+// road, 6 -> 8.
+const crossingCounts = { polders: 8, copper_mesa: 4, oasis: 6, whiteout: 6, orchard: 6, longleaf: 7, saltwind: 9 };
 let checked = 0;
 for (const [mapId, expectedCount] of Object.entries(crossingCounts)) {
   const roads = createLayout(getMapConfig(mapId)).roads;
@@ -64,8 +66,8 @@ for (const [mapId, expectedCount] of Object.entries(crossingCounts)) {
     checked++;
   }
 }
-assert.equal(checked, 44);
-console.log('roadGradeSmoothing: physical smoothing and all 44 actual map crossings');
+assert.equal(checked, 46);
+console.log('roadGradeSmoothing: physical smoothing and all 46 actual map crossings');
 
 // Overlapping northeast causeways are not a geometric junction: their support
 // nevertheless needs one continuous height plane in the shared boundary bank.

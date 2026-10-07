@@ -242,6 +242,13 @@ interface MesaConfig {
 }
 
 interface TerrainSettings {
+  /**
+   * The map-revival lane (2026-10-06, Tidegate Polders' molenbergen): built mounds raised over the finished ground — a
+   * level crest `height` metres over the ground at the centre out to `crestR`, then a batter to the foot at `baseR`,
+   * its shoulder and toe rounded — last, on final queries only, after the water's banks, the roads and the pads: a
+   * landform beside water is graded back toward the waterline by its lake's fitted bank, and would widen that bank.
+   */
+  mounds?: readonly { x: number; z: number; crestR: number; baseR: number; height: number }[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
   bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
@@ -878,6 +885,22 @@ function segDist(
   return { d: Math.sqrt(ex * ex + ez * ez), t };
 }
 
+/**
+ * The built mounds (TerrainSettings.mounds): each blends the ground to its level crest, the batter between the crest and
+ * the foot straight with its shoulder and toe rounded over an eighth of the run each (landformGeology.ts 'dyke').
+ */
+function raiseMounds(x: number, z: number, h: number,
+  mounds: readonly { x: number; z: number; crestR: number; baseR: number }[], crestYs: Float64Array): number {
+  for (let i = 0; i < mounds.length; i++) {
+    const m = mounds[i], d = Math.hypot(x - m.x, z - m.z);
+    if (d >= m.baseR) continue;
+    const t = d <= m.crestR ? 0 : (d - m.crestR) / Math.max(0.01, m.baseR - m.crestR), r = 0.125, k = 1 / (1 - r);
+    const w = t < r ? 1 - k * t * t / (2 * r) : t > 1 - r ? k * (1 - t) * (1 - t) / (2 * r) : 1 - k * (r / 2 + (t - r));
+    h += (crestYs[i] - h) * w;
+  }
+  return h;
+}
+
 /** Pure analytical height contribution for an authored tactical landform. */
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
@@ -982,6 +1005,10 @@ function* heightFieldBuildSteps(
   // the open lines past the edge (resolved once the portals stand, from the uncut outland)
   let railOpenLines: (RailOpenLine | null)[] | null = null;
   let railCuttingsOn = false, railCuttingsSuspended = false;
+  // (the map-revival lane, 2026-10-06) the built mounds' crest levels, resolved once the surface is frozen (below); null
+  // until then and on every map without one, so no construction query sees a mound
+  const mounds = T.mounds ?? [];
+  let moundCrestYs: Float64Array | null = null;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   // maps lane B (2026-10-03): a sor pan's bank — the outer share of each station's radius over which its dig deepens to
@@ -1940,6 +1967,8 @@ function* heightFieldBuildSteps(
     if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
+    // the built mounds stand last, over every constraint above (final queries only)
+    if (moundCrestYs !== null && roadsOn && padsOn) h = raiseMounds(x, z, h, mounds, moundCrestYs);
     return h;
   }
 
@@ -2245,6 +2274,14 @@ function* heightFieldBuildSteps(
     }
     railCuttingsOn = true;
     railOpenLines = railCuttings.map((cut, i) => resolveRailOpenLine(cut, railCuttingPortalYs[i], outlandHeightAt));
+  }
+  // the built mounds' crests: the finished ground at each centre (sampled in the final phase; moundCrestYs is still null
+  // here, so no mound sees another) plus its height
+  if (mounds.length) {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
+    landformPhase = phase;
   }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.

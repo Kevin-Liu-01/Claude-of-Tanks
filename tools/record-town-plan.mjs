@@ -34,9 +34,16 @@ splice(/export function mulberry32\(a: number\): Rng \{return function\(\)\{([\s
   (_m, body) => `export function mulberry32(a: number): Rng {const f = function(){${body}}; (f as unknown as { state: () => number }).state = () => a; return f;}`,
   'mulberry32');
 // the wall pick, then the state the builder starts from
-splice(/const info = builder\(rng, tmp, pickWall\(rng\)\);/,
-  'const recWall = pickWall(rng); const recState = (rng as unknown as { state: () => number }).state();\n    const info = builder(rng, tmp, recWall);',
-  'the planned builder call');
+// (2026-10-06, the map-revival lane: props.ts now names the wall pick before the builder call; either form is spliced)
+if (/const wallBucket = pickWall\(rng\);\n\s*const info = builder\(rng, tmp, wallBucket\);/.test(source)) {
+  splice(/const wallBucket = pickWall\(rng\);\n(\s*)const info = builder\(rng, tmp, wallBucket\);/,
+    (_m, lead) => `const wallBucket = pickWall(rng); const recWall = wallBucket; const recState = (rng as unknown as { state: () => number }).state();\n${lead}const info = builder(rng, tmp, wallBucket);`,
+    'the planned builder call');
+} else {
+  splice(/const info = builder\(rng, tmp, pickWall\(rng\)\);/,
+    'const recWall = pickWall(rng); const recState = (rng as unknown as { state: () => number }).state();\n    const info = builder(rng, tmp, recWall);',
+    'the planned builder call');
+}
 // the final pose, as the building is counted
 splice(/(\n\s*)if \(!explicitStructure\) bi\+\+;\n(\s*)return true;/,
   (_m, lead, tail) => `${lead}((globalThis as unknown as { __townRecord?: unknown[] }).__townRecord ??= []).push({ structure: structureId, planIndex: bi, wall: recWall, rng: recState, x: px, z: pz, rot });${lead}if (!explicitStructure) bi++;\n${tail}return true;`,

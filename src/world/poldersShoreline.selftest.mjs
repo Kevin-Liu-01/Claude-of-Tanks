@@ -51,7 +51,12 @@ function inspectContour(lake) {
 function inspectRoadsAndPads(field, before, beforeWater) {
   let minimumRoadNormal = 1, maximumRoadHeightDelta = 0, minimumPadNormal = 1, maximumPadMoveRoadDelta = 0;
   const padFailures = [];
-  for (const road of field._layout.roads) for (const [x, z] of road) {
+  // (2026-10-07, the map-revival lane, step 2: the oxbow lane crosses the oxbow on the lift bridge's deck plane — its grade
+  // follows the water it bridges and the deck carries it over, so the route a deck carries is exempt; every other road
+  // keeps its canonical elevation, dry)
+  const bridged = new Set((field.bridgeDecks ?? []).map((deck) => deck.route));
+  for (const [route, road] of field._layout.roads.entries()) for (const [x, z] of road) {
+    if (bridged.has(route)) continue;
     minimumRoadNormal = Math.min(minimumRoadNormal, field.getNormalAt(x, z).y);
     maximumRoadHeightDelta = Math.max(maximumRoadHeightDelta, Math.abs(field.getHeightAt(x, z) - beforeWater.getHeightAt(x, z)));
     maximumPadMoveRoadDelta = Math.max(maximumPadMoveRoadDelta, Math.abs(field.getHeightAt(x, z) - before.getHeightAt(x, z)));
@@ -113,7 +118,9 @@ function inspectBanks(field) {
   for (const lake of polders.terrain.lakes) for (let i = 0; i < 64; i++) {
     inspectBankRay(field, lake, i * Math.PI / 32, pads, receipt);
   }
-  assert.ok(receipt.coreSamples >= 600 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200);
+  // (2026-10-07, the map-revival lane, step 2: the oxbow lane's 20 m road exclusion takes the oxbow's waist out of the
+  // core samples: 560 a seed, was over 600)
+  assert.ok(receipt.coreSamples >= 540 && receipt.bankSamples >= 1200 && receipt.dryCoves >= 200);
   return receipt;
 }
 
@@ -177,8 +184,10 @@ assert.ok(contours[3].widthM > 100 && contours[3].widthM / contours[3].lengthM >
   'northwest oxbow follows a different east/west drainage direction');
 const totalAreaM2 = contours.reduce((area, contour) => area + contour.areaM2, 0);
 assert.ok(totalAreaM2 > 29000 && totalAreaM2 < 35000, 'retain substantial water coverage within the existing dry compartments');
-assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 52,
-  'farm/drain composition redistributes the same authored tree budget');
+// (2026-10-06, the map-revival lane, step 1: the 52 stations of the farm and drain composition, and 45 more on the long
+// field dykes' crests and the headland at the north dyke's foot — the map's own trees moved onto the rows)
+assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 97,
+  'farm/drain composition and the dyke rows redistribute the authored tree budget');
 assert.ok(polders.terrain.lakes.reduce((count, lake) => count + 4 + lake.radii.length, 0) < originalLakes.length * 4);
 assert.equal(buildLiquidLakeBanks(polders.terrain.lakes, () => 9).byteLength, 40);
 assert.equal(buildLiquidLakeBanks(originalLakes, () => 9).byteLength, 216);

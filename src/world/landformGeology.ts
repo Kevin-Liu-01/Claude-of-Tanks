@@ -9,7 +9,8 @@
 //   bornhardt: a broad rounded crown steepening into a near-vertical wall, its foot wandering round the dome, over a
 //   concave talus apron; fans spread from the wall's foot) or, on a ridge,
 //   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
-//   blocky front at its downhill end);
+//   blocky front at its downhill end) or 'dyke' (an earth embankment: a level crest, straight batters, the shoulder and
+//   the toe rounded);
 // - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
 //   below the rills' mouths onto the plain;
 // - strata: bedding, a bench and a riser per bed, the beds dipping slightly so no bench is level;
@@ -24,7 +25,9 @@ export interface LandformGeology {
   outline?: number;
   /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
    * levees, a steep margin and a short talus. */
-  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg';
+  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'dyke';
+  /** dyke: the crest's half-width as a fraction of the half-width (default 0.25); the batters take the rest. */
+  crest?: number;
   /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). */
   wall?: readonly [number, number];
   /** butte / inselberg: the talus apron's height at the wall's foot, as a share of the landform's height (default 0.28
@@ -163,6 +166,22 @@ function ridgeShoulder(q: number): number {
   return across * across * (3 - 2 * across);
 }
 
+/**
+ * A dyke (the map-revival lane, 2026-10-06, the Polders): an earth embankment, its crest level out to `crest` of the
+ * half-width, then a straight batter down to the toe, the shoulder and the toe each rounded over an eighth of the
+ * batter (the slope ramps in and out, so the crest's edge and the toe are no creases). A polder's dykes stand up off
+ * the fields as embankments, not as the folds the dome profile makes.
+ */
+function dykeProfile(q: number, geology: LandformGeology): number {
+  const c = Math.max(0.05, Math.min(0.8, geology.crest ?? 0.25));
+  if (q <= c) return 1;
+  if (q >= 1) return 0;
+  const t = (q - c) / (1 - c), r = 0.125, k = 1 / (1 - r);
+  if (t < r) return 1 - k * t * t / (2 * r);
+  if (t > 1 - r) { const u = 1 - t; return k * u * u / (2 * r); }
+  return 1 - k * (r / 2 + (t - r));
+}
+
 /** A butte or mesa: a gently domed cap (never a level table), a steep wall, then a concave talus apron. */
 function butteProfile(q: number, geology: LandformGeology): number {
   const [top, foot] = geology.wall ?? BUTTE_WALL;
@@ -273,6 +292,7 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
   const profile = geology.profile ?? 'dome';
   if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
   if (profile === 'butte') return butteProfile(q, geology);
+  if (profile === 'dyke') return dykeProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
   return fallback(q);

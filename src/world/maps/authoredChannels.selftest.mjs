@@ -89,11 +89,17 @@ function checkCircleChannels(config, expectedCells, expectedReaches, maximumArea
 }
 
 function checkDryAccess(hf, config, cells) {
-  for (const nodes of hf._layout.roads) {
+  // (2026-10-07, the map-revival lane: a route a bridge deck carries crosses its water on the deck — Polders' oxbow lane
+  // on the lift bridge — and its span is wet by design; its ground away from the span is checked as every road's)
+  const decks = hf.bridgeDecks ?? [];
+  const onSpan = (route, x, z) => decks.some((d) => d.route === route
+    && Math.abs((x - d.x) * d.ux + (z - d.z) * d.uz) <= d.halfLength && Math.abs(-(x - d.x) * d.uz + (z - d.z) * d.ux) <= d.halfWidth + 1);
+  for (const [route, nodes] of hf._layout.roads.entries()) {
     for (let index = 1; index < nodes.length; index++) {
       const a = nodes[index - 1], b = nodes[index];
       for (let step = 0; step <= 4; step++) {
         const t = step / 4, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+        if (onSpan(route, x, z)) continue;
         assert.equal(hf.getWaterMaskAt(x, z), 0, `${config.id}: every actual causeway remains dry`);
         assert.equal(hf.getGroundType(x, z), 'hard', `${config.id}: causeways keep hard-ground movement`);
         assert.ok(hf.getNormalAt(x, z).y >= 0.90, `${config.id}: crossings remain tank-traversable`);
@@ -131,7 +137,8 @@ function authoredContourArea(lake) {
 function checkAuthoredBasins(config, count) {
   const cells = config.terrain.lakes, hf = createHeightField(1337, config);
   assert.equal(cells.length, count, 'published authored basin count');
-  assert.equal(config.terrain.marshes.length, 0);
+  // (2026-10-07: a bridge's crossing marker — crossing: 'bridge', no dip, inside a lake on its road — is no marsh cell)
+  assert.equal(config.terrain.marshes.filter((marsh) => !(marsh.crossing === 'bridge' && !marsh.dip)).length, 0);
   assert.equal(config.terrain.softLakes, true);
   const areas = cells.map(authoredContourArea);
   assert.ok(areas.every(area => area > 3000), 'substantial basins, not tiny isolated water dots');

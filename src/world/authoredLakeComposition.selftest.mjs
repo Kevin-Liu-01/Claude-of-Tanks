@@ -88,5 +88,7 @@ for (const seed of [1337, 2049, 7719]) {
     coreBoundarySamples++;
   }
 }
-assert.ok(permutationSamples > 8000 && coreBoundarySamples >= 900);
+// (2026-10-07, the map-revival lane, Polders step 2: the oxbow lane crosses the oxbow's waist on the lift bridge, so its
+// 37 contour stations a seed within 24 m of the lane are skipped like every road's: 849 of the 960)
+assert.ok(permutationSamples > 8000 && coreBoundarySamples >= 840);
 console.log(`authoredLakeComposition: ${legacySamples} exact legacy samples, actual cross-apron flat-core regression, ${permutationSamples} permutation samples and ${coreBoundarySamples} continuous core-boundary samples PASS`);
