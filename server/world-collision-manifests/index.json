@@ -187,11 +187,11 @@
       "concealers": 3963
     },
     "longleaf": {
-      "bytes": 1357131,
-      "sha256": "5016ade8e3704514a0c29a78ac293717144f3ec9cc58d4049953b12092ec1027",
-      "obstacles": 4890,
-      "colliders": 4736,
-      "concealers": 5791
+      "bytes": 1365222,
+      "sha256": "3a904844abe9d63642b5b61009e72d791aab7ade3605c89d632aef5141bb6a52",
+      "obstacles": 4906,
+      "colliders": 4727,
+      "concealers": 5775
     },
     "mangrove": {
       "bytes": 1175887,

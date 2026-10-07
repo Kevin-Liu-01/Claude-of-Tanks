@@ -69,6 +69,11 @@ export default {
     // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
     // zig-zag stair inside its frame, seen over the canopy from both deployments.
     landmarks: [
+      // round 2 (2026-10-06; gauntlet waves 154-158: the set pieces "in no setting"): the towerman's compound round the
+      // tower's foot, its split-rail fence and gate toward the road, and the beaten track from the gate down to the forest
+      // road (both dressing pieces, authored before the tower: they refuse nothing)
+      { kind: 'garden', x: -216, z: -46, yawDeg: -90, name: "the lookout's compound", params: { width: 16, depth: 16, fence: 'fencerail', beds: false, path: 0, back: 'fence' } },
+      { kind: 'path', x: -246.6, z: -51.35, yawDeg: -102.4, name: "the track from the lookout to the road", params: { length: 44, width: 2.6, surface: 'earth' } },
       { kind: 'fireLookout', x: -216, z: -46, yawDeg: 0, name: 'the fire lookout on the western ridge', params: { height: 26 } },
     ],
     loggingYard: {
