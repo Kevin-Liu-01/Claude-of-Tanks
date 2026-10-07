@@ -216,10 +216,12 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // (the lab's high view: five even shares drew a quilt of lots — the floor is mostly gravel and cinder, so neighbours
   // match more often than not)
   // (2026-10-06, Ironworks round 3, wave 176: "a checkerboard of flat grey slabs and lime lawns" — no lawn inside the
-  // works: the floor's ruderal grass gone to cinder and gravel)
-  worksfloor: [[15, 0.40], [19, 0.30], [18, 0.15], [16, 0.15]],
-  // round the blast furnaces: slag and cinder trodden flat, the cast floor's hardstanding, hardcore
-  furnace: [[15, 0.84], [18, 0.09], [16, 0.07]],
+  // works: the floor's ruderal grass gone to cinder and gravel; round 4, wave 223: the floor's "flat glossy grey
+  // tarmac-like plates" and pale hardcore read "an empty airfield, a modern car park" — black cinder and slag with the
+  // courts' gravel, no hardstanding and no pale hardcore on the floor)
+  worksfloor: [[15, 0.64], [19, 0.36]],
+  // round the blast furnaces: slag and cinder trodden flat (round 4: no slab, no pale hardcore beside the furnaces)
+  furnace: [[15, 1]],
   // the rail fan's sidings: ballast between and beside the tracks, cinder where the engines stood
   sidings: [[16, 0.80], [15, 0.20]],
   // a court's gravel (a small zone cuts few fields, each one crop: gravel the most of them), a paved or hardcore stand

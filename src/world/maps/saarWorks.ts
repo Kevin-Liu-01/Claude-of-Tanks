@@ -53,14 +53,18 @@ const STEEL = rgb(0x3a3532), OXIDE = rgb(0x6a3f2e), RAIL = rgb(0x5c544c);
 /** The receiving yard's heaps beyond the high-line's western end: ore red-brown, coke near black. */
 const ORE = rgb(0x6b3a26), COKE = rgb(0x1f1d1c), SLAG = rgb(0x2b2825);
 const HEAPS: ReadonlyArray<{ x: number; z: number; r: number; l: number; colour: Rgb }> = [
-  { x: -124, z: -20, r: 4.2, l: 6.2, colour: ORE }, { x: -138, z: -27, r: 3.8, l: 5.4, colour: COKE },
-  { x: -121, z: -33, r: 3.4, l: 4.6, colour: ORE },
+  // (round 4, wave 223: long windrows side by side under the line's end, not cones)
+  { x: -121, z: -24, r: 3.6, l: 8.5, colour: ORE }, { x: -130, z: -26, r: 3.4, l: 8.0, colour: COKE },
+  { x: -139, z: -22, r: 3.2, l: 7.5, colour: ORE },
 ];
 
 /** The slag tipped beyond the line's eastern end: on the ore berm's nose and its southern flank, clear of the casting
  * yard's objective ground. */
 const SLAG_HEAPS: ReadonlyArray<{ x: number; z: number; r: number; l: number }> = [
-  { x: -30, z: -41, r: 3.2, l: 4.4 }, { x: -57, z: -67, r: 2.8, l: 3.8 }, { x: -37, z: -49, r: 2.4, l: 3.0 },
+  // (round 4, wave 223: "real slag tips are long flat-topped banks with tipping lines, not cones")
+  // (each seated where its whole length keeps 5 m off the roads and the aprons: one over the berm's nose, one on the
+  // berm's south-western flank)
+  { x: -32, z: -41, r: 3.4, l: 8.0 }, { x: -77, z: -65, r: 3.8, l: 9.5 },
 ];
 /**
  * The saar kit's furnace unit (maps/regional/saar.ts blastFurnace on the block's base): the dust catcher's centre beside
@@ -243,46 +247,46 @@ function heap(ctx: WorksContext, x: number, z: number, r: number, l: number, col
   }
   look(); look();
   for (let i = 0; i < n; i++) look();
-  // the clinker heap as tipped (wave 176: the faceted black cones read as "umbrellas or tents"): a broken rim bitten in
-  // and bulging, a shoulder of loose lumps, a crest along the heap's length where the tipping track ran, and a skirt of
-  // grey-brown fines spread on the ground round its foot; from a stream of its own
+  // the tip as a long bank (round 4, gauntlet wave 223: "real slag tips are long flat-topped banks with tipping lines,
+  // not cones", and round 3's pale skirt of fines ringed every heap in "chalk outlines"): a flat top along its length
+  // where the tipping track runs, the flanks at the angle of repose in tipped lumps, the tipping face steep at one end,
+  // the other end its ramp; its foot set into the ground, no skirt; from a stream of its own
   const v = streamFrom(hashSeed('saar-clinker', x, z));
-  const m = 18, along = l >= r, ax = along ? 0 : 1, az = along ? 1 : 0;
-  const rim: Vec3[] = [], shoulder: Vec3[] = [], skirt: Vec3[] = [];
-  for (let i = 0; i < m; i++) {
-    const a = i * Math.PI * 2 / m;
-    let f = 0.84 + v() * 0.3;
-    if (v() < 0.18) f *= 0.8;
-    const dx = Math.cos(a) * r * f, dz = Math.sin(a) * l * f;
-    rim.push([x + dx, hf.getHeightAt(x + dx, z + dz) - 0.08, z + dz]);
-    const sf = 0.5 + v() * 0.16, sx = x + dx * sf, sz = z + dz * sf;
-    shoulder.push([sx, hf.getHeightAt(sx, sz) + height * (0.5 + v() * 0.26), sz]);
-    const kf = 1.22 + v() * 0.2, kx = x + dx * kf, kz = z + dz * kf;
-    skirt.push([kx, hf.getHeightAt(kx, kz) + 0.04, kz]);
+  const along = l >= r, L = Math.max(r, l), B = Math.min(r, l);
+  const ux = along ? 0 : 1, uz = along ? 1 : 0, wx = along ? 1 : 0, wz = along ? 0 : 1;
+  const tip = v() < 0.5 ? 1 : -1, K = 10;
+  const rows: Vec3[][] = [];
+  for (let k = 0; k <= K; k++) {
+    const t = -L + (2 * L * k) / K, e = Math.sqrt(Math.max(0, 1 - (t / L) ** 2));
+    // (the tipping face's end stands steep: the outline squared off toward it)
+    const ee = t * tip > 0 ? Math.pow(e, 0.55) : e;
+    const half = B * ee * (0.9 + v() * 0.14), shoulder = half * (0.62 + v() * 0.08), topHalf = half * (0.3 + v() * 0.06);
+    const cx = x + ux * t, cz = z + uz * t, hTop = height * Math.sqrt(ee) * (0.95 + v() * 0.08), crown = hf.getHeightAt(cx, cz) + hTop;
+    const row: Vec3[] = [];
+    for (const [o, part] of [[-half, 0], [-shoulder, 1], [-topHalf, 2], [topHalf, 2], [shoulder, 1], [half, 0]] as const) {
+      const jx = part ? (v() - 0.5) * 0.35 : 0, px = cx + wx * o + ux * jx, pz = cz + wz * o + uz * jx;
+      const ground = hf.getHeightAt(px, pz);
+      row.push([px, part === 0 ? ground - 0.25 : part === 1 ? Math.max(ground + 0.2, crown - hTop * (0.38 + v() * 0.12)) : crown, pz]);
+    }
+    rows.push(row);
   }
-  const span = (along ? l : r) * (0.32 + v() * 0.12), lean = (v() - 0.5) * 0.4;
-  const crestY = (t: number) => hf.getHeightAt(x + ax * t, z + az * t) + height * (0.92 + v() * 0.1);
-  const A: Vec3 = [x - ax * span + az * lean, crestY(-span), z - az * span + ax * lean];
-  const B: Vec3 = [x + ax * span - az * lean, crestY(span), z + az * span - ax * lean];
+  const A: Vec3 = rows[tip > 0 ? 2 : K - 2][2].map((c, i) => (c + rows[tip > 0 ? 2 : K - 2][3][i]) / 2) as unknown as Vec3;
+  const B2: Vec3 = rows[tip > 0 ? K - 3 : 3][2].map((c, i) => (c + rows[tip > 0 ? K - 3 : 3][3][i]) / 2) as unknown as Vec3;
   const positions: number[] = [], colors: number[] = [], uvs: number[] = [];
-  const FINES: Rgb = [0.34, 0.31, 0.28];
-  // (the corners below run counter-clockwise in the x-z plane, z up, which is clockwise seen from above: each face is
-  // laid in reverse, so it faces out and up)
   const tri = (a: Vec3, b: Vec3, c: Vec3, tone: Rgb): void => {
-    for (const p of [a, c, b]) { positions.push(p[0], p[1], p[2]); colors.push(tone[0], tone[1], tone[2]); uvs.push(p[0] * 0.5, p[2] * 0.5); }
+    for (const p of [a, b, c]) { positions.push(p[0], p[1], p[2]); colors.push(tone[0], tone[1], tone[2]); uvs.push(p[0] * 0.5, p[2] * 0.5); }
   };
-  const near = (p: Vec3) => (Math.hypot(p[0] - A[0], p[2] - A[2]) < Math.hypot(p[0] - B[0], p[2] - B[2]) ? A : B);
-  for (let i = 0; i < m; i++) {
-    const j = (i + 1) % m, k = 0.72 + v() * 0.42;
-      // the skirt of fines on the ground round the foot
-    tri(skirt[i], rim[j], rim[i], shade(FINES, 0.9 + v() * 0.2));
-    tri(skirt[i], skirt[j], rim[j], shade(FINES, 0.86 + v() * 0.2));
-    tri(rim[i], rim[j], shoulder[j], shade(colour, k));
-    tri(rim[i], shoulder[j], shoulder[i], shade(colour, k * (0.9 + v() * 0.2)));
-    const pi = near(shoulder[i]), pj = near(shoulder[j]);
-    tri(shoulder[i], shoulder[j], pj, shade(colour, k * 1.08));
-    if (pi !== pj) tri(shoulder[i], pj, pi, shade(colour, k * 1.12));
+  // (a strip's quad laid so its face looks up and out: the order flips when the bank runs along x)
+  const quad = (p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, tone: Rgb): void => {
+    if (along) { tri(p0, p1, p2, tone); tri(p0, p2, p3, tone); } else { tri(p0, p2, p1, tone); tri(p0, p3, p2, tone); }
+  };
+  for (let k = 0; k < K; k++) {
+    for (let j = 0; j < 5; j++) {
+      const k0 = 0.78 + v() * 0.26, tone = shade(colour, j === 2 ? k0 * 0.92 : k0);
+      quad(rows[k][j], rows[k + 1][j], rows[k + 1][j + 1], rows[k][j + 1], tone);
+    }
   }
+  const crest: [Vec3, Vec3] = [A, B2];
   const geometry = new THREE.BufferGeometry();
   geometry.name = 'saar-yard-heap';
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -290,7 +294,7 @@ function heap(ctx: WorksContext, x: number, z: number, r: number, l: number, col
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
   (ctx.buckets.baked ??= []).push(geometry);
-  return { hull, crest: [A, B] };
+  return { hull, crest };
 }
 
 /** The receiving yard's ore and coke heaps beyond the high-line's western end, and the slag by the line's casting side:

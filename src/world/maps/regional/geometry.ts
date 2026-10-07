@@ -360,9 +360,11 @@ export class PartSink {
    * blended with its neighbour's across a soft bend (under 25 degrees) and kept sharp at a lap or a shoulder, so the
    * shell reads round. The UVs run unbroken round the shell (u, the arc at the ring's radius) and along the axis (v);
    * `uvPin` instead pins every vertex to one texel (a plain plate: the steel tile's corrugation never shows). No caps.
+   * `bandColour` (a coloured bucket) gives each band its own colour, given the band's index and the corner (emitting
+   * frame), so a band's tone is flat and steps at its edges (a shell's plate courses); it wins over `colourAt`.
    */
   revolve(bucket: RegionalBucket, start: Vec3, axis: 'x' | 'y' | 'z', profile: ReadonlyArray<readonly [number, number]>,
-    segments: number, opts: EmitOptions & { uvPin?: readonly [number, number] } = {}): void {
+    segments: number, opts: EmitOptions & { uvPin?: readonly [number, number]; bandColour?: (band: number, p: Vec3) => Rgb } = {}): void {
     if (profile.length < 2 || segments < 3) return;
     const along: Vec3 = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1];
     const e1: Vec3 = axis === 'y' ? [1, 0, 0] : [0, 1, 0];
@@ -399,7 +401,10 @@ export class PartSink {
       } else { g.pos.push(p[0], p[1], p[2]); g.nor.push(n[0], n[1], n[2]); }
       if (opts.uvPin) g.uv.push(opts.uvPin[0], opts.uvPin[1]);
       else g.uv.push((i / segments) * Math.PI * 2 * r * density + ou, t * density + ov);
-      if (g.col && colour) { const cc = opts.colourAt ? opts.colourAt(p) : colour; g.col.push(cc[0], cc[1], cc[2]); }
+      if (g.col && colour) {
+        const cc = opts.bandColour ? opts.bandColour(band, p) : opts.colourAt ? opts.colourAt(p) : colour;
+        g.col.push(cc[0], cc[1], cc[2]);
+      }
       if (g.mask) g.mask.push(0);
       if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
       if (g.tint) { const tt = opts.tintAt ? opts.tintAt(p) : opts.tint; if (tt) g.tint.push(tt[0], tt[1], tt[2]); else g.tint.push(1, 1, 1); }
@@ -417,11 +422,12 @@ export class PartSink {
 
   /**
    * A round pipe from `a` to `b` of radius `r` (`r1` at b), its normals smooth round it, its UVs unbroken (u round, v
-   * along), or pinned to one texel with `uvPin`; open ends (a joint or a flange covers them). The map-revival lane,
-   * 2026-10-07: Ironworks' uptakes, downcomers and blast mains, where a box member read as a square duct.
+   * along), or pinned to one texel with `uvPin`; its ends open (a joint or a flange covers them) unless `caps`, which
+   * closes each with a flat disc. The map-revival lane, 2026-10-07: Ironworks' uptakes, downcomers and blast mains, where
+   * a box member read as a square duct.
    */
   pipe(bucket: RegionalBucket, a: Vec3, b: Vec3, r: number, segments: number,
-    opts: EmitOptions & { uvPin?: readonly [number, number] } = {}, r1 = r): void {
+    opts: EmitOptions & { uvPin?: readonly [number, number]; caps?: boolean } = {}, r1 = r): void {
     const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
     if (len < 1e-6 || segments < 3) return;
     const ax = normalize3(d);
@@ -458,6 +464,17 @@ export class PartSink {
       corner(0, i); corner(0, i + 1); corner(1, i + 1);
       corner(0, i); corner(1, i + 1); corner(1, i);
       this.triangles += 2;
+    }
+    if (opts.caps) {
+      // the end discs: the far one counter-clockwise seen from along the run (it faces +ax), the near one reversed
+      const ringAt = (base: Vec3, rr: number): Vec3[] => Array.from({ length: segments }, (_, i) => {
+        const ang = (i / segments) * Math.PI * 2, c = Math.cos(ang), sn = Math.sin(ang);
+        return [base[0] + (s1[0] * c + s2[0] * sn) * rr, base[1] + (s1[1] * c + s2[1] * sn) * rr, base[2] + (s1[2] * c + s2[2] * sn) * rr] as Vec3;
+      });
+      const { caps: _caps, uvPin, ...capOpts } = opts;
+      const disc = { ...capOpts, ...(uvPin ? { uv: { kind: 'plane' as const, origin: a, u: s1, v: s2 }, density: 0 } : {}) };
+      this.polygon(bucket, ringAt(b, r1), disc);
+      this.polygon(bucket, ringAt(a, r).reverse(), disc);
     }
   }
 
