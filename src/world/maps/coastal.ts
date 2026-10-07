@@ -129,8 +129,8 @@ export default {
     solidPropsInRoad: 'one fishing-village frontage building at the shore lane\'s junction with the coast road, '
       + 'unchanged from the original map (whose village frontage its shore receipts pin), stands 1.4 m into the coast '
       + 'road\'s carriageway',
-    solidPropsInWater: 'the harbour mouth\'s mole with its red light and the green light on its skerry (props.landmarks, '
-      + 'src/world/landmarks/harbour.ts) stand in the cove\'s water by design',
+    solidPropsInWater: 'the harbour mouth\'s mole with its red light, the green light on its skerry and the quay along the '
+      + 'south cove (props.landmarks, src/world/landmarks/harbour.ts) stand in the cove\'s water by design',
   } },
 
   spawns: {
@@ -215,6 +215,12 @@ export default {
         params: { length: 42.01, sea: 'left', light: 'red' } },
       { kind: 'lighthouse', x: 328, z: -72, yawDeg: -17.9, name: 'the green light on its skerry',
         params: { paint: 'green', base: 'rock' } },
+      // round 2 (2026-10-06; mr4's harbour step 2, built with the mole as one harbour): the quay along the south cove, its
+      // face on x 288 from z -62 to -20, its paved top 1.4 m over the strand (-2.6), backed onto the turning court where the
+      // south shore lane comes down onto it; the slipway off its south end running east-south-east into the water (the
+      // basin's way out beside the quay: no pocket between the mole, the quay and the strand)
+      { kind: 'quay', x: 279, z: -41, yawDeg: 90, name: 'the quay', params: { length: 42, depth: 18, top: 1.4 } },
+      { kind: 'slipway', x: 289.5, z: -68.3, yawDeg: 112.4, name: 'the slipway', params: { length: 12, width: 5 } },
     ],
     // world-dressing r1: + chapel and granary in the fishing village
     plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
