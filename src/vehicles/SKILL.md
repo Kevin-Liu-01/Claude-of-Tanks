@@ -217,6 +217,11 @@ bucket (they collapse with the brick) — emit hardware that must stay dark afte
 `node tools/material-roles-audit.mjs [--ids=… | --all] --md=<path>` (part census hook `partCensus`, lexical evidence
 per part, per-tank role and material counts); the audit and its verdicts are
 [`docs/tank-generation/material-roles-audit-20260925.md`](../../docs/tank-generation/material-roles-audit-20260925.md).
+Camouflage panels (round 4, 2026-10-07; wave 214: "a flat sticker across every surface, including the gun barrel wrap
+and hull boxes"): the merge gives every bolted-on solid in the `*Detail`/`*PaintedDetail`/`*Equipment` buckets (a bin
+with its lid and latches is one connected piece), every gun-tube section and every part marked `markCamoPanel` its own
+window of the tile and paint tone (`camoPanels.ts`); ERA cassettes keep the window and take a brick tone. The shell
+buckets never split on their own (lofted from touching strips): mark a box there when it is a separate item.
 Read actual assembled wheel centers: the ground-seating law can override an
 authored `wheelY`. Source-backed track courses must fit finite wheel stock,
 including the central drum, tread rings and tooth crowns at their actual axial

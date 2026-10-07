@@ -668,6 +668,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
+    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
+    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
