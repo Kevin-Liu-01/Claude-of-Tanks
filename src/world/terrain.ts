@@ -248,6 +248,14 @@ interface LandformConfig {
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
+  /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
+   * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
+   * a narrow band is a sheer wall. Absent = the trough exactly as before. */
+  wall?: readonly [number, number];
+  /** Gorges only: how far the walls step in from the authored line, in metres — buttresses and bays along the gorge
+   * (a few incommensurate sines of the distance along it), the two walls together, never wider than authored, the
+   * middle 30 m either side on the authored line. Absent = straight. */
+  meander?: number;
 }
 
 interface DuneConfig {
@@ -348,6 +356,10 @@ interface SplatConfig {
    * as airfield concrete — square slabs `slabM` across with sealed expansion joints (`jointM` half-width), a tone per
    * slab, oil stains (`stains`, 0..1) and rubber streaks along the x axis, the runway's (`tyres`, 0..1). */
   pavement?: { slabM: number; jointM?: number; stains?: number; tyres?: number };
+  /** Map revival lane 2 (2026-10-05, Aegis Crossing's Ronda): the roads and hardstands inside the village rect take the
+   * paved path (pavedRoads' setts, kerb line and gutter, `pavement` when authored) while the country roads past it stay
+   * earth; the road mask also leaves the ground under a dry viaduct's deck unpainted. Absent = off. */
+  townPaving?: boolean;
   /** Maps lane B (2026-10-03, the gauntlet: Tarkhan Steppe's pans "read as snow patches or grey mud"): the dry marsh
    * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
    * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
@@ -935,7 +947,17 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   const height = form.height || 0;
   if (form.kind === 'gorge') {
     const along = 1 - smoothstep((form.length || 700) * .36, (form.length || 700) * .5, Math.abs(lx));
-    const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
+    if (!form.wall && !form.meander) {
+      const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
+      return height * along * across;
+    }
+    const w = form.width || 90, foot = form.wall ? form.wall[0] : .65, top = form.wall ? form.wall[1] : 1;
+    // the walls step in together in buttresses and bays (a mirror-symmetric layout stays symmetric; never wider than
+    // authored, so whatever stands back from the rim stays back); the middle holds the authored line (a crossing there
+    // keeps its abutments), the steps growing over 30 m either side
+    const wave = 0.55 * Math.sin(lx / 41 + 0.7) + 0.3 * Math.sin(lx / 17.3 + 2.3) + 0.15 * Math.sin(lx / 7.9 + 4.1);
+    const wander = -(form.meander || 0) * smoothstep(0, 30, Math.abs(lx)) * (0.5 + 0.5 * wave);
+    const across = 1 - smoothstep(w * foot + wander, w * top + wander, Math.abs(lz));
     return height * along * across;
   }
   if (form.kind === 'ridge') {
@@ -3370,6 +3392,7 @@ export function makeMaskTexture(
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   shoreDirtStart: number | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
+  viaductCut = false,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -3475,12 +3498,23 @@ export function makeMaskTexture(
     const patch = 0.45 + 0.55 * (seedNoi.noise(x * 0.045 - 19, z * 0.045 + 8) * 0.5 + 0.5);
     px[j + 3] = vm * patch * 0.8 * 255;
   }
+  // map revival lane 2 (townPaving): the ground under a dry viaduct's deck (its span, to the road field's 12 m) is the gorge's
+  // bed and walls, not the road that rides the deck over them
+  const viaducts = viaductCut ? (layout.terrain.bridges ?? []).map((b) => ({ x: b.x, z: b.z, ux: Math.cos(b.yawDeg * Math.PI / 180),
+    uz: Math.sin(b.yawDeg * Math.PI / 180), hl: b.spanM / 2, hw: Math.max(b.widthM / 2, 12) })) : [];
+  function underViaduct(x: number, z: number): boolean {
+    for (const v of viaducts) {
+      const dx = x - v.x, dz = z - v.z;
+      if (Math.abs(dx * v.ux + dz * v.uz) <= v.hl && Math.abs(dx * v.uz - dz * v.ux) <= v.hw) return true;
+    }
+    return false;
+  }
   function paintMaskPixels(): void {
     for (let tz = 0; tz < s; tz++) {
       const z = (tz + 0.5) / T - HALF;
       for (let tx = 0; tx < s; tx++) {
         const x = (tx + 0.5) / T - HALF, i = tz * s + tx, j = i * 4;
-        paintRoadMask(x, z, i, j);
+        if (!underViaduct(x, z)) paintRoadMask(x, z, i, j);
         px[j + 2] = (landGrid ? landAt(x, z) : sampleMarshMask(x, z)) * 255;
         // Existing roads and liquid margins keep every original mask channel.
         // Only dry, off-road settlement soil moves to authored yard footprints.
@@ -3718,7 +3752,8 @@ uniform float uMaskSize;
 uniform vec4 uMaskStack;
 // 2026-10-05: a styled road net's road layer in the stack (stackLandUseBake): (its texels a side, its first row, 1, 0)
 uniform vec4 uRoadClass;
-float gRoadTex = 0.0;        // the road's paved share here: the map's uRoadTex, or a styled path's own (asphalt, setts)
+float gRoadTex = 0.0;        // the road's paved share here: the map's uRoadTex, 1 inside a paved town rect (SplatConfig
+                             // townPaving, map revival lane 2), or a styled path's own surface (asphalt, setts) over both
 float gRoadClass = 0.0;      // a styled path's surface (terrain.ts ROAD_SURFACE_CODE): 0 the map's own road
 vec2 gRoadDir = vec2(1.0, 0.0); // the styled path's heading here (world xz)
 vec4 maskAt(vec2 uv) {
@@ -3739,6 +3774,7 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
+uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4080,6 +4116,13 @@ void splatCompute() {
   // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
   vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
   if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
+  // map revival lane 2 (townPaving): the paved town rect reads as a textured road (after the two fetches above, which
+  // go out together)
+  gRoadTex = uRoadTex;
+  if (uTownPave.z > 0.0) {
+    vec2 townQ = abs(wp.xz - uTownPave.xy) - uTownPave.zw;
+    gRoadTex = max(gRoadTex, 1.0 - smoothstep(0.0, 6.0, max(townQ.x, townQ.y)));
+  }
   // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
   // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
@@ -4225,8 +4268,9 @@ void splatCompute() {
   float dRoad = (1.0 - mk.g) * 12.0;
   // (2026-10-05) a styled road net: the nearest path's surface, half-width and heading from the stack's road layer
   // (one exact texel a 2 m mask texel); a map without one reads nothing and keeps its own road
+  // (gRoadTex was set after the paired fetches: the map's uRoadTex, or the paved town rect's; a styled path's own surface
+  // takes its place on the path)
   float roadHalfW = 0.0;
-  gRoadTex = uRoadTex;
   if (uRoadClass.z > 0.5 && dRoad < 11.9) {
     float rn = uRoadClass.x;
     ivec2 rt = clamp(ivec2(floor((wp.xz / 1024.0 + 0.5) * rn)), ivec2(0), ivec2(int(rn) - 1));
@@ -6619,7 +6663,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt);
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -6722,6 +6766,9 @@ function* createSplatMaterialSteps(
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
+    const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
+    shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
+      (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };

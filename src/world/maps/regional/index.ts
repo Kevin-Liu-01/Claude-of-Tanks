@@ -38,6 +38,7 @@ import { SAAR_STYLE } from './saar.ts';
 import { SHANGHAI_STYLE } from './shanghai.ts';
 import { LONGLEAF_STYLE } from './longleaf.ts';
 import { SARAJEVO_STYLE } from './sarajevo.ts';
+import { ANDALUSIAN_STYLE } from './andalusian.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -67,6 +68,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   shanghai: SHANGHAI_STYLE,
   longleaf: LONGLEAF_STYLE,
   sarajevo: SARAJEVO_STYLE,
+  andalusian: ANDALUSIAN_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -118,6 +120,17 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0) } };
   const tints = pickWeatherTints(palette, weatherRng);
   const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
+  // often; absent, every UV stays as it was
+  const relief = style.surfaces.relief;
+  if (relief) {
+    for (const name of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+      for (const geometry of parts[name]) {
+        const uv = geometry.getAttribute('uv');
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * relief.plasterUv, uv.getY(i) * relief.plasterUv);
+      }
+    }
+  }
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
   // it is dressing, so the collision stays the desktop's
   if (ctx.tier === 'mobile') {

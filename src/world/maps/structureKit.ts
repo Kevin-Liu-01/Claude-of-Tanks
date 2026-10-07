@@ -1923,6 +1923,8 @@ const REGIONAL_PAL = {
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
   thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
+  // map revival lane 2 (round 2): the Serranía's limewash, its canal tiles, the grey of a dado
+  cal: [0xe6e1d6, 0xa65a36, 0x8a8478],
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
@@ -2098,6 +2100,43 @@ function makeMekongLongHouse(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('longhouse', out);
 }
 
+/**
+ * The Andalusian kit's light family (map revival lane 2, round 2; gauntlet wave 108b: "leftover grey modern warehouses"):
+ * the guard post is a town entrance's toll booth (caseta de consumos) — limewash over a grey dado, a hipped roof of canal
+ * tiles, its door and a grilled window — and the field hut a farm's tool house (caseta de aperos) under a tile gable.
+ * Each stands inside its type's footprint and height (the destructible's collision is the type's, not the mesh's).
+ */
+function makeAndalusianCaseta(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.cal;
+  const w = 3.5, d = 3.4, wallH = 2.85;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), p[0], rng, 0.03);
+  colored(out, box(w + 0.05, 0.6, d + 0.05).translate(0, 0.3, 0), p[2], rng, 0.05);
+  // the hipped roof: two tile slopes along x and the hips closed by the end slopes, over a whitewashed eave course
+  colored(out, box(w + 0.16, 0.14, d + 0.16).translate(0, wallH + 0.04, 0), p[0], rng, 0.03);
+  const roof = new THREE.ConeGeometry(Math.hypot(w + 0.5, d + 0.5) / 2, 1.05, 4, 1);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1, 1, (d + 0.5) / (w + 0.5));
+  colored(out, roof.translate(0, wallH + 0.11 + 0.525, 0), p[1], rng, 0.06);
+  // the door (front), the grilled window (side), the toll board over the door
+  colored(out, box(0.92, 2.0, 0.06).translate(0.6, 1.0, d / 2 + 0.02), 0x355a3c, rng, 0.05);
+  colored(out, markWorldAperture(box(0.06, 0.8, 0.72), [1, 0, 0]).translate(w / 2 + 0.02, 1.65, 0), 0x2b3236, rng, 0.04);
+  for (let k = 0; k < 4; k++) colored(out, box(0.04, 0.88, 0.035).translate(w / 2 + 0.07, 1.65, -0.27 + k * 0.18), 0x1d1e20, rng, 0.02);
+  colored(out, box(1.25, 0.32, 0.04).translate(0.6, 2.38, d / 2 + 0.03), 0xc8a050, rng, 0.04);
+  colored(out, box(1.0, 0.1, 0.3).translate(-0.9, 0.42, d / 2 + 0.17), p[2], rng, 0.05);
+  return mergeConnectedStructure('guardpost', out);
+}
+
+function makeAndalusianAperos(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.cal;
+  const w = 4.0, d = 6.2, wallH = 2.55;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), p[0], rng, 0.04);
+  colored(out, box(w + 0.05, 0.5, d + 0.05).translate(0, 0.25, 0), p[2], rng, 0.05);
+  colored(out, gable(w + 0.5, 1.3, d + 0.4).translate(0, wallH - 0.03, 0), p[1], rng, 0.06);
+  colored(out, box(1.1, 1.9, 0.06).translate(0, 0.95, d / 2 + 0.02), 0x5a3e2a, rng, 0.05);
+  colored(out, markWorldAperture(box(0.06, 0.55, 0.55), [1, 0, 0]).translate(w / 2 + 0.02, 1.7, -1.2), 0x2b3236, rng, 0.04);
+  return mergeConnectedStructure('fieldhut', out);
+}
+
 /** A shrimp-pond guard hut on tall stilts: a small plank room on posts under nipa, its ladder down to the bund. */
 function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
@@ -2205,6 +2244,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     kohima: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
       stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
+    }),
+    // the Serranía de Ronda: the bridgeheads' tollhouses, the farms' tool houses
+    andalusian: Object.freeze({
+      guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
+      fieldhut: variant('fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
     }),
     // the stilt house keeps the generic wetland family (already a plank house on posts); the barn and the shack go
     mekong: Object.freeze({

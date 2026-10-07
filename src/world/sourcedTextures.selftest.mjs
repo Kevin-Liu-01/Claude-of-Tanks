@@ -233,7 +233,9 @@ const newMapPalettes = {
   // Earthrise Basin's grey regolith is its own TERRAIN_PLAN row with frost-toned station huts, Aegis Crossing is
   // pastoral Verdant ground with its own-id (legacy) building route
   moon: ['moon', 'winter'],
-  cliffbridge: ['verdant', null],
+  // map revival lane 2, round 3 (gauntlet wave 108c: "velvet-green turf"): Aegis Crossing's ground is the summer
+  // campiña's, the steppe's withered-grass, dirt and rock sets under its own sourcedTint (cliffbridge.ts)
+  cliffbridge: ['steppe', null],
 };
 assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(16),
   'every battlefield after the legacy sixteen explicitly routes its sourced palettes');
