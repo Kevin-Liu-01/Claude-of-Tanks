@@ -3775,7 +3775,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -3784,7 +3784,6 @@
  },
  "picture": {
   "preset": "ember",
-  "exposure": 0.3,
   "streaks": {
    "amount": 0.22
   },
@@ -3829,5 +3828,18 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   }
- }
+ },
+ "crushes": [
+  {
+   "tMs": 700,
+   "kind": "wallstone",
+   "speedMps": 9.6,
+   "pos": [
+    -111.56,
+    7.11,
+    36
+   ],
+   "heightM": 1.41
+  }
+ ]
 }

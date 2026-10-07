@@ -4540,7 +4540,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -4596,5 +4596,40 @@
    ]
   },
   "cameraFix": "tucked"
- }
+ },
+ "crushes": [
+  {
+   "tMs": 17,
+   "kind": "drum",
+   "speedMps": 15.4,
+   "pos": [
+    -12.31,
+    0.73,
+    69.54
+   ],
+   "heightM": 0.91
+  },
+  {
+   "tMs": 1133,
+   "kind": "pole",
+   "speedMps": 15,
+   "pos": [
+    29.11,
+    0.99,
+    66.43
+   ],
+   "heightM": 7.4
+  },
+  {
+   "tMs": 2550,
+   "kind": "pole",
+   "speedMps": 15.4,
+   "pos": [
+    29.52,
+    1,
+    72.92
+   ],
+   "heightM": 7.4
+  }
+ ]
 }

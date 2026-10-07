@@ -4666,7 +4666,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -4721,5 +4721,6 @@
     "stabilised: hero on foe0, ally1 on foe1, ally2 on foe0"
    ]
   }
- }
+ },
+ "crushes": []
 }

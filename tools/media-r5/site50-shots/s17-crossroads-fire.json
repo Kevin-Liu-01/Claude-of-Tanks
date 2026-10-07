@@ -8,7 +8,7 @@
  "seed": 422,
  "actors": [
   {
-   "id": "strv122_x",
+   "id": "challenger_3",
    "name": "hero",
    "pos": [
     -51.2,
@@ -17,12 +17,12 @@
    "facingDeg": 0,
    "turretDeg": -3.27,
    "gunDeg": 1,
-   "camo": "service_strv122",
+   "camo": "sig_challenger_3x",
    "camoSeed": 2954,
    "state": "intact"
   },
   {
-   "id": "leo2a5_x",
+   "id": "challenger2e",
    "name": "ally1",
    "pos": [
     -48.6,
@@ -31,7 +31,7 @@
    "facingDeg": 0,
    "turretDeg": -2.74,
    "gunDeg": 1,
-   "camo": "service_strv122",
+   "camo": "sig_challenger_3x",
    "camoSeed": 2955,
    "state": "intact"
   },
@@ -3754,7 +3754,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -3791,8 +3791,8 @@
   "set": "steinburg-day-crossroads",
   "map": "urban",
   "time": "day",
-  "hero": "strv122_x",
-  "heroName": "Stridsvagn 122",
+  "hero": "challenger_3",
+  "heroName": "Challenger 3 Prototype",
   "loopMs": 6000,
   "xfadeMs": 600,
   "still": {
@@ -3800,7 +3800,7 @@
    "exposureMs": 16
   },
   "paint": {
-   "unit": "service_strv122",
+   "unit": "sig_challenger_3x",
    "enemy": "sig_t72m1_jaguar"
   },
   "turrets": {
@@ -3809,5 +3809,6 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   }
- }
+ },
+ "crushes": []
 }

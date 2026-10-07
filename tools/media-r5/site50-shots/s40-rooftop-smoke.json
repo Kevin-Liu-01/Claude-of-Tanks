@@ -5266,7 +5266,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -5324,5 +5324,18 @@
    ]
   },
   "cameraFix": "tucked"
- }
+ },
+ "crushes": [
+  {
+   "tMs": 2733,
+   "kind": "drum",
+   "speedMps": 3,
+   "pos": [
+    -145.92,
+    6.42,
+    79.42
+   ],
+   "heightM": 0.98
+  }
+ ]
 }

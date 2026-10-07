@@ -3789,7 +3789,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -3844,5 +3844,18 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   }
- }
+ },
+ "crushes": [
+  {
+   "tMs": 3767,
+   "kind": "crate",
+   "speedMps": 15,
+   "pos": [
+    42.29,
+    4.66,
+    62
+   ],
+   "heightM": 1.17
+  }
+ ]
 }

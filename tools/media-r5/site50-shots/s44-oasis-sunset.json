@@ -11,7 +11,7 @@
  "seed": 437,
  "actors": [
   {
-   "id": "m1a2_tusk_x",
+   "id": "m1a3",
    "name": "hero",
    "pos": [
     187.15,
@@ -20,12 +20,12 @@
    "facingDeg": -71.64,
    "turretDeg": -2.32,
    "gunDeg": 1,
-   "camo": "pinkdesert",
+   "camo": "sig_abramsx",
    "camoSeed": 3059,
    "state": "intact"
   },
   {
-   "id": "sabra_mk2_x",
+   "id": "m1a2_sepv3_x",
    "name": "ally1",
    "pos": [
     201.58,
@@ -34,7 +34,7 @@
    "facingDeg": -58.63,
    "turretDeg": -1.96,
    "gunDeg": 1,
-   "camo": "pinkdesert",
+   "camo": "sig_abramsx",
    "camoSeed": 3060,
    "state": "intact"
   },
@@ -3773,7 +3773,7 @@
  "timeScale": 0,
  "film": {
   "fps": 30,
-  "shutterDeg": 180,
+  "shutterDeg": 120,
   "samples": 8,
   "maxSamples": 48,
   "filter": "gaussian",
@@ -3813,8 +3813,8 @@
   "set": "sunscar-golden-minaret",
   "map": "oasis",
   "time": "sunset",
-  "hero": "m1a2_tusk_x",
-  "heroName": "M1A2 Abrams TUSK",
+  "hero": "m1a3",
+  "heroName": "M1A3 Abrams",
   "loopMs": 6000,
   "xfadeMs": 600,
   "still": {
@@ -3822,7 +3822,7 @@
    "exposureMs": 25
   },
   "paint": {
-   "unit": "pinkdesert",
+   "unit": "sig_abramsx",
    "enemy": "sig_t90ms"
   },
   "turrets": {
@@ -3831,5 +3831,51 @@
     "stabilised: hero on foe0, ally1 on foe1"
    ]
   }
- }
+ },
+ "crushes": [
+  {
+   "tMs": 2600,
+   "kind": "handcart",
+   "speedMps": 15.6,
+   "pos": [
+    161.85,
+    3.69,
+    66.89
+   ],
+   "heightM": 1.21
+  },
+  {
+   "tMs": 4367,
+   "kind": "bench",
+   "speedMps": 15.6,
+   "pos": [
+    136.7,
+    0.79,
+    76.21
+   ],
+   "heightM": 1.02
+  },
+  {
+   "tMs": 4467,
+   "kind": "pot",
+   "speedMps": 15.6,
+   "pos": [
+    135.95,
+    0.75,
+    76.8
+   ],
+   "heightM": 0.72
+  },
+  {
+   "tMs": 4950,
+   "kind": "firewood",
+   "speedMps": 15.6,
+   "pos": [
+    129.44,
+    0.24,
+    81.96
+   ],
+   "heightM": 0.94
+  }
+ ]
 }
