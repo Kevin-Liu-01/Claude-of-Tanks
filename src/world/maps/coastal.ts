@@ -169,8 +169,8 @@ export default {
   },
 
   layoutBrief: { exceptions: {
-    solidPropsInWater: 'the harbour mouth\'s mole with its red light, the green light on its skerry and the quay along the '
-      + 'south cove (props.landmarks, src/world/landmarks/harbour.ts) stand in the cove\'s water by design',
+    solidPropsInWater: 'the fishing harbour\'s mole, its arm and its round head with the green light (props.landmarks, '
+      + 'src/world/landmarks/harbour.ts) stand in the south cove\'s water by design, the basin between them and the strand',
   } },
 
   spawns: {
@@ -259,23 +259,22 @@ export default {
   props: {
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
     architecture: 'breton',
-    // The landmarks lane (2026-10-06; src/world/landmarks/harbour.ts; seats agreed with mr4, the farmland lane): the
-    // harbour's mouth on the Breton pattern. A granite mole runs 42 m out from the headland's foot at (312, -4) to its
-    // round head at (345, -30), its parapet to the open sea on its north-east side, and on its head the red-top feu de
-    // port; opposite, 43 m across the mouth, the green-top light stands on its own skerry at (328, -72). Both lanterns'
-    // doors face the basin. The mole is one solid from its root to its head with its light on it: a hull wading the
-    // basin meets its faces and never climbs it, and no gap opens between the mole and its light.
+    // The landmarks lane (round 3, 2026-10-07; src/world/landmarks/harbour.ts harbour; the plan agreed with the map-revival
+    // lane on its identity round; gauntlet wave 202: "the mole rooted in the shore with its road, the quay with coping and
+    // steps round a basin, boats and nets, the light at the mole head"): the bourg's fishing harbour as one structure. The
+    // south shore lane comes out to the strand on its embankment and goes on as the mole: rooted on the turning court's
+    // crest at (263, -52), its deck level with the lane (4.2 m over the sand), it runs 47 m east over the strand into the
+    // water and turns its arm 70 degrees south for 24 m to its round head and the green feu de port (the starboard hand
+    // coming in from the south, IALA region A). South of it lies the basin: the mole's faces there are a quay — granite
+    // coping, bollards, two iron ladders and two flights of steps down to the sand — and its sea side a parapet; from a
+    // platform at the root the slipway runs down the quay face onto the sand (the boats' way into the water; a hull leaves
+    // the basin by its strand, open to the south shore). Canots lie heeled on the sand, a caseyeur lies alongside the arm,
+    // two more ride at their
+    // moorings; nets dry in heaps on the deck by the root beside the pots and the fish boxes. Set into the finished map
+    // (ground 'veto').
     landmarks: [
-      { kind: 'mole', x: 330.31, z: -18.42, yawDeg: 128.23, name: 'the mole and its red light',
-        params: { length: 42.01, sea: 'left', light: 'red' } },
-      { kind: 'lighthouse', x: 328, z: -72, yawDeg: -17.9, name: 'the green light on its skerry',
-        params: { paint: 'green', base: 'rock' } },
-      // round 2 (2026-10-06; mr4's harbour step 2, built with the mole as one harbour): the quay along the south cove, its
-      // face on x 288 from z -62 to -20, its paved top 1.4 m over the strand (-2.6), backed onto the turning court where the
-      // south shore lane comes down onto it; the slipway off its south end running east-south-east into the water (the
-      // basin's way out beside the quay: no pocket between the mole, the quay and the strand)
-      { kind: 'quay', x: 279, z: -41, yawDeg: 90, name: 'the quay', params: { length: 42, depth: 18, top: 1.4 } },
-      { kind: 'slipway', x: 289.5, z: -68.3, yawDeg: 112.4, name: 'the slipway', params: { length: 12, width: 5 } },
+      { kind: 'harbour', x: 263, z: -52, yawDeg: 90, ground: 'veto', name: 'the harbour and its green light',
+        params: { length: 47, arm: 24, turn: 70, basin: 'right', light: 'green' } },
     ],
     // 2026-10-06 (the map-revival lane): the roadside builder places nothing — the bourg is authored (BOURG_HALF and
     // its mirror, the chapel and the market hall on the axis); the harbour lights are the landmarks lane's, on the mole
@@ -389,7 +388,9 @@ export default {
       // (2026-10-07, the map-revival lane; gauntlet wave 184: "a smooth, rockless arc … like a lake edge") the granite at
       // the waterline: rock platforms, boulder strands and clitter along each half's strand, where the sand meets the
       // sea (the south strand's edge near x 290, the north's near x 336)
-      { geology: 'granite', x: 286, z: -84, radius: 46, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['tor', 0.25]], size: [1.6, 3.8], name: 'the south strand granite' },
+      // (the landmarks lane, round 3: the field keeps off the harbour, its mole, basin and boats — agreed with mr4)
+      { geology: 'granite', x: 286, z: -84, radius: 46, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['tor', 0.25]], size: [1.6, 3.8], name: 'the south strand granite',
+        avoid: [[295, -62, 33]] },
       { geology: 'granite', x: 332, z: 136, radius: 50, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['tor', 0.25]], size: [1.6, 3.8], name: 'the north strand granite' },
     ],
     landmarks: [
