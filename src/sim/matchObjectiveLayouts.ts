@@ -125,7 +125,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // the central bridge, the south bench's square (the north bench's rotation twin). The river through the centre leaves no
   // dry disc at the rotation centre, so the bank's square has no twin: its value is symmetric (equal planned drives, the
   // 40-seed win split per side within 45-55 %), its geometry is not. The kickoff at the bank square's rotation twin.
-  ruinspires: { kickoff: { x: -10, z: -66.4 }, zones: [{ x: 25, z: 296 }, { x: 10, z: 66.4 }, { x: -25, z: -296 }] },
+  ruinspires: { kickoff: { x: -14, z: -67.3 }, zones: [{ x: 25, z: 296 }, { x: 14, z: 67.3 }, { x: -25, z: -296 }] },
   // Kestrel Airfield (redesign 2026-10-02): the cargo apron, the runway's centre (also the turbo-ball kickoff) and the
   // terminal apron, rotationally symmetric about the runway's centre; the two aprons and the holding apron at the
   // runway's centre are level aprons in the map file.

@@ -213,8 +213,10 @@ for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry'
 // the legacy own-id building route instead of an authored props.sourcedPalette.
 const newMapPalettes = {
   // 2026-10-05 (the map-revival lane): Ruinspires' Sarajevo kit takes Steinburg's lime-render tint, warm enough for the
-  // kit's ochre, cream, green and pink washes (its own-id tint browned them)
-  ruinspires: ['ruinspires', 'urban'],
+  // kit's ochre, cream, green and pink washes (its own-id tint browned them); 2026-10-07, the Miljacka valley (waves
+  // 186/187: "beige dunes", bald slopes): the valley's sward and earth take Verdant's temperate sets, deliberately (the
+  // grey city's own row muted the grass to ash)
+  ruinspires: ['verdant', 'urban'],
   blackglass: ['blackglass', null],
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],

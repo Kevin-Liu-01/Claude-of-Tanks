@@ -248,13 +248,16 @@ for (const mapId of MAP_IDS) {
   const worldOptions = { mapId, heightField: world.heightField, obstacles: world.getObstacles(),
     queryObstacles: world.queryObstacles, anchors: matchPlacementAnchors(authored) };
   const field = world.heightField;
-  const independentNavigation = createBotNavigationGrid({ heightField: {
+  // (a map whose river its bridges cross, Ruinspires' Miljacka (2026-10-07): the wrappers carry the decks, as the
+  // dedicated field does, or the access sees no crossing and splits the map at the water)
+  const decks = field.bridgeDecks ? { bridgeDecks: field.bridgeDecks } : {};
+  const independentNavigation = createBotNavigationGrid({ heightField: { ...decks,
     navigationWaterPolicy: 'avoid-liquid', getHeightAt: (x, z) => field.getHeightAt(x, z),
     getGroundType: (x, z) => field.getGroundType(x, z), getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z),
   }, queryObstacles: world.queryObstacles, getObstacles: world.getObstacles });
   for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault', 'mars']) {
     let heightReads = 0, normalReads = 0, obstacleQueries = 0;
-    const measuredField = { size: field.size, navigationWaterPolicy: field.navigationWaterPolicy,
+    const measuredField = { size: field.size, navigationWaterPolicy: field.navigationWaterPolicy, ...decks,
       getHeightAt(x, z) { heightReads++; return field.getHeightAt(x, z); },
       getNormalAt(x, z) { normalReads++; return field.getNormalAt(x, z); },
       getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z), getGroundType: (x, z) => field.getGroundType(x, z) };

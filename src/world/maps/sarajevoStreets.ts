@@ -840,8 +840,9 @@ const AVLIJA_RUNS: ReadonlyArray<readonly [number, number, number, number?]> = [
   ...Array.from({ length: 24 }, (_, k) => [-418 + 36 * k, 246, 268] as const),
   // the floor's back lots behind the avenue's blocks
   [-98, 100, 132, 12], [-58, 100, 132, 12], [112, 100, 132, 12],
-  // the bench's orchards behind the bench street's houses
-  [-394, 306, 336], [-274, 312, 340], [-214, 306, 336], [-148, 312, 340], [-88, 306, 336], [102, 312, 330],
+  // the bench's orchards behind the bench street's houses, and the gardens either side of the bench square
+  [-394, 306, 336], [-274, 312, 340], [-214, 306, 336], [-148, 312, 340], [-88, 306, 336], [-42, 304, 330],
+  [102, 312, 330],
   [282, 312, 340], [342, 306, 336], [402, 312, 340],
 ];
 

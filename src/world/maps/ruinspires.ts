@@ -81,9 +81,17 @@ const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map((station) => ({ ...sta
   return r === station.r ? station : { ...station, r };
 });
 
-/** The north bank's avenue (the tram boulevard), west to east; the south bank's quay avenue is its rotation. */
-const NORTH_AVENUE: P[] = Array.from({ length: 29 }, (_, i) => -448 + i * 32).map((x) => [x, r1(riverZ(x) + AVENUE_OFF)] as P);
+/** The north bank's avenue (the tram boulevard), west to east, a node every 32 m from edge to edge; the south bank's quay
+ * avenue is its rotation. Every road here is authored complete (each exit on the map's edge, each junction end on its
+ * street's own line): the endpoint completion then leaves the net byte-identical, and the river's fitted surface, which
+ * reads the ground at the valley's two ends, does not move with it (roadContinuity's negative control). */
+const NORTH_AVENUE: P[] = Array.from({ length: 33 }, (_, i) => -512 + i * 32).map((x) => [x, r1(riverZ(x) + AVENUE_OFF)] as P);
 const avenueZ = (x: number) => riverZ(x) + AVENUE_OFF;
+/** A point exactly on the north avenue's line at x (between its nodes, on the chord the road draws). */
+const onAvenue = (x: number): P => {
+  const i = Math.min(NORTH_AVENUE.length - 2, Math.floor((x + 512) / 32)), [x0, z0] = NORTH_AVENUE[i], [x1, z1] = NORTH_AVENUE[i + 1];
+  return [x, z0 + (z1 - z0) * (x - x0) / (x1 - x0)];
+};
 /** The north flank's streets: the bench street along the bench from edge to edge, three terrace streets climbing from the
  * avenue to it (each crossing the slope's steep band at about 50 degrees to its contours), and the trunk road over the
  * crest. No street runs along the slope itself: a junction on a slope steps between the two roads' elevation grids (the
@@ -92,16 +100,16 @@ const NORTH_BENCH: P[] = [[-448, 292], [-380, 292], [-300, 292], [-220, 291], [-
   [90, 291], [150, 291], [220, 291], [300, 292], [380, 292], [448, 292]];
 // (sparse nodes and no crossing on the slope: terrain.ts blends two roads' nodes within three of their nearest pair to one
 // height, which on a slope lifted a climbing street's nodes by metres and read 23 % over a lane's crossing)
-const NORTH_CLIMB: P[] = [[-70, r1(avenueZ(-70))], [-40, 90], [40, 160], [110, 230], [150, 291]];
-const NORTH_CLIMB_W: P[] = [[-300, r1(avenueZ(-300))], [-280, 60], [-220, 130], [-150, 200], [-80, 291]];
-const NORTH_CLIMB_E: P[] = [[230, r1(avenueZ(230))], [262, 120], [300, 160], [360, 220], [400, 291]];
+const NORTH_CLIMB: P[] = [onAvenue(-70), [-40, 90], [40, 160], [110, 230], [150, 291]];
+const NORTH_CLIMB_W: P[] = [onAvenue(-300), [-280, 60], [-220, 130], [-150, 200], [-80, 291]];
+const NORTH_CLIMB_E: P[] = [onAvenue(230), [266, 118], [314, 158], [366, 222], [400, 292]];
 const NORTH_TRUNK: P[] = [[50, 291], [140, 335], [260, 392], [282, 448]];
 
 const both = (path: P[]): [P[], P[]] => [path, path.map(turn)];
 
 /** The zones' squares and the kickoff's (see the header): north bench, north bank by the central bridge, south bench;
  * the kickoff at the bank square's rotation twin. */
-const Z_BENCH: P = [25, 296], Z_BANK: P = [10, r1(riverZ(10) + 64)];
+const Z_BENCH: P = [25, 296], Z_BANK: P = [14, r1(riverZ(14) + 64)];
 
 /**
  * The city's landmarks: authored sites, each with its rotation twin about the valley's centre, so each bank and each flank
@@ -111,7 +119,7 @@ const Z_BENCH: P = [25, 296], Z_BANK: P = [10, r1(riverZ(10) + 64)];
 const NORTH_SITES: ReadonlyArray<{ structure: string; twin: string; x: number; z: number; yawDeg: number }> = [
   // the north bank's avenue, west to east: the slab blocks of Novo Sarajevo, the Holiday Inn, the twin office towers
   // and the museum at Marijin Dvor, then the Orthodox cathedral, the Markale market hall and the čaršija toward the old town
-  { structure: 'parkingdeck', twin: 'civichall', x: -300, z: r1(avenueZ(-300) + 25), yawDeg: 0 },
+  { structure: 'parkingdeck', twin: 'civichall', x: -330, z: 8, yawDeg: 0 },
   { structure: 'needletower', twin: 'megatower', x: -222, z: r1(avenueZ(-222) + 26), yawDeg: 0 },
   { structure: 'arcology', twin: 'broadcasttower', x: -150, z: r1(avenueZ(-150) + 27), yawDeg: 0 },
   { structure: 'civichall', twin: 'parkingdeck', x: -104, z: r1(avenueZ(-104) + 26), yawDeg: 0 },
@@ -122,9 +130,8 @@ const NORTH_SITES: ReadonlyArray<{ structure: string; twin: string; x: number; z
   { structure: 'firestation', twin: 'firestation', x: 150, z: 236, yawDeg: 0 },
   { structure: 'foundryoffice', twin: 'factory', x: 20, z: 118, yawDeg: 0 },
   { structure: 'terracetower', twin: 'terracetower', x: -330, z: 240, yawDeg: 0 },
-  // the upper mahala: houses at the foot of the steep rise above the bench (Vratnik, Sedrenik), facing the valley (the
-  // rise's open slope is the middle third's least covered ground; a house on it masks the climb above it)
-  ...[-100, -28, 44].map((x) => ({ structure: 'rowhouse', twin: 'rowhouse', x, z: 346, yawDeg: 180 })),
+  // a Yugoslav slab on the floor's back lots behind the boulevard's blocks (Grbavica's on the south bank, its twin)
+  { structure: 'parkingdeck', twin: 'parkingdeck', x: -200, z: 92, yawDeg: 0 },
 ];
 const PLANNED_SITES = NORTH_SITES.flatMap((site) => [
   { structure: site.structure, x: site.x, z: site.z, yawDeg: site.yawDeg },
@@ -151,8 +158,14 @@ const BRAVO_CENTRE: P = [BRAVO_PADS.reduce((s, p) => s + p[0], 0) / 7, BRAVO_PAD
 const [NA, SA] = both(NORTH_AVENUE), [NBe, SBe] = both(NORTH_BENCH);
 const [NCl, SCl] = both(NORTH_CLIMB), [NTr, STr] = both(NORTH_TRUNK);
 const [NCw, SCw] = both(NORTH_CLIMB_W), [NCe, SCe] = both(NORTH_CLIMB_E);
-/** The bridges' streets, south avenue to north avenue across each bridge's station. */
-const BRIDGE_STREETS: P[][] = BRIDGE_X.map((x) => [[x, r1(riverZ(x) - AVENUE_OFF)], [x, r1(riverZ(x))], [x, r1(riverZ(x) + AVENUE_OFF)]] as P[]);
+/** The bridges' streets, south avenue to north avenue across each bridge's station (a node every third of each approach:
+ * the map-quality receipt reads a route of fewer than six nodes as no route across the map). */
+const lerpP = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const BRIDGE_STREETS: P[][] = BRIDGE_X.map((x) => {
+  const south = turn(onAvenue(-x)), station: P = [x, r1(riverZ(x))], north = onAvenue(x);
+  return [south, lerpP(south, station, 1 / 3), lerpP(south, station, 2 / 3), station, lerpP(station, north, 1 / 3),
+    lerpP(station, north, 2 / 3), north];
+});
 /** The quays' street trees (waves 186/187: "almost no trees in the city"): a row of limes and planes along each avenue's
  * river side, 17 m off its line on the promenade, every 9 m with a gap here and there (the `aspen` slot, grown by the
  * trees lane's Ruinspires row as a linden-leaved broad crown on a clean bole). */
@@ -201,6 +214,10 @@ export default {
       { kind: 'ridge', x: 0, z: -380, length: 1200, width: 346, height: 24, yawDeg: 0, settlementScale: 1, corridorScale: 1 },
       { kind: 'ridge', x: 0, z: 440, length: 1200, width: 130, height: 14, yawDeg: 0, settlementScale: 1, corridorScale: 1 },
       { kind: 'ridge', x: 0, z: -440, length: 1200, width: 130, height: 14, yawDeg: 0, settlementScale: 1, corridorScale: 1 },
+      // Hum's hill over the north-west corner of the crest and its rotation twin on Trebević's flank: a knoll on each
+      // flank's far end, past the siege line (the crests are not one level shelf)
+      { kind: 'knoll', x: -380, z: 428, rx: 60, rz: 40, height: 8, yawDeg: 0 },
+      { kind: 'knoll', x: 380, z: -428, rx: 60, rz: 40, height: 8, yawDeg: 0 },
     ],
     // the ring past the edge: green Balkan highland (gauntlet wave 162 read "arid savanna" in the ring's 0.1 forest on
     // bare ground): the woods of Trebević and Igman, meadows and hedgerows between them, no farm buildings past a city
