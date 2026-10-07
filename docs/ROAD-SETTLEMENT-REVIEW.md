@@ -80,7 +80,7 @@ terrain; it does not replace deliberately planned industrial grids.
 | Obsidian Caldera | Closed mining loop retained | Industrial owner retained |
 | Ironworks | Industrial grid retained | Authored service court retained |
 | Ruinspires | City grid retained | Street-row/landmark owner retained |
-| Blackglass District | Planned diagonal avenues retained | Street-row/landmark owner retained |
+| Suzhou Creek (was Blackglass District) | Planned diagonal avenues retained; the creek crosses them on four bridges | Street-row/landmark owner retained; the landmarks the creek reached re-sited |
 | Titan Gorge | Cliff routes retained | Ordinary frontage correction |
 | Skybridge Chasm | Chasm approaches retained | Existing specialist layout retained |
 | Tidegate Polders | Gentle turning arcs; dike graph retained | Ordinary frontage correction |

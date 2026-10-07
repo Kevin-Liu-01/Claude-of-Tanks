@@ -35,7 +35,7 @@ export function createBattleVisualPool<T extends PooledBattleVisual = PooledBatt
 
   const release = (visual: T | null | undefined): boolean => {
     if (!visual) return false;
-    if (limit === 0 || !visual.specId || !visual.root) {
+    if (limit === 0 || !visual.specId || !visual.root || visual.root.userData?.aircraftOnly) {
       disposeVisual(visual);
       return false;
     }

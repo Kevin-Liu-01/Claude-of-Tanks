@@ -21,7 +21,7 @@ assert.equal(finalBlowLine(ally), 'Final blow — Leopard 2A7 destroyed M1A2 wit
 const mine = resolveFinalBlow(lethal({ attackerId: 'me', attackerName: 'T-90M', shellName: '3BM60' }), { id: 'e1', killerId: 'me', cause: 'ammorack' }, 'me', nameOf);
 assert.equal(mine.cause, 'ammorack');
 assert.equal(mine.attackerIsPlayer, true);
-assert.equal(finalBlowLine(mine), 'Final blow — you destroyed M1A2 with 3BM60');
+assert.equal(finalBlowLine(mine), 'T-90M detonated M1A2’s ammunition rack');
 
 // the shot that ended the player
 const onMe = resolveFinalBlow(lethal({ attackerId: 'e4', attackerName: 'Challenger 3', targetId: 'me', targetName: 'T-90M', shellName: 'L27A1' }),

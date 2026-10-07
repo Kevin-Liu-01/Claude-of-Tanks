@@ -5,7 +5,11 @@
 //      section (the arc's v), least mid face; the plain band past the section (the apron's) loses none;
 //   3. where the render is off, the bricks show in courses: their mortar lines run along the tile at the course pitch;
 //   4. the bricks read darker than the render (sun-dried earth under a lighter coat), and lie lower in the relief;
-//   5. the phone print (256 px) keeps the loss share and the mean colour; deterministic, sixteen rows a slice.
+//   5. the phone print (256 px) keeps the loss share and the mean colour; deterministic, sixteen rows a slice;
+//   6. (b14, wave 97: "stamped rectangle decals", "staining repeat identically roughly eight times") the game's print
+//      carries no loss and no stain along the tile — every module draws it, so anything along u repeats every three
+//      metres; the losses and the stains are the mud material's, in world space (props.ts). Checks 1-5 read the old
+//      tile (withLosses), whose painter laws the courses still follow.
 import assert from 'node:assert/strict';
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers } from './fieldMudSurface.ts';
 
@@ -22,11 +26,11 @@ function meanLinear(px) {
   return m.map((v) => v / (px.length / 4));
 }
 
-const print = drain(paintFieldMudBuffers(512));
+const print = drain(paintFieldMudBuffers(512, undefined, true));
 const { size, px, hgt, loss } = print;
 assert.equal(size, 512);
 assert.equal(print.slices, 512 / 16, 'sixteen rows a slice');
-assert.deepEqual(drain(paintFieldMudBuffers(512)).px, px, 'the same seed paints the same print');
+assert.deepEqual(drain(paintFieldMudBuffers(512, undefined, true)).px, px, 'the same seed paints the same print');
 
 // 1. seamless
 for (const across of [true, false]) {
@@ -90,7 +94,7 @@ assert.ok(lossL < renderL * 0.92, `the bricks read darker than the render (${los
 assert.ok(lossH < renderH - 0.15, `the bricks lie under the render's face (${lossH.toFixed(2)} vs ${renderH.toFixed(2)})`);
 
 // 5. the phone print
-const phone = drain(paintFieldMudBuffers(256));
+const phone = drain(paintFieldMudBuffers(256, undefined, true));
 assert.equal(phone.slices, 256 / 16);
 let phoneLoss = 0;
 for (const l of phone.loss) phoneLoss += l;
@@ -98,5 +102,26 @@ phoneLoss /= phone.loss.length;
 assert.ok(Math.abs(phoneLoss - share) < 0.03, `the phone print keeps the loss share (${phoneLoss.toFixed(3)} vs ${share.toFixed(3)})`);
 const mean = meanLinear(px), phoneMean = meanLinear(phone.px);
 for (let c = 0; c < 3; c++) assert.ok(Math.abs(phoneMean[c] / mean[c] - 1) < 0.03, `channel ${c}: the phone print keeps the mean colour`);
+
+// 6. the game's print: whole render, nothing along the tile but its grain
+{
+  const game = drain(paintFieldMudBuffers(512));
+  let lost = 0;
+  for (const l of game.loss) lost += l;
+  assert.equal(lost, 0, 'the game\'s print loses no render (the losses are the material\'s, in world space)');
+  // along each face row, the blocks' mean luma: at a metre's scale (128 px, 0.75 m) their spread is the render's own
+  // drift, not a patch's or a stain's; at a hand's (32 px) the mottle's
+  for (const [B, limit] of [[128, 9], [32, 18]]) {
+    let worst = 0;
+    for (let y = 0; y < Math.floor(0.84 * size); y += 4) {
+      const blocks = [];
+      for (let b = 0; b < size; b += B) { let m = 0; for (let x = b; x < b + B; x++) m += luma(game.px, y * size + x); blocks.push(m / B); }
+      worst = Math.max(worst, Math.max(...blocks) - Math.min(...blocks));
+    }
+    assert.ok(worst < limit, `no patch or stain along the tile: the rows' ${B} px blocks agree within ${worst.toFixed(1)} of 255`);
+  }
+  const gameMean = meanLinear(game.px), oldMean = meanLinear(px);
+  for (let c = 0; c < 3; c++) assert.ok(gameMean[c] > oldMean[c] * 0.95, `channel ${c}: the whole render keeps the old tile's colour, a shade lighter where no loss darkens it`);
+}
 
 console.log(`fieldMudSurface self-test passed: seamless; render lost over ${(share * 100).toFixed(1)} % (feet ${(feet * 100).toFixed(0)} %, crown ${(crown * 100).toFixed(0)} %, mid face ${(midFace * 100).toFixed(0)} %, the apron band none); coursed bricks darker and lower than the render; the phone print alike`);

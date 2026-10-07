@@ -38,7 +38,7 @@ import { VERDANT_GANTRY } from './garageGantry.ts';
 import { GARAGE_HERO_HEADING_RAD, GARAGE_PLATFORM_GEOMETRY } from './garagePresentationPose.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 import {
-  ABRAMS_FLAMMABLE_BAY_OFFSET,
+  ABRAMS_WELDING_BAY_PLACEMENT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getGarageWorkshopLayoutPose,
   LEOPARD_MOBILITY_BAY_OFFSET,
@@ -133,7 +133,7 @@ const SHARED_MAINTENANCE_BAY_IDS = Object.freeze([
   'burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2',
 ] as const);
 const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze([
-  'north-east', 'south-east', 'south-west', 'north-west',
+  'north-east', 'north', 'south-west', 'north-west',
 ] as const);
 
 // The workshop monitor is a field archive, not a location preview. Reuse the
@@ -790,7 +790,7 @@ export function createGarageDressing(
     return object;
   }
 
-  function halfTurnAuthoredServiceBay(
+  function placeAuthoredServiceBay(
     firstChildIndex: number,
     bayId: 'abrams_welding' | 'rolled_k2',
     sourceVehicleId: 'm1a2' | 'k2',
@@ -799,23 +799,23 @@ export function createGarageDressing(
     const bayRoot = markModernPart(
       new THREE.Group(), sourceVehicleId, `${bayId}_service_bay`,
     );
-    bayRoot.name = `garage_${bayId}_half_turn`;
-    bayRoot.rotation.y = Math.PI;
-    // The Abrams follows Verdant's east canister service station while K2
-    // keeps its small perimeter-crane clearance correction. Both are complete
-    // owner transforms so tools and supports cannot drift away from the hull.
-    const offset = bayId === 'abrams_welding'
-      ? ABRAMS_FLAMMABLE_BAY_OFFSET : { x: -0.35, z: -0.35 };
+    // The Abrams stands beside the Garage camera, out of the hero's sight line, in its authored orientation
+    // (garageWorkshopLayout.ts ABRAMS_WELDING_BAY_PLACEMENT); K2 keeps its half-turn and small perimeter-crane clearance
+    // correction. Both are complete owner transforms so tools and supports cannot drift away from the hull.
+    const abrams = bayId === 'abrams_welding';
+    bayRoot.name = abrams ? 'garage_abrams_welding_service_bay' : `garage_${bayId}_half_turn`;
+    const rotation = abrams ? ABRAMS_WELDING_BAY_PLACEMENT.rotationRad : Math.PI;
+    const offset = abrams ? ABRAMS_WELDING_BAY_PLACEMENT : { x: -0.35, z: -0.35 };
+    bayRoot.rotation.y = rotation;
     bayRoot.position.set(offset.x, 0, offset.z);
-    bayRoot.userData.layoutRotationRad = Math.PI;
+    bayRoot.userData.layoutRotationRad = rotation;
     bayRoot.userData.inwardAdvanceM = Number(Math.hypot(offset.x, offset.z).toFixed(2));
-    if (bayId === 'abrams_welding') {
-      bayRoot.userData.canisterCenterSeparationM =
-        ABRAMS_FLAMMABLE_BAY_OFFSET.canisterCenterSeparationM;
-      bayRoot.userData.serviceLandmark = 'east-flammable-canisters';
+    if (abrams) {
+      bayRoot.userData.heroSilhouettePx = ABRAMS_WELDING_BAY_PLACEMENT.heroSilhouettePx;
+      bayRoot.userData.serviceLandmark = 'west-center-hoist';
     }
     bayRoot.userData.perimeterCraneClearance = true;
-    bayRoot.userData.swappedWith = bayId === 'abrams_welding' ? 'rolled_k2' : 'abrams_welding';
+    if (!abrams) bayRoot.userData.swappedWith = 'abrams_welding';
     for (const child of authoredChildren) bayRoot.add(child);
     legacyVerdantRoot.add(bayRoot);
     bayRoot.updateMatrix();
@@ -2545,26 +2545,22 @@ export function createGarageDressing(
 
     // This fixture hangs from Verdant's roof. Outdoor environments use the
     // stable Garage sun and hero lights, so never leave it in open sky.
-    // The lamp remains an indoor roof fixture, but follows the same bay
-    // translation so its cone lands on the moved pad instead of the empty old
-    // scaffold square. The interior already supplies the half-turn, hence the
-    // inverse offset in its authored coordinate space.
-    workLamp(
-      15.9 - ABRAMS_FLAMMABLE_BAY_OFFSET.x,
-      16.6 - ABRAMS_FLAMMABLE_BAY_OFFSET.z,
-      0,
-      7.4,
-      verdantInteriorRoot,
-    );
+    // The lamp remains an indoor roof fixture over the bay's floor station (authored at 15.9, 16.6), carried by the
+    // same placement as the tank. The interior root is half-turned, so the lamp's world point enters it negated.
+    {
+      const { x, z, rotationRad } = ABRAMS_WELDING_BAY_PLACEMENT;
+      const cos = Math.cos(rotationRad), sin = Math.sin(rotationRad);
+      workLamp(-(x + 15.9 * cos + 16.6 * sin), -(z - 15.9 * sin + 16.6 * cos), 0, 7.4, verdantInteriorRoot);
+    }
     if (!abramsServiceFloorRoot) {
       throw new Error('Abrams welding service floor was not constructed');
     }
     // Reparent the complete painted square immediately before the bay owner
     // captures its authored children. The outline and oil staining therefore
-    // inherit exactly the same half-turn and FLAMMABLE-wall offset as the tank,
-    // removed skirts, wheel dolly, cable and carts.
+    // inherit exactly the same placement as the tank, removed skirts, wheel
+    // dolly, cable and carts.
     legacyVerdantRoot.add(abramsServiceFloorRoot);
-    halfTurnAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
 
   // ==========================================================================
@@ -2899,7 +2895,7 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
-    halfTurnAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
+    placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 
   // One canonical four-bay service set is shared across all ten environments.
@@ -2929,8 +2925,8 @@ export function createGarageDressing(
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
     group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
-    group.userData.swappedServiceBayIds = ['abrams_welding', 'rolled_k2'];
-    group.userData.abramsServiceLandmark = 'east-flammable-canisters';
+    group.userData.swappedServiceBayIds = ['rolled_k2'];
+    group.userData.abramsServiceLandmark = 'west-center-hoist';
     group.userData.leopardServiceOwnerIndependent = true;
     group.userData.workshopOrbitCoverageDegrees = 360;
     setVariant(currentVariant.id);

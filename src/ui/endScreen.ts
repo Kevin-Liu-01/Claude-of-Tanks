@@ -1,3 +1,4 @@
+import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * endScreen.ts — typed cinematic battle end screen (killcam_endscreen r1).
@@ -28,6 +29,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * base-capture mechanic, so no capture stat is fabricated.
  */
 
+import { containModalTab } from './modal.ts';
+import { createRichTooltip } from './richTooltip.ts';
+import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
@@ -37,6 +41,8 @@ import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
 import type { CampaignDebrief } from '../game/campaignDebrief.ts';
 import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
+import { ACHIEVEMENTS, MEDALS, type BattleAwards } from '../game/serviceRecord.ts';
+import { achievementSVG, medalSVG } from './medalArt.ts';
 import type { LobbyPlayer, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
@@ -91,9 +97,11 @@ export interface EndScreenSummary {
   playerDead?: boolean;
   /** The player's deaths this battle (owner 2026-09-21: a stat in reviving modes, not a terminal state). */
   playerDeaths?: number;
+  playerKills?: number;
   /** The mode revives destroyed vehicles: rows and stats carry death counts, `dead` means dead at the end. */
   revives?: boolean;
   map?: string | null;
+  mapId?: string | null;
   timeS: number;
   stats: EndScreenStats;
   kills: EndScreenKillRow[];
@@ -108,6 +116,8 @@ export interface EndScreenSummary {
   hordeWave?: number | null;
   /** Jev commander (2026-09-25): who commanded each side's bots ('classic' | 'jev'); absent in rooms. */
   brains?: { readonly enemy: string; readonly allies: string } | null;
+  /** Medals and achievement tiers this battle earned (serviceRecord.ts). */
+  awards?: BattleAwards | null;
 }
 
 interface EndScreenRuntime {
@@ -281,6 +291,20 @@ const ES_CSS = `
   font-variant-numeric:tabular-nums;}
 .cot-es .es-best .bt b{color:#eef4f9;font-weight:700;}
 .cot-es .es-best .bt small{display:block;margin-top:2px;font-size:11px;color:#83929e;}
+.cot-es .es-awards{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;
+  min-height:46px;padding:6px 14px;border-bottom:1px solid rgba(166,184,199,.18);
+  background:linear-gradient(90deg,rgba(255,209,102,.08),rgba(255,209,102,0) 70%);}
+.cot-es .es-awards .ak{display:flex;align-items:center;gap:7px;font:800 10.5px ${FONT_COND};letter-spacing:.14em;
+  text-transform:uppercase;color:${COL.amberHi};}
+.cot-es .es-awards .ak svg{flex:0 0 auto;}
+.cot-es .es-awards .al{display:flex;flex-wrap:wrap;gap:5px 6px;min-width:0;}
+.cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px 4px;
+  background:rgba(8,12,16,.72);border:1px solid rgba(166,184,199,.22);}
+.cot-es .es-awards .aw.icon{padding:3px 4px;}
+.cot-es .es-awards .aw.signature{border-color:rgba(240,160,48,.65);background:rgba(240,160,48,.1);}
+.cot-es .es-awards .aw b{font:800 10px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;color:#eef4f9;white-space:nowrap;}
+.cot-es .es-awards .aw.tier b{color:#cfd9e2;}
+.cot-es .es-awards svg{display:block;flex:0 0 auto;}
 .cot-es .es-kill-block{display:flex;flex:1;min-height:0;flex-direction:column;padding:0 12px 10px;}
 .cot-es .es-kill-list{min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(240,160,48,.45) transparent;}
 /* the legacy integration overlay may flash its old button/earnings line in
@@ -502,6 +526,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.setAttribute('aria-label', t('endScreen.resultsAria'));
   host.setAttribute('aria-hidden', 'true');
 
+  const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
+  host.classList.add('cot-es--record');
+  host.addEventListener('keydown', event => { if (host.classList.contains('show')) containModalTab(event,host,host.querySelector<HTMLButtonElement>('button') || host); });
   let visible = false;
   let garageBtn: HTMLButtonElement | null = null;
   let roomContext: EndScreenRoomContext | null = null;
@@ -802,6 +829,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
+    const art = battleMapArt(sum.mapId);
+    host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
@@ -821,11 +850,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
       blow.style.setProperty('--i', nextI());
-      blow.innerHTML = `${uiIconSVG('skull', 14)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
+      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
       host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
     } else {
       delete host.dataset.finalBlow;
     }
+    renderReportMetadata(hero, sum);
+    if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
+  }
+
+  function renderReportMetadata(hero: HTMLElement, sum: EndScreenSummary): void {
     const meta = el('div', 'es-meta es-in', hero);
     meta.style.setProperty('--i', nextI());
     const bits: string[] = [];
@@ -851,7 +885,6 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     meta.innerHTML = bits.join('');
     if (sum.map) host.dataset.map = sum.map;
     if (sum.timeS > 0) host.dataset.durationS = String(Math.floor(sum.timeS));
-    if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
   }
 
   // batch 19 (2026-09-14): a Frontline Assault sortie on a ladder map debriefs the operation —
@@ -908,6 +941,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
     renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
       `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
+    renderMiniStat(parent, 'team', 'assist', t('endScreen.assist'), fmtN(stats.assist));
+    renderMiniStat(parent, 'optics', null, t('endScreen.spotted'), String(stats.spotted ?? 0));
+    renderMiniStat(parent, 'repair', null, t('endScreen.modules'), String(stats.modulesDestroyed ?? 0));
     renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
     renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
     // owner 2026-09-21: in a reviving mode deaths are a stat of the battle, not the player's end state
@@ -933,6 +969,22 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `<span class="bd">${fmtN(bestShot.damage)}</span>` +
       `<span class="bt"><b>${bestShot.targetName || t('endScreen.enemyVehicle')}</b><small>${details}</small></span>`;
     host.dataset.bestShot = String(Math.round(bestShot.damage));
+  }
+
+  function renderAwards(parent: HTMLElement, awards: BattleAwards | null | undefined): void {
+    const medals = (awards?.medals ?? []).map((id) => MEDALS.find((medal) => medal.id === id)).filter((medal) => medal != null);
+    const tiers = (awards?.achievements ?? []).map((award) => ({
+      def: ACHIEVEMENTS.find((achievement) => achievement.id === award.id), tier: award.tier,
+    })).filter((entry) => entry.def != null);
+    host.dataset.medals = String(medals.length);
+    if (!medals.length && !tiers.length) return;
+    const strip = el('div', 'es-awards', parent);
+    strip.setAttribute('aria-label', t('endScreen.medals.aria'));
+    strip.style.setProperty('--i', nextI());
+    const attr = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    strip.innerHTML = `<div class="ak">${uiIconSVG('gold', 20)}<span>${t('endScreen.medals.heading')}</span><small>${medals.length + tiers.length}</small></div>` +
+      `<div class="al">${medals.map(medal => `<button type="button" class="aw${medal.tier==='signature'?' signature':''}" data-award-earned="true" data-medal-tip="${medal.id}" aria-label="${attr(t(`service.medal.${medal.id}.name`))}">${medalSVG(medal,60)}<b>${t(`service.medal.${medal.id}.name`)}</b></button>`).join('')}` +
+      `${tiers.map(({def,tier})=>`<button type="button" class="aw tier" data-achievement-tip="${def!.id}" data-award-tier="${tier}" aria-label="${attr(t(`service.achievement.${def!.id}.name`))}">${achievementSVG(def!,tier,60)}<b>${t(`service.achievement.${def!.id}.name`)} ${['','I','II','III'][tier]}</b></button>`).join('')}</div>`;
   }
 
   function renderKillList(
@@ -981,12 +1033,40 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',
     });
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
-      value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull',
+      value: sum.playerKills ?? sum.kills.length, datasetV: sum.playerKills ?? sum.kills.length, icon: 'skull',
     });
+    tile(statGrid, 'accuracy', t('garage.record.accuracy'), {
+      value: shotAccuracy(sum.stats.hits, sum.stats.fired), icon: 'scope',
+    });
+    statGrid.lastElementChild?.setAttribute('data-stat','accuracy');
     renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
       sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
+    renderTeamComparison(personal, sum);
+    renderAwards(personal, sum.awards);
     renderBestShot(personal, sum.bestShot);
-    renderKillList(personal, result, sum.kills);
+    const detail = el('details', 'es-combat-details', personal);
+    const toggle = el('summary', '', detail);toggle.tabIndex=0;toggle.textContent = t('endScreen.combatDetails');
+    const blow = host.querySelector('.es-blow'); if (blow) personal.insertBefore(blow, detail);
+    renderKillList(detail, result, sum.kills);
+  }
+
+  function renderTeamComparison(parent: HTMLElement, sum: EndScreenSummary): void {
+    const allies = summarizeTeam(sum.allies), enemies = summarizeTeam(sum.enemies);
+    const comparison = el('section', 'es-comparison', parent);
+    comparison.setAttribute('aria-label', t('endScreen.comparison'));
+    const head = el('div', 'es-comparison-head', comparison);
+    head.innerHTML = `<b>${t('endScreen.team.ally')}</b><span>${t('endScreen.comparison')}</span><b>${t('endScreen.team.enemy')}</b>`;
+    for (const [label, left, right] of [
+      [t('endScreen.tile.dealt'), allies.damage, enemies.damage],
+      [t('endScreen.tile.kills'), allies.kills, enemies.kills],
+      [t('endScreen.survivors'), allies.alive, enemies.alive],
+    ] as const) {
+      const row = el('div', 'es-comparison-row', comparison);
+      const total = left + right;
+      row.innerHTML = `<b>${fmtN(left)}</b><span>${label}</span><b>${fmtN(right)}</b><div class="es-comparison-bar"><i></i></div>`;
+      row.style.setProperty('--allied-share', `${total ? left / total * 100 : 50}%`);
+      row.classList.toggle('empty', total === 0);
+    }
   }
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
@@ -1008,6 +1088,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `<div class="es-score-copy"><div class="sl"><span>${t('endScreen.team.enemy')}</span>${uiIconSVG('team', 16)}</div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
       '</div></div>';
+    renderTeamComparison(teams, sum);
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
@@ -1021,12 +1102,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     host.dataset.maxVehicleDamage = String(Math.round(maxDamage));
   }
 
-  function renderEndRematch(): void {
+  function renderEndRematch(parent: HTMLElement): void {
     if (!roomContext?.state) {
       rematchPanel = null;
       return;
     }
-    rematchPanel = el('section', 'es-rematch es-in', host);
+    rematchPanel = el('section', 'es-rematch es-in', parent);
     rematchPanel.style.setProperty('--i', String(seq + 1));
     renderRematchPanel(rematchPanel);
   }
@@ -1073,6 +1154,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
      * @param {object} sum shotInfo.buildSummary() bundle (resolved-event sums)
      */
     show(result: EndScreenResult, sum: EndScreenSummary): void {
+      awardTooltip.hide();
       stopCounters();
       seq = 0;
       visible = true;
@@ -1086,14 +1168,28 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
       renderReportHero(res, sum);
 
-      // --- two equal-height debrief columns --------------------------------
+      // Summary and complete teams share one readable panel, keeping rewards prominent.
+      const tabs = el('div', 'es-view-tabs', host);tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',t('endScreen.reportViews'));
+      for (const [id,key,icon] of [['personal','endScreen.personal.title','battleRecord'],['teams','endScreen.team.outcome','team']] as const) {
+        const button=el('button','',tabs);button.type='button';button.dataset.reportView=id;button.id=`es-tab-${id}`;button.setAttribute('role','tab');button.setAttribute('aria-controls',`es-panel-${id}`);
+        button.innerHTML=`${uiIconSVG(icon,18)}<span>${t(key)}</span>`;
+        button.onclick=()=>selectView(id);
+        button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'personal':event.key==='End'?'teams':id==='personal'?'teams':'personal';selectView(next);tabs.querySelector<HTMLButtonElement>(`[data-report-view="${next}"]`)?.focus();}};
+      }
+      function selectView(id:string) {
+        awardTooltip.hide();
+        for(const panel of host.querySelectorAll<HTMLElement>('.es-debrief')){const name=panel.classList.contains('personal')?'personal':'teams';panel.hidden=name!==id;panel.id=`es-panel-${name}`;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',`es-tab-${name}`);}
+        for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){const active=button.dataset.reportView===id;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}
+      }
       const report = el('div', 'es-report es-in', host);
       report.style.setProperty('--i', nextI());
 
       renderPersonalDebrief(report, res, sum);
       renderTeamDebrief(report, sum);
+      selectView('personal');
 
-      renderEndRematch();
+      renderEndRematch(report);
+      if (rematchPanel) report.prepend(rematchPanel);
       renderEndActions(sum);
 
       host.classList.add('show');
@@ -1105,6 +1201,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
     /** Hide + finalize counters (garage entry, battle restart). */
     hide(): void {
+      awardTooltip.hide();
       document.body.classList.remove('cot-es-armed'); // legacy overlay usable again
       if (!visible && !host.classList.contains('show')) return;
       visible = false;

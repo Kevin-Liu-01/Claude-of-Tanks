@@ -106,6 +106,24 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   assert.equal(radio.log.at(-1).id, 'nonpen', 'and cuts the flavour when it is due instead of going stale behind it');
 }
 
+// A line that yields (the reasoning exchange) gives way to any real call, even a situational one, and the net reads
+// quiet only once nothing waits and the last line and its gap are over.
+{
+  const { ctx, radio } = harness();
+  assert.equal(radio.quiet, true);
+  assert.equal(VOICE_LINES.think_step_by_step.yields, true);
+  assert.equal(radio.say('think_step_by_step'), true);
+  assert.equal(radio.quiet, false);
+  ctx.advance(0.3);
+  assert.equal(radio.say('enemy_spotted'), true, 'a situational call cuts a yielding line');
+  assert.equal(radio.log.at(-1).id, 'enemy_spotted');
+  ctx.advance(0.3);
+  assert.equal(radio.say('firing'), false, 'while flavour still never cuts a situational call');
+  ctx.advance(3);
+  radio.update();
+  assert.equal(radio.quiet, true);
+}
+
 // The national pack speaks, and only it (owner 2026-10-04, no fallbacks): a line missing from it is silent,
 // never another nation's crew standing in.
 {

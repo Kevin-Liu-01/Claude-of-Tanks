@@ -641,12 +641,18 @@ function checkWoodFine(environment) {
   const cfg = { vegetation: { species: ['oak', 'pine', 'birch'], clusterCount: 4, loneCount: 8, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
   const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
   try {
-    const bark = registered.find(m => m.customProgramCacheKey?.() === 'world-tree-bark-v11');
-    assert.ok(bark, 'the bark program carries the fine wood (v11)');
+    const bark = registered.find(m => m.customProgramCacheKey?.() === 'world-tree-bark-v12');
+    assert.ok(bark, 'the bark program carries the fine wood and the grazing dissolve (v12)');
     const { parameters } = environment.expand(bark), vertex = parameters.vertexShader;
+    // trees lane (2026-10-05, the gauntlet's wave 122: the close trunk "a see-through dotted tube"): the bark dissolves only
+    // between the camera's near plane and 1 m — below any distance a pose holds the camera from bark — so a trunk at rest
+    // stands solid
+    const nearBand = /fadeKeep \*= smoothstep\(([0-9.]+), ([0-9.]+), length\(vViewPosition\)\);/.exec(parameters.fragmentShader);
+    assert.ok(nearBand, 'the bark keeps a near dissolve');
+    assert.ok(+nearBand[1] >= camera.near && +nearBand[2] <= 1.0, `the bark's near band ${nearBand[1]}-${nearBand[2]} m lies inside 1 m, from the near plane`);
     assert.match(vertex, /attribute float aWoodFine;\nuniform float uCotWoodFineFar;/, 'the tag and the reach reach the vertex stage');
-    assert.match(vertex, /if \( aWoodFine > 0\.5 \) \{\s*float cotWoodHash = fract\( sin\( dot\( instanceMatrix\[ 3 \]\.xz, vec2\( 12\.9898, 78\.233 \) \) \) \* 43758\.5453 \);\s*if \( distance\( instanceMatrix\[ 3 \]\.xyz, uCamPos \) > uCotWoodFineFar \* \( 0\.85 \+ 0\.3 \* cotWoodHash \) \) transformed = vec3\( 0\.0 \);\s*\}/,
-      'fine wood past its tree\'s share of the reach collapses to the instance origin');
+    assert.match(vertex, /if \( aWoodFine > 0\.5 \) \{\s*float cotWoodHash = fract\( sin\( dot\( instanceMatrix\[ 3 \]\.xz, vec2\( 12\.9898, 78\.233 \) \) \) \* 43758\.5453 \);\s*if \( distance\( instanceMatrix\[ 3 \]\.xyz, uCamPos \) > uCotWoodFineFar \* aWoodFine \* \( 0\.85 \+ 0\.3 \* cotWoodHash \) \) transformed = vec3\( 0\.0 \);\s*\}/,
+      'fine wood past its tree\'s share of the reach (mid wood past twice it) collapses to the instance origin');
     const collapse = vertex.indexOf('if ( aWoodFine > 0.5 )');
     assert.ok(collapse > vertex.lastIndexOf('transformed.y += fl * 0.3') && collapse < vertex.indexOf('#include <project_vertex>'), 'after the wind, before the projection');
     const far = parameters.uniforms.uCotWoodFineFar?.value;
@@ -659,26 +665,27 @@ function checkWoodFine(environment) {
       seen.add(mesh.geometry);
       const g = mesh.geometry, fine = g.getAttribute('aWoodFine'), index = g.index.array, pos = g.getAttribute('position');
       assert.ok(fine, 'a grown trunk carries the fine-wood tag');
-      let fineTris = 0;
+      let fineTris = 0, midTris = 0;
       for (let t = 0; t < index.length; t += 3) {
-        const s = fine.getX(index[t]) + fine.getX(index[t + 1]) + fine.getX(index[t + 2]);
-        assert.ok(s === 0 || s === 3, 'the tag takes whole tubes, no triangle half-fine');
-        if (s === 3) fineTris++;
+        const a = fine.getX(index[t]);
+        assert.ok(a === fine.getX(index[t + 1]) && a === fine.getX(index[t + 2]) && [0, 1, 2].includes(a), 'the tag takes whole tubes, no triangle half-tagged');
+        if (a === 1) fineTris++; else if (a === 2) midTris++;
       }
-      const share = fineTris / (index.length / 3);
+      const share = fineTris / (index.length / 3), mid = midTris / (index.length / 3);
       assert.ok(share > 0.25 && share < 0.7, `the thin branches a share of the wood (${share.toFixed(2)})`);
+      assert.ok(mid < 0.65 && share + mid < 0.9, `the mid limbs a share too, the stem and the scaffolds the rest (${mid.toFixed(2)})`);
       // the mirror: an instance's fine corners at the origin past its share of the reach, every corner kept short of it
       const e = new THREE.Matrix4().makeRotationY(0.7).setPosition(31, 2, -17).elements;
       const hash = ((x) => x - Math.floor(x))(Math.sin(e[12] * 12.9898 + e[14] * 78.233) * 43758.5453), reach = far * (0.85 + 0.3 * hash);
-      for (const [d, gone] of [[reach * 0.98, false], [reach * 1.02, true]]) {
+      for (const [d, gone] of [[reach * 0.98, 0], [reach * 1.02, 1], [reach * 2.04, 2]]) {
         const cam = new THREE.Vector3(e[12] + d * 0.6, e[13] + d * 0.8, e[14]);
         let kept = 0, collapsed = 0;
         for (let v = 0; v < pos.count; v++) {
-          const isFine = fine.getX(v) > 0.5, out = isFine && cam.distanceTo(new THREE.Vector3(e[12], e[13], e[14])) > reach;
+          const tag = fine.getX(v), out = tag > 0.5 && cam.distanceTo(new THREE.Vector3(e[12], e[13], e[14])) > reach * tag;
           if (out) collapsed++; else kept++;
-          assert.equal(out, isFine && gone, 'fine wood leaves past the reach and only fine wood');
+          assert.equal(out, tag > 0.5 && tag <= gone, 'fine wood leaves past the reach, mid wood past twice it, and nothing else');
         }
-        assert.ok(gone ? collapsed > 0 && kept > 0 : collapsed === 0, 'the stem and the thick limbs stay at every distance');
+        assert.ok(gone ? collapsed > 0 && kept > 0 : collapsed === 0, 'the stem and the scaffold limbs stay at every distance');
       }
       trunks++;
     });

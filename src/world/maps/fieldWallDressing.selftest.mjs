@@ -12,10 +12,16 @@
 //   5. the tumbled end (wave 34: "nothing bedded"): stones out past a run's end and along its feet, sunk and standing
 //      out; a mud wall's lumps on the mud print's plain band;
 //   6. the run's owner dresses a stone island with its stones (and on a snow map its two drifts), a mud island with its
-//      apron; the same place gives the same dressing.
+//      apron; the same place gives the same dressing;
+//   7. (b18; wave 121, Verdant's yard walls: "it meets the turf in a clean line with no settling or weeds at its foot")
+//      the turf banked against a dry-stone island's feet on both faces: on the nearest terrain mesh, 4-13 cm up the wall
+//      at its face and falling to the ground a third to a half metre out, its toe and its ends sunk under the ground,
+//      looking up, with the ground's fold under it; the owner keeps it for the ground's own material when asked (never
+//      under a snow load, a mud wall or on the phones); the props wiring.
 import assert from 'node:assert/strict';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
-import { buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, createWallDressing } from './fieldWallDressing.ts';
+import { readFileSync } from 'node:fs';
+import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing } from './fieldWallDressing.ts';
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
 
 function mulberry32(seed) {
@@ -182,4 +188,72 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
     Array.from(plain.wall[0].attributes.position.array), 'the same island, the same dressing');
 }
 
-console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner');
+// 7. the turf
+{
+  const meshAt = (x, z) => slope.getHeightAt(x, z) + 0.004 * Math.sin(x * 3.1 + z * 2.3); // (the mesh a little off the analytic ground)
+  const foldAt = (x, z) => Math.sin(x * 0.2) * 0.5;
+  const half = 0.23, ax = 0, az = 0, bx = 0, bz = 9; // a run along +z: its faces at x = +-half
+  const turf = buildWallTurf(meshAt, foldAt, ax, az, bx, bz, half, 77);
+  const p = turf.attributes.position, fold = turf.attributes.fold, idx = turf.index.array;
+  assert.ok(fold && fold.itemSize === 1 && fold.normalized && fold.array instanceof Int8Array, 'the ground\'s fold byte under every vertex');
+  for (let i = 0; i < p.count; i++) assert.equal(fold.getX(i), Math.max(-1, Math.round(foldAt(p.getX(i), p.getZ(i)) * 127) / 127), 'the fold where the vertex lies');
+  const cols = WALL_TURF_OUT.length + 1, rows = p.count / cols / 2;
+  assert.ok(Number.isInteger(rows) && rows >= 20, `rows along the island, every 0.4 m (${rows})`);
+  let lipMin = Infinity, lipMax = 0, sides = new Set(), endSunk = 0;
+  for (let side = 0; side < 2; side++) for (let i = 0; i < rows; i++) {
+    const row = (side * rows + i) * cols;
+    const z = p.getZ(row + 1), face = p.getY(row + 1) - meshAt(p.getX(row + 1), z);
+    const toe = p.getY(row + cols - 1) - meshAt(p.getX(row + cols - 1), p.getZ(row + cols - 1));
+    sides.add(Math.sign(p.getX(row + 2)));
+    // the hidden row inside the wall, the face at its plane
+    assert.ok(Math.abs(Math.abs(p.getX(row)) - (half - 0.08)) < 1e-6 && Math.abs(Math.abs(p.getX(row + 1)) - half) < 1e-6, 'from inside the wall to its face');
+    assert.ok(Math.abs(toe + WALL_TURF_SINK_M) < 1e-5, `its toe sunk ${WALL_TURF_SINK_M} m under the drawn ground`);
+    const mid = z > 0.6 && z < 8.4;
+    if (mid) { lipMin = Math.min(lipMin, face); lipMax = Math.max(lipMax, face); }
+    else if (z < 0 || z > 9) endSunk = Math.max(endSunk, face);
+    // falling away from the face: each step out no higher over the ground than the one before
+    let prev = Infinity;
+    for (let k = 1; k < cols; k++) {
+      const h = p.getY(row + k) - meshAt(p.getX(row + k), p.getZ(row + k));
+      assert.ok(h <= prev + 1e-5, 'the fillet falls away from the face'); // (positions in float32)
+      prev = h;
+    }
+    const reach = Math.abs(p.getX(row + cols - 1)) - half;
+    assert.ok(reach > 0.29 && reach < 0.55, `out a third to a half metre (${reach.toFixed(2)} m)`);
+  }
+  assert.deepEqual([...sides].sort(), [-1, 1], 'on both faces');
+  assert.ok(lipMin > 0.035 && lipMax < 0.135 && lipMax - lipMin > 0.03, `4-13 cm up the wall, wandering along it (${lipMin.toFixed(3)}-${lipMax.toFixed(3)} m)`);
+  assert.ok(endSunk < 0.005, `its ends sink out (${endSunk.toFixed(3)} m at the island's ends)`);
+  // looking up: every triangle's normal
+  let down = 0;
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+    const ux = p.getX(b) - p.getX(a), uy = p.getY(b) - p.getY(a), uz = p.getZ(b) - p.getZ(a);
+    const vx = p.getX(c) - p.getX(a), vy = p.getY(c) - p.getY(a), vz = p.getZ(c) - p.getZ(a);
+    if (uz * vx - ux * vz <= 0) down++;
+  }
+  assert.equal(down, 0, 'every triangle looks up');
+  assert.deepEqual(Array.from(buildWallTurf(meshAt, foldAt, ax, az, bx, bz, half, 77).attributes.position.array), Array.from(p.array), 'the same place, the same turf');
+  assert.equal(buildWallTurf(meshAt, null, 0, 0, 0, 0.5, half, 1), null, 'no turf on a stub');
+  // the owner: kept when asked, never under snow, by a mud wall or on the phones
+  const ask = { meshAt, foldAt };
+  const asked = createWallDressing({ ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3, turf: ask });
+  asked.island(false, 0, 0, 0, 9, 0.23); asked.island(true, 3, 0, 3, 9, 0.26);
+  assert.equal(asked.turfs.length, 1, 'a stone island\'s turf kept for the ground\'s material, a mud island none');
+  for (const [label, o] of [['a snow map', { snow: true, mobile: false }], ['the phones', { snow: false, mobile: true }]]) {
+    const owner = createWallDressing({ ground: slope, ...o, adobeBucket: 'fieldMud', mudUv: 1 / 3, turf: ask });
+    owner.island(false, 0, 0, 0, 9, 0.23);
+    assert.equal(owner.turfs.length, 0, `none on ${label}`);
+  }
+  const unasked = createWallDressing({ ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3 });
+  unasked.island(false, 0, 0, 0, 9, 0.23);
+  assert.equal(unasked.turfs.length, 0, 'none unless asked');
+  // the props wiring: asked on the mild, grassy, fieldstone maps' desktops; merged by cell into the ground beds
+  const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(props, /const wallTurfOn = !mobileProps && !snowCap && rockDressing\.dust < 0\.5 && !sourcedStoneIsBrick\(mapId\);/, 'the turf on the mild, grassy maps\' dry-stone walls');
+  assert.match(props, /turf: wallTurfOn \? \{\n\s*meshAt: \(x, z\) => terrainNearMeshHeightAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z\), foldAt: turfFoldAt,/, 'on the nearest terrain mesh');
+  assert.match(props, /rockClutter\.clear\(\);\n\s*\/\/ \(b18\)[^\n]*\n\s*if \(wallDressing\.turfs\.length\) \{[\s\S]{0,900}group\.userData\.rockBeds = beds;\n\s*wallDressing\.turfs\.length = 0;/,
+    'merged by 256 m cell into the beds the world draws with the ground\'s material');
+}
+
+console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet');

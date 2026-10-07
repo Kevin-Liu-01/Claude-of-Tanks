@@ -66,7 +66,7 @@ const digests = Object.fromEntries(names.map((name, index) => [name, rows[index]
 const { player, authority, tools } = digests;
 const ids = Object.keys(player.specs);
 // The saved fleet is whatever the registry holds (217 when this receipt was written; main's Hetman II and Zubr II made
-// it 219 on 2026-10-02); every facade must hold exactly the same ids, checked below.
+// it 219 on 2026-10-02, and main's M6 Linebacker 220 on 2026-10-04); every facade must hold exactly the same ids, checked below.
 assert.ok(ids.length > 200, `the saved fleet (${ids.length} specs)`);
 
 assert.ok(Object.keys(legacy).includes('type99a') && Object.keys(legacy).includes('leo2a6'));

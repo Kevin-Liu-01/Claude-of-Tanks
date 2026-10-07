@@ -148,7 +148,7 @@ function roundedBlock(
  */
 function beddedSlab(
   rx: number, rz: number, thickness: number, bevel: number, sides: number, noise: SimplexNoise, seed: number,
-  { roughness = 0.22, overhang = 0, scarp = 0, scarpAngle = 0, squareness = 2, topWobble = 0.12 } = {},
+  { roughness = 0.22, overhang = 0, scarp = 0, scarpAngle = 0, squareness = 2, topWobble = 0.12, shoulder = 0 } = {},
 ): THREE.BufferGeometry {
   const ring = (frac: number): number[] => {
     const out: number[] = [];
@@ -168,28 +168,34 @@ function beddedSlab(
   };
   const bottom = ring(bevel * 0.4);
   const mid = ring(-overhang * Math.min(rx, rz));
-  const top = ring(bevel);
+  // (b12, wave 72 on Redrock: "a layer cake" — a shoulder rounds a hard bed's top arris the weather wore: a ring at 0.85
+  // of the thickness inset half the way, the top ring inset the more; 0 keeps the three rings every other form has)
+  const shoulderRing = shoulder > 0 ? ring(bevel * (1 + shoulder) * 0.5) : null;
+  const top = ring(bevel * (1 + shoulder));
   const hMid = thickness * 0.55;
   const positions: number[] = [];
   const index: number[] = [];
   const push = (x: number, y: number, z: number) => { positions.push(x, y, z); return positions.length / 3 - 1; };
   for (let i = 0; i < sides; i++) push(bottom[i * 2], 0, bottom[i * 2 + 1]);
   for (let i = 0; i < sides; i++) push(mid[i * 2], hMid, mid[i * 2 + 1]);
+  if (shoulderRing) for (let i = 0; i < sides; i++) push(shoulderRing[i * 2], thickness * 0.85, shoulderRing[i * 2 + 1]);
+  const topBase = positions.length / 3;
   for (let i = 0; i < sides; i++) {
     const wob = noise.noise(top[i * 2] * 0.6 + seed * 3, top[i * 2 + 1] * 0.6) * thickness * topWobble;
     push(top[i * 2], thickness + wob, top[i * 2 + 1]);
   }
   const cTop = push(0, thickness * (1 + topWobble * 0.15), 0);
   const cBot = push(0, 0, 0);
+  const bands = shoulderRing ? 3 : 2;
   for (let i = 0; i < sides; i++) {
     const j = (i + 1) % sides;
-    // bottom -> mid -> top walls (counter-clockwise seen from outside)
-    for (let band = 0; band < 2; band++) {
+    // bottom -> mid -> (shoulder ->) top walls (counter-clockwise seen from outside)
+    for (let band = 0; band < bands; band++) {
       const a0 = band * sides + i, a1 = band * sides + j;
       const c0 = a0 + sides, c1 = a1 + sides;
       index.push(a0, c1, a1, a0, c0, c1);
     }
-    index.push(2 * sides + i, cTop, 2 * sides + j);
+    index.push(topBase + i, cTop, topBase + j);
     index.push(i, j, cBot);
   }
   const g = new THREE.BufferGeometry();
@@ -530,7 +536,8 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
   let ux = -Math.sin(strike), uz = Math.cos(strike);
   if (ux * dx + uz * dz < 0) { ux = -ux; uz = -uz; }
   const sx = Math.cos(strike), sz = Math.sin(strike);
-  const sides = mobile ? 12 : 18;
+  // (b12: the beds jointed into more, blockier blocks, each outline on fewer facets: the formation keeps its budget)
+  const sides = mobile ? 8 : 14;
   const { min } = lowestGround(ground, spec.x, spec.z, R);
   const limestone = spec.geology === 'limestone';
   let y = min - 0.55;
@@ -540,19 +547,27 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
   const crown = Math.max(min + H, ground.getHeightAt(spec.x, spec.z) + H * 0.75);
   for (let bed = 0; bed < 14 && y < crown - 0.15; bed++) {
     const soft = bed % 2 === 1 && !limestone;
-    const thick = Math.min(crown - y + 0.1, soft ? 0.25 + rng() * 0.35 : (0.5 + rng() * 1.0) * Math.max(0.7, H / 4.5));
-    // the joints split a bed into blocks along the strike
-    const blocks = soft ? 1 : Math.max(1, Math.round(halfL * 2 / (3.2 + rng() * 2.5)));
+    // (b12, wave 72 on Redrock: "a layer cake" of even slabs) the beds uneven: thin hard beds and a few massive ones, the
+    // soft partings thin and weathered back into the face, a shadow line under each hard bed
+    const thick = Math.min(crown - y + 0.1, soft ? 0.12 + rng() * 0.3 : (0.5 + 1.25 * Math.pow(rng(), 1.6)) * Math.max(0.7, H / 4.5));
+    // the joints split a hard bed into blocks along the strike, closer than a bed is long (no unbroken plate)
+    const blocks = soft ? 1 : Math.max(1, Math.round(halfL * 2 / (2.4 + rng() * 2.2)));
     const gap = limestone ? 0.08 + rng() * 0.14 : 0.25 + rng() * 0.35; // limestone's joints close: one scar face
     const blockHalf = (halfL * 2 - gap * (blocks - 1)) / blocks / 2;
     for (let b = 0; b < blocks; b++) {
       const along = -halfL + blockHalf + b * (blockHalf * 2 + gap) + (rng() - 0.5) * 0.3;
-      const depth = halfD * (soft ? 0.86 : 0.94 + rng() * 0.12);
-      const g = beddedSlab(blockHalf * (soft ? 1.02 : 0.98), depth, thick, soft ? 0.04 : 0.1, sides, noise, spec.x * 0.01 + bed * 1.7 + b * 0.53,
-        { roughness: soft ? 0.08 : 0.16, overhang: soft ? 0 : 0.05, squareness: soft ? 3 : 4, topWobble: 0.1 });
+      // each joint block proud or recessed of its bed's face, and now and then fallen out of it altogether (its gap the
+      // scarp's broken edge; never the bed's last block)
+      const depth = halfD * (soft ? 0.68 : 0.78 + rng() * 0.34);
+      if (!soft && blocks > 1 && b > 0 && rng() < 0.14) continue;
+      // a joint block's own thickness (a bed wedges along its strike) and its settle: blocky in plan with broken edges,
+      // its top arris worn round (the shoulder)
+      const blockThick = soft ? thick : thick * (0.78 + rng() * 0.44), settle = soft ? 0 : (rng() - 0.6) * 0.12;
+      const g = beddedSlab(blockHalf * (soft ? 1.02 : 0.96), depth, blockThick, soft ? 0.05 : 0.16, sides, noise, spec.x * 0.01 + bed * 1.7 + b * 0.53,
+        { roughness: soft ? 0.12 : 0.32, overhang: soft ? 0 : 0.05, squareness: soft ? 2.6 : 4.2, topWobble: soft ? 0.1 : 0.16, shoulder: soft || mobile || blockThick < 0.65 ? 0 : 0.8 });
       const cx = spec.x + sx * along - ux * back, cz = spec.z + sz * along - uz * back;
-      const j = limestone ? 0.35 : 1;
-      pieces.push({ geometry: place(g, cx, y, cz, -strike + (rng() - 0.5) * 0.06 * j, (rng() - 0.5) * 0.04 * j, (rng() - 0.5) * 0.04 * j), layer: bed, standing: true });
+      const j = limestone ? 0.35 : 1, tip = soft ? 0.04 : 0.09;
+      pieces.push({ geometry: place(g, cx, y + settle, cz, -strike + (rng() - 0.5) * 0.06 * j, (rng() - 0.5) * tip * j, (rng() - 0.5) * tip * j), layer: bed, standing: true });
     }
     y += thick * 0.98;
     if (!soft) {
@@ -562,15 +577,16 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
       halfD *= 0.8 + rng() * 0.14;
     }
   }
-  // the fallen blocks at the scarp foot
+  // the fallen blocks at the scarp foot (b12, wave 72: "soap bars"): angular — sharp joint blocks barely rounded, cut by
+  // three fractures — graded by size (the big ones at the foot, the small ones rolled out beyond), half buried
   const shed = spec.shed ?? 1;
-  const count = Math.round((mobile ? 5 : 11) * shed);
+  const count = Math.round((mobile ? 4 : 11) * shed);
   for (let i = 0; i < count; i++) {
-    const along = (rng() - 0.5) * R * 2.1, out = R * (0.4 + rng() * 0.5);
+    const along = (rng() - 0.5) * R * 2.1, reach = rng(), out = R * (0.35 + reach * 0.7);
     const x = spec.x + sx * along + ux * out, z = spec.z + sz * along + uz * out;
-    const size = 0.3 + Math.pow(rng(), 1.6) * 1.1;
-    const g = roundedBlock(size, size * (0.35 + rng() * 0.25), size * (0.7 + rng() * 0.3), 0.12, 2, noise, rng, { weather: 0.06, cuts: 2, cutDepth: 0.7, seedOffset: i + 40 });
-    const yy = ground.getHeightAt(x, z) + size * 0.1;
+    const size = (0.25 + Math.pow(rng(), 1.6) * 1.2) * (1.2 - 0.65 * reach);
+    const g = roundedBlock(size, size * (0.45 + rng() * 0.3), size * (0.65 + rng() * 0.35), 0.05, 2, noise, rng, { weather: 0.04, cuts: 3, cutDepth: 0.62, seedOffset: i + 40 });
+    const yy = ground.getHeightAt(x, z) - size * (0.15 + rng() * 0.2);
     pieces.push({ geometry: place(g, x, yy, z, rng() * Math.PI, (rng() - 0.5) * 0.5, (rng() - 0.5) * 0.4), layer: i % 4, standing: false });
   }
 }
