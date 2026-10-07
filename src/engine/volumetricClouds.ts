@@ -127,6 +127,8 @@ export const CLOUD_BSM_CASCADES = Object.freeze([
   Object.freeze({ texels: 512, span: 12000, bands: 32, every: 1 }),
   Object.freeze({ texels: 512, span: 40000, bands: 32, every: 2 }),
 ] as const);
+/** The tiers' stretch of the cascades' refresh (a band every n × `every` frames): the low tier's map turns over in a second. */
+export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1.5, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
 export const CLOUD_BSM_SLICES = 32;
 /** The march limits and the dome shell radius (inside camera.far). */
@@ -1110,7 +1112,7 @@ export class VolumetricCloudLayer {
       }
       const cellX = Math.floor(ox / texel) - spec.texels / 2, cellZ = Math.floor(oz / texel) - spec.texels / 2;
       const all = full || !c.valid;
-      if (all || ++c.age >= spec.every) {
+      if (all || ++c.age >= spec.every * (CLOUD_BSM_TIER_STRETCH[this.traceTier] ?? 1)) {
         c.age = 0;
         (b.uWinCell.value as THREE.Vector2).set(cellX, cellZ);
         b.uTexels.value = spec.texels;
