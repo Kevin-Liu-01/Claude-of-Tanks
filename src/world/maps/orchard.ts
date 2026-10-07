@@ -102,8 +102,13 @@ export default {
     // silk khan planned beside it is withdrawn: the valley's long sight lines run through the village, and the layout
     // brief's long-sight share (at least 0.03) stood at 0.0302 without it — a khan anywhere near the square cut 58 to 84
     // of the 1 247 long rays where 30 could go (it measured 0.028).
+    // Round 3 (2026-10-07; gauntlet wave 208: "a flat red-soil field with no slope, terraces or enclosing stone square"):
+    // the square as agreed with the map-revival lane, whose round 4 closes it with sited dars, a store and the souk's
+    // arcade: the setts out to the closing houses' fronts — 18.2 m along road 0 by 18.3 m from its kerb, turned to the
+    // village grid round the sabil — open to the lane on the road's side and at the south corner toward road 3. The setts
+    // are ground the houses stand on (no solid refuses them, and they publish no plot: the yards stay as drawn).
     landmarks: [
-      { kind: 'path', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: "the fountain's square", params: { length: 11, width: 11, surface: 'stone' } },
+      { kind: 'path', x: 17.62, z: 0.82, yawDeg: 142, ground: 'veto', name: "the square", params: { length: 18.3, width: 18.2, surface: 'stone' } },
       { kind: 'fountain', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: 'the Ottoman fountain', params: { style: 'ottoman', radius: 3 } },
     ],
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
