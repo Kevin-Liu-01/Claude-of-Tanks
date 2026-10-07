@@ -1420,6 +1420,25 @@ const GRADE_TOE_CHANNEL_TO = 2.5;
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
 const GRADE_VIGNETTE = 0.10;
 const GRADE_VIGNETTE_BRIGHT_KEEP = 0.62; // fraction of vignette removed on bright pixels
+/**
+ * The night's scotopic shift (2026-10-01): low light reads through the rods, so colour drains from the shadows and the
+ * dim midtones toward a cool blue-grey (the Purkinje shift), and the highlights (lamps, the moon, muzzle flashes) keep
+ * their colour.
+ *
+ * 2026-10-07 (the skies lane; the gauntlet's wave 250 on Highland Reservoir at night, both critics: "the night is a
+ * blue-tinted day … the foreground grass stays vivid lime"): the 2026-10-01 shift drained at most 0.55 and stopped at a
+ * display luma of 0.55, so the moonlit grass blades (luma about 0.26, measured on the wave's frames) kept about two
+ * thirds of their chroma.
+ * - The shift now reaches the moonlit midtones: it fades out from luma 0.06 to GRADE_NIGHT_SCOTOPIC_TOP.
+ * - It drains harder, up to GRADE_NIGHT_SCOTOPIC.
+ * - The drained colour is dimmed by GRADE_NIGHT_SCOTOPIC_DIM, so the ground reads darker blue-grey.
+ * - A warm light keeps its colour at any level. A lamp, a window or a fire is red over blue, while moonlight is cool.
+ *   The pools of light under a street lamp or a headlight sit at the moonlit ground's own display level.
+ * QA: __LIGHT_TUNE.GRADE_NIGHT_SCOTOPIC, _TOP, _DIM. Day frames never enter it (uNight 0).
+ */
+const GRADE_NIGHT_SCOTOPIC = 0.85;
+const GRADE_NIGHT_SCOTOPIC_TOP = 0.8;
+const GRADE_NIGHT_SCOTOPIC_DIM = 0.12;
 
 // SNIPER SCOPE TREATMENT (r8 — "sniper view has no scope treatment at all: no
 // vignette, no edge blur, it is the raw frame with HUD lines"). Applied in
@@ -1498,6 +1517,9 @@ const GradeShader = {
     uWhiteBalance: { value: new THREE.Vector3(1, 1, 1) },
     // 2026-10-01: 0..1 night (lightModel.ts) — the scotopic shift of low light toward a desaturated blue
     uNight: { value: 0 },
+    // 2026-10-07: the shift's strength, the display luma it fades out at, and the dimming of the drained colour
+    // (GRADE_NIGHT_SCOTOPIC note)
+    uNightGrade: { value: new THREE.Vector3(GRADE_NIGHT_SCOTOPIC, GRADE_NIGHT_SCOTOPIC_TOP, GRADE_NIGHT_SCOTOPIC_DIM) },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
     // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
     // terrain/horizon texels far past their mip frequency and the far field
@@ -1525,6 +1547,7 @@ const GradeShader = {
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
+    uniform vec3 uNightGrade;
     uniform float uScope;
     uniform float uSharp;
     uniform float uAspect;
@@ -1579,9 +1602,12 @@ const GradeShader = {
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
+      // (2026-10-07: through the moonlit midtones, dimmed a little; a warm light keeps its colour at any level —
+      // GRADE_NIGHT_SCOTOPIC note)
       if ( uNight > 0.001 ) {
-        float scot = uNight * 0.55 * ( 1.0 - smoothstep( 0.06, 0.55, luma ) );
-        col = mix( col, luma * vec3( 0.82, 0.96, 1.22 ), scot );
+        float warm = smoothstep( 0.06, 0.22, col.r - col.b );
+        float scot = uNight * uNightGrade.x * ( 1.0 - smoothstep( 0.06, uNightGrade.y, luma ) ) * ( 1.0 - warm );
+        col = mix( col, luma * vec3( 0.82, 0.96, 1.22 ) * ( 1.0 - uNightGrade.z ), scot );
       }
       // vignette (radial, corners only) — luma-adaptive: bright sky/haze
       // corners keep most of their level so sunny establishing shots read
@@ -2726,6 +2752,10 @@ export function createPost(
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
+    if (u.uNight.value > 0) {
+      (u.uNightGrade.value as THREE.Vector3).set(lightTune('GRADE_NIGHT_SCOTOPIC', GRADE_NIGHT_SCOTOPIC),
+        lightTune('GRADE_NIGHT_SCOTOPIC_TOP', GRADE_NIGHT_SCOTOPIC_TOP), lightTune('GRADE_NIGHT_SCOTOPIC_DIM', GRADE_NIGHT_SCOTOPIC_DIM));
+    }
     if (model) {
       u.uExposure.value = model.exposure;
       u.uWhiteBalance.value.set(model.whiteBalance[0], model.whiteBalance[1], model.whiteBalance[2]);

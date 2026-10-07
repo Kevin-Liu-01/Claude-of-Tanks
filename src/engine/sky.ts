@@ -539,7 +539,22 @@ const NIGHT_SKY_FULL_INTENSITY_TOP = 0.30;
 // the night key-light direction (the atmosphere runtime aims the "sun" as moonlight) with a gibbous
 // terminator, maria mottle and a compact glow. Everything is added AFTER the dome intensity multiply and
 // fades into the horizon haze, so it never brightens the daylight dome (uNight is 0 there).
+//
+// 2026-10-07 (the skies lane; the gauntlet's wave 250 on Highland Reservoir at night, both critics: "an oversized
+// starfield as dense as snow"): round 22's field put a star in 11 % of the cells, and nearly all of them were equally
+// bright. The night camera opens about two stops, so the faintest of them (0.081 over a 0.08-dimmed dome) showed at a
+// display grey of 0.6. The frames counted about 430 such stars across the top third of a 55-degree view, which is
+// some 6,000 over the sky. A terrestrial night now ranks its stars by magnitude (uStarLaw.x = 1):
+// - A star sits in uStarLaw.y of the cells (the band raises the share 2.5 times at its core).
+// - Its rank u is uniform over those cells. Star counts grow about 2.8 times per magnitude, so its peak is
+//   uStarLaw.z × u^-0.89: half of them sit within twice the faintest, a tenth pass eight times it, and a hundredth
+//   sixty times it.
+// - The radius is uStarLaw.w cells, growing to at most twice that for the brightest.
+// A moonlit sky shows a few hundred stars to the eye, a handful of them bright. A forced night sky (the galaxy domes of
+// Olympus Basin and Earthrise Basin, x = 0) keeps round 22's field exactly. configureSkyUniforms sets the law, and the
+// lab tunes it (__LIGHT_TUNE.STAR_DENSITY, STAR_FLUX, STAR_RADIUS: applyStarLawTune).
 const NIGHT_SKY_GLSL = /* glsl */`
+uniform vec4 uStarLaw;
 vec3 cotHash3( vec2 c ) {
 	return fract( sin( vec3( dot( c, vec2( 127.1, 311.7 ) ), dot( c, vec2( 269.5, 183.3 ) ), dot( c, vec2( 419.2, 371.9 ) ) ) ) * 43758.5453 );
 }
@@ -575,13 +590,24 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 		for ( int ox = -1; ox <= 1; ox++ ) {
 			vec2 c = cell + vec2( float( ox ), float( oy ) );
 			vec3 h = cotHash3( c );
-			float presence = step( 1.0 - ( 0.11 + band * 0.42 ), h.z );
 			vec2 offs = vec2( float( ox ), float( oy ) ) + h.xy - f;
-			float mag = pow( fract( h.z * 7.31 ), 8.0 );
-			float radius = 0.075 + mag * 0.11;
-			float pointW = presence * exp( -dot( offs, offs ) / ( radius * radius ) );
 			vec3 tint = mix( vec3( 0.78, 0.86, 1.00 ), vec3( 1.00, 0.90, 0.70 ), fract( h.x * 3.7 ) );
-			stars += tint * pointW * ( 0.09 + mag * 1.45 );
+			if ( uStarLaw.x > 0.5 ) {
+				// a terrestrial night: a share of the cells, ranked by magnitude (the note above)
+				float share = uStarLaw.y * ( 1.0 + band * 2.5 );
+				float rank = ( h.z - ( 1.0 - share ) ) / share;
+				if ( rank > 0.0 ) {
+					float flux = pow( max( rank, 0.002 ), -0.89 );
+					float radius = uStarLaw.w * min( 2.0, 1.0 + 0.12 * log2( flux ) );
+					stars += tint * ( uStarLaw.z * flux ) * exp( -dot( offs, offs ) / ( radius * radius ) );
+				}
+			} else {
+				float presence = step( 1.0 - ( 0.11 + band * 0.42 ), h.z );
+				float mag = pow( fract( h.z * 7.31 ), 8.0 );
+				float radius = 0.075 + mag * 0.11;
+				float pointW = presence * exp( -dot( offs, offs ) / ( radius * radius ) );
+				stars += tint * pointW * ( 0.09 + mag * 1.45 );
+			}
 		}
 	}
 	// moon (or a preset's planet): a disc at the night key-light direction, gibbous phase, maria mottle,
@@ -819,6 +845,10 @@ function configureSkyUniforms(
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
   u.uPlanetTint.value.setHex(preset.planetHex);
+  // 2026-10-07: a terrestrial night's stars by magnitude — a star in 4 % of the cells, the faintest's peak 0.003, its
+  // radius 0.06 cells; a forced night sky (the galaxy domes) keeps round 22's field (NIGHT_SKY_GLSL note)
+  u.uStarLaw ??= { value: new THREE.Vector4(0, 0, 0, 0) };
+  u.uStarLaw.value.set(preset.nightSky == null ? 1 : 0, 0.04, 0.003, 0.06);
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
   // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulled it
@@ -844,6 +874,7 @@ function configureSkyUniforms(
     shader.uniforms.uEarth = u.uEarth;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
+    shader.uniforms.uStarLaw = u.uStarLaw;
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
@@ -897,6 +928,14 @@ function configureSkyUniforms(
 uniform float uEarth;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
+}
+
+/** QA (2026-10-07): the terrestrial night's star law under __LIGHT_TUNE.STAR_DENSITY, STAR_FLUX and STAR_RADIUS (the lab's
+ * variants); absent, configureSkyUniforms's values stand. Shared by reference with the physically based dome. */
+function applyStarLawTune(u: Record<string, THREE.IUniform>): void {
+  const law = u.uStarLaw?.value as THREE.Vector4 | undefined;
+  if (!law || law.x < 0.5) return;
+  law.set(law.x, lightTune('STAR_DENSITY', law.y), lightTune('STAR_FLUX', law.z), lightTune('STAR_RADIUS', law.w));
 }
 
 /**
@@ -1198,6 +1237,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   const sky = new Sky();
   sky.scale.setScalar(SKY_DOME_SCALE);
   configureSkyUniforms(sky, sunDir, preset);
+  applyStarLawTune(sky.material.uniforms);
   scene.add(sky);
   // Publish the live sun direction for post.ts's directional aerial scatter
   // (same Vector3 instance — applyPreset mutates it in place, so the post
@@ -1233,6 +1273,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
+      uStarLaw: skyUniforms.uStarLaw,
     },
     side: THREE.BackSide,
     depthWrite: false,
@@ -1942,6 +1983,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
       );
       configureSkyUniforms(sky, sunDir, preset);
+      applyStarLawTune(sky.material.uniforms);
       if (refreshAtmosphere()) horizonColor.copy(capColorLuminance(atmosphereLuts!.summary.horizon.clone(), HORIZON_LUM_CAP));
       else horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
       atmosphereKeySuffix = environmentKeySuffix();

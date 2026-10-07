@@ -114,9 +114,15 @@ inOrder(post, [
   'col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );',
   'if ( uNight > 0.001 ) {',
 ], 'the display grade');
-const scotopic = post.match(/float scot = uNight \* ([0-9.]+) \* \( 1\.0 - smoothstep\( ([0-9.]+), ([0-9.]+), luma \) \);\s*col = mix\( col, luma \* vec3\( ([0-9.]+), ([0-9.]+), ([0-9.]+) \), scot \);/);
+// (2026-10-07, the skies lane: the shift's strength, its top and its dimming are uniforms from GRADE_NIGHT_SCOTOPIC, _TOP
+// and _DIM, and a warm light keeps its colour; the oracle reads the constants and the installed lines)
+const scotopic = post.match(/float warm = smoothstep\( ([0-9.]+), ([0-9.]+), col\.r - col\.b \);\s*float scot = uNight \* uNightGrade\.x \* \( 1\.0 - smoothstep\( ([0-9.]+), uNightGrade\.y, luma \) \) \* \( 1\.0 - warm \);\s*col = mix\( col, luma \* vec3\( ([0-9.]+), ([0-9.]+), ([0-9.]+) \) \* \( 1\.0 - uNightGrade\.z \), scot \);/);
 assert.ok(scotopic, 'the oracle models the night\'s scotopic shift');
-const [scotAmount, scotLo, scotHi, ...scotTint] = scotopic.slice(1).map(Number);
+const [warmLo, warmHi, scotLo, ...scotTint] = scotopic.slice(1).map(Number);
+const scotAmount = gradeConstant('GRADE_NIGHT_SCOTOPIC'), scotHi = gradeConstant('GRADE_NIGHT_SCOTOPIC_TOP');
+const scotDim = gradeConstant('GRADE_NIGHT_SCOTOPIC_DIM');
+assert.match(post, /uNightGrade: \{ value: new THREE\.Vector3\(GRADE_NIGHT_SCOTOPIC, GRADE_NIGHT_SCOTOPIC_TOP, GRADE_NIGHT_SCOTOPIC_DIM\) \}/,
+  'the oracle reads the shift\'s constants as the grade installs them');
 assert.match(post, /u\.uSatLinear\.value = satLinear \* model\.saturation;/);
 assert.match(post, /u\.uContrast\.value = contrast \* model\.contrast;/);
 assert.match(post, /setNightEmissionExposure\(u\.uExposure\.value\);/, 'post.ts hands the lens programs the output pass\'s exposure');
@@ -142,8 +148,9 @@ function displayOf(radiance, { exposure, warmth = 0, night = 0 }) {
   c = c.map((v) => Math.max(v - BLACK_POINT, 0) / (1 - BLACK_POINT));
   const luma = lumaOf(c);
   c = c.map((v) => THREE.MathUtils.clamp(luma + DISPLAY_SAT * (v - luma), 0, 1));
-  const scot = night * scotAmount * (1 - smooth(scotLo, scotHi, luma));
-  c = c.map((v, i) => v + (luma * scotTint[i] - v) * scot);
+  const warm = smooth(warmLo, warmHi, c[0] - c[2]);
+  const scot = night * scotAmount * (1 - smooth(scotLo, scotHi, luma)) * (1 - warm);
+  c = c.map((v, i) => v + (luma * scotTint[i] * (1 - scotDim) - v) * scot);
   return new THREE.Color(...c); // display-encoded components (read them raw: getHexString would encode again)
 }
 const hexOf = (c) => c.toArray().map((x) => Math.round(THREE.MathUtils.clamp(x, 0, 1) * 255).toString(16).padStart(2, '0')).join('');
