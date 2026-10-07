@@ -7610,6 +7610,75 @@ The map keeps its id (`blackglass`); its name is Suzhou Creek in every catalogue
   - matchPlacement's counting field and its independent route grid carry the world's bridge decks, as every
     production caller's height field does. Without them the creek split the map, and four modes found no placement.
 
+### 2026-10-05 — Steinburg's old town becomes a hill town, and the kerb sits on the carriageway (the map-revival lane, mr1)
+
+**The gauntlet's wave 116 read Steinburg's old town as "a too-perfect symmetric hexagon".** Inside the town the plan is
+now a hill town's, laid out with the spur's crest. The battlefield outside the town keeps its mirror across the crest.
+- *The streets* (urban.ts):
+  - the Hauptstrasse (road 0) bends with the crest, within 5 m of the bot planner's z = 0 lattice line;
+  - the trade road (road 1) stays within 3 m of x = −50;
+  - both run straight through the market square, so its 30 m zone disc stays clear of the street rows;
+  - two back lanes behind the street rows (roads 6–9), crooked with the ground and unlike each other (331 and 339 m),
+    each meeting the trade road on its way round;
+  - four alleys (roads 10–13) at uneven spacing join the lanes to the Hauptstrasse;
+  - no alley meets the Hauptstrasse within 100 m west of the market. The network grade solve levels a road 32 m
+    either side of each crossing, so a crossing nearer the square left the street's 1.8 m fall to the apron's 14 m
+    bank (19 % against the brief's 18 %). The worst grades are now 15.5 / 16.5 / 17.6 % at the three terrain seeds;
+  - roadEndpoints.ts joins every lane to the Hauptstrasse.
+- *The walls*:
+  - the town wall survives in stretches outside the lanes, broken at the four gates and shot out in two places;
+  - the castle's ring wall crowns the Burgberg, open to its forecourt on the town side, with the keep, a second tower on
+    the ring's south-east corner, and a chapel (a church's 23 m nave spreads past the plot law on the rock's crown);
+  - the valley field walls keep their mirror.
+- *The objectives*:
+  - the market apron turns 6°;
+  - the west farm-crossing zone and its apron move onto the crest line (z = 4);
+  - objective symmetry goes from 1.07 to 1.03, and the layout brief's solidPropsInRoad exception is gone.
+- *Layout metrics* (tools/map-layout-metrics.mjs on the regenerated shard): every band holds, with 4 lanes, chokeMin
+  740 and no solid prop in a road.
+- *Pacing*:
+  - 20 seeds (24000–24019): median 213 s, p10 149 s, minimum 147 s, none under 120 s, no timeouts;
+  - the PR head on the same seeds: 247 / 154 / 125;
+  - the full core run (132 matches) passes: median 190.8 s, p10 148 s, no timeouts; Steinburg's four ran 147 / 295 /
+    149 / 254 s. authoritativeBots passes.
+- *The church* (wave 150's close views found it on bare ground): the block fill's fifth plot had set the town church
+  outside the town wall, south-east of the town. It is now a planned site on the market square's north side
+  (`{ structure: 'church', x: -76, z: 52, yawDeg: 186 }`): the tower and west door face the square, square to the
+  apron's turned north edge and 4 m off its paving, since an apron is a road and the brief keeps every solid 3.5 m out
+  of a road's core (at 0.9 m it read as solidPropsInRoad 1). The fifth block-fill plot takes a rowhouse. The facades
+  lane's churchyard (its yard system, `churchyard: true`, on facades 573445fe5) takes the church's free west or north
+  side once it is on the PR head.
+- *The census*: the shard is regenerated at [2547, 5429, 2259] (was [2690, 6647, 2254]; [2535, 5616, 2259] before
+  the church moved).
+- *Pacing with the church on the square* (bbdc84a0e): 20 seeds, median 208 s, p10 173 s, minimum 133 s, none under
+  120 s, no timeouts. Every layout band holds (solidPropsInRoad 0, objective symmetry 1.03, 4 lanes).
+- *Cost* (capture ticket 8; A the Ruinspires + Suzhou base 0b2ddee00, B d11deb201 with the church at its first seat,
+  ABCCBA × 8 at mean load 261, GPU p25 verdict): the chase view accepts, −1.10 ± 0.54 ms; the establishing view is
+  ambiguous, +0.45 ± 1.15 ms (bound 2.75 ms), on a lighter scene (716 against 727 draws, 4.83 against 5.12 M
+  triangles, stable across a re-stage), CPU +0.02 ± 0.08 ms; it takes one re-run in a quiet window.
+- *botRouteClearance*: the Steinburg courtyard case starts in the yard behind the north lane's rows, since the old
+  courtyard is gone. Its comment names the receipt's conservatism: the edge-offset containment overstates a rotated
+  corner (1.41 times the margin), so a leg passing under one reads short of the clearance it keeps.
+
+**The kerb (props.ts `placeStreetCurbs`, every `curbs: true` map: Steinburg, Ruinspires, Suzhou Creek).**
+- *The problem*: the kerb stacked on the terrain (a level slab 0.19 m over the ground at its centre), and the pavement
+  was pitched to the terrain 6.35 m out. Where the ground rose behind a street, the pavement stood up to 0.5 m over the
+  road (0.9 m on Blackglass's banks): the critics' "town behind a knee-high kerb".
+- *The fix*: each piece now reads the carriageway at the kerb's face at both of its ends:
+  - the kerb shows a 12 cm face over the road and follows the road's grade;
+  - the pavement's inner edge is flush with the kerb's top, and its outer edge climbs toward rising ground by 0.25 m
+    at most;
+  - both slabs reach down into lower ground instead of floating over it;
+  - a piece on a bridge deck's span is left to the bridge's parapets.
+- *Render geometry only*: a per-record digest of the three maps against the PR head (terrain 1337, vegetation 2001,
+  props 2002):
+  - collision records, features, wreck spots, pole placements and grounding receipts are identical;
+  - the only mesh that changes is the stone bucket;
+  - its removed and added triangles (11,328 / 33,792 / 37,056, 24 per piece) all lie inside the 472 / 1,408 / 1,544
+    kerb pieces;
+  - the skipped pieces still draw their UV jitter, so every later draw of the dressing stream keeps its seat;
+  - the committed collision shards still match the tree.
+
 ### 2026-10-05 — Ruinspires as Sarajevo under siege (the map-revival lane, mr1)
 
 **The `sarajevo` regional kit replaces all 14 structure ids the map draws in place, and the street kit
