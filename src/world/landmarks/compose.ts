@@ -264,7 +264,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       [placement.x + cx * c0 + cz * s0, placement.z - cx * s0 + cz * c0, rw, rl] as const);
     let hard: string | null = null;
     const soft: string[] = [];
-    for (const [rx, rz, rw, rl] of solidRects) {
+    // (an open paving — a square's setts, a path — is ground the solids stand on: it runs up to and under a house's
+    // porch or a souk's arcade on its edge and meets nothing, so no solid refuses it; Orchard round 3, the square's
+    // setts out to the fronts of the houses that close it)
+    const paving = !!spec.open && isDressingPiece(placement);
+    for (const [rx, rz, rw, rl] of paving ? [] : solidRects) {
       const found = solidConflicts(ctx.obstacles, rx, rz, rw, rl, yaw, ctx.hardKinds);
       for (const kind of found.soft) if (soft.length < 8) soft.push(kind);
       if (found.hard) { hard = found.hard; break; }
@@ -367,7 +371,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // its plan, on the minimap and among the plots the yards keep clear of: the rectangles of its solid where the kind
     // names them (a harbour's mole and its slipway, not the basin its footprint spans: the round-3 harbour's footprint,
     // published whole, took the yards of the bourg's lane end and re-rolled every yard after them), else its footprint
-    if (spec.solids) for (const [rx, rz, rw, rl] of solidRects) ctx.publish(rx, rz, rw * 2, rl * 2, yaw, placement.kind);
+    // (an open paving set into a finished map publishes no plot: the yards draw round the houses as on the map without
+    // it, as the veto promises — published, Orchard's widened square took a closing house's yard. A paving composed
+    // with its map keeps its plot, so no settled yard moves for this rule)
+    if (paving && placement.ground === 'veto') { /* ground, not a plot */ } else if (spec.solids) for (const [rx, rz, rw, rl] of solidRects) ctx.publish(rx, rz, rw * 2, rl * 2, yaw, placement.kind);
     else ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
     // a paved piece's ground grows no grass up through it (gauntlet round 2's captures: tall grass through Delta's brick
     // court and the paths' setts): discs over its footprint, each covering its cell, the cells no wider than the piece is
