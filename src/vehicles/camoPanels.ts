@@ -21,6 +21,10 @@
 //    (crews spray ERA in place) and takes only its own paint tone, so the courses read as separate bricks.
 // Phases come from the panel's own position (owner frame, centimetres) and the bucket, so HIGH and LOW, the Garage
 // and every peer paint one panel the same way. No Three.js scene, DOM or fleet import; build time only.
+// Cost (round 4 verification, 2026-10-07): the pass runs on every rendered build (the Garage pedestal, every battle
+// tank), so it reads positions straight from the arrays, measures only the marked parts of a shell bucket, and
+// finds touching pieces by a sweep along the pieces' longest spread instead of testing every pair; the panels are
+// exactly the same.
 import type * as THREE from 'three';
 
 /** Bolt-on painted buckets whose connected solid pieces become panels without any authoring. */
@@ -76,15 +80,27 @@ interface PartBox { min: [number, number, number]; max: [number, number, number]
 function partBox(part: THREE.BufferGeometry): PartBox | null {
   const position = part.getAttribute('position');
   if (!position || position.count === 0) return null;
-  const min: [number, number, number] = [Infinity, Infinity, Infinity];
-  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
-  for (let i = 0; i < position.count; i++) {
-    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    if (x < min[0]) min[0] = x; if (x > max[0]) max[0] = x;
-    if (y < min[1]) min[1] = y; if (y > max[1]) max[1] = y;
-    if (z < min[2]) min[2] = z; if (z > max[2]) max[2] = z;
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  const plain = position as THREE.BufferAttribute;
+  if (!('isInterleavedBufferAttribute' in position && position.isInterleavedBufferAttribute)
+      && plain.itemSize === 3 && !plain.normalized) {
+    // the common layout: read the array itself (getX/Y/Z return exactly these values for a plain attribute)
+    const a = plain.array, end = position.count * 3;
+    for (let k = 0; k < end; k += 3) {
+      const x = a[k], y = a[k + 1], z = a[k + 2];
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
+  } else {
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
   }
-  return { min, max };
+  return { min: [x0, y0, z0], max: [x1, y1, z1] };
 }
 
 const extentMin = (b: PartBox): number => Math.min(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]);
@@ -124,9 +140,21 @@ function panelGroups(bucket: string, parts: readonly THREE.BufferGeometry[], box
   const parent = parts.map((_, i) => i);
   const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
   const free = parts.map((_, i) => i).filter((i) => groups[i] < 0 && boxes[i] && extentMax(boxes[i]!) <= PANEL_MAX_PART_M);
-  for (let a = 0; a < free.length; a++) {
-    for (let b = a + 1; b < free.length; b++) {
-      if (overlaps(boxes[free[a]]!, boxes[free[b]]!)) parent[find(free[a])] = find(free[b]);
+  // sweep along the axis the pieces spread furthest on: a pair can only overlap while the later box starts before the
+  // earlier one ends (the components, and so the panels, are those of testing every pair)
+  let axis = 0, widest = -Infinity;
+  for (let k = 0; k < 3; k++) {
+    let lo = Infinity, hi = -Infinity;
+    for (const i of free) { const v = boxes[i]!.min[k]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (hi - lo > widest) { widest = hi - lo; axis = k; }
+  }
+  const sweep = [...free].sort((a, b) => boxes[a]!.min[axis] - boxes[b]!.min[axis] || a - b);
+  for (let a = 0; a < sweep.length; a++) {
+    const boxA = boxes[sweep[a]]!, end = boxA.max[axis] - 0.001;
+    for (let b = a + 1; b < sweep.length; b++) {
+      const boxB = boxes[sweep[b]]!;
+      if (boxB.min[axis] >= end) break;
+      if (overlaps(boxA, boxB)) parent[find(sweep[a])] = find(sweep[b]);
     }
   }
   const unions = new Map<number, PartBox>();
@@ -155,7 +183,14 @@ export function applyCamoPanels(merged: THREE.BufferGeometry, parts: readonly TH
   const uv = merged.getAttribute('uv');
   if (!uv || !parts.length) return 0;
   const color = merged.getAttribute('color');
-  const boxes = parts.map(partBox);
+  // a shell bucket panels only its marked parts: measure those alone, and nothing when none is marked
+  const automatic = GROUPED_PANEL_BUCKETS.has(bucket) || SECTION_PANEL_BUCKETS.has(bucket) || TONE_PANEL_BUCKETS.has(bucket);
+  const marked = (part: THREE.BufferGeometry): boolean => {
+    const key = part.userData?.[PANEL_KEY];
+    return key !== undefined && key !== null && key !== false;
+  };
+  if (!automatic && !parts.some(marked)) return 0;
+  const boxes = parts.map((part) => (automatic || marked(part) ? partBox(part) : null));
   const groups = panelGroups(bucket, parts, boxes);
   if (groups.every((g) => g < 0)) return 0;
   // one seed per panel from its pieces' joint box (centimetres, owner frame) and the bucket
