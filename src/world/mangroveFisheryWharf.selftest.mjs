@@ -39,14 +39,40 @@ const autumnConsumer = `  if (autumnCropRows && autumnFieldContext) {
     autumnCropRows.length = 0;
     autumnFieldContext = null;
   }\n`;
+// (the scenery lane, b23: the karst relief keeps its loose blocks and bosses off the trunks the vegetation planted, so
+// it reads the vegetation before the release too — the third exact block, after Autumn's)
+const karstConsumer = `  // (b23, the scenery lane) the limestone in relief over a karst map's flush pavement (karstRelief.ts, on the ground
+  // lane's patch weight, the height field's _karstCoverAt): its bosses for the world to draw with the ground's own
+  // material (map.ts), its loose blocks of the field walls' stone. Neither is collision. The last of the placements,
+  // from a stream of its own and clear of everything placed before it, so every other seat is kept. Nothing on a map
+  // without the hook.
+  function* placeKarstRelief(): Generator<undefined, void, void> {
+    // (the hook is the ground lane's: optional on the height field until it lands, read through the relief's own view)
+    const profile = resolveLandUseProfile(mapId), ground: KarstGround = heightField;
+    if (!profile || !ground._karstCoverAt) return;
+    const near = createObstacleGrid([...obstacles, ...(vegetation?.treeObstacles ?? [])], 16), hits: CollisionRecord[] = [];
+    const relief = yield* buildKarstRelief(ground, {
+      seed, heading: profile.heading, mobile: mobileProps,
+      blocked: (x, z, r) => near(x - r, z - r, x + r, z + r, hits).length > 0,
+    });
+    if (!relief) return;
+    (fieldWallBucket === 'fieldStone' ? buckets.fieldStone : buckets.stone).push(...relief.stones);
+    if (relief.bosses) group.userData.karstBosses = relief.bosses;
+    group.userData.karstRelief = relief.counts;
+  }
+  yield* placeKarstRelief();
+  yield { fine: true, stage: 'karst-relief' };
+`;
 function assertConstructionRelease(block) {
   assert.equal(block.split(foundryConsumer).length, 2, 'exact Foundry consumer occurs once');
   assert.equal(block.split(autumnConsumer).length, 2, 'exact published Autumn consumer occurs once');
+  assert.equal(block.split(karstConsumer).length, 2, 'exact karst relief consumer occurs once');
   assert.ok(block.indexOf(foundryConsumer) > block.indexOf('composeAuthoredFisheryWharf();')
     && block.indexOf(autumnConsumer) > block.indexOf(foundryConsumer)
-    && block.indexOf(autumnConsumer) < block.indexOf('vegetation = null;'),
-  'Foundry then Autumn execute after wharf construction and before release');
-  assert.match(block.replace(foundryConsumer, '').replace(autumnConsumer, ''), /^\s*composeAuthoredFisheryWharf\(\);\s+vegetation = null;\s*$/,
+    && block.indexOf(karstConsumer) > block.indexOf(autumnConsumer)
+    && block.indexOf(karstConsumer) < block.indexOf('vegetation = null;'),
+  'Foundry, Autumn, then the karst relief execute after wharf construction and before release');
+  assert.match(block.replace(foundryConsumer, '').replace(autumnConsumer, '').replace(karstConsumer, ''), /^\s*composeAuthoredFisheryWharf\(\);\s+vegetation = null;\s*$/,
     'construction input is cleared unconditionally after consumers and before runtime closures');
 }
 assertConstructionRelease(releaseBlock);
@@ -62,6 +88,8 @@ assert.throws(() => assertConstructionRelease(releaseBlock.replace('  composeAut
 assert.throws(() => assertConstructionRelease(releaseBlock.replace('    foundryDonors.length = 0;\n', '')));
 assert.throws(() => assertConstructionRelease(releaseBlock.replace('    reconformFoundryFoundations = null;\n', '')));
 assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  retainedVegetation = vegetation;\n  vegetation = null;')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(karstConsumer, '') + karstConsumer));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(autumnConsumer + karstConsumer, karstConsumer + autumnConsumer)));
 
 const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // 2026-10-01 (frozen pins retired): the V29 sha256 pins of the 55+ stable wharf parts per seed and the exact connected
