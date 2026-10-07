@@ -267,9 +267,34 @@ export default {
     // houses, the onion-dome church and open woodsheds make the terrace
     // village; depots, a warehouse and woodsheds make the sawmill yard at its
     // north end (buildings land on the road nodes inside the village rect)
-    plan: ['rangerlodge', 'alpine', 'schoolhouse', 'onionchurch', 'logcabin', 'woodshed', 'barn', 'alpine',
-      'logcabin', 'cottage', 'woodshed', 'depot', 'warehouse', 'woodshed', 'alpine', 'barn',
-      'logcabin', 'ruin', 'depot', 'woodshed'],
+    // (round 4, wave 190: "large open gaps between buildings, reading as scattered farmsteads rather than the continuous
+    // roadside frontage of a strung-out highland village"): the plan's twenty buildings laid as a street village along
+    // the valley road (each house's gable to the street, the eaves some 3.5 m apart, the core south of the pass road's
+    // junction, the barns and sheds between the junctions, the sawmill's depots and warehouse at the north end), every
+    // one a terrace site from a stream of its own (.qa-dev/frontplan-winter.mjs, the measured kit envelopes)
+    plan: [],
+    plannedSites: [
+      { structure: 'rangerlodge', x: -64.71, z: -112.31, yawDeg: -90, terrace: true },
+      { structure: 'cottage', x: -69.18, z: -97.91, yawDeg: -90, terrace: true },
+      { structure: 'onionchurch', x: -67.3, z: -86.16, yawDeg: -90, terrace: true },
+      { structure: 'alpine', x: -67.85, z: -73.04, yawDeg: -90, terrace: true },
+      { structure: 'schoolhouse', x: -95.15, z: -113.95, yawDeg: 90, terrace: true },
+      { structure: 'alpine', x: -91.86, z: -99.8, yawDeg: 90, terrace: true },
+      { structure: 'logcabin', x: -89.86, z: -87.15, yawDeg: 90, terrace: true },
+      { structure: 'logcabin', x: -89.82, z: -75.96, yawDeg: 90, terrace: true },
+      { structure: 'woodshed', x: -69.26, z: -14.02, yawDeg: -85.7, terrace: true },
+      { structure: 'barn', x: -64.22, z: -3.72, yawDeg: -85.7, terrace: true },
+      { structure: 'woodshed', x: -87.02, z: -12.79, yawDeg: 94.3, terrace: true },
+      { structure: 'warehouse', x: -56.95, z: 63.39, yawDeg: -96.3, terrace: true },
+      { structure: 'depot', x: -62.27, z: 82.59, yawDeg: -96.3, terrace: true },
+      { structure: 'woodshed', x: -71.17, z: 94.22, yawDeg: -96.3, terrace: true },
+      { structure: 'alpine', x: -177.2, z: -36.59, yawDeg: 20.3, terrace: true },
+      { structure: 'logcabin', x: -153.13, z: -41.8, yawDeg: 13.4, terrace: true },
+      { structure: 'barn', x: -141.61, z: -48.13, yawDeg: 13.4, terrace: true },
+      { structure: 'ruin', x: -171.29, z: -14.39, yawDeg: -159.7, terrace: true },
+      { structure: 'depot', x: -149.23, z: -16.1, yawDeg: -166.6, terrace: true },
+      { structure: 'woodshed', x: -137.75, z: -26.24, yawDeg: -166.6, terrace: true },
+    ],
     destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
     buildingLat: [12, 3], sideSkip: 0.10,
     // round 48: the three strongpoints follow the new lanes — the brawl in
