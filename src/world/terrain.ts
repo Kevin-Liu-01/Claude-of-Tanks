@@ -4125,6 +4125,14 @@ void splatCompute() {
   // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
   vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
   if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
+  // (2026-10-07, Ironworks round 4) a works' floor: its zones' own ground kinds (slag, ballast, hardstanding, gravel)
+  // under every texel of it — its lots, its roads, its pads and its banks alike (the bake's crop, read once; the village
+  // mask's alpha is the wear, patchy, not the floor); 0 on every other map
+  float gWorksFloor = 0.0;
+  if (uLandE.w > 1.5) {
+    int kc = int(luA.r * 255.0 + 0.5) & 31;
+    gWorksFloor = (kc >= 15 && kc <= 16) || (kc >= 18 && kc <= 19) ? 1.0 : 0.0;
+  }
   // map revival lane 2 (townPaving): the paved town rect reads as a textured road (after the two fetches above, which
   // go out together)
   gRoadTex = uRoadTex;
@@ -4459,7 +4467,7 @@ void splatCompute() {
   // (2026-10-07, Ironworks round 4, wave 223: "the highline banks are pale, snow-like mounds" — a hardstand's bank and the
   // high-line's berm are graded ground, not a slag landform, so they drew the map's pale grass and dirt) inside a works'
   // floor (its village mask) a bank past the lots' ~40° is tipped slag too, from where the lots end (the same band)
-  if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * smoothstep(0.10, 0.40, mk.a) * (1.0 - roadCore));
+  if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * gWorksFloor * (1.0 - roadCore));
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -4607,10 +4615,10 @@ void splatCompute() {
     }
     // (2026-10-07, Ironworks round 4, wave 223: "two flat brown squares with hard edges" — a hardstand is the
     // carriageway's coverage with no centreline, so its whole surface was this layer, the map's pale dirt; and the works'
-    // worn ground) inside a works' floor (its village mask) the bare ground is cinder and slag ballast trodden flat —
+    // worn ground) inside a works' floor (gWorksFloor) the bare ground is cinder and slag ballast trodden flat —
     // black-grey, mottled at 3 m, its soot in broad gradients (worksSlag); every other map's bare ground as it was
     if (uLandE.w > 1.5) {
-      float wkD = smoothstep(0.10, 0.40, mk.a);
+      float wkD = gWorksFloor;
       if (wkD > 0.003) aD.rgb = mix(aD.rgb, worksSlag(n1h, n2, 0.5) * 1.12 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), wkD);
     }
     a = mix(a, aD, fD);
@@ -5991,7 +5999,7 @@ void splatCompute() {
       // line's hardstands are road ground, the map's brown packed earth) inside a works' floor its roads and yards are
       // trodden cinder: grey-black, a shade paler than the slag lots either side so the streets still read, their wheel
       // lanes and puddles as before
-      if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * smoothstep(0.10, 0.40, mk.a));
+      if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * gWorksFloor);
       a.rgb = mix(a.rgb, roadCol, dW);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the

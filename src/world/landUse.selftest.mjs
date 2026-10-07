@@ -229,13 +229,14 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(/vec3 worksSlag\(float n1h, float n2, float jit\) \{/.test(terrain) && uses >= 6, `one works' slag colour, read by every works surface (${uses})`);
   assert.ok(terrain.includes('cropCol = uLandE.w > 1.5 ? worksSlag(n1h, n2, jit)\n          : mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);'),
     'a works\' slag lots black-grey; every other map\'s slag as it was');
-  assert.ok(terrain.includes('if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * smoothstep(0.10, 0.40, mk.a) * (1.0 - roadCore));'),
+  assert.ok(terrain.includes('if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * gWorksFloor * (1.0 - roadCore));'),
     'a works\' banks are slag from where its lots end, inside its floor');
+  assert.ok(terrain.includes('gWorksFloor = (kc >= 15 && kc <= 16) || (kc >= 18 && kc <= 19) ? 1.0 : 0.0;'), 'the works floor is its zones\' own ground kinds, read from the bake');
   assert.ok(terrain.includes('vec3 marginCol = uLandE.w > 1.5 ? a.rgb * (0.78 + 0.16 * n1h)'), 'a works\' margins are a seam of the lot\'s own ground');
   assert.ok(terrain.includes('vec3 soilL = uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.25 : soil.rgb * uSoilTint;'), 'its tracks trodden cinder');
-  assert.ok(/if \(uLandE\.w > 1\.5\) \{\n      float wkD = smoothstep\(0\.10, 0\.40, mk\.a\);/.test(terrain), 'its bare ground cinder inside its floor');
+  assert.ok(/if \(uLandE\.w > 1\.5\) \{\n      float wkD = gWorksFloor;/.test(terrain), 'its bare ground cinder inside its floor');
   assert.ok(terrain.includes("mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),"), 'its wear its cinder');
-  assert.ok(terrain.includes('if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * smoothstep(0.10, 0.40, mk.a));'), 'its roads and yards trodden cinder');
+  assert.ok(terrain.includes('if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * gWorksFloor);'), 'its roads and yards trodden cinder');
   assert.ok(terrain.includes('float worksPad = uLandE.w > 1.5 ? (1.0 - smoothstep(0.05, 0.25, mk.g)) : 0.0;'), 'its paved hardstands cinder');
   assert.equal(LAND_CROP_GROWTH[19].keep, 0.035, 'a court\'s gravel thinly weeded');
   assert.equal(LAND_CROP_GROWTH[15].sward, false, 'the slag bare');
