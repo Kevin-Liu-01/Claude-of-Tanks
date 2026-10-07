@@ -168,6 +168,11 @@ export default {
     ] },
   },
 
+  layoutBrief: { exceptions: {
+    solidPropsInWater: 'the harbour mouth\'s mole with its red light, the green light on its skerry and the quay along the '
+      + 'south cove (props.landmarks, src/world/landmarks/harbour.ts) stand in the cove\'s water by design',
+  } },
+
   spawns: {
     // Alpha deploys behind the southern downs; bravo's seven pads (two rows) stand behind the northern downs, their
     // centroid the reflection of alpha's pad across the axis. 806 m between the anchors.
@@ -254,6 +259,24 @@ export default {
   props: {
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
     architecture: 'breton',
+    // The landmarks lane (2026-10-06; src/world/landmarks/harbour.ts; seats agreed with mr4, the farmland lane): the
+    // harbour's mouth on the Breton pattern. A granite mole runs 42 m out from the headland's foot at (312, -4) to its
+    // round head at (345, -30), its parapet to the open sea on its north-east side, and on its head the red-top feu de
+    // port; opposite, 43 m across the mouth, the green-top light stands on its own skerry at (328, -72). Both lanterns'
+    // doors face the basin. The mole is one solid from its root to its head with its light on it: a hull wading the
+    // basin meets its faces and never climbs it, and no gap opens between the mole and its light.
+    landmarks: [
+      { kind: 'mole', x: 330.31, z: -18.42, yawDeg: 128.23, name: 'the mole and its red light',
+        params: { length: 42.01, sea: 'left', light: 'red' } },
+      { kind: 'lighthouse', x: 328, z: -72, yawDeg: -17.9, name: 'the green light on its skerry',
+        params: { paint: 'green', base: 'rock' } },
+      // round 2 (2026-10-06; mr4's harbour step 2, built with the mole as one harbour): the quay along the south cove, its
+      // face on x 288 from z -62 to -20, its paved top 1.4 m over the strand (-2.6), backed onto the turning court where the
+      // south shore lane comes down onto it; the slipway off its south end running east-south-east into the water (the
+      // basin's way out beside the quay: no pocket between the mole, the quay and the strand)
+      { kind: 'quay', x: 279, z: -41, yawDeg: 90, name: 'the quay', params: { length: 42, depth: 18, top: 1.4 } },
+      { kind: 'slipway', x: 289.5, z: -68.3, yawDeg: 112.4, name: 'the slipway', params: { length: 12, width: 5 } },
+    ],
     // 2026-10-06 (the map-revival lane): the roadside builder places nothing — the bourg is authored (BOURG_HALF and
     // its mirror, the chapel and the market hall on the axis); the harbour lights are the landmarks lane's, on the mole
     plan: [],

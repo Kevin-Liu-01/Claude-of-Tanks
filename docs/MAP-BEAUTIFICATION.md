@@ -6105,6 +6105,19 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-06 — Saltmere Bay round 2: the quay and the slipway, one harbour with the mole (the landmarks lane)
+
+With the map-revival lane's harbour step 2, one harbour with the mole: the quay along the south cove (its face on x 288
+from z −62 to −20, its paved top 1.4 m over the strand at −2.6, backed onto the turning court where the south shore lane
+comes down onto it; granite coping, the tide's weed band, fenders, ladders and bollards) and the slipway off its south
+end running east-south-east into the water, the basin's way out beside the quay — no pocket between the mole, the quay
+and the strand. The layout brief's in-water exception names the quay. Against the round-1 shard: the quay's record,
+floor panels and shell bands; no other record moved. Census [3670, 3648, 3626]. Pacing (seeds 25000–25003) 184 / 187 /
+263 / 218 s, the head's to the second. Receipts: the 74 selected for the round's seven maps (the landmarks library, the
+collision drift and pins, the layout brief, the maps' world and village receipts) green but the Delta plaster palette,
+whose fixture build times out under the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3): census
+close at every view (the harbour's view +5 draws, +0.5 % triangles).
+
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
 **Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
