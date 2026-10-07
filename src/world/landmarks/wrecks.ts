@@ -166,15 +166,6 @@ function finishWreck(sink: PartSink): RegionalParts {
   return parts;
 }
 
-/** The livery under the soot: white over the pale grey belly, the blue and yellow band low on the side. */
-function livery(y: number, cy: number, hh: number): Rgb {
-  const t = (y - cy) / hh; // -1 at the keel, +1 at the crown
-  if (t < -0.62) return GREY_BELLY;
-  if (t < -0.42) return YELLOW;
-  if (t < -0.18) return BLUE;
-  return WHITE;
-}
-
 /**
  * The burnt skin's paint (round 2: "a smooth, airbrushed color gradient with no … soot/scorch"): the livery, burnt off
  * to the bare aluminium in blistered patches and blackened behind hard burn fronts, by the fire's reach `burn` (0-1).
