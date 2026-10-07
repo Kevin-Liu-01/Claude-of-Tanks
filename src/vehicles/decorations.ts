@@ -1044,6 +1044,13 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.1,
     }),
   };
+  // 2026-10-07 round 4 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE; wave 240: "every item is spotless flat
+  // colour (drums, jerrycans, box, bag ...) with no dirt, rust, fuel stains or edge wear"): the kit wears the vehicle's
+  // dust, mud, soot and stains, the hard kit, steel and cans as painted bodywork (1), cloth, burlap, wood and rubber as
+  // soft goods (4). Nets, wire mesh, lenses and leaves stay as they are.
+  const fieldWear: Partial<Record<DecorMaterialKey, number>> = {
+    kit: 1, steel: 1, cans: 1, canvas: 4, burlap: 4, wood: 4, rubber: 4,
+  };
   return {
     get(key: DecorMaterialKey) {
       if (!made[key]) {
@@ -1052,6 +1059,8 @@ function buildDecorMaterials(
         const material = new THREE.MeshStandardMaterial(def);
         made[key] = material;
         setup(material);
+        const wear = fieldWear[key];
+        if (wear) material.defines = { ...material.defines, COT_FIELD_WEAR: wear };
         material.name = `Decor_${key}`;
       }
       return made[key]!;
