@@ -108,6 +108,7 @@ import {
   GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
+import { SKY_OCCLUSION_GLSL, SKY_OCCLUSION_RANGE_M, SKY_OCCLUSION_STRENGTH, createSkyOcclusionUniforms, skyOcclusionWeight } from './overcastOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
@@ -990,6 +991,8 @@ const AerialShader = {
     uFirefly: { value: 1 },
     // round 69 (2026-09-24): screen-space contact shadows (contactShadows.ts) — uContact 0 skips the block
     ...createContactShadowUniforms(),
+    // the skies lane (2026-10-06): the sky's occlusion at contacts under a closed deck (overcastOcclusion.ts) — 0 skips it
+    ...createSkyOcclusionUniforms(),
     // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts) — uVehOcc 0 skips the block
     ...createVehicleOcclusionUniforms(),
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts) — uVehGround 0 skips it
@@ -1041,6 +1044,7 @@ const AerialShader = {
     ${CONTACT_SHADOW_GLSL}
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
+    ${SKY_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
@@ -1159,6 +1163,11 @@ const AerialShader = {
         // the scene target's alpha (lighting.ts); before the haze, which is applied below to the lit colour
         if ( uContact > 0.5 && -viewZ < ${CONTACT_SHADOW_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotContactShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
+        // the skies lane (2026-10-06): under a closed deck the dome's light is hidden at contacts — under a hull, at a wall's
+        // foot, under the eaves (overcastOcclusion.ts); the deck's weight is 0 under an open sky
+        if ( uSkyOcc > 0.0 && -viewZ < ${SKY_OCCLUSION_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotSkyOcclusion( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
         // owner 2026-10-02: a vehicle pixel's cavity occlusion (vehicleOcclusion.ts) dims its ambient share, so the
         // shaded side of a hull keeps its bustle, skirt and wheel-bay depth; nothing else is a receiver
@@ -2820,6 +2829,9 @@ export function createPost(
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
+    // the skies lane (2026-10-06): the sky occlusion rides the contact shadows' lever, weighted by the deck
+    aerial.uniforms.uSkyOcc.value = lightFx.contactShadows
+      ? skyOcclusionWeight(groundModel?.overcast ?? 0, lightTune('SKY_OCCLUSION', SKY_OCCLUSION_STRENGTH)) : 0;
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);

@@ -555,6 +555,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/contactShadows.selftest.mjs',
     'src/engine/vehicleOcclusion.selftest.mjs',
     'src/engine/groundBounce.selftest.mjs',
+    'src/engine/overcastOcclusion.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
     'src/engine/lensFlare.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
