@@ -25,7 +25,8 @@ import * as THREE from 'three';
 import { LANDMARK_BUILDERS } from './index.ts';
 import { LANDMARK_KINDS, isDressingPiece, landmarkClearances, landmarkFootprint, resolveLandmarkParams } from './plan.ts';
 import { composeLandmarks, hasStructure, landmarkObjectiveDiscs } from './compose.ts';
-import { REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
+import { PartSink, REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
+import { archedFace } from './kit.ts';
 import { auditStructureAssembly } from '../maps/structureAssemblyAudit.ts';
 import { deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
 import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, hullPassesObstacleTop, pointInsideCollisionRecord } from '../collision.ts';
@@ -406,6 +407,35 @@ check('the mole and its light', () => {
   for (const g of geometries(alone.parts)) g.dispose();
 });
 
+// ---------------------------------------------------------------------------------------------------------- the kit
+// a face cuts every opening stacked in one column (a storey's window over the one below it): no wall triangle covers the
+// upper window's middle, and the wall stands between the two
+{
+  const sink = new PartSink();
+  const face = { origin: [0, 0, 0], u: [1, 0, 0], out: [0, 0, 1], width: 6 };
+  archedFace(sink, 'stone', face, { u0: -3, u1: 3, y0: 0, y1: 8 }, [
+    { u: 0, w: 1.2, y0: 1, spring: 2.6, form: 'flat' }, { u: 0, w: 1.2, y0: 4.5, spring: 6, form: 'round' },
+  ], 0.3);
+  const parts = sink.finish();
+  const covers = (px, py) => (parts.stone ?? []).some((g) => {
+    const pos = g.getAttribute('position'), idx = g.index;
+    const n = idx ? idx.count : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      const v = [0, 1, 2].map((j) => { const i = idx ? idx.getX(t + j) : t + j; return [pos.getX(i), pos.getY(i), pos.getZ(i)]; });
+      if (v.some((p) => Math.abs(p[2]) > 1e-6)) continue; // the face's plane only (not the reveals)
+      const [a, b2, c] = v, d1 = (px - b2[0]) * (a[1] - b2[1]) - (a[0] - b2[0]) * (py - b2[1]);
+      const d2 = (px - c[0]) * (b2[1] - c[1]) - (b2[0] - c[0]) * (py - c[1]), d3 = (px - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (py - a[1]);
+      if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true;
+    }
+    return false;
+  });
+  assert.ok(!covers(0, 1.8), 'the lower window is open');
+  assert.ok(!covers(0, 5.3), 'the upper window, stacked over it, is open');
+  assert.ok(covers(0, 3.5), 'the wall stands between them');
+  assert.ok(covers(0, 7.6), 'and over the upper one');
+  for (const g of geometries(parts)) g.dispose();
+}
+
 // ---------------------------------------------------------------------------------------------------------- composer
 {
   const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
@@ -495,6 +525,12 @@ check('the mole and its light', () => {
     for (const [cx, cz, rw, rl] of LANDMARK_KINDS.townGate.solids(resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { walls: 8 } }))) {
       assert.ok(Math.abs(cx) + rw <= thw + 1e-9 && Math.abs(cz) + rl <= thl + 1e-9, 'each solid rectangle within the footprint');
     }
+    // a gate whose road crosses its gap off the middle: each stub its own length (wallsLeft -x, wallsRight +x)
+    const asym = resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { passage: 7.8, wallsLeft: 3, wallsRight: 9 } });
+    assert.ok(Math.abs(LANDMARK_KINDS.townGate.footprint(asym)[0] - (3.9 + 2.4 + 9)) < 1e-9, 'the footprint reaches the longer stub');
+    const stubRects = LANDMARK_KINDS.townGate.solids(asym);
+    assert.ok(stubRects.some(([cx, , rw]) => Math.abs(cx + 7.8) < 1e-9 && rw === 1.5) && stubRects.some(([cx, , rw]) => Math.abs(cx - 10.8) < 1e-9 && rw === 4.5),
+      'each stub its own length');
     for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
   }
   // a map without set pieces composes nothing

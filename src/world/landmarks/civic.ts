@@ -573,12 +573,29 @@ export const townHall: LandmarkBuilder = (ctx) => {
       holes.right!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: framed ? 0.04 : 0.2 });
     }
   }
-  const upper = archedBody(sink, render, 0, 0, W, D, plinth + g + ARCH_GAP_M_CIVIC, eave, holes, 0.28);
+  // (one body to a storey: a face cuts one opening to a column, so the storeys' windows stacked over each other in one
+  // body left every storey but the first blank — the round-2 review of Frontier's Rathaus)
+  let storeyFaces: Record<FaceName, Face> | null = null;
+  for (let k = 0; k < storeys - 1; k++) {
+    const yb = plinth + g + up * k + (k === 0 ? ARCH_GAP_M_CIVIC : 0), yt = k === storeys - 2 ? eave : plinth + g + up * (k + 1);
+    const row: Partial<Record<FaceName, ArchHole[]>> = {};
+    for (const name of ['front', 'back', 'left', 'right'] as const) row[name] = (holes[name] ?? []).filter((h) => h.y0 > yb && h.y0 < yt);
+    storeyFaces = archedBody(sink, render, 0, 0, W, D, yb, yt, row, 0.28);
+  }
+  if (!storeyFaces) throw new Error('townHall: no upper storey');
+  const upper = storeyFaces;
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     for (const h of holes[name] ?? []) {
       archWindow(sink, upper[name], h, 0.28, FRAME_WHITE, lit(ctx, 0.35));
       if (!framed) archSurround(sink, wall, upper[name], h, 0.16, 0.06);
     }
+  }
+  // its age (round 2: the pieces stood "pristine with no weathering"): the render fallen in patches — the clay infill
+  // under it in a framed hall, the masonry in a rendered one — and the rain run down from the eaves and the sills
+  if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? W : D;
+    ageWall(sink, ctx.age, { face: upper[name], bucket: render, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth + g + 0.1, y1: eave - 0.3 },
+      openings: holes[name] ?? [], ledge: eave - 0.3, spall: framed ? 'plaster2' : wall, spallCount: name === 'front' || name === 'back' ? 3 : 2, grime: 0.22 });
   }
   if (framed) {
     // the oak frame over the render: per storey the sill beam, the posts at the bays and either side of each window,

@@ -41,6 +41,12 @@ export function isDressingPiece(placement: LandmarkPlacement): boolean {
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
 
+/** A town gate's two wall stubs, -x and +x of its passage (m): each its own length, else `walls`. */
+export function gateStubs(p: LandmarkParams): readonly [number, number] {
+  const walls = Math.max(0, num(p, 'walls')), own = (key: string): number => (num(p, key) >= 0 ? num(p, key) : walls);
+  return [own('wallsLeft'), own('wallsRight')];
+}
+
 /** The kinds, their parameters and their footprints. */
 export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = Object.freeze({
   // ------------------------------------------------------------------------------------------------ bridges
@@ -107,15 +113,18 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
-  townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
-    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6],
+  // (`wallsLeft` / `wallsRight`: each stub's own length, -x / +x of the passage, where the road crosses a gap in the wall
+  // off its middle; a negative value takes `walls`)
+  townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6, wallsLeft: -1, wallsRight: -1 },
+    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + Math.max(...gateStubs(p)), num(p, 'depth') / 2 + 0.6],
     // the tower over the passage, and each wall stub with its wall-walk behind it (gates.ts: the stub 0.6 m either side
     // of the wall's line, the walk on its corbels a metre behind): a house standing a few metres behind the wall is no
     // conflict
     solids: (p) => {
-      const tower = num(p, 'passage') / 2 + 2.4, walls = Math.max(0, num(p, 'walls')), d = num(p, 'depth') / 2 + 0.6;
-      const stubs: Array<readonly [number, number, number, number]> = walls > 0
-        ? [[-(tower + walls / 2), -0.5, walls / 2, 1.1], [tower + walls / 2, -0.5, walls / 2, 1.1]] : [];
+      const tower = num(p, 'passage') / 2 + 2.4, d = num(p, 'depth') / 2 + 0.6, [left, right] = gateStubs(p);
+      const stubs: Array<readonly [number, number, number, number]> = [];
+      if (left > 0) stubs.push([-(tower + left / 2), -0.5, left / 2, 1.1]);
+      if (right > 0) stubs.push([tower + right / 2, -0.5, right / 2, 1.1]);
       return [[0, 0, tower, d], ...stubs];
     } },
   triumphalArch: { family: 'gate', spansRoad: true, defaults: { passage: 7, height: 16, arches: 1 },
