@@ -25,6 +25,12 @@
      "sha256": "f1dbd2f96a4b6d6ea0395b62983c71b72ae4d9ea9acfa0140b8a8d3dd30b6b9d",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "ce9861e89596de9e46f420d4fe362824e5335497cc122665cee43365a49182e7",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -80,6 +86,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "ce9861e89596de9e46f420d4fe362824e5335497cc122665cee43365a49182e7",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -93,7 +108,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3480,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s02-factory-road": {
@@ -121,6 +136,12 @@
      "sha256": "86687226f7f0e670158b906c6601ebb5e6582f374cb7821a4619c5dbe08b9f91",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "3f74d05c4c3cc0e1b48a9d2b6a35f6d9d7ed88b7da90b254a414458b15857c30",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -176,6 +197,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "3f74d05c4c3cc0e1b48a9d2b6a35f6d9d7ed88b7da90b254a414458b15857c30",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
@@ -189,7 +219,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3980,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s03-square-pass": {
@@ -217,6 +247,12 @@
      "sha256": "dce6e71d096bc6a7db3eef04819635af435b26dd46ba1aabb48dddc7806ca5e9",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "5ebd9c6a04fbf55f9669ce3c53663da9931342c885c4d721daf40dcf3f502fe1",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -272,6 +308,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "5ebd9c6a04fbf55f9669ce3c53663da9931342c885c4d721daf40dcf3f502fe1",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Leclerc XLR crosses the burning square",
@@ -285,7 +330,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 33
+    "exposureMs": 8
    }
   },
   "s04-column-under-fire": {
@@ -313,6 +358,12 @@
      "sha256": "90b7204e9d5678ebeaae410a242fc02f84966e7229a829aa9fcebd3a1d9f6b31",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -368,6 +419,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90M column drives into the fight on the country road",
@@ -381,7 +441,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s05-barn-advance": {
@@ -409,6 +469,12 @@
      "sha256": "e84f2caf8c6824afa80ef56bb9eb4dbb4db43e302dd72b114df42aa063d1c7ac",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "cdf3d48d844060a23de077510206184a244267b79d54ef5b0cf428d49ac9c93e",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -464,6 +530,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "cdf3d48d844060a23de077510206184a244267b79d54ef5b0cf428d49ac9c93e",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -477,7 +552,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3780,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s06-farm-charge": {
@@ -505,6 +580,12 @@
      "sha256": "1df286cc903c98b73dd577430ea106cbaedc24e772945598c262a2be82501bbf",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "2c2b5f3f0ed4427910e2e0960b6ebfcabce3d53697ac6371c5c8004e178aa877",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -560,6 +641,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "2c2b5f3f0ed4427910e2e0960b6ebfcabce3d53697ac6371c5c8004e178aa877",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A KF51 Panther charges past the farmhouse through artillery",
@@ -573,7 +663,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 4380,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s07-lake-shellfire": {
@@ -601,6 +691,12 @@
      "sha256": "a0b26c4bf9835c0b4b3a7b8fb07b1d76aa3dc67fa213c23fb51ab2d01a5d241e",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "f9d0fa4a3c4b0c2290949c1aacbc2d25a55b161a41ee713f76f1473d39795a72",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -643,6 +739,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "f9d0fa4a3c4b0c2290949c1aacbc2d25a55b161a41ee713f76f1473d39795a72",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
@@ -655,8 +760,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3060,
-    "exposureMs": 25
+    "tMs": 2900,
+    "exposureMs": 8
    }
   },
   "s08-market-push": {
@@ -684,6 +789,12 @@
      "sha256": "f8f7e7c1886493f4d2bc06f6582d1fbb3d4ed3307d11d2b63208d3fa15de7631",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "69ade091116b35f027e4c16edf6af2ffb0be6f0124a1abaf6e6da15c0a0bfbae",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -726,6 +837,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "69ade091116b35f027e4c16edf6af2ffb0be6f0124a1abaf6e6da15c0a0bfbae",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "An M1A2 Abrams column pushes through the market street of Sunscar Oasis",
@@ -739,7 +859,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3680,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s09-harbor-run": {
@@ -767,6 +887,12 @@
      "sha256": "5459d262ca041832e11f9643ed256a2e5ba9ae51adfb83132cb544aaa9c0b8af",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "97c53b53aa24dc013ca6e86732ec123c44156d6eb09478c6675196e0f96814c3",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -809,6 +935,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "97c53b53aa24dc013ca6e86732ec123c44156d6eb09478c6675196e0f96814c3",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
@@ -821,8 +956,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 4180,
-    "exposureMs": 25
+    "tMs": 4400,
+    "exposureMs": 8
    }
   },
   "s10-ford-shellfire": {
@@ -850,6 +985,12 @@
      "sha256": "401ed3438fb21f4b64599fff047220bb705c21a0f51563c2e20a4ae46ad21f09",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "1f7e8a8d1bdfe6fdfa1ac655fd458f549ec3f5844aa7f289e07cf599ac55105d",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -879,6 +1020,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "1f7e8a8d1bdfe6fdfa1ac655fd458f549ec3f5844aa7f289e07cf599ac55105d",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A ZTZ-100 fords the river as shells land around it",
@@ -892,7 +1042,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4480,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s11-container-rows": {
@@ -920,6 +1070,12 @@
      "sha256": "d4378f4547490c978ebde2b4e24be295250336a33b5dfe0a78e356fe49022236",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -949,6 +1105,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
@@ -962,7 +1127,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3980,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s12-gantry-advance": {
@@ -990,6 +1155,12 @@
      "sha256": "bf534190e21ed1b9f1f5d58720e1fabc50237cdc92b9412604c1a97b5a3bcdb9",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "d704addbc7e0ca7633d3b29d5df33fc411ff1e4ae1a17f2b775f5b4637f802cf",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1019,6 +1190,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "d704addbc7e0ca7633d3b29d5df33fc411ff1e4ae1a17f2b775f5b4637f802cf",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90MS Tagil column advances under the Ironworks gantries",
@@ -1032,7 +1212,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s13-farm-race": {
@@ -1060,6 +1240,12 @@
      "sha256": "098e84ceb6b0370484d31805bb3057300027c4642b99ffb879b4c1083ee50cdd",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1089,6 +1275,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A K2 Black Panther races past the red-roofed farm at sunset",
@@ -1101,8 +1296,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3380,
-    "exposureMs": 25
+    "tMs": 2900,
+    "exposureMs": 8
    }
   },
   "s14-snow-push": {
@@ -1130,6 +1325,12 @@
      "sha256": "d66ed31acc80874eefb49403c2a49b674e5306c70bb730eaf0f958da8254a030",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "23d25f101067d0c82757aaed250b3cf94e09ee46235eb1be11bbfe76b67d16e6",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1159,6 +1360,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "23d25f101067d0c82757aaed250b3cf94e09ee46235eb1be11bbfe76b67d16e6",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-80U pushes through snowy Frosthollow",
@@ -1171,8 +1381,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3680,
-    "exposureMs": 25
+    "tMs": 4400,
+    "exposureMs": 8
    }
   },
   "s15-orchard-column": {
@@ -1200,6 +1410,12 @@
      "sha256": "08c4833ea3503f92354151509938b3fffab84cc164bed8965eb99982b77c19f8",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "9bcf8b9a02d1373bfa1ae9df18837cf6eac290710cbc0c8dfcf633a245289457",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1229,6 +1445,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "9bcf8b9a02d1373bfa1ae9df18837cf6eac290710cbc0c8dfcf633a245289457",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A C1 Ariete column drives through the orchard village under fire",
@@ -1241,8 +1466,8 @@
    },
    "turrets": "flank",
    "still": {
-    "tMs": 3580,
-    "exposureMs": 25
+    "tMs": 2900,
+    "exposureMs": 8
    }
   },
   "s16-street-duel": {
@@ -1270,6 +1495,12 @@
      "sha256": "5b559648a9ceba98de6937680812845e668ae93ffc048bbc9a2f5bd5e11419c4",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "3e48deb03dc80e9d5912c7cfa3226a160d03dfd81da8e98fb02f108809429ce5",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1299,6 +1530,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "3e48deb03dc80e9d5912c7cfa3226a160d03dfd81da8e98fb02f108809429ce5",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Street duel at night: a KF51 Panther trades fire down a Steinburg street",
@@ -1312,7 +1552,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 4460,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s17-crossroads-fire": {
@@ -1340,6 +1580,12 @@
      "sha256": "75f0bf96abebe864ac7a8d05275a87f731f29b2f29ab06f6755daf0709568415",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "733444abbd7a2ddf3c95d477c9b9ac68b376c13cc51ddf1981a48cbe72e09439",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1369,6 +1615,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "733444abbd7a2ddf3c95d477c9b9ac68b376c13cc51ddf1981a48cbe72e09439",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Fire at the Steinburg crossroads at noon",
@@ -1382,7 +1637,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1380,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s18-street-knockout": {
@@ -1404,6 +1659,12 @@
      "sha256": "245a2ab5430be563faed7ec69e953bc2e0f76b25dc5c17178231eb7a57f0baa3",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "81baac80c47e7d28e13787e2eb7b84f76ba4aa3f07a10b136552febb5e6caabc",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1433,6 +1694,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "81baac80c47e7d28e13787e2eb7b84f76ba4aa3f07a10b136552febb5e6caabc",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90A is knocked out at the end of a Steinburg street at night",
@@ -1446,7 +1716,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s19-roof-tiles": {
@@ -1474,6 +1744,12 @@
      "sha256": "7457818bebe5db8fde09ab7d83824824d1525c90863c9576a3660d2f5d2dc1ce",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "25a17705960d360a158e86e86376d39339c48f2d35d38652a5ac436fd4e2d9a5",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1503,6 +1779,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "25a17705960d360a158e86e86376d39339c48f2d35d38652a5ac436fd4e2d9a5",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Roof tiles rain down as a Leopard 2A6 fires up the street",
@@ -1516,7 +1801,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 2680,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s20-road-return-fire": {
@@ -1544,6 +1829,12 @@
      "sha256": "7ee62299854127e488d6c4ad56106117a9dba73406e5239cd12f156a2e352fa1",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "dc0c6974b382ee3110f1bd8dd6b6819501e6a4c7d6e6ae696dc552a04aa24ced",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1573,6 +1864,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "dc0c6974b382ee3110f1bd8dd6b6819501e6a4c7d6e6ae696dc552a04aa24ced",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90M column returns fire across the fields at sunset",
@@ -1586,7 +1886,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1380,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s21-fields-assault": {
@@ -1614,6 +1914,12 @@
      "sha256": "1f7577ac53694b36580fb36ee74b577c43655d657fc0cf655fecb26df97fa9c3",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1643,6 +1949,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90SM wedge assaults through the burning fields",
@@ -1656,7 +1971,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3720,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s22-walking-barrage": {
@@ -1678,6 +1993,12 @@
      "sha256": "b69acd6fc92aad87be148bd0f5ad4af93b5ec6a315d4af2de736ad028f8e840c",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1707,6 +2028,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Artillery walks across the fields toward the wedge at night",
@@ -1720,7 +2050,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3700,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s23-village-crossroads": {
@@ -1748,6 +2078,12 @@
      "sha256": "f54f1caf3dbcb95f7af553d9fdd091e07a43507a588fd6b41b9d4854a223352d",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "14a9109087f0478442c1d7f236aca266ca4a00ba862da0691bbfb36bf85b705e",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1777,6 +2113,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "14a9109087f0478442c1d7f236aca266ca4a00ba862da0691bbfb36bf85b705e",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "T-14 and T-90M tanks hold the village crossroads",
@@ -1790,7 +2135,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1580,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s24-ice-duel": {
@@ -1818,6 +2163,12 @@
      "sha256": "f7f181cb017c3b10ad95f9762e316c06e6187aa0e2a9df28f340ffc01ca2ece8",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "66d04c5920a0945849ebae355e198b2b94446ab0fff68ae747d0dd04a8409067",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1847,6 +2198,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "66d04c5920a0945849ebae355e198b2b94446ab0fff68ae747d0dd04a8409067",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A duel on the frozen lake: a T-80U takes the hit",
@@ -1860,7 +2220,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1860,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s25-alpine-village": {
@@ -1888,6 +2248,12 @@
      "sha256": "df865286ee9f9d1d37fc47dfcf49ba817fbb40c1765fb2a99f4a6a96aad73735",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "19a53df81aea0d9e1a3beb8f1d77601aa4ecfa287a4f4e6d64555a4db24ee800",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1917,6 +2283,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "19a53df81aea0d9e1a3beb8f1d77601aa4ecfa287a4f4e6d64555a4db24ee800",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Leopard 2A5 and a CV90105 fight through the alpine village",
@@ -1930,7 +2305,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s26-minaret-fire": {
@@ -1958,6 +2333,12 @@
      "sha256": "97550f7d9dbfe9990b30bb283ad052bfd875bad0a2ffc3250c2c841f5ea4963d",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "ec54dbcc14eff4ca5160ff6bade425e4cfba408d2a0fa2c2627e0ba9946db555",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -1987,6 +2368,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "ec54dbcc14eff4ca5160ff6bade425e4cfba408d2a0fa2c2627e0ba9946db555",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Merkava Mk 3D fires at Sunscar Oasis",
@@ -2000,7 +2390,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1680,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s27-caravanserai-kill": {
@@ -2022,6 +2412,12 @@
      "sha256": "ac03169c046ad5b6548fc8434e38cd84b71f6612ebf9401aa4e105f5997b5793",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "29555b11c0c109fb11709745c4db5d492021b6059eccf894c55c21baeb92c49f",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2051,6 +2447,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "29555b11c0c109fb11709745c4db5d492021b6059eccf894c55c21baeb92c49f",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-62MV-1 is knocked out by the caravanserai",
@@ -2064,7 +2469,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2160,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s28-fjord-village": {
@@ -2092,6 +2497,12 @@
      "sha256": "abd3cdd5bffad1da09acaac714fe060b9431e4e5c444fd916d11ed3054b66a5c",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "8b2a723da09756083d5b15bcbce8465b59039cb9125ac962047745426b714186",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2121,6 +2532,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "8b2a723da09756083d5b15bcbce8465b59039cb9125ac962047745426b714186",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Stridsvagn 122 and a CV9040C hold the fjord village",
@@ -2134,7 +2554,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s29-fjord-road-kill": {
@@ -2156,6 +2576,12 @@
      "sha256": "2e991d8f8d6abd51171b4cd9f691f41b866ef6f06a1c60c17ac06f338b3458b9",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "c173d5a443046835c4184aa57e3695441d7557056b541dd164afe8e0f600f000",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2185,6 +2611,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "c173d5a443046835c4184aa57e3695441d7557056b541dd164afe8e0f600f000",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A T-90 burns on the road above the fjord",
@@ -2198,7 +2633,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1960,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s30-temple-village": {
@@ -2226,6 +2661,12 @@
      "sha256": "a464edca2f8fad6b03fd27d9438fd9d5fb93f9350e6628f0aa359f7e7b82f324",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "ae4d710d7dd5ecbd66813f199d002e995d5382c05f070e7177656e2b6ec9f749",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2255,6 +2696,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "ae4d710d7dd5ecbd66813f199d002e995d5382c05f070e7177656e2b6ec9f749",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
@@ -2268,7 +2718,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3280,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s31-ford-fire": {
@@ -2296,6 +2746,12 @@
      "sha256": "b35725647356bd4b077abbe78e65882419ff54734e014909481ebe1df5f63ac8",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "5aa1486b04256116c8246adf9bb927a8ecff76b33cd2f08403f7d8ffe7289129",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2325,6 +2781,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "5aa1486b04256116c8246adf9bb927a8ecff76b33cd2f08403f7d8ffe7289129",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Type 96B fires across the river ford",
@@ -2338,7 +2803,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1780,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s32-yard-salvo": {
@@ -2366,6 +2831,12 @@
      "sha256": "a085850bf9ca6b91a63e1f8cc6ce1d76192cd364ad51e0582461e4dddfb906ea",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "7d3187d0a2dc5576715eff4e468eaccb43d6209e9b250778416ddedf79faea3c",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2395,6 +2866,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "7d3187d0a2dc5576715eff4e468eaccb43d6209e9b250778416ddedf79faea3c",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
@@ -2407,8 +2887,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 1380,
-    "exposureMs": 16
+    "tMs": 1200,
+    "exposureMs": 8
    }
   },
   "s33-water-tower": {
@@ -2436,6 +2916,12 @@
      "sha256": "8a3d7aa396b20a6a9c3dcd0f9ce2a5cf2ac18b51990ca03f9d6cd4383413f329",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "77ea3d02c948ed78e7a2d1b9e2adf69d52804b0db21dfbc2e35a2edaffb80636",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2465,6 +2951,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "77ea3d02c948ed78e7a2d1b9e2adf69d52804b0db21dfbc2e35a2edaffb80636",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "The line advances past the burning water tower at night",
@@ -2477,8 +2972,8 @@
    },
    "turrets": "sectors",
    "still": {
-    "tMs": 3680,
-    "exposureMs": 25
+    "tMs": 3500,
+    "exposureMs": 8
    }
   },
   "s34-furnace-salvo": {
@@ -2500,6 +2995,12 @@
      "sha256": "a41763e3c2a9327f43bf82180817f1a90465aef78fcbda1c8d43d2fa0d82d7b7",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "23bea972bc9f932d77975e2a684e45b7a4b708e7eeea434750c40a7825860a44",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2529,6 +3030,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "23bea972bc9f932d77975e2a684e45b7a4b708e7eeea434750c40a7825860a44",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "T-14 Armatas fire a rippling salvo in the Ironworks yard at night",
@@ -2542,7 +3052,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 1180,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s35-farm-village": {
@@ -2570,6 +3080,12 @@
      "sha256": "637d6916260c85a73705df557f3e0123be1c66a6021995932ce9109cba647c84",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "be7fea883e100f1b0d37ff22e6718af0a8c931e5c1e5d7c97152cdd0ef62f83a",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2599,6 +3115,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "be7fea883e100f1b0d37ff22e6718af0a8c931e5c1e5d7c97152cdd0ef62f83a",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
@@ -2612,7 +3137,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s36-barn-knockout": {
@@ -2634,6 +3159,12 @@
      "sha256": "e79dcba3acbac53762fb436998e805b750b9b2a1c9609ea75107c0ee2000e385",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "72b8fc004ed0558e848d4a4a4327fd99ec11483fb2679d0c1e623c530bc8ef83",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2663,6 +3194,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "72b8fc004ed0558e848d4a4a4327fd99ec11483fb2679d0c1e623c530bc8ef83",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Type 10 knocks out a T-90M beside the burning barn",
@@ -2676,7 +3216,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s37-river-village": {
@@ -2704,6 +3244,12 @@
      "sha256": "f2b6ac6ff1166cc971d4d5befa167650f41228c42df120cc7c65357af7121adb",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "45b66aea615cd296009ebc4f945da709dfc97154fe1e35c91d7c2e51b2123b8f",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2733,6 +3279,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "45b66aea615cd296009ebc4f945da709dfc97154fe1e35c91d7c2e51b2123b8f",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "ZTZ-100 tanks fight through the river village of the Jade River Delta",
@@ -2746,7 +3301,7 @@
    "turrets": "lens",
    "still": {
     "tMs": 1480,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s38-church-knockout": {
@@ -2768,6 +3323,12 @@
      "sha256": "d3955f20f158b5c15f13eb3e4c18fd2ff562fdfb79cf7422e96a9e2516d191b9",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "6e6a578286ce6a6c94712705e88a72f3d4957269725602c1a259d1bcdd3e591c",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2797,6 +3358,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "6e6a578286ce6a6c94712705e88a72f3d4957269725602c1a259d1bcdd3e591c",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
@@ -2810,7 +3380,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2060,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s39-lakeside-village": {
@@ -2838,6 +3408,12 @@
      "sha256": "430944ec963b35f968d849487cf8752254dd0f3ffa2429db824c346d0cdf9ee4",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "73d2e80698042d44096967dbb1012f1b86bf079a98a0b782728121c41c27ac8d",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2867,6 +3443,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "73d2e80698042d44096967dbb1012f1b86bf079a98a0b782728121c41c27ac8d",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
@@ -2880,7 +3465,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3380,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s40-rooftop-smoke": {
@@ -2908,6 +3493,12 @@
      "sha256": "2fccb4362f6a123289666ff9ad9a8dd51a0452cdcfc2bda4ff4bc998e29c948a",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "ff894fc8de2f141710dcad593cbc42ad236b154eb47fd08173a2a31fcd23a33f",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -2950,6 +3541,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "ff894fc8de2f141710dcad593cbc42ad236b154eb47fd08173a2a31fcd23a33f",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Smoke columns rise over the rooftops of Steinburg",
@@ -2963,7 +3563,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s41-church-tower": {
@@ -2991,6 +3591,12 @@
      "sha256": "09612a3e2bcc13ac30ebf790c5017066c1068e4141d9b86493f7c2bf5c10685d",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "95b3a9d52047338c7e451ce0cd8ba0567dbd230f1a5e8e07382c05f7e452965b",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3020,6 +3626,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "95b3a9d52047338c7e451ce0cd8ba0567dbd230f1a5e8e07382c05f7e452965b",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "The night street fight seen from the church tower",
@@ -3033,7 +3648,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 2700,
-    "exposureMs": 16
+    "exposureMs": 8
    }
   },
   "s42-assault-above": {
@@ -3061,6 +3676,12 @@
      "sha256": "5bddc765f8f03c7d5c0bf82a8938fadcc1e429dd1a2300ad15f074dae01af84a",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "bc3f7ce757916179949c0cdc91924a88d8febb929f2ad531ec0701b98cd13326",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3090,6 +3711,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "bc3f7ce757916179949c0cdc91924a88d8febb929f2ad531ec0701b98cd13326",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Verdant Fields from above as the assault rolls in",
@@ -3103,7 +3733,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s43-lake-crane": {
@@ -3131,6 +3761,12 @@
      "sha256": "119bf0cee256fdfff7dfbe9b03fb8e9c92b745302216b5051aa4cdc68997cf56",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "3c766ea578d686e3c4f68859777ada180f1600651fc70f4724ef622a490dce40",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3160,6 +3796,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "3c766ea578d686e3c4f68859777ada180f1600651fc70f4724ef622a490dce40",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
@@ -3173,7 +3818,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 4600,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s44-oasis-sunset": {
@@ -3201,6 +3846,12 @@
      "sha256": "cea39c76230b7be1c1f3773954fc7cb107cf7633fce9bfbc2d9c6082f34b7bcc",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3230,6 +3881,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
@@ -3243,7 +3903,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s45-harbor-wide": {
@@ -3277,6 +3937,12 @@
      "sha256": "5ce3587e2fa361a69606e0c54420ade8707c5c272c2f36cd67648f438e5f5680",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "5efec03f41f852920088881065abe7026fded9577095deebdf18c36e0f233ad2",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3319,6 +3985,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "5efec03f41f852920088881065abe7026fded9577095deebdf18c36e0f233ad2",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
@@ -3332,7 +4007,7 @@
    "turrets": "flank",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s46-river-drone": {
@@ -3360,6 +4035,12 @@
      "sha256": "e34f0c1f84fd913776d83d8955ac54c0d09b929e13aaeafac2a5fa68f4c339c1",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "1398230b5c94a0052056cce830bf5d2058c0435d69a4d2d192d6e1064fef9f34",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3402,6 +4083,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "1398230b5c94a0052056cce830bf5d2058c0435d69a4d2d192d6e1064fef9f34",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Monsoon Ridge: shells land along the jungle river",
@@ -3415,7 +4105,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s47-ironworks-crane": {
@@ -3437,6 +4127,12 @@
      "sha256": "35c6dc65a214df6247e7da3a0adaca55f514dd5d570ce84b440e5fd7eda102cb",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3466,6 +4162,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Ironworks at night: the yard burns between the smoke stacks",
@@ -3479,7 +4184,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s48-delta-crane": {
@@ -3501,6 +4206,12 @@
      "sha256": "1605adb30de39e09b8b663245158c56427d736865ec177341b930c2076f11f6e",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "8d5450ce49f437829b41408b9ec2817b1b2780827ecb0f87ba6c857bd6408a6a",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3530,6 +4241,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "8d5450ce49f437829b41408b9ec2817b1b2780827ecb0f87ba6c857bd6408a6a",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Jade River Delta: the river village under fire, mountains beyond",
@@ -3543,7 +4263,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s49-orchard-sunset": {
@@ -3577,6 +4297,12 @@
      "sha256": "1bd63429fbe703d7d70c2e234173bb7705d7a13c2a93a158b9896ecc4eb631a0",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "1d90bf66dac66f2c1ee2833eab5dc6fe84a7ef1bc354a1c35fc2932adaa0956b",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3619,6 +4345,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "1d90bf66dac66f2c1ee2833eab5dc6fe84a7ef1bc354a1c35fc2932adaa0956b",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Orchard Valley: smoke drifts over the orchards",
@@ -3632,7 +4367,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 3300,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   },
   "s50-reservoir-crane": {
@@ -3660,6 +4395,12 @@
      "sha256": "fe283b0544ddc9c408c40780a24497bde6576dd2c36acb5dbf5456e71b072349",
      "at": "2026-10-07T21:25:32.202Z",
      "note": "round six: the owner's tank list, routes and lenses clear the props, the Studio crush, nights at night (2f7eddfc0), as engine review 2 rendered it"
+    },
+    {
+     "version": "v9",
+     "sha256": "ccdd3722353584a271d910bf5450c2a232898a0473c9afd35630333f7be1bc3e",
+     "at": "2026-10-07T22:43:49.658Z",
+     "note": "round seven: the motion plan re-staged for the 2.0 maps (2c831bd28; s01-s04, s06, s13, s16, s17, s19, s21, s22, s40-s42 re-searched) in deep focus, as engine review 3 rendered it"
     }
    ],
    "renders": [
@@ -3689,6 +4430,15 @@
      "at": "2026-10-07T21:25:33.470Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 2: 960 px, 15 fps, a light probe per take (chain5); clips in shots/media-r5/site50/review-r6"
+    },
+    {
+     "round": "review-r7",
+     "sceneVersion": "v9",
+     "sceneSha256": "ccdd3722353584a271d910bf5450c2a232898a0473c9afd35630333f7be1bc3e",
+     "renderer": "dffec2eca",
+     "at": "2026-10-07T22:44:02.183Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
     }
    ],
    "title": "Highland Reservoir at sunset: the lake beyond the burning village",
@@ -3702,7 +4452,7 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
-    "exposureMs": 25
+    "exposureMs": 8
    }
   }
  }

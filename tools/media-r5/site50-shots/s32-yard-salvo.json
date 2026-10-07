@@ -4554,12 +4554,7 @@
    "amount": 0.22,
    "length": 0.6
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "softness": 0.65
@@ -4582,9 +4577,12 @@
   "loopMs": 6000,
   "xfadeMs": 600,
   "still": {
-   "tMs": 1380,
-   "exposureMs": 16
+   "tMs": 1200,
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   2100
+  ],
   "paint": {
    "unit": "service_usa_desert",
    "enemy": "sig_t90a"

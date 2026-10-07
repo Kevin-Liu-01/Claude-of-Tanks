@@ -3803,12 +3803,7 @@
    "amount": 0.22,
    "length": 0.6
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "softness": 0.65
@@ -3832,8 +3827,11 @@
   "xfadeMs": 600,
   "still": {
    "tMs": 3380,
-   "exposureMs": 16
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   400
+  ],
   "paint": {
    "unit": "dpm",
    "enemy": "sig_t90a"

@@ -4505,12 +4505,6 @@
    "amount": 0.22,
    "length": 0.6
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
   "vignette": {
    "amount": 0.22,
    "roundness": 0.55,
@@ -4535,8 +4529,11 @@
   "xfadeMs": 600,
   "still": {
    "tMs": 4600,
-   "exposureMs": 25
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   400
+  ],
   "paint": {
    "unit": "sig_m551_sheridan",
    "enemy": "winter"

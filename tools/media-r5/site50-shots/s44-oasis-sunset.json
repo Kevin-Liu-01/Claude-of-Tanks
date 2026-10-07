@@ -3789,12 +3789,6 @@
    "amount": 0.22,
    "length": 0.6
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
   "vignette": {
    "amount": 0.22,
    "roundness": 0.55,
@@ -3819,8 +3813,11 @@
   "xfadeMs": 600,
   "still": {
    "tMs": 3300,
-   "exposureMs": 25
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   400
+  ],
   "paint": {
    "unit": "sig_abramsx",
    "enemy": "sig_t90ms"
@@ -3833,17 +3830,6 @@
   }
  },
  "crushes": [
-  {
-   "tMs": 2600,
-   "kind": "handcart",
-   "speedMps": 15.6,
-   "pos": [
-    161.85,
-    3.69,
-    66.89
-   ],
-   "heightM": 1.21
-  },
   {
    "tMs": 4367,
    "kind": "bench",
@@ -3873,7 +3859,7 @@
    "pos": [
     129.44,
     0.24,
-    81.96
+    81.95
    ],
    "heightM": 0.94
   }

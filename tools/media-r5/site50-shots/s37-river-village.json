@@ -4534,12 +4534,7 @@
    "amount": 0.22,
    "length": 0.6
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "softness": 0.65
@@ -4563,8 +4558,11 @@
   "xfadeMs": 600,
   "still": {
    "tMs": 1480,
-   "exposureMs": 16
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   400
+  ],
   "paint": {
    "unit": "sig_ztz99a2",
    "enemy": "sig_t90"
@@ -4586,7 +4584,7 @@
     -0.11,
     -32.22
    ],
-   "heightM": 1.2
+   "heightM": 1.21
   },
   {
    "tMs": 267,
@@ -4696,7 +4694,7 @@
     0.73,
     59.64
    ],
-   "heightM": 1.19
+   "heightM": 1.2
   },
   {
    "tMs": 5217,

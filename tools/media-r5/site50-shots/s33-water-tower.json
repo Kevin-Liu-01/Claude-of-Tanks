@@ -3813,12 +3813,7 @@
   "streaks": {
    "amount": 0.22
   },
-  "dof": {
-   "enabled": true,
-   "focusActor": "hero",
-   "fStop": 8
-  },
-  "chromaticAberration": 0.08,
+  "chromaticAberration": 0,
   "vignette": {
    "amount": 0.22,
    "softness": 0.65
@@ -3841,9 +3836,12 @@
   "loopMs": 6000,
   "xfadeMs": 600,
   "still": {
-   "tMs": 3680,
-   "exposureMs": 25
+   "tMs": 3500,
+   "exposureMs": 8
   },
+  "stillsExtra": [
+   400
+  ],
   "paint": {
    "unit": "sig_ua_m1a1",
    "enemy": "sig_t90m"
