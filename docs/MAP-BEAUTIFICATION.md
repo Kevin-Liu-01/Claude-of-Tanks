@@ -6105,6 +6105,21 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-06 — Longleaf Crossing round 2: the lookout's compound and the track down to the road (the landmarks lane)
+
+**The gauntlet's waves 154–158** found the set pieces "in no setting". The fire lookout on the western ridge stands in
+its towerman's compound — a split-rail fence 16 m round the tower's foot, its gate toward the road — with the beaten
+track from the gate down to the forest road (44 m; both dressing pieces authored before the tower). Against the round-1
+shard: 24 split-rail modules and the gate; 9 trees and 16 concealments off the compound's and the track's clearances; no
+other record moved. Census [4906, 4727, 5775]. Pacing (seeds 47000–47003) 178 / 202 / 248 / 208 s, the head's to the
+second. Receipts: the 74 selected for the round's seven maps (the landmarks library, the collision drift and pins, the
+layout brief, the maps' world and village receipts) green but the Delta plaster palette, whose fixture build times out
+under the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3): the census closes the establishing shot
+and chase (+17 and +18 draws, 2.4 % and 2.1 %; −0.06 % and +0.14 % triangles); the lookout's view (+23 draws, −0.64 %
+triangles: the split-rail and gate pools) went to a timing hold, run with every vehicle but the player's hidden (the
+2026-10-07 amendment): eight cycles accept it at every view — GPU p25 +0.07, −0.01 and −0.45 ms, CPU +0.13, +0.09 and
++0.20 ms at the establishing shot, the chase and the lookout's view (bounds 0.6 and 0.38 ms).
+
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
 **Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
