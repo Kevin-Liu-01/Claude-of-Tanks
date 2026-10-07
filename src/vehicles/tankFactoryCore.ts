@@ -33,6 +33,7 @@ import {
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { applyCamoPanels } from './camoPanels.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
@@ -7811,6 +7812,10 @@ function* createTankOwnedSteps(
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+      // 2026-10-07 (round 4, wave 214: "a flat sticker across every surface, including the gun barrel wrap and
+      // hull boxes"): bolted-on boxes, bins and sleeve sections take their own window of the pattern and their own
+      // paint tone (camoPanels.ts); the armour shell keeps the one continuous projection.
+      applyCamoPanels(merged, list, bucket);
     }
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);
