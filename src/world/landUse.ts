@@ -158,7 +158,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
   // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
   // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
-  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
+  // (round 4, wave 160: "green turf stands in for dry cereal land in places") no rank grass (17): its sward read green;
+  // the barbecho is the dry grazing (12) and the stubble
+  secano: [[1, 0.28], [2, 0.16], [5, 0.30], [4, 0.14], [12, 0.08], [6, 0.04], [13, 0.0]],
 });
 
 /** Each region's field boundary. */

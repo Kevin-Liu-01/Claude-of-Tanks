@@ -96,8 +96,11 @@ function reja(sink: PartSink, face: Face, u: number, y: number, w: number, h: nu
   const out = box ? 0.2 : 0.04;
   const x0 = u - w / 2 - 0.06, x1 = u + w / 2 + 0.06, y0 = y - 0.06, y1 = y + h + 0.06;
   const cu = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, cy, out, 0.035, y1 - y0, 0.035, c);
-  for (const yy of [y0, y1]) faceBox(sink, 'structureMetal', face, cu, yy, out, x1 - x0 + 0.035, 0.035, 0.035, c, 'ends');
+  // (round 4, gauntlet wave 160: "iron rejas on only a minority of street facades") the frame's flats 5 cm, so the
+  // grille reads from the street's far end (at 3.5 cm it was under a pixel past ~40 m, where the bars, fine joinery, go)
+  const flat = 0.05;
+  for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, cy, out, flat, y1 - y0, flat, c);
+  for (const yy of [y0, y1]) faceBox(sink, 'structureMetal', face, cu, yy, out, x1 - x0 + flat, flat, flat, c, 'ends');
   if (box) {
     for (const yy of [y0, y1]) for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, yy, out / 2, 0.03, 0.03, out, c);
     // the tile hood over the box: a short slab of the roof's tiles falling outward
@@ -322,7 +325,12 @@ function dialect(st: AndalusianState, look: () => number): HouseDialect {
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
         st.rng, loft ? 0 : st.litShare);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
-      if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
+      if (!loft && o.storey > 0) {
+        // (round 4: "iron rejas on only a minority of street facades") an upper window without its esparto blind has a
+        // flat grille on two houses in three
+        if (look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
+        else if (st.reja && look() < 0.66) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, false);
+      }
     },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
