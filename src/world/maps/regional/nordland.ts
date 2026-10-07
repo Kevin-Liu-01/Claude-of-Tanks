@@ -63,10 +63,13 @@ function stateFor(ctx: RegionalBuildContext, weights: readonly [number, number, 
     rng: ctx.rng, look, paint, trim, door, litShare: 0.4, mobile: ctx.tier === 'mobile',
     boards: look() < 0.55 ? 'lapped' : 'standing',
     window: {
-      frame: trim, frameWidth: 0.07, frameOut: 0.04, bars: 'six',
+      // (round 5, gauntlet wave 243, the chase: "plain boxes with tiny blank window squares"): the joinery as broad as the
+      // houses carry it, so it reads from the street — the casing 15 cm (was 10), its crown 25 cm deep (was 17), the sill
+      // out 10 cm
+      frame: trim, frameWidth: 0.08, frameOut: 0.04, bars: 'six',
       // the board casing round each window, its head board deeper: the little crown (kroning) over it
-      surround: { bucket: 'structureWood', width: 0.1, out: 0.03, lintel: 0.17, colour: trim },
-      sill: { bucket: 'structureWood', out: 0.07, colour: trim },
+      surround: { bucket: 'structureWood', width: 0.15, out: 0.04, lintel: 0.25, colour: trim },
+      sill: { bucket: 'structureWood', out: 0.1, colour: trim },
       shutters: null,
     },
   };
@@ -74,7 +77,7 @@ function stateFor(ctx: RegionalBuildContext, weights: readonly [number, number, 
 
 /** The holes a face's openings cut, widened by their casings: [u0, u1, y0, y1] on the face. */
 function casings(openings: readonly Opening[], y0: number): Array<readonly [number, number, number, number]> {
-  return openings.map((o) => [o.u - o.w / 2 - 0.14, o.u + o.w / 2 + 0.14, y0 + o.y0 - 0.1, y0 + o.y0 + o.h + 0.24] as const);
+  return openings.map((o) => [o.u - o.w / 2 - 0.19, o.u + o.w / 2 + 0.19, y0 + o.y0 - 0.12, y0 + o.y0 + o.h + 0.32] as const);
 }
 
 /**
@@ -85,7 +88,7 @@ function casings(openings: readonly Opening[], y0: number): Array<readonly [numb
 function cladding(sink: PartSink, face: Face, rect: WallRect, openings: readonly Opening[], st: NordState): void {
   const { u0, u1, y0, y1 } = rect;
   for (const u of [u0 + 0.08, u1 - 0.08]) {
-    faceBox(sink, 'structureWood', face, u, (y0 + y1) / 2, 0.025, 0.17, y1 - y0, 0.05, { colour: st.trim, decor: true }, 'caps');
+    faceBox(sink, 'structureWood', face, u, (y0 + y1) / 2, 0.025, 0.2, y1 - y0, 0.05, { colour: st.trim, decor: true }, 'caps');
   }
   if (st.mobile) return;
   const holes = casings(openings, y0);
@@ -159,8 +162,9 @@ function dialect(st: NordState): HouseDialect {
   };
 }
 
-/** The roofs: slate on battens, the eaves and verges out over the boards, a saddle ridge. */
-const skifer = (pitch: number, eave = 0.38, verge = 0.28, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
+/** The roofs: slate on battens, the eaves and verges out over the boards, a saddle ridge. (Round 5, wave 243: "no ... eaves":
+ * the eaves half a metre out, was 0.38; the verges 0.38, was 0.28.) */
+const skifer = (pitch: number, eave = 0.5, verge = 0.38, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
   ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.12, bucket: 'roof', ridge: 'saddle' });
 
 /** The granite footing every house stands on. */
@@ -215,26 +219,28 @@ function hus(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): RegionalP
       : [{ h: 2.5, wall: st.paint, framed: true }, { h: 1.45, wall: st.paint, framed: true }];
     const doorU = porch ? 0 : (rng() < 0.5 ? -1 : 1) * W * 0.2;
     const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: doorU, w: 0.95, y0: 0, h: 2.05 }];
-    for (const o of windowRhythm('front', 0, W, { w: 0.85, h: 1.2, sill: 0.85, spacing: 1.8, margin: 0.75, max: 2,
+    // (round 5) the windows a size up (were 0.85 x 1.2), the loft's too
+    for (const o of windowRhythm('front', 0, W, { w: 0.95, h: 1.35, sill: 0.8, spacing: 1.9, margin: 0.75, max: 2,
       avoid: [[doorU - (porch ? 1.2 : 0.75), doorU + (porch ? 1.2 : 0.75)]] })) openings.push(o);
     for (const face of ['right', 'left'] as const) {
-      for (const o of windowRhythm(face, 0, Db, { w: 0.85, h: 1.2, sill: 0.85, spacing: 1.9, margin: 0.9, max: 4 })) openings.push(o);
-      if (two) for (const o of windowRhythm(face, 1, Db, { w: 0.85, h: 1.15, sill: 0.8, spacing: 1.9, margin: 0.9, max: 4 })) openings.push(o);
+      for (const o of windowRhythm(face, 0, Db, { w: 0.95, h: 1.35, sill: 0.8, spacing: 2.0, margin: 0.9, max: 4 })) openings.push(o);
+      if (two) for (const o of windowRhythm(face, 1, Db, { w: 0.95, h: 1.3, sill: 0.75, spacing: 2.0, margin: 0.9, max: 4 })) openings.push(o);
     }
-    for (const o of windowRhythm('back', 0, W, { w: 0.85, h: 1.2, sill: 0.85, spacing: 2.0, margin: 0.9, max: 2 })) openings.push(o);
+    for (const o of windowRhythm('back', 0, W, { w: 0.95, h: 1.35, sill: 0.8, spacing: 2.0, margin: 0.9, max: 2 })) openings.push(o);
     if (two) {
       openings.push({ face: 'front', storey: 1, kind: 'door', u: 0, w: 0.9, y0: 0, h: 2.0 });
-      for (const o of windowRhythm('back', 1, W, { w: 0.85, h: 1.15, sill: 0.8, spacing: 2.0, margin: 0.9, max: 2 })) openings.push(o);
+      for (const o of windowRhythm('back', 1, W, { w: 0.95, h: 1.3, sill: 0.75, spacing: 2.0, margin: 0.9, max: 2 })) openings.push(o);
     } else {
       // the loft's gable windows
       for (const face of ['front', 'back'] as const) {
-        for (const o of windowRhythm(face, 1, W, { w: 0.7, h: 0.85, sill: 0.35, spacing: 1.3, margin: W * 0.28, max: 2, kind: 'loft' })) openings.push(o);
+        for (const o of windowRhythm(face, 1, W, { w: 0.8, h: 0.95, sill: 0.3, spacing: 1.4, margin: W * 0.28, max: 2, kind: 'loft' })) openings.push(o);
       }
     }
     const frame = buildHouse(sink, {
       w: W, d: Db, plinth: footing(two ? 0.7 : 0.55), storeys: sts,
       roof: skifer(two ? 33 + rng() * 5 : 37 + rng() * 6), gableBucket: st.paint, gableFramed: true, openings,
-      chimneys: [{ x: 0, z: (rng() - 0.5) * Db * 0.3, sx: 0.6, sz: 0.6, above: 0.75, bucket: 'stone', cap: 'slab' }],
+      // (round 5, wave 243: "no ... chimneys" from the chase) the stack broader and a third of a metre taller
+      chimneys: [{ x: 0, z: (rng() - 0.5) * Db * 0.3, sx: 0.72, sz: 0.72, above: 1.1, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: { colour: st.trim, bucket: 'structureWood' }, reveal: 0.12, spall: null,
     }, dialect(st));
     const f = frame.faces.front;
@@ -309,7 +315,7 @@ const landhandel: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: footing(0.6), storeys: [{ h: 3.0, wall: st.paint, framed: true }, { h: 2.6, wall: st.paint, framed: true }],
       roof: skifer(26 + rng() * 4, 0.45, 0.45, 'hip'), openings,
-      chimneys: [{ x: (rng() - 0.5) * W * 0.3, z: -D * 0.15, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'stone', cap: 'slab' }],
+      chimneys: [{ x: (rng() - 0.5) * W * 0.3, z: -D * 0.15, sx: 0.75, sz: 0.75, above: 1.15, bucket: 'stone', cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.12, spall: null,
     }, dialect(st));
     const f = frame.faces.front;
@@ -392,7 +398,8 @@ const lager: RegionalBuilder = (ctx) => {
     const n = Math.max(2, Math.round(D / 7));
     const openings: Opening[] = [];
     for (let k = 0; k < n; k++) openings.push({ face: 'right', storey: 0, kind: 'gate', u: -D / 2 + D * (k + 0.5) / n, w: 2.4, y0: 0, h: 2.4 });
-    for (const o of windowRhythm('left', 0, D, { w: 0.7, h: 0.6, sill: 1.6, spacing: 3.0, margin: 1.5, max: 6 })) openings.push(o);
+    // (round 5, wave 243: "tiny blank window squares") the store's high windows a size up (were 0.7 x 0.6)
+    for (const o of windowRhythm('left', 0, D, { w: 0.85, h: 0.8, sill: 1.5, spacing: 3.0, margin: 1.5, max: 6 })) openings.push(o);
     openings.push({ face: 'front', storey: 1, kind: 'gate', u: 0, w: 1.3, y0: 0.05, h: 1.4 });
     openings.push({ face: 'back', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 2.0 });
     buildHouse(sink, {
@@ -756,7 +763,8 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     // the fjord's granite and gneiss in the footings and quay walls
     // (round 3, gauntlet wave 129: the burnt town's rubble read as "a heap of white cube-shaped rubble"; the props' heaps
     // draw this stone) the gneiss weathered to a mid grey with a cool cast, not a pale granite
-    stone: { kind: 'granite', tint: [0.45, 0.46, 0.47] },
+    // (round 5, wave 243: "toy-clean block rubble") a shade darker again, the soot and the wet in it (was 0.45)
+    stone: { kind: 'granite', tint: [0.37, 0.38, 0.39] },
     sourced: { plaster: false, wood: true },
     tones: {
       // white lead, a little chalky

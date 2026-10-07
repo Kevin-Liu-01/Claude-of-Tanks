@@ -113,7 +113,9 @@ export default {
     // map revival lane 2, round 2 (gauntlet wave 111b: "uniform green felt ... a brown spring ground palette"): May 1940 in
     // Ofoten, a fortnight after the snow: last year's grass straw-brown over the new shoots, the moss dark under it
     tintA: [0.98, 0.95, 0.80], tintB: [0.72, 0.72, 0.60], tintC: [1.05, 1.0, 0.84],
-    roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
+    // round 5 (wave 243: "a chocolate-mud road with glossy blue-black rut stripes"): the gravel road a dry grey-brown, a
+    // quarter of the rain standing in its ruts (roadPuddles; the default 1 lays a sheet of sky down each)
+    roadTint: [0.8, 0.81, 0.83], roadPuddles: 0.25, midRelief: 0.94,
     // round 3 (wave 129: "one smooth lime-green grass carpet") took the steppe's withered grass under an olive cast;
     // round 4 (wave 189: "a dead-flat, near-black bare-earth plane dotted with white pebbles ... scorched or unfinished
     // ground"): a Nordland meadow in early summer — the fjord row's own grass, a shade brighter and toward green-yellow
@@ -212,15 +214,21 @@ export default {
       // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
       // vocabulary is the wharf's cable reels and the road signs
       // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
-      drumClusters: 6, camps: 2, modernClutter: { cablespool: 10, roadsign: 8 },
+      // (round 5, wave 243: "an oversized cable drum" in the chase's foreground) three cable reels, not ten
+      drumClusters: 6, camps: 2, modernClutter: { cablespool: 3, roadsign: 8 },
       // round 4 (the coordinator, waves 182-184: no white picket fences off the American maps): the gardens' runs split
       // rails, the nearest to a Norwegian skigard (no colliders, as the pickets)
       roadFence: 'fencerail', yardFence: 'fencerail',
     },
   },
   horizon: {
-    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,
-    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,
+    // round 5 (gauntlet wave 243, both critics: "smooth, rounded blue-green humps with no exposed rock, cliff bands, gullies
+    // or snow", "grassed green to every summit"): the Ofotfjord's walls bare, ice-ground gneiss above the birch line and
+    // May snow on their upper half — the treeline at four tenths of the peaks' height (was 0.74), the snowline at a half
+    // (was 0.78; the skies lane's panorama shell takes its snow and forest lines from these two), the gneiss a cooler,
+    // darker grey (was 0x657077)
+    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.42, snowline: 0.52,
+    forestHex: 0x213b38, rockHex: 0x585f63, haze: 0.9, grain: 0.58,
     // round 49 (owner audit 2026-09-23, "smooth green cone hill on the rim with a darker cap"): the softened alpine domes
     // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as
     // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit
