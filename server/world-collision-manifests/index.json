@@ -47,11 +47,11 @@
       "concealers": 5966
     },
     "steppe": {
-      "bytes": 1111325,
-      "sha256": "3ec25b1be1c5af99dfb095a772fc1cd15731abd6f1cb72c00a7b9af04e34abd1",
-      "obstacles": 1962,
-      "colliders": 1675,
-      "concealers": 832
+      "bytes": 1392075,
+      "sha256": "19b301bc4de00dc7b5142f3aaacec5f5677ede478d30c1ef7b47007b81344a09",
+      "obstacles": 1969,
+      "colliders": 1753,
+      "concealers": 831
     },
     "railyard": {
       "bytes": 1217059,
