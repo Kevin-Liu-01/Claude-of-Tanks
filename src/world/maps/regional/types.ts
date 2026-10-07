@@ -57,6 +57,11 @@ export interface ArchitectureSurfaces {
   stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number] };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
+  /**
+   * the procedural render canvas's relief (its normal map's strength; default 1.2): a kit whose walls are a smoothed
+   * mud (Siwa's kershef) lowers it — at 1.2 the canvas's fine lumps read as "cottage cheese" (Oasis round 3, wave 135)
+   */
+  plasterRelief?: number;
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
 }

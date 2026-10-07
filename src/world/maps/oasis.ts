@@ -11,6 +11,41 @@
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
+
+// Oasis round 3 (the map-revival lane, 2026-10-07; gauntlet wave 135: "a sparse scatter of small white boxes isolated on
+// open dune sand along wide empty roads, with no dense heaped Shali core, no mud-walled garden plots and no palm
+// groves"): Siwa authored lot by lot — old Shali heaped north of the caravan street (its blocks packed a metre apart,
+// its houses round the heap, the minaret), the new town and the souk on the cross road, the two springs, and the walled
+// palm gardens between the springs and the town; the roadside plan is gone (.qa-dev/town-plan.mjs: every footprint 34 m
+// or more off a zone's centre and clear of the beats, 5 m or more off a road's line, on ground level to 1.7 m)
+const SIWA_TOWN = [
+  // old Shali heaped north of the caravan street's dog-leg: the minaret first, the heaped blocks of the old town (a
+  // compound or caravanserai plot is a cluster of kershef houses), its houses round the heap's edge
+  { structure: 'minaret', x: 126, z: 112, yawDeg: 0 }, { structure: 'compound', x: 100, z: 80, yawDeg: 0 },
+  { structure: 'caravanserai', x: 124, z: 78, yawDeg: 0 }, { structure: 'compound', x: 112, z: 102, yawDeg: 0 },
+  { structure: 'compound', x: 86, z: 104, yawDeg: 0 }, { structure: 'adobe', x: 70, z: 86, yawDeg: 90 },
+  { structure: 'adobe', x: 72, z: 121, yawDeg: 0 }, { structure: 'adobe', x: 98, z: 124, yawDeg: 0 },
+  { structure: 'adobe', x: 126, z: 128, yawDeg: 0 }, { structure: 'adobe', x: 84, z: 62, yawDeg: 180 },
+  { structure: 'adobe', x: 110, z: 60, yawDeg: 180 },
+  // the new town along the cross road: the souk's rows and stall, the market compound, houses facing the lanes, a
+  // caravanserai, the watch tower; the two springs (one in the north garden); two melted houses
+  { structure: 'marketRow', x: 100, z: -57, yawDeg: 180 }, { structure: 'marketRow', x: 116, z: -57, yawDeg: 180 },
+  { structure: 'market', x: 130, z: -57, yawDeg: 180 }, { structure: 'compoundSouk', x: 50, z: -45, yawDeg: 90 },
+  { structure: 'adobe', x: 128, z: -89, yawDeg: 0 }, { structure: 'adobe', x: 138, z: -89, yawDeg: 0 },
+  { structure: 'adobe', x: 148, z: -89, yawDeg: 0 }, { structure: 'adobe', x: 158, z: -87, yawDeg: 0 },
+  { structure: 'adobe', x: 145, z: -56, yawDeg: 180 }, { structure: 'adobe', x: 156, z: -55, yawDeg: 180 },
+  { structure: 'adobe', x: 87, z: -22, yawDeg: -90 }, { structure: 'adobe', x: 87, z: -36, yawDeg: -90 },
+  { structure: 'caravanserai', x: 150, z: -112, yawDeg: 0 }, { structure: 'tower', x: 198, z: -20, yawDeg: 0 },
+  { structure: 'bathhouse', x: 180, z: -98, yawDeg: 0 }, { structure: 'bathhouse', x: 8, z: 64, yawDeg: 0 },
+  { structure: 'ruin', x: 32, z: -122, yawDeg: 20 }, { structure: 'ruin', x: 184, z: -76, yawDeg: -30 },
+] as const;
+// the walled palm gardens between the springs and the town: G1 north of the west zone round its spring, G2 south of the
+// cross road, G3 west of old Shali — each its mud wall (wallRuns) and its rows of date palms (belts, palmSites)
+const SIWA_GARDENS = [
+  { x0: -30, z0: 50, x1: 30, z1: 110, rows: [[-24, 78, 24, 78], [-24, 88, 24, 88], [-24, 98, 24, 98]] },
+  { x0: -10, z0: -150, x1: 50, z1: -112, rows: [[-4, -120, 44, -120], [-4, -130, 44, -130], [-4, -140, 44, -140]] },
+  { x0: 40, z0: 128, x1: 80, z1: 172, rows: [[48, 134, 48, 166], [58, 134, 58, 166], [68, 134, 68, 166]] },
+] as const;
 export default {
   id: 'oasis', name: 'Sunscar Oasis',
   blurb: 'A palm-ringed spring and caravan compounds lie between broad wind-carved dune arms',
@@ -66,12 +101,16 @@ export default {
     loneMix: [['acacia', 0.65], ['palm', 0.3], ['eucalyptus', 0.05]], rimMix: [['acacia', 0.55], ['palm', 0.35], ['eucalyptus', 0.1]],
     clusterCount: 32, loneCount: 28, rimCount: 30, grassDensity: 0.5, clusterScrub: 2.0, bushCount: 0.8, bushSpecies: 'acacia', palettes: desert.vegetation.palettes,
         // (round 2, wave 125: "dense palms") the palm rows planted close, as Siwa's gardens are
-    belts: [{ x0: -208, z0: -104, x1: -218, z1: 148, gap: 13, jitter: 4, species: 'palm' }, { x0: 10, z0: -102, x1: 24, z1: 142, gap: 14, jitter: 4, species: 'palm' }],
+    belts: [{ x0: -208, z0: -104, x1: -218, z1: 148, gap: 13, jitter: 4, species: 'palm' }, { x0: 10, z0: -102, x1: 24, z1: 142, gap: 14, jitter: 4, species: 'palm' },
+      // (round 3) the walled gardens' date palms, row on row
+      ...SIWA_GARDENS.flatMap((g) => g.rows.map(([x0, z0, x1, z1]) => ({ x0, z0, x1, z1, gap: 8, jitter: 1.5, species: 'palm' as const })))],
     // Trees round 2b (2026-10-03, the gauntlet's wave 15): the palms grow in the oasis only: the spring basin and its
     // banks, and the two palm rows along its east and west shores (discs every 40 m down each row); a palm drawn out
     // on the sand grows as an acacia.
     palmSites: [
       { x: -114, z: 46, r: 160 },
+      // (round 3) the walled gardens
+      ...SIWA_GARDENS.map((g) => ({ x: (g.x0 + g.x1) / 2, z: (g.z0 + g.z1) / 2, r: Math.hypot(g.x1 - g.x0, g.z1 - g.z0) / 2 })),
       ...[[-208, -104, -218, 148], [10, -102, 24, 142]].flatMap(([x0, z0, x1, z1]) => Array.from({ length: 8 },
         (_, i) => ({ x: x0 + (x1 - x0) * i / 7, z: z0 + (z1 - z0) * i / 7, r: 26 }))),
     ],
@@ -81,7 +120,17 @@ export default {
     // the map-revival lane (2026-10-05): the town is Siwa's, in the siwa variant of the ksar kit (maps/regional/ksar.ts)
     architecture: 'siwa',
     sourcedPalette: 'desert',
-    plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
+    // (round 3: the town authored, SIWA_TOWN above; no roadside plan)
+    plan: [],
+    plannedSites: SIWA_TOWN,
+    // the light buildings where the town leaves room: the tent by the north garden, the command tent east, the checkpoint
+    // on the caravan street's south gate, the guard post by the cross road's west end
+    townLightPlan: [
+      { kind: 'deserttent', x: -50, z: 150, rot: 0 }, { kind: 'commandtent', x: 205, z: 62, rot: 0 },
+      { kind: 'checkpointhut', x: 100, z: -128, rot: 0 }, { kind: 'guardpost', x: -20, z: -78, rot: 0 },
+    ],
+    // the springs' pools grow no grass or reeds inside their rims (props.ts groundCoverHoles)
+    groundCoverHoles: SIWA_TOWN.filter((t) => t.structure === 'bathhouse').map((t) => ({ x: t.x, z: t.z, r: 9 })),
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
     // 2026-10-03 (maps lane B): the roadside buildings stand 16-18 m off the road (was 12-14): five walled compounds,
     // 16-28 m across, reached into the carriageway (the layout brief's solidPropsInRoad)
@@ -97,15 +146,21 @@ export default {
     // the kit's kershef tones own the renders (a salt-mud grey-beige, not the Dahar's warm sand adobe); the roofs, field
     // stone, timber and straw keep the desert's
     tones: { roof: desert.props.tones.roof, stone: desert.props.tones.stone, wood: desert.props.tones.wood, straw: desert.props.tones.straw },
-    wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
-    wallRuns: [[38, -40, 38, 18, 2], [108, -106, 168, -106, 2], [248, 12, 248, 84, 3], [176, 90, 248, 90, 2], [-108, 280, -32, 280, 3], [-108, 216, -108, 280, 2]],
+    // (round 3: a lot a metre off its neighbour's reach, so old Shali's blocks heap together; was 7)
+    wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 1,
+    // (round 3: the gardens' mud walls — G1 all round but its gate, G2 and G3 on their street sides; the wall south of the
+    // new town, through its caravanserai's lot, gone)
+    wallRuns: [[38, -40, 38, 18, 2], [248, 12, 248, 84, 3], [176, 90, 248, 90, 2], [-108, 280, -32, 280, 3], [-108, 216, -108, 280, 2],
+      [-30, 50, 30, 50, 2], [30, 50, 30, 110, 2], [30, 110, -30, 110, 2], [-30, 110, -30, 62, 2],
+      [-10, -112, 50, -112, 2], [50, -112, 50, -150, 2], [40, 128, 80, 128, 2], [40, 128, 40, 172, 2]],
     // (round 2, wave 125: no round bales in a date-palm oasis)
     // (round 2, wave 125: "a red-tiled wishing well", "a red fence") the springs are the water; palm-rib fences only
     well: false, hayCrates: false, fences: false, telegraph: false, carts: true, logs: false,
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['merkava4b', 'm60a3', 'merkava3d', 'm1a2', 't90a'] },
-    inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
+    // (round 3, wave 135: "a corrugated blue shed") the modern clutter's containers and sheds mostly gone (was 18)
+    inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 4, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a flat erg of low soft dunes

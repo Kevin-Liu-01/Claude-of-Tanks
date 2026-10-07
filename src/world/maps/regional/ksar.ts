@@ -4,7 +4,7 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, facePoint } from './geometry.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -230,8 +230,11 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
   // the jerid: palm ribs laid across the joists with gaps between them, fresh tan to sun-grey
   const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
   for (let k = 0; k < ribs; k++) {
+    // (2026-10-07, the map-revival lane, Oasis round 3; gauntlet wave 135: "clean white plastic slats with dangling white
+    // strips") the ribs were authored as display colours in the linear vertex colour, near white on screen: weathered
+    // jerid, tan going to sun-grey (sRGB ~0.58/0.50/0.39 to ~0.62/0.60/0.56), the frond tips a shade darker
     const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
-    const c: Rgb = [0.55 + tone * 0.14, 0.48 + tone * 0.12, 0.36 + tone * 0.08];
+    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
     sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
   }
   // the frond tips hanging ragged over the lane edge, leaning out, some missing
@@ -239,7 +242,7 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
     if (look() < 0.2) continue;
     const len = 0.2 + look() * 0.4, tone = look();
     sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
-      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.5 + tone * 0.14, 0.43 + tone * 0.12, 0.31 + tone * 0.08], decor: true, shadow: true, exposed: true });
+      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
   }
   // the counter: a plastered bench across the front, open at one end
   sink.span(MUD, -W / 2 + 0.35, floor, D / 2 - 1.05, W / 2 - 0.95, floor + 0.75, D / 2 - 0.5);
@@ -333,16 +336,6 @@ function reach(ctx: RegionalBuildContext): { W: number; D: number; cx: number; c
   return { W: b.maxX - b.minX, D: b.maxZ - b.minZ, cx: (b.maxX + b.minX) / 2, cz: (b.maxZ + b.minZ) / 2, x0: b.minX, x1: b.maxX, z0: b.minZ, z1: b.maxZ };
 }
 
-/** The four faces of a box x0..x1 x z0..z1 (front +z, right +x, back -z, left -x). */
-function boxFaces(x0: number, z0: number, x1: number, z1: number): { front: Face; right: Face; back: Face; left: Face } {
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
-  return {
-    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: w },
-    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: d },
-    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: w },
-    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: d },
-  };
-}
 
 /**
  * A rounded rectangle x0..x1 x z0..z1 (each corner cut by two short faces on a circle of radius rc), ordered so a cap
@@ -354,8 +347,9 @@ function roundedRing(x0: number, z0: number, x1: number, z1: number, rc: number,
   const corners: Array<[number, number, number]> = [[x0 + rc, z0 + rc, -Math.PI / 2], [x0 + rc, z1 - rc, Math.PI], [x1 - rc, z1 - rc, Math.PI / 2], [x1 - rc, z0 + rc, 0]];
   const out: Array<[number, number, number]> = [];
   // from each corner's start angle the arc turns a quarter clockwise in (x, z) (counter-clockwise seen from above)
-  for (const [cx, cz, a0] of corners) for (let k = 0; k <= 2; k++) {
-    const a = a0 - k * Math.PI / 4;
+  // (Oasis round 3, wave 135: "sharp-cornered boxes") five points to each quarter (was three)
+  for (const [cx, cz, a0] of corners) for (let k = 0; k <= 4; k++) {
+    const a = a0 - k * Math.PI / 8;
     out.push([cx + Math.cos(a) * r, y, cz + Math.sin(a) * r]);
   }
   return out;
@@ -411,8 +405,11 @@ function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: num
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
   rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side> } = {}): void {
   const yb = y0 > 0 ? y0 : -0.3, top = y0 + h;
-  const batter = Math.min(0.32, 0.055 * (top - yb)) * (0.8 + look() * 0.4);
-  const rc = Math.max(batter + 0.3, Math.min(0.9, Math.min(x1 - x0, z1 - z0) * 0.14));
+  // (Oasis round 3, wave 135: "sharp-cornered boxes ... nothing like Shali's slumped, rounded grey-beige salt-mud
+  // masses") the walls battered half again as much and the corners rounded to a fifth of the block (was 0.055 of the
+  // height and 0.14 of the block, at most 0.9 m)
+  const batter = Math.min(0.45, 0.08 * (top - yb)) * (0.8 + look() * 0.4);
+  const rc = Math.max(batter + 0.3, Math.min(1.7, Math.min(x1 - x0, z1 - z0) * 0.21));
   const sideAt = slumpedMass(sink, bucket, x0, z0, x1, z1, yb, top, rc, batter, 0.45 + look() * 0.2);
   for (const name of opts.faces ?? ['front', 'right', 'back', 'left'] as const) {
     // the palm-beam ends through the wall under the parapet: thin, a few to a side, not every one
@@ -420,7 +417,10 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     for (let k = 0; k < n; k++) {
       if (look() < 0.35) continue;
       const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.3;
-      faceBox(sink, 'structureWood', fb, u, top - 0.25, 0.1, 0.1, 0.1, 0.24, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true, uv: UV_MEMBER });
+      // (Oasis round 3, wave 135: "its beam ends are neat rectangular planks rather than round palm trunks") a palm
+      // trunk's round end standing out of the wall
+      const end = 0.07 + look() * 0.03, outward = fb.out[0] + fb.out[2] > 0, p = facePoint(fb, u, top - 0.25, outward ? -0.05 : 0.25);
+      sink.cylinder('structureWood', p, fb.out[0] !== 0 ? 'x' : 'z', 0.3, end, 7, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true }, end * 0.9, true);
     }
     // small dark windows high in the wall, one or two to a storey; a few behind palm shutters
     const storeys = Math.max(1, Math.round(h / 3.0));
@@ -498,7 +498,7 @@ const shaliCluster: RegionalBuilder = (ctx) => {
  * beams and slit openings near the top) or a watch tower with its door high in the wall. Kershef the
  * colour of the town (no limewash, no cap of another colour: a tall pale taper with a coloured top reads as a lighthouse).
  */
-function mudTower(sink: PartSink, S: number, H: number, rng: () => number, look: () => number, minaret: boolean): void {
+function mudTower(sink: PartSink, S: number, H: number, rng: () => number, _look: () => number, minaret: boolean): void {
   // (round 2, the gauntlet's wave 125: "a straight-sided, crenellated castle keep") the tower is battered to its head —
   // two fifths in on a minaret, three tenths on a watch tower — its arrises rounded, a flat parapet head with a
   // bevelled crest, not merlons
@@ -560,13 +560,15 @@ const ainSpring: RegionalBuilder = (ctx) => {
   const along = R.W >= R.D;
   const px = along ? R.x0 + 0.3 + r : R.cx, pz = along ? R.cz : R.z0 + 0.3 + r;
   const n = 20;
+  // (Oasis round 3, wave 135: "the grey cut-stone block ... reads as modern masonry") the rim is the spring's old mud
+  // kerb, plastered and worn round, not dressed grey stone
   for (let k = 0; k < n; k++) {
     const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, am = (a0 + a1) / 2;
-    sink.member('stone', [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 1.0, 0.5,
+    sink.member(KERSHEF_OLD, [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 0.8, 0.55,
       [Math.cos(am), 0, Math.sin(am)], { exposed: true }, 0);
   }
   sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r - 0.22, 24, { decor: true });
-  for (let k = 0; k < 3; k++) sink.span('stone', px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r - 0.2 - k * 0.35, { decor: true });
+  for (let k = 0; k < 3; k++) sink.span(KERSHEF_OLD, px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r - 0.2 - k * 0.35, { decor: true });
   // the rest of the plot: the café's low wall along the far edge and the palm-rib shelter by the pool
   const rest = along ? R.x1 - (px + r + 0.25) : R.z1 - (pz + r + 0.25);
   if (rest > 0.45) {
@@ -639,12 +641,17 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     stone: { kind: 'rubble', tint: [0.7, 0.66, 0.58] },
     // (the kershef is the render canvas, toned: the plaster photo set read as speckled grey granite on the walls, h4)
     sourced: { plaster: false, wood: true },
+    // (Oasis round 3, wave 135: "an over-strong, uniform wormy normal pattern that reads as cottage cheese or popcorn
+    // ceiling rather than lumpy salt mud") the kershef's render relief at three eighths of the canvas's
+    plasterRelief: 0.45,
     tones: {
       // kershef: the salt-crusted mud's warm grey-beige; the older walls darker; limewash
       // (round 2, the gauntlet's wave 125: "kershef tiling noise" — the canvas's lumps at their full contrast read as a
       // dark speckle tiled over every wall; the salt mud keeps half of it, a shade warmer)
-      plaster: (_h, s, l) => [0.084, Math.min(1, s * 0.3 + 0.12), Math.min(1, l * 0.5 + 0.36)],
-      plaster2: (_h, s, l) => [0.082, Math.min(1, s * 0.26 + 0.1), Math.min(1, l * 0.48 + 0.3)],
+      // (Oasis round 3, wave 135: "a uniform pinkish stucco noise", "pink-cream") the salt mud greyer and less pink: a
+      // grey-beige a step lighter (was hue 0.084, saturation x0.3 + 0.12)
+      plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.18 + 0.07), Math.min(1, l * 0.48 + 0.4)],
+      plaster2: (_h, s, l) => [0.095, Math.min(1, s * 0.16 + 0.06), Math.min(1, l * 0.46 + 0.33)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.12), Math.min(1, l * 1.3 + 0.16)],
     },
   },

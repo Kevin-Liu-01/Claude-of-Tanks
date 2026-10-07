@@ -350,6 +350,8 @@ interface PropsSettings {
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
   tones: Record<string, ToneFunction | null | undefined>;
+  /** The procedural render canvas's relief (its normal's strength; default 1.2): the map's own, else its kit's. */
+  plasterRelief?: number;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
   buildingLat: readonly [number, number];
@@ -409,6 +411,8 @@ interface PropsSettings {
   streetRowKeepouts?: readonly (
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
+  /** Authored ground-cover holes ({ x, z, r }): no grass, tall grass or litter grows there (a spring's pool, Oasis). */
+  groundCoverHoles?: readonly { x: number; z: number; r: number }[];
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
@@ -800,6 +804,7 @@ function makePlaster(
   anisotropy: number,
   tone: ToneFunction | null = null,
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
+  relief = 1.2,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -817,7 +822,7 @@ function makePlaster(
   applyTone(px, tone);
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, 1.2, anisotropy),
+    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, relief, anisotropy),
     surface: sharedSurface?.surface
       ?? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
   };
@@ -3019,8 +3024,11 @@ function* propsBuildSteps(
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
+  // a kit's render relief (maps/regional/types.ts ArchitectureSurfaces.plasterRelief) under the map's own; the canvas's 1.2
+  // where neither sets one
+  if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
   const T = P.tones || {};
-  const plaster = makePlaster(noi, aniso, T.plaster || null);
+  const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
   // recycled one plaster print ("same white-plaster box repeats dozens of
@@ -3038,7 +3046,7 @@ function* propsBuildSteps(
       Math.max(0, Math.min(1, bs * ds)),
       Math.max(0, Math.min(1, bl * dl))];
   };
-  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90), null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
@@ -7208,6 +7216,13 @@ ${snowCap ? `
     if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
   placeRegionalYards();
+  // authored ground-cover holes (props.groundCoverHoles): ground no blade or tuft grows through that no solid marks — a
+  // spring's pool inside its stone rim (Oasis round 3, wave 135: "dry grass cards sprout through the spring's water");
+  // map.ts holds them with the yards' and the scenery's
+  if (P.groundCoverHoles?.length) {
+    group.userData.regionalYardHoles = [...((group.userData.regionalYardHoles as Array<{ x: number; z: number; r: number }> | undefined) ?? []),
+      ...P.groundCoverHoles.map((h) => ({ x: h.x, z: h.z, r: h.r }))];
+  }
   yield { fine: true, progress: false, stage: 'regional-yards' };
 
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---

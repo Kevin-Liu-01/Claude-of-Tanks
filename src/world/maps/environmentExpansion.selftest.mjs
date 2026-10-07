@@ -32,7 +32,10 @@ const authoredBudgets = {
   polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18 },
   copper_mesa: { roadNodes: 166, wallM: 405, beltTrees: 0, trees: [22, 32, 40], grass: 0.36, rocks: 224, outcrops: 42, plan: 16 },
   airfield: { roadNodes: 184, wallM: 403, beltTrees: 0, trees: [26, 42, 80], grass: 0.72, rocks: 98, outcrops: 12, plan: 16 },
-  oasis: { roadNodes: 152, wallM: 421, beltTrees: 29, trees: [24, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
+  // (2026-10-07, the map-revival lane's Oasis rounds 2 and 3, gauntlet waves 125 and 135: "no mud-walled garden plots
+  // and no palm groves") Siwa's walled palm gardens — their mud walls and rows of date palms — and round 2's denser palm
+  // stands; their frame cost is the cost probe's (was wallM 421, beltTrees 29, trees [24, 28, 30])
+  oasis: { roadNodes: 152, wallM: 760, beltTrees: 90, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
   whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 136, outcrops: 22, plan: 16 },
   orchard: { roadNodes: 156, wallM: 884, beltTrees: 61, trees: [42, 38, 88], grass: 0.95, rocks: 138, outcrops: 20, plan: 18 },
   longleaf: { roadNodes: 157, wallM: 432, beltTrees: 62, trees: [62, 86, 104], grass: 1, rocks: 164, outcrops: 24, plan: 18 },
@@ -79,7 +82,8 @@ assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.roads))).s
   'every battlefield authors its own road graph');
 assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.landforms))).size, 10,
   'every battlefield authors its own macro relief instead of copying a palette');
-assert.equal(new Set(maps.map(({ props }) => JSON.stringify(props.plan))).size, 10,
+// (a settlement authored as planned sites — Kestrel Airfield's, Sunscar Oasis's since its round 3 — has its mix there)
+assert.equal(new Set(maps.map(({ props }) => JSON.stringify([props.plan, (props.plannedSites ?? []).map((site) => site.structure)]))).size, 10,
   'each settlement has its own occupational building mix');
 
 for (const config of maps) {
@@ -167,9 +171,13 @@ for (const config of maps) {
   // A settlement authored as planned sites (Kestrel Airfield, 2026-10-02: thirteen rotation pairs, where the roadside
   // plan had stacked its buildings along the first roads) counts them with the plan, within the old airfield's 16 plan
   // buildings and 6 sites plus two pairs.
+  // (2026-10-07, the map-revival lane's Oasis round 3, gauntlet wave 135: "no dense heaped Shali core": Siwa authored lot
+  // by lot — old Shali's heaped blocks and houses, the new town, the souk, the springs — within 32; its frame cost is the
+  // cost probe's, not this ceiling's)
   const plannedSites = config.props.plannedSites?.length ?? 0;
   const settlement = config.props.plan.length + plannedSites;
-  assert.ok(settlement >= 16 && settlement <= (plannedSites ? 26 : 18), `${label}: bounded settlement plan`);
+  const settlementCeiling = label === 'oasis' ? 32 : plannedSites ? 26 : 18;
+  assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
   assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
@@ -189,7 +197,8 @@ assert.ok(airfield.splat.pavedRoads && airfield.vegetation.avoid.length === 5,
 assert.ok(oasis.terrain.dunes && oasis.terrain.lakes.length === 1
   && oasis.terrain.lakes[0].radii.length === 16 && oasis.terrain.lakes[0].level === -1.2
   && !oasis.terrain.marshes.length
-  && oasis.vegetation.belts.length === 2,
+  // (Oasis round 3: the two shore rows and the walled gardens' nine rows of date palms)
+  && oasis.vegetation.belts.length === 11,
   'oasis combines dune arms, the published single authored spring contour and planted shore palms');
 assert.ok(whiteout.terrain.frozenMarshes && whiteout.props.snowCap && whiteout.vegetation.clusterCount <= 8,
   'polar station is exposed snow country rather than an alpine forest');
