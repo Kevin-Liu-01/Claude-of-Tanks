@@ -125,6 +125,9 @@ export default {
     // (Copper Mesa round 2: the conglomerate is not a bedded sandstone and no wind shapes it — no sandstone tile, no dune
     // macro; was sandstone, sandMacro 0.7)
     sandstone: false, strata: 0.12, sandMacro: 0, midRelief: 0.8,
+    // (round 3, wave 132: the mud pan "a flat matte stain rather than reflective water or wet tailings") the pit's pan is
+    // the mine's tailings: wet, glossy silt stained rust by the acid water (the Queen River's orange) — was matte
+    mudTone: (h: number, s: number, l: number) => [0.055, clamp01(s * 0.5 + 0.25), clamp01(l * 0.5 + 0.08)], marshGloss: 0.8,
     // (round 3, wave 132: "no pink, ochre or grey conglomerate") the gravel's patches: salmon-pink fields at ~80 m, the
     // grey-mauve weathered stretches at ~230 m, ochre washes at ~600 m (was a pale pink, a dark mauve and a buff)
     tintA: [1.08, 0.86, 0.80], tintB: [0.80, 0.76, 0.80], tintC: [1.10, 0.90, 0.62], roadTint: [0.62, 0.56, 0.54],
