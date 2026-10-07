@@ -126,7 +126,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
 | Obsidian Caldera | The Aso caldera, Kyushu: black volcanic shelves and cinder cones on a farmed floor; a village of minka, kura and greenhouses round the sulphur works in the `kyushu` kit; sugi and Japanese red pine; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
-| Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
+| Ruinspires | Sarajevo under siege (1992–96): the boulevard's tram line between Austro-Hungarian blocks and Yugoslav towers, the mahalas on the flanks, the siege on every building (the `sarajevo` kit, 2026-10-05); the ground's land use and the roads' surfaces are the ground lane's next |
 | Suzhou Creek (`blackglass`) | Shanghai, autumn 1937: the creek and its four bridges between the Settlement's lanes, blocks and Art Deco towers and Zhabei's burnt shophouses; brick, granite and grey canal tiles |
 | Skybridge Chasm | Glen Canyon above Lake Powell: bedded sandstone shoulders over the drowned gorge; the Bureau of Reclamation's 1960s works and Page in the `glencanyon` kit (powerhouse and penstocks, control building, walled switchyards and transformer yards, relay tower, ranch houses), its poured walls board-formed concrete (formwork boards, lift lines, tie holes); the plateau's juniper and pinyon with poplars by the water, the bunchgrass cured straw; crossing/abutments/control works organize the canyon; believable approaches |
 
@@ -7608,6 +7608,46 @@ The map keeps its id (`blackglass`); its name is Suzhou Creek in every catalogue
   - horizonRelief reads the coastal relief;
   - matchPlacement's counting field and its independent route grid carry the world's bridge decks, as every
     production caller's height field does. Without them the creek split the map, and four modes found no placement.
+
+### 2026-10-05 — Ruinspires as Sarajevo under siege (the map-revival lane, mr1)
+
+**The `sarajevo` regional kit replaces all 14 structure ids the map draws in place, and the street kit
+(`extraKits: ['sarajevo']`) lays the boulevard's tram line and the cemeteries.** The kit
+(`maps/regional/sarajevo*.ts`) builds Austro-Hungarian blocks (gable or zinc-mansard roofs over firewalls, one in nine
+with a collapsed end), Yugoslav infill blocks, mahala houses with doksats and walled gardens, the twin office towers,
+the Holiday Inn, the parliament, the newspaper's gutted core, estate and slab towers, the museum and the Vijećnica,
+mosques, the Orthodox and Catholic churches, the market hall and the čaršija. It adds shell pocks, UNHCR sheeting and
+sandbagged windows. The street kit lays the double track in its bed with the catenary, two burnt trams shoved against
+the kerbs and 8 container screens at the crossings, every one clear of the roads' cores (3.9 m from a road's line) and
+of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kickoff and the aprons stay open).
+- *Footprints:* every builder fills the base's measured reach (`ctx.bounds`): −0.30 to 0.00 m on every side. The one
+  exception is the row houses' street side, −1.25 to −0.85 m: those are the base's shop canopies and balconies, 2.7 to
+  3.1 m up, while the fronts stand on the plot's street edge. The 392 structure records match the PR head's one for one,
+  every footprint centre within 0.58 m, so no building moved. The census's colliders went from 8,349 to 6,232 (the
+  structure shells from 7,158 to 5,040), and the shard is re-pinned at [1933, 6232, 462].
+- *Pacing* (20 seeds, 37000–37019): median 325 s, p10 229 s, minimum 190 s, none under 120 s, no timeouts. The PR head
+  gives 263 / 183 / 162. The kit's solid bodies conceal more than the base's ragged low ruins did; with 17 screens
+  (some on the squares' edges) the median was 447 s.
+- *Frame pacing* (one hold at load ~90, single runs, no long tasks in any). PR head, chase / establishing p50/p95/p99:
+  Ruinspires 16.9/22.7/32.1 and 16.6/22.1/31.4 ms; Verdant 18.4/31.0/37.8 and 17.1/33.5/49.5 ms. The owner's
+  "choppiness" is not Ruinspires' frame pacing on the PR head. The candidate gave 17.5/30.1/40.9 and 16.8/36.3/58.8 ms
+  at 682 calls and 2.93 M triangles in the chase (head: 679 and 2.83 M). The A B C C B A ×8 cost gate waits for a quiet
+  machine.
+- *Cost* (the GPU frame's increment over the PR head; each variant against the head, two pages, 3 × A B B A after a
+  chase visit, a quiet window at load 24–31):
+
+  | Variant | Establishing | Chase |
+  |---|---|---|
+  | the kit, the ground lane's land use and the streets' surfaces | +2.63 ± 0.40 ms | +0.99 ± 0.16 ms |
+  | without the streets' surfaces (`pathStyles`) | −0.60 ± 0.32 ms | +0.52 ± 0.53 ms |
+  | without the `sarajevo` kits | +1.08 ± 0.72 ms | +0.18 ± 1.52 ms |
+  | head and candidate both at `?ground=legacy` (no land use) | −0.62 ± 0.67 ms | +1.17 ± 0.66 ms |
+
+  The increment needs the streets' surfaces and the urban land use together; either alone is within the budget. The
+  map ships without its streets' own surfaces (the boulevard's asphalt, the trunks patched, setts on the terrace and
+  cross streets: ruinspires.ts keeps them in a comment) until the ground lane's fix. On the A B C C B A gate the chase
+  passed (GPU p25 +0.16 ± 0.37 ms); that gate's establishing reading, +11.5 ms with three full worlds in one browser,
+  read about +2 ms with two.
 
 ## Acceptance is visual and measured
 

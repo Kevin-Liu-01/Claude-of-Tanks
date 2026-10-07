@@ -128,11 +128,11 @@ for(const mapId of MAP_IDS) {
     // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
-    // the map-revival lane (2026-10-05): Suzhou Creek's street kit (shanghaiStreets.ts) blocks with its burnt trams, a
-    // convex footprint in both sinks like the heaps
+    // the map-revival lane (2026-10-05): Suzhou Creek's street kit (shanghaiStreets.ts) and Ruinspires' (sarajevoStreets.ts)
+    // block with their burnt trams (Ruinspires' container screens too), a convex footprint in both sinks like the heaps
     const street=record=>record.kind==='tram-wreck'||record.kind==='container-screen';
     const screens=candidate.obstacles.filter(street);
-    assert.equal(screens.length>0,mapId==='blackglass',`${mapId}: only Suzhou Creek's street kit stands trams`);
+    assert.equal(screens.length>0,mapId==='blackglass'||mapId==='ruinspires',`${mapId}: only Suzhou Creek's and Ruinspires' street kits stand trams`);
     assert.equal(candidate.colliders.filter(street).length,screens.length);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
     // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
