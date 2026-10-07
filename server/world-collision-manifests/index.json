@@ -173,10 +173,10 @@
       "concealers": 674
     },
     "whiteout": {
-      "bytes": 548613,
-      "sha256": "fabc07e7d3c343b68b7fcaa943092bd994b2ec44399747059d55dd6d19c6ce5f",
+      "bytes": 555248,
+      "sha256": "6e1ca63cbeb9c56f65aadfd90d2304b54a7bb5627dbf919a59ff3c83dac513db",
       "obstacles": 732,
-      "colliders": 594,
+      "colliders": 593,
       "concealers": 16
     },
     "orchard": {
