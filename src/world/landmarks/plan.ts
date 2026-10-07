@@ -22,6 +22,9 @@ interface LandmarkKindSpec {
   inWater?: boolean;
   /** The piece is all dressing (a square's green, a path, a churchyard without its gateway): no solid, no collision record. */
   dressing?: (p: LandmarkParams) => boolean;
+  /** The piece follows the ground itself (draped paving and beds, a terrace that levels itself and banks to the slope):
+   *  the composer seats it at any fall under its footprint (the 3.2 m limit keeps a rigid piece from burying its side). */
+  drapes?: boolean;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -83,17 +86,17 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
   // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
   // the graves (the gateway's piers and cornice 0.35 m past the front fence)
-  churchyard: { family: 'park', dressing: (p) => p.holyGate === false, defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
+  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false, defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
     graves: 10, tradition: 'orthodox', back: 'open' },
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
   // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
   // and the box at the path's mouth
-  garden: { family: 'park', dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open' },
+  garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open' },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
   // it leaves (no road margin) and stands on nothing.
-  path: { family: 'park', roadMargin: 0, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
+  path: { family: 'park', roadMargin: 0, drapes: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
@@ -168,7 +171,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the terraced tennis court (a doubles court and its run-off, 36.6 × 18.3 m) and its retaining walls
   // (round 2: the banks fall from the terrace's edge to the slope, `bank` metres out at most; `steps` the side whose bank
   // carries a flight of steps, -1, +1 or 0)
-  tennisCourt: { family: 'park', defaults: { damage: 0, steps: 0, bank: 4 },
+  tennisCourt: { family: 'park', drapes: true, defaults: { damage: 0, steps: 0, bank: 4 },
     footprint: (p) => [9.9 + 0.5 + Math.max(0, num(p, 'bank')), 19.1 + 0.5 + Math.max(0, num(p, 'bank'))] },
   // ------------------------------------------------------------------------------------------------ temples
   // the Bengal aat-chala temple: the plinth (0.9 m round the cella), the steps 1.3 m out at the front, the eaves' overhang

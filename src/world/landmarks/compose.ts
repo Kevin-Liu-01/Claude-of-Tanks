@@ -248,7 +248,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
-    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
+    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
     const built = builder({
