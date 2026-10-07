@@ -117,6 +117,15 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
 });
 
+/**
+ * The trees lane (2026-10-06, the cities lane's Miljacka quays and boulevard): a street linden's fresh, light yellow-green
+ * over the beech form it grows as — a tenth again of the leaves' saturation and lightness.
+ */
+const LINDEN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.23, cardSat: 0.24,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 1.1), Math.min(1, l * 1.08)],
+});
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -162,8 +171,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
   // Sarajevo and the Miljacka valley (the trees lane, 2026-10-06, with the cities lane's valley rebuild after the gauntlet's
   // wave 162: the ring read as "arid savanna with palm and acacia trees"): Trebević's and Igman's beech closing into
-  // broadleaf masses — the oak slot grows as the beech; the map's spruce and fir lead its ring
-  ruinspires: B('Sarajevo, the Miljacka valley', { oak: { form: 'beech' } }),
+  // broadleaf masses — the oak slot grows as the beech; the map's spruce and fir lead its ring. Waves 186/187 ("almost no
+  // trees in the city"): the quays' and the boulevard's rows of limes and planes are the aspen slot (unused elsewhere on
+  // the map), grown as the beech's broad dense ellipsoid on a clean 3 m bole in a linden's light green
+  ruinspires: B('Sarajevo, the Miljacka valley', { oak: { form: 'beech' }, aspen: { form: 'beech', colour: LINDEN_FOLIAGE } }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
