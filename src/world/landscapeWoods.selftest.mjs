@@ -3,7 +3,7 @@
 // the closed woods, and the ridges should be wooded"): the landscape-woods hook (VegetationConfig `landscapeWoods`) on the
 // real seeded producer of Frontier Basin with the hook set — the woods stand on the wood-zone ground (its height and
 // slope), their stands close into contiguous woods with no thin patches, and the woods keep their tree budget — and
-// unset, the map as before; no map sets it. A construction receipt: no GPU, no art claim, no pacing claim (the map
+// unset, the map as before. A construction receipt: no GPU, no art claim, no pacing claim (the map
 // that opts in carries its own pacing and corridor cover).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -35,7 +35,11 @@ function canvasFixture() {
 }
 
 
-for (const id of MAP_IDS) assert.equal(getMapConfig(id).vegetation?.landscapeWoods, undefined, `${id}: no map sets the hook in this commit`);
+// a map that opts in (Monsoon Ridge's spurs) carries its own receipt (monsoonTrees.selftest); its settings in range
+for (const id of MAP_IDS) {
+  const lw = getMapConfig(id).vegetation?.landscapeWoods;
+  if (lw) assert.ok(lw.zone > 0 && lw.zone <= 1 && (lw.budget ?? 1) > 0 && (lw.budget ?? 1) <= 1, `${id}: the hook's settings (${JSON.stringify(lw)})`);
+}
 const digest = (world) => createHash('sha256').update(JSON.stringify(world._trees.map((t) => [t.species, t.variant, ...t.mat.elements.map((v) => +v.toFixed(5))]))).digest('hex').slice(0, 16);
 const LW = { zone: 0.45, slopeDeg: 12, merge: 30 };
 
@@ -56,11 +60,13 @@ try {
     return lo / heights.length + 0.5 * Math.min(1, grade / grade0);
   };
   const build = (vegetation) => createVegetation(field, { setupShadowMaterial() {} }, 2001, { ...cfg, vegetation: { ...cfg.vegetation, ...vegetation } });
-  const plain = build({}), wooded = build({ landscapeWoods: LW }), replay = build({ landscapeWoods: LW });
+  // (Frontier round 4 sets the hook on the map itself: the field law's woods are the map with the hook taken off)
+  const plain = build({ landscapeWoods: undefined }), wooded = build({ landscapeWoods: LW }), replay = build({ landscapeWoods: LW });
   try {
     assert.equal(plain.group.userData.landscapeWoods, undefined, 'unset: no landscape census');
     const census = wooded.group.userData.landscapeWoods;
-    assert.ok(census && census.stands >= census.target && census.standTrees >= census.standBudget, `the woods keep their stands and budget (${JSON.stringify(census)})`);
+    // (Frontier's stands seat fewer trees than the law's mean: they hold the budget past the target, a quarter more at most)
+    assert.ok(census && census.stands >= census.target && census.stands <= Math.ceil(census.target * 1.25) && census.standTrees >= census.standBudget, `the woods hold their budget (${JSON.stringify(census)})`);
     assert.equal(digest(wooded), digest(replay), 'deterministic');
     const woods = (w) => w._trees.filter((t) => t.wood && Math.max(Math.abs(t.mat.elements[12]), Math.abs(t.mat.elements[14])) <= 430);
     const a = woods(plain), b = woods(wooded);
@@ -90,4 +96,4 @@ try {
     for (const w of [plain, wooded, replay]) { w.dispose(); disposeObject3DResources(w.group); }
   }
 } finally { restore(); }
-console.log("landscapeWoods.selftest: the hook's woods on the wood-zone ground, closed, their tree budget kept, deterministic; unset none, no map sets it PASS");
+console.log("landscapeWoods.selftest: the hook's woods on the wood-zone ground, closed, their tree budget kept, deterministic; unset none; the maps that set it in range PASS");

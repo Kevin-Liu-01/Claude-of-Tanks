@@ -74,15 +74,17 @@ function along(arm: readonly (readonly [number, number])[], s: number): [number,
 }
 const round1 = (v: number) => Math.round(v * 10) / 10;
 /**
- * A Hofreite on one side of an arm (`side` +1 / -1: the arm's left or right hand), its farmhouse's front gable 8.3 m off
- * the lane's line. The kit's farmhouse carries its stable wing on its local +x flank, which faces back along the arm on
+ * A Hofreite on one side of an arm (`side` +1 / -1: the arm's left or right hand), its farmhouse's front gable 5.5 m off
+ * the lane's line (round 4; was 8.3). The kit's farmhouse carries its stable wing on its local +x flank, which faces back along the arm on
  * the +1 side and out along it on the -1 side; the court lies past the wing (10 m across), the barn behind the court
  * (its gate gable toward the lane, like the house), and in a 'U' court the granary on the court's far side. planCourt
  * walls the court on the lane, the gate in the wall.
  */
 function hofreite(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, kind: 'L' | 'U'): Site[] {
   const [x, z, tx, tz] = along(arm, s);
-  const nx = -tz * side, nz = tx * side, w = -side, depth = 10, n0 = 8.3 + 5.35;
+  // (round 4, gauntlet waves 178 and 183: "spaced like a suburb", "houses detached") the gable 5.5 m off the lane's line
+  // (was 8.3): the Haufendorf's houses stand at the lane, their courts closed behind the wall
+  const nx = -tz * side, nz = tx * side, w = -side, depth = 10, n0 = 5.5 + 5.35;
   const yawDeg = round1(Math.atan2(-nx, -nz) * 180 / Math.PI);
   const at = (a: number, n: number) => ({ x: round1(x + tx * a + nx * n), z: round1(z + tz * a + nz * n) });
   const sites: Site[] = [
@@ -93,7 +95,7 @@ function hofreite(arm: readonly (readonly [number, number])[], s: number, side: 
   return sites;
 }
 /** One building on an arm's side, its front `setback` m off the lane's line (its depth `d` behind that). */
-function lane(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, structure: string, d: number, setback = 8): Site {
+function lane(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, structure: string, d: number, setback = 5.5): Site {
   const [x, z, tx, tz] = along(arm, s);
   const nx = -tz * side, nz = tx * side, n = setback + d / 2;
   return { structure, x: round1(x + nx * n), z: round1(z + nz * n), yawDeg: round1(Math.atan2(-nx, -nz) * 180 / Math.PI) };
@@ -226,6 +228,11 @@ export default {
     // (round 3, gauntlet wave 138: "a savanna-like scatter of lone trees on tan ground") the loose field trees halved —
     // the basin's field trees stand in its lines, the lynchet oaks and the river's alders (was 188)
     clusterCount: 78, loneCount: 100, rimCount: 116, grassDensity: 1.08,
+    // (round 4, gauntlet waves 178 and 183: "bald ridges", "a smooth, uniform green mound with no canopy texture") the
+    // woods on the ridges and their slopes, closed (the trees lane's landscape-woods hook: the stands' centres on the wood
+    // zone — the share 0.45 of the square ranked by height and slope — neighbours closing into one wood), not spread over
+    // the fields; the field trees keep the field law
+    landscapeWoods: { zone: 0.45, slopeDeg: 12, merge: 30 },
     // (round 3, wave 138's chase view: a woodlot stood on the main road's southern approach once the mill ponds reseated
     // the tree stream) the main road's approach to the village, south and its rotation north, open ground
     avoid: [{ x: -20, z: -115, r: 40 }, { x: 20, z: 115, r: 40 }],
@@ -327,9 +334,8 @@ export default {
       stalls: 2, benches: 3, coreClutter: 18, bales: 14, stooks: 12,
       troughs: 2, churns: 2, laundry: 2, handcarts: 3, carts: 4,
       trucks: 5, jeeps: 4, drumClusters: 5, camps: 4, modernClutter: 18,
-      // (round 4) no yardFence: the white picket is gone (waves 183–184); the free-standing garden runs take the props
-      // layer's default (the scenery lane: the kit's own non-picket fence, else plank)
-      roadFence: 'fenceplank',
+      // (round 4) the garden runs in rough boards, the Hessian kit's own fence: the white picket is gone (waves 183–184)
+      roadFence: 'fenceplank', yardFence: 'fenceplank',
     },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Buntsandstein breaks out
@@ -344,8 +350,9 @@ export default {
     ],
     // the red sandstone breaking out under the ridge woods
     rockFields: [
-      { geology: 'sandstone', x: -150, z: -262, radius: 140, count: 6, slopeBias: 0.7, size: [2.5, 5], name: 'the south ridge sandstone' },
-      { geology: 'sandstone', x: 150, z: 262, radius: 140, count: 6, slopeBias: 0.7, size: [2.5, 5], name: 'the north ridge sandstone' },
+      // (round 4, wave 178: the ridges with "no ... rust tone") the Buntsandstein at the woods' edges, ten ledges a ridge
+      { geology: 'sandstone', x: -150, z: -262, radius: 140, count: 10, slopeBias: 0.7, size: [2.5, 5], name: 'the south ridge sandstone' },
+      { geology: 'sandstone', x: 150, z: 262, radius: 140, count: 10, slopeBias: 0.7, size: [2.5, 5], name: 'the north ridge sandstone' },
     ],
     landmarks: [
       { kind: 'bildstock', x: -208, z: 36, yawDeg: 150, name: 'the shrine at the west farm lane' },
@@ -353,6 +360,9 @@ export default {
       { kind: 'waysidecross', x: 32, z: -270, yawDeg: 90, name: 'the field cross below the south saddle' },
       { kind: 'waysidecross', x: -32, z: 270, yawDeg: -90, name: 'the field cross below the north saddle' },
     ],
+    // (round 4, wave 178: "hedged terrace banks don't read") the earth banks under the strip fields' hedged ends, on the
+    // land use's own lines (fieldWorks.ts; decor, no collision — the coordinator's bank ruling, 2026-10-07)
+    fieldWorks: { banks: true },
     // the 380 kV line across the basin, one tower in each half of the valley floor on either side of the village
     powerLines: [{ towers: [[-440, -150], [-147, -50], [147, 50], [440, 150]], heightM: 36, name: 'the 380 kV line' }],
   },

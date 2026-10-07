@@ -201,7 +201,8 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   frontier: {
     // (the map-revival lane, 2026-10-05, through the coordinator: the Hünfeld basin's Gewannflur) long strips in blocks
     // off the lanes, hedges on many short ends (the lynchet banks carry their own), and the river's floor in water meadows
-    strength: 1, heading: 0.95, blockU: 200, blockV: 45, maxSplit: 4, marginM: 1.6, trackShare: 0.5, hedgeShare: 0.55,
+    // (round 4, wave 178: "open strip fields ... don't read from that height") the strips' grass margins wider (1.6 m)
+    strength: 1, heading: 0.95, blockU: 200, blockV: 45, maxSplit: 4, marginM: 2.4, trackShare: 0.5, hedgeShare: 0.55,
     warpM: 18, region: 'strip', salt: 41,
     meadow: { ax: -512, az: 34, bx: 512, bz: -34, halfWidthM: 60 },
   },
