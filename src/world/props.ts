@@ -3563,10 +3563,12 @@ ${snowCap ? `
     tiltZ = 0,
   ): DestructibleRecord {
     if (landmarkVetoes.length && !landmarkFurniture) {
-      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc;
+      // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
+      // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = Math.min(r, 0.5);
       for (const v of landmarkVetoes) {
         const dx = x - v.x, dz = z - v.z;
-        if (Math.abs(dx * v.c - dz * v.s) < v.hw + r && Math.abs(dx * v.s + dz * v.c) < v.hd + r) {
+        if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) {
           landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
           return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
         }
