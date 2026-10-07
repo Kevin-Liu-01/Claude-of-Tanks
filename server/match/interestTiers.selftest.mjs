@@ -16,6 +16,7 @@ import {
   recordRow, refreshDue, viewerTierFor,
 } from './interestTiers.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
+import { auxiliaryState } from '../../src/sim/auxiliarySystems.ts';
 
 // The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
 await ensureAuthorityFleet();
@@ -205,6 +206,8 @@ const distinctTickGaps = (frames, entityId) => {
 {
   const viewer = actor.entityForWireId(ids.p1);
   const shooter = actor.entityForWireId(ids.p3);
+  // 2026-10-05: equipped automatic guns start on (c3eac0914); an engagement here is the main gun's hit alone, so no roof gun re-engages p3 afterwards.
+  for (const wireId of Object.values(ids)) auxiliaryState(actor.entityForWireId(wireId)).gunOn = false;
   // the near enemy (40 m) lays its gun on the viewer's hull and fires once. The authority decodes the aim from the hull
   // origin (decodeAimIntent(input, entity.state.pos, ...)), so the pitch is taken from there: the former 2.2 m origin
   // laid the gun on a point 1 m under the viewer, which struck the hull only where the ground fell away between the two

@@ -39,7 +39,8 @@ for (const [before, after] of [
 }
 
 const selected = {
-  desert: 2, badlands: 2, copper_mesa: 2, oasis: 2,
+  desert: 2, badlands: 2, oasis: 2,
+  copper_mesa: 2, // 2026-10-05 (the map-revival lane): Queenstown's own sourced row, the sand set tinted, keeps the sand prints
   winter: 3, alpine: 3, whiteout: 3, coastal: 2, saltwind: 2,
   mars: 2, // 2026-09-19: Olympus Basin reads the badlands sand set
   moon: 2, // 2026-10-01 (terrain lane): Earthrise Basin's regolith takes the sand track set (trackSurfacePolicy('moon'))

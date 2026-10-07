@@ -3,18 +3,60 @@
 // fewer buildings, far larger masses, and long diagonal firing corridors.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { createMarshChannel } from './marshChannel.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS, TOWN_ROW_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
+// The map-revival lane (2026-10-05): Suzhou Creek (Wusong River) runs west to east through the district, the
+// International Settlement's banks and godowns on its south side, Zhabei's lilong and shophouses on its north. Its
+// course follows the old flooded quarter's low ground; the four roads that meet it cross on bridges (terrain.ts
+// resolves each `crossing: 'bridge'` station's deck from the road and the wet reach; the street kit dresses them).
+// Elsewhere the creek is soft water a hull fords slowly.
+const CREEK_STATIONS = [
+  { x: -512, z: -40 }, { x: -420, z: -36 }, { x: -330, z: -26 }, { x: -265, z: -16 },
+  { x: -213.3, z: -10, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 4's bridge
+  { x: -165, z: 10 }, { x: -130, z: 34 }, { x: -100, z: 70 },
+  { x: -65.2, z: 100, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 1's bridge (the north-west diagonal)
+  { x: -20, z: 105 }, { x: 25, z: 104 },
+  { x: 69.7, z: 100, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 0's bridge (the north-east diagonal)
+  { x: 120, z: 96 }, { x: 165, z: 95 },
+  // road 5's bridge: its deck stands 1.5 m over the water, so the south bank's road climbs onto it (the crossing sweep's
+  // hull stopped against a deck laid level with the bank's falling road)
+  { x: 210.2, z: 95, r: 10, dip: 0.7, crossing: 'bridge' as const, deckClearM: 1.5 },
+  { x: 300, z: 95 }, { x: 400, z: 92 }, { x: 512, z: 90 },
+].map((m) => ({ r: 17, dip: 1.4, ...(m.crossing ? { deckClearM: 0.6 } : {}), ...m }));
+const BRIDGES = CREEK_STATIONS.filter((station) => station.crossing === 'bridge');
+// the bank line read smooth (Amberford's: circles at 0.96 of their radius, laid half a radius apart)
+const CREEK_BANK = [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96,
+  0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96] as const;
+// the interpolated cells near a bridge keep inside the bridge station's own bank envelope, so the span stays short
+const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...station, radii: CREEK_BANK })).map((station) => {
+  let r = station.r;
+  for (const bridge of BRIDGES) {
+    const index = CREEK_STATIONS.indexOf(bridge);
+    const previous = CREEK_STATIONS[index - 1], next = CREEK_STATIONS[index + 1];
+    const length = Math.hypot(next.x - previous.x, next.z - previous.z);
+    const tx = (next.x - previous.x) / length, tz = (next.z - previous.z) / length;
+    const dx = station.x - bridge.x, dz = station.z - bridge.z;
+    const along = Math.abs(dx * tx + dz * tz);
+    if (along >= r) continue;
+    const across = Math.max(0, bridge.r - Math.abs(-dx * tz + dz * tx));
+    r = Math.min(r, Math.hypot(along, across));
+  }
+  return r === station.r ? station : { ...station, r };
+});
+
 export default {
   id: 'blackglass',
-  name: 'Blackglass District',
-  blurb: 'Broken arcologies, elevated transit ruins and a flooded financial quarter under a storm front',
+  // Suzhou Creek (the map-revival lane, 2026-10-05): Shanghai in the autumn of 1937, the creek between the
+  // International Settlement and Zhabei; the id stays (saves, links, the census and the shards key on it)
+  name: 'Suzhou Creek',
+  blurb: 'Shanghai, autumn 1937: Art Deco towers and stone-gate lanes across four bridges from burning Zhabei',
   terrain: {
     hillScale: 0.62, microScale: 0.72, rimH: 36,
-    marshes: [
-      { x: -54, z: 36, r: 48, dip: 1.4 }, { x: 34, z: 72, r: 42, dip: 1.2 },
-    ],
+    // the creek (was the flooded quarter's two marshes on its course)
+    marshes: CREEK,
     village: { x0: -294, x1: 304, z0: -288, z1: 302, cx: 6, cz: 16, feather: 54, flatten: 0.82, relief: 0.46 },
     roads: { paths: [
       [[-450, -430], [-330, -302], [-210, -174], [-76, -34], [74, 104], [212, 246], [354, 430]],
@@ -48,12 +90,19 @@ export default {
     sourcedPalette: 'blackglass',
     tintA: [0.65, 0.72, 0.76], tintB: [0.38, 0.43, 0.46], tintC: [0.82, 0.72, 0.61],
     roadTint: [0.32, 0.35, 0.37], roadTexMix: 0.88, townWear: 2.0, midRelief: 0.95,
+    // the creek's water (the map-revival lane, 2026-10-05): liquid, its banks tight (Amberford's river ramp), the
+    // city creek's grey-brown silt water, a dull sheen under the storm front, no surf
+    seaLake: true, seaRamp: [0.10, 0.45], seaFoam: 0.05, iceDrift: 0.04, marshGloss: 0.7,
+    mudTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.45), clamp01(l * 0.62)],
+    iceSky: [0.30, 0.33, 0.35],
   },
+  // the city's broadleaves (the plane trees of the Settlement's avenues and the camphors read as broad oak crowns), the
+  // creek's willows, the poplar rows of the delta's fields past the city
   vegetation: {
-    species: ['cedar', 'cypress', 'pine'], clusterMix: [['cedar', 0.45], ['cypress', 0.35], ['pine', 0.20]],
-    loneMix: [['cypress', 0.45], ['cedar', 0.35], ['pine', 0.20]], rimMix: [['cedar', 0.55], ['cypress', 0.30], ['pine', 0.15]],
+    species: ['oak', 'willow', 'poplar'], clusterMix: [['oak', 0.55], ['willow', 0.25], ['poplar', 0.20]],
+    loneMix: [['oak', 0.5], ['willow', 0.3], ['poplar', 0.2]], rimMix: [['poplar', 0.4], ['oak', 0.35], ['willow', 0.25]],
     clusterCount: 18, loneCount: 36, rimCount: 62, grassDensity: 0.32,
-    bushCount: 0.38, bushSpecies: 'cedar',
+    bushCount: 0.38, bushSpecies: 'oak',
   },
   props: {
     plan: [
@@ -77,6 +126,17 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
+    // the creek runs through the district as it stood: every building keeps its place but those its water reaches
+    // (props.ts settlementOverWater: a landmark moves off the water after the district stands, a row is left out)
+    settlementOverWater: true,
+    // the district stands as PR #9's head seated it (the owner's town-plan ruling), its street rows too, so the creek moves
+    // only what its water reaches whatever it does to the ground under the rest
+    townPlan: TOWN_PLANS.blackglass, townLightPlan: TOWN_LIGHT_PLANS.blackglass, townRowPlan: TOWN_ROW_PLANS.blackglass,
+    // Shanghai in 1937 (maps/regional/shanghai*.ts): the Settlement's lanes, blocks and godowns, Zhabei's shophouses, the
+    // Bund's banks and the Art Deco towers in the landmarks' footprints
+    architecture: 'shanghai',
+    // the creek's bridges (maps/mapKits.ts)
+    extraKits: ['shanghai'],
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
     roadBuildingClearance: true,
     // The civic hall stood across road 3 at the district's crossroads and against road 1's edge, on the line between the
@@ -108,14 +168,13 @@ export default {
     },
   },
   horizon: {
-    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the volcanic-glass district keeps
-    // a volcanic horizon, as a weathered volcanic field — rounded cones on low lava plateaus, not 1300 m spikes
-    baseHex: 0x333e46, amp: 1.05, style: 'escarpment', treeline: 0.24, panorama: { regional: 'volcanicField' },
-    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): faint concrete-grey beds on the
-    // escarpment faces (the escarpment style authored none), boulder outcrops on the outland (treeline 0.24 fell in the
-    // rockfield's dead zone: neither forest impostors nor rocks) and more tone grain (0.50 -> 0.60)
-    banding: 0.10, outlandRocks: 0.45,
-    forestHex: 0x263431, rockHex: 0x53606a, haze: 1.0, grain: 0.60,
+    // Suzhou Creek (the map-revival lane, 2026-10-05): the Yangtze delta round Shanghai lies flat to the horizon — the
+    // city's edge, the fields and their poplar rows, a far line of low hills in the haze — where the volcanic-glass
+    // district kept a weathered volcanic field (the mountains lane, gauntlet wave 15); the coastal relief is the delta's
+    // (horizonRelief.ts: an authored key wins over the map's identity)
+    baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55,
+    panorama: { regional: 'plain', trees: 12 },
+    outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890 },
@@ -139,4 +198,7 @@ export default {
     roadCasing: 'rgba(20,25,29,.96)', roadFill: 'rgba(91,101,107,.95)', buildingFill: '#b9b8b4',
   },
   shot: { pos: [-344, 48, -308], look: [18, 12, 46] },
+  // the creek's sea state (round 66's FFT ocean runs on every water sheet): a slow, silted tidal creek between quays —
+  // a light breeze down its length, short fetch, low swell-free chop, no foam, and little light reaching the mud
+  ocean: { windSpeed: 2.2, windDirDeg: 80, fetchKm: 1.5, amplitude: 0.5, foam: 0, breakers: 0.05, caustics: 0.15 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

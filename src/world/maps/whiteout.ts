@@ -13,7 +13,7 @@
 // radome over the upper level, the tropospheric-scatter billboards facing the next station over the horizon, the
 // short-range radar on its lattice tower under its own radome, the steel garages with their overhead doors, the
 // warehouse, the Jamesway huts, the plywood sheds on runners, a module stripped and left to the wind. The tundra has
-// no trees; dwarf birch and willow scrub keep to the hollows.
+// no trees, and on the ice no shrub or grass either (the trees lane, round 2b).
 import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
@@ -88,8 +88,10 @@ export default {
     // increasing the deliberately sparse station's tree placement budget.
     species: ['spruce', 'birch', 'fir'], clusterMix: [['spruce', 0.55], ['birch', 0.35], ['fir', 0.10]],
     loneMix: [['birch', 0.65], ['spruce', 0.30], ['fir', 0.05]], rimMix: [['spruce', 0.65], ['birch', 0.25], ['fir', 0.10]],
-    // map revival lane 2 (2026-10-05): the Arctic coast is north of the treeline (was 8 stands, 12 lone trees, 20 on the rim)
-    clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0.20, bushCount: 0.22, bushSpecies: 'birch',
+    // Trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no tree, no shrub and no
+    // grass grows on the ice (its rock is the bare nunataks'). Was 8 / 12 / 20 trees, grass 0.20, scrub 0.22. (Map revival lane 2's branch had kept grass 0.20 and
+    // scrub 0.22 under its treeless coast; the merge takes the bare ice.)
+    clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, bushSpecies: 'birch',
     palettes: winter.vegetation.palettes,
   },
   props: {

@@ -1,14 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64" role="img" aria-label="Home — tank parked inside a garage house">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 28 48 5l39 23" stroke="#f0a030" stroke-width="4"/>
-    <path d="M16 25v34h64V25M22 59V29h52v30" stroke="#edf3f7" stroke-width="3"/>
-    <g id="home-bay" data-vehicle="m1a2">
-      <path d="M27 45h39l6 5-5 7H29l-7-6Z" fill="#17242d" stroke="#edf3f7" stroke-width="2"/>
-      <path d="M34 39h25l7 6H29Z" fill="#263844" stroke="#edf3f7" stroke-width="2"/>
-      <path d="M41 34h15l4 5H37Z" fill="#45c7ff" stroke="#edf3f7" stroke-width="2"/>
-      <path d="m55 36 17-5" stroke="#f0a030" stroke-width="2.5"/>
-      <path d="M29 50h38" stroke="#45c7ff" stroke-width="2"/>
-    </g>
-    <path d="M17 59h62" stroke="#f0a030" stroke-width="3"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64" role="img" aria-label="Home — tank parked in a garage bay">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M7 27 48 4 89 27" fill="none" stroke="#f0a030" stroke-width="3"/><path d="M16 23V58H80V23" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M23 58V29H73V58" fill="#0b131c" stroke="#7893a5" stroke-width="1.5"/><path d="M25 31H71M25 35H71" fill="none" stroke="#7893a5" stroke-width="1"/><g transform="translate(24 17) scale(.84)" id="home-bay" data-vehicle="m1a2"><path d="M5 39 10 34H44L53 39 49 48H11L5 43Z" fill="#0b131c" stroke="#edf3f7" stroke-width="2"/><path d="M8 39H49" fill="none" stroke="#7893a5" stroke-width="1.3"/><circle cx="13" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="22" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="31" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><circle cx="40" cy="43" r="3.2" fill="url(#steel)" stroke="#7893a5" stroke-width="1.2"/><path d="M11 48H48" fill="none" stroke="#45c7ff" stroke-width="1.2"/><path d="M12 34 18 29H42L49 35Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M18 28 23 19H36L43 28Z" fill="url(#cyan)" stroke="#edf3f7" stroke-width="2"/><path d="M36 22 58 17" fill="none" stroke="#edf3f7" stroke-width="2.8"/><path d="M43 20.4 57 17.2" fill="none" stroke="#f0a030" stroke-width="1.4"/><path d="M26 18V15H33V18" fill="none" stroke="#7893a5" stroke-width="1.6"/><path d="M23 25H35" fill="none" stroke="#edf3f7" stroke-width="1"/></g><path d="M11 59H85" fill="none" stroke="#f0a030" stroke-width="2"/></g>
 </svg>

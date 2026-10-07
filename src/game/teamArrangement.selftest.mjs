@@ -94,3 +94,10 @@ assert.equal(readTeamArrangement('endless_horde', null), null, 'no storage at al
   assert.equal(TEAM_ARRANGEMENT_STORAGE_KEY !== BRAIN_STORAGE_KEY, true, 'the brain has its own key');
 }
 console.log(`teamArrangement: ${ENEMY_NATION_OPTIONS.length} nation options cover ${fleetNations.size} fleet nations; per-mode store round-trips clamped values PASS`);
+
+writeTeamArrangement('standard', { alliedNation: 'player' }, storage);
+assert.equal(readTeamArrangement('standard', storage).alliedNation,'player');
+writeSides({allies:13,enemies:14},storage);
+assert.equal(readTeamArrangement('standard', storage).alliedNation,'player','team-size presets preserve allied nation');
+assert.equal(writeTeamArrangement('standard',{alliedNation:'invalid'},storage),null);
+assert.equal(writeTeamArrangement('standard',{alliedNation:null},storage),null,'mixed force clears the restriction');
