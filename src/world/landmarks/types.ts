@@ -71,6 +71,12 @@ export interface LandmarkPlacement {
    * moved (compose.ts composeApproaches).
    */
   approaches?: readonly LandmarkApproach[];
+  /**
+   * Its own tints over its builder's (weather.ts WeatherTints), where the map's kit weathers it: the kit's own surfaces
+   * retinted, never another surface (the landmarks lane, 2026-10-07, Frontier's round 3: the Rathaus's and the church's
+   * roofs the blue-grey of slate, the market's setts basalt). Each an rgb factor on the surface's colour, 0.2–1.6.
+   */
+  tints?: Readonly<Partial<WeatherTints>>;
 }
 
 /** One door's worn ground (LandmarkPlacement.approaches). */

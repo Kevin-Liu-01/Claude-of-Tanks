@@ -24,7 +24,7 @@ import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
 import { REGIONAL_BUCKETS, hashSeed, streamFrom, type RegionalParts } from '../maps/regional/geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from '../maps/regional/weather.ts';
+import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from '../maps/regional/weather.ts';
 import type { ArchitectureStyle } from '../maps/regional/types.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
@@ -188,6 +188,16 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
     if (soft.length < 8) soft.push(kind);
   }
   return { hard: null, soft };
+}
+
+/** A placement's own tints (types.ts LandmarkPlacement.tints), checked: three factors each, 0.2–1.6. */
+function authoredTints(placement: LandmarkPlacement): Partial<WeatherTints> {
+  for (const [bucket, tint] of Object.entries(placement.tints ?? {})) {
+    if (!Array.isArray(tint) || tint.length !== 3 || !tint.every((v) => Number.isFinite(v) && v >= 0.2 && v <= 1.6)) {
+      throw new Error(`${placement.name ?? placement.kind}: tint ${bucket} must be three factors 0.2-1.6`);
+    }
+  }
+  return placement.tints ?? {};
 }
 
 /** The kinds whose ground is paved: no grass grows up through them (their footprint becomes ground-cover holes). */
@@ -362,7 +372,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (ctx.architecture) {
       // the map kit's weathering: each piece its own tint (or the builder's), damp at the wall foot, moss on the roofs
       const palette = ctx.architecture.weather ?? DEFAULT_WEATHER;
-      const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints };
+      const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints,
+        ...authoredTints(placement) };
       parts = weatherRegionalParts(parts, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
     } else {
       // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
