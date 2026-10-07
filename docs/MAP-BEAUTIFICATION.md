@@ -6105,6 +6105,20 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-06 — Tarkhan Steppe round 2: the elevator's yard and its lorries, the arch's banner and wings (the landmarks lane)
+
+**The gauntlet's waves 154–158** found the set pieces "in no setting" and the kolkhoz arch's banner "garbled,
+mirror-reversed". The elevator stands behind its gravel yard (34 × 8 m along its front, a dressing piece authored before
+it) with two lorries waiting in it, its silos streaked from their domes, its head house's windows cut where a column's
+second opening stood blank (the library's kit fix); the arch letters КОЛХОЗ «ЗАРЯ ЦЕЛИНЫ» on both faces of its banner
+and runs a picket fence 6 m off each pillar. Against the round-1 shard: the arch's record with its wings and their 4
+picket modules, the elevator's 2 lorries and its head house's shell bands; no other record moved. Census [1837, 1621,
+700]. Pacing (seeds 27000–27003) 187 / 191 / 191 / 238 s, the head's to the second. Receipts: the 74 selected for the
+round's seven maps (the landmarks library, the collision drift and pins, the layout brief, the maps' world and village
+receipts) green but the Delta plaster palette, whose fixture build times out under the machine's load (spawnSync
+ETIMEDOUT, a known flake). Cost (rule v3): census close at every view (the elevator's view +11 draws, +1.43 %
+triangles).
+
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
 **Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
