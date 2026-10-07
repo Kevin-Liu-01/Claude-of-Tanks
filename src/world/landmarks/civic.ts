@@ -573,12 +573,29 @@ export const townHall: LandmarkBuilder = (ctx) => {
       holes.right!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: framed ? 0.04 : 0.2 });
     }
   }
-  const upper = archedBody(sink, render, 0, 0, W, D, plinth + g + ARCH_GAP_M_CIVIC, eave, holes, 0.28);
+  // (one body to a storey: a face cuts one opening to a column, so the storeys' windows stacked over each other in one
+  // body left every storey but the first blank — the round-2 review of Frontier's Rathaus)
+  let storeyFaces: Record<FaceName, Face> | null = null;
+  for (let k = 0; k < storeys - 1; k++) {
+    const yb = plinth + g + up * k + (k === 0 ? ARCH_GAP_M_CIVIC : 0), yt = k === storeys - 2 ? eave : plinth + g + up * (k + 1);
+    const row: Partial<Record<FaceName, ArchHole[]>> = {};
+    for (const name of ['front', 'back', 'left', 'right'] as const) row[name] = (holes[name] ?? []).filter((h) => h.y0 > yb && h.y0 < yt);
+    storeyFaces = archedBody(sink, render, 0, 0, W, D, yb, yt, row, 0.28);
+  }
+  if (!storeyFaces) throw new Error('townHall: no upper storey');
+  const upper = storeyFaces;
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     for (const h of holes[name] ?? []) {
       archWindow(sink, upper[name], h, 0.28, FRAME_WHITE, lit(ctx, 0.35));
       if (!framed) archSurround(sink, wall, upper[name], h, 0.16, 0.06);
     }
+  }
+  // its age (round 2: the pieces stood "pristine with no weathering"): the render fallen in patches — the clay infill
+  // under it in a framed hall, the masonry in a rendered one — and the rain run down from the eaves and the sills
+  if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? W : D;
+    ageWall(sink, ctx.age, { face: upper[name], bucket: render, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth + g + 0.1, y1: eave - 0.3 },
+      openings: holes[name] ?? [], ledge: eave - 0.3, spall: framed ? 'plaster2' : wall, spallCount: name === 'front' || name === 'back' ? 3 : 2, grime: 0.22 });
   }
   if (framed) {
     // the oak frame over the render: per storey the sill beam, the posts at the bays and either side of each window,
@@ -739,6 +756,22 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
     revolve(sink, concrete, x, z, [[r, 1.2], [r, H], [r * 0.96, H + 0.12], [r * 0.3, H + 0.55], [0.001, H + 0.6]], 16);
     // the slip-form rings (the pours' joints) as faint bands
     for (let y = 3; y < H - 1; y += 3) revolve(sink, concrete, x, z, [[r + 0.02, y], [r + 0.02, y + 0.12]], 16, { decor: true, shade: 0.86 });
+    // its age (gauntlet waves 154-158: "pristine"): the rain's runs down the concrete from the gallery and the domes, each
+    // a strip bent round the silo two facets wide, darkest under the lip
+    if (ctx.age) {
+      const age = ctx.age;
+      for (let k = 0; k < 4; k++) {
+        const a0 = age() * Math.PI * 2, da = 0.18 + age() * 0.2, len = 4 + age() * (H - 6), depth = 0.24 + age() * 0.2;
+        const top = H - 0.05, bottom = Math.max(1.6, top - len);
+        for (const [aa, ab] of [[a0, a0 + da], [a0 + da, a0 + 2 * da]] as const) {
+          const p = (a: number, y: number): Vec3 => [x + Math.cos(a) * (r + 0.03), y, z + Math.sin(a) * (r + 0.03)];
+          // counter-clockwise from outside the silo (the angle runs clockwise seen from above as x→z)
+          sink.quad(concrete, p(ab, top), p(ab, bottom), p(aa, bottom), p(aa, top), {
+            decor: true, shadeAt: (q) => 1 - depth * Math.max(0, Math.min(1, (q[1] - bottom) / Math.max(0.5, top - bottom))),
+          });
+        }
+      }
+    }
   }
   // the gallery along the tops
   const gx1 = x0 + cols * 2 * r;
@@ -761,7 +794,10 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
   sink.placed(0, hx0 + hw / 2, 0, 0, () => emitRoof(sink, roofGeometry(hw, hd, head, roof), roof));
   // the loading spout leaning out over the track side
   bar(sink, 'structureMetal', [hx0 + hw, head * 0.55, 0], [hx0 + hw + 4.5, head * 0.32, 0], 0.35, { colour: rgb(0x5d6062), decor: true });
-  return { parts: sink.finish(), tints: { plaster3: [0.84, 0.83, 0.8] } };
+  // the harvest's lorries waiting in the yard before the silos (`trucks`, the props' destructible truck, a hull crushes)
+  const trucks = Math.max(0, Math.min(4, Math.round(Number(ctx.params.trucks) || 0)));
+  const destructibles = Array.from({ length: trucks }, (_, k) => ({ kind: 'truck', x: x0 + 4 + k * 7.5, z: rows * r + 5.5, yawDeg: 90 + (k % 2 ? 8 : -6) }));
+  return { parts: sink.finish(), tints: { plaster3: [0.84, 0.83, 0.8] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- granary

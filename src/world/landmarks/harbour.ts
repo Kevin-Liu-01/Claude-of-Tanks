@@ -12,6 +12,7 @@
 // the deck: a hull meets its faces and never climbs onto it (its deck stands well over a step), and the light on its head
 // is part of the same piece, so no gap opens between the mole and its light for a hull to wedge into.
 import { PartSink, rgb, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import type { SimpleCollisionShape } from '../collision.ts';
 import { bar, extrude, revolve, ringY, smoothRender, LIMEWASH_UV } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
@@ -178,4 +179,87 @@ export const mole: LandmarkBuilder = (ctx) => {
       -sea * Math.PI / 2);
   }
   return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: WHITEWASH } };
+};
+
+// ---------------------------------------------------------------------------------------------------------- quay
+
+const TIMBER_DARK = rgb(0x3e3228), WEED: Rgb = [0.55, 0.6, 0.5];
+
+/**
+ * The quay (mr4's harbour step 2 for Saltmere, 2026-10-06; one harbour with the mole): a granite quay wall `length` along
+ * the sea (the piece's local x), its paved top `top` metres over the lowest ground under it (the strand and the bed) and
+ * `depth` back to the land, where the shore rising above its level buries its back. The face: dressed granite courses,
+ * the coping's big blocks along the edge, the weed-dark band the tide leaves, timber fenders, two iron ladders down into
+ * the water and iron bollards on the coping; the ends revetted like the face. Its top is one standable floor a hull drives
+ * onto from the land (the movement record's panels); its face and ends are a wall a hull meets from the strand or the
+ * water, which the strand to either side and the slipway leave open, so the harbour has no pocket.
+ */
+export const quay: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(10, Number(ctx.params.length)), D = Math.max(4, Number(ctx.params.depth)), top = Math.max(0.6, Number(ctx.params.top));
+  const base = -0.6 - ctx.groundFall, cope = 0.45;
+  // the body under the paving, and the paving's slab of setts over it (the regional stone laid flat)
+  sink.span('stone', -L / 2, base, -D / 2, L / 2, top - 0.22, D / 2 - cope);
+  sink.span('stone', -L / 2, top - 0.22, -D / 2, L / 2, top, D / 2 - cope);
+  // the coping along the face and round the two ends: big granite blocks a hand proud of the face, their joints dark
+  sink.span('stone', -L / 2 - 0.06, top - 0.34, D / 2 - cope, L / 2 + 0.06, top + 0.07, D / 2 + 0.06);
+  for (const sx of [-1, 1]) sink.span('stone', sx > 0 ? L / 2 - cope : -L / 2 - 0.06, top - 0.34, -D / 2, sx > 0 ? L / 2 + 0.06 : -L / 2 + cope, top + 0.07, D / 2 - cope);
+  for (let x = -L / 2 + 1.2; x < L / 2 - 0.6; x += 1.2) {
+    sink.span('structureWood', x - 0.015, top + 0.071, D / 2 - cope, x + 0.015, top + 0.074, D / 2 + 0.06, { colour: rgb(0x2a2826), decor: true, fine: true });
+  }
+  // the wall's lower face from the bed to a little over the water: weed-dark and wet (the stone under the occlusion)
+  const wet = Math.min(top - 0.5, 1.1);
+  sink.quad('stone', [-L / 2 - 0.07, base, D / 2 + 0.07], [L / 2 + 0.07, base, D / 2 + 0.07], [L / 2 + 0.07, wet, D / 2 + 0.07], [-L / 2 - 0.07, wet, D / 2 + 0.07],
+    { decor: true, shadeAt: (p) => (p[1] > wet - 0.25 ? 0.7 : 0.5) });
+  // the fenders: timber posts on the face every 5 m, from the bed to the coping
+  for (let x = -L / 2 + 2.5; x < L / 2 - 1; x += 5) {
+    sink.span('structureWood', x - 0.14, base + 0.4, D / 2 + 0.06, x + 0.14, top - 0.1, D / 2 + 0.3, { colour: TIMBER_DARK, decor: true });
+  }
+  // two iron ladders down the face into the water
+  for (const lx of [-L * 0.28, L * 0.22]) {
+    for (const sx of [-1, 1]) sink.span('structureMetal', lx + sx * 0.22 - 0.025, base + 0.3, D / 2 + 0.08, lx + sx * 0.22 + 0.025, top + 0.9, D / 2 + 0.13, { colour: IRON, decor: true });
+    for (let y = base + 0.6; y < top; y += 0.3) sink.span('structureMetal', lx - 0.22, y - 0.015, D / 2 + 0.09, lx + 0.22, y + 0.015, D / 2 + 0.12, { colour: IRON, decor: true, fine: true });
+  }
+  // the bollards on the coping, every 8 m
+  for (let x = -L / 2 + 4; x < L / 2 - 2; x += 8) {
+    revolve(sink, 'structureMetal', x, D / 2 - cope / 2 + 0.02, [[0.2, top + 0.07], [0.2, top + 0.35], [0.14, top + 0.5], [0.22, top + 0.62], [0.2, top + 0.7], [0.0, top + 0.72]], 10,
+      { colour: IRON, decor: true });
+  }
+  // the movement record: the paved top a standable floor, in panels (a hull drives on from the land); the face and ends
+  // are its sides
+  const movement: SimpleCollisionShape[] = [];
+  const nx = Math.max(1, Math.round(L / 10)), nz = Math.max(1, Math.round(D / 7));
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    movement.push({ kind: 'obb', cx: -L / 2 + L * (i + 0.5) / nx, cz: -D / 2 + D * (j + 0.5) / nz, hw: L / nx / 2, hl: D / nz / 2, yaw: 0, y0: base, y1: top });
+  }
+  return { parts: sink.finish(), movement, tints: { stone: [0.92, 0.9, 0.88] } };
+};
+
+/**
+ * The slipway beside the quay: a ramp of setts on its granite apron, `width` across, running down along the piece's +z
+ * from its head `head` metres over the lowest ground to its toe `toe` under it (into the water), its kerbs along both
+ * sides, the weed on its lower third. Dressing: a hull drives up it as up the strand it lies on (the way out of the
+ * basin beside the quay).
+ */
+export const slipway: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(4, Number(ctx.params.length)), W = Math.max(2, Number(ctx.params.width));
+  const head = Number(ctx.params.head), toe = Number(ctx.params.toe);
+  const yAt = (z: number) => head + (toe - head) * (z + L / 2) / L;
+  const n = Math.max(2, Math.round(L / 1.5));
+  for (let k = 0; k < n; k++) {
+    const z0 = -L / 2 + L * k / n, z1 = -L / 2 + L * (k + 1) / n, y0 = yAt(z0), y1 = yAt(z1);
+    // the setts (counter-clockwise from above), the apron's sides down to the bed under them, the kerbs
+    const weed = (z0 + L / 2) / L > 0.66 ? 0.6 : 1;
+    sink.quad('stone', [-W / 2, y0, z0], [-W / 2, y1, z1], [W / 2, y1, z1], [W / 2, y0, z0], { decor: true, shade: weed });
+    for (const sx of [-1, 1]) {
+      const x = sx * W / 2;
+      const quad: Vec3[] = [[x, y0, z0], [x, y1, z1], [x, Math.min(y1, 0) - 0.6, z1], [x, Math.min(y0, 0) - 0.6, z0]];
+      sink.polygon('stone', sx > 0 ? quad.reverse() : quad, { decor: true });
+      sink.span('stone', x - 0.18, Math.min(y0, y1) - 0.05, z0, x + 0.18, Math.max(y0, y1) + 0.16, z1, { decor: true, shade: weed });
+    }
+  }
+  // the head's end down to the strand
+  sink.quad('stone', [W / 2, head, -L / 2], [W / 2, Math.min(head, 0) - 0.6, -L / 2], [-W / 2, Math.min(head, 0) - 0.6, -L / 2], [-W / 2, head, -L / 2], { decor: true });
+  return { parts: sink.finish(), tints: { stone: [0.92, 0.9, 0.88] } };
 };

@@ -162,9 +162,23 @@ export function archedFace(sink: PartSink, bucket: RegionalBucket, face: Face, r
     const um = (ua + ub) / 2;
     const k = holes.findIndex((h) => um > h.u - h.w / 2 && um < h.u + h.w / 2);
     if (k < 0) { sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, rect.y1), P(ua, rect.y1), emit); continue; }
-    const h = holes[k];
-    if (h.y0 > rect.y0 + 1e-4) sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, h.y0), P(ua, h.y0), emit);
-    const ya = Math.min(rect.y1, headAt(k, ua)), yb = Math.min(rect.y1, headAt(k, ub));
+    // (openings stacked in one column — a storey's window over the one below it, a window over a passage — the wall
+    // between each head and the next sill; until 2026-10-06 a column took its first opening only and the walls above
+    // stood blank, their windows' frames on solid render: the review of Frontier's Rathaus and Verdant's station)
+    const stack = holes.flatMap((h, j) => (um > h.u - h.w / 2 && um < h.u + h.w / 2 ? [j] : [])).sort((a, b) => holes[a].y0 - holes[b].y0);
+    let ya: number, yb: number;
+    if (stack.length > 1) {
+      ya = rect.y0; yb = rect.y0;
+      for (const j of stack) {
+        const sill = holes[j].y0;
+        if (sill > Math.max(ya, yb) + 1e-4 && sill < rect.y1) sink.quad(bucket, P(ua, ya), P(ub, yb), P(ub, sill), P(ua, sill), emit);
+        ya = Math.max(ya, Math.min(rect.y1, headAt(j, ua))); yb = Math.max(yb, Math.min(rect.y1, headAt(j, ub)));
+      }
+    } else {
+      const h = holes[k];
+      if (h.y0 > rect.y0 + 1e-4) sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, h.y0), P(ua, h.y0), emit);
+      ya = Math.min(rect.y1, headAt(k, ua)); yb = Math.min(rect.y1, headAt(k, ub));
+    }
     if (rect.y1 - Math.min(ya, yb) > 1e-4) {
       if (rect.y1 - ya < 1e-4) sink.polygon(bucket, [P(ua, ya), P(ub, yb), P(ub, rect.y1)], emit);
       else if (rect.y1 - yb < 1e-4) sink.polygon(bucket, [P(ua, ya), P(ub, yb), P(ua, rect.y1)], emit);
