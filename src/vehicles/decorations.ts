@@ -3292,6 +3292,11 @@ function keepOutHit(bb: THREE.Box3, discs: readonly DecorKeepOut[]): boolean {
   return false;
 }
 
+/** A packed load sits this far off the neighbour it packs against (m; round 4): touching, never interpenetrating. */
+const PACK_GAP = 0.012;
+/** How far from its slot's own station a load may move to pack against a neighbour (m; round 4). */
+const PACK_REACH = 0.6;
+
 /** Lashed cargo rides a little off square and off centre ("shifted in transit"): 2-7 degrees of yaw either way. */
 function transitYaw(rng: Rng): number {
   const sign = rng() < 0.5 ? -1 : 1;
@@ -3826,6 +3831,47 @@ export function* attachTankDecorationsSteps(
 
     // round 4: whip feet, roof-gun mounts, hatches and cupolas of each frame, and the decor equipment seated so far
     const keepOut: Record<DecorFrame, DecorKeepOut[]> = { hull: collectKeepOut(hullG), turret: collectKeepOut(turretG) };
+    // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
+    // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
+    // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
+    const seatedLoads: Record<DecorFrame, THREE.Box3[]> = { hull: [], turret: [] };
+    /**
+     * Stations where a load abuts a load already seated on `frame` (round 4): flush against each face of the nearest
+     * neighbours within PACK_REACH of the slot's own station (x0, z0), centred on the neighbour's face or flush with
+     * either end of it, PACK_GAP off it, nearest first. Each station is a function of the load's yaw, since a yawed
+     * footprint is wider; it returns the piece origin.
+     */
+    function packStations(frame: DecorFrame, parts: DecorPartList, x0: number, z0: number):
+      Array<(yaw: number) => [number, number]> {
+      const near = seatedLoads[frame]
+        .map((n) => ({ n, dist: Math.hypot((n.min.x + n.max.x) / 2 - x0, (n.min.z + n.max.z) / 2 - z0) }))
+        .filter((e) => e.dist < PACK_REACH)
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 3);
+      const out: Array<{ at: (yaw: number) => [number, number]; dist: number }> = [];
+      const origin = new THREE.Vector3();
+      for (const { n } of near) {
+        const ncx = (n.min.x + n.max.x) / 2, ncz = (n.min.z + n.max.z) / 2;
+        for (const [ax, sign] of [['x', -1], ['x', 1], ['z', -1], ['z', 1]] as const) {
+          for (const align of [0, -1, 1]) {
+            const at = (yaw: number): [number, number] => {
+              const e = placedBox(parts, origin, new THREE.Euler(0, yaw, 0));
+              if (ax === 'x') {
+                const x = sign < 0 ? n.min.x - PACK_GAP - e.max.x : n.max.x + PACK_GAP - e.min.x;
+                const z = align === 0 ? ncz - (e.min.z + e.max.z) / 2 : align < 0 ? n.min.z - e.min.z : n.max.z - e.max.z;
+                return [x, z];
+              }
+              const z = sign < 0 ? n.min.z - PACK_GAP - e.max.z : n.max.z + PACK_GAP - e.min.z;
+              const x = align === 0 ? ncx - (e.min.x + e.max.x) / 2 : align < 0 ? n.min.x - e.min.x : n.max.x - e.max.x;
+              return [x, z];
+            };
+            const [x, z] = at(0);
+            out.push({ at, dist: Math.hypot(x - x0, z - z0) });
+          }
+        }
+      }
+      return out.filter((e) => e.dist < PACK_REACH).sort((a, b) => a.dist - b.dist).map((e) => e.at);
+    }
     const keepClear = KEEP_CLEAR_HULL[spec.id] ?? [];
     function keepClearHit(bb: THREE.Box3, frame: DecorFrame): boolean {
       if (!keepClear.length) return false;
@@ -3956,6 +4002,7 @@ export function* attachTankDecorationsSteps(
       const receipt = attachment ? attachmentReceipt(parts, pos, rot, attachment) : null;
       ledger.push(bb);
       budget.tris += tris;
+      if (isLoadPiece(name)) seatedLoads[frame].push(bb.clone());
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const functional = FUNCTIONAL_KITS.has(name);
       for (const p of [...parts, ...(parts.coarse ?? [])]) { delete p.geo.userData.drapeRelief; delete p.geo.userData.drapeRest; }
@@ -4112,6 +4159,15 @@ export function* attachTankDecorationsSteps(
           // that used to hold one corner up now send the piece on to a flat stretch of deck.
           const soft = sagsOnSupport(name);
           const inward = -Math.sign(xs || 1);
+          // round 4: pack against a load already on the deck first (packStations), square to it
+          for (const station of packStations('hull', parts, xs, z0)) {
+            const yaw = transitYaw(slotRng) * 0.4;
+            const [px, pz] = station(yaw);
+            const seat = supportedSeat(hullP, px, pz, w, d, topFrom, 0.28, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+            if (!seat || !seat.n || seat.n.y < (casemate ? 0.8 : LOAD_MIN_NY)) continue;
+            if (commit(name, parts, 'hull', V(px, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
+              { seatY: seat.y })) return true;
+          }
           for (const dz of [0, -0.25, 0.28, -0.5, 0.14, -0.38]) {
             for (const dx of [0, inward * 0.16, inward * 0.32]) {
               const yaw = transitYaw(slotRng) + (args.spread ? (slotRng() - 0.5) * 0.8 : 0);
@@ -4469,6 +4525,22 @@ export function* attachTankDecorationsSteps(
         // up, and it rides a few degrees off square and a few centimetres off its station.
         const load = isLoadPiece(name), soft = sagsOnSupport(name);
         if (load) cands.push([0.36, -0.12], [-0.36, 0.1], [0.2, -0.46], [-0.16, -0.5], [0.42, 0.24], [-0.44, -0.36], [0.32, 0.3], [-0.06, -0.62]);
+        // round 4: a load first tries to pack against a load already on the roof (packStations), square to it
+        if (load && !casemate) {
+          for (const station of packStations('turret', parts, xBase, zBase)) {
+            const yaw = transitYaw(slotRng) * 0.4;
+            const [x, z] = station(yaw);
+            if (z > zBase + 0.1) continue; // packed kit stays aft: the roof's front is hatches and sights
+            if (Math.abs(x) < 0.24 && z > 0) continue; // gun corridor
+            if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
+              const pivot = turretG.getObjectByName('rig_gun')?.position;
+              if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
+            }
+            const seat = supportedSeat(turP, x, z, w, d, 3.5, spread, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
+            if (commit(name, parts, 'turret', V(x, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+          }
+        }
         for (const [dx, dz] of cands) {
           const yaw = load ? transitYaw(slotRng) : 0;
           const jx = load ? (slotRng() - 0.5) * 0.06 : 0, jz = load ? (slotRng() - 0.5) * 0.06 : 0;
@@ -4506,6 +4578,14 @@ export function* attachTankDecorationsSteps(
           // Round 3: loads on the bustle take a supported seat (see supportedSeat), sweeping the deck sideways too.
           const soft = sagsOnSupport(name), w = bb.max.x - bb.min.x;
           const toward = -Math.sign(x || 1);
+          // round 4: pack against a load already on the bustle first (packStations), square to it
+          for (const station of packStations('turret', parts, x, -(sweepR * 0.55 + 0.3) - d * 0.2)) {
+            const yaw = transitYaw(slotRng) * 0.4;
+            const [px, z] = station(yaw);
+            const seat = supportedSeat(turP, px, z, w, d, 3.5, 0.2, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
+            if (commit(name, parts, 'turret', V(px, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+          }
           for (const back of [0.1, 0.3, 0.55, 0.75]) {
             for (const dx of [0, toward * 0.14, -toward * 0.14, toward * 0.28]) {
               const yaw = transitYaw(slotRng);
