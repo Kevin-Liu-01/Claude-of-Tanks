@@ -2787,6 +2787,21 @@ function turnedRockHull(local: ArrayLike<number>, x: number, z: number, sc: numb
   return pts;
 }
 
+/** How far a point stands inside a convex footprint (x, z pairs, either winding): the least distance in from its edges,
+ *  negative outside. */
+function convexInset(pts: number[], px: number, pz: number): number {
+  let area = 0;
+  for (let i = 0, n = pts.length; i < n; i += 2) { const j = (i + 2) % n; area += pts[i] * pts[j + 1] - pts[j] * pts[i + 1]; }
+  const side = area >= 0 ? 1 : -1;
+  let least = Infinity;
+  for (let i = 0, n = pts.length; i < n; i += 2) {
+    const j = (i + 2) % n, ex = pts[j] - pts[i], ez = pts[j + 1] - pts[i + 1], len = Math.hypot(ex, ez);
+    if (len < 1e-9) continue;
+    least = Math.min(least, (side * (ex * (pz - pts[i + 1]) - ez * (px - pts[i])) / len));
+  }
+  return least;
+}
+
 /** How far two convex footprints (x, z pairs) reach into each other (separating axes: the least overlap over every
  *  edge normal of both) and the axis of that least overlap, turned to point from b to a (the way a moves to clear b);
  *  null when they are apart. */
@@ -5748,19 +5763,29 @@ ${snowCap ? `
     return null;
   }
   // The trees lane (2026-10-06, the gauntlet's wave 179 on Monsoon Ridge: "a tree growing out of a boulder"): the trunks
-  // the vegetation pass planted before the rocks — no boulder stands over one (the landform boulders keep further off,
-  // placeLandformBoulders). Read once, lazily; none without a vegetation.
-  let rockTrunks: Array<{ x: number; z: number; r: number }> | null = null;
-  function rockOnTrunk(x: number, z: number, reach: number): boolean {
-    rockTrunks ??= (vegetation?.treeObstacles ?? []).map((tree) => ({
-      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
-      r: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2,
-    }));
-    // a trunk "grows out of" a boulder when it stands inside the boulder's footprint (its centre within the hull's reach,
-    // 0.2 m in from its edge); a boulder beside a trunk, touching it, stays — the forest floor's own
-    const d = Math.max(0.2, reach - 0.2);
-    for (const t of rockTrunks) {
-      if (Math.abs(x - t.x) < d && Math.abs(z - t.z) < d && Math.hypot(x - t.x, z - t.z) < d) return true;
+  // the vegetation pass planted before the rocks, on an 8 m grid — no boulder stands over one (the landform boulders keep
+  // further off, placeLandformBoulders). Read once, lazily; none without a vegetation.
+  let rockTrunks: Map<number, Array<{ x: number; z: number }>> | null = null;
+  const trunkCell = (v: number): number => Math.floor(v / 8);
+  const trunkKey = (cx: number, cz: number): number => (cx + 512) * 1024 + (cz + 512);
+  function rockOnTrunk(x: number, z: number, reach: number, footprint: number[]): boolean {
+    if (!rockTrunks) {
+      rockTrunks = new Map();
+      for (const tree of vegetation?.treeObstacles ?? []) {
+        const tx = (tree.min[0] + tree.max[0]) / 2, tz = (tree.min[2] + tree.max[2]) / 2, key = trunkKey(trunkCell(tx), trunkCell(tz));
+        let list = rockTrunks.get(key);
+        if (!list) rockTrunks.set(key, list = []);
+        list.push({ x: tx, z: tz });
+      }
+    }
+    // a trunk "grows out of" a boulder when it stands inside the boulder's turned footprint, 0.2 m in from its edge; a
+    // boulder beside a trunk, touching it, stays — the forest floor's own
+    for (let cx = trunkCell(x - reach); cx <= trunkCell(x + reach); cx++) {
+      for (let cz = trunkCell(z - reach); cz <= trunkCell(z + reach); cz++) {
+        for (const t of rockTrunks.get(trunkKey(cx, cz)) ?? []) {
+          if (Math.abs(t.x - x) < reach && Math.abs(t.z - z) < reach && convexInset(footprint, t.x, t.z) >= 0.2) return true;
+        }
+      }
     }
     return false;
   }
@@ -5811,8 +5836,8 @@ ${snowCap ? `
       footprint = turnedRockHull(hull, x, z, sc, yawR);
     }
     // (the trees lane: a boulder standing on a trunk where it came to rest is left out — its draws taken, its count kept,
-    // so every later placement keeps its seat)
-    if (rockOnTrunk(x, z, reach)) return true;
+    // so every later placement keeps its seat; an authored cover beat's stone keeps its seat, the maps lane's to move)
+    if (!tactical && rockOnTrunk(x, z, reach, footprint)) return true;
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(sc, scaleY, sc));
