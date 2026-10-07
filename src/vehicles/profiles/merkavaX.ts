@@ -660,6 +660,15 @@ function addTrophySuite(P: TankBuilderPort, frame: Frame, configuration: TrophyC
     }
     const launcherZ=(frontZ+rearZ)*.5;
     put('turretDetail',box(.28,.20,.36),side*(sideX-.16),roof+.02,launcherZ);
+    if(configuration==='mk4'){
+      // 2026-10-07 (tank-accessories round 4, wave 217: "the six-tube launcher box hangs in mid-air above the
+      // commander's MG, with background visible between them"): the outboard launcher stood 0.36 m over the sloping
+      // turret side between the radar pedestals. A pedestal now carries it down into the side armour (its foot
+      // embedded where the side falls to 2.11-2.24) and a cantilever arm ties its inboard edge back to the roof
+      // shoulder; both stay 0.8 m outboard of the commander's gun and its elevation arc.
+      put('turretDetail',box(.14,.40,.24),side*1.52,roof-.25,launcherZ);
+      put('turretDetail',box(.28,.07,.16),side*1.37,roof-.115,launcherZ);
+    }
     for(let row=0;row<2;row++)for(let i=0;i<3;i++)
       put('turretDark',cylZ(.033,.20,12),side*(sideX-.16)+(i-1)*.075,roof+.055+row*.075,launcherZ+.14,0,side*.12);
   }

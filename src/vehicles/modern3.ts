@@ -3419,9 +3419,10 @@ export function buildBradley(P: Modern3BuilderPort) {
                                                                                   //   step, not a half-lit boundary)
       // pintle M240 stowed on the bustle rail (§B3 MANDATORY MG — kept inside
       // the print's own 2.9-band so the heightM p95 budget is untouched)
+      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the bustle stowage cloth (feed-side collision census).
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mag', scale: 0.85, tone: 'two-tone', elev: 0.03,
-        ammo: true, rotation: [0, -0.45, 0], seed: 12,
+        ammo: true, rotation: [0, -0.45, 0], seed: 12, feed: 'right',
       });
       mg.position.set(0.15, 0.31, -0.68);                                         // (90-ladder y 0.52 -> 0.31: the MG
       P.turretG.add(mg);                                                          //   crown at 2.585 owned the front

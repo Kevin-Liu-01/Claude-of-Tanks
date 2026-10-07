@@ -330,8 +330,9 @@ function sightHousing(P: TankBuilderPort, d: Datum, x: number, bottom: number,
 function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remote = false,
   lengthScale = 1, heightScale = 1): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
+  // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76,
-    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905 });
+    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
@@ -1113,8 +1114,11 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   equip(P,d,'turretDetail',cylY(.20,.22,.16,24),-.301,2.74,-.433);
   panorama(P,d,-.301,2.817,-.433);
   sightHousing(P,d,-.785,2.362,1.47,.54,.42);
-  equip(P,d,'turretDetail',cylY(.075,.10,.21,20),.965,2.81,-.15);
-  mg(P,d,.965,2.91,-.15,false,2.10,.82);
+  // 2026-10-07 (tank-accessories round 4): round 3's true-scale MAG grew its butt 4.2 cm (local) aft, which the 2.10
+  // length stretch carried to 7 cm and put the source rear station at -0.527 (source -0.455). The mount moves 4.7 cm
+  // forward and the stretch drops to 1.963, so the gun spans the source stations again (rear -0.455, muzzle 0.92).
+  equip(P,d,'turretDetail',cylY(.075,.10,.21,20),.965,2.81,-.103);
+  mg(P,d,.965,2.91,-.103,false,1.963,.82);
   a7CurvedWhip(P,d,-1.00,3.113,5.56);
   a7CurvedWhip(P,d,1.055,3.119,5.35);
   for(const x of [-1.00,1.055]) equip(P,d,'turretDetail',cylY(.037,.055,.48,12),x,2.89,-1.84);
