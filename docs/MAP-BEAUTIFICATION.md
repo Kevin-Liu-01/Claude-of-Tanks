@@ -7834,6 +7834,25 @@ base at 180 m and the overcast's forward lobe at 0.45 for the sun's patch, a sto
 the tower warp a lean rather than a twist, the cirrus dropped. The rule-v3 cost runs as four stagings (Monsoon high,
 Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establishing.
 
+**Rounds 7–8 and the cost (2026-10-07, after the scratchpad wipe; priced against the PR head 72584099e).**
+- *Merged on the PR head* (424d324eb): B prices the clouds alone. The PR head had moved Titan Gorge to fair-weather
+  cumulus (Monument Valley), so the closed-deck receipt now derives its closed decks from the presets (Whiteout).
+- *Wave 235* (Monsoon, Desert, Whiteout, Titan Gorge on 424d324eb) passed: sky +1.25 (4.00 → 5.25), mean +0.20, the four
+  Whiteout views AMATEUR → PLAUSIBLE.
+- *Round 7*: rain under a storm takes the storm's grey light (no blue streak composited in front of a tower).
+- *Round 8 — a broken deck covers the sky its map authors.* A twin of the medium (`cloudDeckCover.selftest`: cl2Weather,
+  cl2Cell, cl2Shell and cl2Media without the detail over the real weather bake and a port of the GPU shape bake) measures
+  the share of the sky dome whose optical depth passes 1 from the ground. The broken decks covered about half their
+  coverage (Frosthollow 0.40 of 0.86, the fjord 0.21 of 0.62, Railyard 0.78 of 0.92): the shell's core 0.5 under the full
+  shape erosion kept half of what the cover admitted. Their shell is now near the closed deck's (core 0.8, ramp 0.45,
+  erosion 0.85) under a cover law calibrated on the dome: Frosthollow 0.85, the fjord 0.63, Railyard 0.95.
+- *The cost (rule v3, H1: 424d324eb, high, bots hidden).* Monsoon's towers +1.7 / +3.3 / +3.1 ms GPU (chase /
+  establishing / sky-w), Whiteout's GPU at or under the old layer's; the main thread +0.3 to +0.6 ms a frame on both. The
+  first answer (c4b958ed0): one auxiliary pass a frame at most (the cascades' bands of twice the rows every 4 and 8 frames,
+  the shade every 4, each on its own phase: 0.66 a frame against about 2), the far cascade read only where it counts, the
+  clear prefix of a run skipped by the pre-test (to 28 km). The march's light budget is exposed as QA knobs (93dc3157a) for
+  the hardware to price before any becomes the law.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
