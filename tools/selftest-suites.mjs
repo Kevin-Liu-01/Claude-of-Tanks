@@ -1278,7 +1278,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/beachedBoat.selftest.mjs',
     'src/world/maps/boatHulls.selftest.mjs',
     'src/world/maps/cartKit.selftest.mjs',
-    'src/world/maps/drawnGeometryShape.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
@@ -1414,6 +1413,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
+    // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
+    'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
     'tools/wreck-build-profile.selftest.mjs',
     'tools/wreck-paint-bench.selftest.mjs',

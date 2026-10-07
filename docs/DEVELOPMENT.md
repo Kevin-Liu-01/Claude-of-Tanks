@@ -413,7 +413,8 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
 
 - `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, every drawn geometry's
   attributes object still in V8's fast mode (2026-10-07, `src/world/geometryStreams.test-support.mjs`: no
-  `deleteAttribute` on what the renderer draws), machine-gun mounts (with the
+  `deleteAttribute` on what the renderer draws; the maps' walk rides on `collisionManifestDrift`'s Node world build
+  and `drawnGeometryShape` holds the control and the garages), machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
   quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
