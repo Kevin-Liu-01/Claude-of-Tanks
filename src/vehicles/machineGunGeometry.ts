@@ -11,16 +11,34 @@ import * as THREE from 'three';
 import { box, cylX, cylY, cylZ, torus, xform } from './factoryGeometry.ts';
 import { block, latheY, moldedBox, place, roundBar, sweptTube } from './accessoryPrimitives.ts';
 
-// rec = [w,h,d] receiver mass.
+// rec = [w,h,d] receiver datum: it fixes the bore height, the trunnion station, the muzzle point and the can/tray
+// stations, so remote stations keep their published pivots and muzzles. body = [w,h] is the drawn receiver section
+// (feed cover included) and bore the share of that height below the bore axis; grip is the firing control at the back
+// plate ('spade' grips and the butterfly trigger, or the GPMG's 'pistol' grip and butt).
+// 2026-10-07 (tank-accessories round 3, true scale): the critics read the GPMGs as "a block with a pencil-thin barrel"
+// (the 100 x 50 mm block at s = 0.78 was a brick, and the unsleeved barrels floated 100 mm ahead of the receiver) and
+// the NSVT/Kord barrels as cannon (48 and 44 mm tubes on 12.7 mm guns). Bodies now carry the real sections (an M2HB
+// receiver is taller than it is wide; a MAG is a slim 60 x 90 mm box with its feed cover), the 12.7 mm barrels are
+// 33-34 mm with a heavier breech, every barrel is carried from the receiver face, and the GPMGs carry gas cylinder,
+// handle, pistol grip and butt.
 export const MG_CLASSES = {
-  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning M2HB' },
-  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning-pattern HMG' },
-  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'DShK-pattern HMG' },
-  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'NSVT-pattern HMG' },
-  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], barrelR: 0.0220, barrelL: 0.57, jacket: 'ribbed', flashR: 0.033, flashL: 0.10, caliber: 12.7, name: 'Kord-pattern HMG' },
-  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06, caliber: 7.62, name: 'Browning-derived GPMG' },
-  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], barrelR: 0.0125, barrelL: 0.47, jacket: 'ribbed', flashR: 0.018, flashL: 0.06, caliber: 7.62, name: 'MAG 58 GPMG' },
+  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.108, 0.126], bore: 0.48, grip: 'spade', sight: 'leaf', barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, gas: false, handle: false, caliber: 12.7, name: 'Browning M2HB' },
+  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.108, 0.126], bore: 0.48, grip: 'spade', sight: 'leaf', barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, gas: false, handle: false, caliber: 12.7, name: 'Browning-pattern HMG' },
+  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], body: [0.104, 0.118], bore: 0.46, grip: 'spade', sight: 'ring', barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, gas: true,  handle: false, caliber: 12.7, name: 'DShK-pattern HMG' },
+  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], body: [0.096, 0.124], bore: 0.42, grip: 'spade', sight: 'leaf', barrelR: 0.0170, barrelL: 0.55, jacket: 'none',   flashR: 0.028, flashL: 0.10, gas: true,  handle: true,  caliber: 12.7, name: 'NSVT-pattern HMG' },
+  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], body: [0.098, 0.124], bore: 0.42, grip: 'spade', sight: 'leaf', barrelR: 0.0170, barrelL: 0.57, jacket: 'ribbed', flashR: 0.030, flashL: 0.10, gas: true,  handle: true,  caliber: 12.7, name: 'Kord-pattern HMG' },
+  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], body: [0.074, 0.112], bore: 0.42, grip: 'pistol', sight: 'leaf', barrelR: 0.0120, barrelL: 0.46, jacket: 'none',  flashR: 0.017, flashL: 0.06, gas: true,  handle: true,  caliber: 7.62, name: 'Browning-derived GPMG' },
+  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], body: [0.076, 0.114], bore: 0.42, grip: 'pistol', sight: 'leaf', barrelR: 0.0125, barrelL: 0.47, jacket: 'ribbed', flashR: 0.018, flashL: 0.06, gas: true, handle: true,  caliber: 7.62, name: 'MAG 58 GPMG' },
 };
+
+/**
+ * True-scale floor on the effective class scale (round 3, 2026-10-07). Call sites authored GPMGs from 0.37 to 0.66 of
+ * the class and heavy guns from 0.49 to 0.82 (a 7.62 mm gun with a 9 mm barrel: the critics' "toy-scale" cupola
+ * guns). A fitting below the floor is drawn at it; a scale under MG_MARKER_SCALE is a deliberate census marker inside
+ * authored stock (K2B) and stays as authored. The A6M RCWS's accepted 0.72 M2 sits on the heavy floor.
+ */
+export const MG_TRUE_SCALE_FLOOR = { gpmg: 0.60, heavy: 0.72 } as const;
+const MG_MARKER_SCALE = 0.25;
 
 export type MgClassKey = keyof typeof MG_CLASSES;
 export type MgClassDefinition = (typeof MG_CLASSES)[MgClassKey];
@@ -44,6 +62,8 @@ export interface PintleOptions {
   shield?: boolean | string;
   barrelBridge?: boolean;
   ring?: boolean | { r?: number; stubs?: number };
+  /** A remote station's weapon: a solenoid housing at the back plate instead of crew grips or a butt. */
+  remote?: boolean;
 }
 
 export interface PintleLayout {
@@ -68,6 +88,13 @@ export interface PintleLayout {
   readonly ammo: boolean;
   readonly barrelBridge: boolean;
   readonly ring: { r?: number; stubs?: number } | null;
+  /** Drawn receiver section and its vertical span (the bore axis is trunY). */
+  readonly bodyW: number;
+  readonly bodyH: number;
+  readonly bodyBottom: number;
+  readonly remote: boolean;
+  /** The caller's scale before the true-scale floor (cls.s x scale). */
+  readonly authoredScale: number;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
@@ -78,7 +105,9 @@ function aim(geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGe
 export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts): PintleLayout {
   const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
   const cls = MG_CLASSES[classKey];
-  const s = (opts.scale || 1) * cls.s;
+  const authoredScale = (opts.scale || 1) * cls.s;
+  const floor = cls.caliber > 10 ? MG_TRUE_SCALE_FLOOR.heavy : MG_TRUE_SCALE_FLOOR.gpmg;
+  const s = authoredScale < MG_MARKER_SCALE ? authoredScale : Math.max(authoredScale, floor);
   const tone = opts.tone || 'two-tone';
   // Weapons and ammunition stay neutral gunmetal. Tone controls only the support/shield finish; letting the host
   // camouflage colour receiver caps and ammo cans produced miniature green/tan guns.
@@ -87,37 +116,52 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
   const mount = opts.mount === 'external-cradle' ? 'external-cradle' : 'pintle';
   const recY = mount === 'external-cradle' ? rh / 2 : colTop + 0.080 * s + rh / 2;
   const recZ = 0.06 * s;
+  const trunY = recY + 0.004;
+  const bodyW = cls.body[0] * s, bodyH = cls.body[1] * s;
+  // An external cradle bears the receiver's underside at the fitting origin (t90AwXMachineGun's source rails).
+  const bodyBottom = mount === 'external-cradle' ? 0 : trunY - bodyH * cls.bore;
   return {
     classKey, cls, s, tone,
     weaponSlot: 'dark',
     supportSlot: tone === 'pale' ? 'detail' : 'dark',
     ammoSlot: opts.ammoSlot || 'gunmetalAmmo',
     parts, rw, rh, rd, colTop, recY, recZ,
-    trunY: recY + 0.004,
+    trunY,
     trunZ: recZ + rd / 2,
     shieldVariant: opts.shield === true ? 'standard' : opts.shield,
     mount,
     ammo: opts.ammo !== false,
     barrelBridge: Boolean(opts.barrelBridge),
     ring: !opts.ring ? null : typeof opts.ring === 'object' ? opts.ring : {},
+    bodyW, bodyH, bodyBottom,
+    remote: Boolean(opts.remote),
+    authoredScale,
   };
 }
 
 export function addPintleMount(context: PintleLayout): void {
   if (context.mount === 'external-cradle') return;
-  const { colTop, parts, s, supportSlot, weaponSlot } = context;
-  // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
-  // load path. The old single post made every gun look like a block on a rod.
+  const { bodyBottom, bodyW, colTop, parts, s, supportSlot, trunY, weaponSlot } = context;
+  // Flanged bearing, spindle and yoke bridge form one visible load path. The old single post made every gun look like
+  // a block on a rod.
   const colH = 0.16 * s;
   parts.add(supportSlot, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
   parts.add(weaponSlot, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
   parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
   parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
+  // 2026-10-07 (round 3): a cradle that carries the gun. The fork arms used to stand inside the receiver's walls; the
+  // cheeks now clasp the receiver from outside, a cradle floor runs under it, and the trunnion pin passes through
+  // both cheeks and the receiver's lugs (the decor stow pivot), with proud pin heads and the elevation lock lever.
+  const cx = bodyW / 2 + 0.008 * s;
+  const cheekBottom = colTop + 0.028 * s, cheekTop = trunY + 0.010 * s;
   for (const side of [-1, 1]) {
-    parts.add(weaponSlot, box(0.020 * s, 0.095 * s, 0.105 * s),
-      side * 0.052 * s, colTop + 0.070 * s, 0.045 * s, side * 0.05, 0, 0);
+    parts.add(weaponSlot, block(0.012 * s, cheekTop - cheekBottom, 0.15 * s), side * cx, (cheekTop + cheekBottom) / 2, 0.035 * s);
+    parts.add(weaponSlot, cylX(0.016 * s, 0.008 * s, 10), side * (cx + 0.009 * s), colTop + 0.105 * s, 0.065 * s);
   }
-  parts.add(weaponSlot, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
+  parts.add(weaponSlot, block(2 * cx + 0.012 * s, 0.010 * s, 0.15 * s), 0, Math.max(colTop + 0.04 * s, bodyBottom - 0.005 * s), 0.035 * s);
+  parts.add(weaponSlot, cylX(0.009 * s, 2 * cx + 0.026 * s, 8), 0, colTop + 0.105 * s, 0.065 * s);
+  parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
+    cx + 0.013 * s, colTop + 0.075 * s, -0.01 * s);
 }
 
 // 2026-10-05 (tank-accessories lane): the Browning family keeps its load path, its envelope and its muzzle point;
@@ -138,37 +182,64 @@ function barrelLathe(profile: ReadonlyArray<readonly [number, number]>, segments
 }
 
 export function addPintleReceiver(context: PintleLayout): void {
-  const { parts, rd, recY, recZ, rh, rw, s, weaponSlot } = context;
-  const backZ = recZ - rd / 2;
-  const coverY = recY + rh / 2;
-  // pressed receiver; the chamfered long edges carry a highlight down the gun
-  parts.add(weaponSlot, receiverShell(rw, rh, rd, Math.min(rw, rh) * 0.14), 0, recY, recZ);
-  // hinged feed cover over the front of the receiver, its hinge pin forward and its latch step aft
-  parts.add(weaponSlot, receiverShell(rw * 0.92, 0.018 * s, rd * 0.6, 0.006 * s), 0, coverY + 0.009 * s, recZ + rd * 0.13);
-  parts.add(weaponSlot, block(rw * 0.86, 0.012 * s, rd * 0.26), 0, coverY + 0.006 * s, recZ - rd * 0.3);
-  parts.add(weaponSlot, roundBar([-rw * 0.44, coverY + 0.01 * s, recZ + rd * 0.43], [rw * 0.44, coverY + 0.01 * s, recZ + rd * 0.43],
+  const { bodyBottom, bodyH, bodyW, cls, parts, rd, recZ, remote, s, trunY, weaponSlot } = context;
+  const backZ = recZ - rd / 2, frontZ = recZ + rd / 2;
+  // the receiver box (its lower 84 %) and the feed cover over it; the chamfered long edges carry a highlight
+  const boxH = bodyH * 0.84, coverH = bodyH - boxH;
+  const coverY = bodyBottom + boxH;
+  parts.add(weaponSlot, receiverShell(bodyW, boxH, rd, Math.min(bodyW, boxH) * 0.12), 0, bodyBottom + boxH / 2, recZ);
+  // hinged feed cover over the front 60 %, its hinge pin forward; the rear top plate a step lower with the latch
+  parts.add(weaponSlot, receiverShell(bodyW * 0.94, coverH, rd * 0.6, coverH * 0.4), 0, coverY + coverH / 2, recZ + rd * 0.17);
+  parts.add(weaponSlot, block(bodyW * 0.86, coverH * 0.55, rd * 0.36), 0, coverY + coverH * 0.275, recZ - rd * 0.3);
+  parts.add(weaponSlot, roundBar([-bodyW * 0.5, coverY + coverH * 0.45, recZ + rd * 0.45], [bodyW * 0.5, coverY + coverH * 0.45, recZ + rd * 0.45],
     0.0055 * s, 6));
-  // the feed tray step where the belt enters the receiver
-  parts.add(weaponSlot, block(0.024 * s, rh * 0.34, 0.07 * s), -rw / 2 - 0.01 * s, recY + rh * 0.2, recZ + rd * 0.16);
-  // side plate and the slide's charging handle with its knob
-  parts.add(weaponSlot, block(0.016 * s, rh * 0.66, rd * 0.52), rw / 2 + 0.008 * s, recY, recZ - 0.025 * s);
-  parts.add(weaponSlot, block(0.03 * s, 0.017 * s, 0.075 * s), -rw / 2 - 0.016 * s, recY + 0.018 * s, recZ - 0.015 * s);
-  parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.011 * s, 0], [0.012 * s, 0.014 * s], [0.0005, 0.016 * s]], 6),
-    0, 0, 0, 0, 0, Math.PI / 2), -rw / 2 - 0.031 * s, recY + 0.018 * s, recZ - 0.045 * s);
-  // armoured back plate (buffer housing), looped spade grips and the butterfly trigger between them
-  parts.add(weaponSlot, moldedBox(rw * 0.72, rh * 0.58, 0.05 * s, 0.008 * s, 1, 0.005 * s), 0, recY - 0.005 * s, backZ - 0.025 * s);
+  parts.add(weaponSlot, block(bodyW * 0.3, coverH * 0.8, 0.016 * s), 0, coverY + coverH * 0.4, recZ - rd * 0.12);
+  // the feedway on the can side where the belt enters, and the side plates' riveted trunnion lugs at the front
+  parts.add(weaponSlot, block(0.022 * s, bodyH * 0.3, 0.075 * s), -bodyW / 2 - 0.009 * s, trunY + bodyH * 0.12, recZ + rd * 0.16);
   for (const side of [-1, 1]) {
-    parts.add(weaponSlot, sweptTube([
-      [side * 0.03 * s, recY + 0.012 * s, backZ - 0.045 * s],
-      [side * 0.042 * s, recY + 0.004 * s, backZ - 0.1 * s],
-      [side * 0.042 * s, recY - 0.034 * s, backZ - 0.112 * s],
-      [side * 0.03 * s, recY - 0.04 * s, backZ - 0.05 * s],
-    ], 0.0085 * s, 4, 6));
+    parts.add(weaponSlot, block(0.008 * s, bodyH * 0.55, rd * 0.18), side * (bodyW / 2 + 0.003 * s), bodyBottom + bodyH * 0.36, frontZ - rd * 0.1);
   }
-  parts.add(weaponSlot, block(0.03 * s, 0.026 * s, 0.012 * s), 0, recY - 0.012 * s, backZ - 0.07 * s);
-  // rear leaf sight on the cover and the front post
-  parts.add(weaponSlot, block(0.044 * s, 0.045 * s, 0.018 * s), 0, coverY + 0.030 * s, recZ - rd * 0.22);
-  parts.add(weaponSlot, block(0.012 * s, 0.020 * s, 0.020 * s), 0, coverY + 0.022 * s, recZ + rd * 0.28);
+  // the charging handle and its slide on the side away from the can
+  parts.add(weaponSlot, block(0.010 * s, bodyH * 0.22, rd * 0.42), bodyW / 2 + 0.004 * s, trunY - bodyH * 0.05, recZ - 0.02 * s);
+  parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.011 * s, 0], [0.012 * s, 0.026 * s], [0.0005, 0.03 * s]], 6),
+    0, 0, 0, 0, 0, -Math.PI / 2), bodyW / 2 + 0.008 * s, trunY - bodyH * 0.05, recZ + rd * 0.12);
+  // armoured back plate (buffer housing)
+  parts.add(weaponSlot, moldedBox(bodyW * 0.8, bodyH * 0.62, 0.05 * s, 0.008 * s, 1, 0.005 * s), 0, bodyBottom + bodyH * 0.42, backZ - 0.025 * s);
+  if (remote) {
+    // a remote station fires through a solenoid housing and a cable gland, never crew grips
+    parts.add(weaponSlot, block(bodyW * 0.62, bodyH * 0.42, 0.05 * s), 0, bodyBottom + bodyH * 0.36, backZ - 0.07 * s);
+    parts.add(weaponSlot, cylZ(0.009 * s, 0.03 * s, 8), bodyW * 0.18, bodyBottom + bodyH * 0.3, backZ - 0.105 * s);
+  } else if (cls.grip === 'pistol') {
+    // the GPMG's pistol grip and trigger guard under the receiver's rear third, and its butt
+    const gz = backZ + rd * 0.2;
+    parts.add(weaponSlot, place(block(0.024 * s, 0.085 * s, 0.034 * s), 0, 0, 0, 0.32, 0, 0), 0, bodyBottom - 0.036 * s, gz - 0.012 * s);
+    parts.add(weaponSlot, sweptTube([[0, bodyBottom + 0.002 * s, gz + 0.07 * s], [0, bodyBottom - 0.026 * s, gz + 0.062 * s],
+      [0, bodyBottom - 0.03 * s, gz + 0.02 * s], [0, bodyBottom - 0.012 * s, gz + 0.004 * s]], 0.0035 * s, 4, 6));
+    // the butt: a slim wrist off the buffer, then the stock dropping to its butt plate
+    parts.add(weaponSlot, block(bodyW * 0.46, bodyH * 0.42, 0.04 * s), 0, trunY - bodyH * 0.06, backZ - 0.068 * s);
+    parts.add(weaponSlot, place(moldedBox(bodyW * 0.6, 0.1 * s, bodyH * 0.86, 0.01 * s, 1, 0.006 * s), 0, 0, 0, Math.PI / 2 - 0.12, 0, 0),
+      0, trunY - bodyH * 0.24, backZ - 0.13 * s);
+    parts.add(weaponSlot, block(bodyW * 0.66, bodyH * 0.98, 0.012 * s), 0, trunY - bodyH * 0.31, backZ - 0.183 * s);
+  } else {
+    // looped spade grips and the butterfly trigger between them
+    for (const side of [-1, 1]) {
+      parts.add(weaponSlot, sweptTube([
+        [side * 0.03 * s, trunY + 0.008 * s, backZ - 0.045 * s],
+        [side * 0.042 * s, trunY, backZ - 0.1 * s],
+        [side * 0.042 * s, trunY - 0.038 * s, backZ - 0.112 * s],
+        [side * 0.03 * s, trunY - 0.044 * s, backZ - 0.05 * s],
+      ], 0.0085 * s, 4, 6));
+    }
+    parts.add(weaponSlot, block(0.03 * s, 0.026 * s, 0.012 * s), 0, trunY - 0.016 * s, backZ - 0.07 * s);
+  }
+  // rear leaf sight on the cover and its front post; the DShK carries its spider-web AA ring sight on a post
+  const coverTop = coverY + coverH;
+  parts.add(weaponSlot, block(0.044 * s, 0.040 * s, 0.018 * s), 0, coverTop + 0.018 * s, recZ - rd * 0.22);
+  parts.add(weaponSlot, block(0.012 * s, 0.020 * s, 0.020 * s), 0, coverTop + 0.008 * s, recZ + rd * 0.28);
+  if (cls.sight === 'ring') {
+    parts.add(weaponSlot, block(0.008 * s, 0.045 * s, 0.008 * s), 0, coverTop + 0.0225 * s, frontZ + 0.02 * s);
+    parts.add(weaponSlot, place(torus(0.04 * s, 0.0035 * s, 16, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, coverTop + 0.075 * s, frontZ + 0.02 * s);
+  }
 }
 
 /** Barrel support, fins or ribs as one lathe profile (radius, station) from the trunnion forward. */
@@ -226,34 +297,34 @@ function muzzleDeviceProfile(classKey: string, r0: number, fr: number, fl: numbe
 export function addPintleBarrel(context: PintleLayout): void {
   const { classKey, cls, parts, s, trunY, trunZ, weaponSlot } = context;
   const r0 = cls.barrelR * s;
-  // Barrel group stays collinear with the receiver at the front trunnion.
   const jacket = barrelJacketProfile(cls.jacket, r0, s);
   if (jacket) parts.add(weaponSlot, aim(barrelLathe(jacket, cls.jacket === 'fins' ? 10 : 12), 0), 0, trunY, trunZ);
-  else if (context.barrelBridge) {
-    // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
-    // of the receiver.  Let callers request the missing breech-to-barrel run
-    // without changing the certified silhouettes of existing fittings.
-    parts.add(weaponSlot, aim(cylZ(r0 * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
+  else {
+    // 2026-10-07 (round 3): every barrel is carried from the receiver face. Unsleeved classes (the GPMGs, the NSVT)
+    // used to start their barrel 100 mm ahead of the receiver unless a caller asked for `barrelBridge`, so 107 fleet
+    // guns showed a floating tube; the barrel nut, gas block seat and chamber now run that gap on every class.
+    parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.6, 0], [r0 * 1.6, 0.032 * s], [r0 * 1.32, 0.042 * s], [r0 * 1.24, 0.1 * s + 0.002]], 10), 0),
+      0, trunY, trunZ);
   }
   const bl = cls.barrelL * s;
   const fl = cls.flashL * s;
-  parts.add(weaponSlot, aim(cylZ(r0, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(barrelLathe(muzzleDeviceProfile(classKey, r0, cls.flashR * s, fl), 12), 0.10 * s + bl), 0, trunY, trunZ);
+  // a heavier breech third, a short taper, then the barrel to the muzzle device
+  parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.12, 0], [r0 * 1.12, bl * 0.3], [r0 * 0.95, bl * 0.4], [r0 * 0.95, bl]], 10), 0.10 * s),
+    0, trunY, trunZ);
+  parts.add(weaponSlot, aim(barrelLathe(muzzleDeviceProfile(classKey, r0 * 0.95, cls.flashR * s, fl), 12), 0.10 * s + bl), 0, trunY, trunZ);
   parts.add(weaponSlot, aim(cylZ(r0 * 0.55, 0.010, 10), 0.10 * s + bl + fl + 0.006), 0, trunY, trunZ);
   parts.add(weaponSlot, aim(block(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s, r0 + 0.014 * s), 0, trunY, trunZ);
-  if (classKey === 'mag' || classKey === 'mag58') {
-    // the GPMG's gas cylinder under the barrel, its gas block, and the carrying handle over the barrel
-    const gasZ0 = 0.10 * s + bl * 0.06, gasZ1 = 0.10 * s + bl * 0.56;
+  if (cls.gas) {
+    // the gas cylinder under the barrel with its gas block (GPMGs, NSVT, Kord, DShK)
+    const gasZ0 = 0.10 * s + bl * 0.04, gasZ1 = 0.10 * s + bl * 0.56;
     parts.add(weaponSlot, aim(cylZ(r0 * 0.62, gasZ1 - gasZ0, 8), (gasZ0 + gasZ1) / 2, -r0 * 1.75), 0, trunY, trunZ);
     parts.add(weaponSlot, aim(block(r0 * 1.6, r0 * 2.9, 0.016 * s), gasZ1, -r0 * 0.9), 0, trunY, trunZ);
-    const hz0 = 0.10 * s + bl * 0.14, hz1 = 0.10 * s + bl * 0.3, rise = r0 + 0.028 * s;
+  }
+  if (cls.handle) {
+    // the barrel's carrying handle, standing on two lugs
+    const hz0 = 0.10 * s + bl * 0.12, hz1 = 0.10 * s + bl * 0.3, rise = r0 * 1.12 + 0.03 * s;
     parts.add(weaponSlot, sweptTube([[0, trunY + r0 * 0.6, trunZ + hz0], [0, trunY + rise, trunZ + hz0 + (hz1 - hz0) * 0.25],
-      [0, trunY + rise, trunZ + hz0 + (hz1 - hz0) * 0.75], [0, trunY + r0 * 0.6, trunZ + hz1]], 0.0055 * s, 5, 6));
-  } else if (classKey === 'nsvt') {
-    // the NSVT's barrel carrying handle near the receiver
-    const hz = 0.10 * s + bl * 0.12;
-    parts.add(weaponSlot, sweptTube([[0, trunY + r0 * 0.7, trunZ + hz], [0, trunY + r0 + 0.032 * s, trunZ + hz + 0.02 * s],
-      [0, trunY + r0 + 0.032 * s, trunZ + hz + 0.07 * s], [0, trunY + r0 * 0.7, trunZ + hz + 0.09 * s]], 0.0065 * s, 5, 6));
+      [0, trunY + rise, trunZ + hz0 + (hz1 - hz0) * 0.75], [0, trunY + r0 * 0.6, trunZ + hz1]], 0.006 * s, 5, 6));
   }
 }
 
@@ -270,21 +341,46 @@ export const MG_CARTRIDGE_SLOT = 'cartridge';
  * the light, so the station reads as a loaded weapon from the chase camera.
  */
 export function addPintleAmmo(context: PintleLayout): void {
-  const { ammoSlot, parts, recY, recZ, rh, rw, s, weaponSlot, cls } = context;
+  const { ammoSlot, bodyBottom, bodyW, parts, recY, recZ, rh, s, weaponSlot, cls, mount } = context;
   if (!context.ammo) return;
   const heavy = cls.caliber > 10;
-  const canW = (heavy ? 0.105 : 0.09) * s, canH = (heavy ? 0.14 : 0.12) * s, canD = (heavy ? 0.22 : 0.19) * s;
-  const ax = -(rw / 2 + canW / 2 + 0.012 * s);
-  const canY = recY - 0.01 * s, canZ = recZ - 0.02 * s;
+  // 2026-10-07 (round 3): the can grows toward the issue sizes (M2A1 .50: 155 x 190 x 300 mm; M19A1 7.62: 95 x 180 x 280)
+  // downward from the lid line the belt already rises from, so the belt, its apex and every crown datum stay put; an
+  // external cradle keeps the old can so its receiver stays inside the host's envelope.
+  const oldCanH = (heavy ? 0.14 : 0.12) * s;
+  const tall = mount !== 'external-cradle';
+  const canW = (heavy ? (tall ? 0.122 : 0.105) : (tall ? 0.095 : 0.09)) * s;
+  const canH = tall ? (heavy ? 0.17 : 0.165) * s : oldCanH;
+  const canD = (heavy ? (tall ? 0.26 : 0.22) : (tall ? 0.24 : 0.19)) * s;
+  const ax = -(bodyW / 2 + canW / 2 + 0.014 * s);
+  const lidY = recY - 0.01 * s + oldCanH / 2 + 0.005 * s;
+  const canY = lidY - 0.005 * s - canH / 2, canZ = recZ - 0.02 * s;
   const canSlot = ammoSlot === 'gunmetalAmmo' ? MG_AMMO_CAN_SLOT : ammoSlot;
-  // pressed can with filleted corners, a proud lid with its folding handle, and the latch lever
+  // pressed can with filleted corners and its proud lid
   parts.add(canSlot, moldedBox(canW, canH, canD, 0.008 * s, 1, 0.005 * s), ax, canY, canZ);
-  const lidY = canY + canH / 2 + 0.005 * s;
   parts.add(canSlot, moldedBox(canW * 1.04, 0.01 * s, canD * 1.025, 0.006 * s, 1, 0.003 * s), ax, lidY, canZ);
-  parts.add(weaponSlot, roundBar([ax, lidY + 0.012 * s, canZ - canD * 0.32], [ax, lidY + 0.012 * s, canZ + canD * 0.2], 0.0045 * s, 6));
-  parts.add(weaponSlot, block(0.018 * s, canH * 0.55, 0.02 * s), ax - canW / 2 - 0.006 * s, canY + canH * 0.1, canZ);
+  // separate hardware that stands off the can and throws its own shadow: the lid's hinge pin along the outer edge,
+  // the carrying handle on two posts, and the clamp latch on the can's front end
+  parts.add(weaponSlot, roundBar([ax - canW * 0.52, lidY - 0.003 * s, canZ - canD * 0.42], [ax - canW * 0.52, lidY - 0.003 * s, canZ + canD * 0.42],
+    0.0045 * s, 6));
+  for (const dz of [-0.22, 0.22]) parts.add(weaponSlot, block(0.008 * s, 0.018 * s, 0.008 * s), ax, lidY + 0.012 * s, canZ + dz * canD);
+  parts.add(weaponSlot, roundBar([ax, lidY + 0.021 * s, canZ - canD * 0.26], [ax, lidY + 0.021 * s, canZ + canD * 0.26], 0.0045 * s, 6));
+  parts.add(weaponSlot, cylX(0.006 * s, canW * 0.5, 8), ax, lidY - 0.024 * s, canZ + canD / 2 + 0.006 * s);
+  parts.add(weaponSlot, place(block(canW * 0.42, 0.034 * s, 0.007 * s), 0, 0, 0, 0.22, 0, 0), ax, lidY - 0.012 * s, canZ + canD / 2 + 0.01 * s);
+  // the can tray on a pintle: a floor under the can, its strap and the arm to the cradle under the receiver (an external
+  // cradle's host carries the can)
+  const canBottom = canY - canH / 2;
+  const armX0 = ax + canW / 2, armX1 = -bodyW * 0.3;
+  if (tall) {
+    parts.add(weaponSlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
+    parts.add(weaponSlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax + canW / 2 + 0.004 * s, canBottom + canH * 0.35, canZ + canD * 0.18);
+    if (armX1 > armX0) {
+      const armY = Math.max(canBottom, bodyBottom) + 0.005 * s;
+      parts.add(weaponSlot, block(armX1 - armX0, 0.009 * s, 0.03 * s), (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
+    }
+  }
   // the feed tray on the receiver's feed side, with its guide lip
-  const trayX = -rw / 2 - 0.012 * s, trayY = recY + rh * 0.18, trayZ = recZ + 0.12 * s;
+  const trayX = -bodyW / 2 - 0.014 * s, trayY = recY + rh * 0.18, trayZ = recZ + 0.12 * s;
   parts.add(weaponSlot, block(0.03 * s, 0.008 * s, 0.075 * s), trayX, trayY, trayZ);
   parts.add(weaponSlot, block(0.03 * s, 0.022 * s, 0.006 * s), trayX, trayY + 0.012 * s, trayZ + 0.04 * s);
   // the belt: rises from the can's mouth and drops into the tray; each link carries a round pointing forward

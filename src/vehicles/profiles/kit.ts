@@ -1403,7 +1403,7 @@ type PintleMgBuildContext = Omit<PintleLayout, 'parts'> & { readonly parts: Fitt
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
   const parts = fitParts();
-  return { ...createPintleLayout(opts, parts), parts, opts };
+  return { ...createPintleLayout({ ...opts, remote: Boolean(opts.remoteControlled) }, parts), parts, opts };
 }
 
 function addPintleMgMount(context: PintleMgBuildContext): void { addPintleMount(context); }
@@ -1423,6 +1423,7 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
   fitting.userData.weaponClass = classKey;
   fitting.userData.weaponName = cls.name;
   fitting.userData.caliberMm = cls.caliber;
+  fitting.userData.weaponScale = context.s;
   fitting.userData.shieldVariant = shieldVariant || 'open';
   fitting.userData.foldedShieldEdges = shieldVariant ? 2 : 0;
   fitting.userData.shieldVisionPorts = shieldVariant ? 2 : 0;
