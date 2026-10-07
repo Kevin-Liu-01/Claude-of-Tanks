@@ -374,6 +374,10 @@ interface PropsSettings {
      * its author holds the footprints apart. It draws from a stream of its own (its index in the plan), so every
      * placement after it keeps its seat. Every other site keeps the check and the shared stream. */
     terrace?: boolean }[];
+  /** The map-revival lane (2026-10-07, Orchard round 4): the planned sites stand after the roadside plan has placed every
+   * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
+   * sites stand first, as before. */
+  plannedSitesAfterPlan?: boolean;
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -4304,7 +4308,7 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
-  for (const [index, site] of (P.townPlan?.length ? [] : P.plannedSites ?? []).entries()) {
+  for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
@@ -4313,6 +4317,14 @@ ${snowCap ? `
     yield { fine: true };
   }
   yield* placeRoadBuildings();
+  // (the map-revival lane, 2026-10-07) the sites that close a square stand last, between the plan's houses
+  for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
+    if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+    yield { fine: true };
+  }
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
