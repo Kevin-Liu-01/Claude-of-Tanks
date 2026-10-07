@@ -323,9 +323,23 @@ void main() {
 			float sigma = cl2Extinction( p, uLod );
 			if ( sigma > 1e-5 ) {
 				float dist = ( top - y ) / sy;
+				float run = ds;
+				if ( samples == 0 ) {
+					// the first cloud on this texel's ray: its entry between this slice and the one above, by bisection, and
+					// only the part of the slice inside it (on the slices' own spacing every texel's front stood on a slice:
+					// steps of a slice along the sun, streaks down a tower's flank)
+					float yHi = min( y + ldy, lt ), yLo = y;
+					for ( int b = 0; b < 3; b++ ) {
+						float ym = 0.5 * ( yHi + yLo );
+						if ( cl2Extinction( vec3( xz, uPlane.x ).xzy + s * ( ( ym - uPlane.x ) / sy ), uLod ) > 1e-5 ) yLo = ym; else yHi = ym;
+					}
+					float ye = 0.5 * ( yHi + yLo );
+					dist = ( top - ye ) / sy;
+					run = ds * clamp( ( ye - ( y - 0.5 * ldy ) ) / ldy, 0.05, 1.0 );
+				}
 				extinctionSum += sigma;
-				od += sigma * ds;
-				T *= exp( -sigma * ds );
+				od += sigma * run;
+				T *= exp( -sigma * run );
 				wd += dist * T;
 				ws += T;
 				samples++;

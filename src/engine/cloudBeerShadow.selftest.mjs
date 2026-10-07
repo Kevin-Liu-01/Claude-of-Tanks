@@ -45,6 +45,8 @@ for (const line of [
   'float lt = uLayerTop[ li ], lb = uLayerBase[ li ] - ( uLayerTop[ li ] - uLayerBase[ li ] ) * uLayerHang[ li ];',
   'int n = max( 1, int( ceil( ( lt - lb ) / dy ) ) );',
   'float y = lt - ( float( k ) + 0.5 ) * ldy;',
+  'float yHi = min( y + ldy, lt ), yLo = y;',
+  'run = ds * clamp( ( ye - ( y - 0.5 * ldy ) ) / ldy, 0.05, 1.0 );',
   'vec3 p = vec3( xz, uPlane.x ).xzy + s * ( ( y - uPlane.x ) / sy );',
   'tail = min( 2.0 * ds * exp( float( 1 - samples ) ), ds * 0.5 );',
   'outBsm = vec4( wd / max( ws, 1e-5 ), extinctionSum / float( samples ), od, tail );',
@@ -126,8 +128,19 @@ function bsmTexel(x, z, weather) {
       const p = { x: x + sun.x * ((y - plane) / s), y: plane + sun.y * ((y - plane) / s), z: z + sun.z * ((y - plane) / s) };
       const sigma = extinction(p, weather);
       if (sigma > 1e-5) {
-        const dist = (topAll - y) / s;
-        extSum += sigma; od += sigma * ds; T *= Math.exp(-sigma * ds); wd += dist * T; ws += T; samples++;
+        let dist = (topAll - y) / s, run = ds;
+        if (samples === 0) {
+          let yHi = Math.min(y + ldy, lt), yLo = y;
+          for (let b = 0; b < 3; b++) {
+            const ym = 0.5 * (yHi + yLo);
+            const q = { x: x + sun.x * ((ym - plane) / s), y: plane + sun.y * ((ym - plane) / s), z: z + sun.z * ((ym - plane) / s) };
+            if (extinction(q, weather) > 1e-5) yLo = ym; else yHi = ym;
+          }
+          const ye = 0.5 * (yHi + yLo);
+          dist = (topAll - ye) / s;
+          run = ds * clamp((ye - (y - 0.5 * ldy)) / ldy, 0.05, 1);
+        }
+        extSum += sigma; od += sigma * run; T *= Math.exp(-sigma * run); wd += dist * T; ws += T; samples++;
       }
       if (T < 1e-3) { tail = Math.min(2 * ds * Math.exp(1 - samples), ds * 0.5); break; }
     }
