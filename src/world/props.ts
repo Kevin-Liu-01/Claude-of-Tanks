@@ -8682,7 +8682,7 @@ ${snowCap ? `
   function composeAuthoredReservoirWaterworks(): void {
     if (!waterworksRubble) return;
     group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
-      heightField, waterworksRubble, buckets, [...obstacles, ...colliders]);
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders], regionalArchitecture);
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();
