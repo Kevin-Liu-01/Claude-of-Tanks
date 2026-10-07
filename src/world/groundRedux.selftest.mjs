@@ -131,6 +131,11 @@ for (const term of [
   'a.rgb = mix(a.rgb, a.rgb * uReduxC.rgb, rim * 0.85);', 'float vergeW = uReduxB.y * shoulder * fD * (1.0 - roadCore) * (1.0 - projW) * (1.0 - fMs)',
   'float midA = uReduxB.w * dMidN * meadowG * (1.0 - fR) * (1.0 - roadCore);',
   'float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;', 'a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w',
+  // (2026-10-07, wave 182's Frosthollow bird: the lee lines aliased past ~120 m) the drift's drop and lee band filtered to
+  // the pixel's footprint along the wind — the drop to the wave's fundamental, the wave to its mean, the lee to its mean
+  'float edgeAA = stripeAA(0.2 / dFreq, swind);',
+  'drift = mix(0.744 * cos(6.2832 * (dwave - 0.65)), drift, edgeAA) * stripeAA(1.0 / dFreq, swind);',
+  'float lee = mix(0.12, smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave)), edgeAA);',
   'gScour = scour * uReduxSnow.x;', 'float reachM = uReduxSwash.y;', 'if (uReduxSwash.x > 0.0) reachM *= 0.55 + 0.45 * sin(swashPh);',
   'float edgeM = vShore + (n1h - 0.5) * 1.2 + (n1 - 0.5) * 0.6;', 'float markM = uReduxSwash.y * 1.3 + 0.8;',
   'gStrandFoam = exp(-pow((foamM - reachM) / 0.30, 2.0))', 'if (uReduxSwash.x == 0.0) a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.72, 0.58), min(wetSand, 1.0) * 0.6); // a still bank is mud',
@@ -144,6 +149,20 @@ for (const term of [
   'if (uSea > 0.5 && uReduxSwash.z > 0.001) {', 'float swashPh = uGroundTime * uReduxSwash.x + n1 * 6.0 + n1h * 1.5;',
   'gSplatRough = mix(gSplatRough, 0.30, min(wetSand, 1.0) * 0.95);', 'gSplatRough = mix(gSplatRough, 0.14, glint);',
 ]) assert.ok(material.includes(term), `the material carries: ${term}`);
+// (2026-10-07) the far stand-ins are the drift's own: the sawtooth's fundamental (amplitude and crest) and the lee band's
+// mean, measured here over one wave, are the constants the filter eases to — the frame's tone at range is unchanged
+{
+  const N = 100000; let a1 = 0, b1 = 0, lee = 0;
+  const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < N; i++) {
+    const d = i / N, s = (d < 0.8 ? d / 0.8 : (1 - d) / 0.2) * 2 - 1;
+    a1 += (2 * s * Math.cos(2 * Math.PI * d)) / N; b1 += (2 * s * Math.sin(2 * Math.PI * d)) / N;
+    lee += (ss(0.78, 0.84, d) * (1 - ss(0.88, 0.98, d))) / N;
+  }
+  const crest = (((Math.atan2(b1, a1) / (2 * Math.PI)) % 1) + 1) % 1;
+  assert.ok(Math.abs(Math.hypot(a1, b1) - 0.744) < 0.002 && Math.abs(crest - 0.65) < 0.002, `the drop eases to the wave's fundamental (${Math.hypot(a1, b1).toFixed(4)} at ${crest.toFixed(4)})`);
+  assert.ok(Math.abs(lee - 0.12) < 0.002, `the lee band eases to its mean (${lee.toFixed(4)})`);
+}
 assert.ok(/float x = f \+ \(hLayer - hBase\) \* k \* 4\.0 \* f \* \(1\.0 - f\);/.test(material),
   'the height transition vanishes at full and zero coverage (a road stays a road)');
 assert.ok(material.includes('float hK = uReduxA.x * 2.5 * (1.0 - farM) * (1.0 - projW);'), 'and fades with the far variant, off the wall projections');
