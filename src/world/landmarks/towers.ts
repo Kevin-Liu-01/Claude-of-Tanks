@@ -179,15 +179,14 @@ export const valveTower: LandmarkBuilder = (ctx) => {
     sink.span('stone', sx > 0 ? W / 2 : -W / 2 - 0.12, deckY - 0.45, zS, sx > 0 ? W / 2 + 0.12 : -W / 2, deckY - 0.3, zFace, { decor: true });
   }
   // the abutment at the bank (gauntlet wave 158: "the footbridge simply ends at a grassy mound with no dam or
-  // abutment"): the deck's end carried on a dressed block down to the bed, its wing walls splayed back into the bank and
-  // coped, the parapets' end piers over them
-  const abut = 1.6;
-  sink.span('stone', -W / 2 - 0.3, bed, zS - abut, W / 2 + 0.3, deckY, zS + 0.05);
+  // abutment"): the deck's end carried on a dressed block a metre into the bank and down to the bed, a little wider than
+  // the deck, coped, with the parapets' end piers over it — inside the footprint the piece always had, so the ground it
+  // reserves (and every scatter placement round it) is the same
+  const abut = 1.0;
+  sink.span('stone', -W / 2 - 0.45, bed, zS - abut, W / 2 + 0.45, deckY - 0.02, zS + 0.05);
+  sink.span('stone', -W / 2 - 0.55, deckY - 0.02, zS - abut - 0.08, W / 2 + 0.55, deckY + 0.12, zS + 0.12, { decor: true });
   for (const sx of [-1, 1]) {
-    const x0 = sx * (W / 2 + 0.3), wing = 1.8;
-    const a: Vec3 = [x0, 0, zS], b: Vec3 = [x0 + sx * wing * 0.35, 0, zS - abut - wing * 0.94];
-    sink.member('stone', [a[0], bed + (deckY - bed) / 2, a[2]], [b[0], bed + (deckY - bed) / 2, b[2]], 0.5, deckY - bed, [0, 1, 0], { exposed: true }, (deckY - bed) / 2);
-    sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.6, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
+    sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.75, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
   }
   return { parts: sink.finish() };
 };
