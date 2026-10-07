@@ -593,8 +593,10 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // receiver under the crown line; r1/r2 dims receipts: crown-top stations
   // read heightM 2.45-2.47). Pedestal ring seats it on the dome skin.
   P.add('turretDark', cylY(0.10, 0.13, 0.09, 12), 1.00, 0.585, -0.30);
+  // 2026-10-07 (tank-accessories round 3): the critics read the 0.52 GPMG stand-in as "toy-scale"; the WKM-B is a
+  // 12.7 mm NSV derivative, drawn as the NSVT class at true scale on the same pedestal.
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.52, elev: 0.35,
+    mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
     ammo: true, seed: 9321,
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 

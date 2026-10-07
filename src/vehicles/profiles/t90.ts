@@ -737,6 +737,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw = 0,
   weaponClass = 'kord',
   includeRace = true,
+  openWeaponBay = false,
   weaponName,
   receiptKey,
 }: {
@@ -750,6 +751,8 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw?: number;
   weaponClass?: 'kord' | 'nsvt';
   includeRace?: boolean;
+  /** Seat the gun in an open yoke on a low pedestal instead of burying its receiver in the armored head. */
+  openWeaponBay?: boolean;
   weaponName: string;
   receiptKey: string;
 }): THREE.Group {
@@ -778,10 +781,21 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
 
   const finishStation = ['t90','t90m_proryv'].includes(P.spec.id)
     ? captureAuxiliaryStock(P,weaponName) : null;
-  P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
-    x, headCenterY, z + fit(0.04), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
-    x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
+  if (openWeaponBay) {
+    // 2026-10-07 (tank-accessories round 3): the critics read the T-90M station as "a stack of plain boxes around a
+    // bare tube": the Kord's receiver, feed and can sat inside the 0.34 m head box and only the barrel showed. The head
+    // becomes a low pedestal and deck under the gun's own cradle, so the receiver, feed cover, can and belt stand in
+    // the open yoke between the armored cheek plates, beside the sight and the ammunition housing.
+    const pedestalTopY = weaponFootY + 0.012;
+    P.addEquipment('turret', box(fit(0.36), pedestalTopY - (foundationTopY - fitY(0.02)), fit(0.34)),
+      x, (pedestalTopY + foundationTopY - fitY(0.02)) * 0.5, z + fit(0.04), 0, yaw, 0);
+    P.add('turretDark', box(fit(0.40), 0.018, fit(0.38)), x, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
+  } else {
+    P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
+      x, headCenterY, z + fit(0.04), 0, yaw, 0);
+    P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
+      x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
+  }
   for (const side of [-1, 1]) {
     P.addEquipment('turret', box(fit(0.070), fitY(0.27), fit(0.28)),
       x + side * fit(0.23), headCenterY + fitY(0.06), z + fit(0.10),
@@ -839,6 +853,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     includeRace,
     foundationTopY,
     weaponFootY,
+    openWeaponBay,
     heightScale,
     structuralFoundation: true,
     separateManualWeaponStations: 0,
@@ -5605,8 +5620,9 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     yaw: 0,
     scale: 0.98,
     heightScale: 1.10,
-    weaponScale: 1.12,
+    weaponScale: 1.0,
     weaponYaw: 0,
+    openWeaponBay: true,
     weaponName: 't90Ru417AutomatedKord',
     receiptKey: 't90Ru417AutomatedStationReceipt',
   });
@@ -8009,8 +8025,10 @@ function addT90MProryvBustleAndRoof(P: T90BuilderPort): void {
     yaw: 0,
     scale: 1.04,
     heightScale: 1.42,
-    weaponScale: 1.12,
+    // true scale (round 3): the 1.12 Kord read as "an oversized, uncooled tube indistinguishable from a cannon"
+    weaponScale: 1.0,
     weaponYaw: 0,
+    openWeaponBay: true,
     weaponName: 't90mProryvRemoteKord',
     receiptKey: 't90mProryvAutomatedStationReceipt',
   });

@@ -569,7 +569,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.48,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'});
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
   const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
@@ -620,10 +620,11 @@ function merkava4CoaxMount(P: TankBuilderPort): void {
   const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMount',g,x,y-1.9934619,z-1.93);
   // Source coax has a long receiver stock and an offset two-post cradle.
   // These parts move with the pitching mount, not with cannon recoil.
-  put(box(.0742,.11095,.58784),.02212,2.59413,1.31816);
+  // (round 3: the long receiver stock and the twin tubes over the rear block read as a second gun beside the M2,
+  // which now lies in this cradle itself; the cradle's rear block, posts and rails stay, and a saddle carries the
+  // receiver from the rail top (2.445) to its underside (2.539).)
   put(box(.14716,.12013,.16549),.02212,2.59413,.94149);
-  for(const x of[-.03881,.08305])put(cylZ(.02583,.25099,14),x,2.71433,.88842);
-  put(box(.12537,.06696,.04155),.02212,2.69890,1.00530);
+  put(box(.10,.10,.36),.02212,2.492,1.32);
   put(box(.27459,.13384,.07214),.02212,2.32365,1.37610);
   put(cylY(.0226,.11067,14),.02212,2.36305,1.07010);
   put(box(.13742,.05403,.43933),.02212,2.41759,1.19975);
@@ -1070,8 +1071,14 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     P.addEquipment('gunDark',cylX(.010,.125,10),.013,.112,worldZ-1.93);
   }
   if(candidate!=='merkava4_barak'){
-    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
-    coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
+    // 2026-10-07 (tank-accessories round 3): the critics read "two full-size machine guns crowded onto a single shared
+    // pintle" over the mantlet: the M2's own pintle column stood on the mantlet in front of the source cradle's long
+    // receiver stock and its twin cradle tubes. The over-gun M2 is one weapon in the source cradle: no second pintle,
+    // its receiver laid where the stock was (underside y 2.539, centre z 1.318 world), true scale.
+    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.0,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false,
+      mount:'external-cradle'});
+    coax.name='merkava4OverGunM2';
+    coax.position.set(.0221,2.539-1.9934619,1.318-.06-1.93);P.gunG.add(coax);
   }
   if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
   P.muzzleZ=2.8755;P.topY=2.75-MK4.y;

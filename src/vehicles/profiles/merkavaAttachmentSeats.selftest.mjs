@@ -63,7 +63,9 @@ function barrelContinuous(mg,scale){
  for(const z of [.015,.06,.102,.14].map(v=>frontZ+v*s)){
   const hit=localRay(mg,[.045,axisY,z],[-1,0,0],[body]);
   assert.ok(hit&&hit.distance<.042,`continuous MAG receiver/barrel at ${z}`);
-  const p=mg.worldToLocal(hit.point.clone());assert.ok(p.x>.008*s&&p.x<.015*s,'actual narrow barrel stock');
+  // 2026-10-07 (tank-accessories round 3): the bridge is the shared barrel-nut/chamber lathe (r0*1.6 -> 1.24) and the
+  // breech third r0*1.12, so the first hit lies 0.008s..0.020s off the axis (the old plain cylinder was r0*1.12).
+  const p=mg.worldToLocal(hit.point.clone());assert.ok(p.x>.008*s&&p.x<.020*s,'actual narrow barrel stock');
  }
 }
 function footSeated(mg,receivers){
@@ -106,7 +108,8 @@ function verifySeats(tank,id){
  assert.equal(mgs.length,id==='merkava3d_x'?2:1,'all original MAG assemblies retained');
  for(const mg of mgs){
   assert.ok(mg.parent===rig,'roof weapons yaw with their receiving stock');
-  const scale=id==='merkava4_trophy'?1.48:mg.position.x<0?.96:.8667;
+  // 2026-10-07 (round 3): the Trophy commander's remote MAG is drawn at true scale (1.0, was 1.48: a 115 % GPMG)
+  const scale=id==='merkava4_trophy'?1.0:mg.position.x<0?.96:.8667;
   barrelContinuous(mg,scale);footSeated(mg,[turret,detail]);
   const seatedY=mg.position.y;mg.position.y+=.10;mg.updateMatrixWorld(true);
   try{assert.throws(()=>footSeated(mg,[turret,detail]),/MG base seated/,'raised real fitting must lose its seat');}
@@ -116,7 +119,8 @@ function verifySeats(tank,id){
   // Component bounds are compared in the fitting frame (a remote pitch group is offset inside it).
   const toFitting=new T.Matrix4().copy(mg.matrixWorld).invert().multiply(body.matrixWorld);
   const s=scale*.78,bridge=components(body).find(p=>{const b=p.bounds.clone().applyMatrix4(toFitting);
-    return Math.abs(b.getCenter(new T.Vector3()).z-(.23+.0525)*s)<1e-5&&Math.abs(b.getSize(new T.Vector3()).z-.105*s)<1e-5;});
+    // round 3: the universal bridge runs from the receiver face to the barrel foot (0.1s + 2 mm)
+    return Math.abs(b.getCenter(new T.Vector3()).z-(.23*s+(.1*s+.002)/2))<1e-5&&Math.abs(b.getSize(new T.Vector3()).z-(.1*s+.002))<1e-5;});
   assert.ok(bridge,'actual receiver connector exists');
   const points=components(body).filter(p=>!p.bounds.equals(bridge.bounds)).flatMap(p=>p.points.flatMap(v=>v.toArray()));
   body.geometry=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(points,3));

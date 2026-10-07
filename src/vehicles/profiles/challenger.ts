@@ -999,9 +999,16 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // receiver-MASS read (top 0.861 keeps 17 mm under the 0.878 plateau line
     // so the close-roof peek never re-tops a side column).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 0.92, seed: 7 });
-      mg.position.set(-0.73, 0.80, 0.02);
+      // 2026-10-07 (tank-accessories round 3): "seen from directly above, the turret roof shows no machine gun at
+      // either hatch" -- the r10 pose hid the gun under the plateau line. The loader's L37 now stands on its own pintle
+      // on the loader's hatch ring (rim top 0.88, outboard-rear quadrant), at true scale: the counter-scale undoes the
+      // turret's (1.12, 0.84, 1) installed stretch so the receiver and barrel keep their real section. The gun's right
+      // side clears the NBC pack (x -0.65) and its muzzle stops short of the left roof block (z 1.00).
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7 });
+      mg.name = 'challenger1LoaderL37';
+      mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
+      mg.scale.set(1 / 1.12, 1 / 0.84, 1);
       P.turretG.add(mg);
     }
     // r10b (uk round 5 — the rear-view MG presentation order): AMMO CLUSTER

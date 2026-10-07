@@ -1483,6 +1483,16 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.add('turret', cylY(0.225, 0.24, 0.055, 16), -0.54, 0.81, -0.38);
   P.add('turretDark', cylY(0.195, 0.195, 0.02, 16), -0.54, 0.842, -0.38);
   {
+    // 2026-10-07 (tank-accessories round 3): "the commander's mount shows no gun". The Oplot-M's commander fights a
+    // 12.7 mm KT-12.7 (an NSVT derivative) from his station; it stands on its own pintle on the commander's hatch ring
+    // (top 0.845) in the ring's outboard-rear quadrant, true scale, can inboard over the hatch, barrel forward over the
+    // vision blocks (bore 0.30 above the ring) and inside the 2.80 m MG band (top ~2.69 m world).
+    const kt = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.0, ammo: true, shield: false, seed: 8420 });
+    kt.name = 'uaOplotMCommanderKt127';
+    kt.position.set(0.74, 0.841, -0.46);
+    P.turretG.add(kt);
+  }
+  {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
     const g = new THREE.Group();
