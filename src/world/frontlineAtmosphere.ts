@@ -264,6 +264,8 @@ void main() {
 
 interface Aircraft {
   root: THREE.Mesh;
+  /** The type this slot is dressed as on the map (flyoverAircraft.ts), null for the generic twin. */
+  type: FlyoverType | null;
   p0: THREE.Vector3;
   v: THREE.Vector3;
   t0: number;
@@ -344,7 +346,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     root.frustumCulled = false;
     root.visible = false;
     group.add(root);
-    aircraft.push({ root, p0: new THREE.Vector3(), v: new THREE.Vector3(), t0: 0, durationS: 0, active: false });
+    aircraft.push({ root, type: null, p0: new THREE.Vector3(), v: new THREE.Vector3(), t0: 0, durationS: 0, active: false });
   }
 
   // ---- anti-air guns (campaign slice 2) -----------------------------------
@@ -503,7 +505,9 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     slot.root.visible = true;
     slot.root.rotation.set(0, heading, (rng() - 0.5) * 0.24);
     const event = record('flyover', slot.p0);
-    bus?.emit('atmosphere:flyover', { p0: event.pos, v: [slot.v.x, slot.v.y, slot.v.z], durationS: slot.durationS });
+    // the Audio 2.0 lane (2026-10-06): the flyover names its aircraft, so the sound is the type's (piston, bomber, jet)
+    bus?.emit('atmosphere:flyover', { p0: event.pos, v: [slot.v.x, slot.v.y, slot.v.z], durationS: slot.durationS,
+      ...(slot.type ? { aircraft: slot.type } : {}) });
   }
 
   function stepAircraft(): void {
@@ -701,7 +705,10 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     nextFlyover = 20 + rng() * 40;
     // the map's aircraft, slot by slot (no draws: the front's stream is unchanged)
     const types = flyoversForMap(mapId);
-    aircraft.forEach((plane, i) => { plane.root.geometry = types.length ? flyoverGeometry(types[i % types.length]) : aircraftGeometry; });
+    aircraft.forEach((plane, i) => {
+      plane.type = types.length ? types[i % types.length] : null;
+      plane.root.geometry = plane.type ? flyoverGeometry(plane.type) : aircraftGeometry;
+    });
     prepared = intensity > 0.001;
     group.visible = prepared;
   }
