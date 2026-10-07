@@ -104,9 +104,19 @@ export default {
     // terrace (the clay, the lines, the net, the wire, the retaining wall, the trench dug across it) and above its west
     // end the DC's bungalow, whitewashed under red tin, deep verandas on three sides, the siege on its veranda roof
     // and its plaster; its porch toward the valley and the town.
+    //
+    // Round 2 (2026-10-06; gauntlet wave 157: the court "a free-standing red slab on sheer beige plinth walls … with no
+    // steps, path or garden linking it to the small bungalow above", the bungalow "no garden, path or sign of age"): the
+    // court on its made ground, its banks of rough grass falling to the slope, a low dry-stone wall along its edge and a
+    // flight of steps down its west bank toward the bungalow; the bungalow worn by the siege (burnt and boarded windows,
+    // a stripped roof patch, spalled render, soot over its windows); its garden before the porch — the picket fence and
+    // gate, the gravel path to the steps of the porch, the flower borders and the box — and the gravel path on from the
+    // garden's gate to the court's steps.
     landmarks: [
-      { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1 } },
+      { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1, steps: -1 } },
       { kind: 'colonialBungalow', x: -190, z: 262, yawDeg: 150, name: "the Deputy Commissioner's bungalow", params: { damage: 0.5 } },
+      { kind: 'garden', x: -180.9, z: 246.24, yawDeg: 150, name: "the DC's garden", params: { width: 14, depth: 10 } },
+      { kind: 'path', x: -169.1, z: 246.77, yawDeg: 60.7, name: "the path from the garden to the court's steps", params: { length: 21, width: 1.4, surface: 'gravel' } },
     ],
     plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
       'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
