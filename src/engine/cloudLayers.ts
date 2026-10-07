@@ -93,17 +93,18 @@ const DECK_CORE = 0.82;
  * low columns — and from the light model's closing coverage (lightModelCore.ts DECK_CLOSED_COVERAGE, 0.95) it closes.
  */
 export function cloudShellCover(coverage: number, deck: boolean): number {
-  if (deck) return clamp(coverage + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
+  // (a broken deck admits a little under its coverage: seen from under a 500 m slab its breaks close up with the angle —
+  // the first GPU pairs drew Fjord's broken stratocumulus as a ceiling)
+  if (deck) return clamp(coverage * (1 - 0.15 * clamp((0.93 - coverage) / 0.2, 0, 1)) + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
   // (a sparse humilis sky keeps a few small puffs the carving would take: a lift of 0.03, none at no coverage)
   return clamp(coverage * 1.2 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */
-// (a fair-weather sky and its streets carry none: at a few percent cover the altocumulus drew a confetti of small puffs
-// two kilometres over the cumulus — the critics' "puffs at random heights"; the cirrus above stays the sky's own)
+// (a fair-weather sky, its streets and humid towers carry none: at a few percent cover the altocumulus drew a confetti of
+// small puffs over the cumulus — the critics' "puffs at random heights", a scatter of bright chips around a low sun on
+// Glacier Pass; the cirrus above stays the sky's own)
 const ALOFT: Readonly<Partial<Record<string, { lift: number; thickness: number; coverage: number; density: number }>>> = Object.freeze({
-  // humid towers: a broken altocumulus layer between the towers' heads
-  'towering-cumulus': { lift: 600, thickness: 450, coverage: 0.12, density: 0.06 },
   // a front: the high cumulus and the spreading anvils' debris
   'cumulonimbus-front': { lift: 400, thickness: 700, coverage: 0.16, density: 0.06 },
   'storm-front': { lift: 300, thickness: 700, coverage: 0.2, density: 0.06 },
@@ -153,9 +154,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
-    shape: (1 - 0.55 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
+    shape: (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
-    detail: 1 - 0.7 * deck,
+    detail: 1 - 0.55 * deck,
     // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall
     // lane under the same dome (a lower bias drew its walls straight up: stone pillars, not cauliflower)
     bias: 0.375 + 0.5 * deck,

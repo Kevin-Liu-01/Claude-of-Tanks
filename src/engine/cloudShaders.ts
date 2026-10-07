@@ -186,7 +186,7 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
-	d *= mix( vec4( 1.0 ), smoothstep( 0.02, 0.1, k ), gapOn );
+	d *= mix( vec4( 1.0 ), smoothstep( 0.06, 0.22, k ), gapOn );
 	return d * uLayerCore * inside;
 }
 // the extinction of every lane at a point (1/m): the shell eroded by the shape and (detail > 0) the detail, under the

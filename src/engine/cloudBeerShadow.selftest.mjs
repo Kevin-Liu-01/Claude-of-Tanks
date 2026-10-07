@@ -29,7 +29,7 @@ for (const line of [
   'vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );',
   'vec4 base = uLayerBase - thick * uLayerHang * k;',
   'vec4 top = uLayerBase + thick * ( 0.2 + 0.8 * k );',
-  'd *= mix( vec4( 1.0 ), smoothstep( 0.02, 0.1, k ), gapOn );',
+  'd *= mix( vec4( 1.0 ), smoothstep( 0.06, 0.22, k ), gapOn );',
   'vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );',
   'vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );',
   'vec4 admitted = uLayerCover * heightScale;',
