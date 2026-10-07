@@ -593,12 +593,15 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // WKM-B 12.7 low-slung on the right dome shoulder (pt91m NSVT precedent —
   // receiver under the crown line; r1/r2 dims receipts: crown-top stations
   // read heightM 2.45-2.47). Pedestal ring seats it on the dome skin.
-  P.add('turretDark', cylY(0.10, 0.13, 0.09, 12), 1.00, 0.585, -0.30);
-  // 2026-10-07 (tank-accessories round 3): the critics read the 0.52 GPMG stand-in as "toy-scale"; the WKM-B is a
-  // 12.7 mm NSV derivative, drawn as the NSVT class at true scale on the same pedestal.
+  // 2026-10-07 (tank-accessories round 4, wave 216: "seen from above, no MG reads on the roof, only a thin rod"; "a
+  // pintle that is a bare cylinder, with no ring, box or belt"): the pedestal widens into a ring mount (a turned base
+  // with its machined ring on brackets, the gun's `ring`), and the WKM-B takes the NSVT's own construction with its
+  // box hung outboard (the NSV feeds from either side; inboard the box would sit in the dome) and the mount's
+  // collimator inboard, so the box, its belt and the long receiver read from the hero and turret-top cameras.
+  P.add('turretDark', cylY(0.16, 0.19, 0.09, 16), 1.00, 0.585, -0.30);
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
-    ammo: true, seed: 9321,
+    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 },
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 
   // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
@@ -1179,9 +1182,10 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofEquipmentY(1.352), -1.325);
     // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
     // whole envelope shares the tower's 3-column window)
+    // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the sensor tower beside the parked gun (feed-side collision census).
     const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
-      ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
+      ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020, feed: 'right',
     });
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);

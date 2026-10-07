@@ -14,10 +14,10 @@ import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
-  createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, type PintleLayout,
+  createPintleLayout, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, type PintleLayout,
 } from '../machineGunGeometry.ts';
 import {
-  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, type FabricSpec,
+  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube, type FabricSpec,
 } from '../accessoryPrimitives.ts';
 import { jerrycanParts, whipAntennaParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
@@ -224,6 +224,20 @@ interface FittingOptions {
   barrelBridge?: boolean;
   /** Use the host's authored cradle instead of stacking a second pintle. */
   mount?: 'pintle' | 'external-cradle';
+  /**
+   * Machine gun (2026-10-07, tank-accessories round 4; machineGunGeometry.ts PintleOptions): the side the belt enters
+   * ('left' = the gunner's left, +X), an extra pintle column height that stands the gun clear of roof furniture, and
+   * the NSVT mount's collimator sight.
+   */
+  feed?: 'left' | 'right';
+  riser?: number;
+  reflexSight?: boolean;
+  /**
+   * A fixed copy of a remote station's weapon (2026-10-07, round 4): the crewless form (solenoid, the station's feed,
+   * no crew sights) without the auxiliary-weapon rig, so a decorative copy matches its donor station's stock exactly
+   * and is never counted as a roof gun.
+   */
+  remoteWeapon?: boolean;
   barrelLength?: number;
   machineGunFinish?: string;
   installationVariant?: string;
@@ -1407,7 +1421,7 @@ type PintleMgBuildContext = Omit<PintleLayout, 'parts'> & { readonly parts: Fitt
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
   const parts = fitParts();
-  return { ...createPintleLayout({ ...opts, remote: Boolean(opts.remoteControlled) }, parts), parts, opts };
+  return { ...createPintleLayout({ ...opts, remote: Boolean(opts.remoteControlled || opts.remoteWeapon) }, parts), parts, opts };
 }
 
 function addPintleMgMount(context: PintleMgBuildContext): void { addPintleMount(context); }
@@ -1528,11 +1542,33 @@ function addAmericanM2Receiver(context: AmericanM2BuildContext): void {
     -0.105 * s, recY + 0.025 * s, recZ - 0.015 * s);
   parts.add('dark', box(0.090 * s, 0.036 * s, 0.046 * s),
     0, recY - 0.015 * s, recZ - 0.280 * s);
+  // 2026-10-07 (tank-accessories round 4, wave 215 on the M60A1: "a featureless box receiver with no feed cover, ammo
+  // can, spade grips, charging handle or sight"): the M2's own furniture on the unchanged receiver block. Looped spade
+  // grips with the butterfly trigger replace the two grip bars; the feed cover carries its hinge knuckle and rear
+  // latch, the feed tray stands out on the can side, the retracting slide's handle takes its knob, and the folding
+  // rear leaf and the trunnion block's front post stand on the cover.
+  const coverTop = recY + 0.094 * s;
   for (const side of [-1, 1]) {
-    parts.add('dark', box(0.027 * s, 0.032 * s, 0.125 * s),
-      side * 0.053 * s, recY - 0.005 * s, recZ - 0.315 * s,
-      side * 0.06, 0, 0);
+    parts.add('dark', sweptTube([
+      [side * 0.045 * s, recY + 0.02 * s, recZ - 0.255 * s], [side * 0.06 * s, recY + 0.01 * s, recZ - 0.33 * s],
+      [side * 0.06 * s, recY - 0.04 * s, recZ - 0.345 * s], [side * 0.045 * s, recY - 0.045 * s, recZ - 0.265 * s],
+    ], 0.011 * s, 5, 6));
   }
+  parts.add('dark', block(0.04 * s, 0.03 * s, 0.014 * s), 0, recY - 0.012 * s, recZ - 0.31 * s);
+  parts.add('dark', roundBar([-0.068 * s, coverTop - 0.006 * s, recZ + 0.205 * s], [0.068 * s, coverTop - 0.006 * s, recZ + 0.205 * s], 0.008 * s, 6));
+  parts.add('dark', block(0.05 * s, 0.018 * s, 0.016 * s), 0, coverTop + 0.002 * s, recZ - 0.21 * s);
+  parts.add('dark', block(0.03 * s, 0.008 * s, 0.11 * s), context.ammoSide * 0.092 * s, recY + 0.045 * s, recZ + 0.12 * s);
+  parts.add('dark', place(latheY([[0.0005, 0], [0.014 * s, 0], [0.015 * s, 0.03 * s], [0.0005, 0.036 * s]], 6), 0, 0, 0, 0, 0, Math.PI / 2),
+    -0.131 * s, recY + 0.025 * s, recZ + 0.02 * s);
+  const leafZ = recZ - 0.15 * s;
+  parts.add('dark', block(0.034 * s, 0.008 * s, 0.026 * s), 0, coverTop + 0.004 * s, leafZ);
+  for (const side of [-1, 1]) parts.add('dark', block(0.005 * s, 0.04 * s, 0.005 * s), side * 0.012 * s, coverTop + 0.028 * s, leafZ);
+  parts.add('dark', block(0.029 * s, 0.005 * s, 0.005 * s), 0, coverTop + 0.046 * s, leafZ);
+  parts.add('dark', block(0.014 * s, 0.01 * s, 0.008 * s), 0, coverTop + 0.03 * s, leafZ);
+  const postZ = recZ + 0.225 * s;
+  parts.add('dark', block(0.03 * s, 0.01 * s, 0.02 * s), 0, coverTop + 0.005 * s, postZ);
+  for (const side of [-1, 1]) parts.add('dark', block(0.005 * s, 0.03 * s, 0.014 * s), side * 0.011 * s, coverTop + 0.025 * s, postZ);
+  parts.add('dark', block(0.004 * s, 0.026 * s, 0.005 * s), 0, coverTop + 0.023 * s, postZ);
 }
 
 function addAmericanM2Ammo(context: AmericanM2BuildContext): void {
@@ -1585,12 +1621,13 @@ function addAmericanM2Barrel(context: AmericanM2BuildContext): void {
 }
 
 function addAmericanM2Ring(context: AmericanM2BuildContext): void {
-  const { box, torus } = KIT;
+  const { box } = KIT;
   const { opts, parts, s } = context;
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.235) * s;
-    parts.add('dark', torus(rr, 0.014 * s, 28), 0, 0.032 * s, 0);
+    // 2026-10-07 (round 4): a flat machined race on its brackets, not a round dark tube (the critics' "rubber hose")
+    parts.add('dark', machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
     for (let index = 0; index < (ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
       parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),

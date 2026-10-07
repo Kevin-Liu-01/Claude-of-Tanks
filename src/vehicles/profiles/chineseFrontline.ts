@@ -407,8 +407,25 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
 }
 
+/**
+ * A flat-faced machined ring race (rectangular section with chamfered top edges) seated with its underside at `y`, in
+ * the fitting paint, with `bolts` dark bolt heads round its face (tank-accessories round 4, 2026-10-07).
+ */
+function addMachinedRace(P: FrontlinePort, rIn: number, rOut: number, h: number, x: number, y: number, z: number,
+  bolts: number): void {
+  const c = Math.min(0.004, (rOut - rIn) * 0.3);
+  const race = new THREE.LatheGeometry([[rIn, 0], [rOut, 0], [rOut, h - c], [rOut - c, h], [rIn + c, h], [rIn, h - c], [rIn, 0]]
+    .map(([r, yy]) => new THREE.Vector2(r, yy)), P.q ? 32 : 18);
+  P.add('turretDetail', race, x, y, z);
+  const rm = (rIn + rOut) / 2;
+  for (let k = 0; k < bolts; k++) {
+    const a = (k + 0.5) * (Math.PI * 2 / bolts);
+    P.add('turretDark', KIT.cylY(0.006, 0.006, 0.006, 6), x + Math.cos(a) * rm, y + h + 0.002, z + Math.sin(a) * rm);
+  }
+}
+
 function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  const { box, cylY, torus } = KIT;
+  const { box, cylY } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
   const roofLift = 0.89 * heightScale - 0.6675;
@@ -439,7 +456,10 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   P.addEquipment('turret', box(0.48, 0.18, 0.43), 0.47, 0.78 + roofLift, -0.02);
   // KIT.torus already lies flat; the extra quarter turn stood this hatch ring on edge as a 0.44 m hoop over the roof
   // (round 3, 2026-10-07: it framed the commander's gun in the critics' stow view and trapped interior-fill boxes)
-  P.add('turretDark', torus(0.22, 0.016, 18), 0.47, 0.88 + roofLift, -0.02);
+  // 2026-10-07 (round 4, wave 215: "the dark rings on the hatch and round the MG pedestal read as loose rubber hoses,
+  // not machined ring mounts"): the round dark tube becomes a flat machined race seated on the hatch block, in the
+  // fitting paint, with its bolt circle.
+  addMachinedRace(P, 0.178, 0.208, 0.014, 0.47, 0.87 + roofLift, -0.02, 10);
   addSmokeAndWarningSuite(P, {
     warningX: sx(variant === 'type99a' ? 1.08 : 1.02),
     warningZ: sz(variant === 'type99a' ? -1.38 : -1.52),
@@ -462,7 +482,8 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     // cap are one continuous seated stack; this restores the Type 99A's tall
     // command silhouette without reintroducing its discarded legacy turret.
     P.addEquipment('turret', box(0.42, 0.12, 0.40), 0.48, 0.75 + roofLift, -0.72);
-    P.add('turretDark', torus(0.19, 0.014, 18), 0.48, 0.83 + roofLift, -0.72);   // flat ring mount (was on edge)
+    // round 4 (2026-10-07, wave 215): a flat machined race seated on the pedestal (the round tube floated 6 mm over it)
+    addMachinedRace(P, 0.158, 0.19, 0.014, 0.48, 0.81 + roofLift, -0.72, 10);
     mount(P, 'turret', FITTINGS.pintleMG({
       mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 0.72,
       ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944,

@@ -2965,6 +2965,9 @@ function supportedSeat(
 const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, number, number]>>> = {
   strv103: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
   strv103a: [[0.28, -0.40, 0.70]],
+  // round 4 (2026-10-07): the Challenger 1 commander's L37 cupola on the low right roof (turret-local (0.50, -0.81),
+  // turret pivot z 0.362): the bedrolls the decor laid there would bury the new gun's pintle and can.
+  challenger1: [[0.50, -0.45, 0.62]],
 };
 
 /** Lashed cargo rides a little off square and off centre ("shifted in transit"): 2-7 degrees of yaw either way. */

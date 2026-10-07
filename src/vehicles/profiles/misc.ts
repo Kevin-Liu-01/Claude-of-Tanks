@@ -1684,7 +1684,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // measured fix for side cols 0.515/0.626: the two-tone CAP strip rode
       // the barrel to z_w 0.76 at 2.439 and pixel-printed 2.464 (loop-2
       // whatsat AABB [-0.877..-0.823, top 2.439, z 0.258..0.763]).
-      const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: false, barrelBridge: true });
+      // 2026-10-07 (tank-accessories round 4, wave 217: "thin rod barrels on box receivers with no cradle, box, belt or
+      // feed cover"): both roof guns carry their feed again; the round-4 gun hangs its can, belt and tray on its left
+      // (inboard here, over the mid roof, clear of the front column window the old right-hand can poked).
+      const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true });
       anf1.name = 'leclercRoofAnf1';
       anf1.position.set(-0.85, 0.610, 0.413);
       anf1.userData.roofContactY = 0.610;
@@ -1704,7 +1707,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // cluster crest (matched-envelope law), ammo can OFF (flat pouch on the
       // roof instead), scale 0.76, foot sunk to 0.575 — receiver band ~2.40
       // inside the ref's own 2.37-2.42 cluster window at z_w 0.16..0.46.
-      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.20, seed: 17, scale: 0.76, ammo: false });
+      // 2026-10-07 (round 4, wave 217): the M2 takes its can, belt and feed tray (on its left, outboard); the XLR and
+      // AMX-56 centred roof stations keep it off, where the can would stand in their sight cluster.
+      const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.20, seed: 17, scale: 0.76,
+        ammo: !centeredRoofStations });
       m2.name = 'leclercRoofM2';
       m2.position.set(0.88, 0.575, 0.36);
       P.turretG.add(m2);
@@ -1833,6 +1839,11 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
     P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
     P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
+    // 2026-10-07 (tank-accessories round 4, wave 217: "the coax root shows daylight through the mantlet"): the coax
+    // bay behind the port (gun-local x 0.31..0.48, z -0.37..0.05) stood open to the turret interior once round 3's
+    // regenerated fills stopped closing it (the fill generator leaves gun-frame volumes empty), leaking 6.2 L in the
+    // watertight census. A closed backing block on the gun mount fills the bay and elevates with the gun.
+    P.addGunExtraDark(box(0.17, 0.27, 0.42), 0.395, 0.04, -0.16);
     P.addGunExtra(cylZ(0.132, 0.50, 12), 0, -0.02, 2.55);                        // fat sleeve-junction collar (plan ±0.15 cols)
     // 90-ladder r1: collar#2 TRIMMED to end at world 3.985 and kept CENTERED —
     // the print's own fat gun content at plan col -0.166 ends exactly 3.981
