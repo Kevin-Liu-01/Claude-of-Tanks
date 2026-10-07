@@ -25,11 +25,16 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // 2026-10-07 (tank-accessories round 3): the shared machine gun's can and belt rounds now share the fitting paint, so
 // each roof gun folds one more contiguous run (leo2a7v_x's roof gun, the m1a2's commander MAG, the T-90M's remote
 // Kord). The m1a2's rig_turret fold already stood at the integration base 9fceb4b9b.
+// 2026-10-07 (tank-accessories round 4, ec873dc52: smoke discharger tubes in matte fitting paint): the challenger_3x
+// and m1a2 rig_turret folds (turret + turretDetail) are gone. The tubes' smoke apertures had made the whole
+// turretDetail combat-visible (resident at every range, like the turret shell); without them turretDetail is
+// cosmetic distance detail, a different class from the shell, so the two no longer share a run. Near the tanks draw
+// turret, turretDetail and turretFittingPaint (the tubes); at range turretDetail now detaches.
 const PINNED = {
   ua_m1a1_x: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
   leo2a7v_x: { saved: 2, owners: { rig_hull: 1, leo2a7v_xRoofMachineGun: 1 } },
-  challenger_3x: { saved: 2, owners: { rig_turret: 1, auxiliaryWeaponPitch: 1 } },
-  m1a2: { saved: 3, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1, fitting_browningDerived_mag: 1, rig_turret: 1 } },
+  challenger_3x: { saved: 1, owners: { auxiliaryWeaponPitch: 1 } },
+  m1a2: { saved: 2, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1, fitting_browningDerived_mag: 1 } },
   t90m: { saved: 1, owners: { t90mProryvRemoteKord: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both
   strv122_x: { saved: 0, owners: {} },
