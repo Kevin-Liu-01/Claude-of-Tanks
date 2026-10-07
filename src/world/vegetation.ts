@@ -5575,7 +5575,10 @@ function* vegetationBuildSteps(
       add: concealment,
     });
   }
-  function siteOk(x: number, z: number, margin: number, belt = false): boolean {
+  // (the trees lane: while a `townTrees` map plants its tree belts, placeTreeBelts — a flag, not a parameter, so the
+  // other options on siteOk's signature never read it by position)
+  let placingTownBelts = false;
+  function siteOk(x: number, z: number, margin: number): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
     let inPark = false;
@@ -5585,12 +5588,12 @@ function* vegetationBuildSteps(
       }
     }
     // (the trees lane: a `townTrees` map's belts and parks stand inside its village)
-    const town = veg.townTrees === true && (belt || inPark);
+    const town = veg.townTrees === true && (placingTownBelts || inPark);
     if (!town && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
     // town maps: trees only inside the park belts (a `townTrees` map's tree belts need no park)
-    if (veg.parks && !inPark && !(veg.townTrees === true && belt)) return false;
+    if (veg.parks && !inPark && !placingTownBelts) return false;
     if (!isClearOfSpawns(x, z, protectedSpawns, 26)) return false;
     return admission().getNormalAt(x, z).y > 0.82;
   }
@@ -5714,8 +5717,8 @@ function* vegetationBuildSteps(
     const h = heightField.getHeightAt(x, z);
     return TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer' ? h >= uplandBand[1] : h <= uplandBand[0];
   }
-  function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1, belt = false): boolean {
-    if (!siteOk(x, z, 0, belt)) return false;
+  function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1): boolean {
+    if (!siteOk(x, z, 0)) return false;
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
@@ -6260,6 +6263,8 @@ function* vegetationBuildSteps(
   // + concealment, i.e. belts are real cover, not dressing.
   function placeTreeBelts(): void {
     if (veg.belts) {
+      // (the trees lane: a `townTrees` map's belts stand inside its village, siteOk; a throw here ends the whole build)
+      placingTownBelts = veg.townTrees === true;
       for (const b of veg.belts) {
         const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0);
         const gap = b.gap ?? 8;
@@ -6270,9 +6275,10 @@ function* vegetationBuildSteps(
           const bx = b.x0 + (b.x1 - b.x0) * t + (rng() - 0.5) * jit;
           const bz = b.z0 + (b.z1 - b.z0) * t + (rng() - 0.5) * jit;
           if (rng() < (b.skip ?? 0.12)) continue; // storm gaps read planted-then-weathered
-          addTree(bx, bz, b.species || pickSpecies(veg.loneMix, rng()), rng, 1, true);
+          addTree(bx, bz, b.species || pickSpecies(veg.loneMix, rng()));
         }
       }
+      placingTownBelts = false;
     }
   }
   placeTreeBelts();
