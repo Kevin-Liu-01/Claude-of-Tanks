@@ -3690,7 +3690,7 @@ function* vegetationBuildSteps(
   // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
   // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
   const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
@@ -3837,8 +3837,10 @@ function* vegetationBuildSteps(
     if (landUseAt !== null) {
       const f = landUseAt(x, z, _landScratch);
       if (f.active) {
-        const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
-          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
+        // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
+        const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)) * (1 - f.urban))
+          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z))
+          * (1 - (f.works ? smoothstepJs(0.22, 0.40, 1 - normalY) : smoothstepJs(0.04, 0.10, 1 - normalY))) // a works' berms: ~40°
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
@@ -5469,7 +5471,7 @@ function* vegetationBuildSteps(
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
   const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
     if (hedgeLandAt === null) return _hedgeSite;

@@ -174,6 +174,9 @@ function checkSourceContract(text) {
     'uSaltCrust',
     // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
     'uPaveSlab',
+    // ground lane (2026-10-05, the road styles): the road layer's size and first row in the mask stack, on when a styled
+    // net bakes one (vec4, no sampler — the layer rides in uMask's unit, fetched exactly)
+    'uRoadClass',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -222,14 +225,17 @@ function checkLandUseCut(text) {
   // of an integer hash, no read — its crumbs one read, High, near; the stubble's straw one read, High, near)
   // (mr4, the far path: the edge's coarse wander and the plough's far mottle — one coarse read, Medium and High)
   // (wave 177, Saltwind: the karst's grazing is garrigue — its tussocks' bare soil one more field of the noise, Medium up)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', ...Array(7).fill('nzq'), 'textureLod', 'textureLod'],
-    'the block reads seven noise fields, the canopy\'s two near reads, the crumbs\' and the straw\'s near reads, the bend\'s and the far path\'s coarse levels and the soil (the bake is lu_field\'s)');
+  // (2026-10-05, Ruinspires' hardstanding: its grain and stains, Medium and High; its cracks, High; Ironworks' slag,
+  // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
+  assert.deepEqual(reads, ['groundSamp', ...Array(7).fill('nz'), ...Array(8).fill('nzq'), 'textureLod', 'textureLod'],
+    'the block reads eight noise fields, the canopy\'s two near reads, the crumbs\' and the straw\'s, the hardstanding\'s three, the stones\' one, the bend\'s and the far path\'s coarse levels and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
-    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
+    // (2026-10-06, the urban fast path: a town's lots read neither the rows' bend nor the edge zone)
+    ['float nBend = bendW > 0.001 && uLandTier > 1.5 && !luUrb ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
     ['if (farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5))) nFar = ',
       'textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0)'],
-    ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
+    ['if (luEdge && luNear > 0.001 && uLandTier > 1.5 && !luUrb) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = 0.0; if (uLandTier > 0.5) { vec2 sq = ', 'nzq(uvW, 0.61, vec2(0.37, 0.71))'],
     ['float bareG = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
@@ -240,11 +246,16 @@ function checkLandUseCut(text) {
       'nz(uv, 2.3, vec2(0.17, 0.41))'],
     ['float litVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.015, 0.04, gFootM) : 0.0; if (litVis > 0.001) { float litter = smoothstep(0.60, 0.76, ',
       'nz(vec2(dot(wp.xz, rowDir) * 0.35, across * 2.2), 1.0, vec2(0.53, 0.11))'],
+    // (a town's hardstanding reads its grain and its cracks only while their periods span pixels)
+    ['float hGrain = uLandTier > 0.5 && (!hFast || tileVis(0.53) > 0.004) ? ', 'nz(uv, 1.9, vec2(0.31, 0.57))'],
+    ['float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(', 'nz(uv, 0.9, vec2(0.71, 0.29))'],
+    ['float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, ', 'nzq(uv, 0.17, vec2(0.37, 0.83))'],
+    ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
   for (const gate of ['if (uLandTier < 0.5) {', 'float rowsShow = uLandTier > 0.5 ?', '&& crop < 3.5 && uLandTier > 0.5) {',
-    '&& luEdge && uLandTier > 0.5) {', 'if (track > 0.01 && uLandTier > 0.5) {']) {
+    '&& luEdge && uLandTier > 0.5 && !luUrb) {', 'if (track > 0.01 && uLandTier > 0.5) {']) {
     assert.ok(block.includes(gate), `Low draws no boundary feature, rows or tramlines: ${gate}`);
   }
   // the interior skip: past 9 m + 1.3 margins the crop is whole and the headland gone whatever the noise reads

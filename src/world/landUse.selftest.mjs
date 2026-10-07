@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {
   createLandFieldSample, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH, LAND_USE_GLSL, landUseAt, landUseBoundary,
   landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
-} from './landUse.ts';
+ inLandZone } from './landUse.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 
 // the table: real maps, packing in range, zero strength without a row
@@ -34,20 +34,86 @@ for (const kind of Object.values(LAND_CROP)) {
 }
 
 // every map's rotation: the crops its fields draw are its region's, its boundary is its region's, every field is
-// one crop (the CPU twin over a 4 m grid of the square)
+// one crop (the CPU twin over a 4 m grid of the square) — but where a works' zone cuts it (Ironworks: LandZone cut)
+const cutAt = (p, x, z) => (p.zones ?? []).some((zn) => zn.cut && inLandZone(zn, x, z));
 for (const id of landUseProfileIds()) {
   const p = resolveLandUseProfile(id);
   const seen = new Map();
   const sample = createLandFieldSample();
   for (let z = -500; z <= 500; z += 8) for (let x = -500; x <= 500; x += 8) {
     landUseAt(p, x, z, sample);
+    if (!sample.active) continue; // a zoned land use's ground past its zones (Ruinspires)
     assert.equal(sample.boundary, ['margin', 'ditch', 'bund', 'wall'].indexOf(landUseBoundary(p)), `${id}: the sample carries the region's boundary`);
+    if (cutAt(p, x, z)) continue;
     const prior = seen.get(sample.id);
     if (prior === undefined) seen.set(sample.id, sample.crop); else assert.equal(prior, sample.crop, `${id}: one crop a field`);
     assert.deepEqual([sample.tintR, sample.tintG, sample.tintB], [...LAND_CROP_ALBEDO[sample.crop]], `${id}: the sample carries its crop's albedo`);
   }
   const kinds = new Set(seen.values());
   assert.ok(kinds.size >= 3, `${id}: at least three crops sown (${[...kinds].join(',')})`);
+}
+// 2026-10-05, Ruinspires (the cities lane): a zoned, urban land use — the valley floor's hardstanding kinds, the
+// cemeteries' mown grass at both of the rotation pair's rectangles, nothing past the city; the urban flag on the cities'
+// rows alone — Ruinspires and Ironworks (every other map's village keeps its fields off), carried on the sample for the
+// tiers that grow on the ground
+const URBAN = new Map([['ruinspires', 1], ['foundry', 2]]); // (2: a works' ground — Ironworks)
+{
+  const p = resolveLandUseProfile('ruinspires'), s = createLandFieldSample();
+  assert.equal(landUseUniformValues(p).landE[3], 1, 'ruinspires: an urban land use');
+  for (const id of landUseProfileIds()) {
+    assert.equal(landUseUniformValues(resolveLandUseProfile(id)).landE[3], URBAN.get(id) ?? 0, `${id}: ${URBAN.has(id) ? '' : 'not '}urban`);
+  }
+  const floor = new Set(), cemetery = [0, 0], cemeteryRot = [0, 0];
+  let past = 0, pastActive = 0;
+  for (let z = -500; z <= 500; z += 3) for (let x = -500; x <= 500; x += 3) {
+    landUseAt(p, x, z, s);
+    if (s.active) assert.equal(s.urban, 1, 'an urban field says so');
+    if (Math.abs(z) < 50 && Math.abs(x) < 300 && s.active) floor.add(s.crop);
+    if (x > -192 && x < -148 && z > -278 && z < -246) { cemetery[1]++; if (s.active && s.crop === LAND_CROP.hay) cemetery[0]++; }
+    if (-x > -192 && -x < -148 && -z > -278 && -z < -246) { cemeteryRot[1]++; if (s.active && s.crop === LAND_CROP.hay) cemeteryRot[0]++; }
+    if (Math.abs(z) > 330 || Math.abs(x) > 390) { past++; if (s.active) pastActive++; }
+  }
+  assert.ok([...floor].every((c) => [LAND_CROP.hardstanding, LAND_CROP.ballast, LAND_CROP.ruderal].includes(c)) && floor.size === 3,
+    `the valley floor is hardstanding (${[...floor].join(',')})`);
+  assert.ok(cemetery[0] / cemetery[1] > 0.6 && cemeteryRot[0] / cemeteryRot[1] > 0.6,
+    `both cemeteries are mown grass (${cemetery[0]}/${cemetery[1]}, ${cemeteryRot[0]}/${cemeteryRot[1]})`);
+  assert.equal(pastActive, 0, `nothing past the city (${past} points)`);
+}
+// 2026-10-05, Ironworks (the cities lane: "slag round the blast furnaces and along the works roads, gravel in the courts,
+// ballast on every rail siding"): its zones change the crops inside the works and nothing else — the layout, every
+// field's edge, track, hedge, rows and draw are the unzoned profile's on the whole map (so the scrub's hedge seats and
+// their collision stand where they stood), and past the works floor the crop is too (the border's parcels); the sidings
+// are ballast and cinder, the furnace block slag, the loading court gravel, the works roads' verges cinder
+{
+  const p = resolveLandUseProfile('foundry'), old = { ...p, zones: undefined, urban: false, works: false, marginM: 1.6 };
+  const s = createLandFieldSample(), o = createLandFieldSample();
+  const kindsIn = { sidings: new Map(), furnace: new Map(), court: new Map(), floor: new Map() };
+  const count = (m, c) => m.set(c, (m.get(c) ?? 0) + 1);
+  for (let z = -520; z <= 520; z += 4) for (let x = -520; x <= 520; x += 4) {
+    landUseAt(p, x, z, s); landUseAt(old, x, z, o);
+    // (the margin's width is the works' own — a lot's trodden edge, 0.8 m where a field's grass margin was 1.6 — and no
+    // seat reads it)
+    for (const key of ['active', 'edgeM', 'endM', 'sU', 'sV', 'split', 'alongU', 'track', 'hedge', 'rowX', 'rowZ', 'jitter', 'id', 'boundary']) {
+      assert.equal(s[key], o[key], `foundry (${x}, ${z}): the layout's ${key} is the unzoned profile's`);
+    }
+    // (a field's middle decides its zone: one whose middle lies on the works floor reaches half a block and the warp past
+    // it, ~75 m)
+    if (Math.max(Math.abs(x), Math.abs(z)) > 370) assert.equal(s.crop, o.crop, `foundry (${x}, ${z}): past the works the crop is the brownfield's`);
+    assert.equal(s.urban, 1, 'the works: an urban land use');
+    // (the works' zones cut the fields: they hold to their own lines — mr1's world at 9bb7490b3)
+    const nearLine = [40, 49, 58, 67, 76].some((lx) => Math.abs(x - lx) < 3);
+    if (nearLine && Math.abs(z) < 140) count(kindsIn.sidings, s.crop);
+    else if (Math.hypot(x + 74, z + 29) < 22 || Math.hypot(x + 20.6, z - 58.2) < 22) count(kindsIn.furnace, s.crop);
+    else if (x > 140 && x < 172 && z > -158 && z < -128) count(kindsIn.court, s.crop);
+    else if (s.edgeM < 8 || Math.abs(x) > 250 || Math.abs(z) > 250) continue; // the floor's zone is a field's middle's
+    else if (!cutAt(p, x, z)) count(kindsIn.floor, s.crop);
+  }
+  const share = (m, kinds) => { let n = 0, t = 0; for (const [c, k] of m) { t += k; if (kinds.includes(c)) n += k; } return t ? n / t : 0; };
+  assert.ok(share(kindsIn.sidings, [LAND_CROP.ballast, LAND_CROP.slag]) > 0.9, `the sidings are ballast and cinder (${[...kindsIn.sidings]})`);
+  assert.ok(share(kindsIn.furnace, [LAND_CROP.slag]) > 0.5, `round the furnaces slag (${[...kindsIn.furnace]})`);
+  assert.ok(share(kindsIn.court, [LAND_CROP.gravel, LAND_CROP.hardstanding, LAND_CROP.ballast]) > 0.9 && kindsIn.court.has(LAND_CROP.gravel),
+    `the loading court is gravel and its stands (${[...kindsIn.court]})`);
+  assert.ok(kindsIn.floor.has(LAND_CROP.gravel) && !kindsIn.floor.has(LAND_CROP.pasture), `the works floor's courts are gravel, none grazed (${[...kindsIn.floor]})`);
 }
 // the slot→kind table: the classic regions keep their identity order (their crops are what they were)
 for (const id of ['verdant', 'coastal', 'frontier']) {
@@ -146,6 +212,28 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
     total++; if (s0.crop === LAND_CROP.pasture) grazing++;
   }
   assert.ok(grazing / total >= 0.38, `Saltwind's walled ground is ${(100 * grazing / total).toFixed(0)} % grazing (≥ 38 %)`);
+}
+// 2026-10-06 (Ironworks round 3, wave 176's "stair-stepped diagonal green band" — the ore berm's flanks past the fields'
+// slope gate, the meadow under the land use showing through): a works' lots run up its berms to ~40° and are gone by ~53°,
+// the material and the two tiers on the ground reading the one gate, and the sample carries the works flag for them
+{
+  const { readFileSync } = await import('node:fs');
+  const read = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const terrain = read('./terrain.ts'), grass = read('./tallGrass.ts'), veg = read('./vegetation.ts');
+  assert.ok(terrain.includes('(1.0 - (uLandE.w > 1.5 ? smoothstep(0.22, 0.40, slope) : smoothstep(0.040, 0.100, slope)))'),
+    'the material: a works\' lots to ~40°, every other map\'s fields to ~25°');
+  assert.ok(grass.includes('(1 - (_field.works ? smoothstep(0.22, 0.40, slopeN) : smoothstep(0.04, 0.10, slopeN)))'),
+    'the tall grass reads the same gate');
+  assert.ok(veg.includes('(1 - (f.works ? smoothstepJs(0.22, 0.40, 1 - normalY) : smoothstepJs(0.04, 0.10, 1 - normalY)))'),
+    'the tufts read the same gate');
+  const s0 = createLandFieldSample();
+  landUseAt(resolveLandUseProfile('foundry'), 0, -72, s0);
+  assert.equal(s0.works, 1, 'Ironworks\' ground is a works\' ground');
+  landUseAt(resolveLandUseProfile('verdant'), 0, 0, s0);
+  assert.equal(s0.works, 0, 'a farm is not');
+  // a works' paving carries its soot, oil and rust, and its outer joints its cinder — on a works' ground alone
+  assert.ok(terrain.includes('if (uLandE.w > 1.5 && paveCore > 0.003) {') && terrain.includes('uLandE.w > 1.5 ? vec3(0.62, 0.60, 0.58) : vec3(0.70, 0.96, 0.50)'),
+    'the works\' paving and joints are stained on a works\' ground only');
 }
 
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);
