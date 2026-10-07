@@ -76,7 +76,7 @@ export const obelisk: LandmarkBuilder = (ctx) => {
 };
 
 /** A stylised standing figure (feet at y, facing +z): a greatcoat or a robe, the head 1/7.5 of its height. */
-function figure(sink: PartSink, y: number, h: number, metal: Rgb, dark: Rgb, pose: string): void {
+export function figure(sink: PartSink, y: number, h: number, metal: Rgb, dark: Rgb, pose: string): void {
   const head = h / 7.5;
   const col = { colour: metal }, colD = { colour: dark };
   // the coat or robe: a skirt flaring to the ankles, the torso, the shoulders

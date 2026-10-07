@@ -162,9 +162,23 @@ export function archedFace(sink: PartSink, bucket: RegionalBucket, face: Face, r
     const um = (ua + ub) / 2;
     const k = holes.findIndex((h) => um > h.u - h.w / 2 && um < h.u + h.w / 2);
     if (k < 0) { sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, rect.y1), P(ua, rect.y1), emit); continue; }
-    const h = holes[k];
-    if (h.y0 > rect.y0 + 1e-4) sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, h.y0), P(ua, h.y0), emit);
-    const ya = Math.min(rect.y1, headAt(k, ua)), yb = Math.min(rect.y1, headAt(k, ub));
+    // (openings stacked in one column — a storey's window over the one below it, a window over a passage — the wall
+    // between each head and the next sill; until 2026-10-06 a column took its first opening only and the walls above
+    // stood blank, their windows' frames on solid render: the review of Frontier's Rathaus and Verdant's station)
+    const stack = holes.flatMap((h, j) => (um > h.u - h.w / 2 && um < h.u + h.w / 2 ? [j] : [])).sort((a, b) => holes[a].y0 - holes[b].y0);
+    let ya: number, yb: number;
+    if (stack.length > 1) {
+      ya = rect.y0; yb = rect.y0;
+      for (const j of stack) {
+        const sill = holes[j].y0;
+        if (sill > Math.max(ya, yb) + 1e-4 && sill < rect.y1) sink.quad(bucket, P(ua, ya), P(ub, yb), P(ub, sill), P(ua, sill), emit);
+        ya = Math.max(ya, Math.min(rect.y1, headAt(j, ua))); yb = Math.max(yb, Math.min(rect.y1, headAt(j, ub)));
+      }
+    } else {
+      const h = holes[k];
+      if (h.y0 > rect.y0 + 1e-4) sink.quad(bucket, P(ua, rect.y0), P(ub, rect.y0), P(ub, h.y0), P(ua, h.y0), emit);
+      ya = Math.min(rect.y1, headAt(k, ua)); yb = Math.min(rect.y1, headAt(k, ub));
+    }
     if (rect.y1 - Math.min(ya, yb) > 1e-4) {
       if (rect.y1 - ya < 1e-4) sink.polygon(bucket, [P(ua, ya), P(ub, yb), P(ub, rect.y1)], emit);
       else if (rect.y1 - yb < 1e-4) sink.polygon(bucket, [P(ua, ya), P(ub, yb), P(ua, rect.y1)], emit);
@@ -437,11 +451,14 @@ function openingOutline(face: Face, h: ArchHole, o: number, n = 8): Vec3[] {
  * The glazing of an opening archedFace cut: the pane at the back of the reveal (a lit curtain at night for a share of
  * them, else dark glass), a frame round it, a mullion and a transom at the spring line (the frame is fine joinery).
  */
-export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number, frame: Rgb, lit: boolean, opts: { bars?: boolean } = {}): void {
+export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number, frame: Rgb, lit: boolean,
+  opts: { bars?: boolean; coarse?: boolean } = {}): void {
   const back = -reveal;
   sink.polygon(lit ? 'curtain' : 'glass', openingOutline(face, h, back + 0.012), { decor: true, window: face.out });
-  const f = { colour: frame, decor: true, fine: true };
-  const line = archLine(h, 8), fw = 0.06, fo = back + 0.035;
+  // (`coarse`: a frame and bars a long view resolves, on a building that stands alone — gauntlet wave 158 read a valve
+  // tower's fine-only frames as "unframed black-void windows")
+  const f = { colour: frame, decor: true, fine: !opts.coarse };
+  const line = archLine(h, 8), fw = opts.coarse ? 0.1 : 0.06, fo = back + 0.035;
   const u0 = h.u - h.w / 2 + fw / 2, u1 = h.u + h.w / 2 - fw / 2;
   sink.member('structureWood', facePoint(face, u0, h.y0, fo), facePoint(face, u0, h.spring, fo), fw, 0.05, face.out, f);
   sink.member('structureWood', facePoint(face, u1, h.y0, fo), facePoint(face, u1, h.spring, fo), fw, 0.05, face.out, f);
