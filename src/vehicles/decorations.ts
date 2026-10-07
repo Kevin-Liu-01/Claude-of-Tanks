@@ -1179,9 +1179,13 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       },
     };
     // round 3 (2026-10-07): the coarse level (detail 0) keeps the envelope without the gun's small hardware
+    // round 4 (2026-10-07): the decor gun keeps the right-hand feed it always had. Its slot is the rear roof's right side
+    // (side -1 on every generic manifest), so the round-4 crew default (the gunner's left) put the can, belt and tray
+    // inboard over the roof furniture, and the placement guards (overlap, keep-clear) dropped the gun from nine mobile-
+    // tier builds and admitted it on three others (fleet decor census, base 6753ef5eb vs the round-4 branch).
     const layout = createPintleLayout({
       cls: v === 'dshk' ? 'dshk' : 'm2', shield, ring: ring ? { r: 0.33, stubs: 4 } : false, ammo: true, tone: 'two-tone',
-      detail: detail ? 1 : 0,
+      detail: detail ? 1 : 0, feed: 'right',
     }, collector);
     addPintleRing(layout);
     addPintleMount(layout);
