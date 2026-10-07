@@ -442,6 +442,10 @@ interface ShellAir {
   uPanoFarVary: THREE.IUniform<number>;
   /** 2026-10-06 (QA PANO_FAR_EARTH_NEAR): the apron's and the far earth's colour from the column's near ground (0 the skyline's) */
   uPanoFarNear: THREE.IUniform<number>;
+  /** 2026-10-06 (QA PANO_APRON_HIGH): the apron's colour from the column's near ground for a high camera (0 off) */
+  uPanoApronHigh: THREE.IUniform<number>;
+  /** 2026-10-06 (QA PANO_FAR_SEA_FADE): the far earth beside a sea opening fades into the air (0 off) */
+  uPanoSeaFade: THREE.IUniform<number>;
   /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
    *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
   uDeckHorizon: THREE.IUniform<THREE.Vector4>;
@@ -600,6 +604,8 @@ float panoCloudShade( vec2 cp ) {
  */
 const PANO_FAR_EARTH_VARY = 0;
 const PANO_FAR_EARTH_NEAR = 0;
+const PANO_APRON_HIGH = 0;
+const PANO_FAR_SEA_FADE = 0;
 function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
@@ -621,6 +627,8 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
     uPanoFarVary: { value: 0 },
     uPanoFarNear: { value: 0 },
+    uPanoApronHigh: { value: 0 },
+    uPanoSeaFade: { value: 0 },
     uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uDeckClosed: { value: 0 },
     tClouds: { value: null },
@@ -652,7 +660,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
-uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary, uPanoFarNear;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary, uPanoFarNear, uPanoApronHigh, uPanoSeaFade;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
@@ -678,6 +686,9 @@ ${HAZE_LAW_GLSL}`)
         float e = atan(d.y, length(d.xz));
         vec2 panoUv = vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
         vec4 pano = texture2D(map, panoUv);
+        // (QA PANO_FAR_EARTH_NEAR / PANO_APRON_HIGH) the column's near ground: the strip's lowest rows, the bake's lit fill
+        // under the ring's skyline — nearer than the shell, so carrying no air
+        vec4 nearTap = uPanoFarNear + uPanoApronHigh > 0.0 ? texture2D(map, vec2(vPanoU, 0.012)) : vec4(0.0);
         if (pano.a < 0.5) {
           // over its column's skyline: open (the sky), unless the shell is ground for this camera, on a ray under the
           // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
@@ -693,7 +704,6 @@ ${HAZE_LAW_GLSL}`)
           // so a high camera's apron and far earth stood as one pale blue-grey sheet even where its ray meets the ground at
           // 3-5 km (the inland "sea" band under the bird views). The strip's lowest rows hold the column's near ground —
           // the bake's lit fill under the ring's skyline, nearer than the shell, so carrying no air: the land's own colour
-          vec4 nearTap = texture2D(map, vec2(vPanoU, 0.012));
           float nearW = nearTap.a >= 0.5 ? uPanoFarNear : 0.0;
           vec3 nearC = nearW > 0.0 ? pow(nearTap.rgb / nearTap.a, vec3(2.2)) : ground;
           if (apron) ground = mix(ground, nearC, nearW);
@@ -767,11 +777,25 @@ ${HAZE_LAW_GLSL}`)
             // (QA PANO_FAR_EARTH_NEAR) the near ground hazed by the law over the reach from the shell to where the ray meets
             // the ground (the aerial pass hazes the rest, to the shell), giving way to the skyline's path as the meet nears
             // the far country's own distance
+            // (QA PANO_FAR_SEA_FADE) beside a sea opening the far earth stood as one slab per run of land columns, cut
+            // sheer where the open-sea columns discard (Nordhavn's white shards from the bird): the run fades into the
+            // air over the share of land columns round it (±6 degrees)
+            if (uPanoSeaFade > 0.0) {
+              float landN = 0.0;
+              for (int k = -4; k <= 4; k++) landN += step(0.0, texture2D(uPanoSkyline, vec2(vPanoU + float(k) * 0.004, 0.25)).a);
+              ground = mix(ground, inScatter, uPanoSeaFade * (1.0 - smoothstep(0.7, 1.0, landN / 9.0)));
+            }
             if (nearW > 0.0) {
               float reachN = max(0.0, meet - length(vd));
               float layerN = hazeLayerMean(max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
               vec3 TN = hazeTransmittance(uPanoHaze.x, reachN, layerN, uPanoHazeChroma);
-              ground = mix(ground, nearC * TN + inScatter * (1.0 - TN), nearW * (1.0 - smoothstep(0.45, 1.0, meet / ${P.outerM.toFixed(1)})));
+              vec3 nearG = nearC * TN + inScatter * (1.0 - TN);
+              if (uPanoSeaFade > 0.0) {
+                float landM = 0.0;
+                for (int k = -4; k <= 4; k++) landM += step(0.0, texture2D(uPanoSkyline, vec2(vPanoU + float(k) * 0.004, 0.25)).a);
+                nearG = mix(nearG, inScatter, uPanoSeaFade * (1.0 - smoothstep(0.7, 1.0, landM / 9.0)));
+              }
+              ground = mix(ground, nearG, nearW * (1.0 - smoothstep(0.45, 1.0, meet / ${P.outerM.toFixed(1)})));
             }
           }
           diffuseColor.rgb *= ground;
@@ -779,6 +803,12 @@ ${HAZE_LAW_GLSL}`)
           // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
           // samples carry no black from the sky texels: divided back out, then back to linear
           vec3 land = pow(pano.rgb / pano.a, vec3(2.2));
+          // (QA PANO_APRON_HIGH) the apron reads the strip by its elevation from the bake eye, so to a camera high over it
+          // its inner rows carry the hidden fill receding into the air at the ring's skyline (a pale fringe, the "surf
+          // line" under the bird views) and its outer rows the far country's hazed crests: from ~50 m over the eye it
+          // takes the column's near ground instead
+          if (vPanoApron > 0.5 && uPanoApronHigh > 0.0 && nearTap.a >= 0.5)
+            land = mix(land, pow(nearTap.rgb / nearTap.a, vec3(2.2)), uPanoApronHigh * smoothstep(50.0, 180.0, cameraPosition.y - uPanoEye.y));
           // 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows): the far point rebuilt from the bake's
           // distance (the column's azimuth, the ray's elevation from the bake eye), up the sun's ray into the shared shade
           // map (cotCloudSun: inside its square, faded at the edge); only the sun's share of the texel dims — the sky's light
@@ -1740,6 +1770,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
     air.uPanoFarVary.value = lightTune('PANO_FAR_EARTH_VARY', PANO_FAR_EARTH_VARY);
     air.uPanoFarNear.value = lightTune('PANO_FAR_EARTH_NEAR', PANO_FAR_EARTH_NEAR);
+    air.uPanoApronHigh.value = lightTune('PANO_APRON_HIGH', PANO_APRON_HIGH);
+    air.uPanoSeaFade.value = lightTune('PANO_FAR_SEA_FADE', PANO_FAR_SEA_FADE);
     // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
     if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
     const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
