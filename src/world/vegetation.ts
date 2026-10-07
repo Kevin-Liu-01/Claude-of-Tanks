@@ -2466,9 +2466,11 @@ const GROWN_CROWN_TRANSMISSION = 1.6;
 /**
  * p2 trees lane (2026-10-02): the leaves' transmission under the grounded light (canopyLighting.ts): the share of the
  * (shadowed) direct light a leaf passes to its far side, Lambert on that side. The lighting lane's handover: under the
- * grounded light, which retired the anti-sun fill, Saltmere's crowns read 23–36 % under the base.
+ * grounded light, which retired the anti-sun fill, Saltmere's crowns read 23–36 % under the base. Round 6 (2026-10-07,
+ * the coordinator's ruling on fold ticket 1's A/B: the back-lit woods' translucency at twice its strength, through this
+ * uniform alone so the program stays the same): 0.45 -> 0.9.
  */
-const LEAF_TRANSMISSION = 0.45;
+const LEAF_TRANSMISSION = 0.9;
 
 /**
  * Trees round 2 (2026-10-03): the share of the turn a grown crown's leaf cluster makes about its own axis toward the
