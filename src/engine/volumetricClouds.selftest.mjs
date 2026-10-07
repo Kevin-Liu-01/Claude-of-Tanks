@@ -9,13 +9,18 @@
 // Round 71 (2026-09-25): the cloudscape pass — the multi-scale weather (a vigour channel), the street / anvil /
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
 // resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
+// Clouds 2.0 (2026-10-06): the layered medium (cloudLayers.ts / cloudShaders.ts; cloudLayers.selftest.mjs pins the
+// stacks), the GPU-baked noise volumes (cloudVolumeNoise.ts), the local weather (equalised, tileable, cloud fields with
+// clearings), the Beer shadow map's toroidal cascades and its lookup, the parabolic shells' ray band, the quality tiers,
+// the depth-reprojected resolve with its variance clip; the round-71 sky beyond the medium (haze law, scene depth, rain,
+// fog bank, cirrus) as before.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_NOISE_SEED, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE,
-  bakeCloudBlueNoise, bakeCloudCurlVolume, bakeCloudDetailVolume, bakeCloudNoise, bakeCloudShapeVolume, bakeCloudWeatherMap, bakeCloudWeatherStreets,
+  CLOUD_BLUE_SIZE, CLOUD_LOCAL_SIZE, CLOUD_NOISE_SEED, CLOUD_WEATHER_SIZE,
+  bakeCloudBlueNoise, bakeCloudLocalWeather, bakeCloudNoise, bakeCloudWeatherMap, bakeCloudWeatherStreets,
 } from './cloudNoise.ts';
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
@@ -24,8 +29,11 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_BSM_CASCADES, CLOUD_BSM_SLICES, CLOUD_DECK_SUN_LOBE, CLOUD_DOME_RADIUS_M, CLOUD_HISTORY_SCALE,
+  CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_TIERS, CLOUD_TRACE_DIVISOR,
 } from './volumetricClouds.ts';
+import { CLOUD2_EARTH_R, CLOUD2_PERIODS } from './cloudShaders.ts';
+import { CLOUD_SHAPE_TEXELS, CLOUD_DETAIL_TEXELS, CLOUD_TURBULENCE_TEXELS, CLOUD_LATTICE_NOISE_GLSL } from './cloudVolumeNoise.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
@@ -59,7 +67,7 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
 {
   const layer=Object.create(VolumetricCloudLayer.prototype);
   Object.assign(layer,{targetWidth:3840,targetHeight:2160,preset:{},frozen:false,rebuild:4,since:0,renderer:{},
-    atmosphere:{active:true},noise:{shape:{},detail:{},curl:{},weather:{},streets:{},blue:{}}});
+    atmosphere:{active:true},noise:{weather:{},streets:{},blue:{},local:{}}});
   let traces=0;
   const camera={};
   layer.beforeSceneRender=(renderer,view,dt,w,h)=>{
@@ -76,27 +84,22 @@ assert.equal(cloudCameraCut(0, .36, 1, 1), true, 'large camera turn rebuilds');
 }
 
 // ---- the noise bakes: deterministic bytes at the shipped sizes and at small sizes, tileable, well distributed
-assert.deepEqual([CLOUD_SHAPE_SIZE, CLOUD_DETAIL_SIZE, CLOUD_WEATHER_SIZE, CLOUD_CURL_SIZE, CLOUD_BLUE_SIZE, CLOUD_NOISE_SEED], [64, 32, 256, 32, 32, 2068], 'the shipped sizes and seed');
-// 2026-10-01 (frozen pins retired): the sha256 pins of every bake at small and shipped sizes were change detectors of
-// the cloud noise; the worker and the main thread run the same pure bakes, so the contract is determinism (two bakes
-// agree byte for byte), the shipped sizes, the seed dependence and the distribution checks below.
-for (const [label, bake] of [['shape 8³', () => bakeCloudShapeVolume(8)], ['detail 8³', () => bakeCloudDetailVolume(8)],
-  ['weather 16²', () => bakeCloudWeatherMap(16)], ['streets 16²', () => bakeCloudWeatherStreets(16)],
-  ['curl 8³', () => bakeCloudCurlVolume(8)], ['blue 8²', () => bakeCloudBlueNoise(8)]]) {
+assert.deepEqual([CLOUD_WEATHER_SIZE, CLOUD_BLUE_SIZE, CLOUD_LOCAL_SIZE, CLOUD_NOISE_SEED], [256, 32, 512, 2068], 'the shipped sizes and seed');
+// 2026-10-01 (frozen pins retired): the contract is determinism (two bakes agree byte for byte), the shipped sizes, the
+// seed dependence and the distribution checks below.
+for (const [label, bake] of [['weather 16²', () => bakeCloudWeatherMap(16)], ['streets 16²', () => bakeCloudWeatherStreets(16)],
+  ['blue 8²', () => bakeCloudBlueNoise(8)], ['local 32²', () => bakeCloudLocalWeather(32)]]) {
   assert.equal(digest(bake()), digest(bake()), `${label} bytes are deterministic`);
 }
-const shape = bakeCloudShapeVolume();
-const detail = bakeCloudDetailVolume();
 const weather = bakeCloudWeatherMap();
 const streets = bakeCloudWeatherStreets();
-const curl = bakeCloudCurlVolume();
 const blue = bakeCloudBlueNoise();
-// The sheets need a complete mip chain, while the volume/shadow field and
-// blue-noise sampling must retain their authored level-zero distribution.
+const local = bakeCloudLocalWeather();
+// The sheets need a complete mip chain, while the blue-noise sampling must retain its authored level-zero distribution.
 {
   const layer = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1));
-  layer.setNoise({ weather, streets, blue });
-  for (const field of ['weather', 'streets']) {
+  layer.setNoise({ weather, streets, blue, local });
+  for (const field of ['weather', 'streets', 'local']) {
     assert.equal(layer.noise[field].generateMipmaps, true);
     assert.equal(layer.noise[field].minFilter, THREE.LinearMipmapLinearFilter);
     assert.equal(layer.noise[field].magFilter, THREE.LinearFilter);
@@ -106,20 +109,19 @@ const blue = bakeCloudBlueNoise();
   assert.equal(layer.noise.blue.magFilter, THREE.NearestFilter);
   layer.dispose();
 }
-assert.equal(shape.length, 64 * 64 * 64 * 4);
-assert.equal(detail.length, 32 * 32 * 32 * 4);
 assert.equal(weather.length, 256 * 256 * 4);
 assert.equal(streets.length, 256 * 256 * 4);
-assert.equal(curl.length, 32 * 32 * 32 * 4);
 assert.equal(blue.length, 32 * 32 * 4);
-assert.equal(digest(bakeCloudShapeVolume(64, CLOUD_NOISE_SEED)), digest(shape), 'the default seed is the shipped seed');
-assert.notEqual(digest(bakeCloudShapeVolume(8, 7)), digest(bakeCloudShapeVolume(8, 8)), 'the seed changes the volume');
+assert.equal(local.length, 512 * 512 * 4);
+assert.equal(digest(bakeCloudLocalWeather(32, CLOUD_NOISE_SEED)), digest(bakeCloudLocalWeather(32)), 'the default seed is the shipped seed');
+assert.notEqual(digest(bakeCloudLocalWeather(32, 7)), digest(bakeCloudLocalWeather(32, 8)), 'the seed changes the field');
 {
   const all = bakeCloudNoise();
   assert.deepEqual(Object.keys(all).sort(), [...CLOUD_NOISE_KINDS].sort(), 'bakeCloudNoise returns every kind the layer uploads');
-  assert.deepEqual([...CLOUD_NOISE_KINDS], ['blue', 'weather', 'streets', 'curl', 'detail', 'shape'], 'the worker posts smallest first');
+  assert.deepEqual([...CLOUD_NOISE_KINDS], ['blue', 'weather', 'streets', 'local'], 'the worker posts smallest first (the volumes bake on the GPU)');
   assert.equal(digest(all.streets), digest(streets));
   assert.equal(digest(all.blue), digest(blue));
+  assert.equal(digest(all.local), digest(local));
 }
 
 function channelMean(bytes, channel) {
@@ -127,34 +129,19 @@ function channelMean(bytes, channel) {
   for (let i = channel; i < bytes.length; i += 4) sum += bytes[i];
   return sum / (bytes.length / 4) / 255;
 }
-// the shape's Perlin–Worley sits below its billow channels, the billows and the detail around one half
-const shapeMeans = [0, 1, 2, 3].map((c) => channelMean(shape, c));
-assert.ok(shapeMeans[0] > 0.3 && shapeMeans[0] < 0.55, `shape R mean ${shapeMeans[0]}`);
-for (const c of [1, 2, 3]) assert.ok(shapeMeans[c] > 0.4 && shapeMeans[c] < 0.56, `shape billow ${c} mean ${shapeMeans[c]}`);
-for (const c of [0, 1, 2]) { const m = channelMean(detail, c); assert.ok(m > 0.4 && m < 0.56, `detail ${c} mean ${m}`); }
-assert.equal(channelMean(detail, 3), 1, 'the detail alpha is unused (1)');
-// the curl volume is centred (a divergence-free field has no mean flow) and spans its range
-for (const c of [0, 1, 2]) { const m = channelMean(curl, c); assert.ok(m > 0.45 && m < 0.55, `curl ${c} mean ${m}`); }
-assert.equal(channelMean(curl, 3), 1);
-{
-  let lo = 255, hi = 0;
-  for (let i = 0; i < curl.length; i += 4) { lo = Math.min(lo, curl[i]); hi = Math.max(hi, curl[i]); }
-  assert.ok(lo <= 20 && hi >= 235, `curl spans its byte range (${lo}..${hi})`);
+// ---- the GPU volumes (cloudVolumeNoise.ts): their sizes, a tileable lattice (every lattice index wraps before it is
+// hashed, every hash integer-only) and the GLSL ES rule that the modulus of a negative int is undefined (the wrap adds
+// the period before its second modulus)
+assert.deepEqual([CLOUD_SHAPE_TEXELS, CLOUD_DETAIL_TEXELS, CLOUD_TURBULENCE_TEXELS], [128, 32, 128]);
+assert.match(CLOUD_LATTICE_NOISE_GLSL, /ivec3 cotWrap\( ivec3 c, int n \) \{ return \( \( c % n \) \+ n \) % n; \}/, 'the lattice wraps into 0..n-1 whatever its sign');
+for (const call of ['cotGrad( c, n, seed )', 'ivec3 w = cotWrap( c + o, n );']) assert.ok(CLOUD_LATTICE_NOISE_GLSL.includes(call), `the lattice is wrapped before it is hashed (${call})`);
+assert.doesNotMatch(CLOUD_LATTICE_NOISE_GLSL, /fract\( sin/, 'no float-sine hash (platform-dependent): an integer hash');
+// the local weather: equalised channels, tileable, the cumuliform channel's cloud fields and clearings
+for (const c of [0, 1, 2, 3]) {
+  const bins = new Array(16).fill(0);
+  for (let i = c; i < local.length; i += 4) bins[local[i] >> 4]++;
+  for (let b = 1; b < 15; b++) assert.ok(Math.abs(bins[b] / (local.length / 4) - 1 / 16) < 0.004, `local channel ${c} bin ${b}: ${(bins[b] / (local.length / 4)).toFixed(4)}`);
 }
-// tileable: the step across the wrap of a volume edge is no larger than the step between neighbours
-function seamRatio(bytes, N, channel) {
-  let seam = 0, neighbour = 0, count = 0;
-  for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) {
-    const row = (z * N + y) * N;
-    seam += Math.abs(bytes[row * 4 + channel] - bytes[(row + N - 1) * 4 + channel]);
-    neighbour += Math.abs(bytes[row * 4 + channel] - bytes[(row + 1) * 4 + channel]);
-    count++;
-  }
-  return seam / Math.max(neighbour, 1);
-}
-for (const c of [0, 1]) assert.ok(seamRatio(shape, 64, c) < 1.25, `shape channel ${c} tiles across x (ratio ${seamRatio(shape, 64, c)})`);
-assert.ok(seamRatio(detail, 32, 0) < 1.25, 'detail tiles across x');
-assert.ok(seamRatio(curl, 32, 0) < 1.3, 'curl tiles across x');
 // the weather's two-dimensional seams, both axes
 function seamRatio2(bytes, N, channel) {
   let seam = 0, neighbour = 0;
@@ -169,6 +156,7 @@ function seamRatio2(bytes, N, channel) {
 for (const [name, bytes] of [['weather', weather], ['streets', streets]]) for (const c of [0, 1, 2, 3]) {
   assert.ok(seamRatio2(bytes, 256, c) < 1.6, `${name} channel ${c} tiles (ratio ${seamRatio2(bytes, 256, c).toFixed(2)})`);
 }
+for (const c of [0, 1, 2, 3]) assert.ok(seamRatio2(local, 512, c) < 1.6, `local channel ${c} tiles (ratio ${seamRatio2(local, 512, c).toFixed(2)})`);
 // the equalised fields: every sixteenth of their range holds a sixteenth of the texels
 function assertEqualised(bytes, channel, name) {
   const bins = new Array(16).fill(0);
@@ -403,13 +391,38 @@ for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
   assert.deepEqual(CLOUD_SLOT_ORDER[CLOUD_BAYER_4[y][x]], [x, y]);
 }
 assert.deepEqual([CLOUD_HISTORY_SCALE, CLOUD_TRACE_DIVISOR, CLOUD_REBUILD_SLOTS], [0.5, 4, 4], 'half-res history, 1/16 traced a frame, four slots a frame after a cut');
-assert.deepEqual(CLOUD_STEP_SCALE_BY_PRESET, { low: 1.8, medium: 1.3, high: 1, ultra: 1 }, 'the low preset marches coarser; high and ultra at the full stride');
+// the quality tiers: the low tiers march fewer, coarser steps over a shorter reach with fewer octaves; the mobile tier
+// never creates the layer (the baked decks)
+{
+  const order = ['low', 'medium', 'high', 'ultra'];
+  assert.deepEqual(Object.keys(CLOUD_TIERS), order);
+  for (let i = 1; i < order.length; i++) {
+    const a = CLOUD_TIERS[order[i - 1]], b = CLOUD_TIERS[order[i]];
+    assert.ok(b.steps >= a.steps && b.octaves >= a.octaves && b.sunSteps >= a.sunSteps, `${order[i]} marches at least as finely as ${order[i - 1]}`);
+    assert.ok(b.stepMin <= a.stepMin && b.growth <= a.growth && b.marchMax >= a.marchMax && b.detailRange >= a.detailRange, `${order[i]} strides no coarser`);
+  }
+  for (const t of Object.values(CLOUD_TIERS)) assert.ok(t.octaves === 4 || t.octaves === 8, 'four or eight octaves (two vec4s)');
+  assert.ok(CLOUD_TIERS.high.marchMax >= 30000, 'the high tier marches the curved shells far enough to meet the haze');
+}
+// the local weather's cumuliform channel at a 30 % cover: cloud fields and clearings, not an even pepper
+{
+  const N = 512, B = 8;
+  let empty = 0, full = 0, blocks = 0;
+  for (let by = 0; by < N; by += B) for (let bx = 0; bx < N; bx += B) {
+    let on = 0;
+    for (let y = by; y < by + B; y++) for (let x = bx; x < bx + B; x++) if (local[(y * N + x) * 4] >= 255 * 0.7) on++;
+    blocks++; if (on === 0) empty++; if (on === B * B) full++;
+  }
+  assert.ok(empty / blocks > 0.25, `clearings: ${(100 * empty / blocks).toFixed(0)} % of the 750 m blocks admit nothing`);
+  assert.ok(full / blocks > 0.02, `masses: ${(100 * full / blocks).toFixed(1)} % of the 750 m blocks are admitted whole`);
+}
 
 // ---- the haze law mirrors the aerial pass, the hook and the gates are in place
 const postSource = here('./post.ts');
 const skySource = here('./sky.ts');
 const mainSource = here('../main.ts');
 const layerSource = here('./volumetricClouds.ts');
+const shadersSource = here('./cloudShaders.ts');
 const postConst = (name) => Number(postSource.match(new RegExp(`const ${name} = ([\\d.]+);`))?.[1]);
 assert.equal(CLOUD_AERIAL.density, postConst('AERIAL_DENSITY'));
 assert.equal(CLOUD_AERIAL.hazeDensity, postConst('AERIAL_HAZE_DENSITY'));
@@ -433,21 +446,50 @@ assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarg
 // ---- 2026-10-03 (the mountains lane: "seaFogBank() integrates out to 30 km regardless of scene depth"): every layer the
 // trace sums ends at the scene's surface — the previous frame's resolved depth read through the camera that drew it
 {
-  const trace = layerSource.slice(layerSource.indexOf('const TRACE_FRAGMENT'), layerSource.indexOf('const RESOLVE_FRAGMENT'));
+  const trace = shadersSource.slice(shadersSource.indexOf('export function cloud2TraceFragment'), shadersSource.indexOf('export const CLOUD2_RESOLVE_FRAGMENT'));
+  const sky = layerSource.slice(layerSource.indexOf('const CLOUD_SKY_WEATHER_GLSL'), layerSource.indexOf('const COPY_FRAGMENT'));
   for (const u of ['tSceneDepth', 'uSceneDepthOn', 'uSceneNearFar', 'uDepthRight', 'uDepthUp', 'uDepthFwd', 'uDepthTan']) {
     assert.match(trace, new RegExp(`uniform [a-zA-Z0-9]+ ${u};`), `${u} is declared`);
     assert.match(layerSource, new RegExp(`${u}: \\{ value: `), `${u} has a uniform object`);
   }
-  assert.ok(trace.indexOf('float cloudSceneT( vec3 dir )') < trace.indexOf('vec4 slabRain('), 'the helper stands ahead of the layers');
+  assert.ok(trace.indexOf('float cloudSceneT( vec3 dir )') < trace.indexOf('${weatherGlsl}'), 'the helper stands ahead of the layers');
   assert.match(trace, /if \( uSceneDepthOn < 0\.5 \) return 1e9;/, 'off: no limit');
   assert.match(trace, /if \( depth >= 0\.999999 \) return 1e9;/, 'the sky (cleared depth): no limit');
-  assert.match(trace, /float sceneT = cloudSceneT\( dir \);\s*t1 = min\( t1, sceneT \);/, 'the slab ends at the surface');
-  assert.match(trace, /float tB = min\( min\( tTop, \$\{f\(CLOUD_FOGBANK_RANGE_M\[1\]\)\} \), sceneT \);/, 'the sea fog bank ends at the surface');
-  assert.match(trace, /tEnd = min\( min\( tEnd, \$\{f\(CLOUD_RAIN_RANGE_M\[1\]\)\} \), sceneT \);/, 'the rain ends at the surface');
-  assert.match(trace, /if \( tb <= 0\.0 \|\| horiz <= fbStart \|\| tb >= sceneT \) return none;/, 'a far band behind a surface is hidden');
-  assert.match(trace, /if \( tc <= 0\.0 \|\| tc >= sceneT \) return none;/, 'the cirrus behind a surface is hidden');
-  // the JS: the previous camera's frame, off for a camera in or over the slab, until the scene has drawn, after a resize
-  assert.match(layerSource, /const depthOn = !!depthTex && this\.sceneDepthReady && this\.hasPrev && C\.pos\.y <= \(t\.uSlabLow\.value as number\);/);
+  assert.match(trace, /float sceneT = cloudSceneT\( dir \);\s*float tMax = min\( uMarchMax, sceneT \);/, 'the medium ends at the surface');
+  assert.match(trace, /vec2 b = cl2Band\( uCamPos, dir, lo, uLayerTop\[ i \] \);\s*b\.y = min\( b\.y, tMax \);/, 'every lane\'s run ends there');
+  // the runs: a sorting network on the starts, then the overlaps merged — a twin of the GLSL over random runs
+  {
+    const net = /cl2Order\( r0, r1 \); cl2Order\( r2, r3 \); cl2Order\( r0, r2 \); cl2Order\( r1, r3 \); cl2Order\( r1, r2 \);/;
+    assert.match(trace, net, 'the five compare-swaps');
+    assert.match(trace, /for \( int m = 0; m < 3; m\+\+ \) \{\s*if \( r1\.x <= r0\.y \) \{ r0\.y = max\( r0\.y, r1\.y \); r1 = r2; r2 = r3; r3 = vec2\( 1e9 \); \}\s*else if \( r2\.x <= r1\.y \) \{ r1\.y = max\( r1\.y, r2\.y \); r2 = r3; r3 = vec2\( 1e9 \); \}\s*else if \( r3\.x <= r2\.y \) \{ r2\.y = max\( r2\.y, r3\.y \); r3 = vec2\( 1e9 \); \}\s*\}/, 'three merge passes');
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+    for (let n = 0; n < 4000; n++) {
+      const r = [0, 1, 2, 3].map(() => {
+        if (rnd() < 0.3) return [1e9, 1e9];
+        const a = rnd() * 30000;
+        return [a, Math.min(a + 50 + rnd() * 8000, 36000)];
+      });
+      const want = r.filter((x) => x[0] < 1e9);
+      const order = (i, j) => { if (r[j][0] < r[i][0]) { const c = r[i]; r[i] = r[j]; r[j] = c; } };
+      order(0, 1); order(2, 3); order(0, 2); order(1, 3); order(1, 2);
+      for (let m = 0; m < 3; m++) {
+        if (r[1][0] <= r[0][1]) { r[0] = [r[0][0], Math.max(r[0][1], r[1][1])]; r[1] = r[2]; r[2] = r[3]; r[3] = [1e9, 1e9]; }
+        else if (r[2][0] <= r[1][1]) { r[1] = [r[1][0], Math.max(r[1][1], r[2][1])]; r[2] = r[3]; r[3] = [1e9, 1e9]; }
+        else if (r[3][0] <= r[2][1]) { r[2] = [r[2][0], Math.max(r[2][1], r[3][1])]; r[3] = [1e9, 1e9]; }
+      }
+      const got = r.filter((x) => x[0] < 1e9);
+      for (let i = 1; i < got.length; i++) assert.ok(got[i][0] > got[i - 1][1], 'disjoint, in order along the ray');
+      // the union is unchanged: every input run inside one output run, every output run's ends an input run's
+      for (const x of want) assert.ok(got.some((g) => g[0] <= x[0] && x[1] <= g[1]), 'every lane\'s run is marched');
+      for (const g of got) assert.ok(want.some((x) => x[0] === g[0]) && want.some((x) => x[1] === g[1]), 'and nothing past them');
+    }
+  }
+  assert.match(sky, /float tB = min\( min\( tTop, \$\{f\(CLOUD_FOGBANK_RANGE_M\[1\]\)\} \), sceneT \);/, 'the sea fog bank ends at the surface');
+  assert.match(sky, /tEnd = min\( min\( tEnd, \$\{f\(CLOUD_RAIN_RANGE_M\[1\]\)\} \), sceneT \);/, 'the rain ends at the surface');
+  assert.match(sky, /if \( tc <= 0\.0 \|\| tc >= sceneT \) return none;/, 'the cirrus behind a surface is hidden');
+  // the JS: the previous camera's frame, off for a camera in or over the lowest lane, until the scene has drawn, after a resize
+  assert.match(layerSource, /const depthOn = !!depthTex && this\.sceneDepthReady && this\.hasPrev && C\.pos\.y <= low;/);
   assert.match(layerSource, /\(t\.uDepthFwd\.value as THREE\.Vector3\)\.copy\(P\.fwd\);/, 'the camera that drew the depth (the previous frame\'s)');
   assert.ok(layerSource.indexOf('(t.uSceneNearFar.value as THREE.Vector2).copy(this.depthPlanes);') < layerSource.indexOf('this.depthPlanes.set(camera.near, camera.far);'), 'its planes, before this frame\'s replace them');
   assert.match(layerSource, /this\.resize\(width, height\); this\.sceneDepthReady = false;/, 'a resize drops the stale depth');
@@ -465,7 +507,8 @@ assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarg
   assert.match(trace, /float viewZ = \( uSceneNearFar\.x \* uSceneNearFar\.y \) \/ \( \( uSceneNearFar\.y - uSceneNearFar\.x \) \* depth - uSceneNearFar\.y \);\s*float t = -viewZ \/ fz;/, 'the same linearisation as the aerial pass');
   // only a surface past the dome limits the layers: inside it the dome's depth test hides them, and a history traced
   // whole behind a near ridge has nothing missing when a camera turn reveals it
-  assert.match(trace, /return t < \$\{f\(CLOUD_DOME_RADIUS_M\)\} \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+  assert.match(trace, /return t < uDomeRadius \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+  assert.match(layerSource, /uDomeRadius: \{ value: CLOUD_DOME_RADIUS_M \}/);
 }
 assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
@@ -483,47 +526,132 @@ assert.match(skySource, /CLOUD_NOISE_KINDS\.every\(\(kind\) => cloudNoiseUpload\
 // 2026-10-03: no cascade gobos — the dithered shade under the PCF taps was the gauntlet's stipple, arcs and weave
 assert.ok(!mainSource.includes('attachShadowCascades') && !skySource.includes('attachShadowCascades'), 'nothing attaches the cascades to the clouds');
 assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block rides with its sky block into the rig');
-assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
+assert.ok(layerSource.includes('cloud2TraceFragment(defs, ATMOSPHERE_SKY_GLSL, weather)') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
 for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMaterial', 'GOBO_FRAGMENT', 'uShadowCellOrigin', 'bindCloudShadowCascade']) {
   assert.ok(!layerSource.includes(gone), `no shadow-map gobo left (${gone})`);
 }
-// round 78: the low-deck march law — a stratus deck under 400 m takes the cellular decks' 10 km cap and far strides
-// (whiteout's 300 m ceiling marched twenty kilometres of sheet at the centre-far view); the cellular decks are
-// unchanged, every cumuliform regime and high sheet stays on the full march
-assert.equal(CLOUD_LOW_DECK_BASE_M, 400);
-assert.ok(layerSource.includes('if ( uDeckMarch > 0.0 ) t1 = min( t1, ${f(CLOUD_DECK_MARCH_MAX_M)} );'), 'the cap reads uDeckMarch');
-assert.ok(layerSource.includes('uThick > 2000.0 || uDeckMarch > 0.0 ? 1.0 : 0.4'), 'the far strides read uDeckMarch');
-assert.ok(!layerSource.includes('if ( uCells > 0.0 ) t1 = min('), 'the old cells-only cap is gone');
-assert.ok(layerSource.includes('t.uDeckMarch.value = cloudDeckMarch(preset);'), 'the uniform follows the preset');
-assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 400 }), cloudDeckMarch({ cells: 0.5, stratiform: 0, baseM: 2800 }), cloudDeckMarch({ cells: 0, stratiform: 0.3, baseM: 300 }), cloudDeckMarch({ cells: 0, stratiform: 0.08, baseM: 1400 })], [1, 0, 1, 0, 0], 'the deck march law');
+// ---- Clouds 2.0: the Beer shadow map's cascades — toroidal and world-anchored: a texel holds world cell c mod N, the
+// window's corner the camera's cell less half the map, the lookup fract(xz / side) the same texel as the march wrote
 {
-  const deckMarchMaps = [];
-  for (const id of MAP_IDS) {
-    const preset = deriveCloudLayerPreset(skyOf(id));
-    const cells = preset.cells > 0;
-    assert.equal(cloudDeckMarch(preset), cells || (preset.stratiform >= 0.5 && preset.baseM < CLOUD_LOW_DECK_BASE_M) ? 1 : 0, id);
-    if (cloudDeckMarch(preset) && !cells) deckMarchMaps.push(id);
+  assert.equal(CLOUD_BSM_CASCADES.length, 2, 'a near cascade (the ground, the battlefield\'s clouds) and a far one');
+  assert.ok(CLOUD_BSM_CASCADES[0].span / CLOUD_BSM_CASCADES[0].texels <= 25, 'the near cascade a ground-shadow texel (<= 25 m)');
+  assert.ok(CLOUD_BSM_CASCADES[1].span >= CLOUD_TIERS.medium.marchMax, 'the far cascade lights the march out to the medium tier\'s reach');
+  for (const c of CLOUD_BSM_CASCADES) assert.equal(c.texels % c.bands, 0, 'whole bands');
+  assert.ok(CLOUD_BSM_SLICES >= 24 && CLOUD_BSM_SLICES <= 96, 'the map\'s slices within its loop');
+  // the twin of the march's addressing and the lookup's
+  const mod = (a, n) => a - n * Math.floor(a / n);
+  for (const [N, texel, camX] of [[512, 12000 / 512, 3.7], [512, 12000 / 512, -18000.2], [256, 64000 / 256, 51234]]) {
+    const w0 = Math.floor(camX / texel) - N / 2;
+    const seen = new Set();
+    for (let i = 0; i < N; i++) {
+      const cell = w0 + mod(i - w0, N);
+      assert.ok(cell >= w0 && cell < w0 + N, 'every texel holds a cell of the window');
+      seen.add(cell);
+      const x = (cell + 0.5) * texel;
+      assert.equal(Math.floor(mod(x / (N * texel), 1) * N), i, 'the lookup reads the texel the march wrote');
+    }
+    assert.equal(seen.size, N, 'the window\'s cells each once');
   }
-  // (2026-10-04: whiteout's deck is cellular now too — the law still marches it on the deck cap, through its cells)
-  assert.deepEqual(deckMarchMaps, [], 'every deck under 400 m is cellular (whiteout since 2026-10-04): the low-deck law is the backstop');
+  const bsm = shadersSource.slice(shadersSource.indexOf('export const CLOUD2_BSM_FRAGMENT'), shadersSource.indexOf('export const CLOUD2_SHADE_FRAGMENT'));
+  assert.match(bsm, /ivec2 cell = uWinCell \+ ivec2\( mod\( vec2\( ij - uWinCell \), float\( uTexels \) \) \);/, 'the march\'s cell by the float mod (a negative int % is undefined in GLSL ES)');
+  assert.ok(!/%/.test(bsm.replace(/\/\/.*$/gm, '')), 'no int modulus in the map\'s march');
+  // the lookup: the four texels around the point (wrapped by the window's side), each its own optical depth, blended as
+  // transmittances from the least of them — the twin: a texel's centre reads that texel alone, a uniform interior is
+  // exact, a lit flank beside a column through the top stays lit (the front depth's own bilinear mean put it deep inside)
+  assert.match(shadersSource, /vec2 st = fract\( xz \/ win\.z \) \* n - 0\.5;/, 'the lookup wraps by the window\'s side');
+  assert.match(shadersSource, /return m - log\( max\( dot\( w, exp\( m - od \) \), 1e-6 \) \);/, 'blended as transmittances');
+  assert.match(shadersSource, /return min\( s\.b \+ s\.a, s\.g \* max\( 0\.0, toTop - offset - s\.r \) \);/, 'a texel\'s depth: the front\'s run capped by the column');
+  {
+    const texelOd = (s, toTop, offset) => Math.min(s[2] + s[3], s[1] * Math.max(0, toTop - offset - s[0]));
+    const read = (map, n, side, x, z, toTop, offset) => {
+      const sx = mod(x / side, 1) * n - 0.5, sz = mod(z / side, 1) * n - 0.5;
+      const ix = Math.floor(sx), iz = Math.floor(sz), fx = sx - ix, fz = sz - iz;
+      const at = (i, j) => texelOd(map(mod(i, n), mod(j, n)), toTop, offset);
+      const od = [at(ix, iz), at(ix + 1, iz), at(ix, iz + 1), at(ix + 1, iz + 1)];
+      const w = [(1 - fx) * (1 - fz), fx * (1 - fz), (1 - fx) * fz, fx * fz];
+      const m = Math.min(...od);
+      return m - Math.log(Math.max(od.reduce((a, o, k) => a + w[k] * Math.exp(m - o), 0), 1e-6));
+    };
+    const n = 64, side = 64 * 78;
+    // a uniform deck: every texel the same column — the depth exact wherever the point falls
+    const deck = () => [100, 0.04, 30, 2];
+    for (const x of [7.1, 1234.5, -999.9]) assert.ok(Math.abs(read(deck, n, side, x, 300, 900, 0) - Math.min(32, 0.04 * 800)) < 1e-9, 'a uniform column exact');
+    // a tower's flank: the texels left of column 20 meet the tower through its side, 3 km down their rays (under the
+    // point), the rest through its top 50 m down; a point on the flank between the two (2.42 km down its ray) is lit,
+    // where the front depth's own bilinear mean (1.5 km) put it 900 m inside the tower
+    const tower = (i) => (i < 20 ? [3000, 0.05, 200, 5] : [50, 0.05, 200, 5]);
+    const flankX = 20 * (side / n);
+    const odFlank = read((i) => tower(i), n, side, flankX, (5 + 0.5) * (side / n), 2500, 80);
+    assert.ok(odFlank < 1.5, `a lit flank stays lit (${odFlank.toFixed(2)})`);
+    const meanFrontOd = texelOd([0.5 * 3000 + 0.5 * 50, 0.05, 200, 5], 2500, 80);
+    assert.ok(meanFrontOd > 40, `the front depth's mean darkened it (${meanFrontOd.toFixed(1)})`);
+    // a texel's centre reads that texel alone
+    const cx = (33 + 0.5) * (side / n);
+    assert.ok(Math.abs(read((i) => tower(i), n, side, cx, (5 + 0.5) * (side / n), 2500, 80) - texelOd(tower(33), 2500, 80)) < 1e-9, 'a texel\'s centre reads that texel');
+  }
+  // the shade the lit materials read: the near cascade's column depth as a continuous share, the column's own beam in g
+  assert.match(shadersSource, /share = uShadeLaw\.x \* \( 1\.0 - exp\( -od \/ max\( uShadeLaw\.y, 1e-3 \) \) \);\s*beam = exp\( -od \);/);
+  assert.match(layerSource, /this\.scene\.userData\.cloudSunMean = this\.sunMean;/, 'the sun mean published for the light model (the skies lane\'s hook)');
 }
-assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
+// ---- the parabolic shells: the twin of the trace's band (cl2Band) — a ray under the band rises through its base and
+// leaves through its top, a ray inside leaves through either face, a ray over it dips in through its top
+{
+  const R = CLOUD2_EARTH_R;
+  const height = (p) => p[1] + (p[0] * p[0] + p[2] * p[2]) / (2 * R);
+  const roots = (o, d, H) => {
+    const a = (d[0] * d[0] + d[2] * d[2]) * (0.5 / R), b = d[1] + (o[0] * d[0] + o[2] * d[2]) / R, c = height(o) - H;
+    if (a < 1e-12) { if (Math.abs(b) < 1e-9) return null; const t = -c / b; return [t, t]; }
+    const disc = b * b - 4 * a * c; if (disc < 0) return null;
+    const sq = Math.sqrt(disc), q = -0.5 * (b + (b >= 0 ? sq : -sq)), r0 = q / a, r1 = c / q;
+    return [Math.min(r0, r1), Math.max(r0, r1)];
+  };
+  const band = (o, d, lo, hi) => {
+    const h0 = height(o), L = roots(o, d, lo), H = roots(o, d, hi);
+    if (h0 < lo) { if (!L || L[1] <= 0) return null; return [L[1], H && H[1] > L[1] ? H[1] : 1e9]; }
+    if (h0 <= hi) return [0, Math.min(H && H[1] > 0 ? H[1] : 1e9, L && L[0] > 0 ? L[0] : 1e9)];
+    if (!H || H[0] <= 0) return null;
+    return [H[0], L && L[0] > H[0] ? L[0] : H[1]];
+  };
+  const unit = (v) => { const n = Math.hypot(...v); return v.map((x) => x / n); };
+  const along = (o, d, t) => [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
+  {
+    const o = [120, 30, -80], d = unit([Math.cos(0.17), Math.tan(0.17), 0.3]);
+    const [t0, t1] = band(o, d, 1400, 2300);
+    assert.ok(Math.abs(height(along(o, d, t0)) - 1400) < 0.5 && Math.abs(height(along(o, d, t1)) - 2300) < 0.5, 'base then top');
+  }
+  {
+    const [t0] = band([0, 2, 0], [1, 0, 0], 1400, 2300);
+    assert.ok(t0 > 120000 && t0 < 150000, `the horizon ray reaches the base at ${(t0 / 1000).toFixed(0)} km (the Earth drops away)`);
+  }
+  {
+    const d1 = unit([1, -0.3, 0]), inside = band([0, 1800, 0], d1, 1400, 2300);
+    assert.ok(inside[0] === 0 && Math.abs(height(along([0, 1800, 0], d1, inside[1])) - 1400) < 0.5, 'inside: out through the base');
+    const d2 = unit([1, -0.4, 0.2]), over = band([0, 3000, 0], d2, 1400, 2300);
+    assert.ok(Math.abs(height(along([0, 3000, 0], d2, over[0])) - 2300) < 0.5 && Math.abs(height(along([0, 3000, 0], d2, over[1])) - 1400) < 0.5, 'over: in at the top, out at the base');
+    // (the parabola turns up again thousands of kilometres out, where a sphere's ray would have met the ground: far past
+    // any march, so a downward ray from under the band draws nothing)
+    const down = band([0, 30, 0], unit([1, -0.2, 0]), 1400, 2300);
+    assert.ok(!down || down[0] > CLOUD_TIERS.ultra.marchMax * 10, 'a ray at the ground looking down meets no cloud within reach');
+  }
+  assert.match(shadersSource, /float cl2Height\( vec3 p \) \{ return p\.y \+ dot\( p\.xz, p\.xz \) \* \( 0\.5 \/ CL2_EARTH_R \); \}/, 'the GLSL\'s height is the twin\'s');
+  assert.ok(CLOUD2_PERIODS.shape >= 2 * 1400, 'the shape volume\'s period spans several clouds (no stamped billows)');
+}
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
-assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');
-for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
-  assert.ok(layerSource.includes(term), `the trace carries ${term}`);
+assert.match(shadersSource, /uniform sampler3D tShape;\s*uniform sampler3D tDetail;/, 'the volumes are 3D textures');
+for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
+  'cl2Band( uCamPos, dir, lo, uLayerTop[ i ] )', 'uLayerAnvil', 'cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) )', 'L += T * ( S - S * Tstep ) / sigma;',
+  'if ( lit == 0 || ( ( lit & 1 ) == 0 && T > 0.15 ) )']) {
+  assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
-assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudFarShade'"));
-console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
-
-// The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
-// (2026-10-05: the band's half-width a QA knob, 0.04 by default — CLOUD_SHADOW_SOFT — over the visible outline)
-assert.match(layerSource,/smoothstep\( uThreshold \+ uShadeLook\.y - uShadeLook\.z, uThreshold \+ uShadeLook\.y \+ uShadeLook\.z, cloudField/,'cloud edges have a continuous opacity band');
+for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);
+assert.ok(layerSource.includes('name: `VolumetricCloudTrace-${tier}`') && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'")
+  && layerSource.includes("name: 'VolumetricCloudBeerShadow'") && layerSource.includes("name: 'VolumetricCloudShade'"));
+console.log('volumetricClouds.selftest: deterministic weather (four bakes), tiling, equalisation and street anisotropy, the GPU volumes\' lattice, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the tiers, the Beer shadow map\'s addressing, the shells\' band, the haze mirror and the hooks pinned');
 
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
 // the 3 % the cut left let the sun's disc (tens of thousands of times the sky) burn through a closed deck or a core.
-assert.match(layerSource, /if \( t > t1 \|\| T < 0\.03 \) break;[\s\S]*?if \( T < 0\.03 && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
+assert.match(shadersSource, /if \( T < 0\.02 \) break;[\s\S]*?if \( T < 0\.03 && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
   'the cut ray opaque, before the haze reads its cover');
 assert.match(layerSource, /uOpaqueCut: \{ value: 1 \},/);
 assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT', 1\);/, 'on by default (QA knob)');
@@ -537,17 +665,18 @@ assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT',
 }
 // and the sun's light diffused through a deck keeps a broad forward lobe (its mean over the sky unchanged): a readable
 // sun direction under a closed deck without a disc
-assert.match(layerSource, /float deckLobe = 1\.0 \+ uDeckLobe \* \( phaseDual\( cosT, 0\.6 \) \* 4\.0 \* CL_PI - 1\.0 \);\s*vec3 Etop = sunTop \* \$\{f\(CLOUD_DECK_SUN_SHARE\)\} \/ CL_PI \* deckLobe \+ uSkyIrradiance;/,
+assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);\s*vec3 eTop = sunE \* sunUp \* lobe \+ uSkyIrradiance \* CL_PI;/,
   'the lobe on the sun\'s diffused share only, the sky\'s untouched');
 assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.2;/);
 assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE\);/);
 {
   // the lobe's mean over the sphere is 1 (phaseDual integrates to one): the deck's mean light is unchanged
   const hg = (c, g) => (1 - g * g) / (4 * Math.PI * Math.pow(1 + g * g - 2 * g * c, 1.5));
+  // the deck lobe's dual Henyey–Greenstein (g 0.6 over a back lobe of −0.225, 70 / 30)
   const dual = (c, g) => hg(c, g) * 0.7 + hg(c, -0.375 * g) * 0.3;
   let mean = 0; const n = 20000;
   for (let i = 0; i < n; i++) { const c = -1 + 2 * (i + 0.5) / n; mean += (1 + 0.2 * (dual(c, 0.6) * 4 * Math.PI - 1)) / n; }
   assert.ok(Math.abs(mean - 1) < 1e-3, `the lobe's mean over the sky ${mean.toFixed(4)}`);
-  assert.ok(1 + 0.2 * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
+  assert.ok(1 + CLOUD_DECK_SUN_LOBE * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
 }
 console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');

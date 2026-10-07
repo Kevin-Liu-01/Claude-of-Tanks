@@ -772,6 +772,11 @@ function volumetricCloudsEnabledFor(renderer: THREE.WebGLRenderer): boolean {
 export interface AtmospherePublishedState {
   active: boolean;
   skyView: THREE.Texture | null;
+  /**
+   * 2026-10-06 (the clouds lane, agreed with the skies lane): the transmittance LUT (atmosphere.ts, Bruneton's (r, μ)
+   * parameterisation) — the cloud trace lights each sample by the sun's transmittance at its own altitude.
+   */
+  transmittanceLut: THREE.Texture | null;
   viewHeightKm: number;
   sunDir: THREE.Vector3;
   knee: THREE.Vector3;
@@ -1245,7 +1250,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   sky.visible = true;
   scene.add(atmosphereDome);
   const atmosphereState: AtmospherePublishedState = {
-    active: false, skyView: atmosphereLuts?.skyView.texture ?? null, viewHeightKm: 0.05, sunDir,
+    active: false, skyView: atmosphereLuts?.skyView.texture ?? null, transmittanceLut: atmosphereLuts?.transmittance.texture ?? null,
+    viewHeightKm: 0.05, sunDir,
     knee: new THREE.Vector3(SKY_KNEE, SKY_KNEE_RANGE, SKY_KNEE_FALLOFF), skyIntensity: 1, horizonLum: 0.45,
     horizonCap: HORIZON_LUM_CAP, fogTint: new THREE.Color(preset.fogTintHex), fogMix: preset.fogMix, fogDensity: preset.fogDensity, irradiance: new THREE.Color(0.3, 0.4, 0.6),
     summary: atmosphereLuts?.summary ?? null,

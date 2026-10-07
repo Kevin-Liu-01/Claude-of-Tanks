@@ -1,27 +1,21 @@
 /**
- * cloudNoise.ts — the volumetric cloud layer's noise volumes and weather fields (round 68, 2026-09-24; round 71,
- * 2026-09-25: the multi-scale weather, the street / anvil / cirrus companion field, the curl volume, blue noise).
+ * cloudNoise.ts — the volumetric cloud layer's weather fields (round 68, 2026-09-24; round 71, 2026-09-25: the
+ * multi-scale weather, the street / anvil / cirrus companion field, blue noise; Clouds 2.0, 2026-10-06: the local
+ * weather the layered medium reads — the 3D shape and detail volumes are baked on the GPU, cloudVolumeNoise.ts).
  *
  * Pure, deterministic and DOM-free so the bakes run in a worker (cloudNoiseWorker.ts) and the receipt
- * (volumetricClouds.selftest.mjs) pins their bytes in Node. Written from Schneider & Vos, "The Real-time
- * Volumetric Cloudscapes of Horizon Zero Dawn" (SIGGRAPH 2015 / Nubis 2017): a tileable Perlin–Worley
- * base-shape volume (R: Perlin fbm dilated by inverted Worley, GBA: Worley fbm at rising frequencies), a
- * tileable Worley-fbm detail volume that erodes the shape's edges, a tileable curl volume (the curl of a
- * gradient-noise potential, Bridson 2007) that warps the erosion lattice, two 2D weather fields — the weather
- * map of Nubis (coverage, type, precipitation) written first-party: the isotropic one (R: the multi-scale
- * cumuliform coverage — synoptic bands, mesoscale groups, local cells; G: convective vigour, the cloud type;
- * B: the broad stratiform coverage; A: a fine breakup) and the companion one in the wind frame (R: cumuliform
- * coverage in streets along the wind; G: the anvil / precipitation field; B: cirrus streaks; A: cirrus fibres)
- * — and a void-and-cluster blue-noise tile (Ulichney 1993) for the march offsets. Every noise is integer-lattice
- * periodic, so the volumes tile in world space. Nothing here is copied from any reference implementation; the
- * hashes and lattices are first-party.
+ * (volumetricClouds.selftest.mjs) pins them in Node. The 2D weather fields are the weather map of Nubis (Schneider &
+ * Vos 2015/2017: coverage, type, precipitation) written first-party: the isotropic one (R: the multi-scale cumuliform
+ * coverage — synoptic bands, mesoscale groups, local cells; G: convective vigour, the cloud type; B: the broad
+ * stratiform coverage; A: a fine breakup), the companion one in the wind frame (R: cumuliform coverage in streets along
+ * the wind; G: the anvil / precipitation field; B: cirrus streaks; A: cirrus fibres), the local weather of the layered
+ * medium (bakeCloudLocalWeather), and a void-and-cluster blue-noise tile (Ulichney 1993) for the march offsets. Every
+ * noise is integer-lattice periodic, so the fields tile in world space. Nothing here is copied from any reference
+ * implementation; the hashes and lattices are first-party.
  */
 
 /** Shipped sizes (the receipt pins the bytes at these). */
-export const CLOUD_SHAPE_SIZE = 64;
-export const CLOUD_DETAIL_SIZE = 32;
 export const CLOUD_WEATHER_SIZE = 256;
-export const CLOUD_CURL_SIZE = 32;
 export const CLOUD_BLUE_SIZE = 32;
 export const CLOUD_NOISE_SEED = 2068;
 
@@ -36,83 +30,6 @@ function hash3(x: number, y: number, z: number, seed: number): number {
 }
 
 const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10);
-
-/**
- * Tileable 3D Worley F1 distance with `cells` feature points per axis over the unit cube, accumulated into
- * `out` (N³ floats) scaled by `amp`. Distances are in cell units (0 at a feature point, ~1 at the farthest).
- */
-function worley3(N: number, cells: number, seed: number, out: Float32Array, amp: number): void {
-  const fp = new Float32Array(cells * cells * cells * 3);
-  for (let z = 0; z < cells; z++) for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
-    const i = ((z * cells + y) * cells + x) * 3;
-    fp[i] = hash3(x, y, z, seed);
-    fp[i + 1] = hash3(x, y, z, seed + 7);
-    fp[i + 2] = hash3(x, y, z, seed + 13);
-  }
-  const s = cells / N;
-  // the three wrapped lattice rows / columns / slices around a texel, hoisted out of the 27-cell loop
-  const wz = [0, 0, 0], wy = [0, 0, 0], wx = [0, 0, 0];
-  const gzs = [0, 0, 0], gys = [0, 0, 0], gxs = [0, 0, 0];
-  for (let z = 0; z < N; z++) {
-    const pz = (z + 0.5) * s, cz = Math.floor(pz);
-    for (let k = 0; k < 3; k++) { gzs[k] = cz + k - 1; wz[k] = ((gzs[k] % cells) + cells) % cells; }
-    for (let y = 0; y < N; y++) {
-      const py = (y + 0.5) * s, cy = Math.floor(py);
-      for (let k = 0; k < 3; k++) { gys[k] = cy + k - 1; wy[k] = ((gys[k] % cells) + cells) % cells; }
-      for (let x = 0; x < N; x++) {
-        const px = (x + 0.5) * s, cx = Math.floor(px);
-        for (let k = 0; k < 3; k++) { gxs[k] = cx + k - 1; wx[k] = ((gxs[k] % cells) + cells) % cells; }
-        let best = 1e9;
-        for (let oz = 0; oz < 3; oz++) {
-          const rowZ = wz[oz] * cells, gz = gzs[oz];
-          for (let oy = 0; oy < 3; oy++) {
-            const rowY = (rowZ + wy[oy]) * cells, gy = gys[oy];
-            for (let ox = 0; ox < 3; ox++) {
-              const i = (rowY + wx[ox]) * 3;
-              const dx = gxs[ox] + fp[i] - px, dy = gy + fp[i + 1] - py, dz = gz + fp[i + 2] - pz;
-              const dd = dx * dx + dy * dy + dz * dz;
-              if (dd < best) best = dd;
-            }
-          }
-        }
-        out[(z * N + y) * N + x] += amp * Math.min(1, Math.sqrt(best));
-      }
-    }
-  }
-}
-
-/** Tileable 3D gradient (Perlin) noise with `cells` lattice points per axis, accumulated into `out` × amp (≈ −0.7..0.7). */
-function perlin3(N: number, cells: number, seed: number, out: Float32Array, amp: number): void {
-  const g = new Float32Array(cells * cells * cells * 3);
-  for (let z = 0; z < cells; z++) for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
-    const i = ((z * cells + y) * cells + x) * 3;
-    const a = hash3(x, y, z, seed) * 6.283185307179586, b = hash3(x, y, z, seed + 3) * 2 - 1;
-    const r = Math.sqrt(Math.max(0, 1 - b * b));
-    g[i] = r * Math.cos(a); g[i + 1] = r * Math.sin(a); g[i + 2] = b;
-  }
-  const s = cells / N;
-  const dot = (xi: number, yi: number, zi: number, dx: number, dy: number, dz: number): number => {
-    const i = ((zi * cells + yi) * cells + xi) * 3;
-    return g[i] * dx + g[i + 1] * dy + g[i + 2] * dz;
-  };
-  for (let z = 0; z < N; z++) {
-    const pz = (z + 0.5) * s, cz = Math.floor(pz), fz = pz - cz, uz = fade(fz), z0 = cz % cells, z1 = (cz + 1) % cells;
-    for (let y = 0; y < N; y++) {
-      const py = (y + 0.5) * s, cy = Math.floor(py), fy = py - cy, uy = fade(fy), y0 = cy % cells, y1 = (cy + 1) % cells;
-      for (let x = 0; x < N; x++) {
-        const px = (x + 0.5) * s, cx = Math.floor(px), fx = px - cx, ux = fade(fx), x0 = cx % cells, x1 = (cx + 1) % cells;
-        const n000 = dot(x0, y0, z0, fx, fy, fz), n100 = dot(x1, y0, z0, fx - 1, fy, fz);
-        const n010 = dot(x0, y1, z0, fx, fy - 1, fz), n110 = dot(x1, y1, z0, fx - 1, fy - 1, fz);
-        const n001 = dot(x0, y0, z1, fx, fy, fz - 1), n101 = dot(x1, y0, z1, fx - 1, fy, fz - 1);
-        const n011 = dot(x0, y1, z1, fx, fy - 1, fz - 1), n111 = dot(x1, y1, z1, fx - 1, fy - 1, fz - 1);
-        const nx00 = n000 + ux * (n100 - n000), nx10 = n010 + ux * (n110 - n010);
-        const nx01 = n001 + ux * (n101 - n001), nx11 = n011 + ux * (n111 - n011);
-        const nxy0 = nx00 + uy * (nx10 - nx00), nxy1 = nx01 + uy * (nx11 - nx01);
-        out[(z * N + y) * N + x] += amp * (nxy0 + uz * (nxy1 - nxy0));
-      }
-    }
-  }
-}
 
 /**
  * Tileable 2D gradient noise with `cells` lattice points along x and `cellsY` (default the same) along y —
@@ -228,53 +145,23 @@ function equalise(field: Float32Array): Float32Array {
 const toByte = (v: number): number => Math.round(clamp01(v) * 255);
 
 /**
- * The base-shape volume: RGBA8, `size`³, tileable. R = Perlin fbm dilated by inverted Worley fbm (the
- * "Perlin–Worley" of Schneider), remapped so its median sits near 0.5; G, B, A = inverted Worley fbm with
- * 4 / 8 / 16 cells per period (the shape's low, mid and high billow frequencies).
+ * Clouds 2.0: equalise through a 65 536-bin histogram of the field's range (linear time; the comparator sort of
+ * `equalise` took a second for a 512² channel under load). Each value maps to its bin's mid-rank, so the result is
+ * uniform to a bin's width and deterministic.
  */
-export function bakeCloudShapeVolume(size = CLOUD_SHAPE_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
-  const N = size, count = N * N * N;
-  const perlin = new Float32Array(count);
-  perlin3(N, 4, seed + 11, perlin, 0.5);
-  perlin3(N, 8, seed + 12, perlin, 0.25);
-  perlin3(N, 16, seed + 13, perlin, 0.125);
-  perlin3(N, 32, seed + 14, perlin, 0.0625);
-  // five Worley fields at 4 / 8 / 16 / 32 / 64 cells per period; the three fbm channels share them
-  // (HZD's GBA are Worley fbm at rising base frequencies — sharing octaves keeps the bake at five
-  // evaluations instead of nine, and the channels stay distinct at their own base frequency)
-  const W = [4, 8, 16, 32, 64].map((cells, k) => { const f = new Float32Array(count); worley3(N, cells, seed + 21 + k, f, 1); return f; });
-  const out = new Uint8Array(count * 4);
-  for (let i = 0; i < count; i++) {
-    const p = clamp01(perlin[i] * 0.9 + 0.5); // gradient fbm ≈ −0.7..0.7 → 0..1
-    const billow1 = 1 - (W[0][i] * 0.625 + W[1][i] * 0.25 + W[2][i] * 0.125);
-    const billow2 = 1 - (W[1][i] * 0.625 + W[2][i] * 0.25 + W[3][i] * 0.125);
-    const billow3 = 1 - (W[2][i] * 0.625 + W[3][i] * 0.25 + W[4][i] * 0.125);
-    // Perlin–Worley: the billows keep their round lumps, the Perlin breaks their regularity
-    const pw = clamp01(p + (1 - p) * billow1 * 0.5);
-    const base = clamp01((pw - 0.35) / 0.65);
-    out[i * 4] = toByte(base);
-    out[i * 4 + 1] = toByte(billow1);
-    out[i * 4 + 2] = toByte(billow2);
-    out[i * 4 + 3] = toByte(billow3);
-  }
-  return out;
-}
-
-/**
- * The detail volume: RGBA8, `size`³, tileable. R, G, B = inverted Worley fbm at 4 / 8 / 16 cells per period;
- * A = 1 (unused). Sampled at a fine world scale, it erodes the base shape's outer shell into cauliflower lumps
- * (tops) and wisps (undersides).
- */
-export function bakeCloudDetailVolume(size = CLOUD_DETAIL_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
-  const N = size, count = N * N * N;
-  const D = [4, 8, 16, 32, 64].map((cells, k) => { const f = new Float32Array(count); worley3(N, cells, seed + 51 + k, f, 1); return f; });
-  const out = new Uint8Array(count * 4);
-  for (let i = 0; i < count; i++) {
-    out[i * 4] = toByte(1 - (D[0][i] * 0.625 + D[1][i] * 0.25 + D[2][i] * 0.125));
-    out[i * 4 + 1] = toByte(1 - (D[1][i] * 0.625 + D[2][i] * 0.25 + D[3][i] * 0.125));
-    out[i * 4 + 2] = toByte(1 - (D[2][i] * 0.625 + D[3][i] * 0.25 + D[4][i] * 0.125));
-    out[i * 4 + 3] = 255;
-  }
+function equaliseHistogram(field: Float32Array): Float32Array {
+  const count = field.length, BINS = 65536;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < count; i++) { const v = field[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+  const scale = hi > lo ? (BINS - 1) / (hi - lo) : 0;
+  const bins = new Uint32Array(BINS);
+  const bin = new Uint32Array(count);
+  for (let i = 0; i < count; i++) { const b = Math.round((field[i] - lo) * scale); bin[i] = b; bins[b]++; }
+  const mid = new Float32Array(BINS);
+  let below = 0;
+  for (let b = 0; b < BINS; b++) { mid[b] = (below + bins[b] * 0.5) / count; below += bins[b]; }
+  const out = new Float32Array(count);
+  for (let i = 0; i < count; i++) out[i] = mid[bin[i]];
   return out;
 }
 
@@ -420,40 +307,6 @@ export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_
 }
 
 /**
- * The curl volume: RGBA8, `size`³, tileable. RGB = the curl of a three-component gradient-noise potential
- * (two octaves), a divergence-free field that advects the detail lattice at the cloud's edges so the erosion
- * swirls instead of pitting (Bridson, Hourihan & Nordenstam 2007, "Curl-noise for procedural fluid flow"),
- * mapped −1..1 → 0..255. A = 255.
- */
-export function bakeCloudCurlVolume(size = CLOUD_CURL_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
-  const N = size, count = N * N * N;
-  const psi = [0, 1, 2].map((k) => {
-    const f = new Float32Array(count);
-    perlin3(N, 4, seed + 201 + k, f, 0.7);
-    perlin3(N, 8, seed + 211 + k, f, 0.3);
-    return f;
-  });
-  const at = (f: Float32Array, x: number, y: number, z: number): number => f[((((z % N) + N) % N) * N + (((y % N) + N) % N)) * N + (((x % N) + N) % N)];
-  const out = new Uint8Array(count * 4);
-  let peak = 1e-6;
-  const curl = new Float32Array(count * 3);
-  for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const i = (z * N + y) * N + x;
-    // central differences on the periodic lattice
-    const dPz_dy = at(psi[2], x, y + 1, z) - at(psi[2], x, y - 1, z), dPy_dz = at(psi[1], x, y, z + 1) - at(psi[1], x, y, z - 1);
-    const dPx_dz = at(psi[0], x, y, z + 1) - at(psi[0], x, y, z - 1), dPz_dx = at(psi[2], x + 1, y, z) - at(psi[2], x - 1, y, z);
-    const dPy_dx = at(psi[1], x + 1, y, z) - at(psi[1], x - 1, y, z), dPx_dy = at(psi[0], x, y + 1, z) - at(psi[0], x, y - 1, z);
-    curl[i * 3] = dPz_dy - dPy_dz; curl[i * 3 + 1] = dPx_dz - dPz_dx; curl[i * 3 + 2] = dPy_dx - dPx_dy;
-    for (let c = 0; c < 3; c++) peak = Math.max(peak, Math.abs(curl[i * 3 + c]));
-  }
-  for (let i = 0; i < count; i++) {
-    for (let c = 0; c < 3; c++) out[i * 4 + c] = toByte(curl[i * 3 + c] / peak * 0.5 + 0.5);
-    out[i * 4 + 3] = 255;
-  }
-  return out;
-}
-
-/**
  * A blue-noise tile: RGBA8, `size`², the void-and-cluster rank of every texel (Ulichney 1993) with a toroidal
  * Gaussian energy (σ = 1.5 texels, a 13-texel window) — the march's per-texel ray offset, so the start jitter of
  * neighbouring rays decorrelates without the low-frequency clumps of white noise or the ramps of a gradient
@@ -505,23 +358,91 @@ export function bakeCloudBlueNoise(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SE
   return out;
 }
 
-/** The six bakes the layer uploads (the worker posts each buffer as it finishes). */
+/** Clouds 2.0 (2026-10-06): the local weather's texel count (its world period is CLOUD_LOCAL_TILE_M in the layer). */
+export const CLOUD_LOCAL_SIZE = 512;
+
+/** Tileable 2D inverted Worley (1 − the squared F1 distance in cell units, clamped at 1), accumulated into `out` × amp. */
+function worley2(N: number, cells: number, seed: number, out: Float32Array, amp: number): void {
+  const fp = new Float32Array(cells * cells * 2);
+  for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
+    fp[(y * cells + x) * 2] = hash3(x, y, 9, seed);
+    fp[(y * cells + x) * 2 + 1] = hash3(x, y, 10, seed);
+  }
+  const s = cells / N;
+  for (let y = 0; y < N; y++) {
+    const py = (y + 0.5) * s, cy = Math.floor(py);
+    for (let x = 0; x < N; x++) {
+      const px = (x + 0.5) * s, cx = Math.floor(px);
+      let best = 1;
+      for (let oy = -1; oy <= 1; oy++) {
+        const gy = cy + oy, wy = ((gy % cells) + cells) % cells;
+        for (let ox = -1; ox <= 1; ox++) {
+          const gx = cx + ox, wx = ((gx % cells) + cells) % cells;
+          const i = (wy * cells + wx) * 2;
+          const dx = gx + fp[i] - px, dy = gy + fp[i + 1] - py;
+          const dd = dx * dx + dy * dy;
+          if (dd < best) best = dd;
+        }
+      }
+      out[y * N + x] += amp * (1 - best);
+    }
+  }
+}
+
+/**
+ * Clouds 2.0 (2026-10-06): the local weather — RGBA8, `size`², tileable over one CLOUD_LOCAL_TILE_M period (48 km). Each
+ * channel is a coverage the layers' shells threshold (a map's coverage c admits the fraction c of it: every channel is
+ * rank-equalised); the 3D shape volume then carves the admitted area into clouds, so a cloud is never one weather cell:
+ *   R  cumuliform — an inverted-Worley fbm over four octaves (cells of 4, 2, 1 and 0.5 km) whose crests, where the
+ *      octaves' cells line up, are groups of masses of every size, lifted and lowered by a broad cluster field (16 km
+ *      fields and clearings), so the sky holds cloud fields, gaps and lone masses instead of an even pepper
+ *   G  aloft — the same law two octaves finer and under its own cluster field: the elements of an altocumulus layer
+ *   B  stratiform — a gradient fbm (16 km to 1 km): the broad decks, their thin parts and breaks
+ *   A  cells — an inverted-Worley fbm at 1.2 and 0.6 km: a stratocumulus deck's cells (thick cores, thin borders)
+ */
+export function bakeCloudLocalWeather(size = CLOUD_LOCAL_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
+  const N = size, count = N * N;
+  const clusterA = new Float32Array(count);
+  perlin2(N, 3, seed + 401, clusterA, 0.65); perlin2(N, 6, seed + 402, clusterA, 0.35);
+  const clusterB = new Float32Array(count);
+  perlin2(N, 4, seed + 403, clusterB, 0.6); perlin2(N, 8, seed + 404, clusterB, 0.4);
+  const cu = new Float32Array(count);
+  worley2(N, 12, seed + 411, cu, 0.40); worley2(N, 24, seed + 412, cu, 0.36); worley2(N, 48, seed + 413, cu, 0.33); worley2(N, 96, seed + 414, cu, 0.30);
+  const ac = new Float32Array(count);
+  worley2(N, 48, seed + 421, ac, 0.40); worley2(N, 96, seed + 422, ac, 0.36); worley2(N, 192, seed + 423, ac, 0.30);
+  const st = new Float32Array(count);
+  perlin2(N, 3, seed + 431, st, 0.5); perlin2(N, 6, seed + 432, st, 0.25); perlin2(N, 12, seed + 433, st, 0.14);
+  perlin2(N, 24, seed + 434, st, 0.07); perlin2(N, 48, seed + 435, st, 0.04);
+  const ce = new Float32Array(count);
+  worley2(N, 40, seed + 441, ce, 0.65); worley2(N, 80, seed + 442, ce, 0.35);
+  for (let i = 0; i < count; i++) {
+    cu[i] += clusterA[i] * 0.55;
+    ac[i] += clusterB[i] * 0.6;
+  }
+  const r = equaliseHistogram(cu), g = equaliseHistogram(ac), b = equaliseHistogram(st), a = equaliseHistogram(ce);
+  const out = new Uint8Array(count * 4);
+  for (let i = 0; i < count; i++) {
+    out[i * 4] = toByte(r[i]);
+    out[i * 4 + 1] = toByte(g[i]);
+    out[i * 4 + 2] = toByte(b[i]);
+    out[i * 4 + 3] = toByte(a[i]);
+  }
+  return out;
+}
+
+/** The four bakes the layer uploads from the worker (the noise volumes are baked on the GPU: cloudVolumeNoise.ts). */
 export interface CloudNoiseBake {
-  shape: Uint8Array;
-  detail: Uint8Array;
   weather: Uint8Array;
   streets: Uint8Array;
-  curl: Uint8Array;
   blue: Uint8Array;
+  local: Uint8Array;
 }
 
 export function bakeCloudNoise(seed = CLOUD_NOISE_SEED): CloudNoiseBake {
   return {
-    shape: bakeCloudShapeVolume(CLOUD_SHAPE_SIZE, seed),
-    detail: bakeCloudDetailVolume(CLOUD_DETAIL_SIZE, seed),
     weather: bakeCloudWeatherMap(CLOUD_WEATHER_SIZE, seed),
     streets: bakeCloudWeatherStreets(CLOUD_WEATHER_SIZE, seed),
-    curl: bakeCloudCurlVolume(CLOUD_CURL_SIZE, seed),
     blue: bakeCloudBlueNoise(CLOUD_BLUE_SIZE, seed),
+    local: bakeCloudLocalWeather(CLOUD_LOCAL_SIZE, seed),
   };
 }

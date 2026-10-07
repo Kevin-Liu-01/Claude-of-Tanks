@@ -516,6 +516,22 @@ a 2.5D mid-level layer (altocumulus, altostratus, cirrocumulus, lenticular) behi
 the cirrus sheet — placed deterministically per map from the `clouds` block, with lightning in a night storm drawn in
 the composite. `cloudPresets.ts` resolves the block for the battle's time of day (the diurnal law of convective cloud,
 per-time knobs, a neutral albedo at sunset and night, the moonlight's hue, a town's glow on the bases).
+Clouds 2.0 (2026-10-06, after the clouds package of Takram's three-geospatial; MIT, the port recorded in
+docs/ATTRIBUTION.md): the slab is a layered medium. `engine/cloudLayers.ts` turns the map's resolved preset into up to
+four altitude lanes (the regime's main layer and the layer aloft the meteorology puts over it), each a coverage of the
+local weather (`cloudNoise.ts` `bakeCloudLocalWeather`: cumulus fields with clearings, the elements aloft, the decks'
+stratiform field and cells, equalised, on a 48 km tile) shaped by a height function (a dome over a flat base, a deck
+flat on both faces, an anvil) into a shell that a 3.2 km Perlin–Worley shape volume and a detail volume
+(`cloudVolumeNoise.ts`, baked on the GPU at load) carve under a density profile (`cloudShaders.ts`). The shells curve
+with a parabolic Earth so the field converges at the horizon; the march (36 km on High) strides by the footprint and
+refines on entering a cloud. Each sample's optical depth to the sun is a short secondary march plus a Beer shadow map —
+two toroidal, world-anchored cascades (12 km and 64 km) of the same medium marched along the sun, a band a frame —
+under the multiple-scattering octaves, a dual-lobe phase, the powder term, the sky and ground light and a deck's
+diffusion; the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's variance. The
+near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
+its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model. The dome composite,
+the history the lens flare / sun shafts / horizon panorama read and the sky beyond the medium (rain, fog bank, cirrus,
+contrails, lightning) are unchanged; the far band is gone (the curved shells carry the field to the horizon).
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column
