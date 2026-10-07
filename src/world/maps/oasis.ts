@@ -85,9 +85,12 @@ export default {
       ...talusFan(262, -272, 276, -298, 28, 1.3),
     ],
   },
+  // (round 3b, the bots lane's swap test, fairness band 45-55 %: bravo's seven pads stood 500 m apart along the
+  // northern edge, x -252 to 250, and the north won 50 of 80; bravo deploys as alpha does, a block of two rows of
+  // tanks 8 m apart and 10 m between the rows, here in the middle of the northern edge: the north wins 42 of 80)
   spawns: { player: { x: 60, z: -390 }, enemies: [
-    { x: -252, z: 382 }, { x: -170, z: 420 }, { x: -86, z: 378 }, { x: -2, z: 422 },
-    { x: 82, z: 382 }, { x: 166, z: 424 }, { x: 250, z: 384 },
+    { x: 10.3, z: 393.9 }, { x: 2.3, z: 393.9 }, { x: -5.7, z: 393.9 }, { x: -13.7, z: 393.9 },
+    { x: 10.3, z: 403.9 }, { x: 2.3, z: 403.9 }, { x: -5.7, z: 403.9 },
   ] },
   splat: { sourcedPalette: 'desert', ...desert.splat,
     // The spring owns this liquid layer: desert's brown dry-clay tone is

@@ -166,11 +166,11 @@
       "concealers": 1967
     },
     "oasis": {
-      "bytes": 1488476,
-      "sha256": "130e21620d38314b67e8e29048659e9df1d291677122ce2ce759a412a3cdcafa",
-      "obstacles": 1604,
-      "colliders": 1621,
-      "concealers": 874
+      "bytes": 1507156,
+      "sha256": "26f1a7577924ce6768a1ff7344c978f247cde2f88eb6cd2920d0ad25a828b99a",
+      "obstacles": 1670,
+      "colliders": 1682,
+      "concealers": 925
     },
     "whiteout": {
       "bytes": 659207,
