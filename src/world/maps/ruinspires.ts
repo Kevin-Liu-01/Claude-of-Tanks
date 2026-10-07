@@ -99,17 +99,17 @@ export default {
       [[-200, 0], [-200, -50], [-200, -100], [-200, -150], [-200, -175]],
       [[200, 0], [200, 50], [200, 100], [200, 150], [200, 175]],
     ],
-    // the map-revival lane (2026-10-06): the streets' own surfaces (pathStyles: the boulevard's asphalt, the trunks
-    // patched, setts on the terrace and cross streets) wait for the ground lane. With the urban land use the styled-path
-    // pattern cost the establishing view +2.6 ± 0.4 ms of GPU frame (quiet window, load 24-31; without the styles
-    // −0.6 ± 0.3 ms, with the styles and without the land use −0.6 ± 0.7 ms), so the streets keep the map's own paving
-    // until the two run together within the budget:
-    //   pathStyles: [
-    //     { surface: 'asphalt', widthM: 10 },
-    //     { surface: 'patched', widthM: 9.8 }, { surface: 'patched', widthM: 9.8 },
-    //     ...8 × { surface: 'cobble', widthM: 9.8 },
-    //   ],
-    },
+    // the map-revival lane (2026-10-05): each street's own surface, kerb to kerb (props.ts sets the kerbs 5.05 m off
+    // every line): the boulevard's asphalt (the tram bed down its middle is the street kit's), the trunk roads' asphalt
+    // patched over the shell holes, the terrace and cross streets' setts in courses. (2026-10-06: back under cost v3 —
+    // the ground lane's three-page staging of these styles, holds 61 and 63, 16 cycles at load 129-243: establishing
+    // GPU p25 +0.54 ± 0.70 ms, chase −0.44 ± 0.51 ms, CPU flat; the +2.6 ms of the first gate was the urban land use)
+    pathStyles: [
+      { surface: 'asphalt', widthM: 10 },
+      { surface: 'patched', widthM: 9.8 }, { surface: 'patched', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
+    ] },
     landforms: [
       // The two hill flanks and their wooded ridges, each the other's rotation about the square.
       { kind: 'ridge', x: 60, z: -335, length: 760, width: 140, height: 7.5, yawDeg: 4, settlementScale: 0.6 },
