@@ -293,11 +293,12 @@ float cl2BsmDepth( vec3 p, float offset ) {
 	bool in0 = uBsmWindow0.w > 0.5 && e0 < 0.98;
 	bool in1 = uBsmWindow1.w > 0.5 && e1 < 0.98;
 	if ( !in0 && !in1 ) return -1.0;
-	float near = in0 ? cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset ) : 0.0;
-	if ( !in1 ) return near;
+	// (2026-10-07, the cost rule: the far cascade is read only where it counts — off the near window, or in the near
+	// window's outer tenth where the two blend; inside it the blend was the near map's alone and its four reads wasted)
+	if ( in0 && ( !in1 || e0 <= 0.8 ) ) return cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset );
 	float far = cl2BsmRead( tBsm1, uBsmWindow1, xz, toTop, offset );
 	if ( !in0 ) return far;
-	return mix( near, far, smoothstep( 0.8, 0.98, e0 ) );
+	return mix( cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset ), far, smoothstep( 0.8, 0.98, e0 ) );
 }
 `;
 
@@ -639,20 +640,25 @@ void main() {
 				if ( inRun ) { r0 = r1; r1 = r2; r2 = r3; r3 = vec2( 1e9 ); }
 				inRun = true;
 				if ( r0.x >= 1e9 ) break;
-				// empty-space skipping (v1's): a run up to twelve kilometres is tested at weather taps 450 m apart (jittered)
-				// before any march — a clear run costs a few fetches instead of a hundred steps
+				// empty-space skipping (v1's): a run is tested at weather taps about 450 m apart (jittered) before any march —
+				// a clear run costs a few fetches instead of a hundred steps, and the march starts at the tap before the first
+				// that admits (2026-10-07, the cost rule — H1: Monsoon's towers +3 ms on the high tier; the rays between them
+				// marched the 16 km of clear air a front's 4.8 km slab holds at 17°, and every ray marched its clear stretch up
+				// to the tower it met: runs to 28 km now, at 64 taps)
 				float span = r0.y - r0.x;
-				if ( span < 12000.0 && !deckLane ) {
-					int taps = int( clamp( span / 450.0, 4.0, 24.0 ) );
-					bool admits = false;
-					for ( int q = 0; q < 24; q++ ) {
+				float start = 0.0;
+				if ( span < 28800.0 && !deckLane ) {
+					int taps = int( clamp( span / 450.0, 4.0, 64.0 ) );
+					int first = -1;
+					for ( int q = 0; q < 64; q++ ) {
 						if ( q >= taps ) break;
 						vec3 pq = uCamPos + dir * ( r0.x + span * ( float( q ) + jitter ) / float( taps ) );
-						if ( any( greaterThan( ( cl2Weather( pq.xz, cl2Height( pq ), 0.0 ) - ( 1.0 - uLayerCover ) ) * step( vec4( 1e-6 ), uLayerDensity ), vec4( 0.0 ) ) ) ) { admits = true; break; }
+						if ( any( greaterThan( ( cl2Weather( pq.xz, cl2Height( pq ), 0.0 ) - ( 1.0 - uLayerCover ) ) * step( vec4( 1e-6 ), uLayerDensity ), vec4( 0.0 ) ) ) ) { first = q; break; }
 					}
-					if ( !admits ) { t = r0.y + 1.0; continue; }
+					if ( first < 0 ) { t = r0.y + 1.0; continue; }
+					start = span * max( float( first ) - 1.0 + jitter, 0.0 ) / float( taps );
 				}
-				t = r0.x + max( uStepMin, r0.x * uStepGrowth ) * jitter;
+				t = r0.x + start + max( uStepMin, ( r0.x + start ) * uStepGrowth ) * jitter;
 				// the sun at the run's middle altitude (one LUT read a run)
 				sunE = uSunIrradianceTop * cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) ) * uSunGain;
 				empty = 0; fine = 0; prevSigma = 0.0;

@@ -120,8 +120,12 @@ export const CLOUD_SHADOW_TAU = 1.4;
 export const CLOUD_FAR_SHADE_SIZE = 512;
 /** The square's side (m): the battlefield, the ring and the land an overview sees. */
 export const CLOUD_FAR_SHADE_SPAN_M = 12000;
-/** Frames between the shade's refreshes. */
-export const CLOUD_FAR_SHADE_EVERY = 2;
+/**
+ * Frames between the shade's refreshes (2026-10-07, the cost rule's CPU: every 4 frames on its own phase, never in a
+ * frame that marches a band of the Beer shadow map — one auxiliary pass a frame at most; a strong wind still moves the
+ * field well under a texel between two).
+ */
+export const CLOUD_FAR_SHADE_EVERY = 4;
 /**
  * The Beer shadow map's cascades: texels, the window's side (m), the bands one refresh is split into and the frames
  * between two bands. The near one (a texel of 23 m) shades the ground and the clouds over the battlefield; the far one
@@ -130,10 +134,19 @@ export const CLOUD_FAR_SHADE_EVERY = 2;
  * facets — the map's front depth interpolated across a texel the size of a cumulus' lobe; the trace's sun march covers
  * a far texel's first few hundred metres now, the map the depth behind them.)
  */
+// (2026-10-07, the cost rule's CPU — H1: Clouds 2.0 +0.3 to +0.6 ms of the main thread a frame against the old layer, its
+// auxiliary passes about two more a frame — and GPU: a band of twice the rows every 4 and 8 frames on their own phases,
+// one auxiliary pass a frame at most and each map's turnover once a second and two: the clouds drift under a texel in it)
 export const CLOUD_BSM_CASCADES = Object.freeze([
-  Object.freeze({ texels: 512, span: 12000, bands: 32, every: 1 }),
-  Object.freeze({ texels: 512, span: 40000, bands: 32, every: 2 }),
+  Object.freeze({ texels: 512, span: 12000, bands: 16, every: 4, phase: 0 }),
+  Object.freeze({ texels: 512, span: 40000, bands: 16, every: 8, phase: 6 }),
 ] as const);
+/**
+ * The shade map's and the sun mean's phases (the frame counter has moved on by one when they run): in the frame f the near
+ * cascade marches when f ≡ 0 (mod 4), the far one when f ≡ 2 (mod 8), the shade when f ≡ 1 and the sun mean when f ≡ 3.
+ */
+const CLOUD_SHADE_PHASE = 2;
+const CLOUD_SUN_MEAN_PHASE = 0;
 /**
  * A front's clear radius over the camera, as a share of the regime's (2026-10-07, the gauntlet's wave 198 on Monsoon: "the
  * road and trees are lit with hard, bright, clear-sky sunlight despite a heavy dark storm ceiling overhead" — at the full
@@ -142,7 +155,7 @@ export const CLOUD_BSM_CASCADES = Object.freeze([
  */
 export const CLOUD_CLEAR_RADIUS_SHARE = 0;
 /** The tiers' stretch of the cascades' refresh (a band every n × `every` frames): the low tier's map turns over in a second. */
-export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1.5, high: 1, ultra: 1 });
+export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
 export const CLOUD_BSM_SLICES = 32;
 /** The march's reach on High and the dome shell radius (inside camera.far); the tiers own the step counts. */
@@ -612,7 +625,7 @@ export class VolumetricCloudLayer {
   private readonly bsmMaterial: THREE.ShaderMaterial;
   private readonly shadeMaterial: THREE.ShaderMaterial;
   /** The Beer shadow map's cascades (toroidal, world-anchored) and their band schedules. */
-  private readonly bsm = CLOUD_BSM_CASCADES.map(() => ({ target: null as THREE.WebGLRenderTarget | null, band: 0, age: 0, valid: false }));
+  private readonly bsm = CLOUD_BSM_CASCADES.map(() => ({ target: null as THREE.WebGLRenderTarget | null, band: 0, valid: false }));
   private readonly bsmKey = [NaN, NaN, NaN, NaN, NaN];
   /** The stack's own slice count for the Beer shadow map (cloudLayers.ts cloudBsmSlices); the low tier takes 0.6 of it. */
   private bsmSlices = CLOUD_BSM_SLICES;
@@ -623,7 +636,6 @@ export class VolumetricCloudLayer {
   /** The band a cascade refreshes (reused: no allocation per frame). */
   private readonly bsmBandRect = new THREE.Vector4();
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
-  private farShadeAge = Infinity;
   private farShadeValid = false;
   private readonly farShadeInfo = { texture: null as THREE.Texture | null, rect: new THREE.Vector3(), baseM: 1400 };
   private sunMeanTarget: THREE.WebGLRenderTarget | null = null;
@@ -975,7 +987,11 @@ export class VolumetricCloudLayer {
 
   /** The quality tier's trace program (rebuilt only when the tier changes). */
   private syncTier(): void {
-    const tier = CLOUD_TIERS[resolvePresetName()] ? resolvePresetName() : 'high';
+    // (2026-10-07, the cost rule's CPU: the preset is resolved once — it reads the stored choice — and every 15 frames; a
+    // settings change takes a quarter of a second)
+    if (this.frame % 15 !== 0 && this.traceTier) return;
+    const name = resolvePresetName();
+    const tier = CLOUD_TIERS[name] ? name : 'high';
     if (tier === this.traceTier) return;
     const old = this.traceMaterial;
     const next = this.makeTraceMaterial(tier, old.uniforms.uAtmoKnee.value as THREE.Vector3);
@@ -1179,8 +1195,8 @@ export class VolumetricCloudLayer {
       }
       const cellX = Math.floor(ox / texel) - spec.texels / 2, cellZ = Math.floor(oz / texel) - spec.texels / 2;
       const all = full || !c.valid;
-      if (all || ++c.age >= spec.every * (CLOUD_BSM_TIER_STRETCH[this.traceTier] ?? 1)) {
-        c.age = 0;
+      const period = spec.every * (CLOUD_BSM_TIER_STRETCH[this.traceTier] ?? 1);
+      if (all || (this.frame + spec.phase) % period === 0) {
         (b.uWinCell.value as THREE.Vector2).set(cellX, cellZ);
         b.uTexels.value = spec.texels;
         b.uTexelM.value = texel;
@@ -1367,7 +1383,7 @@ export class VolumetricCloudLayer {
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
     const moved = !this.farShadeValid || rect.x !== cx || rect.y !== cz;
-    if (!moved && ++this.farShadeAge < CLOUD_FAR_SHADE_EVERY * (this.traceTier === 'low' ? 2 : 1)) return;
+    if (!moved && (this.frame + CLOUD_SHADE_PHASE) % (CLOUD_FAR_SHADE_EVERY * (this.traceTier === 'low' ? 2 : 1)) !== 0) return;
     if (!this.farShadeTarget) {
       this.farShadeTarget = makeTarget(CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SIZE, 'clouds-far-shade', THREE.UnsignedByteType);
     }
@@ -1381,7 +1397,6 @@ export class VolumetricCloudLayer {
     this.renderQuad(this.shadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;
     this.farShadeInfo.baseM = (this.medium.uHeightRange.value as THREE.Vector2).x;
-    this.farShadeAge = 0;
     this.farShadeValid = true;
     const shared = this.scene.userData.cloudShadeUniforms as CloudShadeUniforms | undefined;
     if (shared) {
@@ -1395,7 +1410,7 @@ export class VolumetricCloudLayer {
    * 32², read back asynchronously every CLOUD_SUN_MEAN_EVERY frames, published on scene.userData.cloudSunMean.
    */
   private updateSunMean(): void {
-    if (!this.farShadeValid || this.sunMeanPending || ++this.sunMeanAge < CLOUD_SUN_MEAN_EVERY) return;
+    if (!this.farShadeValid || this.sunMeanPending || ++this.sunMeanAge < CLOUD_SUN_MEAN_EVERY || (this.frame + CLOUD_SUN_MEAN_PHASE) % 4 !== 0) return;
     const gl = this.context as WebGL2RenderingContext | null;
     if (!gl || gl.isContextLost() || typeof gl.fenceSync !== 'function') return;
     this.sunMeanAge = 0;

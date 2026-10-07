@@ -29,7 +29,7 @@ import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 // the count a map authors (what the layer derives with the contrail switch on)
 const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_BSM_CASCADES, CLOUD_BSM_SLICES, CLOUD_DECK_SUN_LOBE, CLOUD_DOME_RADIUS_M, CLOUD_HISTORY_SCALE,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_BSM_CASCADES, CLOUD_BSM_SLICES, CLOUD_BSM_TIER_STRETCH, CLOUD_FAR_SHADE_EVERY, CLOUD_DECK_SUN_LOBE, CLOUD_DOME_RADIUS_M, CLOUD_HISTORY_SCALE,
   CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_TIERS, CLOUD_TRACE_DIVISOR,
 } from './volumetricClouds.ts';
 import { CLOUD2_EARTH_R, CLOUD2_PERIODS } from './cloudShaders.ts';
@@ -542,6 +542,31 @@ for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMat
   assert.ok(CLOUD_BSM_CASCADES[0].span / CLOUD_BSM_CASCADES[0].texels <= 25, 'the near cascade a ground-shadow texel (<= 25 m)');
   assert.ok(CLOUD_BSM_CASCADES[1].span >= CLOUD_TIERS.medium.marchMax, 'the far cascade lights the march out to the medium tier\'s reach');
   for (const c of CLOUD_BSM_CASCADES) assert.equal(c.texels % c.bands, 0, 'whole bands');
+  // (2026-10-07, the cost rule's CPU: H1 priced Clouds 2.0 at +0.3 to +0.6 ms of the main thread a frame, its auxiliary
+  // passes about two more a frame than the old layer's) one auxiliary pass a frame at most — a band of either cascade, the
+  // shade or the sun mean, each on its own phase of the frame counter (the shade and the sun mean run after it moves on) —
+  // and each map turned over within about two seconds at 60 frames a second
+  {
+    const phase = (name) => Number(layerSource.match(new RegExp(`const ${name} = (\\d+);`))[1]);
+    const shadeP = phase('CLOUD_SHADE_PHASE'), sunP = phase('CLOUD_SUN_MEAN_PHASE');
+    for (const tier of ['high', 'medium', 'low']) {
+      const stretch = CLOUD_BSM_TIER_STRETCH[tier];
+      let worst = 0, total = 0;
+      for (let f = 0; f < 512; f++) {
+        const bands = CLOUD_BSM_CASCADES.filter((c, i) => !(tier === 'low' && i > 0) && (f + c.phase) % (c.every * stretch) === 0).length;
+        const shade = (f + 1 + shadeP) % (CLOUD_FAR_SHADE_EVERY * (tier === 'low' ? 2 : 1)) === 0 ? 1 : 0;
+        const sun = (f + 1 + sunP) % 4 === 0 ? 1 : 0;
+        worst = Math.max(worst, bands + shade + sun);
+        total += bands + shade;
+      }
+      assert.equal(worst, 1, `${tier}: one auxiliary pass a frame at most`);
+      assert.ok(total / 512 <= 0.7, `${tier}: under 0.7 auxiliary passes a frame (${(total / 512).toFixed(3)})`);
+      // (the low tier marches the near cascade alone)
+      for (const c of tier === 'low' ? CLOUD_BSM_CASCADES.slice(0, 1) : CLOUD_BSM_CASCADES) assert.ok(c.bands * c.every * stretch <= 128, `${tier}: a cascade turns over within 128 frames`);
+    }
+    assert.match(layerSource, /if \(all \|\| \(this\.frame \+ spec\.phase\) % period === 0\) \{/, 'the bands on their phases');
+    assert.match(layerSource, /\+\+this\.sunMeanAge < CLOUD_SUN_MEAN_EVERY \|\| \(this\.frame \+ CLOUD_SUN_MEAN_PHASE\) % 4 !== 0\) return;/, 'the sun mean on its phase');
+  }
   assert.ok(CLOUD_BSM_SLICES >= 24 && CLOUD_BSM_SLICES <= 96, 'the map\'s slices within its loop');
   // the twin of the march's addressing and the lookup's
   const mod = (a, n) => a - n * Math.floor(a / n);
