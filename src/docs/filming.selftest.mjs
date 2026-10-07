@@ -73,8 +73,8 @@ assert.match(topicsSource, /slug === 'filming'\) \{\n\s+void import\('\.\/filmin
 // The copy's numbers, held to the code that makes them true.
 const text = [filming.lede, ...filming.sections.flat()].join(' ');
 const motionPlan = JSON.parse(read('tools/media-r5/site50-motion.json'));
-assert.equal(Object.keys(motionPlan).length, 49, 'the motion search staged 49 takes (s40 is staged by hand)');
-assert.match(text, /The motion search staged 49 of the 50 takes; one is staged by hand\./);
+assert.equal(Object.keys(motionPlan).length, 50, 'the motion search staged every take (s40 too since the 2.0 maps, 2c831bd28)');
+assert.match(text, /The motion search staged all 50 takes\./);
 const setups = read('tools/media-r5/setups.mjs');
 const film = /scene\.film = m\.film \?\? s\.film \?\? \{ fps: (\d+), shutterDeg: (\d+), samples: (\d+), maxSamples: (\d+) \}/.exec(setups);
 assert.ok(film, 'the site fifty\'s film block in setups.mjs');
