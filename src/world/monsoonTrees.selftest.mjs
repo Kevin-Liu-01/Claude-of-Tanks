@@ -34,7 +34,7 @@ function canvasFixture() {
   } };
 }
 
-const NAGA_HILLS_FORMS = new Set(['khasiPine', 'chestnut', 'holmOak', 'bamboo']);
+const NAGA_HILLS_FORMS = new Set(['khasiPine', 'castanopsis', 'holmOak', 'bamboo']);
 const cfg = getMapConfig('monsoon'), veg = cfg.vegetation;
 const planted = new Set([...veg.species, ...veg.clusterMix.map(([sp]) => sp), ...veg.loneMix.map(([sp]) => sp), ...veg.rimMix.map(([sp]) => sp)]);
 assert.ok(!planted.has('palm') && !planted.has('acacia'), `Kohima plants no palm (${[...planted].join(', ')})`);
@@ -57,7 +57,7 @@ try {
     assert.ok(!census.palm && !census.eucalyptus, `no palm and no eucalyptus grows (${JSON.stringify(census)})`);
     const total = world._trees.length;
     // the forest's make-up (the slots' shares of the mixes): pine on the ridges, the montane broadleaves, bamboo
-    assert.ok(census.chestnut > 0.3 * total && census.holmOak > 0.2 * total && census.khasiPine > 0.18 * total
+    assert.ok(census.castanopsis > 0.3 * total && census.holmOak > 0.2 * total && census.khasiPine > 0.18 * total
       && census.bamboo > 0.1 * total, `the forms' shares (${JSON.stringify(census)} of ${total})`);
     // the two Khasi pines authored by the DC's bungalow (the landmarks lane's garden, clear of its footprints): both seated,
     // both living pines at their stations (no new tree: records moved from the pine stands)

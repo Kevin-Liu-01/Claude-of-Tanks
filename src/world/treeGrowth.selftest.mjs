@@ -280,6 +280,21 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
       const lowest = Math.min(...skeleton.leaves.map((l) => l.y));
       assert.ok(lowest > 0.25 * skeleton.height, `bamboo/${variant}: the culms bare at the foot (the lowest spray at ${lowest.toFixed(2)} m)`);
     }
+    // (2026-10-07) the Naga Hills' chestnut-oak: the chestnut's crown — its dome, sprays, bark and leaf budget — on a
+    // lighter frame of side limbs and twigs, about a fifth less wood (Monsoon Ridge's forms inside cost rule v3's census)
+    const cs = TREE_GROWTH_PROFILES.castanopsis, ch = TREE_GROWTH_PROFILES.chestnut;
+    assert.ok(GROWTH_SPECIES.includes('castanopsis'), 'castanopsis is a tree form');
+    for (const k of ['family', 'height', 'trunkR', 'form', 'scaffolds', 'crownBase', 'crownR', 'envelope', 'leafPerM', 'spray', 'habit', 'bark', 'barkTint']) {
+      assert.deepEqual(cs[k], ch[k], `castanopsis keeps the chestnut's ${k}`);
+    }
+    let woodCs = 0, woodCh = 0;
+    for (let variant = 0; variant < 3; variant++) {
+      const a = grow('castanopsis', variant), b = grow('chestnut', variant);
+      woodCs += a.wood.getAttribute('position').count / 3; woodCh += b.wood.getAttribute('position').count / 3;
+      assert.equal(a.skeleton.leaves.length, b.skeleton.leaves.length, `castanopsis/${variant}: the chestnut's sprays`);
+    }
+    assert.ok(cs.sidePerM < ch.sidePerM && cs.twigPerM < ch.twigPerM && woodCs <= 0.88 * woodCh,
+      `castanopsis: a lighter frame (${woodCs} wood triangles against the chestnut's ${woodCh})`);
   }
   // the longleaf's grass stage: a shrub-only form (never a tree slot) whose sprays fan from a few seats on the ground
   assert.ok(!GROWTH_SPECIES.includes('longleafSeedling') && TREE_GROWTH_PROFILES.longleafSeedling.fountain, 'the grass stage is a shrub form');

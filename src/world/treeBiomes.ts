@@ -180,7 +180,7 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
   // (Castanopsis) and oaks (the tall eucalyptus slot and the low willow slot, the oak a dark evergreen oak, never the
   // Mediterranean's grey), bamboo clumps (the oak slot) and the evergreen oak's shrubs in the understorey
-  monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'chestnut' },
+  monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'castanopsis' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
     snagValue: Object.freeze([0.16, 0.26] as const) }),

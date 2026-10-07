@@ -2437,9 +2437,11 @@ export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPal
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
   // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
-  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts)
+  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts), the
+  // chestnut-oak the chestnut's
   if (growth === 'khasiPine') return 'redPine';
   if (growth === 'bamboo') return 'willow';
+  if (growth === 'castanopsis') return 'chestnut'; // (the chestnut's sprays on the Naga Hills' lighter frame)
   return growth as SprayKind;
 }
 
@@ -2643,10 +2645,17 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
   // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
   const tidal = species === 'mangrove';
-  parts.push(paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0));
+  // (the trees lane, 2026-10-07: a clump — the bamboo's culms from one rootstock — has no stem foot to flare and no
+  // buttress roots: its flare and tongues are drawn and left out, every draw taken, so the clump's own stream keeps its
+  // seats; a quarter of its wood, and Monsoon Ridge's forms back inside their triangle budget)
+  const flare = paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0);
+  if (!profile.clump) parts.push(flare);
+  else flare.dispose();
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   const rootFirst = parts.length;
-  addRootButtresses(parts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  const rootParts: THREE.BufferGeometry[] = profile.clump ? [] : parts;
+  addRootButtresses(rootParts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  for (const g of rootParts === parts ? [] : rootParts) g.dispose();
   const rootEnd = parts.length;
   if (tidal) {
     // the arches are drawn round the origin's axis: each joins the grown stem where it stands at the arch's collar
