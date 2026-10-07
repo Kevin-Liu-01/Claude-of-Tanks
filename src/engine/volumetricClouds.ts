@@ -592,7 +592,7 @@ export class VolumetricCloudLayer {
   private readonly shadeMaterial: THREE.ShaderMaterial;
   /** The Beer shadow map's cascades (toroidal, world-anchored) and their band schedules. */
   private readonly bsm = CLOUD_BSM_CASCADES.map(() => ({ target: null as THREE.WebGLRenderTarget | null, band: 0, age: 0, valid: false }));
-  private bsmKey = '';
+  private readonly bsmKey = [NaN, NaN, NaN, NaN, NaN];
   /** The band a cascade refreshes (reused: no allocation per frame). */
   private readonly bsmBandRect = new THREE.Vector4();
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
@@ -826,11 +826,13 @@ export class VolumetricCloudLayer {
         this.bsmMaterial.uniforms.uSlices.value = cloudBsmSlices(stack);
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
-        // QA: a convective lane's extinction scaled (the decks keep theirs)
-        const cu = lightTune('CLOUD_CU_DENSITY', 1);
-        if (cu !== 1) {
-          const d = this.medium.uLayerDensity.value as THREE.Vector4;
-          stack.lanes.forEach((lane, i) => { if (lane.flat < 0.5) d.setComponent(i, d.getComponent(i) * cu); });
+        // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
+        const cuKnobs: Array<[string, string]> = [['CLOUD_CU_DENSITY', 'uLayerDensity'], ['CLOUD_CU_FILTER', 'uLayerFilter'], ['CLOUD_CU_CORE', 'uLayerCore'], ['CLOUD_CU_COVER', 'uLayerCover']];
+        for (const [knob, key] of cuKnobs) {
+          const k = lightTune(knob, 1);
+          if (k === 1) continue;
+          const v = this.medium[key].value as THREE.Vector4;
+          stack.lanes.forEach((lane, i) => { if (lane.flat < 0.5) v.setComponent(i, v.getComponent(i) * k); });
         }
       }
     }
@@ -960,7 +962,7 @@ export class VolumetricCloudLayer {
 
   private applyPresetUniforms(preset: CloudLayerPreset): void {
     const t = this.traceMaterial.uniforms;
-    (t.uTint.value as THREE.Vector3).set(...preset.tint);
+    (t.uTint.value as THREE.Vector3).set(preset.tint[0], preset.tint[1], preset.tint[2]);
     t.uSunGain.value = preset.sunGain;
     t.uAmbientScale.value = preset.ambientScale;
     t.uBase.value = preset.baseM;
@@ -1079,16 +1081,21 @@ export class VolumetricCloudLayer {
   private updateBeerShadow(full: boolean): void {
     const sun = this.traceMaterial.uniforms.uSunDir.value as THREE.Vector3;
     const t = this.traceMaterial.uniforms;
-    const windows = [t.uBsmWindow0.value as THREE.Vector4, t.uBsmWindow1.value as THREE.Vector4];
+    const w0 = t.uBsmWindow0.value as THREE.Vector4, w1 = t.uBsmWindow1.value as THREE.Vector4;
     const stack = this.medium.uHeightRange.value as THREE.Vector2;
     if (sun.y < 0.03 || !(stack.y > stack.x) || stack.x > 1e5) {
-      for (const w of windows) w.w = 0;
+      w0.w = 0; w1.w = 0;
       for (const c of this.bsm) c.valid = false;
       return;
     }
     const plane = stack.x, top = stack.y;
-    const key = `${sun.x.toFixed(4)},${sun.y.toFixed(4)},${sun.z.toFixed(4)},${plane},${top}`;
-    if (key !== this.bsmKey) { this.bsmKey = key; for (const c of this.bsm) c.valid = false; }
+    // the map's key (no per-frame string): the sun to 1e-4 and the stack's plane and top
+    const k = this.bsmKey;
+    const sx = Math.round(sun.x * 1e4), sy = Math.round(sun.y * 1e4), sz = Math.round(sun.z * 1e4);
+    if (k[0] !== sx || k[1] !== sy || k[2] !== sz || k[3] !== plane || k[4] !== top) {
+      k[0] = sx; k[1] = sy; k[2] = sz; k[3] = plane; k[4] = top;
+      for (const c of this.bsm) c.valid = false;
+    }
     const b = this.bsmMaterial.uniforms;
     (b.uBsmSunDir.value as THREE.Vector3).copy(sun);
     (b.uPlane.value as THREE.Vector2).set(plane, top);
@@ -1128,7 +1135,7 @@ export class VolumetricCloudLayer {
         c.band = (c.band + n) % spec.bands;
         if (all) c.valid = true;
       }
-      windows[i].set(cellX * texel, cellZ * texel, spec.span, c.valid ? 1 : 0);
+      (i === 0 ? w0 : w1).set(cellX * texel, cellZ * texel, spec.span, c.valid ? 1 : 0);
     }
     t.tBsm0.value = this.bsm[0].target?.texture ?? null;
     t.tBsm1.value = this.bsm[1].target?.texture ?? null;
