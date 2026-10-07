@@ -139,8 +139,10 @@ export default {
     landmarks: [
       // round 2 (2026-10-06; gauntlet wave 158: "stands alone in an open red-earth field with no church, piazza, paving or
       // houses at its foot"): the piazza's flagstones round its foot (authored first: a dressing piece, it refuses
-      // nothing), the campanile on its broad step, its stone streaked from each string course
-      { kind: 'path', x: -81, z: 10, yawDeg: -90, name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
+      // nothing; it lies in the zone's disc, which a dressing piece may), the campanile on its broad step, its stone
+      // streaked from each string course. The piazza is laid into the finished map (ground 'veto', an open surface): it
+      // reserves no ground, so every record the map placed round the campanile stands where it stood.
+      { kind: 'path', x: -81, z: 10, yawDeg: -90, ground: 'veto', name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
     ],
     sourcedPalette: 'coastal',
