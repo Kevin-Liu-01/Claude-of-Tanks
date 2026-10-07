@@ -1,6 +1,7 @@
 import { t } from '../ui/i18n.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { createStudioCrushes, planStudioCrushes, type StudioCrushEvent, type StudioCrushHull } from './studioCrush.ts';
+import { sceneLinkPath } from './studioSceneLink.ts';
 import type { WaterDisturbance } from '../world/shallowWater.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -4796,13 +4797,28 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.__STUDIO = api;
 
   // Auto-entry: the /studio pretty route or the legacy ?studio=1 param
-  // (waits for readiness; map via ?map=…)
+  // (waits for readiness; map via ?map=…). A scene link, ?scene=/path/on/this/site.json (studioSceneLink.ts), enters
+  // on the scene's own map and loads it as Load JSON would; a link that fails to load leaves the plain Studio open.
   if (ctx.autoEnter !== false && (urlParam('studio') || onStudioRoute())) {
+    const map = urlParam('map') || 'verdant';
+    const scenePath = sceneLinkPath(urlParam('scene'));
+    const scene = scenePath
+      ? fetch(scenePath).then((response) => {
+        if (!response.ok) throw new Error(`${scenePath}: HTTP ${response.status}`);
+        return response.json() as Promise<StudioSceneInput>;
+      })
+      : null;
+    scene?.catch(() => {}); // awaited below; never an unhandled rejection while the game boots
     const t = setInterval(() => {
       if (!window.__GAME_READY) return;
       clearInterval(t);
-      enter({ map: urlParam('map') || 'verdant' })
-        .catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
+      const entry = scene
+        ? scene.then(
+          (json) => enter({ map: json.map || map }).then(() => load(json)),
+          (err: RuntimeValue) => { console.error('[studio] scene link failed', err); return enter({ map }); },
+        )
+        : enter({ map });
+      entry.catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
     }, 60);
   }
 

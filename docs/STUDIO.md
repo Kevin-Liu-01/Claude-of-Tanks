@@ -51,6 +51,7 @@ shoreline review workflow, see [Media production](MEDIA-PRODUCTION.md).
 | Path | How |
 |---|---|
 | URL | `/studio?map=desert` or legacy `?studio=1&map=desert` — boots directly into Studio |
+| Scene link | `/studio?scene=/media/filming-r1/s05-barn-advance.scene.json` — boots into Studio on the scene's own map and loads the scene exactly as **Load JSON** would. Only a `.json` path on this site opens (`studioSceneLink.ts`): other origins, `//host`, `..` and backslashes are refused, and a link that fails leaves the plain Studio open |
 | Garage | **F8** (toggle; also the panel's EXIT button) |
 | Script | `window.__STUDIO.enter({ map })` / `window.__STUDIO.exit()` |
 | Leave | F8 / Esc / EXIT → back to the garage |
