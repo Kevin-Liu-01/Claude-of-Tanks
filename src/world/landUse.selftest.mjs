@@ -216,4 +216,28 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
     'the works\' paving and joints are stained on a works\' ground only');
 }
 
+// 2026-10-07 (Ironworks round 4, wave 223: "no black slag, cinder or soot anywhere", "white-outlined orange patches", "two
+// flat brown squares", "the highline banks are pale, snow-like mounds", "pale grass-blade sprites"): on a works' ground
+// (uLandE.w 2) its slag is black-grey (one colour, worksSlag, for its lots, its rock layer, its steep pass, its bare ground,
+// its tracks and its wear), its margins a sooty seam of the lot's own ground, its banks past the lots' gate slag, its bare
+// ground (the hardstands among it) cinder, and its gravel thinly weeded; every other map's slag, margins, tracks, wear,
+// bare ground and rock as they were
+{
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const uses = (terrain.match(/worksSlag\(n1h, n2, /g) || []).length;
+  assert.ok(/vec3 worksSlag\(float n1h, float n2, float jit\) \{/.test(terrain) && uses >= 6, `one works' slag colour, read by every works surface (${uses})`);
+  assert.ok(terrain.includes('cropCol = uLandE.w > 1.5 ? worksSlag(n1h, n2, jit)\n          : mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);'),
+    'a works\' slag lots black-grey; every other map\'s slag as it was');
+  assert.ok(terrain.includes('if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * smoothstep(0.10, 0.40, mk.a) * (1.0 - roadCore));'),
+    'a works\' banks are slag from where its lots end, inside its floor');
+  assert.ok(terrain.includes('vec3 marginCol = uLandE.w > 1.5 ? a.rgb * (0.78 + 0.16 * n1h)'), 'a works\' margins are a seam of the lot\'s own ground');
+  assert.ok(terrain.includes('vec3 soilL = uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.25 : soil.rgb * uSoilTint;'), 'its tracks trodden cinder');
+  assert.ok(/if \(uLandE\.w > 1\.5\) \{\n      float wkD = smoothstep\(0\.10, 0\.40, mk\.a\);/.test(terrain), 'its bare ground cinder inside its floor');
+  assert.ok(terrain.includes("mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),"), 'its wear its cinder');
+  assert.ok(terrain.includes('if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.55, 0.80 * smoothstep(0.10, 0.40, mk.a));'), 'its roads and yards trodden cinder');
+  assert.equal(LAND_CROP_GROWTH[19].keep, 0.035, 'a court\'s gravel thinly weeded');
+  assert.equal(LAND_CROP_GROWTH[15].sward, false, 'the slag bare');
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);

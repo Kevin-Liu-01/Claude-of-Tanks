@@ -168,7 +168,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   16: { sward: true, height: 0.4, keep: 0.12, weed: true },
   17: { sward: true, height: 0.85, keep: 0.6 },
   18: { sward: true, height: 0.35, keep: 0.05, weed: true }, // a few weeds in the cracks
-  19: { sward: true, height: 0.40, keep: 0.10, weed: true }, // a court's gravel: weeds along its edges and the ruts' crowns
+  // (2026-10-07, Ironworks round 4, wave 223: "pale grass-blade sprites" over the works' floor) a court's gravel: a few
+  // weeds along its edges and the ruts' crowns, a third of round 3's
+  19: { sward: true, height: 0.40, keep: 0.035, weed: true },
 });
 
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
