@@ -1592,8 +1592,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // §5.272 fix (5): roof furniture density on the 0.795 plate — lifting
   // eyes, GPS puck, junction box, spent-case port, tie-down cleats (tops
   // <=0.85 local, well under the 2.285 datum).
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), -0.95, 0.80, 0.06, Math.PI / 2, 0, 0);
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), 0.95, 0.80, -0.86, Math.PI / 2, 0, 0);
+  // 2026-10-07 (tank-accessories round 4; wave 214, mg-1: "a polished-chrome lifting eye that hovers above the roof.
+  // Make it matte and seat it"): each eye is a welded pad on the roof plate (flat at 0.795 under both stations, ray
+  // probe; the pad's underside sunk 3 mm) carrying a round-bar arch whose feet sink 4 mm into the pad, in the
+  // scheme's solid matte fitting paint (FSP-06) instead of a camouflaged ring half-buried in the plate.
+  for (const [ex, ez] of [[-0.95, 0.06], [0.95, -0.86]] as const) {
+    P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, 0.795 + 0.011 - 0.003, ez);
+    P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, 0.814 - 0.004, ez);
+  }
   P.add('turretDetail', cylY(0.065, 0.07, 0.04, 12), 0.30, 0.815, -0.64);
   P.add('turretDark', box(0.15, 0.045, 0.11), -0.26, 0.818, 0.08);
   P.add('turretDark', cylY(0.088, 0.088, 0.028, 14), -0.06, 0.809, -0.70);
