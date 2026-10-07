@@ -28,6 +28,10 @@ interface LandmarkKindSpec {
   /** Its surface carries the map's street life (a market square's setts, a path): on a vetoed ground (types.ts `ground`)
    *  what the passes after it stand on it stays. */
   open?: boolean;
+  /** Its solid as rectangles in its frame ([cx, cz, hw, hl]) where the footprint's one rectangle overstates it (a gate's
+   *  tower between thin wall stubs): the composer tests these, not the footprint, against the solids already standing,
+   *  and a vetoed ground is theirs. */
+  solids?: (p: LandmarkParams) => ReadonlyArray<readonly [number, number, number, number]>;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -104,7 +108,16 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
-    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6] },
+    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6],
+    // the tower over the passage, and each wall stub with its wall-walk behind it (gates.ts: the stub 0.6 m either side
+    // of the wall's line, the walk on its corbels a metre behind): a house standing a few metres behind the wall is no
+    // conflict
+    solids: (p) => {
+      const tower = num(p, 'passage') / 2 + 2.4, walls = Math.max(0, num(p, 'walls')), d = num(p, 'depth') / 2 + 0.6;
+      const stubs: Array<readonly [number, number, number, number]> = walls > 0
+        ? [[-(tower + walls / 2), -0.5, walls / 2, 1.1], [tower + walls / 2, -0.5, walls / 2, 1.1]] : [];
+      return [[0, 0, tower, d], ...stubs];
+    } },
   triumphalArch: { family: 'gate', spansRoad: true, defaults: { passage: 7, height: 16, arches: 1 },
     footprint: (p) => [(num(p, 'arches') > 1 ? num(p, 'passage') * 1.9 : num(p, 'passage') / 2 + 3.4) + 0.4, 3.4] },
   // (the flags stream a metre past the pillars)

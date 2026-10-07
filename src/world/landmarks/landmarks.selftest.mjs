@@ -478,6 +478,25 @@ check('the mole and its light', () => {
     assert.ok(step.value.pieces.every((p) => p.ground === 'veto'), 'the receipt names the vetoed ground');
     for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
   }
+  // a gate's solid is its tower and its wall stubs (plan.ts solids): a house standing a few metres behind a stub, inside
+  // the footprint's one rectangle, is no conflict — and the stubs still refuse one that stands on the wall's line
+  {
+    const behind = { min: [-193, 0, 95.5], max: [-187, 6, 97.8], kind: 'structure' };
+    obstacles.push(behind);
+    const gate = run([{ kind: 'townGate', x: -200, z: 100, yawDeg: 0, name: 'a gate before a house', params: { passage: 6.5, walls: 8 } }]);
+    assert.equal(gate.placed, 1, 'the house behind the wall stub leaves the gate standing');
+    obstacles.splice(obstacles.indexOf(behind), 1);
+    const onWall = { min: [-193, 0, 99], max: [-190, 6, 100.5], kind: 'structure' };
+    obstacles.push(onWall);
+    const refused = run([{ kind: 'townGate', x: -200, z: 100, yawDeg: 0, name: 'a gate on a house', params: { passage: 6.5, walls: 8 } }]);
+    assert.equal(refused.pieces[0].reason, 'solid structure', 'one on the wall line refuses it');
+    obstacles.splice(obstacles.indexOf(onWall), 1);
+    const [thw, thl] = LANDMARK_KINDS.townGate.footprint(resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { walls: 8 } }));
+    for (const [cx, cz, rw, rl] of LANDMARK_KINDS.townGate.solids(resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { walls: 8 } }))) {
+      assert.ok(Math.abs(cx) + rw <= thw + 1e-9 && Math.abs(cz) + rl <= thl + 1e-9, 'each solid rectangle within the footprint');
+    }
+    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  }
   // a map without set pieces composes nothing
   const empty = run([]);
   assert.deepEqual(empty, { pieces: [], placed: 0, skipped: 0, triangles: 0 });
