@@ -14,6 +14,7 @@ import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
 import { PartSink, streamFrom } from './geometry.ts';
 import { dressedQuoin, setFacadeCraft, withFacade } from './facade.ts';
 import { paintDressedStoneBuffers, paintLimewash, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
+import { withGroundCoverHoles } from '../../sceneryPlan.ts';
 
 const BUDGET = 12000;
 function counted(seed) {
@@ -22,11 +23,11 @@ function counted(seed) {
   stream.draws = 0;
   return stream;
 }
-function build(style, id, seed, wallBucket, tier) {
+function build(style, id, seed, wallBucket, tier, ground) {
   const [w, d, h] = [7 + (seed % 5), 9 + (seed % 7), 6];
   const rng = counted(seed), variant = counted(seed * 7 + 3);
   const parts = buildRegionalParts(style, { structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
-    wallBucket, rng, variant, mapId: 'facade', snowCap: false, tier }, streamFrom(seed * 3 + 5));
+    wallBucket, rng, variant, mapId: 'facade', snowCap: false, tier, ...(ground ? { ground } : {}) }, streamFrom(seed * 3 + 5));
   return { parts, draws: rng.draws, looks: variant.draws };
 }
 function structure(parts) {
@@ -187,4 +188,107 @@ console.log('facade surfaces: the lime-wash and the dressed stone deterministic,
   plain('mobile', 'stone');
   plain('desktop', 'plaster');
   console.log(`facade dressed quoins: ${quoins} quoins on four tiles each wrap one whole stone, clear of its joints`);
+}
+
+// (facades lane, 2026-10-07; wave 199: "buildings rise straight out of untouched lawn or bare dirt, with no plinth, path
+// or splash zone") a placed building's wall-foot strip lies on its ground. Built on a sloping, rolling ground: the
+// structure is byte for byte the bare build's and the build and look streams draw as often; every vertex the strip lays
+// sits 3 cm over the ground under it (a door's path 4 cm), in runs no longer than 1.5 m; every vertex the bare build's
+// level strip had is gone (its 4 cm top, its path and its lips); the discs it keeps the ground cover off hold every vertex
+// it laid; a phone builds the same with a ground as without and asks for no holes; and the world's admission
+// (sceneryPlan withGroundCoverHoles, gridded past 64 holes) answers every point as a scan of the holes does.
+{
+  const groundAt = (x, z) => 0.35 + 0.06 * x - 0.04 * z + 0.12 * Math.sin(x * 0.7) * Math.cos(z * 0.5);
+  const verts = (parts) => {
+    const out = new Map();
+    for (const [bucket, list] of Object.entries(parts)) for (const g of list) {
+      const pos = g.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        const key = `${bucket}|${pos.getX(i).toFixed(4)}|${pos.getY(i).toFixed(4)}|${pos.getZ(i).toFixed(4)}`;
+        out.set(key, [pos.getX(i), pos.getY(i), pos.getZ(i)]);
+      }
+    }
+    return out;
+  };
+  let skirted = 0, laid = 0, allHoles = [], longest = 0;
+  const kinds = new Set();
+  for (const style of ARCHITECTURE_STYLES) {
+    for (const id of Object.keys(style.builders)) {
+      const seed = 61, wall = 'plaster';
+      const holes = [];
+      const ground = { at: groundAt, hole: (x, z, r) => holes.push({ x, z, r }) };
+      const flat = build(style, id, seed, wall, 'desktop'), laidOn = build(style, id, seed, wall, 'desktop', ground);
+      assert.deepEqual(structure(laidOn.parts), structure(flat.parts), `${style.id}/${id}: the ground moves no structure`);
+      assert.equal(laidOn.draws, flat.draws, `${style.id}/${id}: the build stream draws as often on the ground`);
+      assert.equal(laidOn.looks, flat.looks, `${style.id}/${id}: the look stream draws as often on the ground`);
+      const a = verts(flat.parts), b = verts(laidOn.parts);
+      const added = [...b].filter(([k]) => !a.has(k)).map(([k, p]) => [k.split('|')[0], p]);
+      const removed = [...a].filter(([k]) => !b.has(k)).map(([, p]) => p);
+      for (const p of removed) {
+        assert.ok([0.04, 0.05, -0.3, -0.5].some((y) => Math.abs(p[1] - y) < 1e-4), `${style.id}/${id}: only the level strip leaves (a vertex at ${p[1].toFixed(4)})`);
+      }
+      if (!added.length) {
+        assert.equal(holes.length, 0, `${style.id}/${id}: no strip, no holes`);
+        assert.equal(removed.length, 0, `${style.id}/${id}: no strip either way`);
+        for (const g of [flat, laidOn].flatMap((x) => Object.values(x.parts).flat())) g.dispose();
+        continue;
+      }
+      skirted++; kinds.add(`${style.id}/${id}`);
+      assert.ok(removed.length > 0, `${style.id}/${id}: the level strip gives way to the laid one`);
+      for (const [bucket, p] of added) {
+        const lift = p[1] - groundAt(p[0], p[2]);
+        assert.ok(Math.abs(lift - 0.03) < 2e-4 || Math.abs(lift - 0.04) < 2e-4, `${style.id}/${id}: a ${bucket} strip vertex ${lift.toFixed(4)} m over the ground`);
+        const clear = Math.min(...holes.map((h) => Math.hypot(p[0] - h.x, p[2] - h.z) - h.r));
+        assert.ok(clear <= 1e-3, `${style.id}/${id}: the ground cover keeps off the strip at (${p[0].toFixed(2)}, ${p[2].toFixed(2)}) (${clear.toFixed(3)} m out)`);
+      }
+      laid += added.length;
+      // the runs: no two adjacent outer-edge vertices of one side further apart than 1.5 m (the strip follows the ground)
+      for (const g of Object.values(laidOn.parts).flat()) {
+        if (!g.userData.fine) continue;
+        const pos = g.getAttribute('position');
+        for (let i = 0; i + 2 < pos.count; i += 3) {
+          const lifted = [0, 1, 2].every((k) => Math.abs(pos.getY(i + k) - groundAt(pos.getX(i + k), pos.getZ(i + k)) - 0.03) < 2e-4);
+          if (!lifted) continue;
+          for (let k = 0; k < 3; k++) {
+            const j = i + (k + 1) % 3;
+            longest = Math.max(longest, Math.hypot(pos.getX(i + k) - pos.getX(j), pos.getZ(i + k) - pos.getZ(j)));
+          }
+        }
+      }
+      // a phone: the same build with the ground as without, and no holes asked
+      const before = holes.length;
+      const mobFlat = build(style, id, seed, wall, 'mobile'), mobOn = build(style, id, seed, wall, 'mobile', ground);
+      assert.deepEqual(everything(mobOn.parts), everything(mobFlat.parts), `${style.id}/${id}: a phone lays no strip`);
+      assert.equal(holes.length, before, `${style.id}/${id}: a phone asks for no holes`);
+      // the holes in a common world: each building's moved along x so the list spreads (and passes the grid's 64)
+      for (const h of holes) allHoles.push({ x: h.x + skirted * 40, z: h.z, r: h.r });
+      for (const g of [flat, laidOn, mobFlat, mobOn].flatMap((x) => Object.values(x.parts).flat())) g.dispose();
+    }
+  }
+  assert.ok(skirted >= 8, `the kits' plinthed houses lay their strips on the ground (${skirted})`);
+  for (const must of ['kolkhoz/cottage', 'franconian/rowhouse']) assert.ok(kinds.has(must), `${must} lays its strip on the ground`);
+  // the runs follow the ground in pieces no longer than 1.5 m along the wall (a corner's mitre and a piece's diagonal
+  // are longer: the strip is 0.45 m across)
+  assert.ok(longest <= Math.hypot(1.5, 0.45) + 0.45 + 1e-3, `the strip's pieces stay short (${longest.toFixed(3)} m)`);
+  // the admission: gridded (past 64 holes) and scanned answer alike, on and around every hole, at a blade's radii
+  const scan = (x, z, radius) => allHoles.some((h) => (x - h.x) ** 2 + (z - h.z) ** 2 < (h.r + radius) ** 2);
+  const holed = withGroundCoverHoles(() => false, allHoles), few = withGroundCoverHoles(() => false, allHoles.slice(0, 20));
+  let probes = 0, inside = 0;
+  for (let k = 0; k < allHoles.length; k += 3) {
+    const h = allHoles[k];
+    for (const [dx, dz] of [[0, 0], [h.r * 0.99, 0], [0, -h.r * 1.01], [0.37, 0.41], [-0.9, 0.2], [1.6, -1.1]]) {
+      for (const radius of [0, 0.04, 0.25]) {
+        const x = h.x + dx, z = h.z + dz, want = scan(x, z, radius);
+        assert.equal(holed(x, 0, z, 1, radius), want, `the gridded admission answers as the scan at (${x.toFixed(2)}, ${z.toFixed(2)}) r ${radius}`);
+        probes++; if (want) inside++;
+      }
+    }
+  }
+  for (const [x, z] of [[-500, 0], [10000, 3], [allHoles[0].x, allHoles[0].z]]) {
+    const near = allHoles.slice(0, 20).some((h) => (x - h.x) ** 2 + (z - h.z) ** 2 < (h.r + 0.1) ** 2);
+    assert.equal(few(x, 0, z, 1, 0.1), near, 'a short list keeps the scan');
+  }
+  assert.ok(inside > 0 && inside < probes, 'the probes find ground both in the holes and out of them');
+  console.log(`facade wall-foot strip: ${skirted} kit houses lay it on a rolling ground (${laid} vertices 3-4 cm over it, pieces <= ${longest.toFixed(2)} m), `
+    + `${allHoles.length} ground-cover holes hold it, the gridded admission answers ${probes} probes as the scan`);
 }

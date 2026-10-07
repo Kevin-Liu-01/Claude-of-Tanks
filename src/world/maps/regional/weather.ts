@@ -189,7 +189,8 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
       };
       for (const tri of readTriangles(geometry)) {
         let pieces: Vert[][] = [tri];
-        if (!isRoof) {
+        // (a part laid on the terrain faces up: the band never darkens it, so it is never cut — facades lane 2026-10-07)
+        if (!isRoof && geometry.userData.onGround !== true) {
           for (const h of DAMP_BREAKS) {
             const next: Vert[][] = [];
             for (const poly of pieces) {

@@ -55,7 +55,7 @@ import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, 
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
-import type { SceneryMapConfig } from './sceneryPlan.ts';
+import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
@@ -148,7 +148,7 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
-import type { RegionalBuildContext } from './maps/regional/types.ts';
+import type { RegionalBuildContext, RegionalGround } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
@@ -3706,6 +3706,21 @@ ${snowCap ? `
     return { y: support.y, spread: support.spread, hx, hz };
   }
 
+  // facades lane (2026-10-07; the coordinator: "put the ground sampler in the build context and lay the strip on
+  // terrain"): the ground a kit building is seated on (x, z, rot at baseY), in the building's frame: the rendered terrain
+  // (the contact surface, its triangles as drawn) over the seat; the discs its wall-foot strip keeps the grass, tall grass
+  // and litter off go with the yards' (map.ts reads them as one list)
+  const surfaceAt = heightField.getContactHeightAt
+    ? (x: number, z: number) => heightField.getContactHeightAt!(x, z) : (x: number, z: number) => heightField.getHeightAt(x, z);
+  function regionalGround(x: number, z: number, rot: number, baseY: number,
+    holes: GroundCoverHole[] = (group.userData.regionalYardHoles ??= [])): RegionalGround {
+    const c = Math.cos(rot), s = Math.sin(rot);
+    return {
+      at: (lx, lz) => surfaceAt(x + lx * c + lz * s, z - lx * s + lz * c) - baseY,
+      hole: (lx, lz, r) => { holes.push({ x: x + lx * c + lz * s, z: z - lx * s + lz * c, r }); },
+    };
+  }
+
   function addStructureCollision(
     id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
   ) {
@@ -3958,8 +3973,10 @@ ${snowCap ? `
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     if (regionalArchitecture && !regionalDonor) {
+      // (a building a carriageway may still move takes no ground: its strip lies level)
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
+        { mapId, snowCap: structureContext.snowCap, seed,
+          ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) }, px, pz, rot);
       if (rebuilt) {
         tmp = rebuilt;
         const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
@@ -4053,7 +4070,9 @@ ${snowCap ? `
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
-        { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+        { mapId, snowCap: structureContext.snowCap, seed,
+          ground: P.roadBuildingClearance ? undefined : regionalGround(entry.x, entry.z, entry.rot, fit.y + 0.05) },
+        entry.x, entry.z, entry.rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
@@ -4273,7 +4292,7 @@ ${snowCap ? `
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
-          { mapId, snowCap: structureContext.snowCap, seed }, x, z, rot) ?? tmp;
+          { mapId, snowCap: structureContext.snowCap, seed, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
       }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
@@ -7166,12 +7185,15 @@ ${snowCap ? `
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
         const fit = groundFit(x, z, sw, sd, yaw);
         if (fit.spread <= 1.0) {
+          const shedHoles: GroundCoverHole[] = [];
           const ctx: RegionalBuildContext = {
             structureId: yard.shed, info: { w: sw, d: sd, h: YARD_SHED.h }, wallBucket: 'plaster',
             bounds: { minX: -sw / 2, maxX: sw / 2, minZ: -sd / 2, maxZ: sd / 2, maxY: YARD_SHED.h },
             rng: streamFrom(hashSeed(`${style.id}:yardshed:${mapId}`, seed, x, z, yaw)),
             variant: streamFrom(hashSeed(`${style.id}:yardshed-variant:${mapId}`, seed, x, z, yaw)),
             mapId, snowCap: structureContext.snowCap, tier: mobileProps ? 'mobile' : 'desktop',
+            // (the shed's strip holes wait for the shed to keep to its plot)
+            ground: regionalGround(x, z, yaw, fit.y + 0.05, shedHoles),
           };
           const parts = buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
           const solid = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
@@ -7191,6 +7213,7 @@ ${snowCap ? `
             _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
             mergeInto(buckets, tmp, _mat4);
             buildingFeatures.push({ x, z, w: sw, d: sd, rot: yaw });
+            for (const h of shedHoles) holes.push(h);
             stats.sheds++;
           } else {
             for (const list of Object.values(parts)) for (const g of list) g.dispose();

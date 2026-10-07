@@ -7,8 +7,7 @@ import {
   PartSink, bodyFaces, facePoint, faceBox, normalize3,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
-import { carvedVerge, facadeOn, sillStreaks, thatchCourses, withFacade } from './facade.ts';
-import type { StoneSurfaceKind } from './types.ts';
+import { carvedVerge, facadeGround, facadeOn, sillStreaks, thatchCourses, withFacade, type FacadeContext } from './facade.ts';
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -188,7 +187,7 @@ interface WearContext {
   /** spalled render (decor only) draws from its own stream: the damage decisions above never move */
   spall?: () => number;
   /** the facade craft's slot for the building (facade.ts withFacade), set with the wear */
-  facade?: { tier: 'desktop' | 'mobile'; rng: () => number; stone?: { kind: StoneSurfaceKind; dressed?: boolean } };
+  facade?: FacadeContext;
 }
 let wearContext: WearContext | null = null;
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
@@ -269,31 +268,37 @@ function damagedOpening(sink: PartSink, face: Face, o: Opening, y0: number, reve
 
 /**
  * The ground at the wall foot (facade craft, desktop; wave 172: "buildings set straight onto flat dirt or lawn with no
- * plinth, path, grime or contact shadow"): a drip strip of the kit's paving round the plinth, darkest against the wall
- * (the contact shadow the ground takes there), and a short path of the same out from each ground-floor door. The house
- * stands at the lowest ground its plot touches (props.ts groundFit): the strip lies level 4 cm over that, its outer
- * edge a lip down into the ground (a kerb where the ground is level; where the ground rises the strip runs into it),
- * so no ray from outside meets its underside. Decor.
+ * plinth, path, grime or contact shadow"; wave 199: "no plinth, path or splash zone"): a drip strip of the kit's paving
+ * round the plinth, darkest against the wall (the contact shadow the ground takes there), and a short path of the same
+ * out from each ground-floor door.
+ *
+ * A placed building (facadeGround: props.ts hands the build the rendered terrain) lays both on the ground, in runs of at
+ * most SKIRT_RUN, every corner SKIRT_LIFT over the terrain under it (a path a centimetre over the strip), and keeps the
+ * grass, tall grass and litter off them (discs along the strip and over each path, held with the yards' ground-cover
+ * holes). The house stands at the lowest ground its plot touches (props.ts groundFit) and its plinth reaches 0.6 m below
+ * that, so the strip meets the plinth wherever the ground lies. A bare build (the receipts) lays the strip level 4 cm over
+ * the base, its outer edge a lip down into the ground. Decor.
  */
+const SKIRT_W = 0.45, SKIRT_RUN = 1.5, SKIRT_LIFT = 0.03;
 function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Face>): void {
   // (a house on a plinth stands on the ground; one without may stand raised on piers, so it takes a strip only by name)
   const sk = spec.skirt === undefined ? (spec.plinth ? { bucket: spec.plinth.bucket } : null) : spec.skirt;
   if (!sk) return;
   const o = spec.plinth ? spec.plinth.out : 0;
   const x0 = -spec.w / 2 - o, x1 = spec.w / 2 + o, z0 = -spec.d / 2 - o, z1 = spec.d / 2 + o;
-  const W = 0.45, top = 0.04;
-  // the strip lies level 4 cm proud of the lowest ground the house stands on, its outer edge a lip down into the ground
-  // (a kerb where the ground is level; where it rises the strip runs into it), darkest against the wall
+  const W = SKIRT_W, top = 0.04, ground = facadeGround();
+  // darkest against the wall; a level strip's lips (below its top) a little lighter
   const shadeOf = (p: Vec3): number => {
-    if (p[1] < top - 0.01) return 0.8;
+    if (!ground && p[1] < top - 0.01) return 0.8;
     const wall = Math.max(Math.abs(p[0]) - x1, Math.abs(p[2]) - z1, 0);
     return wall < 0.01 ? 0.55 : 0.95;
   };
   // fine dressing: out of the shadow maps and the always-drawn meshes, drawn by the fine-detail cells (a strip 45 cm wide
   // reads within their distance; past it the ground's own contact decal stands for it)
-  const opts: EmitOptions = sk.colour ? { decor: true, fine: true, colourAt: (p: Vec3) => shadeRgb(sk.colour as Rgb, shadeOf(p)) }
-    : { decor: true, fine: true, shadeAt: shadeOf, ...(sk.tint ? { tint: sk.tint } : {}) };
-  // a quad wound to face along `n` (its corners in any order round it)
+  const onGround = ground ? { ground: true } : {};
+  const opts: EmitOptions = sk.colour ? { decor: true, fine: true, ...onGround, colourAt: (p: Vec3) => shadeRgb(sk.colour as Rgb, shadeOf(p)) }
+    : { decor: true, fine: true, ...onGround, shadeAt: shadeOf, ...(sk.tint ? { tint: sk.tint } : {}) };
+  // a polygon wound to face along `n` (its corners in any order round it)
   const quad = (pts: Vec3[], n: Vec3) => {
     const [a, b, c] = pts;
     const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
@@ -302,26 +307,82 @@ function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Fa
   };
   const up: Vec3 = [0, 1, 0];
   const X0 = x0 - W, X1 = x1 + W, Z0 = z0 - W, Z1 = z1 + W;
-  quad([[x0, top, z1], [x1, top, z1], [X1, top, Z1], [X0, top, Z1]], up);
-  quad([[x1, top, z0], [x0, top, z0], [X0, top, Z0], [X1, top, Z0]], up);
-  quad([[x1, top, z1], [x1, top, z0], [X1, top, Z0], [X1, top, Z1]], up);
-  quad([[x0, top, z0], [x0, top, z1], [X0, top, Z1], [X0, top, Z0]], up);
-  const lip = -0.3;
-  quad([[X0, top, Z1], [X1, top, Z1], [X1, lip, Z1], [X0, lip, Z1]], [0, 0, 1]);
-  quad([[X0, top, Z0], [X1, top, Z0], [X1, lip, Z0], [X0, lip, Z0]], [0, 0, -1]);
-  quad([[X1, top, Z0], [X1, top, Z1], [X1, lip, Z1], [X1, lip, Z0]], [1, 0, 0]);
-  quad([[X0, top, Z0], [X0, top, Z1], [X0, lip, Z1], [X0, lip, Z0]], [-1, 0, 0]);
-  // the path from each ground-floor door: a slab out to a metre from the wall, a cm over the strip, its lip deeper
-  for (const op of spec.openings) {
-    if (op.storey !== 0 || op.kind !== 'door' || op.state) continue;
-    const f = faces[op.face], hw = op.w / 2 + 0.18, L = 1.0, y = top + 0.01, deep = -0.5;
-    const at = (du: number, out: number, yy: number): Vec3 => [f.origin[0] + f.u[0] * (op.u + du) + f.out[0] * (out + o),
-      yy, f.origin[2] + f.u[2] * (op.u + du) + f.out[2] * (out + o)];
-    const side = (s: number): Vec3 => [f.u[0] * s, 0, f.u[2] * s];
-    quad([at(-hw, 0, y), at(hw, 0, y), at(hw, L, y), at(-hw, L, y)], up);
-    quad([at(-hw, L, y), at(hw, L, y), at(hw, L, deep), at(-hw, L, deep)], [f.out[0], 0, f.out[2]]);
-    quad([at(hw, 0, y), at(hw, L, y), at(hw, L, deep), at(hw, 0, deep)], side(1));
-    quad([at(-hw, 0, y), at(-hw, L, y), at(-hw, L, deep), at(-hw, 0, deep)], side(-1));
+  // the doors' paths: a slab out to a metre from the plinth, as wide as the door and 18 cm either side
+  const paths = spec.openings.filter((op) => op.storey === 0 && op.kind === 'door' && !op.state).map((op) => {
+    const f = faces[op.face], hw = op.w / 2 + 0.18, L = 1.0;
+    const at = (du: number, out: number): [number, number] => [f.origin[0] + f.u[0] * (op.u + du) + f.out[0] * (out + o),
+      f.origin[2] + f.u[2] * (op.u + du) + f.out[2] * (out + o)];
+    return { f, hw, L, at };
+  });
+  if (!ground) {
+    // a bare build: level 4 cm over the base, the outer edge a lip down into the ground
+    quad([[x0, top, z1], [x1, top, z1], [X1, top, Z1], [X0, top, Z1]], up);
+    quad([[x1, top, z0], [x0, top, z0], [X0, top, Z0], [X1, top, Z0]], up);
+    quad([[x1, top, z1], [x1, top, z0], [X1, top, Z0], [X1, top, Z1]], up);
+    quad([[x0, top, z0], [x0, top, z1], [X0, top, Z1], [X0, top, Z0]], up);
+    const lip = -0.3;
+    quad([[X0, top, Z1], [X1, top, Z1], [X1, lip, Z1], [X0, lip, Z1]], [0, 0, 1]);
+    quad([[X0, top, Z0], [X1, top, Z0], [X1, lip, Z0], [X0, lip, Z0]], [0, 0, -1]);
+    quad([[X1, top, Z0], [X1, top, Z1], [X1, lip, Z1], [X1, lip, Z0]], [1, 0, 0]);
+    quad([[X0, top, Z0], [X0, top, Z1], [X0, lip, Z1], [X0, lip, Z0]], [-1, 0, 0]);
+    for (const { f, hw, L, at } of paths) {
+      const y = top + 0.01, deep = -0.5;
+      const p3 = (du: number, out: number, yy: number): Vec3 => { const [x, z] = at(du, out); return [x, yy, z]; };
+      const side = (s: number): Vec3 => [f.u[0] * s, 0, f.u[2] * s];
+      quad([p3(-hw, 0, y), p3(hw, 0, y), p3(hw, L, y), p3(-hw, L, y)], up);
+      quad([p3(-hw, L, y), p3(hw, L, y), p3(hw, L, deep), p3(-hw, L, deep)], [f.out[0], 0, f.out[2]]);
+      quad([p3(hw, 0, y), p3(hw, L, y), p3(hw, L, deep), p3(hw, 0, deep)], side(1));
+      quad([p3(-hw, 0, y), p3(-hw, L, y), p3(-hw, L, deep), p3(-hw, 0, deep)], side(-1));
+    }
+    return;
+  }
+  // on the ground: each corner `lift` over the terrain under it (the building's frame through the sink's placements)
+  const on = (x: number, z: number, lift: number): Vec3 => {
+    const q = sink.framePoint([x, 0, z]);
+    return [x, ground.at(q[0], q[2]) - q[1] + lift, z];
+  };
+  const hole = (x: number, z: number, r: number): void => {
+    if (!ground.hole) return;
+    const q = sink.framePoint([x, 0, z]);
+    ground.hole(q[0], q[2], r);
+  };
+  // the four runs, mitred at the corners: inner edge along the plinth, outer edge W out, cut into pieces at most SKIRT_RUN
+  // long; the corners the runs share sample the same ground, so the strip has no seam
+  const runs: Array<[[number, number], [number, number], [number, number], [number, number]]> = [
+    [[x0, z1], [x1, z1], [X0, Z1], [X1, Z1]], [[x1, z1], [x1, z0], [X1, Z1], [X1, Z0]],
+    [[x1, z0], [x0, z0], [X1, Z0], [X0, Z0]], [[x0, z0], [x0, z1], [X0, Z0], [X0, Z1]],
+  ];
+  for (const [a, b, A, B] of runs) {
+    const n = Math.max(1, Math.ceil(Math.hypot(B[0] - A[0], B[1] - A[1]) / SKIRT_RUN));
+    const inner = (k: number) => on(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, SKIRT_LIFT);
+    const outer = (k: number) => on(A[0] + (B[0] - A[0]) * k / n, A[1] + (B[1] - A[1]) * k / n, SKIRT_LIFT);
+    for (let k = 0; k < n; k++) {
+      const i0 = inner(k), i1 = inner(k + 1), o0 = outer(k), o1 = outer(k + 1);
+      // two triangles, each lit by its own facing (the ground under a piece need not be planar)
+      quad([i0, i1, o1], up);
+      quad([i0, o1, o0], up);
+    }
+  }
+  for (const { hw, L, at } of paths) {
+    const m = Math.max(1, Math.ceil(2 * hw / SKIRT_RUN));
+    for (let k = 0; k < m; k++) {
+      const u0 = -hw + 2 * hw * k / m, u1 = -hw + 2 * hw * (k + 1) / m;
+      const [a, b, c, d] = [at(u0, 0), at(u1, 0), at(u1, L), at(u0, L)].map(([x, z]) => on(x, z, SKIRT_LIFT + 0.01));
+      quad([a, b, c], up);
+      quad([a, c, d], up);
+    }
+  }
+  // the strip's ground grows nothing: discs along its midline, W apart and W/sqrt2 across (they cover it corner to
+  // corner), and a row of discs over each path
+  const R = W / Math.SQRT2 + 0.01;
+  const mx0 = x0 - W / 2, mx1 = x1 + W / 2, mz0 = z0 - W / 2, mz1 = z1 + W / 2;
+  for (const [ax, az, bx, bz] of [[mx0, mz1, mx1, mz1], [mx1, mz1, mx1, mz0], [mx1, mz0, mx0, mz0], [mx0, mz0, mx0, mz1]]) {
+    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / W));
+    for (let k = 0; k < n; k++) hole(ax + (bx - ax) * k / n, az + (bz - az) * k / n, R);
+  }
+  for (const { hw, L, at } of paths) {
+    const n = Math.ceil(2 * hw / L) + 1;
+    for (let k = 0; k < n; k++) { const [x, z] = at(-hw + 2 * hw * k / (n - 1), L / 2); hole(x, z, L / Math.SQRT2 + 0.01); }
   }
 }
 

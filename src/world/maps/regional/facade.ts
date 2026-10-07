@@ -15,15 +15,17 @@ import {
   LocalFrame, faceBox, facePoint, normalize3, type EmitOptions, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
 import { masonryLayout } from '../../regionalSurfaces.ts';
-import type { StoneSurfaceKind } from './types.ts';
+import type { RegionalGround, StoneSurfaceKind } from './types.ts';
 
 /** The facade craft's slot for the building being built (index.ts sets it around a kit build, like the wear slot). */
-interface FacadeContext {
+export interface FacadeContext {
   tier: 'desktop' | 'mobile';
   /** the building's facade stream (never its build or look stream) */
   rng: () => number;
   /** the style's stone tile (its painter and dressing: the dressed quoins map one of its stones onto each quoin) */
   stone?: { kind: StoneSurfaceKind; dressed?: boolean };
+  /** the ground the placed building stands on (RegionalBuildContext.ground; absent in a bare build) */
+  ground?: RegionalGround;
 }
 let facadeContext: FacadeContext | null = null;
 
@@ -43,6 +45,11 @@ export function setFacadeCraft(on: boolean): void {
 /** True on a desktop kit build: the facade craft is built. A phone, or a build outside a kit, keeps the plain parts. */
 export function facadeOn(): boolean {
   return craftEnabled && facadeContext?.tier === 'desktop';
+}
+
+/** The ground under the building being built (the wall-foot strip lies on it), or null: a bare build lays it level. */
+export function facadeGround(): RegionalGround | null {
+  return facadeContext?.ground ?? null;
 }
 
 const FALLBACK = (): number => 0.5;

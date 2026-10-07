@@ -29,7 +29,7 @@ import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
 import { HOSTOMEL_STYLE } from './hostomel.ts';
-import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
+import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
 
@@ -96,7 +96,7 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
-    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone } };
+    facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground } };
   const tints = pickWeatherTints(palette, weatherRng);
   const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
@@ -116,6 +116,8 @@ interface RebuildContext {
   mapId: string;
   snowCap: boolean;
   seed: number;
+  /** the ground the building is seated on, in its frame (RegionalBuildContext.ground) */
+  ground?: RegionalGround;
 }
 
 /**
@@ -134,6 +136,7 @@ export function rebuildRegionalStructure(
     rng: streamFrom(hashSeed(`${style.id}:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     variant: streamFrom(hashSeed(`${style.id}:variant:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
+    ...(context.ground ? { ground: context.ground } : {}),
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = buildRegionalParts(style, ctx,

@@ -10,6 +10,17 @@ export interface BaseBounds {
   maxY: number;
 }
 
+/**
+ * The ground a placed building stands on, in the building's own frame (props.ts; facades lane, 2026-10-07): the wall-foot
+ * strip lies on it (house.ts groundSkirt). Read-only for the geometry: nothing structural ever asks it.
+ */
+export interface RegionalGround {
+  /** the rendered terrain's height at a point of the building's frame, over the building's base (its local y = 0) */
+  at(x: number, z: number): number;
+  /** keep the world's grass, tall grass and litter off a disc of the building's frame (map.ts holds it with the yards') */
+  hole?(x: number, z: number, r: number): void;
+}
+
 /** Everything a regional builder may read. It never draws from the props placement stream. */
 export interface RegionalBuildContext {
   structureId: string;
@@ -29,6 +40,8 @@ export interface RegionalBuildContext {
   snowCap: boolean;
   /** 'mobile' builds leave out the finest dressing (never a structural part: collision stays tier-independent) */
   tier: 'desktop' | 'mobile';
+  /** the ground under the placed building (absent in a bare build: the receipts, a donor); see RegionalGround */
+  ground?: RegionalGround;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;

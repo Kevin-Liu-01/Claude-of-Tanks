@@ -552,9 +552,14 @@ and the quoin's two outer faces map a block clear of its joints, per quoin and p
 longer run across it; the geometry is the plain quoin's. A render loss (`spallRender` on the first render family) shows
 its masonry ringed by the brown base coat and a stain fading into the render (`layeredLoss`; the rings grow only as
 far as the wall and its openings leave room). A house on a plinth gets a drip strip of its plinth's stone round the
-wall foot, level 4 cm over the lowest ground it stands on with a lip into the ground and darkest against the wall, and
-a short path out from each ground-floor door (`groundSkirt`; `HouseSpec.skirt`: a khata's trodden clay; fine
-dressing). A khata's shutters carry raised stiles, rails and an applied motif, and its nalichnik boards are carved: a
+wall foot, darkest against the wall, and a short path out from each ground-floor door (`groundSkirt`;
+`HouseSpec.skirt`: a khata's trodden clay; fine dressing). Both lie on the ground (October 7, wave 199: "no plinth,
+path or splash zone"): props.ts hands each kit build the rendered terrain under it in the building's frame
+(`RegionalBuildContext.ground`: the contact surface, over the seat), the strip runs in pieces of at most 1.5 m with
+every corner 3 cm over it (a path 4 cm), and its ground grows no grass, tall grass or litter (discs along the strip and
+over each path, held with the yards' holes; `sceneryPlan.ts withGroundCoverHoles` grids a list past 64 holes). The
+weathering's wall-foot band never cuts a part laid on the ground (`EmitOptions.ground`: it faces up and takes no damp).
+A bare build (the receipts) keeps the level strip with its lip. A khata's shutters carry raised stiles, rails and an applied motif, and its nalichnik boards are carved: a
 backing board for range, near the camera a frame round a sunk field with the rosettes proud of both (`carvedBoard`).
 The plaster tile's normal map is a first-party derivative of Plaster 007's (`Plaster007_1K-JPG_NormalGL-smooth.jpg`):
 the tile's rows of blocky losses read as carved glyphs on the ksar walls (wave 174) and are taken out, the trowel
