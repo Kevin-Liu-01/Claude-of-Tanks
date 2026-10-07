@@ -241,6 +241,18 @@ configure)` (a plain `Material.clone()` lights with every cascade's sun at once)
 Both meshes are `continuityRole: 'open-lattice'`. Verify additions with
 `ghillieSuit.selftest.mjs`, `accessoryMaterials.selftest.mjs`, standard
 front/quarter/side/top views, and the normal anatomy/release sequence below.
+Round 3 of the critics (2026-10-07) set the garnish and drape rules: garnish goes in clumps on a seeded point process
+(`placeGarnishClumps`: one to nine sprays a clump, irregular gaps, never one spray per lattice cell), sprays fan out of
+one tuck point and stand out of the net, folded along their stems at HIGH (`FoliageCard.fold`; LOW flattens the same
+cards), keep a margin round every opening (`garnishOpeningMarginM`), and stay inside a suit's `maxHalfWidth`; a hull
+deck under the turret and gun sweep carries garnish only in a low band along its edges (`garnishEdgeBandM`,
+`garnishRiseM`), never on the glacis or in the driver's view (`foliageExclude`). The cloth lies on seeded noise
+(swell, wrinkles, gathered folds, tie-downs) that only lifts it off its carrier; a flank hem is tied at irregular points
+drawn per side; a flank drape that would end in a free top edge rolls over into its roof net (`SidePanel.shoulder`).
+Vehicle foliage atlases are 512 px with their own coverage-preserving mip chain (lighting.ts builds that chain only for
+canvas images). Decor branch bundles and the decor whip stay inside their old near-level triangle counts (the decor's
+first rows; the 6,000-triangle budget is full on several hulls); whips, fitting and decor, are one bowed construction
+(`whipAntennaParts`) whose foot and tip height are the straight rod's.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

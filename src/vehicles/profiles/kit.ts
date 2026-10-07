@@ -19,7 +19,7 @@ import {
 import {
   barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, type FabricSpec,
 } from '../accessoryPrimitives.ts';
-import { jerrycanParts } from '../accessoryKits.ts';
+import { jerrycanParts, whipAntennaParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -2778,20 +2778,26 @@ function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
  * Origin: pot base on the deck.
  * @param {object} opts  mats; h=0.9; r=0.011; rake=0.06 (rz lean);
  *   base=true; slot='detail'; seed, shadows, rotation
+ * Round 3 (2026-10-07, "perfectly rigid straight rods with no curve or flex"): the rod is the shared whip construction
+ * (accessoryKits.ts whipAntennaParts) — tapered, bowed toward its lean, sagging when raked, its foot and tip height the
+ * old straight rod's — and a pot-mounted whip stands in a coiled spring (the pot's dark slot).
  */
 function fittingAntennaWhip(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY } = KIT;
+  const { cylY } = KIT;
   const h = opts.h || 0.9;
   const r = opts.r || 0.011;
   const rake = opts.rake ?? 0.06;
   const slot = opts.slot || 'detail';
   const parts = fitParts();
-  if (opts.base !== false) {
+  const pot = opts.base !== false;
+  if (pot) {
     parts.add('dark', cylY(0.035, 0.045, 0.08, 10), 0, 0.04, 0);
     parts.add('dark', cylY(0.020, 0.020, 0.05, 8), 0, 0.10, 0);
   }
-  const baseTop = opts.base !== false ? 0.12 : 0;
-  parts.add(slot, box(r * 2, h, r * 2), -Math.sin(rake) * h * 0.5, baseTop + Math.cos(rake) * h * 0.5, 0, 0, 0, rake);
+  const baseTop = pot ? 0.12 : 0;
+  const whip = whipAntennaParts({ h, r, rake, seed: opts.seed ?? 1, spring: pot });
+  parts.add(slot, whip.rod, 0, baseTop, 0);
+  if (whip.spring) parts.add('dark', whip.spring, 0, baseTop, 0);
   return fitAssemble('antennaWhip', parts, opts);
 }
 

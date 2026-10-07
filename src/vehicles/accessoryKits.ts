@@ -14,7 +14,7 @@ import {
   barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
   type AccessoryDetail, type FabricSpec,
 } from './accessoryPrimitives.ts';
-import { FoliageCardBuffer } from './vehicleFoliage.ts';
+import { FoliageCardBuffer, foliageCardPoints, type FoliageCard } from './vehicleFoliage.ts';
 
 export type RGB = readonly [number, number, number];
 
@@ -720,67 +720,113 @@ export function drum200(P: AccessoryPainter, cx: number, transverse: boolean, to
 /** Branch bundle seats: 'flank' along a wall, 'deck' on a deck or fender; 'upright' / 'lying' are their old names. */
 export type BranchBundleVariant = 'flank' | 'deck' | 'upright' | 'lying';
 
+type Vec3 = [number, number, number];
+const v3add = (a: readonly number[], b: readonly number[], k = 1): Vec3 => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
+const v3norm = (a: readonly number[]): Vec3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const v3cross = (a: readonly number[], b: readonly number[]): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+/** Rotate `v` about the unit axis `k` by `angle` (Rodrigues). */
+function v3rotate(v: readonly number[], k: readonly number[], angle: number): Vec3 {
+  const c = Math.cos(angle), s = Math.sin(angle), d = v[0] * k[0] + v[1] * k[1] + v[2] * k[2];
+  const x = v3cross(k, v);
+  return [v[0] * c + x[0] * s + k[0] * d * (1 - c), v[1] * c + x[1] * s + k[1] * d * (1 - c), v[2] * c + x[2] * s + k[2] * d * (1 - c)];
+}
+
 /**
- * A bundle of fresh-cut branches a crew lashed on (2026-10-06, round 2: the critics read the first build's upright
- * stems as potted saplings and skewers topped with one leaf card). Every stem now lies along its support, cut ends
- * gathered under a webbing tie, the leafy run bowed and drooping at the tip, and the leaves dense from the tie to the
- * tip so the wood shows only at the cut ends. 'flank' hangs the bundle along a wall (the turret-side seat: local X
- * along the wall, +Y up, +Z out of it); 'deck' lays it on a deck or fender (+Y up). The legacy 'upright' and 'lying'
- * names map to 'flank' and 'deck'. Draws: count x 6 values plus one for the tie, before any detail branch.
+ * A bundle of fresh-cut branches a crew wedged and lashed on (round 2, 2026-10-06: lying along a wall or deck, never
+ * upright; round 3, 2026-10-07, the critics on the Oplot: "a single flat, bright-green fern-like strip pressed against
+ * the side of the turret, reading as a sticker rather than cut branches wedged into the ERA and rails", "too little and
+ * too bright to break the outline"). Each bough now has its butt wedged a few centimetres behind the support face
+ * (into the rail or ERA gap) under the webbing tie, runs aft standing off the wall by up to a third of a metre, rising
+ * or drooping, and one bough forks at the near level; its sprays leave the wood all the way round it (a golden-angle
+ * roll about the stem), so the bundle has depth from every side — but no spray ever reaches back into the wall, more
+ * than 0.24 m off it, or below the deck. One bundle is one tree's cut: deep greens a stop darker than round 2, a bough
+ * wilting. The near level stays inside the round-2 bundle's triangles (cheaper stems pay for more sprays): the bundles
+ * are the decor's first rows and the 6,000-triangle budget is full on several hulls.
+ * 'flank' hangs the bundle along a wall (the turret-side seat: local X along the wall, +Y up, +Z out of it); 'deck'
+ * lays it on a deck or fender (+Y up), narrow across so it never reaches over the fender's edges. Draws: count x 14
+ * values, then the tie and the tree, before any detail branch.
  */
 export function buildBranchBundle(P: AccessoryPainter, variant: BranchBundleVariant, count: number): void {
   const flank = variant === 'flank' || variant === 'upright';
   const draws: number[][] = [];
-  for (let i = 0; i < count; i++) draws.push([P.rng(), P.rng(), P.rng(), P.rng(), P.rng(), P.rng()]);
+  for (let i = 0; i < count; i++) draws.push(Array.from({ length: 14 }, () => P.rng()));
   const tieAt = 0.07 + P.rng() * 0.05;
+  const tree = P.rng();
+  const forkStem = draws.reduce((best, d, i) => (d[11] < draws[best][11] ? i : best), 0);
+  const nearLevel = near(P);
   const cards = new FoliageCardBuffer();
-  const sprays = near(P) ? 5 : 3;
-  const out: readonly [number, number, number] = flank ? [0, 0.15, 1] : [0, 1, 0];
+  const out: Vec3 = flank ? [0, 0.15, 1] : [0, 1, 0];
   let top = 0, zMin = Infinity, zMax = -Infinity;
-  const bez = (a: readonly number[], b: readonly number[], c: readonly number[], t: number): [number, number, number] => {
+  const bez = (a: readonly number[], b: readonly number[], c: readonly number[], t: number): Vec3 => {
     const u = 1 - t;
-    return [0, 1, 2].map((k) => u * u * a[k] + 2 * u * t * b[k] + t * t * c[k]) as [number, number, number];
+    return [0, 1, 2].map((k) => u * u * a[k] + 2 * u * t * b[k] + t * t * c[k]) as Vec3;
   };
-  draws.forEach(([a, b, c, d, e, f], i) => {
-    const len = 0.55 + a * 0.3;
+  // a spray may not reach back into the wall (flank) or under the deck, nor (deck) past the fender's edges
+  // (and a flank bundle stands at most 0.24 m off its wall: its seat's width and overlap guards read its bounds)
+  const clear = (card: FoliageCard): boolean => foliageCardPoints(card).every((p) => (flank
+    ? p[2] > 0.012 && p[2] < 0.24 && p[1] > -0.12
+    : p[1] > 0.006 && Math.abs(p[2]) < 0.17));
+  const pushSpray = (stem: readonly number[], along: readonly number[], roll: number, tilt: number, len: number,
+    bend: number, tile: number, tint: Vec3): void => {
+    const dir = v3norm(along);
+    const side = v3norm(v3cross(dir, Math.abs(dir[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]));
+    for (const [r, t, l] of [[roll, tilt, len], [roll + Math.PI, tilt, len], [roll, tilt * 0.4, len * 0.8], [roll, 0, len * 0.65]] as const) {
+      const axis = v3rotate(v3rotate(dir, side, t), dir, r);
+      // the card faces the bundle's outward side (the component of `out` square to the spray)
+      const face = v3cross(v3cross(axis, out), axis);
+      // flat cards: the bundle sits inside its old near-level triangle count (the decor budget is full on several hulls,
+      // and the bundles are seated first), so its depth comes from the sprays' roll about the wood, not a fold
+      const card: FoliageCard = { stem: [stem[0], stem[1], stem[2]], axis, face: Math.hypot(face[0], face[1], face[2]) > 0.1 ? v3norm(face) : out, out,
+        length: l, width: l * 0.9, tile, bend, tint };
+      if (clear(card)) { cards.push(card); return; }
+    }
+  };
+  draws.forEach(([a, b, c, d, e, f, g, h, k, m, w, fork, forkAt, roll0], i) => {
+    const len = 0.62 + a * 0.36;
     const share = count > 1 ? i / (count - 1) : 0.5;
-    // the cut ends gather at the tie (x ~ 0); the leafy runs fan along +X
-    const base: [number, number, number] = flank
-      ? [-0.06 + b * 0.04, 0.09 + share * 0.2 + (c - 0.5) * 0.03, 0.035 + d * 0.04]
-      : [-0.06 + b * 0.04, 0.03 + (i % 2) * 0.035, (share - 0.5) * 0.2 + (c - 0.5) * 0.03];
-    const heading = flank
-      ? new THREE.Vector3(1, (d - 0.5) * 0.22 + (share - 0.5) * 0.18, (e - 0.5) * 0.12).normalize()
-      : new THREE.Vector3(1, 0.04 + d * 0.05, (share - 0.5) * 0.5 + (e - 0.5) * 0.18).normalize();
-    const tip: [number, number, number] = [base[0] + heading.x * len, base[1] + heading.y * len, base[2] + heading.z * len];
-    tip[1] -= flank ? 0.05 + f * 0.06 : 0.02 + f * 0.02; // the leafy end droops
-    if (!flank) tip[1] = Math.max(0.02, tip[1]);
-    const mid: [number, number, number] = [(base[0] + tip[0]) / 2, (base[1] + tip[1]) / 2 + 0.03, (base[2] + tip[2]) / 2 + (flank ? 0.012 : 0)];
-    const butt: [number, number, number] = [base[0] - heading.x * 0.06, base[1] - heading.y * 0.06, base[2] - heading.z * 0.06];
-    P.trim(sweptTube([butt, base, mid, tip], 0.0105 - share * 0.002, near(P) ? 4 : 3, near(P) ? 3 : 2), 0.48 + f * 0.14);
+    // the butt is wedged behind the support face (into the rail / ERA gap) under the tie; the leafy run streams along +X
+    const butt: Vec3 = flank ? [-0.1 + b * 0.04, 0.08 + share * 0.24 + (c - 0.5) * 0.04, -0.025]
+      : [-0.1 + b * 0.04, 0.02 + (i % 2) * 0.025, (share - 0.5) * 0.12 + (c - 0.5) * 0.03];
+    const base: Vec3 = flank ? [0, butt[1] + 0.01, 0.03 + d * 0.03] : [0, butt[1] + 0.012, butt[2] * 0.9];
+    const standOff = flank ? 0.04 + e * 0.1 : 0;
+    const rise = flank ? (d - 0.35) * 0.32 + (share - 0.5) * 0.1 : 0.04 + e * 0.1;
+    const tip: Vec3 = flank ? [len, base[1] + rise - (0.04 + f * 0.06), base[2] + standOff]
+      : [len, Math.max(0.03, base[1] + rise - f * 0.04), THREE.MathUtils.clamp(base[2] + (e - 0.5) * 0.1, -0.1, 0.1)];
+    const mid: Vec3 = [len * 0.5, (base[1] + tip[1]) / 2 + 0.04 + g * 0.03, (base[2] + tip[2]) / 2 + (flank ? 0.02 : 0)];
+    P.trim(sweptTube([butt, base, mid, tip], 0.0105 - share * 0.002, 3, nearLevel ? 3 : 2), 0.46 + f * 0.16); // 24 / 18 tris
     top = Math.max(top, base[1], mid[1]);
     zMin = Math.min(zMin, base[2]); zMax = Math.max(zMax, base[2]);
-    for (let k = 0; k < sprays; k++) {
-      const t = 0.16 + (k / Math.max(1, sprays - 1)) * 0.84;
-      const at = bez(base, mid, tip, t);
-      const ahead = bez(base, mid, tip, Math.min(1, t + 0.08));
-      const along = new THREE.Vector3(ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]).normalize();
-      // sprays leave the stem alternately to either side and forward, wider near the tie, closing toward the tip
-      const side = k % 2 ? 1 : -1;
-      const open = (0.95 - t * 0.5) * (0.75 + ((a * 7 + k * 3.1) % 1) * 0.45);
-      // on a wall the sprays rise above the stems and droop only a little below them (the bundle stays off the deck)
-      const axis = flank
-        ? along.clone().applyAxisAngle(new THREE.Vector3(0, 0, 1), side > 0 ? open : -open * 0.35).normalize()
-        : along.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), side * open).normalize();
-      const sprayLen = 0.27 + ((b * 5 + k * 1.7) % 1) * 0.12 + (1 - t) * 0.05;
-      const face = flank ? [0.08 * side, 0.2, 1] as const : [0.12 * side, 1, 0.1] as const;
-      // a cut bough's leaves are deeper than the living tree's sun side and start to wilt (round 2: never pale lime)
-      const tint: [number, number, number] = [0.66 + ((c * 3 + k) % 1) * 0.3, 0.72 + ((d * 5 + k) % 1) * 0.22, 0.56 + ((e * 7 + k) % 1) * 0.18];
-      cards.push({ stem: at, axis: [axis.x, axis.y, axis.z], face, out, length: sprayLen, width: sprayLen * 0.92,
-        tile: (i * 3 + k) % 4, bend: 0.12 + ((f * 3 + k) % 1) * 0.14, tint });
+    // one tree's leaves: a deep green, a bough here and there wilting
+    const v = 0.4 + tree * 0.1 + h * 0.14, wilt = w < 0.16 ? 0.4 + w * 2 : 0;
+    const stemTint: Vec3 = [v * 0.8 * (1 + wilt * 0.6), v * (1 - wilt * 0.1), v * 0.86 * (1 - wilt * 0.3)];
+    const tint = (j: number): Vec3 => { const q = 0.86 + ((k * 7 + j * 0.37) % 1) * 0.28; return [stemTint[0] * q, stemTint[1] * q, stemTint[2] * q]; };
+    const sprays = nearLevel ? [0.26, 0.42, 0.58, 0.74, 0.88] : [0.42, 0.78];
+    sprays.forEach((t, j) => {
+      const at = bez(base, mid, tip, t), ahead = bez(base, mid, tip, Math.min(1, t + 0.08));
+      const along: Vec3 = [ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]];
+      // sprays leave the wood all the way round it (a golden-angle roll), wider near the tie, closing toward the tip;
+      // the coarse level's two sprays are the near level's larger
+      pushSpray(at, along, roll0 * Math.PI * 2 + j * 2.4, (0.85 - t * 0.4) * (0.7 + ((m * 5 + j * 0.31) % 1) * 0.4),
+        (0.32 + ((b * 5 + j * 1.7) % 1) * 0.14 + (1 - t) * 0.05) * (nearLevel ? 1 : 1.2), 0.1 + ((f * 3 + j) % 1) * 0.12,
+        (i * 3 + j) % 4, tint(j));
+    });
+    // the leafy end closes the run instead of showing the bare wood
+    pushSpray(tip, [tip[0] - mid[0], tip[1] - mid[1] - 0.08, tip[2] - mid[2]], roll0 * 4, 0.12, 0.3, 0.18, (i + 1) % 4, tint(9));
+    // a fork off the near level's one most forked bough: a short side branch carrying two sprays, standing out and up
+    if (nearLevel && i === forkStem) {
+      const t0 = 0.36 + forkAt * 0.24;
+      const at = bez(base, mid, tip, t0), ahead = bez(base, mid, tip, t0 + 0.08);
+      const dir = v3norm([ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]]);
+      const offAxis: Vec3 = flank ? [0, 0.35 + roll0 * 0.3, 1] : [0, 1, (roll0 - 0.5) * 0.4];
+      const branchDir = v3norm(v3add(dir, v3norm(offAxis), 0.8));
+      const bl = 0.22 + fork * 0.22;
+      const end = v3add(at, branchDir, bl);
+      if (!flank) { end[1] = Math.max(0.04, end[1]); end[2] = THREE.MathUtils.clamp(end[2], -0.11, 0.11); }
+      if (flank) end[2] = Math.max(0.05, end[2]);
+      P.trim(sweptTube([at, v3add(at, branchDir, bl * 0.5), end], 0.006, 3, 2), 0.5 + f * 0.14);
+      pushSpray(v3add(at, branchDir, bl * 0.55), branchDir, roll0 * 9 + 1.3, 0.55, 0.28, 0.12, (i + 2) % 4, tint(5));
+      pushSpray(end, branchDir, roll0 * 13 + 2.1, 0.2, 0.27, 0.16, (i + 3) % 4, tint(6));
     }
-    // one card past the tip so the leafy end closes the run instead of showing the bare wood
-    cards.push({ stem: tip, axis: [heading.x, heading.y - 0.15, heading.z], face: flank ? [0, 0.2, 1] : [0, 1, 0.1], out,
-      length: 0.26, width: 0.24, tile: (i + 1) % 4, bend: 0.18, tint: [0.78, 0.84, 0.66] });
   });
   const geometry = cards.toGeometry();
   if (geometry) P.leaves(geometry);
@@ -976,4 +1022,104 @@ export function buildTravelLock(P: AccessoryPainter, tone: number): void {
   P.steel(roundBar([-0.085, 0.05, 0.03], [0.085, 0.05, 0.03], 0.015, 6), 0.55);                         // pivot pin
   for (const s of [-1, 1]) P.steel(bossX(0.026, 0.02, s * 0.075, 0.05, 0.03), 0.5);                    // pin bosses
   P.steel(place(block(0.06, 0.012, 0.03), 0, 0.012, -0.52), 0.35);                                      // claw pad
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Whip antennas (round 3, 2026-10-07: "the whip antennas are perfectly rigid straight rods with no curve or flex"). One
+// construction for the profile fitting (KIT FITTINGS.antennaWhip) and the decor antenna kit: a tapered rod standing from
+// its foot with a slight static set — it bows toward its lean and, raked, sags under its own weight — and a coiled
+// spring at the foot. The foot and the tip's height are the straight rod's (the bow is lateral; the height is restored
+// along the rod), so seats, heights and the antenna receipts keep their numbers.
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface WhipAntennaOptions {
+  /** Rod length (the straight rod's), metres. */
+  readonly h: number;
+  /** Rod radius at the foot. */
+  readonly r: number;
+  /** Lean about +Z, radians (a positive rake leans the tip toward -X, the fitting's convention). */
+  readonly rake: number;
+  /** A deterministic seed (the bow's side on a vertical rod). */
+  readonly seed: number;
+  /** Coil the spring at the foot. */
+  readonly spring: boolean;
+  /** Rod facets and stations (default 5 and 5; the decor whip, inside the 6,000-triangle decor budget, uses 3 and 2). */
+  readonly radial?: number;
+  readonly along?: number;
+}
+
+/**
+ * The rod and spring of a whip in its foot frame (foot at the origin, +Y up): the rod's centreline bows by
+ * h x (2.2 % + 5 % sin|rake|) along a cantilever's self-weight curve (60 triangles); the spring is a four-coil corrugated
+ * sleeve 4.5-6.4 cm tall around the rod's root. Closed shells (fan caps); position, normal and uv like the kit's boxes.
+ */
+export function whipAntennaParts(o: WhipAntennaOptions): { rod: THREE.BufferGeometry; spring: THREE.BufferGeometry | null; tip: [number, number, number] } {
+  const { h, r, rake } = o;
+  const d = new THREE.Vector3(-Math.sin(rake), Math.cos(rake), 0);
+  const side = rake !== 0 ? Math.sign(rake) : (o.seed % 2 ? 1 : -1);
+  const lean = new THREE.Vector3(-side, 0, 0);
+  // gravity's share square to the rod, plus a little set toward the lean (a vertical whip is never quite straight)
+  const down = new THREE.Vector3(0, -1, 0);
+  const bow = down.clone().addScaledVector(d, -down.dot(d)).addScaledVector(lean, 0.35);
+  if (bow.lengthSq() < 1e-8) bow.copy(lean);
+  bow.normalize();
+  const amp = h * (0.022 + 0.05 * Math.abs(Math.sin(rake))) + 0.004;
+  const along = o.along ?? 5, radial = o.radial ?? 5;
+  const shape = (s: number): number => (s * s * (6 - 4 * s + s * s)) / 3; // cantilever under its own weight, 1 at the tip
+  const pts: THREE.Vector3[] = [];
+  for (let k = 0; k <= along; k++) {
+    const s = k / along;
+    pts.push(d.clone().multiplyScalar(h * s).addScaledVector(bow, amp * shape(s)));
+  }
+  const lift = Math.cos(rake) * h - pts[along].y; // the straight rod's tip height, restored along the rod
+  for (let k = 0; k <= along; k++) pts[k].y += lift * shape(k / along);
+  // the tapered tube: rings square to the local tangent, a fan cap at each end
+  const positions: number[] = [], normals: number[] = [], uvs: number[] = [];
+  const ref = new THREE.Vector3(0, 0, 1);
+  const rings: { c: THREE.Vector3; ring: THREE.Vector3[]; n: THREE.Vector3[] }[] = [];
+  for (let k = 0; k <= along; k++) {
+    const t = (k === along ? pts[k].clone().sub(pts[k - 1]) : pts[k + 1].clone().sub(pts[k])).normalize();
+    const n1 = new THREE.Vector3().crossVectors(t, ref).normalize();
+    const n2 = new THREE.Vector3().crossVectors(t, n1);
+    const rr = r * (1 - 0.55 * (k / along));
+    const ring: THREE.Vector3[] = [], ns: THREE.Vector3[] = [];
+    for (let j = 0; j < radial; j++) {
+      const a = (j / radial) * Math.PI * 2;
+      const n = n1.clone().multiplyScalar(Math.cos(a)).addScaledVector(n2, Math.sin(a));
+      ns.push(n); ring.push(pts[k].clone().addScaledVector(n, rr));
+    }
+    rings.push({ c: pts[k], ring, n: ns });
+  }
+  const vert = (p: THREE.Vector3, n: THREE.Vector3, u: number, v: number): void => {
+    positions.push(p.x, p.y, p.z); normals.push(n.x, n.y, n.z); uvs.push(u, v);
+  };
+  for (let k = 0; k < along; k++) {
+    const A = rings[k], B = rings[k + 1];
+    for (let j = 0; j < radial; j++) {
+      const j2 = (j + 1) % radial, u0 = j / radial, u1 = (j + 1) / radial, v0 = (k / along) * h, v1 = ((k + 1) / along) * h;
+      vert(A.ring[j], A.n[j], u0, v0); vert(A.ring[j2], A.n[j2], u1, v0); vert(B.ring[j2], B.n[j2], u1, v1);
+      vert(A.ring[j], A.n[j], u0, v0); vert(B.ring[j2], B.n[j2], u1, v1); vert(B.ring[j], B.n[j], u0, v1);
+    }
+  }
+  for (const [ringIndex, outward] of [[0, -1], [along, 1]] as const) {
+    const { c, ring } = rings[ringIndex];
+    const tn = (ringIndex === 0 ? pts[1].clone().sub(pts[0]) : pts[along].clone().sub(pts[along - 1])).normalize().multiplyScalar(outward);
+    for (let j = 0; j < radial; j++) {
+      const a = ring[j], b = ring[(j + 1) % radial];
+      if (outward > 0) { vert(c, tn, 0.5, 0); vert(a, tn, 0, 0); vert(b, tn, 1, 0); } else { vert(c, tn, 0.5, 0); vert(b, tn, 1, 0); vert(a, tn, 0, 0); }
+    }
+  }
+  const rod = new THREE.BufferGeometry();
+  rod.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  rod.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  rod.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  let spring: THREE.BufferGeometry | null = null;
+  if (o.spring) {
+    // four coils as a corrugated sleeve: crests and roots alternate up the rod's root (90 triangles)
+    const rOut = Math.max(0.0155, r * 1.55), rIn = Math.max(r * 1.05, rOut * 0.7), tall = h < 0.45 ? 0.045 : 0.064;
+    const profile: Array<readonly [number, number]> = [];
+    for (let i = 0; i <= 8; i++) profile.push([i % 2 ? rOut : rIn, (i / 8) * tall]);
+    spring = latheY(profile, 5);
+  }
+  return { rod, spring, tip: [pts[along].x, pts[along].y, pts[along].z] };
 }

@@ -9,6 +9,13 @@
 // multispectral nets (ULCANS, Nakidka) are not leaves: their garnish is a laser-cut fabric whose flaps this module
 // paints in the same 2 x 2 tile layout. Textures are module-cached and shared (never disposed with a visual);
 // materials stay per visual (the burn hook owns them).
+//
+// Round 3 (2026-10-07, ta3 foliage helper; the critics read the round-2 sprays as "flat, blurry leaf-spray cards whose
+// straight card edges are visible ... no stems or depth"): the atlases are painted at 512 px (256 px a tile, the trees'
+// own size: the painted twigs and stems resolve at a close-up), they carry their own coverage-preserving mip chain
+// (lighting.ts builds that chain only for canvas images, so an ImageData atlas fell back to box-filtered mips that thin
+// a card out with range), and a card may fold along its stem (FoliageCard.fold): the spray's two halves leave the
+// stem's plane in a shallow V, so it has depth and never shows one straight edge.
 import * as THREE from 'three';
 import { makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from '../world/treeSprayAtlas.ts';
 
@@ -19,8 +26,61 @@ export const FOLIAGE_ATLAS_TILES = SPRAY_ATLAS_TILES;
 /** The alpha cut of every vehicle foliage card (the grown trees' near cards use 0.38). */
 export const FOLIAGE_ALPHA_TEST = 0.4;
 
-const ATLAS_SIZE = 256;
+const ATLAS_SIZE = 512;
 const atlasCache = new Map<VehicleFoliageKind, THREE.Texture | null>();
+
+type MipImage = { data: Uint8ClampedArray; width: number; height: number };
+const mipImage = (size: number): MipImage => (typeof ImageData === 'function'
+  ? new ImageData(size, size) as MipImage
+  : { data: new Uint8ClampedArray(size * size * 4), width: size, height: size });
+
+/**
+ * The coverage-preserving mip chain of an ImageData atlas (lighting.ts buildCoverageMipmaps' rule, run on the straight
+ * alpha directly: a canvas round trip would premultiply away the flood tone of the transparent texels). Each level is
+ * a 2 x 2 box of the one above, then its alpha is remapped so the share of texels passing the cut matches level 0 —
+ * a distant card keeps its leafy silhouette instead of thinning below the cut or resolving as a flood rectangle.
+ */
+function coverageMipChain(level0: MipImage, cutoff: number): MipImage[] {
+  const cut = Math.round(cutoff * 255);
+  const coverage = (d: Uint8ClampedArray): number => {
+    let pass = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] >= cut) pass++;
+    return pass / (d.length / 4);
+  };
+  const target = coverage(level0.data);
+  const chain: MipImage[] = [level0];
+  let prev = level0;
+  for (let size = level0.width >> 1; size >= 1; size >>= 1) {
+    const next = mipImage(size);
+    const src = prev.data, dst = next.data, sw = size * 2;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const tl = ((y * 2) * sw + x * 2) * 4, bl = tl + sw * 4, o = (y * size + x) * 4;
+      for (let c = 0; c < 4; c++) dst[o + c] = (src[tl + c] + src[tl + 4 + c] + src[bl + c] + src[bl + 4 + c] + 2) >> 2;
+    }
+    const now = coverage(dst);
+    if (target > 0 && size >= 2 && (now < target * 0.7 || now > target * 1.3)) {
+      const alphas: number[] = [];
+      for (let i = 3; i < dst.length; i += 4) alphas.push(dst[i]);
+      alphas.sort((a, b) => b - a);
+      const quantile = Math.max(1, alphas[Math.min(alphas.length - 1, Math.max(0, Math.round(target * alphas.length) - 1))]);
+      for (let i = 3; i < dst.length; i += 4) dst[i] = Math.max(0, Math.min(255, cut + (dst[i] - quantile) * 3));
+    }
+    chain.push(next);
+    prev = next;
+  }
+  return chain;
+}
+
+/** Give an ImageData-backed atlas its coverage-preserving mips (idempotent; lighting.ts then leaves it alone). */
+function attachCoverageMips(texture: THREE.Texture): THREE.Texture {
+  const image = texture.image as MipImage | null;
+  if (!image?.data || !image.width || image.width !== image.height || (image.width & (image.width - 1)) !== 0) return texture;
+  if (texture.mipmaps && texture.mipmaps.length > 0) return texture;
+  texture.mipmaps = coverageMipChain(image, FOLIAGE_ALPHA_TEST) as unknown as typeof texture.mipmaps;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 function kindSeed(kind: string): number {
   let h = 0x811c9dc5;
@@ -121,9 +181,9 @@ export function vehicleFoliageAtlas(kind: VehicleFoliageKind): THREE.Texture | n
   let texture: THREE.Texture | null = null;
   if (typeof document !== 'undefined') {
     try {
-      texture = kind === 'garnish-woodland' || kind === 'garnish-arid'
+      texture = attachCoverageMips(kind === 'garnish-woodland' || kind === 'garnish-arid'
         ? makeGarnishAtlas(kind)
-        : makeSprayAtlas(kind, seeded(kindSeed(kind)), ATLAS_SIZE, null, 0);
+        : makeSprayAtlas(kind, seeded(kindSeed(kind)), ATLAS_SIZE, null, 0));
     } catch {
       texture = null;
     }
@@ -139,6 +199,38 @@ const norm = (v: V3): [number, number, number] => {
 };
 const cross = (a: V3, b: V3): [number, number, number] =>
   [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+type P3 = [number, number, number];
+
+/** A card's three rows (left edge, spine, right edge) as push() builds them, with its frame. */
+function cardRows(card: FoliageCard): { rows: Array<[P3, P3, P3]>; faceOut: V3; right: V3 } {
+  const axis = norm(card.axis);
+  const right = norm(cross(axis, card.face));
+  const f = norm(cross(right, axis));
+  const faceOut: V3 = f[0] * card.out[0] + f[1] * card.out[1] + f[2] * card.out[2] < 0 ? [-f[0], -f[1], -f[2]] : f;
+  const fold = card.fold ?? 0;
+  const cf = Math.cos(fold), sf = Math.sin(fold);
+  const rows: Array<[P3, P3, P3]> = [];
+  for (let r = 0; r < 3; r++) {
+    const t = r / 2;
+    const along = -0.05 * card.length + t * card.length;
+    const sag = card.bend * card.length * t * t;
+    const half = card.width * 0.5 * (r === 0 ? 0.55 : r === 1 ? 1 : 0.88);
+    const cx = card.stem[0] + axis[0] * along, cy = card.stem[1] + axis[1] * along - sag, cz = card.stem[2] + axis[2] * along;
+    const h = half * cf, lift = half * sf;
+    rows.push([
+      [cx - right[0] * h + faceOut[0] * lift, cy - right[1] * h + faceOut[1] * lift, cz - right[2] * h + faceOut[2] * lift],
+      [cx, cy, cz],
+      [cx + right[0] * h + faceOut[0] * lift, cy + right[1] * h + faceOut[1] * lift, cz + right[2] * h + faceOut[2] * lift],
+    ]);
+  }
+  return { rows, faceOut, right };
+}
+
+/** Every vertex a card would add (its reach): placement checks it against widths, openings and sweeps before pushing. */
+export function foliageCardPoints(card: FoliageCard): P3[] {
+  return cardRows(card).rows.flat();
+}
 
 export interface FoliageCard {
   /** The stem seat (where the twig enters the net). */
@@ -156,11 +248,17 @@ export interface FoliageCard {
   /** Gravity droop of the tip as a share of the length. */
   bend: number;
   tint: V3;
+  /**
+   * Spine fold in radians (round 3): each half of the card leaves the stem's plane by this angle, toward the card's
+   * outer face for a positive fold (a twig's leaves held in a shallow V) or behind it for a negative one (a spray
+   * pressed against a drape). 0 or absent: the flat four-triangle card (the coarse level).
+   */
+  fold?: number;
 }
 
 /**
- * Accumulates bent three-row spray cards (four triangles each) into one draw. Positions, volume normals, atlas UVs
- * (stem at v = 0 like the trees' cards) and per-card tint.
+ * Accumulates bent three-row spray cards into one draw: four triangles a flat card, eight a folded one (its stem the
+ * spine). Positions, volume normals, atlas UVs (stem at v = 0 like the trees' cards) and per-card tint.
  */
 export class FoliageCardBuffer {
   private readonly positions: number[] = [];
@@ -168,42 +266,44 @@ export class FoliageCardBuffer {
   private readonly uvs: number[] = [];
   private readonly colors: number[] = [];
 
-  get cardCount(): number { return this.positions.length / 36; }
+  private cards = 0;
+  get cardCount(): number { return this.cards; }
 
   push(card: FoliageCard): void {
-    const axis = norm(card.axis);
-    const right = norm(cross(axis, card.face));
-    const faceOut = (() => {
-      const f = norm(cross(right, axis));
-      return f[0] * card.out[0] + f[1] * card.out[1] + f[2] * card.out[2] < 0 ? [-f[0], -f[1], -f[2]] as const : f;
-    })();
-    const n = norm([faceOut[0] * 0.45 + card.out[0] * 0.45, faceOut[1] * 0.45 + card.out[1] * 0.45 + 0.25,
-      faceOut[2] * 0.45 + card.out[2] * 0.45]);
+    const { rows, faceOut, right } = cardRows(card);
+    // the volume normal: the card's face, the carrier's outward normal and the sky (the spray lit as part of a mass)
+    const volume = (f: V3): [number, number, number] => norm([f[0] * 0.45 + card.out[0] * 0.45,
+      f[1] * 0.45 + card.out[1] * 0.45 + 0.25, f[2] * 0.45 + card.out[2] * 0.45]);
+    const n = volume(faceOut);
+    const fold = card.fold ?? 0;
+    const cf = Math.cos(fold), sf = Math.sin(fold);
+    // a folded card's halves face out of the V: the left half's normal leans toward +right, the right half's toward -right
+    const nL = fold ? volume([faceOut[0] * cf + right[0] * sf, faceOut[1] * cf + right[1] * sf, faceOut[2] * cf + right[2] * sf]) : n;
+    const nR = fold ? volume([faceOut[0] * cf - right[0] * sf, faceOut[1] * cf - right[1] * sf, faceOut[2] * cf - right[2] * sf]) : n;
     const tiles = FOLIAGE_ATLAS_TILES;
     const tx = card.tile % tiles, ty = Math.floor(card.tile / tiles) % tiles;
     const u0 = tx / tiles, v0 = 1 - (ty + 1) / tiles, du = 1 / tiles, dv = 1 / tiles;
-    const rows: Array<[[number, number, number], [number, number, number]]> = [];
-    for (let r = 0; r < 3; r++) {
-      const t = r / 2;
-      const along = -0.05 * card.length + t * card.length;
-      const sag = card.bend * card.length * t * t;
-      const half = card.width * 0.5 * (r === 0 ? 0.55 : r === 1 ? 1 : 0.88);
-      const cx = card.stem[0] + axis[0] * along, cy = card.stem[1] + axis[1] * along - sag, cz = card.stem[2] + axis[2] * along;
-      rows.push([[cx - right[0] * half, cy - right[1] * half, cz - right[2] * half],
-        [cx + right[0] * half, cy + right[1] * half, cz + right[2] * half]]);
-    }
-    const vert = (p: readonly number[], u: number, v: number): void => {
+    const vert = (p: readonly number[], nn: V3, u: number, v: number): void => {
       this.positions.push(p[0], p[1], p[2]);
-      this.normals.push(n[0], n[1], n[2]);
+      this.normals.push(nn[0], nn[1], nn[2]);
       this.uvs.push(u0 + u * du, v0 + v * dv);
       this.colors.push(card.tint[0], card.tint[1], card.tint[2]);
     };
     for (let r = 0; r < 2; r++) {
       const a = rows[r], b = rows[r + 1];
       const va = r / 2, vb = (r + 1) / 2;
-      vert(a[0], 0, va); vert(a[1], 1, va); vert(b[1], 1, vb);
-      vert(a[0], 0, va); vert(b[1], 1, vb); vert(b[0], 0, vb);
+      if (!fold) {
+        vert(a[0], n, 0, va); vert(a[2], n, 1, va); vert(b[2], n, 1, vb);
+        vert(a[0], n, 0, va); vert(b[2], n, 1, vb); vert(b[0], n, 0, vb);
+        continue;
+      }
+      // the left half (u 0..0.5) then the right half (u 0.5..1), each wound like the flat card (front face = faceOut)
+      vert(a[0], nL, 0, va); vert(a[1], n, 0.5, va); vert(b[1], n, 0.5, vb);
+      vert(a[0], nL, 0, va); vert(b[1], n, 0.5, vb); vert(b[0], nL, 0, vb);
+      vert(a[1], n, 0.5, va); vert(a[2], nR, 1, va); vert(b[2], nR, 1, vb);
+      vert(a[1], n, 0.5, va); vert(b[2], nR, 1, vb); vert(b[1], n, 0.5, vb);
     }
+    this.cards++;
   }
 
   toGeometry(): THREE.BufferGeometry | null {

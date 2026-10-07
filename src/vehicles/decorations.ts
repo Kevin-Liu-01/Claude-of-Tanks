@@ -61,7 +61,7 @@ import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
-  sandbag, type AccessoryPainter, type RGB,
+  sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
 import { block, moldedBox, place, roundBar } from './accessoryPrimitives.ts';
@@ -1221,9 +1221,15 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     } else {
       const H = v === 'whip_long' ? 1.75 : 1.15;
       const lean = (rng() - 0.5) * 0.14;
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.006, 0.012, H, 5), Math.sin(lean) * H * 0.4, H / 2 + 0.07, 0, 0, 0, lean), 0.5) });
+      // round 3 (2026-10-07, the kit critics: "antenna masts stand off their bases"): the rod pivots about its foot inside
+      // the base (the old centred rotation set the foot 0.9 x H x sin(lean) off the base centre, 11 cm on a long whip)
+      // and is the fitting whip's tapered, bowed construction (accessoryKits.ts whipAntennaParts) at the old rod's cost
+      // (18 triangles for 20): the decor budget is full on several hulls and an early piece's growth drops a late one,
+      // so the decor whip stands on its moulded base without the fitting's coil
+      const whip = whipAntennaParts({ h: H, r: 0.012, rake: lean, seed: Math.round(Math.abs(lean) * 1e4), spring: false, radial: 3, along: 2 });
+      parts.push({ mat: 'steel', geo: bakeShade(xform(whip.rod, 0, 0.07, 0), 0.5) });
       if (helmet) {
-        parts.push({ mat: 'kit', geo: bakeTint(xform(sph(0.115, 9, 6), Math.sin(lean) * H * 0.78, H + 0.02, 0, 0, 0, 0, [1, 0.74, 1]), 0.55, 0.58, 0.42) });
+        parts.push({ mat: 'kit', geo: bakeTint(xform(sph(0.115, 9, 6), whip.tip[0], whip.tip[1] + 0.02, whip.tip[2], 0, 0, 0, [1, 0.74, 1]), 0.55, 0.58, 0.42) });
       }
     }
     return parts;
