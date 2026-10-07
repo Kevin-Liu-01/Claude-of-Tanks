@@ -63,7 +63,7 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
@@ -1141,15 +1141,20 @@ function flipPrintRows<T extends Uint8ClampedArray | Float32Array>(data: T, size
  * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
  * band the core maps. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour
  * they had, lifted where a dark tone would black them out. Phones paint it at half size (the same stones).
+ * (b18; gauntlet wave 121, Verdant's yard walls "coal or slate bricks rather than the chalk ... of the Belgorod region":
+ * on a chalk map the walls are its chalk, painted for itself and never toned — the map's stone tone is its houses'.)
  */
 function* makeFieldStone(
   anisotropy: number,
   tone: ToneFunction | null,
   size: number,
+  lithology: FieldStoneLithology = 'fieldstone',
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
-  const { px, hgt } = yield* paintFieldStoneBuffers(size);
-  applyTone(px, tone);
-  liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  const { px, hgt } = yield* paintFieldStoneBuffers(size, undefined, lithology);
+  if (lithology !== 'chalk') {
+    applyTone(px, tone);
+    liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  }
   yield { fine: true, stage: 'field-stone-tone' };
   flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
@@ -3254,7 +3259,7 @@ function* propsBuildSteps(
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
   const fieldWallBucket = P.wallStyle === 'adobe' || sourcedStoneIsBrick(mapId) ? 'stone' : 'fieldStone';
   const fieldStone = fieldWallBucket === 'fieldStone'
-    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
+    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
     : stone;
   // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
   const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
@@ -5077,10 +5082,19 @@ ${snowCap ? `
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
   // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  // (b18; gauntlet wave 121, Verdant's yard walls: "it meets the turf in a clean line with no settling or weeds at its
+  // foot") the soil and turf banked against the dry-stone walls' feet (fieldWallDressing buildWallTurf), for the
+  // ground's own material beside the boulders' beds — not on a snow map (its drifts), a sandy one (its dust), a
+  // brick-print one (its coursed module), nor the phones
+  const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
+  const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
+    turf: wallTurfOn ? {
+      meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
+    } : undefined,
   });
   function addWallRun(
     x0: number,
@@ -6474,6 +6488,26 @@ ${snowCap ? `
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
+  // (b18) and the turf banked against the dry-stone walls' feet, merged by 256 m cell, the same ground material's
+  if (wallDressing.turfs.length) {
+    const turfCells = new Map<number, THREE.BufferGeometry[]>();
+    for (const turf of wallDressing.turfs) {
+      turf.computeBoundingSphere();
+      const c = turf.boundingSphere!.center, key = Math.floor((c.x + 512) / 256) * 64 + Math.floor((c.z + 512) / 256);
+      const list = turfCells.get(key);
+      if (list) list.push(turf); else turfCells.set(key, [turf]);
+    }
+    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+    for (const list of turfCells.values()) {
+      const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
+      if (!merged) continue;
+      if (merged !== list[0]) for (const g of list) g.dispose();
+      merged.computeBoundingSphere();
+      beds.push(merged);
+    }
+    group.userData.rockBeds = beds;
+    wallDressing.turfs.length = 0;
+  }
 
   yield { fine: true, stage: 'rock-instances' };
 

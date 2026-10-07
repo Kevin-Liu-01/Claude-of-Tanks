@@ -45,6 +45,8 @@ export interface RockDressing {
   surface: readonly [number, number, number];
   /** The bedding and the honeycomb (b14): the partings' strength, the beds' own tones, the tafoni, a parting's depth (m). */
   beds: readonly [number, number, number, number];
+  /** The stone's fabric (b18): the cross-bedded laminae, the foliation's bands, the quartz veins, the sand's grain. */
+  fabric: readonly [number, number, number, number];
 }
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
@@ -109,12 +111,16 @@ const LITHOLOGY_PHOTO: Readonly<Record<BoulderLithology, readonly [number, numbe
   granite: [1.25, 0.7, 1.0],
   gneiss: [1.2, 0.6, 1.0],
   basalt: [1.1, 0.25, 0.9],
-  sandstone: [0.9, 0.5, 0.8],
+  // (b18; wave 121: "a continuous wrinkled skin wrapped over a smooth dome": the photographed stone's veins and wrinkles
+  // read as another rock's; the sandstone keeps a little of them under its own beds, laminae and grain)
+  sandstone: [0.5, 0.3, 0.45],
   limestone: [0.75, 0.3, 0.7],
   slate: [1.0, 0.3, 0.9],
   // (b12, wave 74: the chalk read as "a white marshmallow, a fleece or a snow heap" — a pale stone, but a rough one: pitted,
   // fractured, its relief as strong as the limestone's)
-  chalk: [0.8, 0.15, 0.9],
+  // (b18; wave 121: Verdant's "smooth grey granite texture reads as neither chalk nor any local field stone": the
+  // photographed stone's crystalline mottle softer on the chalk, its pores and grain its own — LITHOLOGY_FABRIC)
+  chalk: [0.55, 0.1, 0.7],
 });
 
 /**
@@ -128,7 +134,25 @@ const LITHOLOGY_SURFACE: Readonly<Record<BoulderLithology, readonly [number, num
   sandstone: [0, 0, 0],
   limestone: [0, 0.35, 0.5],
   slate: [0, 0, 0],
-  chalk: [1, 0.6, 1],
+  chalk: [1, 0.45, 1],
+});
+
+/**
+ * The stone's fabric (b18; gauntlet wave 121: Dahar's boulders "none of the horizontal bedding planes, cross-bedded
+ * laminae or coarse sand grain of Dahar sandstone", "a continuous wrinkled skin wrapped over a smooth dome"; Fjord's
+ * "a generic smooth grey lump with no gneiss foliation, quartz veining", "no gneiss banding"), drawn by the material in
+ * each stone's own frame (ROCK_FABRIC_GLSL): the sandstone's laminae inside its beds — cross-bedded sets of foresets cut
+ * off at the parting above, the odd bed laid flat — and its grain; the gneiss's foliation, light and dark bands folded
+ * through the stone at its own attitude, and the odd quartz vein across them. The rest keep their skins.
+ */
+const LITHOLOGY_FABRIC: Readonly<Record<BoulderLithology, readonly [number, number, number, number]>> = Object.freeze({
+  granite: [0, 0, 0, 0],
+  gneiss: [0, 1, 1, 0],
+  basalt: [0, 0, 0, 0],
+  sandstone: [1, 0, 0, 1],
+  limestone: [0, 0, 0, 0],
+  slate: [0, 0, 0, 0],
+  chalk: [0, 0, 0, 0.6],
 });
 
 /**
@@ -179,6 +203,7 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
     photo: LITHOLOGY_PHOTO[climate.lith],
     surface: LITHOLOGY_SURFACE[climate.lith],
     beds: rockBedsFor(climate),
+    fabric: LITHOLOGY_FABRIC[climate.lith],
   };
 }
 
@@ -764,7 +789,8 @@ export function buildBoulderForm(
  */
 const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
   // (b12: an albedo of 0.6 to 0.7, not snow's: a cooler, greyer off-white; a fresh fracture a shade paler, to 0.76)
-  chalk: [0.11, 0.16, 0.6],
+  // (b18; wave 121, "a smooth grey granite texture ... neither chalk nor any local field stone": a little warmer)
+  chalk: [0.11, 0.2, 0.6],
 });
 
 /**
@@ -1032,6 +1058,7 @@ export function* makeRockDetail(
 const ROCK_BEDS_COMMON_GLSL = /* glsl */`
 varying vec4 vRockFace;
 uniform vec4 uRockBeds;
+uniform vec4 uRockFabric;
 float cotBedHash(float k, float salt) {
   uint h = uint(int(k) + 1024) * 747796405u + uint(int(salt)) * 2891336453u + 1u;
   h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
@@ -1081,6 +1108,30 @@ const ROCK_BEDS_GLSL = /* glsl */`
       float bedTone = cotBedHash(bu >= p1 ? k0 : k0 - 1.0, 2.0) - 0.5;
       diffuseColor.rgb *= 1.0 + bedTone * 0.26 * uRockBeds.y;
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.1, 0.95, 0.84), max(0.0, bedTone) * 1.1 * uRockBeds.y);
+      if (uRockFabric.x > 0.0) {
+        // (b18; wave 121: "none of the ... cross-bedded laminae ... of Dahar sandstone") the laminae inside the bed: its
+        // own set, the odd bed laid flat along it, most cross-bedded — foresets dipping 14 to 30 degrees its own way,
+        // easing toward the bed's foot and cut off at the parting above — fine lines two centimetres apart, each its own
+        // weight, the odd one pale; gone where they crowd under three pixels (the bed taken as 0.3 m: the rise along the
+        // bed coordinate and the run across the ground both in metres)
+        float kb = bu >= p1 ? k0 : k0 - 1.0;
+        float pb = cotParting(kb), pt = cotParting(kb + 1.0);
+        float within = clamp((bu - pb) / max(1e-3, pt - pb), 0.0, 1.0);
+        float laidFlat = step(cotBedHash(kb, 3.0), 0.15);
+        float dip = mix(0.25 + 0.33 * cotBedHash(kb, 4.0), 0.03, laidFlat);
+        float lamAz = cotBedHash(kb, 5.0) * 6.2831853;
+        float lamM = within * 0.3 + dot(vGrimeW.xz, vec2(cos(lamAz), sin(lamAz))) * dip * (0.45 + 0.55 * within);
+        // (two scales: the fine laminae near the eye, and their bundles, a hand apart, a tone each, out to the middle
+        // distance)
+        float lam = lamM / 0.021 + kb * 7.31, lamC = lamM / 0.085 + kb * 3.17;
+        float lamW = fwidth(lam), lamCW = fwidth(lamC);
+        float lamK = cotBedHash(floor(lam) + 4096.0, kb + 11.0), lamCK = cotBedHash(floor(lamC) + 2048.0, kb + 13.0);
+        float lamLine = (1.0 - smoothstep(0.1, 0.1 + 0.12 + 1.5 * lamW, abs(fract(lam) - 0.5) * 2.0)) * (1.0 - smoothstep(0.3, 0.6, lamW));
+        float lamTone = (lamK - 0.5) * (1.0 - smoothstep(0.35, 0.7, lamW));
+        float lamEdge = smoothstep(0.0, 0.12 + lamCW, fract(lamC)) * (1.0 - smoothstep(0.88 - lamCW, 1.0, fract(lamC)));
+        float lamBundle = (lamCK - 0.5) * mix(0.6, 1.0, lamEdge) * (1.0 - smoothstep(0.3, 0.6, lamCW));
+        diffuseColor.rgb *= 1.0 + uRockFabric.x * (lamBundle * 0.42 + lamTone * 0.14 - lamLine * (lamK > 0.82 ? -0.14 : 0.16 + 0.2 * lamK));
+      }
     }
     if (uRockBeds.z > 0.0) {
       vec3 cavP = rockPw * 2.2;
@@ -1092,6 +1143,56 @@ const ROCK_BEDS_GLSL = /* glsl */`
       float pit = uRockBeds.z * low * flank * site * smoothstep(0.08, 0.35, vRockAbove) * smoothstep(0.25, 0.7, cav);
       diffuseColor.rgb *= 1.0 - pit * 0.45;
       rockBump -= pit * 0.03;
+    }
+`;
+
+/**
+ * The stone's fabric (b18), in the colour stage of an instanced boulder after its beds: the sand's grain — the stone's
+ * own picture resampled nine times finer, a speckle over its skin near the eye; the gneiss's foliation — bands of dark
+ * mica and pale quartz and feldspar a hand to a finger wide, folded, through the stone at its own attitude (its hash);
+ * and its quartz veins — the odd white band a finger or two wide across the foliation, standing a little proud.
+ */
+const ROCK_FABRIC_GLSL = /* glsl */`
+#ifdef USE_MAP
+    if (uRockFabric.w > 0.0) {
+      vec3 grainP = rockPw * 9.0;
+      vec3 grainS = texture2D(map, grainP.yz).rgb * rockTp.x + texture2D(map, grainP.xz).rgb * rockTp.y + texture2D(map, grainP.xy).rgb * rockTp.z;
+      float grainL = dot(grainS / max(uRockStoneMean, vec3(0.01)), vec3(0.2126, 0.7152, 0.0722));
+      float grainNear = 1.0 - smoothstep(4.0, 14.0, length(vViewPosition));
+      diffuseColor.rgb *= 1.0 + clamp(grainL - 1.0, -0.6, 0.6) * 0.24 * uRockFabric.w * grainNear;
+    }
+#endif
+    if (uRockFabric.y > 0.0 || uRockFabric.z > 0.0) {
+      float folA = fract(vRockSeed * 13.7) * 6.2831853, folB = 0.35 + fract(vRockSeed * 5.9);
+      vec3 folN = vec3(sin(folB) * cos(folA), cos(folB), sin(folB) * sin(folA));
+      vec3 folT = normalize(cross(folN, vec3(0.31, 0.12, 0.94)));
+      float folU = dot(vGrimeW, folT);
+      float folS = dot(vGrimeW, folN) + sin(folU * 2.1 + vRockSeed * 40.0) * 0.06 + sin(folU * 5.3 - vRockSeed * 17.0) * 0.02;
+      if (uRockFabric.y > 0.0) {
+        float folCoarse = texture2D(uGrime, vec2(folS * 0.9 + vRockSeed * 0.37, 0.27 + vRockSeed * 0.5)).r;
+        float folFineW = fwidth(folS * 4.1);
+        float folFine = mix(texture2D(uGrime, vec2(folS * 4.1 + 0.61, 0.71 + vRockSeed * 0.3)).g, 0.5, smoothstep(0.2, 0.5, folFineW));
+        float folV = folCoarse * 0.78 + folFine * 0.22;
+        float folDark = smoothstep(0.51, 0.59, folV), folLight = 1.0 - smoothstep(0.41, 0.49, folV);
+        float folL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb *= 1.0 - folDark * 0.34 * uRockFabric.y;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(folL * 1.32, folL * 1.25, folL * 1.18), folLight * 0.45 * uRockFabric.y);
+      }
+      if (uRockFabric.z > 0.0) {
+        vec3 veinN = normalize(vec3(cos(folA + 1.9), 0.4 + fract(vRockSeed * 3.3), sin(folA + 1.9)));
+        float veinS = dot(vGrimeW, veinN) * 1.6 + vRockSeed * 9.0 + sin(folU * 3.0) * 0.06;
+        float veinI = floor(veinS);
+        float veinHas = step(0.74, fract(sin(veinI * 12.9898 + vRockSeed * 78.233) * 43758.5453));
+        // (a finger wide or less, pinching and swelling along its run, a little grey: a vein in the stone, not a stripe)
+        float veinSwell = texture2D(uGrime, vec2(folU * 0.7 + veinI * 0.31, 0.43 + vRockSeed * 0.2)).g;
+        float veinHalf = (0.003 + 0.008 * fract(sin(veinI * 4.1 + 1.3) * 9631.7)) * (0.35 + 1.3 * smoothstep(0.38, 0.66, veinSwell));
+        float veinW = fwidth(veinS);
+        float vein = veinHas * (1.0 - smoothstep(veinHalf, veinHalf + veinW * 1.5, abs(fract(veinS) - 0.5)))
+          * (1.0 - smoothstep(veinHalf * 0.8, veinHalf * 2.5, veinW)) * uRockFabric.z;
+        float veinL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.5, 0.49, 0.47) + veinL * 0.4, vein * 0.6);
+        rockBump += vein * 0.003;
+      }
     }
 `;
 
@@ -1166,6 +1267,7 @@ export function applyRockShaderHook(
   shader.uniforms.uRockPhoto = { value: new THREE.Vector3(...dressing.photo) };
   shader.uniforms.uRockSurface = { value: new THREE.Vector3(...dressing.surface) };
   shader.uniforms.uRockBeds = { value: new THREE.Vector4(...dressing.beds) };
+  shader.uniforms.uRockFabric = { value: new THREE.Vector4(...dressing.fabric) };
   // the stone's linear mean, per channel: the procedural stand-in's mid grey until the photographed stone lands (its
   // owner updates the vector in place, sourcedTextures.ts applySourcedRock)
   shader.uniforms.uRockStoneMean = { value: stoneMean ?? new THREE.Vector3(0.214, 0.214, 0.214) };
@@ -1272,6 +1374,7 @@ ${ROCK_BUMP_GLSL}`);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * stainTint * 0.6, stain * 0.75);
     }
 ${ROCK_BEDS_GLSL}
+${ROCK_FABRIC_GLSL}
     // desert varnish (b14; wave 97: "no … varnish streaks"): a patina over the exposed faces, and streaks hung from the
     // crown down the steep faces — narrow, long, broken, darkest high, where the water leaves the brow; none on a
     // fresh break
