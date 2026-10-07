@@ -138,7 +138,9 @@ export default {
     // ledges and tops from 16 m above the square's highest ground are the walls' caprock, not sand (the low hills in
     // front stay the sand they are)
     ringCaprockM: 16,
-    rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
+    // (round 5, gauntlet wave 181: "a uniform, fine streaked noise that reads as a furry prairie carpet rather than bare
+    // red sand": the wind's ripples at two fifths — the valley's floor is sand sheet and pavement, its dunes few)
+    rippleAmp: 0.08, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
     // the map-revival lane (2026-10-05): the slots and their placement stay (their trunks, concealment and the pacing

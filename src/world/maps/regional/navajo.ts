@@ -571,9 +571,22 @@ const tradingPost: RegionalBuilder = (ctx) => {
     sink.span('structureWood', -W1 / 2 + 0.1, 0.0, D1 / 2 + 0.02, W1 / 2 - 0.1, 0.36, D1 / 2 + depth, { colour: PLANK_GREY, decor: true });
     const f = frame.faces.front, top = frame.eaveY + 0.25;
     faceBox(sink, 'structureWood', f, 0, top + 0.3, 0.05, W1 * 0.7, 0.8, 0.06, { colour: rgb(0xe4ddcc), decor: true });
-    // the lettering read at range: two dark bars of capitals and a red rule under them
-    for (const [yy, w] of [[top + 0.48, 0.62], [top + 0.18, 0.48]] as const) faceBox(sink, 'structureWood', f, 0, yy, 0.085, W1 * w, 0.17, 0.02, { colour: rgb(0x3a2a22), decor: true });
+    // the lettering read at range, a red rule under it and a dark frame round the board (Titan round 5, gauntlet wave
+    // 181: "a blank grey sign panel", "an unlabelled ... placeholder rectangle": the two dark bars read as no letters)
+    // — capitals one block each, TRADING POST over the trader's name, each letter its own width with the gaps of a hand
+    // that painted it
+    const letters = (word: string, yy: number, h: number, span: number) => {
+      const n = word.length, pitch = span / n;
+      for (let k = 0; k < n; k++) {
+        if (word[k] === ' ') continue;
+        const w = pitch * ('IJ'.includes(word[k]) ? 0.32 : 'MW'.includes(word[k]) ? 0.86 : 0.66);
+        faceBox(sink, 'structureWood', f, -span / 2 + pitch * (k + 0.5), yy, 0.085, w, h, 0.02, { colour: rgb(0x3a2a22), decor: true, fine: true });
+      }
+    };
+    letters('TRADING POST', top + 0.42, 0.26, W1 * 0.6);
+    letters(pick(look, ['GOULDINGS', 'OLJATO', 'KAYENTA', 'DENNEHOTSO']), top + 0.14, 0.13, W1 * 0.4);
     faceBox(sink, 'structureWood', f, 0, top - 0.02, 0.085, W1 * 0.6, 0.05, 0.02, { colour: rgb(0x9a2e24), decor: true });
+    for (const yy of [top + 0.3 - 0.4 + 0.02, top + 0.3 + 0.4 - 0.02]) faceBox(sink, 'structureWood', f, 0, yy, 0.09, W1 * 0.7, 0.05, 0.02, { colour: rgb(0x5a4030), decor: true });
     // the outside stair up the west wall to the trader's rooms: stringers, treads and a rail (structure: the stringer)
     const sx = -W1 / 2 - 0.55, floor1 = frame.floors[1];
     const z0 = D1 / 2 - 1.1 - 0.5, run = Math.min(D1 - 1.4, floor1 * 1.15);
@@ -910,8 +923,21 @@ const daySchool: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [fx, top - 0.3, fz], 'y', 1.5, 0.1, 8, { colour: STOVEPIPE, decor: true });
     sink.cylinder('structureMetal', [fx, top + 1.2, fz], 'y', 0.14, 0.2, 8, { colour: STOVEPIPE, decor: true }, 0.04);
   }
-  // the flagpole by the steps
-  sink.cylinder('structureMetal', [pw / 2 + 1.0, 0, D / 2 + pd + 0.6], 'y', 9.5, 0.06, 8, { colour: rgb(0xd8d8d4), decor: true }, 0.035);
+  // the flagpole by the steps, and its flag (Titan round 5, gauntlet wave 181: "a bare flagpole ... carries no flag"):
+  // the Stars and Stripes flown out from the halyard, its stripes and the blue canton, a little stepped where it waves
+  const fx = pw / 2 + 1.0, fz = D / 2 + pd + 0.6;
+  sink.cylinder('structureMetal', [fx, 0, fz], 'y', 9.5, 0.06, 8, { colour: rgb(0xd8d8d4), decor: true }, 0.035);
+  const flagTop = 9.25, fw = 1.7, fh = 0.95, RED = rgb(0xa8282e), WHITE_FLAG = rgb(0xe8e6e0), BLUE = rgb(0x2a3466);
+  for (let seg = 0; seg < 3; seg++) {
+    const x0 = fx + 0.05 + seg * fw / 3, x1 = x0 + fw / 3, dz = seg === 1 ? 0.06 : 0;
+    sink.span('structureWood', x0, flagTop - fh, fz - 0.012 + dz, x1, flagTop, fz + 0.012 + dz, { colour: WHITE_FLAG, decor: true, fine: true });
+    for (let k = 0; k < 7; k += 2) {
+      const y1 = flagTop - k * fh / 7, y0 = y1 - fh / 7;
+      if (seg === 0 && k < 4) continue;
+      sink.span('structureWood', x0, y0, fz - 0.016 + dz, x1, y1, fz + 0.016 + dz, { colour: RED, decor: true, fine: true });
+    }
+    if (seg === 0) sink.span('structureWood', x0, flagTop - fh * 4 / 7, fz - 0.018, x1, flagTop, fz + 0.018, { colour: BLUE, decor: true, fine: true });
+  }
   });
   return sink.finish();
 };
