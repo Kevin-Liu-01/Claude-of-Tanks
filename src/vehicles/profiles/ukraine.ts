@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
+import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {
@@ -69,6 +70,8 @@ interface UkraineBuilderPort {
   };
   readonly spec: { id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
+  /** false on the low geometry tier (the factory's `geometryQuality: 'low'`). */
+  readonly q?: boolean;
   muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -1458,7 +1461,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.add('turretDetail', box(1.22, 0.05, 0.18), 0, 0.42, -2.09);
   // anti-thermal roll ON the bustle rack behind the shell (its old -1.46
   // seat was inside the prism — zero rendered pixels)
-  P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  // 2026-10-07 (tank-accessories round 3: a 14-sided cylinder read as a pipe with visible facets): the rolled cover,
+  // pinched under its two bands, its rolled ends wound (the low geometry tier keeps the cylinder)
+  if (P.q === false) P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  else {
+    const roll = fabricRollParts(1.70, 0.112, [-0.58, 0.58], 20, 1455);
+    P.add('turretDetail', roll.body, 0, 0.565, -1.66);
+    for (const end of roll.ends) P.add('turretDark', end, 0, 0.565, -1.66);
+  }
   P.add('turretDark', cylX(0.12, 0.05, 12), -0.58, 0.565, -1.66);
   P.add('turretDark', cylX(0.12, 0.05, 12), 0.58, 0.565, -1.66);
   P.add('turretDark', box(0.06, 0.14, 0.06), -0.88, 0.50, -1.66);

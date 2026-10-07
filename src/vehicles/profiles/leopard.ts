@@ -6454,7 +6454,7 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
 // ---------------------------------------------------------------------------
 export function buildLeo2A4(builder: object) {
   const P = requireTankBuilderPort(builder);
-  const { box, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
+  const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const buildLeo2A4AssemblyStage1 = (): void => {
     leoHullV3(P, {
@@ -6809,7 +6809,10 @@ export function buildLeo2A4(builder: object) {
     P.add('turretDetail', box(0.035, 0.31, 0.026), 0.695, 0.61, 1.062);          // aperture divider
     P.add('turretDark', cylZ(0.080, 0.075, 14), 0.79, 0.39, 1.035);              // round rangefinder well
     P.add('turretGlass', cylZ(0.057, 0.016, 14), 0.79, 0.39, 1.082);
-    P.add('turretDetail', torus(0.080, 0.011, 14), 0.79, 0.39, 1.085, Math.PI / 2, 0, 0);
+    // 2026-10-07 (tank-accessories round 3: the round torus round the window read as "a coiled-cable prop"): a
+    // flat-faced machined bezel round the rangefinder window
+    P.add('turretDetail', KIT.lathe([[0.091, 0], [0.091, 0.018], [0.06, 0.018], [0.06, 0], [0.091, 0]], 16),
+      0.79, 0.39, 1.074, Math.PI / 2, 0, 0);
     P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
     // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
     // tallest fixed point (top 2.79w = the published-height spike budget).
@@ -13942,7 +13945,7 @@ function wrapRearSlat(P: TankBuilderPort, width: number, y0: number, y1: number,
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
 // overall 9.96 — bore-mouth law receipts in src/vehicles/germany.ts).
 function buildLeo2A4M(P: TankBuilderPort) {
-  const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
+  const { box, cylX, cylY, cylZ, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const buildLeo2A4MHullStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
@@ -14310,7 +14313,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
     P.add('turretDetail', box(0.035, 0.31, 0.026), 0.695, 0.61, 1.062);          // aperture divider
     P.add('turretDark', cylZ(0.080, 0.075, 14), 0.79, 0.39, 1.035);              // round rangefinder well
     P.add('turretGlass', cylZ(0.057, 0.016, 14), 0.79, 0.39, 1.082);
-    P.add('turretDetail', torus(0.080, 0.011, 14), 0.79, 0.39, 1.085, Math.PI / 2, 0, 0);
+    // 2026-10-07 (tank-accessories round 3: the round torus round the window read as "a coiled-cable prop"): a
+    // flat-faced machined bezel round the rangefinder window
+    P.add('turretDetail', KIT.lathe([[0.091, 0], [0.091, 0.018], [0.06, 0.018], [0.06, 0], [0.091, 0]], 16),
+      0.79, 0.39, 1.074, Math.PI / 2, 0, 0);
     P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
     // PERI R17 panoramic periscope (commander, fwd-right of the hatch).
     // §5.311: head compacted in z (box 0.19→0.14, cap r 0.08→0.065) and the

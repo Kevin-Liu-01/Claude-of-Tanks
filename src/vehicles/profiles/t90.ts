@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
+import { barkLog, drumLathe, fabricRollParts, place } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -7645,7 +7646,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // renders, so it is the only one it registers and records.
   discardRunningGear(P);
   P.clear(
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
     'hullRunningGearDetail', 'hullRunningGearDark', 'spareTrack',
@@ -7782,14 +7783,25 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // Fixed rear fuel drums sit on the transom cradle below the rotating
     // magazine. Their forward arcs overlap the backed hull rear and the
     // full straps return into a broad lower shoe.
-    P.add('hullCloth', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.44);
+    // 2026-10-07 (tank-accessories round 3: the canvas-green cylinders read as smooth green pipes): steel drums with
+    // rolled chimes and two rolling hoops, painted with the hull
+    if (P.q === false) P.add('hullDetail', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.44);
+    else P.add('hullDetail', place(drumLathe(0.20, 0.72, 18), -0.36, 0, 0, 0, 0, -Math.PI / 2), s * 0.62, 1.46, -3.44);
     for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.44);
     P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.39);
     P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.36, Math.PI / 2, 0, 0);
     P.add('hullDetail', box(0.18, 0.12, 0.035), s * 1.27, 1.00, -3.36);
     P.add('hullGlass', box(0.10, 0.07, 0.010), s * 1.27, 1.03, -3.388);
   }
-  P.add('hullCloth', cylX(0.105, 1.48, 14), 0, 0.79, -3.42);
+  {
+    // the unditching log: barked trunk, knots, pale sawn ends with their rings (accessoryPrimitives.barkLog), not a
+    // canvas-green pipe (round 3)
+    const log = barkLog({ len: 1.48, r: 0.105, seed: 7790, detail: P.q === false ? 0 : 1 });
+    P.add('hullWood', log.bark, 0, 0.79, -3.42);
+    if (log.stub) P.add('hullWood', log.stub, 0, 0.79, -3.42);
+    for (const end of log.ends) P.add('hullCanvasPale', end, 0, 0.79, -3.42);
+    for (const grain of log.grain) P.add('hullWood', grain, 0, 0.79, -3.42);
+  }
   for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
   // Round 3 (2026-10-07, critics: "the tow cable droops in a free arc below the rear plate ... held by no clips or
   // hooks"): the cable is stowed ON the transom. It runs eye to eye between the two tow hooks along the plate's lower
@@ -8154,7 +8166,13 @@ function enhanceT90MProryvSurface2026(P: T90BuilderPort): void {
   const cradleReturnZ = bustleRearFaceZ - 0.11;
   const crossShoeZ = bustleRearFaceZ - 0.05;
   const uprightReturnZ = bustleRearFaceZ - 0.08;
-  P.add('turretCloth', cylX(rearAssemblyRadiusM, 1.42, 16), 0, 0.45, rearAssemblyZ);
+  if (P.q === false) P.add('turretCloth', cylX(rearAssemblyRadiusM, 1.42, 16), 0, 0.45, rearAssemblyZ);
+  else {
+    // the rolled cover pinched under its four bands, its rolled ends wound (round 3: a 16-sided cylinder before)
+    const roll = fabricRollParts(1.42, rearAssemblyRadiusM, [-0.58, -0.20, 0.20, 0.58], 24, 8132);
+    P.add('turretCloth', roll.body, 0, 0.45, rearAssemblyZ);
+    for (const end of roll.ends) P.add('turretDark', end, 0, 0.45, rearAssemblyZ);
+  }
   for (const x of [-0.58, -0.20, 0.20, 0.58]) {
     P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.45, rearAssemblyZ);
     P.add('turretDetail', box(0.045, 0.055, 0.34), x, 0.30, cradleReturnZ);
@@ -8370,7 +8388,12 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
     P.addEquipment('turret', box(w, 0.11, d), x, y + 0.035, z);
     P.add('turretDark', box(w * 0.76, 0.012, 0.030), x, y + 0.096, z + d * 0.34);
   }
-  P.add('turretCloth', cylX(0.105, 0.90, 14), 0.10, 0.84, -2.13);
+  if (P.q === false) P.add('turretCloth', cylX(0.105, 0.90, 14), 0.10, 0.84, -2.13);
+  else {
+    const roll = fabricRollParts(0.90, 0.105, [-0.32, 0, 0.32], 18, 8348);
+    P.add('turretCloth', roll.body, 0.10, 0.84, -2.13);
+    for (const end of roll.ends) P.add('turretDark', end, 0.10, 0.84, -2.13);
+  }
   for (const x of [-0.22, 0.10, 0.42]) P.add('turretDark', box(0.035, 0.23, 0.18), x, 0.84, -2.13);
 
   // Roof armor and equipment: low structural collars remain hittable;
@@ -8454,8 +8477,9 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // The extra 40 mm also keeps the visibly thicker instanced shoes clear of
   // the front shoulder and rear sponson undersides under full-course sweep.
   const rideHeightIncreaseM = 0.16;
+  // (2026-10-07: the unditching log's pale sawn ends ride in hullCanvasPale and rise with it)
   P.offsetBuckets([
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
     'hullEquipment', 'hullCupola',

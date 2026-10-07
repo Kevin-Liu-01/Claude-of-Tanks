@@ -483,13 +483,14 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     0, 1.00 + k * 0.11, -3.40);
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.035, 0.30, 0.035),
     -0.90 + k * 0.45, 1.11, -3.40);
-  // §5.267 fix 2: round log read — end discs + risers keep it proud
+  // §5.267 fix 2: round log read — risers keep it proud. 2026-10-07 (tank-accessories round 3: "the unditching log is
+  // a smooth green pipe"): the clone's green-grey 0x4a4636 became a dark bark brown, and the scheme-painted end discs
+  // that capped the sawn ends in hull green gave way to the shared log's own pale end grain
   mount(P, 'hull', FITTINGS.unditchingLog({
-    mats: { ...P.mats, wood: rehookClone(P.mats.wood, 0x4a4636, 0x0a0906) },
+    mats: { ...P.mats, wood: rehookClone(P.mats.wood, 0x4f4131, 0x0a0906) },
     len: 2.10, r: 0.115, straps: 3, seed: 9301,
   }), 0, 1.44, -3.30);
   for (const s of [-1, 1]) {
-    P.add('hullDetail', cylX(0.095, 0.02, 12), s * 1.06, 1.44, -3.30);
     P.add('hullDark', box(0.04, 0.09, 0.10), s * 0.80, 1.36, -3.30);
   }
 
