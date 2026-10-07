@@ -152,6 +152,23 @@ interface SceneryCaprock {
 }
 
 /**
+ * A canyon arm's wall relief (canyonWall.ts buildCanyonWall; Skybridge round 5): the skin of a trench landform's two
+ * walls of the same centre, length, width and bearing — buttresses, flutes, the beds, the varnish's curtains and the
+ * lake's bathtub ring — from under the water to under the brow. Decor: the trench stays the rock.
+ */
+interface SceneryCanyonWall {
+  x: number;
+  z: number;
+  length: number;
+  width: number;
+  yawDeg: number;
+  waterLevel?: number;
+  span?: number;
+  tone?: readonly [number, number, number];
+  name?: string;
+}
+
+/**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
  * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
@@ -170,6 +187,7 @@ export interface SceneryConfig {
   bedrock?: readonly SceneryBedrock[];
   castles?: readonly SceneryCastle[];
   caprock?: readonly SceneryCaprock[];
+  canyonWalls?: readonly SceneryCanyonWall[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;

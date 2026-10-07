@@ -28,6 +28,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { buildCastleRock } from './castleRock.ts';
 import { buildCaprockRim } from './caprockRim.ts';
+import { buildCanyonWall } from './canyonWall.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -100,7 +101,7 @@ interface SceneryBuildContext {
 }
 
 interface SceneryFeatureReceipt {
-  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'landmark' | 'powerLine';
+  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'canyonWall' | 'landmark' | 'powerLine';
   kind: string;
   name: string | null;
   x: number;
@@ -369,6 +370,19 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const feature: SceneryFeatureReceipt = { family: 'caprock', kind: 'tuff caprock', name: bench.name ?? null, x: bench.x, z: bench.z, status: 'placed' };
     const built = buildCaprockRim(bench, ground, noise, mulberry32(ctx.seed + 17501 + 131 * bi), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no rim'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- canyon walls: a trench's two walls' relief (canyonWall.ts), a skin no hull reaches; one stream each
+  for (const [wi, arm] of (scenery.canyonWalls ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'canyonWall', kind: 'canyon wall', name: arm.name ?? null, x: arm.x, z: arm.z, status: 'placed' };
+    const built = buildCanyonWall(arm, ground, noise, mulberry32(ctx.seed + 17701 + 131 * wi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
     rockPieces.push(built.geometry);
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
