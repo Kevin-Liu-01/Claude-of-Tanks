@@ -36,7 +36,7 @@ assert.match(clouds, /uShadeLaw: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE
 assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*\(s\.uShadeLaw\.value as THREE\.Vector3\)\.set\(core, lightTune\('CLOUD_SHADOW_TAU', CLOUD_SHADOW_TAU\), preset\.shadowPattern\);/);
 assert.match(clouds, /if \(!\(preset\.shadowPattern > 0\) \|\| preset\.coverage <= 0 \|\| lookup\.w < 0\.5\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no pattern publishes none (nor a map not yet marched)');
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/, 'snapped: the shadows never swim');
-assert.match(clouds, /if \(!moved && \+\+this\.farShadeAge < CLOUD_FAR_SHADE_EVERY\) return;/, 'a refresh when the square moves, else on the schedule');
+assert.match(clouds, /if \(!moved && \+\+this\.farShadeAge < CLOUD_FAR_SHADE_EVERY \* \(this\.traceTier === 'low' \? 2 : 1\)\) return;/, 'a refresh when the square moves, else on the schedule (the low tier at half the rate)');
 assert.match(clouds, /publishCloudShade\(shared, this\.farShadeInfo as \{ texture: THREE\.Texture; rect: THREE\.Vector3; baseM: number \},\s*this\.traceMaterial\.uniforms\.uSunDir\.value as THREE\.Vector3\);/,
   'published to the lit materials when the map is refreshed (one frame: map and square agree)');
 assert.match(clouds, /this\.farShadeInfo\.baseM = \(this\.medium\.uHeightRange\.value as THREE\.Vector2\)\.x;/, 'the plane the materials project to is the map\'s (the lowest lane\'s base)');
