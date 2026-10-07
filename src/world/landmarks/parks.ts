@@ -373,14 +373,17 @@ export const garden: LandmarkBuilder = (ctx) => {
       }
     }
   };
-  bed(-hw + 0.75, -0.2, 1.0, D - 2.2);
-  bed(hw - 0.75, -0.2, 1.0, D - 2.2);
-  const front = (W - pathW) / 2 - 2.0;
-  if (front > 1.2) for (const sx of [-1, 1]) bed(sx * (pathW / 2 + 0.9 + front / 2), hd - 0.8, front, 0.9);
-  // the clipped box hedges either side of the path inside the gate
-  for (const sx of [-1, 1]) {
-    const x = sx * (pathW / 2 + 0.55), z = hd - 1.6, y = ctx.ground?.(x, z) ?? 0;
-    sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
+  // (`beds: false`: a working compound's fence alone — a lookout's, a yard's — no borders and no box)
+  if (ctx.params.beds !== false) {
+    bed(-hw + 0.75, -0.2, 1.0, D - 2.2);
+    bed(hw - 0.75, -0.2, 1.0, D - 2.2);
+    const front = (W - pathW) / 2 - 2.0;
+    if (front > 1.2) for (const sx of [-1, 1]) bed(sx * (pathW / 2 + 0.9 + front / 2), hd - 0.8, front, 0.9);
+    // the clipped box hedges either side of the path inside the gate
+    for (const sx of [-1, 1]) {
+      const x = sx * (pathW / 2 + 0.55), z = hd - 1.6, y = ctx.ground?.(x, z) ?? 0;
+      sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
+    }
   }
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT.gravel }, destructibles };
 };

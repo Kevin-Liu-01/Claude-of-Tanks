@@ -92,7 +92,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
   // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
   // and the box at the path's mouth
-  garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open' },
+  garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
