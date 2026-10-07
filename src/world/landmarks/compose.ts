@@ -15,8 +15,8 @@
 //   4. the weathering of the map's kit (maps/regional/weather.ts) — or, on a map without one, its plain buckets;
 //   5. the collision derived from its solids (structureCollision.ts): the ground-contact band for movement — a bridge's
 //      authored deck instead, which a hull mounts as its floor — and the 0.5 m shell bands for shells and sight;
-//   6. the merge into the props buckets at its pose (no draw of its own), its ground reserved, its footprint published
-//      to the minimap.
+//   6. the merge into the props buckets at its pose (no draw of its own), its ground reserved (or, for a piece set into
+//      a finished map, vetoed: types.ts `ground`), its footprint published to the minimap.
 // Every refusal is named in the receipt (props.group.userData.landmarks); nothing is moved silently.
 import * as THREE from 'three';
 import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
@@ -70,6 +70,12 @@ interface LandmarkComposeContext {
   /** Reserve a disc of the piece's ground for every pass after this one (the props placement list). */
   reserve(x: number, z: number, r: number): void;
   /**
+   * Veto the piece's ground for every pass after this one (a placement's `ground: 'veto'`): its oriented footprint
+   * (centre, heading, half extents across and along), inside which the props leave out what those passes would set —
+   * their draws all taken, so nothing else they place moves for the piece. Absent where nothing places after it.
+   */
+  veto?(x: number, z: number, yaw: number, hw: number, hd: number): void;
+  /**
    * Publish the piece's footprint (the minimap's building plan) under its kind: a set piece is no planned building, so it
    * carries no plan id (the town-plan receipts and the yard dressing read those).
    */
@@ -91,6 +97,8 @@ interface LandmarkReceiptEntry {
   fall?: number;
   /** Soft records (boulders, crushables) its footprint overlaps: allowed, reported for the authoring. */
   overlaps?: string[];
+  /** Its ground vetoed rather than reserved (types.ts `ground`). */
+  ground?: 'veto';
 }
 
 interface LandmarkReceipt {
@@ -320,13 +328,21 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     entry.triangles = partList(parts).reduce((n, g) => n + (g.index ? g.index.count : g.getAttribute('position').count) / 3, 0);
     _matrix.compose(_position.set(placement.x, baseY, placement.z), _quaternion.setFromAxisAngle(_up, yaw), _scale);
     ctx.merge(parts, _matrix);
-    // the ground it stands on, reserved for every pass after this one: discs along its long axis
-    const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
-    const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));
-    for (let k = 0; k < reserves; k++) {
-      const t = reserves === 1 ? 0 : -long + short + (2 * (long - short)) * k / (reserves - 1);
-      const lx = along ? 0 : t, lz = along ? t : 0;
-      ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
+    // the ground it stands on, kept for it by every pass after this one: discs along its long axis in the props'
+    // placement list, which those passes keep off — or, for a piece set into a finished map (`ground: 'veto'`), its
+    // footprint handed to the props' veto: they draw as on the map without it and what they would stand on its ground
+    // is left out (an open surface, a path's setts, keeps what stands on it)
+    if (placement.ground === 'veto') {
+      entry.ground = 'veto';
+      if (!spec.open) ctx.veto?.(placement.x, placement.z, yaw, hw, hl);
+    } else {
+      const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
+      const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));
+      for (let k = 0; k < reserves; k++) {
+        const t = reserves === 1 ? 0 : -long + short + (2 * (long - short)) * k / (reserves - 1);
+        const lx = along ? 0 : t, lz = along ? t : 0;
+        ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
+      }
     }
     ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
     // its street furniture into the props pools, its children after it (both from its frame into the world's)

@@ -25,6 +25,9 @@ interface LandmarkKindSpec {
   /** The piece follows the ground itself (draped paving and beds, a terrace that levels itself and banks to the slope):
    *  the composer seats it at any fall under its footprint (the 3.2 m limit keeps a rigid piece from burying its side). */
   drapes?: boolean;
+  /** Its surface carries the map's street life (a market square's setts, a path): on a vetoed ground (types.ts `ground`)
+   *  what the passes after it stand on it stays. */
+  open?: boolean;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -97,7 +100,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
   // it leaves (no road margin) and stands on nothing.
-  path: { family: 'park', roadMargin: 0, drapes: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
+  path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
