@@ -7430,6 +7430,47 @@ its sources and pins every map's cloud drift to its surface wind plus the veer (
 90° from it on 15 maps).
 
 
+### 2026-10-06 — Clouds 2.0: a layered medium under a Beer shadow map (the clouds lane)
+
+**Why.** The owner wanted the clouds "improved a lot more", after takram three-geospatial's clouds (MIT). The critics'
+standing complaints on the old layer: flat hard-edged cartoon puffs at random heights, stamped repeated sprites, evenly
+spaced tufts at one altitude, a soft blurred mass beside crisp cumulus, box-cut edges, an overcast as one flat grey card.
+Branch `visual/clouds2`.
+
+**What it is.** `engine/cloudLayers.ts` resolves a map's preset into up to four altitude lanes; `cloudShaders.ts` holds
+the medium (a coverage of the 48 km local weather under a height profile, carved by a GPU-baked 3.2 km Perlin–Worley
+volume and a detail volume), the trace, the resolve and the Beer shadow map; `volumetricClouds.ts` drives them.
+- Cumulus stand on flat bases (full width a few percent over the condensation level, narrowing as 1 − h^(1/bias)) and
+  are carved into their billows (a low core under a long ramp: the shape volume makes the cloud, not just its rim).
+- Decks carry an optical depth of 10–25 (a closing deck 25), cells that always break the column and cores hanging under
+  the base; their coverage ramp and base wisps are soft (no pinhole stipple).
+- A front's towers are the cumuliform field gathered by the large-scale field as an envelope (bands of towers, never one
+  blob the size of the field's features), domed, softly carved, their footprint drifting with height; the elements aloft
+  read the large-scale field (patches of kilometres, not a confetti against the sun). A fair-weather sky carries no
+  layer aloft at all.
+- The sun reaches each sample through a short march plus the Beer shadow map: two toroidal, world-anchored cascades (12 km
+  about the camera; 40 km about its point at the stack's middle height carried down the sun) marched by lanes and
+  altitude slices, each texel's entry bisected, read as the four texels' depths blended as transmittances.
+- The ground's cloud shade is the near cascade's whole column along the sun (the contract unchanged), so a sun the trace
+  sees through a gap lights the ground under it (cloudBeerShadow.selftest: the skies lane's Frosthollow case).
+
+**Lessons.**
+- three's `readRenderTargetPixelsAsync` keeps its pack buffer bound across its await: on the hardware the atmosphere's
+  summary read fell into that window and the whole sky dropped to its Preetham fallback with the baked decks (the first
+  GPU pair was void for it). Reads go through `rgba8Readback.ts`.
+- A cascade's front depth filtered bilinearly draws facets (a 250 m far texel) and streaks along the sun (a flank beside a
+  column through the top); blend the texels' depths as transmittances, centre the far window where the cloud points'
+  projections fall, and bisect the entry.
+- Takram's semicircle profile draws a cumulus from below as a mushroom on a stem; a core of 0.56 under a ramp of 1 drew
+  smooth loaves under a bubbly fringe.
+- The SwiftShader sky-rig harness (`.qa-dev/harness`) judges structure, never tone or cost (no grade, no game post; its
+  frame times swing with the machine's load).
+
+**Measured.** SwiftShader sky rig, sky-w under a 40-frame pan at 0.12° a frame (the lab's cloud flicker meter): one-frame
+blips 0.0003 against the old layer's 0.00071 on Verdant and 0.00017 against 0.00039 on Frosthollow, no pixel of the sky
+changed by a one-pixel shift. The GPU pair (before / after frames, the hardware meters) and the rule-v3 cost holds are
+queued at the lane's stamp.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
