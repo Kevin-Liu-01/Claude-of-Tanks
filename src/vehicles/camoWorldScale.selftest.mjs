@@ -118,7 +118,8 @@ assert.notEqual(digitalOf(abrams), digitalOf(t90m), 'digital: the Russian lattic
 // a built-in pattern no longer inherits the hull's authored density/knobs (the Puma authors 0.72)
 assert.equal(resolveCamoVisual(puma, 'summer').camoScale, undefined, 'summer does not inherit the Puma hull density');
 // Factory is the nation's service pattern (round 32) and carries THAT recipe's density, not the hull's authored one
-assert.equal(resolveCamoVisual(puma, 'factory').camoScale, resolveCamoVisual(getSpec('leo2a6m'), 'service_leo2a6m').camoScale,
+// (2026-10-07, round 4: the German Factory coat is the Bundeswehr NATO three-tone, paint_marder2)
+assert.equal(resolveCamoVisual(puma, 'factory').camoScale, resolveCamoVisual(getSpec('leo2a6m'), 'paint_marder2').camoScale,
   'Factory on the Puma wears the German service recipe density');
 
 // the FIRST bake paints from the pattern stream: identical to a repaint, byte for byte, through both painter paths

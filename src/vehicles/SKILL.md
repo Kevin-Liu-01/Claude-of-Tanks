@@ -126,7 +126,11 @@ per environment (with era rows), and `autoCamoPatternIdFor(vehicle, mapId)` draw
 (id, nation, era) alone, so the Garage swatch, battle paint, repaint cache and every multiplayer peer agree;
 `materials.ts` only holds the active biome. A nation without a scheme for an environment keeps the shared pool,
 never another nation's scheme. Change AUTO there, never with a map or nation literal elsewhere, and run
-`autoCamoNational.selftest.mjs`.
+`autoCamoNational.selftest.mjs`. Round 4 (2026-10-07, critics after wave 240) made Factory and AUTO the coat each army
+fields: Russia's green, sand and black (pixel digital stays a selectable Signature on its service hulls and the stock
+of export and demonstrator hulls only), the Bundeswehr NATO three-tone, plain US CARC Tan (the NATO three-tone in
+woodland AUTO, and under the SEPv3's woodland ULCANS); a nation that fields no pixel camouflage never draws one from a
+shared pool (`nationFieldsPixelCamo`). Concealment verdicts did not move (`factoryCamo.selftest.mjs`).
 `profiles/russia.ts` owns both the strict T-44/T-54/T-62/T-64 Russian profile
 pack and the shared Soviet geometry vocabulary consumed by China, Poland,
 T-72, T-80, and Ukraine. Keep its hull, dome, gun, ERA, Shtora, mudguard, and

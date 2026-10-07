@@ -77,12 +77,16 @@ for (const tankId of SIGNATURE_CAMO_TANK_IDS) {
   assert.equal(sharedCamoPreset(patternId)?.sourceTankId, tankId,
     `${tankId} selects its own reusable colorway`);
 }
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'service_usa_desert', "round 32: Factory is the nation's service pattern again");
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'service_leo2a6m');
-assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'service_t90m');
+// 2026-10-07 (tank-accessories round 4; critics after wave 240: pixel-digital T-90Ms, a four-colour Leopard 2A6, an
+// Abrams in desert blocks): Factory is the coat each army fields. US plain CARC Tan, the Bundeswehr NATO three-tone,
+// Russia's green, sand and black disruptive coat; the old service patterns stay selectable.
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.USA, 'carc_tan', 'the US Army delivers its Abrams in plain CARC Tan');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Germany, 'paint_marder2', 'the Bundeswehr NATO three-tone');
+assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.Russia, 'paint_ru_t80u_modern', 'Russian green, sand and black, never pixel');
 assert.equal(factoryCamoPatternIdFor('USSR', 'ww2'), 'service_soviet_ww2', 'Soviet wartime hulls wear the wartime service scheme');
 assert.equal(factoryCamoPatternIdFor('USSR/Russia', 'cold-war'), 'service_soviet_coldwar');
-assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'service_t90m');
+assert.equal(factoryCamoPatternIdFor('Russia', 'modern'), 'paint_ru_t80u_modern');
+assert.equal(factoryCamoPatternIdFor('Germany', 'ww2'), 'ambushdot', 'a wartime German hull wears Hinterhalt ambush paint');
 assert.equal(factoryCamoPatternIdFor('Russia', 'ww2'), 'service_soviet_ww2');
 assert.equal(factoryCamoPatternIdFor('Russia', 'cold-war'), 'service_soviet_coldwar');
 assert.equal(FACTORY_CAMO_PATTERN_BY_NATION.France, 'service_leclerc_xlr');
