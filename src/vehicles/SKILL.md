@@ -344,6 +344,11 @@ forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v
 The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
 `paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
 hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
+Weathering marks in the plate painter (`materialPainter.ts`) are stains, so they multiply into the paint. Since
+2026-10-06 the rust weeps multiply a warm brown. The old 1.4-3 px orange stroke laid over the paint lit up on black
+camo bands as "an unresolved texture seam", repeating with the 2 m tile (wave 165, Challenger 1). Never paint a bright,
+narrow, saturated mark over the paint. A new weathering mark multiplies (or darkens), keeps a core of at least 2.5 mm,
+and falls off softly at its sides.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
