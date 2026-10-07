@@ -3292,6 +3292,32 @@ function keepOutHit(bb: THREE.Box3, discs: readonly DecorKeepOut[]): boolean {
   return false;
 }
 
+/** How dark a load's foot is baked where it meets its support, and over what height the darkening fades (round 4). */
+const CONTACT_AO = 0.5;
+const CONTACT_BAND_M = 0.05;
+/**
+ * Contact occlusion baked into a load's own foot (round 4, 2026-10-07; wave 215 on the M60A1: "roof gear has almost no
+ * contact shadow"). Decor casts no shadow, and the inset pad (secureLoadParts) only darkens the deck under a piece, so
+ * a load's lowest few centimetres darken toward its seat (piece frame: y = 0 is the support): its silhouette meets the
+ * deck in a dark line that follows its own outline, never a rectangle. Rack and ledge steel below the foot, and the
+ * pad, keep their colours.
+ */
+function contactShade(list: DecorPartList): void {
+  for (const part of list) {
+    if (part.role === 'pad') continue;
+    const pos = part.geo.getAttribute('position'), col = part.geo.getAttribute('color');
+    if (!pos || !col) continue;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y < -0.005 || y > CONTACT_BAND_M) continue;
+      const t = THREE.MathUtils.smoothstep(Math.max(0, y), 0, CONTACT_BAND_M);
+      const f = 1 - CONTACT_AO * (1 - t);
+      col.setXYZ(i, col.getX(i) * f, col.getY(i) * f, col.getZ(i) * f);
+    }
+    col.needsUpdate = true;
+  }
+}
+
 /** A packed load sits this far off the neighbour it packs against (m; round 4): touching, never interpenetrating. */
 const PACK_GAP = 0.012;
 /** How far from its slot's own station a load may move to pack against a neighbour (m; round 4). */
@@ -4002,7 +4028,11 @@ export function* attachTankDecorationsSteps(
       const receipt = attachment ? attachmentReceipt(parts, pos, rot, attachment) : null;
       ledger.push(bb);
       budget.tris += tris;
-      if (isLoadPiece(name)) seatedLoads[frame].push(bb.clone());
+      if (isLoadPiece(name)) {
+        seatedLoads[frame].push(bb.clone());
+        // round 4: the contact line darkened into the load's own foot (contactShade), both levels
+        if (!parts.meta?.drape) { contactShade(parts); if (parts.coarse) contactShade(parts.coarse); }
+      }
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const functional = FUNCTIONAL_KITS.has(name);
       for (const p of [...parts, ...(parts.coarse ?? [])]) { delete p.geo.userData.drapeRelief; delete p.geo.userData.drapeRest; }
