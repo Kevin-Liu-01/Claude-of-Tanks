@@ -60,6 +60,7 @@ import { createWireMesh } from './wireMaterial.ts'; // the power lines' conducto
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
+import type { WaterDisturbance } from './shallowWater.ts';
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
@@ -754,6 +755,12 @@ export interface PropsRuntime {
   /** Register only after assembly succeeds; return an identity-safe disposer. */
   registerDestructibles(): () => void;
   getLoosePropStats(): { total: number; active: number };
+  /**
+   * 2026-10-07 (the map-vehicles lane): the moored hulls standing in the water, as the water's disturbance sources a
+   * standing hull makes (shallowWater.ts WaterDisturbance): the world appends them to the vehicles' so the sheet laps
+   * and glints round each hull (map.ts setWaterDisturbances).
+   */
+  waterContacts: WaterDisturbance[];
   features: {
     buildings: PlacedBuilding[];
     tacticalBeats: TacticalBeatFeature[];
@@ -8142,6 +8149,7 @@ ${snowCap ? `
   // a no-op (map.ts, the static-world governor), so the frame update composes the hull's local and world matrices
   // itself, as the instanced crush animations write their matrices.
   const mooredHulls: { mesh: THREE.Mesh; y: number; phase: number }[] = [];
+  const waterContacts: WaterDisturbance[] = [];
   function detachAnimatedDressing(): void {
     for (const record of animatedDressing) {
       const bucket = buckets[record.bucket];
@@ -8163,6 +8171,10 @@ ${snowCap ? `
       mesh.rotation.y = record.yaw;
       group.add(mesh);
       mooredHulls.push({ mesh, y: record.y, phase: record.phase });
+      // its contact with the water: a standing hull (no speed), lying along its length (the mesh's local +x, turned by
+      // its yaw), lapping the water round it as a standing tank's does
+      waterContacts.push({ x: record.x, z: record.z, strength: 0.55, dirX: Math.cos(record.yaw), dirZ: -Math.sin(record.yaw),
+        speed: 0, halfLength: record.halfLength, halfWidth: record.halfWidth });
     }
     animatedDressing.length = 0;
   }
@@ -9528,7 +9540,7 @@ ${snowCap ? `
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
-    sourcedTexturesReady, registerDestructibles,
+    sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
 }

@@ -60,6 +60,12 @@ interface BoatSpec {
 interface BoatVariation {
   scheme: number;
   mast: boolean;
+  /**
+   * Afloat (a moored hull, 2026-10-07): the water's height over the keel's lowest point (m). The planking is soaked
+   * dark from the keel to 0.1 m over it and a thin line of weed and slime marks the waterline (wave 153: a hull that
+   * "rides entirely on top of the water… no draft, waterline"). Omitted, the boat is ashore.
+   */
+  afloat?: number;
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -101,6 +107,58 @@ function sectionPoint(s: BoatSpec, u: number, v: number, inset = 0): [number, nu
   }
   const y = lerp(K, S, v);
   return [Math.max(0, x - inset), y + (v < 0.02 ? inset : 0)];
+}
+
+/** Wet planking under the waterline (linear RGB): dark, stained brown-green. */
+const SOAKED_RGB: [number, number, number] = [0.052, 0.05, 0.032];
+
+/**
+ * The soaked band of a hull afloat: the outer skin (its normals out from the keel line, the keel's underside) darkened
+ * and stained toward SOAKED_RGB from the keel to the water's height `h`, fading out over the 0.1 m above it with a
+ * ragged edge; the inside stays dry. In place on the built colours (their shading kept: the stain multiplies in).
+ */
+function soakHull(g: THREE.BufferGeometry, h: number): void {
+  const p = g.attributes.position.array as Float32Array, n = g.attributes.normal.array as Float32Array;
+  const c = g.attributes.color.array as Float32Array;
+  for (let v = 0; v < p.length / 3; v++) {
+    const x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2], nx = n[v * 3], ny = n[v * 3 + 1];
+    if (!(ny < -0.5 || (Math.abs(x) > 0.02 && nx * x > 0))) continue;
+    const ragged = 0.025 * Math.sin(z * 9.1 + x * 3.7) + 0.015 * Math.sin(z * 23.3);
+    const t = (y - h - ragged) / 0.1;
+    const k = t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
+    if (k <= 0) continue;
+    for (let i = 0; i < 3; i++) c[v * 3 + i] = c[v * 3 + i] * (1 - 0.5 * k) * (1 - 0.35 * k) + SOAKED_RGB[i] * 0.35 * k;
+  }
+  g.attributes.color.needsUpdate = true;
+}
+const SLIME = material('cargo', linearHex(0x5a6630), 0.3, 0, 0, 0.3);
+const WEED = material('cargo', linearHex(0x3e5a28), 0.38, 0, 0, 0.3);
+
+/**
+ * The waterline's weed and slime: along each side, at every station whose skin spans the water's height, a strip from
+ * 1.5 cm under to 1.5 cm over it, 4 mm proud of the planking (dressing; the clinker lands ignored: it lies on them).
+ */
+function waterlineStrip(mesh: VehicleMesh, s: BoatSpec, h: number, nu: number): void {
+  mesh.dressing(() => {
+    const at = (u: number, y: number): [number, number] | null => {
+      const K = keelY(s, u), S = sheerY(s, u);
+      if (y <= K + 0.01 || y >= S - 0.01) return null;
+      const v = (y - K) / (S - K);
+      const [x] = sectionPoint(s, u, v);
+      return [x + 0.004, v];
+    };
+    for (const side of [1, -1]) {
+      for (let i = 0; i < nu; i++) {
+        const u0 = i / nu, u1 = (i + 1) / nu, z0 = (u0 - 0.5) * s.length, z1 = (u1 - 0.5) * s.length;
+        const lo0 = at(u0, h - 0.015), hi0 = at(u0, h + 0.015), lo1 = at(u1, h - 0.015), hi1 = at(u1, h + 0.015);
+        if (!lo0 || !hi0 || !lo1 || !hi1) continue;
+        const m = (i * 7 + (side > 0 ? 3 : 0)) % 5 === 0 ? WEED : SLIME;
+        const a = mesh.vert(side * lo0[0], h - 0.015, z0, side, 0, 0, m), b = mesh.vert(side * lo1[0], h - 0.015, z1, side, 0, 0, m);
+        const c = mesh.vert(side * hi1[0], h + 0.015, z1, side, 0, 0, m), d = mesh.vert(side * hi0[0], h + 0.015, z0, side, 0, 0, m);
+        side > 0 ? mesh.quad(a, b, c, d) : mesh.quad(a, d, c, b);
+      }
+    }
+  });
 }
 
 /** Build one boat. */
@@ -289,8 +347,14 @@ export function buildBoat(spec: BoatSpec, variation: BoatVariation, coarse = fal
   }
   // the baked bucket's streams: position, normal, uv, colour (a fresh geometry: a moored hull is drawn on its own every
   // frame, keepStreams); marked as a boat for the dressing receipts
-  const g = keepStreams(mesh.build(vehicleWeathering({ wheels: [], dirt: 0.25, dirtTop: s.depth * waterline + 0.1, rust: 0.35,
-    seed: 11 + variation.scheme, voxelAo: !coarse })), ['position', 'normal', 'uv', 'color']);
+  // afloat: the waterline's weed and slime, a thin strip a few millimetres proud of the planking along both sides
+  // wherever the hull's skin crosses the water's height (dressing), and the soaked band under it (soakHull)
+  const afloat = variation.afloat;
+  if (afloat !== undefined && !coarse) waterlineStrip(mesh, s, afloat, nu);
+  const built = mesh.build(vehicleWeathering({ wheels: [], dirt: 0.25, dirtTop: s.depth * waterline + 0.1, rust: 0.35,
+    seed: 11 + variation.scheme, voxelAo: !coarse }));
+  if (afloat !== undefined) soakHull(built, afloat);
+  const g = keepStreams(built, ['position', 'normal', 'uv', 'color']);
   g.userData = { ...g.userData };
   delete g.userData.bodyBox;
   g.userData.boat = true;
@@ -382,9 +446,10 @@ export function boatFamilyForMap(mapId: string): BoatFamily {
 }
 
 /** One boat of a family: its hull scaled to a length, a scheme and a mast picked by the kit's draws. */
-export function familyBoat(family: BoatFamily, length: number, scheme: number, mast: boolean, coarse = false): THREE.BufferGeometry {
+export function familyBoat(family: BoatFamily, length: number, scheme: number, mast: boolean, coarse = false,
+  afloat?: number): THREE.BufferGeometry {
   const k = length / family.hull.length;
   const hull = { ...family.hull, length, beam: family.hull.beam * clamp(Math.sqrt(k), 0.85, 1.15), depth: family.hull.depth * clamp(Math.sqrt(k), 0.88, 1.12) };
   const colours = family.schemes[((scheme % family.schemes.length) + family.schemes.length) % family.schemes.length];
-  return buildBoat({ ...hull, ...colours }, { scheme, mast }, coarse);
+  return buildBoat({ ...hull, ...colours }, afloat === undefined ? { scheme, mast } : { scheme, mast, afloat }, coarse);
 }

@@ -46,6 +46,30 @@ for (const [name, family] of Object.entries(BOAT_FAMILIES)) {
 const a = familyBoat(BOAT_FAMILIES.canot, 5.2, 0, false), b = familyBoat(BOAT_FAMILIES.canot, 5.2, 1, false);
 assert.notEqual(digest(a), digest(b), 'two schemes paint two boats');
 a.dispose(); b.dispose();
+// afloat (a moored hull, 2026-10-07): the planking soaked dark from the keel to 0.1 m over the water and a weed-and-slime
+// strip at the waterline (dressing); ashore the same hull is untouched by both
+{
+  const draft = 0.28;
+  for (const [name, family] of Object.entries(BOAT_FAMILIES)) {
+    const dry = familyBoat(family, family.hull.length, 0, false), wet = familyBoat(family, family.hull.length, 0, false, false, draft);
+    try {
+      assert.ok(wet.index.count > dry.index.count, `${name}: the waterline strip is built`);
+      // the outer skin's colour low on the hull against the same vertices dry: soaked under the water (a painted hull
+      // darkens; a tarred one, near black already, takes the stain and stays as dark)
+      const pd = dry.attributes.position.array, nd = dry.attributes.normal.array, cd = dry.attributes.color.array, cw = wet.attributes.color.array;
+      let low = 0, soaked = 0, high = 0, kept = 0;
+      const lum = (c, i) => c[i * 3] + c[i * 3 + 1] + c[i * 3 + 2];
+      for (let v = 0; v < pd.length / 3; v++) {
+        const x = pd[v * 3], y = pd[v * 3 + 1], nx = nd[v * 3];
+        if (Math.abs(x) < 0.05 || nx * x <= 0) continue; // the outer skin only (normals out from the keel line)
+        if (y < draft - 0.03) { low++; if (lum(cw, v) < lum(cd, v) * 0.75 || (lum(cd, v) < 0.12 && Math.abs(lum(cw, v) - lum(cd, v)) > 1e-4)) soaked++; }
+        if (y > draft + 0.2) { high++; if (Math.abs(lum(cw, v) - lum(cd, v)) < 1e-6) kept++; }
+      }
+      assert.ok(low > 10 && soaked / low > 0.9, `${name}: the planking under the water is soaked (${soaked}/${low})`);
+      assert.ok(high > 10 && kept / high > 0.95, `${name}: the topsides stay as painted (${kept}/${high})`);
+    } finally { dry.dispose(); wet.dispose(); }
+  }
+}
 // a spec builds without a family too (the kits' only door is familyBoat; buildBoat stays the primitive)
 const bare = buildBoat({ ...BOAT_FAMILIES.lakeboat.hull, ...BOAT_FAMILIES.lakeboat.schemes[0] }, { scheme: 0, mast: false });
 assert.ok(bare.index.count > 0);

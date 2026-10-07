@@ -399,6 +399,19 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
+  // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
+  // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
+  const waterContacts = props.waterContacts ?? [];
+  const waterSources: WaterDisturbance[] = [];
+  const setWater = (sources: readonly WaterDisturbance[]): void => {
+    if (!waterContacts.length) { terrain.userData.setWaterDisturbances?.(sources); return; }
+    waterSources.length = 0;
+    for (const source of sources) waterSources.push(source);
+    for (const contact of waterContacts) waterSources.push(contact);
+    terrain.userData.setWaterDisturbances?.(waterSources);
+  };
+  setWater([]);
   // Static spatial broad phases: movement queries only the handful of props
   // around a hull, and a shell/LOS ray only the cells spanned by its segment.
   // The narrow phase still uses the authored OBB/circle/convex footprint.
@@ -708,8 +721,8 @@ function assembleWorld(
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
-    setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
-    resetWater() { terrain.userData.resetWater?.(); },
+    setWaterDisturbances(sources) { setWater(sources); },
+    resetWater() { terrain.userData.resetWater?.(); setWater([]); },
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
     /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
     setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },

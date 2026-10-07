@@ -235,6 +235,9 @@ console.log('shoreJetty.selftest: flat/bank cases, refusals, the kit\'s planted 
       assert.equal(record.x, moored[i].x); assert.equal(record.z, moored[i].z); assert.equal(record.y, moored[i].y, 'the pivot is the keel line at the mooring point');
       assert.ok(record.phase >= 0 && record.phase < Math.PI * 2 && Number.isFinite(record.yaw));
       assert.equal(record.geometries.length, 1, 'one piece: the hull (its mast and boom built in)');
+      // 2026-10-07: its half extents ride along (the hull's contact with the water, props.ts waterContacts)
+      assert.ok(record.halfLength > 2 && record.halfLength < 3.2 && record.halfWidth > 0.4 && record.halfWidth < 0.9,
+        `${mapId}: a hull's half length and beam (${record.halfLength}, ${record.halfWidth})`);
       for (const g of record.geometries) assert.ok(withSink.buckets.baked.includes(g), 'the very geometry the baked bucket holds');
       // every piece lies within a hull's length of the pivot
       for (const g of record.geometries) { g.computeBoundingBox(); const c = g.boundingBox.getCenter(new (Object.getPrototypeOf(g.boundingBox.min).constructor)()); assert.ok(Math.hypot(c.x - record.x, c.z - record.z) < 4, 'about the mooring point'); }

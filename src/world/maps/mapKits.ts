@@ -141,6 +141,9 @@ export interface AnimatedDressing {
   yaw: number;
   phase: number;
   geometries: THREE.BufferGeometry[];
+  /** The hull's half length and half beam (m): its contact with the water (props.ts waterContacts). */
+  halfLength: number;
+  halfWidth: number;
 }
 
 interface DressingContext {
@@ -1510,6 +1513,8 @@ interface MooredBoat {
   /** Round 67: the hull's pieces (strakes, bow, transom, thwarts, a mast and boom on some) — the same objects the
    * wood bucket holds — so the renderer can pose the hull as one animated mesh. */
   geometries: THREE.BufferGeometry[];
+  /** Half the hull's beam (m). */
+  halfBeam: number;
 }
 
 /** The kit's clinker hull afloat beside the outer spans: the hull bottom a fixed draft under the water surface (the
@@ -1536,7 +1541,8 @@ function mooredBoat(
   const keelY = plan.surface - MOORED_BOAT_DRAFT_M;
   // a moored hull keeps its beam inside the fender gap the jetty allows
   const family = { ...boats, hull: { ...boats.hull, beam: Math.min(boats.hull.beam, MOORED_BOAT_HALF_BEAM_M * 2.1) } };
-  const hull = familyBoat(family, L, Math.floor(draws[0] * 97), mast);
+  // afloat at its draft: the soaked planking and the waterline's slime line (boatHulls.ts BoatVariation.afloat)
+  const hull = familyBoat(family, L, Math.floor(draws[0] * 97), mast, false, MOORED_BOAT_DRAFT_M);
   hull.rotateZ(list);
   hull.rotateY(yaw + Math.PI / 2);
   hull.translate(x, keelY, z);
@@ -1547,7 +1553,7 @@ function mooredBoat(
     kind: 'moored-boat', x, y: keelY, z, relief: 0, baseClearance: keelY - plan.surface,
     supportMin: bed, supportMax: bed,
   });
-  return { x, z, yaw, L, keelY, bow, geometries, bucket };
+  return { x, z, yaw, L, keelY, bow, geometries, bucket, halfBeam: family.hull.beam / 2 };
 }
 
 /** Two bollards on the deck edge beside the moored hull and a line from each to the nearer gunwale. */
@@ -1590,7 +1596,7 @@ function dressShoreLanding(
   // bollards — a few centimetres of heave on a tarred line is nothing the eye reads
   if (boat && animated) {
     animated.push({ kind: 'moored-hull', bucket: boat.bucket, x: boat.x, y: boat.keelY, z: boat.z, yaw: boat.yaw,
-      phase: mooredHullPhase(boat.x, boat.z), geometries: boat.geometries });
+      phase: mooredHullPhase(boat.x, boat.z), geometries: boat.geometries, halfLength: boat.L / 2, halfWidth: boat.halfBeam });
   }
 }
 
