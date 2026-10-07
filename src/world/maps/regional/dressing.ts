@@ -38,6 +38,37 @@ export function mound(sink: PartSink, c: Vec3, ax: Vec3, az: Vec3, rx: number, r
   }
 }
 
+/**
+ * A long leafy ridge on the ground from `a` to `b` (a row of potatoes earthed up, a bean row up its canes): a rounded
+ * section `w` wide and `h` high (a crown and two shoulders) drawn along the row, its ends sloping in, darker toward its
+ * foot (16 triangles; the mound's crown is a point, so a long row of mounds would read as a row of pyramids).
+ */
+export function ridge(sink: PartSink, a: Vec3, b: Vec3, w: number, h: number, colour: Rgb, opts: EmitOptions = DECOR): void {
+  const dx = b[0] - a[0], dz = b[2] - a[2], len = Math.hypot(dx, dz) || 1;
+  const ax: Vec3 = [dx / len, 0, dz / len], side: Vec3 = [-dz / len, 0, dx / len];
+  const at = (t: number, across: number, up: number): Vec3 => [a[0] + dx * t + side[0] * across, a[1] + up, a[2] + dz * t + side[2] * across];
+  const end = Math.min(0.45, (w * 0.6) / len);
+  // the section from one foot over the crown to the other, the crown held in from each end
+  const sect = (t: number, crown: boolean): Vec3[] => [at(t, -w / 2, 0), at(t, -w * 0.36, h * 0.62), crown ? at(t, 0, h) : at(t, 0, h * 0.62),
+    at(t, w * 0.36, h * 0.62), at(t, w / 2, 0)];
+  const s0 = sect(end, true), s1 = sect(1 - end, true), e0 = at(0, 0, h * 0.25), e1 = at(1, 0, h * 0.25);
+  const o: EmitOptions = { ...DECOR, ...opts, colourAt: (p: Vec3) => shade(colour, 0.62 + 0.38 * Math.min(1, Math.max(0, (p[1] - a[1]) / h))) };
+  const out = (pts: Vec3[], toward: Vec3) => {
+    const n = cross3(sub3(pts[1], pts[0]), sub3(pts[2], pts[0]));
+    sink.polygon('structureWood', dot3(n, toward) >= 0 ? pts : [...pts].reverse(), o);
+  };
+  // the four faces along the row (each a quad between the sections)
+  for (let k = 0; k < 4; k++) {
+    const mid: Vec3 = [(s0[k][0] + s0[k + 1][0]) / 2 - (a[0] + dx * 0.5), (s0[k][1] + s0[k + 1][1]) / 2 + 0.01, (s0[k][2] + s0[k + 1][2]) / 2 - (a[2] + dz * 0.5)];
+    const toward: Vec3 = [side[0] * Math.sign(dot3(mid, side) || 1) * 0.3, 1, side[2] * Math.sign(dot3(mid, side) || 1) * 0.3];
+    out([s0[k], s0[k + 1], s1[k + 1], s1[k]], toward);
+  }
+  // the ends: each section fanned down to a point at the row's end, low on the ground
+  for (const [s, e, dir] of [[s0, e0, -1], [s1, e1, 1]] as const) {
+    for (let k = 0; k < 4; k++) out([s[k], s[k + 1], e], [ax[0] * dir, 0.5, ax[2] * dir]);
+  }
+}
+
 /** A flower head: a five-petalled disc of radius `r` facing `n` (three triangles, seen from its front). */
 export function bloomDisc(sink: PartSink, c: Vec3, n: Vec3, r: number, colour: Rgb, opts: EmitOptions = DECOR, twist = 0): void {
   const up: Vec3 = Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];

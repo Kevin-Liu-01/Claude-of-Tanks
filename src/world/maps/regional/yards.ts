@@ -12,7 +12,7 @@
 // placements out): props.ts places the modules as destructibles, builds the outbuilding with the kit and merges the
 // beds as dressing.
 import { PartSink, rgb, shade, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { mound } from './dressing.ts';
+import { mound, ridge } from './dressing.ts';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
@@ -299,10 +299,13 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
     const kind = look();
     if (kind < 0.18) {
       // beans on canes: a line of canes and the leaves climbing up them, thinning toward the tops
+      let last = -w / 2 + 0.3;
       for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
         sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
-        mound(sink, [x, 0.05, z], X, Z, 0.2, 0.14, 1.25, shade(crop, 0.85 + look() * 0.2), dec, look() * 6);
+        last = x;
       }
+      // the leaves a wall along the canes, thinner and lower than their tops
+      ridge(sink, [-w / 2 + 0.22, 0.05, z], [last + 0.08, 0.05, z], 0.3, 1.25, shade(crop, 0.85 + look() * 0.2), dec);
       continue;
     }
     if (kind < 0.5) {
@@ -322,7 +325,7 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
     while (x < w / 2 - 0.4) {
       const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
       const h = 0.16 + look() * 0.14;
-      mound(sink, [x + run / 2, 0.05, z], X, Z, run / 2 + 0.06, 0.17, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec, 0);
+      ridge(sink, [x, 0.05, z], [x + run, 0.05, z], 0.34, h * 1.2, shade(crop, 0.85 + look() * 0.3), dec);
       x += run + 0.15 + look() * 0.35;
     }
   }

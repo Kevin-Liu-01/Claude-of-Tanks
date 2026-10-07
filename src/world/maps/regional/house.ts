@@ -434,7 +434,8 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     }
     // a ragged outline, star-shaped about its centre (the fan below needs no more): two to four lobes, and the radius
     // wandering vertex to vertex
-    const lobes = 2 + Math.floor(rng() * 3), phase = rng() * Math.PI * 2, lobe = 0.1 + rng() * 0.22;
+    // (r6 views: a 0.32 lobe on a small scar read as a star) the lobes a gentle swell, never a point
+    const lobes = 2 + Math.floor(rng() * 3), phase = rng() * Math.PI * 2, lobe = 0.08 + rng() * 0.12;
     const ragged: Array<[number, number]> = [];
     let lu = Infinity, hu = -Infinity, ly = Infinity, hy = -Infinity;
     for (let j = 0; j < 11; j++) {
