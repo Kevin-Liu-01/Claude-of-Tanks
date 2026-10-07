@@ -112,19 +112,46 @@ export default {
     // round 2 (wave 109b: "the plateau is a uniform white sheet salted evenly with identical conifers; the saddle should
     // be nearly treeless above the treeline"): the col stands at 2,080 m, above the larches; a few stands on the floor,
     // the forest on the slopes round it (the rim's ring)
-    clusterCount: 34, loneCount: 40, rimCount: 152, grassDensity: 0.36,
-    bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
+    clusterCount: 12, loneCount: 10, rimCount: 30, grassDensity: 0.36,
+    // map pass 2026-09-12: exposed stone/scrub on the snowfields (0.62)
+    // (round 3, gauntlet wave 127: "a saturated summer-green broadleaf bush ... cannot grow on a 2,000 m col in April"):
+    // no shrub layer above the larches
+    bushCount: 0, bushSpecies: 'spruce',
   },
   props: {
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
     architecture: 'savoyard',
-    plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',
-      'logcabin', 'woodshed', 'alpine', 'ruin', 'depot', 'granary', 'alpine', 'tower',
-      'logcabin', 'alpine', 'woodshed', 'chapel', 'depot', 'logcabin', 'alpine', 'ruin',
-      'granary', 'logcabin', 'alpine', 'woodshed'],
+    plan: [],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb
-    plannedSites: [{ structure: 'tavern', x: 66, z: 132, yawDeg: 0 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 }],
+    plannedSites: [{ structure: 'tavern', x: 66, z: 132, yawDeg: 0 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 },
+      { structure: 'rangerlodge', x: -139.14, z: -174.29, yawDeg: -93.4, terrace: true },
+      { structure: 'alpine', x: -142.98, z: -160.61, yawDeg: -97.3, terrace: true },
+      { structure: 'chapel', x: -145.29, z: -151.13, yawDeg: -97.3, terrace: true },
+      { structure: 'alpine', x: -145.25, z: -141.19, yawDeg: -97.3, terrace: true },
+      { structure: 'alpine', x: -165.19, z: -177.46, yawDeg: 86.6, terrace: true },
+      { structure: 'onionchurch', x: -165.87, z: -165.06, yawDeg: 82.7, terrace: true },
+      { structure: 'logcabin', x: -165.17, z: -156.19, yawDeg: 82.7, terrace: true },
+      { structure: 'alpine', x: -171.42, z: -120.84, yawDeg: 82.7, terrace: true },
+      { structure: 'logcabin', x: -130.64, z: -162.01, yawDeg: -97.3, terrace: true },
+      { structure: 'granary', x: -133.05, z: -155.01, yawDeg: -97.3, terrace: true },
+      { structure: 'woodshed', x: -133.77, z: -149.39, yawDeg: -97.3, terrace: true },
+      { structure: 'woodshed', x: -134.55, z: -144.13, yawDeg: -97.3, terrace: true },
+      { structure: 'tower', x: -149.65, z: 29.94, yawDeg: -78.7, terrace: true },
+      { structure: 'depot', x: -185.95, z: -37.73, yawDeg: 82.7, terrace: true },
+      { structure: 'alpine', x: -131.08, z: 115.16, yawDeg: -78.7, terrace: true },
+      { structure: 'chapel', x: -130.59, z: 125.48, yawDeg: -78.7, terrace: true },
+      { structure: 'logcabin', x: -124.9, z: 152.41, yawDeg: -73.4, terrace: true },
+      { structure: 'ruin', x: -120.12, z: 161.7, yawDeg: -73.4, terrace: true },
+      { structure: 'logcabin', x: -152.57, z: 117.49, yawDeg: 101.3, terrace: true },
+      { structure: 'alpine', x: -152.44, z: 127.31, yawDeg: 101.3, terrace: true },
+      { structure: 'granary', x: -148.19, z: 135.11, yawDeg: 101.3, terrace: true },
+      { structure: 'logcabin', x: -143.11, z: 158.69, yawDeg: 106.6, terrace: true },
+      { structure: 'ruin', x: -141.96, z: 168.27, yawDeg: 106.6, terrace: true },
+      { structure: 'depot', x: -170.74, z: 127.6, yawDeg: 101.3, terrace: true },
+      { structure: 'woodshed', x: -162, z: 135.56, yawDeg: 101.3, terrace: true },
+      { structure: 'depot', x: -183.88, z: -169.74, yawDeg: 82.7, terrace: true },
+    ],
     tacticalBeats: [
       { id: 'western-pass-redoubt', role: 'brawl', x: -283, z: 145, yawDeg: 8,
         structure: 'alpinerefuge', redoubt: true, outcrop: { count: 8, radius: 12 }, wreck: true, wreckOffsetZ: -16 },
@@ -146,8 +173,11 @@ export default {
     tankWrecks: { era: 'modern', count: 6, debris: true,
       ids: ['kf51', 'ariete', 'leo2a7v', 'cv90', 'strv122', 'leclerc_xlr'] },
     inhabit: {
-      stalls: 2, benches: 3, coreClutter: 20, sleds: 14,
-      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,
+      // (round 3, gauntlet waves 127 and 129: "traffic cones", "a modern candy-striped stall"): April 1945 at the
+      // frontier — no market stalls, the cable reels and direction signs of the army's line works, no cones, Jersey
+      // barriers or pad transformers
+      stalls: 0, benches: 2, coreClutter: 20, sleds: 14,
+      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: { cablespool: 10, roadsign: 8 },
       // Populate the pass with recoverable tools/cans/roadside hardware.
       // Existing instanced loose-prop families absorb these extra sleepers,
       // so the lived-in threshold rises without another draw/material family.

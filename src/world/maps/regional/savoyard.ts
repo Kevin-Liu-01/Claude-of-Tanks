@@ -593,32 +593,43 @@ const ruine: RegionalBuilder = (ctx) => {
       { face: { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - 2 * t }, gable: false },
     ];
     const heads: number[] = [];
+    const walls: Array<{ face: Face; tops: number[] }> = [];
     for (const { face, gable } of faces) {
-      // the courses broken back in level steps: a slow random walk along the wall, a breach on most walls
-      const L = face.width, n = 7;
+      // (round 3, gauntlet wave 127: "crenellated stepped cuts ... a toy brick wall"): the heads fall from the corners,
+      // where the quoins stand longest, to the breach the shell made, never up and down again like battlements; a wall
+      // the shell missed only sags. The broken head is ragged and sloping — its height taken at the ends of n strips and
+      // jittered by half a metre — not cut in level courses (level steps under their snow read as merlons in pair10)
+      const L = face.width, n = 9;
       const tops: number[] = [];
-      let h = H1 * (0.6 + rng() * 0.35);
-      for (let k = 0; k < n; k++) {
-        h = clamp(h + (rng() - 0.5) * 1.3, 1.4, H1 + (gable ? W * 0.12 : 0));
-        tops.push(Math.round(h / 0.32) * 0.32);
+      const crown = Math.min(H1 * (0.7 + rng() * 0.3) + (gable ? W * 0.1 : 0), H1 + (gable ? W * 0.12 : 0));
+      const dip = 0.22 + rng() * 0.6, at = 1 + rng() * (n - 2);
+      for (let k = 0; k <= n; k++) {
+        const d = Math.min(1, Math.abs(k - at) / Math.max(at, n - at));
+        const h = crown * (dip + (1 - dip) * Math.pow(d, 0.85)) + (rng() - 0.5) * 0.5;
+        tops.push(Math.max(0.64, h));
       }
-      if (rng() < 0.6) { const k = 1 + Math.floor(rng() * (n - 2)); tops[k] = 0.64 + Math.round(rng() * 2) * 0.32; tops[k + 1] = Math.min(tops[k + 1], 1.6); }
+      walls.push({ face, tops });
       for (let k = 0; k < n; k++) {
         const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
-        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k]], [a, tops[k]]], t);
-        // the step's broken stones: a few blocks proud of the break
-        if (look() < 0.5) faceBox(sink, 'stone', face, a + (b - a) * (0.25 + look() * 0.5), tops[k] + 0.09, -t / 2, 0.3 + look() * 0.3, 0.18, t * 0.8, { decor: true });
+        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
+        // the head's broken stones: a few blocks proud of the break
+        if (look() < 0.4) faceBox(sink, 'stone', face, a + (b - a) * (0.25 + look() * 0.5), Math.min(tops[k], tops[k + 1]) + 0.05, -t / 2, 0.3 + look() * 0.3, 0.18, t * 0.8, { decor: true });
       }
       heads.push(Math.max(...tops));
     }
     // the room's floor (beaten earth and the charred boards) and the hearth on the back gable
     sink.span('structureWood', -W / 2 + t, -0.05, -D / 2 + t, W / 2 - t, 0.06, D / 2 - t, { colour: char, decor: true });
-    const back = faces[1].face;
-    faceBox(sink, 'stone', back, 0.6, 0.9, -t - 0.3, 1.5, 1.8, 0.6, { decor: true });
-    faceBox(sink, 'dark', back, 0.6, 0.55, -t - 0.61, 0.9, 0.9, 0.02, { decor: true });
+    // (on the back gable's inner face, looking into the room: placed off the outer face, its room side was the face a
+    // wall-mounted box leaves out, open to a breach)
+    const hearthWall: Face = { origin: [0, 0, -D / 2 + t], u: [1, 0, 0], out: [0, 0, 1], width: W - 2 * t };
+    faceBox(sink, 'stone', hearthWall, -0.6, 0.9, 0.3, 1.5, 1.8, 0.6, { decor: true });
+    faceBox(sink, 'dark', hearthWall, -0.6, 0.55, 0.61, 0.9, 0.9, 0.02, { decor: true });
     // the rubble: a slumped heap inside, heaps along the walls' feet outside where their heads fell
-    const heap = (x: number, z: number, r: number, hgt: number) => sink.cylinder('stone', [x, -0.25, z], 'y', hgt + 0.25, r, 7,
-      { decor: true, shadow: true }, r * 0.28, true, look() * 3);
+    const heaps: Array<[number, number, number, number]> = [];
+    const heap = (x: number, z: number, r: number, hgt: number) => {
+      heaps.push([x, z, r, hgt]);
+      sink.cylinder('stone', [x, -0.25, z], 'y', hgt + 0.25, r, 7, { decor: true, shadow: true }, r * 0.28, true, look() * 3);
+    };
     heap(-W * 0.12, D * 0.08, Math.min(W, D) * 0.3, 1.1 + look() * 0.4);
     heap(W * 0.18, -D * 0.22, Math.min(W, D) * 0.2, 0.7 + look() * 0.3);
     for (const { face } of faces) {
@@ -646,6 +657,39 @@ const ruine: RegionalBuilder = (ctx) => {
       const top: Vec3 = [sx * (W / 2 - t / 2), heads[sx > 0 ? 2 : 3] - 0.2, (look() - 0.5) * D * 0.4];
       const foot: Vec3 = [sx * (W / 2 - 1.9), 0.2, top[2] + (look() - 0.5) * 1.2];
       sink.member('structureWood', foot, top, 0.16, 0.18, [0, 1, 0], { colour: char, decor: true, exposed: true });
+    }
+    // (round 3, gauntlet wave 127: "no rubble ... no snow on its wall heads"; the heaps alone read as snow mounds) the
+    // wall's own stones out on every heap, tipped every way, their faces too steep to hold the snow; and April's snow
+    // lying along every broken head, a ridged cap past both faces of the wall
+    for (const [hx, hz, r, hgt] of heaps) {
+      const count = Math.round(4 + r * 4);
+      for (let k = 0; k < count; k++) {
+        const a = look() * Math.PI * 2, rho = r * (0.25 + look() * 0.75), s = 0.13 + look() * 0.17;
+        const x = hx + Math.cos(a) * rho, z = hz + Math.sin(a) * rho;
+        const y = -0.25 + (hgt + 0.25) * (1 - rho / r) * 0.85 + s * 0.3;
+        const th = look() * 6.28, tilt = look() * 0.9, c = Math.cos(th), sn = Math.sin(th), ct = Math.cos(tilt), st = Math.sin(tilt);
+        const frame = new LocalFrame([c, 0, sn], [-sn * st, ct, c * st], [-sn * ct, -st, c * ct], [x, y, z]);
+        sink.box('stone', [x, y, z], [s * (1 + look() * 0.6), s * (0.55 + look() * 0.35), s * (0.7 + look() * 0.5)], { decor: true }, frame);
+      }
+    }
+    if (ctx.snowCap) {
+      for (const { face, tops } of walls) {
+        const L = face.width, n = tops.length - 1;
+        // one ridge the length of the wall following its broken head, its foot a hand past each face, closed at the ends
+        // (a hip inset on a steep end strip turned its slope's normal into the wall: regionalArchitecture's inverted faces)
+        const depth = tops.map(() => 0.12 + look() * 0.1);
+        const opts = { decor: true } as const;
+        for (let k = 0; k < n; k++) {
+          const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n, ya = tops[k], yb = tops[k + 1];
+          const fa = facePoint(face, a, ya, 0.05), fb = facePoint(face, b, yb, 0.05);
+          const ba = facePoint(face, a, ya, -t - 0.05), bb = facePoint(face, b, yb, -t - 0.05);
+          const ra = facePoint(face, a, ya + depth[k], -t / 2), rb = facePoint(face, b, yb + depth[k + 1], -t / 2);
+          sink.polygon('plaster', [fa, fb, rb, ra], opts);
+          sink.polygon('plaster', [bb, ba, ra, rb], opts);
+          if (k === 0) sink.polygon('plaster', [ba, fa, ra], opts);
+          if (k === n - 1) sink.polygon('plaster', [fb, bb, rb], opts);
+        }
+      }
     }
   });
   return sink.finish();
@@ -721,7 +765,9 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     roof: { kind: 'slate', tint: [0.38, 0.39, 0.41] },
     // the grey gneiss rubble bedded in lime
     // (round 2, wave 109b: "one warm tan texture on every box") grey gneiss rubble in a dark lime mortar
-    stone: { kind: 'greywacke', tint: [0.55, 0.56, 0.58] },
+    // (round 3, wave 127: the shelled house still "a clean tan, regularly brick-tiled wall"): the stones laid as rubble,
+    // split and pillowed in uneven courses, not as coursed greywacke; a cool blue-grey under the low April sun
+    stone: { kind: 'rubble', tint: [0.4, 0.43, 0.5] },
     sourced: { plaster: false, wood: true },
     tones: {
       plaster: crepi,
@@ -738,7 +784,8 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   // the long winters: damp at the wall foot, lichen on the lauzes
   weather: {
     plaster: [[1, 1, 1], [0.97, 0.96, 0.94], [0.94, 0.94, 0.93], [1.0, 0.98, 0.95]],
-    stone: [[1, 1, 1], [0.94, 0.93, 0.9], [1.03, 1.0, 0.95], [0.88, 0.88, 0.87]],
+    // (round 3) the stone's weathering cool: the gneiss greys and blues, never the warm sandstone's buffs
+    stone: [[1, 1, 1], [0.92, 0.94, 0.97], [0.97, 0.98, 1.0], [0.86, 0.88, 0.91]],
     roof: [[1, 1, 1], [0.9, 0.88, 0.84], [1.06, 1.03, 0.98], [0.84, 0.83, 0.82]],
     damp: 0.75, moss: 0.5, mossTint: [0.96, 0.94, 0.8],
   },
