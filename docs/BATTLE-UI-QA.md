@@ -556,3 +556,38 @@ HUD editor refresh (2026-10-06): typecheck, production build, preference, locali
 layout, settings, stylesheet ownership and damage-panel marker checks passed. The
 updated browser matrix could not start before its shared capture-queue timeout;
 no new rendered/editor matrix pass is claimed.
+
+## Combat reports and Service Record
+
+Live rosters show a nonzero kill tally on their inner edge, mirrored for the
+opposing team and retained in icon-grid mode. The event ledger counts enemy
+destructions once per life; respawns preserve accumulated kills, while a new
+battle clears them. Friendly fire and self-destruction remain visible in the
+feed but do not earn enemy-kill credit. Feed glyphs identify projectile kills,
+drone strikes, ramming, fire, collisions, falls, player involvement and friendly
+fire. Ammo-rack kills carry an explicit label, a highlighted ammunition glyph,
+and a matching killcam heading and detonation banner.
+
+After-action reports use the battle's canonical map image, contained vehicle
+art, visible combat metrics, and allied/enemy comparisons for damage, kills and
+survivors. Medals keep their focus/touch tooltips. The Service Record's Battle
+Log uses map-backed deployment cards, vehicle art and expandable kill traces;
+older records without a recognized map retain a plain readable background.
+Accuracy counts distinct fired rounds that connected, not damage events. Splash
+contacts cannot push it beyond 100%; un-fired drone impacts, fire and ramming
+cannot manufacture successful rounds. Damage still sums all resolved contacts.
+
+Focused event, classification, report and record checks run in `npm test`.
+The additional browser regression uses the real production components at
+1440×900, 390×844, 667×375 and 568×256 and captures victory, defeat, draw,
+Battle Log and medals. Run it through the shared capture queue:
+
+```sh
+node --input-type=module -e "import {runCapturedCommand} from './tools/capture-command.mjs'; await runCapturedCommand('nice',['-n','19','node','tools/battle-reports.browser.mjs']);"
+```
+
+Pass `--playwright-module=/absolute/path/to/playwright/index.mjs` to the browser
+tool when using an external runtime. Captures go to `.qa-dev/battle-reports/`.
+A queue timeout is not a visual pass: the latest implementation has passed
+focused Node checks, type checking and the public build, but its first browser
+attempt timed out before acquiring the shared capture lease.

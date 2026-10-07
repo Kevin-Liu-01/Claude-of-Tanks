@@ -75,6 +75,8 @@ function state(name) {
   for(let i=0;i<31;i++)hud.update(frame);
   panel.update(player.combat);
   for(let i=0;i<(name==='feed-burst'?14:3);i++){
+    bus.emit('mode:respawn',{id:tanks[8].id});
+    bus.emit('mode:respawn',{id:tanks[1].id});
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
   }
