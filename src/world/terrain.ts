@@ -5423,6 +5423,34 @@ void splatCompute() {
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
     a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
   }
+  // Ground lane (2026-10-07, wave 235's Whiteout: "a flat, nearly textureless blue-grey snow sheet with no wind drifts,
+  // sastrugi, tracks"): under an overcast sky the sastrugi and the drift waves above are normals the flat light never
+  // shows. The wind's work in the snow's own tone, at ground scale (uReduxSnow.z, the map's share; 0 on every other map):
+  //   - sastrugi: ridges ~0.6 m across combed along the wind, a few metres long, and a second, larger field of them
+  //     ~3 m across — the windward crests a breath whiter, the scooped hollows a few per cent darker and cooler (less of
+  //     the sky reaches into them), faded by the footprint before a ridge can alias;
+  //   - crust: wind-packed plates 4–12 m across, a shade greyer and satin, edged by a paler broken lip;
+  //   - drift tails: long streaks of fresh powder down the wind, whiter and matte.
+  if (uReduxSnow.z > 0.001) {
+    vec2 swd = normalize(vec2(0.62, 0.78) + (nz(uv, 0.0025, vec2(0.37, 0.91)).rg - 0.5) * 0.9); // the drift waves' wind
+    vec2 sp = vec2(dot(wp.xz, swd), dot(wp.xz, vec2(-swd.y, swd.x))); // along and across the wind (m)
+    float snowW = uReduxSnow.z * meadowG * (1.0 - fR) * (1.0 - roadCore);
+    if (snowW > 0.003) {
+      float s1 = nz(vec2(sp.x * 0.16, sp.y), 1.6, vec2(0.13, 0.41)).r;   // ~0.6 m across, ~4 m along
+      float s2 = nz(vec2(sp.x * 0.20, sp.y), 0.33, vec2(0.71, 0.27)).g;  // ~3 m across, ~15 m along
+      float v1 = tileVis(0.6), v2 = tileVis(3.0);
+      float ridge = smoothstep(0.52, 0.78, s1) * v1 * 0.6 + smoothstep(0.55, 0.80, s2) * v2 * 0.4;
+      float scoop = (1.0 - smoothstep(0.22, 0.46, s1)) * v1 * 0.6 + (1.0 - smoothstep(0.20, 0.45, s2)) * v2 * 0.4;
+      vec2 cq = nzq(uv, 0.11, vec2(0.29, 0.63));
+      float crustN = cq.x + (n1h - 0.5) * 0.18;
+      float crust = smoothstep(0.60, 0.64, crustN) * tileVis(1.5);
+      float lip = (smoothstep(0.56, 0.60, crustN) - smoothstep(0.60, 0.64, crustN)) * tileVis(0.8);
+      float tail = smoothstep(0.62, 0.82, nz(vec2(sp.x * 0.05, sp.y), 0.45, vec2(0.47, 0.83)).r) * tileVis(4.0);
+      a.rgb *= 1.0 + snowW * (0.070 * ridge - 0.100 * scoop - 0.070 * crust + 0.08 * lip + 0.070 * tail);
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.95, 0.975, 1.03), snowW * (scoop * 0.7 + crust * 0.5));
+      gScour = max(gScour, crust * snowW * 0.85) * (1.0 - tail * snowW);
+    }
+  }
   // Round 73: the folds. The chunk vertices carry the relief's own curvature (an 8 m and a 24 m Laplacian baked
   // at build, terrainBuildSteps): a hollow holds moisture — darker, a shade greener on turf, less rough — and takes
   // less of the sky (gFoldAO, the indirect hook); a crest dries and lightens. Low frequency, so no distance fade.
