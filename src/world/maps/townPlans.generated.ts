@@ -2,7 +2,8 @@
 // town-plan ruling): each rebuilt battlefield's settlement exactly as that build seated it. Every TOWN_PLANS entry is
 // one planned building: its structure, its plan index, its wall, the props stream's state after the wall pick, and
 // its final pose (props.ts townPlan); every TOWN_LIGHT_PLANS entry is one light (destructible) building, its kind and
-// final pose (props.ts townLightPlan). Do not edit by hand.
+// final pose (props.ts townLightPlan). Do not edit by hand. (polders: recorded from PR #9's head 5d2461283 by the
+// map-revival lane, 2026-10-06, so its farm court keeps its seats while the polder's dykes and water are rebuilt.)
 import type { TownLightEntry, TownPlanEntry } from '../props.ts';
 
 export const TOWN_PLANS: Readonly<Record<string, readonly TownPlanEntry[]>> = {
@@ -122,6 +123,25 @@ export const TOWN_PLANS: Readonly<Record<string, readonly TownPlanEntry[]>> = {
     { structure: 'factory', planIndex: 40, wall: 'stone', rng: 2062446264, x: -20.923145, z: 232.888889, rot: 0.04961257 },
     { structure: 'shed', planIndex: 41, wall: 'plaster', rng: 1392729094, x: 276.708101, z: -231.111111, rot: 0.047067021 },
   ],
+  polders: [
+    { structure: 'mill', planIndex: 0, wall: 'stone', rng: -1263669338, x: -167.454785, z: -83.003929, rot: 1.333145014 },
+    { structure: 'farmhouse', planIndex: 1, wall: 'plaster', rng: -206974189, x: -141.645249, z: -77.863588, rot: 1.424557837 },
+    { structure: 'granary', planIndex: 2, wall: 'stone', rng: -1485798129, x: -145.874871, z: -49.369287, rot: 2.994231173 },
+    { structure: 'fishery', planIndex: 3, wall: 'plaster2', rng: -237279389, x: -120, z: -74.246525, rot: 1.566422015 },
+    { structure: 'depot', planIndex: 4, wall: 'plaster3', rng: -436679280, x: -120, z: -49.338617, rot: 1.614165691 },
+    { structure: 'cottage', planIndex: 5, wall: 'stone', rng: -2091574102, x: -95.602903, z: -74.309997, rot: -0.032246882 },
+    { structure: 'woodshed', planIndex: 6, wall: 'plaster2', rng: 2124299397, x: -67.192783, z: -46.350883, rot: -3.114202245 },
+    { structure: 'tavern', planIndex: 7, wall: 'plaster3', rng: -1121549050, x: -93.73321, z: 13, rot: 0.043951957 },
+    { structure: 'farmhouse', planIndex: 8, wall: 'plaster2', rng: 126969690, x: -39.155072, z: 70.756185, rot: -1.547425405 },
+    { structure: 'barn', planIndex: 9, wall: 'stone', rng: 1879441706, x: 15.333859, z: -6.786819, rot: -1.971589775 },
+    { structure: 'barn', planIndex: 10, wall: 'plaster', rng: 1537006821, x: 2.251433, z: -45.535733, rot: 1.14388563 },
+    { structure: 'cottage', planIndex: 11, wall: 'stone', rng: -636993877, x: 26.766323, z: -34.384222, rot: -1.997707023 },
+    { structure: 'granary', planIndex: 12, wall: 'plaster2', rng: 1179419336, x: 29.066966, z: -76.725842, rot: 0.550680472 },
+    { structure: 'ruin', planIndex: 13, wall: 'stone', rng: -1867029220, x: -51.092869, z: -82.88381, rot: 0.514509045 },
+    { structure: 'depot', planIndex: 14, wall: 'stone', rng: -930640165, x: -73.962221, z: -69.662466, rot: 0.481896974 },
+    { structure: 'woodshed', planIndex: 15, wall: 'plaster', rng: -753969174, x: -39.223978, z: -60.911258, rot: -2.617413025 },
+    { structure: 'farmhouse', planIndex: 16, wall: 'plaster', rng: 983350242, x: 40.740247, z: 79.417261, rot: 0.786461531 },
+  ],
 };
 
 export const TOWN_LIGHT_PLANS: Readonly<Record<string, readonly TownLightEntry[]>> = {
@@ -161,5 +181,11 @@ export const TOWN_LIGHT_PLANS: Readonly<Record<string, readonly TownLightEntry[]
     { kind: 'servicegarage', x: 0, z: 272.536163, rot: 1.510620621 },
     { kind: 'relaystation', x: 30.607924, z: -38.023708, rot: 1.048767922 },
     { kind: 'corneroffice', x: 143.333333, z: 275.260227, rot: 1.633318674 },
+  ],
+  polders: [
+    { kind: 'fieldhut', x: -62.625574, z: 42.085958, rot: 0.001902589 },
+    { kind: 'fishershack', x: -98.434514, z: -45.494945, rot: 0.09482356 },
+    { kind: 'transformershed', x: 44.62151, z: -51.394437, rot: 2.061301093 },
+    { kind: 'huntingblind', x: -98.723457, z: 42.94619, rot: 0.090505155 },
   ],
 };

@@ -177,8 +177,10 @@ assert.ok(contours[3].widthM > 100 && contours[3].widthM / contours[3].lengthM >
   'northwest oxbow follows a different east/west drainage direction');
 const totalAreaM2 = contours.reduce((area, contour) => area + contour.areaM2, 0);
 assert.ok(totalAreaM2 > 29000 && totalAreaM2 < 35000, 'retain substantial water coverage within the existing dry compartments');
-assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 52,
-  'farm/drain composition redistributes the same authored tree budget');
+// (2026-10-06, the map-revival lane, step 1: the 52 stations of the farm and drain composition, and 45 more on the long
+// field dykes' crests and the headland at the north dyke's foot — the map's own trees moved onto the rows)
+assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 97,
+  'farm/drain composition and the dyke rows redistribute the authored tree budget');
 assert.ok(polders.terrain.lakes.reduce((count, lake) => count + 4 + lake.radii.length, 0) < originalLakes.length * 4);
 assert.equal(buildLiquidLakeBanks(polders.terrain.lakes, () => 9).byteLength, 40);
 assert.equal(buildLiquidLakeBanks(originalLakes, () => 9).byteLength, 216);

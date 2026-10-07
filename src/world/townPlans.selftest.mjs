@@ -10,7 +10,7 @@ import { decodeCollisionManifest } from '../../server/collisionManifestCodec.ts'
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './maps/townPlans.generated.ts';
 
-// The PR head's (0bbb0cddc) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
+// The PR head's (0bbb0cddc; polders 5d2461283) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
 // of them stood in a carriageway there (and so may move off it).
 const PR_HEAD = {
   titan_gorge: { carriageway: 5, structures: [
@@ -112,6 +112,16 @@ const PR_HEAD = {
     [-240.59, 198.51, 11.32, 11.95], [-241.88, 211.53, 11.21, 11.18], [-237.91, 232.47, 9.55, 8.28],
     [-236.07, 249.39, 10.47, 7.53], [-234.26, 264.71, 12.24, 11.64], [-233.14, 280.01, 9.6, 8.1],
   ] },
+  // (the map-revival lane, 2026-10-06: Tidegate Polders' farm court replays PR #9's head 5d2461283 while its dykes and
+  // water are rebuilt; its kit's yard sheds (the polder kit's woodshed) follow their yards, and two moved with the
+  // ground round them)
+  polders: { carriageway: 0, yardSheds: 2, structures: [
+    [-167.45, -83, 6.22, 6.22], [-141.65, -77.86, 11.89, 16.05], [-145.87, -49.37, 4.37, 6.89], [-120.02, -69.5, 17.52, 8.16],
+    [-119.99, -49.09, 18.48, 7.55], [-95.6, -74.31, 6.54, 8.53], [-67.19, -46.35, 3.94, 5.12], [-93.73, 13, 10.12, 15.08],
+    [-39.16, 70.76, 10.81, 16.12], [15.33, -6.79, 13.65, 12.41], [2.25, -45.54, 14.22, 12.42], [26.77, -34.38, 8.89, 8.03],
+    [29.07, -76.73, 6.01, 6.78], [-51.09, -82.88, 10.26, 11.33], [-74.18, -69.55, 15.45, 20.74], [-39.22, -60.91, 5.94, 6.03],
+    [40.74, 79.42, 18.13, 18.14], [-104.55, -72.85, 4.62, 3.84], [29.2, -42.65, 5.23, 5.63],
+  ] },
 };
 
 for (const mapId of MAP_IDS) {
@@ -125,7 +135,7 @@ for (const mapId of Object.keys(TOWN_PLANS)) {
 }
 const footprint = (o) => ({ cx: (o.b[0] + o.b[3]) / 2, cz: (o.b[2] + o.b[5]) / 2, w: o.b[3] - o.b[0], d: o.b[5] - o.b[2] });
 const summary = [];
-for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
+for (const [mapId, { carriageway, structures, yardSheds = 0 }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
   if (!TOWN_PLANS[mapId]) {
     assert.ok(config.props.roadBuildingClearance && !config.props.townPlan, `${mapId}: a generated plan with the road clearance`);
@@ -133,8 +143,16 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const manifest = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8')));
   const now = manifest.obstacles.filter((o) => o.k === 'structure').map(footprint);
-  assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);
-  let exact = 0, moved = 0, worstMove = 0;
+  // (a kit's yard sheds, footprints under 40 m², follow their yards: up to `yardSheds` of them may move, appear or go;
+  // every larger structure is counted exactly)
+  const big = (list) => list.filter((f) => (Array.isArray(f) ? f[2] * f[3] : f.w * f.d) >= 40).length;
+  if (yardSheds > 0) {
+    assert.equal(big(now), big(structures), `${mapId}: as many buildings as the PR head (${big(now)})`);
+    assert.ok(Math.abs(now.length - structures.length) <= yardSheds, `${mapId}: the yard sheds within ${yardSheds} of the PR head's (${now.length - big(now)})`);
+  } else {
+    assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);
+  }
+  let exact = 0, moved = 0, worstMove = 0, shedsMoved = 0;
   const taken = new Set();
   for (const [cx, cz, w, d] of structures) {
     const same = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.cx - cx) <= 0.1 && Math.abs(s.cz - cz) <= 0.1
@@ -143,6 +161,16 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
     // moved off a carriageway: the same footprint, translated no further than the clearance's rings reach (30 m), or
     // to the place the map authors for it (props roadClearanceTargets: from its centre, to the new one)
     const authored = (config.props.roadClearanceTargets ?? []).find((t) => Math.hypot(t.from[0] - cx, t.from[1] - cz) <= 1.5);
+    // (2026-10-06) a regional kit's yard shed (a footprint under 40 m²) follows its yard: the yard hook plans it round the
+    // replayed houses on the ground beside them, so a map that allows it may see up to `yardSheds` of them move
+    if (yardSheds > 0 && w * d < 40) {
+      const shed = now.findIndex((s, i) => !taken.has(i) && s.w * s.d < 40 && !structures.some(([x2, z2, w2, d2]) =>
+        Math.abs(s.cx - x2) <= 0.1 && Math.abs(s.cz - z2) <= 0.1 && Math.abs(s.w - w2) <= 0.1 && Math.abs(s.d - d2) <= 0.1));
+      shedsMoved++;
+      assert.ok(shedsMoved <= yardSheds, `${mapId}: at most ${yardSheds} yard sheds move or go`);
+      if (shed >= 0) taken.add(shed);
+      continue;
+    }
     const off = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.w - w) <= 0.1 && Math.abs(s.d - d) <= 0.1
       && (authored ? Math.hypot(s.cx - authored.to[0], s.cz - authored.to[1]) <= 1.5 : Math.hypot(s.cx - cx, s.cz - cz) <= 30));
     assert.ok(off >= 0, `${mapId}: the structure at (${cx}, ${cz}) stands where the PR head has it or a short move off a carriageway`);
@@ -150,7 +178,7 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
     worstMove = Math.max(worstMove, Math.hypot(now[off].cx - cx, now[off].cz - cz));
   }
   assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
-  summary.push(`${mapId} ${exact} exact, ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m)`);
+  summary.push(`${mapId} ${exact} exact, ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m)${shedsMoved ? `, ${shedsMoved} yard sheds with their yards` : ''}`);
 }
 // Light buildings (props.ts townLightPlan): a replayed settlement replays its huts, tents and sheds as well, so each one
 // the record holds stands at its recorded pose in the committed shard: a destructible of its kind whose footprint holds
