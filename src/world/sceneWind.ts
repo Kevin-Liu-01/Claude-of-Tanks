@@ -34,17 +34,17 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   badlands: { dirDeg: 181, speed: 3 }, // legacy
   monsoon: { dirDeg: 200, speed: 2.8 }, // ocean
   alpine: { dirDeg: 18, speed: 2.4 }, // ground
-  caldera: { dirDeg: 181, speed: 3 }, // legacy
+  caldera: { dirDeg: 37, speed: 3 }, // ground (batch 4: Aso's sward, the map-revival lane; was legacy 181)
   foundry: { dirDeg: 45, speed: 3 }, // ground
   ruinspires: { dirDeg: 45, speed: 3.6 }, // ground
-  blackglass: { dirDeg: 45, speed: 3 }, // ground
-  titan_gorge: { dirDeg: 191, speed: 3 }, // legacy
+  blackglass: { dirDeg: 80, speed: 2.2 }, // ocean (batch 4: Suzhou Creek's sea state; was ground 45 at 3)
+  titan_gorge: { dirDeg: 191, speed: 3.6 }, // legacy (batch 4: Monument Valley's cloud regime aloft; was 3)
   skybridge: { dirDeg: 40, speed: 3.8 }, // ocean
   polders: { dirDeg: 300, speed: 3.6 }, // ocean
-  copper_mesa: { dirDeg: 163, speed: 3 }, // legacy
+  copper_mesa: { dirDeg: 163, speed: 4.2 }, // legacy (batch 4: Queenstown's west-coast regime aloft; was 3)
   airfield: { dirDeg: 45, speed: 3.6 }, // ground
   oasis: { dirDeg: 120, speed: 2.8 }, // ocean
-  whiteout: { dirDeg: 18, speed: 2.4 }, // ground
+  whiteout: { dirDeg: 229, speed: 2.4 }, // legacy (batch 4: the ice sheet grows no sward, the trees lane; was ground 18)
   orchard: { dirDeg: 37, speed: 3.6 }, // ground
   longleaf: { dirDeg: 53, speed: 3.6 }, // ground
   mangrove: { dirDeg: 80, speed: 2.6 }, // ocean
