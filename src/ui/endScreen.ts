@@ -1,3 +1,4 @@
+import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * endScreen.ts — typed cinematic battle end screen (killcam_endscreen r1).
@@ -96,9 +97,11 @@ export interface EndScreenSummary {
   playerDead?: boolean;
   /** The player's deaths this battle (owner 2026-09-21: a stat in reviving modes, not a terminal state). */
   playerDeaths?: number;
+  playerKills?: number;
   /** The mode revives destroyed vehicles: rows and stats carry death counts, `dead` means dead at the end. */
   revives?: boolean;
   map?: string | null;
+  mapId?: string | null;
   timeS: number;
   stats: EndScreenStats;
   kills: EndScreenKillRow[];
@@ -826,6 +829,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
+    const art = battleMapArt(sum.mapId);
+    host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
@@ -845,7 +850,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
       blow.style.setProperty('--i', nextI());
-      blow.innerHTML = `${uiIconSVG('skull', 14)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
+      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
       host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
     } else {
       delete host.dataset.finalBlow;
@@ -936,6 +941,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
     renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
       `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
+    renderMiniStat(parent, 'team', 'assist', t('endScreen.assist'), fmtN(stats.assist));
+    renderMiniStat(parent, 'optics', null, t('endScreen.spotted'), String(stats.spotted ?? 0));
+    renderMiniStat(parent, 'repair', null, t('endScreen.modules'), String(stats.modulesDestroyed ?? 0));
     renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
     renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
     // owner 2026-09-21: in a reviving mode deaths are a stat of the battle, not the player's end state
@@ -1025,20 +1033,40 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',
     });
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
-      value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull',
+      value: sum.playerKills ?? sum.kills.length, datasetV: sum.playerKills ?? sum.kills.length, icon: 'skull',
     });
     tile(statGrid, 'accuracy', t('garage.record.accuracy'), {
-      value: sum.stats.fired ? Math.round(sum.stats.hits / sum.stats.fired * 100) : 0, icon: 'scope',
+      value: shotAccuracy(sum.stats.hits, sum.stats.fired), icon: 'scope',
     });
     statGrid.lastElementChild?.setAttribute('data-stat','accuracy');
+    renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
+      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
+    renderTeamComparison(personal, sum);
     renderAwards(personal, sum.awards);
     renderBestShot(personal, sum.bestShot);
     const detail = el('details', 'es-combat-details', personal);
     const toggle = el('summary', '', detail);toggle.tabIndex=0;toggle.textContent = t('endScreen.combatDetails');
-    const blow = host.querySelector('.es-blow'); if (blow) detail.append(blow);
-    renderSecondaryStats(el('div', 'es-stat-secondary', detail), sum.stats,
-      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
+    const blow = host.querySelector('.es-blow'); if (blow) personal.insertBefore(blow, detail);
     renderKillList(detail, result, sum.kills);
+  }
+
+  function renderTeamComparison(parent: HTMLElement, sum: EndScreenSummary): void {
+    const allies = summarizeTeam(sum.allies), enemies = summarizeTeam(sum.enemies);
+    const comparison = el('section', 'es-comparison', parent);
+    comparison.setAttribute('aria-label', t('endScreen.comparison'));
+    const head = el('div', 'es-comparison-head', comparison);
+    head.innerHTML = `<b>${t('endScreen.team.ally')}</b><span>${t('endScreen.comparison')}</span><b>${t('endScreen.team.enemy')}</b>`;
+    for (const [label, left, right] of [
+      [t('endScreen.tile.dealt'), allies.damage, enemies.damage],
+      [t('endScreen.tile.kills'), allies.kills, enemies.kills],
+      [t('endScreen.survivors'), allies.alive, enemies.alive],
+    ] as const) {
+      const row = el('div', 'es-comparison-row', comparison);
+      const total = left + right;
+      row.innerHTML = `<b>${fmtN(left)}</b><span>${label}</span><b>${fmtN(right)}</b><div class="es-comparison-bar"><i></i></div>`;
+      row.style.setProperty('--allied-share', `${total ? left / total * 100 : 50}%`);
+      row.classList.toggle('empty', total === 0);
+    }
   }
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
@@ -1060,6 +1088,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `<div class="es-score-copy"><div class="sl"><span>${t('endScreen.team.enemy')}</span>${uiIconSVG('team', 16)}</div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
       '</div></div>';
+    renderTeamComparison(teams, sum);
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));

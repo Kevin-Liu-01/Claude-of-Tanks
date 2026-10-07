@@ -1,3 +1,6 @@
+import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
+import { iconUrl } from './icons.ts';
+import { killPresentation } from './killPresentation.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
@@ -54,6 +57,15 @@ function safe(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   } as Record<string, string>)[char] ?? char);
+}
+
+function mapStyle(id: string): string {
+  const art = battleMapArt(id);
+  return art ? ` style="--battle-map:url('${art}')"` : '';
+}
+function vehicleArt(id: string, className = 'cot-record-vehicle'): string {
+  return /^[a-zA-Z0-9_-]+$/.test(id)
+    ? `<img class="${className}" src="${iconUrl(id, 'angle')}" alt="" loading="lazy" decoding="async">` : '';
 }
 
 function clock(seconds: number): string {
@@ -152,7 +164,7 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
   let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
   if (record.lastBattle) {
     const last = record.lastBattle;
-    lastBattle = `<div class="cot-last-battle"><div class="cot-last-battle-head">` +
+    lastBattle = `<div class="cot-last-battle"${mapStyle(last.mapId)}>${vehicleArt(last.vehicleId)}<div class="cot-last-battle-head">` +
       `<strong>${safe(resultLabel(last.result))}</strong><time>${safe(when(last.completedAt))}</time></div>` +
       `<div class="cot-last-battle-grid">` +
       `<div><span>${t('garage.record.deployment')}</span><b>${safe(names.vehicle(last.vehicleId))} · ${safe(names.map(last.mapId))}</b></div>` +
@@ -226,8 +238,8 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
     const linked = gap <= LINK_S;
     return `<li class="${linked ? 'linked' : ''}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
       `<span class="cot-record-step-time">${clock(step.t)}</span>` +
-      `<b>${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
-      `<small>${[step.distM ? `${num(step.distM)} m` : '', step.cause === 'ammorack' ? t('garage.record.causeAmmo') : step.cause === 'ram' ? t('garage.record.causeRam') : '']
+      `<b class="cot-record-trace-vehicle">${vehicleArt(step.specId, 'cot-record-trace-icon')}${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
+      `<small>${uiIconSVG(killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[step.distM ? `${num(step.distM)} m` : '', killPresentation({ cause: step.cause, drone: step.cause === 'drone', victimId: '' }).label]
         .filter(Boolean).join(' · ')}</small>` +
       `<span class="cot-record-step-gap">${linked ? t('garage.record.traceGap', { seconds: num(Math.round(gap)) }) : ''}</span></li>`;
   }).join('');
@@ -242,19 +254,24 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       return medal ? `<span tabindex="0" data-medal-tip="${id}" aria-label="${safe(medalName(id))}">${medalSVG(medal, 28)}</span>` : '';
     }).join('');
     const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '—';
-    return `<li><details class="cot-record-battle result-${battle.result}">` +
-      `<summary tabindex="0"><span class="cot-record-battle-row"><span class="cot-record-result">${resultLabel(battle.result)}</span>` +
+    return `<li><details class="cot-record-battle result-${battle.result}"${mapStyle(battle.mapId)}>` +
+      `<summary tabindex="0"><span class="cot-record-battle-row">${vehicleArt(battle.vehicleId)}<span class="cot-record-result">${resultLabel(battle.result)}</span>` +
       `<span class="cot-record-battle-what"><b>${safe(names.vehicle(battle.vehicleId))}</b>` +
       `<small>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))} · ${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</small></span>` +
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${t('garage.record.kills')}</small></span>` +
       `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${t('garage.record.damage')}</small></span>` +
       `<span class="cot-record-battle-medals">${medalArt}</span>` +
-      `<time>${safe(when(battle.at))}</time></span></summary>` +
-      `<div class="cot-record-battle-body"><div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong>` +
+      `<time>${safe(when(battle.at))}</time><span class="cot-record-expand" aria-hidden="true">${uiIconSVG('chevronDown', 16)}</span></span></summary>` +
+      `<div class="cot-record-battle-body"><div class="cot-record-battle-metrics">` +
+      metric(t('garage.record.accuracy'), `${shotAccuracy(battle.hits, battle.shots)}%`, accuracy) +
+      metric(t('garage.record.duration'), clock(battle.durationS), '') +
+      metric(t('garage.record.longestChain'), num(battle.bestChain), '') +
+      metric(t(battle.survived ? 'garage.record.survived' : 'garage.record.destroyedStatus'), uiIconSVG(battle.survived ? 'shield' : 'skull', 24), '') +
+      `</div><div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong>` +
       `<span>${t('garage.record.accuracy')} ${accuracy} · ${t('garage.record.duration')} ${clock(battle.durationS)}</span></div>` +
       `${trace(battle, names)}</div></details></li>`;
   }).join('');
-  return `<ol class="cot-record-history">${rows}</ol>`;
+  return `<p class="cot-record-log-intro">${t('garage.record.logIntro')}</p><ol class="cot-record-history">${rows}</ol>`;
 }
 
 /** The markup for one tab of the record. */

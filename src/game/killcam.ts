@@ -1226,7 +1226,9 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-banner{margin:7px 11px 0;padding:4px 8px;text-align:center;display:none;
   font-family:${FONT_COND};font-weight:800;font-size:11px;
   letter-spacing:.18em;color:#ff8a7d;border:1px solid rgba(240,91,80,.55);
-  border-left:3px solid var(--kc-red);background:linear-gradient(90deg,rgba(111,24,18,.42),rgba(62,15,12,.26));}
+  background:linear-gradient(135deg,#602719e8,#25130fed);box-shadow:inset 0 0 16px #ff9a3b18;}
+.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:13px;color:#ffcc92;letter-spacing:.09em;}
+@media(max-width:420px){.cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:11px;letter-spacing:.04em}}
 .cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
@@ -1468,7 +1470,7 @@ export function createKillCam(deps: KillcamDeps) {
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = `${uiIconSVG('ammoRack', 11)}<span>${t('killcam.ammoRackDetonation')}</span>`;
+    banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
     // killer card (death view only — populated per replay in beginXray)
     const killer = el('div', 'cot-kc-killer', root);
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
@@ -2456,7 +2458,8 @@ export function createKillCam(deps: KillcamDeps) {
     // battle endings: a final blow between two other tanks reads as a neutral "A destroyed B" line; the
     // player's own kill and the player's own death keep their existing titles
     const finalBlow = pb.kind === 'final' && !playerKill && !pb.isDeathView;
-    d.titleT.textContent = playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
+    d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
+    d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
     d.titleS.textContent = finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
         attacker: event.attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),

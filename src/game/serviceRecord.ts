@@ -1,3 +1,4 @@
+import { FiredRoundLedger } from './battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { getPlayerRecord } from './profile.ts';
 // Medals and achievements: what a commander did, kept on this device beside
@@ -244,14 +245,14 @@ interface BattleTracker {
   bestChain: number;
   lastKillT: number;
   longestKillM: number;
-  killShots: Map<string, { distM: number; fresh: boolean }>;
+  killShots: Map<string, { distM: number; fresh: boolean; drone: boolean }>;
   damaged: Set<string>;
   damageBy: Map<string, number>;
   spotted: Set<string>;
   waves: number;
   alive: boolean;
   hits: number;
-  hitShells: Set<number>;
+  rounds: FiredRoundLedger;
   firstKillSeen: boolean;
   lastHpFraction: number;
   medals: Set<MedalId>;
@@ -510,7 +511,7 @@ function newTracker(vehicleId: string, mapId: string): BattleTracker {
     kills: 0, damage: 0, damageTaken: 0, blocked: 0, shots: 0, aimedShots: 0, aimedHits: 0,
     pending: [], streak: 0, bestStreak: 0, chain: 0, bestChain: 0, lastKillT: -Infinity,
     longestKillM: 0, killShots: new Map(), damaged: new Set(), damageBy: new Map(), spotted: new Set(),
-    waves: 0, alive: true, hits: 0, hitShells: new Set(), firstKillSeen: false, lastHpFraction: 1,
+    waves: 0, alive: true, hits: 0, rounds: new FiredRoundLedger(), firstKillSeen: false, lastHpFraction: 1,
     medals: new Set(), trace: [],
   };
 }
@@ -571,6 +572,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (!battle || !event || !me() || event.shooterId !== me()) return;
     const now = ctx.clockS();
     battle.shots++;
+    battle.rounds.fire(typeof event.shellId === 'number' ? event.shellId : null);
     if (finite(event.caliberMm) >= AIMED_CALIBER_MM) {
       battle.aimedShots++;
       battle.pending.push({ id: typeof event.shellId === 'number' ? event.shellId : null, t: now, hit: false });
@@ -589,14 +591,12 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (player && attacker === player && target && isEnemy(target)) {
       battle.damage += damage;
       const shellId = typeof event.shellId === 'number' ? event.shellId : null;
-      if (shellId == null || !battle.hitShells.has(shellId)) {
-        battle.hits++;
-        if (shellId != null) battle.hitShells.add(shellId);
-      }
+      const freshRound = battle.rounds.hit(shellId);
+      if (freshRound.hit) battle.hits++;
       const shot = battle.pending.find((entry) => !entry.hit && (shellId == null || entry.id == null || entry.id === shellId));
-      if (shot) { shot.hit = true; battle.aimedHits++; }
+      if (shot && freshRound.hit) { shot.hit = true; battle.aimedHits++; }
       if (event.destroyed === true) {
-        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target) });
+        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target), drone: event.shellName === 'FPV shaped charge' });
       }
       settleShots(ctx.clockS());
     }
@@ -649,7 +649,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (aerial === 'gunship' && battle.kills >= GUNSHIP_ACE_KILLS) award('gunship_ace');
     if (aerial === 'drone' && battle.kills >= DRONE_ACE_KILLS) award('drone_ace');
     if (battle.trace.length < TRACE_LIMIT) {
-      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM), cause: text(event.cause) || 'shot' });
+      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM), cause: event.cause === 'ammorack' ? 'ammorack' : shot?.drone ? 'drone' : text(event.cause) || 'shot' });
     }
   });
 

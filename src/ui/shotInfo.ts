@@ -1,3 +1,4 @@
+import { BattleKillLedger, FiredRoundLedger } from '../game/battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/shotInfo.ts — combat-intelligence panels (WoT damage-log/armor-info
 // mod class). Everything rendered here traces 1:1 to RESOLVED sim events on
@@ -65,6 +66,7 @@ interface ModuleHit {
 }
 
 interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
+  readonly shellId?: number;
   readonly kind: string;
   readonly attackerId?: EntityId | null;
   readonly attackerName?: string | null;
@@ -92,6 +94,7 @@ interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
 }
 
 interface ShellFiredEvent {
+  readonly shellId?: number;
   readonly isPlayer?: boolean;
   readonly shooterId?: EntityId | null;
   readonly shellType?: string;
@@ -243,6 +246,7 @@ export function appendIncomingHit(
 interface EndInfo {
   readonly timeS?: number;
   readonly map: string | null;
+  readonly mapId?: string | null;
   readonly reason: string | null;
   readonly campaign: CampaignDebrief | null;
   readonly hordeWave: number | null;
@@ -269,6 +273,7 @@ export interface ShotInfoRuntime {
   warmSchematics(specIds: readonly string[]): void;
   toggleLog(): void;
   setPlayer(id: EntityId | null): void;
+  setTeamResolver(resolve: (id: EntityId) => string | undefined): void;
   hideStats(): void;
   reset(): void;
 }
@@ -993,6 +998,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
                            // report's expandable per-enemy exchange ledger (r4)
   const receivedLog: ReceivedEntry[] = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
+  const firedRounds = new FiredRoundLedger();
+  const killLedger = new BattleKillLedger();
+  let teamOf: (id: EntityId) => string | undefined = () => undefined;
   let endInfo: EndInfo | null = null;      // battle:ended report header
   // battle endings (2026-09-25): the final blow — the last lethal shell:hit on any pair and the last
   // tank:destroyed — resolved into the report's hero line by finalBlow.ts, never recomputed
@@ -1064,6 +1072,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   /** Record that a and b fought — therefore sit on opposing teams. */
   function linkOpposed(a: EntityId | null | undefined, b: EntityId | null | undefined): void {
     if (a == null || b == null || a === b) return;
+    if (teamOf(a) != null && teamOf(a) === teamOf(b)) return;
     const fa = tgFind(a);
     const fb = tgFind(b);
     if (fa.root === fb.root) return;
@@ -1077,6 +1086,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function sideOf(id: EntityId): TeamSide {
     if (playerId == null) return null;
     if (id === playerId) return 'ally';
+    const playerTeam = teamOf(playerId), entityTeam = teamOf(id);
+    if (playerTeam != null && entityTeam != null) return playerTeam === entityTeam ? 'ally' : 'enemy';
     if (!tg.has(id)) return null;
     const fp = tgFind(playerId);
     const fi = tgFind(id);
@@ -1405,7 +1416,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function summaryKills(): Array<{ id: string; name: string; specId: string; dmg: number }> {
     const kills: Array<{ id: string; name: string; specId: string; dmg: number }> = [];
     for (const [id, target] of stats.perTarget) {
-      if (!target.killed) continue;
+      if (!target.killed || sideOf(id) === 'ally') continue;
       kills.push({
         id,
         name: target.name || id,
@@ -1460,8 +1471,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       playerSpecId: me?.specId || null,
       playerDead: !!me?.dead,
       playerDeaths: me?.deaths ?? 0,
+      playerKills: playerId ? killLedger.count(playerId) : 0,
       revives,
       map: summaryMapName(),
+      mapId: endInfo?.mapId || endInfo?.map || null,
       timeS: summaryTime(),
       stats: {
         dealt: stats.dealt,
@@ -1533,12 +1546,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function recordOutgoingHit(ev: ShotHitEvent): void {
     if (ev.attackerId !== playerId || !ev.targetId || ev.targetId === playerId) return;
     const outcome = hitOutcomeFor(ev);
-    stats.hits += 1;
-    if (outcome.penetrated) stats.pens += 1;
+    const round = firedRounds.hit(ev.shellId, outcome.penetrated);
+    if (round.hit) stats.hits += 1;
+    if (round.pen) stats.pens += 1;
     stats.dealt += ev.damage || 0;
     const shell = perShell(ev.shellType || '—');
-    shell.hits += 1;
-    if (outcome.penetrated) shell.pens += 1;
+    if (round.hit) shell.hits += 1;
+    if (round.pen) shell.pens += 1;
     shell.dmg += ev.damage || 0;
     if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
     stats.modulesDestroyed += (ev.modulesHit || [])
@@ -1596,6 +1610,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // docs/GUNNERY-CAMERA-SPEC.md); this latch covers sim-tick-driven
     // replays that never render at all.
     if (p.shooterId != null) playerId = p.shooterId;
+    firedRounds.fire(p.shellId);
     stats.fired += 1;
     perShell(p.shellType || '—').fired += 1;
   });
@@ -1637,11 +1652,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('tank:destroyed', (payload) => {
     latestToast = null; // A kill notification ends the previous incoming run.
     const p = eventPayload<TankDestroyedEvent>(payload);
+    if (!killLedger.record(p.id, p.killerId, teamOf(p.id), p.killerId ? teamOf(p.killerId) : undefined)) return;
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
     lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
-      combatant(p.killerId).kills += 1;
+      combatant(p.killerId).kills = killLedger.count(p.killerId);
       linkOpposed(p.killerId, p.id);
     }
     if (playerId == null || p.killerId !== playerId || p.id === playerId) return;
@@ -1665,6 +1681,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const p = eventPayload<{ id?: EntityId | null } | null>(payload);
     if (!p || p.id == null) return;
     revives = true;
+    killLedger.respawn(p.id);
     recordCombatantRevived(combatant(p.id));
   });
 
@@ -1753,7 +1770,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
     endInfo = p ? {
-      timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p),
+      timeS: p.timeS, map: p.map || p.mapId || null, mapId: p.mapId || p.map || null, reason: p.reason || null, campaign: campaignDebrief(p),
       hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
       brains: p.brains && typeof p.brains === 'object'
         ? { enemy: String(p.brains.enemy || 'classic'), allies: String(p.brains.allies || 'classic') } : null,
@@ -1794,6 +1811,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     /** Latch the player entity id (hud.ts forwards it each frame). */
     setPlayer(id: EntityId | null): void { playerId = id; },
+    setTeamResolver(resolve: (id: EntityId) => string | undefined): void { teamOf = resolve; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {
@@ -1824,6 +1842,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       spottedSet.clear();
       spotAttributed = false;
       Object.assign(stats, newStats());
+      firedRounds.clear();
+      killLedger.clear();
       stats.perTarget = new Map();
       logOpen = false;
       logPanel.classList.remove('open');
