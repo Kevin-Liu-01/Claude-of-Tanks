@@ -4306,6 +4306,27 @@
       "suspension": false
     },
     {
+      "id": "m6_linebacker",
+      "name": "M6 Linebacker",
+      "nation": "USA",
+      "role": "ifv",
+      "tier": 10,
+      "hp": 2400,
+      "speed": 60,
+      "reverse": 22,
+      "hull": 47,
+      "turret": 71.5,
+      "dispersion": 0.24,
+      "reload": 0.3,
+      "aim": 0.94,
+      "view": 450,
+      "smoke": 8,
+      "lights": true,
+      "roofGun": true,
+      "missile": true,
+      "suspension": false
+    },
+    {
       "id": "ua_t80u_modern",
       "name": "T-80U Zoria (Concept)",
       "nation": "Ukraine",
