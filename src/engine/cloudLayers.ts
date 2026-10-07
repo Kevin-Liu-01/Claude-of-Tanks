@@ -68,6 +68,8 @@ export interface CloudStack {
   highM: number;
   /** the turbulence's displacement at the bases (m) */
   turbulenceM: number;
+  /** the weather's displacement with height (m): a tower's footprint drifting and billowing up its column (0 none) */
+  weatherWarpM: number;
   /** the deck cells' lookup period (m): the local weather's cell channel (1.2 km cells on its tile) at the regime's size */
   cellPeriodM: number;
   /** the shape volume's world period (m): several cumulus across it, a deck's lumps a few hundred metres */
@@ -207,6 +209,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   return {
     lanes, lowM, highM,
     turbulenceM: preset.windSpeed > 0 ? 180 + preset.windSpeed * 12 : 0,
+    // only a convective sky with towers pays for it (one more fetch a step)
+    weatherWarpM: isDeck ? 0 : clamp((preset.towers - 0.25) / 0.75, 0, 1) * 320,
     cellPeriodM: CLOUD_LOCAL_PERIOD_M * Math.max(100, preset.cellM) / CLOUD_LOCAL_CELL_M,
     // (a shallow humilis takes finer billows: at the 3.2 km period its billows were as deep as the cloud and carved it away)
     shapePeriodM: deck > 0.5 ? 1400 : clamp(3200 * preset.thicknessM / 820, 1600, 3200),
@@ -274,4 +278,5 @@ export function packCloudStack(stack: CloudStack, u: Record<string, { value: unk
   if (u.uCellPeriod) u.uCellPeriod.value = stack.cellPeriodM;
   if (u.uShapePeriod) u.uShapePeriod.value = stack.shapePeriodM;
   if (u.uTurbulence) u.uTurbulence.value = stack.turbulenceM;
+  if (u.uWeatherWarp) u.uWeatherWarp.value = stack.weatherWarpM;
 }

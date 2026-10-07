@@ -117,6 +117,8 @@ uniform vec3 uDetailShift;
 uniform vec3 uClear2;
 // the turbulence's displacement at the bases (m; 0 = none)
 uniform float uTurbulence;
+// the weather's own displacement with height (m; 0 = none): a tower's footprint drifts and billows up its column
+uniform float uWeatherWarp;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -136,7 +138,13 @@ vec4 cl2Profile( vec4 hf, vec4 bias ) {
 	return smoothstep( 0.0, 0.06, hf ) * ( 1.0 - pow( hf, 1.0 / max( bias, vec4( 0.05 ) ) ) );
 }
 // the weather of every lane at a world xz (lod: the local weather's mip level)
-vec4 cl2Weather( vec2 xz, float lod ) {
+vec4 cl2Weather( vec2 xz, float h, float lod ) {
+	if ( uWeatherWarp > 0.0 ) {
+		// the turbulence field read a little further along at every altitude: the footprint's edge moves with height (a
+		// tower was the extrusion of one outline — every wiggle of it a groove the height of the tower)
+		vec2 tv = textureLod( tTurb, ( xz + vec2( 0.37, 0.61 ) * h ) / CL2_TURB, 0.0 ).rg * 2.0 - 1.0;
+		xz += tv * uWeatherWarp;
+	}
 	vec4 lw = textureLod( tLocal, ( xz + uLocalShift ) / CL2_LOCAL, lod );
 	vec4 w = uLayerChannels * lw;
 	if ( dot( uLayerStreets, uLayerStreets ) > 0.0 ) {
@@ -210,7 +218,7 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 float cl2Extinction( vec3 p, float lod ) {
 	float h = cl2Height( p );
 	if ( h < uHeightRange.x || h > uHeightRange.y ) return 0.0;
-	vec4 w = cl2Weather( p.xz, lod );
+	vec4 w = cl2Weather( p.xz, h, lod );
 	vec4 hf;
 	vec4 shell = cl2Shell( h, w, cl2Cell( p.xz, lod ), hf );
 	if ( dot( shell, shell ) <= 0.0 ) return 0.0;
@@ -616,7 +624,7 @@ void main() {
 					for ( int q = 0; q < 24; q++ ) {
 						if ( q >= taps ) break;
 						vec3 pq = uCamPos + dir * ( r0.x + span * ( float( q ) + jitter ) / float( taps ) );
-						if ( any( greaterThan( ( cl2Weather( pq.xz, 0.0 ) - ( 1.0 - uLayerCover ) ) * step( vec4( 1e-6 ), uLayerDensity ), vec4( 0.0 ) ) ) ) { admits = true; break; }
+						if ( any( greaterThan( ( cl2Weather( pq.xz, cl2Height( pq ), 0.0 ) - ( 1.0 - uLayerCover ) ) * step( vec4( 1e-6 ), uLayerDensity ), vec4( 0.0 ) ) ) ) { admits = true; break; }
 					}
 					if ( !admits ) { t = r0.y + 1.0; continue; }
 				}
@@ -634,7 +642,7 @@ void main() {
 			float foot = t * uPixelAngle;
 			// the weather's mip by the footprint (a texel is CL2_LOCAL / 512 m)
 			float wLod = max( 0.0, log2( max( foot * 4.0, 1.0 ) / ${f(CLOUD2_PERIODS.local / 512)} ) );
-			vec4 w = cl2Weather( p.xz, wLod );
+			vec4 w = cl2Weather( p.xz, h, wLod );
 			vec4 hf;
 			vec4 shell = cl2Shell( h, w, cl2Cell( p.xz, wLod ), hf );
 			if ( dot( shell, shell ) <= 0.0 ) {

@@ -304,7 +304,7 @@ float contrailDepth( vec2 xz, float foot ) {
 // ---- rain shafts and virga under the slab's precipitating cores, between the camera and the base
 // ---- rain shafts and virga under the main lane's precipitating cores, between the camera and the base
 float cloudPrecip( vec2 pxz ) {
-	vec4 w = cl2Weather( pxz, 0.0 );
+	vec4 w = cl2Weather( pxz, uLayerBase.x, 0.0 );
 	float cov = smoothstep( 1.0 - uLayerCover.x * 0.9, 1.0, w.x ) * step( 1e-6, uLayerDensity.x );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
 	float anvil = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 ).g;
@@ -568,7 +568,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
