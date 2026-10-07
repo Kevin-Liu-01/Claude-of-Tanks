@@ -409,6 +409,8 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
 /** The street row: a shikumen terrace, a shophouse row or a Settlement block, by the bank of the creek it stands on. */
 const rowhouse: RegionalBuilder = (ctx) => {
   const bank = bankOf(ctx), r = ctx.rng();
+  // a lane's terrace (round 2's lilong rows on the empty lots: plots of four or more gate houses) is always shikumen
+  if (ctx.info.w >= 19) return shikumenRow(ctx, bank);
   if (bank === 'zhabei') return r < 0.68 ? shophouseRow(ctx, bank) : shikumenRow(ctx, bank);
   if (bank === 'settlement') return r < 0.4 ? shikumenRow(ctx, bank) : r < 0.72 ? settlementBlock(ctx) : shophouseRow(ctx, bank);
   return r < 0.34 ? shikumenRow(ctx, bank) : r < 0.67 ? shophouseRow(ctx, bank) : settlementBlock(ctx);

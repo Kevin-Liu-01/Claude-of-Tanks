@@ -181,14 +181,20 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
     }
   }
   push(ctx, bed);
+  // the catenary: poles in pairs at the kerbs, a cross-span between each standing pair (a lone pole carries a bracket arm
+  // out over both tracks instead), the contact wire over each track from support to support. A wire runs only between
+  // two supports one bay apart along the line (Ruinspires' wave 162: "floating catenary wires" where a line leaves the
+  // limit and comes back, or a span had fallen); a bay whose support is down ends its wires, one hanging to the roadway
   const wires = new PartSink([0, 0]);
   const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
-  let prev: { y: number; s: Station } | null = null;
-  for (let i = 0; i < st.length; i += Math.round(SPAN / 2)) {
+  const BAY = Math.round(SPAN / 2);
+  let prev: { y: number; s: Station; carried: boolean } | null = null;
+  for (let i = 0; i < st.length; i += BAY) {
     const s = st[i];
     if (onDeck(s.x, s.z)) { prev = null; continue; }
     const y = hf.getHeightAt(s.x, s.z);
     const tops: Vec3[] = [];
+    const lone: Array<{ side: number; px: number; py: number; pz: number }> = [];
     for (const side of [1, -1]) {
       const [px, , pz] = at(s, side * POLE_OFFSET);
       if (!clears(records, px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
@@ -202,46 +208,88 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
         wires.member('structureMetal', [px, py + SPAN_Y - 0.3, pz], [px - s.nx * side * 1.2, py + SPAN_Y - 0.1, pz - s.nz * side * 1.2], 0.08, 0.08,
           normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
         tops.push([px, py + SPAN_Y, pz]);
+        lone.push({ side, px, py, pz });
       }
     }
-    if (mobile) { prev = { y, s }; continue; }
+    let carried = tops.length === 2;
+    if (!carried && lone.length === 1) {
+      const { side, px, py, pz } = lone[0];
+      const reach = POLE_OFFSET + TRACK + 0.6;
+      const tip: Vec3 = [px - s.nx * side * reach, py + SPAN_Y - 0.25, pz - s.nz * side * reach];
+      wires.member('structureMetal', [px, py + SPAN_Y - 0.2, pz], tip, 0.09, 0.09, normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
+      wires.member('structureMetal', [px, py + SPAN_Y - 1.7, pz], [(px + tip[0]) / 2, py + SPAN_Y - 0.25, (pz + tip[2]) / 2], 0.05, 0.05,
+        normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
+      carried = true;
+    }
+    if (mobile) { prev = { y, s, carried }; continue; }
     if (tops.length === 2) wires.member('structureWood', tops[0], tops[1], 0.03, 0.03, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
-    if (prev) {
+    const bayOk = prev !== null && s.s - prev.s.s <= SPAN * 1.25;
+    if (prev && bayOk && (prev.carried || carried)) {
       for (const t of [-1, 1]) {
         const a = at(prev.s, t * TRACK), b = at(s, t * TRACK);
-        if (look() < 0.06) {
-          wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.05, (a[2] + b[2]) / 2], 0.025, 0.025, [0, 1, 0],
-            { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
+        const down = look() < 0.06;
+        if (prev.carried && carried && !down) {
+          wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [b[0], y + WIRE_Y, b[2]], 0.025, 0.025, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
           continue;
         }
-        wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [b[0], y + WIRE_Y, b[2]], 0.025, 0.025, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
+        const [from, fy] = prev.carried ? [a, prev.y] : [b, y];
+        wires.member('structureWood', [from[0], fy + WIRE_Y, from[2]], [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.05, (a[2] + b[2]) / 2], 0.025, 0.025, [0, 1, 0],
+          { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
       }
     }
-    prev = { y, s };
+    prev = { y, s, carried };
   }
   push(ctx, wires);
-  // two burnt trams, rotation-symmetric about the map's centre, shoved against the kerb midway between two poles
+  // burnt trams where they died, derailed off their track toward the kerb: inside the avenue (the layout brief counts a
+  // wreck a roadblock, tools/map-layout-metrics.mjs ROADBLOCK_KINDS) but clear of the middle a hull drives (the road
+  // crossing sweep's driver keeps to the line: a wreck on the track stopped it short of road 2's causeway), each with
+  // its rotation twin about the map's centre where the avenue has one; failing that in a dozen bays, shoved against
+  // the kerb. Midway between two poles.
   const poles = st.filter((_c, i) => i % Math.round(SPAN / 2) === 0);
-  const TRAM_HL = 5.7, TRAM_HW = 1.15, TRAM_OFF = ROAD_CLEAR + TRAM_HW + 0.1;
-  const tramAt = (sTarget: number, side: number) => {
+  const TRAM_HL = 5.7, TRAM_HW = 1.15;
+  const others = roads.filter((_line, r) => r !== road);
+  const TRAM_SEATS: Array<{ off: number; onTrack: boolean }> = [{ off: 3.7, onTrack: true }, { off: ROAD_CLEAR + TRAM_HW + 0.1, onTrack: false }];
+  const tramSeat = (s: Station, side: number, seat: { off: number; onTrack: boolean }): [number, number] | null => {
+    const [cx, , cz] = at(s, side * seat.off);
+    if (!clears(records, cx, cz, TRAM_HL, TRAM_HW + 0.05, s.tx, s.tz, 0.4) || !clearOfRoads(seat.onTrack ? others : roads, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz)
+      || !clearOfKeepOut(keep, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz) || onDeck(cx, cz)) return null;
+    return [cx, cz];
+  };
+  const placeTram = (s: Station, cx: number, cz: number, onTrack: boolean): void => {
+    const y = hf.getHeightAt(cx, cz);
+    const sink = new PartSink([look() * 5, look() * 5]);
+    sink.placed(Math.atan2(-s.tz, s.tx), cx, y + (onTrack ? 0.08 : 0.02), cz, () => burntTram(sink, look));
+    push(ctx, sink);
+    block(ctx, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz, y, y + 3.2, 'tram-wreck');
+    records.push(...(ctx.obstacles ?? []).slice(-1));
+  };
+  // a pair when the avenue has a rotation twin for the seat; Suzhou Creek's avenue is no rotation of itself (its
+  // district replays the head's plan), so each wreck then takes its own seat
+  const tramAt = (sTarget: number, side: number, paired: boolean): boolean => {
     const bays = poles.slice(0, -1).map((p) => p.s + SPAN / 2).sort((a, b) => Math.abs(a - sTarget) - Math.abs(b - sTarget));
-    for (const target of bays.slice(0, 6)) {
+    for (const seat of TRAM_SEATS) for (const target of bays.slice(0, 12)) {
       const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
-      const [cx, , cz] = at(s, side * TRAM_OFF);
-      if (!clears(records, cx, cz, TRAM_HL, TRAM_HW + 0.05, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz)
-        || !clearOfKeepOut(keep, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz) || onDeck(cx, cz)) continue;
-      const y = hf.getHeightAt(cx, cz);
-      const sink = new PartSink([look() * 5, look() * 5]);
-      sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
-      push(ctx, sink);
-      block(ctx, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz, y, y + 3.2, 'tram-wreck');
-      records.push(...(ctx.obstacles ?? []).slice(-1));
-      return;
+      const a = tramSeat(s, side, seat);
+      if (!a) continue;
+      if (paired) {
+        const twin = st.reduce((best, c) => (Math.hypot(c.x + s.x, c.z + s.z) < Math.hypot(best.x + s.x, best.z + s.z) ? c : best));
+        if (Math.hypot(twin.x + s.x, twin.z + s.z) > 2.5) return false;
+        const b = tramSeat(twin, -side, seat);
+        if (!b) continue;
+        placeTram(s, a[0], a[1], seat.onTrack);
+        placeTram(twin, b[0], b[1], seat.onTrack);
+        return true;
+      }
+      placeTram(s, a[0], a[1], seat.onTrack);
+      return true;
     }
+    return false;
   };
   const total = st[st.length - 1].s, mid = st.reduce((best, c) => (Math.hypot(c.x, c.z) < Math.hypot(best.x, best.z) ? c : best)).s;
-  tramAt(mid - Math.min(120, total * 0.13), 1);
-  tramAt(mid + Math.min(120, total * 0.13), -1);
+  for (const [k, side] of [[0.13, 1], [0.06, -1]] as const) {
+    const d = Math.min(k > 0.1 ? 120 : 50, total * k);
+    if (!tramAt(mid - d, side, true)) { tramAt(mid - d, side, false); tramAt(mid + d, -side, false); }
+  }
 }
 
 /**
@@ -328,8 +376,9 @@ function dressSampans(ctx: StreetContext): void {
   const surface = (x: number, z: number) => hf.getWaterSurfaceHeightAt?.(x, z) ?? hf.getHeightAt(x, z) + (hf.getWaterDepthAt?.(x, z) ?? 0);
   for (const s of st) {
     if (decks.some((d) => Math.hypot(s.x - d.x, s.z - d.z) < d.halfWidth + 18)) continue;
-    if (look() < 0.42) continue;
-    const side = look() < 0.5 ? 1 : -1, n = 1 + Math.floor(look() * 3);
+    // (round 2: "brown and crowded" — most stretches hold a raft, up to four boats along a bank)
+    if (look() < 0.2) continue;
+    const side = look() < 0.5 ? 1 : -1, n = 1 + Math.floor(look() * 4);
     const r = creek.reduce((best, m) => (Math.hypot(m.x - s.x, m.z - s.z) < Math.hypot(best.x - s.x, best.z - s.z) ? m : best)).r;
     for (let k = 0; k < n; k++) {
       const off = side * (r * 0.5 - 1.2 - k * 1.95), shift = (look() - 0.5) * 2.0;
@@ -344,11 +393,87 @@ function dressSampans(ctx: StreetContext): void {
   push(ctx, sink);
 }
 
+/**
+ * The creek's masonry banks through the city (round 2, wave 149: "clean blue water between bare slopes", "the creek banks
+ * are bare sand and dirt slopes rather than masonry quays"): along both banks, from a hand under the waterline up to the
+ * bank's top, a revetment of granite blocks laid on the bank's own slope (the terrain stays the ground a hull drives),
+ * a granite coping along the top with its mooring posts, and a flight of landing steps down to the water now and then.
+ * Dressing only; clear of every bridge's deck and approach.
+ */
+function dressCreekQuays(ctx: StreetContext): void {
+  const hf = ctx.heightField;
+  const creek = ctx.L.marshes ?? [];
+  if (creek.length < 2 || !hf.getWaterMaskAt) return;
+  const decks = hf.bridgeDecks ?? [];
+  const mobile = getDeviceTier() === 'mobile';
+  const look = streamFrom(hashSeed('shanghai-quays', creek.length));
+  const sink = new PartSink([look() * 5, look() * 5]);
+  const st = resample(creek.map((m) => [m.x, m.z] as const), 3, 330);
+  const wet = (x: number, z: number) => hf.getWaterMaskAt!(x, z) > 0.5;
+  const surface = (x: number, z: number) => hf.getWaterSurfaceHeightAt?.(x, z) ?? hf.getHeightAt(x, z) + (hf.getWaterDepthAt?.(x, z) ?? 0);
+  const nearDeck = (x: number, z: number) => decks.some((d) => {
+    const ox = x - d.x, oz = z - d.z;
+    return Math.abs(ox * d.ux + oz * d.uz) < d.halfLength + (d.approachM ?? 0) + 6 && Math.abs(-ox * d.uz + oz * d.ux) < d.halfWidth + 6;
+  });
+  const radiusAt = (x: number, z: number) => creek.reduce((best, m) => (Math.hypot(m.x - x, m.z - z) < Math.hypot(best.x - x, best.z - z) ? m : best)).r;
+  // per station and side: the waterline's offset and the bank top's (null where the bank is a deck's or not water at all)
+  type Edge = { w: number; top: number } | null;
+  const edges: Array<[Edge, Edge]> = st.map((s) => {
+    if (nearDeck(s.x, s.z)) return [null, null];
+    const r = radiusAt(s.x, s.z);
+    return [1, -1].map((side) => {
+      let w = 0;
+      for (let d = 0; d <= r * 1.2; d += 0.5) { if (!wet(s.x + s.nx * side * d, s.z + s.nz * side * d)) { w = d; break; } }
+      if (w < 1.5) return null;
+      return { w, top: Math.max(w + 1.5, r * 0.96) };
+    }) as [Edge, Edge];
+  });
+  const ROWS = 4;
+  for (let i = 0; i + 1 < st.length; i++) {
+    const a = st[i], b = st[i + 1];
+    if (b.s - a.s > 3.5) continue;
+    for (const [k, side] of [[0, 1], [1, -1]] as const) {
+      const ea = edges[i][k], eb = edges[i + 1][k];
+      if (!ea || !eb) continue;
+      // the rows of the revetment from just under the water to the top: each corner on the slope a few centimetres up
+      const pt = (s: Station, e: { w: number; top: number }, f: number): Vec3 => {
+        const d = side * ((e.w - 0.6) + (e.top - e.w + 0.6) * f), x = s.x + s.nx * d, z = s.z + s.nz * d;
+        const y = f === 0 ? surface(s.x + s.nx * side * e.w, s.z + s.nz * side * e.w) - 0.35 : hf.getHeightAt(x, z) + 0.035;
+        return [x, y, z];
+      };
+      for (let row = 0; row < ROWS; row++) {
+        const f0 = row / ROWS, f1 = (row + 1) / ROWS;
+        const p00 = pt(a, ea, f0), p10 = pt(b, eb, f0), p01 = pt(a, ea, f1), p11 = pt(b, eb, f1);
+        // counter-clockwise seen from the water (the outside of the bank's face); a map kit's dressing carries no
+        // occlusion record (the weathering pass that consumes one runs on the buildings only)
+        if (side > 0) sink.quad('stone', p00, p01, p11, p10, { decor: true });
+        else sink.quad('stone', p00, p10, p11, p01, { decor: true });
+      }
+      // the coping along the top
+      const ca = pt(a, ea, 1), cb = pt(b, eb, 1);
+      sink.member('stone', [ca[0], ca[1] + 0.12, ca[2]], [cb[0], cb[1] + 0.12, cb[2]], 0.45, 0.24, [0, 1, 0], { decor: true }, 0.01);
+      // a mooring post every few stations, a flight of steps now and then
+      if (!mobile && i % 4 === 0 && look() < 0.7) {
+        const [px, py, pz] = pt(a, ea, 0.97);
+        sink.cylinder('stone', [px, py, pz], 'y', 0.55, 0.14, 6, { decor: true }, 0.12);
+      }
+      if (i % 20 === 7 && look() < 0.6) {
+        for (let k2 = 0; k2 < 5; k2++) {
+          const f = 1 - (k2 + 1) / 6, [sx, sy, sz] = pt(a, ea, f);
+          sink.span('stone', sx - 0.6, sy - 0.25, sz - 0.6, sx + 0.6, sy + 0.08, sz + 0.6, { decor: true });
+        }
+      }
+    }
+  }
+  push(ctx, sink);
+}
+
 /** Suzhou Creek as Shanghai's: the tram line down the Settlement's avenue, the bridgeheads' posts, the creek's sampans. */
 export function dressShanghai(ctx: StreetContext, mapId = 'blackglass'): void {
   const decks = (ctx.heightField.bridgeDecks ?? []).map((deck) => ({ ...deck, approachM: deck.approachM ?? 0 }));
   const keep = ctx.L.spawns ? yardKeepOut(mapId, ctx.L.spawns, ctx.L.terrain?.hardstands ?? [], decks) : null;
   dressTramAvenue(ctx, keep, 2);
   dressBridgeheads(ctx);
+  dressCreekQuays(ctx);
   dressSampans(ctx);
 }
