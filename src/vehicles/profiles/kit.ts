@@ -2690,7 +2690,10 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
   // round hinge barrels, a grouser bar, and an end connector with its wedge-bolt head at each end; two clamp bars run
   // the course over the rails, drop to the rails' ends on bolted brackets and are bolted down. Same envelope above
   // the carrier (links -0.0225..0.05, clamps to 0.062), same rails, feet and base offset; the rails run 2.5 cm past
-  // the course at each end to take the brackets.
+  // the course at each end to take the brackets. The clamps, brackets and their bolts are the carrier's painted steel
+  // (`detail`, as the rails and feet) and the connectors and wedge bolts the links' own track steel (`spareTrack`), so
+  // the fitting keeps its two draws: a third gunmetal slot cost every carrier one more draw and buffer for a tone
+  // within a few levels of the track steel (round 4 verification, 2026-10-07).
   const railY = -0.0315;
   const clampZ = runDepth / 2 + 0.02;
   for (const x of [-width * 0.32, width * 0.32]) {
@@ -2698,10 +2701,10 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
     for (const z of [-runDepth * 0.4, runDepth * 0.4]) {
       parts.add('detail', box(0.105, 0.019, 0.045), x, -0.031, z);
     }
-    parts.add('dark', box(0.026, 0.008, runDepth + 0.05), x, 0.054, 0);                    // clamp bar over the grousers
+    parts.add('detail', box(0.026, 0.008, runDepth + 0.05), x, 0.054, 0);                  // clamp bar over the grousers
     for (const end of [-1, 1]) {
-      parts.add('dark', box(0.026, 0.094, 0.008), x, 0.011, end * clampZ);                 // bracket down to the rail
-      parts.add('dark', cylY(0.009, 0.009, 0.008, 6), x, 0.062, end * (clampZ - 0.012));   // clamp bolt head
+      parts.add('detail', box(0.026, 0.094, 0.008), x, 0.011, end * clampZ);               // bracket down to the rail
+      parts.add('detail', cylY(0.009, 0.009, 0.008, 6), x, 0.062, end * (clampZ - 0.012)); // clamp bolt head
     }
   }
   const connectorX = width / 2 - Math.min(0.016, width * 0.16);
@@ -2711,8 +2714,8 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
     parts.add('spareTrack', box(width * 0.94, 0.026, 0.118), 0, -0.0095, z);               // shoe plate
     for (const side of [-1, 1]) {
       parts.add('spareTrack', cylX(0.0215, width * 0.9, 8), 0, 0, z + side * 0.0565);      // hinge barrels
-      parts.add('dark', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);             // end connector
-      parts.add('dark', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);          // wedge-bolt head
+      parts.add('spareTrack', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);       // end connector
+      parts.add('spareTrack', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);    // wedge-bolt head
     }
     parts.add('spareTrack', box(width * 0.82, 0.0465, 0.036), 0, 0.02675, z);              // grouser
   }
