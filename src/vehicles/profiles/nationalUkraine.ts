@@ -250,7 +250,7 @@ function shoulderPanels(P:TankBuilderPort,c:NationalModernizationConfig):void {
       if(side<0){for(const p of ring)p[0]*=-1;ring.reverse();}
       return {z,ring};
     });
-    P.addExternalArmor('hull',sectionSolid(sections));
+    P.addExternalArmor('hull',sectionSolid(sections,{sideQuadDiagonal:side<0?'bd':'ac'}));
     // Shallow seams and fastening strips sit on top of the fitted shoulder.
     for(const z of [-2.15,-.55,1.10,2.18]){
       const y=surfaceY(P,'hull',side*inner,z)+.035;

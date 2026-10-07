@@ -1,3 +1,4 @@
+import { placeWreckCollision } from './wreckCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -125,7 +126,7 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, type WreckBake } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -708,15 +709,6 @@ interface TankWreckSpot {
   supportSpread: number;
   supportMaxEmbed: number;
   supportMaxFloat: number;
-}
-
-interface WreckBake {
-  geo: THREE.BufferGeometry;
-  shadowGeo: THREE.BufferGeometry | null;
-  hx: number;
-  hz: number;
-  h: number;
-  tris: number;
 }
 
 export interface PropsRuntime {
@@ -3972,6 +3964,10 @@ ${snowCap ? `
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
+    // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
+    // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
+    // or how far (the map-revival lanes, 2026-10-05: the owner's town-plan ruling)
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
@@ -3993,8 +3989,6 @@ ${snowCap ? `
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
-    // a building that stands in a carriageway is packed for the move after every settlement building stands
-    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
@@ -4068,6 +4062,8 @@ ${snowCap ? `
     // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
+    // (the carriageway footprint is the base geometry's, as for a generated building)
+    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed,
@@ -4076,7 +4072,6 @@ ${snowCap ? `
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
@@ -5897,12 +5892,17 @@ ${snowCap ? `
     }));
     const onTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
       && Math.abs(z - t.z) < t.reach && Math.hypot(x - t.x, z - t.z) < t.reach);
+    // (b12, wave 72 on Redrock: the fallen blocks "soap bars" — angular, size-graded, half-buried, sand drifted) the talus
+    // sorted by size as a rockfall sorts it, the small blocks near the wall's foot and the big ones rolled out to the toe;
+    // on a dusty map the drifted sand holds them deeper
+    const apronSink = rockDressing.dust >= 0.5 ? 0.4 : 0.3;
     for (const form of forms) {
       const count = form.geology?.boulders ?? 0;
       for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
-        const [x, z] = geologyBoulderSite(form, rng(), rng());
+        const u = rng(), reach = rng();
+        const [x, z] = geologyBoulderSite(form, u, reach);
         if (onTree(x, z)) continue;
-        if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
+        if (tryRock(x, z, 0.9 * (0.7 + 0.6 * reach), 3.0 * (0.6 + 0.6 * reach), false, apronSink)) placed++;
       }
     }
   }
@@ -6945,13 +6945,14 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
-        // solid obstacle + shell collider from the yaw-rotated footprint
-        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
-        const hx = baked.hx * cs + baked.hz * sn + 0.2;
-        const hz = baked.hx * sn + baked.hz * cs + 0.2;
-        const rec = setObbShape(
-          { min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] },
-          x, z, baked.hx + 0.2, baked.hz + 0.2, yaw);
+        // Separate hull/turret solids follow the exact visible yaw and slope pose.
+        // A sideways gun must never turn the empty space beside a wreck into a wall.
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+          .multiply(new THREE.Matrix4().makeRotationY(yaw));
+        placement.setPosition(x, y, z);
+        const rec = placeWreckCollision(baked.solids, placement);
+        const hx = (rec.max[0] - rec.min[0]) * 0.5;
+        const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
         colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);
@@ -7479,20 +7480,29 @@ ${snowCap ? `
     // patch conformed to that floated over the drawn lip and showed edge-on
     const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
     const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
+    // (b12, the coordinator after the Coastal re-shoot: "lighten the patch's inner ring") the ground contact patches carry
+    // each ring's share of their darkness in a vertex alpha; a boulder's patch keeps its soft outer shadow but lightens
+    // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
+    // contact). Only the contact layer passes shares; the other decals keep their geometry as it was.
+    const FULL_PATCH: readonly number[] = [1, 1, 1, 1];
+    const ROCK_PATCH: readonly number[] = [0.3, 0.35, 0.5, 1];
     function conformedDisc(
       x: number,
       z: number,
       r: number,
       profile: readonly number[],
       onMesh = false,
+      shares: readonly number[] | null = null,
     ): THREE.BufferGeometry {
       const rings = [0, 0.4, 0.7, 1.0], segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
+      const tint = shares ? new Float32Array(nv * 4).fill(1) : null;
       const groundAt = onMesh ? meshHeightAt : groundHeightAt;
       pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
+      if (tint && shares) tint[3] = shares[0];
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
         for (let k = 0; k < segs; k++) {
@@ -7503,6 +7513,7 @@ ${snowCap ? `
           pos[vi * 3 + 2] = pz;
           uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
           uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
+          if (tint && shares) tint[vi * 4 + 3] = shares[ri];
           vi++;
         }
       }
@@ -7518,6 +7529,7 @@ ${snowCap ? `
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      if (tint) geo.setAttribute('color', new THREE.BufferAttribute(tint, 4));
       geo.setIndex(idx);
       geo.computeVertexNormals();
       return geo;
@@ -7574,6 +7586,8 @@ ${snowCap ? `
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
       if (receiveShadow) engineCtx.setupShadowMaterial(mat);
+      // (the contact layer's per-ring shares ride its vertex alpha)
+      if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
       // Foundation/contact tint already supplies the small-scale grounding
       // term. Letting the live CSM shade that translucent layer again stacks
@@ -7601,20 +7615,20 @@ ${snowCap ? `
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
         } else {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const prop of crushables) {
-        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const stack of stackSpots) {
-        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }

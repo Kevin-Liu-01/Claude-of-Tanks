@@ -13,6 +13,7 @@ import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment
 import { createTrackEndWrapAudit } from './trackEndWrap.test-support.mjs';
 import { createWheelQualityAudit } from './wheelQualityAudit.test-support.mjs';
 import { createSurfaceMarkupFleetAudit } from '../gallery/surfaceMarkupFleetAudit.test-support.mjs';
+import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
@@ -51,6 +52,9 @@ await runFleetPass({
     { name: 'machineGunAttachment', ids: DEVELOPMENT_TANK_IDS, create: machineGunMounts },
     { name: 'trackEndWrap', ids: ALL_TANK_IDS, create: trackEndWraps },
     { name: 'wheelQuality', ids: ALL_TANK_IDS, create: createWheelQualityAudit },
+    // 2026-10-04 (physics lane round 8): every tank's HIGH build derives its published track contact (with the LOW pass:
+    // the two tiers agree within 1 cm), and the run's ends sit where its drawn band leaves the ground
+    { name: 'trackContactDerivation', ids: ALL_TANK_IDS, create: () => createTrackContactDerivationAudit('HIGH') },
     { name: 'surfaceMarkupFleet', ids: ALL_TANK_IDS, create: createSurfaceMarkupFleetAudit },
   ],
 });

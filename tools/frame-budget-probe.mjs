@@ -23,6 +23,17 @@
 // that tracks (1/ratio − 1) × the frame's own GPU time, so this GPU presents the proxy's frame times to a live
 // governor. Locks: the machine-wide capture FIFO (tools/capture-lock.mjs) for the whole run; with --session-mutex,
 // that directory too, taken only once the FIFO is ours and released with it (a busy mutex gives the FIFO back).
+//
+// The pages' agreement (2026-10-05, the ground lane's hold 51: the base's page drew 685 scene draws and 3.50 M triangles,
+// its twin — the same dist — 369 and 3.20 M, and the twin's "null" of −8.3 ms compared two scenes): every slot reads its
+// scene's draws and triangles at the first pose before it measures, with a census of its visible meshes, and
+// judgeScenes holds it against the slots before it. Scene identity is the twins' triangles (slots of one root) within
+// --twin-tris-tol (3 %); draws may wander --draws-tol (25 %: dynamic culling moves them ±11 % within one dist, and
+// they only need to catch a gross difference such as hold 51's 46 %); another build's own delta is accepted
+// once two of its stagings in a row repeat their triangles within --stable-tol (1 %). A slot that fails is staged again
+// before it measures (three readings at most); an earlier slot the judgement implicates is measured again at the end of
+// the run; a slot whose measured counts leave its staged reading, or a report whose slots disagree at a pose, is VOID.
+// --scene-check=off turns the gate off (a change that adds or removes draws on purpose).
 
 import path from 'node:path';
 import os from 'node:os';
@@ -47,6 +58,7 @@ const DEFAULTS = Object.freeze({
   pattern: 'ABBA', views: ['chase', 'centre-far'], viewports: ['1600x900', '1920x1080'], frames: 240, block: 30,
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
+  twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -216,6 +228,10 @@ export function parseFrameProbeArgs(argv) {
       case 'out': o.out = path.resolve(need()); break;
       case 'tag': o.tag = need(); break;
       case 'report': o.report = list(need()).map((r) => path.resolve(r)); break;
+      case 'twin-tris-tol': o.twinTrisTol = Number(need()); break;
+      case 'draws-tol': o.drawsTol = Number(need()); break;
+      case 'stable-tol': o.stableTol = Number(need()); break;
+      case 'scene-check': o.sceneCheck = need() !== 'off'; break;
       default: throw new Error(`Unknown argument --${name}`);
     }
   }
@@ -239,6 +255,7 @@ export function parseFrameProbeArgs(argv) {
   if (o.toggle && !FRAME_PROBE_TOGGLES[o.toggle]) throw new Error(`--toggle must be one of ${Object.keys(FRAME_PROBE_TOGGLES).join(', ')}`);
   if (o.emulate && !MID_RANGE_PROXIES[o.emulate]) throw new Error(`--emulate must be one of ${Object.keys(MID_RANGE_PROXIES).join(', ')}`);
   if (!(o.port >= 1024 && o.port < 65536)) throw new Error('--port must be a TCP port');
+  for (const k of ['twinTrisTol', 'drawsTol', 'stableTol']) if (!(o[k] >= 0)) throw new Error('--twin-tris-tol, --draws-tol and --stable-tol are percentages');
   if (!o.out) o.out = path.resolve('.qa-dev', 'reports', TOOL);
   if (!/^[a-z0-9][a-z0-9-]*$/i.test(o.tag)) throw new Error('--tag must be a file-name token');
   return o;
@@ -307,6 +324,115 @@ export async function awaitTextures(timeoutMs) {
   } catch { return { available: true, settled: !!state.settled, timedOut: true, waitedMs: Math.round(performance.now() - started) }; }
   finally { clearTimeout(timer); }
   return { available: true, settled: !!state.settled, waitedMs: Math.round(performance.now() - started) };
+}
+
+/**
+ * A staged page's scene (page function): visible meshes, their instances and triangles (index or position count over
+ * three, the draw range applied, times the instance count) by the scene's top two levels of groups — so a page that draws
+ * more than its twin names the subtree that carries the extra draws.
+ */
+function sceneCensus() {
+  const scene = window.__DEBUG?.scene;
+  if (!scene) return null;
+  const out = {};
+  const name = (o) => (o.name || o.type || '?').slice(0, 48);
+  const visit = (o, key) => {
+    if (!o.visible) return;
+    if (o.isMesh || o.isLine || o.isPoints || o.isSprite) {
+      const g = o.geometry;
+      const n = g ? (g.index ? g.index.count : (g.attributes?.position?.count ?? 0)) : 0;
+      const dr = g?.drawRange, cnt = dr && Number.isFinite(dr.count) ? Math.min(dr.count, n) : n;
+      const inst = o.isInstancedMesh ? o.count : 1;
+      const e = out[key] ??= { meshes: 0, tris: 0, instances: 0 };
+      e.meshes++; e.tris += Math.round(cnt / 3) * inst; e.instances += inst;
+    }
+    for (const c of o.children) visit(c, key);
+  };
+  for (const top of scene.children) {
+    if (!top.visible) continue;
+    if (top.children.length && !(top.isMesh || top.isLine || top.isPoints)) for (const c of top.children) visit(c, `${name(top)}/${name(c)}`);
+    else visit(top, name(top));
+  }
+  return out;
+}
+
+/** A summary's scene pass counts (the draws and triangles the agreement reads) and the frame's draws. */
+const sceneOf = (summary) => (summary ? { calls: summary.passes?.scene?.calls?.med ?? null, tris: summary.passes?.scene?.tris?.med ?? null,
+  all: summary.calls?.med ?? null } : null);
+
+/** Percent difference of two counts against the smaller (Infinity when either is missing or zero). */
+const pctOff = (a, b) => (a > 0 && b > 0 ? Math.abs(a - b) / Math.min(a, b) * 100 : Infinity);
+
+/**
+ * The pages' agreement. `pages` is [{ key, root, history: [{ calls, tris, seq? }, …] }] — every staging of a page, the
+ * latest last (seq orders the stagings of one root across its pages). Twins (pages of one root) agree on triangles within
+ * twinTris % and on draws within draws %; of two that do not, the one with more triangles is staged again (the over-drawn
+ * state of holds 48 and 51 adds geometry). A page of another root than the base may differ from the base twins' median —
+ * its own geometry — once the reading before it on its root (its own earlier staging, or another page of that root)
+ * repeats its triangles within stable % and its draws within draws %; with no reading before it, it is staged again, or
+ * waits when its root has stagings still to come (expectMore). A page still unsettled after maxReadings readings voids
+ * the judgement. Returns { verdict: 'agree' | 'restage' | 'void', restage: [key], accepted: [{ key, trisPct, drawsPct }],
+ * pending: [key], notes }.
+ */
+export function judgeScenes(pages, { twinTris = 3, draws = 25, stable = 1, maxReadings = 3, expectMore = [], baseRoot = pages[0]?.root } = {}) {
+  const notes = [], restage = new Set(), accepted = [], pending = [];
+  let voided = false;
+  const last = (p) => p.history[p.history.length - 1] ?? {};
+  const median = (xs) => {
+    const v = xs.filter((x) => x > 0).sort((a, b) => a - b), m = v.length >> 1;
+    return v.length ? (v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2) : null;
+  };
+  const live = pages.filter((p) => p.history.length);
+  const byRoot = new Map();
+  for (const p of live) byRoot.set(p.root, [...(byRoot.get(p.root) ?? []), p]);
+  const unsettled = (p, why) => {
+    if (p.history.length >= maxReadings) { voided = true; notes.push(`${p.key}: ${why} after ${p.history.length} reading(s) — void`); }
+    else { restage.add(p.key); notes.push(`${p.key}: ${why} — staged again`); }
+  };
+  // 1. twins: every page of a root against the root's median
+  for (const [root, group] of byRoot) {
+    if (group.length < 2) continue;
+    const mt = median(group.map((p) => last(p).tris)), mc = median(group.map((p) => last(p).calls));
+    // (two twins pairwise — against their mean each would get half the gap; three or more against their median)
+    const off = group.length === 2
+      ? (pctOff(last(group[0]).tris, last(group[1]).tris) > twinTris || pctOff(last(group[0]).calls, last(group[1]).calls) > draws ? group : [])
+      : group.filter((p) => pctOff(last(p).tris, mt) > twinTris || pctOff(last(p).calls, mc) > draws);
+    if (!off.length) continue;
+    if (group.length === 2) {
+      const [x, y] = group;
+      const worse = (last(x).tris ?? 0) !== (last(y).tris ?? 0) ? ((last(x).tris ?? 0) > (last(y).tris ?? 0) ? x : y)
+        : ((last(x).calls ?? 0) >= (last(y).calls ?? 0) ? x : y);
+      unsettled(worse, `twins of ${root === baseRoot ? 'the base' : 'one build'} disagree (${last(x).calls}/${last(y).calls} draws, `
+        + `${last(x).tris}/${last(y).tris} triangles)`);
+    } else for (const p of off) unsettled(p, `off its twins' median (${last(p).calls} draws against ${mc}, ${last(p).tris} triangles against ${mt})`);
+  }
+  // 2. another root's pages against the base twins' median: equal, or its own delta once a staging repeats it
+  const base = byRoot.get(baseRoot) ?? [];
+  const bt = median(base.map((p) => last(p).tris)), bc = median(base.map((p) => last(p).calls));
+  const baseSettled = !voided && base.length > 0 && base.every((p) => !restage.has(p.key));
+  for (const [root, group] of byRoot) {
+    if (!baseSettled || root === baseRoot || group.some((p) => restage.has(p.key))) continue;
+    const readings = group.flatMap((p) => p.history.map((h, i) => ({ ...h, key: p.key, order: h.seq ?? i }))).sort((a, b) => a.order - b.order);
+    const latestKey = readings[readings.length - 1]?.key;
+    for (const p of group) {
+      const r = last(p), tp = pctOff(r.tris, bt), dp = pctOff(r.calls, bc);
+      if (tp <= twinTris && dp <= draws) continue;
+      // its root's stagings either side of it (a re-stage of the same page, or another page of the root): one that repeats
+      // it makes the delta the build's own geometry
+      const at = readings.findIndex((x) => x.key === p.key && x.order === (r.seq ?? p.history.length - 1));
+      const near = [readings[at - 1], readings[at + 1]].filter(Boolean);
+      const prev = near[0] ?? null;
+      const twin = near.find((x) => pctOff(r.tris, x.tris) <= stable && pctOff(r.calls, x.calls) <= draws);
+      if (twin) {
+        accepted.push({ key: p.key, trisPct: +(((r.tris - bt) / bt) * 100).toFixed(2), drawsPct: +(((r.calls - bc) / bc) * 100).toFixed(2) });
+        notes.push(`${p.key}: its own delta, repeated across a staging (${r.calls} draws, ${r.tris} triangles against the base's ${bc} / ${bt}) — accepted`);
+      } else if (prev && p.key !== latestKey) notes.push(`${p.key}: not repeated by its root's next staging — that staging answers for the pair`);
+      else if (prev) unsettled(p, `moved between stagings (${prev.calls} → ${r.calls} draws, ${prev.tris} → ${r.tris} triangles)`);
+      else if (expectMore.includes(root)) { pending.push(p.key); notes.push(`${p.key}: off the base by ${tp.toFixed(1)} % triangles — its root's next staging must repeat it`); }
+      else unsettled(p, `off the base by ${tp.toFixed(1)} % triangles / ${dp.toFixed(1)} % draws (its own geometry only if a re-stage repeats it)`);
+    }
+  }
+  return { verdict: voided ? 'void' : restage.size ? 'restage' : 'agree', restage: [...restage], accepted, pending, notes };
 }
 
 /** The live graphics state a record is read against. */
@@ -652,18 +778,25 @@ async function sampleView(page, options, { moving = false } = {}) {
   return { toggle: options.toggle, blocks };
 }
 
-async function measureSlot(browser, options, slot) {
+/** A slot the pages' agreement sends back to be staged again before it measures. */
+class RestageSignal extends Error {}
+
+async function measureSlot(browser, options, slot, gate = null) {
   const [w0, h0] = options.viewports[0].split('x').map(Number);
   const [allies, enemies] = options.sides.split('x').map(Number);
-  const page = await browser.newPage();
-  try {
-    return await measureOnPage(page, options, slot, { w0, h0, allies, enemies });
-  } finally {
-    await page.close().catch(() => {});
+  for (;;) {
+    const page = await browser.newPage();
+    try {
+      return await measureOnPage(page, options, slot, { w0, h0, allies, enemies }, gate);
+    } catch (error) {
+      if (!(error instanceof RestageSignal)) throw error;
+    } finally {
+      await page.close().catch(() => {});
+    }
   }
 }
 
-async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
+async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, gate = null) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 400)));
   await page.setViewport({ width: w0, height: h0, deviceScaleFactor: 1 });
@@ -686,6 +819,23 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
   let emulator = null;
   if (options.emulate) emulator = await page.evaluate(installGpuEmulator, proxyRatios(MID_RANGE_PROXIES[options.emulate]).gpuRatio);
   await sleep(options.settleMs);
+  // the pages' agreement: the scene at the first pose — 30 whole frames' scene draws and triangles and the census —
+  // judged against the slots before this one; a slot sent back is staged again on a new page, a void one never measures
+  let staged = null;
+  if (gate) {
+    await poseView(page, options.views[0].split('@')[0]);
+    await sleep(1200);
+    await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
+    const read = await page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
+      { frames: 30, block: options.block, modes: ['whole'], flush: !options.noFlush, timeoutMs: 60000 });
+    staged = { ...sceneOf(summarizePassFrames(read)), census: await page.evaluate(sceneCensus).catch(() => null) };
+    const verdict = await gate(staged);
+    if (verdict.action === 'restage') throw new RestageSignal(verdict.note);
+    if (verdict.action === 'void') {
+      return { mapId: slot.mapId, readyMs, entryMs, void: `pages disagree: ${verdict.note}`, scene: staged, samples: [], pageErrors: errors };
+    }
+    staged.accepted = verdict.accepted ?? [];
+  }
   const samples = [];
   for (const viewport of options.viewports) {
     const [w, h] = viewport.split('x').map(Number);
@@ -744,7 +894,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
     for (let k = Math.max(0, trace.n - 64); k < trace.n; k++) passes.push({ t: +trace.at[k % 64].toFixed(1), ms: +trace.ms[k % 64].toFixed(3) });
     return { total: trace.n, passes };
   });
-  return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
+  return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, scene: staged, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
     samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0),
@@ -770,38 +920,100 @@ async function run(options) {
   const machine = { cores: os.cpus().length, loadStart: loadAverage(), samples: [] };
   const sampler = setInterval(() => machine.samples.push({ at: new Date().toISOString(), load1: +os.loadavg()[0].toFixed(2), foreignGpu: foreignGpuCpu() }), 15000);
   const started = Date.now();
-  let browser = null, server = null, serving = null, ok = true, remaining = 0;
+  let browser = null, server = null, serving = null, ok = true, remaining = 0, voided = 0;
+  // the pages' agreement: every staging's scene reading per slot (a resumed slot's from its record), judged per map in
+  // pattern order with the pattern's first root as the base
+  const sceneOpts = { twin: options.twinTrisTol, draws: options.drawsTol, stable: options.stableTol };
+  const staging = new Map();
+  let seq = 0;
+  for (const s of options.maps.flatMap(slotsFor)) {
+    try {
+      const prior = JSON.parse(readFileSync(slotFile(s.key), 'utf8'));
+      if (!prior.failed && prior.scene?.tris) staging.set(s.key, { key: s.key, root: s.root, history: [{ calls: prior.scene.calls, tris: prior.scene.tris, seq: seq++ }] });
+    } catch { /* not measured yet */ }
+  }
+  const revisit = new Set();
+  const gateFor = (slot, queue, qi) => async (reading) => {
+    const entry = staging.get(slot.key) ?? { key: slot.key, root: slot.root, history: [] };
+    staging.set(slot.key, entry);
+    entry.history.push({ calls: reading.calls, tris: reading.tris, seq: seq++ });
+    const mapSlots = slotsFor(slot.mapId);
+    const pagesNow = mapSlots.map((s) => staging.get(s.key)).filter(Boolean);
+    const later = queue.slice(qi + 1).filter((s) => s.mapId === slot.mapId).map((s) => s.root);
+    const j = judgeScenes(pagesNow, { twinTris: sceneOpts.twin, draws: sceneOpts.draws, stable: sceneOpts.stable,
+      expectMore: later, baseRoot: mapSlots[0].root });
+    log(`${slot.key} scene ${reading.calls} draws / ${reading.tris} triangles — ${j.verdict}${j.notes.length ? `: ${j.notes.join('; ')}` : ''}`);
+    // an earlier slot the judgement sends back measures again at the end of the run (its record is set aside now)
+    for (const k of j.restage) {
+      if (k === slot.key) continue;
+      const earlier = mapSlots.find((s) => s.key === k);
+      try {
+        const rec = JSON.parse(readFileSync(slotFile(k), 'utf8'));
+        writeFileSync(slotFile(k), JSON.stringify({ ...rec, failed: `scene: staged again after ${slot.key} (${j.notes.join('; ')})` }, null, 1));
+      } catch { /* not on disk */ }
+      if (earlier) revisit.add(earlier);
+    }
+    if (j.verdict === 'void') return { action: 'void', note: j.notes.join('; ') };
+    if (j.restage.includes(slot.key)) return { action: 'restage', note: j.notes.join('; ') };
+    return { action: 'measure', accepted: j.accepted };
+  };
   try {
     browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
       args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
-    for (const slot of todo) {
-      if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { remaining++; continue; }
-      if (serving !== slot.root) {
-        if (server) await server.close();
-        server = await openPreview(slot.root, options.port);
-        serving = slot.root;
-      }
-      const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
-      let record;
+    const queue = [...todo];
+    let revisited = false;
+    for (let qi = 0; qi < queue.length; qi++) {
+      const slot = queue[qi];
       try {
-        record = await measureSlot(browser, options, slot);
-        record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
-        record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
-        record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
-        for (const s of record.samples) {
-          if (s.result) s.summary = summarizePassFrames(s.result);
-          if (s.prefix) s.prefixSummary = summarizePassFrames(s.prefix);
-          for (const b of s.blocks ?? []) b.summary = summarizePassFrames(b.result);
+        if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { remaining++; continue; }
+        if (serving !== slot.root) {
+          if (server) await server.close();
+          server = await openPreview(slot.root, options.port);
+          serving = slot.root;
         }
-        const first = record.samples[0];
-        const sm = first.summary ?? first.blocks?.[1]?.summary;
-        log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}`);
-      } catch (error) {
-        ok = false;
-        record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId };
-        log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)}`);
+        const loadBefore = +os.loadavg()[0].toFixed(2), foreignBefore = foreignGpuCpu(), slotStarted = Date.now();
+        let record;
+        try {
+          record = await measureSlot(browser, options, slot, options.sceneCheck ? gateFor(slot, queue, qi) : null);
+          record.label = slot.label; record.key = slot.key; record.root = slot.root; record.query = slot.query;
+          record.load1 = { before: loadBefore, after: +os.loadavg()[0].toFixed(2) };
+          record.foreignGpu = { before: foreignBefore, after: foreignGpuCpu() };
+          if (record.void) {
+            voided++;
+            log(`${slot.key} VOID: ${record.void}`);
+            writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
+            continue;
+          }
+          for (const s of record.samples) {
+            if (s.result) s.summary = summarizePassFrames(s.result);
+            if (s.prefix) s.prefixSummary = summarizePassFrames(s.prefix);
+            for (const b of s.blocks ?? []) b.summary = summarizePassFrames(b.result);
+            // the draws and triangles of every measured sample (and toggle block): the agreement's per-cycle record
+            s.scene = sceneOf(s.summary);
+            for (const b of s.blocks ?? []) b.scene = sceneOf(b.summary);
+          }
+          const first = record.samples[0];
+          const sm = first.summary ?? first.blocks?.[1]?.summary;
+          // a slot whose first measured pose left its staged reading (triangles past the twins' tolerance, draws past their
+          // wander) is void: its scene changed between the gate and the measurement
+          // (a still pose of the whole frame only: a moving view or a toggle's blocks change their own counts)
+          const fs = first.scene ?? sceneOf(sm);
+          const still = !first.blocks?.length && !String(first.view).includes('@');
+          if (still && record.scene?.tris && fs && (pctOff(fs.tris, record.scene.tris) > options.twinTrisTol || pctOff(fs.calls, record.scene.calls) > options.drawsTol)) {
+            record.void = `the scene changed mid-run: ${fs.calls} draws / ${fs.tris} triangles measured against ${record.scene.calls} / ${record.scene.tris} staged`;
+            voided++;
+          }
+          log(`${slot.key} ${first.viewport} ${first.view}: gpu ${sm?.gpuFrame.med} ms (pieces ${sm?.gpuSegmentedSum.med}, ratio ${sm?.segmentedOverWhole}) cpu ${sm?.cpuFrame.med} calls ${sm?.calls.med} scene ${fs?.calls} draws / ${fs?.tris} tris | entry ${Math.round(record.entryMs / 1000)} s | load ${loadBefore} fgGPU ${foreignBefore.cpu}% | ${Math.round((Date.now() - slotStarted) / 1000)} s${record.pageErrors.length ? ` (page errors ${record.pageErrors.length})` : ''}${record.void ? ` VOID: ${record.void}` : ''}`);
+        } catch (error) {
+          ok = false;
+          record = { failed: String(error?.stack || error).slice(0, 2000), key: slot.key, label: slot.label, mapId: slot.mapId };
+          log(`${slot.key} FAILED: ${String(error?.message || error).slice(0, 400)}`);
+        }
+        writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
+      } finally {
+        // the slots the agreement sent back measure once more after the pattern, each judged again against the others
+        if (qi === queue.length - 1 && revisit.size && !revisited) { revisited = true; queue.push(...revisit); revisit.clear(); }
       }
-      writeFileSync(slotFile(slot.key), JSON.stringify(record, null, 1));
     }
   } finally {
     clearInterval(sampler);
@@ -811,9 +1023,12 @@ async function run(options) {
     locks.release();
   }
   machine.loadEnd = loadAverage();
+  // the slots the agreement set aside and the budget left unmeasured are the next hold's (their records say failed)
+  remaining += revisit.size;
   writeFileSync(path.join(options.out, `${options.tag}.receipt.json`), JSON.stringify({ tool: TOOL, protocol: FRAME_PASS_TIMER_PROTOCOL,
-    writtenAt: new Date().toISOString(), options, machine, remaining, node: process.version }, null, 1));
-  log(`${ok ? 'done' : 'FAILED'}${remaining ? ` (${remaining} slot(s) left for the next hold)` : ''}`);
+    writtenAt: new Date().toISOString(), options, machine, remaining, voided,
+    scenes: Object.fromEntries([...staging].map(([k, v]) => [k, v.history])), node: process.version }, null, 1));
+  log(`${ok ? 'done' : 'FAILED'}${remaining ? ` (${remaining} slot(s) left for the next hold)` : ''}${voided ? ` — ${voided} slot(s) VOID` : ''}`);
   if (ok && remaining) process.exitCode = 3;
   return { ok, remaining };
 }
@@ -842,7 +1057,7 @@ const slotIndex = (record) => Number(/-s(\d+)-/.exec(record.key)?.[1] ?? 0);
  * label's slots or blocks) from the prefix decomposition, the CPU ms and draw calls of the labels the step covers, and
  * for two labels the A B B A pair deltas with their spread; frame totals (the whole-frame query), CPU, draws.
  */
-export function buildFrameReport(records, labels = null) {
+export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
   const out = {};
   const median = (xs) => { const v = xs.filter((x) => x !== null && x !== undefined && Number.isFinite(x)).sort((a, b) => a - b); return v.length ? +v[Math.floor((v.length - 1) / 2)].toFixed(2) : null; };
   const sumLabels = (summary, names, field) => {
@@ -863,6 +1078,9 @@ export function buildFrameReport(records, labels = null) {
     return { steps, gpuFrame: summary?.gpuFrame?.med ?? null, gpuFrameP25: summary?.gpuFrame?.p25 ?? null,
       cpuFrame: summary?.cpuFrame?.med ?? null, calls: summary?.calls?.med ?? null, tris: summary?.tris?.med ?? null };
   };
+  // a slot the agreement voided before it measured (no samples) voids every row of its map
+  const mapVoids = {};
+  for (const r of records) if (r.void && !r.samples?.length) (mapVoids[r.mapId] ||= []).push(`${r.key ?? r.label}: ${r.void}`);
   for (const r of records) {
     for (const s of r.samples) {
       if (s.blocks?.length) {
@@ -874,12 +1092,25 @@ export function buildFrameReport(records, labels = null) {
       if (!s.summary) continue;
       const k = `${r.mapId} ${s.viewport} ${s.view}`;
       (out[k] ||= { mapId: r.mapId, viewport: s.viewport, view: s.view, units: [] }).units.push({ label: r.label, order: slotIndex(r),
-        unit: unitOf(s.summary, s.prefixSummary), load1: r.load1, foreignGpu: r.foreignGpu });
+        unit: unitOf(s.summary, s.prefixSummary), load1: r.load1, foreignGpu: r.foreignGpu, scene: s.scene ?? sceneOf(s.summary), void: r.void ?? null });
     }
   }
   for (const row of Object.values(out)) {
     row.units.sort((a, b) => a.order - b.order);
     const present = row.toggle ? ['off', 'on'] : (labels ?? [...new Set(row.units.map((u) => u.label))]);
+    // the pages' agreement at this pose (the slots of one label are twins; another label's delta must repeat across its
+    // slots): a row whose slots disagree, or with a void slot, is VOID — its deltas compare different scenes
+    if (!row.toggle) {
+      const voids = [...(mapVoids[row.mapId] ?? []), ...row.units.filter((u) => u.void).map((u) => `${u.label} s${u.order}: ${u.void}`)];
+      const counted = row.units.filter((u) => u.scene?.tris);
+      if (counted.length === row.units.length && counted.length > 1) {
+        const j = judgeScenes(counted.map((u) => ({ key: `${u.label} s${u.order}`, root: u.label, history: [{ calls: u.scene.calls, tris: u.scene.tris, seq: u.order }] })),
+          { maxReadings: 1, baseRoot: present[0], ...sceneTolerances });
+        row.scene = { verdict: j.verdict, accepted: j.accepted, notes: j.notes };
+        if (j.verdict !== 'agree') voids.push(...j.notes);
+      }
+      if (voids.length) row.void = voids;
+    }
     const stepNames = [...new Set(row.units.flatMap((u) => Object.keys(u.unit.steps)))];
     row.stepNames = stepNames;
     row.byLabel = {};
@@ -938,6 +1169,7 @@ function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
   for (const row of Object.values(report)) {
     const labels = Object.keys(row.byLabel);
     lines.push(`### ${row.mapId} · ${row.view} · ${row.viewport}${row.toggle ? ` · toggle ${row.toggle}` : ''}`, '');
+    if (row.void) lines.push(`**VOID — the pages disagree; the deltas below compare different scenes:** ${row.void.join('; ')}`, '');
     lines.push(`| step | ${labels.map((l) => `${l} GPU ms`).join(' | ')} | Δ GPU (pairs) | ${labels.map((l) => `${l} CPU ms`).join(' | ')} | ${labels.map((l) => `${l} draws`).join(' | ')} |`);
     lines.push(`| --- | ${labels.map(() => '---:').join(' | ')} | ---: | ${labels.map(() => '---:').join(' | ')} | ${labels.map(() => '---:').join(' | ')} |`);
     for (const p of row.stepNames) {
@@ -961,7 +1193,7 @@ if (isMainModule(import.meta.url)) {
   catch (error) { console.error(error.message); process.exit(1); }
   if (options.report) {
     const records = readSlotRecords(options.report);
-    const report = buildFrameReport(records, options.labels);
+    const report = buildFrameReport(records, options.labels, { twinTris: options.twinTrisTol, draws: options.drawsTol, stable: options.stableTol });
     const profiles = buildProfileReport(records);
     const outDir = options.report[0];
     writeFileSync(path.join(outDir, 'frame-report.json'), JSON.stringify({ ...report, cpuProfiles: profiles }, null, 1));
