@@ -16,7 +16,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeDenseStands, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 
@@ -41,7 +41,9 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // trees round 2b (2026-10-03): the hyper-arid places' groves
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
-  treeBiomeSlot, TREE_GROWTH_PROFILES };
+  treeBiomeSlot, TREE_GROWTH_PROFILES,
+  // the trees lane (2026-10-06): a place's closed stands (Verdant's light version: its stands filled)
+  treeBiomeDenseStands };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;

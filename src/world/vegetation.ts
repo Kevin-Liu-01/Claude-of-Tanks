@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5520,6 +5520,8 @@ function* vegetationBuildSteps(
   // authored establishing-shot compositions (foreground framing oaks moved)
   const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
+  // (the trees lane, 2026-10-06: each stand's leading species, for its fill — denseStands)
+  const clusterSpecies: Species[] = [];
   // Round 77b: the rim-forest blocks as discs (centre, half the block width) — the stands the rim understorey
   // feathers; recorded from the placement below, no RNG draw of their own
   const rimBlocks: VegetationDisc[] = [];
@@ -5886,6 +5888,7 @@ function* vegetationBuildSteps(
         // Keep at least three quarters of every existing stand in place. The map-authored rows consume records, never
         // add trees or change RNG.
         rememberAuthoredDonors(cb0, Math.floor(placed / 4));
+        clusterSpecies[clusters.length] = species;
         clusters.push(disc);
       } else {
         // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
@@ -6381,6 +6384,17 @@ function* vegetationBuildSteps(
   // the authored tree layout (and the composed establishing shots) stays
   // untouched. These young trees still register a proportionally small trunk
   // so shells and hulls topple them through the same path as mature trees.
+  // the trees lane (2026-10-06, the coordinator's ruling on wave 178 — Verdant's light version): a place whose stands
+  // are closed (treeBiomes.ts denseStands) stands no sapling out in a field's interior (its draws made as they were)
+  const denseStands = treeBiomeDenseStands(cfg?.id);
+  const _denseLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  function denseFieldInterior(x: number, z: number): boolean {
+    const landAt = heightField._landUseAt;
+    if (!landAt) return false;
+    landAt(x, z, _denseLand);
+    return _denseLand.active > 0 && _denseLand.edgeM > _denseLand.marginM + 2;
+  }
   function placeSaplings(): void {
     for (let ci = 0; ci < clusters.length; ci++) {
       const c = clusters[ci];
@@ -6396,6 +6410,8 @@ function* vegetationBuildSteps(
         const variantS = (sapRng() * 3) | 0, fvS = (sapRng() * 2) | 0;
         const jr = sapRng(), jg = sapRng(), jb = sapRng();
         if (!siteOk(sx, sz, 0)) continue;
+        // (the trees lane: a closed-stands place's sapling never stands out in a field's interior, past its stand)
+        if (denseStands && denseFieldInterior(sx, sz)) continue;
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
@@ -6439,6 +6455,55 @@ function* vegetationBuildSteps(
     }
   }
   placeSaplings();
+  // The trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178 on Verdant: "a loose grove of tall,
+  // spindly, birch-like trees ... standing apart" — the light version: the woods where they stand, their thin patches
+  // closed): a closed-stands place (treeBiomes.ts denseStands) fills each stand's holes — a point inside nine tenths of
+  // its outline with no trunk within FILL_GAP_M grows one of the stand's leading species, up to an eighth of the stand
+  // again — from a stream of its own after every other placement, so every seat the map had keeps it.
+  const FILL_GAP_M = 4.5;
+  function fillStands(): void {
+    if (!denseStands) return;
+    const fillRng = mulberry32((seed ^ 0x6f11d) >>> 0), fillSpread = treeBiomeWoodSpread(cfg?.id);
+    const cell = 6, grid = new Map<number, number[]>();
+    const key = (x: number, z: number): number => (Math.floor(x / cell) + 2048) * 4096 + Math.floor(z / cell) + 2048;
+    for (let i = 0; i < trees.length; i++) {
+      const k = key(trees[i].x, trees[i].z);
+      const list = grid.get(k); if (list) list.push(i); else grid.set(k, [i]);
+    }
+    const near = (x: number, z: number): boolean => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        for (const t of grid.get((cx + i + 2048) * 4096 + cz + j + 2048) ?? []) {
+          if (Math.hypot(trees[t].x - x, trees[t].z - z) < FILL_GAP_M) return true;
+        }
+      }
+      return false;
+    };
+    let filled = 0;
+    for (let ci = 0; ci < clusters.length; ci++) {
+      const c = clusters[ci], species = clusterSpecies[ci];
+      if (!species) continue;
+      // (an eighth of the stand again at most: a quarter closed a lane Verdant's bots take and one battle ran out in
+      // 112 s — the pacing receipt's p10 under its 120)
+      const budget = Math.round(Math.PI * c.r * c.r / 60 * 0.125);
+      let added = 0;
+      for (let attempt = 0; attempt < budget * 6 && added < budget; attempt++) {
+        const a = fillRng() * Math.PI * 2, k = Math.sqrt(fillRng()) * 0.9, pick = fillRng();
+        const p = standPoint(ci, c, a, k), x = p[0], z = p[1];
+        if (near(x, z) || !siteOk(x, z, 0)) continue;
+        const sp = pick < 0.8 ? species : pickSpecies(veg.loneMix, fillRng());
+        if (!addTree(x, z, sp, fillRng, fillSpread)) continue;
+        const t = trees[trees.length - 1];
+        t.wood = true;
+        // (as a stand's own: its interior meets the far tier sooner on a map whose woods close)
+        if (fillSpread > 1 && k < 0.7) t.nearScale = 0.55;
+        const k2 = key(x, z), list = grid.get(k2); if (list) list.push(trees.length - 1); else grid.set(k2, [trees.length - 1]);
+        added++; filled++;
+      }
+    }
+    group.userData.denseStands = { filled };
+  }
+  fillStands();
 
   // Round 77 (2026-09-26): the stand shade. A tree inside a dense stand stands under its neighbours' crowns: the
   // sky over it is mostly leaves, so it reads darker than the trees at the edge — the crown-scale contrast a far
