@@ -322,10 +322,78 @@ export function fabricRollParts(len: number, r: number, cinch: readonly number[]
  * A 200 L class steel drum as a lathe along +Y from y = 0 to `len`: rolled chimes at both heads and two rolling hoops
  * (round 3: the T-90M's rear drums were plain canvas-green cylinders).
  */
-export function drumLathe(R: number, len: number, seg = 16): THREE.BufferGeometry {
+function drumLathe(R: number, len: number, seg = 16, hoops = true): THREE.BufferGeometry {
   const hoop = (y: number): XY[] => [[R, y - 0.016], [R + 0.012, y], [R, y + 0.016]];
-  return latheY([[0.0005, 0.01], [R - 0.012, 0.012], [R + 0.004, 0], [R, 0.02], ...hoop(len * 0.29), ...hoop(len * 0.71),
+  return latheY([[0.0005, 0.01], [R - 0.012, 0.012], [R + 0.004, 0], [R, 0.02],
+    ...(hoops ? [...hoop(len * 0.29), ...hoop(len * 0.71)] : []),
     [R, len - 0.02], [R + 0.004, len], [R - 0.012, len - 0.012], [0.0005, len - 0.01]], seg);
+}
+
+export interface FuelDrumSpec {
+  /** Shell radius and length (metres); the drum stands on local +Y from y = 0 to `len`. */
+  r: number;
+  len: number;
+  seg?: number;
+  /** Strap stations as shares of the length: each band stands 4 mm proud of the shell and carries a buckle. */
+  straps?: readonly number[];
+  /** Bearing of every buckle about +Y (radians; a point at bearing a sits at (r sin a, y, r cos a)). */
+  buckleAt?: number;
+  /** The head that carries the two bung caps: 1 the top (y = len), -1 the bottom (y = 0), 0 none. */
+  bungHead?: -1 | 0 | 1;
+  detail?: AccessoryDetail;
+}
+
+export interface FuelDrumParts {
+  /** The shell: rolled chimes round both recessed heads and two rolling hoops (near level). */
+  body: THREE.BufferGeometry;
+  /** Raised steel strap bands. */
+  straps: THREE.BufferGeometry[];
+  /** Strap buckles and their tension bolts, and the two bung caps on the chosen head (near level). */
+  hardware: THREE.BufferGeometry[];
+}
+
+/**
+ * A 200 L class steel fuel drum with its retaining straps (2026-10-07, tank-accessories round 4; wave 214 on the T-90M:
+ * "glossy horizontal banding, and stark white blotches on the end caps"; wave 215 on the Type 99A: "the left rear fuel
+ * drum ends in a squared, flat block instead of a round cap", "a strap on the near cylinder is a flat colour band, not
+ * raised"). Round heads recessed inside rolled chimes, two rolling hoops, two bung caps on one head, strap bands
+ * standing proud of the shell with a buckle and bolt each. World-scale box UVs (one unit per metre) so the paint's
+ * normal and roughness maps keep their size. The coarse level drops the hoops, buckles and bungs.
+ */
+export function fuelDrumParts(spec: FuelDrumSpec): FuelDrumParts {
+  const R = spec.r, len = spec.len, detail = spec.detail ?? 1;
+  const seg = spec.seg ?? (detail ? 18 : 10);
+  const body = withBoxUV(drumLathe(R, len, seg, detail === 1));
+  const straps: THREE.BufferGeometry[] = [];
+  const hardware: THREE.BufferGeometry[] = [];
+  const bearing = spec.buckleAt ?? 0;
+  for (const share of spec.straps ?? []) {
+    const y = share * len;
+    // the band's edges dive 2 mm under the shell so no seam opens; its crown is 4.5 mm proud
+    straps.push(withBoxUV(latheY([[R - 0.002, y - 0.017], [R + 0.0035, y - 0.0145], [R + 0.0045, y],
+      [R + 0.0035, y + 0.0145], [R - 0.002, y + 0.017]], seg)));
+    if (!detail) continue;
+    // the buckle: a block on the band and the tension bolt through it, both along the band's tangent
+    const buckle = block(0.042, 0.03, 0.014);
+    place(buckle, 0, y, R + 0.0095);
+    place(buckle, 0, 0, 0, 0, bearing, 0);
+    hardware.push(withBoxUV(buckle));
+    const bolt = roundBar([-0.036, 0, 0], [0.036, 0, 0], 0.0055, 6);
+    place(bolt, 0, y, R + 0.0165);
+    place(bolt, 0, 0, 0, 0, bearing, 0);
+    hardware.push(withBoxUV(bolt));
+  }
+  if (detail && spec.bungHead) {
+    const top = spec.bungHead > 0;
+    const headY = top ? len - 0.011 : 0.011;
+    for (const [dx, r] of [[R * 0.52, 0.03], [-R * 0.55, 0.017]] as const) {
+      // a threaded plug with a raised hex: from the recessed head to 1 mm under the chime
+      const cap = latheY([[r, 0], [r, 0.006], [r * 0.72, 0.008], [r * 0.72, 0.011]], 10);
+      if (!top) place(cap, 0, 0, 0, Math.PI, 0, 0);
+      hardware.push(withBoxUV(place(cap, dx, headY, 0)));
+    }
+  }
+  return { body, straps, hardware };
 }
 
 export interface BarkLogSpec {

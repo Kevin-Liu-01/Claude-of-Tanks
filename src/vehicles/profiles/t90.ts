@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { barkLog, drumLathe, fabricRollParts, place } from '../accessoryPrimitives.ts';
+import { barkLog, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -7633,7 +7633,7 @@ function addT90MProryvGlacisRelikt(P: T90BuilderPort): void {
 }
 
 function replaceT90MProryvHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
+  const { box, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
 
   // Remove the calibration-era hull and every direct fitting/gear child.
   // The replacement below is a complete repository-authored chassis, not a
@@ -7784,10 +7784,15 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // magazine. Their forward arcs overlap the backed hull rear and the
     // full straps return into a broad lower shoe.
     // 2026-10-07 (tank-accessories round 3: the canvas-green cylinders read as smooth green pipes): steel drums with
-    // rolled chimes and two rolling hoops, painted with the hull
-    if (P.q === false) P.add('hullDetail', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.44);
-    else P.add('hullDetail', place(drumLathe(0.20, 0.72, 18), -0.36, 0, 0, 0, 0, -Math.PI / 2), s * 0.62, 1.46, -3.44);
-    for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.44);
+    // rolled chimes and two rolling hoops. Round 4 (wave 214: "glossy horizontal banding, and stark white blotches on
+    // the end caps that read as emblems"): the drums are painted as drums, in the scheme's solid matte equipment paint
+    // (FSP-06 fitting paint), never the hull's digital camouflage; two raised straps with buckles replace the hidden
+    // blocks inside the shell, and the outer head carries its bung caps.
+    const drum = fuelDrumParts({ r: 0.20, len: 0.72, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
+      detail: P.q === false ? 0 : 1 });
+    const alongX = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry, -0.36, 0, 0, 0, 0, -Math.PI / 2);
+    P.add('hullFittingPaint', alongX(drum.body), s * 0.62, 1.46, -3.44);
+    for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), s * 0.62, 1.46, -3.44);
     P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.39);
     P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.36, Math.PI / 2, 0, 0);
     P.add('hullDetail', box(0.18, 0.12, 0.035), s * 1.27, 1.00, -3.36);
@@ -8477,9 +8482,10 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // The extra 40 mm also keeps the visibly thicker instanced shoes clear of
   // the front shoulder and rear sponson undersides under full-course sweep.
   const rideHeightIncreaseM = 0.16;
-  // (2026-10-07: the unditching log's pale sawn ends ride in hullCanvasPale and rise with it)
+  // (2026-10-07: the unditching log's pale sawn ends ride in hullCanvasPale and rise with it; round 4: the rear fuel
+  // drums' shells ride in hullFittingPaint)
   P.offsetBuckets([
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale', 'hullFittingPaint',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
     'hullEquipment', 'hullCupola',
