@@ -288,11 +288,22 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
     const z = -d / 2 + 0.3 + (d - 0.6) * (r + 0.5) / rows;
     const crop = CROP[Math.floor(look() * CROP.length) % CROP.length];
     if (look() < 0.18) {
-      // beans on canes: a line of canes and the green climbing up them
+      // beans on canes: a line of canes and the green climbing up each of them
+      // (the scenery lane, b30; wave 199 on Verdant's long khata: the row's one green slab read as "a hedge of flat green
+      // boards") each cane carries its own vine: three or four leafy clumps of their own size and shade, offset round it
+      // and up it, thinning toward the top, with daylight between one cane's vine and the next
       for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
-        sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, 1.5, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
+        const top = 1.25 + look() * 0.3;
+        sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, top, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
+        const clumps = 3 + (look() < 0.5 ? 1 : 0);
+        for (let c = 0; c < clumps; c++) {
+          const y = 0.3 + (top - 0.45) * (c / clumps) + look() * 0.12;
+          const half = (0.14 - c * 0.02) * (0.8 + look() * 0.4), hh = 0.12 + look() * 0.1;
+          const ox = (look() - 0.5) * 0.1, oz = (look() - 0.5) * 0.08;
+          sink.span('structureWood', x + ox - half, y, z + oz - half * 0.7, x + ox + half, y + hh, z + oz + half * 0.7,
+            { ...dec, colour: shade(crop, 0.78 + look() * 0.3) });
+        }
       }
-      sink.span('structureWood', -w / 2 + 0.25, 0.4, z - 0.09, w / 2 - 0.25, 1.3, z + 0.09, { ...dec, colour: shade(crop, 0.9) });
       continue;
     }
     // a ridge of crops in two or three runs with gaps where a plant failed or was cut
