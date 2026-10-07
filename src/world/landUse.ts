@@ -242,13 +242,8 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
   },
-  // Orchard Valley (the map-revival lane, 2026-10-05, through the coordinator: the Chouf on Mount Lebanon): the
-  // terraces' small fields of terra rossa, vines and pasture inside dry stone walls on the level shelves and the valley
-  // floor (Saltwind's karst region), laid along the valley (~93°); the authored orchards and olive rows stay as they are
-  orchard: {
-    strength: 0.85, heading: 1.62, blockU: 70, blockV: 50, maxSplit: 2, marginM: 1.2, trackShare: 0.15, hedgeShare: 0.05,
-    warpM: 14, region: 'karst', salt: 227,
-  },
+  // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
+  // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
 });
 
 /** The map's land use, or null (no fields). */
