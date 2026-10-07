@@ -144,7 +144,7 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     gutters: null, verge: null, spall: null,
     // (the facade craft, desktop) where the lime has worn off, the clay under it shows; the yard's trodden clay round
     // the wall foot and out from the door (house.ts groundSkirt), darkest against the plinth
-    ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45, skirt: { bucket: 'structureWood' as const, colour: TRODDEN } } : {}),
+    ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45, skirt: { bucket: 'plaster' as const, tint: TRODDEN } } : {}),
   }, dialect(st));
   if (craft) khataDressing(sink, frame, st, craft);
   // the porch (ganok) over the door: two posts and a small lean-to
@@ -539,8 +539,8 @@ export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   ruin: burnt,
 });
 
-/** the yard's trodden black-earth clay round a khata (facade craft; sRGB) */
-const TRODDEN: Rgb = rgb(0x4a3e30);
+/** the yard's trodden black-earth clay round a khata (facade craft): sRGB 4a3e30 as it should read, over the lime's albedo */
+const TRODDEN: Rgb = shade(rgb(0x4a3e30), 1 / 0.54);
 
 /** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
 const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];

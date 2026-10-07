@@ -119,9 +119,10 @@ export interface HouseSpec {
   /**
    * the drip strip round the wall foot and the path from the front door (facade craft, desktop; groundSkirt): by
    * default the plinth's bucket on a house with a plinth (setts, gravel) and none on one without (it may stand raised
-   * on piers), a coloured bucket's trodden clay with its `colour`, null for none
+   * on piers); `colour` in a coloured bucket, `tint` (EmitOptions.tint) over a weathered one (a khata's trodden clay
+   * over the render); null for none
    */
-  skirt?: { bucket: RegionalBucket; colour?: Rgb } | null;
+  skirt?: { bucket: RegionalBucket; colour?: Rgb; tint?: Rgb } | null;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -291,7 +292,7 @@ function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Fa
   // fine dressing: out of the shadow maps and the always-drawn meshes, drawn by the fine-detail cells (a strip 45 cm wide
   // reads within their distance; past it the ground's own contact decal stands for it)
   const opts: EmitOptions = sk.colour ? { decor: true, fine: true, colourAt: (p: Vec3) => shadeRgb(sk.colour as Rgb, shadeOf(p)) }
-    : { decor: true, fine: true, shadeAt: shadeOf };
+    : { decor: true, fine: true, shadeAt: shadeOf, ...(sk.tint ? { tint: sk.tint } : {}) };
   // a quad wound to face along `n` (its corners in any order round it)
   const quad = (pts: Vec3[], n: Vec3) => {
     const [a, b, c] = pts;
