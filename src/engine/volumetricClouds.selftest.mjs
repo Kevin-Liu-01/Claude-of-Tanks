@@ -644,6 +644,21 @@ for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.2
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
 for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);
+// 2026-10-07 (overcast with structure): a deck's base lit by its own cell's column — the diffusion and the sky through it
+// take the vertical depth over the point in its cell (by the lane's flatness), the ground's return at a deck's base is the
+// light the deck passes down (cloudGroundLight), not the map's ambient scale over the open sky's blue irradiance
+for (const term of ['vec2 cell = cl2Cell( p.xz, wLod );\n\t\t\tvec4 shell = cl2Shell( h, w, cell, hf );',
+  'float tauV = od * max( sunUp, 0.2 );', 'float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x;', 'tauV = mix( tauV, tauUp, deckK );',
+  'radiance += eTop * ( diffuse * ( 1.0 - exp( -od * 0.3 ) ) / ( 1.0 + 0.1125 * tauV ) / CL_PI );', 'float skyThrough = 1.0 / ( 1.0 + 0.1125 * tauV );',
+  'mix( uAmbientScale, 1.0, flatK * uDeckTune.y )']) {
+  assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
+}
+// the cell's column the trace reads is cl2Shell's own (the same k, the same top)
+assert.ok(shadersSource.includes('vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );')
+  && shadersSource.includes('vec4 kc = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );')
+  && shadersSource.includes('vec4 top = uLayerBase + thick * ( 0.1 + 0.9 * k );')
+  && shadersSource.includes('vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );'), 'the trace\'s cell column is the shell\'s');
+assert.match(layerSource, /const reach = cloudGroundLight\(open, this\.deckTau, /, 'the ground under the clouds takes the light the cover passes');
 // 2026-10-06 (the first GPU pair: the v2 page's atmosphere fell to its Preetham fallback on the hardware): the sun mean's
 // readback holds no pack buffer across a task — three's readRenderTargetPixelsAsync keeps its buffer bound over its
 // await, and any other read in that window (the atmosphere's summary) fails

@@ -5,7 +5,7 @@
 // main one).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { CLOUD_LANES_MAX, cloudBsmSlices, cloudShellCover, cloudStackOf, packCloudStack } from './cloudLayers.ts';
+import { CLOUD_COLUMN_SHARE, CLOUD_LANES_MAX, cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudShellCover, cloudStackOf, packCloudStack } from './cloudLayers.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
@@ -77,6 +77,22 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
 // the closed decks closed (the skies lane, 2026-10-06): Titan Gorge's dense overcast and Whiteout's stratus admit every
 // column at their own resolved coverage — a retune of either that reopens a hole fails here
 for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cover >= 1, `${id}: a closed deck admits every column (${stacks[id].lanes[0].cover.toFixed(3)})`);
+
+// ---- the light under the cover (2026-10-07): the open sky whole, a closed deck's share its diffuse transmittance raised
+// by the ground's bounce — over snow the whiteout's even light, over dark ground about the transmittance alone
+{
+  for (const tau of [0, 5, 20, 60]) for (const rho of [0.1, 0.8]) assert.ok(Math.abs(cloudGroundLight(1, tau, rho) - 1) < 1e-12, 'an open sky passes all its light');
+  assert.equal(cloudGroundLight(0, 0, 0.8), 1, 'a cover without depth passes all its light');
+  let last = Infinity;
+  for (let tau = 0; tau <= 80; tau += 4) { const v = cloudGroundLight(0.3, tau, 0.2); assert.ok(v < last + 1e-12, 'a deeper cover passes less'); last = v; }
+  const whiteout = cloudGroundLight(0, cloudDeckTau(stacks.whiteout), 0.8), dark = cloudGroundLight(0, cloudDeckTau(stacks.whiteout), 0.1);
+  assert.ok(whiteout > 0.55 && whiteout < 0.9, `snow under a closed deck: an even light (${whiteout.toFixed(3)})`);
+  assert.ok(dark > 0.3 && dark < 0.45, `dark ground under the same deck: about its transmittance (${dark.toFixed(3)})`);
+  assert.ok(cloudGroundLight(0, 1e6, 0.99) <= 2.5 * 1e-4 + 1e-9, 'the bounce never revives a black cover');
+  const w = stacks.whiteout.lanes[0];
+  assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE);
+  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.titan_gorge) > 10, 'a closed deck is optically thick');
+}
 
 // ---- the packing: vec4 lanes, an absent lane without density, the channel matrix column-major as GLSL reads M * v
 {

@@ -41,6 +41,7 @@
  * is first-party. docs/ATTRIBUTION.md records the port.
  */
 import { CLOUD_BLUE_SIZE } from './cloudNoise.ts';
+import { CLOUD_COLUMN_SHARE } from './cloudLayers.ts';
 
 const f = (x: number): string => { const s = String(x); return s.includes('.') || s.includes('e') ? s : `${s}.0`; };
 
@@ -469,6 +470,10 @@ uniform float uPixelAngle;
 uniform float uOpaqueCut;
 // the forward lobe of the sun's light diffused through a deck (0 = isotropic)
 uniform float uDeckLobe;
+// a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
+// ray's depth by its slope), y the ground's return at the deck's base as the light the deck itself passes down (0 the
+// map's ambient scale over it)
+uniform vec2 uDeckTune;
 uniform float uDebug;
 // the scene's depth the last frame left (a layer ends at a surface past the dome)
 uniform sampler2D tSceneDepth;
@@ -651,7 +656,8 @@ void main() {
 			float wLod = max( 0.0, log2( max( foot * 4.0, 1.0 ) / ${f(CLOUD2_PERIODS.local / 512)} ) );
 			vec4 w = cl2Weather( p.xz, h, wLod );
 			vec4 hf;
-			vec4 shell = cl2Shell( h, w, cl2Cell( p.xz, wLod ), hf );
+			vec2 cell = cl2Cell( p.xz, wLod );
+			vec4 shell = cl2Shell( h, w, cell, hf );
 			if ( dot( shell, shell ) <= 0.0 ) {
 				// clear air: stride longer (half again per empty step, four at most), then back onto the fine lattice
 				empty = min( empty + 1, 4 );
@@ -709,12 +715,23 @@ void main() {
 #endif
 				vec3 radiance = sunE * ms;
 				vec3 dbgSun = radiance;
+				// the vertical depth over the point (the diffusion's and the sky's): the sun ray's by its slope — or, a deck by its
+				// flatness, the column over the point in its own cell (2026-10-07, overcast with structure: the sun ray's depth is
+				// a low sun's kilometre of slant through several cells, every base the same grey; the cell's own column puts a
+				// thick core dark beside a thin, bright seam, and a lump hanging under the base darker than the base around it)
+				float tauV = od * max( sunUp, 0.2 );
+				float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x;
+				if ( deckK > 0.0 ) {
+					vec4 kc = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
+					vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );
+					float tauUp = dot( wgt, uLayerDensity * uLayerCore * max( topC - vec4( h ), vec4( 0.0 ) ) ) * ${f(CLOUD_COLUMN_SHARE)};
+					tauV = mix( tauV, tauUp, deckK );
+				}
 				// the deep diffusion of a deck: the light a thick column passes down to its base, 1 / (1 + 0.75 (1 - g) tau)
 				float diffuse = dot( wgt, uLayerDiffuse );
 				if ( diffuse > 0.0 ) {
 					// the radiance a thick column passes down diffusely is a diffuser's, T E / pi (the in-scattered radiance of an
 					// opaque medium is what leaves it); only past the lit skin, where the octaves have lost the light
-					float tauV = od * max( sunUp, 0.2 );
 					// the sun's share keeps a broad forward lobe through the deck (its mean over the sky unchanged): a readable
 					// sun direction under a closed deck without a disc (2026-10-04, the gauntlet's wave 62 on Titan Gorge)
 					float lobe = 1.0 + uDeckLobe * ( mix( phaseHG( cosT, 0.6 ), phaseHG( cosT, -0.225 ), 0.3 ) * 4.0 * CL_PI - 1.0 );
@@ -726,22 +743,26 @@ void main() {
 				// passes diffusely — a deck's base sees its deck, not the sky — and the ground below (the map's ambient scale
 				// lifts the ground's return: snow under a deck)
 				float skyK = dot( hf * 0.5 + 0.5, wgt );
-				float skyThrough = 1.0 / ( 1.0 + 0.1125 * od * max( sunUp, 0.2 ) );
-				// (a deck's base takes half the ground's return: over snow it lit every cell's underside alike, one white)
-				float groundK = ( 1.0 - skyK ) * 0.5 * uAmbientScale * ( 1.0 - 0.5 * dot( wgt, uLayerFlat ) );
+				float skyThrough = 1.0 / ( 1.0 + 0.1125 * tauV );
+				// (a deck's base takes half the ground's return: over snow it lit every cell's underside alike, one white; and the
+				// return is the light the deck passes down, uGroundRadiance's own law, not the map's ambient scale over it)
+				float flatK = dot( wgt, uLayerFlat );
+				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK );
 				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
 				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );
 				radiance *= uTint;
 				if ( uDebug == 4.0 ) radiance = vec3( 0.6 );
 				// QA: one term of the light alone (5 the optical depth to the sun / 40, 6 the octaves, 7 the deep diffusion,
-				// 8 the sky and ground, 9 the powder factor, 10 the extinction x 20; 12 draws the medium without its detail)
+				// 8 the sky and ground, 9 the powder factor, 10 the extinction x 20, 13 the vertical depth over the point / 30;
+				// 12 draws the medium without its detail)
 				else if ( uDebug == 5.0 ) radiance = vec3( od / 40.0 );
 				else if ( uDebug == 6.0 ) radiance = dbgSun;
 				else if ( uDebug == 7.0 ) radiance = dbgDiffuse;
 				else if ( uDebug == 8.0 ) radiance = uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				else if ( uDebug == 9.0 ) radiance = vec3( 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp ) );
 				else if ( uDebug == 10.0 ) radiance = vec3( sigma * 20.0 );
+				else if ( uDebug == 13.0 ) radiance = vec3( tauV / 30.0 );
 				// [ported] the energy-conserving integral of the step
 				float Tstep = exp( -sigma * ds );
 				vec3 S = radiance * sigma;

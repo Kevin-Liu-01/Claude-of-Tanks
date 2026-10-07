@@ -259,6 +259,31 @@ export function cloudBsmSlices(stack: CloudStack): number {
   return clamp(Math.round(total / CLOUD_BSM_SLICE_M), CLOUD_BSM_SLICES_RANGE[0], CLOUD_BSM_SLICES_RANGE[1]);
 }
 
+/**
+ * The mean of a column's extinction over its lane's core (the profile's ramps and the shape's erosion): the trace's
+ * vertical depth over a point in a deck's cell (cloudShaders.ts) and a lane's whole column (cloudDeckTau) take it.
+ */
+export const CLOUD_COLUMN_SHARE = 0.7;
+/** The diffusion law's slope, 0.75 (1 − g) at g 0.85: a thick column passes 1 / (1 + 0.1125 τ) of its light down. */
+const CLOUD_DIFFUSION_K = 0.1125;
+/** The main lane's vertical optical depth through its core column (the cover the ground's light passes). */
+export function cloudDeckTau(stack: CloudStack): number {
+  const l = stack.lanes[0];
+  return l ? l.density * l.core * (l.topM - l.baseM) * CLOUD_COLUMN_SHARE : 0;
+}
+/**
+ * The share of the light over the clouds that reaches the ground under them (2026-10-07): the open sky's share whole,
+ * the covered share through the cover's diffuse transmittance 1 / (1 + 0.1125 τ), all of it raised by the light the
+ * ground (albedo ρ) and the clouds' bases (reflecting what they do not pass) send back and forth, 1 / (1 − ρ R) — at
+ * most 2.5 (fresh snow under a closed deck: the whiteout's even light).
+ */
+export function cloudGroundLight(open: number, tau: number, rho: number): number {
+  const o = clamp(open, 0, 1);
+  const td = 1 / (1 + CLOUD_DIFFUSION_K * Math.max(0, tau));
+  const bounce = Math.min(2.5, 1 / Math.max(0.4, 1 - clamp(rho, 0, 1) * (1 - o) * (1 - td)));
+  return (o + (1 - o) * td) * bounce;
+}
+
 /** Pack a stack into the medium's vec4 / mat4 uniforms (written in place). */
 export function packCloudStack(stack: CloudStack, u: Record<string, { value: unknown }>): void {
   const lane = (i: number): CloudLane | null => stack.lanes[i] ?? null;

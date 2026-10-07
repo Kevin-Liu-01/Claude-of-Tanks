@@ -46,7 +46,7 @@ import {
   applyCloudWeatherPreset, createCloudWeatherUniforms,
 } from './cloudWeatherLayers.ts';
 import { bakeCloudVolumes, type CloudVolumeTextures } from './cloudVolumeNoise.ts';
-import { cloudBsmSlices, cloudStackOf, packCloudStack } from './cloudLayers.ts';
+import { cloudBsmSlices, cloudDeckTau, cloudGroundLight, cloudStackOf, packCloudStack } from './cloudLayers.ts';
 import {
   CLOUD2_BSM_FRAGMENT, CLOUD2_RESOLVE_FRAGMENT, CLOUD2_SHADE_FRAGMENT, cloud2TraceFragment, type Cloud2TraceDefines,
 } from './cloudShaders.ts';
@@ -604,6 +604,8 @@ export class VolumetricCloudLayer {
   private readonly bsmKey = [NaN, NaN, NaN, NaN, NaN];
   /** The stack's own slice count for the Beer shadow map (cloudLayers.ts cloudBsmSlices); the low tier takes 0.6 of it. */
   private bsmSlices = CLOUD_BSM_SLICES;
+  /** The main lane's vertical optical depth (cloudDeckTau): the cover the ground's light passes. */
+  private deckTau = 0;
   /** The band a cascade refreshes (reused: no allocation per frame). */
   private readonly bsmBandRect = new THREE.Vector4();
   private farShadeTarget: THREE.WebGLRenderTarget | null = null;
@@ -786,7 +788,7 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector2(1, 1) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -835,6 +837,7 @@ export class VolumetricCloudLayer {
         const diffuse = this.traceMaterial.uniforms.uLayerDiffuse.value as THREE.Vector4;
         diffuse.set(stack.lanes[0]?.diffuse ?? 0, stack.lanes[1]?.diffuse ?? 0, stack.lanes[2]?.diffuse ?? 0, stack.lanes[3]?.diffuse ?? 0);
         this.bsmSlices = cloudBsmSlices(stack);
+        this.deckTau = cloudDeckTau(stack);
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
         // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
@@ -978,10 +981,13 @@ export class VolumetricCloudLayer {
     t.uSunGain.value = preset.sunGain;
     t.uAmbientScale.value = preset.ambientScale;
     t.uBase.value = preset.baseM;
-    t.uCirrus.value = preset.cirrus;
+    // (2026-10-07, wave 198 on Desert: the upper sky's streaks read as smeared paint, and round two's fibres still left a
+    // sky-wide sheet over the cumulus in pair W — the cirrus is a trace of ice, not the sky's subject: 0.7 of its cover,
+    // 0.6 of its depth; QA: CLOUD_CIRRUS_COVER, CLOUD_CIRRUS_DEPTH)
+    t.uCirrus.value = preset.cirrus * lightTune('CLOUD_CIRRUS_COVER', 0.7);
     (t.uCirrusDir.value as THREE.Vector2).set(Math.cos(preset.cirrusAngleRad), Math.sin(preset.cirrusAngleRad));
     t.uCirrusAlt.value = preset.cirrusAltM;
-    t.uCirrusDensity.value = preset.cirrusDensity;
+    t.uCirrusDensity.value = preset.cirrusDensity * lightTune('CLOUD_CIRRUS_DEPTH', 0.6);
     (t.uWindDir.value as THREE.Vector2).copy(this.windDir);
     (this.medium.uWindDir2.value as THREE.Vector2).copy(this.windDir);
   }
@@ -1035,17 +1041,24 @@ export class VolumetricCloudLayer {
     (t.uAmbientBottom.value as THREE.Vector3).set(irr.r, irr.g, irr.b).multiplyScalar(0.22)
       .addScaledVector(this.scratch.set(hz.r, hz.g, hz.b), 0.08)
       .lerp(this.scratch.set(irr.r, irr.g, irr.b).multiplyScalar(0.42), stratiform);
-    // the ground under the clouds as the bases see it: its albedo under the sun (by the sky's open share) and the sky
+    // the ground under the clouds as the bases see it: its albedo under the light that reaches it. 2026-10-07 (overcast with
+    // structure): under the cover the sun and the sky alike come down through the clouds — the diffuse share of the main
+    // lane's column, raised by the light the ground and the clouds' bases pass back and forth (cloudGroundLight) — where
+    // the old law let the open sky's blue irradiance through a closed deck untouched (its base lit blue, the same
+    // everywhere). QA: CLOUD_DECK_GROUND 0 the old law (the sun by the open share, the sky whole).
     const model = this.scene.userData.lightModel as { groundAlbedo?: readonly number[]; overcast?: number } | undefined;
     const albedo = model?.groundAlbedo ?? [0.18, 0.18, 0.18];
     const sunUp = Math.max(0, a.sunDir.y / Math.max(1e-6, a.sunDir.length()));
     const open = 1 - Math.min(1, Math.max(0, this.preset?.coverage ?? 0));
     const ground = t.uGroundRadiance.value as THREE.Vector3;
     const sr = t.uSunRadiance.value as THREE.Vector3;
+    const lawK = Math.min(1, Math.max(0, lightTune('CLOUD_DECK_GROUND', 1)));
+    const reach = cloudGroundLight(open, this.deckTau, 0.2126 * albedo[0] + 0.7152 * albedo[1] + 0.0722 * albedo[2]);
+    const sunK = open + (reach - open) * lawK, skyK = 1 + (reach - 1) * lawK;
     ground.set(
-      albedo[0] * (sr.x * sunUp * open / Math.PI + irr.r),
-      albedo[1] * (sr.y * sunUp * open / Math.PI + irr.g),
-      albedo[2] * (sr.z * sunUp * open / Math.PI + irr.b));
+      albedo[0] * (sr.x * sunUp * sunK / Math.PI + irr.r * skyK),
+      albedo[1] * (sr.y * sunUp * sunK / Math.PI + irr.g * skyK),
+      albedo[2] * (sr.z * sunUp * sunK / Math.PI + irr.b * skyK));
     const glow = this.preset?.groundGlow;
     if (glow && (glow[0] > 0 || glow[1] > 0 || glow[2] > 0)) {
       (t.uAmbientBottom.value as THREE.Vector3).addScaledVector(this.scratch.set(glow[0], glow[1], glow[2]), CLOUD_GROUND_GLOW_K);
@@ -1244,6 +1257,8 @@ export class VolumetricCloudLayer {
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
+    // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale)
+    (t.uDeckTune.value as THREE.Vector2).set(lightTune('CLOUD_DECK_LOCAL_TAU', 1), lightTune('CLOUD_DECK_GROUND', 1));
     if (t.uDebug.value !== this.debugMode) { t.uDebug.value = this.debugMode; this.resetHistory(); }
 
     // camera frame; cuts (teleports, big turns, zooms) rebuild the history at four slots a frame
