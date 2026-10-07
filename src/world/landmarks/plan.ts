@@ -14,6 +14,9 @@ interface LandmarkKindSpec {
   footprint(p: LandmarkParams): readonly [number, number];
   /** The piece stands astride a road (a gate, an arch, a bridge): the road admission is its passage's, not its body's. */
   spansRoad?: boolean;
+  /** Its deck carries the road that arrives at it (a harbour's mole continuing the shore road): the layout brief counts
+   *  its record as that road's own, as it does a drivable bridge's (tools/map-layout-metrics.mjs), not as a prop in it. */
+  carriesRoad?: boolean;
   /** How far its footprint keeps from a road's line (default the carriageway's 3.5 m core): a plot a map lane hands over
    *  against an apron (whose paving the road field counts) keeps none. */
   roadMargin?: number;
@@ -48,6 +51,24 @@ const num = (p: LandmarkParams, key: string): number => Number(p[key]);
 export function gateStubs(p: LandmarkParams): readonly [number, number] {
   const walls = Math.max(0, num(p, 'walls')), own = (key: string): number => (num(p, key) >= 0 ? num(p, key) : walls);
   return [own('wallsLeft'), own('wallsRight')];
+}
+
+/**
+ * A fishing harbour's plan in its frame (harbour.ts harbour): the mole's root at the origin where the shore road arrives,
+ * its first leg along +z to the elbow at `length`, its arm turned `turn` degrees toward the basin side (`basin`: +x for
+ * 'right' walking out) for `arm` metres to the head's centre, the round head `width / 2 + 1.6` across; the slipway down
+ * the first leg's basin face from the root platform. The reach is the piece's extent from the origin, both ways along
+ * each axis (the footprint holds it).
+ */
+export function harbourLayout(p: LandmarkParams) {
+  const L1 = Math.max(16, num(p, 'length')), L2 = Math.max(0, num(p, 'arm')), t = Math.max(0, Math.min(100, num(p, 'turn'))) * Math.PI / 180;
+  const W = Math.max(5, num(p, 'width')), b = p.basin === 'left' ? -1 : 1, m = (W / 2) * Math.tan(t / 2);
+  const dx = Math.sin(t), dz = Math.cos(t), head: readonly [number, number] = [dx * L2, L1 + dz * L2], Rh = W / 2 + 1.6;
+  const slip = Math.max(0, num(p, 'slip')), slipTop = 6;
+  // (the boats' berths in the basin reach as far as the head or 19 m past the slipway, whichever is the farther)
+  const across = Math.max(W / 2 + slip + 19, head[0] + Rh, head[0] + 3 + W / 2) + 0.8;
+  const along = Math.max(L1 + m, head[1] + Rh) + 0.8;
+  return { L1, L2, t, W, b, m, dx, dz, head, Rh, slip, slipTop, across, along, sea: W / 2 + 1.2 };
 }
 
 /** The kinds, their parameters and their footprints. */
@@ -179,6 +200,25 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   mole: { family: 'harbour', inWater: true,
     defaults: { length: 40, width: 6, deck: 2.2, sea: 'left', light: 'red', height: 11, radius: 1.6 },
     footprint: (p) => { const Rh = num(p, 'width') / 2 + 1.6; return [Rh + 0.45, (num(p, 'length') + Rh) / 2 + 0.45]; } },
+  // a fishing harbour as one structure (harbour.ts harbour): the mole that continues the shore road from its root on the
+  // shore, its basin-side faces a quay, its arm round the basin to the head and its light, the slipway, boats and nets.
+  // The frame is the root's: the footprint reaches as far behind it as before it (the builder's reach both ways), the
+  // solids are the mole's legs, its head and the slipway (a basin's water and its boats are not)
+  harbour: { family: 'harbour', inWater: true, spansRoad: true, carriesRoad: true,
+    defaults: { length: 47, arm: 24, turn: 70, width: 9, deck: -1, basin: 'right', light: 'green', height: 9, slip: 4.5, grade: 1 / 6,
+      boats: 5, nets: true },
+    footprint: (p) => { const h = harbourLayout(p); return [h.across, h.along]; },
+    solids: (p) => {
+      const h = harbourLayout(p), x = (v: number) => h.b * v;
+      const leg2 = [x(h.head[0] / 2), h.L1 + h.dz * h.L2 / 2, h.dx * h.L2 / 2 + h.dz * h.W / 2 + 0.6, h.dz * h.L2 / 2 + h.dx * h.W / 2 + 0.6] as const;
+      const slipEnd = h.slipTop + 26;
+      return [
+        [x(-0.5), (h.L1 + h.m) / 2, h.W / 2 + 1.1, (h.L1 + h.m) / 2 + 0.4],
+        ...(h.slip > 0 ? [[x(h.W / 2 + h.slip / 2), slipEnd / 2, h.slip / 2 + 0.4, slipEnd / 2 + 0.4] as const] : []),
+        leg2,
+        [x(h.head[0]), h.head[1], h.Rh + 0.6, h.Rh + 0.6],
+      ];
+    } },
   // (the tower's axis at (bridge - radius) / 2 along its frame, the bridge's bank end at -(bridge + radius) / 2: the whole
   // piece centred on its frame; its batter, cornice and roof 1.1 m past the shaft)
   valveTower: { family: 'tower', inWater: true, defaults: { radius: 4.2, bridge: 34, width: 3.2, chamber: 5.4 },

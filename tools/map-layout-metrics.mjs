@@ -452,9 +452,10 @@ export async function loadLayoutWorld(mapId) {
   const config = getMapConfig(mapId);
   const world = dedicated.createDedicatedWorldCollision(mapId);
   const heightField = world.heightField ?? createHeightField(1337, config);
-  // a set piece that carries a road on its deck (a drivable bridge: landmarks/plan.ts spansRoad) is that road's bridge
-  const landmarkCarriesRoad = (piece) => LANDMARK_KINDS[piece.kind]?.family === 'bridge' && !!LANDMARK_KINDS[piece.kind].spansRoad
-    && resolveLandmarkParams(piece).drivable !== false;
+  // a set piece that carries a road on its deck (a drivable bridge, a harbour's mole: landmarks/plan.ts carriesRoad) is that
+  // road's own
+  const landmarkCarriesRoad = (piece) => !!LANDMARK_KINDS[piece.kind]?.carriesRoad || (LANDMARK_KINDS[piece.kind]?.family === 'bridge'
+    && !!LANDMARK_KINDS[piece.kind].spansRoad && resolveLandmarkParams(piece).drivable !== false);
   return { mapId, config, world, heightField, footprintContains: collision.collisionFootprintContainsPoint, mobility, landmarkFootprint,
     landmarkCarriesRoad };
 }

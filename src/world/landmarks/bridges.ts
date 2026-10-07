@@ -347,9 +347,9 @@ const LIFT_BENT_PITCH_M = 3.4;
  * a 10 m hull), so the step onto the boards is the tracks' (collision.ts HULL_STEP_UP_M). The plate is collision only,
  * under the bank the hull rides; the boards drawn over it are unchanged.
  */
-const ENTRY_M = 2.5, ENTRY_SINK_M = 0.2;
+export const ENTRY_M = 2.5, ENTRY_SINK_M = 0.2;
 /** Inside the plate a ramp climbs from the bank it meets at most this much a part (under HULL_STEP_UP_M, 0.55). */
-const ENTRY_CLIMB_M = 0.45;
+export const ENTRY_CLIMB_M = 0.45;
 
 /** The leaves: girders, cross-beams and the deck boards, each leaf from its pier face (±span/2) to the meeting line,
  * the white edge beams and the railing. */

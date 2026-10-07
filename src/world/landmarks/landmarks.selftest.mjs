@@ -91,7 +91,7 @@ const BUDGET = {
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
-  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
+  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500, harbour: 16000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -119,6 +119,7 @@ const VARIANTS = {
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
   quay: [{ length: 24, depth: 10, top: 1.0 }],
   slipway: [{ length: 20, width: 6, head: 0.5, toe: -1.0 }],
+  harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 

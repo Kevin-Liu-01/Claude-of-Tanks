@@ -31,7 +31,7 @@ export type LandmarkKind =
   // village works
   | 'lavoir' | 'khan'
   // harbour works
-  | 'lighthouse' | 'mole' | 'quay' | 'slipway'
+  | 'lighthouse' | 'mole' | 'quay' | 'slipway' | 'harbour'
   // wrecks
   | 'aircraftWreck';
 
@@ -89,6 +89,9 @@ export interface LandmarkBuildContext {
    * a bridge foots its piers on the bed and lays its deck to the banks. Absent in receipts that build on flat ground.
    */
   ground?: (lx: number, lz: number) => number;
+  /** The water's depth over the ground at a point of the piece's frame (0 where it is dry): a harbour's boats ride at
+   *  their moorings where it floats them and lie heeled on the sand where it does not. Absent in receipts. */
+  water?: (lx: number, lz: number) => number;
   /** The map paints its masonry as brick (a kit's stone surface): a builder picks courses and dressings to suit. */
   brick: boolean;
   snowCap: boolean;
