@@ -137,6 +137,10 @@ export default {
     // the open bell stage with a bifora on each face, the stone pyramid inside its balustrade and its cross, 34 m over
     // the village.
     landmarks: [
+      // round 2 (2026-10-06; gauntlet wave 158: "stands alone in an open red-earth field with no church, piazza, paving or
+      // houses at its foot"): the piazza's flagstones round its foot (authored first: a dressing piece, it refuses
+      // nothing), the campanile on its broad step, its stone streaked from each string course
+      { kind: 'path', x: -81, z: 10, yawDeg: -90, name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
     ],
     sourcedPalette: 'coastal',
