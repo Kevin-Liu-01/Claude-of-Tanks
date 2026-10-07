@@ -683,24 +683,6 @@ function ambientOcclusion(position: Float32Array, normal: Float32Array, index: r
 }
 
 /** Default weathering: a clean, lightly road-dirty vehicle. */
-/**
- * A geometry holding only `names` of `source`'s streams (shared, not copied), its index, groups and userData — in place
- * of deleteAttribute (hold 6, 2026-10-06): an attributes object that has lost keys drops to V8's dictionary mode, and one
- * such geometry drawn every frame (the shadow stand-ins, the moored hulls) left three's per-frame geometry update loop
- * megamorphic for every geometry in the scene, about +1 ms of CPU a frame.
- */
-export function keepStreams(source: THREE.BufferGeometry, names: readonly string[]): THREE.BufferGeometry {
-  const out = new THREE.BufferGeometry();
-  for (const name of names) {
-    const attribute = source.getAttribute(name);
-    if (attribute) out.setAttribute(name, attribute);
-  }
-  if (source.index) out.setIndex(source.index);
-  for (const group of source.groups) out.addGroup(group.start, group.count, group.materialIndex);
-  out.userData = source.userData;
-  return out;
-}
-
 export function vehicleWeathering(overrides: Partial<VehicleWeathering> = {}): VehicleWeathering {
   return {
     dirtRgb: [0.11, 0.085, 0.06], dirt: 0.5, dirtTop: 0.55, dustRgb: [0.36, 0.31, 0.24], dust: 0, rust: 0,

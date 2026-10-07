@@ -14,7 +14,8 @@
 // its own (the kits spend their legacy draws and pass the few they use in `BoatVariation`).
 
 import * as THREE from 'three';
-import { VehicleMesh, keepStreams, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
+import { VehicleMesh, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
+import { keepStreams } from '../geometryStreams.ts';
 
 type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
 

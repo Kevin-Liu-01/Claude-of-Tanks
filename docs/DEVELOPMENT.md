@@ -411,7 +411,9 @@ per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
 the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
-- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, machine-gun mounts (with the
+- `fleetPassHigh` — the unbatched seed-4242 HIGH build: the geometry ledger's HIGH rows, every drawn geometry's
+  attributes object still in V8's fast mode (2026-10-07, `src/world/geometryStreams.test-support.mjs`: no
+  `deleteAttribute` on what the renderer draws), machine-gun mounts (with the
   detached-mount negative control), track end wraps (with the broken-station controls and 3/5 mm limits), wheel
   quality and the Gallery surface markup (formerly `wheelQuality` and `surfaceMarkupFleet`).
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly

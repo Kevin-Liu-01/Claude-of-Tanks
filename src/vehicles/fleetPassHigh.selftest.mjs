@@ -13,6 +13,7 @@ import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment
 import { createTrackEndWrapAudit } from './trackEndWrap.test-support.mjs';
 import { createWheelQualityAudit } from './wheelQualityAudit.test-support.mjs';
 import { createSurfaceMarkupFleetAudit } from '../gallery/surfaceMarkupFleetAudit.test-support.mjs';
+import { createDrawnGeometryShapeAudit } from '../world/geometryStreams.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
 
@@ -44,6 +45,8 @@ await runFleetPass({
   ids: new Set([...ALL_TANK_IDS, ...DEVELOPMENT_TANK_IDS]),
   audits: [
     { name: 'fleetGeometryLedger', create: () => createFleetGeometryLedgerPassAudit(BUILD) },
+    // every drawn geometry keeps fast attribute objects (no deleteAttribute on what the renderer draws; reads only)
+    { name: 'drawnGeometryShape', create: createDrawnGeometryShapeAudit },
     // the mount inspection keeps its authored camo seed; camo seeds do not move the running gear
     { name: 'machineGunAttachment', ids: DEVELOPMENT_TANK_IDS, create: machineGunMounts },
     { name: 'trackEndWrap', ids: ALL_TANK_IDS, create: trackEndWraps },

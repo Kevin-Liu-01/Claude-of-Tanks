@@ -17,7 +17,8 @@
 // into it. Local +Z is the nose, the footprint is XZ-centred and the lowest tyre point is y = 0.
 
 import * as THREE from 'three';
-import { VehicleMesh, keepStreams, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { keepStreams } from '../geometryStreams.ts';
 import { buildModel, modelWheels } from './vehicleBodies.ts';
 import {
   DEFAULT_FLEET, FLEETS, climateForMap, fleetForMap, type CivilianRole, type Fleet, type FleetEntry, type VehicleClimate,

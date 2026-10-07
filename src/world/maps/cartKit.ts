@@ -16,7 +16,8 @@
 // same stream and no record moves. A model larger than its role's legacy box is scaled down into it.
 
 import * as THREE from 'three';
-import { VehicleMesh, keepStreams, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { keepStreams } from '../geometryStreams.ts';
 import { buildCart, cartWheels, type CartModel } from './cartBodies.ts';
 import { climateForMap, type VehicleClimate } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
