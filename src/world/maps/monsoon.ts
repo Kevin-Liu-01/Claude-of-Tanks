@@ -97,6 +97,11 @@ export default {
     loneMix: [['eucalyptus', 0.34], ['pine', 0.28], ['willow', 0.24], ['oak', 0.14]], rimMix: [['eucalyptus', 0.38], ['willow', 0.28], ['pine', 0.22], ['oak', 0.12]],
     clusterCount: 118, loneCount: 238, rimCount: 148, grassDensity: 1.38,
     clusterScrub: 2.7, bushCount: 1.72, bushSpecies: 'oak',
+    // the trees lane (2026-10-06, with the landmarks lane's DC's bungalow garden): two Khasi pines framing the compound,
+    // off the garden's west corner and by the tennis court's north-west bank, both clear of the set pieces' footprints
+    // and margins (records moved from the pine stands; no new tree; the west one half a metre north of the asked seat,
+    // where the battle zone's snag hash leaves it alive)
+    authoredTrees: [{ id: 'bungalow-khasi-pines', species: 'pine', path: [[-191, 236.5], [-162, 268]], count: 2 }],
   },
   props: {
     // regional-buildings lane: the Kohima 1944 kit (maps/regional/kohima.ts)

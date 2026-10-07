@@ -59,9 +59,17 @@ try {
     // the forest's make-up (the slots' shares of the mixes): pine on the ridges, the montane broadleaves, bamboo
     assert.ok(census.chestnut > 0.3 * total && census.holmOak > 0.2 * total && census.khasiPine > 0.18 * total
       && census.bamboo > 0.1 * total, `the forms' shares (${JSON.stringify(census)} of ${total})`);
-    console.log(JSON.stringify({ map: 'monsoon', trees: total, census }));
+    // the two Khasi pines authored by the DC's bungalow (the landmarks lane's garden, clear of its footprints): both seated,
+    // both living pines at their stations (no new tree: records moved from the pine stands)
+    const authored = world.group.userData.authoredTrees?.find((r) => r.id === 'bungalow-khasi-pines');
+    assert.ok(authored && authored.accepted === 2 && authored.attempted === 2, `the bungalow's Khasi pines seated (${JSON.stringify(authored)})`);
+    for (const [x, z] of veg.authoredTrees.find((f) => f.id === 'bungalow-khasi-pines').path) {
+      const at = world._trees.find((t) => Math.hypot(t.mat.elements[12] - x, t.mat.elements[14] - z) < 0.01);
+      assert.ok(at && at.species === 'pine', `a living Khasi pine at (${x}, ${z}) (${at?.species})`);
+    }
+    console.log(JSON.stringify({ map: 'monsoon', trees: total, census, authored }));
   } finally {
     world.dispose(); disposeObject3DResources(world.group);
   }
 } finally { restore(); }
-console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus PASS');
+console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus; the bungalow\'s two Khasi pines seated PASS');
