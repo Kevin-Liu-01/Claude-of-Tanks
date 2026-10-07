@@ -53,6 +53,7 @@ import { GERMANY_PROFILES } from './profiles/germany.ts';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.ts';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.ts';
 import { PUMA_S1_PROFILES } from './profiles/pumaS1.ts';
+import { buildM6Linebacker } from './profiles/m6Linebacker.ts';
 import { buildMarder2 } from './profiles/marder2.ts';
 import { TYPE89_LIGHT_TIGER_PROFILES } from './profiles/type89LightTiger.ts';
 import { LEOPARD_X_PROFILES } from './profiles/leopardX.ts';
@@ -192,6 +193,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...AFV_FAMILY_PROFILES,
   ...SHERIDAN_PROFILES,
   ...PUMA_S1_PROFILES,
+  m6_linebacker: { build: buildM6Linebacker },
   marder2: { build: buildMarder2 },
   ...TYPE89_LIGHT_TIGER_PROFILES,
   ...LEOPARD_X_PROFILES,

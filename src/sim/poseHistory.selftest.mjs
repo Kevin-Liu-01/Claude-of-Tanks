@@ -4,6 +4,7 @@ import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch, MAX_AUTHORITATIVE_PLAYERS } from './authoritativeMatch.ts';
 import { createPoseHistory, createTankArmorPose } from './poseHistory.ts';
 import { encodeAimIntent } from './aimIntent.ts';
+import { auxiliaryState } from './auxiliarySystems.ts';
 
 // ------------------------------------------------------------ 1. the ring
 {
@@ -44,6 +45,9 @@ function rangeMatch(shellRewind) {
     shellRewind,
   });
   match.onMatchReady();
+  // 2026-10-05: equipped automatic guns start on (c3eac0914); this range measures the main gun alone, so the roof guns go off before a rifle round's
+  // impact can end a shot loop ahead of the main gun's own shell.
+  for (const entity of match.entityById.values()) auxiliaryState(entity).gunOn = false;
   return match;
 }
 

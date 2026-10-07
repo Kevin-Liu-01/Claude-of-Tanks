@@ -876,23 +876,20 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(peakPitch < 0.075, `reverse brake: pitch lurch ${peakPitch.toFixed(3)} rad`);
 }
 
-// ------------------------------------------- 9. gun-terrain muzzle clamp --
-// Aim at the foot of a steep rising wall: the level barrel line would sink the
-// muzzle ~0.8 m into the slope. The clamp must hold the muzzle above ground
-// and flag atGunLimit so the reticle pins.
+// ------------------------------------------- 9. terrain never overrides gun aim --
+// A steep bank can intersect the barrel, but must not lift it off the player's
+// requested ray. Shell/world collisions still own the consequence of firing.
 {
-  const field = makeField((x, z) => Math.max(0, (z - 2) * 1.2));
+  const field = makeField((x, z) => Math.max(0, (z - 3.4) * 3));
   const ent = makeEntity(field, 0, 0, 0);
-  ent.input.aimPoint = new Vector3(0, field.getHeightAt(0, 3.5) + 0.02, 3.5);
+  ent.input.aimPoint = new Vector3(0, 1.8, 80);
   run(ent, field, 300);
-  const st = ent.state;
-  const barrel = SPEC.armor.gunBarrel.lengthM;
-  const pose = gunPoseWorld(st);
-  const muzzle = pose.origin.clone().addScaledVector(pose.direction, barrel);
-  const ground = field.getHeightAt(muzzle.x, muzzle.z);
-  assert(muzzle.y > ground + 0.1,
-    `muzzle clamp: muzzle ${muzzle.y.toFixed(2)} m vs ground ${ground.toFixed(2)} m (+0.1 min)`);
-  assert(st.atGunLimit === true, 'muzzle clamp: atGunLimit flags the pinned gun');
+  const pose = gunPoseWorld(ent.state);
+  const requested = ent.input.aimPoint.clone().sub(pose.origin).normalize();
+  assert(pose.direction.dot(requested) > 0.99999,
+    'nearby terrain must not raise the barrel away from the requested aim');
+  assert(!ent.state.atGunLimit, 'terrain is not a mechanical gun limit');
+  assert(!ent.state.gunLimitSpec, 'terrain does not create a travel-limit label');
 }
 
 // ----------------------------------------- 9b. exact gun lay on a sidehill --

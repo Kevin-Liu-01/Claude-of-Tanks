@@ -26,3 +26,13 @@ assert.deepEqual(presentation.battleRows([
 ], 'local roster puts the human first without changing teammate order');
 
 console.log('rosterPresentation.selftest: lobby/local naming and player order passed');
+
+const aircraftRow = {id:'ac130',name:'AC-130',tier:'',kind:'aircraft',isPlayer:true};
+assert.deepEqual(presentation.battleRows([
+ {specId:'m1a2',team:'player',isPlayer:true,aerial:{kind:'gunship'}},
+ {specId:'t90m',team:'player',spec:{name:'T-90M'}},
+], 'player'), [aircraftRow,{id:'t90m',name:'T-90M',tier:'IX',isPlayer:false}]);
+assert.deepEqual(presentation.lobbyRows({gameMode:'ac130',players:[
+ {id:'viewer',specId:'m1a2',team:'alpha'},
+ {id:'escort',specId:'t90m',team:'alpha',bot:true},
+]}, 'alpha', 'viewer'), [aircraftRow,{id:'t90m',name:'t90m',tier:'IX',isPlayer:false}]);

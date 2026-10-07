@@ -8,7 +8,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
 const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'leclerc_classic_x', 't80u',
-  'k21_x', 'kurganets25_x'];
+  'k21_x', 'kurganets25_x', 'm6_linebacker', 'm3a3_bradley'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));
@@ -23,7 +23,8 @@ for (const legacy of ['abrams', 'challenger_3', 'cv90105_tml_x', 'object695_x_ex
 }
 for (const configuredId of configuredIds) {
   assert.deepEqual(interiorFillBoundaryTriangles(configuredId, triangles, names).map(row => row.identity),
-    selected.map(row => row.identity), `${configuredId}: only primary hull/turret and moving gun stock bound fill`);
+    configuredId === 'm3a3_bradley' ? names.filter(name => name !== 'turretDetail') : selected.map(row => row.identity),
+    `${configuredId}: selected body owners and complete moving gun stock bound fill`);
   for (const missing of ['hull', 'turret']) {
     assert.throws(() => interiorFillBoundaryTriangles(configuredId,
       triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/);
@@ -101,6 +102,10 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
       `${configuredId}: actual authored primary bodies are closed at generator resolution`);
     const gun = rows => rows.filter(row => /^(gun|mantlet|muzzle)/i.test(meshes[row.mesh]));
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');
+    if (configuredId === 'm3a3_bradley') assert.deepEqual(
+      boundary.filter(row => /^hull/i.test(meshes[row.mesh])),
+      tris.filter(row => /^hull/i.test(meshes[row.mesh])),
+      'a turret-only repair preserves every original hull boundary triangle');
     results.push({ id: configuredId, quality, exteriorPocketVoxels: withFittings.count, primaryLeakVoxels: primary.count,
       boreAirVoxels: primary.bore, originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
   } finally { tank.dispose(); }

@@ -42,6 +42,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARD } from './combatAna
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDA6X } from './combatAnatomyGroups/leopardA6X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LEOPARDX } from './combatAnatomyGroups/leopardX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_LRMVLYNX } from './combatAnatomyGroups/lrmvLynx.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_M6LINEBACKER } from './combatAnatomyGroups/m6Linebacker.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MARDER2 } from './combatAnatomyGroups/marder2.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MERKAVA } from './combatAnatomyGroups/merkava.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_MERKAVAX } from './combatAnatomyGroups/merkavaX.generated.ts';
@@ -125,6 +126,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_LEOPARDA6X,
   CALIBRATIONS_LEOPARDX,
   CALIBRATIONS_LRMVLYNX,
+  CALIBRATIONS_M6LINEBACKER,
   CALIBRATIONS_MARDER2,
   CALIBRATIONS_MERKAVA,
   CALIBRATIONS_MERKAVAX,
