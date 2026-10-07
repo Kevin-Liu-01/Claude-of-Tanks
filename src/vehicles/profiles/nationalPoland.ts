@@ -196,7 +196,7 @@ function turretArmor(P: TankBuilderPort, model: number): void {
   for (const side of [-1, 1]) {
     stock(sectionSolid(stations.map(([z, inner, outer, bottom, top]) => {
       const ring: SectionPoint[] = [[inner, bottom + .04], [inner + .028, bottom], [outer - .07, bottom],
-        [outer, bottom + .07], [outer, top - .065], [outer - .055, top], [inner, top - .018]];
+        [outer, bottom + .07], [outer, top - .065], [outer - .055, top], [inner, top]];
       return {z, ring: side > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse()};
     })));
     // Separate bolted access lids express the side panniers without making

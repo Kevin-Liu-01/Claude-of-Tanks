@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
 import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL } from '../engine/atmosphere.ts';
+import { CLOUD_SHADE_PARS_GLSL } from '../engine/cloudShadeMap.ts';
 import { lightTune } from '../engine/lightModelCore.ts';
 import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
@@ -211,6 +212,9 @@ export interface HorizonPanoramaOptions {
   treelineM?: number | null;
   /** the probes' smaller bake (a CPU renderer); production bakes at HORIZON_PANORAMA's sizes */
   resolution?: { width: number; height: number; gridA: number; gridR: number };
+  /** 2026-10-05 (Part 1, the skies lane): bake the cloud shade's aux (STRIP_AUX_FRAGMENT) so the far country takes the
+   * clouds' shadows; the desktop tier only (phones have no cloud shade map) */
+  cloudShade?: boolean;
   /** the map's authored fogDensity: the shared haze law's σ (hazeLaw.ts) for the far country past the shell */
   fogDensity?: number | null;
   /** the map's own overcast fraction (lightModelCore resolveOvercast of its sky and cloudscape): the haze target's terms
@@ -472,6 +476,14 @@ interface ShellAir {
   uPanoViewProj: THREE.IUniform<THREE.Matrix4>;
   /** the aerial pass's cloud shade, as post.ts sets it each frame (AERIAL_CLOUD_SHADE_GLSL) */
   uCloudShade: THREE.IUniform<number>;
+  /** 2026-10-05 (Part 1): the far country's cloud shadows — the bake's aux (premultiplied: r the land's distance from the
+   *  eye / 10 km, g the sun's share of the texel's colour, b the coverage), whether the shade is on this draw, and the
+   *  shared shade map's uniforms (cloudShadeMap.ts), pointed at the layer's each draw */
+  uPanoAux: THREE.IUniform<THREE.Texture | null>;
+  uPanoShadeOn: THREE.IUniform<number>;
+  tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
+  uCotCloudShade: THREE.IUniform<THREE.Vector4>;
+  uCotCloudSun: THREE.IUniform<THREE.Vector4>;
 }
 
 /** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
@@ -626,6 +638,11 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoCloudOn: { value: 0 },
     uPanoViewProj: { value: new THREE.Matrix4() },
     uCloudShade: { value: 0 },
+    uPanoAux: { value: null },
+    uPanoShadeOn: { value: 0 },
+    tCotCloudShade: { value: null },
+    uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
+    uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
   };
@@ -644,6 +661,8 @@ uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
 uniform mat4 uPanoViewProj;
+uniform sampler2D uPanoAux; uniform float uPanoShadeOn;
+${CLOUD_SHADE_PARS_GLSL}
 ${ATMOSPHERE_SKY_GLSL}
 ${DOME_DECK_GREY_GLSL}
 ${CLOUD_COMPOSITE_GLSL}
@@ -738,7 +757,20 @@ ${HAZE_LAW_GLSL}`)
         } else {
           // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
           // samples carry no black from the sky texels: divided back out, then back to linear
-          diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+          vec3 land = pow(pano.rgb / pano.a, vec3(2.2));
+          // 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows): the far point rebuilt from the bake's
+          // distance (the column's azimuth, the ray's elevation from the bake eye), up the sun's ray into the shared shade
+          // map (cotCloudSun: inside its square, faded at the edge); only the sun's share of the texel dims — the sky's light
+          // and the haze stay
+          if (uPanoShadeOn > 0.5) {
+            vec4 aux = texture2D(uPanoAux, panoUv);
+            if (aux.b > 0.5) {
+              float rr = aux.r / aux.b * 10000.0, share = clamp(aux.g / aux.b, 0.0, 1.0), az = vPanoU * 6.2831853;
+              vec3 fp = vec3(cos(az) * rr, uPanoEye.y + tan(e) * rr, sin(az) * rr);
+              land *= 1.0 - share * (1.0 - cotCloudSun(fp));
+            }
+          }
+          diffuseColor.rgb *= land;
         }
       }
       #endif`);
@@ -1557,6 +1589,45 @@ void main() {
 }
 `;
 
+/**
+ * 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows): the strip's own march, run twice per texel —
+ * the sun's term on and off — for what the shell needs to dim the sun's part under the clouds: r the land's distance from
+ * the eye (/ 10 km), g the sun's share of the texel's final colour, 1 − L(no sun) / L(full) (the haze and the sky's light
+ * cancel; 0 where the sun's term is 0 — a face turned from it, a ridge's shadow), b the coverage; premultiplied by the
+ * coverage like the atlas, so a filtered skyline sample keeps its land's distance. Derived from STRIP_FRAGMENT by name
+ * (null if the strip no longer has the lines it rewrites: the bake skips the pass, the receipt fails).
+ */
+export const STRIP_AUX_FRAGMENT: string | null = deriveStripAux(STRIP_FRAGMENT);
+function deriveStripAux(strip: string): string | null {
+  const edits: [string, string][] = [
+    ['vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86);', 'vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * gSunScale;'],
+    ['(uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint)', '(uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) * gSunScale + uGains.x * 0.82 * skyTint)'],
+    ['void main() {', 'vec4 stripTexel() {'],
+    ['if (hitV < 0.0) { gl_FragColor = vec4(0.0); return; }', 'if (hitV < 0.0) { gRR = 0.0; return vec4(0.0); }'],
+    ['gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)) * alpha, alpha);', 'gRR = rr; return vec4(clamp(col, 0.0, 1.0), alpha);'],
+  ];
+  let out = strip;
+  for (const [from, to] of edits) {
+    if (out.split(from).length !== 2) return null;
+    out = out.replace(from, to);
+  }
+  const head = out.indexOf('${NOISE_GLSL}') >= 0 ? null : out.indexOf('float fallStreak(');
+  if (head === null || head < 0) return null;
+  out = `${out.slice(0, head)}float gSunScale = 1.0;\nfloat gRR = 0.0;\n${out.slice(head)}`;
+  return `${out}
+void main() {
+  gSunScale = 1.0;
+  vec4 full = stripTexel();
+  float rr = gRR;
+  gSunScale = 0.0;
+  vec4 dark = stripTexel();
+  float la = dot(full.rgb, vec3(0.2126, 0.7152, 0.0722)), lb = dot(dark.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float share = la > 1e-5 ? clamp(1.0 - lb / la, 0.0, 1.0) : 0.0;
+  gl_FragColor = vec4(vec3(rr / 10000.0, share, 1.0) * full.a, 1.0);
+}
+`;
+}
+
 // --------------------------------------------------------------------------------------------------- the baker
 
 /** The renderer surface the bake needs (production: the WebGLRenderer). */
@@ -1620,6 +1691,20 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   let domeScene: THREE.Object3D | null = null;
   let dome: THREE.Object3D | undefined;
   mesh.onBeforeRender = (_renderer, scene, camera) => {
+    // (Part 1, 2026-10-05: the far country's cloud shadows — the layer's shared shade map, by reference; off without the
+    // bake's aux, without a published map, or by the QA knob PANO_CLOUD_SHADE 0)
+    {
+      const shared = (scene.userData as { cloudShadeUniforms?: { tCotCloudShade: THREE.IUniform<THREE.Texture | null>;
+        uCotCloudShade: THREE.IUniform<THREE.Vector4>; uCotCloudSun: THREE.IUniform<THREE.Vector4> } }).cloudShadeUniforms;
+      const on = !!air.uPanoAux.value && !!shared && shared.uCotCloudShade.value.w > 0.5 && !!shared.tCotCloudShade.value
+        && lightTune('PANO_CLOUD_SHADE', 1) > 0;
+      air.uPanoShadeOn.value = on ? 1 : 0;
+      if (on) {
+        air.tCotCloudShade.value = shared!.tCotCloudShade.value;
+        air.uCotCloudShade.value = shared!.uCotCloudShade.value;
+        air.uCotCloudSun.value = shared!.uCotCloudSun.value;
+      }
+    }
     // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and greying and
     // the aerial pass's terms as post.ts sets them this frame, the ground under the camera as its datum
     const data = scene.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
@@ -1678,8 +1763,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
     // the aerial pass's cloud shade, as post.ts sets it each frame (its CLOUD_SHADE_DEFAULT without a published one)
+    // (2026-10-05, the skies lane: faded by the light model's overcast as post.ts fades it — none under a closed deck)
     const shade = (scene.userData as { cloudShadeAmp?: number }).cloudShadeAmp;
-    air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;
+    const deck = Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0));
+    air.uCloudShade.value = (typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22) * (1 - deck);
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
     air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
   };
@@ -1691,8 +1778,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
   let skyline: THREE.WebGLRenderTarget | null = null;
+  // (Part 1, 2026-10-05: the cloud shade's aux, a quarter of the strip's size; null on the phone tier)
+  let aux: THREE.WebGLRenderTarget | null = null;
   let baked = false;
-  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
+  const stats = { bakes: 0, ms: 0, auxMs: 0, aux: false, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
     groundTone: null as number[] | null, rockTone: null as number[] | null,
     hazeTerms: null as { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null };
   let skyWaits = 0;
@@ -1834,6 +1923,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.colorSpace = THREE.NoColorSpace;
     stripRT.texture.anisotropy = 4;
     stripRT.texture.name = 'horizon-panorama-atlas';
+    // (Part 1: the cloud shade's aux at a quarter of the strip — 2048 x 128 half floats, 2 MB — where the tier has a
+    // shade map and the knob is on; QA: PANO_CLOUD_SHADE 0 bakes none)
+    const auxRT = options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0
+      ? target(Math.max(64, res.width >> 2), Math.max(16, res.height >> 2), THREE.HalfFloatType, false) : null;
     const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
     skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
     const skylineRT = target(res.width, 2, THREE.HalfFloatType, false);
@@ -1850,6 +1943,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const stripMat = pass(STRIP_FRAGMENT, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } });
     const skylineMat = pass(SKYLINE_FRAGMENT, { uStrip: { value: stripRT.texture }, uRows: { value: res.height } });
     const skylineBlurMat = pass(SKYLINE_BLUR_FRAGMENT, { uSkyline: { value: skylineRawRT.texture }, uColumns: { value: res.width } });
+    const auxMat = auxRT ? pass(STRIP_AUX_FRAGMENT!, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } }) : null;
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(_clear).clone();
     const previousAlpha = renderer.getClearAlpha();
@@ -1865,25 +1959,39 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         renderer.clear(true, false, false);
         renderer.render(scene, camera);
       }
+      if (auxMat && auxRT) {
+        const t0 = performance.now();
+        quad.material = auxMat;
+        renderer.setRenderTarget(auxRT);
+        renderer.clear(true, false, false);
+        renderer.render(scene, camera);
+        stats.auxMs = Math.round((performance.now() - t0) * 10) / 10;
+      }
     } finally {
       renderer.setRenderTarget(previousTarget);
       renderer.setClearColor(previousColor, previousAlpha);
       renderer.autoClear = previousAutoClear;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
-      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat]) m.dispose();
+      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat, auxMat]) m?.dispose();
       quad.geometry.dispose();
       heightRT.dispose(); lightRT.dispose(); skylineRawRT.dispose(); edgeTex.dispose();
     }
     if (atlas) atlas.dispose();
     if (skyline) skyline.dispose();
+    if (aux) aux.dispose();
     atlas = stripRT;
     skyline = skylineRT;
+    aux = auxRT;
+    air.uPanoAux.value = auxRT ? auxRT.texture : null;
+    stats.aux = !!auxRT;
     // a GPU suspension (resourceLifetime) disposes the atlas texture: free its framebuffer, show the fallback again and
     // bake once more on the next request
     stripRT.texture.addEventListener('dispose', () => {
       if (atlas !== stripRT) return;
       baked = false; atlas = null; stripRT.dispose();
       if (skyline === skylineRT) { skyline = null; skylineRT.dispose(); air.uPanoSkyline.value = null; }
+      // (the aux goes with the atlas: the shell's cloud shade is off until the next bake makes both)
+      if (auxRT && aux === auxRT) { aux = null; auxRT.dispose(); air.uPanoAux.value = null; }
       mesh.visible = false;
       if (fallback) fallback.visible = true;
     });
@@ -1936,6 +2044,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     dispose() {
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }
       if (skyline) { const k = skyline; skyline = null; air.uPanoSkyline.value = null; k.dispose(); }
+      if (aux) { const x = aux; aux = null; air.uPanoAux.value = null; x.dispose(); }
       geometry.dispose();
       material.dispose();
     },
@@ -1952,4 +2061,4 @@ function mulberry32(a: number): () => number {
 }
 
 /** The bake's shader sources, for the receipts (a structural check: the passes compile against the same uniforms). */
-export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT });
+export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT, stripAux: STRIP_AUX_FRAGMENT ?? '' });

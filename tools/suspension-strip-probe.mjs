@@ -95,6 +95,21 @@ export const STRIP_CASES = Object.freeze({
     view: 'trench' },
   'trench-assault-heavy': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100_x', find: 'trench-assault', kind: 'cross',
     speed: 6, cruise: true, stretch: 2, view: 'trench' },
+  // round 8 (the track-contact parity hand-over, 2026-10-04): the same crossings watched from 24 m, the eye 1.6 m over the
+  // lips, so a hull at 11 m/s stays in frame through the run (the coordinator: "pull the camera back"); a hull driven off
+  // a flat roof's edge at 4 m/s (the hull resting on its body past its tracks, tipping off, the fall and the landing);
+  // and the foot of the steepest drivable descent clear of works on Alpine (a 37-degree face, 5.4 m over 7 m; Badlands
+  // has none clear) taken at 12 m/s, the nose's strike on the runout
+  'trench-field-wide': { map: 'badlands', mode: 'standard', find: 'trench-field', kind: 'cross', speed: 11, cruise: true,
+    view: 'trench-wide' },
+  'trench-assault-wide': { map: 'badlands', mode: 'frontline_assault', find: 'trench-assault', kind: 'cross', speed: 11,
+    cruise: true, view: 'trench-wide' },
+  'trench-assault-heavy-wide': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100_x', find: 'trench-assault',
+    kind: 'cross', speed: 6, cruise: true, stretch: 2, view: 'trench-wide' },
+  'roof-drive-off': { map: 'urban', mode: 'standard', find: 'roof-edge', kind: 'cross', speed: 4, cruise: true, stretch: 2,
+    view: 'roof' },
+  'flank-foot': { map: 'alpine', mode: 'standard', find: 'flank-foot', kind: 'cross', speed: 12, cruise: true,
+    view: 'foot' },
 });
 
 /** Step offsets (sim ticks) captured around a landing's touchdown and around a hard stop. */
@@ -205,6 +220,114 @@ function pageFindStage(world, kind, landing) {
       }
     }
     return bestTrench ?? relaxedTrench;
+  }
+  if (kind === 'roof-edge') {
+    // round 8: a flat roof 3-7 m over the ground (an axis-aligned box record, or one convex polygon), the hull staged on
+    // it 5 m in from an edge at least 8 m long and driven off it, the roof at least 10 m deep behind that edge, the
+    // street past it dry, even and clear of anything solid for 20 m
+    let bestRoof = null;
+    for (const o of obstacles) {
+      if (o.crushed || o.crushable || o.dead) continue;
+      const shape = o.shape2;
+      let ring = null;
+      if (!shape) ring = [o.min[0], o.min[2], o.max[0], o.min[2], o.max[0], o.max[2], o.min[0], o.max[2]];
+      else if (shape.kind === 'convex' && Array.isArray(shape.points)) ring = shape.points;
+      if (!ring || ring.length < 6) continue;
+      const n = ring.length / 2;
+      let cx = 0, cz = 0;
+      for (let i = 0; i < n; i++) { cx += ring[2 * i]; cz += ring[2 * i + 1]; }
+      cx /= n; cz /= n;
+      // a point inside the convex ring (the same side of every edge as its centroid)
+      const inside = (x, z) => {
+        for (let i = 0; i < n; i++) {
+          const ax = ring[2 * i], az = ring[2 * i + 1], bx = ring[(2 * i + 2) % ring.length], bz = ring[(2 * i + 3) % ring.length];
+          const side = (bx - ax) * (z - az) - (bz - az) * (x - ax);
+          const ref = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+          if (side * ref < 0) return false;
+        }
+        return true;
+      };
+      const top = o.max[1];
+      for (let i = 0; i < n; i++) {
+        const ax = ring[2 * i], az = ring[2 * i + 1], bx = ring[(2 * i + 2) % ring.length], bz = ring[(2 * i + 3) % ring.length];
+        const len = Math.hypot(bx - ax, bz - az);
+        if (len < 8) continue;
+        const ex = (ax + bx) / 2, ez = (az + bz) / 2;
+        let nx = (bz - az) / len, nz = -(bx - ax) / len;
+        if (nx * (ex - cx) + nz * (ez - cz) < 0) { nx = -nx; nz = -nz; }
+        if (!inside(ex - nx * 10, ez - nz * 10)) continue;
+        const street = h(ex + nx * 3, ez + nz * 3);
+        const height = top - street;
+        if (height < 3 || height > 7) continue;
+        let ok = true, maxGrade = 0, prev = null;
+        for (let step = 1; step <= 20 && ok; step++) {
+          for (const side of [-4, 0, 4]) {
+            const x = ex + nx * step - nz * side, z = ez + nz * step + nx * side;
+            if (wet(x, z) || obstacles.some((q) => q !== o && !q.crushed && !q.crushable
+              && x > q.min[0] - 3 && x < q.max[0] + 3 && z > q.min[2] - 3 && z < q.max[2] + 3)) { ok = false; break; }
+          }
+          const y = h(ex + nx * step, ez + nz * step);
+          if (prev !== null) maxGrade = Math.max(maxGrade, Math.abs(y - prev));
+          prev = y;
+        }
+        // nothing else stands on the roof's run-in
+        for (let step = 0; step <= 10 && ok; step++) {
+          const x = ex - nx * step, z = ez - nz * step;
+          if (obstacles.some((q) => q !== o && !q.crushed && q.max[1] > top + 0.2
+            && x > q.min[0] - 2 && x < q.max[0] + 2 && z > q.min[2] - 2 && z < q.max[2] + 2)) ok = false;
+        }
+        if (!ok || maxGrade > 0.15) continue;
+        const score = -Math.abs(height - 4.5) - maxGrade * 10 + Math.min(len, 16) * 0.1;
+        if (!bestRoof || score > bestRoof.score) {
+          bestRoof = { x: ex - nx * 5, z: ez - nz * 5, y: top, yaw: Math.atan2(nx, nz), score: +score.toFixed(4),
+            maxGrade: +maxGrade.toFixed(3), roof: { heightM: +height.toFixed(2), top: +top.toFixed(2), edgeM: +len.toFixed(1) },
+            trench: { x: ex, z: ez, ax: nx, az: nz, lx: -nz, lz: nx, halfM: 0, lipY: +top.toFixed(3), depthM: +height.toFixed(3) } };
+        }
+      }
+    }
+    return bestRoof;
+  }
+  if (kind === 'flank-foot') {
+    // round 8: the steepest drivable descent on the map (20-45 degrees over 5 m or more) with an even runout at its
+    // foot, dry and clear, its run-in at the top even for 12 m: the hull takes it at speed and its nose meets the runout
+    let bestFoot = null;
+    const steepMin = Math.tan(20 * Math.PI / 180), steepMax = Math.tan(45 * Math.PI / 180);
+    for (let gx = -280; gx <= 280; gx += 6) {
+      for (let gz = -280; gz <= 280; gz += 6) {
+        for (let k = 0; k < 16; k++) {
+          const yaw = (k * 2 * Math.PI) / 16;
+          const fx = Math.sin(yaw), fz = Math.cos(yaw);
+          // the face: from (gx, gz) down along the heading, each metre falling between the grades
+          let run = 0, drop = 0;
+          for (let step = 1; step <= 20; step++) {
+            const fall = h(gx + fx * (step - 1), gz + fz * (step - 1)) - h(gx + fx * step, gz + fz * step);
+            if (fall < steepMin || fall > steepMax) break;
+            run = step; drop += fall;
+          }
+          if (run < 5) continue;
+          const footX = gx + fx * run, footZ = gz + fz * run;
+          let ok = true, maxGrade = 0, maxSide = 0, prev = null;
+          for (let step = -12; step <= run + 20 && ok; step++) {
+            const x = gx + fx * step, z = gz + fz * step;
+            if (wet(x, z) || blocked(x, z, 4)) { ok = false; break; }
+            maxSide = Math.max(maxSide, Math.abs(h(x + fz * 2, z - fx * 2) - h(x - fz * 2, z + fx * 2)) / 4);
+            if (step >= 0 && step <= run) { prev = null; continue; }
+            const y = h(x, z);
+            if (prev !== null) maxGrade = Math.max(maxGrade, Math.abs(y - prev));
+            prev = y;
+          }
+          if (!ok || maxGrade > 0.15 || maxSide > 0.15) continue;
+          const score = (drop / run) * 10 + Math.min(run, 12) * 0.1 - maxSide * 10 - maxGrade * 5;
+          if (!bestFoot || score > bestFoot.score) {
+            const foot = h(footX, footZ);
+            bestFoot = { x: gx - fx * 12, z: gz - fz * 12, yaw, score: +score.toFixed(4), maxGrade: +maxGrade.toFixed(3),
+              face: { runM: run, dropM: +drop.toFixed(2), gradeDeg: +(Math.atan(drop / run) * 57.2958).toFixed(1) },
+              trench: { x: footX, z: footZ, ax: fx, az: fz, lx: fz, lz: -fx, halfM: 0, lipY: +foot.toFixed(3), depthM: 0 } };
+          }
+        }
+      }
+    }
+    return bestFoot;
   }
   const crossKind = kind === 'cross' || kind === 'cross-steep';
   let best = null;
@@ -371,7 +494,7 @@ async function stageCase(page, stage) {
       t.state.speed = 0;
     }
     const p = game.player; const st = p.state;
-    const y = hf.getHeightAt(stage.x, stage.z);
+    const y = Number.isFinite(stage.y) ? stage.y : hf.getHeightAt(stage.x, stage.z);
     st.pos.set(stage.x, y, stage.z); st.yaw = stage.yaw; st.speed = 0; st._prevSpeed = 0; st._spool = 0; st.yawRate = 0;
     st._spring.pitch = st._spring.roll = st._spring.pitchV = st._spring.rollV = 0;
     st.visualPitch = st.visualRoll = 0;
@@ -495,6 +618,25 @@ async function placeCamera(page, view, follow, fixed) {
       const lip = fixed?.lipY ?? ground;
       cam = [x + rx * 14, lip + 0.9, z + rz * 14];
       at = [x, lip - 0.2, z];
+    } else if (view === 'trench-wide') {
+      // round 8: 24 m along it, the eye 1.6 m over the lips, so a hull at speed stays in frame through the run
+      const lip = fixed?.lipY ?? ground;
+      cam = [x + rx * 24, lip + 1.6, z + rz * 24];
+      at = [x, lip, z];
+    } else if (view === 'foot') {
+      // round 8: beside a descent's foot on its lower side, 20 m off and 4 m out on the runout, the eye 2.5 m over the
+      // higher of the foot and the ground under the camera, looking back at the foot (the fixed pose's lipY)
+      const foot = fixed?.lipY ?? ground;
+      const lower = hf.getHeightAt(x - rx * 20, z - rz * 20) < hf.getHeightAt(x + rx * 20, z + rz * 20) ? -1 : 1;
+      const cx = x + lower * rx * 20 + fx * 4, cz = z + lower * rz * 20 + fz * 4;
+      cam = [cx, Math.max(foot, hf.getHeightAt(cx, cz)) + 2.5, cz];
+      at = [x - fx * 2, foot + 1, z - fz * 2];
+    } else if (view === 'roof') {
+      // round 8: from the street 10 m past the roof's edge and 14 m to its side, the eye a metre under the roof line,
+      // looking at the edge the hull drives off (the fixed pose's lipY is the roof)
+      const roof = fixed?.lipY ?? ground;
+      cam = [x + fx * 10 + rx * 14, roof - 1, z + fz * 10 + rz * 14];
+      at = [x + fx * 2, roof - 1.5, z + fz * 2];
     } else if (view === 'quarter') {
       cam = [x + rx * 9.5 + fx * 5, ground + 2.4, z + rz * 9.5 + fz * 5];
       at = [x, ground + 1.4, z];

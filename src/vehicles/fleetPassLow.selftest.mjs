@@ -9,6 +9,7 @@ import { ALL_TANK_IDS } from './specs.ts';
 import { createFleetGeometryLedgerPassAudit } from '../../tools/fleet-geometry-digest.mjs';
 import { createEraGameplayRegistrationAudit } from './eraGameplayRegistrationAudit.test-support.mjs';
 import { createGunArticulationAudit } from './gunArticulationAudit.test-support.mjs';
+import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'low', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
@@ -23,6 +24,9 @@ await runFleetPass({
     // 2026-10-04: the LOW build registers exactly the running-gear units it draws (a profile may branch on quality)
     { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
     { name: 'eraGameplayRegistration', create: createEraGameplayRegistrationAudit },
+    // 2026-10-04 (physics lane round 8): every tank's LOW build derives its published track contact (with the HIGH pass:
+    // the two tiers agree within 1 cm), and the run's ends sit where its drawn band leaves the ground
+    { name: 'trackContactDerivation', create: () => createTrackContactDerivationAudit('LOW') },
     { name: 'gunArticulation', create: createGunArticulationAudit },
   ],
 });

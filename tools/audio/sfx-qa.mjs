@@ -10,7 +10,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SFX_CATALOG } from './sfx-catalog.mjs';
 import { CACHE_ROOT } from './elevenlabs.mjs';
-import { deinterleave, wavFromS16, ffmpeg, bandEnergy, peakDb, rmsDb, transientAnatomy, lowToneGlide } from './pcm.mjs';
+import { deinterleave, wavFromS16, ffmpeg, bandEnergy, peakDb, rmsDb, transientAnatomy, lowToneGlide, splitGap } from './pcm.mjs';
 
 const SR = 48000;
 
@@ -92,6 +92,7 @@ export function measure(file, entry) {
     bands: bands.map((v) => +v.toFixed(3)),
   };
   if (entry?.loop) result.seam = seam(mono);
+  else result.split = splitGap(mono, SR);
   if (entry?.proc === 'gunshot' || entry?.proc === 'punch') {
     const a = transientAnatomy(mono, SR);
     result.anatomy = Object.fromEntries(Object.entries(a).map(([k, v]) => [k, +v.toFixed(3)]));

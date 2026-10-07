@@ -501,4 +501,78 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   handle.dispose();
 }
 
-console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes and the bake contract PASS');
+// --- 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows) --------------------------------------------
+// the aux pass: the strip's own march run twice (the sun's term on and off), at a quarter of the strip, on the tier with a
+// shade map only; the shell rebuilds each far point and dims only the sun's share under the shared shade map
+{
+  const aux = HORIZON_PANORAMA_SHADERS.stripAux;
+  assert.ok(aux && aux.length > 1000, 'the aux shader derives from the strip\'s (its rewritten lines all found)');
+  assert.equal(aux.split('void main()').length - 1, 1, 'one main');
+  assert.ok(/gSunScale = 1\.0;\s*vec4 full = stripTexel\(\);\s*float rr = gRR;\s*gSunScale = 0\.0;\s*vec4 dark = stripTexel\(\);/.test(aux), 'the march twice: the sun on, then off');
+  assert.ok(aux.includes('vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * gSunScale;'), 'the surface\'s sun term scaled');
+  assert.ok(aux.includes('vec3(1.06, 0.98, 0.86) * gSunScale + uGains.x * 0.82 * skyTint'), 'and the hidden fill\'s');
+  assert.ok(aux.includes('float share = la > 1e-5 ? clamp(1.0 - lb / la, 0.0, 1.0) : 0.0;'), 'the share: 1 - L(no sun) / L(full), bounded');
+  assert.ok(aux.includes('gl_FragColor = vec4(vec3(rr / 10000.0, share, 1.0) * full.a, 1.0);'), 'premultiplied by the coverage, like the atlas');
+  // the share's bounds, on the GLSL's own expression: 0..1, 0 where the sun's term is 0 (the two marches agree)
+  const share = (la, lb) => (la > 1e-5 ? Math.min(1, Math.max(0, 1 - lb / la)) : 0);
+  for (const [la, lb] of [[0.5, 0.2], [0.3, 0.3], [0.4, 0], [1e-7, 0], [0.2, 0.25]]) {
+    const v = share(la, lb);
+    assert.ok(v >= 0 && v <= 1, `the share in [0, 1] (${la}, ${lb})`);
+  }
+  assert.equal(share(0.3, 0.3), 0, 'no sun term (a face turned from the sun, a ridge\'s shadow): no share, no cloud shade');
+  assert.equal(share(0.4, 0), 1, 'all of it the sun\'s: the whole texel dims under a core');
+  // the shell's lookup: the far point as the bake placed it (azimuth u x 2 pi; the eye's height + tan(e) x distance)
+  const shell = (() => {
+    const h = createHorizonPanorama({ ringEdge, sun: [0.3, 0.6, 0.2], gains: { ambient: 0.8, sunGain: 1.4 } });
+    const sh = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+    h.mesh.material.onBeforeCompile(sh);
+    h.dispose();
+    for (const name of ['uPanoAux', 'uPanoShadeOn', 'tCotCloudShade', 'uCotCloudShade', 'uCotCloudSun']) assert.ok(name in sh.uniforms, `the shell binds ${name}`);
+    return sh;
+  })();
+  assert.ok(shell.fragmentShader.includes('vec3 fp = vec3(cos(az) * rr, uPanoEye.y + tan(e) * rr, sin(az) * rr);'), 'the far point rebuilt');
+  assert.ok(shell.fragmentShader.includes('land *= 1.0 - share * (1.0 - cotCloudSun(fp));'), 'only the sun\'s share dims');
+  assert.ok(shell.fragmentShader.includes('float cotCloudSun( vec3 wp )'), 'through the shared lookup (cloudShadeMap.ts: the square, its edge fade, a grazing sun)');
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);'), 'the bake\'s own placement of the point');
+  // the fade at the shade map's square (its CPU twin, the lookup the shell calls): a far point at 3 km keeps the core's
+  // shade, at 5.5 km it fades, at 6.5 km (past the 12 km square's half side) it takes none
+  const { cloudSunShareAt } = await import('../engine/cloudShadeMap.ts');
+  const rect = { x: 0, y: 0, z: 12000 }, sunUp = { x: 0, y: 1, z: 0 };
+  const core = () => 0.9;
+  const at = (x) => cloudSunShareAt({ x, y: 0, z: 0 }, rect, 1400, sunUp, core);
+  assert.ok(Math.abs(at(3000) - 0.1) < 1e-9, 'inside the square: the core\'s 0.1 of the sun kept');
+  assert.ok(at(5500) > 0.1 && at(5500) < 1, `faded toward the square's edge (${at(5500).toFixed(3)})`);
+  assert.equal(at(6500), 1, 'outside the 12 km square: no shade (the panorama runs to 9 km)');
+  // the bake: six passes with the aux, the aux a quarter of the strip; the suspension frees it with the atlas; the knob
+  // and the phone tier bake none
+  const fallback = new THREE.Object3D();
+  const handle = createHorizonPanorama({ ...options, cloudShade: true }, fallback);
+  const renderer = recordingRenderer();
+  assert.equal(handle.ensureBaked(renderer), true);
+  const renders = renderer.calls.filter((c) => c[0] === 'render').map((c) => c[1]);
+  assert.deepEqual(renders.slice(-1), [`${P.width >> 2}x${P.height >> 2}`], 'the aux pass last, a quarter of the strip');
+  assert.equal(renders.length, 6, 'six passes with the cloud shade');
+  assert.equal(handle.stats.aux, true, 'recorded for the probes');
+  const air = handle.mesh.userData.panoAir;
+  assert.ok(air.uPanoAux.value?.isTexture, 'the shell reads it');
+  handle.mesh.onBeforeRender(null, { userData: {} }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 0, 'no published shade map: off');
+  const shared = { tCotCloudShade: { value: new THREE.Texture() }, uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 1) }, uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) } };
+  handle.mesh.onBeforeRender(null, { userData: { cloudShadeUniforms: shared } }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 1, 'a published map: on');
+  assert.strictEqual(air.uCotCloudShade.value, shared.uCotCloudShade.value, 'by reference (the layer refreshes it in place)');
+  globalThis.__LIGHT_TUNE = { PANO_CLOUD_SHADE: 0 };
+  handle.mesh.onBeforeRender(null, { userData: { cloudShadeUniforms: shared } }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 0, 'QA: PANO_CLOUD_SHADE 0 turns it off');
+  delete globalThis.__LIGHT_TUNE;
+  handle.mesh.material.map.dispose();
+  assert.equal(air.uPanoAux.value, null, 'a GPU suspension frees the aux with the atlas (the next bake makes both)');
+  handle.dispose();
+  const phone = createHorizonPanorama({ ...options, cloudShade: false }, new THREE.Object3D());
+  const r2 = recordingRenderer();
+  assert.equal(phone.ensureBaked(r2), true);
+  assert.equal(r2.calls.filter((c) => c[0] === 'render').length, 5, 'the phone tier: no aux pass');
+  phone.dispose();
+}
+
+console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes, the bake contract and the far country\'s cloud shade (the aux pass, the share, the square) PASS');

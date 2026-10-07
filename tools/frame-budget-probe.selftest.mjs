@@ -1,6 +1,8 @@
 // Receipt for the frame-budget measurement (tools/frame-pass-timer.mjs, tools/frame-budget-probe.mjs): the
 // per-pass timer's label algebra against a fake WebGL2 timeline (nesting, cascade and simulation refinement, the
-// whole-frame cross-check, restoration), the A B B A pair deltas, the pinned roster and the mid-range projection.
+// whole-frame cross-check, restoration), the A B B A pair deltas, the pinned roster and the mid-range projection; the
+// pages' agreement (judgeScenes: twins on triangles, draws within their wander, another build's delta only once a staging
+// repeats it, the report's VOID).
 import assert from 'node:assert/strict';
 import {
   FRAME_PASS_ORDER, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios, stats,
@@ -8,7 +10,7 @@ import {
 } from './frame-pass-timer.mjs';
 import * as THREE from 'three';
 import {
-  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, parseFrameProbeArgs, pinnedOpponents,
+  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, judgeScenes, parseFrameProbeArgs, pinnedOpponents,
   profileSelfByChunk,
 } from './frame-budget-probe.mjs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
@@ -186,6 +188,80 @@ assert.equal(stats([]).med, null);
   assert.deepEqual(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase,chase@7']).views, ['chase', 'chase@7'],
     'a moving view glides at <m/s>');
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase@0']), /moving view/);
+  // the pages' agreement: the coordinator's defaults (twins' triangles 3 %, draws 10 %, a delta repeated within 1 %), on
+  assert.deepEqual([o.twinTrisTol, o.drawsTol, o.stableTol, o.sceneCheck], [3, 25, 1, true]);
+  const t = parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--twin-tris-tol=2', '--draws-tol=12', '--stable-tol=0.5', '--scene-check=off']);
+  assert.deepEqual([t.twinTrisTol, t.drawsTol, t.stableTol, t.sceneCheck], [2, 12, 0.5, false]);
+  assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--draws-tol=x']), /percentages/);
+  // cost rule v3, amended 2026-10-07: a map hold (the default staging tank) hides the bots' vehicles, a vehicle hold
+  // (its own --spec) keeps them; =0 and =1 override either way
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A']).hideBots, true, 'a map hold hides the bots');
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--spec=m1a2']).hideBots, false, 'a vehicle hold keeps them');
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--hide-bots=0']).hideBots, false);
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--spec=m1a2', '--hide-bots']).hideBots, true);
+  assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--hide-bots=yes']), /hide-bots/);
+}
+{
+  // the pages' agreement (judgeScenes): hold 51's three pages, each staged once — the base (h) 685 draws / 3.50 M triangles,
+  // the change (f) 340 / 3.15 M, the base's twin (the same dist) 369 / 3.20 M
+  const P = (key, root, ...h) => ({ key, root, history: h.map(([calls, tris], i) => ({ calls, tris, seq: i })) });
+  let j = judgeScenes([P('A', 'h', [685, 3498047]), P('B', 'f', [340, 3146550]), P('C', 'h', [369, 3200971])]);
+  assert.equal(j.verdict, 'restage');
+  assert.deepEqual(j.restage, ['A'], 'the twins disagree on triangles (9 %): the one with more is staged again, and nothing else is judged by them');
+  // A staged again comes back at its twin's scene: the change's page agrees (1.7 % triangles, 8 % draws)
+  j = judgeScenes([P('A', 'h', [685, 3498047], [366, 3199000]), P('B', 'f', [340, 3146550]), P('C', 'h', [369, 3200971])]);
+  assert.equal(j.verdict, 'agree', j.notes.join('; '));
+  // the twins still apart at the third reading: void
+  j = judgeScenes([P('A', 'h', [685, 3498047], [690, 3497000], [684, 3499000]), P('B', 'f', [340, 3146550]), P('C', 'h', [369, 3200971])]);
+  assert.equal(j.verdict, 'void');
+  // draws wander 6 % within one dist from dynamic culling while the triangles hold: agree
+  j = judgeScenes([P('A', 'h', [340, 3130000]), P('B', 'c', [361, 3135000]), P('C', 'h', [322, 3128000])]);
+  assert.equal(j.verdict, 'agree', j.notes.join('; '));
+  // the change adds 5 % triangles: staged again until a staging repeats it within 1 %, then its own geometry
+  j = judgeScenes([P('A', 'h', [340, 3130000]), P('B', 'c', [345, 3290000]), P('C', 'h', [342, 3131000])]);
+  assert.deepEqual([j.verdict, j.restage], ['restage', ['B']]);
+  j = judgeScenes([P('A', 'h', [340, 3130000]), P('B', 'c', [345, 3290000], [350, 3295000]), P('C', 'h', [342, 3131000])]);
+  assert.equal(j.verdict, 'agree');
+  assert.deepEqual(j.accepted.map((a) => [a.key, a.trisPct]), [['B', 5.25]]);
+  // ... and moving between stagings: staged again, then void
+  j = judgeScenes([P('A', 'h', [340, 3130000]), P('B', 'c', [345, 3290000], [345, 3390000]), P('C', 'h', [342, 3131000])]);
+  assert.equal(j.verdict, 'restage');
+  j = judgeScenes([P('A', 'h', [340, 3130000]), P('B', 'c', [345, 3290000], [345, 3390000], [345, 3490000]), P('C', 'h', [342, 3131000])]);
+  assert.equal(j.verdict, 'void');
+  // A B B A slots, one staging each, judged as they come: B1 off the base waits for B2 (expectMore), B2 repeating it is
+  // the build's delta; B2 moving is staged again; an A2 over A1 is staged again; A2 under an over-drawn A1 sends A1 back
+  const S = (key, root, seq, calls, tris) => ({ key, root, history: [{ calls, tris, seq }] });
+  j = judgeScenes([S('s0', 'h', 0, 340, 3130000), S('s1', 'c', 1, 345, 3290000)], { expectMore: ['c', 'h'] });
+  assert.deepEqual([j.verdict, j.pending], ['agree', ['s1']]);
+  j = judgeScenes([S('s0', 'h', 0, 340, 3130000), S('s1', 'c', 1, 345, 3290000), S('s2', 'c', 2, 349, 3300000)], { expectMore: ['h'] });
+  assert.deepEqual([j.verdict, j.accepted.map((a) => a.key)], ['agree', ['s1', 's2']]);
+  j = judgeScenes([S('s0', 'h', 0, 340, 3130000), S('s1', 'c', 1, 345, 3290000), S('s2', 'c', 2, 349, 3360000)], { expectMore: ['h'] });
+  assert.deepEqual([j.verdict, j.restage], ['restage', ['s2']], 'B2 2 % off B1: past the 1 % a delta must repeat by');
+  j = judgeScenes([S('s0', 'h', 0, 340, 3130000), S('s1', 'h', 1, 690, 3490000)]);
+  assert.deepEqual(j.restage, ['s1']);
+  j = judgeScenes([S('s0', 'h', 0, 690, 3490000), S('s3', 'h', 3, 340, 3130000)]);
+  assert.deepEqual(j.restage, ['s0'], 'the over-drawn earlier slot is the one sent back');
+  // tolerances are parameters
+  assert.equal(judgeScenes([P('A', 'h', [340, 3130000]), P('C', 'h', [342, 3190000])], { twinTris: 1 }).verdict, 'restage');
+  assert.equal(judgeScenes([P('A', 'h', [340, 3130000]), P('C', 'h', [400, 3131000])], { draws: 20 }).verdict, 'agree');
+}
+{
+  // the report's agreement per pose: twins apart void the row; a delta repeated across its two slots is accepted; a slot
+  // the gate voided voids its map's rows
+  const rec = (label, order, gpu, calls, tris, extra = {}) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, ...extra,
+    samples: [{ viewport: '1600x900', view: 'chase', scene: { calls, tris, all: calls + 150 },
+      summary: { gpuFrame: { med: gpu, p25: gpu - 1 }, cpuFrame: { med: 5 }, calls: { med: calls + 150 }, tris: { med: tris },
+        passes: { scene: { gpu: { med: gpu / 2 }, cpu: { med: 1 }, calls: { med: calls }, tris: { med: tris } } } } }] });
+  let row = buildFrameReport([rec('base', 0, 36, 685, 3498047), rec('new', 1, 32, 340, 3146550), rec('new', 2, 32, 341, 3147000),
+    rec('base', 3, 27, 369, 3200971)], ['base', 'new'])['verdant 1600x900 chase'];
+  assert.ok(row.void?.length && /twins/.test(row.void.join()), 'hold 51 as a report: VOID');
+  row = buildFrameReport([rec('base', 0, 20, 340, 3130000), rec('new', 1, 21, 345, 3290000), rec('new', 2, 21, 349, 3300000),
+    rec('base', 3, 20, 342, 3131000)], ['base', 'new'])['verdant 1600x900 chase'];
+  assert.equal(row.void, undefined);
+  assert.deepEqual(row.scene.accepted.map((a) => a.key), ['new s1', 'new s2'], "the change's own 5 % triangles, repeated");
+  row = buildFrameReport([rec('base', 0, 20, 340, 3130000), { mapId: 'verdant', label: 'new', key: 'verdant-s1-new', void: 'pages disagree: x', samples: [] },
+    rec('base', 3, 20, 342, 3131000)], ['base', 'new'])['verdant 1600x900 chase'];
+  assert.ok(row.void?.some((v) => /verdant-s1-new/.test(v)), 'a gate-voided slot voids the rows of its map');
 }
 {
   // the lock order: FIFO first; a busy session mutex gives the FIFO back before queueing again
@@ -333,4 +409,4 @@ assert.equal(stats([]).med, null);
   }
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle PASS');
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report) PASS');

@@ -54,6 +54,7 @@ type RoomMode = 'private' | 'lan';
 
 export interface BrowserRosterRow {
   readonly id: string;
+  readonly kind?: 'aircraft';
   readonly tier?: string;
   readonly name?: string;
   readonly isPlayer?: boolean;
@@ -138,7 +139,7 @@ export interface BrowserLoadPorts {
 
 export interface BrowserRosterPorts {
   getMap(mapId: string): { name: string; thumb: string; biome: string };
-  rows(players: BrowserRosterPlayer[], team: string, viewerId: string): BrowserRosterRow[];
+  rows(players: BrowserRosterPlayer[], team: string, viewerId: string, gameMode?: string): BrowserRosterRow[];
   vehicleName(specId: string): string;
   emitBattleStart(payload: { playerId: string; specId: string; mapId: string }): void;
   setCamoBiome(mapId: string): void;
@@ -331,6 +332,7 @@ export interface BrowserLaunchRequest {
   session?: RuntimeValue;
   lobbyState?: {
     mode?: string;
+    gameMode?: string;
     mapId?: string;
     round?: number;
     players?: ReadonlyArray<{ id: string; specId?: string | null; team?: string; name?: string }>;
@@ -856,7 +858,7 @@ export function createBrowserComposition({
 
   // ------------------------------------------------------------ entry
 
-  const showRoundLoad = (viewerId: string, players: BrowserRosterPlayer[], own: { team?: string } | null, mapId: string | null, mode: string, roundNumber: number, fallback: string): void => {
+  const showRoundLoad = (viewerId: string, players: BrowserRosterPlayer[], own: { team?: string } | null, mapId: string | null, mode: string, roundNumber: number, fallback: string, gameMode?: string): void => {
     const map = mapId ? roster.getMap(mapId) : { name: fallback, thumb: '', biome: 'none' };
     const displayTeam = own?.team === 'spectator' ? 'alpha' : String(own?.team || 'alpha');
     load.battleLoad.show({
@@ -864,8 +866,8 @@ export function createBrowserComposition({
       thumb: map.thumb,
       biome: mapId ? map.biome : 'none',
       mode: modeLabelFor(mode, roundNumber),
-      allies: roster.rows(players, displayTeam, viewerId),
-      enemies: roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      allies: roster.rows(players, displayTeam, viewerId, gameMode),
+      enemies: roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId, gameMode),
     });
   };
 
@@ -954,7 +956,7 @@ export function createBrowserComposition({
       scene.resetRoundState();
       roster.setCamoBiome(active.mapId);
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
-      showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle');
+      showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
       load.audio.loadingOn(true);
       load.lighting.setFarCascadeDormant(false);
@@ -1246,7 +1248,7 @@ export function createBrowserComposition({
       const players = lobbyPlayers(lobby?.players);
       const own = lobby?.players?.find((player) => player.id === viewerId) ?? null;
       const requestedMap = String(lobby?.mapId || candidate.lobby?.mapId || 'random');
-      showRoundLoad(viewerId, players, own, requestedMap === 'random' ? null : requestedMap, String(lobby?.mode || candidate.roomInfo.mode), Number(lobby?.round) || 0, 'Random battlefield');
+      showRoundLoad(viewerId, players, own, requestedMap === 'random' ? null : requestedMap, String(lobby?.mode || candidate.roomInfo.mode), Number(lobby?.round) || 0, 'Random battlefield', lobby?.gameMode);
       load.battleLoad.progress(0.01, 'Opening battle channel');
       if (!roomSession) adoptRoom(candidate);
       else if (!round && session?.enterMatch) {
