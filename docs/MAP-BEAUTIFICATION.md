@@ -6105,6 +6105,20 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-06 — Kestrel Airfield round 2: the An-225 inside its burnt hangar shell (the landmarks lane)
+
+**The gauntlet's wave 154:** "an unburnt, airbrushed toy under a few undersized arches with no hangar floor beneath it".
+The wreck at (−225, −205) lies inside the shell of its hangar: the concrete floor with the fire's scars, the low
+concrete walls along the back and sides, seven blackened lattice ribs from wall to wall (four whole, three broken),
+purlins, the burnt cladding over the back wall and the fallen roof sheets; the fuselage slab-sided, its skin in panels —
+the frame lines and the lap joints — burnt to the bare metal and sooted, the livery's bands hard-edged, the nose rounded
+to its visor, the break open with its frames and stringers. Against the round-1 shard: the wreck's own records (the
+floor, the walls, the footings); no other record moved. Census [2481, 2484, 1967]. Pacing (seeds 43000–43003): 161 / 163
+/ 202 / 212 s, the head's to the second. Cost (rule v3): census close — chase +0 draws, +0.98 % triangles; the hangar's
+view +4 draws, +1.84 %. Receipts: the 97 selected for Verdant and Kestrel (the landmarks library, the collision drift
+and pins, the layout brief, the maps' world, village, road and bot receipts) all green. (The cargo hangar's doors and
+the wall gap that wave 154 also found are the Hostomel kit's; the map-revival lane takes them.)
+
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
 **Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
