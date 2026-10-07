@@ -112,7 +112,8 @@ function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) 
   assert.equal(rayCollisionRecord({x:x-10,y:high+.01,z},{x:1,y:0,z:0},collider,20,new THREE.Vector3()),-1);
 }
 function dispose(result) {for(const geometries of Object.values(result.buckets)) for(const geometry of geometries) geometry.dispose();}
-const railMaps=['railyard','foundry','skybridge','caldera'];
+// (batch 4: Skybridge round 3, e53ee9c50 — Page never had a railway: the yard's lines, coal heaps and stores are gone)
+const railMaps=['railyard','foundry','caldera'];
 const totals={};
 for(const mapId of MAP_IDS) {
   const field=createHeightField(1337,getMapConfig(mapId));
