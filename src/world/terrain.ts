@@ -6159,8 +6159,11 @@ void splatCompute() {
     // grey band from above): a frozen sheet in a snowfield is dusted. Wind-sifted snow and hoar lie over its whole face in
     // patches — thin over the clear-ice fields, a third of the way to snow where it gathers — so the sheet reads as ice lying
     // in the snow, its cracks, depth fields and drifts kept under the dust, rather than a grey cut-out. The snow is the base
-    // layer's measured mean (uMeanG) and the patches the existing fields (no read); open water (uSea) takes none
-    float iceDust = (0.14 + 0.24 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3)) * fMs * (1.0 - uSea);
+    // layer's measured mean (uMeanG) and the patches the existing fields (no read); open water (uSea) takes none.
+    // (mr2's pair 19, the bird at ~240 m: "very even in tone") the wind clears the sheet's middle and drifts the snow
+    // against its banks — the dust thinner down the core (fMs → 1), heavier in the rim where the sheet meets its bank
+    float iceDust = (0.08 + 0.20 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3) + 0.26 * (1.0 - smoothstep(0.85, 1.0, fMs)))
+      * fMs * (1.0 - uSea);
     a.rgb = mix(a.rgb, uMeanG.rgb, iceDust);
     // ground lane (2026-10-03, the gauntlet: "grey frozen ponds dotted with white blobs"): snow on lake ice lies in
     // drifts the wind combs out along itself — long tongues and streaks three times their width — not round blots

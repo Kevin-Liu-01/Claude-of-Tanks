@@ -307,7 +307,7 @@ let bedLawNote = '';
 // measured mean over the ice, by the existing fields (no read), never on open water
 {
   const frag = shaderOf(terrain);
-  assert.ok(frag.includes('float iceDust = (0.14 + 0.24 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3)) * fMs * (1.0 - uSea);')
+  assert.ok(frag.replace(/\s+/g, ' ').includes('float iceDust = (0.08 + 0.20 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3) + 0.26 * (1.0 - smoothstep(0.85, 1.0, fMs))) * fMs * (1.0 - uSea);')
     && frag.includes('a.rgb = mix(a.rgb, uMeanG.rgb, iceDust);'), 'the frozen sheet takes a patchy dust of snow, off the sea');
   const ice = frag.slice(frag.indexOf('if (uIceDrift > 0.001 && fMs > 0.02) {'), frag.indexOf('float iceDust ='));
   assert.ok(ice.length > 0 && ice.includes('vec4 iceMacro'), 'the dust lies inside the ice sheet block, after its macro and grey');
