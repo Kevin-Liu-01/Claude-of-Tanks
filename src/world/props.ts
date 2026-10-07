@@ -5747,6 +5747,23 @@ ${snowCap ? `
     }
     return null;
   }
+  // The trees lane (2026-10-06, the gauntlet's wave 179 on Monsoon Ridge: "a tree growing out of a boulder"): the trunks
+  // the vegetation pass planted before the rocks — no boulder stands over one (the landform boulders keep further off,
+  // placeLandformBoulders). Read once, lazily; none without a vegetation.
+  let rockTrunks: Array<{ x: number; z: number; r: number }> | null = null;
+  function rockOnTrunk(x: number, z: number, reach: number): boolean {
+    rockTrunks ??= (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      r: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2,
+    }));
+    // a trunk "grows out of" a boulder when it stands inside the boulder's footprint (its centre within the hull's reach,
+    // 0.2 m in from its edge); a boulder beside a trunk, touching it, stays — the forest floor's own
+    const d = Math.max(0.2, reach - 0.2);
+    for (const t of rockTrunks) {
+      if (Math.abs(x - t.x) < d && Math.abs(z - t.z) < d && Math.hypot(x - t.x, z - t.z) < d) return true;
+    }
+    return false;
+  }
   function tryRock(
     x: number,
     z: number,
@@ -5793,6 +5810,9 @@ ${snowCap ? `
       if (!rockResiteHolds(x, z, reach)) return true;
       footprint = turnedRockHull(hull, x, z, sc, yawR);
     }
+    // (the trees lane: a boulder standing on a trunk where it came to rest is left out — its draws taken, its count kept,
+    // so every later placement keeps its seat)
+    if (rockOnTrunk(x, z, reach)) return true;
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(sc, scaleY, sc));
