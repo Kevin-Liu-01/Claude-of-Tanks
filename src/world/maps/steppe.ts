@@ -260,7 +260,9 @@ export default {
     // evenly scattered orange trees" took the cover the bots fight from — the pacing median fell to 172 s, under the
     // band; the field-interior rule for loose trees is the trees lane's, the counts stay)
     clusterCount: 5,   // the plain is the point — groves are rare landmarks
-    loneCount: 24,
+    // (2026-10-07, gauntlet wave 204: "scattered lone trees make the steppe read as savanna") the loose trees into
+    // shelterbelts: eight left by the yards and the balkas, the rest planted as three field-protective belts below
+    loneCount: 8,
     rimCount: 34,
     grassDensity: 1.1,
     bushCount: 0.72,
@@ -290,6 +292,11 @@ export default {
       ...shelterbelt(140, 20, 172, 300, [[0, 0.46, 'poplar', 8, 0.12, 0], [0.52, 1, 'oak', 9, 0.15, 0]]),   // station fields, south
       ...shelterbelt(-330, 60, -298, 300, [[0, 0.5, 'oak', 9, 0.15, 0], [0.56, 1, 'poplar', 8, 0.12, 0]]),  // kolkhoz fields, south
       ...shelterbelt(380, 30, 412, 300, [[0, 0.44, 'poplar', 8, 0.12, 0], [0.5, 1, 'poplar', 9, 0.14, 0]]), // east fields
+      // (2026-10-07, wave 204) the loose trees' cover as three more field-protective belts across the open middle, on the
+      // strips' long lines like Barayev's, with a gap where a field track crosses
+      ...shelterbelt(18, -80, 42, 130, [[0, 0.48, 'poplar', 9, 0.14, 0], [0.55, 1, 'oak', 10, 0.18, 0]]),    // the middle fields
+      ...shelterbelt(-262, -60, -244, 140, [[0, 0.5, 'oak', 9, 0.16, 0], [0.57, 1, 'poplar', 9, 0.14, 0]]),  // west of the farm track
+      ...shelterbelt(318, -10, 340, 190, [[0, 0.45, 'poplar', 9, 0.14, 0], [0.52, 1, 'poplar', 8, 0.14, 0]]), // east of the station road
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
@@ -316,10 +323,13 @@ export default {
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
+    // (2026-10-07, gauntlet wave 204: "shipping containers" in a 1950s sovkhoz) no container rows: an implement shed and
+    // a store in their places
     plan: ['watertower', 'warehouse', 'depot', 'granary', 'gantry', 'warehouse', 'cornershop',
-      'shed', 'containerRow', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
-      'cottage', 'ruin', 'barn', 'containerRow', 'cottage'],
-    destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'quonsethut'],
+      'shed', 'shed', 'farmhouse', 'stack', 'granary', 'cottage', 'warehouse', 'shed',
+      'cottage', 'ruin', 'barn', 'granary', 'cottage'],
+    // (wave 204: "a patio awning") no desert tents or Quonset huts: the field brigades' huts and lean-tos
+    destructibleBuildings: ['longhouse', 'motorpool', 'fieldhut', 'leanto'],
     // rail-kit stores are wide: the same lateral step and ground-fit tolerance
     // as Cinder Junction
     sideSkip: 0.15, spacingPad: 7, buildingLat: [12, 5], maxSpread: 2.4,
@@ -329,14 +339,15 @@ export default {
         structure: 'longhouse', redoubt: true, outcrop: false, wreck: true, wreckOffsetX: -18 },
       // the caravanserai ruin on its rise: broken fort walls, tumbled stone, a herders' camp
       { id: 'tarkhan-caravanserai-ruin', role: 'scout', x: 70, z: 142, yawDeg: 12,
-        structure: 'deserttent', outcrop: { count: 7, radius: 12, scaleMax: 3.0 } },
+        structure: 'leanto', outcrop: { count: 7, radius: 12, scaleMax: 3.0 } },
       // the station's machine yard under the elevator, east lane
       { id: 'elevator-machine-yard', role: 'support', x: 330, z: -160, yawDeg: 0,
         structure: 'motorpool', redoubt: true, outcrop: false, wreck: true, wreckOffsetZ: 16 },
     ],
     tones: {
       plaster: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
-      roof: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],
+      // (2026-10-07, wave 204: "terracotta roofs") corrugated asbestos-cement, a pale cool grey (the kit's own sheet)
+      roof: (h: number, s: number, l: number) => [0.1, clamp01(s * 0.1), clamp01(l * 0.9 + 0.1)],
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.45), clamp01(l * 1.0)],
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.85), clamp01(l * 1.0)],
       straw: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.9), clamp01(l * 1.05 + 0.05)],
@@ -373,17 +384,23 @@ export default {
     cropFields: 5,
     // world-dressing r1: open-plain hay economy — heavy bale/stook scatter,
     // stone-post rail fences, troughs at the farmsteads
-    wallStyle: 'fieldstone',
+    // (2026-10-07, wave 204: "dry-stone walls") the corrals, the yard walls and the field boundaries in saman (adobe), as
+    // the Virgin Lands built them
+    wallStyle: 'adobe',
     inhabit: {
-      stalls: 1, benches: 1, coreClutter: 6,
+      // (wave 204: "a patio awning") no market stalls
+      stalls: 0, benches: 1, coreClutter: 6,
       // (no stooks: sheaves stood in shocks before the combines; the sovkhoz's straw is ricked)
       bales: 16, stooks: 0,
       troughs: 1, churns: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
       // net, fuel dumps, bivouac clusters in the balkas
-      trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
-      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
+      // (2026-10-07, wave 204: "present-day Western dressing in a 1950s sovkhoz") no tarp camps; the authored period mix
+      // of Glacier Pass and Nordhavn (mr2's c0c8ef573): the electrification's cable reels and the direction signs, no
+      // traffic cones, Jersey barriers or pad transformers (the "bright green dumpster")
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 0,
+      modernClutter: { roadsign: 8, cablespool: 10 },
     },
   },
 
