@@ -2396,16 +2396,23 @@ function addStowageRackFrame(
   rails: number,
   rod: number,
 ): StowageRackFrameReceipt {
-  const {box}=KIT;
-  const rail=rod * 1.18;
+  // Round 4 (2026-10-07, wave 215 on the Type 99A: "the turret-rear cage is thick square bar like a roof rack"): the
+  // fence is welded round tube, posts and rails a tube's width (6 sides), the wire grid thin round rod; the floor
+  // lattice and the feet are the v2 rack's.
+  const tube=rod * 0.5, railR=rod * 0.56, wire=Math.max(0.005, rod * 0.22);
   const zMount=-d / 2 + rod / 2;
   const zFace=d / 2 - rod / 2;
-  const addSideBrace=(x: number,y0: number,z0: number,y1: number,z1: number): void => {
-    const dy=y1 - y0;
-    const dz=z1 - z0;
-    parts.add('dark',box(rod,rod,Math.hypot(dy,dz) + rod),x,
-      (y0 + y1) / 2,(z0 + z1) / 2,Math.atan2(-dy,dz),0,0);
+  // closed tube (an open end shows its inside, which the sealed check reads as an opening): six sides, a four-sided wire
+  const bar=(a: readonly number[], b: readonly number[], r: number, seg = 6): void => {
+    const start=new THREE.Vector3(a[0],a[1],a[2]), delta=new THREE.Vector3(b[0] - a[0],b[1] - a[1],b[2] - a[2]);
+    const len=delta.length();
+    if (len < 1e-6) return;
+    const geometry=new THREE.CylinderGeometry(r,r,len,seg,1,false);
+    geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize()));
+    geometry.translate(start.x + (b[0] - a[0]) / 2,start.y + (b[1] - a[1]) / 2,start.z + (b[2] - a[2]) / 2);
+    parts.add('dark',geometry);
   };
+  const addSideBrace=(x: number,y0: number,z0: number,y1: number,z1: number): void => bar([x,y0,z0],[x,y1,z1],tube * 0.85);
 
   // Floor lattice: cross-ribs and longitudinal stringers leave actual open
   // air between members. This is the silhouette the old full-size floor/back
@@ -2419,24 +2426,23 @@ function addStowageRackFrame(
   const nPosts=Math.min(10,Math.max(2,opts.posts || Math.round(w / 0.22)));
   for (let i=0;i<nPosts;i++) {
     const x=-w / 2 + 0.02 + i * ((w - 0.04) / (nPosts - 1));
-    parts.add('dark',box(rod,h,rod),x,h / 2,zFace);
+    bar([x,0,zFace],[x,h,zFace],tube);
   }
   const railYs=rails === 1
     ? [h * 0.95]
     : rails === 2 ? [h * 0.95,h * 0.45] : [h * 0.95,h * 0.70,h * 0.45];
   for (const ry of railYs) {
-    parts.add('dark',box(w,rail,rail),0,ry,zFace);
-    for (const sx of [-1,1]) parts.add('dark',box(rail,rail,d),
-      sx * (w / 2 - rail / 2),ry,0);
+    bar([-w / 2,ry,zFace],[w / 2,ry,zFace],railR);
+    for (const sx of [-1,1]) bar([sx * (w / 2 - railR),ry,-d / 2],[sx * (w / 2 - railR),ry,d / 2],railR);
   }
   for (const sx of [-1,1]) {
     const x=sx * (w / 2 - rod / 2);
-    parts.add('dark',box(rod,h,rod),x,h / 2,zMount);
+    bar([x,0,zMount],[x,h,zMount],tube);
     // Triangulated end returns and two real mounting feet make the basket
     // visibly load-bearing instead of a floating rectangle.
     addSideBrace(x,rod,zFace,h * 0.94,zMount);
     addSideBrace(x,rod,zMount,h * 0.94,zFace);
-    parts.add('hull',box(0.12,0.055,rod * 1.4),sx * (w * 0.31),
+    parts.add('hull',KIT.box(0.12,0.055,rod * 1.4),sx * (w * 0.31),
       0.035,zMount - rod * 0.25);
   }
   if (opts.mesh !== false) {
@@ -2444,13 +2450,14 @@ function addStowageRackFrame(
     // fleet-wide "gray square" proxy called out in visual review.
     const gridCols=Math.max(3,Math.min(12,Math.round(w / 0.14)));
     const gridRows=Math.max(2,Math.min(6,Math.round(h / 0.11)));
+    const zg=zFace - rod * 0.62;
     for (let i=1;i<gridCols;i++) {
       const x=-w / 2 + i * (w / gridCols);
-      parts.add('dark',box(rod * 0.55,h * 0.82,rod * 0.55),x,h * 0.52,zFace - rod * 0.62);
+      bar([x,h * 0.11,zg],[x,h * 0.93,zg],wire,4);
     }
     for (let i=1;i<gridRows;i++) {
       const y=h * 0.12 + i * (h * 0.76 / gridRows);
-      parts.add('dark',box(w * 0.97,rod * 0.55,rod * 0.55),0,y,zFace - rod * 0.62);
+      bar([-w * 0.485,y,zg],[w * 0.485,y,zg],wire,4);
     }
   }
   return {floorCross,floorStrings,nPosts};
@@ -2601,7 +2608,8 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   const rails = Math.min(3, Math.max(1, opts.rails || 2));
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
-  const rod = Math.max(0.018, Math.min(0.032, Math.min(w, d, h) * 0.085));
+  // round 4: bar stock capped at 2.4 cm (was 3.2 cm square, "thick square bar like a roof rack")
+  const rod = Math.max(0.016, Math.min(0.024, Math.min(w, d, h) * 0.07));
   const {floorCross,floorStrings,nPosts}=addStowageRackFrame(parts,opts,w,d,h,rails,rod);
   const softBundleCount=addStowageRackFill(parts,opts,w,d,h,rng);
   const fitting = fitAssemble('stowageRack', parts, opts);
