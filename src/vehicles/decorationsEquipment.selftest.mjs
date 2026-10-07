@@ -273,7 +273,10 @@ for (const id of ALL_TANK_IDS) {
 }
 // 2026-09-23: only the retired curated loadouts (tiger1, t34_85, m4a3e8, isu152, is7,
 // merkava4) placed these four variants; the vocabulary stays for future manifests.
-const UNPLACED_VARIANTS = new Set(['cooler-red', 'twin-can-cradle', 'spare-optics-case', 'thermos-crate']);
+// 2026-10-07 (tank-accessories round 4, waves 215 and 217: a cable spool is not crew kit, camp chairs read as toys): no
+// loadout carries the reel or the chair.
+const UNPLACED_VARIANTS = new Set(['cooler-red', 'twin-can-cradle', 'spare-optics-case', 'thermos-crate', 'cable-reel',
+  'folding-chair']);
 for (const v of UNPLACED_VARIANTS) assert.ok(!distributed.has(v), `${v}: no playable loadout places it today`);
 assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIANTS.size,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);

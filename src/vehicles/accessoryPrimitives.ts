@@ -157,11 +157,23 @@ export interface FabricSpec {
   cinch?: readonly number[];
   /** Cinch depth as a share of the section (0.08 = a firm webbing strap). */
   cinchDepth?: number;
+  /** Half-width of a strap's pinch along z (m; default 0.06, a soft cinch). */
+  cinchWidth?: number;
+  /** The fabric pressed out between straps, as a share of the section (default 0). */
+  bulge?: number;
+  /**
+   * A roll pinched under its straps (2026-10-07, round 4): loft stations at each strap and at its two shoulders
+   * (strap +- 1.25 cinchWidth), plus the two ends and `stations` - 2 evenly spaced interior stations clear of the
+   * straps, instead of the even spread, so a narrow pinch resolves without adding rings.
+   */
+  shoulders?: boolean;
   seed?: number;
   detail?: AccessoryDetail;
 }
 
 const CINCH_WIDTH = 0.06;
+/** A pinched roll's shoulder stations sit this many cinch widths either side of each strap. */
+const SHOULDER_K = 1.25;
 
 /** The fabric's section scale at local z (end gathering times every strap's cinch) and its fold share there. */
 function fabricSection(spec: FabricSpec, z: number): { scale: number; drop: number; foldShare: number } {
@@ -169,14 +181,44 @@ function fabricSection(spec: FabricSpec, z: number): { scale: number; drop: numb
   const endLength = spec.endLength ?? 0.18, endScale = spec.endScale ?? 0.35;
   const edge = Math.min(t, 1 - t) / Math.max(endLength, 1e-3);
   let scale = edge >= 1 ? 1 : endScale + (1 - endScale) * Math.sin(Math.min(1, edge) * Math.PI / 2);
-  let near = 0;
+  const width = spec.cinchWidth ?? CINCH_WIDTH;
+  let near = 0, gap = Infinity;
   for (const c of spec.cinch ?? []) {
-    const k = Math.exp(-(((z - c) / CINCH_WIDTH) ** 2));
+    const k = Math.exp(-(((z - c) / width) ** 2));
     near = Math.max(near, k);
+    gap = Math.min(gap, Math.abs(z - c));
   }
   scale *= 1 - (spec.cinchDepth ?? 0.08) * near;
+  // 2026-10-07 (round 4, wave 214: "the rolled tarp ... no strap-compression bulges"): the cloth a strap squeezes out
+  // swells the roll between its straps, so each strap sits in a groove instead of a band painted round a pipe
+  if (spec.bulge && Number.isFinite(gap)) scale *= 1 + spec.bulge * (1 - Math.exp(-((gap / (width * 1.6)) ** 2)));
   const drop = (spec.sag ?? 0) * Math.sin(Math.PI * t);
   return { scale, drop, foldShare: (0.35 + 0.65 * Math.sin(Math.PI * t)) * (1 - near) };
+}
+
+/** The loft stations of a fabric body (ascending z). */
+function fabricStations(spec: FabricSpec, detail: AccessoryDetail): number[] {
+  const zs = new Set<number>();
+  const cinch = (spec.cinch ?? []).filter((c) => Math.abs(c) < spec.len / 2 - 0.004);
+  if (spec.shoulders) {
+    const width = spec.cinchWidth ?? CINCH_WIDTH, s = width * SHOULDER_K;
+    for (const end of [-1, 1]) zs.add(+(end * spec.len / 2).toFixed(5));
+    // the coarse level (28 m and beyond) keeps the strap stations only: the pinch, without its shoulders
+    for (const c of cinch) for (const dz of detail ? [-s, 0, s] : [0]) {
+      if (Math.abs(c + dz) < spec.len / 2 - 0.01) zs.add(+(c + dz).toFixed(5));
+    }
+    const interior = Math.max(0, (spec.stations ?? 2) - 2);
+    for (let k = 1; k <= interior; k++) {
+      const z = (k / (interior + 1) - 0.5) * spec.len;
+      if (cinch.every((c) => Math.abs(z - c) > s * 1.6)) zs.add(+z.toFixed(5));
+    }
+    return [...zs].sort((a, b) => a - b);
+  }
+  const count = Math.max(4, Math.round((spec.stations ?? 9) * (detail ? 1 : 0.6)));
+  for (let k = 0; k < count; k++) zs.add(+((k / (count - 1) - 0.5) * spec.len).toFixed(5));
+  // one station on each strap line resolves its cinch at both levels (the fabric bulges between straps)
+  for (const c of cinch) zs.add(+c.toFixed(5));
+  return [...zs].sort((a, b) => a - b);
 }
 
 /** One superellipse ring of a fabric section (no folds when `amp` is 0), seated on its pressed base. */
@@ -211,13 +253,8 @@ function fabricSegments(spec: FabricSpec): number {
 export function fabricBody(spec: FabricSpec): THREE.BufferGeometry {
   const detail = spec.detail ?? 1;
   const seg = fabricSegments(spec);
-  const count = Math.max(4, Math.round((spec.stations ?? 9) * (detail ? 1 : 0.6)));
   const amp = (spec.wrinkle ?? 0.045) * (detail ? 1 : 0.5);
-  const zs = new Set<number>();
-  for (let k = 0; k < count; k++) zs.add(+((k / (count - 1) - 0.5) * spec.len).toFixed(5));
-  // one station on each strap line resolves its cinch at both levels (the fabric bulges between straps)
-  for (const c of spec.cinch ?? []) if (Math.abs(c) < spec.len / 2 - 0.004) zs.add(+c.toFixed(5));
-  const sections: LoftSection[] = [...zs].sort((a, b) => a - b).map((z) => ({ z, ring: fabricRing(spec, z, seg, amp) }));
+  const sections: LoftSection[] = fabricStations(spec, detail).map((z) => ({ z, ring: fabricRing(spec, z, seg, amp) }));
   const raw = loftZ(sections);
   raw.deleteAttribute('normal');
   raw.deleteAttribute('uv');
@@ -227,6 +264,54 @@ export function fabricBody(spec: FabricSpec): THREE.BufferGeometry {
   const flat = welded.toNonIndexed();
   welded.dispose();
   return withBoxUV(flat);
+}
+
+/** One point of a fabric section at angle `a` (fabricRing's construction at an arbitrary angle), `proud` off it. */
+function fabricPoint(spec: FabricSpec, z: number, a: number, amp: number, proud: number): XY {
+  const e = 2 / (spec.exponent ?? 3);
+  const flatten = spec.flatten ?? 0.25;
+  const { scale, drop, foldShare } = fabricSection(spec, z);
+  const floor = -spec.hh * (1 - flatten);
+  const c = Math.cos(a), s = Math.sin(a);
+  const folds = 1 + amp * foldShare * wrinkle(a, z, spec.seed ?? 1);
+  let x = Math.sign(c) * Math.pow(Math.abs(c), e) * spec.hw * scale * folds;
+  let y = Math.sign(s) * Math.pow(Math.abs(s), e) * spec.hh * scale * folds;
+  if (y < floor) { const under = floor - y; y = floor - under * 0.18; x *= 1 + (under / Math.max(spec.hh, 1e-3)) * 0.25; }
+  const l = Math.hypot(x, y) || 1;
+  return [x + (x / l) * proud, y + (y / l) * proud - drop];
+}
+
+/**
+ * An open sleeve over part of a fabric body along +Z (round 4, 2026-10-07: a camouflage net's own skin over its
+ * roll, where a rigid half-cylinder stood proud of the roll with dead-straight hems): at each of the body's loft
+ * stations it spans the section from `cover(z)[0]` to `cover(z)[1]` (the section's own angle, radians; pi / 2 is the
+ * top) `proud(z)` metres off the fabric, so it follows every pinch and swell, and its hem is wherever `cover` puts
+ * it. Open (net material is seen from both sides), `arc` quads round, normals and box UVs like the kit's geometry.
+ */
+export function fabricSleeve(spec: FabricSpec, cover: (z: number) => readonly [number, number], proud: (z: number) => number,
+  arc = 7): THREE.BufferGeometry {
+  const detail = spec.detail ?? 1;
+  const amp = (spec.wrinkle ?? 0.045) * (detail ? 1 : 0.5);
+  const rows = fabricStations(spec, detail).map((z) => {
+    const [a0, a1] = cover(z), pr = proud(z);
+    const row: Array<[number, number, number]> = [];
+    for (let j = 0; j <= arc; j++) {
+      const [x, y] = fabricPoint(spec, z, a0 + ((a1 - a0) * j) / arc, amp, pr);
+      row.push([x, y, z]);
+    }
+    return row;
+  });
+  const positions: number[] = [];
+  for (let k = 0; k < rows.length - 1; k++) {
+    for (let j = 0; j < arc; j++) {
+      const a = rows[k][j], b = rows[k][j + 1], c = rows[k + 1][j + 1], d = rows[k + 1][j];
+      positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return withBoxUV(geometry);
 }
 
 /** How deep a strap's edges sink into the fabric it cinches (m). */
