@@ -665,6 +665,10 @@ assert.match(layerSource, /lightTune\('CLOUD_DECK_GROUND', 1\)\)\) \* this\.deck
 // flat to half, keeps its grey base); round 5's mottle dropped (no dead cost: it barely showed on the GPU)
 assert.ok(shadersSource.includes('* mix( 1.0, uDeckTune.z, smoothstep( 0.6, 1.0, flatK ) );'), 'the trace carries the closing deck\'s ground return');
 assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the medium or the trace');
+// round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
+// rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column
+assert.ok(layerSource.includes('amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );')
+  && layerSource.includes('uSunRadiance * phaseHG( cosT, 0.72 ) * 0.1 * uSunGain * ( 1.0 - prec )'), 'the rain under a storm is grey');
 // 2026-10-06 (the first GPU pair: the v2 page's atmosphere fell to its Preetham fallback on the hardware): the sun mean's
 // readback holds no pack buffer across a task — three's readRenderTargetPixelsAsync keeps its buffer bound over its
 // await, and any other read in that window (the atmosphere's summary) fails

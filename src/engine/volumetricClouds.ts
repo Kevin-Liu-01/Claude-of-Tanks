@@ -350,7 +350,12 @@ vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLaye
 		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
 		if ( rho <= 0.0 ) continue;
 		// lit by the lower sky under the cloud (darker under a heavy core) and the sun's forward glow through the drops
-		vec3 S = ( uAmbientBottom * 1.6 * uAmbientScale * ( 1.0 - 0.45 * prec ) + uSunRadiance * phaseHG( cosT, 0.72 ) * 0.1 * uSunGain ) * uTint;
+		// (round 7, wave 221 on Monsoon: a shaft in front of a tower's dark core read as blue sky through it — under the
+		// storm the rain sees the storm's grey base, not the open sky: its light greyed toward its luminance and darker
+		// under a heavy core, the sun's glow only where the column is thin)
+		vec3 amb = uAmbientBottom * 1.6 * uAmbientScale;
+		amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );
+		vec3 S = ( amb + uSunRadiance * phaseHG( cosT, 0.72 ) * 0.1 * uSunGain * ( 1.0 - prec ) ) * uTint;
 		float Ts = exp( -rho * dt );
 		float dT = T * ( 1.0 - Ts );
 		L += S * dT; tAcc += t * dT; wAcc += dT;
