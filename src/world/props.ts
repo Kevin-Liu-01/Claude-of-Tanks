@@ -8754,6 +8754,8 @@ ${snowCap ? `
     if (!rec?.body || rec.looseIndex == null || rec.looseListed == null
       || !kickLooseProp(rec.body, dx, dz, speed, cause)) return false;
     ensureLooseActive(rec as LooseDestructibleRecord);
+    // audio seam (2026-10-06): a knocked drum, bucket or bin clangs (the body's own kick cooldown spaces the reports)
+    emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause, loose: true });
     return true;
   }
 
@@ -8890,6 +8892,8 @@ ${snowCap ? `
       ax: _cax.x, az: _cax.z, t: 0, placement: null,
       maxAng: settledToppleAngle(heightField, c.x, c.y, c.z, dx, dz, c.h, 0.12),
     });
+    // audio seam (2026-10-06): the pole's foot cracks, its wires whip, it lands — every pole carries the line's wires
+    emitDestroyed({ kind: 'utility_pole', pos: [c.x, c.y, c.z], cause: 'ram' });
     return true;
   }
 

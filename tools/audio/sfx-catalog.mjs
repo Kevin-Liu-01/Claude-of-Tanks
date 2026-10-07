@@ -226,6 +226,20 @@ const props = [
   sfx('hedgehog_clang', 'props', `One-shot of a steel anti-tank obstacle knocked over: heavy clanging steel beams. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
   sfx('sandbag_thump', 'props', `One-shot of a stack of sandbags pushed over: heavy soft thumps. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
   sfx('wire_snag', 'props', `One-shot of barbed wire dragged and snapping under a vehicle: metallic twangs and scrapes. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
+  // The 2.0 revival (2026-10-06): the crushables that were silent or wrong. A telegraph pole snaps, its wires
+  // whip, and it lands (the hinge topple lands 0.8 s after the crush); carts, straw, tents, steel posts, clay
+  // pots and loose drums each sound of what they are (src/audio/propSounds.ts maps every world kind).
+  sfx('pole_snap', 'props', `One-shot of a tall wooden telegraph pole snapping at its base as a tank shoves it over: a loud dry crack of splitting timber and the groan of the leaning pole. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 6, proc: 'impact' }),
+  sfx('pole_wires', 'props', `One-shot of overhead telegraph wires pulled taut and breaking as their pole falls: sharp metallic twangs, the whip and hiss of slack wire, a porcelain insulator cracking. ${NO_MUSIC}.`, 2, { inf: 0.55, variants: 2, takes: 4, proc: 'impact', punch: false }),
+  sfx('pole_fall', 'props', `One-shot of a heavy wooden pole slamming flat onto hard ground: a deep hollow wooden thud with a short bounce and rattle. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 4, proc: 'impact' }),
+  sfx('cart_break', 'props', `One-shot of a tank crushing a wooden farm cart: big spoked wooden wheels splintering, the axle cracking and the planks of the bed breaking. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 4, proc: 'impact' }),
+  sfx('straw_crush', 'props', `One-shot of a tank rolling over a big bale of hay: dry straw crunching and rustling under a heavy soft thump. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 4, proc: 'impact', punch: false }),
+  sfx('tent_collapse', 'props', `One-shot of a canvas army tent crushed by a heavy vehicle: tent poles snapping, heavy canvas tearing and flapping down, guy ropes twanging. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'impact', punch: false }),
+  sfx('metal_topple', 'props', `One-shot of a steel street lamp post crashing flat onto a paved road: a loud hollow metallic clang, a rattle as it bounces, the lamp's glass shattering. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'impact' }),
+  sfx('pottery_smash', 'props', `One-shot of a large clay pot crushed under a heavy vehicle: thick terracotta cracking and shards scattering on the ground. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 4, proc: 'impact' }),
+  sfx('can_knock', 'props', `One-shot of an empty steel drum knocked over by a heavy vehicle: one hollow metallic clang, then a short rattling roll across the ground. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 6, proc: 'impact' }),
+  // The red fuel drum's own explosion (it broke with a dent and no blast); an explosion, so on the impacts' range law.
+  sfx('fuel_drum_blast', 'impacts', `One-shot of a steel fuel drum exploding: a deep whoomp of igniting fuel, the metallic bang of the drum bursting open and the rush of a fireball. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact' }),
 ];
 
 // ----------------------------------------------------------- collisions ---
@@ -415,6 +429,11 @@ const AMBIENCE_EVEN = {
   oasis: 'a desert oasis: palm fronds rustling in a dry wind, a trickling spring, open desert silence',
   canyon: 'a deep rocky canyon: a low wind moaning between the cliffs, a distant river, falling pebbles',
   airfield: 'a military airfield: open wind across the runway, a distant jet engine idling steadily, flags snapping',
+  // The 2.0 revival (2026-10-06): the sheltered waters that amb_coastal's breaking surf misdescribed — the Ofotfjord's
+  // arms at Bjerkvik in May (Nordhavn) and a hooked Dalmatian bay on the Adriatic channels (Saltwind). The cicadas
+  // stay spots: asked for in the bed, every take came back as one steady 6–8 kHz shrill (99 % of its energy over 4 kHz).
+  fjord: 'a sheltered northern fjord shore in spring: calm cold water lapping gently against a stony beach and wooden pilings, a light breeze off the water, deep quiet',
+  adriatic: 'a sheltered Mediterranean bay in summer: small waves lapping and washing over a pebble shore close by, a warm dry breeze moving through scrub and pine branches, no insects',
 };
 
 /** Water and machinery layers placed under a bed on the maps that have them. */
@@ -424,6 +443,12 @@ const LAYERS = {
   spillway: 'a dam spillway: powerful rushing torrent of water',
   surf: 'heavy surf: big waves rolling in and crashing on a beach',
   machinery: 'a large factory: steady low drone of machinery and ventilation',
+};
+
+/** The 2.0 revival's layers (2026-10-06, three takes each): Suzhou Creek's water and the DYE-M radar station. */
+const LAYERS_REVIVAL = {
+  creek: 'slow city canal water lapping against stone embankment walls, moored wooden boats knocking softly together',
+  station: 'the steady drone of a remote Arctic radar station heard from outside: diesel generators humming behind steel walls, ventilation fans, a faint electrical buzz',
 };
 
 const ambience = [
@@ -444,6 +469,13 @@ const ambience = [
   ...Object.entries(LAYERS).map(([layer, desc]) => sfx(`layer_${layer}`, 'ambience',
     `Seamless loop of ${desc}. Continuous, even intensity, no other sounds, ${NO_MUSIC}.`,
     12, { inf: 0.45, loop: true, variants: 1, takes: 1, proc: 'ambience', ch: 'stereo' })),
+  ...Object.entries(LAYERS_REVIVAL).map(([layer, desc]) => sfx(`layer_${layer}`, 'ambience',
+    `Seamless loop of ${desc}. Continuous, even intensity, no other sounds, ${NO_MUSIC}.`,
+    12, { inf: 0.45, loop: true, variants: 1, takes: 3, proc: 'ambience', ch: 'stereo' })),
+  // The front's aircraft by era (2026-10-06): the Second World War maps fly piston fighters and twin-engine bombers,
+  // not jets (src/audio/environmentScenes.ts picks per map; the flyover event may name its type).
+  sfx('flyover_piston', 'ambience', `One-shot of a Second World War single-engine fighter plane flying low overhead: the rising roar of its piston engine and propeller, passing over with a doppler drop and fading away. Realistic documentary field recording, ${NO_MUSIC}.`, 7, { variants: 2, takes: 4, proc: 'oneshot', ch: 'stereo' }),
+  sfx('flyover_bomber', 'ambience', `One-shot of two Second World War twin-engine bombers flying low over the listener: the deep throbbing drone of their piston engines growing louder as they approach, roaring overhead, then fading away into the distance. Realistic documentary field recording, ${NO_MUSIC}.`, 8, { variants: 1, takes: 4, proc: 'oneshot', ch: 'stereo' }),
 ];
 
 // ---------------------------------------------------------- spot sounds ---
@@ -490,6 +522,12 @@ const SPOTS = [
   ['radio_far', 'a distant military radio squawking with static', 2, 2],
 ];
 
+/** The 2.0 revival's spots (2026-10-06): the Nordland shore's waders and the moored boats of the harbour maps. */
+const SPOTS_REVIVAL = [
+  ['oystercatcher', 'a few loud piping calls of an oystercatcher flying past low along a stony shore', 2.5, 2],
+  ['boat_creak', 'a moored wooden fishing boat creaking against a quay, its ropes straining and water slapping its hull', 3, 2],
+];
+
 // The garage hangar's workshop, placed a few metres away by the indoor garage scene.
 const GARAGE_SPOTS = [
   ['garage_compressor', 'an air compressor starting up, running briefly and shutting off with a hiss', 4, 1],
@@ -505,6 +543,14 @@ const spots = [
     `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants, proc: 'spot' })),
   ...GARAGE_SPOTS.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
     `One-shot of ${desc}, inside a large concrete military hangar with a long echo. ${NO_MUSIC}.`, dur, { variants, takes: variants + 1, proc: 'spot' })),
+  ...SPOTS_REVIVAL.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
+    `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants + 1, proc: 'spot' })),
+  // A landmark's bell (2026-10-06): one strike, tolled by the ambience director from the map's church, belfry or
+  // campanile in a quiet stretch; the engine pitches it by the tower and repeats it one to three times.
+  sfx('bell_toll', 'spots', `One-shot of a single large bronze church bell tolled once, recorded outdoors in the churchyard below the tower: the dull strike of the clapper, then a deep solemn tone ringing on and fading away slowly over five seconds. One strike only, no other bells. ${NO_MUSIC}.`, 6, { variants: 2, takes: 8, proc: 'spot' }),
+  // An Orthodox tower is struck, not swung: the great bell's stroke with the smaller bells' rhythm over its hum (the
+  // Kursk village church), so it never sounds like the Western towers' single toll.
+  sfx('bell_orthodox', 'spots', `One-shot of the bells of a Russian Orthodox church tower, recorded outdoors below it: one deep, heavy stroke of the great bell, then a quick rhythmic clanging of three smaller bells over its long humming resonance. ${NO_MUSIC}.`, 7, { variants: 2, takes: 6, proc: 'spot' }),
 ];
 
 // ------------------------------------------------------------ edge cases ---
