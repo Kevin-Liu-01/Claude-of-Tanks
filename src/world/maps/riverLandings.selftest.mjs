@@ -132,7 +132,8 @@ for (const seed of [2025, 7719]) {
 const SALTWIND_SPANS = { '-25': 7, '45': 8 };
 // the map-vehicles lane (P2, 2026-10-05): the beached and the moored boat are painted hulls in the baked bucket, two per
 // landing ahead of the strand's wrack; the wood keeps the piles, the decks, the gangway, the bollards and the lines
-const landingWood = (spans) => 2 * (spans + 1) + spans + 4 + 4;
+// (round 3) and the hauled-out boat's stake and its line in four runs, after the landing's own timber
+const landingWood = (spans) => 2 * (spans + 1) + spans + 4 + 4 + 5;
 const LANDING_HULLS = 2;
 const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
 function checkSaltwindSite(field, site, wood, paint, supportReceipts, woodStart, paintStart, receiptStart) {
@@ -292,15 +293,17 @@ for (const seed of [1337, 2025, 7719]) {
   // the map-vehicles lane (P2, 2026-10-05): the two beached and two moored boats left the wood for the paint bucket
   // (painted hulls, maps/boatHulls.ts): 1284 / 89880 / 2568 → 780 / 54600 / 1560, the merged 3852 / 123264 →
   // 2340 / 74880; the draws and their state are unchanged
-  assert.equal(metrics.triangles, 780);
-  assert.equal(metrics.bytes, 54600);
-  assert.equal(metrics.vertices, 1560);
+  // round 3 (the map-vehicles lane, 2026-10-07): each hauled-out boat's stake and its line in four runs (five boxes a
+  // landing, no draws): 780 / 54600 / 1560 → 900 / 63000 / 1800, the merged 2340 / 74880 → 2700 / 86400
+  assert.equal(metrics.triangles, 900);
+  assert.equal(metrics.bytes, 63000);
+  assert.equal(metrics.vertices, 1800);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
   const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
-  assert.equal(merged.attributes.position.count, 2340); // round 58: was 3024; P2: was 3852
-  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 74880); // round 58: was 96768; P2: was 123264
+  assert.equal(merged.attributes.position.count, 2700); // round 58: was 3024; P2: was 3852; round 3: was 2340
+  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 86400); // round 58: was 96768; P2: was 123264; round 3: was 74880
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
@@ -314,5 +317,5 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);
-  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/34 planted piles on the shelf-sized piers/2 gangways/2 moored hulls (painted hulls), +780 wood triangles/+74,880 merged bytes`);
+  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/34 planted piles on the shelf-sized piers/2 gangways/2 moored hulls (painted hulls), +900 wood triangles/+86,400 merged bytes`);
 }

@@ -66,6 +66,11 @@ interface BoatVariation {
    * "rides entirely on top of the water… no draft, waterline"). Omitted, the boat is ashore.
    */
   afloat?: number;
+  /**
+   * Hauled out on a muddy landing (round 3, wave 234: the Mangrove boat "on clean lawn"): the bottom caked in mud from
+   * the keel to this height (m), its edge splashed up the planking. With `afloat` the waterline it floated at shows too.
+   */
+  mud?: number;
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -128,6 +133,27 @@ function soakHull(g: THREE.BufferGeometry, h: number): void {
     const k = t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
     if (k <= 0) continue;
     for (let i = 0; i < 3; i++) c[v * 3 + i] = c[v * 3 + i] * (1 - 0.5 * k) * (1 - 0.35 * k) + SOAKED_RGB[i] * 0.35 * k;
+  }
+  g.attributes.color.needsUpdate = true;
+}
+/** Landing mud (linear RGB): grey-brown, the silt of a tidal creek. */
+const MUD_RGB: [number, number, number] = [0.11, 0.094, 0.068];
+
+/**
+ * The mud a hull hauled out on a landing carries (round 3): the outer skin from the keel to `h` over it, its edge
+ * splashed up the planking in a few tongues, caked (the colour mostly the mud's, a little of the paint's shading kept).
+ */
+function mudHull(g: THREE.BufferGeometry, h: number): void {
+  const p = g.attributes.position.array as Float32Array, n = g.attributes.normal.array as Float32Array;
+  const c = g.attributes.color.array as Float32Array;
+  for (let v = 0; v < p.length / 3; v++) {
+    const x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2], nx = n[v * 3], ny = n[v * 3 + 1];
+    if (!(ny < -0.5 || (Math.abs(x) > 0.02 && nx * x > 0))) continue;
+    const splash = 0.05 * Math.max(0, Math.sin(z * 4.3 + x * 2.9)) ** 3 + 0.02 * Math.sin(z * 13.1 + 1.7);
+    const t = (y - h - splash) / 0.06;
+    const k = t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
+    if (k <= 0) continue;
+    for (let i = 0; i < 3; i++) c[v * 3 + i] = c[v * 3 + i] * (1 - 0.8 * k) + MUD_RGB[i] * 0.8 * k;
   }
   g.attributes.color.needsUpdate = true;
 }
@@ -354,6 +380,7 @@ export function buildBoat(spec: BoatSpec, variation: BoatVariation, coarse = fal
   const built = mesh.build(vehicleWeathering({ wheels: [], dirt: 0.25, dirtTop: s.depth * waterline + 0.1, rust: 0.35,
     seed: 11 + variation.scheme, voxelAo: !coarse }));
   if (afloat !== undefined) soakHull(built, afloat);
+  if (variation.mud !== undefined) mudHull(built, variation.mud);
   const g = keepStreams(built, ['position', 'normal', 'uv', 'color']);
   g.userData = { ...g.userData };
   delete g.userData.bodyBox;
@@ -447,9 +474,11 @@ export function boatFamilyForMap(mapId: string): BoatFamily {
 
 /** One boat of a family: its hull scaled to a length, a scheme and a mast picked by the kit's draws. */
 export function familyBoat(family: BoatFamily, length: number, scheme: number, mast: boolean, coarse = false,
-  afloat?: number): THREE.BufferGeometry {
+  afloat?: number, mud?: number): THREE.BufferGeometry {
   const k = length / family.hull.length;
   const hull = { ...family.hull, length, beam: family.hull.beam * clamp(Math.sqrt(k), 0.85, 1.15), depth: family.hull.depth * clamp(Math.sqrt(k), 0.88, 1.12) };
   const colours = family.schemes[((scheme % family.schemes.length) + family.schemes.length) % family.schemes.length];
-  return buildBoat({ ...hull, ...colours }, afloat === undefined ? { scheme, mast } : { scheme, mast, afloat }, coarse);
+  return buildBoat({ ...hull, ...colours }, {
+    scheme, mast, ...(afloat === undefined ? {} : { afloat }), ...(mud === undefined ? {} : { mud }),
+  }, coarse);
 }

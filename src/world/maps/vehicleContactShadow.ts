@@ -200,3 +200,88 @@ export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[]
   mesh.userData.decalParts = tracks;
   return mesh;
 }
+
+/** A hauled-out boat's plan (mapKits.ts beachedBoat's receipt: its length on (cos yaw, -sin yaw)). */
+interface BoatMudRecord { readonly x: number; readonly z: number; readonly yaw: number; readonly halfLength: number; readonly halfWidth: number }
+
+/** The landing's mud: grey-brown silt, wetter and darker toward the middle, its edge broken (alpha soft, ragged). */
+function boatMudTexture(anisotropy: number): THREE.Texture {
+  const w = 64, h = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (ctx?.createImageData && ctx.putImageData) {
+    const image = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = Math.abs((x + 0.5) / w - 0.5) * 2, v = Math.abs((y + 0.5) / h - 0.5) * 2;
+      // a rounded rectangle whose edge wanders (two octaves of ripple round it), denser and wetter inside
+      const a0 = Math.atan2((y + 0.5) / h - 0.5, (x + 0.5) / w - 0.5);
+      const edge = 0.08 * Math.sin(a0 * 7 + 1.3) + 0.05 * Math.sin(a0 * 17 + 0.4);
+      const dx = Math.max(0, u - 0.45) / 0.55, dy = Math.max(0, v - 0.62) / 0.38;
+      const d = Math.min(1, Math.max(0, Math.hypot(dx, dy) + edge));
+      const a = (1 - d * d * (3 - 2 * d)) * 0.9;
+      const wet = 1 - 0.35 * Math.max(0, 1 - Math.hypot(u, v * 0.8));
+      const k = (y * w + x) * 4;
+      image.data[k] = Math.round(78 * wet); image.data[k + 1] = Math.round(64 * wet); image.data[k + 2] = Math.round(48 * wet);
+      image.data[k + 3] = Math.round(a * 255);
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = anisotropy;
+  return texture;
+}
+
+/**
+ * Round 3 (wave 234: the Mangrove boat "on clean lawn"): the mud a landing's hauled-out boat lies in, a patch past its
+ * hull all round and further toward the water it was dragged from, conformed to the ground (a 7 x 9 grid), one
+ * lit transparent mesh for the map (wet: a low roughness); the caller sets up its shadows. Null when none.
+ */
+export function buildBoatMud(records: readonly BoatMudRecord[], field: ContactField & { getWaterMaskAt?(x: number, z: number): number },
+  anisotropy: number): THREE.Mesh | null {
+  const nx = 7, nz = 9;
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  for (const r of records) {
+    const ax = Math.cos(r.yaw), az = -Math.sin(r.yaw), bx = -az, bz = ax;
+    // the drag toward the water: the patch runs on past the end whose ground lies lower
+    const hA = field.getHeightAt(r.x + ax * r.halfLength, r.z + az * r.halfLength);
+    const hB = field.getHeightAt(r.x - ax * r.halfLength, r.z - az * r.halfLength);
+    const down = hA < hB ? 1 : -1, shift = 0.7 * down;
+    const hl = r.halfLength + 1.1, hw = r.halfWidth + 0.75;
+    const base = pos.length / 3;
+    for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) {
+      const u = ix / (nx - 1), v = iz / (nz - 1);
+      const along = (v - 0.5) * 2 * hl + shift, across = (u - 0.5) * 2 * hw;
+      const px = r.x + ax * along + bx * across, pz = r.z + az * along + bz * across;
+      pos.push(px, field.getHeightAt(px, pz) + 0.025, pz);
+      uv.push(u, v);
+    }
+    // wound to face up whichever way the axes turn
+    const up = ax * bz - az * bx > 0;
+    for (let iz = 0; iz < nz - 1; iz++) for (let ix = 0; ix < nx - 1; ix++) {
+      const a = base + iz * nx + ix, b = a + 1, d = a + nx, e = d + 1;
+      if (up) idx.push(a, b, d, b, e, d); else idx.push(a, d, b, b, d, e);
+    }
+  }
+  if (!idx.length) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+  geometry.setIndex(idx);
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshStandardMaterial({
+    map: boatMudTexture(anisotropy), transparent: true, depthWrite: false, roughness: 0.42, metalness: 0,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'props-boat-mud';
+  mesh.renderOrder = 1;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.matrixAutoUpdate = false;
+  mesh.userData.terrainDecal = true;
+  mesh.userData.terrainDecalKind = 'boat-mud';
+  mesh.userData.decalParts = records.length;
+  return mesh;
+}

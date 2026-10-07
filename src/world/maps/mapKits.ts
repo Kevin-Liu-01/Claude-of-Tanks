@@ -123,6 +123,11 @@ interface GroundingReceipt {
   supportMax?: number;
   start?: GroundedSegmentEndpoint;
   end?: GroundedSegmentEndpoint;
+  /** Round 3 (a landing's hauled-out boat): its plan for the mud it lies in (props.ts presses the patch). */
+  yaw?: number;
+  halfLength?: number;
+  halfWidth?: number;
+  mud?: boolean;
 }
 
 /**
@@ -1246,6 +1251,9 @@ function landingBoatSeat(landing: RiverLanding, lakes: NonNullable<DressingLayou
 
 // Open clinker fishing boat beached above the surf: planked sides, transom,
 // thwarts, a short mast with a furled boom. Reads "working beach" at range.
+// Round 3 (wave 234: the Mangrove boat "on clean lawn"): a landing's boat is hauled out of the creek, not dropped on the
+// grass: its bottom caked in mud and its waterline showing, a line from its stem to a stake up the bank, and the mud it
+// lies in (the receipt carries its plan; props.ts presses the patch into the ground).
 function beachedBoat(
   buckets: DressingBuckets,
   rng: Rng,
@@ -1256,7 +1264,8 @@ function beachedBoat(
   withMast: boolean,
   groundingReceipts?: GroundingReceipt[] | null,
   boats: BoatFamily = BOAT_FAMILIES.canot,
-): void {
+  landing = false,
+): { hull: THREE.BufferGeometry; halfLength: number } {
   const L = 4.6 + rng() * 1.2, W = 1.6;
   const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.06);
   // the box-built boat's draws (six strake tilts, the heel, ten parts' UV jitter; the boom's swing with a mast) keep the
@@ -1264,7 +1273,11 @@ function beachedBoat(
   const draws: number[] = [];
   for (let k = 0; k < 47 + (withMast ? 1 : 0); k++) draws.push(rng());
   const keelList = 0.10 + draws[6] * 0.08; // beached hulls heel over a touch
-  const hull = familyBoat(boats, L, Math.floor(draws[7] * 97), withMast);
+  const hull = landing
+    ? familyBoat(boats, L, Math.floor(draws[7] * 97), withMast, false, LANDING_WATERLINE_M, LANDING_MUD_M)
+    : familyBoat(boats, L, Math.floor(draws[7] * 97), withMast);
+  hull.computeBoundingBox();
+  const local = hull.boundingBox!, halfBeam = (local.max.x - local.min.x) / 2, halfLength = (local.max.z - local.min.z) / 2;
   hull.rotateZ(keelList);                 // the hull's length is its local Z: a roll about it
   hull.rotateY(yaw + Math.PI / 2);        // and the kit's yaw laid that length on local X
   applyGroundNormal(hull, pose);
@@ -1277,7 +1290,56 @@ function beachedBoat(
   groundingReceipts?.push({
     kind: 'beached-boat', x, y: boatY, z, relief: pose.spread,
     baseClearance: boatY - supportY, supportMin: pose.min, supportMax: pose.max,
+    ...(landing ? { yaw, halfLength, halfWidth: halfBeam, mud: true } : {}),
   });
+  return { hull, halfLength };
+}
+
+/** A landing boat's waterline over its keel (m): it floated light, a little under a moored hull's draft. */
+const LANDING_WATERLINE_M = MOORED_BOAT_DRAFT_M * 0.8;
+/** The mud a hauled-out hull carries up its bottom (m). */
+const LANDING_MUD_M = 0.16;
+
+/**
+ * A hauled-out boat's line (round 3): from the stem head at its up-bank end to a stake driven into the bank 1.7 m on,
+ * sagging between (the kit's timber at 3 cm reads as a tarred line, as the jetty's do). Its jitter keys on the place,
+ * not the kit's stream (every later draw holds).
+ */
+function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField, hull: THREE.BufferGeometry, x: number,
+  z: number, yaw: number, halfLength: number): void {
+  const ax = Math.cos(yaw), az = -Math.sin(yaw);
+  // the up-bank end: the end whose ground stands higher
+  const hA = heightField.getHeightAt(x + ax * halfLength, z + az * halfLength), hB = heightField.getHeightAt(x - ax * halfLength, z - az * halfLength);
+  const e = hA >= hB ? 1 : -1, ux = ax * e, uz = az * e;
+  // the stem head: the highest point of the hull within 0.2 m of that end
+  const p = hull.attributes.position;
+  let reach = -Infinity;
+  for (let i = 0; i < p.count; i++) reach = Math.max(reach, (p.getX(i) - x) * ux + (p.getZ(i) - z) * uz);
+  let head: [number, number, number] = [x + ux * reach, -Infinity, z + uz * reach];
+  for (let i = 0; i < p.count; i++) {
+    const along = (p.getX(i) - x) * ux + (p.getZ(i) - z) * uz;
+    if (along > reach - 0.2 && p.getY(i) > head[1]) head = [p.getX(i), p.getY(i), p.getZ(i)];
+  }
+  const jitter = Math.sin(x * 12.9898 + z * 78.233) * 0.5;
+  const sx = head[0] + ux * 1.7 - uz * 0.35 * jitter, sz = head[2] + uz * 1.7 + ux * 0.35 * jitter;
+  const ground = heightField.getHeightAt(sx, sz);
+  const stake = box(0.08, 0.7, 0.08, 1.2);
+  stake.rotateZ(0.12 * jitter);
+  stake.translate(sx, ground + 0.2, sz);
+  buckets.wood.push(stake);
+  // the line in four runs, sagging 0.14 m at its middle
+  const from: [number, number, number] = [head[0], head[1] - 0.03, head[2]], to: [number, number, number] = [sx, ground + 0.5, sz];
+  const at = (t: number): [number, number, number] => [from[0] + (to[0] - from[0]) * t,
+    from[1] + (to[1] - from[1]) * t - 0.14 * 4 * t * (1 - t), from[2] + (to[2] - from[2]) * t];
+  for (let k = 0; k < 4; k++) {
+    const a = at(k / 4), b = at((k + 1) / 4);
+    const runX = b[0] - a[0], runY = b[1] - a[1], runZ = b[2] - a[2], run = Math.hypot(runX, runZ);
+    const line = box(Math.hypot(run, runY) + 0.02, 0.025, 0.025, 1);
+    line.rotateZ(Math.atan2(runY, run));
+    line.rotateY(-Math.atan2(runZ, runX));
+    line.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+    buckets.wood.push(line);
+  }
 }
 
 function addCoastalBoats(
@@ -2117,17 +2179,21 @@ function dressLakeRiverLandings(
     // and the jetty and still passes the landing's own seat checks; a boat with no such seat is not built (its draws
     // spent, the stream holding)
     const seat = landingBoatSeat(landing, L.lakes ?? [], heightField, trunks, boats);
+    let hauled: { hull: THREE.BufferGeometry; halfLength: number } | null = null;
     if (!seat) {
       for (let k = 0; k < 48; k++) rng(); // the length and the box boat's 47 (no mast at a landing)
     } else {
       [landing.boatX, landing.boatZ] = seat;
-      beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
-        landing.boatYaw, false, groundingReceipts, boats);
+      hauled = beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
+        landing.boatYaw, false, groundingReceipts, boats, true);
     }
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
       landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
     // Round 58: on a sea strand the pier takes the gangway, moored boat and bollards of the derived landing
     if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated, boats);
+    // round 3: the hauled-out boat's stake and line, after the landing's timber (its receipts walk the piles from the
+    // landing's first piece)
+    if (hauled) mooringStake(buckets, heightField, hauled.hull, landing.boatX, landing.boatZ, landing.boatYaw, hauled.halfLength);
     if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets);
     shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
     if (landing.shore) registerShoreLanding(shore, landing.shore);
