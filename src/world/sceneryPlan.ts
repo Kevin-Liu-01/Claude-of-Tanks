@@ -152,6 +152,21 @@ interface SceneryCaprock {
 }
 
 /**
+ * A butte's skin (butteSkin.ts buildButteSkin; Titan Gorge round 6): the wall of a sheer knoll landform of the same
+ * centre and radii in relief — its joints' blocks, the rain's grooves, the varnish — under a caprock round its rim, with
+ * the fallen blocks on its talus. Decor: the knoll stays the rock.
+ */
+interface SceneryButte {
+  x: number;
+  z: number;
+  rx: number;
+  rz: number;
+  tone?: readonly [number, number, number];
+  capTone?: readonly [number, number, number];
+  name?: string;
+}
+
+/**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
  * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
@@ -173,6 +188,7 @@ export interface SceneryConfig {
   bedrock?: readonly SceneryBedrock[];
   castles?: readonly SceneryCastle[];
   caprock?: readonly SceneryCaprock[];
+  buttes?: readonly SceneryButte[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;

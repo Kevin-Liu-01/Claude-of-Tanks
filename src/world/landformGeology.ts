@@ -52,6 +52,11 @@ export interface LandformGeology {
   rim?: number;
   /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres. */
   bosses?: { count: number; heightM: number };
+  /** inselberg with a rim: the cap a level table (Monument Valley's buttes: the Shinarump caprock flat to a sharp rim) —
+   * no fall to its edge, no beds or bosses on it and a tenth of the knobbly relief; the terrain keeps none of the
+   * plain's relief under it (terrain.ts levels the cap to the plain's height at the centre plus the landform's,
+   * knollCapWeight). Default false: the cap falls 8 % of the height to its edge, with the plain's relief. */
+  capLevel?: boolean;
   /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
    * as a share of the wall's width (default 0.5). */
   flutes?: { count: number; depth?: number };
@@ -267,18 +272,23 @@ const JEBEL_CAP_DROP = 0.08;
  *   steepest 1.5 x (1 - 0.08 - apron) / ((1 - rim) x foot), near-vertical over most of the height;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
-export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0): number {
+export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0, capDrop = JEBEL_CAP_DROP,
+  level = false): number {
   if (q >= 1) return 0;
   if (rim > 0) {
     const top = foot * rim;
-    if (q <= top) return 1 - JEBEL_CAP_DROP * (q / top) ** 2;
+    if (q <= top) return 1 - capDrop * (q / top) ** 2;
     if (q <= foot) {
       const t = (q - top) / (foot - top);
-      return apron + (1 - JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+      // (a level cap, Titan round 6: the wall steepens all the way down into the talus instead of easing out onto a
+      // ledge at its foot — the smoothstep's flat end printed a collar round the butte — and the brow stays sharp)
+      if (level) return apron + (1 - capDrop - apron) * (1 - t ** 3.5);
+      return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
   } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
   const t = (1 - q) / (1 - foot);
-  return apron * t * t;
+  // (a level cap's talus nearer the scree's straight slope: concave only toward its toe)
+  return level ? apron * t ** 1.4 : apron * t * t;
 }
 
 /** An inselberg's wall foot and apron on one bearing: each wanders round the dome (smooth, periodic in the bearing). A
@@ -324,7 +334,10 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
 function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
   foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
-  if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
+  if (profile === 'inselberg' && foot) {
+    return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology), geology.capLevel ? 0 : JEBEL_CAP_DROP,
+      !!geology.capLevel);
+  }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
@@ -482,7 +495,9 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   }
   let h = height * shape;
   const rim = foot ? jebelRim(geology) : 0;
-  if (rim > 0 && foot && height > 0) {
+  // a level cap (capLevel): 1 on the table, 0 from its rim down
+  const capW = rim > 0 && foot && height > 0 && geology.capLevel ? 1 - smoothstep(foot[0] * rim * 0.96, foot[0] * rim, q) : 0;
+  if (rim > 0 && foot && height > 0 && !geology.capLevel) {
     // the bosses on the cap, fading out before its edge so the wall's brow stays one line
     const top = foot[0] * rim;
     h += jebelBosses(geology, nx, nz, top, salt) * (1 - smoothstep(top * 0.8, top, q));
@@ -495,7 +510,11 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     h -= geology.gullies.depthM * g * gullyFlank(q, geology, foot) * Math.min(1, shape * 3);
   }
   if (geology.strata && height > 0) {
-    h = bedded(h, geology.strata, (nx * 0.6 + nz * 0.25) * geology.strata.stepM * 0.5, lx, lz, salt);
+    const stepped = bedded(h, geology.strata, (nx * 0.6 + nz * 0.25) * geology.strata.stepM * 0.5, lx, lz, salt);
+    // (a level cap's beds are its wall's: the table carries none, and the scree buries them on the talus — stepped,
+    // its slope printed a terrace ring round the foot, a collar)
+    const unbedded = geology.capLevel && foot ? Math.max(capW, smoothstep(foot[0] * 0.99, foot[0] * 1.04, q)) : capW;
+    h = stepped + (h - stepped) * unbedded;
   }
   if (canyon) {
     // the side canyons bite into the wall and its brow; the beds step the wall, counted up from the floor (the talus keeps
@@ -513,9 +532,31 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     }
   }
   if (geology.rough) {
-    h += geology.rough * roughness(lx, lz, salt) * Math.min(1, Math.abs(shape) * 2.5) * Math.sign(height || 1) * (1 - rampW);
+    h += geology.rough * roughness(lx, lz, salt) * Math.min(1, Math.abs(shape) * 2.5) * Math.sign(height || 1) * (1 - rampW) * (1 - 0.9 * capW);
   }
   return h + fanHeight();
+}
+
+/**
+ * A level cap's weight at a knoll's local point (capLevel inselbergs only; 0 elsewhere and on every other landform): 1 on
+ * the table, falling to 0 at its rim (the wall's top on this bearing, the outline's lobes and the foot's wander as the
+ * height reads them). terrain.ts pulls the ground to the cap's level by it, so the plain's relief does not print through.
+ */
+export function knollCapWeight(form: GeologicForm, lx: number, lz: number): number {
+  const geology = form.geology;
+  if (!geology?.capLevel || geology.profile !== 'inselberg' || !((form.height || 0) > 0)) return 0;
+  const rim = jebelRim(geology);
+  if (!(rim > 0)) return 0;
+  const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+  const nx = lx / rx, nz = lz / rz;
+  let q = Math.sqrt(nx * nx + nz * nz);
+  if (q >= 1) return 0;
+  const salt = formSalt(form);
+  const theta = Math.atan2(nz, nx);
+  const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+  if (outline > 0) q /= 1 + outline * lobe(theta, salt);
+  const top = inselbergFoot(geology, theta, salt)[0] * rim;
+  return 1 - smoothstep(top * 0.9, top, q);
 }
 
 /** Where a point stands on a ridge's section: its distance from the axis (`across`), and the axial station (`at`) and

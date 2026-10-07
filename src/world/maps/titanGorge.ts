@@ -39,6 +39,11 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
+/** The free buttes standing on the valley floor (x, z, rx, rz, height), in pairs that are each other's rotation. */
+const FREE_BUTTES = [[-188, -120, 33, 44, 30], [188, 120, 33, 44, 30], [-140, 280, 37, 37, 24], [140, -280, 37, 37, 24]] as const;
+/** The gate buttes, one in front of each deployment, each the other's rotation. */
+const GATE_BUTTES = [[-12, -300], [12, 300]] as const;
+
 export default {
   id: 'titan_gorge',
   name: 'Titan Gorge',
@@ -88,19 +93,24 @@ export default {
       // stand two thirds taller (18 -> 30 m, 14 -> 24 m), as tall as they are wide at the wall; the cap runs to 0.94 of
       // the wall's foot, a sharp rim; the wall's foot comes in to 0.55 of the radius so the concave talus apron takes a
       // third of the height; six shallow grooves for ten deep flutes, thicker beds, half the knobbly relief)
-      ...[[-188, -120, 30, 40, 30], [188, 120, 30, 40, 30], [-140, 280, 34, 34, 24], [140, -280, 34, 34, 24]].map(([x, z, rx, rz, height]) => ({
+      // (Round 6, gauntlet wave 235 on the PR head's round 3c: "a rounded-corner box whose near-vertical walls drop
+      // straight into a sand ramp, missing the broad talus pedestal and fluted cliffs", the caps' "vertical hair-like
+      // streaks": the toe 3 m further out round the same wall (the foot 0.55 -> 0.5 of a radius a tenth larger) and the
+      // Organ Rock talus to 0.45 of the height, a broad pedestal; the cap a level table (capLevel: the plain's relief
+      // and the beds no longer print a lumpy dome on it); the wall's grooves are the skin's, scenery.buttes, so the
+      // ground's six regular flutes go — they printed the tiled ribbing)
+      ...FREE_BUTTES.map(([x, z, rx, rz, height]) => ({
         kind: 'knoll', x, z, rx, rz, height, corridorScale: 0.44,
-        geology: { profile: 'inselberg' as const, outline: 0.22, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
-          flutes: { count: 6, depth: 0.12 }, rough: 0.45, boulders: 18, strata: { stepM: 8, riser: 0.2 },
-          gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
+        geology: { profile: 'inselberg' as const, outline: 0.22, foot: 0.46, footVary: 0.08, apron: 0.42, rim: 0.94, capLevel: true,
+          rough: 0.45, boulders: 18, strata: { stepM: 8, riser: 0.2 }, gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the gate buttes: one in front of each deployment, each the other's rotation about the centre, screening the
       // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
       // (Titan round 2: the same sheer section as the free buttes, over the same footprint; round 3: 20 -> 28 m and the
       // free buttes' round-3 section)
-      ...[[-12, -300], [12, 300]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 24, rz: 22, height: 28, corridorScale: 1,
-        geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
-          flutes: { count: 5, depth: 0.12 }, rough: 0.45, boulders: 14, strata: { stepM: 8, riser: 0.2 },
-          gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
+      // (round 6: the free buttes' section, the toe 2 m further out)
+      ...GATE_BUTTES.map(([x, z]) => ({ kind: 'knoll', x, z, rx: 26.4, rz: 24.2, height: 28, corridorScale: 1,
+        geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.46, footVary: 0.08, apron: 0.42, rim: 0.94, capLevel: true,
+          rough: 0.45, boulders: 14, strata: { stepM: 8, riser: 0.2 }, gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the wadi's floor, where the valley's streams braid
       { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68,
         geology: { outline: 0.2, rough: 0.4 } },
@@ -210,6 +220,16 @@ export default {
       trucks: 8, jeeps: 6, drumClusters: 8, camps: 6, modernClutter: 30,
       roadFence: 'fencerail', yardFence: 'fencewattle',
     },
+  },
+  // (round 6, gauntlet wave 235: the buttes "a rounded-corner box ... missing the broad talus pedestal and fluted
+  // cliffs") each butte's wall in relief — the joints' blocks standing proud or spalled back, the rain's grooves of their
+  // own spacing and depth, the varnish curtains from the rim — under the Shinarump caprock round its rim, and the fallen
+  // blocks on its talus (butteSkin.ts); the knolls stay the rock
+  scenery: {
+    buttes: [
+      ...FREE_BUTTES.map(([x, z, rx, rz], i) => ({ x, z, rx, rz, name: ['the west butte', 'the east butte', 'the north butte', 'the south butte'][i] })),
+      ...GATE_BUTTES.map(([x, z], i) => ({ x, z, rx: 26.4, rz: 24.2, name: i ? 'the north gate butte' : 'the south gate butte' })),
+    ],
   },
   horizon: {
     // (the map-revival lane, 2026-10-05, Titan round 2; gauntlet wave 104: "continuous pointed, smoothly sloped mauve

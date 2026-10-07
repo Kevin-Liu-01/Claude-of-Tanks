@@ -64,7 +64,10 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       railCuttingHeight = (cuttings, portalYs, x, z, h) => h,
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
       // the classic rim the authoring queries keep (the stub's own rim) and the road grades' landform pass (off here)
-      clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false } = fixture;
+      clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false,
+      // the map-revival lane (2026-10-07, Titan round 6): the level-capped knolls' table weight the macro terrain leaves
+      // for the micro relief (landformGeology.ts capLevel); this fixture's macro terrain authors none
+      macroCapW = 0 } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);

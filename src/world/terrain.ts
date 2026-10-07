@@ -48,7 +48,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
-import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
+import { createGeologyRockSampler, createGeologyZoneSampler, knollCapWeight, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
@@ -1344,6 +1344,11 @@ function* heightFieldBuildSteps(
 
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
+  // (the map-revival lane, Titan round 6: a level-capped knoll's table, landformGeology.ts capLevel) the cap's weight at
+  // the point the macro terrain last sampled, for the micro relief after it, and each such knoll's table level (the
+  // plain's base height at its centre plus its own height), taken once
+  let macroCapW = 0;
+  const capLevels = new Map<object, number>();
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
   const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
@@ -1407,6 +1412,7 @@ function* heightFieldBuildSteps(
     marshWeight: number,
   ): number {
     let spawnClear = 1;
+    macroCapW = 0;
     // Unlike the held decorative relief pilot, these are the actual support
     // heights from the first construction sample onward. Roads and pads below
     // therefore conform to the canyon instead of retaining obsolete mesa levels.
@@ -1464,7 +1470,22 @@ function* heightFieldBuildSteps(
       const protect = (1 - corridorWeight * (1 - corridorScale))
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      const lf = sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      if (form.geology?.capLevel && form.kind === 'knoll') {
+        // the cap's table stands level over the plain's relief: the ground pulled to the knoll's own level by its weight
+        const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
+        const sn = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
+        const dx = x - form.x, dz = z - form.z;
+        const w = knollCapWeight(form, dx * c + dz * sn, -dx * sn + dz * c) * spawnClear * protect;
+        if (w > 0) {
+          let level = capLevels.get(form);
+          if (level === undefined) { level = baseTerrainHeight(form.x, form.z, 0, 0) + (form.height || 0); capLevels.set(form, level); }
+          h = (h + lf) + (level - (h + lf)) * w;
+          macroCapW = Math.max(macroCapW, w);
+          continue;
+        }
+      }
+      h += lf;
     }
     return h;
   }
@@ -1918,7 +1939,7 @@ function* heightFieldBuildSteps(
       crest *= crest;
       let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
-      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
+      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale * (1 - macroCapW);
       h += micro;
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
@@ -1929,7 +1950,7 @@ function* heightFieldBuildSteps(
     {
       const m1 = noi.noise(x * 0.143 + 88, z * 0.143 - 141);
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
-      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;
+      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale * (1 - macroCapW);
     }
     // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
     if (sorStation >= 0) {
@@ -4701,7 +4722,11 @@ void splatCompute() {
     float rockL = reduxLuma(a.rgb);
     vec3 skin = mix(vec3(rockL), a.rgb, 0.50);
     skin = mix(skin, uMeanG.rgb * rockL / max(reduxLuma(uMeanG.rgb), 1e-3), 0.25);
-    a.rgb = mix(a.rgb, skin * (0.84 + 0.32 * varnish), rockFar);
+    // (the map-revival lane, Titan round 6, gauntlet wave 235: the butte caps' "vertical hair-like streaks") the varnish
+    // runs down a face's fall line, so it reads the wall projections — on level rock (a mesa's bare cap: fR 1, steepW 0)
+    // their height coordinate is constant and their axes and signs flip with the cap's least tilt, and the noise drew one
+    // stretched row across the cap; the streaks only where the face is steep, the skin's tone everywhere
+    a.rgb = mix(a.rgb, skin * mix(1.0, 0.84 + 0.32 * varnish, smoothstep(0.20, 0.42, slope)), rockFar);
   }
   // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
   // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
