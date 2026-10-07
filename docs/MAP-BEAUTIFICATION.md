@@ -7506,6 +7506,14 @@ between, an overcast with structure, the clouds lit by the scene's own sun both 
 - Cost holds hide every bot vehicle (rule v3, amended): a bot in or out of the chase frame staged a different scene on
   the twin page.
 
+**Measured.** Rounds 3–5 (1488dd861) passed both of their waves: wave 221 (Frosthollow, Fjord, Monsoon, Desert) sky
++0.19 (3.62 → 3.81), overall +0.05, no view down more than 0.5; wave 222 (the closed overcast, Whiteout and Titan
+Gorge) sky +0.75 (3.25 → 4.00), overall +0.38, all eight views up. Their after-frame defects drove round 6 (056edea78):
+a closing deck's lanes narrowed by its open share, a second lattice of cells against the even repetition, Whiteout's
+base at 180 m and the overcast's forward lobe at 0.45 for the sun's patch, a storm's base dark through its own column,
+the tower warp a lean rather than a twist, the cirrus dropped. The rule-v3 cost runs as four stagings (Monsoon high,
+Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establishing.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
