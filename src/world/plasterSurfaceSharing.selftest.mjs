@@ -37,11 +37,17 @@ const productionPainter = new Function('THREE', 'toTexture', 'normalFromHeight',
 // Unshared control: the same production painter, ignoring the shared relief argument.
 const controlPainter = (noi, anisotropy, tone) => productionPainter(noi, anisotropy, tone);
 const productionPalette = section(source, '  const T = P.tones || {};', '  const roofT =');
-assert.match(productionPalette, /makePlaster\(noi, aniso,\s+T\.plaster3 \|\| _tShift\(T\.plaster, [^)]*\), plaster2\)/,
+// (batch 4: Skybridge round 2's glencanyon kit pours its plaster2 as board-formed concrete, whose relief is the
+// formwork's, so a poured kit's plaster3 keeps a render's own relief: `pouredConcrete ? null : plaster2`)
+assert.match(productionPalette, /makePlaster\(noi, aniso,\s+T\.plaster3 \|\| _tShift\(T\.plaster, [^)]*\), (?:pouredConcrete \? null : )?plaster2\)/,
   'plaster3 borrows plaster2 relief at the production call site');
 function compilePalette(body, makePlaster) {
-  return new Function('makePlaster', `${stripTypeScriptTypes(
-    `function* palette(noi, aniso, P) { ${body}\nreturn { plaster, plaster2, plaster3 }; }`)}\nreturn palette;`)(makePlaster);
+  // (batch 4: the palette reads a kit's poured concrete, regionalArchitecture?.surfaces.concrete; the receipt's palettes
+  // carry no kit, so it is null and makeRegionalConcrete / applyTone are never reached)
+  const noKit = () => { throw new Error('the receipt palettes carry no regional kit'); };
+  return new Function('makePlaster', 'regionalArchitecture', 'makeRegionalConcrete', 'applyTone', `${stripTypeScriptTypes(
+    `function* palette(noi, aniso, P) { ${body}\nreturn { plaster, plaster2, plaster3 }; }`)}\nreturn palette;`)(
+    makePlaster, null, function* () { noKit(); }, noKit);
 }
 const generate = compilePalette(productionPalette, productionPainter);
 const control = compilePalette(productionPalette, controlPainter);
