@@ -4,10 +4,11 @@
 // margin and agrees on a track from both sides of its boundary; and the GLSL no longer derives the parcels itself —
 // the terrain reads this twin baked (landUseBake.selftest pins the bake, its stack and its decode). No GPU or art claim.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
-  createLandFieldSample, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH, LAND_USE_GLSL, landUseAt, landUseBoundary,
-  landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
- inLandZone } from './landUse.ts';
+  applyUrbanParcelWear, createLandFieldSample, inLandZone, LAND_BAKE_TRACK_BIT, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH,
+  LAND_CROP_NONE, LAND_USE_GLSL, landUseAt, landUseBoundary, landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
+} from './landUse.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 
 // the table: real maps, packing in range, zero strength without a row
@@ -52,10 +53,12 @@ for (const id of landUseProfileIds()) {
   const kinds = new Set(seen.values());
   assert.ok(kinds.size >= 3, `${id}: at least three crops sown (${[...kinds].join(',')})`);
 }
-// 2026-10-05, Ruinspires (the cities lane): a zoned, urban land use — the valley floor's hardstanding kinds, the
-// cemeteries' mown grass at both of the rotation pair's rectangles, nothing past the city; the urban flag on the cities'
-// rows alone — Ruinspires and Ironworks (every other map's village keeps its fields off), carried on the sample for the
-// tiers that grow on the ground
+// 2026-10-05, Ruinspires (the cities lane): a zoned, urban land use — the urban flag on the cities' rows alone (Ruinspires
+// and Ironworks; every other map's village keeps its fields off), carried on the sample for the tiers that grow on the
+// ground. (2026-10-07, the ground lane on the cities lane's Miljacka valley, 5c04ab6cc) the floor's hardstanding along
+// the river's own line, the back lots behind the avenue rows and the benches' orchards overgrown, the flanks' gardens
+// green, the cemeteries' mown grass where the map puts them, no dug plot anywhere in the city (waves 186/187: the furrows
+// read as "stretched sand-ripple banding"), nothing past the city but the parks that straddle its edge
 const URBAN = new Map([['ruinspires', 1], ['foundry', 2]]); // (2: a works' ground — Ironworks)
 {
   const p = resolveLandUseProfile('ruinspires'), s = createLandFieldSample();
@@ -63,21 +66,56 @@ const URBAN = new Map([['ruinspires', 1], ['foundry', 2]]); // (2: a works' grou
   for (const id of landUseProfileIds()) {
     assert.equal(landUseUniformValues(resolveLandUseProfile(id)).landE[3], URBAN.get(id) ?? 0, `${id}: ${URBAN.has(id) ? '' : 'not '}urban`);
   }
-  const floor = new Set(), cemetery = [0, 0], cemeteryRot = [0, 0];
-  let past = 0, pastActive = 0;
+  const riverZ = (x) => 60 * Math.sin((Math.PI * x) / 800); // maps/ruinspires.ts riverZ (pinned below against its source)
+  const parks = [[-330, 322, 46], [330, -322, 46], [236, 330, 40], [-236, -330, 40]];
+  const inPark = (x, z) => parks.some(([px, pz, r]) => (x - px) ** 2 + (z - pz) ** 2 < (r + 30) ** 2);
+  const floor = new Set(), back = new Map(), garden = new Map(), cemetery = [0, 0], cemeteryRot = [0, 0];
+  let past = 0, pastActive = 0, dug = 0;
   for (let z = -500; z <= 500; z += 3) for (let x = -500; x <= 500; x += 3) {
     landUseAt(p, x, z, s);
     if (s.active) assert.equal(s.urban, 1, 'an urban field says so');
-    if (Math.abs(z) < 50 && Math.abs(x) < 300 && s.active) floor.add(s.crop);
-    if (x > -192 && x < -148 && z > -278 && z < -246) { cemetery[1]++; if (s.active && s.crop === LAND_CROP.hay) cemetery[0]++; }
-    if (-x > -192 && -x < -148 && -z > -278 && -z < -246) { cemeteryRot[1]++; if (s.active && s.crop === LAND_CROP.hay) cemeteryRot[0]++; }
-    if (Math.abs(z) > 330 || Math.abs(x) > 390) { past++; if (s.active) pastActive++; }
+    if (s.active && s.crop === LAND_CROP.plough) dug++;
+    const dz = Math.abs(z - riverZ(x));
+    if (dz < 40 && Math.abs(x) < 300 && s.active) floor.add(s.crop);
+    if (dz > 80 && dz < 110 && Math.abs(x) < 300 && s.active) back.set(s.crop, (back.get(s.crop) ?? 0) + 1);
+    if (Math.abs(z) > 200 && Math.abs(z) < 260 && dz > 150 && Math.abs(x) < 300 && !(Math.abs(x + 50) < 40 && Math.abs(z - 244) < 30)
+      && !(Math.abs(x - 50) < 40 && Math.abs(z + 244) < 30) && s.active) garden.set(s.crop, (garden.get(s.crop) ?? 0) + 1);
+    if (x > -74 && x < -26 && z > 232 && z < 256) { cemetery[1]++; if (s.active && s.crop === LAND_CROP.hay) cemetery[0]++; }
+    if (-x > -74 && -x < -26 && -z > 232 && -z < 256) { cemeteryRot[1]++; if (s.active && s.crop === LAND_CROP.hay) cemeteryRot[0]++; }
+    if ((Math.abs(z) > 330 || Math.abs(x) > 390) && !inPark(x, z)) { past++; if (s.active) pastActive++; }
   }
   assert.ok([...floor].every((c) => [LAND_CROP.hardstanding, LAND_CROP.ballast, LAND_CROP.ruderal].includes(c)) && floor.size === 3,
-    `the valley floor is hardstanding (${[...floor].join(',')})`);
+    `the valley floor along the river is hardstanding (${[...floor].join(',')})`);
+  const share = (m, kinds) => [...m].reduce((a, [c, n]) => a + (kinds.includes(c) ? n : 0), 0) / Math.max(1, [...m].reduce((a, [, n]) => a + n, 0));
+  assert.ok(share(back, [LAND_CROP.ruderal, LAND_CROP.pasture]) > 0.8, `the back lots are overgrown (${[...back].join(' ')})`);
+  assert.ok(share(garden, [LAND_CROP.pasture, LAND_CROP.hay]) > 0.6, `the flanks' gardens are green (${[...garden].join(' ')})`);
   assert.ok(cemetery[0] / cemetery[1] > 0.6 && cemeteryRot[0] / cemeteryRot[1] > 0.6,
     `both cemeteries are mown grass (${cemetery[0]}/${cemetery[1]}, ${cemeteryRot[0]}/${cemeteryRot[1]})`);
-  assert.equal(pastActive, 0, `nothing past the city (${past} points)`);
+  assert.equal(dug, 0, 'no dug plot in the city: its furrows read as sand ripples');
+  assert.equal(pastActive, 0, `nothing past the city but its parks (${past} points)`);
+  const map = readFileSync(new URL('./maps/ruinspires.ts', import.meta.url), 'utf8');
+  assert.ok(map.includes('const RIVER_AMP = 60, RIVER_L = 800;') && map.includes('const riverZ = (x: number) => RIVER_AMP * Math.sin(Math.PI * x / RIVER_L);'),
+    'the land use\'s Miljacka is the map\'s river line');
+  const streets = readFileSync(new URL('./maps/sarajevoStreets.ts', import.meta.url), 'utf8');
+  assert.ok(streets.includes('{ x: -50, z: 244, hx: 30, hz: 18 }, { x: 50, z: -244, hx: 30, hz: 18 },'),
+    'the mown cemeteries stand on the street kit\'s cemetery plots (60 x 36 m)');
+}
+// (2026-10-07) the urban parcels set the town's wear: the grass and mown grass a sixth of the village's wear, the beds and
+// arbours a quarter, rank grass two thirds, the hardstanding, a track and past the land use all of it — and the material
+// build applies it on an urban land use alone
+{
+  const n = 4, mask = new Uint8Array(n * n * 4).fill(200), bake = new Uint8Array(n * n * 4);
+  const set = (k, crop, track = false) => { bake[k * 4] = crop | (track ? LAND_BAKE_TRACK_BIT : 0); };
+  set(0, LAND_CROP.pasture); set(1, LAND_CROP.hay); set(2, LAND_CROP.rowCrop); set(3, LAND_CROP.ruderal);
+  set(4, LAND_CROP.hardstanding); set(5, LAND_CROP.pasture, true); set(6, LAND_CROP_NONE); set(7, LAND_CROP.ballast);
+  for (let k = 8; k < 16; k++) set(k, LAND_CROP_NONE);
+  applyUrbanParcelWear(mask, bake, n);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7].map((k) => mask[k * 4 + 3]), [32, 32, 50, 130, 200, 200, 200, 200],
+    'the wear by parcel: grass and mown grass a sixth, beds a quarter, rank grass two thirds, the rest kept');
+  assert.deepEqual([0, 1, 2].map((c) => mask[c]), [200, 200, 200], 'only the wear channel moves');
+  const terrainSrc = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terrainSrc.includes('if (landBake && landUseProfile?.urban) applyUrbanParcelWear(mask.image.data as Uint8Array, landBake, landBakeN);'),
+    'the build applies the parcels\' wear on an urban land use, after the bake and before the mask is stacked');
 }
 // 2026-10-05, Ironworks (the cities lane: "slag round the blast furnaces and along the works roads, gravel in the courts,
 // ballast on every rail siding"): its zones change the crops inside the works and nothing else — the layout, every
