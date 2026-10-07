@@ -32,7 +32,8 @@ const box = new THREE.Box3();
 let cellCount = 0;
 for (const { mesh, cells } of batches) {
   assert.ok(mesh.isBatchedMesh, `${mesh.name}: one multi-draw batch`);
-  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone)-batch$/, 'a batch is a timber or stone dressing bucket');
+  // (b30: and the metalwork's fine ironwork)
+  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone|structureMetal)-batch$/, 'a batch is a timber, stone or metal dressing bucket');
   assert.equal(mesh.parent, dressing.group, `${mesh.name}: in the props group`);
   assert.equal(mesh.castShadow, false, `${mesh.name}: casts no shadow`);
   assert.equal(mesh.receiveShadow, true, `${mesh.name}: receives the sun's`);
