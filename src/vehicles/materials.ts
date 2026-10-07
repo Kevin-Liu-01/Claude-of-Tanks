@@ -1874,6 +1874,26 @@ const wheelToneOf = (v: MaterialVisual): Rgb => {
   const k = (v.scheme === 'digital' || v.scheme === 'fleck') ? 0.6 : 0.3;
   return mix(base, mean, k);
 };
+/**
+ * Round 4 (2026-10-07; wave 215 on the M60A1, then in the US desert service coat: "the running gear reads as
+ * brass-coloured, star-spoked toy rims"): a sand coat darkened into its gear tone turns bronze (the desert service
+ * coat's #b09466 lands at #806d4d, HSL saturation 0.25 at lightness 0.40). Painted gear in a warm tone (hue 15-60
+ * degrees: sand, khaki, brown) keeps at most this HSL saturation: dusty paint, not polished brass. Hue and HSL lightness
+ * are kept; the olive and green coats sit under it and are unchanged (9 of the 118 catalog coats move, all sand or
+ * khaki-brown).
+ */
+const WHEEL_WARM_MAX_SATURATION = 0.16;
+const capWarmWheelSaturation = (c: Rgb): Rgb => {
+  const max = Math.max(c[0], c[1], c[2]), min = Math.min(c[0], c[1], c[2]), d = (max - min) / 255;
+  if (d <= 0) return c;
+  const l = (max + min) / 510, s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === c[0] ? ((c[1] - c[2]) / (max - min)) % 6 : max === c[1] ? (c[2] - c[0]) / (max - min) + 2
+    : (c[0] - c[1]) / (max - min) + 4;
+  h = h * 60 < 0 ? h * 60 + 360 : h * 60;
+  if (h < 15 || h > 60 || s <= WHEEL_WARM_MAX_SATURATION) return c;
+  const mid = (max + min) / 2, k = WHEEL_WARM_MAX_SATURATION / s;
+  return [mid + (c[0] - mid) * k, mid + (c[1] - mid) * k, mid + (c[2] - mid) * k];
+};
 const wheelRgbOf = (v: MaterialVisual): Rgb => {
   // r3: dust-mix cut 0.22 -> 0.12 and darkened — painted gear leaned BEIGE
   // under a warm key (the T-90M idler "beige rim" read); wheels now stay in
@@ -1886,7 +1906,7 @@ const wheelRgbOf = (v: MaterialVisual): Rgb => {
   // 2026-09-14 owner: dark schemes pushed the dish paint down to the tire's value and the wheels
   // read as one flat grey disc. The paint keeps the scheme's family but never drops below the
   // fleet wheel-paint floor (see wheelPaintFloor.ts).
-  return liftSrgbToWheelFloor(wash ? scale3(c, 0.85) : c);
+  return liftSrgbToWheelFloor(capWarmWheelSaturation(wash ? scale3(c, 0.85) : c));
 };
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
