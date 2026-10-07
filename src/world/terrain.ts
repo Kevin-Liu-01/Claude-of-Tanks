@@ -390,6 +390,13 @@ interface SplatConfig {
   snowRockSlopeDeg?: number;
   snowRockFadeDeg?: number;
   snowRockCrest?: number;
+  /** Skies lane (2026-10-07, the gauntlet's wave 235 on Whiteout's chase: "three hard-edged, rectangular dark rock patches
+   * on the mountains … read as decals stamped onto smooth snow slopes", "a tiled grid texture"): the snow faces' alpine
+   * structure — couloirs down the fall line, the lean to bare rock past ~48° and snow on the beds' ledges — printed a
+   * grid of rows and ticks inside a slope band's straight outline on an ice cap's gentle faces. A polar map sets this: its
+   * rock stands out of the ice in ragged outcrops (an isotropic ~90 m field and the slow wall field wander the hold's
+   * outline), with no couloirs and no ledges. Absent = the alpine structure in today's exact shader text. */
+  snowPolar?: boolean;
   /** Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road"):
    * the share of the water standing in a vegetated map's ruts and the mud ringing it (default 1; a dry month's roads 0). */
   roadPuddles?: number;
@@ -6594,6 +6601,33 @@ export function selectTerrainLandformMask(
 }
 
 /** The snow-on-rock hold as the shader carries it (terrain.ts SPLAT_COMMON_FRAG): slope 0.30 (45.6°) to 0.56 (63.9°). */
+/** The snow faces' alpine structure as the shader carries it (terrain.ts SPLAT_COMMON_FRAG): the couloirs and the hold's breakup
+ * above the hold line, the ledges below it. */
+export const SNOW_FACES_COULOIR_LINES = `      float lodG = max(0.0, gNoiseLog + log2(0.006));
+      float coulN = mix(textureLod(uNoise, gWallUVx * vec2(0.006, 0.002) + vec2(0.41, 0.17), lodG).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.006, 0.002) + vec2(0.41, 0.17), lodG).g, gWallW);
+      float couloir = smoothstep(0.55, 0.68, coulN) * smoothstep(0.35, 0.60, 1.0 - n2Wall);
+      float gully = 0.5 + (coulN - 0.5) * 0.25 - 0.30 * smoothstep(0.34, 0.48, slope) * (1.0 - couloir) + couloir * 0.55;`;
+export const SNOW_FACES_LEDGE_LINES = `      // ledges: snow on the shelves of round 35's warped height ladder (non-periodic beds ~14–30 m apart, the per-cliff
+      // phase, ±2 m of along-wall wander), in runs where the slow wall field is high (the couloirs' systems are where it
+      // is low), on the steep band only and gone from the sheerest faces
+      float ledgeWarp = wallNoiseG(0.02, vec2(0.31, 0.77));
+      float ledge = bedSignal(wp.y + ledgeWarp * 2.2, 0.008, gCliffJ + 0.53);
+      float ledgeHold = smoothstep(0.0, 0.35, ledge) * smoothstep(0.38, 0.56, n2Wall)
+        * smoothstep(0.26, 0.40, slope) * (1.0 - smoothstep(0.74, 0.86, slope));
+      hold = max(hold, ledgeHold * 0.9);`;
+/** A polar map's breakup in place of the couloirs (splat.snowPolar): ragged outcrops, no couloirs, no ledges. */
+export const SNOW_FACES_POLAR_LINES = `      // polar (splat.snowPolar): nunataks — rock standing out of the ice cap in ragged outcrops; an isotropic ~90 m
+      // field and the slow wall field wander the hold's outline (about ±0.12 of slope, ±8 degrees), no couloirs, no ledges
+      float lodP = max(0.0, gNoiseLog + log2(0.011));
+      float polN = mix(textureLod(uNoise, gWallUVx * 0.011 + vec2(0.23, 0.61), lodP).g,
+                       textureLod(uNoise, gWallUVz * 0.011 + vec2(0.23, 0.61), lodP).g, gWallW);
+      float gully = 0.5 + (polN - 0.5) * 1.0 + (n2Wall - 0.5) * 0.5;`;
+/** The snow faces for a map: the shared source unchanged, or a polar map's (its own program). */
+export function snowFacesSource(src: string, S: Pick<SplatConfig, 'snowPolar'> | null | undefined): string {
+  if (!S?.snowPolar) return src;
+  return _mustReplace(_mustReplace(src, SNOW_FACES_COULOIR_LINES, SNOW_FACES_POLAR_LINES), SNOW_FACES_LEDGE_LINES + '\n', '');
+}
 export const SNOW_ROCK_HOLD_LINE = 'float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);';
 /**
  * Ground lane (2026-10-05): a map's own snow-on-rock law — the hold line with its slope thresholds (degrees turned to the
@@ -6970,6 +7004,8 @@ function* createSplatMaterialSteps(
       '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;\nvRailExit = railExit;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + (snowHold ? _mustReplace(SPLAT_COMMON_FRAG, SNOW_ROCK_HOLD_LINE, snowHold) : SPLAT_COMMON_FRAG));
+    // (the skies lane, 2026-10-07: a polar map's snow faces — snowFacesSource, the shared source untouched elsewhere)
+    shader.fragmentShader = snowFacesSource(shader.fragmentShader, S);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
       'splatCompute();\ndiffuseColor.rgb *= gSplatAlbedo;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <roughnessmap_fragment>',
@@ -7008,7 +7044,7 @@ function* createSplatMaterialSteps(
   mat.userData.cotShadowReceiverOnly = true;
   engineCtx.setupShadowMaterial(mat, splatHook);
   // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
-  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
+  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}${S.snowPolar ? '-polar' : ''}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
   mat.userData.ringCapUniform = ringCapUniform;

@@ -68,7 +68,10 @@ export default {
     // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
     // blue comes only from open sky (the skies lane's lighting side). The macro tints go from B/R 1.06 (A) and
     // 1.17 (B) to 1.04, at the same luminance (Rec. 709: A 1.039, B 0.873). C was already 1.03.
-    iceDrift: 0.3, tintA: [1.021, 1.041, 1.062], tintB: [0.858, 0.875, 0.893], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+    iceDrift: 0.3, tintA: [1.021, 1.041, 1.062], tintB: [0.858, 0.875, 0.893], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45,
+    // (the skies lane, 2026-10-07, wave 235: "hard-edged, rectangular dark rock patches … read as decals"): an ice cap's
+    // nunataks — ragged outcrops, not the Alps' couloirs and ledges (terrain.ts snowPolar)
+    snowPolar: true },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without

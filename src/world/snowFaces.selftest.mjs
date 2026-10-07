@@ -97,4 +97,24 @@ assert.ok(shear[250].stretch > 5, `the stretch form at 250 m: a median ${shear[2
 for (const h of [50, 150, 250]) assert.ok(shear[h].snowP90 < 2, `the snow form at ${h} m: p90 ${shear[h].snowP90.toFixed(2)} (the offset and the wander only)`);
 assert.ok(Math.abs(shear[250].snow - shear[50].snow) < 0.05, 'and the snow form does not grow with height');
 
-console.log(`snowFaces.selftest: uReduxD.y > 1.5 selects exactly ${SNOW.join('/')} of ${MAP_IDS.length} maps (the rest 0 or 1); the basis guard between the swell and the wall's v, the couloirs and ledges around the hold line, the farRock guard; the stretch form's shear (median ${[50, 150, 250].map((h) => shear[h].stretch.toFixed(1)).join(' / ')} at 50 / 150 / 250 m) against the snow form's (${[50, 150, 250].map((h) => shear[h].snow.toFixed(2)).join(' / ')}) PASS; no GPU/art claim`);
+// 4. A polar map (splat.snowPolar, 2026-10-07; the gauntlet's wave 235 on Whiteout: "hard-edged, rectangular dark rock
+// patches … read as decals", "a tiled grid texture"): its own program with no couloirs and no ledges, the hold line kept
+// (the ground lane's swap still finds it), the outline's breakup in their place; every other map keeps the shared source.
+{
+  const { snowFacesSource, SNOW_FACES_COULOIR_LINES, SNOW_FACES_LEDGE_LINES, SNOW_FACES_POLAR_LINES } = await import('./terrain.ts');
+  const { getMapConfig } = await import('./maps/index.ts');
+  const polar = MAP_IDS.filter((id) => getMapConfig(id).splat?.snowPolar).sort();
+  assert.deepEqual(polar, ['whiteout'], `the polar snow faces on Whiteout only (${polar.join(', ')})`);
+  assert.equal(count(common, SNOW_FACES_COULOIR_LINES), 1, 'the couloir lines once, verbatim');
+  assert.equal(count(common, SNOW_FACES_LEDGE_LINES), 1, 'the ledge lines once, verbatim');
+  assert.equal(snowFacesSource(common, null), common, 'no flag: the shared source, unchanged');
+  assert.equal(snowFacesSource(common, { snowPolar: false }), common);
+  const out = snowFacesSource(common, { snowPolar: true });
+  assert.ok(!out.includes('float couloir') && !out.includes('ledgeHold') && out.includes(SNOW_FACES_POLAR_LINES), 'polar: the breakup in place of the couloirs, no ledges');
+  assert.equal(count(out, SNOW_ROCK_HOLD_LINE), 1, 'polar: the hold line kept once');
+  assert.ok(out.indexOf('float polN') < out.indexOf(SNOW_ROCK_HOLD_LINE), 'polar: the breakup feeds the hold line');
+  assert.ok(source.includes("${S.snowPolar ? '-polar' : ''}"), 'polar: its own program key');
+  assert.ok(source.includes('shader.fragmentShader = snowFacesSource(shader.fragmentShader, S);'), 'the material applies it after the hold line\'s swap');
+}
+
+console.log(`snowFaces.selftest: uReduxD.y > 1.5 selects exactly ${SNOW.join('/')} of ${MAP_IDS.length} maps (the rest 0 or 1); the basis guard between the swell and the wall's v, the couloirs and ledges around the hold line, the farRock guard; the stretch form's shear (median ${[50, 150, 250].map((h) => shear[h].stretch.toFixed(1)).join(' / ')} at 50 / 150 / 250 m) against the snow form's (${[50, 150, 250].map((h) => shear[h].snow.toFixed(2)).join(' / ')}); Whiteout's polar faces (no couloirs or ledges, the hold line kept) PASS; no GPU/art claim`);
