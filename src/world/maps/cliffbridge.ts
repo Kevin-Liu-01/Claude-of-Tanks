@@ -289,7 +289,10 @@ export default {
   splat: {...verdant.splat, sourcedPalette:'steppe', fieldPatch:.35,
     // round 5: the river's sheets are liquid (the wet layer), a limestone stream's green
     seaLake: true, seaFoam: 0.05, seaRamp: [0.10, 0.44], iceDrift: 0.02, marshGloss: 0.86, iceSky: [0.34, 0.47, 0.42],
-    sourcedTint: { G: [0.85, 0.85, 0.8], D: [1.0, 1.15, 1.6], R: [1.9, 1.7, 1.35] }, strata: 0.16,
+    sourcedTint: { G: [0.85, 0.85, 0.8], D: [1.0, 1.15, 1.6], R: [1.9, 1.7, 1.35] },
+    // (round 5, wave 242: "no bedded limestone", "smooth, unbedded" walls) the beds, joint blocks and varnish at full weight
+    // on the 54 m walls (was 0.16; Titan draws 0.22)
+    strata: 0.22,
     // round 2 (gauntlet wave 108b: "grass reads as wet Atlantic pasture"): the sward's tints a summer's dry campiña
     tintA:[.98,1.0,.82],tintB:[.86,.88,.72],tintC:[1.03,1.03,.84],
     // round 3: the caminos a dusty tan (~0.15 / 0.10 / 0.05 over the greyed dirt) and the setts a worn limestone grey
