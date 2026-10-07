@@ -215,15 +215,17 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // were handy
   // (the lab's high view: five even shares drew a quilt of lots — the floor is mostly gravel and cinder, so neighbours
   // match more often than not)
-  worksfloor: [[19, 0.34], [15, 0.26], [17, 0.18], [18, 0.12], [16, 0.10]],
+  // (2026-10-06, Ironworks round 3, wave 176: "a checkerboard of flat grey slabs and lime lawns" — no lawn inside the
+  // works: the floor's ruderal grass gone to cinder and gravel)
+  worksfloor: [[15, 0.40], [19, 0.30], [18, 0.15], [16, 0.15]],
   // round the blast furnaces: slag and cinder trodden flat, the cast floor's hardstanding, hardcore
-  furnace: [[15, 0.70], [18, 0.16], [16, 0.14]],
+  furnace: [[15, 0.84], [18, 0.09], [16, 0.07]],
   // the rail fan's sidings: ballast between and beside the tracks, cinder where the engines stood
   sidings: [[16, 0.80], [15, 0.20]],
   // a court's gravel (a small zone cuts few fields, each one crop: gravel the most of them), a paved or hardcore stand
   court: [[19, 0.80], [18, 0.12], [16, 0.08]],
   // the works roads' verges: black cinder, the court gravel spread out, a little rank grass
-  cinder: [[15, 0.66], [19, 0.20], [17, 0.14]],
+  cinder: [[15, 0.74], [19, 0.22], [17, 0.04]],
 });
 
 /** Each region's field boundary. */
@@ -319,8 +321,12 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
       // works furnaces and the service court's donor
       ...[[-74.0, -29.0], [-20.6, 58.2], [-20.9, 232.9], [-278.2, 116.4], [20.2, -202.2], [117, -105]].map(([x, z]) => ({
         region: 'furnace' as const, disc: { x, z, r: 28 }, cut: true })),
+      // (2026-10-06, Ironworks round 3: the furnace line's two new furnaces either side of the block, mr1's saarWorks.ts)
+      ...[[-87.6, -22.7], [-60.4, -35.3]].map(([x, z]) => ({ region: 'furnace' as const, disc: { x, z, r: 22 }, cut: true })),
       // the sidings' ballast (mapKits.ts RAIL_YARD_LINES, 3.5 m either side of each line) and the coal unloading strip
-      ...[[40, -235, 235], [49, -235, 235], [58, -205, 210], [67, -175, 185], [76, -150, 160], [-66, -235, 235], [-57, -190, 200]]
+      // (2026-10-06, Ironworks round 3: the two western lines stop at buffer stops either side of the furnace line,
+      // mapKits.ts SAAR_YARD_GAPS: their sidings end with them)
+      ...[[40, -235, 235], [49, -235, 235], [58, -205, 210], [67, -175, 185], [76, -150, 160], [-66, -235, -85], [-66, 15, 235], [-57, -190, -80], [-57, 10, 200]]
         .map(([x, z0, z1]) => ({ region: 'sidings' as const, rect: { x0: x - 4.5, x1: x + 4.5, z0: z0 - 3, z1: z1 + 3 }, cut: true })),
       { region: 'sidings', rect: { x0: 81.5, x1: 93.5, z0: -55.5, z1: -6.5 }, cut: true },
       // the courts' and yards' gravel: round the casting yard and the west street's and the slag road's yards — 12 m of
