@@ -83,6 +83,9 @@ export interface LandmarkApproach {
   width?: number;
   /** How far the apron runs out from the face (m, default 2.5). */
   depth?: number;
+  /** How far inside the footprint's edge the door's wall stands (m, default 0): a footprint that also holds a platform,
+   *  a tail pole or a sail's sweep puts its edge past the wall, and the apron starts at the wall. */
+  inset?: number;
   /** The worn ground: beaten earth (default) or gravel. */
   surface?: 'earth' | 'gravel';
   /**
