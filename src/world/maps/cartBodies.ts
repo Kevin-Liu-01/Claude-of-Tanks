@@ -1531,7 +1531,7 @@ interface Wagon4Spec extends Common {
   readonly spokesR: number;
   readonly track: number;
   /** A pole raised against the front, a pole lying ahead, two shafts lying ahead (a single horse). */
-  readonly hitch: 'pole-up' | 'pole-down' | 'shafts';
+  readonly hitch: 'pole-up' | 'pole-down' | 'pole-rest' | 'shafts';
   readonly load: 'hay' | 'crates' | 'barrels' | 'sacks' | 'empty';
   readonly painted: 'box' | 'none';
   /** The running gear's own colour (a Studebaker's red), or the wood. */
@@ -1577,10 +1577,18 @@ function wagon4(c: Ctx, s: Wagon4Spec): Assembly {
         rod(c, [-0.36, 0.22, zF + 1.05], [0.36, 0.22, zF + 1.05], 0.022, woodOf(c, 9), true);
       } else {
         const up = s.hitch === 'pole-up';
-        const end: Vec3 = up ? [0, s.wheelF + 2.0, zF + 1.25] : [0, 0.05, zF + 2.4];
+        // pole-rest: the tip on the ground, its front corner reaching exactly as far ahead as the raised pole's did, so
+        // the wagon's fit (the body box the role's box takes) and its footprint stand: a beam's front corner lies |t.y|
+        // of its half-depth ahead of its end, so the resting tip sits that much short of the raised pole's corner
+        const root: Vec3 = [0, s.wheelF + 0.02, zF + 0.1], raised: Vec3 = [0, s.wheelF + 2.0, zF + 1.25];
+        const lean = (tip: Vec3) => Math.abs(unit(sub(tip, root))[1]) * 0.045;
+        const reach = raised[2] + lean(raised);
+        let restZ = reach;
+        for (let k = 0; k < 6; k++) restZ = reach - lean([0, 0.045, restZ]);
+        const end: Vec3 = up ? raised : s.hitch === 'pole-rest' ? [0, 0.045, restZ] : [0, 0.05, zF + 2.4];
         beam(c.mesh, [0, s.wheelF + 0.02, zF + 0.1], end, 0.08, 0.09, g(10));
         for (const sx of [-1, 1]) beam(c.mesh, [sx * (tw - 0.15), s.wheelF, zF], [sx * 0.04, lerp(s.wheelF, end[1], 0.25), lerp(zF, end[2], 0.25)], 0.04, 0.045, g(11));
-        if (!up) rod(c, [-0.45, 0.12, zF + 1.55], [0.45, 0.12, zF + 1.55], 0.03, woodOf(c, 12), true);
+        if (s.hitch === 'pole-down') rod(c, [-0.45, 0.12, zF + 1.55], [0.45, 0.12, zF + 1.55], 0.03, woodOf(c, 12), true);
       }
     });
     // the bed: two sills and the floor

@@ -111,8 +111,10 @@ const BOERENWAGEN = entry({ kind: 'wagon4', bedL: 2.7, bedW: 1.0, body: 'box', s
 const STUDEBAKER = entry({ kind: 'wagon4', bedL: 3.0, bedW: 0.96, body: 'box', sideH: 0.6, flare: 0.02, wheelF: 0.44, wheelR: 0.55, spokesF: 12,
   spokesR: 14, track: 1.42, hitch: 'pole-up', load: 'empty', painted: 'box', gear: 0x9a2a1e, wheelHex: 0x9a2a1e, seat: true, wood: BROWN },
 [0x3a6a3a, 0x2e5a3a, 0x40703e]);
+// (round 2, wave 152: the pole "points straight up into the air… reading as physically wrong") the dray's pole rests its
+// tip on the ground ahead, as a parked dray's does (within the raised pole's reach: the fit and the footprint stand)
 const DRAY = entry({ kind: 'wagon4', bedL: 2.9, bedW: 1.3, body: 'flat', sideH: 0.3, flare: 0, wheelF: 0.42, wheelR: 0.5, spokesF: 10, spokesR: 12,
-  track: 1.5, hitch: 'pole-up', load: 'barrels', painted: 'none', wood: DARK });
+  track: 1.5, hitch: 'pole-rest', load: 'barrels', painted: 'none', wood: DARK });
 const BALE_TRAILER = entry({ kind: 'trailer', deckL: 3.0, deckW: 1.9, load: 'bales', wood: PINE }, [0xa82a22, 0x2f6a3a, 0x2f4a7a, 0x9a3a22]);
 const SEAWEED_CART = entry({ kind: 'cart2', bedL: 1.9, bedW: 1.2, sideH: 0.42, sides: 'boards', wheelR: 0.72, spokes: 12, tyre: 'iron', shafts: 1.75,
   load: 'seaweed', painted: 'wheels', rest: 'shafts', wood: GREY_OAK }, [0x4a6a8a, 0x8a3a2a, 0x5a5a4a]);
