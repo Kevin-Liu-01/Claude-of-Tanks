@@ -946,12 +946,28 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     [-1.08, 1.50, 2.02], [1.08, 1.50, 2.02], [1.08, 1.50, 1.84], [-1.08, 1.50, 1.84]));
   // Raised outer shoulder skins continue the same glacis visually while
   // leaving the terminal track lanes physically open underneath.
+  // 2026-10-07 (tank-accessories round 3): the skins' rear faces rose at 49 deg
+  // straight at the turret, so from behind they caught the sun only at grazing
+  // and read as "a black void" under the chevron wings. The rear top corner moves
+  // from (2.02, 1.68) to (2.20, 1.658) on the unchanged top line, turning the
+  // face into a 28 deg ramp that takes the sky; it stays 6.5 cm or more under
+  // the turret's side-belt and bustle sweeps (1.565 m at r 1.60-1.65 and 2.10).
   P.add('hull', slab(
     [1.08, 1.50, 2.90], [1.70, 1.50, 2.90], [1.70, 1.47, 1.84], [1.08, 1.47, 1.84],
-    [1.08, 1.56, 3.02], [1.70, 1.56, 3.02], [1.70, 1.68, 2.02], [1.08, 1.68, 2.02]));
+    [1.08, 1.56, 3.02], [1.70, 1.56, 3.02], [1.70, 1.658, 2.20], [1.08, 1.658, 2.20]));
   P.add('hull', slab(
     [-1.70, 1.50, 2.90], [-1.08, 1.50, 2.90], [-1.08, 1.47, 1.84], [-1.70, 1.47, 1.84],
-    [-1.70, 1.56, 3.02], [-1.08, 1.56, 3.02], [-1.08, 1.68, 2.02], [-1.70, 1.68, 2.02]));
+    [-1.70, 1.56, 3.02], [-1.08, 1.56, 3.02], [-1.08, 1.658, 2.20], [-1.70, 1.658, 2.20]));
+  // Inner cheeks of the raised shoulders: from the centre lane's sloping top
+  // up into the skin and the bow wedge, so the stepped glacis no longer shows
+  // the track lane's void (and the interior fill above the shoes) under the
+  // skins' inner edges (the critics' "loose grey interior parts").
+  for (const s of [-1, 1]) {
+    const xi = s * 1.052, xo = s * 1.100;                                     // straddles the skin's 1.08 inner edge
+    P.add('hull', slab(
+      [xi, 1.48, 2.00], [xo, 1.48, 2.00], [xo, 1.206, 2.98], [xi, 1.206, 2.98],
+      [xi, 1.495, 2.00], [xo, 1.495, 2.00], [xo, 1.50, 2.98], [xi, 1.50, 2.98]));
+  }
   P.add('hull', slab(                                                          // 62-deg nose plate inside the
     [-1.08, 0.70, 3.30], [1.08, 0.70, 3.30], [1.08, 0.70, 3.18], [-1.08, 0.70, 3.18], // terminal shoe lanes
     [-1.08, 1.215, 3.02], [1.08, 1.215, 3.02], [1.08, 1.215, 2.86], [-1.08, 1.215, 2.86]));
@@ -1051,6 +1067,10 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     lc.position.set(s * 0.88, 1.33, 2.78);
     P.hullG.add(lc);
     P.add('hullDetail', box(0.26, 0.03, 0.03), s * 0.88, 1.39, 2.72, -16.3 * D2R, 0, 0); // guard bar hugging the pods
+    // 2026-10-07 (round 3): the guard's sheet web under the bar, from the glacis
+    // to the bar and back over the pods' rear halves. The open pocket behind
+    // the pods held interior-fill boxes that showed from above as loose grey parts.
+    P.add('hullDetail', box(0.27, 0.075, 0.10), s * 0.88, 1.343, 2.715, -16.3 * D2R, 0, 0);
   }
   {
     const tc = FITTINGS.towCable({ mats: P.mats, r: 0.020, seed: 11,
