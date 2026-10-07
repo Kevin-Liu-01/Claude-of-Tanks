@@ -74,6 +74,9 @@ assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves 
 assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
 assert.ok(stacks.monsoon.lanes.length === 2, 'a front carries its debris aloft');
 assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
+// the closed decks closed (the skies lane, 2026-10-06): Titan Gorge's dense overcast and Whiteout's stratus admit every
+// column at their own resolved coverage — a retune of either that reopens a hole fails here
+for (const id of ['titan_gorge', 'whiteout']) assert.ok(stacks[id].lanes[0].cover >= 1, `${id}: a closed deck admits every column (${stacks[id].lanes[0].cover.toFixed(3)})`);
 
 // ---- the packing: vec4 lanes, an absent lane without density, the channel matrix column-major as GLSL reads M * v
 {
