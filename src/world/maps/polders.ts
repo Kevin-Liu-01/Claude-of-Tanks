@@ -189,6 +189,17 @@ export default {
     // over the ground at their centres with level crests 18 m across and batters about 1 in 3 (terrain.ts mounds: raised
     // after the water's banks, which grade any landform this near the oxbow and the drain back to the waterline); each
     // foot comes down 1.4–2 m from its water, the oxbow mill's on the oxbow's east bank, the drain mill's on the drain's
+    // Step 5 (2026-10-07; the coordinator: "build it yourself ... Polders' vaart and weteringen are the first users"): the
+    // polder's drainage in straight water at one level (terrain.canals, canals.ts) — the vaart along the main dyke's
+    // north foot from the west road's culvert to the farm court's edge, and two weteringen north from it between the long
+    // field dykes, all at the vaart's level: -1.7 m, under the lowest field they cross (the floor north of the main dyke
+    // falls to -1.3 m between the weteringen), so the water stands in its cut everywhere. They join no basin (the five
+    // basins keep their own levels); the roads cross them on culverts
+    canals: [
+      { path: [[-282, 20.4], [-112, 19]], widthM: 9, level: -1.7, profile: 'bank', name: 'the vaart' },
+      { path: [[-252, 25], [-252, 128]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the west wetering' },
+      { path: [[-182, 25], [-182, 140]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the east wetering' },
+    ],
     mounds: [{ x: -99, z: 262, crestR: 9, baseR: 14.4, height: 1.8 }, { x: -171, z: -316, crestR: 9, baseR: 14.4, height: 1.8 }],
     landforms: [
       ...DYKES,
