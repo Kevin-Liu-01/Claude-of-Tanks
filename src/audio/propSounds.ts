@@ -84,7 +84,10 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // wire and bags
   barbedwire: recipe(layer('wire_snag')),
   sandbagbig: recipe(layer('sandbag_thump')), sandbagsmall: recipe(layer('sandbag_thump')), sandbagwall: recipe(layer('sandbag_thump')),
-  // --- the scenery kit: wooden crosses topple, the steel wind pump goes over like a lamp, only far bigger
+  // --- the scenery kit: Longleaf's sawmill yard (the maps-longleaf lane's kinds, named at the batch-4 merge): the drying
+  // stacks of sawn boards and the log deck at the slip break as stacked timber
+  lumberstack: WOOD_SMASH, logdeck: WOOD_SMASH,
+  // wooden crosses topple, the steel wind pump goes over like a lamp, only far bigger
   waysidecross: WOOD_TOPPLE, orthodoxcross: WOOD_TOPPLE,
   windpump: recipe(layer('hedgehog_clang', 0, -2), layer('metal_topple', TOPPLE_LAND_S, 0, 0.06), layer('debris_metal', TOPPLE_LAND_S + 0.15, -6)),
   // --- loose dressing (cls 'physics'): knocked about, never destroyed

@@ -182,7 +182,11 @@ assert.equal(landmarkReads, 1, 'the towers are read once');
 const state = probe.ambientState();
 assert.equal(state.tolls, 1);
 assert.equal(state.lastToll.kind, 'church');
-assert.ok(state.nextTollInS >= BELL_POLICY.everyS[0] - 10 && state.nextTollInS <= BELL_POLICY.everyS[1], `the next toll minutes away (${state.nextTollInS} s)`);
+// the next toll falls everyS after the last one, wherever in the first window that rang (the read comes firstS[1] + 6 s
+// after the start, so up to 56 s after an early toll; batch 4: the merged tree's draws rang it at the window's start)
+const sinceToll = ctx.currentTime - rung[0].t;
+assert.ok(state.nextTollInS + sinceToll >= BELL_POLICY.everyS[0] - 0.5 && state.nextTollInS + sinceToll <= BELL_POLICY.everyS[1] + 0.5,
+  `the next toll ${BELL_POLICY.everyS.join('–')} s after the last (${(state.nextTollInS + sinceToll).toFixed(1)} s; ${state.nextTollInS} s away)`);
 // Rare: no second toll within the minimum interval.
 seq = mark();
 run(BELL_POLICY.everyS[0] - 20);
