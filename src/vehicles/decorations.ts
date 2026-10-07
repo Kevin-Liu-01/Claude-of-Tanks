@@ -2426,7 +2426,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];
   // AMX-10P photo-authored turret/coax configurations own their fittings.
   // Random roof guns and crates would change the real equipment and silhouette.
-  if (spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];
+  if (spec.id === 'm6_linebacker' || spec.id === 'amx10p' || spec.id === 'amx10p_25') return [];
   // The pitching battery and retained Tagil chassis already own their fittings.
   // Turret-roof hatches/whips would be mounted on the moving launcher instead.
   if (spec.id === 'tos1a_tagil') return [];

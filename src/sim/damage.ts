@@ -1,4 +1,5 @@
-import type { AuxiliaryState } from './auxiliarySystems.ts';
+import { createAuxiliaryState, type AuxiliaryState } from './auxiliarySystems.ts';
+import { droneImpactTrace } from './droneArmor.ts';
 import { isUnguidedRocket, usesLauncherMuzzles, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
@@ -104,6 +105,7 @@ export interface DamageGunSpec {
 }
 
 export interface DamageTankSpec {
+  id?: string;
   era: string;
   hp: number;
   gun: DamageGunSpec;
@@ -139,6 +141,8 @@ export interface CombatState {
   maxHp: number;
   destroyed: boolean;
   modules: Partial<Record<ModuleId, CombatModuleState>>;
+  /** False on snapshot mirrors that carry module states without repair timers. */
+  moduleRepairProgressKnown?: boolean;
   crew: Record<string, boolean>;
   fire: { burning: boolean; tickTimer: number; ticksLeft: number };
   eraSpent: Set<string>;
@@ -547,6 +551,7 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     hp: spec.hp,
     maxHp: spec.hp,
     destroyed: false,
+    auxiliary: createAuxiliaryState(spec),
     modules,
     crew,
     fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
@@ -1086,6 +1091,16 @@ function resolveScreenPlate(
   const plate = hit.plate;
   if (plate.kind !== 'spaced' && plate.kind !== 'external') return null;
   const penBefore = resolution.pen;
+  if (resolution.shellSpec.tracer === 'DRONE' && plate.droneInterception
+      && !resolution.hullPen && resolution.hits.find(isPlateHit) === hit
+      && resolution.rng() < plate.droneInterception) {
+    resolution.pen = 0;
+    resolution.event.kind = 'spaced_absorb';
+    resolution.decided = true;
+    stampImpact(resolution.event, hit, effMm, penBefore);
+    stampShotInfo(resolution.event, hit, resolution.shellSpec, resolution.target, resolution.shell.vel);
+    return TRACE_BREAK;
+  }
   resolution.pen -= effMm;
   if (resolution.shellSpec.type === 'HEAT') {
     const gapM = heatGapAfter(resolution.hits, hit);
@@ -1344,6 +1359,7 @@ export function resolveShellHit(
   const spec = shell.spec;
   const combat = target.combat;
   const behavior = behaviorOf(spec.type);
+  hits = droneImpactTrace(shell, target, hits);
 
   // Arc-length correction (killcam_shotinfo r2): stepShell accumulated the
   // FULL step before this sweep resolved — trim the unused remainder past the
