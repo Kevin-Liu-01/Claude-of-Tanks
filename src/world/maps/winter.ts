@@ -178,7 +178,9 @@ export default {
     // content_breadth rounds — 0.20 keeps partial snow-drift patches while
     // the crack veins still read)
     iceLake: true,
-    iceDrift: 0.20,
+    // (round 4, wave 182 wbird: the ice "grey decal-like" sheets; the ground lane's numbers) the snow combed along the wind
+    // over the frozen river, streaks over the whole sheet and heavier toward its banks (was 0.20: a few white blots)
+    iceDrift: 0.5,
     // terrain_environment r3/r4: fresnel sky tint the clear-ice fields reflect
     // at grazing view angles (terrain.js uIceSky)
     iceSky: [0.76, 0.82, 0.92],
