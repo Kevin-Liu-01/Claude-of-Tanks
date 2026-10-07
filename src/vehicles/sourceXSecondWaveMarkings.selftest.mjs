@@ -152,7 +152,9 @@ function verify(id,quality) {
   assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: explicit second-wave anchor, no donor fallback`);
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,materialMode:'geometry-only'});
   try {
-    assert.equal(tank.root.userData.markingSeatPath,'surface-solver',`${id}: no empty/stale generated receipt substituted`);
+    // 2026-10-05: receipt builds apply the generated seats (the solver runs in gen-vehicle-marking-seats); the actual
+    // footprint checks below hold those seats to the built armor at neutral, spent, reset and turned poses.
+    assert.equal(tank.root.userData.markingSeatPath,'generated',`${id}: the generated seats are applied`);
     if(quality==='high')assertHighMetadata(tank,id);
     const live=assertActualFootprints(tank,id,'live');
     const zones=[...new Set((tank.root.userData.eraVisualBindingReceipt?.plates??[])

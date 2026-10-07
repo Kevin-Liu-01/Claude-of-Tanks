@@ -19,8 +19,8 @@ radial-gradient transform/stops. The chosen Gemini version is documented rather
 than presented as an exact reproduction of every later animated/aurora variant.
 
 `brandCamoPainter.ts` uniformly scales and translates each complete mark without
-rotation, distortion, extra outline or reconstruction. Four marks are painted
-into the existing deterministic material tile. Runtime has no logo download,
+distortion, extra outline or reconstruction. Seeded rotations and a wrapped
+hero/medium/sprinkle composition fill the existing deterministic material tile. Runtime has no logo download,
 SVG parser, extra material, mesh or texture; the same painter is used by the
 synchronous and worker paths. Ordinary material wear remains shared.
 
@@ -28,3 +28,7 @@ The former abstract ring, streak and constellation prints are now separately
 selectable **Mono**, **Carbon** and **Prism** designs. They contain no brand paths.
 Sabra's **Sinai Contours** is an original sand/olive striped cosmetic choice,
 not a documented historical service camouflage.
+
+## General Translation (5 October 2026)
+
+The optional **GT · General Translation** finish uses white marks on charcoal-black enamel. The complete even-odd vector is retained in `gt-mark.svg` from [General Translation’s official repository](https://github.com/generaltranslation/gt/blob/a16ae03c62cd1048b4d3ebb585de427d65e02612/tools/bundle-analysis/brand/gt-mark.svg). SHA-256: `06f0c9dcca6d1723ee0891aff0db44dc635ebf44fa5c3dfcd70812b5cb6c6b03`. The original aspect ratio and counters are preserved. Marks share the existing seeded, seam-wrapped hero/medium/sprinkle composition and synchronous/worker painter, with no runtime asset fetch or extra shader.

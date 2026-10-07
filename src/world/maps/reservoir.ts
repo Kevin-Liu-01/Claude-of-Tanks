@@ -90,7 +90,8 @@ export default {
   },
   layoutBrief: { exceptions: {
     solidPropsInWater: 'the waterworks\' bank manifold and submerged-footed intake (src/world/reservoirWaterworks.ts) '
-      + 'stand in the lake by design, where they draw water from the middle lobe',
+      + 'stand in the lake by design, where they draw water from the middle lobe; so does the landmarks lane\'s valve tower '
+      + 'and its footbridge\'s piers (props.landmarks, src/world/landmarks/towers.ts valveTower)',
   } },
 
   spawns: {
@@ -111,6 +112,13 @@ export default {
     // regional-buildings lane: the Eifel Fachwerk-and-greywacke kit (maps/regional/eifel.ts)
     architecture: 'eifel',
     sourcedPalette: 'frontier',
+    // The landmarks lane (2026-10-05; src/world/landmarks/towers.ts valveTower): the reservoir's valve tower, as the
+    // Roer dams' stand off their walls (the Urft's of 1905) — the basin is closed by its ridges and holds no dam, so the
+    // tower stands in the middle lobe off the west bank, south of the waterworks, its valve chamber and slated bell roof
+    // over the water and an arched masonry footbridge from the bank to its door (its axis at (55, 72)).
+    landmarks: [
+      { kind: 'valveTower', x: 33.6, z: 72, yawDeg: 90, name: 'the valve tower', params: { bridge: 47 } },
+    ],
     // A supported control kiosk, bank manifold and submerged-footed intake
     // replace three accepted rubble piles; the closed works leave roads open.
     reservoirWaterworks: { lakeIndex: 1, kiosk: [14, 84], bank: [39.5, 100], intake: [46.5, 99] },

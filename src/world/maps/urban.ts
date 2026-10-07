@@ -12,29 +12,36 @@
 //
 // The story on the ground: the Steinberg spur runs from the west edge to the castle rock east of centre, above the two
 // valleys, broad and gentle on its back. The old town covers the spur's back between the west gate and the castle.
-// The Hauptstrasse runs along the crest and the trade road across it at the market square; a wall lane runs inside
-// the old town wall north and south of the Hauptstrasse, each meeting the trade road on its way round. Off the town's
-// east end the Hauptstrasse drops in a long slant past the castle rock's south foot, crosses the bypass in the gap
-// beyond the rock and runs on to the east. Each valley has its own road and suburb: brickworks in the south, a goods
-// station in the north. A farm road crosses the spur's open west end through the orchards, a garage yard stands on
-// the spur's flank above each valley road, and a farmstead on each lower slope of the castle rock.
+// The Hauptstrasse runs along the crest, bending with it, and the trade road crosses it at the market square. Two back
+// lanes run behind the street rows, north and south of the Hauptstrasse, crooked with the ground and unlike each other,
+// each meeting the trade road on its way round, and four alleys at uneven intervals join them to the Hauptstrasse.
+// The town wall survives in stretches outside the lanes, broken at the four gates and shot out in two places; the
+// castle's ring wall, its keep, a second tower and the chapel crown the Burgberg. Off the town's east end the
+// Hauptstrasse drops in a long slant past the castle rock's south foot, crosses the bypass in the gap beyond the rock
+// and runs on to the east. Each valley has its own road and suburb: brickworks in the south, a goods station in the
+// north. A farm road crosses the spur's open west end through the orchards, a garage yard stands on the spur's flank
+// above each valley road, and a farmstead on each lower slope of the castle rock.
 //
-// The layout is mirror-symmetric across the spur's crest. Alpha comes up from the south valley, bravo from the north.
-// The town, the castle rock and the three zone-control objectives stand on the spur (the market square, the west farm
-// crossing, the bypass gap) and are equally far from both teams. Three lanes cross the midfield: the open west ridge,
-// the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark them off.
+// The map-revival lane (2026-10-05; the gauntlet's wave 116 read the old town as "a too-perfect symmetric hexagon"):
+// the old town's plan is a hill town's, organic along the crest, not the mirror of itself it was. The rest of the
+// battlefield keeps its mirror across the spur's crest. Alpha comes up from the south valley, bravo from the north. The
+// town, the castle rock and the three zone-control objectives stand on the spur (the market square, the west farm
+// crossing on the crest line, the bypass gap) and are equally far from both teams. Three lanes cross the midfield: the
+// open west ridge, the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark
+// them off.
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
 // ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
-// landmarks — a church (spire) and a factory (chimney stack) — and two
-// squat towers. 'church'/'factory' come from maps/urbanKit.ts (registered
-// in props.ts BUILDER_BY_NAME; they degrade to cottages if unregistered).
+// landmarks — a factory (chimney stack) — and two squat towers. 'church'/'factory'
+// come from maps/urbanKit.ts (registered in props.ts BUILDER_BY_NAME; they
+// degrade to cottages if unregistered). (The map-revival lane, 2026-10-06: the town
+// church stands on the market square as a planned site below; the block fill's
+// fifth plot, which had put it outside the town wall, takes a rowhouse.)
 const PLAN = [];
 for (let i = 0; i < 108; i++) {
-  if (i === 4) PLAN.push('church');
-  else if (i === 11) PLAN.push('factory');
+  if (i === 11) PLAN.push('factory');
   else if (i === 15) PLAN.push('firestation');
   else if (i === 25) PLAN.push('tavern');
   else if (i === 37) PLAN.push('schoolhouse');
@@ -88,16 +95,17 @@ export default {
       // town's east end in a long slant past the castle rock's south foot, across the bypass and out to the east.
       // Road 0 carries the utility-pole line (mapQuality); a node every 24-25 m, since Steinburg's road stations are
       // physical (maps/roadStations.ts) and the poles stand at the road's vertices. Inside the old town the
-      // Hauptstrasse and the trade road run on the bot planner's 25 m lattice lines (z = 0, x = -50), so the
-      // street-front rows leave a chain of open cells down each and the square at their crossing is reachable.
+      // Hauptstrasse bends with the crest within 5 m of the bot planner's 25 m lattice line z = 0 (and the trade road
+      // within 3 m of x = -50), so the street-front rows still leave a chain of open cells down each, and both run
+      // straight through the market so its 30 m disc stays clear of the rows.
       [[-448, 39], [-423, 35], [-398, 31], [-373, 27], [-349, 24], [-324, 19], [-299, 14], [-275, 9], [-250, 4],
-        [-225, 0], [-200, 0], [-175, 0], [-150, 0], [-125, 0], [-100, 0], [-75, 0], [-50, 0], [-25, 0], [0, 0],
-        [25, 0], [50, 0], [73, -5], [88, -23], [99, -43], [114, -62], [131, -77], [153, -85], [176, -90],
+        [-225, 3], [-200, 4], [-175, 5], [-150, 4], [-125, 2], [-100, 0], [-75, 0], [-50, 0], [-25, 0], [0, -2],
+        [25, -4], [50, -2], [73, -5], [88, -23], [99, -43], [114, -62], [131, -77], [153, -85], [176, -90],
         [199, -93], [223, -94], [246, -95], [270, -96], [294, -98], [318, -100], [342, -102], [366, -104],
         [390, -106], [414, -108], [438, -110], [448, -111]],
       // 1 — the old trade road: up out of the south valley, across the market square, down into the north valley.
-      [[-30, -448], [-32, -420], [-40, -330], [-46, -240], [-50, -150], [-50, -100], [-50, -75], [-50, -50], [-50, 0],
-        [-50, 50], [-50, 75], [-50, 100], [-54, 170], [-62, 250], [-78, 340], [-88, 420], [-92, 448]],
+      [[-30, -448], [-32, -420], [-40, -330], [-46, -240], [-50, -150], [-48, -100], [-52, -75], [-50, -45], [-50, 0],
+        [-50, 40], [-49, 75], [-52, 100], [-54, 170], [-62, 250], [-78, 340], [-88, 420], [-92, 448]],
       // 2 — the bypass: edge to edge through the gap between the castle rock and the east edge.
       [[304, -448], [306, -400], [300, -290], [284, -180], [270, -96], [262, 0], [270, 96], [284, 180],
         [300, 290], [306, 400], [304, 448]],
@@ -108,30 +116,31 @@ export default {
         [200, 200], [284, 180]],
       // 5 — the farm road over the spur's open west end, valley road to valley road through the orchards.
       [[-300, -226], [-318, -130], [-330, 24], [-318, 130], [-300, 234]],
-      // 6–9 — the old town's wall lanes, north and south of the Hauptstrasse along the old town wall (lattice lines),
-      // each in two legs that meet on the trade road, so every leg grades into the two streets it joins.
-      // (chamfered corners: a rowhouse strip along one leg must not reach into the next)
-      [[-200, 0], [-200, 50], [-175, 75], [-125, 75], [-50, 75]],
-      [[-50, 75], [25, 75], [50, 50], [50, 0]],
-      [[-200, 0], [-200, -50], [-175, -75], [-125, -75], [-50, -75]],
-      [[-50, -75], [25, -75], [50, -50], [50, 0]],
+      // 6–9 — the old town's back lanes behind the street rows, north and south of the Hauptstrasse, each in two legs
+      // that meet on the trade road: they follow the spur's ground round the town, crooked and not each other's mirror
+      // (their lengths agree within 3 %: 331 and 339 m)
+      [[-200, 4], [-190, 40], [-160, 66], [-120, 80], [-85, 84], [-49, 77]],
+      [[-49, 77], [-15, 72], [15, 62], [40, 40], [50, -2]],
+      [[-200, 4], [-185, -30], [-155, -62], [-110, -80], [-52, -74]],
+      [[-52, -74], [-10, -80], [20, -66], [42, -38], [50, -2]],
+      // 10–13 — the alleys from the Hauptstrasse to the back lanes, two a side at uneven spacing. No alley meets the
+      // Hauptstrasse within 100 m west of the market: the network grade solve levels a road 32 m either side of each
+      // crossing (roadGradeSmoothing.ts), and a crossing nearer the square would leave the street's 1.8 m fall to the
+      // apron to its 14 m bank (19 % at x = -97; the layout brief's road grade law is 18 %)
+      [[-150, 4], [-146, 40], [-150, 70]],
+      [[0, -2], [3, 30], [5, 65]],
+      [[-166, 5], [-163, -27], [-166, -50.27]],
+      [[22, -4], [20, -35], [20, -66]],
     ] },
     // The market square and the farm crossing: level paved aprons the zone-control placement seats its 30 m discs on
     // (the square also keeps the rowhouse strips and the monument back from the crossing). The bypass zone seats on
     // the road's natural floor in the gap: an apron there would ramp the bypass past a road grade.
     hardstands: [
-      { x: -50, z: 0, width: 64, length: 64, yawDeg: 0, grade: 0 },
+      { x: -50, z: 0, width: 64, length: 64, yawDeg: 6, grade: 0 },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): on the west road's own grade, a 16 m bank
-      { x: -330, z: 24, width: 60, length: 60, yawDeg: 100, grade: 'road', bankM: 16 },
+      { x: -330, z: 4, width: 60, length: 60, yawDeg: 100, grade: 'road', bankM: 16 },
     ],
   },
-
-  // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'one street-front row building at the south wall lane\'s eastern chamfer stands 0.35 m into the '
-      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road. The road '
-      + 'footprint fix (2026-10-02) covers the scatter passes; the street-row and planned-building law is its own fix',
-  } },
 
   spawns: {
     // Alpha deploys in the south valley west of the trade road; bravo's seven pads are its mirror in the north valley.
@@ -216,13 +225,22 @@ export default {
       { structure: 'rowhouse', x: -94, z: 272, yawDeg: 180 },
       { structure: 'rowhouse', x: -20, z: 270, yawDeg: 180 },
       { structure: 'cottage', x: -136, z: 222, yawDeg: 0 },
+      // the castle on the Burgberg: the keep, a second tower on the ring's south-east corner, the chapel by the keep (a
+      // church's 23 m nave spreads past the plot law on the rock's crown)
       { structure: 'tower', x: 156, z: 12, yawDeg: 0 },
+      { structure: 'tower', x: 166, z: -12, yawDeg: 18 },
+      { structure: 'chapel', x: 145, z: 18, yawDeg: 96 },
       // the farmsteads on the castle rock's lower slopes, one in each valley
       { structure: 'barn', x: 128, z: -126, yawDeg: 10 },
       { structure: 'farmhouse', x: 152, z: -136, yawDeg: 10 },
       { structure: 'barn', x: 160, z: 114, yawDeg: 170 },
       { structure: 'farmhouse', x: 152, z: 136, yawDeg: 170 },
       { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
+      // the town church on the market square's north side (the map-revival lane, 2026-10-06; wave 150 found the church
+      // on bare ground): its tower and west door face the square, its front square to the apron's turned north edge
+      // (yawDeg 6) and 4 m off the paving (the layout brief keeps every solid 3.5 m out of a road's core, and an apron is
+      // a road); the nave runs back north off the crest's street rows
+      { structure: 'church', x: -76, z: 52, yawDeg: 186 },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
@@ -263,12 +281,22 @@ export default {
     sideSkip: 0.04,
     spacingPad: 2,
     maxSpread: 2.4,
-    // The surviving stretches of the town wall (gaps at the gates), courtyard walls behind the street rows, and
-    // field walls in the valleys, every outside run with its mirror across the crest.
+    // The surviving stretches of the town wall round the spur's back, following the ground outside the back lanes:
+    // broken at the four gates (the Hauptstrasse's west and east gates, the trade road's north and south gates) and
+    // shot out in two places (north of the lanes' west bend, south-east of the alleys); the castle's ring wall round
+    // the Burgberg's top, open to its forecourt on the town side; and the field walls in the valleys, every one with
+    // its mirror across the crest.
     wallRuns: [
-      [-226, -96, -78, -96, 2], [-46, -96, 66, -96, 3], [-226, 96, -78, 96, 1], [-46, 96, 66, 96, 2],
-      [-226, -96, -226, 2, 1], [-226, 40, -226, 96, 2], [66, -96, 66, -10, 1], [66, 32, 66, 96, 3],
-      [-150, -18, -110, -18, 2], [-150, 36, -110, 36, 1], [-20, -16, 20, -16, 3], [-20, 34, 20, 34, 0],
+      // the town wall: north side, west gate to east gate
+      [-226, 18, -216, 50, -1], [-216, 50, -188, 80, 2], [-150, 96, -104, 104, 3], [-104, 104, -64, 101, -1],
+      [-36, 100, 0, 94, 1], [0, 94, 34, 80, -1], [34, 80, 58, 56, 2], [58, 56, 68, 22, -1],
+      // the town wall: south side, west gate to east gate
+      [-226, -12, -218, -44, 1], [-218, -44, -196, -76, -1], [-196, -76, -156, -98, -1], [-156, -98, -104, -104, 2],
+      [-104, -104, -66, -100, -1], [-38, -102, -2, -104, -1], [-2, -104, 34, -90, 3], [58, -64, 68, -26, 1],
+      // the castle's ring wall on the Burgberg
+      [178, 6, 170, 26, 1], [170, 26, 150, 33, -1], [150, 33, 132, 24, 2], [128, -4, 138, -20, -1],
+      [138, -20, 160, -22, 1], [160, -22, 176, -12, -1], [176, -12, 178, 6, -1],
+      // field walls in the valleys, mirrored across the crest
       [-250, -150, -190, -150, 2], [-250, 170, -190, 170, 2], [40, -150, 100, -150, 3], [40, 170, 100, 170, 3],
       [-420, -180, -360, -180, 1], [-420, 200, -360, 200, 1], [150, -250, 210, -250, 2], [150, 270, 210, 270, 2],
     ],

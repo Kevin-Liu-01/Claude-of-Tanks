@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { SFX_ASSETS } from './sfxManifest.generated.ts';
 import { VOICE_PACKS } from './voiceManifest.generated.ts';
 import { VOICE_LINES } from './voiceLines.ts';
-import { MAP_SCENES, GARAGE_SCENE } from './environmentScenes.ts';
+import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
@@ -80,6 +80,9 @@ for (const mapId of MAP_IDS) {
   assert.ok(SFX_ASSETS[scene.bed]?.l, `${mapId}: bed ${scene.bed} loops`);
   if (scene.layer) assert.ok(SFX_ASSETS[scene.layer.asset]?.l, `${mapId}: layer ${scene.layer.asset}`);
   for (const [spot] of scene.spots) assert.ok(SFX_ASSETS[spot], `${mapId}: spot ${spot}`);
+  assert.ok(scene.flyovers.length >= 1, `${mapId}: the front's aircraft have a sound`);
+  for (const [aircraft] of scene.flyovers) assert.ok(SFX_ASSETS[aircraft], `${mapId}: flyover ${aircraft}`);
+  if (scene.bells) assert.ok(SFX_ASSETS[BELL_ASSET[scene.bells]], `${mapId}: ${scene.bells} bells ${BELL_ASSET[scene.bells]}`);
 }
 assert.ok(SFX_ASSETS[GARAGE_SCENE.bed]?.l);
 for (const [spot] of GARAGE_SCENE.spots) assert.ok(SFX_ASSETS[spot], `garage spot ${spot}`);
