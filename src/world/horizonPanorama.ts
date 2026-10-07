@@ -108,6 +108,10 @@ export interface HorizonPanoramaCharacter {
   jebelFlutes: number; jebelFluteDepth: number; jebelBossM: number; jebelFootVary: number;
   /** desert varnish down the jebels' walls: the darkening of its streaks (0: none) */
   jebelVarnish: number;
+  /** a city's edge on the far plain (the skies lane, 2026-10-06, mr1's Suzhou Creek: "a hazy, built-up delta skyline past
+   * the levee"): its blocks' height (m; 0: none), the share of the plain its districts take, the share of blocks raising a
+   * tower or a chimney, and the nearest the town stands from the battlefield's centre (m) */
+  townM: number; townShare: number; townTowers: number; townFromM: number;
   /** the nearest a jebel's near edge stands from the battlefield's centre (m). The massifs stand clear of the near band's
    * pressing under the ring's skyline (that cut a near massif's top dead flat, gauntlet wave 50: "near-rectangular blocks
    * with dead-flat tops"), so this keeps them past the shell, where the shell's parallax stays small */
@@ -123,6 +127,7 @@ const PANO_EXTRAS = Object.freeze({
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
   jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
+  townM: 0, townShare: 0.5, townTowers: 0.05, townFromM: 1800,
 });
 
 /** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
@@ -837,6 +842,7 @@ uniform vec4 uShore;   // the far shore's height share (0: open sea), the channe
 uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
+uniform vec4 uTown;    // a city's edge: the blocks' height (m; 0: none), its districts' share, towers' share, nearest (m)
 ${JEBEL_GLSL}
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -936,6 +942,7 @@ float gTree = 0.0;   // and its tree cover (the strip colours it as the forest)
 float gPeak = 0.0;   // and its isolated peaks' weight (the strip bares them: a nunatak's rock, a cone's scoria)
 float gGully = 0.0;  // and its erosion octaves' troughs on the steeper ground (a dry coast's scrub holds them)
 float gVarnish = 0.0; // and a jebel country's desert varnish down its walls (written in the tree-cover channel)
+float gTown = 0.0;   // and its city blocks' cover (written negative in the peaks' channel: the strip roofs and walls them)
 float farField(vec2 p) {
   gPlinth = 0.0;
   gGully = 0.0;
@@ -1009,6 +1016,28 @@ float farField(vec2 p) {
   // a dry coast's scrub (uTrees.z, the maquis): it holds the gullies up the bare faces, the limestone the spurs between
   if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);
   gTree = max(gTree, gVarnish);
+  // a city's edge (uTown.x > 0, the skies lane 2026-10-06, Suzhou Creek: "a hazy, built-up delta skyline past the levee"):
+  // blocks of ~78 x 56 m on a slightly turned grid with the streets between, in districts a broad field picks (uTown.y of
+  // the plain), a tower or a mill chimney standing in uTown.z of the blocks, from uTown.w out; the blocks stand on the plain
+  // in place of its trees, and their cover goes to the strip in the peaks' channel, negative
+  gTown = 0.0;
+  if (uTown.x > 0.0) {
+    float bu = p.x * 0.97 + p.y * 0.24, bv = -p.x * 0.24 + p.y * 0.97;
+    vec2 q = vec2(bu / 78.0, bv / 56.0);
+    vec2 cell = floor(q), fq = q - cell;
+    float lot = smoothstep(0.07, 0.13, fq.x) * smoothstep(0.07, 0.13, 1.0 - fq.x) * smoothstep(0.09, 0.16, fq.y) * smoothstep(0.09, 0.16, 1.0 - fq.y);
+    float district = smoothstep(1.0 - uTown.y - 0.1, 1.0 - uTown.y + 0.1, 0.5 + 0.5 * noised(p / 2300.0 + vec2(1.7, -3.3)).x);
+    float town = lot * district * smoothstep(uTown.w, uTown.w + 600.0, length(p));
+    float block = uTown.x * (0.55 + 0.9 * hash12(cell + vec2(3.1, 7.9)));
+    // (a tower or a chimney: a slender core in the block's middle, two to five storeys of blocks taller)
+    float core = step(0.38, fq.x) * step(fq.x, 0.56) * step(0.36, fq.y) * step(fq.y, 0.58);
+    float spire = step(1.0 - uTown.z, hash12(cell + vec2(11.7, 2.3))) * core * uTown.x * (2.0 + 3.0 * hash12(cell + vec2(5.5, 1.1)));
+    h += town * (block + spire) * (1.0 - gTree * 0.6);
+    gTree *= 1.0 - town;
+    gTown = town;
+    // (written in the peaks' channel, negative: a town and a nunatak never share a plain)
+    if (town > 0.01) gPeak = -town;
+  }
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
   // the layers behind the ring (the mountains lane, 2026-10-03: from the battlefield the far country hid behind the
@@ -1318,6 +1347,15 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
   // the far field's own tree lines and woods (its height pass's tree cover)
   col = mix(col, uForest * mottle * 0.9, uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b);
+  // a city's edge (the skies lane, 2026-10-06): the blocks' cover, negative in the peaks' channel — tiled and slate roofs on
+  // the flat tops (grey, dark, a few red), rendered and brick walls on the faces, block by block
+  float townW = clamp(-texture2D(uHeight, g).a, 0.0, 1.0);
+  if (townW > 0.0) {
+    float rk = hash12(floor(wp.xz / 27.0) + vec2(3.7, 9.1));
+    vec3 roof = rk < 0.5 ? vec3(0.13, 0.13, 0.14) : rk < 0.82 ? vec3(0.2, 0.19, 0.18) : vec3(0.27, 0.15, 0.11);
+    vec3 wallT = vec3(0.4, 0.37, 0.31) * (0.8 + 0.4 * hash12(floor(wp.xz / 19.0) + vec2(1.3, 4.7)));
+    col = mix(col, mix(wallT, roof, smoothstep(0.7, 0.92, n.y)), townW);
+  }
   // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
   float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
   float bi = floor(bt), bf = bt - bi;
@@ -1771,6 +1809,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
+      uTown: { value: new THREE.Vector4(ch.townM, ch.townShare, ch.townTowers, ch.townFromM) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
       uJebel2: { value: new THREE.Vector4(ch.jebelFoot, ch.jebelRim, ch.jebelApron, ch.jebelFlutes) },
       uJebel3: { value: new THREE.Vector4(ch.jebelFluteDepth, ch.jebelFootVary, ch.jebelVarnish, ch.jebelNearM) },
