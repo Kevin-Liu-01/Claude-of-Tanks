@@ -2479,6 +2479,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   const strvRoofRoutes = (x: number, z: number): Array<[string, DecorSlotArgs]> => [
     ['hullRoof', { x, z }],
   ];
+  // Round 4 (2026-10-07, wave 216 on the Strv 103A): the 103A has no turret either, so its turret routes probed the
+  // hull from an empty turret frame and the one load that found a seat was hung off a periscope dome. Its loads take
+  // the flat roof beside and behind the cupolas instead (measured: 1.87-1.88 m from x -1.6 to -0.9 and 1.0 to 1.6),
+  // clear of the commander's ring (KEEP_CLEAR_HULL), the front pair where the front three-quarter view sees them;
+  // the aft routes stay behind them.
+  const strvA = spec.id === 'strv103a';
+  const strvARoutes = (x: number, z: number, fallback: Array<[string, DecorSlotArgs]>): Array<[string, DecorSlotArgs]> =>
+    strvA ? [['hullRoof', { x, z }], ...fallback] : fallback;
   const normalPairedCanRoutes: Array<[string, DecorSlotArgs]> = [
       ['hullRearRack', { x: side * 0.22 }],
       ['turretRear', { side: -side }],
@@ -2530,13 +2538,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case')),
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(0.65, -1.45) : hardCaseRoutes(side, 0.12) }],
+        ? strvRoofRoutes(0.65, -1.45) : strvARoutes(-1.22, -0.70, hardCaseRoutes(side, 0.12)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft')),
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(-0.25, -1.45) : aftRoutes(-side, 0.12) }],
+        ? strvRoofRoutes(-0.25, -1.45) : strvARoutes(1.32, -0.66, aftRoutes(-side, 0.12)) }],
     },
     {
       kit: 'cargo', p: 1,
@@ -2545,9 +2553,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       // the turret roof it read as a red drum with a blue lens.
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
         ? strvRoofRoutes(-1.05, -1.30)
-        : serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
+        : strvARoutes(-1.24, 0.22, serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
           ? hullServiceRoutes(-side, 0.22)
-          : aftRoutes(-side, 0.22) }],
+          : aftRoutes(-side, 0.22)) }],
     },
     {
       kit: 'cargo', p: 1,
@@ -2555,25 +2563,25 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       // The 103B has no rotating turret: its water-can cradle sits at the
       // exact roof point supplied by Gallery surface markup.
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(-0.80, -0.20) : normalPairedCanRoutes }],
+        ? strvRoofRoutes(-0.80, -0.20) : strvARoutes(1.30, -1.42, normalPairedCanRoutes) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case', 3)),
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(1.15, -1.00) : hardCaseRoutes(-side, 0.02) }],
+        ? strvRoofRoutes(1.15, -1.00) : strvARoutes(-0.36, -1.26, hardCaseRoutes(-side, 0.02)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(service(2)),
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(0.85, -0.30) : aftRoutes(side, 0.22) }],
+        ? strvRoofRoutes(0.85, -0.30) : strvARoutes(-1.25, -1.45, aftRoutes(side, 0.22)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft', 2)),
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(-0.25, -0.85) : aftRoutes(side, 0.02) }],
+        ? strvRoofRoutes(-0.25, -0.85) : strvARoutes(1.32, 0.22, aftRoutes(side, 0.02)) }],
     },
   ];
   // opt-in branch bundles take their seats before loose cargo crowds the turret's rear quarters
@@ -3176,7 +3184,8 @@ function supportedSeat(
  */
 const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, number, number]>>> = {
   strv103: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
-  strv103a: [[0.28, -0.40, 0.70]],
+  // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
+  strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */
@@ -4124,8 +4133,10 @@ export function* attachTankDecorationsSteps(
         const d = bb.max.z - bb.min.z;
         const x = args.x ?? 0;
         const z = args.z ?? (args.zFrac ?? 0) * L;
-        const seat = seatProbe(hullP, x, z, w, d, topFrom, 0.08);
-        const hit = deckProbe(x, z);
+        // round 4: the roof itself, under any suit net (the load nests into the garnish instead of riding on it)
+        const solid = solidHullProber();
+        const seat = seatProbe(solid, x, z, w, d, topFrom, 0.08);
+        const hit = solid.top(x, z, topFrom);
         if (!seat || !hit || !seat.n || hit.n.y < 0.92) {
           disposePartList(parts);
           return false;
@@ -4540,6 +4551,11 @@ export function* attachTankDecorationsSteps(
         // Round 3: a hung load rides welded L-arms with a strap over it (sideLedgeParts), not bare against the wall.
         // The arms are built in the piece frame, where the wall is local -z at the push-out distance, and the pad goes.
         const hung = isLoadPiece(name);
+        // Round 4 (2026-10-07, wave 216 on the Strv 103A: "the container is perched on a round pedestal it overhangs ...
+        // rack uprights end in mid-air"): a vehicle whose turret group carries no geometry of its own has no turret
+        // wall. Its turret prober falls back to the hull, so the side probe met a periscope dome on the roof and the
+        // chest was hung on L-arms off it. A hung load needs a real turret wall; it goes on to its next route.
+        if (hung && !turretTargets.length) { disposePartList(parts); return false; }
         for (const z of sideStations) {
           for (const yf of [0.35, 0.5]) {
             const y = Math.max(0.18, pivotTopY() * yf);
@@ -4636,6 +4652,16 @@ export function* attachTankDecorationsSteps(
         && !mesh.name.includes('_ghillie_'));
       _solidTurP = solid.length === turretProbeTargets.length ? turP : makeProber(turretG, solid, null);
       return _solidTurP;
+    }
+    // The hull's solid surfaces likewise (round 4, 2026-10-07: the Strv 103A's suit net and garnish stand 2-36 cm off
+    // its roof, so a roof seat probed through them came out tilted or perched on the leaves).
+    let _solidHullP: SurfaceProber | null = null;
+    function solidHullProber(): SurfaceProber {
+      if (_solidHullP) return _solidHullP;
+      const solid = hullProbeTargets.filter((mesh) => mesh.userData.vehicleFoliage === undefined
+        && !mesh.name.includes('_ghillie_'));
+      _solidHullP = solid.length === hullProbeTargets.length ? hullP : makeProber(hullG, solid, null);
+      return _solidHullP;
     }
 
     // turret roof height above the pivot (probed once, cached)
