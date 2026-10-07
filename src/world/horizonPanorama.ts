@@ -440,6 +440,8 @@ interface ShellAir {
   uPanoTerms: THREE.IUniform<THREE.Vector3>;
   /** 2026-10-06 (QA PANO_FAR_EARTH_VARY): the far earth's land patches' amplitude (0 off) */
   uPanoFarVary: THREE.IUniform<number>;
+  /** 2026-10-06 (QA PANO_FAR_EARTH_NEAR): the apron's and the far earth's colour from the column's near ground (0 the skyline's) */
+  uPanoFarNear: THREE.IUniform<number>;
   /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
    *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
   uDeckHorizon: THREE.IUniform<THREE.Vector4>;
@@ -597,6 +599,7 @@ float panoCloudShade( vec2 cp ) {
  * 420 m, ± this share of its colour, the woods a touch greener), so it recedes as land into the haze. 0 keeps the sheet.
  */
 const PANO_FAR_EARTH_VARY = 0;
+const PANO_FAR_EARTH_NEAR = 0;
 function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
@@ -617,6 +620,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
     uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
     uPanoFarVary: { value: 0 },
+    uPanoFarNear: { value: 0 },
     uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uDeckClosed: { value: 0 },
     tClouds: { value: null },
@@ -648,7 +652,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
-uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary, uPanoFarNear;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
@@ -685,6 +689,14 @@ ${HAZE_LAW_GLSL}`)
           bool apron = vPanoApron > 0.5 && e > 0.0;
           if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;
           vec3 ground = pow(max(skyline.rgb, vec3(0.0)), vec3(2.2));
+          // (QA PANO_FAR_EARTH_NEAR) the skyline's colour carries the bake's air out to the far country's crest (~9 km),
+          // so a high camera's apron and far earth stood as one pale blue-grey sheet even where its ray meets the ground at
+          // 3-5 km (the inland "sea" band under the bird views). The strip's lowest rows hold the column's near ground —
+          // the bake's lit fill under the ring's skyline, nearer than the shell, so carrying no air: the land's own colour
+          vec4 nearTap = texture2D(map, vec2(vPanoU, 0.012));
+          float nearW = nearTap.a >= 0.5 ? uPanoFarNear : 0.0;
+          vec3 nearC = nearW > 0.0 ? pow(nearTap.rgb / nearTap.a, vec3(2.2)) : ground;
+          if (apron) ground = mix(ground, nearC, nearW);
           if (!apron) {
             // (its land the column's skyline right over it, the wide average above: one colour per column, constant up
             // the ray, stood as bars to the horizon in the clear air — Verdant and Oasis in the lab)
@@ -705,7 +717,9 @@ ${HAZE_LAW_GLSL}`)
             if (uPanoFarVary > 0.0) {
               vec2 mp = cameraPosition.xz + rd.xz * meet;
               float pn = vnoise(mp * (1.0 / 1400.0)) * 0.6 + vnoise(mp * (1.0 / 420.0) + vec2(3.1, 7.7)) * 0.4;
-              ground *= (1.0 + (pn - 0.5) * 2.0 * uPanoFarVary) * mix(vec3(1.0), vec3(0.9, 1.03, 0.88), smoothstep(0.58, 0.78, pn) * min(1.0, uPanoFarVary * 3.0));
+              vec3 vary = (1.0 + (pn - 0.5) * 2.0 * uPanoFarVary) * mix(vec3(1.0), vec3(0.9, 1.03, 0.88), smoothstep(0.58, 0.78, pn) * min(1.0, uPanoFarVary * 3.0));
+              ground *= vary;
+              nearC *= vary;
             }
             // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
             // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
@@ -750,6 +764,15 @@ ${HAZE_LAW_GLSL}`)
               inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
             }
             ground = ground * T + inScatter * (1.0 - T);
+            // (QA PANO_FAR_EARTH_NEAR) the near ground hazed by the law over the reach from the shell to where the ray meets
+            // the ground (the aerial pass hazes the rest, to the shell), giving way to the skyline's path as the meet nears
+            // the far country's own distance
+            if (nearW > 0.0) {
+              float reachN = max(0.0, meet - length(vd));
+              float layerN = hazeLayerMean(max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
+              vec3 TN = hazeTransmittance(uPanoHaze.x, reachN, layerN, uPanoHazeChroma);
+              ground = mix(ground, nearC * TN + inScatter * (1.0 - TN), nearW * (1.0 - smoothstep(0.45, 1.0, meet / ${P.outerM.toFixed(1)})));
+            }
           }
           diffuseColor.rgb *= ground;
         } else {
@@ -1716,6 +1739,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
     air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
     air.uPanoFarVary.value = lightTune('PANO_FAR_EARTH_VARY', PANO_FAR_EARTH_VARY);
+    air.uPanoFarNear.value = lightTune('PANO_FAR_EARTH_NEAR', PANO_FAR_EARTH_NEAR);
     // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
     if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
     const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
