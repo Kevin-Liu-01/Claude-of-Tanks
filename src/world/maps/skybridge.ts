@@ -310,6 +310,16 @@ export default {
       roadFence: 'fencerail', yardFence: 'fencerail',
     },
   },
+  // (round 5, gauntlet wave 207 and the coordinator: round 4's arm walls "flat vertical planes" under a soft brow) the
+  // arm's walls in relief — buttresses between the seeps' alcoves, the rain's flutes, the cross-beds, the varnish's
+  // curtains from the brow and the bathtub ring at the water (canyonWall.ts) — and the hard bed of the slickrock along
+  // both brows, its lip over the void (caprockRim.ts, trench). The arm's ridge (ARM.landforms[0]) is the rock
+  scenery: {
+    canyonWalls: [{ x: ARM.landforms[0].x, z: ARM.landforms[0].z, length: ARM_LENGTH, width: ARM_HALF * 1.6, yawDeg: ARM_YAW,
+      waterLevel: ARM_DEPTH, span: 0.88, name: "Lake Powell's arm, its walls" }],
+    caprock: [{ x: ARM.landforms[0].x, z: ARM.landforms[0].z, length: ARM_LENGTH, width: ARM_HALF * 1.6, yawDeg: ARM_YAW,
+      trench: true, span: 0.86, tone: [0.06, 0.3, 0.64], thickness: [1.0, 1.8], blockM: [10, 22], name: "the arm's slickrock brows" }],
+  },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,
     // (the map-revival lane, Skybridge round 2, gauntlet wave 120: "a repeating sawtooth ridge silhouette" — the mesa
