@@ -173,7 +173,9 @@ export default {
     // district kept a weathered volcanic field (the mountains lane, gauntlet wave 15); the coastal relief is the delta's
     // (horizonRelief.ts: an authored key wins over the map's identity)
     baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55,
-    panorama: { regional: 'plain', trees: 12 },
+    // (the skies lane, 2026-10-07: mr1's "a hazy, built-up delta skyline past the levee" — the panorama's city edge from
+    // 1.8 km: blocks of ~78 x 56 m on a turned grid, districts over half the far plain, a tower or chimney in 6 % of them)
+    panorama: { regional: 'plain', trees: 12, townM: 12, townShare: 0.55, townTowers: 0.06, townFromM: 1800 },
     outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
