@@ -401,21 +401,23 @@ function bDiemen(rng: Rng): THREE.BufferGeometry {
     const [y, f] = sideRows[k];
     outline.push([halfW * (1 + 0.04 * Math.sin(Math.PI * f)), y, bandV(HAY_FACE_V, f), 0.1]);
   }
-  // the stations along the rick: ends drawn in as a hip (the section scaled toward the centre line and down)
+  // the stations along the rick: its ends drawn in a little and rounded at their corners, then cut square (b19; the
+  // b15 frames: a deep hip drew the thatch's courses down over the end like the ribs of a shell — "a barrel or a log
+  // end"; a rick's end is its cut face, the hay standing in it as in its walls)
   const stations: number[] = [];
   for (let i = 0; i <= 12; i++) stations.push(-halfL + (2 * halfL * i) / 12);
   const rows = stations.length, cols = outline.length;
   const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), index: number[] = [];
   const along = (2 * halfL) / 4;
   for (let i = 0; i < rows; i++) {
-    const z = stations[i], e = Math.abs(z) / halfL, hip = e > 0.72 ? Math.sqrt(Math.max(0, 1 - Math.pow((e - 0.72) / 0.28, 2))) : 1;
+    const z = stations[i], e = Math.abs(z) / halfL, hip = e > 0.84 ? Math.sqrt(Math.max(0, 1 - Math.pow((e - 0.84) / 0.16, 2))) : 1;
     for (let k = 0; k < cols; k++) {
       const [x, y, v, rag] = outline[k];
       const t = k / (cols - 1);
       const wobble = (sampleTable(lumps, 8, z / 8 + 0.5, y * 0.4 + t) - 0.5) * 0.14 + (sampleTable(locks, 24, z / 4 + t * 2, y * 1.6) - 0.5) * 2 * rag;
-      const scale = 0.25 + 0.75 * hip, yScale = y > 0 ? 0.35 + 0.65 * hip : 1;
+      const scale = 0.8 + 0.2 * hip, yScale = y > wall ? 0.9 + 0.1 * hip : 1;
       const o = (i * cols + k) * 3;
-      pos[o] = (x + Math.sign(x) * wobble) * scale; pos[o + 1] = y * yScale; pos[o + 2] = z * (e > 0.72 ? 1 - 0.08 * (1 - hip) : 1);
+      pos[o] = (x + Math.sign(x) * wobble) * scale; pos[o + 1] = y * yScale; pos[o + 2] = z * (e > 0.84 ? 1 - 0.04 * (1 - hip) : 1);
       uv[(i * cols + k) * 2] = ((z + halfL) / (2 * halfL)) * along; uv[(i * cols + k) * 2 + 1] = v;
     }
   }
@@ -428,16 +430,20 @@ function bDiemen(rng: Rng): THREE.BufferGeometry {
   body.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   body.setIndex(index);
   body.computeVertexNormals();
-  // the hipped ends closed: a fan at each end from the section's centre (its last station's outline, drawn in)
+  // the hipped ends closed: a fan at each end from the section's centre (its last station's outline, drawn in).
+  // (b19; the b15 frames: the fan's thatch laid round it read as "a barrel or a log end", radial stripes on a shell —
+  // the end is the rick's cut face now, the face band's hanging straw by its height and across it, as its walls wear it)
   const parts: THREE.BufferGeometry[] = [body];
+  const endV = (y: number): number => bandV(HAY_FACE_V, Math.min(1, Math.max(0, y / ridge)));
   for (const end of [0, rows - 1]) {
     const ring: number[] = [];
     for (let k = 0; k < cols; k++) { const o = (end * cols + k) * 3; ring.push(pos[o], pos[o + 1], pos[o + 2]); }
-    const cx = 0, cy = ridge * 0.25, cz = stations[end] * 1.04;
+    const cx = 0, cy = ridge * 0.45, cz = stations[end] * 0.985;
     const fpos: number[] = [], fuv: number[] = [], fidx: number[] = [];
-    fpos.push(cx, cy, cz); fuv.push(0.5, bandV(HAY_THATCH_V, 0.5));
-    for (let k = 0; k < cols; k++) { fpos.push(ring[k * 3], ring[k * 3 + 1], ring[k * 3 + 2]); fuv.push(k / (cols - 1), bandV(HAY_THATCH_V, 0.1 + 0.8 * (k / (cols - 1)))); }
+    fpos.push(cx, cy, cz); fuv.push((cx + halfW) / 4, endV(cy));
+    for (let k = 0; k < cols; k++) { fpos.push(ring[k * 3], ring[k * 3 + 1], ring[k * 3 + 2]); fuv.push((ring[k * 3] + halfW) / 4, endV(ring[k * 3 + 1])); }
     for (let k = 0; k < cols - 1; k++) fidx.push(0, k + 1, k + 2);
+    fidx.push(0, cols, 1); // (and across its foot: the cut face is whole down to the ground)
     const fan = new THREE.BufferGeometry();
     fan.setAttribute('position', new THREE.Float32BufferAttribute(fpos, 3));
     fan.setAttribute('uv', new THREE.Float32BufferAttribute(fuv, 2));
