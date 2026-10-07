@@ -49,13 +49,6 @@ export interface LandUseProfile {
   region: LandRegion;
   /** Salt of the field hash (two maps with one layout still crop differently). */
   salt: number;
-  /**
-   * The map-revival lane (2026-10-06, Saltmere Bay's step 5: the Léon's ceinture dorée): a belt of one crop — every
-   * field whose centre lies within `halfWidthM` of the segment (ax, az)–(bx, bz) is sown with `crop` in `share` of the
-   * fields (by the field's hash), the rest keeping the rotation's pick; a whole field, never a band cut across one.
-   * Absent: none.
-   */
-  belt?: { ax: number; az: number; bx: number; bz: number; halfWidthM: number; crop: LandCropId; share: number };
 }
 
 /** Crop kinds (the shader's ids, 0..15). */
@@ -199,10 +192,6 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   coastal: {
     strength: 1, heading: -0.48, blockU: 120, blockV: 92, maxSplit: 2, marginM: 2.6, trackShare: 0.22, hedgeShare: 0.75,
     warpM: 30, region: 'bocage', salt: 29,
-    // (the map-revival lane, 2026-10-06, step 5) the Léon's vegetable belt, the ceinture dorée: within 200 m of the strand
-    // (the bay's shore runs about x 270, mirrored across the axis) three fields in five are cauliflower and artichoke
-    // rows (the row crop); the grazing and grain lie inland
-    belt: { ax: 270, az: -330, bx: 270, bz: 374, halfWidthM: 200, crop: 7, share: 0.6 },
   },
   // Frontier (the Fulda gap): mixed central-European farming between the woods — medium fields, grain and pasture
   frontier: {
@@ -465,7 +454,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     rowAlongU = blockU > w;
   }
   const fieldA = row, fieldB = col * 8 + k;
-  let crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
   const lineIdx = lv < blockV * 0.5 ? row : row + 1;
@@ -481,18 +470,6 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const hedgeOn = luRand(row, col * 8 + (alongU ? k : 7), salt + 37) < hedgeShare;
   const dShort = alongU ? Math.min(edgeU, Math.min(lu, blockU - lu)) : Math.min(lu, blockU - lu);
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
-  const belt = profile.belt;
-  if (belt) {
-    // the field's centre in the block frame (its block's row, its column's cut k), back through the grid's rotation to
-    // the warped plane (the warp's few metres are left aside: the test is the field's, so every point of it agrees)
-    const w = (alongU ? blockU : blockV) / split;
-    const uc = (alongU ? col * blockU + (k + 0.5) * w : (col + 0.5) * blockU) - shift;
-    const vc = alongU ? (row + 0.5) * blockV : row * blockV + (k + 0.5) * w;
-    const cx = ch * uc - sh * vc, cz = sh * uc + ch * vc;
-    const ex = belt.bx - belt.ax, ez = belt.bz - belt.az, len2 = ex * ex + ez * ez;
-    const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - belt.ax) * ex + (cz - belt.az) * ez) / len2)) : 0;
-    if (Math.hypot(cx - belt.ax - ex * t, cz - belt.az - ez * t) < belt.halfWidthM && luRand(fieldA, fieldB, salt + 59) < belt.share) crop = belt.crop;
-  }
   out.active = 1;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
