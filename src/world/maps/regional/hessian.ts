@@ -590,12 +590,28 @@ const ruin: RegionalBuilder = (ctx) => {
     }
   }
   // the charred frame: corner posts and a few studs of the upper storey, a broken plate, fallen rafters
+  const postTop: number[] = [];
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     const h = 2.6 + rng() * 2.2;
+    postTop.push(0.55 + h);
     sink.span(SW, sx * (W / 2 - 0.12) - 0.1, 0.55, sz * (D / 2 - 0.12) - 0.1, sx * (W / 2 - 0.12) + 0.1, 0.55 + h, sz * (D / 2 - 0.12) + 0.1, { colour: charred });
   }
-  const plateY = 3.3 + rng() * 0.6;
-  sink.span(SW, -W / 2 + 0.02, plateY, D / 2 - 0.24, W * 0.1, plateY + 0.18, D / 2 - 0.04, { colour: charred, decor: true });
+  // (the scenery lane, b30; wave 199 at Steinburg: the broken plate read as "a bare black bracket on a pole jutting from
+  // the facade" — it ran from its corner post more than half the wall's length with nothing under it) the surviving
+  // fragment of the wall's frame: the plate held in its corner post (never above the post's charred top), carried on two
+  // or three studs standing on the stone below, the last under its burnt end, a brace from the post to the plate
+  const plateY = Math.min(3.3 + rng() * 0.6, postTop[2] - 0.12);
+  const plateEnd = -W / 2 + Math.min(W * 0.6, 1.5 + rng() * 1.4);
+  sink.span(SW, -W / 2 + 0.02, plateY, D / 2 - 0.24, plateEnd, plateY + 0.18, D / 2 - 0.04, { colour: charred, decor: true });
+  const studs = Math.max(2, Math.round((plateEnd + W / 2) / 1.05));
+  for (let k = 1; k <= studs; k++) {
+    const x = -W / 2 + (plateEnd + W / 2 - 0.12) * (k / studs);
+    sink.span(SW, x - 0.07, 0.55, D / 2 - 0.22, x + 0.07, plateY, D / 2 - 0.06, { colour: k === studs ? burnt : charred, decor: true });
+  }
+  if (plateEnd + W / 2 > 1.6) {
+    sink.member(SW, [-W / 2 + 0.2, plateY - 1.45, D / 2 - 0.14], [-W / 2 + 1.25, plateY, D / 2 - 0.14], 0.13, 0.15, [0, 0, 1],
+      { colour: charred, decor: true, exposed: true });
+  }
   for (let k = 0; k < 5; k++) {
     const x = (rng() - 0.5) * W * 0.8, z = (rng() - 0.5) * D * 0.7;
     const a: Vec3 = [x - 1.6, 0.62, z], b: Vec3 = [x + 1.4, 1.4 + rng() * 1.5, z + (rng() - 0.5) * 1.2];
