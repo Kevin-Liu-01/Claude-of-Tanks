@@ -134,15 +134,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -0.946,
-          1.2504251,
-          2.8628999
+          -1.6120037,
+          1.8124046,
+          -0.0140223
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          0.3350778,
+          -0.6307997,
+          0.3283201,
+          0.618078
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103a",

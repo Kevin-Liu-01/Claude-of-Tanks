@@ -85,9 +85,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.4519581,
-          0.4746903,
-          -0.37297
+          1.4276893,
+          0.4329621,
+          -0.5451846
         ],
         "quaternion": [
           0,
@@ -100,7 +100,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000898
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
