@@ -371,7 +371,7 @@ function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) =>
 }
 
 /** The portals over the piers (or the abutments) at ±(span/2 + 0.55) and the balances on them. */
-function liftPortals(sink: PartSink, span: number, W: number, top: (z: number) => number, postX: number, portalH: number): void {
+function liftPortals(sink: PartSink, span: number, top: (z: number) => number, postX: number, portalH: number): void {
   const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK }, iron = { colour: IRON };
   for (const zs of [-1, 1]) {
     const z = zs * (span / 2 + 0.55), y0 = top(zs * span / 2), yTop = y0 + portalH;
@@ -438,7 +438,7 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
   }
   // ---- the leaves, the portals over the abutments and the balances on them
   liftLeaves(sink, span, W, top);
-  liftPortals(sink, span, W, top, postX, portalH);
+  liftPortals(sink, span, top, postX, portalH);
   const movement = ctx.params.drivable === false ? undefined : (() => {
     const parts = deckMovement(span, W, top, 1.05, 0.2);
     // the abutments from the bed to the deck's underside, and the portal posts
@@ -565,7 +565,7 @@ function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number,
   }
   // ---- the leaves and the portals over the lift piers (or the abutments) with their balances
   liftLeaves(sink, span, W, top);
-  liftPortals(sink, span, W, top, postX, portalH);
+  liftPortals(sink, span, top, postX, portalH);
   const movement = ctx.params.drivable === false ? undefined : (() => {
     // the roadway: parts at most `step` long a metre deep under its surface, its edges (the railings, the parapets) in
     // runs at most `edgeStep` long from the run's lowest surface to `edge` over its highest

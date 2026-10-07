@@ -183,7 +183,7 @@ export const mole: LandmarkBuilder = (ctx) => {
 
 // ---------------------------------------------------------------------------------------------------------- quay
 
-const TIMBER_DARK = rgb(0x3e3228), WEED: Rgb = [0.55, 0.6, 0.5];
+const TIMBER_DARK = rgb(0x3e3228);
 
 /**
  * The quay (mr4's harbour step 2 for Saltmere, 2026-10-06; one harbour with the mole): a granite quay wall `length` along
