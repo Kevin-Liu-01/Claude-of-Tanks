@@ -178,7 +178,7 @@ function rockBedsFor(climate: RockClimate): [number, number, number, number] {
  * other placement in those passes keeps its seat; the tactical arcs keep their colliders under earthwork mounds. (The
  * polders' stone is the maps lane's own map config, its round 4.)
  */
-export const STONE_FREE_MAPS: ReadonlySet<string> = new Set(['delta', 'mangrove']);
+export const STONE_FREE_MAPS: ReadonlySet<string> = new Set(['delta', 'mangrove', 'polders']);
 
 /** The battlefield's boulder lithology (the detail tile is drawn for it). */
 export function rockLithologyFor(mapId: string): BoulderLithology {
