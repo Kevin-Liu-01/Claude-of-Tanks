@@ -69,9 +69,12 @@ const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: num
 // Appended after the airport's sites, so those keep their order and every pose.
 // 2026-10-05 (the map-revival lane; gauntlet wave 113: "sparse lollipop trees scattered over even green … like savanna"
 // where the Polissia is massed, closed-canopy pine on sand with hard edges against the meadow): the Scots pine
-// plantations past the runway's ends — rows 7 m apart, a tree every 6–7 m along them, few losses — as vegetation.ts
-// belts, so each block stands as one dark wood with a ruled edge (and its rotation pair)
-function plantation(x0: number, x1: number, z0: number, z1: number, rowGap = 7, gap = 6.5) {
+// plantations past the runway's ends — rows 9 m apart, a tree every 9 m along them, few losses — as vegetation.ts
+// belts, so each block stands as one dark wood with a ruled edge (and its rotation pair). (2026-10-06, the coordinator
+// on hold x9: the woods cost the establishing view 3 ms of GPU at +40 % of its triangles; the plantations thinned from
+// 7 x 6.5 m to 9 x 9 m, the woodlots 44 -> 34 and the rim 140 -> 108 (under the moderate maps' 108), each wood keeping
+// its extent to the skyline)
+function plantation(x0: number, x1: number, z0: number, z1: number, rowGap = 9, gap = 9) {
   const rows: Array<{ x0: number; z0: number; x1: number; z1: number; gap: number; jitter: number; skip: number; species: 'pine' }> = [];
   for (let x = x0; x <= x1 + 1e-6; x += rowGap) rows.push({ x0: x, z0, x1: x, z1, gap, jitter: 1.2, skip: 0.05, species: 'pine' });
   return rows;
@@ -80,6 +83,9 @@ const PLANTATIONS = [
   ...plantation(376, 440, -236, -96),  // east end, south of the perimeter road
   ...plantation(376, 440, 92, 236),    // east end, north of it
 ];
+// the four blocks (the two above and their rotation pair), each 3 m past its outer rows
+const PLANTATION_BLOCKS = [[376, 440, -236, -96], [376, 440, 92, 236]].flatMap(([x0, x1, z0, z1]) => [
+  { x0: x0 - 3, x1: x1 + 3, z0: z0 - 3, z1: z1 + 3 }, { x0: -x1 - 3, x1: -x0 + 3, z0: -z1 - 3, z1: -z0 + 3 }]);
 // The taxiway's western half (path 3 below), from the runway's west end along the cargo apron to the runway's centre; the
 // eastern half (path 4) is its rotation.
 const TAXIWAY: Array<[number, number]> = [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96],
@@ -230,8 +236,11 @@ export default {
     // the plantations below and a closed rim; the field shrubs young pines, not the birch sprays read as cactus)
     species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.74], ['birch', 0.22], ['poplar', 0.04]],
     loneMix: [['birch', 0.45], ['pine', 0.45], ['poplar', 0.10]], rimMix: [['pine', 0.78], ['birch', 0.19], ['poplar', 0.03]],
-    clusterCount: 44, loneCount: 30, rimCount: 140, grassDensity: 0.72, bushCount: 0.7, bushSpecies: 'pine',
+    clusterCount: 34, loneCount: 30, rimCount: 108, grassDensity: 0.72, bushCount: 0.7, bushSpecies: 'pine',
     belts: [...PLANTATIONS, ...PLANTATIONS.map((b) => ({ ...b, x0: -b.x0, z0: -b.z0, x1: -b.x1, z1: -b.z1 }))],
+    // (2026-10-06) each plantation block holds its rows alone — no woodlot, lone tree or sapling stands inside it, so its
+    // edge reads ruled and the woods round it stay woods (the coordinator: the trim plus the keep-out, about +15 %)
+    standKeepOut: PLANTATION_BLOCKS,
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
   },
