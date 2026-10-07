@@ -144,8 +144,10 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
   // cumulus' ramp runs past its footprint's peak, so the shape volume carves the whole cloud into its billows, not just
   // its rim — at 1 every cumulus was a smooth loaf under a bubbly fringe)
-  const filter = isDeck ? mixK(0.95, 0.55, closing) : 1.35;
-  const core = isDeck ? mixK(0.62, DECK_CORE, closing) : 0.46;
+  const filter = isDeck ? mixK(1.1, 0.55, closing) : 1.35;
+  // (round 2's 0.62 under the shape at 0.85 left Frosthollow's cells smooth white pillows on the GPU: the carving has the
+  // whole cell now, its lumps and holes the deck's structure)
+  const core = isDeck ? mixK(0.5, DECK_CORE, closing) : 0.46;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -163,9 +165,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
-    shape: isDeck ? mixK(0.85, 0.7, closing) : (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
+    shape: isDeck ? mixK(1, 0.7, closing) : (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
-    detail: isDeck ? mixK(0.75, 0.6, closing) : 1 - 0.55 * deck,
+    detail: isDeck ? mixK(0.85, 0.6, closing) : 1 - 0.55 * deck,
     // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall
     // lane under the same dome (a lower bias drew its walls straight up: stone pillars, not cauliflower)
     bias: isDeck ? 0.65 : 0.375 + 0.5 * deck,
@@ -173,9 +175,10 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     exponent: 1,
     cells: cellsEff,
     wisp: clamp(preset.wispiness - 0.3, 0, 1) * 0.8,
-    flat: isDeck ? mixK(0.55, 1, closing) : clamp((deck - 0.3) / 0.5, 0, 1),
+    flat: isDeck ? mixK(0.45, 1, closing) : clamp((deck - 0.3) / 0.5, 0, 1),
     // a deck's cores hang under its base (a lumpy underside the light reads through its thickness)
-    hang: isDeck ? 0.3 * cellsEff : cells > 0 ? 0.18 * cells : 0,
+    // (at 0.3 the hanging cores of a broken deck read from the side as a row of dark blots under its base)
+    hang: isDeck ? 0.15 * cellsEff : cells > 0 ? 0.18 * cells : 0,
     anvil: clamp(preset.anvil, 0, 1),
     core,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
@@ -184,7 +187,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // a deck's base is lit through its column; a cumulus' shaded flank and base only a little (the octaves and the sky
     // light it: at a deck's share the fill flattened every cumulus to one grey, its lit side under twice its shade)
     // (at 0.9 the first GPU pair's broken decks read as one white sheet under the game's exposure)
-    diffuse: isDeck ? Math.max(clamp(preset.deckLight, 0, 1) * deck * 0.65, 0.45) : 0.15,
+    // (round 2's 0.65 / 0.45 still drew Frosthollow's cells white over the snow: their thick cores darker now)
+    diffuse: isDeck ? Math.max(clamp(preset.deckLight, 0, 1) * deck * 0.5, 0.35) : 0.15,
     shadow: true,
   });
   const aloft = ALOFT[preset.regime];

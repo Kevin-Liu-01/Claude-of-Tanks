@@ -175,7 +175,7 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 thick = uLayerTop - uLayerBase;
 	vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
 	vec4 base = uLayerBase - thick * uLayerHang * k;
-	vec4 top = uLayerBase + thick * ( 0.2 + 0.8 * k );
+	vec4 top = uLayerBase + thick * ( 0.1 + 0.9 * k );
 	hf = clamp( ( vec4( h ) - base ) / max( top - base, vec4( 1.0 ) ), 0.0, 1.0 );
 	vec4 inside = step( base, vec4( h ) ) * step( vec4( h ), top ) * step( vec4( 1e-6 ), uLayerDensity );
 	vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );
@@ -727,7 +727,9 @@ void main() {
 				// lifts the ground's return: snow under a deck)
 				float skyK = dot( hf * 0.5 + 0.5, wgt );
 				float skyThrough = 1.0 / ( 1.0 + 0.1125 * od * max( sunUp, 0.2 ) );
-				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * ( ( 1.0 - skyK ) * 0.5 * uAmbientScale );
+				// (a deck's base takes half the ground's return: over snow it lit every cell's underside alike, one white)
+				float groundK = ( 1.0 - skyK ) * 0.5 * uAmbientScale * ( 1.0 - 0.5 * dot( wgt, uLayerFlat ) );
+				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
 				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );
 				radiance *= uTint;
@@ -737,7 +739,7 @@ void main() {
 				else if ( uDebug == 5.0 ) radiance = vec3( od / 40.0 );
 				else if ( uDebug == 6.0 ) radiance = dbgSun;
 				else if ( uDebug == 7.0 ) radiance = dbgDiffuse;
-				else if ( uDebug == 8.0 ) radiance = uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * ( ( 1.0 - skyK ) * 0.5 * uAmbientScale );
+				else if ( uDebug == 8.0 ) radiance = uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				else if ( uDebug == 9.0 ) radiance = vec3( 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp ) );
 				else if ( uDebug == 10.0 ) radiance = vec3( sigma * 20.0 );
 				// [ported] the energy-conserving integral of the step

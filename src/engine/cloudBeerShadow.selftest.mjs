@@ -28,7 +28,7 @@ const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexO
 for (const line of [
   'vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );',
   'vec4 base = uLayerBase - thick * uLayerHang * k;',
-  'vec4 top = uLayerBase + thick * ( 0.2 + 0.8 * k );',
+  'vec4 top = uLayerBase + thick * ( 0.1 + 0.9 * k );',
   'd *= mix( vec4( 1.0 ), smoothstep( 0.03, 0.32, k ), gapOn );',
   'vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );',
   'vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );',
@@ -90,7 +90,7 @@ function extinction(p, weather) {
     const thick = L.topM - L.baseM;
     // k = mix(1, c · mix(1, 0.55 + 0.45 l, lumps), cells) at a uniform cell (c = l = 1): the full column
     const k = 1;
-    const base = L.baseM - thick * L.hang * k, top = L.baseM + thick * (0.2 + 0.8 * k);
+    const base = L.baseM - thick * L.hang * k, top = L.baseM + thick * (0.1 + 0.9 * k);
     if (!(h >= base && h <= top) || L.density <= 1e-6) continue;
     const hf = clamp((h - base) / Math.max(top - base, 1), 0, 1);
     const box = smooth(0, 0.12, hf) * (1 - smooth(0.82, 1, hf));
@@ -219,12 +219,14 @@ function columnDepth(g, weather) {
     const weather = (x, z) => 0.3 + waves.reduce((s, w) => s + w.amp * Math.sin((x * Math.cos(w.a) + z * Math.sin(w.a)) * w.k + w.ph), 0);
     const cache = new Map();
     let seenLit = 0, shadeLit = 0, err = 0, n = 0, missed = 0;
+    const litAtHalf = 1 - core * (1 - Math.exp(-Math.LN2 / CLOUD_SHADOW_TAU)) * preset.shadowPattern;
     for (let i = 0; i < 12; i++) for (let j = 0; j < 12; j++) {
       const g = { x: -1000 + (i + rnd()) * (2000 / 12), y: 0, z: -1000 + (j + rnd()) * (2000 / 12) };
       const seen = traceSun(g, weather);
       const lit = materialSun(g, weather, cache);
       if (seen > 0.5) seenLit++;
-      if (lit > 0.55) shadeLit++;
+      // like for like: the materials' sun where the column's beam is one half (an optical depth of ln 2 under the shade law)
+      if (lit > litAtHalf) shadeLit++;
       if (seen > 0.95 && lit < 0.8) missed++;
       // the materials' sun on the trace's scale: a full shadow keeps 1 − core of the beam
       const floor = 1 - core * preset.shadowPattern;
