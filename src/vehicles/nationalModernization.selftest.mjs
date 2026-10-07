@@ -13,6 +13,7 @@ import {decorManifestFor} from './decorations.ts';
 import {censusEquipment} from '../../tools/source-equipment-policy.mjs';
 import {nationalModernizationDesign} from './nationalModernizationDesign.ts';
 import {tankTier} from './tier.ts';
+import {shellPart,auditShellParts} from '../../tools/base-shell-audit-math.mjs';
 const legacyIds=new Set(NATIONAL_LEGACY_CONFIG.map(c=>c.id));
 for(const c of NATIONAL_LEGACY_CONFIG)assert.equal(getSpec(c.id).balancePeerOf,c.predecessor,
  `${c.id}: preserved design shares its predecessor's unchanged combat weighting`);
@@ -166,8 +167,18 @@ for(const quality of ['high','low']) {
   assert.equal(spec.gun.caliberMm,125);assert.equal(tankTier(c.id),10);
   for(const side of ['L','R'])assert(spec.armor.hullPlates.some(p=>p.name===`skirt_era_${side}`&&p.era),`${c.id}: visible skirt ERA has a damage sector`);
   const modules=spec.armor.modules.map(m=>m.module);assert.equal(new Set(modules).size,modules.length);
-  const tank=createTank(c.id,null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242});
+  const baseStock=[];
+  const tank=createTank(c.id,null,{proceduralOnly:true,quality,geometryReceipt:true,camoSeed:4242,
+   partCensus(bucket,g,source){
+    if(legacyIds.has(c.id)||source!=='add'||!['hull','turret','hullExternalArmor','turretExternalArmor'].includes(bucket)
+      ||Array.isArray(g.userData.eraHitFaceVertexStarts))return;
+    const part=shellPart(g,{bucket,ordinal:baseStock.length});
+    if(Math.max(...part.size.toArray())>=.75&&part.area>=.35)baseStock.push(part);
+   },
+  });
   try {
+   for(const pair of auditShellParts(baseStock).mirroredPairs)
+    assert(pair.maxM<.005,`${c.id} ${quality}: mirrored base stock differs by ${pair.maxM}m`);
    const hull=tank.root.getObjectByName('hull'),turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
    const bodyHash=fingerprint(hull.geometry);
    const present=new Set(),hp=hull.geometry.attributes.position;

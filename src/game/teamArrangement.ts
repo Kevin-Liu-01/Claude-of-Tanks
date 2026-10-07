@@ -90,6 +90,7 @@ export function writeSides(
     const current = readTeamArrangement(mode, storage);
     writeTeamArrangement(mode, {
       allies: sides?.allies ?? null, enemies: sides?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
+      alliedNation: current?.alliedNation ?? null,
       // the Mars settings ride on the mars arrangement; a sides change must not drop them
       marsGravity: current?.marsGravity ?? null, marsCaches: current?.marsCaches ?? null,
       juggernautRole: current?.juggernautRole ?? null,

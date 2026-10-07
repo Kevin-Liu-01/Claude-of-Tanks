@@ -159,8 +159,47 @@ assert.ok(shape.acacia.aspect > 1.6 && shape.cedar.aspect > shape.spruce.aspect,
 assert.ok(shape.spruce.crownBase < 0.2 && shape.fir.crownBase < 0.2, 'the spruce and fir crowns reach down to the ground');
 assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the pine and the eucalyptus stand on long clear boles');
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
+// trees round 5 (2026-10-05, the map-revival lanes' species): the longleaf on its long clear bole under a small crown
+// of tufts; the cedar of Lebanon broad, its plates level and its top flat (no spire: the apex sprays lie level); sugi
+// a tall narrow cone; the Japanese red pine broad; every one a grown tree form
+{
+  assert.ok(shape.longleafPine.crownBase > 0.55 && shape.longleafPine.crownBase > shape.pine.crownBase,
+    `the longleaf stands on the longest clear bole (${JSON.stringify(shape.longleafPine)})`);
+  assert.equal(TREE_GROWTH_PROFILES.longleafPine.habit, 'tuft', 'and carries its needles in tufts');
+  assert.ok(shape.lebanonCedar.aspect > 1.2 && shape.lebanonCedar.aspect > shape.cedar.aspect * 1.5,
+    `the cedar of Lebanon spreads broad (${shape.lebanonCedar.aspect} against the cedar's ${shape.cedar.aspect})`);
+  for (let variant = 0; variant < 3; variant++) {
+    const { skeleton } = grow('lebanonCedar', variant);
+    const level = skeleton.leaves.filter((l) => Math.abs(l.ay) < 0.1).length;
+    assert.ok(level >= 0.85 * skeleton.leaves.length, `lebanonCedar/${variant}: its sprays lie level in plates (${level}/${skeleton.leaves.length})`);
+    const top = skeleton.branches[0].nodes.at(-1).y, apex = skeleton.leaves.filter((l) => l.y > top * 0.9);
+    assert.ok(apex.length >= 3 && apex.every((l) => l.ay < 0.1), `lebanonCedar/${variant}: a flat top, no spire (${apex.length} level apex sprays)`);
+  }
+  assert.ok(shape.sugi.aspect < 0.5 && TREE_GROWTH_PROFILES.sugi.height >= 9.5, `sugi a tall narrow cone (${JSON.stringify(shape.sugi)})`);
+  assert.ok(shape.redPine.aspect > shape.pine.aspect, `the Japanese red pine broad (${JSON.stringify(shape.redPine)})`);
+  for (const form of ['longleafPine', 'lebanonCedar', 'sugi', 'redPine']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+  // the longleaf's grass stage: a shrub-only form (never a tree slot) whose sprays fan from a few seats on the ground
+  assert.ok(!GROWTH_SPECIES.includes('longleafSeedling') && TREE_GROWTH_PROFILES.longleafSeedling.fountain, 'the grass stage is a shrub form');
+  for (const kind of ['bush', 'understorey']) {
+    const a = growShrubSkeleton('longleafSeedling', kind, mulberry32(31)), b = growShrubSkeleton('longleafSeedling', kind, mulberry32(31));
+    assert.deepEqual(a, b, `longleafSeedling ${kind}: deterministic`);
+    assert.equal(a.leaves.length, GROWTH_SHRUB_SPRAYS[kind], `longleafSeedling ${kind}: the spray budget`);
+    const seats = new Set(a.leaves.map((l) => `${l.x.toFixed(3)},${l.z.toFixed(3)}`));
+    assert.ok(seats.size >= 1 && seats.size <= (kind === 'bush' ? 5 : 2), `longleafSeedling ${kind}: ${seats.size} seedlings to a clump`);
+    for (const l of a.leaves) {
+      assert.ok(l.y >= -0.06 && l.y < 0.25 && l.ay > 0.4, `longleafSeedling ${kind}: a needle spray rises from the ground (${l.y.toFixed(2)}, ${l.ay.toFixed(2)})`);
+      assert.ok(Math.abs(l.ax * l.nx + l.ay * l.ny + l.az * l.nz) < 1e-9, 'the face square to the axis');
+    }
+    const cards = emitLeafCards(a, { tint: () => [0.5, 0.5, 0.5], tiles: SPRAY_ATLAS_TILES, rng: mulberry32(5), rows: 2 });
+    const box = new THREE.Box3().setFromBufferAttribute(cards.getAttribute('position'));
+    assert.ok(box.min.y >= -0.0601, `longleafSeedling ${kind}: grounded (${box.min.y})`);
+    assert.ok(box.max.y < 0.9, `longleafSeedling ${kind}: knee-high at most in its own units (${box.max.y.toFixed(2)})`);
+  }
+}
 // the envelopes narrow the way the species do
 assert.ok(envelopeFraction('cone', 0.9) < envelopeFraction('cone', 0.2) && envelopeFraction('column', 0.5) > 0.9);
+// (trees round 5: the shelf is broad through its height and flat to a quick shoulder)
+assert.ok(envelopeFraction('shelf', 0.1) > 0.75 && envelopeFraction('shelf', 0.7) > 0.95 && envelopeFraction('shelf', 1) < 0.2);
 // the snag: a broken stem, dead limbs (some snapped), a few dead twig sprays and no sprays on a snapped limb
 {
   const { skeleton } = grow('snag', 1);

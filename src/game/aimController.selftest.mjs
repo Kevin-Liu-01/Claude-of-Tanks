@@ -82,7 +82,7 @@ assert.deepEqual(frame.gunMarker.toArray(), [0, 2, 100]);
 assert.deepEqual(frame.shells, ['shell']);
 now += 501;
 controller.update(frame);
-assert.equal(frame.blockedLabel, true, 'continuous close obstruction gains the delayed label');
+assert.equal(frame.blockedLabel, false, 'persistent obstruction never adds a muzzle-block text overlay');
 
 const muzzle = new THREE.Vector3();
 const bore = new THREE.Vector3();

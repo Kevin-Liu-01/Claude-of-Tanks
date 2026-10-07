@@ -1740,6 +1740,9 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
   } else if (patternId === 'gemini') {
     o = { scheme: 'gemini', base: '#293348', weather: '#35415a',
       patches: ['#9168c0', '#5684d1', '#1ba1e3'], camoScale: 0.5 };
+  } else if (patternId === 'gt') {
+    o = { scheme: 'gt', base: '#262626', weather: '#333333',
+      patches: ['#ffffff', '#888888'], camoScale: 0.5 };
   } else if (patternId === 'mono') {
     o = { scheme: 'mono', base: '#303236', weather: '#3c3f43',
       patches: ['#dddcd5', '#899296'] };

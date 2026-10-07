@@ -6805,9 +6805,13 @@ dithers alias alike: dithered depth coverage itself was the fault). Now:
   `cotSunVis` takes it too (the scene alpha, the contact shadows' sun share, the shadowed ambient dim);
   `setupShadowMaterial` sets `COT_CLOUD_SHADE` and binds the shared uniforms on every desktop CSM material built on
   three's shaders (opt-out `userData.cotCloudShade = false`, a custom ShaderMaterial opts in with true); a program
-  that would pass sixteen samplers with the map keeps none (three counts a program's units against the fragment
-  limit; the inline standard maps of the physical fragment are not units until set — the terrain counts fourteen,
-  fifteen with the environment, sixteen with the map);
+  that would pass sixteen texture units with the map (three numbers a program's units over both stages and warns past
+  sixteen on every bind; the inline standard maps of the physical fragment are not units until set) first trades
+  three's DFG LUT for Karis's analytic fit of the split-sum DFG and keeps no cloud shade only when that is not enough
+  (`programTextureUnits`, 2026-10-05: three r185's physical fragment declares `dfgLUT` inside its include, a unit the
+  count never saw — the terrain bound seventeen and warned every frame; now ten layer samplers, four cascades, the
+  environment and the map's vertex fetch make sixteen; `textureUnits.selftest` counts the expanded program as the GPU
+  does);
 - the ring's vista samples the same map (`horizonCloudShade.ts`: one fetch where it re-cut two weather fields);
 - phones take nothing (no volumetric layer); the gobo planes, their depth material and the aerial pass's far shade
   block are gone.

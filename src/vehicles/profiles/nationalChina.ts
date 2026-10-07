@@ -5,6 +5,7 @@ import {KIT} from './kit.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube,roofSheet} from './measuredPrimitives.ts';
 import {castModernizedTurret} from './nationalDonorCore.ts';
+import {weldedFlankHousing} from './weldedFlankHousing.ts';
 import {eraCassette,glacisEraCassette} from './modernizationFittings.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
@@ -18,20 +19,20 @@ type CheekRow=readonly [z:number,inner:number,outer:number,bottom:number,top:num
 /** A finite, replaceable cheek wedge. Its rear root overlaps the curved casting,
  * while the lower cast chin, crown, flank and bearing stay visibly independent. */
 function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):void {
-  const g=sectionSolid(rows.map(([z,inner,outer,b,t])=>{
-    const span=outer-inner;
-    const ring:SectionPoint[]=[[inner,b],[outer-span*.08,b],[outer,b+(t-b)*.32],
-      [outer-span*.10,t-.04],[inner,t]];
-    return {z,ring:side>0?ring:ring.map(([x,y])=>[-x,y] as const).reverse()};
-  }));
+  const g=weldedFlankHousing(rows,side,.035);
   // Permanent armor wedge remains in place beneath the small ERA face tiles.
   P.addExternalArmor('turret',g);
 }
 
 function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {
+  const ring=(width:number,low:number):SectionPoint[]=>{
+    const b=Math.min(.06,(top-low)*.25);
+    return [[-width+b,low],[width-b,low],[width,low+b],[width,top-b],
+      [width-b,top],[-width+b,top],[-width,top-b],[-width,low+b]];
+  };
   P.addExternalArmor('turret',sectionSolid([
-    {z:back,ring:[[-half+.08,bottom+.08],[half-.08,bottom+.08],[half,top-.07],[half-.08,top],[-half+.08,top],[-half,top-.07]]},
-    {z:-1.04,ring:[[-half,bottom],[half,bottom],[half+.06,top-.07],[half,top],[-half,top],[-half-.06,top-.07]]},
+    {z:back,ring:ring(half,bottom+.08)},
+    {z:-1.04,ring:ring(half+.06,bottom)},
   ]));
   P.addEquipment('turretDetail',box(half*1.55,.022,-1.04-back-.10),0,top+.006,(back-1.04)/2);
   for(const side of [-1,1])P.addEquipment('turretDark',box(.08,.07,.02),side*half*.67,top-.035,back-.008);
@@ -41,11 +42,7 @@ function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:numb
  * bustle. Its rising lower edge leaves the original cast chin and bearing
  * readable and clear of the hull through a complete turret revolution. */
 function flankHousing(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):void {
-  P.addExternalArmor('turret',sectionSolid(rows.map(([z,inner,outer,low,top])=>{
-    const ring:SectionPoint[]=[[inner,low+.035],[outer-.045,low],[outer,low+.075],
-      [outer-.030,top-.055],[outer-.095,top],[inner,top-.020]];
-    return {z,ring:side>0?ring:ring.map(([x,y])=>[-x,y] as const).reverse()};
-  })));
+  P.addExternalArmor('turret',weldedFlankHousing(rows,side));
 }
 
 function turretWrap(P:TankBuilderPort,c:NationalModernizationConfig):void {

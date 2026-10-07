@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createCanvas, loadImage, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
 import { paintBrandCamo, paintBrandMark } from './brandCamoPainter.ts';
-import { OPENAI_BRAND_PATH, X_BRAND_PATH, GEMINI_BRAND_PATH } from './brandCamoMarks.ts';
+import { OPENAI_BRAND_PATH, X_BRAND_PATH, GEMINI_BRAND_PATH, GT_BRAND_PATH } from './brandCamoMarks.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
 import { paintCamoSwatch } from '../ui/camoSwatchPainter.ts';
@@ -12,6 +12,7 @@ Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
 const sha = data => createHash('sha256').update(data).digest('hex');
 const pixels = canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
 const sources = [
+  ['gt', 'gt-mark.svg', '06f0c9dcca6d1723ee0891aff0db44dc635ebf44fa5c3dfcd70812b5cb6c6b03', GT_BRAND_PATH],
   ['openai', 'openai-blossom-guideline.svg', '01485e70cea6df8422f5abc643fbbd3c153442cc41da0e7d8e7451801ebf26e2', OPENAI_BRAND_PATH],
   ['xai', 'x-logo.svg', 'dd46f96b6f47fcd33683b79ddfaf3daca1d4f8aeba3c0f2bde1584c69cc699d4', X_BRAND_PATH],
   ['gemini', 'gemini-sparkle-v002.svg', '01821494593b81ffd7da0e08287d4735304ff6292a6903453328b9d17cf38799', GEMINI_BRAND_PATH],
@@ -35,9 +36,9 @@ for (const [brand, file, hash, path] of sources) {
   const native = createCanvas(256, 256);
   paintBrandMark(native.getContext('2d'), brand, 128, 128, 200);
   const viewBox = brand === 'openai' ? '109.28628 188.44128 342.01344 342.01344'
-    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : '-3.92 -3.92 35.84 35.84';
+    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : brand === 'gt' ? '-177.82 -176.82 1552.64 1552.64' : '-3.92 -3.92 35.84 35.84';
   const defs = bytes.toString().match(/<defs>[\s\S]*?<\/defs>/)?.[0] || '';
-  const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${viewBox}">${tag}${defs}</svg>`;
+  const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${viewBox}" fill="white">${tag}${defs}</svg>`;
   const reference = createCanvas(256, 256);
   reference.getContext('2d').drawImage(await loadImage(Buffer.from(referenceSvg)), 0, 0);
   assert.ok(alphaAgreement(pixels(native), pixels(reference)) > .995,
@@ -57,7 +58,7 @@ for (const [brand, file, hash, path] of sources) {
 const painter = createMaterialPainter(createCanvas);
 const spec = { id: 'sabra_mk2_x', nation: 'Israel', era: 'modern', visual: {} };
 const hashes = new Set(), swatchHashes = new Set();
-for (const pattern of ['openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'sig_sabra_mk2_x']) {
+for (const pattern of ['gt', 'openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'sig_sabra_mk2_x']) {
   const request = { identity: `brand-test:${pattern}`, visual: resolveCamoVisual(spec, pattern), seed: 4242,
     dimensions: { albedo: 256, map: 128 }, plateLines: false };
   const entry = { camoCanvas: createCanvas(4, 4), normalCanvas: createCanvas(4, 4), roughCanvas: createCanvas(4, 4), feats: null };
@@ -73,8 +74,8 @@ for (const pattern of ['openai', 'xai', 'gemini', 'mono', 'carbon', 'prism', 'si
   assert.deepEqual(pixels(swatch), pixels(repeat), `${pattern}: deterministic real picker preview`);
   swatchHashes.add(sha(pixels(swatch)));
 }
-assert.equal(swatchHashes.size, 7, 'seven actual picker previews remain distinct');
-assert.equal(hashes.size, 7, 'seven paints render as independently distinct finishes');
+assert.equal(swatchHashes.size, 8, 'eight actual picker previews remain distinct');
+assert.equal(hashes.size, 8, 'eight paints render as independently distinct finishes');
 // Round 32 (owner 2026-09-21): "make the openai x and gemini camos more sporadic and random then predictably placed" —
 // the composition is a hero mark, four loosely jittered mediums and a sprinkle, every mark wrapped across the seam:
 // eleven or more stamps per tile (never the old four-on-a-grid), a different layout per rng stream, the same layout
@@ -93,7 +94,7 @@ assert.equal(hashes.size, 7, 'seven paints render as independently distinct fini
     return proxy;
   };
   const mulberry = (seed) => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  for (const brand of ['openai', 'xai', 'gemini']) {
+  for (const brand of ['openai', 'xai', 'gemini', 'gt']) {
     const a = createCanvas(256, 256), b = createCanvas(256, 256), c = createCanvas(256, 256);
     const ctxA = countingContext(a);
     paintBrandCamo(ctxA, 256, brand, mulberry(11)); paintBrandCamo(b.getContext('2d'), 256, brand, mulberry(11));
