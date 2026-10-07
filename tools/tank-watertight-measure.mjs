@@ -11,11 +11,16 @@
 // Declared physical bores (2026-10-03, tools/physical-bore-air.mjs) are open air by contract. Water in a bore column
 // that the voxel grid reads as enclosed is reported apart as bore air, never as a leak, and the generator never fills
 // it.
+// Moving-part clearance (2026-10-06, tools/moving-clearance-air.mjs): the pockets the generator leaves under the moving
+// gun group (outside the turret proper's and the gun group's own column spans) and the cells a declared finite clearance
+// cut from the fills are reported apart as moving-clearance air. Turret interior they open onto stays a leak, and a
+// declared record whose lattice no longer matches the body exempts nothing.
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { trackLaneVoxelMask } from './track-lane-boxes.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { barakBayIntersectsCell } from './barak-rear-bay-fill-policy.mjs';
 import { boreAirVoxelMask } from './physical-bore-air.mjs';
+import { declaredClearanceMask, movingClearancePocket, movingClearanceSpans } from './moving-clearance-air.mjs';
 
 export const WATERTIGHT_VOXEL = 0.025;
 export const WATERTIGHT_MAX_LEAK_L = 0.05;
@@ -40,18 +45,37 @@ export function retainedSourceAir(id) {
   };
 }
 
+/** The air the generator leaves for the moving gun (tools/moving-clearance-air.mjs), as a per-grid factory like
+ * retainedSourceAir: pockets under the moving group, plus `id`'s declared clearance cells when it has a record. */
+export function movingClearanceAir(id) {
+  return (grid) => {
+    const spans = movingClearanceSpans(grid);
+    const declared = id ? declaredClearanceMask(id, grid) : null;
+    const { nx, ny } = grid;
+    return {
+      stale: !!declared?.stale, declaredVoxels: declared?.voxels ?? 0,
+      contains: (i) => {
+        if (declared && !declared.stale && declared.mask[i]) return true;
+        const x = i % nx, y = ((i / nx) | 0) % ny, z = (i / (nx * ny)) | 0;
+        return movingClearancePocket(grid, spans, x, y, z);
+      },
+    };
+  };
+}
+
 /** 26-connected clusters of leak voxels with centroid, extent, mouth and surrounding shell groups. Deep-interior
  * water inside a track lane box (lane mask, may be null) is tallied as lane volume and never becomes a leak voxel;
  * deep-interior water in air the fill generator deliberately retains (`retains(i)`, may be null) or in a declared
  * physical bore (bore mask, may be null) is tallied apart too. */
-function clusterLeaks(grid, ext, deep, lane, retains, bore, VOXEL) {
+function clusterLeaks(grid, ext, deep, lane, retains, bore, VOXEL, moving = null) {
   const { shell, nx, ny, nz, origin, groups } = grid; const N = shell.length;
-  const leak = new Uint8Array(N); let leakCount = 0, laneCount = 0, retainedCount = 0, boreCount = 0;
+  const leak = new Uint8Array(N); let leakCount = 0, laneCount = 0, retainedCount = 0, boreCount = 0, movingCount = 0;
   for (let i = 0; i < N; i++) {
     if (!(ext[i] && deep[i])) continue;
     if (lane && lane[i]) { laneCount++; continue; }
     if (retains && retains(i)) { retainedCount++; continue; }
     if (bore && bore[i]) { boreCount++; continue; }
+    if (moving && moving.contains(i)) { movingCount++; continue; }
     leak[i] = 1; leakCount++;
   }
   const seen = new Uint8Array(N); const queue = new Int32Array(Math.max(1, leakCount)); const clusters = [];
@@ -122,21 +146,24 @@ function clusterLeaks(grid, ext, deep, lane, retains, bore, VOXEL) {
   }
   clusters.sort((u, v) => v.voxels - u.voxels);
   let enclosed = 0, deepTotal = 0; for (let i = 0; i < N; i++) { if (!shell[i] && !ext[i]) enclosed++; if (deep[i]) deepTotal++; }
-  return { leakCount, laneCount, retainedCount, boreCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
+  return { leakCount, laneCount, retainedCount, boreCount, movingCount, clusters, enclosedL: +(enclosed * VOXEL ** 3 * 1000).toFixed(1), deepL: +(deepTotal * VOXEL ** 3 * 1000).toFixed(1) };
 }
 
 /** Voxelise body triangles, flood the exterior and split the deep-interior water into leak, track-lane,
- * retained-air and declared-bore volume (`boreAir`: tools/physical-bore-air.mjs physicalBoreAir(root), may be null). */
+ * retained-air, declared-bore and moving-clearance volume (`boreAir`: tools/physical-bore-air.mjs physicalBoreAir(root),
+ * `movingAir`: movingClearanceAir(id); either may be null). */
 export function measureWatertight(tris, meshes, laneBoxes, { voxel = WATERTIGHT_VOXEL, exclude = DEFAULT_EXCLUDE,
-  maxLeakL = WATERTIGHT_MAX_LEAK_L, retainedAir = null, boreAir = null } = {}) {
+  maxLeakL = WATERTIGHT_MAX_LEAK_L, retainedAir = null, boreAir = null, movingAir = null } = {}) {
   const grid = voxelise(tris, meshes, { voxel, exclude });
   const ext = floodExterior(grid);
   const deep = deepInterior(grid);
   const lane = laneBoxes.length ? trackLaneVoxelMask(laneBoxes, grid) : null;
   const retains = retainedAir ? retainedAir({ ...grid, voxel }) : null;
   const bore = boreAir ? boreAirVoxelMask(boreAir, grid) : null;
-  const { leakCount, laneCount, retainedCount, boreCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep, lane, retains, bore, voxel);
+  const moving = movingAir ? movingAir(grid) : null;
+  const { leakCount, laneCount, retainedCount, boreCount, movingCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep, lane, retains, bore, voxel, moving);
   const litres = (n) => +(n * voxel ** 3 * 1000).toFixed(2);
   return { grid, clusters, enclosedL, deepL, leakL: litres(leakCount), trackLaneL: litres(laneCount),
-    retainedL: litres(retainedCount), boreAirL: litres(boreCount), laneBoxes: laneBoxes.length, watertight: litres(leakCount) <= maxLeakL };
+    retainedL: litres(retainedCount), boreAirL: litres(boreCount), movingClearanceL: litres(movingCount),
+    clearanceStale: !!moving?.stale, laneBoxes: laneBoxes.length, watertight: litres(leakCount) <= maxLeakL };
 }

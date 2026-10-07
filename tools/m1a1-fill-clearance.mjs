@@ -103,7 +103,7 @@ function cellBounds(grid,x,y,z) {
 
 /** Remove entire voxels, never only their centers. The hull (component 1)
  * cannot be selected by either caller; its original closure is unchanged. */
-function removeIntersecting(grid,components,component,solid) {
+function removeIntersecting(grid,components,component,solid,cut) {
   const dimensions=[grid.nx,grid.ny,grid.nz];
   const lo=solid.min.map((v,k)=>Math.max(0,Math.floor((v-grid.origin[k])/grid.voxel)));
   const hi=solid.max.map((v,k)=>Math.min(dimensions[k]-1,Math.floor((v-grid.origin[k])/grid.voxel)));
@@ -115,12 +115,12 @@ function removeIntersecting(grid,components,component,solid) {
     // Generation only claims empty cells. Clearing these leaves every
     // original authored shell voxel and every hull closure intact.
     assert.ok(grid.shell[i]===grid.groups.indexOf(`${component===2?'turret':'gun'}InteriorFill`)+1);
-    components[i]=0;grid.shell[i]=0;removed++;
+    components[i]=0;grid.shell[i]=0;removed++;cut?.push(i);
   }
   return removed;
 }
 
-function sweepStock(grid,components,component,rows,angles,origin) {
+function sweepStock(grid,components,component,rows,angles,origin,cut) {
   let removed=0;
   for(const angle of angles)for(const row of rows) {
     const stroke=row.recoil?RECOIL:0;
@@ -130,7 +130,7 @@ function sweepStock(grid,components,component,rows,angles,origin) {
     // of its nearest endpoint. Include the recoiled endpoint radius, too.
     const radius=Math.max(...row.vertices.flatMap(v=>[Math.hypot(v[1],v[2]),Math.hypot(v[1],v[2]-stroke)]));
     const padding=EPS+(angles.length>1?2*radius*Math.sin(STEP/4):0);
-    removed+=removeIntersecting(grid,components,component,sweptTriangleSolid(vertices,shift,padding));
+    removed+=removeIntersecting(grid,components,component,sweptTriangleSolid(vertices,shift,padding),cut);
   }
   return removed;
 }
@@ -140,7 +140,7 @@ function spanBounds(grid,box) {
     box.slice(3).map((v,k)=>grid.origin[k]+(v+1)*grid.voxel)];
 }
 
-function clearFillAgainstFill(grid,components,boxes,angles,origin) {
+function clearFillAgainstFill(grid,components,boxes,angles,origin,cut) {
   let removed=0;
   for(const box of boxes) {
     const [min,max]=spanBounds(grid,box);
@@ -148,7 +148,7 @@ function clearFillAgainstFill(grid,components,boxes,angles,origin) {
       Math.max(Math.abs(min[2]-origin[2]),Math.abs(max[2]-origin[2])));
     const padding=EPS+2*radius*Math.sin(STEP/4);
     for(const angle of angles)
-      removed+=removeIntersecting(grid,components,3,orientedBoxSolid(min,max,-angle,origin,padding));
+      removed+=removeIntersecting(grid,components,3,orientedBoxSolid(min,max,-angle,origin,padding),cut);
   }
   return removed;
 }
@@ -176,15 +176,19 @@ export function createM1A1FillClearance(id,root) {
   angles.push(max);
   return {
     apply(grid,components,turretBoxes) {
-      const {origin,moving,fixed}=assembly;
-      const turretRemoved=sweepStock(grid,components,2,moving,angles,origin);
-      const recoilRemoved=sweepStock(grid,components,3,moving.filter(t=>t.recoil),[0],origin);
-      const fixedStockRemoved=sweepStock(grid,components,3,fixed.map(t=>({...t,recoil:false})),angles.map(a=>-a),origin);
-      const otherFillRemoved=clearFillAgainstFill(grid,components,turretBoxes(),angles,origin);
-      return {id,method:'finite triangle recoil prisms and reciprocal pitch sweep; full voxel SAT with continuous chord bound',
+      const {origin,moving,fixed}=assembly,cut=[];
+      const turretRemoved=sweepStock(grid,components,2,moving,angles,origin,cut);
+      const recoilRemoved=sweepStock(grid,components,3,moving.filter(t=>t.recoil),[0],origin,cut);
+      const fixedStockRemoved=sweepStock(grid,components,3,fixed.map(t=>({...t,recoil:false})),angles.map(a=>-a),origin,cut);
+      const otherFillRemoved=clearFillAgainstFill(grid,components,turretBoxes(),angles,origin,cut);
+      const receipt={id,method:'finite triangle recoil prisms and reciprocal pitch sweep; full voxel SAT with continuous chord bound',
         pitchDegrees:[min*180/Math.PI,max*180/Math.PI],stepDegrees:STEP*180/Math.PI,recoilMeters:RECOIL,
         turretRemoved,recoilRemoved,fixedStockRemoved,otherFillRemoved,
         removedVoxels:turretRemoved+recoilRemoved+fixedStockRemoved+otherFillRemoved};
+      // The cut cells (grid indices) for the declared clearance record (tools/moving-clearance-air.mjs); kept off the
+      // printed receipt.
+      Object.defineProperty(receipt,'cutCells',{value:cut,enumerable:false});
+      return receipt;
     },
   };
 }
