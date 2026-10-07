@@ -30,7 +30,9 @@ const LEGACY = ['verdant', 'desert', 'winter', 'urban',
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 // (2026-10-07, the map-revival lane; the coordinator after gauntlet wave 184, "a modern traffic cone in a 1944 street"):
 // a map set in its period leaves out the family that period never saw — Saltmere Bay is the Léon in late summer 1944
-const PERIOD_FREE_CLUTTER = Object.freeze({ coastal: ['cone'] });
+const PERIOD_FREE_CLUTTER = Object.freeze({
+  coastal: ['cone'],
+});
 const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
