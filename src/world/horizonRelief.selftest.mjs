@@ -36,7 +36,8 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
 const expectedCharacter = {
   whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
   coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
-  desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'mesa',
+  // (Copper Mesa round 2, the map-revival lane: Queenstown's ring is the West Coast Range, the alpine style)
+  desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'alpine',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',
 };
 for (const [mapId, character] of Object.entries(expectedCharacter)) {
