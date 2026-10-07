@@ -92,7 +92,8 @@ function checkMapScope(resolve) {
   for (const id of MAP_IDS) {
     // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
     // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
-    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : .84);
+    // (2026-10-07, the map-revival lane; wave 184: Saltmere's grazed turf closes over most of it, .18; Saltwind keeps .32)
+    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' ? .18 : id === 'saltwind' ? .32 : .84);
   }
 }
 checkMapScope(getMapConfig);

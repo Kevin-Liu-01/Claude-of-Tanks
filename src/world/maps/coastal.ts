@@ -55,10 +55,13 @@ const onLane = (structure: string, x: number, side: 1 | -1, d: number, setback =
 const BOURG_HALF: Site[] = [
   // the high street's terraces, west and east of the road, from the south lane's corner to the square
   // (the inn last of the west row: a site keeps its pad from the buildings placed before it, and the inn's is wide)
-  onStreet('cornershop', -36, -1, 9.8), onStreet('cornershop', -25.5, -1, 9.8), onStreet('cornershop', -1.5, -1, 9.8),
+  // (2026-10-07, gauntlet wave 184: "an identical house model repeats at regular intervals on both sides of the street")
+  // the two-storey bourg houses alternate with cottages, half of them low longères gable-on to the street, so the
+  // terraces step up and down and no two neighbours match
+  onStreet('cornershop', -36, -1, 9.8), onStreet('cottage', -25.5, -1, 8.4), onStreet('cornershop', -1.5, -1, 9.8),
   onStreet('tavern', -13, -1, 14.7),
-  onStreet('cornershop', -36, 1, 9.8), onStreet('cornershop', -25.5, 1, 9.8), onStreet('cornershop', -15, 1, 9.8),
-  onStreet('cottage', -5, 1, 8.4),
+  onStreet('cottage', -36, 1, 8.4), onStreet('cornershop', -25.5, 1, 9.8), onStreet('cottage', -15, 1, 8.4),
+  onStreet('cornershop', -5, 1, 9.8),
   // the harbour end of the shore lane: the cannery on its south side by the strand, the fishermen's cottages on its
   // north side, the boathouses on the sand (their doors to the water)
   // (on the dune's dry edge: the strand's sand past x ~246 takes no building, and the cannery stands where the ground
@@ -184,22 +187,26 @@ export default {
     // pale grey headland rock (chalk-adjacent, never desert-red)
     rockTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.35), clamp01(l * 1.06 + 0.05)],
     // r3: deepen + green the authored water — the raw layer under fresnel +
-    // sun spec read as pale sparkle, not a teal bay
-    mudTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
+    // sun spec read as pale sparkle, not a teal bay. (2026-10-07, the map-revival lane; gauntlet wave 184: "a stylised
+    // turquoise sea colour that reads more tropical than Channel coast") the Channel's grey-green: less saturated, darker
+    mudTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 0.75), clamp01(l * 0.78)],
     // open-water mode: surf line + whitecaps + sand shoals in the shallows
     seaLake: true,
     seaFoam: 0.62,
     seaRamp: [0.30, 0.62], // the lake mask is hard-edged — water reads to shore
-    iceDrift: 0.12,     // sand-shoal coverage in the SHALLOWS (D layer)
+    iceDrift: 0.03,     // sand-shoal coverage in the SHALLOWS (D layer): (2026-10-07) a narrow strip at the strand, no turquoise shoals
     marshGloss: 0.95,   // water gloss response
-    iceSky: [0.30, 0.46, 0.58], // restrained reflection; water keeps visible depth
+    iceSky: [0.34, 0.40, 0.42], // restrained reflection; water keeps visible depth (2026-10-07: the Channel's grey sky, not a blue one)
     tintA: [1.10, 1.04, 0.82], tintB: [0.80, 0.82, 0.68], tintC: [1.06, 1.05, 0.92],
-    roadTint: [0.96, 0.90, 0.78], // sandy coast lanes
+    // (2026-10-07, wave 184: "flat beige sand roads") the Léon's lanes in granite gravel, grey, not beach sand
+    roadTint: [0.74, 0.73, 0.69],
     microAmp: 0.8,
     rippleDir: [0.85, 0.5],
     rippleAmp: 0.20, // faint wind ripple on the dune band
     rippleShoreOnly: true, // pasture stays grass; wind relief belongs to the strand
-    wornDirtStrength: 0.32, // inland wear stays muted turf, not broad beach-sand islands (map pass 2026-09-12: back toward the reference breakup)
+    // inland wear stays muted turf, not broad beach-sand islands (map pass 2026-09-12: back toward the reference breakup);
+    // (2026-10-07, wave 184: "dry tan ground … reading as arid savanna") the grazed turf closes over most of it
+    wornDirtStrength: 0.18,
   },
 
   vegetation: {
@@ -211,14 +218,25 @@ export default {
     // map pass 2026-09-12: the pasture between the strand and the crofts read
     // as an empty lawn from the establishing shot; gorse/marram scrub, more
     // windswept lone trees and grey shore boulders close the foreground.
-    clusterCount: 42,
-    loneCount: 116,
+    // (2026-10-07, wave 184: "lone pines like savanna") few trees on this coast: the lone trees mostly gone, the
+    // woodlots fewer, the farms' windbreaks (belts below) where the trees stand
+    clusterCount: 32,
+    loneCount: 36,
     rimCount: 70,
-    grassDensity: 0.85,
+    grassDensity: 1.0, // (2026-10-07, wave 184: "sparse … grass cards") a closed sward
     bushCount: 1.25,
     bushSpecies: 'oak',
-    grassTexTone: (h: number, s: number, l: number) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
-    tuftTone: (h: number, s: number, l: number) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
+    // (2026-10-07, the map-revival lane; wave 184: few trees on this coast, "wind-shaped Monterey pine or elm windbreaks
+    // by farms") a pine windbreak on the weather side (west) of each farmstead and field barn, in a row
+    belts: [
+      { x0: -244, z0: -128, x1: -244, z1: -72, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -214, z0: 128, x1: -214, z1: 184, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -74, z0: -122, x1: -74, z1: -84, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -44, z0: 128, x1: -44, z1: 166, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+    ],
+    // (2026-10-07, wave 184: "sparse, evenly spaced yellow grass cards") the Léon's grazed sward green, not straw
+    grassTexTone: (h: number, s: number, l: number) => [0.215, clamp01(s * 0.85), clamp01(l * 0.98 + 0.02)],
+    tuftTone: (h: number, s: number, l: number) => [0.205, 0.30, clamp01(l * 0.9 + 0.06)],
     palettes: {
       // maritime pines: a touch bluer/darker than the verdant stand
       pine: {
@@ -305,14 +323,18 @@ export default {
     // crofts; stone-post rail fences on the field boundaries
     wallStyle: 'fieldstone',
     inhabit: {
-      stalls: 2, benches: 2, coreClutter: 9,
+      // (2026-10-07, wave 184: the square an empty lot) more of the bourg's benches and market stalls
+      stalls: 3, benches: 4, coreClutter: 9,
       bales: 4,
       troughs: 1, laundry: 1, handcarts: 1, carts: 2,
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // (2026-10-07: no yardFence — the white picket is gone, waves 183–184; the free-standing garden runs take the
+      // props layer's default)
+      roadFence: 'fencerail',
       // DESTRUCTIBLES r1: quayside logistics — trucks at the harbor lanes,
       // fuel-drum points, a shore bivouac
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
-      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
+      // (2026-10-07, wave 184: "a modern traffic cone in a 1944 street") no cones
+      modernClutter: { barrier: 4, roadsign: 5, cone: 0, transformer: 3, cablespool: 3 },
     },
     cropFields: 3,
   },
@@ -341,8 +363,16 @@ export default {
     rockFields: [
       { geology: 'granite', x: -40, z: -236, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south downs granite' },
       { geology: 'granite', x: -40, z: 280, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the north downs granite' },
+      // (2026-10-07, the map-revival lane; gauntlet wave 184: "a smooth, rockless arc … like a lake edge") the granite at
+      // the waterline: rock platforms, boulder strands and clitter along each half's strand, where the sand meets the
+      // sea (the south strand's edge near x 290, the north's near x 336)
+      { geology: 'granite', x: 286, z: -84, radius: 46, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['tor', 0.25]], size: [1.6, 3.8], name: 'the south strand granite' },
+      { geology: 'granite', x: 332, z: 136, radius: 50, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['tor', 0.25]], size: [1.6, 3.8], name: 'the north strand granite' },
     ],
     landmarks: [
+      // (2026-10-07, wave 184: "the square is an empty lot") the bourg's granite calvary on its square, between the
+      // enclos's open side and the high street, facing the street
+      { kind: 'calvary', x: 157, z: 22, yawDeg: 90, name: 'the bourg calvary' },
       { kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the south crossroads calvary' },
       { kind: 'calvary', x: -78, z: 184, yawDeg: -15, name: 'the north crossroads calvary' },
       { kind: 'menhir', x: -70, z: -236, height: 4.6, name: 'the south downs standing stone' },
@@ -396,5 +426,7 @@ export default {
   shot: { pos: [356, 40, -300], look: [96, -10, 190] },
   // round 66 (2026-09-24, the FFT ocean): an onshore breeze off the open sea to the east with a little swell behind
   // it — a real coast, its breakers on the bay's strand; amplitude 0.7 keeps the swell under the jetty deck
-  ocean: { windSpeed: 5.2, windDirDeg: 190, fetchKm: 30, swell: 0.35, swellDirDeg: 185, amplitude: 0.7, choppiness: 0.9, foam: 0.5, breakers: 0.85, caustics: 0.6 },
+  // (2026-10-07, the map-revival lane; wave 184) the Channel's water carries little caustic light (0.6 lit the shallows
+  // tropical); the Atlantic's foam and breakers stay
+  ocean: { windSpeed: 5.2, windDirDeg: 190, fetchKm: 30, swell: 0.35, swellDirDeg: 185, amplitude: 0.7, choppiness: 0.9, foam: 0.5, breakers: 0.85, caustics: 0.2 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
