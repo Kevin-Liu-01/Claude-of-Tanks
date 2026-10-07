@@ -16,6 +16,7 @@ import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreeP
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
 import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
+import { resolveLandUseProfile } from './landUse.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -35,7 +36,7 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
-  treeBiomeSlot, TREE_GROWTH_PROFILES };
+  treeBiomeSlot, TREE_GROWTH_PROFILES, resolveLandUseProfile };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   // trees round 5: the field law's constants (vegetation.ts module scope), read from the source
@@ -44,6 +45,7 @@ const builder = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
   const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
+  const HEDGE_SCAN_M = ${/const HEDGE_SCAN_M = ([0-9.]+);/.exec(source)[1]};
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };
   const speciesList = veg.species, treeGeo = Object.fromEntries(speciesList.map(sp => [sp, true]));
   const L = heightField._layout, v = L.village, noVeg = heightField._noVeg;
