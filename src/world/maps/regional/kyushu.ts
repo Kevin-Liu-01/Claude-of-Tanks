@@ -355,14 +355,19 @@ const works: RegionalBuilder = (ctx) => {
   // the sulphur's crust on the boards (Caldera round 2, wave 114: "no retort, vents, steam or sulphur crust" — the old
   // even yellow band read as paint): blotches of every size crowding the foot and thinning up the wall, paler and
   // darker yellows and the grey-white of the dried crust, and the window band under the eaves as slatted vents
+  // (Caldera round 3, wave 131: "a hard-edged, stair-stepped band of flat yellow rectangles that reads as a texture
+  // bug") the crust a skin of narrow strips, each yellow at the foot fading into the boards at its own height, the
+  // heights and yellows wandering slowly along the wall: a ragged soft edge, no steps
   const faces = bodyFaces(W, D);
   for (const f of [faces.front, faces.back, faces.left, faces.right]) {
-    const n = Math.round(f.width / 0.9);
+    const n = Math.max(4, Math.round(f.width / 0.45)), sw = f.width / n;
+    const p1 = look() * 6.28, p2 = look() * 6.28, p3 = look() * 6.28;
     for (let k = 0; k < n; k++) {
-      const u = -f.width / 2 + (k + look()) * (f.width / n), hgt = 0.4 + look() * look() * 2.6, wid = 0.5 + look() * 1.3;
-      const tone = look(), col: Rgb = tone < 0.15 ? rgb(0xd8d4c4) : shade(SULPHUR, 0.7 + tone * 0.45);
-      faceBox(sink, 'structureWood', f, Math.max(-f.width / 2 + wid / 2, Math.min(f.width / 2 - wid / 2, u)), 0.4 + hgt / 2, 0.012 + k % 3 * 0.003,
-        wid, hgt, 0.01, { colour: col, decor: true });
+      const u = -f.width / 2 + (k + 0.5) * sw;
+      const hgt = 0.7 + 1.9 * (0.5 + 0.5 * Math.sin(u * 0.9 + p1)) * (0.55 + 0.45 * Math.sin(u * 0.37 + p2));
+      const crust = shade(SULPHUR, 0.82 + 0.2 * Math.sin(u * 0.61 + p3)), top = 0.4 + hgt;
+      faceBox(sink, 'structureWood', f, u, 0.4 + hgt / 2, 0.012, sw + 0.01, hgt, 0.01,
+        { colour: crust, colourAt: (q) => (q[1] > top - 0.02 ? board : crust), decor: true });
     }
     for (let x = -f.width * 0.4; x <= f.width * 0.4 + 1e-6; x += f.width * 0.8 / 6) {
       faceBox(sink, 'structureWood', f, x, H - 1.3, 0.02, f.width * 0.8 / 6 - 0.15, 0.75, 0.04, { colour: shade(board, 0.6), decor: true, fine: true });
@@ -611,7 +616,9 @@ export const KYUSHU_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     tones: {
       // white lime plaster (shikkui), the earth plaster of the farmhouses (tsuchikabe), a grey cement render, thatch
       plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.15), Math.min(1, l * 1.32 + 0.16)],
-      plaster2: (_h, s, l) => [0.085, Math.min(1, s * 0.9 + 0.2), Math.min(1, l * 1.0 + 0.04)],
+      // (Caldera round 3, wave 131: the farmhouse's earth plaster "a coarse sponge-like texture that reads as straw
+      // bales") the tsuchikabe a smoother, less saturated ochre clay (was saturation x0.9 + 0.2)
+      plaster2: (_h, s, l) => [0.085, Math.min(1, s * 0.45 + 0.12), Math.min(1, l * 0.9 + 0.1)],
       plaster3: (_h, s, l) => [0.12, Math.min(1, s * 0.12), Math.min(1, l * 1.0 + 0.1)],
       straw: (h, s, l) => [h - 0.015, Math.min(1, s * 0.55), Math.min(1, l * 0.8)],
     },

@@ -97,7 +97,8 @@ const dispose = (built) => { for (const list of Object.values(built.buckets)) fo
 
 // ------------------------------------------------------------------ the yards: slab, no spur, deterministic track
 // (2026-10-01: Cinder Junction's yard is authored spurs now — its own section below)
-for (const mapId of ['foundry', 'caldera', 'skybridge']) {
+// (2026-10-07: Obsidian Caldera's yard retired, the map-revival lane's Caldera round 3)
+for (const mapId of ['foundry', 'skybridge']) {
   const field = createHeightField(1337, getMapConfig(mapId));
   assert.equal(field._layout.railSpurs, undefined, `${mapId}: a yard authors no spur`);
   const built = build(mapId, field, 1337), again = build(mapId, field, 1337);

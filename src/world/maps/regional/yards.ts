@@ -295,13 +295,16 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0):
       sink.span('structureWood', -w / 2 + 0.25, 0.4, z - 0.09, w / 2 - 0.25, 1.3, z + 0.09, { ...dec, colour: shade(crop, 0.9) });
       continue;
     }
-    // a ridge of crops in two or three runs with gaps where a plant failed or was cut
-    let x = -w / 2 + 0.2;
-    while (x < w / 2 - 0.4) {
-      const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
-      const h = 0.16 + look() * 0.14;
-      sink.span('structureWood', x, 0.05, z - 0.13, x + run, 0.05 + h, z + 0.13, { ...dec, colour: shade(crop, 0.85 + look() * 0.3) });
-      x += run + 0.15 + look() * 0.35;
+    // (2026-10-07, the map-revival lane, Caldera round 3; gauntlet wave 131: "the crop bed is filled with flat green
+    // placeholder cubes") a ridge of earthed-up soil and on it the plants one by one — a low leafy clump each, its own
+    // size, lean and green, a gap here and there where one failed or was cut; the ridge reads at range, the plants near
+    // the camera only (fine)
+    sink.span('structureWood', -w / 2 + 0.15, 0.05, z - 0.16, w / 2 - 0.15, 0.13, z + 0.16, { ...dec, colour: shade(soil, 0.85) });
+    for (let x = -w / 2 + 0.35; x < w / 2 - 0.25; x += 0.34 + look() * 0.12) {
+      if (look() < 0.1) continue;
+      const r = 0.12 + look() * 0.08, h = 0.12 + look() * 0.12, leaf = shade(crop, 0.8 + look() * 0.4);
+      const px = x + (look() - 0.5) * 0.06, pz = z + (look() - 0.5) * 0.08;
+      sink.cylinder('structureWood', [px, 0.12, pz], 'y', h, r, 6, { ...dec, fine: true, colour: leaf }, r * 0.55, true, look() * 1.05);
     }
   }
   return sink.finish();

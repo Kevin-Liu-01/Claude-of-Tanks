@@ -189,9 +189,8 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
 // corrugation"): a volcanic basin takes no wind's patchwork and no ripples; its ground is zoned by its landforms
 // (volcanic), its rock greyed by lichen
 const BASALT_LICHEN = [0.90, 0.94, 0.86] as const;
-const VOLCANIC: Omit<GroundReduxProfile, 'grass'> = {
-  ...ARID, rimTint: BASALT_LICHEN, rim: 0.7, patchwork: 0, windRipple: 0, exposure: 0.5, midAlbedo: 0.8, volcanic: 1,
-};
+// (the map-revival lane, 2026-10-07: Caldera's ground moved off the volcanic zoning in its round 2 — Aso's floor is farmed
+// and grassed; the zoning, `volcanic` above, waits for a map that is a bare volcanic field)
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
 };

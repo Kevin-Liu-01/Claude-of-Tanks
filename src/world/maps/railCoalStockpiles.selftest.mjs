@@ -112,7 +112,9 @@ function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) 
   assert.equal(rayCollisionRecord({x:x-10,y:high+.01,z},{x:1,y:0,z:0},collider,20,new THREE.Vector3()),-1);
 }
 function dispose(result) {for(const geometries of Object.values(result.buckets)) for(const geometry of geometries) geometry.dispose();}
-const railMaps=['railyard','foundry','skybridge','caldera'];
+// (2026-10-07, the map-revival lane's Caldera round 3: Obsidian Caldera lays no rail yard — its sidings and their coal
+// stood across Aso's paddies)
+const railMaps=['railyard','foundry','skybridge'];
 const totals={};
 for(const mapId of MAP_IDS) {
   const field=createHeightField(1337,getMapConfig(mapId));

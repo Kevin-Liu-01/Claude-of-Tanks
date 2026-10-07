@@ -41,6 +41,53 @@
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+// Caldera round 3 (the map-revival lane, 2026-10-07; gauntlet wave 131: "a sparse scatter of white box barns with grey
+// gable roofs placed far apart on open lawn, with no clustered minka compounds, kura, hedges or cedar windbreaks", "six
+// long parallel dark rail lines run diagonally across a mostly empty lawn"): the village authored as Aso's farmsteads —
+// each a yard with its minka along the road, a naya and a row of kura across its ends, a greenhouse and a sugi windbreak
+// behind — along the two cross roads, the shrine, the fire post and the co-op among them, the Sulphur Works round its
+// yard; the roadside plan, its five village stacks and the rail yard's seven sidings are gone (.qa-dev/town-plan.mjs:
+// every footprint 34 m or more off a zone's centre and clear of the tactical beats, 5 m or more off a road's line)
+const CALDERA_VILLAGE = [
+  // seven farmsteads along the two cross roads, each a naya barn and a row of kura across the ends of its yard, a
+  // vinyl greenhouse behind most, the minka (placed last: its reach is the widest) along the road, its engawa to it
+  // (the eighth, on the south cross road's west end beside alpha's deployment, is gone: with it the bots lane's swap
+  // test leaned 27 of 40 to the north; without it 44 of 80, inside the 45-55 % band)
+  { structure: 'shed', x: -112.5, z: 172, yawDeg: 101.3 }, { structure: 'containerRow', x: -77.8, z: 165, yawDeg: -78.7 },
+  { structure: 'gantry', x: -92.6, z: 181.8, yawDeg: 11.3 }, { structure: 'depot', x: -96.5, z: 162.7, yawDeg: 101.3 },
+  { structure: 'shed', x: -43.5, z: 107.5, yawDeg: 100.3 }, { structure: 'containerRow', x: -8.8, z: 101.2, yawDeg: -79.7 },
+  { structure: 'gantry', x: -28.7, z: 91.1, yawDeg: 10.3 }, { structure: 'depot', x: -25.2, z: 110.3, yawDeg: -79.7 },
+  { structure: 'shed', x: 37.4, z: 165.7, yawDeg: 70.3 }, { structure: 'containerRow', x: 70.7, z: 177.6, yawDeg: -109.7 },
+  { structure: 'gantry', x: 49.4, z: 184.3, yawDeg: -19.7 }, { structure: 'depot', x: 55.9, z: 166, yawDeg: 70.3 },
+  { structure: 'shed', x: 115.7, z: 141.8, yawDeg: 72.2 }, { structure: 'containerRow', x: 149.3, z: 152.6, yawDeg: -107.8 },
+  { structure: 'depot', x: 130.5, z: 152.9, yawDeg: -107.8 },
+  { structure: 'shed', x: -68.6, z: -109, yawDeg: 66.8 }, { structure: 'containerRow', x: -36.2, z: -95, yawDeg: -113.2 },
+  { structure: 'gantry', x: -47.2, z: -114.5, yawDeg: -23.2 }, { structure: 'depot', x: -54.9, z: -96.5, yawDeg: -113.2 },
+  { structure: 'shed', x: 23.1, z: -53.8, yawDeg: 98.1 }, { structure: 'containerRow', x: 58, z: -58.8, yawDeg: -81.9 },
+  { structure: 'depot', x: 39.5, z: -62.2, yawDeg: 98.1 },
+  { structure: 'shed', x: 126.9, z: -133.7, yawDeg: 124.8 }, { structure: 'containerRow', x: 155.9, z: -153.9, yawDeg: -55.2 },
+  { structure: 'gantry', x: 133.6, z: -154.8, yawDeg: 34.8 }, { structure: 'depot', x: 144.7, z: -138.8, yawDeg: -55.2 },
+  // the shrine in its grove, the fire brigade's post, the co-op's rice warehouse, two burnt farmsteads; the Sulphur
+  // Works round its yard: the works office, two refinery sheds and the stack west of the yard
+  { structure: 'watertower', x: -120, z: 195, yawDeg: 180 }, { structure: 'firestation', x: 30, z: 105, yawDeg: 0 },
+  { structure: 'warehouse', x: 98, z: -125, yawDeg: -30 }, { structure: 'foundryoffice', x: -365, z: 150, yawDeg: 90 },
+  { structure: 'factory', x: -385, z: 45, yawDeg: 90 }, { structure: 'factory', x: -395, z: 150, yawDeg: 0 },
+  { structure: 'ruin', x: -40, z: 175, yawDeg: 20 }, { structure: 'ruin', x: 100, z: -40, yawDeg: -20 },
+  { structure: 'stack', x: -378, z: 100, yawDeg: 0 },
+] as const;
+// the sugi windbreak behind each farmstead (the cypress slot is sugi in Aso's biome, treeBiomes.ts)
+const CALDERA_WINDBREAKS = [
+  [-114.3, 195.8, -69.2, 186.8], [-54, 86.1, -8.8, 77.8], [23.6, 185.2, 66.9, 200.7], [116.5, 117.9, 160.3, 132],
+  [-65.5, -132.7, -23.3, -114.5], [19.9, -30.1, 65.4, -36.6], [108.5, -148.9, 146.2, -175.1],
+] as const;
+// the light buildings at the works: the Sulphur Works' sheds round its yard, the Loading Yard's office, garage and motor
+// pool, a guard hut at the loop's south-east gate (authored: the roadside pass dropped them among the farmsteads)
+const CALDERA_LIGHT = [
+  { kind: 'quonsethut', x: -400, z: 100, rot: Math.PI / 2 }, { kind: 'transformershed', x: -345, z: 30, rot: 0 },
+  { kind: 'relaystation', x: -330, z: 45, rot: 0 }, { kind: 'servicegarage', x: 330, z: -130, rot: 0 },
+  { kind: 'securityoffice', x: 260, z: -250, rot: 0 }, { kind: 'motorpool', x: 390, z: -255, rot: 0 },
+  { kind: 'guardpost', x: 240, z: -215, rot: 0 },
+];
 
 export default {
   id: 'caldera',
@@ -53,9 +100,14 @@ export default {
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
     ],
+    // (Caldera round 3, wave 131: "inside a perfectly octagonal ring road") the mining loop bends between its corners —
+    // each long side bowed 8-10 m off its chord (inward where the west and east roads run beside it; the north-east side
+    // keeps its line over the loading road's levelled bump); its corners stay where they were graded (rounding them ran
+    // the road over the Ash Hollow's rim and the Little Cone's fan at more than the brief's 18 %)
     roads: { paths: [
-      [[104, -264], [226, -171], [242, -160], [286, 8], [238, 174], [190, 204.5], [82, 270], [-104, 252], [-252, 150],
-        [-286, -36], [-230, -190], [-74, -282], [104, -264]],
+      [[104, -264], [171, -225.5], [226, -171], [242, -160], [256.3, -78], [286, 8], [253, 88], [238, 174], [190, 204.5],
+        [82, 270], [-11, 271], [-104, 252], [-172, 194], [-252, 150], [-259, 55], [-286, -36], [-250.8, -109.6],
+        [-230, -190], [-147.7, -229.3], [-74, -282], [14.6, -265], [104, -264]],
       [[-434, -448], [-360, -278], [-350, -238], [-314, -92], [-286, 92], [-236, 286], [-170, 466]],
       [[350, -446], [302, -270], [278, -92], [296, 86], [258, 268], [198, 452]],
       [[-350, -238], [-304, -210], [-174, -130], [-34, -68], [108, -92], [226, -171]],
@@ -84,15 +136,18 @@ export default {
       // rills' mouths onto the floor and a knobbly surface (landformGeology.ts). The Cinder Cone is the youngest, its
       // flanks near the scree's angle of repose (its steepest flank 1.14 x height / (radius x (1 - rim))) and its crater
       // breached to the south-west; the Ember Cone is older, lower and more gullied; the Little Cone is a parasitic vent.
+      // (Caldera round 3, wave 131: "Komezuka is a smooth green dome") the cones' ribs and gullies deeper and narrower, the
+      // craters deeper: the grassed flanks fluted as Komezuka's are, the light and shade of each rib reading through the
+      // sward (was 11 / 12 / 8 gullies at 5 / 5.5 / 3.2 m, 0.55-0.6 wide; craters 4 / 2.5 / 2 m)
       { kind: 'knoll', x: -185, z: 266, rx: 48, rz: 60, height: 24,
-        geology: { profile: 'cone', crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1,
-          gullies: { count: 11, depthM: 5, width: 0.55 }, fans: { reach: 0.3, heightM: 2.4 }, rough: 1.1 } },
+        geology: { profile: 'cone', crater: { rim: 0.16, depthM: 5.5, breachDeg: 200 }, outline: 0.1,
+          gullies: { count: 14, depthM: 6.5, width: 0.42 }, fans: { reach: 0.3, heightM: 2.4 }, rough: 1.1 } },
       { kind: 'knoll', x: 205, z: -300, rx: 60, rz: 60, height: 18,
-        geology: { profile: 'cone', crater: { rim: 0.15, depthM: 2.5 }, outline: 0.14,
-          gullies: { count: 12, depthM: 5.5, width: 0.6 }, fans: { reach: 0.32, heightM: 2.6 }, rough: 1.1 } },
+        geology: { profile: 'cone', crater: { rim: 0.15, depthM: 3.5 }, outline: 0.14,
+          gullies: { count: 14, depthM: 6.5, width: 0.45 }, fans: { reach: 0.32, heightM: 2.6 }, rough: 1.1 } },
       { kind: 'knoll', x: -40, z: -345, rx: 36, rz: 36, height: 13,
-        geology: { profile: 'cone', crater: { rim: 0.18, depthM: 2 }, outline: 0.08,
-          gullies: { count: 8, depthM: 3.2, width: 0.55 }, fans: { reach: 0.28, heightM: 1.6 }, rough: 0.8 } },
+        geology: { profile: 'cone', crater: { rim: 0.18, depthM: 2.6 }, outline: 0.08,
+          gullies: { count: 10, depthM: 4, width: 0.45 }, fans: { reach: 0.28, heightM: 1.6 }, rough: 0.8 } },
       // The Black Shelves: lava flows run down from the caldera wall: a blocky channel between raised levees, lobed
       // margins with a steep wall and talus, and a steep front where each flow stopped on the basin floor.
       { kind: 'ridge', x: -390, z: -100, length: 260, width: 50, height: 8, yawDeg: 70,
@@ -139,6 +194,8 @@ export default {
     // (Caldera round 2: more and closed blocks, fewer lone trees, a fuller rim wood, the grassland's sward, a third of the
     // even bush carpet; was 5 / 22 / 14 trees, 0.03 grass, 1.0 bushes)
     clusterCount: 12, loneCount: 12, rimCount: 24, grassDensity: 0.5,
+    // (round 3) the farmsteads' sugi windbreaks, real cover: a row behind each yard
+    belts: CALDERA_WINDBREAKS.map(([x0, z0, x1, z1]) => ({ x0, z0, x1, z1, gap: 6, jitter: 1.5, species: 'cypress' })),
     bushCount: 0.35, bushSpecies: 'acacia',
     // ground lane (wave 62, Caldera street-a: "a bright neon yellow-green scribble … an unmistakable rendering glitch" on
     // the cone's face was one of these few tufts, in the meadow's default green): the caldera's grass is dry, ash-dulled
@@ -149,12 +206,12 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [0.19, 0.3, clamp01(l * 0.64 + 0.08)],
   },
   props: {
-    plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',
-      'watertower', 'containerRow', 'factory', 'ruin', 'shed', 'warehouse', 'stack', 'depot',
-      'containerRow', 'factory', 'warehouse', 'gantry', 'shed', 'stack', 'ruin', 'depot',
-      'watertower', 'containerRow', 'factory', 'warehouse', 'shed', 'gantry', 'ruin', 'stack'],
-    // the Sulphur Works' stack stands west of its yard, clear of the zone-control disc
-    plannedSites: [{ structure: 'stack', x: -378, z: 100, yawDeg: 0 }],
+    // (round 3: the village authored, CALDERA_VILLAGE above; no roadside plan, no block fill; a building 2 m off a
+    // neighbour's reach so a farmstead's barns stand round its yard; was the 30-building plan, block fill and 9 m)
+    plan: [],
+    plannedSites: CALDERA_VILLAGE,
+    townLightPlan: CALDERA_LIGHT,
+    spacingPad: 2,
     destructibleBuildings: [
       'quonsethut', 'transformershed', 'motorpool', 'guardpost',
       'securityoffice', 'servicegarage', 'relaystation',
@@ -167,12 +224,12 @@ export default {
       { id: 'eastern-transformer-yard', role: 'support', x: 180, z: 160, yawDeg: -8,
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
     ],
-    blockFill: true,
     // the village in Aso's architecture (the kyushu kit); the kit owns the renders' tones, the field walls keep the
     // city preset's stone
     architecture: 'kyushu',
     tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
-    extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
+    // (round 3: no rail yard — its seven sidings were Cinder Junction's, laid across the paddies)
+    wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
       [204, -142, 300, -106, 3], [202, 134, 296, 168, 2],
