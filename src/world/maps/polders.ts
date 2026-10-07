@@ -74,10 +74,12 @@ const DYKES: readonly Dyke[] = [
   // lanes (step 1: embankments 3.6 m high on bases 23–24 m wide, their crests 4.6–4.8 m; the north lane's west reach
   // runs along the crest of the one it followed, z 170, and the one rotated from it about the village moves with it;
   // the long dykes beside the field zones stand 8 m further out, so the stones that settle at their toes keep off the
-  // zones' discs)
+  // zones' discs; step 5: a long dyke on each outer flank, the east one in alpha's ground from the east cross dyke's foot
+  // north to the mill lane and its twin in bravo's ground from the west one's, the point rotation about the farm court as
+  // the rest of the grid — the flank lanes were one open sweep each, split only where a single bush happened to stand)
   ...([[-60, -282, 300, 0, 12], [-68, 306, 300, 0, 12], [23, -146, 150, 0], [-151, 170, 150, 0],
     [250, -210, 180, 0], [-378, 234, 180, 0], [-188, -178, 144, 90], [60, 202, 144, 90], [100, -135, 230, 90],
-    [-228, 159, 230, 90],
+    [-228, 159, 230, 90], [236, -140, 110, 90, 16], [-364, 164, 110, 90, 16],
   ] as const).map(([x, z, length, yawDeg, width = 11.5]) => ({ kind: 'ridge' as const, x, z, length, width, height: 3.6, yawDeg, geology: FIELD_DYKE })),
 ];
 
@@ -185,10 +187,6 @@ export default {
     // (the deck 2.47 m over the water surface, y 2.90: a fixed plane over the road's own 2.83 there, so the road's
     // endpoint completion never moves it; the landmarks lane's boards read the banks at 2.88–2.90)
     marshes: [{ x: -158, z: 265.5, r: 6, dip: 0, level: 0, crossing: 'bridge', deckWidthM: 6, approachM: 30, deckClearM: 2.47 }],
-    // (step 2) the molenbergen: the mounds the landmarks lane's two brick tower mills stand on (props.landmarks), 1.8 m
-    // over the ground at their centres with level crests 18 m across and batters about 1 in 3 (terrain.ts mounds: raised
-    // after the water's banks, which grade any landform this near the oxbow and the drain back to the waterline); each
-    // foot comes down 1.4–2 m from its water, the oxbow mill's on the oxbow's east bank, the drain mill's on the drain's
     // Step 5 (2026-10-07; the coordinator: "build it yourself ... Polders' vaart and weteringen are the first users"): the
     // polder's drainage in straight water at one level (terrain.canals, canals.ts) — the vaart along the main dyke's
     // north foot from the west road's culvert to the farm court's edge, and two weteringen north from it between the long
@@ -200,6 +198,10 @@ export default {
       { path: [[-252, 25], [-252, 128]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the west wetering' },
       { path: [[-182, 25], [-182, 140]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the east wetering' },
     ],
+    // (step 2) the molenbergen: the mounds the landmarks lane's two brick tower mills stand on (props.landmarks), 1.8 m
+    // over the ground at their centres with level crests 18 m across and batters about 1 in 3 (terrain.ts mounds: raised
+    // after the water's banks, which grade any landform this near the oxbow and the drain back to the waterline); each
+    // foot comes down 1.4–2 m from its water, the oxbow mill's on the oxbow's east bank, the drain mill's on the drain's east bank
     mounds: [{ x: -99, z: 262, crestR: 9, baseR: 14.4, height: 1.8 }, { x: -171, z: -316, crestR: 9, baseR: 14.4, height: 1.8 }],
     landforms: [
       ...DYKES,
@@ -266,6 +268,9 @@ export default {
       { id: 'south-west-long-dyke-poplars', species: 'poplar', path: [[-228, 76], [-228, 146]], count: 8, width: 0.3 },
       { id: 'south-west-long-dyke-poplars-north', species: 'poplar', path: [[-228, 180], [-228, 242]], count: 8, width: 0.3 },
       { id: 'south-east-long-dyke-poplars', species: 'poplar', path: [[60, 150], [60, 254]], count: 9, width: 0.3 },
+      // (step 5) the flank dykes' poplars along their crests, off the east one's road cutting (and its twin's end)
+      { id: 'east-flank-dyke-poplars', species: 'poplar', path: [[236, -186], [236, -122]], count: 11, width: 0.3 },
+      { id: 'west-flank-dyke-poplars', species: 'poplar', path: [[-364, 210], [-364, 146]], count: 11, width: 0.3 },
     ],
   },
   props: {
