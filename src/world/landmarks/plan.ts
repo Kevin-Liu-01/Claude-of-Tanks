@@ -25,6 +25,16 @@ interface LandmarkKindSpec {
   /** The piece follows the ground itself (draped paving and beds, a terrace that levels itself and banks to the slope):
    *  the composer seats it at any fall under its footprint (the 3.2 m limit keeps a rigid piece from burying its side). */
   drapes?: boolean;
+  /** Its surface carries the map's street life (a market square's setts, a path): on a vetoed ground (types.ts `ground`)
+   *  what the passes after it stand on it stays. */
+  open?: boolean;
+  /** Its solid as rectangles in its frame ([cx, cz, hw, hl]) where the footprint's one rectangle overstates it (a gate's
+   *  tower between thin wall stubs): the composer tests these, not the footprint, against the solids already standing,
+   *  and a vetoed ground is theirs. */
+  solids?: (p: LandmarkParams) => ReadonlyArray<readonly [number, number, number, number]>;
+  /** The ground it is seated on, [hw, hl], where its footprint reaches past it (a tower mill's sails sweep over ground
+   *  its base never touches): the composer seats it, and measures its fall, on this rectangle alone. */
+  seat?: (p: LandmarkParams) => readonly [number, number] | null;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -33,6 +43,12 @@ export function isDressingPiece(placement: LandmarkPlacement): boolean {
 }
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
+
+/** A town gate's two wall stubs, -x and +x of its passage (m): each its own length, else `walls`. */
+export function gateStubs(p: LandmarkParams): readonly [number, number] {
+  const walls = Math.max(0, num(p, 'walls')), own = (key: string): number => (num(p, key) >= 0 ? num(p, key) : walls);
+  return [own('wallsLeft'), own('wallsRight')];
+}
 
 /** The kinds, their parameters and their footprints. */
 export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = Object.freeze({
@@ -87,21 +103,37 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
   // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
   // the graves (the gateway's piers and cornice 0.35 m past the front fence)
-  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false, defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
-    graves: 10, tradition: 'orthodox', back: 'open' },
+  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false || p.gate === 'left' || p.gate === 'right', defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
+    graves: 10, tradition: 'orthodox', back: 'open', gate: 'front' },
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
   // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
   // and the box at the path's mouth
   garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
+  // a mill's outfall: the culvert's headwall at the bank's top and its runnel pitched in stone down to the water, along +z
+  // from the headwall (`length` m, `width` the runnel's)
+  outfall: { family: 'park', drapes: true, inWater: true, dressing: () => true, defaults: { length: 4, width: 0.8 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.6, num(p, 'length') / 2 + 0.5] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
   // it leaves (no road margin) and stands on nothing.
-  path: { family: 'park', roadMargin: 0, drapes: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
+  path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
-  townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
-    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6] },
+  // (`wallsLeft` / `wallsRight`: each stub's own length, -x / +x of the passage, where the road crosses a gap in the wall
+  // off its middle; a negative value takes `walls`)
+  townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6, wallsLeft: -1, wallsRight: -1 },
+    footprint: (p) => [num(p, 'passage') / 2 + 2.4 + Math.max(...gateStubs(p)), num(p, 'depth') / 2 + 0.6],
+    // the tower over the passage, and each wall stub with its wall-walk behind it (gates.ts: the stub 0.6 m either side
+    // of the wall's line, the walk on its corbels a metre behind): a house standing a few metres behind the wall is no
+    // conflict
+    solids: (p) => {
+      const tower = num(p, 'passage') / 2 + 2.4, d = num(p, 'depth') / 2 + 0.6, [left, right] = gateStubs(p);
+      const stubs: Array<readonly [number, number, number, number]> = [];
+      if (left > 0) stubs.push([-(tower + left / 2), -0.5, left / 2, 1.1]);
+      if (right > 0) stubs.push([tower + right / 2, -0.5, right / 2, 1.1]);
+      return [[0, 0, tower, d], ...stubs];
+    } },
   triumphalArch: { family: 'gate', spansRoad: true, defaults: { passage: 7, height: 16, arches: 1 },
     footprint: (p) => [(num(p, 'arches') > 1 ? num(p, 'passage') * 1.9 : num(p, 'passage') / 2 + 3.4) + 0.4, 3.4] },
   // (the flags stream a metre past the pillars)
@@ -154,7 +186,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
-      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]) },
+      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]),
+    // (a tower mill stands on its brick base, 4.5 m round: on a terp's crest its sails' span reaches over the batter)
+    seat: (p) => (p.style === 'tower' ? [4.6, 4.6] : null) },
   // ------------------------------------------------------------------------------------------------ civic buildings
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)
@@ -215,14 +249,17 @@ const TREE_MARGIN_M = 2.5;
 
 /**
  * The vegetation keep-out of a map's set pieces, from its config alone: each piece's footprint, turned to its heading,
- * with a working margin. A map without set pieces gets none, and its vegetation is exact.
+ * with a working margin — or, for a kind that names its solid's rectangles (a gate's tower and its wall stubs), each of
+ * those with the margin, so a gate's short stub clears no trees past its end. A map without set pieces gets none, and its
+ * vegetation is exact.
  */
 export function landmarkClearances(landmarks: readonly LandmarkPlacement[] | null | undefined): StructureClearance[] {
   if (!landmarks?.length) return [];
-  return landmarks.map((placement) => {
-    const [hw, hl] = landmarkFootprint(placement);
-    const yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
-    return { x: placement.x, z: placement.z, halfWidth: hw + TREE_MARGIN_M, halfLength: hl + TREE_MARGIN_M,
-      cos: Math.cos(yaw), sin: Math.sin(yaw) };
+  return landmarks.flatMap((placement) => {
+    const yaw = (placement.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+    const params = resolveLandmarkParams(placement), spec = LANDMARK_KINDS[placement.kind];
+    const rects = spec.solids?.(params) ?? [[0, 0, ...spec.footprint(params)] as const];
+    return rects.map(([cx, cz, hw, hl]) => ({ x: placement.x + cx * c + cz * s, z: placement.z - cx * s + cz * c,
+      halfWidth: hw + TREE_MARGIN_M, halfLength: hl + TREE_MARGIN_M, cos: c, sin: s }));
   });
 }

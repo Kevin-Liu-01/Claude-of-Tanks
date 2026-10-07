@@ -96,7 +96,9 @@ export const waterTower: LandmarkBuilder = (ctx) => {
   // the tank house: vertical boards painted ochre, a band of small windows, a slatted vent under the eaves
   const rHouse = rShaft + 0.7, houseFloor = shaftTop + 0.5;
   const tf = prismBody(sink, 'structureWood', 0, 0, rHouse, 8, houseFloor, houseTop, {}, 0, { colour: BOARD_OCHRE });
-  sink.polygon('structureWood', tf.map((f) => facePoint(f, -f.width / 2, houseFloor)), { colour: shade(BOARD_OCHRE, 0.6) });
+  // (the floor's underside, facing down: it is the overhang a man at the foot of the tower looks up into — it faced up
+  // until 2026-10-06, and the house showed its inside from below)
+  sink.polygon('structureWood', tf.map((f) => facePoint(f, -f.width / 2, houseFloor)).reverse(), { colour: shade(BOARD_OCHRE, 0.6) });
   tf.forEach((f, i) => {
     // the boards' battens and a small window on every other facet
     for (let k = -2; k <= 2; k++) {
