@@ -272,8 +272,10 @@ export function rucksack(P: AccessoryPainter, w: number, len: number, h: number,
 // Cargo variants (the fleet-wide loose-equipment vocabulary, decorations.ts FLEET_EQUIPMENT_VARIANTS)
 // ---------------------------------------------------------------------------------------------------------------
 
-const BLUE_COOLER: RGB = [0.08, 0.19, 0.29];
-const COOLER_LID: RGB = [0.5, 0.52, 0.49];
+// 2026-10-06 (round 2): the critics read the blue cooler, the red cooler and the red tool chest as toy-coloured
+// civilian boxes. Crews carry them, but in issue colours: olive drab, coyote and dark green, lids a shade lighter.
+const BLUE_COOLER: RGB = [0.22, 0.26, 0.15];
+const COOLER_LID: RGB = [0.27, 0.30, 0.19];
 
 export function buildCargoVariant(variant: string, P: AccessoryPainter, colours: EquipmentColours, flat?: boolean): void {
   // Every random draw happens here, before any detail branch (both LOD levels agree).
@@ -285,11 +287,11 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     if (near(P)) {
       // molded drain plug and the lid's raised panel
       P.paint(place(latheY([[0.016, 0], [0.016, 0.014], [0.001, 0.016]], 8), -0.17, 0.05, 0.181, Math.PI / 2, 0, 0), COOLER_LID, 0.3);
-      P.paint(place(moldedBox(0.38, 0.012, 0.24, 0.03, 1, 0.004), 0, 0.344, 0), [0.56, 0.58, 0.55], 0.2);
+      P.paint(place(moldedBox(0.38, 0.012, 0.24, 0.03, 1, 0.004), 0, 0.344, 0), [0.30, 0.33, 0.21], 0.2);
     }
     break;
   case 'cooler-red':
-    hardCase(P, { w: 0.46, h: 0.3, d: 0.32, body: [0.62, 0.11, 0.08], lid: [0.82, 0.82, 0.78], lidShare: 0.26, radius: 0.035,
+    hardCase(P, { w: 0.46, h: 0.3, d: 0.32, body: [0.40, 0.33, 0.21], lid: [0.46, 0.38, 0.25], lidShare: 0.26, radius: 0.035,
       latches: 'none', handles: 'top' });
     break;
   case 'insulated-chest-olive':
@@ -390,7 +392,7 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     }
     break;
   case 'mechanics-tool-chest':
-    hardCase(P, { w: 0.52, h: 0.25, d: 0.24, body: [0.56, 0.09, 0.06], lid: [0.64, 0.12, 0.08], lidShare: 0.34, radius: 0.01,
+    hardCase(P, { w: 0.52, h: 0.25, d: 0.24, body: [0.16, 0.19, 0.13], lid: [0.19, 0.22, 0.15], lidShare: 0.34, radius: 0.01,
       latches: 'steel', handles: 'top' });
     break;
   case 'fire-extinguisher': {
@@ -462,7 +464,7 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     P.wood(place(moldedBox(w, h, d, 0.006, 1, 0.005), 0, h / 2, 0), 0.74);
     const seg = near(P) ? 8 : 6;
     for (const x of [-0.12, 0.12]) {
-      P.paint(place(latheY([[0.0005, 0], [0.058, 0], [0.062, 0.02], [0.062, 0.24], [0.05, 0.27], [0.0005, 0.27]], seg), x, h - 0.06, 0), [0.66, 0.66, 0.6], 0.3);
+      P.paint(place(latheY([[0.0005, 0], [0.058, 0], [0.062, 0.02], [0.062, 0.24], [0.05, 0.27], [0.0005, 0.27]], seg), x, h - 0.06, 0), [0.28, 0.31, 0.2], 0.3);
       P.paint(place(latheY([[0.0005, 0], [0.052, 0], [0.052, 0.05], [0.0005, 0.052]], seg), x, h + 0.21, 0), [0.18, 0.2, 0.17], 0.3);
     }
     if (near(P)) for (const x of [-w / 2 + 0.02, w / 2 - 0.02]) P.wood(place(block(0.035, h + 0.01, d + 0.014), x, h / 2, 0), 0.56);
@@ -534,9 +536,13 @@ export function buildNetDrape(P: AccessoryPainter, w: number, len: number, seed:
     const u = i / nx, v = k / nz;
     const x = (u - 0.5) * w, z = (v - 0.5) * len;
     const edge = Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) * 2;
-    const fold = Math.sin(x * 9 + seed) * Math.cos(z * 7 - seed) * 0.03 + Math.sin(z * 15 + x * 3 + seed * 2) * 0.012;
+    // round 2 (2026-10-06): a heap that sags off its supports, not a flat sticker — deep folds, the middle
+    // humped where the net bunches, the edges hanging well down in scallops between the tie points
+    const fold = Math.sin(x * 9 + seed) * Math.cos(z * 7 - seed) * 0.045 + Math.sin(z * 15 + x * 3 + seed * 2) * 0.016;
+    const hump = Math.max(0, 1 - edge * 1.15) * 0.07 * (0.6 + 0.4 * Math.sin(x * 4.1 + z * 3.3 + seed));
+    const scallop = edge > 0.7 ? 0.05 * Math.pow(Math.abs(Math.sin((u + v) * Math.PI * 3 + seed)), 1.5) : 0;
     const ragged = (edge > 0.8 ? -0.04 * ((Math.sin(i * 7.1 + k * 3.3 + seed) + 1) / 2) : 0);
-    return [x * (1 + ragged * 0.6), 0.075 + fold - edge * edge * 0.085, z * (1 + ragged * 0.6)];
+    return [x * (1 + ragged * 0.6), 0.075 + fold + hump - edge * edge * 0.14 - scallop, z * (1 + ragged * 0.6)];
   };
   for (let k = 0; k < nz; k++) {
     for (let i = 0; i < nx; i++) {
@@ -547,15 +553,8 @@ export function buildNetDrape(P: AccessoryPainter, w: number, len: number, seed:
   const sheet = new THREE.BufferGeometry();
   sheet.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   sheet.computeVertexNormals();
+  // the flat garnish tufts read as origami cards (round 2); the rags are in the net's own texture now
   P.net(sheet, 1.0);
-  if (!near(P)) return;
-  for (let t = 0; t < 7; t++) {
-    const u = (Math.sin(seed * 3.1 + t * 2.7) * 0.5 + 0.5) * 0.8 + 0.1;
-    const v = (Math.sin(seed * 1.7 + t * 4.3) * 0.5 + 0.5) * 0.8 + 0.1;
-    const [x, y, z] = at(Math.round(u * nx), Math.round(v * nz));
-    const tuft = new THREE.PlaneGeometry(0.2, 0.1, 1, 1).toNonIndexed();
-    P.net(place(tuft, x, y + 0.03, z, -0.6 + (t % 3) * 0.3, t * 1.3, 0.2), 0.9);
-  }
 }
 
 /** A filled sandbag: a pillow with a folded, tied neck, lying on y = 0, long axis X. */
@@ -644,48 +643,90 @@ export function drum200(P: AccessoryPainter, cx: number, transverse: boolean, to
 
 // ---------------------------------------------------------------------------------------------------------------
 // Fresh-cut branches (2026-10-05, owner-approved proposal E): the field camouflage of the 2022 war imagery — cut
-// branches tucked into turret stowage and laid along fenders — from the trees lane's spray cards on woody stems.
+// branches lashed along turret stowage and laid along fenders — from the trees lane's spray cards on woody stems.
 // ---------------------------------------------------------------------------------------------------------------
 
+/** Branch bundle seats: 'flank' along a wall, 'deck' on a deck or fender; 'upright' / 'lying' are their old names. */
+export type BranchBundleVariant = 'flank' | 'deck' | 'upright' | 'lying';
+
 /**
- * A bundle of cut branches. 'upright': tucked against a wall, stems at the seat rising and fanning fore and aft
- * along local X with a little outward (+Z) splay. 'lying': laid on a deck along local X, the sprays spilling over both sides.
- * Seated on y = 0.
+ * A bundle of fresh-cut branches a crew lashed on (2026-10-06, round 2: the critics read the first build's upright
+ * stems as potted saplings and skewers topped with one leaf card). Every stem now lies along its support, cut ends
+ * gathered under a webbing tie, the leafy run bowed and drooping at the tip, and the leaves dense from the tie to the
+ * tip so the wood shows only at the cut ends. 'flank' hangs the bundle along a wall (the turret-side seat: local X
+ * along the wall, +Y up, +Z out of it); 'deck' lays it on a deck or fender (+Y up). The legacy 'upright' and 'lying'
+ * names map to 'flank' and 'deck'. Draws: count x 6 values plus one for the tie, before any detail branch.
  */
-export function buildBranchBundle(P: AccessoryPainter, variant: 'upright' | 'lying', count: number): void {
+export function buildBranchBundle(P: AccessoryPainter, variant: BranchBundleVariant, count: number): void {
+  const flank = variant === 'flank' || variant === 'upright';
   const draws: number[][] = [];
   for (let i = 0; i < count; i++) draws.push([P.rng(), P.rng(), P.rng(), P.rng(), P.rng(), P.rng()]);
+  const tieAt = 0.07 + P.rng() * 0.05;
   const cards = new FoliageCardBuffer();
-  const sprays = near(P) ? 3 : 2;
+  const sprays = near(P) ? 5 : 3;
+  const out: readonly [number, number, number] = flank ? [0, 0.15, 1] : [0, 1, 0];
+  let top = 0, zMin = Infinity, zMax = -Infinity;
+  const bez = (a: readonly number[], b: readonly number[], c: readonly number[], t: number): [number, number, number] => {
+    const u = 1 - t;
+    return [0, 1, 2].map((k) => u * u * a[k] + 2 * u * t * b[k] + t * t * c[k]) as [number, number, number];
+  };
   draws.forEach(([a, b, c, d, e, f], i) => {
-    const len = 0.85 + a * 0.45;
-    const base: [number, number, number] = variant === 'upright'
-      ? [(i - (count - 1) / 2) * 0.09 + (b - 0.5) * 0.05, 0.02, 0.03 + c * 0.06]
-      : [(b - 0.5) * 0.3, 0.03, (i - (count - 1) / 2) * 0.1 + (c - 0.5) * 0.04];
-    // upright stems fan fore and aft (the turret-side seat turns local X fore or aft by side), splaying outward
-    const dir = variant === 'upright'
-      ? new THREE.Vector3((i % 2 ? 1 : -1) * (0.12 + d * 0.36), 1, 0.08 + e * 0.14).normalize()
-      : new THREE.Vector3(1, 0.1 + d * 0.12, (e - 0.5) * 0.4).normalize();
-    const tip = [base[0] + dir.x * len, base[1] + dir.y * len, base[2] + dir.z * len];
-    // the woody stem: a tapered bent rod, thick at the cut end
-    const mid = [base[0] + dir.x * len * 0.5, base[1] + dir.y * len * 0.5 - (variant === 'lying' ? 0 : 0.02), base[2] + dir.z * len * 0.5 + 0.015];
-    const stem = sweptTube([base, mid, tip], 0.011, near(P) ? 5 : 4, near(P) ? 4 : 2);
-    P.trim(stem, 0.5 + f * 0.15);
+    const len = 0.55 + a * 0.3;
+    const share = count > 1 ? i / (count - 1) : 0.5;
+    // the cut ends gather at the tie (x ~ 0); the leafy runs fan along +X
+    const base: [number, number, number] = flank
+      ? [-0.06 + b * 0.04, 0.09 + share * 0.2 + (c - 0.5) * 0.03, 0.035 + d * 0.04]
+      : [-0.06 + b * 0.04, 0.03 + (i % 2) * 0.035, (share - 0.5) * 0.2 + (c - 0.5) * 0.03];
+    const heading = flank
+      ? new THREE.Vector3(1, (d - 0.5) * 0.22 + (share - 0.5) * 0.18, (e - 0.5) * 0.12).normalize()
+      : new THREE.Vector3(1, 0.04 + d * 0.05, (share - 0.5) * 0.5 + (e - 0.5) * 0.18).normalize();
+    const tip: [number, number, number] = [base[0] + heading.x * len, base[1] + heading.y * len, base[2] + heading.z * len];
+    tip[1] -= flank ? 0.05 + f * 0.06 : 0.02 + f * 0.02; // the leafy end droops
+    if (!flank) tip[1] = Math.max(0.02, tip[1]);
+    const mid: [number, number, number] = [(base[0] + tip[0]) / 2, (base[1] + tip[1]) / 2 + 0.03, (base[2] + tip[2]) / 2 + (flank ? 0.012 : 0)];
+    const butt: [number, number, number] = [base[0] - heading.x * 0.06, base[1] - heading.y * 0.06, base[2] - heading.z * 0.06];
+    P.trim(sweptTube([butt, base, mid, tip], 0.0105 - share * 0.002, near(P) ? 4 : 3, near(P) ? 3 : 2), 0.48 + f * 0.14);
+    top = Math.max(top, base[1], mid[1]);
+    zMin = Math.min(zMin, base[2]); zMax = Math.max(zMax, base[2]);
     for (let k = 0; k < sprays; k++) {
-      const t = 0.42 + (k / Math.max(1, sprays - 1)) * 0.5;
-      const at: [number, number, number] = [base[0] + dir.x * len * t, base[1] + dir.y * len * t, base[2] + dir.z * len * t];
-      const swing = (k % 2 ? 1 : -1) * (0.45 + ((a * 7 + k * 3.1) % 1) * 0.4);
-      const ax = new THREE.Vector3(dir.x, dir.y, dir.z).applyAxisAngle(new THREE.Vector3(0, 0, 1), variant === 'upright' ? swing * 0.6 : 0)
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), variant === 'lying' ? swing : swing * 0.3).normalize();
-      const sprayLen = 0.42 + ((b * 5 + k * 1.7) % 1) * 0.2;
-      const face = variant === 'upright' ? [0.1, 0.25, 1] as const : [0, 1, 0.15] as const;
-      const tint: [number, number, number] = [0.86 + ((c * 3 + k) % 1) * 0.3, 0.9 + ((d * 5 + k) % 1) * 0.28, 0.8 + ((e * 7 + k) % 1) * 0.22];
-      cards.push({ stem: at, axis: [ax.x, ax.y, ax.z], face, out: variant === 'upright' ? [0, 0.3, 1] : [0, 1, 0],
-        length: sprayLen, width: sprayLen * 0.9, tile: (i + k) % 4, bend: 0.1 + ((f * 3 + k) % 1) * 0.12, tint });
+      const t = 0.16 + (k / Math.max(1, sprays - 1)) * 0.84;
+      const at = bez(base, mid, tip, t);
+      const ahead = bez(base, mid, tip, Math.min(1, t + 0.08));
+      const along = new THREE.Vector3(ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]).normalize();
+      // sprays leave the stem alternately to either side and forward, wider near the tie, closing toward the tip
+      const side = k % 2 ? 1 : -1;
+      const open = (0.95 - t * 0.5) * (0.75 + ((a * 7 + k * 3.1) % 1) * 0.45);
+      // on a wall the sprays rise above the stems and droop only a little below them (the bundle stays off the deck)
+      const axis = flank
+        ? along.clone().applyAxisAngle(new THREE.Vector3(0, 0, 1), side > 0 ? open : -open * 0.35).normalize()
+        : along.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), side * open).normalize();
+      const sprayLen = 0.27 + ((b * 5 + k * 1.7) % 1) * 0.12 + (1 - t) * 0.05;
+      const face = flank ? [0.08 * side, 0.2, 1] as const : [0.12 * side, 1, 0.1] as const;
+      // a cut bough's leaves are deeper than the living tree's sun side and start to wilt (round 2: never pale lime)
+      const tint: [number, number, number] = [0.66 + ((c * 3 + k) % 1) * 0.3, 0.72 + ((d * 5 + k) % 1) * 0.22, 0.56 + ((e * 7 + k) % 1) * 0.18];
+      cards.push({ stem: at, axis: [axis.x, axis.y, axis.z], face, out, length: sprayLen, width: sprayLen * 0.92,
+        tile: (i * 3 + k) % 4, bend: 0.12 + ((f * 3 + k) % 1) * 0.14, tint });
     }
+    // one card past the tip so the leafy end closes the run instead of showing the bare wood
+    cards.push({ stem: tip, axis: [heading.x, heading.y - 0.15, heading.z], face: flank ? [0, 0.2, 1] : [0, 1, 0.1], out,
+      length: 0.26, width: 0.24, tile: (i + 1) % 4, bend: 0.18, tint: [0.78, 0.84, 0.66] });
   });
   const geometry = cards.toGeometry();
   if (geometry) P.leaves(geometry);
+  // the webbing tie over the gathered cut ends, run back to its anchor on the support
+  const band = 0.034;
+  if (flank) {
+    const yTop = top + 0.035, zOut = zMax + 0.03;
+    webbing(P, place(block(band, yTop, 0.008), tieAt, yTop / 2, zOut), 0.62);                     // the run over the stems
+    webbing(P, place(block(band, 0.008, zOut), tieAt, yTop, zOut / 2), 0.62);                     // back to the wall
+    webbing(P, place(block(band, 0.008, zOut), tieAt, 0.004, zOut / 2), 0.62);
+    if (near(P)) P.steel(place(block(0.05, 0.02, 0.014), tieAt, yTop * 0.55, zOut + 0.006), 0.5); // the buckle
+  } else {
+    const yTop = top + 0.03, half = Math.max(Math.abs(zMin), Math.abs(zMax)) + 0.05;
+    webbing(P, place(block(band, 0.008, half * 2), tieAt, yTop, 0), 0.62);                         // over the bundle
+    for (const sz of [-1, 1]) webbing(P, place(block(band, yTop, 0.008), tieAt, yTop / 2, sz * half), 0.62);
+    if (near(P)) P.steel(place(block(0.05, 0.014, 0.02), tieAt, yTop + 0.008, 0), 0.5);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------

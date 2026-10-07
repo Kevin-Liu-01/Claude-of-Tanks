@@ -64,9 +64,10 @@ import {
   sandbag, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
-import { moldedBox, place, roundBar } from './accessoryPrimitives.ts';
+import { block, moldedBox, place, roundBar } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
+  MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT,
 } from './machineGunGeometry.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -455,7 +456,13 @@ const triCount = (geo: THREE.BufferGeometry) => ((geo.index ? geo.index.count : 
 
 // Per-piece baked shade: tone jitter + a soft downward-face AO so merged
 // families don't read as one flat injection-molded color (the same trick
-// tankFactory.bakeDirt plays on the camo shells, minus the dust ramp).
+// tankFactory.bakeDirt plays on the camo shells). 2026-10-06 (round 2: the
+// critics found every piece factory-clean): a field-wear ramp in the piece's
+// seat frame (origin on the support, +Y up) — road dust settled on the faces
+// that look up, warm and pale, and mud caked over the lowest 10 cm where the
+// piece meets the hull, dark and brown.
+const DECOR_DUST_GAIN: readonly [number, number, number] = [0.42, 0.3, 0.06];
+const DECOR_MUD_LOSS: readonly [number, number, number] = [0.32, 0.38, 0.46];
 function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
@@ -464,7 +471,9 @@ function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferG
   for (let i = 0; i < pos.count; i++) {
     const nyv = nor.getY(i);
     const a = (1 - Math.max(0, -nyv) * ao) * (1 - Math.max(0, nyv) * ao * 0.25);
-    col[i * 3] = tone * a; col[i * 3 + 1] = tone * a; col[i * 3 + 2] = tone * a;
+    const dust = Math.pow(Math.max(0, nyv), 1.5) * 0.34;
+    const mud = Math.pow(THREE.MathUtils.clamp(1 - pos.getY(i) / 0.1, 0, 1), 1.5) * 0.42;
+    for (let k = 0; k < 3; k++) col[i * 3 + k] = tone * a * (1 + dust * DECOR_DUST_GAIN[k]) * (1 - mud * DECOR_MUD_LOSS[k]);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
@@ -496,6 +505,52 @@ function partsBBox(parts: DecorPartList): THREE.Box3 {
     bb.union(t);
   }
   return bb;
+}
+
+/**
+ * Loose loads get secured (2026-10-06, round 2: the critics read unstrapped crates, coolers and cans as "placed rather
+ * than secured", and decor casts no shadow). Every loose piece gets a dark contact pad a hair proud of its support
+ * under its footprint (both levels: it is the piece's footing, standing in for the contact occlusion), and hard loads
+ * get webbing tie-downs over the top across their short axis, down both faces to steel D-rings at the foot (near level).
+ * Soft goods keep their own cinch straps. Everything rides the painted-hardware ('cans') and steel draws the pieces
+ * already carry.
+ */
+const SECURED_HARD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations']);
+const SECURED_PAD_KITS: ReadonlySet<string> = new Set(['cargo', 'jerry', 'rations', 'bin', 'packs', 'tarp', 'camonet']);
+const SOFT_CARGO: ReadonlySet<string> = new Set(['long-duffel', 'large-rucksack', 'bedroll-pair', 'folded-tarp-pack',
+  'camo-net-bag', 'crew-backpack', 'helmet-bundle', 'folding-chair', 'cable-reel']);
+function secureLoadParts(parts: DecorPartList, kit: string, variant: string, detail: 0 | 1, webbingRgb: RGB): void {
+  if (!SECURED_PAD_KITS.has(kit)) return;
+  const bb = partsBBox(parts);
+  if (bb.isEmpty() || bb.min.y < -0.03 || bb.max.y < 0.06) return; // a piece not authored on its foot
+  const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, h = bb.max.y;
+  const cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
+  parts.push({ mat: 'cans', geo: bakeTint(place(block(w + 0.03, 0.003, d + 0.03), cx, 0.0015, cz), 0.014, 0.014, 0.012, 0) });
+  const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant));
+  if (!detail || !hard) return;
+  const alongX = w >= d; // the tie crosses the short axis
+  const count = Math.max(w, d) > 0.7 ? 2 : 1;
+  const band = 0.032, thick = 0.006;
+  const strap = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
+  const ring = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5) });
+  for (let k = 0; k < count; k++) {
+    const t = count === 1 ? 0 : (k ? 0.27 : -0.27);
+    if (alongX) {
+      const x = cx + t * w;
+      strap(place(block(band, thick, d + 0.014), x, h + thick / 2, cz));
+      for (const sz of [-1, 1]) {
+        strap(place(block(band, h, thick), x, h / 2, cz + sz * (d / 2 + thick / 2 + 0.001)));
+        ring(place(block(0.046, 0.012, 0.028), x, 0.006, cz + sz * (d / 2 + 0.018)));
+      }
+    } else {
+      const z = cz + t * d;
+      strap(place(block(w + 0.014, thick, band), cx, h + thick / 2, z));
+      for (const sx of [-1, 1]) {
+        strap(place(block(thick, h, band), cx + sx * (w / 2 + thick / 2 + 0.001), h / 2, z));
+        ring(place(block(0.028, 0.012, 0.046), cx + sx * (w / 2 + 0.018), 0.006, z));
+      }
+    }
+  }
 }
 
 /**
@@ -648,22 +703,54 @@ function fieldHardwareTex() {
 
 // camouflage netting: open diagonal mesh with garnish rags; alpha = holes
 function netTex() {
+  // 2026-10-06 (round 2: the critics read the old regular diagonal lattice as "diamond wallpaper"): a knotted net on an
+  // uneven lattice (every row and column at its own pitch, every knot shifted), strands sagging between knots and a few
+  // broken, and frayed garnish rags of irregular outline tied in. The lattice repeats exactly across the tile.
   return canvasTex('decor-net', 128, (g, S) => {
     g.clearRect(0, 0, S, S);
     const rng = mulberry32(0x4e7a);
+    const N = 11, cell = S / N;
+    const pitch = (salt: number) => { const p: number[] = []; for (let i = 0; i < N; i++) p.push(0.7 + mulberry32(salt + i)() * 0.6); return p; };
+    const px = pitch(0x51), py = pitch(0x93);
+    const sx = px.reduce((a, b) => a + b, 0), sy = py.reduce((a, b) => a + b, 0);
+    const colAt: number[] = [], rowAt: number[] = [];
+    for (let i = 0, ax = 0, ay = 0; i < N; i++) { colAt.push(ax / sx * S); rowAt.push(ay / sy * S); ax += px[i]; ay += py[i]; }
+    const jitter: Array<[number, number]> = [];
+    for (let i = 0; i < N * N; i++) jitter.push([(rng() - 0.5) * cell * 0.6, (rng() - 0.5) * cell * 0.6]);
+    const knot = (i: number, j: number): [number, number] => {
+      const wi = ((i % N) + N) % N, wj = ((j % N) + N) % N;
+      const [jx, jy] = jitter[wi * N + wj];
+      return [colAt[wi] + jx + Math.floor(i / N) * S, rowAt[wj] + jy + Math.floor(j / N) * S];
+    };
+    const tiled = (draw: (ox: number, oy: number) => void) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) draw(ox, oy); };
     g.strokeStyle = 'rgba(58,62,40,0.95)';
-    g.lineWidth = 2;
-    for (let d = -S; d < S * 2; d += 9) {
-      g.beginPath(); g.moveTo(d, 0); g.lineTo(d + S, S); g.stroke();
-      g.beginPath(); g.moveTo(d + S, 0); g.lineTo(d, S); g.stroke();
+    g.fillStyle = 'rgba(58,62,40,0.95)';
+    g.lineCap = 'round';
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const a = knot(i, j);
+      for (const [di, dj] of [[1, 0], [0, 1]]) {
+        if (rng() < 0.08) continue;
+        const b = knot(i + di, j + dj), sag = 1 + rng() * 3, w = 1.3 + rng() * 0.9;
+        tiled((ox, oy) => {
+          g.lineWidth = w; g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
+          g.quadraticCurveTo((a[0] + b[0]) / 2 + ox, (a[1] + b[1]) / 2 + sag + oy, b[0] + ox, b[1] + oy); g.stroke();
+        });
+      }
+      tiled((ox, oy) => { g.beginPath(); g.arc(a[0] + ox, a[1] + oy, 1.4 + rng() * 0.8, 0, Math.PI * 2); g.fill(); });
     }
-    for (let i = 0; i < 170; i++) { // garnish scrim rags
-      const x = rng() * S, y = rng() * S;
-      g.fillStyle = rng() < 0.5 ? 'rgba(72,82,46,0.92)' : (rng() < 0.5 ? 'rgba(96,92,54,0.92)' : 'rgba(52,58,38,0.92)');
-      g.save();
-      g.translate(x, y); g.rotate(rng() * Math.PI);
-      g.fillRect(-4 - rng() * 5, -2, 8 + rng() * 10, 4);
-      g.restore();
+    for (let i = 0; i < 120; i++) { // frayed garnish rags of irregular outline
+      const x = rng() * S, y = rng() * S, r = 3 + rng() * 5, sides = 5 + Math.floor(rng() * 3), rot = rng() * Math.PI;
+      g.fillStyle = rng() < 0.45 ? 'rgba(72,82,46,0.92)' : (rng() < 0.5 ? 'rgba(96,92,54,0.92)' : 'rgba(52,58,38,0.92)');
+      const pts: Array<[number, number]> = [];
+      for (let k = 0; k < sides; k++) {
+        const ang = rot + (k / sides) * Math.PI * 2, rr = r * (0.45 + rng() * 0.7) * (k % 2 ? 0.6 : 1);
+        pts.push([Math.cos(ang) * rr * 1.5, Math.sin(ang) * rr * 0.7]);
+      }
+      tiled((ox, oy) => {
+        g.beginPath();
+        pts.forEach(([u, v], k) => (k ? g.lineTo(x + u + ox, y + v + oy) : g.moveTo(x + u + ox, y + v + oy)));
+        g.closePath(); g.fill();
+      });
     }
   });
 }
@@ -752,6 +839,7 @@ interface DecorMaterials {
   all(): Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>>;
 }
 
+// 2026-10-06 (round 2): water cans in slate-olive and extinguishers in a dirty issue red, not toy blue and red
 const BASE_EQUIPMENT_PALETTE = Object.freeze({
   canvas: 0x746f58,
   burlap: 0x8a7857,
@@ -761,9 +849,9 @@ const BASE_EQUIPMENT_PALETTE = Object.freeze({
   accent: [0.34, 0.34, 0.25],
   fuelA: [0.48, 0.40, 0.23],
   fuelB: [0.35, 0.38, 0.22],
-  waterA: [0.12, 0.28, 0.42],
-  waterB: [0.10, 0.24, 0.36],
-  extinguisher: [0.58, 0.10, 0.065],
+  waterA: [0.203, 0.275, 0.292],
+  waterB: [0.172, 0.235, 0.250],
+  extinguisher: [0.369, 0.092, 0.072],
   toolCan: [0.34, 0.39, 0.23],
   ammoCase: [0.28, 0.34, 0.20],
 } satisfies FleetEquipmentPalette);
@@ -775,7 +863,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   american: {
     canvas: 0x777158, burlap: 0x8d7854, steel: 0x3b3d3d, net: 0x687052,
     accent: [0.38, 0.35, 0.22], fuelA: [0.50, 0.40, 0.21], fuelB: [0.38, 0.36, 0.18],
-    extinguisher: [0.62, 0.085, 0.055], ammoCase: [0.30, 0.35, 0.18],
+    extinguisher: [0.392, 0.084, 0.067], ammoCase: [0.30, 0.35, 0.18],
   },
   british: {
     canvas: 0x696a50, burlap: 0x817052, steel: 0x343938, net: 0x59634a,
@@ -785,22 +873,22 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   'east-asian': {
     canvas: 0x5d674f, burlap: 0x786b4d, steel: 0x303634, net: 0x536047,
     accent: [0.25, 0.34, 0.22], fuelA: [0.29, 0.36, 0.20], fuelB: [0.22, 0.30, 0.18],
-    waterA: [0.10, 0.26, 0.34], waterB: [0.08, 0.22, 0.31],
+    waterA: [0.179, 0.249, 0.248], waterB: [0.150, 0.211, 0.218],
   },
   french: {
     canvas: 0x746b55, burlap: 0x88765b, steel: 0x363a3d, net: 0x616951,
     accent: [0.31, 0.33, 0.27], fuelA: [0.41, 0.38, 0.25], fuelB: [0.31, 0.34, 0.24],
-    waterA: [0.12, 0.26, 0.38], waterB: [0.10, 0.23, 0.34],
+    waterA: [0.192, 0.256, 0.268], waterB: [0.167, 0.226, 0.238],
   },
   german: {
     canvas: 0x62665a, burlap: 0x7a705d, steel: 0x35393b, net: 0x59624f,
     accent: [0.28, 0.31, 0.27], fuelA: [0.34, 0.35, 0.25], fuelB: [0.26, 0.31, 0.23],
-    extinguisher: [0.54, 0.075, 0.055], toolCan: [0.30, 0.34, 0.25],
+    extinguisher: [0.342, 0.074, 0.062], toolCan: [0.30, 0.34, 0.25],
   },
   israeli: {
     canvas: 0x80765f, burlap: 0x918064, steel: 0x3a3b38, net: 0x6d7058,
     accent: [0.38, 0.36, 0.28], fuelA: [0.44, 0.40, 0.27], fuelB: [0.36, 0.36, 0.25],
-    waterA: [0.13, 0.27, 0.35], waterB: [0.11, 0.23, 0.31],
+    waterA: [0.199, 0.264, 0.261], waterB: [0.170, 0.226, 0.227],
   },
   italian: {
     canvas: 0x6b6b4d, burlap: 0x857454, steel: 0x353936, net: 0x5c6449,
@@ -810,7 +898,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   nordic: {
     canvas: 0x59645f, burlap: 0x716f5d, steel: 0x303638, net: 0x4f5f55,
     accent: [0.24, 0.31, 0.29], fuelA: [0.30, 0.35, 0.28], fuelB: [0.24, 0.31, 0.25],
-    waterA: [0.11, 0.26, 0.37], waterB: [0.09, 0.23, 0.33],
+    waterA: [0.186, 0.253, 0.262], waterB: [0.161, 0.223, 0.232],
   },
   polish: {
     canvas: 0x626751, burlap: 0x7c7154, steel: 0x333837, net: 0x566149,
@@ -820,14 +908,14 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   soviet: {
     canvas: 0x596047, burlap: 0x75694c, steel: 0x303532, net: 0x505b42,
     accent: [0.24, 0.32, 0.18], fuelA: [0.28, 0.35, 0.18], fuelB: [0.22, 0.29, 0.16],
-    waterA: [0.09, 0.25, 0.31], waterB: [0.075, 0.21, 0.27],
-    extinguisher: [0.48, 0.105, 0.065], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
+    waterA: [0.167, 0.237, 0.231], waterB: [0.141, 0.199, 0.198],
+    extinguisher: [0.307, 0.091, 0.068], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
   },
   ukrainian: {
     canvas: 0x636b50, burlap: 0x7e7251, steel: 0x343836, net: 0x58654a,
     accent: [0.29, 0.35, 0.20], fuelA: [0.39, 0.38, 0.19], fuelB: [0.27, 0.34, 0.17],
-    waterA: [0.10, 0.27, 0.42], waterB: [0.085, 0.23, 0.37],
-    extinguisher: [0.51, 0.12, 0.065], toolCan: [0.27, 0.35, 0.18],
+    waterA: [0.188, 0.263, 0.285], waterB: [0.161, 0.225, 0.248],
+    extinguisher: [0.327, 0.102, 0.071], toolCan: [0.27, 0.35, 0.18],
   },
   neutral: {},
 });
@@ -893,8 +981,9 @@ function buildDecorMaterials(
       roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35,
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
+    // 2026-10-06 (round 2): matte, oily steel; at 0.62 roughness and 0.35 metalness thin handles read as mirror chrome
     steel: () => painted({
-      color: equipmentPalette.steel, roughness: 0.62, metalness: 0.35,
+      color: equipmentPalette.steel, roughness: 0.78, metalness: 0.16,
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.35,
     }),
@@ -1063,6 +1152,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const collector = {
       add(slot: string, geo: THREE.BufferGeometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
         xform(geo, x, y, z, rx, ry, rz);
+        // round 2 (2026-10-06): the can in issue olive and the belt's rounds in dull brass, on the painted-hardware draw
+        if (slot === MG_AMMO_CAN_SLOT) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.11, 0.13, 0.075, 0.28) }); return; }
+        if (slot === MG_CARTRIDGE_SLOT) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.34, 0.25, 0.1, 0.2) }); return; }
         const painted = slot === 'detail' || slot === 'hull';
         parts.push({ mat: painted ? 'kit' : 'steel', geo: bakeShade(geo, painted ? 0.92 : slot === 'shadow' ? 0.32 : tone) });
       },
@@ -1594,9 +1686,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- fresh-cut branch bundle (proposal E, 2026-10-05): per-spec opt-in field camouflage ------
-  foliage({ rng, v = 'upright', n = 5, detail = 1 }) {
+  foliage({ rng, v = 'flank', n = 5, detail = 1 }) {
     const parts: DecorPartList = [];
-    buildBranchBundle(accessoryPainter(parts, rng, detail), v === 'lying' ? 'lying' : 'upright', n);
+    buildBranchBundle(accessoryPainter(parts, rng, detail), v === 'deck' || v === 'lying' ? 'deck' : 'flank', n);
     return parts;
   },
 
@@ -1646,7 +1738,7 @@ export const DECOR_KIT_INFO = {
   rations: { label: 'Ration box stack', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }] },
   bucket: { label: 'Bucket', eras: ['ww2', 'cold-war'], variants: [{}] },
   chain: { label: 'Chain segment', eras: ['ww2', 'cold-war', 'modern'], variants: [{ links: 6 }] },
-  foliage: { label: 'Fresh-cut branches (opt-in)', eras: ['modern'], variants: [{ v: 'upright', n: 5 }, { v: 'lying', n: 4 }] },
+  foliage: { label: 'Fresh-cut branches (opt-in)', eras: ['modern'], variants: [{ v: 'flank', n: 5 }, { v: 'deck', n: 4 }] },
 };
 
 // ---------------------------------------------------------------------------
@@ -1826,9 +1918,10 @@ const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Ob
 function fieldFoliageRows(spec: FleetTankSpec): DecorManifestRow[] {
   if (!FIELD_FOLIAGE[spec.id]) return [];
   return [
-    { kit: 'foliage', p: 1, v: { v: 'upright', n: 5 }, slot: ['turretSide', { side: -1, rear: true }] },
-    { kit: 'foliage', p: 1, v: { v: 'upright', n: 4 }, slot: ['turretSide', { side: 1, rear: true }] },
-    { kit: 'foliage', p: 1, v: { v: 'lying', n: 4 }, slot: ['fender', { side: -1, zFrac: 0.12 }] },
+    // 2026-10-06 (round 2): bundles lashed along the turret flanks and laid on a fender, never planted upright
+    { kit: 'foliage', p: 1, v: { v: 'flank', n: 5 }, slot: ['turretSide', { side: -1, rear: true }] },
+    { kit: 'foliage', p: 1, v: { v: 'flank', n: 4 }, slot: ['turretSide', { side: 1, rear: true }] },
+    { kit: 'foliage', p: 1, v: { v: 'deck', n: 4 }, slot: ['fender', { side: -1, zFrac: 0.12 }] },
   ];
 }
 
@@ -3166,6 +3259,11 @@ export function* attachTankDecorationsSteps(
     };
     const lowTier = opts.geometryQuality === 'low';
     const familyFolds = decorFamilyFolds(equipmentPaletteForNation(spec.nation || ''));
+    // the tie-downs' webbing: the nation's issue canvas through the painter's webbing tint (accessoryPainter.strap)
+    const webbingRgb: RGB = (() => {
+      const c = new THREE.Color(equipmentPaletteForNation(spec.nation || '').canvas);
+      return [c.r * 0.5 * 0.8 * 0.62, c.g * 0.56 * 0.78 * 0.62, c.b * 0.44 * 0.7 * 0.62];
+    })();
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
@@ -3781,12 +3879,20 @@ export function* attachTankDecorationsSteps(
         if (row.kit === 'drums') values._W = W;
         // The mobile tier builds only the coarse forms; other tiers build both levels
         // from identically seeded streams (builders draw before branching on detail).
-        if (lowTier) return kitFn({ rng: mulberry32(seed), ...values, detail: 0 });
+        const variant = String(values.v ?? '');
+        if (lowTier) {
+          const coarseOnly = kitFn({ rng: mulberry32(seed), ...values, detail: 0 });
+          if (coarseOnly) secureLoadParts(coarseOnly, row.kit, variant, 0, webbingRgb);
+          return coarseOnly;
+        }
         const parts = kitFn({ rng: mulberry32(seed), ...values, detail: 1 });
         if (parts) {
           parts.coarse = DETAIL_KITS.has(row.kit)
             ? kitFn({ rng: mulberry32(seed), ...values, detail: 0 })
             : clonePartList(parts);
+          if (parts.coarse && DETAIL_KITS.has(row.kit)) secureLoadParts(parts.coarse, row.kit, variant, 0, webbingRgb);
+          secureLoadParts(parts, row.kit, variant, 1, webbingRgb);
+          if (parts.coarse && !DETAIL_KITS.has(row.kit)) secureLoadParts(parts.coarse, row.kit, variant, 0, webbingRgb);
         }
         return parts;
       } catch (error) {

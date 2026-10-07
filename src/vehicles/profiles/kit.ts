@@ -14,7 +14,7 @@ import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
-  createPintleLayout, type PintleLayout,
+  createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, type PintleLayout,
 } from '../machineGunGeometry.ts';
 import { block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
@@ -1292,6 +1292,10 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
 
 function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Material {
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
+  // 2026-10-06 (round 2): the shared machine gun's ammunition can is issue olive and its belt's rounds dull brass, so
+  // the station reads as a loaded weapon; neither ever takes the host camouflage
+  if (slot === MG_AMMO_CAN_SLOT) return isMaterial(mats.canvasCloth) ? mats.canvasCloth : fitMat(mats, 'gunmetalAmmo');
+  if (slot === MG_CARTRIDGE_SLOT) return isMaterial(mats.canvasPale) ? mats.canvasPale : fitMat(mats, 'gunmetalAmmo');
   const m = mats[slot] || mats.dark;
   if (isMaterial(m)) return m;
   for (const value of Object.values(mats)) if (isMaterial(value)) return value;

@@ -4,7 +4,7 @@ import { FITTINGS } from './kit.ts';
 
 const materialSlots = [
   'dark', 'detail', 'shadow', 'hull', 'gunmetalAmmo', 'glass',
-  'canvasCloth', 'wood', 'spareTrack', 'barrel', 'rubber',
+  'canvasCloth', 'canvasPale', 'wood', 'spareTrack', 'barrel', 'rubber',
 ];
 const mats = Object.fromEntries(materialSlots.map((slot) => [
   slot,
@@ -92,10 +92,15 @@ try {
     assert.equal(body.userData.fittingSlot, 'dark', `${weaponClass}: weapon remains gunmetal`);
     assert.equal(body.userData.appearanceRole, 'machineGun');
 
-    const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'gunmetalAmmo');
-    assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected neutral ammunition assembly`);
-    assert.equal(ammo.material, mats.dark,
-      `${weaponClass}: ammunition resolves to the gunmetal material, never host camouflage`);
+    // 2026-10-06 (tank-accessories round 2): the critics could not read the gunmetal can against the gunmetal gun, so
+    // the can is issue olive (the canvas) and the belt's rounds dull brass (the pale canvas); neither is camouflage.
+    const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'ammoCan');
+    assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected ammunition can`);
+    assert.equal(ammo.material, mats.canvasCloth,
+      `${weaponClass}: the ammunition can resolves to the issue olive, never host camouflage`);
+    const rounds = weapon.children.find((node) => node.userData.fittingSlot === 'cartridge');
+    assert.ok(rounds?.isMesh, `${weaponClass}: the belt carries its rounds`);
+    assert.equal(rounds.material, mats.canvasPale, `${weaponClass}: the rounds resolve to the dull brass`);
 
     for (const node of weapon.children) {
       assert.equal(node.userData.combatHitboxRole, 'equipment',

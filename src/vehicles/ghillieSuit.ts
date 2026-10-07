@@ -132,16 +132,38 @@ function makeGeometry(positions: number[], uvs: number[]): THREE.BufferGeometry 
   return geo;
 }
 
+// 2026-10-06 (round 2: the critics read the suits as nets "lying flat like decals or standing as rigid fences"): the
+// carrier billows between its tie points on a deck, its hem sags in scallops between the ties along a flank, and the
+// flank drape hangs in pleats that fold back toward the hull (never out past the authored carrier). A panel seated on
+// a hard surface (seatGapM) keeps a shallow billow so it stays on that surface.
+const NET_TIE_PITCH_M = 0.58;
+function netBillow(x: number, z: number, seed: number, suitSeed: number, seated: boolean): number {
+  const px = Math.abs(Math.sin(Math.PI * x / NET_TIE_PITCH_M + noise01(seed, 91) * 3));
+  const pz = Math.abs(Math.sin(Math.PI * z / NET_TIE_PITCH_M + noise01(seed, 93) * 3));
+  const swell = 0.5 + 0.5 * Math.sin(x * 2.3 + z * 1.7 + suitSeed * 0.41);
+  return (seated ? 0.005 : 0.024) * Math.pow(px * pz, 0.7) * (0.55 + 0.45 * swell);
+}
+function netHemDrop(z: number, seed: number): number {
+  return 0.04 * Math.pow(Math.abs(Math.sin(Math.PI * z / NET_TIE_PITCH_M + noise01(seed, 95) * 3)), 1.6);
+}
+function netPleat(z: number, t: number, seed: number): number {
+  const w = Math.sin(z * (2 * Math.PI / 0.24) + t * 1.3 + noise01(seed, 97) * 6);
+  return 0.008 * (w > 0 ? w : 1.7 * w) * (0.45 + 0.55 * (1 - t));
+}
+/** The lowest a flank hem may sag: never into the running gear's corridor (ghillieSuit.selftest: above 0.52 m). */
+const NET_HEM_FLOOR_M = 0.545;
+
 function clothTop(panel: TopPanel, suitSeed: number): THREE.BufferGeometry {
   const {
     x0, x1, z0, z1, nx = 18, nz = 30, yAt, outline = null, holes = [], seed = 0,
   } = panel;
   const positions: number[] = [];
   const uvs: number[] = [];
+  const seated = panel.seatGapM !== undefined;
   const vertex = (x: number, z: number): Point3 => {
     const ripple = Math.sin(x * 7.7 + z * 5.9 + seed) * 0.010
       + Math.cos(x * 3.7 - z * 7.3 + suitSeed * 0.31) * 0.006;
-    return [x, yAt(x, z) + ripple, z];
+    return [x, yAt(x, z) + ripple + netBillow(x, z, seed, suitSeed, seated), z];
   };
   const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) {
@@ -181,9 +203,10 @@ function clothSide(panel: SidePanel, suitSeed: number): THREE.BufferGeometry {
   const uvs: number[] = [];
   const vertex = (z: number, t: number): Point3 => {
     const top = topAt(z);
-    const bottom = bottomAt(z);
+    const authoredBottom = bottomAt(z);
+    const bottom = Math.max(authoredBottom - netHemDrop(z, seed), Math.min(authoredBottom, NET_HEM_FLOOR_M));
     return [
-      side * (outAt(z, t) + Math.sin(z * 5.3 + t * 8.1 + seed) * 0.008),
+      side * (outAt(z, t) + netPleat(z, t, seed)),
       THREE.MathUtils.lerp(bottom, top, t)
         + Math.sin(z * 6.7 + t * 4.9 + suitSeed * 0.23) * 0.008,
       z,
@@ -216,9 +239,11 @@ function clothFace(panel: FacePanel, suitSeed: number): THREE.BufferGeometry {
   } = panel;
   const positions: number[] = [];
   const uvs: number[] = [];
+  const facing = z >= 0 || (zAt ? zAt((x0 + x1) / 2, (y0 + y1) / 2) >= 0 : false) ? 1 : -1;
+  const seated = panel.seatGapM !== undefined;
   const vertex = (x: number, y: number): Point3 => [x, y,
     (zAt ? zAt(x, y) : z) + Math.sin(x * 7.3 + y * 6.1 + seed) * 0.010
-      + Math.cos(x * 4.1 - y * 8.3 + suitSeed * 0.27) * 0.006];
+      + Math.cos(x * 4.1 - y * 8.3 + suitSeed * 0.27) * 0.006 + facing * netBillow(x, y, seed, suitSeed, seated) * 0.6];
   const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) {
       positions.push(...p);
@@ -262,13 +287,16 @@ function garnishTint(cfg: GhillieConfig, seed: number): [number, number, number]
   const mix = light.lerp(dark, pick * 0.85);
   // relative to a mid foliage green, clamped: the suit's palette shifts the atlas, never repaints it
   const k = (c: number, ref: number) => THREE.MathUtils.clamp(0.55 + (c / ref) * 0.45, 0.62, 1.22);
-  const bright = 0.78 + noise01(seed, 82) * 0.34;
-  return [k(mix.r, 0.11) * bright, k(mix.g, 0.15) * bright, k(mix.b, 0.07) * bright];
+  // round 2 (2026-10-06: the critics read the garnish as one pale-lime clump stamped at even spacing): a deeper,
+  // wider spread — most sprays a shade darker than the atlas, some wilted toward olive-brown, a few still fresh
+  const bright = 0.58 + noise01(seed, 82) * 0.36;
+  const wilt = noise01(seed, 86) < 0.22 ? 1 : 0;
+  return [k(mix.r, 0.11) * bright * (1 + wilt * 0.28), k(mix.g, 0.15) * bright * (1 - wilt * 0.12), k(mix.b, 0.07) * bright * (1 - wilt * 0.3)];
 }
 
 function cardSize(cfg: GhillieConfig, seed: number): { length: number; width: number } {
   const base = cfg.style === 'leafy' ? 0.5 : 0.44;
-  const length = base * cfg.leafScale * (0.82 + noise01(seed, 83) * 0.36);
+  const length = base * cfg.leafScale * (0.66 + noise01(seed, 83) * 0.62);
   return { length, width: length * (cfg.style === 'leafy' ? 0.92 : 1.02) };
 }
 
@@ -286,7 +314,9 @@ function appendTopFoliageCluster(
   x: number,
   z: number,
 ): void {
-  const count = noise01(seed, 84) < (cfg.style === 'leafy' ? 0.6 : 0.35) ? 2 : 1;
+  // round 2 (2026-10-06): fuller garnish; leafy suits often tuck three sprays at one knot
+  const pick = noise01(seed, 84);
+  const count = cfg.style === 'leafy' ? (pick < 0.35 ? 3 : pick < 0.8 ? 2 : 1) : (pick < 0.45 ? 2 : 1);
   for (let index = 0; index < count; index++) {
     const s = seed + index * 31;
     let { length, width } = cardSize(cfg, s);
@@ -320,7 +350,7 @@ function appendTopFoliageCluster(
       Math.cos(lift), -axis[2] * Math.sin(lift) + Math.sin(heading + Math.PI / 2) * roll * 0.4];
     const sx = x - axis[0] * length * 0.42, sz = z - axis[2] * length * 0.42;
     out.push({
-      stem: [sx, panel.yAt(sx, sz) + 0.014 + index * 0.012, sz],
+      stem: [sx, panel.yAt(sx, sz) + netBillow(sx, sz, panel.seed ?? 0, cfg.seed, panel.seatGapM !== undefined) + 0.014 + index * 0.012, sz],
       axis, face, out: [0, 1, 0], length, width,
       tile: Math.floor(noise01(s, 63) * 4) % 4,
       bend: 0.08 + noise01(s, 64) * 0.16,
@@ -341,10 +371,12 @@ function addTopFoliage(
   for (let z = panel.z0 + stepZ * 0.5; z < panel.z1; z += stepZ) {
     for (let x = panel.x0 + stepX * 0.5; x < panel.x1; x += stepX) {
       const seed = seedBase + n++;
-      const px = x + (noise01(seed, 6) - 0.5) * stepX * 0.58;
-      const pz = z + (noise01(seed, 7) - 0.5) * stepZ * 0.58;
+      const px = x + (noise01(seed, 6) - 0.5) * stepX * 0.95;
+      const pz = z + (noise01(seed, 7) - 0.5) * stepZ * 0.95;
       if (!topFoliagePointAllowed(panel, px, pz)) continue;
-      if (noise01(seed, 8) > cfg.density * 0.82) continue;
+      // garnish clumps where the crew stuffed it and thins elsewhere (round 2): a low-frequency field over the panel
+      const clump = 0.5 + 0.5 * Math.sin(px * 1.9 + pz * 2.7 + cfg.seed * 0.37) * Math.cos(px * 3.1 - pz * 1.3 + cfg.seed * 0.11);
+      if (noise01(seed, 8) > cfg.density * (0.45 + clump * 1.1)) continue;
       appendTopFoliageCluster(out, panel, cfg, seed, px, pz);
     }
   }
@@ -359,9 +391,9 @@ function addSideFoliage(
   const stepZ = cfg.style === 'nakidka' ? 0.40 : 0.32;
   let n = 0;
   for (let z = panel.z0 + stepZ * 0.5; z < panel.z1; z += stepZ) {
-    for (const t0 of [0.3, 0.72]) {
+    for (const t0 of [0.22, 0.5, 0.78]) {
       const seed = seedBase + n++;
-      if (noise01(seed, 9) > cfg.density * 0.86) continue;
+      if (noise01(seed, 9) > cfg.density * 0.98) continue;
       const t = THREE.MathUtils.clamp(t0 + (noise01(seed, 10) - 0.5) * 0.22, 0.12, 0.92);
       const y = THREE.MathUtils.lerp(panel.bottomAt(z), panel.topAt(z), t);
       const x = panel.side * (panel.outAt(z, t) + 0.012);
@@ -405,7 +437,7 @@ function addFaceFoliage(
       const py = y + (noise01(seed, 12) - 0.5) * 0.10;
       if (panel.outline && !insidePoly(px, py, panel.outline)) continue;
       if ((panel.holes || []).some((hole) => insidePoly(px, py, hole))) continue;
-      if (noise01(seed, 13) > cfg.density * 0.86) continue;
+      if (noise01(seed, 13) > cfg.density * 0.98) continue;
       const pz = panel.zAt ? panel.zAt(px, py) : panel.z;
       let { length, width } = cardSize(cfg, seed);
       let swing = (noise01(seed, 15) - 0.5) * 1.6;
@@ -430,7 +462,8 @@ function addFaceFoliage(
       if (!ok) continue;
       const axis: [number, number, number] = [Math.sin(swing), -Math.cos(swing), facing * 0.2];
       out.push({
-        stem: [px - axis[0] * length * 0.42, py + length * 0.38, pz + facing * 0.016], axis,
+        stem: [px - axis[0] * length * 0.42, py + length * 0.38,
+          pz + facing * (0.016 + netBillow(px, py, panel.seed ?? 0, cfg.seed, panel.seatGapM !== undefined) * 0.6)], axis,
         face: [0, 0.1, facing], out: [0, 0, facing], length, width,
         tile: Math.floor(noise01(seed, 16) * 4) % 4,
         bend: 0.05 + noise01(seed, 17) * 0.1,
@@ -466,30 +499,64 @@ function makeNet(
 ): { mat: THREE.MeshStandardMaterial; texture: THREE.CanvasTexture | null } {
   let texture: THREE.CanvasTexture | null = null;
   if (typeof document !== 'undefined') {
+    // 2026-10-06 (round 2: the critics read the old even grid of jittered lines as "diamond wallpaper"): a knotted
+    // carrier net. Knots sit on an uneven lattice (each row and column at its own pitch, every knot shifted a third of a
+    // cell), strands sag between knots, a few are broken or doubled, the knots are tied blobs, and short garnish strips
+    // are knotted in. The lattice repeats exactly across the tile, so the net tiles without a seam.
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 128;
+    const SIZE = 128, N = 9;
+    canvas.width = canvas.height = SIZE;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 128, 128);
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    const pitchX: number[] = [], pitchY: number[] = [];
+    for (let i = 0; i < N; i++) { pitchX.push(0.7 + noise01(i, cfg.seed + 21) * 0.6); pitchY.push(0.7 + noise01(i, cfg.seed + 23) * 0.6); }
+    const sumX = pitchX.reduce((a, b) => a + b, 0), sumY = pitchY.reduce((a, b) => a + b, 0);
+    const colAt: number[] = [], rowAt: number[] = [];
+    for (let i = 0, ax = 0, ay = 0; i < N; i++) { colAt.push((ax / sumX) * SIZE); rowAt.push((ay / sumY) * SIZE); ax += pitchX[i]; ay += pitchY[i]; }
+    const cell = SIZE / N;
+    const knot = (i: number, j: number): [number, number] => {
+      const wi = ((i % N) + N) % N, wj = ((j % N) + N) % N;
+      const shiftX = Math.floor(i / N) * SIZE, shiftY = Math.floor(j / N) * SIZE;
+      return [colAt[wi] + (noise01(wi * 31 + wj, cfg.seed + 25) - 0.5) * cell * 0.62 + shiftX,
+        rowAt[wj] + (noise01(wi * 17 + wj * 7, cfg.seed + 27) - 0.5) * cell * 0.62 + shiftY];
+    };
+    const strand = (a: [number, number], b: [number, number], sag: number, width: number): void => {
+      for (const ox of [-SIZE, 0, SIZE]) for (const oy of [-SIZE, 0, SIZE]) {
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        ctx.moveTo(a[0] + ox, a[1] + oy);
+        ctx.quadraticCurveTo((a[0] + b[0]) / 2 + ox, (a[1] + b[1]) / 2 + sag + oy, b[0] + ox, b[1] + oy);
+        ctx.stroke();
+      }
+    };
     ctx.strokeStyle = cfg.netColor;
-    ctx.lineWidth = cfg.style === 'ulcans' ? 1.8 : 1.25;
+    ctx.fillStyle = cfg.netColor;
     ctx.lineCap = 'round';
-    for (let row = 0; row < 12; row++) {
-      const base = (row + 0.5) * 128 / 12 + (noise01(row, cfg.seed) - 0.5) * 5;
-      ctx.beginPath(); ctx.moveTo(-4, base);
-      for (let step = 0; step <= 12; step++) {
-        const x = step * 11;
-        ctx.lineTo(x, base + (noise01(row * 17 + step, cfg.seed + 2) - 0.5) * 9);
+    const base = cfg.style === 'ulcans' ? 1.7 : 1.25;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const k = knot(i, j);
+      for (const [di, dj, salt] of [[1, 0, 41], [0, 1, 43]] as const) {
+        const r = noise01(i * 13 + j * 5 + salt, cfg.seed);
+        if (r < 0.07) continue; // a broken strand
+        const sag = 1.5 + noise01(i + j * 11 + salt, cfg.seed + 3) * 3.5;
+        strand(k, knot(i + di, j + dj), sag, base * (r > 0.9 ? 1.8 : 0.85 + noise01(i * 3 + j, salt) * 0.35));
       }
-      ctx.stroke();
     }
-    for (let col = 0; col < 11; col++) {
-      const base = (col + 0.5) * 128 / 11 + (noise01(col, cfg.seed + 4) - 0.5) * 6;
-      ctx.beginPath(); ctx.moveTo(base, -4);
-      for (let step = 0; step <= 12; step++) {
-        const y = step * 11;
-        ctx.lineTo(base + (noise01(col * 19 + step, cfg.seed + 6) - 0.5) * 10, y);
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const [kx, ky] = knot(i, j);
+      const r = base * (0.9 + noise01(i * 7 + j * 3, cfg.seed + 29) * 0.8);
+      for (const ox of [-SIZE, 0, SIZE]) for (const oy of [-SIZE, 0, SIZE]) {
+        ctx.beginPath(); ctx.arc(kx + ox, ky + oy, r, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.stroke();
+    }
+    // knotted-in garnish strips: short frayed tabs hanging from some knots
+    for (let n = 0; n < 14; n++) {
+      const [kx, ky] = knot(Math.floor(noise01(n, cfg.seed + 31) * N), Math.floor(noise01(n, cfg.seed + 33) * N));
+      const len = cell * (0.5 + noise01(n, cfg.seed + 35) * 0.6), ang = Math.PI / 2 + (noise01(n, cfg.seed + 37) - 0.5) * 1.2;
+      ctx.lineWidth = base * 2.2;
+      for (const ox of [-SIZE, 0, SIZE]) for (const oy of [-SIZE, 0, SIZE]) {
+        ctx.beginPath(); ctx.moveTo(kx + ox, ky + oy); ctx.lineTo(kx + ox + Math.cos(ang) * len, ky + oy + Math.sin(ang) * len); ctx.stroke();
+      }
     }
     texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;

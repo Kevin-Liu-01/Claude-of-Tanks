@@ -80,7 +80,12 @@ changing it (remote parity). The 20 L jerrycan is one construction too
 cans, shovels and stowage-rack loads use the same primitives inside their old
 envelopes and random draws, as do the decor roof furniture (cupolas, hatches,
 sights, searchlights, exhausts, the travel lock; `accessoryKits.ts`). Decor probes skip running gear by name
-(`isDecorRunningGearName`); track guards and skirts are supports and obstacles.
+(`isDecorRunningGearName`); track guards and skirts are supports and obstacles. Round 2 of the blind critics
+(2026-10-06) set four more rules: loose hard loads carry webbing tie-downs to D-rings and every loose piece a dark
+contact pad (`secureLoadParts`, decor casts no shadow); branch bundles lie lashed along a wall or deck, never
+upright; nets are knotted on an uneven lattice and billow, sag and pleat between tie points; and the machine gun's can
+is issue olive with a belt of dull-brass rounds into a feed tray. Primitives close their shells (lathe and tube caps,
+straps sunk into the fabric), because the sealed-hull census counts any inside seen from outside as a hole.
 For player-reported Garage defects, also verify the actual carousel/pedestal
 path with its live engine context, AI geometry quality, static batching and
 cache return. Bare procedural or Gallery captures are insufficient. Record

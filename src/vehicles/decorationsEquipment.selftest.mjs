@@ -57,10 +57,15 @@ const coolerColors = cooler
     }
     return sum.map((value) => value / color.count);
   });
-assert.ok(coolerColors.some(([r, g, b]) => b > r * 2.5 && b > g * 1.4),
-  'beer cooler owns a clearly blue insulated body');
-assert.ok(coolerColors.some(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b) < 0.08),
-  'beer cooler owns a separate neutral lid');
+// 2026-10-06 (tank-accessories round 2): the blind critics read the blue cooler with its grey lid as a toy-coloured
+// civilian box; crews carry it in issue colours, an olive-drab body under a lighter olive lid.
+assert.ok(coolerColors.some(([r, g, b]) => g >= r && g > b * 1.3),
+  'beer cooler owns an olive-drab insulated body');
+assert.ok(coolerColors.every(([r, g, b]) => b <= Math.max(r, g)),
+  'beer cooler carries no blue anywhere');
+const shade = ([r, g, b]) => r + g + b;
+assert.ok(Math.max(...coolerColors.map(shade)) - Math.min(...coolerColors.map(shade)) > 0.01,
+  'beer cooler owns a separate, lighter lid');
 assert.ok(coolerColors.every(([r, g, b]) => Math.max(r, g, b) < 0.78),
   'beer cooler avoids bright high-contrast authored colors');
 assert.ok(cooler.length >= 10,

@@ -257,31 +257,54 @@ export function addPintleBarrel(context: PintleLayout): void {
   }
 }
 
+/** The ammunition can's slot: callers paint it as issue olive (profiles: the canvas; decor: the scheme kit). */
+export const MG_AMMO_CAN_SLOT = 'ammoCan';
+/** The belt's cartridges: callers paint them as dull brass (profiles: the pale canvas; decor: a brass tint). */
+export const MG_CARTRIDGE_SLOT = 'cartridge';
+
+/**
+ * The ammunition: a pressed can beside the receiver, its lid, handle and latch, a feed tray on the receiver's feed side
+ * and a belt of cartridges that rises from the can's mouth and drops into the tray. 2026-10-06 (round 2: the critics
+ * read the guns as "a bare tube on a block with no feed tray, belt or ammunition box" and could not find a gun at play
+ * distance): the can is a third larger and olive, not gunmetal, and the belt carries its rounds, the brass catching
+ * the light, so the station reads as a loaded weapon from the chase camera.
+ */
 export function addPintleAmmo(context: PintleLayout): void {
-  const { ammoSlot, parts, recY, recZ, rw, s, weaponSlot } = context;
-  if (context.ammo) {
-    const ax = -(rw / 2 + 0.055 * s);
-    // pressed can with filleted corners, a proud lid with its folding handle, and the latch lever
-    parts.add(ammoSlot, moldedBox(0.085 * s, 0.11 * s, 0.17 * s, 0.008 * s, 1, 0.005 * s), ax, recY - 0.005, recZ - 0.02);
-    parts.add(weaponSlot, moldedBox(0.088 * s, 0.009 * s, 0.174 * s, 0.006 * s, 1, 0.003 * s), ax, recY + 0.056 * s, recZ - 0.02);
-    parts.add(weaponSlot, roundBar([ax, recY + 0.066 * s, recZ - 0.075 * s], [ax, recY + 0.066 * s, recZ + 0.035 * s], 0.0045 * s, 6));
-    parts.add(weaponSlot, block(0.018 * s, 0.060 * s, 0.020 * s), ax - 0.050 * s, recY + 0.002 * s, recZ - 0.020 * s);
-    // the belt leaves the can's mouth and follows one curve into the feed tray; links stay gunmetal
-    const p0 = [ax * 0.9, recY + 0.045 * s, recZ + 0.05 * s];
-    const p1 = [ax * 0.6, recY + 0.07 * s, recZ + 0.105 * s];
-    const p2 = [-rw * 0.52, recY + 0.028 * s, recZ + 0.135 * s];
-    const links = 7;
-    for (let index = 0; index < links; index++) {
-      const t = index / (links - 1);
-      const u = 1 - t;
-      const p = [0, 1, 2].map((k) => u * u * p0[k] + 2 * u * t * p1[k] + t * t * p2[k]);
-      const d = [0, 1, 2].map((k) => 2 * u * (p1[k] - p0[k]) + 2 * t * (p2[k] - p1[k]));
-      // each link square to the belt's tangent (heading, then climb)
-      const turn = new THREE.Euler(-Math.atan2(d[1], Math.hypot(d[0], d[2])), Math.atan2(d[0], d[2]), 0, 'YXZ');
-      const link = block(0.032 * s, 0.012 * s, 0.017 * s);
-      link.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(turn));
-      parts.add(weaponSlot, link, p[0], p[1], p[2]);
-    }
+  const { ammoSlot, parts, recY, recZ, rh, rw, s, weaponSlot, cls } = context;
+  if (!context.ammo) return;
+  const heavy = cls.caliber > 10;
+  const canW = (heavy ? 0.105 : 0.09) * s, canH = (heavy ? 0.14 : 0.12) * s, canD = (heavy ? 0.22 : 0.19) * s;
+  const ax = -(rw / 2 + canW / 2 + 0.012 * s);
+  const canY = recY - 0.01 * s, canZ = recZ - 0.02 * s;
+  const canSlot = ammoSlot === 'gunmetalAmmo' ? MG_AMMO_CAN_SLOT : ammoSlot;
+  // pressed can with filleted corners, a proud lid with its folding handle, and the latch lever
+  parts.add(canSlot, moldedBox(canW, canH, canD, 0.008 * s, 1, 0.005 * s), ax, canY, canZ);
+  const lidY = canY + canH / 2 + 0.005 * s;
+  parts.add(canSlot, moldedBox(canW * 1.04, 0.01 * s, canD * 1.025, 0.006 * s, 1, 0.003 * s), ax, lidY, canZ);
+  parts.add(weaponSlot, roundBar([ax, lidY + 0.012 * s, canZ - canD * 0.32], [ax, lidY + 0.012 * s, canZ + canD * 0.2], 0.0045 * s, 6));
+  parts.add(weaponSlot, block(0.018 * s, canH * 0.55, 0.02 * s), ax - canW / 2 - 0.006 * s, canY + canH * 0.1, canZ);
+  // the feed tray on the receiver's feed side, with its guide lip
+  const trayX = -rw / 2 - 0.012 * s, trayY = recY + rh * 0.18, trayZ = recZ + 0.12 * s;
+  parts.add(weaponSlot, block(0.03 * s, 0.008 * s, 0.075 * s), trayX, trayY, trayZ);
+  parts.add(weaponSlot, block(0.03 * s, 0.022 * s, 0.006 * s), trayX, trayY + 0.012 * s, trayZ + 0.04 * s);
+  // the belt: rises from the can's mouth and drops into the tray; each link carries a round pointing forward
+  const p0 = [ax + canW * 0.2, lidY + 0.012 * s, trayZ];
+  const p1 = [(ax + trayX) / 2, Math.max(lidY, trayY) + 0.07 * s, trayZ];
+  const p2 = [trayX - 0.006 * s, trayY + 0.012 * s, trayZ];
+  const links = heavy ? 9 : 10;
+  const roundR = (heavy ? 0.0085 : 0.0055) * s, roundL = (heavy ? 0.105 : 0.072) * s;
+  for (let index = 0; index < links; index++) {
+    const t = index / (links - 1);
+    const u = 1 - t;
+    const p = [0, 1, 2].map((k) => u * u * p0[k] + 2 * u * t * p1[k] + t * t * p2[k]);
+    const d = [0, 1, 2].map((k) => 2 * u * (p1[k] - p0[k]) + 2 * t * (p2[k] - p1[k]));
+    // the link square to the belt's tangent in the belt's own plane (the rounds stay parallel to the bore)
+    const roll = Math.atan2(d[1], d[0]);
+    const link = block(0.016 * s, 0.006 * s, roundL * 0.62);
+    link.applyMatrix4(new THREE.Matrix4().makeRotationZ(roll));
+    parts.add(weaponSlot, link, p[0], p[1], p[2]);
+    const round = cylZ(roundR, roundL, 6);
+    parts.add(MG_CARTRIDGE_SLOT, round, p[0] - Math.sin(roll) * roundR, p[1] + Math.cos(roll) * roundR, p[2] + roundL * 0.12);
   }
 }
 
