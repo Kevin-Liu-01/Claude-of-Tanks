@@ -352,6 +352,11 @@ interface SplatConfig {
    * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
    * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
   saltCrust?: { crackM?: number; damp?: number };
+  /** Ground lane (2026-10-06, the arid lane's request for Titan Gorge's Monument Valley tracks): washboard on the map's
+   * dirt roads — corrugation ripples across the carriageway every `spacingM` metres (0.6–0.9 real), deepest in the wheel
+   * lanes, coming and going along the road (`strength` 0..1). Read on a styled road net only (the path's heading:
+   * terrain.roads.pathStyles), on its dirt carriageways. */
+  washboard?: { strength: number; spacingM?: number };
   roadTexMix?: number;
   townWear?: number;
   iceDrift?: number;
@@ -3709,6 +3714,7 @@ uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoul
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
+uniform vec2 uWashboard;  // ground lane (2026-10-06): a dirt road's corrugation (strength, crest spacing m); x 0 = off
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -5819,6 +5825,21 @@ void splatCompute() {
     a.rgb *= 1.0 - min(mix(rut, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
     a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
     a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
+    // Ground lane (2026-10-06, the arid lane: "washboard corrugation on Titan Gorge's dirt roads — the ripples run across
+    // the carriageway, perpendicular to travel, about 0.6–0.9 m apart"): a desert dirt road's washboard — the crests
+    // across the road along the styled path's heading, their spacing wandering a little along it, deepest in the wheel
+    // lanes and fading toward the verges, strong down one stretch and nearly gone on the next; a relief in the light with
+    // the crests a shade paler with dust and the troughs darker, faded where a crest spans a pixel (a dirt carriageway
+    // on a styled net only: every other road and map as it was)
+    if (uWashboard.x > 0.001 && uRoadClass.z > 0.5 && gRoadTex < 0.5 && roadCore > 0.003) {
+      float wbVis = tileVis(uWashboard.y);
+      float wbAmp = uWashboard.x * roadCore * (0.45 + 0.55 * lane) * smoothstep(0.30, 0.62, n2 * 0.6 + n1 * 0.4) * wbVis;
+      if (wbAmp > 0.002) {
+        float wbPh = dot(wp.xz, gRoadDir) * (6.2832 / uWashboard.y) + (n1 - 0.5) * 5.0;
+        a.rgb *= 1.0 + sin(wbPh) * 0.07 * wbAmp;
+        if (nrmOn) n.xy += gRoadDir * cos(wbPh) * 0.16 * wbAmp;
+      }
+    }
     if (gRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
@@ -6712,6 +6733,7 @@ function* createSplatMaterialSteps(
     // maps lane B (2026-10-03): airfield concrete and a sor's salt crust (both off unless the map authors them)
     shader.uniforms.uPaveSlab = { value: new THREE.Vector4(S.pavement ? S.pavement.slabM : 0, S.pavement?.jointM ?? 0.04,
       S.pavement?.stains ?? 1, S.pavement?.tyres ?? 1) };
+    shader.uniforms.uWashboard = { value: new THREE.Vector2(clamp(S.washboard?.strength ?? 0, 0, 1), clamp(S.washboard?.spacingM ?? 0.75, 0.4, 1.5)) };
     shader.uniforms.uSaltCrust = { value: new THREE.Vector4(S.saltCrust ? 1 : 0, S.saltCrust?.crackM ?? 1.8,
       S.saltCrust?.damp ?? 1, 0) };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps

@@ -51,7 +51,10 @@ export default {
       [[366, -454], [304, -304], [246, -168], [191.28, -64.47], [172, -28], [92, 108], [40.03, 190.91], [8, 242], [-25.84, 289.09], [-84, 370], [-176, 466]],
       [[-382, -72], [-260, -92], [-215.93, -80.05], [-142, -60], [-12, -82], [29.28, -71.04], [116, -48], [191.28, -64.47], [244, -76], [372, -54]],
       [[-334, 228], [-214, 192], [-96, 220], [-61.9, 211.34], [30, 188], [40.03, 190.91], [154, 224], [203.83, 213.27], [284, 196]],
-    ] },
+    ],
+    // ground lane (2026-10-06): the five tracks styled as dirt — their look the map's own packed earth, the styled net's
+    // heading under them for the washboard (splat.washboard)
+    pathStyles: [{ surface: 'dirt' }, { surface: 'dirt' }, { surface: 'dirt' }, { surface: 'dirt' }, { surface: 'dirt' }] },
     landforms: [
       // The valley's red-rock shelves: stepped walls of bedded sandstone (cliff bands, benches, talus) along the west
       // and east sides (landformGeology.ts).
@@ -96,6 +99,8 @@ export default {
     // channel ≥ 0.78 (luma ×0.83) — the patches stay darker than the shelves without going black
     tintA: [1.10, 0.88, 0.69], tintB: [0.90, 0.82, 0.78], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.22, sandMacro: 0.82,
+    // ground lane (2026-10-06, the arid lane: "washboard corrugation on Titan Gorge's dirt roads (Monument Valley)")
+    washboard: { strength: 1, spacingM: 0.75 },
     // round 49 (owner audit 2026-09-23, "smooth beige ridge faces without strata"): the ring's 35–47° faces past the edge
     // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)
     ringRockSlope: [0.15, 0.36],

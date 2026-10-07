@@ -132,6 +132,7 @@ function checkSourceContract(text) {
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
+    'uWashboard', // ground lane (2026-10-06): a styled dirt road's corrugation (strength, spacing m; vec2, no sampler)
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
