@@ -210,6 +210,9 @@ const powerhouse: RegionalBuilder = (ctx) => {
   }
   // the fascia band and the parapet
   sink.band(CONCRETE, -W / 2 - 0.25, H - 1.2, zb - 0.25, W / 2 + 0.25, H + 0.6, zf + 0.25, { decor: true });
+  // (round 3, gauntlet wave 133: the wall "meets bare orange sand with no plinth, apron or contact shadow") the dark
+  // plinth band under the board-formed walls, as on the control building
+  sink.band(PAINTED, -W / 2 - 0.14, -0.3, zb - 0.14, W / 2 + 0.14, 1.1, zf + 0.14, { decor: true, shade: 0.7 });
   // (gauntlet wave 107: the roof gantry crane read as "a yellow A-frame sitting on the rooftop with no rails, supports or
   // load context" and is gone; its livery's draw and its place's are kept, so every later draw holds)
   pick(rng, [rgb(0xc9a24a), STEEL_GREEN, rgb(0xb8302a)]);
@@ -771,8 +774,10 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     sourced: { plaster: false, wood: true },
     tones: {
       // stucco in the town's pale colours, poured concrete a warm grey, painted concrete and block an off-white
+      // (round 3, gauntlet wave 133: the poured concrete read "bright cream": sixty years of weather took it to a
+      // middling buff-grey)
       plaster: (_h, s, l) => [0.09, Math.min(1, s * 0.6 + 0.12), Math.min(1, l * 1.1 + 0.12)],
-      plaster2: (_h, s, l) => [0.08, Math.min(1, s * 0.25 + 0.03), Math.min(1, l * 0.95 + 0.14)],
+      plaster2: (_h, s, l) => [0.08, Math.min(1, s * 0.18 + 0.02), Math.min(1, l * 0.88 + 0.07)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.25), Math.min(1, l * 1.2 + 0.16)],
     },
     // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured, board-formed, as at the dam)

@@ -52,6 +52,8 @@ import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
+import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
+import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -112,6 +114,12 @@ interface HorizonConfig {
    * runs into a massif right behind the edge, the pass is a trench as deep as the massif is high, and its end a wall
    * (gauntlet wave 6, Frosthollow's edge-n: "a smooth near-vertical curtain"). */
   roadPasses?: boolean;
+  /** The map-revival lane (2026-10-06): a dam across a canyon cut through the ring (horizonDam.ts) — Skybridge's Glen
+   * Canyon Dam, the gorge's axis run on through the north ring to an arch under the plateau's rim. */
+  dam?: HorizonDamSettings;
+  /** The map-revival lane (2026-10-06): the tableland ring's outer ranges capped into flat-topped mesas past a radius
+   * (horizonTablelands.ts) — the mesa stack's saddle, summits and shoulder otherwise stand as domes and spires. */
+  summitCap?: HorizonSummitCapSettings;
   /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
    * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
    * peaks (no far plateaus). */
@@ -2195,6 +2203,8 @@ export function sampleHorizonGeometry(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
+  if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
+  if (horizon.dam) carveHorizonDamCanyon(ring, horizon.dam, HORIZON_SEGMENTS);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -3631,7 +3641,12 @@ export function* buildHorizonRingSteps(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
+  // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
+  // and its reservoir as the ring's water (horizonDam.ts)
+  if (H.summitCap) capHorizonSummits(ring, H.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
+  if (H.dam) carveHorizonDamCanyon(ring, H.dam, HORIZON_SEGMENTS);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
+  if (H.dam) floodHorizonDamReservoir(ring, sea, H.dam);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   // the map-borders lane: the road exits as they lie on the finished ring (terrain.ts roadExitOnRing) — each runs out at
   // the foot of the ranges unless they opened a pass for it; the farms, villages, avenues and the carriageway attribute
@@ -3970,6 +3985,17 @@ export function* buildHorizonRingSteps(
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
       if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
       mesh.add(farms);
+    }
+  }
+  // The map-revival lane (2026-10-06, Skybridge's Glen Canyon Dam): the arch across the canyon cut above, seated on the
+  // finished ring (horizonDam.ts) — lit and joined to the cascades like the farmsteads, its shadow in the far cascade.
+  // It stands on the seated ring's fine rows: the receipts' bare backdrop (no ground) keeps the canyon and no dam
+  if (H.dam && ground) {
+    const dam = buildHorizonDam(H.dam, ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs));
+    if (dam) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, dam.material as THREE.Material, null);
+      mesh.add(dam);
     }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map

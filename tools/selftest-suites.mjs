@@ -1316,6 +1316,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
+    // the map-revival lane (2026-10-06): Skybridge's Glen Canyon Dam — the canyon through the north ring and the arch
+    'src/world/horizonDam.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
