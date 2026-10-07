@@ -297,12 +297,14 @@ export default {
     // "garbled, mirror-reversed"): the elevator's gravel yard along its front with two lorries waiting in it, its silos
     // streaked from their domes; the arch's banner lettered КОЛХОЗ «ЗАРЯ ЦЕЛИНЫ» on both faces and a picket fence run
     // 6 m off each pillar.
+    // Round 3 (2026-10-07; gauntlet wave 204: the banner should name a sovkhoz, the Virgin Lands' state farms): СОВХОЗ
+    // «ЦЕЛИННЫЙ»; no grass up through the elevator's yard.
     landmarks: [
       { kind: 'path', x: 186, z: -153.7, yawDeg: 0, name: "the elevator's yard", params: { length: 8, width: 34, surface: 'gravel' } },
       { kind: 'grainElevator', x: 186, z: -166, yawDeg: 0, name: 'the grain elevator on the siding', params: { trucks: 2 } },
       // (its piers 14 m apart, off the carriageway and its verge, inside the shelterbelts' setback: mr4's check)
       { kind: 'kolkhozArch', x: -258, z: -148.2, yawDeg: 98.3, name: 'the kolkhoz arch on the station road',
-        params: { span: 13.2, height: 6.6, sign: 'КОЛХОЗ «ЗАРЯ ЦЕЛИНЫ»', wings: 6 } },
+        params: { span: 13.2, height: 6.6, sign: 'СОВХОЗ «ЦЕЛИННЫЙ»', wings: 6 } },
     ],
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
