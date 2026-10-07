@@ -114,12 +114,17 @@ export default {
     // Ofoten, a fortnight after the snow: last year's grass straw-brown over the new shoots, the moss dark under it
     tintA: [0.98, 0.95, 0.80], tintB: [0.72, 0.72, 0.60], tintC: [1.05, 1.0, 0.84],
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
-    // round 3 (wave 129: "one smooth lime-green grass carpet"; Grass004 is green blades whatever the macro tints do):
-    // the steppe's photo sets under Nordhavn's own tints — last year's matted straw with an olive cast over the new
-    // shoots (withered grass to ~0.115/0.125/0.055 linear), the fjord row's dirt and dark blue-grey gneiss unchanged
-    // (sourcedTint divides out the steppe row's own tints)
-    sourcedPalette: 'steppe',
-    sourcedTint: { G: [0.34, 0.5, 0.47], D: [0.81, 0.9, 1.1], R: [0.48, 0.59, 0.82] },
+    // round 3 (wave 129: "one smooth lime-green grass carpet") took the steppe's withered grass under an olive cast;
+    // round 4 (wave 189: "a dead-flat, near-black bare-earth plane dotted with white pebbles ... scorched or unfinished
+    // ground"): a Nordland meadow in early summer — the fjord row's own grass, its blades a green-yellow (Grass004's
+    // mean 0.12/0.154/0.031 linear to ~0.091/0.122/0.037: red three quarters of the green, the blue lifted half again
+    // so the sward is a softer green than the photo's lime), its dirt and dark blue-grey gneiss the row's own
+    sourcedTint: { G: [1.0, 0.92, 1.5] },
+    // the dirt on the tracks and the yards only: the noise-worn field patches grazed turf (was the default 0.84)
+    wornDirtStrength: 0.35,
+    // the gneiss breaks the sod in places: the outcrop patches take rock from ~15 degrees (the knolls' and roches
+    // moutonnées' flanks), the level fields stay turf
+    slopeGrassHold: -0.05,
     // round 3 (wave 129: the peninsulas' cliffs "one smooth, uniformly grey vertical wall ... no ledges, joints or
     // glacial rounding"): the gneiss's sheeting and joints drawn on the steep rock only (the material's beds, partings,
     // joint blocks and varnish streaks, as Aegis's walls); a geology on the peninsula ridges themselves moved the
@@ -145,9 +150,13 @@ export default {
     // map pass 2026-09-12: the harbour terraces read as smooth lawn; dwarf
     // spruce scrub and more coastal rock give the slopes a fjord texture.
     // (wave 111b: "evenly spaced identical lime-green grass billboards") the sward short and thin after the snow, last year's
-    // straw over the new blades
-    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.34,
-    grassTexTone: (h: number, s: number, l: number): [number, number, number] => [0.13, clamp01(s * 0.32 + 0.06), clamp01(l * 0.86 + 0.1)],
+    // straw over the new blades; round 4 (wave 189: "a few yellow tufts" on bare ground): the early summer's sward, most
+    // of the ground covered, the blades green-yellow and each card keeping its own shades (the hue follows the
+    // texture's, a little yellower where it is pale)
+    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.62,
+    grassTexTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.21 + (h - 0.25) * 0.35 - (l - 0.5) * 0.05), clamp01(s * 0.42 + 0.08), clamp01(l * 0.84 + 0.08)],
+    // (wave 189: "dotted with white pebbles") fewer field stones, and a lichened gneiss grey at the turf's value
+    litter: { density: 0.45, stones: 0.6, clods: 0.35, splinters: 0.45, stoneTint: [0.105, 0.11, 0.1] },
     bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
@@ -204,7 +213,9 @@ export default {
       // vocabulary is the wharf's cable reels and the road signs
       // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
       drumClusters: 6, camps: 2, modernClutter: { cablespool: 10, roadsign: 8 },
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // round 4 (the coordinator, waves 182-184: no white picket fences off the American maps): the gardens' runs split
+      // rails, the nearest to a Norwegian skigard (no colliders, as the pickets)
+      roadFence: 'fencerail', yardFence: 'fencerail',
     },
   },
   horizon: {

@@ -781,5 +781,6 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   },
   wear: 0.3,
   // the yards: white picket fences round the potato beds and the woodshed (yards.ts)
-  yard: { kinds: ['cottage', 'logcabin', 'alpine'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },
+  // round 4 (no white pickets off the American maps): the yards fenced in split rails, the skigard's nearest
+  yard: { kinds: ['cottage', 'logcabin', 'alpine'], fence: 'fencerail', gate: 'gate', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },
 });

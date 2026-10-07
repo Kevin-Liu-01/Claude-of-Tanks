@@ -85,14 +85,16 @@ assert.throws(() => checkCoverage(source.replace(scalar(source, 'fD'),
   scalar(source, 'fD') + ' * uWornDirtStrength')), 'scaling road/town coverage after max must fail');
 
 function checkMapScope(resolve) {
-  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'saltwind']);
+  // mr2 round 4 (2026-10-07, wave 189: Nordhavn's fields "a dead-flat bare-earth plane"): Nordhavn authors .35, the
+  // fields' worn breakup grazed turf and the dirt on its tracks and yards
+  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'fjord', 'saltwind']);
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine'],
     'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder');
   assert.equal(resolve('alpine').splat.shoulderDirt, .3);
   for (const id of MAP_IDS) {
     // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
     // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
-    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : .84);
+    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : id === 'fjord' ? .35 : .84);
   }
 }
 checkMapScope(getMapConfig);
