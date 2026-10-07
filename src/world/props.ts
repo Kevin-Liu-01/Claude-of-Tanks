@@ -9163,16 +9163,32 @@ ${snowCap ? `
   // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
   function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
-    if (!scenery?.fieldWorks) return;
+    if (!scenery?.fieldWorks && !scenery?.gromace?.length) return;
     const yardKinds = new Set(yardStructureKinds());
     const built = yield* composeFieldWorks({
-      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies], obstacles, trees: sceneryTrees,
+      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies], obstacles, colliders, trees: sceneryTrees,
       seed, mobile: mobileProps,
       hardstands: (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
       yards: buildingFeatures.filter((b) => b.kind && yardKinds.has(b.kind)).map((b) => ({ x: b.x, z: b.z, w: b.w, d: b.d })),
     });
-    const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
+    const receipt = group.userData.scenery as { fieldWorks?: unknown; gromace?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
+    // (b33) the karst fields' clearance heaps: their stone on the scenery rock material, casting like the formations
+    if (built.heaps) {
+      if (receipt) receipt.gromace = built.heaps.receipt;
+      if (built.heaps.pieces.length) {
+        const profile = bucketShadowProfile(built.heaps.pieces);
+        const merged = mergeGeometries(built.heaps.pieces, false);
+        for (const piece of built.heaps.pieces) piece.dispose();
+        const heaps = new THREE.Mesh(merged, mats.rock);
+        heaps.name = 'props-scenery-gromace';
+        setShadowCasterProfile(heaps, profile);
+        heaps.castShadow = true;
+        heaps.receiveShadow = true;
+        heaps.matrixAutoUpdate = false;
+        group.add(heaps);
+      }
+    }
     if (!built.wallCells.length && !built.bankGeometry && !built.bankTurfGeometry) return;
     // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
     // banks on the rock material)

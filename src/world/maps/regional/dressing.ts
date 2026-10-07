@@ -75,24 +75,28 @@ export function roofLadder(sink: PartSink, frame: HouseFrame, side: 1 | -1, z: n
   }
 }
 
-/** A television aerial on a mast at the ridge: a Yagi of elements on a boom, guyed to the roof (1970s–90s Europe). */
+/**
+ * A television aerial on a mast at the ridge: a Yagi of elements on a boom, guyed to the roof (1970s–90s Europe). (b33,
+ * the scenery lane) Fine ironwork, all of it — a 5 cm mast and 3 cm elements are sub-pixel past the fine-detail
+ * distance — celled with the kits' fine joinery (props.ts CELLED).
+ */
 export function tvAerial(sink: PartSink, frame: HouseFrame, z: number, rng: () => number): void {
   const rg = frame.roof;
   const base = rg.topAt(0, z) ?? rg.ridgeTopY;
   const mast = 2.2 + rng() * 1.2;
   const metal: Rgb = [0.5, 0.52, 0.54];
-  sink.cylinder('structureMetal', [0, base - 0.1, z], 'y', mast + 0.1, 0.025, 5, { ...DECOR, colour: metal });
+  sink.cylinder('structureMetal', [0, base - 0.1, z], 'y', mast + 0.1, 0.025, 5, { ...DECOR, colour: metal, fine: true });
   const yaw = (rng() - 0.5) * 1.2;
   const dirX = Math.cos(yaw), dirZ = Math.sin(yaw);
   for (const [h, len, count] of [[mast - 0.05, 1.6, 7], [mast - 0.65, 1.1, 5]] as const) {
     const y = base + h;
     const a: Vec3 = [-dirX * len / 2, y, z - dirZ * len / 2], b: Vec3 = [dirX * len / 2, y, z + dirZ * len / 2];
-    sink.member('structureMetal', a, b, 0.025, 0.025, [0, 1, 0], { ...DECOR, colour: metal, exposed: true }, 0);
+    sink.member('structureMetal', a, b, 0.025, 0.025, [0, 1, 0], { ...DECOR, colour: metal, exposed: true, fine: true }, 0);
     for (let k = 0; k < count; k++) {
       const t = (k + 0.5) / count, el = 0.5 - k * 0.04;
       const cx = a[0] + (b[0] - a[0]) * t, cz = a[2] + (b[2] - a[2]) * t;
       sink.member('structureMetal', [cx + dirZ * el / 2, y, cz - dirX * el / 2], [cx - dirZ * el / 2, y, cz + dirX * el / 2], 0.015, 0.015, [0, 1, 0],
-        { ...DECOR, colour: metal, exposed: true }, 0);
+        { ...DECOR, colour: metal, exposed: true, fine: true }, 0);
     }
   }
 }

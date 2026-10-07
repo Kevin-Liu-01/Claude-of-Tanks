@@ -60,6 +60,8 @@ export interface RockFormationSpec {
   shed?: number;
   /** Linear-ish sRGB tone override [h, s, l] for the geology's base colour (a map's rock tone). */
   tone?: readonly [number, number, number];
+  /** (b33) A gromača's length along its strike (m): a ridge when over twice its radius, else a heap. */
+  length?: number;
 }
 
 /** A standing rock mass the hulls and shells meet: an XZ convex hull (world, [x, z, ...]) and its vertical range. */
@@ -249,6 +251,8 @@ interface Piece {
   layer: number;
   /** The piece stands (contributes to a collision mass). */
   standing: boolean;
+  /** (b33) Its lightness multiplied by this (a gromača's core, the voids between its stones). */
+  shade?: number;
 }
 
 const _m = new THREE.Matrix4();
@@ -404,6 +408,7 @@ function finish(
       }
       // contact: the stone darkens where it meets the soil
       l *= 0.82 + 0.18 * smooth(0, 0.6, y - gy);
+      if (piece.shade !== undefined) l *= piece.shade;
       const [r, g2, b2] = hsl(h, s, l);
       vColor[v * 3] = r; vColor[v * 3 + 1] = g2; vColor[v * 3 + 2] = b2;
     }
@@ -1441,9 +1446,85 @@ export function buildBedrock(
 }
 
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
+/**
+ * (b33, the scenery lane; gauntlet on b23's first form: "a dome with dice on it") A gromača — the clearance heap of a
+ * Dalmatian karst field: the loose angular limestone a field gave up, thrown into a heap at its talus angle. A broad
+ * heap in the field, or (spec.length over twice the radius) a ridge along its edge; a flat, trodden top a third of the
+ * way out, flanks at some 35 degrees, a concave toe. No smooth core shows: the heap is its stones — a tight cover of
+ * angular blocks, each lying on the slope where it came to rest (its long face down the fall line, tipped a little its
+ * own way), the big ones rolled to the foot and the small ones on the top, a few spilt on the ground round it — over a
+ * dark, lumpy core that is only the voids between them. Its mass, the stones above a hull's step: one convex collider.
+ */
+function gromaca(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  const R = spec.radius, H = spec.height, half = Math.max(0, (spec.length ?? 0) / 2 - R);
+  const a = THREE.MathUtils.degToRad(spec.yawDeg ?? 0), ux = Math.cos(a), uz = Math.sin(a);
+  const TOP = 0.32;
+  // the heap's height over its ground at (u, v) in its own frame, and how far out it is (0 the top's edge, 1 the toe)
+  const outAt = (u: number, v: number) => Math.hypot(Math.max(Math.abs(u) - half, 0), v) / R;
+  const rise = (u: number, v: number) => {
+    const d = outAt(u, v);
+    if (d >= 1) return 0;
+    const t = d <= TOP ? 0 : (d - TOP) / (1 - TOP);
+    return H * (1 - (0.6 * t + 0.4 * t * t * (3 - 2 * t)));
+  };
+  const world = (u: number, v: number): [number, number] => [spec.x + u * ux - v * uz, spec.z + u * uz + v * ux];
+  // the core: a coarse lumpy skin a hand under the stones' tops, its edge buried; dark (the voids between the stones)
+  const cell = mobile ? 1.1 : 0.8;
+  const nu = Math.max(3, Math.ceil(((half + R) * 2) / cell)), nv = Math.max(3, Math.ceil((R * 2) / cell));
+  const cpos: number[] = [], cidx: number[] = [];
+  for (let j = 0; j <= nv; j++) {
+    for (let i = 0; i <= nu; i++) {
+      const u = -half - R + ((half + R) * 2 * i) / nu, v = -R + (R * 2 * j) / nv;
+      const [x, z] = world(u, v), h = rise(u, v);
+      const lump = h > 0 ? (noise.noise(x * 1.7 + 31, z * 1.7 - 17) * 0.5 + 0.5) * 0.14 : 0;
+      cpos.push(x, ground.getHeightAt(x, z) + (h > 0 ? h - 0.2 + lump * 0.8 : -0.25), z);
+    }
+  }
+  for (let j = 0; j < nv; j++) {
+    for (let i = 0; i < nu; i++) {
+      const k = j * (nu + 1) + i;
+      cidx.push(k, k + nu + 1, k + 1, k + 1, k + nu + 1, k + nu + 2);
+    }
+  }
+  const core = new THREE.BufferGeometry();
+  core.setAttribute('position', new THREE.Float32BufferAttribute(cpos, 3));
+  core.setIndex(cidx);
+  pieces.push({ geometry: core, layer: -1, standing: false, shade: 0.58 });
+  // the stones: a jittered lattice over the heap, each where it came to rest on the slope under it
+  const step = mobile ? 0.9 : 0.74;
+  const su = Math.ceil(((half + R) * 2) / step), sv = Math.ceil((R * 2) / step);
+  for (let j = 0; j <= sv; j++) {
+    for (let i = 0; i <= su; i++) {
+      const u = -half - R + ((half + R) * 2 * (i + (rng() - 0.5) * 0.7)) / su;
+      const v = -R + (R * 2 * (j + (rng() - 0.5) * 0.7)) / sv;
+      const pick = rng(), tip = rng(), turn = rng(), flat = 0.42 + rng() * 0.2, grade = rng();
+      const d = outAt(u, v), h = rise(u, v);
+      if (d >= 0.97) continue;
+      // the big ones rolled to the foot, the small ones on the top
+      const size = (0.53 + 0.25 * smooth(TOP, 1, d)) * (0.8 + grade * 0.45);
+      const [x, z] = world(u, v), gy = ground.getHeightAt(x, z);
+      // the fall line here (world) and its grade
+      const e = 0.25, du = rise(u + e, v) - rise(u - e, v), dv = rise(u, v + e) - rise(u, v - e);
+      const fx = -(du * ux - dv * uz), fz = -(du * uz + dv * ux), fl = Math.hypot(fx, fz);
+      const slope = Math.atan2(fl, 2 * e);
+      const stone = looseStone(size, flat, noise, rng, 0, 0.25).rotateY(turn * Math.PI);
+      const yaw = fl > 1e-6 ? Math.atan2(fx, fz) : pick * Math.PI * 2;
+      pieces.push({ geometry: place(stone, x, gy + h - size * flat * 0.18, z, yaw, slope + (tip - 0.5) * 0.35, (pick - 0.5) * 0.3), layer: -1, standing: true });
+    }
+  }
+  // a few spilt on the ground round its toe
+  const spill = Math.round((mobile ? 3 : 5) * (1 + half / R * 0.5));
+  for (let k = 0; k < spill; k++) {
+    const t = rng(), side = rng() < 0.5 ? -1 : 1, size = 0.28 + rng() * 0.22, flat = 0.45 + rng() * 0.2, yaw = rng() * Math.PI * 2;
+    const u = (t * 2 - 1) * (half + R * 0.6), v = side * R * (1.02 + rng() * 0.18);
+    const [x, z] = world(u, v);
+    pieces.push({ geometry: place(looseStone(size, flat, noise, rng, 0, 0.3), x, ground.getHeightAt(x, z) + size * flat * 0.2, z, yaw, (rng() - 0.5) * 0.3, 0), layer: -1, standing: false });
+  }
+}
+
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
   tor: graniteTor, boules: chaosDeBoules, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
-  menhir, cairn, calvary,
+  menhir, cairn, calvary, gromaca,
 });
 
 /**

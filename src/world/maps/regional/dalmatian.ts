@@ -561,7 +561,9 @@ const customsHouse: RegionalBuilder = (ctx) => {
   const iron = rgb(0x2e3032);
   faceBox(sink, 'structureMetal', f, 0, y1 + 0.93, 0.86, 2.0, 0.05, 0.05, { colour: iron, decor: true });
   for (const u of [-1, 1]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.93, 0.47, 0.05, 0.05, 0.82, { colour: iron, decor: true });
-  for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.47, 0.86, 0.025, 0.9, 0.025, { colour: iron, decor: true });
+  // (b33, the scenery lane: the balusters 2.5 cm, sub-pixel past the fine-detail distance, celled with the kits' fine
+  // ironwork; the rail and the end posts stay drawn)
+  for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.47, 0.86, 0.025, 0.9, 0.025, { colour: iron, decor: true, fine: true });
   return sink.finish();
 };
 

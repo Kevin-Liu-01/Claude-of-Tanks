@@ -36,6 +36,8 @@ import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
 import { cloneCollisionRecord, createObstacleGrid, setCircleShape, setConvexShape, type CollisionRecord } from './collision.ts';
+import { KARST_STONE_TONE } from './karstRelief.ts';
+import type { LandFieldSample } from './landUse.ts';
 
 type Rng = () => number;
 
@@ -141,7 +143,8 @@ interface SceneryBuild {
 
 /** What the field works read: the map's block, its ground, its pads, its final solids, its aprons and yards. */
 type FieldWorksBuildContext = Pick<SceneryBuildContext,
-  'mapId' | 'scenery' | 'heightField' | 'spawns' | 'obstacles' | 'trees' | 'seed' | 'mobile' | 'hardstands' | 'yards'>;
+  'mapId' | 'scenery' | 'heightField' | 'spawns' | 'obstacles' | 'trees' | 'seed' | 'mobile' | 'hardstands' | 'yards'>
+  & { /** (b33) the gromače's colliders join the manifests' (a heap is a static mass) */ colliders?: CollisionRecord[] };
 
 type SceneryBuildSlice = { fine: true; progress: false; stage: string };
 
@@ -513,19 +516,128 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
  * props owner runs this once every solid is final (after its pools' refit), so the keep-out's match placement reads the
  * same solids the battle's does. Null when the map asks for none or the world has no land use.
  */
+/** (b33) What the karst fields' clearance heaps built: their stone (the scenery rock material's), and a count. */
+interface GromaceBuilt {
+  pieces: THREE.BufferGeometry[];
+  receipt: { wanted: number; heaps: number; ridges: number; triangles: number; colliders: number;
+    /** each one placed: its centre, its reach (a ridge's half length), a ridge or a heap */
+    sites: Array<{ x: number; z: number; r: number; ridge: boolean }> };
+}
+/**
+ * (b33) The gromače's sizes: a heap's radius and height, a ridge's half-width, height and length, its spine's distance
+ * in from the field's edge beyond its half-width, the road's margin, the gap between two, the level they need.
+ */
+export const GROMACE = Object.freeze({
+  heapR: [2.4, 3.2] as const, heapH: [1.1, 1.5] as const, ridgeR: [2.0, 2.5] as const, ridgeH: [1.0, 1.35] as const,
+  ridgeLen: [8, 14] as const, edgeIn: [0.5, 1.6] as const, roadM: 6, gapM: 5, normalY: 0.95,
+});
+
+/**
+ * (b33, the scenery lane; the coordinator: "clearance heaps of loose angular limestone ... at a talus angle, broad
+ * heaps and field-edge ridges where the karst cover is thin ... off roads and zone discs") The karst fields' clearance
+ * heaps, in the map's areas (SceneryConfig.gromace): a ridge along the nearer edge of a field (a row end runs across
+ * the rows, a side along them), its spine a little in from the edge and its whole length in that one field; a heap in
+ * a field's middle. Each inside a field (off its tracks and hedges), off the roads, the spawn pads, the water, the
+ * objective discs and the rest of the keep-out, the solids and the trees, on level ground, clear of each other; built
+ * as a gromača (sceneryRocks.ts) and published as a static convex mass. A stream of its own per area, so nothing else
+ * moves.
+ */
+function* composeGromace(ctx: FieldWorksBuildContext, keepOut: FieldWorksKeepOut): Generator<SceneryBuildSlice, GromaceBuilt | null, void> {
+  const areas = ctx.scenery?.gromace, landAt = ctx.heightField._landUseAt;
+  if (!areas?.length || !landAt) return null;
+  const ground = ctx.heightField;
+  const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 23017) });
+  const at = {} as LandFieldSample;
+  const pieces: THREE.BufferGeometry[] = [], placed: Array<{ x: number; z: number; r: number }> = [];
+  const receipt: GromaceBuilt['receipt'] = { wanted: 0, heaps: 0, ridges: 0, triangles: 0, colliders: 0, sites: [] };
+  const kept = (x: number, z: number, r: number): boolean => keepOut.discs.some(([dx, dz, dr]) => Math.hypot(x - dx, z - dz) < dr + r)
+    || keepOut.rects.some((q) => {
+      const ax = x - q.x, az = z - q.z, along = ax * q.ux + az * q.uz, across = -ax * q.uz + az * q.ux;
+      return Math.abs(along) < q.halfAlong + r && Math.abs(across) < q.halfAcross + r;
+    });
+  const treeNear = (x: number, z: number, r: number): boolean => (ctx.trees ?? []).some((t) => {
+    const cx = (t.min[0] + t.max[0]) * 0.5, cz = (t.min[2] + t.max[2]) * 0.5;
+    return Math.hypot(cx - x, cz - z) < r + 1.5;
+  });
+  const lerp = ([a, b]: readonly [number, number], t: number) => a + (b - a) * t;
+  for (const [ai, area] of areas.entries()) {
+    const rng = mulberry32(ctx.seed + 23011 + 131 * ai);
+    receipt.wanted += area.heaps + area.ridges;
+    for (const ridge of [true, false]) {
+      const want = ridge ? area.ridges : area.heaps;
+      for (let attempt = 0, got = 0; attempt < want * 80 && got < want; attempt++) {
+        const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * area.radius, size = rng(), tall = rng(), long = rng(), inset = rng(), turn = rng();
+        const stream = (rng() * 4294967296) >>> 0;
+        const x = area.x + Math.cos(a) * rr, z = area.z + Math.sin(a) * rr;
+        const R = ridge ? lerp(GROMACE.ridgeR, size) : lerp(GROMACE.heapR, size), H = ridge ? lerp(GROMACE.ridgeH, tall) : lerp(GROMACE.heapH, tall);
+        const len = ridge ? lerp(GROMACE.ridgeLen, long) : 0;
+        landAt(x, z, at);
+        if (at.active < 0.5 || at.track > 0 || at.hedge > 0) continue;
+        const id = at.id;
+        let yawDeg: number, reach: number;
+        if (ridge) {
+          const spine = R + lerp(GROMACE.edgeIn, inset);
+          if (Math.abs(at.edgeM - spine) > 0.5) continue;
+          const acrossRows = Math.abs(at.endM - at.edgeM) < 1e-3;
+          const dx = acrossRows ? -at.rowZ : at.rowX, dz = acrossRows ? at.rowX : at.rowZ;
+          let whole = true;
+          for (const end of [-1, 1]) {
+            landAt(x + dx * end * (len / 2 - R * 0.5), z + dz * end * (len / 2 - R * 0.5), at);
+            if (at.active < 0.5 || at.id !== id || at.track > 0 || at.hedge > 0 || Math.abs(at.edgeM - spine) > 1.2) whole = false;
+          }
+          if (!whole) continue;
+          yawDeg = THREE.MathUtils.radToDeg(Math.atan2(dz, dx));
+          reach = len / 2;
+        } else {
+          if (at.edgeM < R + 2.5) continue;
+          yawDeg = turn * 180;
+          reach = R;
+        }
+        if (Math.max(Math.abs(x), Math.abs(z)) + reach > SQUARE) continue;
+        if (ctx.spawns.some((sp) => Math.hypot(x - sp.x, z - sp.z) < SPAWN_CLEAR + reach)) continue;
+        if (ground._roadDist(x, z) < GROMACE.roadM + reach) continue;
+        if (ground.getWaterMaskAt(x, z) > 0.05 || ground.getNormalAt(x, z).y < GROMACE.normalY) continue;
+        if (kept(x, z, reach) || treeNear(x, z, reach)) continue;
+        if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + reach + GROMACE.gapM)) continue;
+        if (solidConflicts(ctx.obstacles, x, z, reach).hard) continue;
+        const built = buildRockFormation({ form: 'gromaca', geology: 'limestone', x, z, radius: R, height: H, yawDeg, length: ridge ? len : undefined,
+          tone: area.tone ?? KARST_STONE_TONE }, ground, noise, mulberry32(stream), { mobile: ctx.mobile });
+        if (!built.geometry) continue;
+        pieces.push(built.geometry);
+        for (const mass of built.masses) {
+          const rec = staticMass(mass.points, mass.y0, mass.y1);
+          ctx.obstacles.push(rec);
+          ctx.colliders?.push(cloneCollisionRecord(rec));
+          receipt.colliders++;
+        }
+        placed.push({ x, z, r: reach });
+        receipt.sites.push({ x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, r: Math.round(reach * 100) / 100, ridge });
+        got++;
+        if (ridge) receipt.ridges++; else receipt.heaps++;
+        receipt.triangles += built.triangles;
+        yield { fine: true, progress: false, stage: 'gromace' };
+      }
+    }
+  }
+  return { pieces, receipt };
+}
+
 export function* composeFieldWorks(
   ctx: FieldWorksBuildContext,
-): Generator<SceneryBuildSlice, Omit<FieldWorksBuilt, 'receipt'> & { receipt: FieldWorksReceipt | null }, void> {
+): Generator<SceneryBuildSlice, Omit<FieldWorksBuilt, 'receipt'> & { receipt: FieldWorksReceipt | null; heaps: GromaceBuilt | null }, void> {
   const works = ctx.scenery?.fieldWorks;
-  if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) {
-    return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, bankTurfGeometry: null, bankCrests: null, receipt: null, fine: null };
-  }
+  const wantWorks = !!works && (!!works.walls || !!works.banks), wantHeaps = !!ctx.scenery?.gromace?.length;
+  const none = { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, bankTurfGeometry: null, bankCrests: null, receipt: null, fine: null };
+  if ((!wantWorks && !wantHeaps) || !ctx.heightField._landUseAt) return { ...none, heaps: null };
   // (the hard solids: buildings, walls, the rock masses; not the trees, not the crushable clutter)
   const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
   const keepOut = yield* fieldWorksKeepOut(ctx);
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
-  return yield* buildFieldWorks(ctx.heightField, noise, {
+  const built = wantWorks && works ? yield* buildFieldWorks(ctx.heightField, noise, {
     walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, solids, keepOut, mobile: ctx.mobile,
     wallTone: works.wallTone, bankTone: works.bankTone, bankHeightM: works.bankHeightM,
-  });
+  }) : none;
+  // (b33) the clearance heaps after the works (decor, no collision): the walls stand where they stood
+  const heaps = wantHeaps ? yield* composeGromace(ctx, keepOut) : null;
+  return { ...built, heaps };
 }

@@ -188,6 +188,18 @@ export default {
       { form: 'outcrop', geology: 'limestone', x: -190, z: 144, radius: 7, height: 3.2, yawDeg: -40, name: 'the north harbour scar' },
     ],
     // the bare limestone of the terrace flights and the spine: small pavements and low bedded ledges on the slopes
+    // (b33) the gromače: the stone the karst's small fields gave up, thrown into heaps in the fields and ridges along
+    // their edges, round the uplands' pavements, on the terrace flights and the spine (scenery.ts composeGromace;
+    // collision, each a static mass). Mirrored across the bay's axis like the rest.
+    gromace: [
+      { x: -100, z: -300, radius: 75, heaps: 2, ridges: 2, name: 'the south upland fields' },
+      { x: -100, z: 320, radius: 75, heaps: 2, ridges: 2, name: 'the north upland fields' },
+      { x: -350, z: -262, radius: 60, heaps: 2, ridges: 1, name: 'the south pavement fields' },
+      { x: -350, z: 282, radius: 60, heaps: 2, ridges: 1, name: 'the north pavement fields' },
+      { x: 40, z: -235, radius: 110, heaps: 2, ridges: 2, name: 'the south terrace fields' },
+      { x: 40, z: 255, radius: 110, heaps: 2, ridges: 2, name: 'the north terrace fields' },
+      { x: 230, z: 10, radius: 130, heaps: 2, ridges: 1, name: 'the spine fields' },
+    ],
     rockFields: [
       { geology: 'limestone', x: 40, z: -235, radius: 115, count: 14, slopeBias: 0.6, name: 'the south terrace karst' },
       { geology: 'limestone', x: 40, z: 255, radius: 115, count: 14, slopeBias: 0.6, name: 'the north terrace karst' },

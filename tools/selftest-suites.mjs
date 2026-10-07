@@ -1250,6 +1250,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/haystacks.selftest.mjs',
     // the scenery lane (b23): the limestone in relief over a karst map's flush pavement (bosses, loose blocks, heaps)
     'src/world/karstRelief.selftest.mjs',
+    // the scenery lane (b33): the karst fields' clearance heaps (the gromače), their form and Saltwind's placement
+    'src/world/gromace.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',

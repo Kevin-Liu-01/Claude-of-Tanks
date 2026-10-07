@@ -13,7 +13,7 @@ export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate';
  * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock. (b28)
  * 'boules' is the granite's other ruin: the chaos de boules, its corestones rounded and washed (sceneryRocks.ts).
  */
-export type RockForm = 'tor' | 'boules' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary';
+export type RockForm = 'tor' | 'boules' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'gromaca';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {
@@ -132,6 +132,24 @@ interface SceneryFieldWorks {
   bankHeightM?: number;
 }
 
+/**
+ * (b33, the scenery lane) An area of a karst map's fields whose stone was cleared into heaps — Dalmatia's gromače: the
+ * loose angular limestone a field gave up, piled at a talus angle into broad heaps in the field and long ridges along
+ * its edges. `heaps` and `ridges` are how many stand in the area at most (each where a field allows: inside a field,
+ * off its tracks and hedges, off the roads, the spawns, the objective discs and the solids, on level ground). Collision:
+ * each is a static convex mass.
+ */
+export interface SceneryGromace {
+  x: number;
+  z: number;
+  radius: number;
+  heaps: number;
+  ridges: number;
+  name?: string;
+  /** The stone's tone [h, s, l] (default the karst's pale limestone, karstRelief.ts KARST_STONE_TONE). */
+  tone?: readonly [number, number, number];
+}
+
 export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
@@ -139,6 +157,8 @@ export interface SceneryConfig {
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
+  /** (b33) The karst fields' clearance heaps (scenery.ts composeFieldWorks; sceneryRocks.ts gromaca). */
+  gromace?: readonly SceneryGromace[];
   /**
    * A linear multiplier on the field walls' rubble print (the props `fieldStone` material): the dry-stone walls and
    * their posts in the map's own rock (Saltwind's karst limestone). Never the house masonry, which a regional kit
