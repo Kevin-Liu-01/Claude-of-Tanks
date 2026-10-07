@@ -75,6 +75,8 @@ interface LandmarkComposeContext {
    * their draws all taken, so nothing else they place moves for the piece. Absent where nothing places after it.
    */
   veto?(x: number, z: number, yaw: number, hw: number, hd: number): void;
+  /** A disc of a paved piece's ground the grass, the litter and the tall grass keep off (map.ts's ground-cover holes). */
+  groundHole?(x: number, z: number, r: number): void;
   /**
    * Publish the piece's footprint (the minimap's building plan) under its kind: a set piece is no planned building, so it
    * carries no plan id (the town-plan receipts and the yard dressing read those).
@@ -188,6 +190,9 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
   return { hard: null, soft };
 }
 
+/** The kinds whose ground is paved: no grass grows up through them (their footprint becomes ground-cover holes). */
+const GROUND_HOLE_KINDS: ReadonlySet<string> = new Set(['path', 'quay', 'slipway']);
+
 /** The admission of one piece: null when it may stand, else the reason it may not. */
 function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [number, number, number]>, placement: LandmarkPlacement,
   hw: number, hl: number, yaw: number): string | null {
@@ -266,7 +271,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     }
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
-    const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
+    const [sw, sl] = spec.seat?.(params) ?? [hw, hl];
+    const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, sw, sl, yaw);
     if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
@@ -279,6 +285,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       ground: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);
         return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
+      },
+      water: (lx: number, lz: number) => {
+        const c = Math.cos(yaw), s = Math.sin(yaw);
+        return (ctx.heightField as HeightField).getWaterDepthAt?.(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) ?? 0;
       },
       snowCap: ctx.snowCap, mapId: ctx.mapId,
     });
@@ -354,7 +364,23 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
       }
     }
-    ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
+    // its plan, on the minimap and among the plots the yards keep clear of: the rectangles of its solid where the kind
+    // names them (a harbour's mole and its slipway, not the basin its footprint spans: the round-3 harbour's footprint,
+    // published whole, took the yards of the bourg's lane end and re-rolled every yard after them), else its footprint
+    if (spec.solids) for (const [rx, rz, rw, rl] of solidRects) ctx.publish(rx, rz, rw * 2, rl * 2, yaw, placement.kind);
+    else ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
+    // a paved piece's ground grows no grass up through it (gauntlet round 2's captures: tall grass through Delta's brick
+    // court and the paths' setts): discs over its footprint, each covering its cell, the cells no wider than the piece is
+    // narrow (a path's run a metre at a time, a court's in 3 m cells)
+    if (GROUND_HOLE_KINDS.has(placement.kind)) {
+      const cell = Math.min(3, Math.max(0.5, Math.min(hw, hl)));
+      const nx = Math.max(1, Math.ceil(hw / cell)), nz = Math.max(1, Math.ceil(hl / cell)), cw = hw / nx, cl = hl / nz, r = Math.hypot(cw, cl);
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        const lx = -hw + cw * (2 * i + 1), lz = -hl + cl * (2 * j + 1);
+        ctx.groundHole?.(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c, r);
+      }
+    }
     // its street furniture into the props pools, its children after it (both from its frame into the world's)
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
