@@ -732,19 +732,19 @@ function v3rotate(v: readonly number[], k: readonly number[], angle: number): Ve
 }
 
 /**
- * A bundle of fresh-cut branches a crew wedged and lashed on (round 2, 2026-10-06: lying along a wall or deck, never
- * upright; round 3, 2026-10-07, the critics on the Oplot: "a single flat, bright-green fern-like strip pressed against
- * the side of the turret, reading as a sticker rather than cut branches wedged into the ERA and rails", "too little and
- * too bright to break the outline"). Each bough now has its butt wedged a few centimetres behind the support face
- * (into the rail or ERA gap) under the webbing tie, runs aft standing off the wall by up to a third of a metre, rising
- * or drooping, and one bough forks at the near level; its sprays leave the wood all the way round it (a golden-angle
- * roll about the stem), so the bundle has depth from every side — but no spray ever reaches back into the wall, more
- * than 0.24 m off it, or below the deck. One bundle is one tree's cut: deep greens a stop darker than round 2, a bough
- * wilting. The near level stays inside the round-2 bundle's triangles (cheaper stems pay for more sprays): the bundles
- * are the decor's first rows and the 6,000-triangle budget is full on several hulls.
- * 'flank' hangs the bundle along a wall (the turret-side seat: local X along the wall, +Y up, +Z out of it); 'deck'
+ * A bundle of fresh-cut branches a crew laid along the vehicle and strapped down. History: round 2 (2026-10-06) laid
+ * them along a wall or deck, never upright; round 3 wedged the butts behind the support face and stood the boughs off
+ * the wall with sprays rolled all round the wood, which the wave-214 critics read as "cut branches stick sideways into
+ * air on wire stems with leaf cards hanging off", "only a few leafless dark twigs" (T-90M) and "tufts stand upright like
+ * potted shrubs" (Oplot-M). Round 4 (2026-10-07): the bundle lies along its support as a flat leafy mat. Each bough
+ * runs within 2-5 cm of the support face; its sprays leave the wood alternately to either side and lie in the support's
+ * plane (tilted out of it by at most a quarter radian), overlapping along the whole run so the wood shows only at the
+ * cut butts under the first tie; no spray, stem or tip stands more than 0.15 m off the support. Two webbing ties, one
+ * over the butts and one at mid-run, press the mat down and run back to the support. One bundle is one tree's cut:
+ * deep greens, a bough here and there wilting.
+ * 'flank' lays the bundle along a wall (the turret-side seat: local X along the wall, +Y up, +Z out of it); 'deck'
  * lays it on a deck or fender (+Y up), narrow across so it never reaches over the fender's edges. Draws: count x 14
- * values, then the tie and the tree, before any detail branch.
+ * values, then the tie and the tree; the near level and the coarse level draw identically.
  */
 export function buildBranchBundle(P: AccessoryPainter, variant: BranchBundleVariant, count: number): void {
   const flank = variant === 'flank' || variant === 'upright';
@@ -752,97 +752,93 @@ export function buildBranchBundle(P: AccessoryPainter, variant: BranchBundleVari
   for (let i = 0; i < count; i++) draws.push(Array.from({ length: 14 }, () => P.rng()));
   const tieAt = 0.07 + P.rng() * 0.05;
   const tree = P.rng();
-  const forkStem = draws.reduce((best, d, i) => (d[11] < draws[best][11] ? i : best), 0);
   const nearLevel = near(P);
   const cards = new FoliageCardBuffer();
-  const out: Vec3 = flank ? [0, 0.15, 1] : [0, 1, 0];
-  let top = 0, zMin = Infinity, zMax = -Infinity;
-  const bez = (a: readonly number[], b: readonly number[], c: readonly number[], t: number): Vec3 => {
-    const u = 1 - t;
-    return [0, 1, 2].map((k) => u * u * a[k] + 2 * u * t * b[k] + t * t * c[k]) as Vec3;
-  };
-  // a spray may not reach back into the wall (flank) or under the deck, nor (deck) past the fender's edges
-  // (and a flank bundle stands at most 0.24 m off its wall: its seat's width and overlap guards read its bounds)
-  const clear = (card: FoliageCard): boolean => foliageCardPoints(card).every((p) => (flank
-    ? p[2] > 0.012 && p[2] < 0.24 && p[1] > -0.12
-    : p[1] > 0.006 && Math.abs(p[2]) < 0.17));
-  const pushSpray = (stem: readonly number[], along: readonly number[], roll: number, tilt: number, len: number,
+  // the support's outward normal and the in-plane direction square to the run
+  const out: Vec3 = flank ? [0, 0, 1] : [0, 1, 0];
+  const across: Vec3 = flank ? [0, 1, 0] : [0, 0, 1];
+  const offOf = (p: readonly number[]): number => (flank ? p[2] : p[1]);
+  const acrossOf = (p: readonly number[]): number => (flank ? p[1] : p[2]);
+  const at3 = (x: number, a: number, o: number): Vec3 => (flank ? [x, a, o] : [x, o, a]);
+  const OFF_MAX = 0.15;
+  // a spray lies over the support: never into it, never more than OFF_MAX off it, and (deck) never past the fender edges
+  const clear = (card: FoliageCard): boolean => foliageCardPoints(card).every((p) => offOf(p) > 0.006 && offOf(p) < OFF_MAX
+    && (flank ? p[1] > -0.06 : Math.abs(p[2]) < 0.18));
+  let offTop = 0.03, aMin = Infinity, aMax = -Infinity, runMax = 0;
+  const pushSpray = (stem: Vec3, along: readonly number[], side: number, spread: number, lift: number, len: number,
     bend: number, tile: number, tint: Vec3): void => {
     const dir = v3norm(along);
-    const side = v3norm(v3cross(dir, Math.abs(dir[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]));
-    for (const [r, t, l] of [[roll, tilt, len], [roll + Math.PI, tilt, len], [roll, tilt * 0.4, len * 0.8], [roll, 0, len * 0.65]] as const) {
-      const axis = v3rotate(v3rotate(dir, side, t), dir, r);
-      // the card faces the bundle's outward side (the component of `out` square to the spray)
-      const face = v3cross(v3cross(axis, out), axis);
-      // flat cards: the bundle sits inside its old near-level triangle count (the decor budget is full on several hulls,
-      // and the bundles are seated first), so its depth comes from the sprays' roll about the wood, not a fold
-      const card: FoliageCard = { stem: [stem[0], stem[1], stem[2]], axis, face: Math.hypot(face[0], face[1], face[2]) > 0.1 ? v3norm(face) : out, out,
-        length: l, width: l * 0.9, tile, bend, tint };
-      if (clear(card)) { cards.push(card); return; }
+    for (const [sp, li, ln] of [[spread, lift, len], [spread * 0.6, lift * 0.5, len * 0.85], [spread * 0.3, 0.02, len * 0.7]] as const) {
+      // in the support's plane: the run direction turned toward one side, then lifted a little off the support
+      const inPlane = v3norm(v3add(v3add([0, 0, 0], dir, Math.cos(sp)), across, side * Math.sin(sp)));
+      const axis = v3norm(v3add(v3add([0, 0, 0], inPlane, Math.cos(li)), out, Math.sin(li)));
+      const d = axis[0] * out[0] + axis[1] * out[1] + axis[2] * out[2];
+      const face = v3norm(v3add(out, axis, -d));
+      // flat cards (four triangles): the bundles are the decor's first rows and the 6,000-triangle budget is full on
+      // several hulls, so the mat's density comes from overlap along the run, not folds
+      const card: FoliageCard = { stem, axis, face, out, length: ln, width: ln * 0.88, tile, bend, tint };
+      if (clear(card)) {
+        cards.push(card);
+        for (const q of foliageCardPoints(card)) offTop = Math.max(offTop, offOf(q));
+        return;
+      }
     }
   };
-  draws.forEach(([a, b, c, d, e, f, g, h, k, m, w, fork, forkAt, roll0], i) => {
-    const len = 0.62 + a * 0.36;
+  draws.forEach(([a, b, c, d, e, f, g, h, k, m, w, , , roll0], i) => {
+    const len = 0.66 + a * 0.32;
     const share = count > 1 ? i / (count - 1) : 0.5;
-    // the butt is wedged behind the support face (into the rail / ERA gap) under the tie; the leafy run streams along +X
-    const butt: Vec3 = flank ? [-0.1 + b * 0.04, 0.08 + share * 0.24 + (c - 0.5) * 0.04, -0.025]
-      : [-0.1 + b * 0.04, 0.02 + (i % 2) * 0.025, (share - 0.5) * 0.12 + (c - 0.5) * 0.03];
-    const base: Vec3 = flank ? [0, butt[1] + 0.01, 0.03 + d * 0.03] : [0, butt[1] + 0.012, butt[2] * 0.9];
-    const standOff = flank ? 0.04 + e * 0.1 : 0;
-    const rise = flank ? (d - 0.35) * 0.32 + (share - 0.5) * 0.1 : 0.04 + e * 0.1;
-    const tip: Vec3 = flank ? [len, base[1] + rise - (0.04 + f * 0.06), base[2] + standOff]
-      : [len, Math.max(0.03, base[1] + rise - f * 0.04), THREE.MathUtils.clamp(base[2] + (e - 0.5) * 0.1, -0.1, 0.1)];
-    const mid: Vec3 = [len * 0.5, (base[1] + tip[1]) / 2 + 0.04 + g * 0.03, (base[2] + tip[2]) / 2 + (flank ? 0.02 : 0)];
-    P.trim(sweptTube([butt, base, mid, tip], 0.0105 - share * 0.002, 3, nearLevel ? 3 : 2), 0.46 + f * 0.16); // 24 / 18 tris
-    top = Math.max(top, base[1], mid[1]);
-    zMin = Math.min(zMin, base[2]); zMax = Math.max(zMax, base[2]);
+    // boughs side by side across the support (flank: up the wall over ~0.26 m; deck: across a ~0.2 m strip)
+    const lane = flank ? 0.07 + share * 0.24 + (c - 0.5) * 0.04 : (share - 0.5) * 0.15 + (c - 0.5) * 0.02;
+    const drift = (g - 0.5) * 0.06 - (flank ? 0.02 + f * 0.03 : 0);
+    const butt = at3(-0.085 + b * 0.02, lane, 0.014);
+    const base = at3(0, lane, 0.02);
+    const mid = at3(len * 0.5, lane + drift * 0.5, 0.03 + e * 0.02);
+    const tip = at3(len, lane + drift, 0.022 + d * 0.012);
+    P.trim(sweptTube([butt, base, mid, tip], 0.0125 - share * 0.002, 3, 2), 0.5 + f * 0.14);   // 18 tris, hidden but the butt
+    aMin = Math.min(aMin, lane - 0.04); aMax = Math.max(aMax, lane + drift + 0.04); runMax = Math.max(runMax, len);
     // one tree's leaves: a deep green, a bough here and there wilting
     const v = 0.4 + tree * 0.1 + h * 0.14, wilt = w < 0.16 ? 0.4 + w * 2 : 0;
     const stemTint: Vec3 = [v * 0.8 * (1 + wilt * 0.6), v * (1 - wilt * 0.1), v * 0.86 * (1 - wilt * 0.3)];
     const tint = (j: number): Vec3 => { const q = 0.86 + ((k * 7 + j * 0.37) % 1) * 0.28; return [stemTint[0] * q, stemTint[1] * q, stemTint[2] * q]; };
-    const sprays = nearLevel ? [0.26, 0.42, 0.58, 0.74, 0.88] : [0.42, 0.78];
+    const bez = (t: number): Vec3 => {
+      const u = 1 - t;
+      return [0, 1, 2].map((q) => u * u * base[q] + 2 * u * t * mid[q] + t * t * tip[q]) as Vec3;
+    };
+    // the coarse level's sprays are the near level's larger and fewer; both cover the wood from the first tie on
+    const sprays = nearLevel ? [0.1, 0.27, 0.44, 0.61, 0.78] : [0.18, 0.5, 0.8];
     sprays.forEach((t, j) => {
-      const at = bez(base, mid, tip, t), ahead = bez(base, mid, tip, Math.min(1, t + 0.08));
-      const along: Vec3 = [ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]];
-      // sprays leave the wood all the way round it (a golden-angle roll), wider near the tie, closing toward the tip;
-      // the coarse level's two sprays are the near level's larger
-      pushSpray(at, along, roll0 * Math.PI * 2 + j * 2.4, (0.85 - t * 0.4) * (0.7 + ((m * 5 + j * 0.31) % 1) * 0.4),
-        (0.32 + ((b * 5 + j * 1.7) % 1) * 0.14 + (1 - t) * 0.05) * (nearLevel ? 1 : 1.2), 0.1 + ((f * 3 + j) % 1) * 0.12,
+      const p = bez(t), ahead = bez(Math.min(1, t + 0.06));
+      const side = (j + i) % 2 ? 1 : -1;
+      // a deck mat stays inside its fender strip: narrower fans, shorter cards, lifted a little more off the plate
+      const fan = flank ? 0.42 + ((m * 5 + j * 0.31) % 1) * 0.5 : 0.3 + ((m * 5 + j * 0.31) % 1) * 0.36;
+      const lift = (flank ? 0.06 : 0.12) + ((roll0 * 3 + j * 0.23) % 1) * 0.16;
+      const cardLen = (flank ? 0.26 : 0.23) + ((b * 5 + j * 1.7) % 1) * 0.1 + (1 - t) * 0.04;
+      pushSpray(p, [ahead[0] - p[0], ahead[1] - p[1], ahead[2] - p[2]], side, fan, lift,
+        cardLen * (nearLevel ? 1 : (flank ? 1.35 : 1.2)), flank ? 0.03 + ((f * 3 + j) % 1) * 0.05 : 0.015,
         (i * 3 + j) % 4, tint(j));
     });
-    // the leafy end closes the run instead of showing the bare wood
-    pushSpray(tip, [tip[0] - mid[0], tip[1] - mid[1] - 0.08, tip[2] - mid[2]], roll0 * 4, 0.12, 0.3, 0.18, (i + 1) % 4, tint(9));
-    // a fork off the near level's one most forked bough: a short side branch carrying two sprays, standing out and up
-    if (nearLevel && i === forkStem) {
-      const t0 = 0.36 + forkAt * 0.24;
-      const at = bez(base, mid, tip, t0), ahead = bez(base, mid, tip, t0 + 0.08);
-      const dir = v3norm([ahead[0] - at[0], ahead[1] - at[1], ahead[2] - at[2]]);
-      const offAxis: Vec3 = flank ? [0, 0.35 + roll0 * 0.3, 1] : [0, 1, (roll0 - 0.5) * 0.4];
-      const branchDir = v3norm(v3add(dir, v3norm(offAxis), 0.8));
-      const bl = 0.22 + fork * 0.22;
-      const end = v3add(at, branchDir, bl);
-      if (!flank) { end[1] = Math.max(0.04, end[1]); end[2] = THREE.MathUtils.clamp(end[2], -0.11, 0.11); }
-      if (flank) end[2] = Math.max(0.05, end[2]);
-      P.trim(sweptTube([at, v3add(at, branchDir, bl * 0.5), end], 0.006, 3, 2), 0.5 + f * 0.14);
-      pushSpray(v3add(at, branchDir, bl * 0.55), branchDir, roll0 * 9 + 1.3, 0.55, 0.28, 0.12, (i + 2) % 4, tint(5));
-      pushSpray(end, branchDir, roll0 * 13 + 2.1, 0.2, 0.27, 0.16, (i + 3) % 4, tint(6));
-    }
+    // the leafy end runs past the bough's tip instead of showing the bare wood
+    const pre = bez(0.9);
+    pushSpray(tip, [tip[0] - pre[0], tip[1] - pre[1], tip[2] - pre[2]], i % 2 ? 1 : -1, 0.12, 0.05, 0.3, 0.05, (i + 1) % 4, tint(9));
   });
   const geometry = cards.toGeometry();
   if (geometry) P.leaves(geometry);
-  // the webbing tie over the gathered cut ends, run back to its anchor on the support
-  const band = 0.034;
-  if (flank) {
-    const yTop = top + 0.035, zOut = zMax + 0.03;
-    webbing(P, place(block(band, yTop, 0.008), tieAt, yTop / 2, zOut), 0.62);                     // the run over the stems
-    webbing(P, place(block(band, 0.008, zOut), tieAt, yTop, zOut / 2), 0.62);                     // back to the wall
-    webbing(P, place(block(band, 0.008, zOut), tieAt, 0.004, zOut / 2), 0.62);
-    if (near(P)) P.steel(place(block(0.05, 0.02, 0.014), tieAt, yTop * 0.55, zOut + 0.006), 0.5); // the buckle
-  } else {
-    const yTop = top + 0.03, half = Math.max(Math.abs(zMin), Math.abs(zMax)) + 0.05;
-    webbing(P, place(block(band, 0.008, half * 2), tieAt, yTop, 0), 0.62);                         // over the bundle
-    for (const sz of [-1, 1]) webbing(P, place(block(band, yTop, 0.008), tieAt, yTop / 2, sz * half), 0.62);
-    if (near(P)) P.steel(place(block(0.05, 0.014, 0.02), tieAt, yTop + 0.008, 0), 0.5);
+  // two webbing ties, over the butts and at mid-run, pressed onto the mat and run back to the support
+  const band = 0.034, top = Math.min(OFF_MAX, offTop) + 0.006;
+  const ties = [tieAt, Math.max(tieAt + 0.22, runMax * 0.5)];
+  for (const [n, x] of ties.entries()) {
+    if (!nearLevel && n > 0) continue;
+    const lo = flank ? Math.max(0.004, aMin) : aMin, hi = aMax;
+    if (flank) {
+      webbing(P, place(block(band, hi - lo, 0.008), x, (hi + lo) / 2, top), 0.62);                 // over the mat
+      webbing(P, place(block(band, 0.008, top), x, hi, top / 2), 0.62);                            // back to the wall
+      webbing(P, place(block(band, 0.008, top), x, lo, top / 2), 0.62);
+      if (nearLevel && n === 0) P.steel(place(block(0.05, 0.02, 0.012), x, lo + (hi - lo) * 0.55, top + 0.006), 0.5); // buckle
+    } else {
+      webbing(P, place(block(band, 0.008, hi - lo), x, top, (hi + lo) / 2), 0.62);
+      for (const z of [lo, hi]) webbing(P, place(block(band, top, 0.008), x, top / 2, z), 0.62);
+      if (nearLevel && n === 0) P.steel(place(block(0.05, 0.012, 0.02), x, top + 0.006, (hi + lo) * 0.5), 0.5);
+    }
   }
 }
 

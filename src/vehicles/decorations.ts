@@ -3744,6 +3744,9 @@ export function* attachTankDecorationsSteps(
       fender(args, parts, name) {
         const side = args.side ?? 1;
         const fx = fenderX(side);
+        // Round 4 (2026-10-07): a branch mat on a hull whose fenders never answer or are cluttered end to end (the
+        // T-90M's and PT-91M's fender boxes) lies across the rear deck's corner on that side instead of being dropped
+        if (fx === null && name === 'foliage') return SLOTS.rearDeck!({ corner: side }, parts, name);
         if (fx === null) { disposePartList(parts); return false; }
         const bb = partsBBox(parts);
         // auto-orient: the LONG axis always runs fore-aft along the fender
@@ -3765,10 +3768,18 @@ export function* attachTankDecorationsSteps(
           disposePartList(parts);
           return false;
         }
-        const seat = seatProbe(hullP, side * fx, z, Math.min(w, 0.34), Math.min(d, 0.4), topFrom, 0.26);
-        if (!seat) { disposePartList(parts); return false; }
-        const yaw = (rot90 ? Math.PI / 2 : 0) + (slotRng() - 0.5) * 0.08;
-        return commit(name, parts, 'hull', V(side * fx, seat.y - 0.012, z), E(0, yaw, 0), placedHull, { seatY: seat.y });
+        // Round 4 (2026-10-07): a branch mat walks the fender run until it finds a plate to lie on (the T-90M and
+        // PT-91M fenders answer only aft of the bow ERA); every other piece keeps its single station.
+        for (const dz of name === 'foliage' ? [0, -0.25, 0.25, -0.5, 0.5] : [0]) {
+          // a mat is flexible: its seat is read over the fender's own width, not the leaves' spread
+          const seat = seatProbe(hullP, side * fx, z + dz, Math.min(w, name === 'foliage' ? 0.18 : 0.34), Math.min(d, 0.4), topFrom, 0.26);
+          if (!seat) continue;
+          const yaw = (rot90 ? Math.PI / 2 : 0) + (slotRng() - 0.5) * 0.08;
+          if (commit(name, parts, 'hull', V(side * fx, seat.y - 0.012, z + dz), E(0, yaw, 0), placedHull, { seatY: seat.y })) return true;
+        }
+        if (name === 'foliage') return SLOTS.rearDeck!({ corner: side }, parts, name);
+        disposePartList(parts);
+        return false;
       },
       glacis(args, parts, name) {
         const x = (args.side || 0) * W * (casemate ? 0.22 : 0.16);
