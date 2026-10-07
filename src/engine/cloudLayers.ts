@@ -151,7 +151,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     channels,
     streets: clamp(preset.streets, 0, 1) * (1 - deck),
     envelope,
-    shape: 1 - 0.55 * deck,
+    // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
+    // a softer carving, their mass in the light)
+    shape: (1 - 0.55 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
     detail: 1 - 0.7 * deck,
     // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall

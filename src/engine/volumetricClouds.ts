@@ -827,7 +827,8 @@ export class VolumetricCloudLayer {
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
         // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
-        const cuKnobs: Array<[string, string]> = [['CLOUD_CU_DENSITY', 'uLayerDensity'], ['CLOUD_CU_FILTER', 'uLayerFilter'], ['CLOUD_CU_CORE', 'uLayerCore'], ['CLOUD_CU_COVER', 'uLayerCover']];
+        const cuKnobs: Array<[string, string]> = [['CLOUD_CU_DENSITY', 'uLayerDensity'], ['CLOUD_CU_FILTER', 'uLayerFilter'], ['CLOUD_CU_CORE', 'uLayerCore'], ['CLOUD_CU_COVER', 'uLayerCover'], ['CLOUD_CU_SHAPE', 'uLayerShape'], ['CLOUD_CU_DETAIL', 'uLayerDetail']];
+        this.medium.uShapePeriod.value = stack.shapePeriodM * lightTune('CLOUD_SHAPE_PERIOD', 1);
         for (const [knob, key] of cuKnobs) {
           const k = lightTune(knob, 1);
           if (k === 1) continue;
@@ -1083,7 +1084,8 @@ export class VolumetricCloudLayer {
     const t = this.traceMaterial.uniforms;
     const w0 = t.uBsmWindow0.value as THREE.Vector4, w1 = t.uBsmWindow1.value as THREE.Vector4;
     const stack = this.medium.uHeightRange.value as THREE.Vector2;
-    if (sun.y < 0.03 || !(stack.y > stack.x) || stack.x > 1e5) {
+    // (QA: CLOUD_BSM_OFF draws the medium without the map — the trace's sun march and its fallback alone)
+    if (sun.y < 0.03 || !(stack.y > stack.x) || stack.x > 1e5 || lightTune('CLOUD_BSM_OFF', 0) > 0) {
       w0.w = 0; w1.w = 0;
       for (const c of this.bsm) c.valid = false;
       return;
