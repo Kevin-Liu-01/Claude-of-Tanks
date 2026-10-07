@@ -5,13 +5,13 @@
       "id": "m3a3_bradley",
       "quality": "high",
       "scope": "hull-gear",
-      "sha256": "d4bdefcb5aa40703294f8567d55e2024d16fd28be1165a6a03d3fa144470757e"
+      "sha256": "e41b7393a9b09e6c4635acaa81036958e8b2f73025b7aefe39068db2c23bdfb0"
     },
     {
       "id": "m3a3_bradley",
       "quality": "low",
       "scope": "hull-gear",
-      "sha256": "82dfd81d0d3c7250b366e7782dd0046903563bc3a4899f53eb7c90fcbd6083da"
+      "sha256": "02d5bcb70363ffa151a8cba1ec5fdf2948e51635b8f29e86914947f5b31c1bee"
     },
     {
       "id": "ua_m2a3_bradley",
@@ -26,5 +26,5 @@
       "sha256": "dd16bf8d871ea14692d1088c7391e047fe90241e37ced9bbbc947d926d6dc63c"
     }
   ],
-  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering."
+  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering. 2026-10-06: m3a3_bradley hull-gear re-pinned over the accessory lane's closed primitive shells (latheY end caps add 228 hullDark vertices, fabricStrap's buried-edge band removes 132 hullCloth vertices); the chassis is otherwise unchanged."
 }
