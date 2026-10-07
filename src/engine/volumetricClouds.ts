@@ -170,8 +170,8 @@ export const CLOUD_AERIAL = Object.freeze({
  * secondary steps toward the sun, the stride floor and growth, the march's reach, the detail's reach (m).
  */
 export const CLOUD_TIERS: Readonly<Record<string, Cloud2TraceDefines & { stepMin: number; growth: number; marchMax: number; detailRange: number }>> = Object.freeze({
-  low: { steps: 72, octaves: 4, sunSteps: 1, stepMin: 90, growth: 0.016, marchMax: 22000, detailRange: 4000 },
-  medium: { steps: 96, octaves: 4, sunSteps: 1, stepMin: 70, growth: 0.013, marchMax: 28000, detailRange: 10000 },
+  low: { steps: 72, octaves: 4, sunSteps: 1, stepMin: 90, growth: 0.016, marchMax: 22000, detailRange: 2500 },
+  medium: { steps: 96, octaves: 4, sunSteps: 1, stepMin: 70, growth: 0.013, marchMax: 28000, detailRange: 6000 },
   high: { steps: 128, octaves: 8, sunSteps: 2, stepMin: 50, growth: 0.011, marchMax: CLOUD_MARCH_MAX_M, detailRange: 20000 },
   ultra: { steps: 160, octaves: 8, sunSteps: 3, stepMin: 40, growth: 0.009, marchMax: 40000, detailRange: 30000 },
 });
