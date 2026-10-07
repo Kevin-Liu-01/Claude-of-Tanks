@@ -2299,9 +2299,12 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
+  // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): the bustle basket and
+  // its packs seat early (DecorManifestRow.early). The fleet cargo rows go first in the manifest, and their racked
+  // loads spent the triangle budget before the basket's turn, so the turret carried two loose pieces and no basket.
   leclerc: () => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}], early: true },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }], early: true },
     { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
@@ -2312,8 +2315,8 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   leclerc_xlr: (s) => [
-    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}], early: true },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }], early: true },
     { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1 }] },
