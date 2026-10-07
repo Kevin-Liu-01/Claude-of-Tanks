@@ -186,6 +186,13 @@ interface VegetationConfig {
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
   /**
+   * Trees lane (2026-10-07, the cities lane's Ruinspires: "almost no trees in the city"): a town map's own trees stand in
+   * its town. Off by default, every tree keeps out of the village rect and 24 m round it, and a map with `parks` grows
+   * trees only inside them, so a park or a belt inside the town grew nothing. With `townTrees` a belt's trees and a park's
+   * stand inside the village (the road, ground, slope and spawn rules still hold), and a belt's trees need no park.
+   */
+  townTrees?: boolean;
+  /**
    * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
    * `palmFallback` (default: the map's first other species), so no draw moves.
    */
@@ -5136,19 +5143,25 @@ function* vegetationBuildSteps(
       add: concealment,
     });
   }
+  // (the trees lane: while a `townTrees` map plants its tree belts, placeTreeBelts — a flag, not a parameter, so the
+  // other options on siteOk's signature never read it by position)
+  let placingTownBelts = false;
   function siteOk(x: number, z: number, margin: number): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
-    if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
-    if (admission()._roadDist(x, z) < 9 + margin) return false;
-    if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
-    if (veg.parks) { // town maps: trees only inside the park belts
-      let inPark = false;
+    let inPark = false;
+    if (veg.parks) {
       for (const p of veg.parks) {
         if (Math.hypot(x - p.x, z - p.z) < p.r) { inPark = true; break; }
       }
-      if (!inPark) return false;
     }
+    // (the trees lane: a `townTrees` map's belts and parks stand inside its village)
+    const town = veg.townTrees === true && (placingTownBelts || inPark);
+    if (!town && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
+    if (admission()._roadDist(x, z) < 9 + margin) return false;
+    if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
+    // town maps: trees only inside the park belts (a `townTrees` map's tree belts need no park)
+    if (veg.parks && !inPark && !placingTownBelts) return false;
     if (!isClearOfSpawns(x, z, protectedSpawns, 26)) return false;
     return admission().getNormalAt(x, z).y > 0.82;
   }
@@ -5574,6 +5587,8 @@ function* vegetationBuildSteps(
   // + concealment, i.e. belts are real cover, not dressing.
   function placeTreeBelts(): void {
     if (veg.belts) {
+      // (the trees lane: a `townTrees` map's belts stand inside its village, siteOk; a throw here ends the whole build)
+      placingTownBelts = veg.townTrees === true;
       for (const b of veg.belts) {
         const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0);
         const gap = b.gap ?? 8;
@@ -5587,6 +5602,7 @@ function* vegetationBuildSteps(
           addTree(bx, bz, b.species || pickSpecies(veg.loneMix, rng()));
         }
       }
+      placingTownBelts = false;
     }
   }
   placeTreeBelts();

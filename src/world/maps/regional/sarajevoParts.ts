@@ -73,27 +73,57 @@ export function sandbagWindow(sink: PartSink, face: Face, u: number, y: number, 
 export interface Keep { u0: number; u1: number; y0: number; y1: number }
 
 /**
- * Shell pocks across a face: small ragged scars where splinters chipped the render to the masonry (`under`), each
- * with a dark crater, kept clear of the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to
- * ~280 m, where a pock is a pixel).
+ * Shell pocks across a face, clustered by blast (waves 186/187: evenly spaced decals read as "neat plaster patches"): a
+ * mortar burst against the wall leaves a scorched centre and a spray of splinter scars round it, the big gouges near the
+ * centre, the small ones flung farther out and drawn out along their flight from it. Each burst takes its share of
+ * `count`; each scar chips the render to the masonry (`under`, its outline torn) round a dark crater, kept clear of
+ * the openings. Fanned polygons 14-16 mm proud (the depth buffer resolves them to ~280 m, where a pock is a pixel); the
+ * scorch a fan whose shade darkens to its centre (the weathering pass multiplies it into the render), 12 mm proud.
  */
 export function shellPocks(sink: PartSink, face: Face, rect: Keep, count: number, keep: readonly Keep[], look: () => number,
   under: RegionalBucket = 'stone'): void {
+  const w = Math.max(0, rect.u1 - rect.u0), h = Math.max(0, rect.y1 - rect.y0);
+  if (w < 0.4 || h < 0.4 || count <= 0) return;
+  const bursts = Math.max(1, Math.round(count / 16));
+  const centres: Array<{ u: number; y: number; spread: number }> = [];
+  for (let b = 0; b < bursts; b++) {
+    const spread = Math.min(Math.max(w, h) * 0.5, 0.9 + look() * 1.9);
+    centres.push({ u: rect.u0 + look() * w, y: rect.y0 + look() * h, spread });
+  }
+  const inKeep = (u: number, y: number, r: number) => keep.some((q) => u + r > q.u0 - 0.05 && u - r < q.u1 + 0.05 && y + r > q.y0 - 0.05 && y - r < q.y1 + 0.05);
+  // the scorch round each burst's centre
+  for (const c of centres) {
+    const R = c.spread * (0.45 + look() * 0.25), n = 9, rim: Array<[number, number]> = [];
+    for (let j = 0; j < n; j++) {
+      const t = (j / n) * Math.PI * 2, rr = R * (0.55 + look() * 0.45);
+      rim.push([c.u + Math.cos(t) * rr, c.y + Math.sin(t) * rr * 0.8]);
+    }
+    if (inKeep(c.u, c.y, R * 0.6)) continue;
+    const pts = [[c.u, c.y], ...rim, rim[0]].map(([uu, yy]) => [uu, Math.max(rect.y0, Math.min(rect.y1, yy))] as [number, number]);
+    sink.polygon(under, pts.map(([uu, yy]) => facePoint(face, Math.max(rect.u0, Math.min(rect.u1, uu)), yy, 0.012)),
+      { ...DECOR, shadeAt: (p) => { const d = Math.hypot(p[0] - facePoint(face, c.u, c.y, 0)[0], p[1] - c.y, p[2] - facePoint(face, c.u, c.y, 0)[2]); return 0.45 + 0.5 * Math.min(1, d / R); } });
+  }
   for (let k = 0; k < count; k++) {
-    const r = 0.07 + look() * look() * 0.32;
-    const cu = rect.u0 + r + look() * Math.max(0, rect.u1 - rect.u0 - 2 * r);
-    const cy = rect.y0 + r + look() * Math.max(0, rect.y1 - rect.y0 - 2 * r);
+    const c = centres[k % bursts];
+    // the scar's flight from the centre: most near it, a few flung to the burst's edge
+    const a = look() * Math.PI * 2, d = c.spread * Math.pow(look(), 0.8);
+    const near = 1 - d / c.spread;
+    const r = (0.05 + look() * look() * 0.24) * (0.7 + near * 0.8);
+    const cu = c.u + Math.cos(a) * d, cy = c.y + Math.sin(a) * d * 0.85;
+    if (cu - r < rect.u0 || cu + r > rect.u1 || cy - r < rect.y0 || cy + r > rect.y1 || inKeep(cu, cy, r)) continue;
+    // drawn out along the flight, torn round its edge
+    const ca = Math.cos(a), sa = Math.sin(a), stretch = 1 + (1 - near) * 1.1;
     const sides = 7, ring: Array<[number, number]> = [];
     for (let j = 0; j < sides; j++) {
-      const t = (j / sides) * Math.PI * 2, rr = r * (0.6 + look() * 0.4);
-      ring.push([cu + Math.cos(t) * rr, cy + Math.sin(t) * rr]);
+      const t = (j / sides) * Math.PI * 2, rr = r * (0.45 + look() * 0.55);
+      const lu = Math.cos(t) * rr * stretch, ly = Math.sin(t) * rr;
+      ring.push([cu + lu * ca - ly * sa, cy + lu * sa + ly * ca]);
     }
-    if (keep.some((h) => cu + r > h.u0 - 0.05 && cu - r < h.u1 + 0.05 && cy + r > h.y0 - 0.05 && cy - r < h.y1 + 0.05)) continue;
-    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.8 });
-    const c = r * 0.42;
+    sink.polygon(under, [[cu, cy], ...ring, ring[0]].map(([uu, yy]) => facePoint(face, uu, yy, 0.014)), { ...DECOR, shade: 0.74 + look() * 0.12 });
+    const cr = r * 0.4;
     sink.polygon('dark', [0, 1, 2, 3, 4].map((j) => {
       const t = (j / 5) * Math.PI * 2 + 0.3;
-      return facePoint(face, cu + Math.cos(t) * c, cy + Math.sin(t) * c, 0.016);
+      return facePoint(face, cu + Math.cos(t) * cr * stretch * ca - Math.sin(t) * cr * sa, cy + Math.cos(t) * cr * stretch * sa + Math.sin(t) * cr * ca, 0.016);
     }), DECOR);
   }
 }
