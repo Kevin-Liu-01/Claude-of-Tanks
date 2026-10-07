@@ -34,7 +34,10 @@ for (const quality of ['high', 'low']) {
   const turretSide = armor.turretPlates.find(plate => plate.name === 'turret_side_R');
   near(turretSide.verts[0][0], 1.41, 'combat turret width retained');
   near(tank.contactGeom.halfWidM, 1.674, 'ground contact follows narrowed tracks');
-  near(tank.contactGeom.halfLenM, 2.6975, 'ground contact length retained');
+  // 2026-10-04 (aa5fdca05): the published track run is read off the drawn band; the narrowed hull's band measures
+  // 2.6772 m (the profile's pinned flat run was 2.6975 m), and the build publishes what the combat anatomy records.
+  near(tank.contactGeom.halfLenM, 2.6772, 'ground contact length retained');
+  near(tank.contactGeom.halfLenM, getSpec('leo2a7v').armor.trackContact.halfLenM, 'ground contact length published', 6e-5);
   const tracks = getSpec('leo2a7v').armor.trackShapes;
   assert.equal(tracks.length, 2, 'one collision lane on each side');
   for (const track of tracks) {
