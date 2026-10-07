@@ -181,7 +181,7 @@ function dressGasMain(ctx: WorksContext, sink: PartSink, mobile: boolean): void 
   const washerBase = Math.min(...ring8(wx, wz, WASHER_R).map(([x, z]) => hf.getHeightAt(x, z))) - 0.3;
   const east = washerOk ? MAIN_EAST : SPACING + PLOT_HALF + 3;
   sink.placed(BLOCK.rot, BLOCK.x, 0, BLOCK.z, () => {
-    sink.cylinder('structureMetal', [MAIN_WEST, y, MAIN_V], 'x', east - MAIN_WEST, MAIN_R, 10, { colour: GAS, decor: true }, MAIN_R, true);
+    sink.cylinder('structureMetal', [MAIN_WEST, y, MAIN_V], 'x', east - MAIN_WEST, MAIN_R, 10, { colour: GAS, decor: true, uvAxial: true }, MAIN_R, true);
     // the flanges' bands along it
     if (!mobile) for (let u = MAIN_WEST + 2; u < east - 1; u += 4) sink.cylinder('structureMetal', [u, y, MAIN_V], 'x', 0.18, MAIN_R + 0.08, 10, { colour: shade(GAS, 0.8), decor: true }, MAIN_R + 0.08, false);
     for (const c of [-SPACING, 0, SPACING]) {
@@ -194,7 +194,7 @@ function dressGasMain(ctx: WorksContext, sink: PartSink, mobile: boolean): void 
     for (const g of [-SPACING / 2, SPACING / 2]) {
       // the expansion loop over the gap
       for (const s of [-1, 1]) sink.member('structureMetal', [g + s * 1.3, y, MAIN_V], [g + s * 1.3, y + 2.6, MAIN_V], MAIN_R * 1.6, MAIN_R * 1.6, [0, 0, 1], { colour: GAS, decor: true, exposed: true }, 0);
-      sink.cylinder('structureMetal', [g - 1.3 - MAIN_R * 0.8, y + 2.6, MAIN_V], 'x', 2.6 + MAIN_R * 1.6, MAIN_R, 10, { colour: GAS, decor: true }, MAIN_R, true);
+      sink.cylinder('structureMetal', [g - 1.3 - MAIN_R * 0.8, y + 2.6, MAIN_V], 'x', 2.6 + MAIN_R * 1.6, MAIN_R, 10, { colour: GAS, decor: true, uvAxial: true }, MAIN_R, true);
     }
     // the west end: down to the floor's corner
     sink.member('structureMetal', [MAIN_WEST, y, MAIN_V], [MAIN_WEST, hf.getHeightAt(...at(MAIN_WEST, MAIN_V)) + 0.4, MAIN_V], MAIN_R * 1.6, MAIN_R * 1.6, [0, 0, 1], { colour: GAS, decor: true, exposed: true }, 0);
@@ -218,7 +218,7 @@ function dressGasMain(ctx: WorksContext, sink: PartSink, mobile: boolean): void 
   }
   if (washerOk) {
     sink.placed(BLOCK.rot, BLOCK.x, 0, BLOCK.z, () => {
-      sink.cylinder('structureMetal', [MAIN_EAST, washerBase, MAIN_V], 'y', WASHER_H, WASHER_R, 12, { colour: GAS });
+      sink.cylinder('structureMetal', [MAIN_EAST, washerBase, MAIN_V], 'y', WASHER_H, WASHER_R, 12, { colour: GAS, uvAxial: true });
       sink.cylinder('structureMetal', [MAIN_EAST, washerBase + WASHER_H, MAIN_V], 'y', 1.4, WASHER_R, 12, { colour: shade(GAS, 0.9), decor: true }, 0.6, true);
       if (!mobile) for (let yy = washerBase + 1.2; yy < washerBase + WASHER_H; yy += 1.4) sink.cylinder('structureMetal', [MAIN_EAST, yy, MAIN_V], 'y', 0.14, WASHER_R + 0.06, 12, { colour: shade(GAS, 0.75), decor: true }, WASHER_R + 0.06, false);
     });
@@ -231,28 +231,57 @@ function dressGasMain(ctx: WorksContext, sink: PartSink, mobile: boolean): void 
  * mound on the ground in the vertex-coloured baked bucket, each facet's corners counter-clockwise seen from outside.
  * Returns the mound's footprint (its rim, world xz).
  */
-function heap(ctx: WorksContext, x: number, z: number, r: number, l: number, colour: Rgb, look: () => number): Array<[number, number]> {
+function heap(ctx: WorksContext, x: number, z: number, r: number, l: number, colour: Rgb, look: () => number): { hull: Array<[number, number]>; crest: [Vec3, Vec3] } {
   const hf = ctx.heightField, n = 10, height = r * 0.62;
-  const rim: Vec3[] = [], shoulder: Vec3[] = [], hull: Array<[number, number]> = [];
+  // the footprint the battle meets: the first draft's rim, from its own draws in their order (so the heap's solid and
+  // every later draw of the works' look stream keep their seats)
+  const hull: Array<[number, number]> = [];
   for (let i = 0; i < n; i++) {
     const a = i * Math.PI * 2 / n, w = 0.9 + look() * 0.2;
-    const dx = Math.cos(a) * r * w, dz = Math.sin(a) * l * w;
-    rim.push([x + dx, hf.getHeightAt(x + dx, z + dz) - 0.1, z + dz]);
-    hull.push([x + dx, z + dz]);
-    const sx = x + dx * 0.55, sz = z + dz * 0.55;
-    shoulder.push([sx, hf.getHeightAt(sx, sz) + height * (0.62 + 0.08 * look()), sz]);
+    hull.push([x + Math.cos(a) * r * w, z + Math.sin(a) * l * w]);
+    look();
   }
-  const peak: Vec3 = [x + (look() - 0.5) * r * 0.3, hf.getHeightAt(x, z) + height, z + (look() - 0.5) * l * 0.3];
+  look(); look();
+  for (let i = 0; i < n; i++) look();
+  // the clinker heap as tipped (wave 176: the faceted black cones read as "umbrellas or tents"): a broken rim bitten in
+  // and bulging, a shoulder of loose lumps, a crest along the heap's length where the tipping track ran, and a skirt of
+  // grey-brown fines spread on the ground round its foot; from a stream of its own
+  const v = streamFrom(hashSeed('saar-clinker', x, z));
+  const m = 18, along = l >= r, ax = along ? 0 : 1, az = along ? 1 : 0;
+  const rim: Vec3[] = [], shoulder: Vec3[] = [], skirt: Vec3[] = [];
+  for (let i = 0; i < m; i++) {
+    const a = i * Math.PI * 2 / m;
+    let f = 0.84 + v() * 0.3;
+    if (v() < 0.18) f *= 0.8;
+    const dx = Math.cos(a) * r * f, dz = Math.sin(a) * l * f;
+    rim.push([x + dx, hf.getHeightAt(x + dx, z + dz) - 0.08, z + dz]);
+    const sf = 0.5 + v() * 0.16, sx = x + dx * sf, sz = z + dz * sf;
+    shoulder.push([sx, hf.getHeightAt(sx, sz) + height * (0.5 + v() * 0.26), sz]);
+    const kf = 1.22 + v() * 0.2, kx = x + dx * kf, kz = z + dz * kf;
+    skirt.push([kx, hf.getHeightAt(kx, kz) + 0.04, kz]);
+  }
+  const span = (along ? l : r) * (0.32 + v() * 0.12), lean = (v() - 0.5) * 0.4;
+  const crestY = (t: number) => hf.getHeightAt(x + ax * t, z + az * t) + height * (0.92 + v() * 0.1);
+  const A: Vec3 = [x - ax * span + az * lean, crestY(-span), z - az * span + ax * lean];
+  const B: Vec3 = [x + ax * span - az * lean, crestY(span), z + az * span - ax * lean];
   const positions: number[] = [], colors: number[] = [], uvs: number[] = [];
-  const tri = (a: Vec3, b: Vec3, c: Vec3, k: number): void => {
-    const tone = shade(colour, k);
-    for (const p of [a, b, c]) { positions.push(p[0], p[1], p[2]); colors.push(tone[0], tone[1], tone[2]); uvs.push(p[0] * 0.5, p[2] * 0.5); }
+  const FINES: Rgb = [0.34, 0.31, 0.28];
+  // (the corners below run counter-clockwise in the x-z plane, z up, which is clockwise seen from above: each face is
+  // laid in reverse, so it faces out and up)
+  const tri = (a: Vec3, b: Vec3, c: Vec3, tone: Rgb): void => {
+    for (const p of [a, c, b]) { positions.push(p[0], p[1], p[2]); colors.push(tone[0], tone[1], tone[2]); uvs.push(p[0] * 0.5, p[2] * 0.5); }
   };
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n, k = 0.85 + look() * 0.3;
-    tri(rim[i], shoulder[i], shoulder[j], k);
-    tri(rim[i], shoulder[j], rim[j], k * 0.96);
-    tri(shoulder[i], peak, shoulder[j], k * 1.06);
+  const near = (p: Vec3) => (Math.hypot(p[0] - A[0], p[2] - A[2]) < Math.hypot(p[0] - B[0], p[2] - B[2]) ? A : B);
+  for (let i = 0; i < m; i++) {
+    const j = (i + 1) % m, k = 0.72 + v() * 0.42;
+      // the skirt of fines on the ground round the foot
+    tri(skirt[i], rim[j], rim[i], shade(FINES, 0.9 + v() * 0.2));
+    tri(skirt[i], skirt[j], rim[j], shade(FINES, 0.86 + v() * 0.2));
+    tri(rim[i], rim[j], shoulder[j], shade(colour, k));
+    tri(rim[i], shoulder[j], shoulder[i], shade(colour, k * (0.9 + v() * 0.2)));
+    const pi = near(shoulder[i]), pj = near(shoulder[j]);
+    tri(shoulder[i], shoulder[j], pj, shade(colour, k * 1.08));
+    if (pi !== pj) tri(shoulder[i], pj, pi, shade(colour, k * 1.12));
   }
   const geometry = new THREE.BufferGeometry();
   geometry.name = 'saar-yard-heap';
@@ -261,12 +290,12 @@ function heap(ctx: WorksContext, x: number, z: number, r: number, l: number, col
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
   (ctx.buckets.baked ??= []).push(geometry);
-  return hull;
+  return { hull, crest: [A, B] };
 }
 
 /** The receiving yard's ore and coke heaps beyond the high-line's western end, and the slag by the line's casting side:
  * each a solid where it clears the records. */
-function dressHeaps(ctx: WorksContext, look: () => number): void {
+function dressHeaps(ctx: WorksContext, look: () => number, sink?: PartSink): void {
   const hf = ctx.heightField;
   for (const h of [...HEAPS, ...SLAG_HEAPS.map((s) => ({ ...s, colour: SLAG }))]) {
     // (a heap keeps 5 m between its rim and the nearest road line or apron: the layout brief's 3.5 m core and a margin)
@@ -274,9 +303,15 @@ function dressHeaps(ctx: WorksContext, look: () => number): void {
     // (its rim's box, r along x and l along z as heap() lays it, half a metre off every record placed so far)
     const ex = h.r + 0.5, ez = h.l + 0.5;
     if ((ctx.obstacles ?? []).some((o) => !o.dead && o.max[0] > h.x - ex && o.min[0] < h.x + ex && o.max[2] > h.z - ez && o.min[2] < h.z + ez)) continue;
-    const hull = heap(ctx, h.x, h.z, h.r, h.l, h.colour, look);
+    const { hull, crest } = heap(ctx, h.x, h.z, h.r, h.l, h.colour, look);
     const low = Math.min(...hull.map(([x, z]) => hf.getHeightAt(x, z))) - 0.1;
     solid(ctx, hull, low, hf.getHeightAt(h.x, h.z) + h.r * 0.62, 'ore-heap');
+    // the tipping track along a slag heap's crest: its two rails on their sleepers (dressing)
+    if (h.colour === SLAG && sink) {
+      const [a, b] = crest, dx = b[0] - a[0], dz = b[2] - a[2], len = Math.hypot(dx, dz) || 1, nx = -dz / len * 0.72, nz = dx / len * 0.72;
+      for (const s of [-1, 1]) sink.member('structureMetal', [a[0] + nx * s, a[1] + 0.12, a[2] + nz * s], [b[0] + nx * s, b[1] + 0.12, b[2] + nz * s], 0.07, 0.12, [0, 1, 0], { colour: STEEL, decor: true, exposed: true }, 0);
+      for (let t = 0.05; t < 1; t += 0.12) sink.member('structureWood', [a[0] + dx * t - nx * 1.4, a[1] + (b[1] - a[1]) * t + 0.04, a[2] + dz * t - nz * 1.4], [a[0] + dx * t + nx * 1.4, a[1] + (b[1] - a[1]) * t + 0.04, a[2] + dz * t + nz * 1.4], 0.22, 0.1, [0, 1, 0], { colour: [0.2, 0.16, 0.12], decor: true }, 0);
+    }
   }
 }
 
@@ -298,6 +333,6 @@ export function dressSaarWorks(ctx: WorksContext): void {
   const sink = new PartSink([look() * 5, look() * 5]);
   dressHighLine(ctx, sink, mobile);
   dressGasMain(ctx, sink, mobile);
-  dressHeaps(ctx, look);
+  dressHeaps(ctx, look, sink);
   push(ctx, sink);
 }

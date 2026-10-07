@@ -6,7 +6,7 @@
 // the colliery's headframe over its shaft hall with the winding-engine house behind it (the Saar coalfield at the works'
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
-import { PartSink, alongPlot, faceBox, facePanel, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
@@ -16,6 +16,8 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 const YELLOW_BRICK = 'plaster2' as const;
 /** The works' steel: furnace plate rusted brown-grey, the stoves' darker shells, the trusses' oxide red, the sheet's grey. */
 const PLATE = rgb(0x544840), STOVE = rgb(0x46403b), OXIDE = rgb(0x6a3f2e), TRUSS = rgb(0x3a3532), SHEET = rgb(0x6e7272);
+/** The streaks down a furnace's and a stove's shell from their tops: the soot's black, the rust's brown (wave 176). */
+const STREAK_SOOT: Rgb = [0.05, 0.045, 0.04], STREAK_RUST: Rgb = [0.27, 0.13, 0.07];
 const HOLDER = rgb(0x5c6a63), FRAME = rgb(0xc8c2b4), DOOR = rgb(0x3e4e44), IRON = rgb(0x2d2f30);
 const WINDOW: WindowStyle = { frame: FRAME, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: YELLOW_BRICK, width: 0.14, out: 0.05, lintel: 0.26 }, sill: { bucket: 'stone', out: 0.1 }, shutters: null };
 const HALL_WINDOW: WindowStyle = { ...WINDOW, frame: rgb(0x4a4f4e), bars: 'six' };
@@ -103,60 +105,79 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       }, dialect(rng, HALL_WINDOW));
       sink.band(YELLOW_BRICK, frame.bodies[0].x0 - 0.04, ch - 0.6, frame.bodies[0].z0 - 0.04, frame.bodies[0].x1 + 0.04, ch - 0.35, frame.bodies[0].z1 + 0.04, { decor: true });
     });
-    // the furnace: hearth, bosh and stack, banded; the charging platform and the bell house on top
-    sink.cylinder('structureMetal', [0, -0.4, fz], 'y', ch + 1.6, fr, 12, { colour: PLATE }, fr * 1.05, true);
-    sink.cylinder('structureMetal', [0, ch + 1.2, fz], 'y', fh - ch - 1.2, fr * 1.05, 12, { colour: PLATE }, fr * 0.72, true);
-    // the riveted shell (wave 137: "smooth dark cylinders"): its plate courses' bands every 1.1 m, and up close the
-    // vertical seams between the plates
-    if (!mobile) for (let y = ch + 1.8; y < fh - 0.6; y += 1.1) ring(sink, 0, y, fz, fr * (1.05 - 0.33 * (y - ch - 1.2) / (fh - ch - 1.2)) + 0.02, 0.18);
-    if (!mobile) for (let k = 0; k < 12; k++) {
-      const a = (k + 0.5) / 12 * Math.PI * 2, r0 = fr * 1.05 + 0.04, r1 = fr * 0.72 + 0.04;
-      sink.member('structureMetal', [Math.cos(a) * r0, ch + 1.2, fz + Math.sin(a) * r0], [Math.cos(a) * r1, fh - 0.2, fz + Math.sin(a) * r1], 0.07, 0.05,
-        [Math.cos(a), 0, Math.sin(a)], { colour: shade(PLATE, 0.78), decor: true, fine: true, exposed: true }, 0);
+    // the furnace: hearth, bosh and stack in riveted plate courses (the sheet's profile and panel seams laid round the
+    // shell, uvAxial; wave 176 read ribs running up the shells as "wooden barrels or grain silos"), a course band every
+    // 1.2 m; the stack draws in a little to its throat, where the charging platform stands flat over it
+    const throat = fr * 0.84;
+    sink.cylinder('structureMetal', [0, -0.4, fz], 'y', ch + 1.6, fr, 12, { colour: PLATE, uvAxial: true }, fr * 1.05, true);
+    sink.cylinder('structureMetal', [0, ch + 1.2, fz], 'y', fh - ch - 1.2, fr * 1.05, 12, { colour: PLATE, uvAxial: true }, throat, true);
+    if (!mobile) for (let y = ch + 1.8; y < fh - 0.4; y += 1.2) ring(sink, 0, y, fz, fr * 1.05 - (fr * 1.05 - throat) * (y - ch - 1.2) / (fh - ch - 1.2) + 0.03, 0.2);
+    // the bustle main: the ring of hot-blast pipe round the furnace over the casting house, and the tuyere stocks from it
+    // down into the hearth's ring of tuyeres
+    for (let k = 0; k < 10; k++) {
+      const a0 = k / 10 * Math.PI * 2, a1 = (k + 1) / 10 * Math.PI * 2, rr = fr + 1.05;
+      sink.member('structureMetal', [Math.cos(a0) * rr, 9.0, fz + Math.sin(a0) * rr], [Math.cos(a1) * rr, 9.0, fz + Math.sin(a1) * rr], 0.75, 0.75, [0, 1, 0],
+        { colour: OXIDE, decor: true, exposed: true }, 0);
     }
-    // the tuyere stocks: from the bustle pipe down into the hearth's ring of tuyeres, through the casting house roof
     for (let k = 0; k < 8; k++) {
-      const a = (k + 0.5) / 8 * Math.PI * 2, rr = fr + 1.0;
-      sink.member('structureMetal', [Math.cos(a) * rr, 8.8, fz + Math.sin(a) * rr], [Math.cos(a) * (fr * 1.02 + 0.1), ch + 0.4, fz + Math.sin(a) * (fr * 1.02 + 0.1)], 0.22, 0.22,
+      const a = (k + 0.5) / 8 * Math.PI * 2, rr = fr + 1.05;
+      sink.member('structureMetal', [Math.cos(a) * rr, 8.8, fz + Math.sin(a) * rr], [Math.cos(a) * (fr * 1.02 + 0.1), ch + 0.4, fz + Math.sin(a) * (fr * 1.02 + 0.1)], 0.24, 0.24,
         [0, 1, 0], { colour: shade(OXIDE, 0.85), decor: true, exposed: true }, 0);
     }
-    const top = fh;
-    sink.span('structureMetal', -fr * 0.72 - 0.7, top, fz - fr * 0.72 - 0.7, fr * 0.72 + 0.7, top + 0.3, fz + fr * 0.72 + 0.7, { colour: TRUSS, decor: true });
-    sink.span('structureMetal', -1.2, top + 0.3, fz - 1.2, 1.2, top + 2.8, fz + 1.2, { colour: SHEET, decor: true });
-    // the uptakes rising off the top, joined over it, the downcomer falling to the dust catcher at the casting house's side
-    for (const [ux, uz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
-      sink.member('structureMetal', [ux * fr * 0.5, top - 0.5, fz + uz * fr * 0.5], [ux * 0.6, top + 5.6, fz + uz * 0.6], 0.5, 0.5, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
+    // the charging platform: a flat steel deck wider than the throat on its brackets, its railing, the bell house on it
+    const top = fh, pw = throat + 1.6;
+    sink.span('structureMetal', -pw, top, fz - pw, pw, top + 0.35, fz + pw, { colour: TRUSS, decor: true });
+    if (!mobile) for (const [x0, z0, x1, z1] of [[-pw, -pw, pw, -pw], [-pw, pw, pw, pw], [-pw, -pw, -pw, pw], [pw, -pw, pw, pw]] as const) {
+      sink.member('structureMetal', [x0, top + 1.35, fz + z0], [x1, top + 1.35, fz + z1], 0.06, 0.06, [0, 1, 0], { colour: TRUSS, decor: true, fine: true, exposed: true }, 0);
     }
-    // the bleeder valves' pipes standing over the uptakes' crossing
-    for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * 0.5, top + 5.6, fz], 'y', 3.2, 0.22, 8, { colour: PLATE, decor: true }, 0.22, true);
+    sink.span('structureMetal', -1.4, top + 0.35, fz - 1.3, 1.4, top + 3.0, fz + 1.3, { colour: SHEET, decor: true });
+    // the gas offtakes: four uptakes standing straight up off the throat's quarters, bent over into a header box over
+    // the bell house, the downcomer falling from it to the dust catcher; the bleeder stacks over the header, flat-capped
+    const hy = top + 5.2;
+    for (const [ux, uz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+      const bx = ux * throat * 0.62, bz = fz + uz * throat * 0.62;
+      sink.member('structureMetal', [bx, top + 0.2, bz], [bx, hy, bz], 0.55, 0.55, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
+      sink.member('structureMetal', [bx, hy, bz], [ux * 0.5, hy, fz + uz * 0.5], 0.55, 0.55, [0, 1, 0], { colour: PLATE, decor: true, exposed: true }, 0);
+    }
+    sink.span('structureMetal', -1.0, hy - 0.5, fz - 1.0, 1.0, hy + 0.6, fz + 1.0, { colour: PLATE, decor: true });
+    for (const [bx, bz] of [[-0.5, -0.4], [0.5, 0.4], [0.45, -0.5]] as const) {
+      sink.cylinder('structureMetal', [bx, hy + 0.6, fz + bz], 'y', 3.0, 0.24, 8, { colour: PLATE, decor: true, uvAxial: true }, 0.24, false);
+      // the bleeder valve's flat bonnet
+      sink.cylinder('structureMetal', [bx, hy + 3.6, fz + bz], 'y', 0.35, 0.42, 8, { colour: shade(PLATE, 0.8), decor: true }, 0.42, true);
+    }
     const dcx = -W / 2 + 1.6, dcz = cz0 + 1.4;
-    sink.member('structureMetal', [0, top + 5.7, fz], [dcx, ch + 4.5, dcz], 0.7, 0.7, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
-    sink.cylinder('structureMetal', [dcx, ch + 0.5, dcz], 'y', 4.2, 1.2, 10, { colour: STOVE, decor: true }, 1.2);
+    sink.member('structureMetal', [0, hy, fz], [dcx, ch + 4.5, dcz], 0.75, 0.75, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
+    sink.cylinder('structureMetal', [dcx, ch + 0.5, dcz], 'y', 4.2, 1.2, 10, { colour: STOVE, decor: true, uvAxial: true }, 1.2);
     sink.cylinder('structureMetal', [dcx, ch - 1.5, dcz], 'y', 2.0, 0.3, 8, { colour: STOVE, decor: true }, 1.2, false);
-    // the Cowper stoves behind the furnace, domed, the hot-blast main to the bustle pipe round the furnace
+    // rust and soot run down the furnace from its top: dark streaks on the shell, a hand off it
+    if (!mobile) for (let k = 0; k < 7; k++) {
+      const a = (k + look() * 0.6) / 7 * Math.PI * 2, len = (fh - ch) * (0.3 + look() * 0.45), w = 0.35 + look() * 0.5;
+      const r0 = throat + 0.05, r1 = fr * 1.05 - (fr * 1.05 - throat) * (1 - len / (fh - ch - 1.2)) + 0.05;
+      const c = Math.cos(a), sn = Math.sin(a), tx = -sn, tz = c;
+      const tone = look() < 0.5 ? STREAK_SOOT : STREAK_RUST;
+      // (counter-clockwise seen from outside: the ring's tangent (-sin, cos) runs to the viewer's left)
+      sink.quad('structureMetal', [c * r1 + tx * w * 0.2, top - len, fz + sn * r1 + tz * w * 0.2], [c * r1 - tx * w * 0.2, top - len, fz + sn * r1 - tz * w * 0.2],
+        [c * r0 - tx * w / 2, top - 0.1, fz + sn * r0 - tz * w / 2], [c * r0 + tx * w / 2, top - 0.1, fz + sn * r0 + tz * w / 2], { colour: tone, decor: true });
+    }
+    // the Cowper stoves behind the furnace in their plate courses, each under a round dome to a small flat crown (never a
+    // point: wave 176's "row of minarets"), the hot-blast main to the bustle main
     for (const s of [-1, 1]) {
       const sx = s * (sr + 0.3);
-      sink.cylinder('structureMetal', [sx, -0.4, stz], 'y', sh + 0.4, sr, 12, { colour: STOVE });
-      // the dome: three frusta closing over the shell
+      sink.cylinder('structureMetal', [sx, -0.4, stz], 'y', sh + 0.4, sr, 12, { colour: STOVE, uvAxial: true });
       let dy = sh;
-      for (const [a, b, h] of [[1, 0.86, 0.32], [0.86, 0.52, 0.32], [0.52, 0.06, 0.26]] as const) {
-        sink.cylinder('structureMetal', [sx, dy, stz], 'y', sr * h, sr * a, 12, { colour: STOVE, decor: true }, sr * b, true);
+      for (const [a, b, h] of [[1, 0.93, 0.2], [0.93, 0.76, 0.22], [0.76, 0.5, 0.2], [0.5, 0.22, 0.14]] as const) {
+        sink.cylinder('structureMetal', [sx, dy, stz], 'y', sr * h, sr * a, 12, { colour: STOVE, decor: true }, sr * b, h === 0.14);
         dy += sr * h;
       }
-      // the stove's riveted courses and, up close, its seams
-      if (!mobile) for (let y = 1.6; y < sh - 0.5; y += 1.75) ring(sink, sx, y, stz, sr + 0.02, 0.16, shade(STOVE, 0.8));
-      if (!mobile) for (let k = 0; k < 8; k++) {
-        const a = (k + 0.5) / 8 * Math.PI * 2, r = sr + 0.04;
-        sink.member('structureMetal', [sx + Math.cos(a) * r, 0, stz + Math.sin(a) * r], [sx + Math.cos(a) * r, sh - 0.1, stz + Math.sin(a) * r], 0.07, 0.05,
-          [Math.cos(a), 0, Math.sin(a)], { colour: shade(STOVE, 0.75), decor: true, fine: true, exposed: true }, 0);
+      if (!mobile) for (let y = 1.6; y < sh - 0.5; y += 1.25) ring(sink, sx, y, stz, sr + 0.03, 0.16, shade(STOVE, 0.8));
+      if (!mobile) for (let k = 0; k < 3; k++) {
+        const a = (k + look()) / 3 * Math.PI * 2, len = sh * (0.25 + look() * 0.3), w = 0.4 + look() * 0.4, r = sr + 0.05;
+        const c = Math.cos(a), sn = Math.sin(a), tx = -sn, tz = c, tone = look() < 0.6 ? STREAK_SOOT : STREAK_RUST;
+        sink.quad('structureMetal', [sx + c * r + tx * w * 0.2, sh - len, stz + sn * r + tz * w * 0.2], [sx + c * r - tx * w * 0.2, sh - len, stz + sn * r - tz * w * 0.2],
+          [sx + c * r - tx * w / 2, sh - 0.1, stz + sn * r - tz * w / 2], [sx + c * r + tx * w / 2, sh - 0.1, stz + sn * r + tz * w / 2], { colour: tone, decor: true });
       }
     }
     sink.member('structureMetal', [-(sr + 0.3), 9.5, stz + sr], [0, 9.5, fz - fr - 0.4], 1.0, 1.0, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true }, 0);
-    for (let k = 0; k < 8; k++) {
-      const a0 = k / 8 * Math.PI * 2, a1 = (k + 1) / 8 * Math.PI * 2, rr = fr + 1.0;
-      sink.member('structureMetal', [Math.cos(a0) * rr, 9.0, fz + Math.sin(a0) * rr], [Math.cos(a1) * rr, 9.0, fz + Math.sin(a1) * rr], 0.7, 0.7, [0, 1, 0],
-        { colour: OXIDE, decor: true, exposed: true }, 0);
-    }
     // the bunkers and their bins; the wagon arches through them
     sink.span('stone', -W / 2, -0.4, bz0, W / 2, bh, D / 2);
     sink.span('structureMetal', -W / 2 + 0.3, bh, bz0 + 0.3, W / 2 - 0.3, bh + 2.6, D / 2 - 0.3, { colour: SHEET });
@@ -185,7 +206,7 @@ const blastFurnace: RegionalBuilder = (ctx) => {
  */
 function sawtoothHall(ctx: RegionalBuildContext, wallH: number, toothMax: number): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, mobile = ctx.tier === 'mobile';
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   const f = fillOf(ctx);
   const turned = f.w > f.d + 1;
   // (the parapet roof overhangs its walls by 0.05 m: the walls stand in by that)
@@ -210,7 +231,28 @@ function sawtoothHall(ctx: RegionalBuildContext, wallH: number, toothMax: number
         {}, { kind: 'plane', origin: [0, y0 + rise, z0], u: [1, 0, 0], v: [0, -rise / Math.hypot(rise, tl), tl / Math.hypot(rise, tl)] });
       const up: Face = { origin: [0, 0, z0 + 0.04], u: [-1, 0, 0], out: [0, 0, -1], width: W - 0.5 };
       facePanel(sink, 'glass', up, 0, y0 + rise * 0.5, 0.01, W - 0.9, rise * 0.75, { decor: true, window: [0, 0, -1] });
-      if (!mobile) for (let u = -W / 2 + 1.2; u < W / 2 - 0.8; u += 1.2) faceBox(sink, 'structureWood', up, u, y0 + rise * 0.5, 0.03, 0.07, rise * 0.75, 0.05, { colour: IRON, decor: true, fine: true });
+      // the north light's glazing bars read at range (wave 176: "no north-light glazing"), its sill and head rails, a
+      // shattered pane or two gone to the dark behind
+      for (let u = -W / 2 + 1.2; u < W / 2 - 0.8; u += 1.2) faceBox(sink, 'structureWood', up, u, y0 + rise * 0.5, 0.03, 0.08, rise * 0.75, 0.06, { colour: IRON, decor: true });
+      for (const yy of [y0 + rise * 0.125, y0 + rise * 0.875]) faceBox(sink, 'structureWood', up, 0, yy, 0.04, W - 0.8, 0.09, 0.08, { colour: IRON, decor: true });
+      if (!mobile) for (let n2 = Math.floor(look() * 3); n2 > 0; n2--) facePanel(sink, 'dark', up, (look() - 0.5) * (W - 3), y0 + rise * 0.5, 0.02, 1.0, rise * 0.7, { decor: true });
+    }
+    // the blue-black engineering brick of the plinth, the downpipes from the parapet's hoppers, the works' soot run down
+    // the long walls from the eaves (wave 176: "no soot, downpipes or plinth")
+    sink.band('dark', b.x0 - 0.05, -0.4, b.z0 - 0.05, b.x1 + 0.05, 0.85, b.z1 + 0.05, { decor: true });
+    for (const side of [-1, 1]) {
+      const x = side < 0 ? b.x0 - 0.14 : b.x1 + 0.14;
+      for (let z = b.z0 + 2.4; z < b.z1 - 1.0; z += 6.2) {
+        sink.member('structureMetal', [x, wallH + 0.3, z], [x, 0.25, z], 0.12, 0.12, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+        sink.span('structureMetal', x - 0.16, wallH + 0.25, z - 0.2, x + 0.16, wallH + 0.6, z + 0.2, { colour: IRON, decor: true });
+      }
+      const wallFace: Face = side < 0 ? { origin: [b.x0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [b.x1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+      for (let k = 0; k < Math.max(2, Math.round(D / 7)); k++) {
+        const u = -D / 2 + 1.5 + look() * (D - 3), w2 = 1.2 + look() * 2.2, drop = 1.6 + look() * 2.4;
+        sink.quad('stone', facePoint(wallFace, u - w2 / 2, wallH - drop, 0.012), facePoint(wallFace, u + w2 / 2, wallH - drop, 0.012),
+          facePoint(wallFace, u + w2 / 2, wallH + 0.55, 0.012), facePoint(wallFace, u - w2 / 2, wallH + 0.55, 0.012),
+          { decor: true, shadeAt: (p) => (p[1] > wallH - 0.4 ? 0.36 : 0.72) });
+      }
     }
   }));
   return sink.finish();

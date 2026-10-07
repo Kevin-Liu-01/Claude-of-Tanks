@@ -7387,6 +7387,40 @@ patchwork".** Round 2 builds the Völklinger Hütte's dense steel silhouette alo
 - *Not this round:* March-1945 bare crowns (the trees lane's `vegetation.bare`, not yet on the PR head); the stepped
   blend edges (the ground lane's); the flat light (the skies lane's).
 
+### 2026-10-06 — Ironworks round 3: the furnace tops, the clinker tips, the works ground (the map-revival lane, mr1)
+
+**Wave 176 found no harm. Its critics read the furnaces as "wooden barrels or grain silos", the stoves as "a row of
+minarets" and the slag tips as "umbrellas or tents", and they found lawn on the works floor.**
+- *The shells:* the steel sheet's profile and panel seams now run round every furnace, stove, washer and gas-main
+  cylinder instead of up it (`EmitOptions.uvAxial` in `regional/geometry.ts`: the run the critics read as staves). A
+  course band circles each shell every 1.2 m, and the vertical seams are gone.
+- *The furnace tops:* the stack draws in to its throat (0.84 of the hearth's radius), where a flat charging platform
+  stands with its railing and the bell house. Four uptakes rise straight off the throat's quarters and bend into a
+  header box over the bell house. The downcomer falls from the header to the dust catcher, and three bleeder stacks with
+  flat bonnets stand over it. The bustle main circles the furnace over the casting house, with its tuyere stocks. Soot
+  and rust streaks run down from the top. The skip hoist stays.
+- *The stoves:* plate courses and a round dome in four frusta closing to a small flat crown, never a point, with
+  streaks.
+- *The clinker tips:* each slag heap is tipped. It has a broken rim, bitten in and bulging, a shoulder of loose lumps,
+  and a crest along its length where the tipping track runs (rails on sleepers, dressing). A skirt of grey-brown fines
+  spreads on the ground round its foot. All of this comes from a stream of its own (`saar-clinker`). The footprint and
+  the solid are the first draft's, from the same draws, so the works' look stream keeps every later seat.
+- *The works hut:* the street's blue security office (round 2's swap for the Nissen hut) becomes the Saar works hut.
+  It is brick on a dark plinth under a tarred gable, with small-pane windows down both long sides and a stove pipe
+  (`REGIONAL_DESTRUCTIBLE_TYPES.saar`; the family keeps its footprint and collision).
+- *The sawtooth mills:* the north lights' glazing bars and rails read at range, with a pane or two shattered. A
+  blue-black engineering-brick plinth runs to 0.85 m. Downpipes fall from the parapet hoppers every 6.2 m, and soot runs
+  down the long walls from the eaves. The panes and the soot draw from the look stream.
+- *The works ground* (1007675da, its own commit and no-harm pair): the works floor, the furnace yards and the cinder
+  ground rotate slag, gravel, hardstanding and ballast, with no sward. Black ground surrounds every furnace. The
+  sidings' ground ends with their lines.
+- *Census* [3225, 3687, 2061], unchanged. The foundry shard is re-captured: the stacks' throats are wider than the
+  first draft's 0.72.
+- *Pacing* (60 seeds, 36000–36059): median 195 s, p10 166 s, minimum 137 s, none under 120 s, no timeouts (round 2:
+  196 / 163 / 137).
+- *Layout brief:* holds (3 lanes, sight median 122 m, symmetry 1.028, no solid in a road). The saar kit's builders all
+  land inside their plots.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

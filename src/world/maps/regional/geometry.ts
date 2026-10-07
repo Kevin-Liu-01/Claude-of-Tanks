@@ -94,6 +94,12 @@ export interface EmitOptions {
   shadeAt?: (p: Vec3) => number;
   /** per-corner colour in a coloured bucket (a painted sheet weathering down its slope), emitting frame; wins over `colour` */
   colourAt?: (p: Vec3) => Rgb;
+  /**
+   * a cylinder's tile turned a quarter: its u along the axis, v round the ring (the straw tile's lay), so the sheet
+   * steel's profile and panel seams run round an upright shell as horizontal plate courses (the Saar kit's furnaces,
+   * stoves and gas mains: wave 176 read the ribs running up them as "wooden barrels or grain silos")
+   */
+  uvAxial?: boolean;
 }
 
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3(), tmpD = new THREE.Vector3();
@@ -326,7 +332,7 @@ export class PartSink {
       const chord = normalize3([a0[j][0] - a0[i][0], a0[j][1] - a0[i][1], a0[j][2] - a0[i][2]]);
       const plane = { kind: 'plane' as const, origin: a0[i], u: chord, v: along };
       // thatch combs along the axis (the straw tile's stalks run along its u)
-      this.quad(bucket, a0[i], a0[j], a1[j], a1[i], { ...opts, uv: bucket === 'straw' ? { ...plane, u: along, v: chord } : plane, density });
+      this.quad(bucket, a0[i], a0[j], a1[j], a1[i], { ...opts, uv: bucket === 'straw' || opts.uvAxial ? { ...plane, u: along, v: chord } : plane, density });
     }
     if (caps) {
       this.polygon(bucket, [...a1], { ...opts, uv: UV_WORLD });
