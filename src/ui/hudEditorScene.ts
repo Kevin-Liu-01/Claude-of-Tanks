@@ -1,4 +1,4 @@
-import { getLocale } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
 import { HUD_PARTS, type HudPartId, type HudProfile } from './hudPreferences.ts';
 
 export interface HudPreviewPart { element: HTMLElement; x: number; y: number; width: number; height: number }
@@ -7,7 +7,7 @@ export interface HudPreviewScene { frame: HTMLIFrameElement; parts: Map<HudPartI
 /** The iframe isolates production HUD listeners and viewport rules from the live game. */
 export async function loadHudPreview(parent: HTMLElement, profile: HudProfile, width: number, height: number, signal: AbortSignal, focus: HudPartId): Promise<HudPreviewScene> {
   const frame = document.createElement('iframe');
-  frame.className='hud-edit-scene'; frame.title='Battle preview'; frame.tabIndex=-1; frame.setAttribute('aria-hidden','true');
+  frame.className='hud-edit-scene'; frame.title=t('hudEditor.preview'); frame.tabIndex=-1; frame.setAttribute('aria-hidden','true');
   frame.style.width=`${width}px`; frame.style.height=`${height}px`;
   const ready = new Promise<void>((resolve,reject)=>{
     const finish=(error?: Error) => { clearTimeout(timer); window.removeEventListener('message',message); signal.removeEventListener('abort',abort); error?reject(error):resolve(); };
