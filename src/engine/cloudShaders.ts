@@ -171,11 +171,10 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 thick = uLayerTop - uLayerBase;
 	vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
 	vec4 base = uLayerBase - thick * uLayerHang * k;
-	vec4 top = uLayerBase + thick * ( 0.15 + 0.85 * k );
+	vec4 top = uLayerBase + thick * ( 0.2 + 0.8 * k );
 	hf = clamp( ( vec4( h ) - base ) / max( top - base, vec4( 1.0 ) ), 0.0, 1.0 );
 	vec4 inside = step( base, vec4( h ) ) * step( vec4( h ), top ) * step( vec4( 1e-6 ), uLayerDensity );
 	vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );
-	// [ported] the shape-altering function (a semicircle over the height fraction, its widest point lowered by the bias)
 	vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );
 	heightScale = max( heightScale, uLayerAnvil * smoothstep( 0.74, 0.9, hf ) * ( 1.0 - smoothstep( 0.97, 1.0, hf ) ) );
 	// the footprint's share at this height, and the density rising over the footprint from its edge to the weather's
@@ -184,6 +183,10 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 admitted = uLayerCover * heightScale;
 	vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );
 	vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );
+	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
+	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
+	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
+	d *= mix( vec4( 1.0 ), smoothstep( 0.02, 0.1, k ), gapOn );
 	return d * uLayerCore * inside;
 }
 // the extinction of every lane at a point (1/m): the shell eroded by the shape and (detail > 0) the detail, under the

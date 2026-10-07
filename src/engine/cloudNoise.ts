@@ -407,9 +407,9 @@ export function bakeCloudLocalWeather(size = CLOUD_LOCAL_SIZE, seed = CLOUD_NOIS
   const clusterB = new Float32Array(count);
   perlin2(N, 4, seed + 403, clusterB, 0.6); perlin2(N, 8, seed + 404, clusterB, 0.4);
   const cu = new Float32Array(count);
-  // an fbm (each octave about half the last): the four-kilometre cells hold the field and the finer ones only break their
+  // an fbm (each octave about half the last): the six-kilometre cells hold the field and the finer ones only break their
   // edges (at near-equal weights the half-kilometre octave cut every cell into a scatter of small puffs)
-  worley2(N, 12, seed + 411, cu, 0.50); worley2(N, 24, seed + 412, cu, 0.28); worley2(N, 48, seed + 413, cu, 0.15); worley2(N, 96, seed + 414, cu, 0.07);
+  worley2(N, 8, seed + 411, cu, 0.50); worley2(N, 16, seed + 412, cu, 0.28); worley2(N, 32, seed + 413, cu, 0.15); worley2(N, 64, seed + 414, cu, 0.07);
   const ac = new Float32Array(count);
   worley2(N, 48, seed + 421, ac, 0.40); worley2(N, 96, seed + 422, ac, 0.36); worley2(N, 192, seed + 423, ac, 0.30);
   const st = new Float32Array(count);

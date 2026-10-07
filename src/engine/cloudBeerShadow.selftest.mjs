@@ -28,7 +28,8 @@ const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexO
 for (const line of [
   'vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );',
   'vec4 base = uLayerBase - thick * uLayerHang * k;',
-  'vec4 top = uLayerBase + thick * ( 0.15 + 0.85 * k );',
+  'vec4 top = uLayerBase + thick * ( 0.2 + 0.8 * k );',
+  'd *= mix( vec4( 1.0 ), smoothstep( 0.02, 0.1, k ), gapOn );',
   'vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );',
   'vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );',
   'vec4 admitted = uLayerCover * heightScale;',
@@ -89,7 +90,7 @@ function extinction(p, weather) {
     const thick = L.topM - L.baseM;
     // k = mix(1, c · mix(1, 0.55 + 0.45 l, lumps), cells) at a uniform cell (c = l = 1): the full column
     const k = 1;
-    const base = L.baseM - thick * L.hang * k, top = L.baseM + thick * (0.15 + 0.85 * k);
+    const base = L.baseM - thick * L.hang * k, top = L.baseM + thick * (0.2 + 0.8 * k);
     if (!(h >= base && h <= top) || L.density <= 1e-6) continue;
     const hf = clamp((h - base) / Math.max(top - base, 1), 0, 1);
     const box = smooth(0, 0.12, hf) * (1 - smooth(0.82, 1, hf));

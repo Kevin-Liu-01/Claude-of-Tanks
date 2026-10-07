@@ -95,7 +95,7 @@ const DECK_CORE = 0.82;
 export function cloudShellCover(coverage: number, deck: boolean): number {
   if (deck) return clamp(coverage + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
   // (a sparse humilis sky keeps a few small puffs the carving would take: a lift of 0.03, none at no coverage)
-  return clamp(coverage * 1.08 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
+  return clamp(coverage * 1.2 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */
@@ -135,7 +135,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
   // cumulus' ramp runs past its footprint's peak, so the shape volume carves the whole cloud into its billows, not just
   // its rim — at 1 every cumulus was a smooth loaf under a bubbly fringe)
-  const filter = isDeck ? 0.55 : 1.5;
+  const filter = isDeck ? 0.55 : 1.35;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -167,13 +167,14 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // a deck's cores hang under its base (a lumpy underside the light reads through its thickness)
     hang: isDeck ? 0.3 * cellsEff : cells > 0 ? 0.18 * cells : 0,
     anvil: clamp(preset.anvil, 0, 1),
-    core: isDeck ? DECK_CORE : 0.4,
+    core: isDeck ? DECK_CORE : 0.46,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
     // a deck's base is lit through its column; a cumulus' shaded flank and base only a little (the octaves and the sky
     // light it: at a deck's share the fill flattened every cumulus to one grey, its lit side under twice its shade)
-    diffuse: isDeck ? Math.max(clamp(preset.deckLight, 0, 1) * deck, 0.6) : 0.15,
+    // (at 0.9 the first GPU pair's broken decks read as one white sheet under the game's exposure)
+    diffuse: isDeck ? Math.max(clamp(preset.deckLight, 0, 1) * deck * 0.65, 0.45) : 0.15,
     shadow: true,
   });
   const aloft = ALOFT[preset.regime];
