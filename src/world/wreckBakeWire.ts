@@ -30,6 +30,7 @@ interface WreckGeometryWire {
 }
 
 export interface WreckBakeWire {
+  solids: number[][];
   geo: WreckGeometryWire;
   shadowGeo: WreckGeometryWire | null;
   hx: number;
@@ -103,6 +104,7 @@ export function packWreckBake(baked: WreckBake): { wire: WreckBakeWire; transfer
   const wire: WreckBakeWire = {
     geo: packGeometry(baked.geo, buffers),
     shadowGeo: baked.shadowGeo ? packGeometry(baked.shadowGeo, buffers) : null,
+    solids: baked.solids,
     hx: baked.hx,
     hz: baked.hz,
     h: baked.h,
@@ -157,6 +159,7 @@ export function unpackWreckBake(wire: WreckBakeWire): WreckBake {
     return {
       geo,
       shadowGeo: wire.shadowGeo ? unpackGeometry(wire.shadowGeo) : null,
+      solids: wire.solids,
       hx: wire.hx,
       hz: wire.hz,
       h: wire.h,

@@ -324,3 +324,12 @@ console.log('mainFrameRuntime.selftest: retained Garage, studio, shot, and battl
  const battle=createFixture({phase:'battle',modePreview:preview});battle.runtime.tick(2000);
  assert.ok(clears>0,'Garage preview releases before battle presentation');
 }
+{
+ const preview={animated:false,pending:true,update(){},clear(){}};
+ const fixture=createFixture({useRealGaragePacer:true,modePreview:preview});
+ fixture.runtime.tick(1000);fixture.runtime.tick(5000);
+ assert.equal(fixture.postFrames.length,0,'retain the complete canvas while mode shaders prepare');
+ assert.ok(fixture.calls.filter(call=>call==='network').length>=2,'pending preview never blocks multiplayer pumping');
+ preview.pending=false;preview.animated=true;fixture.runtime.tick(5016);
+ assert.equal(fixture.postFrames.length,1,'prepared mode reveals on the next frame');
+}

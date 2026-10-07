@@ -289,8 +289,10 @@ gunship.state.pos.y = 240;
 gunship.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 200 };
 const withGunship = [...tanks, gunship];
 for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, withGunship); }
-// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start).
+// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start). Wait for the library to
+// finish rather than a fixed number of ticks: on a loaded machine the reads outlast a few turns of the event loop.
 for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
 let air = probe.aerialState();
 assert.equal(air.gunships.length, 1, 'the gunship drones overhead');
 assert.ok(air.gunships[0].gain > 0.05, `and carries to the ground (${air.gunships[0].gain})`);

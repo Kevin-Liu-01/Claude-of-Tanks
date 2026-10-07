@@ -131,6 +131,8 @@ export function rebuildRegionalStructure(
     rng: streamFrom(hashSeed(`${style.id}:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     variant: streamFrom(hashSeed(`${style.id}:variant:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
+    // the world pose, for look and form choices only (types.ts RegionalBuildContext)
+    x, z, yaw,
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = buildRegionalParts(style, ctx,

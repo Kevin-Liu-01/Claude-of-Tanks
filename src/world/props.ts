@@ -1,3 +1,4 @@
+import { placeWreckCollision } from './wreckCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -139,7 +140,7 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, type WreckBake } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -743,15 +744,6 @@ interface TankWreckSpot {
   supportSpread: number;
   supportMaxEmbed: number;
   supportMaxFloat: number;
-}
-
-interface WreckBake {
-  geo: THREE.BufferGeometry;
-  shadowGeo: THREE.BufferGeometry | null;
-  hx: number;
-  hz: number;
-  h: number;
-  tris: number;
 }
 
 export interface PropsRuntime {
@@ -4122,6 +4114,10 @@ ${snowCap ? `
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
+    // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
+    // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
+    // or how far (the map-revival lanes, 2026-10-05: the owner's town-plan ruling)
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
@@ -4141,8 +4137,6 @@ ${snowCap ? `
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
-    // a building that stands in a carriageway is packed for the move after every settlement building stands
-    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
@@ -4216,13 +4210,14 @@ ${snowCap ? `
     // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
+    // (the carriageway footprint is the base geometry's, as for a generated building)
+    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
@@ -7412,13 +7407,14 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
-        // solid obstacle + shell collider from the yaw-rotated footprint
-        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
-        const hx = baked.hx * cs + baked.hz * sn + 0.2;
-        const hz = baked.hx * sn + baked.hz * cs + 0.2;
-        const rec = setObbShape(
-          { min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] },
-          x, z, baked.hx + 0.2, baked.hz + 0.2, yaw);
+        // Separate hull/turret solids follow the exact visible yaw and slope pose.
+        // A sideways gun must never turn the empty space beside a wreck into a wall.
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+          .multiply(new THREE.Matrix4().makeRotationY(yaw));
+        placement.setPosition(x, y, z);
+        const rec = placeWreckCollision(baked.solids, placement);
+        const hx = (rec.max[0] - rec.min[0]) * 0.5;
+        const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
         colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);

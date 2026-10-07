@@ -228,8 +228,10 @@ crown hull's depth pass: each crown mass as far as its sprays leave it open (`GR
 the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own pattern, so a crown's heart casts darker than
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
-(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
-shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
+(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; round 5's map-revival forms:
+longleafPine (tufts on a long clear bole), lebanonCedar (the `shelf` envelope: level plates, a flat top), sugi, redPine;
+summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a cutover's longleafSeedling (a
+`fountain` profile: grass-stage needle fountains from the ground); a place's foliage colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
 — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
 naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's

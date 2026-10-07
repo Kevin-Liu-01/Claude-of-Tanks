@@ -28,8 +28,10 @@ for(const [id,b] of Object.entries(before.rows)){
    }
    t.gunMuzzleWorld(new Vector3()).toArray().forEach((v,k)=>near(v,old.muzzle[k]*f,`${id}/muzzle/${k}`));
    for(const key of ['halfWidM','bottomYM'])near(t.contactGeom[key],old.contact[key]*f,`${id}/contact/${key}`);
-   if(h===1)for(const key of ['halfLenM','zCenterM'])near(t.contactGeom[key],old.contact[key]*f,`${id}/contact/${key}`);
-   else {
+   // 2026-10-04 (aa5fdca05): the track run's length and centre are read off the drawn band and published with the
+   // combat anatomy (4 decimals), not the profile's pinned flat run this 1e6b4b738 fixture measured.
+   for(const key of ['halfLenM','zCenterM'])near(t.contactGeom[key],spec.armor.trackContact[key],`${id}/contact/${key} (published)`,6e-5);
+   if(h!==1){
     const gear=t.root.getObjectByName('rig_hull').userData.runningGearReceipts.at(-1);
     // Pure chassis lengthening must never turn circular tires into ellipses.
     const wheel=t.root.getObjectByName('gearRoadWheelDiscs');assert(wheel);

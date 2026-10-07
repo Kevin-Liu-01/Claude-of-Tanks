@@ -130,6 +130,7 @@ const GROUP_LOADERS = Object.freeze({
   k21X: () => import('./profiles/k21X.ts').then(mod => registerProfiles({ k21_x: { build: mod.buildK21X } })),
   type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b_x: { build: mod.buildType96bX } })),
   kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx_x: { build: mod.buildKf41LynxX } })),
+  m6Linebacker: () => import('./profiles/m6Linebacker.ts').then(mod => registerProfiles({ m6_linebacker: { build: mod.buildM6Linebacker } })),
   marder2: () => import('./profiles/marder2.ts').then(mod => registerProfiles({ marder2: { build: mod.buildMarder2 } })),
   amx10p: () => import('./profiles/amx10p.ts').then(mod => registerProfiles({ amx10p: { build: mod.buildAmx10p }, amx10p_25: { build: mod.buildAmx10p } })),
   dardo: () => import('./profiles/dardo.ts').then(mod => registerProfiles({ dardo: { build: mod.buildDardo } })),

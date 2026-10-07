@@ -22,6 +22,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 //   long with a +23% kit band; kursk -2.6% overall (usable as-is).
 
 import * as THREE from 'three';
+import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
@@ -41,6 +42,8 @@ import { ABRAMS_PROFILES } from './abrams.ts';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as seat } from './fittingMount.ts';
 import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
+import { oplotWing, oplotWingSeat, OPLOT_WING_ERA_SEATS } from './oplotWing.ts';
+import { symmetricSlab } from './facetedSlab.ts';
 
 type Vec3Tuple = [number, number, number];
 type ReadonlyVec3Tuple = readonly [number, number, number];
@@ -1388,22 +1391,15 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     [1.52, 0.10], [1.34, -0.86], [1.04, -1.54], [0.60, -1.58],
   ], 0.775, 1, 0.90), 0, 0.02, 0);
   for (const s of [-1, 1]) {
-    const wingTop: FaceQuad = [
-      [s * 0.24, 0.40, 2.10], [s * 1.18, 0.56, 1.24],
-      [s * 1.38, 0.845, 0.30], [s * 0.30, 0.845, 0.52],
-    ];
     // WEDGE WING: tall at the shell junction (roof line), sloping to the
     // low nose tip at world +2.12..2.26 (print wing profile).
-    P.add('turret', slab(
-      [s * 0.30, 0.02, 2.36], [s * 1.50, 0.02, 1.30], [s * 1.55, 0.02, 0.30], [s * 0.32, 0.02, 0.52],
-      ...wingTop));
-    // Dense 3x5 Duplet field. Each module inherits the bilinear wing's
-    // compound pitch and sweep, so both complete banks stay flush while the
-    // turret gains eight cassettes over the former hand-tuned coverage.
-    for (const u of [0.22, 0.50, 0.78]) for (const v of [0.10, 0.245, 0.39, 0.535, 0.68]) {
-      const face = sampleFace(...wingTop, u, v, [0, 1, 0]);
+    P.add('turret', oplotWing(s));
+    // Staggered Duplet field seated on the actual welded courses, with
+    // full footprints inside the wing instead of overhanging its nose.
+    for (const [x,z] of OPLOT_WING_ERA_SEATS) {
+      const face = oplotWingSeat(x,z,s);
       faceSeatedCassette(P, 'turret', face.point.toArray(), face.normal.toArray(),
-        face.dv.toArray(), 0.235, 0.09, 0.205, {
+        [0,0,-1], 0.235, 0.09, 0.205, {
           embed: eraReceipt.contactEmbedM,
           lidClearance: eraReceipt.lidNormalOffsetM,
         });
@@ -1440,7 +1436,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   P.hullG.userData.uaOplotMERAReceipt = P.turretG.userData.uaOplotMERAReceipt;
   // gun cradle channel: solid center wedge from the shell front to the
   // mantlet (the wings flank it; no see-through channel, §B2).
-  P.add('turret', slab(
+  P.add('turret', symmetricSlab(
     [-0.32, 0.02, 2.30], [0.32, 0.02, 2.30], [0.34, 0.02, 0.55], [-0.34, 0.02, 0.55],
     [-0.26, 0.44, 2.24], [0.26, 0.44, 2.24], [0.32, 0.845, 0.55], [-0.32, 0.845, 0.55]));
   // interior basket (the print's turret mask carries it to 0.61 world):
@@ -1767,12 +1763,6 @@ function addCageBar(
   P.add('turretOpenLatticeDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
-const ABRAMS_DRONE_CAGE_STATIONS: readonly CageStation[] = Object.freeze([
-  Object.freeze({ z: 2.62, x: 1.94, base: 0.20, roof: 1.16 }),
-  Object.freeze({ z: 0.28, x: 1.98, base: 0.10, roof: 1.30 }),
-  Object.freeze({ z: -1.28, x: 2.04, base: 0.08, roof: 1.34 }),
-  Object.freeze({ z: -3.34, x: 2.06, base: 0.14, roof: 1.28 }),
-]);
 
 function addPitchedAbramsCageBar(
   P: UkraineBuilderPort,

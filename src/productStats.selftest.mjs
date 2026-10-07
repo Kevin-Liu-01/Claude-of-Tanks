@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, renderProductStats } from './productStats.ts';
+import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, PRODUCT_DESCRIPTION, renderProductStats } from './productStats.ts';
 import { MAP_IDS } from './world/maps/index.ts';
+import { GAME_MODE_IDS } from './sim/matchModes.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -27,6 +28,7 @@ const actual = {
   referenceVehicleRecords: RETIRED_EXTERNAL_PLACEHOLDER_IDS.size,
   battlePlayableVehicles: ALL_TANK_IDS.length,
   battlefields: MAP_IDS.length,
+  battleModes: GAME_MODE_IDS.length,
 };
 assert.equal(
   ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length,
@@ -76,7 +78,7 @@ for (const value of [
   assert.match(currentFacts, new RegExp(`\\b${value}\\b`), `current public facts omit ${value}`);
 }
 assert.doesNotMatch(currentFacts,
-  /111 production-visible|148 keyed local-development|150 (?:saved|records)|120 first-party procedural|16 (?:generated and destructible maps|authored battlefields)/,
+  /111 production-visible|148 keyed local-development|150 (?:saved|records)|120 first-party procedural|121 tanks|20 destructible battlefields|16 (?:generated and destructible maps|authored battlefields)/,
   'current public facts contain retired fleet or battlefield totals');
 
 console.log(
@@ -84,3 +86,8 @@ console.log(
   + `${PRODUCT_STATS.developmentVehicles} development / ${PRODUCT_STATS.savedVehicleRecords} saved vehicles, `
   + `${PRODUCT_STATS.battlefields} battlefields`,
 );
+
+assert.ok(PRODUCT_DESCRIPTION.length <= 350, 'GitHub About character budget');
+assert.equal(renderProductStats('{{COT_PRODUCT_DESCRIPTION}}'), PRODUCT_DESCRIPTION);
+assert.ok(readFileSync(join(ROOT, 'README.md'), 'utf8').includes(PRODUCT_DESCRIPTION), 'README summary must match shared product facts');
+assert.ok(readFileSync(join(ROOT, 'README.md'), 'utf8').includes(`**${PRODUCT_STATS.battleModes} battle modes**`));

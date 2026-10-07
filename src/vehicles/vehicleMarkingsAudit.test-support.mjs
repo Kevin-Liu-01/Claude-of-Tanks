@@ -10,6 +10,7 @@ import {
   vehicleMarkingRecord, vehicleMarkingSeats, vehicleMarkingIncludesPermanentHullArmor,
 } from './vehicleMarkings.ts';
 import { ALL_TANK_IDS } from './specs.ts';
+import { measureSeatedMarkingVisibility } from './vehicleMarkingSeating.ts';
 
 export function createVehicleMarkingsAudit() {
   const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine'];
@@ -93,7 +94,10 @@ export function createVehicleMarkingsAudit() {
       const generatedSeats = vehicleMarkingSeats(id);
       assert(generatedSeats, `${id}: generated runtime paint receipt exists`);
       assert.equal(generatedSeats.length, marks.length, `${id}: generated/runtime marking count`);
-      assert.equal(tank.root.userData.markingSeatPath, 'surface-solver', `${id}: release receipt runs authoritative solver`);
+      // 2026-10-05: receipt builds apply the generated seats like the game; the live solver runs only in
+      // gen-vehicle-marking-seats (update and --check, the drift guard). The physical checks below hold every seat
+      // to the built armor: armor directly behind the paint, the visibility receipt, the separation and the owner.
+      assert.equal(tank.root.userData.markingSeatPath, 'generated', `${id}: receipt builds apply the generated seats`);
       marks.forEach((mark, index) => {
         const seat = generatedSeats[index];
         assert.equal(seat.kind, mark.userData.markingKind, `${id}/${index}: generated kind`);
@@ -115,6 +119,10 @@ export function createVehicleMarkingsAudit() {
         assert(markingSupportHit(mark, owner), `${id}/${mark.name}: armor is physically present directly behind paint`);
         assert.equal(mark.userData.visibilitySamples, SURFACE_MARKING_STYLE.visibilitySampleCount, `${id}/${mark.name}: full visibility footprint sampled`);
         assert(mark.userData.visibilityClearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples, `${id}/${mark.name}: paint is not clipped or hidden by vehicle geometry`);
+        // the generated receipt's visibility, re-measured on this build: no part added since hides the paint
+        const measured = measureSeatedMarkingVisibility(tank.root, mark);
+        assert(measured.visibilityClearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples,
+          `${id}/${mark.name}: the generated seat is still clear on the built vehicle (${measured.visibilityClearSamples}/${measured.visibilitySamples})`);
         assert.equal(mark.userData.visibilityVerified, true, `${id}/${mark.name}: visibility receipt passes`);
         assert(mark.scale.x >= SURFACE_MARKING_STYLE.minimumReadableSizeM, `${id}/${mark.name}: marking remains readable at normal presentation scale`);
       }
