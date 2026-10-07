@@ -136,7 +136,8 @@ function tankFittings(mesh: VehicleMesh, coarse: boolean, axisY: number, R: numb
       const za = start + dir * u0, zb = start + dir * u1;
       // v runs up the flank: on +x the angle grows upward, on -x it shrinks
       const a0 = side > 0 ? a + v0 / R : a - v1 / R, a1 = side > 0 ? a + v1 / R : a - v0 / R;
-      barrelPatch(mesh, axisY, R, Math.min(za, zb), Math.max(za, zb), a0, a1, 0.006, m, 1);
+      // 9 mm proud: clear of the dust (3 mm) and the spills (5 mm) where they cross
+      barrelPatch(mesh, axisY, R, Math.min(za, zb), Math.max(za, zb), a0, a1, 0.009, m, 1);
     };
     let u = 0;
     for (let k = 0; k < 10; k++) { glyph(u, u + 0.06, 0.12, 0.25, STENCIL); u += 0.085 + (k === 1 || k === 4 ? 0.06 : 0); }
@@ -616,7 +617,8 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
   for (const side of [1, -1]) {
     mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.05, h, bodyL, DB_BROWN_WOOD, 0);
     weatherPanel(mesh, coarse, side, hw - 0.003, floorY, eave, -bodyL / 2 + 0.1, bodyL / 2 - 0.1, side > 0 ? 31 : 33, WATER_STAIN);
-    stencils(mesh, coarse, side, hw - 0.005, floorY + 0.14, -bodyL / 2 + 0.15, bodyL / 2 - 0.15);
+    // (6 mm proud of the planking's weathering: its streaks lie at hw, the grime at hw - 1.5 mm)
+    stencils(mesh, coarse, side, hw + 0.002, floorY + 0.14, -bodyL / 2 + 0.15, bodyL / 2 - 0.15);
     // (round 3) the louvred vents high in the side panels, and the door's handle bars and latch
     if (!coarse) mesh.dressing(() => {
       for (const z of [-bodyL / 2 + 0.75, bodyL / 2 - 0.75]) {
