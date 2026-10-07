@@ -879,6 +879,11 @@ export class VolumetricCloudLayer {
           const v = this.medium[key].value as THREE.Vector4;
           stack.lanes.forEach((lane, i) => { if (lane.flat < 0.5) v.setComponent(i, v.getComponent(i) * k); });
         }
+        // QA (the cost lab): CLOUD_ALOFT 0 draws the main lane alone (the lanes aloft without density)
+        if (lightTune('CLOUD_ALOFT', 1) === 0) {
+          const v = this.medium.uLayerDensity.value as THREE.Vector4;
+          for (let i = 1; i < 4; i++) v.setComponent(i, 0);
+        }
       }
     }
     this.preset = preset;
