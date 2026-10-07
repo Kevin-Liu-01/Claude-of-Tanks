@@ -12,7 +12,10 @@
 //     dark, the odd pinning stone wedged in a wide one; the stones grey-white with their own tone, darker into their
 //     joints, rain-streaked, and crusted with lichen: pale grey-white blooms, the odd orange one, black dots;
 //   - the crown band (v in DRY_WALL_CROWN_V): a top stone's skin and no joint (the crown's stones are the geometry's),
-//     its lichen thicker, as a wall's top holds it.
+//     its lichen thicker, as a wall's top holds it;
+//   - the stone band (v in DRY_WALL_STONE_V; b17): one stone's skin, no joint at all — the stone form's stones, its
+//     through-stones and its coping slabs are each a stone of their own geometry, and carry it: grey-white limestone,
+//     mottled, grained, crusted with pale lichen and black dots, a little rain-streaked.
 //
 // Neutral in hue: the vertex colour carries the map's wall tone (scenery.fieldWorks.wallTone). Periodic along u (a
 // wall runs on for kilometres), not along v (a wall stands under a metre and a tile is two).
@@ -23,8 +26,12 @@ export const DRY_WALL_TILE_M = 2;
 /** The face band (v): the courses, from the wall's sunk foot (v = 0) up to 1.12 m. */
 export const DRY_WALL_FACE_V: readonly [number, number] = [0, 0.56];
 /** The crown band (v): a top stone's skin; the crown maps its centre line to DRY_WALL_CROWN_MID_V. */
-export const DRY_WALL_CROWN_V: readonly [number, number] = [0.62, 0.94];
-export const DRY_WALL_CROWN_MID_V = 0.78;
+export const DRY_WALL_CROWN_V: readonly [number, number] = [0.6, 0.78];
+export const DRY_WALL_CROWN_MID_V = 0.69;
+/** (b17) The stone band (v): one stone's skin without a joint (0.34 m of stone at the tile's scale); a stone maps its
+ *  middle to DRY_WALL_STONE_MID_V. */
+export const DRY_WALL_STONE_V: readonly [number, number] = [0.82, 0.99];
+export const DRY_WALL_STONE_MID_V = 0.905;
 
 export interface DryWallBuffers {
   size: number;
@@ -191,7 +198,7 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
   for (let y = 0; y < size; y++) {
     // (row 0 is the image's top: a canvas texture is flipped on upload, so v runs up the image from its last row)
     const v = 1 - (y + 0.5) / size, ym = v * W;
-    const face = v < DRY_WALL_FACE_V[1] + 0.02;
+    const face = v < DRY_WALL_FACE_V[1] + 0.02, skin = v > DRY_WALL_STONE_V[0] - 0.02;
     for (let x = 0; x < size; x++) {
       const i = y * size + x, j4 = i * 4;
       const u = (x + 0.5) / size, um = u * W;
@@ -271,6 +278,19 @@ export function* paintDryWallBuffers(size = 512, seed = 0x5a1d):
           // the relief: rounded into its joints, a lumpy face, its lichen a little proud
           hgt[i] = clamp01(0.52 + edge * 0.22 + tip * 0.07 + (facet - 0.5) * 0.08 + (grain - 0.5) * 0.05 + pale * 0.02);
         }
+      } else if (skin) {
+        // (b17) the stone band: one stone's skin — no joint — grey-white limestone, its tone wandering slowly across it
+        // (a stone takes its own patch), grained and mottled, its lichen pale and patchy, black dots, a faint streak of
+        // rain down it
+        const t = smooth(0.2, 0.8, skinF(u, v)), mottle = mottleF(u, v), streak = streakF(u, v);
+        const light = 0.74 + (patchF(u, v) - 0.5) * 0.14 + t * 0.06 + (mottle - 0.5) * 0.1 + (grain - 0.5) * 0.08 - smooth(0.62, 0.9, streak) * 0.05;
+        hslToRgb(0.1, 0.04, light, rgb);
+        const crust = lichenF(u, v) * 0.7 + crustF(u, v) * 0.3;
+        const pale = smooth(0.54, 0.64, crust) * smooth(0.3, 0.6, patchF(u + 0.37, v));
+        if (pale > 0) { rgb[0] += (0.9 - rgb[0]) * pale * 0.32; rgb[1] += (0.9 - rgb[1]) * pale * 0.32; rgb[2] += (0.86 - rgb[2]) * pale * 0.32; }
+        const dots = smooth(0.9, 0.95, dotF(u, v));
+        if (dots > 0) { const k = 1 - dots * 0.4; rgb[0] *= k; rgb[1] *= k; rgb[2] *= k; }
+        hgt[i] = clamp01(0.55 + (mottle - 0.5) * 0.22 + (grain - 0.5) * 0.18 + pale * 0.04 + (t - 0.5) * 0.06);
       } else {
         // the crown band (and the margins round it): (b14, wave 97: "a dead-level top") the coping seen from above — stones
         // on edge across the wall, 5-16 cm thick along it, each its own tone, dark joints between them, their lichen thick

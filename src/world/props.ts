@@ -58,6 +58,7 @@ import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimbe
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import type { LandmarkPlacement } from './landmarks/types.ts';
+import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.ts'; // b17: the walls stone by stone near the camera
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
@@ -235,7 +236,16 @@ interface SurfaceTextureOptions {
 interface FieldWallLod {
   near: THREE.BatchedMesh | null;
   far: THREE.BatchedMesh | null;
-  cells: Array<{ box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean }>;
+  cells: Array<{
+    box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean;
+    /** (b17) The cell's key, and its stone form while the camera is near (built on demand; false: built, nothing in it). */
+    key: number; stones: THREE.Mesh | false | null; midShown: boolean;
+  }>;
+  /** (b17) What the stone forms are built from (null on a phone), and the walls' material they share. */
+  fine: FieldWallFineSource | null;
+  material: THREE.Material;
+  /** (b17) The cells that want their stone form and have none yet, at the last switch (map.ts getFieldWallWorkState). */
+  pending?: number;
 }
 
 interface GeneratedSurfaceTextures {
@@ -9234,10 +9244,11 @@ ${snowCap ? `
       };
       const near = batchOf(built.wallCells.map((c) => c.near), 'props-field-works');
       const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
-      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false }));
+      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false,
+        key: c.key, stones: null, midShown: false }));
       for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
       // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
-      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells } satisfies FieldWallLod;
+      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells, fine: built.fine, material: wallMaterial } satisfies FieldWallLod;
     }
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
@@ -9770,24 +9781,73 @@ ${snowCap ? `
   const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
     ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
   };
-  let wallNear = 80, wallFrames = 0;
+  // (b17; gauntlet wave 121, Saltwind's walls "a smooth extruded strip ... mortared, not dry-stone") within a nearer
+  // distance still a cell draws its stone form (fieldWorks.ts buildFieldWallFineSteps: every stone, its joints, the
+  // through-stones, the coping), built when the camera comes within it — one cell at a time, a few milliseconds a frame,
+  // its mid form showing until it is done — and let go when it leaves (8 m of hysteresis); its mid form hides while it
+  // shows. Every cell's stone form at once would hold millions of triangles (Saltwind: 4.2 M), so only the few near the
+  // camera are ever built. None on a phone, none at Low.
+  // (at High a stone is ten pixels tall at 30 m, a cell's box within 30 m of the camera is one to four cells, 20-25 k
+  // triangles each on Saltwind: the mid form takes over past it)
+  const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = {
+    ultra: 45, high: 30, medium: 22, low: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0,
+  };
+  /** A frame's share of the stone form being built (ms). */
+  const FIELD_WALL_STONE_BUDGET_MS = 2;
+  type WallCell = FieldWallLod['cells'][number];
+  let wallJob: { cell: WallCell; steps: Generator<unknown, THREE.BufferGeometry | null, void> } | null = null;
+  let wallNear = 80, wallFine = 45, wallFrames = 0;
   function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
     const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
     if (!lod || !cameraPos) return;
-    if (wallFrames-- <= 0) { wallNear = FIELD_WALL_NEAR_M[resolvePresetName()] ?? 80; wallFrames = 60; }
+    if (wallFrames-- <= 0) {
+      const preset = resolvePresetName();
+      wallNear = FIELD_WALL_NEAR_M[preset] ?? 80; wallFine = lod.fine ? FIELD_WALL_FINE_M[preset] ?? 0 : 0; wallFrames = 60;
+    }
     const { near, far, cells } = lod;
+    // the stone form being built: a few milliseconds of it a frame
+    if (wallJob) {
+      const start = performance.now();
+      let step = wallJob.steps.next();
+      while (!step.done && performance.now() - start < FIELD_WALL_STONE_BUDGET_MS) step = wallJob.steps.next();
+      if (step.done) {
+        const { cell } = wallJob, g = step.value;
+        wallJob = null;
+        if (g) {
+          const mesh = new THREE.Mesh(g, lod.material);
+          mesh.name = 'props-field-works-stones';
+          mesh.castShadow = false; mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
+          group.add(mesh);
+          cell.stones = mesh;
+        } else cell.stones = false;
+      }
+    }
+    let pending = 0;
     for (const cell of cells) {
       const b = cell.box;
       const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
       const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
       const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
       const d = Math.hypot(dx, dy, dz);
+      const wantStones = wallFine > 0 && (cell.stones ? d < wallFine + 8 : d < wallFine + (wallJob?.cell === cell ? 8 : 0));
+      if (wantStones && cell.stones === null && !wallJob && lod.fine) {
+        wallJob = { cell, steps: buildFieldWallFineSteps(lod.fine, cell.key) };
+      } else if (!wantStones && wallJob?.cell === cell) {
+        wallJob.steps.return(null); // (the camera turned away before it was done)
+        wallJob = null;
+      } else if (!wantStones && cell.stones !== null) {
+        if (cell.stones) { group.remove(cell.stones); cell.stones.geometry.dispose(); }
+        cell.stones = null;
+      }
+      if (wantStones && cell.stones === null) pending++;
       const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
+      const midShown = show && !cell.stones;
+      if (midShown !== cell.midShown) { cell.midShown = midShown; if (near && cell.near >= 0) near.setVisibleAt(cell.near, midShown); }
       if (show === cell.nearShown) continue;
       cell.nearShown = show;
-      if (near && cell.near >= 0) near.setVisibleAt(cell.near, show);
       if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
     }
+    lod.pending = pending;
   }
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
