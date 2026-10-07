@@ -723,13 +723,6 @@ export type BranchBundleVariant = 'flank' | 'deck' | 'upright' | 'lying';
 type Vec3 = [number, number, number];
 const v3add = (a: readonly number[], b: readonly number[], k = 1): Vec3 => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const v3norm = (a: readonly number[]): Vec3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
-const v3cross = (a: readonly number[], b: readonly number[]): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-/** Rotate `v` about the unit axis `k` by `angle` (Rodrigues). */
-function v3rotate(v: readonly number[], k: readonly number[], angle: number): Vec3 {
-  const c = Math.cos(angle), s = Math.sin(angle), d = v[0] * k[0] + v[1] * k[1] + v[2] * k[2];
-  const x = v3cross(k, v);
-  return [v[0] * c + x[0] * s + k[0] * d * (1 - c), v[1] * c + x[1] * s + k[1] * d * (1 - c), v[2] * c + x[2] * s + k[2] * d * (1 - c)];
-}
 
 /**
  * A bundle of fresh-cut branches a crew laid along the vehicle and strapped down. History: round 2 (2026-10-06) laid
@@ -758,7 +751,6 @@ export function buildBranchBundle(P: AccessoryPainter, variant: BranchBundleVari
   const out: Vec3 = flank ? [0, 0, 1] : [0, 1, 0];
   const across: Vec3 = flank ? [0, 1, 0] : [0, 0, 1];
   const offOf = (p: readonly number[]): number => (flank ? p[2] : p[1]);
-  const acrossOf = (p: readonly number[]): number => (flank ? p[1] : p[2]);
   const at3 = (x: number, a: number, o: number): Vec3 => (flank ? [x, a, o] : [x, o, a]);
   const OFF_MAX = 0.15;
   // a spray lies over the support: never into it, never more than OFF_MAX off it, and (deck) never past the fender edges
