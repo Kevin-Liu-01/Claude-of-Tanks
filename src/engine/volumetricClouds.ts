@@ -288,6 +288,8 @@ uniform vec4 uContrailB[ ${CLOUD_CONTRAIL_MAX} ];
 uniform float uContrails;
 uniform vec2 uUpperDrift;
 uniform vec4 uRain;
+// QA (round 9 candidate): 0 the rain law over the weather and the anvil field, 1 rain under the towers' cores only
+uniform float uRainCore;
 uniform vec4 uFogBank;
 // a in front of b (premultiplied radiance, transmittance)
 vec4 cloudOver( vec4 a, vec4 b ) { return vec4( a.rgb + a.a * b.rgb, a.a * b.a ); }
@@ -334,7 +336,12 @@ float cloudPrecip( vec2 pxz ) {
 	float cov = smoothstep( 1.0 - uLayerCover.x * 0.9, 1.0, w.x ) * step( 1e-6, uLayerDensity.x );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
 	float anvil = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 ).g;
-	return cov * cov * smoothstep( 0.35, 0.75, anvil );
+	float law = cov * cov * smoothstep( 0.35, 0.75, anvil );
+	if ( uRainCore <= 0.0 ) return law;
+	// under a tower's core only (the weather's peak under its footprint), no anvil field: the rain falls where the eye sees
+	// the storm, never streaked over a far tower from a clear column in front of it (wave 235 on Monsoon)
+	float core = smoothstep( 1.0 - uLayerCover.x * 0.4, 1.0 - uLayerCover.x * 0.1, w.x ) * step( 1e-6, uLayerDensity.x );
+	return mix( law, core, uRainCore );
 }
 vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLayer ) {
 	tLayer = 1e9;
@@ -602,7 +609,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
@@ -1296,6 +1303,8 @@ export class VolumetricCloudLayer {
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
+    t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
+    m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the shipped law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
     (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', 2))), lightTune('CLOUD_LIGHT_T', 0.15),

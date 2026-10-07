@@ -122,6 +122,8 @@ uniform vec3 uClear2;
 uniform float uTurbulence;
 // the weather's own displacement with height (m; 0 = none): a tower's footprint drifts and billows up its column
 uniform float uWeatherWarp;
+// QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
+uniform float uFragMin;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -219,6 +221,7 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	float shape = textureLod( tShape, sp / uShapePeriod, lod ).r;
 	vec4 lo = vec4( 1.0 - shape ) * uLayerShape;
 	vec4 d = clamp( ( shell - lo ) / max( 1.0 - lo, vec4( 1e-3 ) ), 0.0, 1.0 );
+	if ( uFragMin > 0.0 ) d *= smoothstep( vec4( uFragMin ), vec4( uFragMin * 2.0 ), shell );
 	if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
