@@ -327,9 +327,9 @@ export default {
       stalls: 3, benches: 4, coreClutter: 9,
       bales: 4,
       troughs: 1, laundry: 1, handcarts: 1, carts: 2,
-      // (2026-10-07: no yardFence — the white picket is gone, waves 183–184; the free-standing garden runs take the
-      // props layer's default)
-      roadFence: 'fencerail',
+      // (2026-10-07) the free-standing garden runs in the Breton kit's own granite dry walls (its yard fence): the white
+      // picket is gone (waves 183–184; the props layer's default is still the picket in this tree)
+      roadFence: 'fencerail', yardFence: 'wallstone',
       // DESTRUCTIBLES r1: quayside logistics — trucks at the harbor lanes,
       // fuel-drum points, a shore bivouac
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
