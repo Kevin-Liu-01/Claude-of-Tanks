@@ -112,7 +112,7 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
       }
     }
     // the spoke ring and the hub drive
-    mesh.lathe([[0.0001, 0.06], [R * 0.82, 0.04], [R * 0.82, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU_DULL);
+    mesh.lathe([[0.0001, 0.06], [R * 0.82, 0.04], [R * 0.82, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU_DULL, { flip: true });
     mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
     mesh.pop();
     // the double wishbone up to the chassis
@@ -353,7 +353,9 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
       if (z > 9.6 && Math.cos(a) < -0.3) return GLASS;                  // the cockpit's glazing
       if (z > 10.6 && Math.cos(a) > 0.55) return GLASS;                 // the navigator's nose
       return Math.cos(a) > 0.55 ? AN26_BELLY : AN26_GREY;
-    }, { closeV: true, flip: zTo < zFrom });
+      // (round 3) i runs from zFrom to zTo and j round from the keel: i x j points out when zTo < zFrom (it was
+      // flipped there, and the fuselage stood inside out under FrontSide)
+    }, { closeV: true, flip: zTo > zFrom });
   };
   // forward fuselage: the nose to the break; the aft section slewed and dropped when wrecked
   fuselage(11.9, -3.6, coarse ? 14 : 26);
@@ -385,7 +387,8 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
     mesh.push().translate(nx, ny, 0);
     const prof: [number, number][] = [[0.0001, 4.4], [0.32, 4.15], [0.62, 3.6], [0.72, 2.2], [0.66, -0.4], [0.45, -2.6], [0.0001, -3.0]];
     mesh.push().rotateY(-Math.PI / 2);
-    mesh.lathe(prof.map(([r, z]) => [r, z] as [number, number]), coarse ? 10 : 16, () => AN26_GREY);
+    // (the profile runs counter-clockwise: flipped, or the nacelle stood inside out under FrontSide)
+    mesh.lathe(prof.map(([r, z]) => [r, z] as [number, number]), coarse ? 10 : 16, () => AN26_GREY, { flip: true });
     mesh.pop();
     for (let k = 0; k < 4; k++) {
       mesh.push().translate(0, 0, 4.25).rotateZ((k / 4) * Math.PI * 2 + 0.4);
