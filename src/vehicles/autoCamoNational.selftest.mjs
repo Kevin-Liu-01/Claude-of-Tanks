@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import {
-  AUTO_CAMO_BIOMES, AUTO_CAMO_ENVIRONMENTS, CAMO_COUNTRY_TAG_IDS, NATIONAL_AUTO_CAMO,
+  AUTO_CAMO_BIOMES, AUTO_CAMO_ENVIRONMENTS, CAMO_CATALOG_PATTERN_IDS, CAMO_COUNTRY_TAG_IDS, CAMO_PATTERN_IDS,
+  CAMO_PATTERN_LABEL, NATIONAL_AUTO_CAMO, SHARED_CAMO_PRESETS,
   autoCamoBiomeId, autoCamoPatternIdFor, camoNationTag, camoPatternTags, isBuiltInCamoId, nationalAutoCamoSchemes,
-  networkCamoId,
+  networkCamoId, sharedCamoPreset,
 } from './camoPolicy.ts';
 import {
   hasCamoPaint, resolveCamoVisual, resolveMultiplayerCamoPattern, setCamoBiome, setCamoOverride,
@@ -49,6 +50,21 @@ for (const [nation, table] of Object.entries(NATIONAL_AUTO_CAMO)) {
   }
 }
 
+// --- the plain theatre colours: catalog solids filed under their nation and the desert, each a new paint (more
+// than a shade, 14/255 per channel, from every other preset), selectable and match-safe like any built-in
+const shadeApart = (a, b) => [1, 3, 5].some((i) => Math.abs(parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16)) > 14);
+for (const [patternId, nation] of [['carc_tan', 'usa'], ['light_stone', 'uk']]) {
+  const theatre = sharedCamoPreset(patternId);
+  assert.ok(theatre && CAMO_CATALOG_PATTERN_IDS.includes(patternId) && CAMO_PATTERN_LABEL[patternId], `${patternId}: a labelled catalog preset`);
+  assert.equal(theatre.visual.scheme, 'solid', `${patternId}: the existing solid painter`);
+  assert.deepEqual([...theatre.tags], [nation, 'desert', 'geometric'], `${patternId}: filed under ${nation} and desert`);
+  for (const other of SHARED_CAMO_PRESETS) {
+    if (other.id === patternId || other.visual.scheme !== 'solid') continue;
+    assert.ok(shadeApart(theatre.visual.base, other.visual.base), `${patternId} is not a shade of ${other.id}`);
+  }
+}
+assert.ok(CAMO_PATTERN_IDS.indexOf('carc_tan') > CAMO_PATTERN_IDS.indexOf('gt'), 'appended after every serialized id');
+
 // --- the biomes: every pool concrete, every environment known; unknown and inherited map ids read as verdant
 for (const [biomeId, biome] of Object.entries(AUTO_CAMO_BIOMES)) {
   assert.ok(biome.environment === null || AUTO_CAMO_ENVIRONMENTS.includes(biome.environment), `${biomeId}: environment`);
@@ -65,10 +81,10 @@ for (const id of ['merkava4_trophy', 'merkava1b', 'merkava2b', 'merkava3c', 'mer
     assert.equal(auto(id, mapId), 'service_merkava2d', `${id} on ${mapId}: IDF Sinai grey, never a generic desert blotch`);
   }
 }
-assert.equal(auto('challenger1', 'desert'), 'pinkdesert', 'Challenger 1 on sand: the British desert scheme');
+assert.equal(auto('challenger1', 'desert'), 'light_stone', 'Gulf War Challenger 1 on sand: plain British Light Stone');
 assert.equal(auto('type99a', 'desert'), 'digitaldesert', 'Type 99A on sand: the PLA desert digital');
 for (const id of ['m1a1', 'm1a2', 'm1a2_sepv3', 'm60a1', 'm3a3_bradley']) {
-  assert.equal(auto(id, 'desert'), 'service_usa_desert', `${id} on sand: the US desert service coat`);
+  assert.equal(auto(id, 'desert'), 'carc_tan', `${id} on sand: plain CARC Tan, not the shared three-tone`);
 }
 const desertLine = ['challenger1', 'm60a1', 'type99a', 'merkava4_trophy'].map((id) => auto(id, 'desert'));
 assert.equal(new Set(desertLine).size, 4, `the desert line wears four national schemes (${desertLine.join(', ')})`);

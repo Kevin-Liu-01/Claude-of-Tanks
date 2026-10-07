@@ -111,10 +111,17 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
   'national_jp', 'national_pl', 'national_kr', 'national_se', 'national_il', 'national_ua',
 ] as const);
 
+/**
+ * Round 3 (2026-10-07): plain theatre colours — the single-colour coats a nation's vehicles wore on sand, painted by
+ * the existing solid painter. AUTO paints them on desert biomes (NATIONAL_AUTO_CAMO); any hull may wear them.
+ */
+const THEATRE_CAMO_PATTERN_IDS = Object.freeze(['carc_tan', 'light_stone'] as const);
+
 /** Append-only: base catalog, then the national colours, then every distinct authored paint (generated). */
 export const CAMO_PATTERN_IDS = Object.freeze([
   ...BASE_CAMO_PATTERN_IDS, ...NATIONAL_CAMO_PATTERN_IDS, ...AUTHORED_PAINT_IDS,
   'gt', // Append after existing IDs to preserve serialized catalog indices.
+  ...THEATRE_CAMO_PATTERN_IDS,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -244,6 +251,7 @@ const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string
 
 export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Object.freeze({
   gt: 'GT · General Translation',
+  carc_tan: 'US CARC Tan', light_stone: 'British Light Stone',
   ...BASE_CAMO_PATTERN_LABEL,
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
@@ -359,6 +367,16 @@ const NATIONAL_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   preset('national_se', null, nationalTags('se', 'woodland'), solid('#3a4d3f', '#455a4a')),
   preset('national_il', null, nationalTags('il', 'urban'), solid('#6f7566', '#7b8172')),
   preset('national_ua', null, nationalTags('ua', 'woodland'), solid('#4c5142', '#575d4c')),
+]);
+
+/**
+ * Round 3 (2026-10-07): the plain theatre colours (THEATRE_CAMO_PATTERN_IDS). CARC Tan 686, the US Army's desert
+ * coat since the Gulf War, is a greyed pinkish tan; British Light Stone, the Granby/Telic sand, is the yellower,
+ * paler stone. Both keep the desert ladder's luma (base about 150-160 of 255, the weather tone one step above).
+ */
+const THEATRE_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
+  preset('carc_tan', null, nationalTags('usa', 'desert'), solid('#a3927a', '#b0a088')),
+  preset('light_stone', null, nationalTags('uk', 'desert'), solid('#b3a275', '#bfae82')),
 ]);
 
 /**
@@ -544,6 +562,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'], camoScale: 0.46 }),
   // Round 31: the national colour schemes — plain single-colour service coats, one per nation.
   ...NATIONAL_CAMO_PRESETS,
+  // Round 3 (2026-10-07): the plain desert theatre colours AUTO paints on sand.
+  ...THEATRE_CAMO_PRESETS,
   // Round 31: every distinct authored paint in the fleet, named after its lead vehicle (generated table).
   ...AUTHORED_PAINT_ENTRIES.map((entry) => preset(entry.id, entry.lead,
     Object.freeze(entry.tags.filter(isCamoTagId)), entry.visual as SharedCamoVisual)),
@@ -843,17 +863,18 @@ const nationTable = (table: NationalAutoCamoTable): NationalAutoCamoTable => Obj
 const SINAI_GREY = [row(['service_merkava2d'])];
 
 /**
- * Each nation's own vehicle schemes per environment, from the existing catalog only (the painters and recipes are
- * unchanged). An environment a nation lacks falls back to the shared biome pool. Every scheme carries this nation's
- * tag or no nation tag at all (autoCamoNational.selftest.mjs). Woodland rows name patterned service coats: the plain
- * delivery greens (national_*) sit within a shade of each other and would put every nation back in one paint.
+ * Each nation's own vehicle schemes per environment, from the catalog (no new painters: the two plain theatre
+ * colours ride the existing solid painter). An environment a nation lacks falls back to the shared biome pool. Every
+ * scheme carries this nation's tag or no nation tag at all (autoCamoNational.selftest.mjs). Woodland rows name
+ * patterned service coats: the plain delivery greens (national_*) sit within a shade of each other and would put
+ * every nation back in one paint.
  */
 export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoCamoTable>> = Object.freeze({
-  // MERDC until the mid-1980s, then the three-colour CARC coat the Abrams fleet is authored in; the US desert
-  // service coat on sand (CARC Tan 686 has no plain preset yet).
+  // MERDC until the mid-1980s, then the three-colour CARC coat the Abrams fleet is authored in; plain CARC Tan on
+  // sand (the Gulf War M60A1s and M1s alike).
   usa: nationTable({
     woodland: [row(['merdc', 'paint_m1a1'], COLD_WAR_ERAS), row(['paint_m1a1'])],
-    desert: [row(['service_usa_desert'])],
+    desert: [row(['carc_tan'])],
     winter: [row(['merdcwinter'], COLD_WAR_ERAS)],
   }),
   // Soviet 4BO field blotch, the Cold War amoeba, today's service digital; the T-90MS desert export coat and plain
@@ -864,10 +885,11 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
     desert: [row(['sig_t90ms', 'paint_t90ms'], CURRENT_ERAS)],
     urban: [row(['berlin45'], WARTIME_ERAS)],
   }),
-  // Deep bronze green and black bands; the Caunter desert family; the Berlin Brigade blocks.
+  // Deep bronze green and black bands; on sand the Caunter family for wartime hulls, plain Light Stone after
+  // (the Gulf War Challenger 1); the Berlin Brigade blocks.
   uk: nationTable({
     woodland: [row(['service_challenger_3', 'paint_chieftain5'])],
-    desert: [row(['pinkdesert'])],
+    desert: [row(['pinkdesert'], WARTIME_ERAS), row(['light_stone'])],
     urban: [row(['berlin'])],
   }),
   // Hinterhalt ambush paint for the wartime hulls, the Bundeswehr three-colour coats after.
