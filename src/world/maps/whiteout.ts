@@ -81,7 +81,11 @@ export default {
     // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
     // blue comes only from open sky (the skies lane's lighting side). The macro tints go from B/R 1.06 (A) and
     // 1.17 (B) to 1.04, at the same luminance (Rec. 709: A 1.039, B 0.873). C was already 1.03.
-    iceDrift: 0.3, tintA: [1.021, 1.041, 1.062], tintB: [0.858, 0.875, 0.893], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+    // map revival lane 2, round 5 (gauntlet wave 224, the bird and establishing views: "the entire plateau is printed with
+    // soft low-frequency grey blotches like a camouflage pattern"; "the frozen lake ... a flat grey disc with specks"):
+    // the dark macro tint half as deep (B 0.858–0.893 → 0.93–0.95, its hue kept), and the lakes' ice combed with drift snow
+    // as Frosthollow's river (iceDrift 0.5, the ground lane's number; was 0.3)
+    iceDrift: 0.5, tintA: [1.021, 1.041, 1.062], tintB: [0.929, 0.938, 0.947], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without
