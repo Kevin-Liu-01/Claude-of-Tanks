@@ -7330,6 +7330,39 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
 
+### 2026-10-07 — snow faces: couloirs and ledges on the steep band, the snow maps' wall basis unsheared (the skies lane)
+
+**The gauntlet** (waves 127–128 and the before side of wave 182): Glacier's and Frosthollow's ring faces "a featureless,
+vertically smeared grey sheet"; "a smooth grey-white ramp with soft vertical streaks dripping from the crest to the
+treeline — no buttresses, strata, ledges or couloirs" (Glacier's establishing view); "grey vertical smears running down its
+face from the crest" (Frosthollow's).
+
+**The causes** (`terrain.ts`, the snow-on-rock branch the snow maps' splat selects, `uReduxD.y > 1.5`: Glacier, Frosthollow,
+Whiteout):
+- *the wall basis sheared by the height:* the strata's stretch and swell multiply the absolute height, so their gradients
+  along the wall shear its v by the height itself — about 2 m of v per metre along the wall at 50 m up, 7 at 150 m, 11 at
+  250 m. The snow maps' steep ring faces stand 50–390 m up: every wall projection there was squeezed into vertical slivers;
+- *the gullies:* one field stretched 8:1 down the height at a 22 m repeat, and a steep face lies wholly inside the hold's
+  45–64° band, so the face printed it as fine vertical hatching with a fringe of snow tongues under every crest.
+
+**The fix** (the snow branch only; the hold line stays the ground lane's law, `snowRockHoldLine`):
+- the snow maps' walls keep the per-cliff offset and the beds' wander, and no stretch (they carry no strata);
+- *couloirs:* the crests of a coarse 3:1 field down the fall line (~25 m across, ~80 m long), only in the systems the slow
+  wall field picks; the hold's own breakup at a quarter of its swing; from ~48° a lean to bare rock outside the couloirs;
+- *ledges:* snow on the shelves of round 35's warped height ladder (beds ~14–30 m apart, the per-cliff phase, ±2 m of
+  along-wall wander), in runs where the slow wall field is high, on the steep band only and gone from the sheerest faces;
+- the exposed rock keeps its beds at full strength, so the seams between the ledges stay dark rock.
+
+**Measured:**
+- *the pair* (the PR head against the branch; Glacier's establishing, street and hospice views, Frosthollow's
+  establishing and bird; `$SP/p2/snow/pair1`): wave 182 +0.34. "Grey vertical smears" leave the after frames' largest
+  defects; the after side's are the buildings and the far peaks over a white band (the shell's, the far-air lane).
+- *no harm off the snow maps* (Verdant, Titan Gorge, Caldera and Saltwind; Whiteout seen): the frames equal but for the ±1
+  dither and the clouds' motion; `snowFaces.selftest` proves the branch selects exactly alpine, whiteout and winter.
+- *cost* (v3: Glacier's establishing view, the PR head against the branch against a head twin, desktop high): 13 cycles
+  pooled over two holds (2 more void over load 250), GPU p25 −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms — ACCEPT; the census
+  identical (5,466,742 triangles, 724 draws).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
