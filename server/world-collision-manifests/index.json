@@ -12,8 +12,8 @@
       "concealers": 5934
     },
     "desert": {
-      "bytes": 903377,
-      "sha256": "5a4ea9034f1146c3e31a192bdc818c515d00310380812f014f43df5cbc078760",
+      "bytes": 919422,
+      "sha256": "e262f29e68e047063ff363545150c4873b550a34b4a2ff4cdbef212e1c7e8470",
       "obstacles": 1546,
       "colliders": 1371,
       "concealers": 1299
@@ -82,8 +82,8 @@
       "concealers": 8252
     },
     "badlands": {
-      "bytes": 735600,
-      "sha256": "b57069405c3522728a6cb0cd46b36683d8d66d8fcfc2e5a33c97f0ff650d854c",
+      "bytes": 743615,
+      "sha256": "761a395bcd1d5cfacd194c92a8c6488fb5b0ab5ba1a62459916a6e7cc5714de3",
       "obstacles": 1481,
       "colliders": 1125,
       "concealers": 283
