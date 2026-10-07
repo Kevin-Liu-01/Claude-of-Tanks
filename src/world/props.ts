@@ -3379,8 +3379,12 @@ function* propsBuildSteps(
       regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
     } : {}),
   };
+  // (b25; waves 173 and 174 on the ksar gate post: "carved, pharaonic-looking glyphs", "a flat, unweathered decal")
+  // the desert mud walls' render for a building's walls: the mud material's own program (a clone shares it), its own
+  // shape uniform with the crown slump off (mudShapeBuilding below) — a building's walls do not sag like a wall's crown
+  mats.fieldMudBuilding = mats.fieldMud.clone();
   function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'fieldMudBuilding', 'wood',
       'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
@@ -3526,16 +3530,20 @@ ${snowCap ? `
   // shadow pass runs the same crown (its depth material).
   const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
   const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
+  // (b25) the same for a building's walls, with no crown slump: their top and shoulder set when the pool is built
+  const mudShapeBuilding: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(3.3, 1.8, 0) };
+  const mudBuildingHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShapeBuilding); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+            : materialKind === 'fieldMud' ? mudHook : materialKind === 'fieldMudBuilding' ? mudBuildingHook : grimeHook);
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw'
+        : materialKind === 'fieldMudBuilding' ? 'fieldMud' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -8998,16 +9006,19 @@ ${snowCap ? `
     // Wall modules use the map-toned masonry materials; other objects keep
     // the wood, straw, vehicle, or baked family selected by their metadata
     // (b15: a straw object wears the hay print's material).
-    let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
+    let single: THREE.MeshStandardMaterial = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
-      material = material.clone();
-      engineCtx.setupShadowMaterial(material, grimeHook);
-      material.customProgramCacheKey = () => 'world-streetlamp-v1' + (snowCap ? 's' : '');
-      configureWorldLampMaterial(material);
-      retainedSurfaceMaterials.push(material);
+      single = single.clone();
+      engineCtx.setupShadowMaterial(single, grimeHook);
+      single.customProgramCacheKey = () => 'world-streetlamp-v1' + (snowCap ? 's' : '');
+      configureWorldLampMaterial(single);
+      retainedSurfaceMaterials.push(single);
     }
+    // (b25) a kind of two materials by its geometry's groups (the ksar gate post: the mud walls' render and the timber)
+    const material: THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[] = meta.mats
+      ? meta.mats.map((key) => mats[key] || mats.baked) : single;
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
@@ -9018,6 +9029,11 @@ ${snowCap ? `
       const depth = createStoneWallDepthMaterial(grimeTex, stoneShape);
       retainedSurfaceMaterials.push(depth);
       imI.customDepthMaterial = depth;
+    }
+    if (Array.isArray(material) && material.includes(mats.fieldMudBuilding)) {
+      // (b25: a building's walls on the mud render: its top and shoulder, its crown left whole)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      mudShapeFor(geoI.boundingBox!, mudShapeBuilding.value).setZ(0);
     }
     if (material === mats.fieldMud && kind === 'walladobe') {
       // (b14: the mud walls' crown in world space: the module's top and shoulder, and the same crown in the shadows)

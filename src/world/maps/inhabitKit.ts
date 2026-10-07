@@ -57,6 +57,9 @@ export interface DestructiblePropType {
    * refitDestructibleColliders): a lumpy straw form's sections ear-clip into dozens of parts, each a shard record's
    * polygon and a contact test, where one convex outline does for a crushable, shoot-through prop. */
   contactProxy?: () => THREE.BufferGeometry;
+  /** (b25) Materials by the build's geometry groups, in place of `mat` alone (the ksar gate post: its mud render and its
+   * timber); the broken build carries the same groups. */
+  mats?: readonly string[];
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters

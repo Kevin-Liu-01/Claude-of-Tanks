@@ -143,7 +143,7 @@ export default {
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
     // (the scenery lane, b16; gauntlet wave 121 on the steel checkpoint hut, "a jarring modern blue shed") the fuel points'
     // and the scattered checkpoints are desert posts of plastered mud brick (maps/regional/ksarGate.ts), same footprint
-    structureVariants: { checkpointhut: 'ksargate' },
+    structureVariants: { checkpointhut: 'ksargate', guardpost: 'ksarwatchhut' },
     // Three strongpoint pairs, each the other's rotation about the outpost: a cistern yard in each flank lane, a
     // lookout in front of the outpost on each side, and a fuel point by each deployment's flank track.
     tacticalBeats: [
