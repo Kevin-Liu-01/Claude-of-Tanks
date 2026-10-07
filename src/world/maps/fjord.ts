@@ -166,11 +166,6 @@ export default {
     // the mountains lane (2026-10-02): Fjord keeps its aiguilles — its crest was serrated, not coned (the skyline cone
     // measure, horizonMassif.selftest.mjs: 3 over three seeds), and the carved landform smoothed it into a wall (11)
     massif: false,
-    // the skies lane (2026-10-06, mr2: "the fjord has no far shore" — its sea sectors sank to the horizon, the arms read as
-    // open ocean): a fjord's water is a channel between walls, so the panorama's far-shore law (horizonPanorama.ts uShore,
-    // Saltwind's channel coast) closes every arm 3.6 km out (± 1.1 km round the compass): the far country rises out of the
-    // water to its full height over 1.8 km, a coastal range 2.4 km behind the shore at 0.8 of the envelope
-    panorama: { shore: 1.0, shoreM: 3600, shoreRange: 0.8 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'broken-stratocumulus', windDirDeg: 250, scud: 0.35, farBand: 0.6, fogBank: 0.4, fogBankTopM: 90, rain: 0.3, virga: 0.15, nightGlow: 0.2, nightGlowHex: 0xffd2a0 },
