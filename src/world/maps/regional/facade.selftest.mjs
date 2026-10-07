@@ -11,9 +11,9 @@
 // its courses, a carved khata its nalichniki, a Franconian render front its trims, the desktop triangles stay in budget.
 import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
-import { streamFrom } from './geometry.ts';
-import { setFacadeCraft } from './facade.ts';
-import { paintDressedStoneBuffers, paintLimewash } from '../../regionalSurfaces.ts';
+import { PartSink, streamFrom } from './geometry.ts';
+import { dressedQuoin, setFacadeCraft, withFacade } from './facade.ts';
+import { paintDressedStoneBuffers, paintLimewash, paintRegionalSurfaceBuffers } from '../../regionalSurfaces.ts';
 
 const BUDGET = 12000;
 function counted(seed) {
@@ -129,3 +129,62 @@ for (const seed of [0x11a1, 0x11a2]) {
   seamless('dressed stone', a.size, a.px);
 }
 console.log('facade surfaces: the lime-wash and the dressed stone deterministic, soft and seamless');
+
+// (facades lane, 2026-10-06; wave 172: "corner stones built from brick strips instead of dressed sandstone") a dressed
+// quoin's two outer faces wrap one whole stone of the style's tile: every texel they map is inside one block of the
+// painted tile, clear of its joints (the painter's height field: joints sit near 0.1, a stone's face above 0.15), at a
+// scale between the tile's own and ~2.3x; a phone, and a bucket other than the stone, keep the plain quoin's mapping
+{
+  const run = (g) => { let st = g.next(); while (!st.done) st = g.next(); return st.value; };
+  const cases = [['sandstone', true, [0.64, 0.52, 0.42]], ['sandstone', false, [0.58, 0.36, 0.30]], ['limestone', false, [0.83, 0.79, 0.70]],
+    ['granite', false, [0.58, 0.55, 0.5]]];
+  let quoins = 0;
+  for (const [kind, dressed, tint] of cases) {
+    const tile = dressed ? run(paintDressedStoneBuffers(kind, tint, 0x51a7)) : run(paintRegionalSurfaceBuffers('stone', kind, tint, 0x51a7));
+    const S = tile.size;
+    for (let k = 0; k < 24; k++) {
+      const sx = k & 1 ? 1 : -1, sz = k & 2 ? 1 : -1, long = (k >> 2) & 1;
+      const lx = long ? 0.56 : 0.32, lz = long ? 0.32 : 0.56, x = 3.1 * sx, z = 4.4 * sz, y = 0.4 + 0.42 * k;
+      const sink = new PartSink([k * 0.37 + 0.11, k * 0.53 + 0.29]);
+      const box = [sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz];
+      withFacade({ tier: 'desktop', rng: streamFrom(k + 1), stone: { kind, dressed } }, () => dressedQuoin(sink, 'stone', ...box, sx, sz, { decor: true }));
+      const geo = sink.finish().stone.find((g) => !g.userData.fine);
+      assert.ok(geo, `${kind}: the quoin's outer faces stay coarse`);
+      const pos = geo.getAttribute('position'), nor = geo.getAttribute('normal'), uv = geo.getAttribute('uv');
+      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity, outer = 0;
+      for (let i = 0; i < pos.count; i++) {
+        // the two outer faces (normal along +-x toward sx, or +-z toward sz)
+        if (!(nor.getX(i) * sx > 0.9 || nor.getZ(i) * sz > 0.9)) continue;
+        outer++;
+        u0 = Math.min(u0, uv.getX(i)); u1 = Math.max(u1, uv.getX(i)); v0 = Math.min(v0, uv.getY(i)); v1 = Math.max(v1, uv.getY(i));
+      }
+      assert.ok(outer >= 12, `${kind}: both outer faces found (${outer} corners)`);
+      const scale = (v1 - v0) / 0.4;
+      assert.ok(scale >= 0.22 - 1e-6 && scale <= 0.5 + 1e-6, `${kind}: the stone at 0.22-0.5 tiles a metre (${scale.toFixed(3)})`);
+      assert.ok(Math.abs((u1 - u0) - scale * (lx + lz + 0.07)) < 1e-3, `${kind}: the faces wrap the corner unstretched`);
+      // every texel of the window on the painted tile: inside one stone
+      const fx = (u) => ((u % 1) + 1) % 1;
+      let minH = Infinity;
+      for (let a = 0; a <= 16; a++) for (let b = 0; b <= 8; b++) {
+        const u = u0 + (u1 - u0) * a / 16, v = v0 + (v1 - v0) * b / 8;
+        const px = Math.min(S - 1, Math.floor(fx(u) * S)), py = Math.min(S - 1, Math.floor((1 - fx(v)) * S));
+        minH = Math.min(minH, tile.hgt[py * S + px]);
+      }
+      assert.ok(minH > 0.15, `${kind}${dressed ? ' dressed' : ''} quoin ${k}: its window holds no joint (lowest height ${minH.toFixed(3)})`);
+      quoins++;
+    }
+  }
+  // a phone's quoin and a render quoin keep the world mapping
+  const plain = (tier, bucket) => {
+    const sink = new PartSink([0.3, 0.7]);
+    withFacade({ tier, rng: streamFrom(5), stone: { kind: 'sandstone', dressed: true } }, () => dressedQuoin(sink, bucket, 2.5, 0.4, 3.6, 3.1, 0.8, 4.0, 1, 1, { decor: true }));
+    const ref = new PartSink([0.3, 0.7]);
+    ref.quoin(bucket, 2.5, 0.4, 3.6, 3.1, 0.8, 4.0, 1, 1, { decor: true });
+    const a = sink.finish()[bucket].map((g) => Buffer.from(g.getAttribute('uv').array.buffer).toString('base64'));
+    const b = ref.finish()[bucket].map((g) => Buffer.from(g.getAttribute('uv').array.buffer).toString('base64'));
+    assert.deepEqual(a, b, `a ${tier} ${bucket} quoin keeps the plain mapping`);
+  };
+  plain('mobile', 'stone');
+  plain('desktop', 'plaster');
+  console.log(`facade dressed quoins: ${quoins} quoins on four tiles each wrap one whole stone, clear of its joints`);
+}

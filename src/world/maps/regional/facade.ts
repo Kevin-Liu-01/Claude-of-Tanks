@@ -14,12 +14,16 @@
 import {
   LocalFrame, faceBox, facePoint, normalize3, type EmitOptions, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
+import { masonryLayout } from '../../regionalSurfaces.ts';
+import type { StoneSurfaceKind } from './types.ts';
 
 /** The facade craft's slot for the building being built (index.ts sets it around a kit build, like the wear slot). */
 interface FacadeContext {
   tier: 'desktop' | 'mobile';
   /** the building's facade stream (never its build or look stream) */
   rng: () => number;
+  /** the style's stone tile (its painter and dressing: the dressed quoins map one of its stones onto each quoin) */
+  stone?: { kind: StoneSurfaceKind; dressed?: boolean };
 }
 let facadeContext: FacadeContext | null = null;
 
@@ -132,16 +136,17 @@ export function nalichnikCrest(sink: PartSink, face: Face, u: number, y: number,
     poly = [[u - half, base], [u + half, base], [u + half, mid], [u - half, mid]];
     faceSlab(sink, wood, face, [[u - half * 0.62, mid], [u + half * 0.62, mid], [u + half * 0.62, top], [u - half * 0.62, top]], 0, 0.03, { ...paint, fineSides: 'near' });
   }
-  faceSlab(sink, wood, face, poly, 0, 0.032, paint);
-  // the carved field: the fretwork's shadowed ground in the second paint, inset in the board (fine: 6 mm proud)
+  // (wave 172: "without carved nalichniki relief") the board carved: a backing board that reads at range, and near the
+  // camera a frame standing round a sunk field — the frame's face 32 mm proud, the field cut back to 18 mm in the second
+  // paint — with the rosettes standing proud of both
   const inset = 0.035;
   const fieldPoly = shrink(poly, u, (base + Math.max(...poly.map(([, py]) => py))) / 2, inset);
-  if (fieldPoly) faceSlab(sink, wood, face, fieldPoly, 0.032, 0.006, { colour: style.field, fine: 'near' });
+  carvedBoard(sink, wood, face, poly, fieldPoly, style.colour, style.field);
   // three rosettes (the carving's bosses) in the board's paint on the field, and the finial on the peak
   const fy = base + (top - base) * 0.42;
   for (const du of [-half * 0.55, 0, half * 0.55]) {
     const s = du === 0 ? 0.045 : 0.032;
-    faceSlab(sink, wood, face, [[u + du, fy - s], [u + du + s, fy], [u + du, fy + s], [u + du - s, fy]], 0.038, 0.008, { colour: style.colour, fine: 'near' });
+    faceSlab(sink, wood, face, [[u + du, fy - s], [u + du + s, fy], [u + du, fy + s], [u + du - s, fy]], 0.018, 0.024, { colour: style.colour, fine: 'near' });
   }
   faceSlab(sink, wood, face, [[u, top - 0.02], [u + 0.05, top + 0.05], [u, top + 0.13], [u - 0.05, top + 0.05]], 0, 0.03, { colour: style.colour, fine: 'near' });
 }
@@ -150,9 +155,27 @@ export function nalichnikCrest(sink: PartSink, face: Face, u: number, y: number,
 export function nalichnikApron(sink: PartSink, face: Face, u: number, y: number, outer: number, drop: number, colour: Rgb, field: Rgb): void {
   const half = outer / 2;
   const poly: Array<[number, number]> = [[u - half, y - drop * 0.62], [u, y - drop], [u + half, y - drop * 0.62], [u + half, y], [u - half, y]];
-  faceSlab(sink, 'structureWood', face, poly, 0, 0.03, { colour });
-  const f = shrink(poly, u, y - drop * 0.45, 0.04);
-  if (f) faceSlab(sink, 'structureWood', face, f, 0.03, 0.006, { colour: field, fine: 'near' });
+  carvedBoard(sink, 'structureWood', face, poly, shrink(poly, u, y - drop * 0.45, 0.04), colour, field);
+}
+
+/**
+ * A carved board on a face (a nalichnik's crest or apron): a 12 mm backing board in `colour` that reads at range, and
+ * near the camera (EmitOptions.fine 'near') a frame round the board's edge standing 32 mm proud and the sunk field
+ * inside it at 18 mm in `field` — the carving's relief, its inner step catching the light. `inner` is the field's
+ * outline, vertex for vertex the board's (shrink); without one the board is one slab.
+ */
+function carvedBoard(sink: PartSink, bucket: RegionalBucket, face: Face, poly: ReadonlyArray<readonly [number, number]>,
+  inner: ReadonlyArray<readonly [number, number]> | null, colour: Rgb, field: Rgb): void {
+  if (!inner) {
+    faceSlab(sink, bucket, face, poly, 0, 0.032, { colour });
+    return;
+  }
+  faceSlab(sink, bucket, face, poly, 0, 0.012, { colour });
+  for (let i = 0; i < poly.length; i++) {
+    const j = (i + 1) % poly.length;
+    faceSlab(sink, bucket, face, [poly[i], poly[j], inner[j], inner[i]], 0.012, 0.02, { colour, fine: 'near' });
+  }
+  faceSlab(sink, bucket, face, inner, 0.012, 0.006, { colour: field, fine: 'near' });
 }
 
 /** A convex outline pulled in toward (cu, cy) by `d` along each corner's ray (a carved field's border). */
@@ -368,6 +391,62 @@ export function windowHead(sink: PartSink, face: Face, u: number, y: number, w: 
     const base = y + head.h, half = span / 2 + 0.03;
     faceSlab(sink, head.bucket, face, [[u - half, base], [u + half, base], [u, base + head.rise]], 0, head.out * 0.7, paint);
   }
+}
+
+/** The stone tile's whole blocks, inset clear of their joints (canvas px, rows from the top), by kind and dressing. */
+const ASHLAR_BLOCKS = new Map<string, ReadonlyArray<{ x0: number; x1: number; y0: number; y1: number }>>();
+const ASHLAR_TILE = 512;
+function ashlarBlocks(kind: StoneSurfaceKind, dressed: boolean): ReadonlyArray<{ x0: number; x1: number; y0: number; y1: number }> {
+  const key = `${kind}:${dressed ? 1 : 0}`;
+  let blocks = ASHLAR_BLOCKS.get(key);
+  if (!blocks) {
+    const layout = masonryLayout(kind, dressed, undefined, ASHLAR_TILE);
+    // clear of the joint, its wander and a texel of filtering
+    const m = layout.mortar + layout.wobble + 1.5;
+    blocks = layout.courses.flatMap((c) => c.blocks.filter((b) => !b.split)
+      .map((b) => ({ x0: b.x0 + m, x1: b.x1 - m, y0: c.y0 + m, y1: c.y1 - m })))
+      .filter((b) => b.x1 - b.x0 > 8 && b.y1 - b.y0 > 8);
+    ASHLAR_BLOCKS.set(key, blocks);
+  }
+  return blocks;
+}
+
+/**
+ * A quoin turning the corner (PartSink.quoin's box and corner signs) as one dressed stone (facade craft, desktop; wave
+ * 172 read the corners as "brick strips instead of dressed sandstone"): its two outer faces wrap one whole stone of the
+ * style's own tile round the corner — a block clear of the tile's joints, picked per quoin and per building — so the
+ * courses of the wall's masonry no longer run across it. The geometry is the plain quoin's; only its texture mapping
+ * changes. A phone, a build outside a kit, or a bucket other than the stone keeps the plain quoin.
+ */
+export function dressedQuoin(sink: PartSink, bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number,
+  z1: number, sx: number, sz: number, opts: EmitOptions = {}): void {
+  const stone = facadeContext?.stone;
+  const xl = Math.min(x0, x1), xh = Math.max(x0, x1), yl = Math.min(y0, y1), yh = Math.max(y0, y1), zl = Math.min(z0, z1), zh = Math.max(z0, z1);
+  const W = (xh - xl) + (zh - zl), H = yh - yl;
+  const blocks = facadeOn() && bucket === 'stone' && stone && W > 0 && H > 0 ? ashlarBlocks(stone.kind, !!stone.dressed) : [];
+  // the scale (tiles a metre) a block allows the quoin's wrapped faces, at most the tile's own 0.5: a stone magnified
+  // past ~2.3x reads soft, so smaller blocks are passed over
+  const fit = (b: { x0: number; x1: number; y0: number; y1: number }) =>
+    Math.min(0.5, (b.y1 - b.y0) / ASHLAR_TILE / H, (b.x1 - b.x0) / ASHLAR_TILE / W);
+  const good = blocks.filter((b) => fit(b) >= 0.22);
+  if (!good.length) {
+    sink.quoin(bucket, x0, y0, z0, x1, y1, z1, sx, sz, opts);
+    return;
+  }
+  const [ou, ov] = sink.uvOffset;
+  const b = good[Math.floor(hash01(xl, yl, zl, sx, sz, ou, ov) * good.length) % good.length];
+  const k = fit(b);
+  // the window: W x H metres at k tiles a metre, centred in the block; the canvas is flipped on upload (v = 1 - row / size)
+  const cu = (b.x0 + b.x1) / 2 / ASHLAR_TILE, cv = 1 - (b.y0 + b.y1) / 2 / ASHLAR_TILE;
+  const u0 = cu - W * k / 2, v0 = cv - H * k / 2;
+  // the wrap: u runs from the far end of the face square to z, round the corner, to the far end of the face square to
+  // x; v runs up. PartSink's plane UVs are dot(p - origin, axis) * density + the building's offset, so the origin is
+  // set back along the axes to land the corner of the wrap on the window's corner
+  const U: Vec3 = [sx, 0, -sz], V: Vec3 = [0, 1, 0];
+  const p0: Vec3 = [sx > 0 ? xl : xh, yl, sz > 0 ? zh : zl];
+  const a = (ou - u0) / k, c = (ov - v0) / k;
+  const origin: Vec3 = [p0[0] + U[0] * a / 2, p0[1] + c, p0[2] + U[2] * a / 2];
+  sink.quoin(bucket, x0, y0, z0, x1, y1, z1, sx, sz, { ...opts, uv: { kind: 'plane', origin, u: U, v: V }, density: k });
 }
 
 /** The local frame of a face (x along u, y up, z out) for PartSink.box. */
@@ -747,8 +826,10 @@ export function gableWindows(gable: ReadonlyArray<readonly [number, number]>, ea
 /**
  * A tower shaft rendered over its rubble (the Hessian village church's west tower; wave 116 read its bare sandstone as
  * "a church tower brick scaled several times too large"): a coat of render on each face 12 mm proud, leaving the
- * dressed corners bare as quoin strips `corner` wide and stopping clear of the openings in `holes` (u0, u1, y0, y1 per
- * face, by face index front, right, back, left). The four faces of a square shaft `s` wide centred on (cx, cz).
+ * corners `corner` wide and stopping clear of the openings in `holes` (u0, u1, y0, y1 per face, by face index front,
+ * right, back, left). The four faces of a square shaft `s` wide centred on (cx, cz). (wave 172 read the bare corners
+ * as "brick strips instead of dressed sandstone") Each corner is a column of dressed quoins, a stone 38 cm high every
+ * 41 cm standing 3 cm proud of the shaft, each one whole stone of the style's tile (dressedQuoin).
  */
 export function renderedShaft(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, s: number, y0: number, y1: number,
   corner: number, holes: ReadonlyArray<ReadonlyArray<readonly [number, number, number, number]>> = []): void {
@@ -776,4 +857,10 @@ export function renderedShaft(sink: PartSink, bucket: RegionalBucket, cx: number
     }
     rect(u0, u1, y, y1);
   });
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, -1], [-1, 1]] as const) {
+    const x = cx + sx * h, z = cz + sz * h;
+    for (let y = y0; y + 0.38 <= y1 + 0.01; y += 0.41) {
+      dressedQuoin(sink, 'stone', x - sx * corner, y, z - sz * corner, x + sx * 0.03, y + 0.38, z + sz * 0.03, sx, sz, DECOR);
+    }
+  }
 }

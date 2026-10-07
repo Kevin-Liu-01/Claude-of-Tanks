@@ -8,6 +8,7 @@ import {
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import { carvedVerge, facadeOn, sillStreaks, thatchCourses, withFacade } from './facade.ts';
+import type { StoneSurfaceKind } from './types.ts';
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -115,6 +116,12 @@ export interface HouseSpec {
   spallTint?: Rgb;
   /** the spalled patches' size (1: the default; the draws are the same whatever it is) */
   spallScale?: number;
+  /**
+   * the drip strip round the wall foot and the path from the front door (facade craft, desktop; groundSkirt): by
+   * default the plinth's bucket on a house with a plinth (setts, gravel) and none on one without (it may stand raised
+   * on piers), a coloured bucket's trodden clay with its `colour`, null for none
+   */
+  skirt?: { bucket: RegionalBucket; colour?: Rgb } | null;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -180,7 +187,7 @@ interface WearContext {
   /** spalled render (decor only) draws from its own stream: the damage decisions above never move */
   spall?: () => number;
   /** the facade craft's slot for the building (facade.ts withFacade), set with the wear */
-  facade?: { tier: 'desktop' | 'mobile'; rng: () => number };
+  facade?: { tier: 'desktop' | 'mobile'; rng: () => number; stone?: { kind: StoneSurfaceKind; dressed?: boolean } };
 }
 let wearContext: WearContext | null = null;
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
@@ -259,6 +266,64 @@ function damagedOpening(sink: PartSink, face: Face, o: Opening, y0: number, reve
   }
 }
 
+/**
+ * The ground at the wall foot (facade craft, desktop; wave 172: "buildings set straight onto flat dirt or lawn with no
+ * plinth, path, grime or contact shadow"): a drip strip of the kit's paving round the plinth, darkest against the wall
+ * (the contact shadow the ground takes there), and a short path of the same out from each ground-floor door. The house
+ * stands at the lowest ground its plot touches (props.ts groundFit): the strip lies level 4 cm over that, its outer
+ * edge a lip down into the ground (a kerb where the ground is level; where the ground rises the strip runs into it),
+ * so no ray from outside meets its underside. Decor.
+ */
+function groundSkirt(sink: PartSink, spec: HouseSpec, faces: Record<FaceName, Face>): void {
+  // (a house on a plinth stands on the ground; one without may stand raised on piers, so it takes a strip only by name)
+  const sk = spec.skirt === undefined ? (spec.plinth ? { bucket: spec.plinth.bucket } : null) : spec.skirt;
+  if (!sk) return;
+  const o = spec.plinth ? spec.plinth.out : 0;
+  const x0 = -spec.w / 2 - o, x1 = spec.w / 2 + o, z0 = -spec.d / 2 - o, z1 = spec.d / 2 + o;
+  const W = 0.45, top = 0.04;
+  // the strip lies level 4 cm proud of the lowest ground the house stands on, its outer edge a lip down into the ground
+  // (a kerb where the ground is level; where it rises the strip runs into it), darkest against the wall
+  const shadeOf = (p: Vec3): number => {
+    if (p[1] < top - 0.01) return 0.8;
+    const wall = Math.max(Math.abs(p[0]) - x1, Math.abs(p[2]) - z1, 0);
+    return wall < 0.01 ? 0.55 : 0.95;
+  };
+  // fine dressing: out of the shadow maps and the always-drawn meshes, drawn by the fine-detail cells (a strip 45 cm wide
+  // reads within their distance; past it the ground's own contact decal stands for it)
+  const opts: EmitOptions = sk.colour ? { decor: true, fine: true, colourAt: (p: Vec3) => shadeRgb(sk.colour as Rgb, shadeOf(p)) }
+    : { decor: true, fine: true, shadeAt: shadeOf };
+  // a quad wound to face along `n` (its corners in any order round it)
+  const quad = (pts: Vec3[], n: Vec3) => {
+    const [a, b, c] = pts;
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
+    sink.polygon(sk.bucket, cx * n[0] + cy * n[1] + cz * n[2] >= 0 ? pts : [...pts].reverse(), opts);
+  };
+  const up: Vec3 = [0, 1, 0];
+  const X0 = x0 - W, X1 = x1 + W, Z0 = z0 - W, Z1 = z1 + W;
+  quad([[x0, top, z1], [x1, top, z1], [X1, top, Z1], [X0, top, Z1]], up);
+  quad([[x1, top, z0], [x0, top, z0], [X0, top, Z0], [X1, top, Z0]], up);
+  quad([[x1, top, z1], [x1, top, z0], [X1, top, Z0], [X1, top, Z1]], up);
+  quad([[x0, top, z0], [x0, top, z1], [X0, top, Z1], [X0, top, Z0]], up);
+  const lip = -0.3;
+  quad([[X0, top, Z1], [X1, top, Z1], [X1, lip, Z1], [X0, lip, Z1]], [0, 0, 1]);
+  quad([[X0, top, Z0], [X1, top, Z0], [X1, lip, Z0], [X0, lip, Z0]], [0, 0, -1]);
+  quad([[X1, top, Z0], [X1, top, Z1], [X1, lip, Z1], [X1, lip, Z0]], [1, 0, 0]);
+  quad([[X0, top, Z0], [X0, top, Z1], [X0, lip, Z1], [X0, lip, Z0]], [-1, 0, 0]);
+  // the path from each ground-floor door: a slab out to a metre from the wall, a cm over the strip, its lip deeper
+  for (const op of spec.openings) {
+    if (op.storey !== 0 || op.kind !== 'door' || op.state) continue;
+    const f = faces[op.face], hw = op.w / 2 + 0.18, L = 1.0, y = top + 0.01, deep = -0.5;
+    const at = (du: number, out: number, yy: number): Vec3 => [f.origin[0] + f.u[0] * (op.u + du) + f.out[0] * (out + o),
+      yy, f.origin[2] + f.u[2] * (op.u + du) + f.out[2] * (out + o)];
+    const side = (s: number): Vec3 => [f.u[0] * s, 0, f.u[2] * s];
+    quad([at(-hw, 0, y), at(hw, 0, y), at(hw, L, y), at(-hw, L, y)], up);
+    quad([at(-hw, L, y), at(hw, L, y), at(hw, L, deep), at(-hw, L, deep)], [f.out[0], 0, f.out[2]]);
+    quad([at(hw, 0, y), at(hw, L, y), at(hw, L, deep), at(hw, 0, deep)], side(1));
+    quad([at(-hw, 0, y), at(-hw, L, y), at(-hw, L, deep), at(-hw, 0, deep)], side(-1));
+  }
+}
+
 /** Lay out a roof over a w × d wall top at height eaveY (ridge along Z). */
 const RENDERS: ReadonlySet<RegionalBucket> = new Set<RegionalBucket>(['plaster', 'plaster2', 'plaster3']);
 
@@ -277,6 +342,9 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
   const half = face.width / 2, y0 = body.y0, y1 = body.y1;
   const keepOut = own.map((o) => ({ u0: o.u - o.w / 2 - 0.1, u1: o.u + o.w / 2 + 0.1, y0: y0 + o.y0 - 0.1, y1: y0 + o.y0 + o.h + 0.1 }));
   const windows = own.filter((o) => o.kind === 'window' && !o.state);
+  // (facade craft, desktop; wave 172: "a hard-edged texture-blend patch on the blank Steinburg gable") each loss in its
+  // layers (layeredLoss); the losses keep their places and count, so the craft only adds to the plain build
+  const crafted = facadeOn() && !spec.spallTint;
   const n = 1 + Math.floor(rng() * 3);
   for (let k = 0; k < n; k++) {
     const roll = rng(), a = rng(), b = rng(), c = rng();
@@ -308,9 +376,53 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     // (facade craft, desktop; wave 150: "plaster loss that looks like stickers") the loss shaded deeper toward its broken
     // edge, where the render it lost stands proud and shades it: a hollow, not a decal laid on the wall
     const centre = facePoint(face, cu, cy, 0.015);
+    // (the layers on the first render family only: its fine work batches by the fine-detail cells and its coats cast
+    // with the wall's; the second and third families' pieces would all be drawn and cast, so they keep the one patch)
+    if (crafted && wall === 'plaster') {
+      // the rings round the hole grow out to 1.45x its size where the wall and its openings leave room
+      let room = 1.45;
+      while (room > 1.02 && (Math.abs(cu) + ru * room > half - 0.08 || cy - ry * room < y0 + 0.02 || cy + ry * room > y1 - 0.08
+        || keepOut.some((h) => cu + ru * room > h.u0 && cu - ru * room < h.u1 && cy + ry * room > h.y0 && cy - ry * room < h.y1))) room -= 0.05;
+      layeredLoss(sink, face, wall, bucket, cu, cy, ragged, room);
+      continue;
+    }
     const rim = facadeOn() ? { shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.92 : 0.62) } : { shade: 0.86 };
     sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, ...rim, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
   }
+}
+
+/**
+ * A render loss as it really breaks (facade craft, desktop; wave 172 read the single-layer patch as "a hard-edged
+ * texture-blend patch"): the masonry where the whole coat came away, shaded toward its broken edge (the plain build's
+ * patch, the same outline); round it a ragged ring of the brown base coat where only the finish came away; and round
+ * that a stain fading out into the render (the water that got in). Each ring stands a little less proud than the one
+ * inside it (17, 15, 12 mm) and grows only as far as `room` (times the hole's size) allows. The stain is near fine
+ * dressing (EmitOptions.fine 'near'), the base coat fine (out of the shadow maps, drawn by the fine-detail cells).
+ */
+function layeredLoss(sink: PartSink, face: Face, wall: RegionalBucket, bucket: RegionalBucket, cu: number, cy: number,
+  ragged: ReadonlyArray<readonly [number, number]>, room: number): void {
+  const at = (s: number, [u, y]: readonly [number, number]): [number, number] => [cu + (u - cu) * s, cy + (y - cy) * s];
+  const ring = (inner: number, outer: number, o: number, opts: EmitOptions, shadeIn: number, shadeOut: number) => {
+    for (let j = 0; j < ragged.length; j++) {
+      const p = ragged[j], q = ragged[(j + 1) % ragged.length];
+      // inner p, outer p, outer q, inner q: counter-clockwise seen from outside (the outline runs counter-clockwise)
+      const a = at(inner, p), b = at(outer, p), c = at(outer, q), d = at(inner, q);
+      const pts = [a, b, c, d].map(([u, y]) => facePoint(face, u, y, o));
+      const ins = new Set([0, 3]);
+      sink.polygon(wall, pts, { ...opts, shadeAt: (v: Vec3) => (ins.has(pts.findIndex((w) => w[0] === v[0] && w[1] === v[1] && w[2] === v[2])) ? shadeIn : shadeOut) });
+    }
+  };
+  // the masonry: the hole, shaded toward its broken edge
+  const centre = facePoint(face, cu, cy, 0.017);
+  sink.polygon(bucket, [[cu, cy] as [number, number], ...ragged, ragged[0]].map(([u, y]) => facePoint(face, u, y, 0.017)), {
+    decor: true, shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.88 : 0.6),
+  });
+  if (room <= 1.04) return;
+  const coat = Math.min(1.18, room);
+  // the base coat: the brown floated coat under the finish, round the hole
+  ring(1, coat, 0.015, { decor: true, fine: true, tint: [0.8, 0.72, 0.6] }, 0.78, 0.92);
+  // the stain: from the coat's edge out, the render darkening toward the break
+  if (room > coat + 0.04) ring(coat, room, 0.012, { decor: true, fine: 'near' }, 0.82, 1);
 }
 
 export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec): RoofGeometry {
@@ -543,6 +655,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   };
   const faces = frameFaces(bodies[0]);
   const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
+  if (facadeOn()) groundSkirt(sink, spec, faces);
   const roofPatch = wearHouse(spec, rg);
   // the rain shadow under the eaves (facade craft, desktop): the top storey's eaves faces darken toward the soffit, by
   // the overhang's depth; a gable, a flat roof's parapet or a bare eave casts none

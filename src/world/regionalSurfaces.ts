@@ -436,6 +436,35 @@ const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax
   mortarTint: [0.42, 0.39, 0.36] as Tint, spread: 0.22, hue: 0.1, relief: 0.35, pillow: 0.12, speckle: 0.04, lichen: 0.22, grime: 0.7,
   rubble: 0.15, bedding: 0.12, mottle: 0.36, streaks: 0.55 });
 
+/** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
+export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
+/** A stone tile's block layout (masonryLayout). */
+export interface MasonryLayout { size: number; mortar: number; wobble: number; courses: readonly MasonryCourse[] }
+
+/**
+ * The block layout masonry() paints for a kind (canvas px, rows from the top; a block the rubble rule splits flagged),
+ * with the joint's half-width and its wander: a part can map one stone of the tile onto itself (the facade craft's
+ * dressed quoins, maps/regional/facade.ts dressedQuoin). (facades lane, 2026-10-06)
+ */
+export function masonryLayout(kind: StoneSurfaceKind, dressed = false, seed = 0x51a7, s = 512): MasonryLayout {
+  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
+  const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
+  const courses: MasonryCourse[] = [];
+  for (let r = 0; r + 1 < rowsE.length; r++) {
+    let edges: number[];
+    if (kind === 'brick' || kind === 'block') {
+      const n = Math.round(s / R.blockMin), w = s / n, off = (r & 1) ? w / 2 : 0;
+      edges = [0];
+      for (let k = 0; k <= n; k++) { const v = k * w + off; if (v > 0 && v < s) edges.push(v); }
+      edges.push(s);
+    } else edges = courseEdges(s, R.blockMin, R.blockMax + 1, seed + 101 + r * 7);
+    const blocks = [];
+    for (let c = 0; c + 1 < edges.length; c++) blocks.push({ x0: edges[c], x1: edges[c + 1], split: R.rubble > 0 && hash2(c, r, seed + 31) < R.rubble });
+    courses.push({ y0: rowsE[r], y1: rowsE[r + 1], blocks });
+  }
+  return { size: s, mortar: R.mortar, wobble: 1.2 + R.relief * 2.4, courses };
+}
+
 function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
   const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);

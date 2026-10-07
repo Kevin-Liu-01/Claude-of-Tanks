@@ -2,7 +2,7 @@
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { faceBox, facePanel, type Face, type PartSink, type RegionalBucket, type Rgb, UV_MEMBER } from './geometry.ts';
-import { facadeOn, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
+import { facadeOn, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -123,32 +123,29 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
 }
 
 /**
- * A shutter leaf's paint (facade craft): a border a hand wide round its face and a motif cut or painted at its middle
- * (a diamond, a heart), in a second colour, 6 mm on its face (fine: drawn near the camera only).
+ * A shutter leaf's joinery in a second paint (facade craft; wave 172 read the painted leaves as "flat paint without
+ * carved relief"): the stiles and rails a hand wide round its face standing 14 mm proud, and the motif at its middle (a
+ * diamond, a heart) an applied panel 10 mm proud, its edges catching the light — near the camera only (EmitOptions.fine
+ * 'near'; past that the leaf keeps its own paint).
  */
 function paintedLeaf(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, o: number,
   paint: { border: Rgb; motif: 'diamond' | 'heart' | null }): void {
-  const b = Math.min(0.06, w * 0.12), c = { colour: paint.border, decor: true, fine: true };
-  const z = o + 0.006;
-  facePanel(sink, 'structureWood', face, u, y + h / 2 - b / 2, z, w, b, c);
-  facePanel(sink, 'structureWood', face, u, y - h / 2 + b / 2, z, w, b, c);
-  facePanel(sink, 'structureWood', face, u - w / 2 + b / 2, y, z, b, h - 2 * b, c);
-  facePanel(sink, 'structureWood', face, u + w / 2 - b / 2, y, z, b, h - 2 * b, c);
+  const b = Math.min(0.06, w * 0.12), c = { colour: paint.border, decor: true, fine: 'near' as const };
+  const T = 0.014;
+  faceBox(sink, 'structureWood', face, u, y + h / 2 - b / 2, o + T / 2, w, b, T, c, { back: true });
+  faceBox(sink, 'structureWood', face, u, y - h / 2 + b / 2, o + T / 2, w, b, T, c, { back: true });
+  faceBox(sink, 'structureWood', face, u - w / 2 + b / 2, y, o + T / 2, b, h - 2 * b, T, c, { back: true, top: true, bottom: true });
+  faceBox(sink, 'structureWood', face, u + w / 2 - b / 2, y, o + T / 2, b, h - 2 * b, T, c, { back: true, top: true, bottom: true });
   if (paint.motif) {
     const s = Math.min(w, h) * 0.22;
-    const P = (du: number, dy: number) => facePointOf(face, u + du, y + dy, z);
-    if (paint.motif === 'diamond') sink.polygon('structureWood', [P(0, -s), P(s * 0.7, 0), P(0, s), P(-s * 0.7, 0)], c);
+    const P = (du: number, dy: number): [number, number] => [u + du, y + dy];
+    if (paint.motif === 'diamond') faceSlab(sink, 'structureWood', face, [P(0, -s), P(s * 0.7, 0), P(0, s), P(-s * 0.7, 0)], o, 0.01, c);
     else {
       // a heart: two lobes over a point
-      sink.polygon('structureWood', [P(0, -s), P(s * 0.75, s * 0.25), P(s * 0.4, s * 0.7), P(0, s * 0.35)], c);
-      sink.polygon('structureWood', [P(0, -s), P(0, s * 0.35), P(-s * 0.4, s * 0.7), P(-s * 0.75, s * 0.25)], c);
+      faceSlab(sink, 'structureWood', face, [P(0, -s), P(s * 0.75, s * 0.25), P(s * 0.4, s * 0.7), P(0, s * 0.35)], o, 0.01, c);
+      faceSlab(sink, 'structureWood', face, [P(0, -s), P(0, s * 0.35), P(-s * 0.4, s * 0.7), P(-s * 0.75, s * 0.25)], o, 0.01, c);
     }
   }
-}
-
-/** A point on a face (u along it, y up, o out of it). */
-function facePointOf(face: Face, u: number, y: number, o: number): [number, number, number] {
-  return [face.origin[0] + face.u[0] * u + face.out[0] * o, y, face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
 
 export interface DoorStyle {

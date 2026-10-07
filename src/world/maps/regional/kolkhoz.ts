@@ -142,8 +142,9 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
     // clay-rendered timber or adobe: no brick under the whitewash to show where it has spalled
     gutters: null, verge: null, spall: null,
-    // (the facade craft, desktop) where the lime has worn off, the clay under it shows
-    ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45 } : {}),
+    // (the facade craft, desktop) where the lime has worn off, the clay under it shows; the yard's trodden clay round
+    // the wall foot and out from the door (house.ts groundSkirt), darkest against the plinth
+    ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45, skirt: { bucket: 'structureWood' as const, colour: TRODDEN } } : {}),
   }, dialect(st));
   if (craft) khataDressing(sink, frame, st, craft);
   // the porch (ganok) over the door: two posts and a small lean-to
@@ -537,6 +538,9 @@ export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   schoolhouse: (ctx) => club(ctx, true),
   ruin: burnt,
 });
+
+/** the yard's trodden black-earth clay round a khata (facade craft; sRGB) */
+const TRODDEN: Rgb = rgb(0x4a3e30);
 
 /** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
 const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];

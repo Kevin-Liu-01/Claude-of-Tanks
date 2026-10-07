@@ -97,7 +97,11 @@ const SETS = {
   rock: acg(TT, 'Rock058'),
   rockWarm: acg(TT, 'Rock063'),
   cobble: acg(TT, 'PavingStones046'),
-  plaster: acg(TB, 'Plaster007'),
+  // (facades lane, 2026-10-06; wave 174 read the ksar walls' tile as "carved, pharaonic-looking glyphs") Plaster 007's
+  // normal map with its rows of blocky losses taken out — a first-party derivative (docs/ATTRIBUTION.md): the trowel
+  // undulation and the fine grain kept, the losses' relief replaced by the tile's own quiet grain, their long joint
+  // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
+  plaster: { ...acg(TB, 'Plaster007'), normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),

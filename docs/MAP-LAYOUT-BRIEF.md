@@ -544,7 +544,21 @@ lettering, a gutter's hangers and fittings, the sills' dirt runs, the attic and 
 tops of trims): they merge by 40 m cell and show within half the fine-detail distance (60 m at High), so a street view
 draws them and the town beyond it does not (Steinburg's chase view drew 164k of the craft's fine triangles, 124k of
 them past 80 m; the near tier leaves 56k). Paint (bands, Faschen, the plinth's band) and pilasters stay with the kit's
-fine joinery, at the full distance. A new part follows the same laws: decor, behind `facadeOn()`, no draw from
+fine joinery, at the full distance.
+
+Round three (wave 172, October 6): a quoin turning a corner (`dressedQuoin`, and the corners of a rendered tower
+shaft) wraps one whole stone of the style's own tile — `regionalSurfaces.ts masonryLayout` gives the tile's blocks,
+and the quoin's two outer faces map a block clear of its joints, per quoin and per building — so the wall's courses no
+longer run across it; the geometry is the plain quoin's. A render loss (`spallRender` on the first render family) shows
+its masonry ringed by the brown base coat and a stain fading into the render (`layeredLoss`; the rings grow only as
+far as the wall and its openings leave room). A house on a plinth gets a drip strip of its plinth's stone round the
+wall foot, level 4 cm over the lowest ground it stands on with a lip into the ground and darkest against the wall, and
+a short path out from each ground-floor door (`groundSkirt`; `HouseSpec.skirt`: a khata's trodden clay; fine
+dressing). A khata's shutters carry raised stiles, rails and an applied motif, and its nalichnik boards are carved: a
+backing board for range, near the camera a frame round a sunk field with the rosettes proud of both (`carvedBoard`).
+The plaster tile's normal map is a first-party derivative of Plaster 007's (`Plaster007_1K-JPG_NormalGL-smooth.jpg`):
+the tile's rows of blocky losses read as carved glyphs on the ksar walls (wave 174) and are taken out, the trowel
+undulation and the grain kept. A new part follows the same laws: decor, behind `facadeOn()`, no draw from
 `ctx.rng` or `ctx.variant`.
 
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,

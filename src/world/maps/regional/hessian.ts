@@ -15,7 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -687,7 +687,7 @@ const church: RegionalBuilder = (ctx) => {
         const xIn = long ? 0.62 : 0.32, zIn = long ? 0.32 : 0.62;
         const xa = sx > 0 ? naveW / 2 - xIn : -naveW / 2 - 0.04, xb = sx > 0 ? naveW / 2 + 0.04 : -naveW / 2 + xIn;
         const za = sz > 0 ? naveD / 2 - zIn : -naveD / 2 - 0.04, zb = sz > 0 ? naveD / 2 + 0.04 : -naveD / 2 + zIn;
-        sink.quoin('stone', xa, y, za, xb, y + 0.4, zb, sx, sz, { decor: true });
+        dressedQuoin(sink, 'stone', xa, y, za, xb, y + 0.4, zb, sx, sz, { decor: true });
       }
     }
   });
