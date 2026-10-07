@@ -550,7 +550,7 @@ function _nrmFromHeight(h: Float32Array, s: number, strength: number, w = s): TH
   for (let y = 0; y < s; y++) for (let x = 0; x < w; x++) {
     const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
     const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x, y - 1) + H(x + 1, y - 1));
-    v.set(-dx * strength, -dy * strength, 1).normalize();
+    v.set(-dx * strength, dy * strength, 1).normalize(); // (the canvas uploads flipped: green −∂h/∂v = +∂h/∂row, as proceduralTexture.ts)
     const i = (y * w + x) * 4;
     px[i] = v.x * 127.5 + 127.5; px[i + 1] = v.y * 127.5 + 127.5; px[i + 2] = v.z * 127.5 + 127.5; px[i + 3] = 255;
   }

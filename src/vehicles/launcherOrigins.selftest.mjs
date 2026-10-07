@@ -129,7 +129,8 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-assert.equal(ids.length, 35, 'review every missile/rocket vehicle when the roster changes');
+// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35
+assert.equal(ids.length, 36, 'review every missile/rocket vehicle when the roster changes');
 assert.equal(throughGun, 7, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();

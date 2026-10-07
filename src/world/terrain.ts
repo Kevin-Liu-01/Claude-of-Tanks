@@ -2749,13 +2749,15 @@ export function sampleSplatNoise(
  * gBedWob (its beds lie at bedY = y − terrainBedWobbleAt(x, z)), so a bedrock skin or a prop striped by the same law
  * reads as one rock with the terrain's strata (the scenery lane's domes). The shader reads the 8-bit noise texture at
  * the footprint's mip; the twin reads the same float fields bilinearly (a level-0 sample, sampleSplatNoise's
- * convention): within a few centimetres of the shader near the camera.
+ * convention): within a few centimetres of the shader near the camera. (2026-10-06, Titan's zigzag strata: both terms
+ * read the smooth field b at the scales the shader's comment meant, ~50 m and ~17 m — field a carries half its power at
+ * 2–8 texels, which 0.0588 drew as ±0.55 m teeth every metre or two along every bed.)
  */
 export function terrainBedWobbleAt(x: number, z: number): number {
   const f = splatFields();
-  const b = fieldSample(f.b, wrapUnit(x * 0.0208 + 0.37), wrapUnit(z * 0.0208 + 0.83));
-  const a = fieldSample(f.a, wrapUnit(x * 0.0588 + 0.71), wrapUnit(z * 0.0588 + 0.19));
-  return b * 1.6 + a * 0.55;
+  const b = fieldSample(f.b, wrapUnit(x * 0.0050 + 0.37), wrapUnit(z * 0.0050 + 0.83));
+  const b2 = fieldSample(f.b, wrapUnit(x * 0.0147 + 0.71), wrapUnit(z * 0.0147 + 0.19));
+  return b * 1.6 + b2 * 0.55;
 }
 
 /**
@@ -2765,8 +2767,8 @@ export function terrainBedWobbleAt(x: number, z: number): number {
  */
 export function terrainFormationBoundaryY(x: number, z: number, minY: number, maxY: number,
   formation: { atFrac: number; wobbleM?: number }): number {
-  const a = fieldSample(splatFields().a, wrapUnit(x * 0.0071 + 0.83), wrapUnit(z * 0.0071 + 0.41));
-  return minY + (maxY - minY) * formation.atFrac - a * (formation.wobbleM ?? 2.5);
+  const b = fieldSample(splatFields().b, wrapUnit(x * 0.0071 + 0.83), wrapUnit(z * 0.0071 + 0.41));
+  return minY + (maxY - minY) * formation.atFrac - b * (formation.wobbleM ?? 2.5);
 }
 
 const _col = new THREE.Color();
@@ -3585,7 +3587,25 @@ function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
   // (0.90 + n2*0.20, far mottling, meadow tints). At aniso 1 every steep face
   // seen at a grazing angle smeared those terms into long downslope "rain
   // streak" strands — the furry mesa-flank artifact.
-  return canvasToTexture(px, s, { anisotropy: 16 });
+  const texture = canvasToTexture(px, s, { anisotropy: 16 });
+  // Ground lane (2026-10-05, the lab's readback over 200 m of Saltwind: the shader's R and G against the twin's fields,
+  // mean |Δ| 0.126 as the twin reads them and 0.0013 with v turned over): a canvas uploads flipped (its top row at v = 1),
+  // so the shader read every field mirrored in z against its CPU twin — the tufts and the tall grass thinned where the
+  // ground drew green and stood on its bare patches, and the karst twin's soil was another place's. Row 0 at v = 0, as
+  // the land-use mask (its own z-mirror, fixed the same way) and the twin's fieldSample read it.
+  texture.flipY = false;
+  return texture;
+}
+
+/**
+ * Ground lane (2026-10-05): the woods mask (vegetation.ts _woodsMask, size² cells over the square, row j at z from
+ * -512) into the noise texture's blue channel — row j into canvas row j, the row the shader's woods read
+ * (nz(wp.xz, 1/1024, 0.5).b) samples now the texture uploads unflipped (makeShaderNoiseTexture).
+ */
+function stampWoodsMaskRows(data: Uint8ClampedArray, mask: Float32Array, size: number): void {
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) data[(j * size + i) * 4 + 2] = Math.round(Math.max(0, Math.min(1, mask[j * size + i])) * 255);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -4297,15 +4317,23 @@ void splatCompute() {
     // wall run) offsets the V coordinate and stretches bed thickness ±13%
     // per cliff, so bed sequences undulate and never sync between faces.
     float cliffJ = nz(wp.xz, 0.0013, vec2(0.57, 0.23)).g;
-    float cliffJ2 = nz(wp.xz, 0.0047, vec2(0.91, 0.13)).r;
+    float cliffJ2 = nz(wp.xz, 0.0047, vec2(0.91, 0.13)).g;
     float wallVScale = 0.87 + cliffJ * 0.26;
     float wallVOff = cliffJ * 9.7 + cliffJ2 * 2.3;
     // Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): the beds wander along the wall (±1.6 m over
     // ~50 m, ±0.55 m over ~17 m) and swell and thin by region (±18 %), so no wall prints one level ladder
-    gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;
-    float bedSwell = 1.0 + 0.36 * (nz(wp.xz, 0.011, vec2(0.17, 0.53)).r - 0.5);
-    gWallUVx.y = gWallUVx.y * wallVScale * bedSwell + wallVOff + gBedWob;
-    gWallUVz.y = gWallUVz.y * wallVScale * bedSwell + wallVOff + gBedWob;
+    // (2026-10-06, Titan's zigzag strata: the noise texture's r field carries half its power at 2–8 texels, so the wander's
+    // second term (r at 0.0588) drew ±0.55 m teeth every metre or two along every bed, and cliffJ2's r and the swell's
+    // the same at their scales; the slow fields read g — its power sits past 16 texels — at the scales the line above names.
+    // And the thickness stretch multiplied the ABSOLUTE height: v = −y · k(x, z) sheared every wall read by y · ∇k, about 2
+    // at 50 m and 11 at 250 m (the skies lane's emulation) — the beds sawn into slivers and the noise read under its mip.
+    // The stretch now lives on a periodic band of the height, zero mean over 48 m: bed sets thicken and thin up a wall and
+    // the shear stays under 7.6 m · ∇k anywhere)
+    gBedWob = (nz(wp.xz, 0.0050, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0147, vec2(0.71, 0.19)).g - 0.5) * 1.1;
+    float bedSwell = 1.0 + 0.36 * (nz(wp.xz, 0.0031, vec2(0.17, 0.53)).g - 0.5);
+    float wallV = wp.y + (wallVScale * bedSwell - 1.0) * 7.6394 * sin((wp.y + wallVOff) * 0.13090);
+    gWallUVx.y = -wallV + wallVOff + gBedWob;
+    gWallUVz.y = -wallV + wallVOff + gBedWob;
     gCliffJ = cliffJ;
   }
   // r5 terrain_environment: TRUE TRIPLANAR for the GROUND layers, decoupled
@@ -5197,28 +5225,33 @@ void splatCompute() {
     float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock);
     if (rockRelW > 0.002) {
     vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
-    vec3 dnRb;
-    if (uBeddedR > 0.5) {
-      // Round 55 (2026-09-24, round 49's open item: Titan's "fine wavy partings" on every ring wall inside 300 m).
-      // The one-normal-map-at-a-time probe named uNrmR and the tap experiment named THIS sample: the procedural
-      // sandstone tile is bedded (a 3 px seam notch at every bed boundary, normal strength 2.6), so projected in the
-      // wall plane at a 24 m period it printed a parting every 0.9–2.8 m of world height, contour-tracing the relief
-      // on every face, and no mip bias could remove it (a step's derivative stays a line at every level). On the
-      // bedded maps the wall crag is analytic instead — buttress masses and ribs along the wall, leaning and ledged
-      // with height (wallCragTilt), phased per cliff by one slow noise fetch per wall plane — so the walls keep
-      // buttresses and recesses with no line locked to world height and no texture in the gradient (a
-      // screen-derivative bump of the mip-sampled noise field was tried first and speckled the whole wall). The
-      // planar ground tap (dnRa) and the photo-rock maps keep the tile.
-      float phx = nz(gWallUVx, 0.0031, vec2(0.63, 0.21)).r;
-      float phz = nz(gWallUVz, 0.0031, vec2(0.63, 0.21)).r;
-      vec2 nxv = wallCragTilt(gWallUVx, phx);
-      vec2 nzv = wallCragTilt(gWallUVz, phz);
-      dnRb = vec3(-gWallSigns.y * nzv.x * gWallW, gWallSigns.x * nxv.x * (1.0 - gWallW), -mix(nxv.y, nzv.y, gWallW));
-    } else {
-      dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
-                             texture2D(uNrmR, gWallUVz * 0.041).xy);
+    vec3 dnR = dnRa;
+    // (ground lane, 2026-10-07, with the strata's gates: the wall-plane tap where it has weight — at steepW 0 the mix
+    // below returned dnRa exactly)
+    if (steepW > 0.0) {
+      vec3 dnRb;
+      if (uBeddedR > 0.5) {
+        // Round 55 (2026-09-24, round 49's open item: Titan's "fine wavy partings" on every ring wall inside 300 m).
+        // The one-normal-map-at-a-time probe named uNrmR and the tap experiment named THIS sample: the procedural
+        // sandstone tile is bedded (a 3 px seam notch at every bed boundary, normal strength 2.6), so projected in the
+        // wall plane at a 24 m period it printed a parting every 0.9–2.8 m of world height, contour-tracing the relief
+        // on every face, and no mip bias could remove it (a step's derivative stays a line at every level). On the
+        // bedded maps the wall crag is analytic instead — buttress masses and ribs along the wall, leaning and ledged
+        // with height (wallCragTilt), phased per cliff by one slow noise fetch per wall plane — so the walls keep
+        // buttresses and recesses with no line locked to world height and no texture in the gradient (a
+        // screen-derivative bump of the mip-sampled noise field was tried first and speckled the whole wall). The
+        // planar ground tap (dnRa) and the photo-rock maps keep the tile.
+        float phx = nz(gWallUVx, 0.0031, vec2(0.63, 0.21)).r;
+        float phz = nz(gWallUVz, 0.0031, vec2(0.63, 0.21)).r;
+        vec2 nxv = wallCragTilt(gWallUVx, phx);
+        vec2 nzv = wallCragTilt(gWallUVz, phz);
+        dnRb = vec3(-gWallSigns.y * nzv.x * gWallW, gWallSigns.x * nxv.x * (1.0 - gWallW), -mix(nxv.y, nzv.y, gWallW));
+      } else {
+        dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
+                               texture2D(uNrmR, gWallUVz * 0.041).xy);
+      }
+      dnR = mix(dnRa, dnRb, steepW);
     }
-    vec3 dnR = mix(dnRa, dnRb, steepW);
     n.xyz += dnR * rockRelW; // relief pass 2: 0.24 -> 0.6 (1049e4e ran 0.9), craggy rock at range
     }
   }
@@ -5229,81 +5262,95 @@ void splatCompute() {
   // strata now live only on genuine cliff faces
   if (uStrata > 0.001) {
     float steep = smoothstep(0.36, 0.58, slope) * rockGate; // r6: beds only on real mesa rock
-    // r7: bed phase warped by the WALL-plane noise, not planar n2 — planar
-    // n2 is sampled at grazing angles down a vertical face, so its rapid
-    // horizontal gradient sheared the beds into wavy taffy along cliff tops.
-    // n2Wall drifts slowly ALONG the wall: beds wander gently, stay bedded.
-    // r8: per-cliff frequency/phase modulation — the fixed 1.9/0.57 wp.y
-    // frequencies printed the SAME band ladder on every face at equal
-    // altitude ("uniform synthetic strata"); gCliffJ wanders the frequency
-    // ±30% and slides the phase several radians per cliff, and the band
-    // amplitude itself breathes so some faces are strongly bedded, others
-    // nearly massive rock.
-    float bedF = 0.76 + gCliffJ * 0.60;
-    // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
-    float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope));
+    // (ground lane, 2026-10-07 — mr2's Aegis toggle hold: the block cost ~1.6 ms GPU p25 at Aegis' chase and bird. Every
+    // term below is scaled by steep, so a fragment off the cliffs — most of a frame — ran the beds' six noise reads, the
+    // formation's and the wall macro's for a zero result. The beds, the joints and the face tints run where steep > 0, the
+    // formation where it has weight (max(fR, steep) > 0: it tints the rock wherever the rock shows); each skipped term was
+    // an exact identity (a product with 1, a mix at weight 0), so the frame is unchanged to the bit)
     float bedY = wp.y - gBedWob;
-    // Round 49 (owner 2026-09-23, "Titan's marbled near walls — the round-35 wall texture reads as flowing water at
-    // 300 m"): the uniform-isolation probe pinned the swirl on THIS block (zeroing uStrata calmed the sw-corner ring
-    // wall; flat normals changed nothing). A continuous 3.3 m sine ladder (±30 %) lay over the bed tile's own 4–12 m
-    // beds, and every band traced the smooth face's contours with nothing breaking it along the wall — dense, even,
-    // wavy: water. Bedded sandstone reads as rock through a FEW thick beds of unequal thickness and tone, thin
-    // recessed partings, joint blocks whose weathering tone steps along the wall, and dark varnish streaks below the
-    // ledges. The fine laminae stay inside ~200 m, where they are laminae and not moiré.
-    // (B1/B2 captures: a face-on wall's XZ pixel footprint is tiny, so effDist read the 300 m wall as near and the
-    // laminae still drew the fine wavy lines there — they are gated by the TRUE camera distance, gone by 120 m)
-    float lamW = 1.0 - smoothstep(40.0, 120.0, camDist);
-    // terrain v2: the beds' height signals are non-periodic (bedSignal) by the map's irregularity (uReduxD.z)
-    float lamina = mix(sin(bedY * 1.9 * bedF + n2Wall * 2.2 + gCliffJ * 9.3), bedSignal(bedY + n2Wall * 1.2, 0.067 * bedF, gCliffJ), uReduxD.z);
-    a.rgb *= 1.0 + lamina * bedAmp * 0.30 * lamW;
-    // marker beds: the two long-period terms thresholded into discrete beds — a rust-stained bed 2–5 m thick every
-    // 11–17 m on one term, a bleached caprock bed on the other — phase and thickness per cliff (gCliffJ) so no two
-    // faces share a sequence, and a thin recessed parting under each rust bed inside 700 m
-    float bedA = mix(sin(bedY * 0.57 * bedF + n2Wall * 1.9 + gCliffJ * 5.1), bedSignal(bedY + n2Wall * 3.3, 0.020 * bedF, gCliffJ + 0.31), uReduxD.z);
-    float bedB = mix(sin(bedY * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7), bedSignal(bedY + n2Wall * 4.8, 0.0083 * bedF, gCliffJ + 0.67), uReduxD.z);
-    float rust = smoothstep(0.50, 0.82, bedA) * (0.55 + 0.45 * smoothstep(-0.3, 0.4, bedB));
-    float pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
-    float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
-    a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
-    a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
+    float pale = 0.0;
+    if (steep > 0.0) {
+      // r7: bed phase warped by the WALL-plane noise, not planar n2 — planar
+      // n2 is sampled at grazing angles down a vertical face, so its rapid
+      // horizontal gradient sheared the beds into wavy taffy along cliff tops.
+      // n2Wall drifts slowly ALONG the wall: beds wander gently, stay bedded.
+      // r8: per-cliff frequency/phase modulation — the fixed 1.9/0.57 wp.y
+      // frequencies printed the SAME band ladder on every face at equal
+      // altitude ("uniform synthetic strata"); gCliffJ wanders the frequency
+      // ±30% and slides the phase several radians per cliff, and the band
+      // amplitude itself breathes so some faces are strongly bedded, others
+      // nearly massive rock.
+      float bedF = 0.76 + gCliffJ * 0.60;
+      // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
+      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope));
+      // (2026-10-06, Titan's zigzag strata: bedF multiplied the absolute height as the wall basis's stretch did — the beds
+      // tilted by y · ∇bedF, ~0.85 at 250 m) the per-cliff frequency as a bed-set stretch on the same 48 m band of the height,
+      // the beds' phases at the mean frequency: a cliff's sets still thicken and thin by its own ±28 %, the shear bounded
+      float bedH = bedY + (bedF / 1.06 - 1.0) * 7.6394 * sin((bedY + gCliffJ * 9.7) * 0.13090);
+      // Round 49 (owner 2026-09-23, "Titan's marbled near walls — the round-35 wall texture reads as flowing water at
+      // 300 m"): the uniform-isolation probe pinned the swirl on THIS block (zeroing uStrata calmed the sw-corner ring
+      // wall; flat normals changed nothing). A continuous 3.3 m sine ladder (±30 %) lay over the bed tile's own 4–12 m
+      // beds, and every band traced the smooth face's contours with nothing breaking it along the wall — dense, even,
+      // wavy: water. Bedded sandstone reads as rock through a FEW thick beds of unequal thickness and tone, thin
+      // recessed partings, joint blocks whose weathering tone steps along the wall, and dark varnish streaks below the
+      // ledges. The fine laminae stay inside ~200 m, where they are laminae and not moiré.
+      // (B1/B2 captures: a face-on wall's XZ pixel footprint is tiny, so effDist read the 300 m wall as near and the
+      // laminae still drew the fine wavy lines there — they are gated by the TRUE camera distance, gone by 120 m)
+      float lamW = 1.0 - smoothstep(40.0, 120.0, camDist);
+      // terrain v2: the beds' height signals are non-periodic (bedSignal) by the map's irregularity (uReduxD.z)
+      float lamina = mix(sin(bedH * 1.9 * 1.06 + n2Wall * 2.2 + gCliffJ * 9.3), bedSignal(bedH + n2Wall * 1.2, 0.067 * 1.06, gCliffJ), uReduxD.z);
+      a.rgb *= 1.0 + lamina * bedAmp * 0.30 * lamW;
+      // marker beds: the two long-period terms thresholded into discrete beds — a rust-stained bed 2–5 m thick every
+      // 11–17 m on one term, a bleached caprock bed on the other — phase and thickness per cliff (gCliffJ) so no two
+      // faces share a sequence, and a thin recessed parting under each rust bed inside 700 m
+      float bedA = mix(sin(bedH * 0.57 * 1.06 + n2Wall * 1.9 + gCliffJ * 5.1), bedSignal(bedH + n2Wall * 3.3, 0.020 * 1.06, gCliffJ + 0.31), uReduxD.z);
+      float bedB = mix(sin(bedH * 0.23 * 1.06 + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7), bedSignal(bedH + n2Wall * 4.8, 0.0083 * 1.06, gCliffJ + 0.67), uReduxD.z);
+      float rust = smoothstep(0.50, 0.82, bedA) * (0.55 + 0.45 * smoothstep(-0.3, 0.4, bedB));
+      pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
+      float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
+      a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
+    }
     // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
     // sandstone, above it the redder; the step is one bed thick, and it reads on the rock wherever the rock shows
-    if (uFormation.x > -1e8) {
-      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).r - 0.5) * 2.0 * uFormation.y;
+    if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {
+      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y;
       float upper = smoothstep(-1.2, 1.2, fy);
       vec3 formCol = mix(a.rgb * vec3(1.0 + uFormation.z, 1.0 + uFormation.z * 0.9, 1.0 + uFormation.z * 0.75),
                          a.rgb * vec3(1.0 + uFormation.w * 0.4, 1.0 - uFormation.w * 0.35, 1.0 - uFormation.w * 0.55), upper);
       a.rgb = mix(a.rgb, formCol, max(fR, steep));
     }
-    // joint blocks and varnish where the beds are authored strongly (Titan 0.22 and Skybridge 0.18 full, Copper Mesa
-    // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
-    float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
-    if (jointAmp > 0.002) {
-      // blocks ~9 m along the wall and ~5 m tall, one weathering tone per block: the noise texture read at block
-      // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates); the block index
-      // steps 95 / 158 texels so neighbouring blocks decorrelate, and the smooth noise's ±0.2 is stretched to a tone
-      // terrain v2: one texel per block (level 0) — the implicit level spiked at every block border, where floor() jumps
-      float block = mix(textureLod(uNoise, floor(gWallUVx / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r,
-                        textureLod(uNoise, floor(gWallUVz / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r, gWallW);
-      block = clamp((block - 0.5) * 2.4, -0.5, 0.5);
-      a.rgb *= 1.0 + block * 0.26 * jointAmp;
-      // varnish: along-wall noise stretched ~17:1 down the face, darkest under the pale caprock beds
-      float lodS = max(0.0, gNoiseLog + log2(0.010));
-      float streak = mix(textureLod(uNoise, gWallUVx * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g,
-                         textureLod(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g, gWallW);
-      streak = smoothstep(0.50, 0.80, streak) * (0.5 + 0.5 * pale);
-      a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.50 * jointAmp);
+    if (steep > 0.0) {
+      // joint blocks and varnish where the beds are authored strongly (Titan 0.22 and Skybridge 0.18 full, Copper Mesa
+      // and Mars 0.12 six tenths, the desert's 0.10 four tenths, Caldera / Badlands none)
+      float jointAmp = smoothstep(0.06, 0.16, uStrata) * steep;
+      if (jointAmp > 0.002) {
+        // blocks ~9 m along the wall and ~5 m tall, one weathering tone per block: the noise texture read at block
+        // centres in BOTH wall projections and mixed by the axis weight (samples, never coordinates); the block index
+        // steps 95 / 158 texels so neighbouring blocks decorrelate, and the smooth noise's ±0.2 is stretched to a tone
+        // terrain v2: one texel per block (level 0) — the implicit level spiked at every block border, where floor() jumps
+        float block = mix(textureLod(uNoise, floor(gWallUVx / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r,
+                          textureLod(uNoise, floor(gWallUVz / vec2(9.0, 5.0) + gCliffJ * 3.0) * vec2(0.373, 0.617) + vec2(0.31, 0.77), 0.0).r, gWallW);
+        block = clamp((block - 0.5) * 2.4, -0.5, 0.5);
+        a.rgb *= 1.0 + block * 0.26 * jointAmp;
+        // varnish: along-wall noise stretched ~17:1 down the face, darkest under the pale caprock beds
+        float lodS = max(0.0, gNoiseLog + log2(0.010));
+        float streak = mix(textureLod(uNoise, gWallUVx * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g,
+                           textureLod(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g, gWallW);
+        streak = smoothstep(0.50, 0.80, streak) * (0.5 + 0.5 * pale);
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * 0.50 * jointAmp);
+      }
+      // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
+      // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
+      // the residual PINK cast in the marbled-cliff read
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.07, 0.985, 0.91), steep * gCliffJ * 0.30);
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.12); // baked iron-oxide faces
+      // r7 macro-variation octave (wall-space): breaks the uniform band print
+      // into distinct rock masses / weathered faces along the wall run
+      float wallMac = wallNoiseG(0.011, vec2(0.19, 0.67));
+      a.rgb *= 1.0 + (wallMac - 0.5) * 0.30 * steep;
     }
-    // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
-    // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
-    // the residual PINK cast in the marbled-cliff read
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.07, 0.985, 0.91), steep * gCliffJ * 0.30);
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.12); // baked iron-oxide faces
-    // r7 macro-variation octave (wall-space): breaks the uniform band print
-    // into distinct rock masses / weathered faces along the wall run
-    float wallMac = wallNoiseG(0.011, vec2(0.19, 0.67));
-    a.rgb *= 1.0 + (wallMac - 0.5) * 0.30 * steep;
   }
   // far-cliff detail rescue: the mip-biased macro fade flattens steep rock
   // faces past ~300 m into featureless sheets — re-project the rock layer at
@@ -5314,7 +5361,12 @@ void splatCompute() {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across
       // every partially-steep slope (the gold "furry" mesa flanks).
-      vec4 rr = vec4(mix(texture2D(uAlbR, uv * 0.031).rgb, wallTex(uAlbR, 0.031), steepW), 1.0);
+      // (ground lane, 2026-10-07, with the strata's gates: the wall-plane work here — the albedo's two projections, the
+      // masses', the ledges' noise and bed signal, the normal's two — runs where the wall projection has weight; at
+      // steepW 0 each was an exact identity, a mix at weight 0 or a product with 1)
+      vec3 rrC = texture2D(uAlbR, uv * 0.031).rgb;
+      if (steepW > 0.0) rrC = mix(rrC, wallTex(uAlbR, 0.031), steepW);
+      vec4 rr = vec4(rrC, 1.0);
       // LUMINANCE-only modulation at reduced strength (r3): the rgb multiply
       // compounded the rock tint with itself and saturated far walls toward
       // maroon; value-only variation keeps the crag without the color drift
@@ -5328,19 +5380,23 @@ void splatCompute() {
       // the per-cliff field so no two faces share a band, carried in albedo where the normals have mipped away
       // (full strength on bedded maps, half on the rest); (c) the coarse normal at wall strength.
       float wallFar = farRock * steepW;
-      float rrM = dot(wallTex(uAlbR, 0.011), vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * wallFar;
-      // Round 49: the ladder's along-wall wander 2.6 → 1.0 rad (±5.8 m per 50 m was a third wave system on top of
-      // the tile beds and the marker beds; ±2.2 m reads as a gentle fault, not a swell)
-      float ledgeWarp = wallNoiseG(0.02, vec2(0.31, 0.77));
-      float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + ledgeWarp * 1.0;
-      float ledge = mix(sin(ledgePhase), bedSignal(wp.y + ledgeWarp * 2.2, 0.016, gCliffJ + 0.53), uReduxD.z); // terrain v2
-      float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
-      a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
-      vec3 rnGround = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
-      vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
-                                    texture2D(uNrmR, gWallUVz * 0.019).xy);
-      vec3 rn = mix(rnGround, rnWall, steepW);
+      if (steepW > 0.0) {
+        float rrM = dot(wallTex(uAlbR, 0.011), vec3(0.36, 0.42, 0.22));
+        a.rgb *= 1.0 + (rrM - 0.5) * 0.36 * wallFar;
+        // Round 49: the ladder's along-wall wander 2.6 → 1.0 rad (±5.8 m per 50 m was a third wave system on top of
+        // the tile beds and the marker beds; ±2.2 m reads as a gentle fault, not a swell)
+        float ledgeWarp = wallNoiseG(0.02, vec2(0.31, 0.77));
+        float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + ledgeWarp * 1.0;
+        float ledge = mix(sin(ledgePhase), bedSignal(wp.y + ledgeWarp * 2.2, 0.016, gCliffJ + 0.53), uReduxD.z); // terrain v2
+        float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
+        a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
+      }
+      vec3 rn = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
+      if (steepW > 0.0) {
+        vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
+                                      texture2D(uNrmR, gWallUVz * 0.019).xy);
+        rn = mix(rn, rnWall, steepW);
+      }
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
       // rendered far flanks as glittery fur instead of crag; round 35 adds back a quarter on genuine walls only
       n.xyz += rn * farRock * (0.22 + 0.24 * steepW);
@@ -7020,10 +7076,7 @@ function* terrainBuildSteps(
       const context = canvas.getContext('2d');
       if (context) {
         const image = context.getImageData(0, 0, size, size);
-        // the canvas uploads flipped (texture v = 1 at its top row): mask row j (z from -512) is canvas row size-1-j
-        for (let j = 0; j < size; j++) {
-          for (let i = 0; i < size; i++) image.data[((size - 1 - j) * size + i) * 4 + 2] = Math.round(Math.max(0, Math.min(1, mask[j * size + i])) * 255);
-        }
+        stampWoodsMaskRows(image.data, mask, size);
         context.putImageData(image, 0, 0);
         noise!.needsUpdate = true;
       }

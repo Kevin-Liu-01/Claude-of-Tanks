@@ -112,16 +112,16 @@ assert.deepEqual(
 );
 assert.deepEqual(
   aimWarningState({ blockedDistM: 18.4, blockedLabel: false }),
-  { visible: false, kind: 'blocked', text: 'MUZZLE BLOCKED · 18 M' },
+  { visible: false, kind: '', text: '' },
   'a new bore obstruction tints the sight without flashing unstable copy',
 );
 assert.deepEqual(
   aimWarningState({ blockedDistM: 18.4, blockedLabel: true }),
-  { visible: true, kind: 'blocked', text: 'MUZZLE BLOCKED · 18 M' },
-  'a continuous bore obstruction gains exact distance copy after its dwell',
+  { visible: false, kind: '', text: '' },
+  'even a delayed obstruction flag does not show muzzle-block copy',
 );
 assert.deepEqual(
-  aimWarningState({ blockedDistM: null, gunLimitSpec: true }),
+  aimWarningState({ blockedDistM: 18.4, blockedLabel: true, gunLimitSpec: true }),
   { visible: true, kind: 'limit', text: 'GUN TRAVEL LIMIT' },
   'physical articulation limits remain distinct from blocked muzzle paths',
 );

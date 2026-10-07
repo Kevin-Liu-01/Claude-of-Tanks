@@ -422,7 +422,11 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
   fills, measured exactly as `tools/tank-watertight-check.mjs` does (the body each tank's fills bound, track-lane,
   retained and declared-bore air reported apart). A profile's verified physical muzzle bore is open air by contract
   (2026-10-03, `tools/physical-bore-air.mjs`): the fill generator never fills it, so no generated box can cap the
-  recess the build verifies, and water in a bore column is never counted as a leak. The pass builds without the fill
+  recess the build verifies, and water in a bore column is never counted as a leak. Moving-part clearance air
+  (2026-10-06, `tools/moving-clearance-air.mjs`) is reported apart too: the pockets the generator leaves under the gun,
+  mount and mantlet (outside the turret's and the gun group's own column spans) and the cells a declared finite gun
+  clearance cut from the fills, which the generator records in `docs/geometry-gate/moving-clearance-air.json`; a record
+  whose lattice no longer matches the build fails the gate by name. The pass builds without the fill
   registry, so the audit attaches each tank's fills
   through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
   extra build. A stale fill record fails by name with its regeneration command.
@@ -547,12 +551,47 @@ the new values can only come from the receipt's own measurement of the current b
   triangles after a world transform through floating-point error, and a since-removed duplicate surface may have
   been catching it. Sample receipt rays off the seam (as `physicalMuzzleBore.ts` does with angle .173).
 
+### The pacing tail (2026-10-05)
+
+`server/battlePacing.selftest` plays deterministic default lobbies with an idle host on every map and judges the
+distribution of their lengths (the gate is `server/battlePacing.test-support.mjs`): a 3–8 minute median, p10 at least
+120 s, at most 5 % of the matches inside 120 s, at most 12.5 % at the 900 s cap. Its floor was "none inside 90 s"
+(owner, 2026-10-03). Each match is chaotic in every input, so a change anywhere in movement or the bots moves most
+outcomes (the physics lane's round-8 set moved 91 of the 132 by more than 10 %), and the one match inside 90 s moved
+from seed to seed with every change while the distribution held. The owner ruled on 2026-10-05, "floor as a tail
+rate": at most 0.5 % of the matches inside 90 s, judged on 264 matches, and no more than the PR head's share on the
+same matches.
+
+| Run | What it plays | The 90 s floor |
+| --- | --- | --- |
+| `npm test` (core) | the 132 matches: samples 0–3 on every map | at most one match |
+| `npm run test:pacing:tail` | the 264 matches: the 132 plus samples 4–7 | at most 0.5 % (one of 264) |
+| `node tools/pacing-tail.mjs --merge=… --baseline=…` | the tail played in shards, on the candidate and the PR head | 0.5 %, and no more than the head's share |
+
+The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
+so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played
+other matches):
+
+    node tools/pacing-tail.mjs --shards=3          # three COT_PACING_MAPS lists
+    COT_PACING_TAIL=1 COT_PACING_MAPS=<list> COT_PACING_REPORT=.qa-dev/pacing-tail/cand-1.json \
+      node server/battlePacing.selftest.mjs        # once per list, side by side
+    node tools/pacing-tail.mjs --merge=.qa-dev/pacing-tail/cand-1.json,cand-2.json,cand-3.json \
+      --baseline=.qa-dev/pacing-tail/head-1.json,head-2.json,head-3.json
+
+A run over a subset of the maps writes its records and prints its numbers without the gate. The head comparison is
+like for like: play the same three shard commands on a checkout of the PR head (a scratch tree from
+`git archive <head> src server tools package.json tsconfig.json`, with `node_modules` and `public` linked, is enough),
+and merge both. A receipt cannot run the head, so this half is the procedure. Name every match inside 90 s with its
+cause from a trace, or record "no behaviour cause" when the trace shows only ordinary doctrine; a named behaviour
+defect is fixed, not ruled.
+
 ## Verification matrix
 
 | Change area | Minimum checks |
 | --- | --- |
 | Documentation only | Link/path audit, npm run build |
 | Movement or tracks | npm test, track geometry self-test, relevant browser probe |
+| Movement, bots or match pacing | npm test (the core battlePacing), `npm run test:pacing:tail` or its shards with the PR-head comparison (The pacing tail) |
 | Ballistics, armor, damage, spotting | npm test |
 | Vehicle specification or geometry | targeted assets, release check, native check |
 | Network protocol or room lifecycle | npm test, npm run test:net:v2:rooms, npm run test:net:v2:p2p |
@@ -817,3 +856,59 @@ without gating on the suite can leave main red for a day; it never lets a landin
 the repair debt of whoever broke them.
 2026-10-01: an identical exit status is not an identical failure (a census drifting from 456 to 470 inside an already-red
 receipt would have passed). The versioned rule compares the first error message and is `node tools/gate.mjs --baseline=<base>` (above).
+
+## Product facts and colored icons
+
+`src/productStats.ts` holds the boot-safe vehicle, battlefield, and mode totals plus
+the public repository summary. `npm run test:stats` checks those totals against the
+registered fleet, maps, and game modes. After changing the totals, run
+`node tools/sync-product-summary.mjs` to refresh the README summary. Use its explicit
+`--github` option when publishing that summary to the repository About field.
+
+The 16 colored navigation and feature marks share native SVG artwork generated by
+`node tools/generate-product-icons.mjs`. Their existing URLs serve the game, public
+pages, and README. `node tools/product-icon-sheet.mjs` renders a CPU-only review
+sheet at large, 32 px, and 24 px sizes; the UI icon selftest rejects stale exports.
+
+### Tank and wreck collision clearance
+
+Live tanks use the finalized hull-shell bounds through `tankContactRect`, without
+added horizontal padding. `src/sim/tankContactShape.selftest.mjs` checks every
+playable vehicle at four headings: a 1 mm gap must stay clear, while a 1 mm overlap
+must contact, both against another tank and against a world obstacle.
+
+Static map wrecks bake separate posed hull/track and turret collision envelopes.
+The gun, antennas and scattered dressing do not inflate those envelopes. Placement
+applies the same yaw, terrain tilt and vertical seating as the visible wreck;
+worker transfers retain the collision points. Wreck collision is built once, with
+no new frame-time geometry work. `src/world/wreckCollision.selftest.mjs` covers
+side/end clearance, the gap to a fallen turret, rotated/sloped placement and real
+fleet wrecks.
+
+After changing wreck collision, run
+`node tools/refresh-wreck-collision-manifests.mjs`, then repeat with `--check`.
+This CPU-only tool runs the production map producers at the canonical seeds and
+updates only identified wreck records in the server shards. It retains unrelated
+obstacles, shell colliders and concealment records. Its inert canvas is sufficient
+for collision generation; it is not evidence of native rendering quality.
+
+The garage allied-nation selector has a DOM regression fixture in
+`tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait
+and short-landscape fixtures in `tools/spectator-switcher.browser.mjs`. These
+verify layout and interactions with WebGL disabled; neither measures GPU performance.
+
+### First-use Garage aura preparation
+
+The pedestal's `prepareVisual` hook installs a dormant energy skin before the
+vehicle's ordinary shader warm, including the initial hero, new carousel picks
+and an adopted battle vehicle. It does not compile a second copy of plain paint.
+Juggernaut and Infected selections then change uniforms on those same materials;
+they must not trigger first-use material replacement or another shader warm.
+
+Parked carousel vehicles retain their inactive skin. Explicit battle handoff
+restores source materials, and disposing the factory materials releases retained
+skins on cache eviction. Camouflage texture canvases and fitting-color objects
+stay shared with the source paint, so the dormant effect cannot freeze a repaint.
+The Garage preview and pedestal selftests cover this lifecycle. Native first-click
+frame times still require the shared capture lease; Node tests prove preparation
+ordering and material identity, not browser timing.

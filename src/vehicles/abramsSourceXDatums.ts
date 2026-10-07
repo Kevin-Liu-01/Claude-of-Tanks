@@ -19,3 +19,11 @@ export const ABRAMS_SOURCE_X_MEASUREMENTS = Object.freeze({
   turretRoofM: 2.360795,
 });
 
+
+/** Measured side-wall planes shared by visual kits and boot-light armor data. */
+export const RIGHT_SIDE: readonly [number, number, number, number] = [.861624, .507547, 0, 2.159152];
+export const LEFT_SIDE: readonly [number, number, number, number] = [-.86164, .507521, 0, 2.276882];
+export function turretSideX(side: -1 | 1, y: number): number {
+  const plane = side > 0 ? RIGHT_SIDE : LEFT_SIDE;
+  return (plane[3] - plane[1] * y) / plane[0];
+}

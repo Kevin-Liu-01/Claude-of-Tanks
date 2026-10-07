@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { XYZ } from './abramsSourceXGeometry.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
+export { RIGHT_SIDE, LEFT_SIDE, turretSideX } from '../abramsSourceXDatums.ts';
 
 /** Outward unit normal and offset: a point p lies on the plane when n·p = d. */
 export type Plane = readonly [number, number, number, number];
@@ -16,8 +17,6 @@ export const TURRET = ABRAMS_SOURCE_X_FRAME.turret;
 export const ROOF_Y = 2.360795;
 
 // Measured source planes (hull frame) from buildTurretArmor / frontDeck.
-export const RIGHT_SIDE: Plane = [.861624, .507547, 0, 2.159152];
-export const LEFT_SIDE: Plane = [-.86164, .507521, 0, 2.276882];
 export const RIGHT_CHEEK: Plane = [.510997, .499844, .699312, 2.674797];
 export const LEFT_CHEEK: Plane = [-.363382, .515021, .776342, 2.888263];
 // frontDeck(): y = 1.64504 - 0.12582 z on the upper glacis (z 1.72 .. 3.91).
@@ -38,11 +37,6 @@ export function turretRoofY(x: number, z: number): number {
   return y;
 }
 
-/** Signed x of the inclined turret side wall at height y (hull frame). */
-export function turretSideX(side: -1 | 1, y: number): number {
-  const plane = side > 0 ? RIGHT_SIDE : LEFT_SIDE;
-  return (plane[3] - plane[1] * y) / plane[0];
-}
 
 /** Orthonormal frame on a plane: u horizontal along the plane, v up the plane, n outward. */
 export function planeFrame(plane: Plane): { u: THREE.Vector3; v: THREE.Vector3; n: THREE.Vector3 } {

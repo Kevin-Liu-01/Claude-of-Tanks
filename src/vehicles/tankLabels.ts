@@ -196,6 +196,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Schützenpanzer Puma', shortName: 'Puma',
     searchAliases: ['SPz Puma', 'Puma IFV'],
   },
+  m6_linebacker: {displayName:'M6 Linebacker',shortName:'M6 Linebacker',searchAliases:['Linebacker modernization','Bradley air defense concept']},
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_puma_s1: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',

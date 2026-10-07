@@ -191,7 +191,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     isSpotted(id) {
       const spotting = game.spotting;
       return spotting
-        ? spotting.isSpotted(id, 'player', spotFrame.receiver || player())
+        ? spotting.isSpotted(id, (spotFrame.receiver || player())?.team ?? 'player', spotFrame.receiver || player())
         : true;
     },
     player: null,
