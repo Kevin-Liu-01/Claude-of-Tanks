@@ -1302,8 +1302,14 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   KIT.towCable(P, [[-1.10, 1.43, 0.20], [-0.40, 1.455, -0.30], [0.42, 1.455, -0.32], [1.10, 1.43, 0.16]]);
   {
+    // Spare links on the right bow fender bridge (2026-10-06). The old deck seat (0.60, 1.432, -1.60) sat under
+    // the bustle: its 1.44 m underside cut 4 cm into the link course at 12 o'clock and swept through it in
+    // traverse. No seat on this engine deck clears the 1.44-1.47 m bustle and rack undersides inside the 2.29 m
+    // sweep. The bow bridge (top 1.34, x 1.245..1.885, z 2.285..3.025) is 2.87 m or more from the ring, below
+    // the gun's full-depression bore, inboard of the rolled seam and clear of the glacis cassettes and the first
+    // fender bin; the carrier feet recess 4 mm into the shelf.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.50, seed: 8401 });
-    links.position.set(0.60, 1.432, -1.60);
+    links.position.set(1.565, 1.3765, 2.62);
     P.hullG.add(links);
   }
 
@@ -1506,10 +1512,15 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, -0.16);
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, 0.12);
     FITTINGS.markExact(g, 'pintleMG');
-    // across the bustle rack, clear of the shell so the whole gun shape
-    // reads at top/side/rear (the old -1.24 seat was inside the prism)
-    g.position.set(0.30, 0.505, -1.85);
-    g.rotation.y = 1.35;
+    // Square across the bustle rack lid (top 0.445, z -2.18..-2.00) behind the anti-thermal roll, barrel to
+    // the left and can to the rear (2026-10-06). The old -1.85 / 1.35 rad seat ran the receiver and barrel
+    // through the roll, which the critics read as "a wedge-shaped part cuts through a barrel sleeve". Laid
+    // square, the gun needs 0.23 m of depth: the receiver rests on the rear box tread 5 mm behind the deck
+    // plate's rear edge, the can presses into the lid, and the gun stays 19 cm clear of the roll and its
+    // collars and inside the whip bases. It still reads from the top, the side and the rear. (The -1.24 seat
+    // before that was inside the prism.)
+    g.position.set(0.25, 0.452, -2.03);
+    g.rotation.y = -Math.PI / 2;
     P.turretG.add(g);
   }
   // §5.319 left finish: the gunner-sight ZONE at the print's own station
