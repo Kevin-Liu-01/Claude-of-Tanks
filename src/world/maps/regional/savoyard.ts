@@ -594,33 +594,35 @@ const ruine: RegionalBuilder = (ctx) => {
     const heads: number[] = [];
     const walls: Array<{ face: Face; tops: number[] }> = [];
     for (const { face, gable } of faces) {
-      // the courses broken back in level steps
       // (round 3, gauntlet wave 127: "crenellated stepped cuts ... a toy brick wall"): the heads fall from the corners,
-      // where the quoins stand longest, course by course to the breach the shell made, never up and down again like
-      // battlements; a wall the shell missed only sags
-      const L = face.width, n = 7;
+      // where the quoins stand longest, to the breach the shell made, never up and down again like battlements; a wall
+      // the shell missed only sags. The broken head is ragged and sloping — its height taken at the ends of n strips and
+      // jittered by half a metre — not cut in level courses (level steps under their snow read as merlons in pair10)
+      const L = face.width, n = 9;
       const tops: number[] = [];
       const crown = Math.min(H1 * (0.7 + rng() * 0.3) + (gable ? W * 0.1 : 0), H1 + (gable ? W * 0.12 : 0));
-      const dip = 0.22 + rng() * 0.6, at = 1 + Math.floor(rng() * (n - 2));
-      for (let k = 0; k < n; k++) {
-        const d = Math.abs(k - at) / Math.max(at, n - 1 - at);
-        const h = crown * (dip + (1 - dip) * Math.pow(d, 0.85)) + (rng() - 0.5) * 0.3;
-        tops.push(Math.max(0.64, Math.round(h / 0.32) * 0.32));
+      const dip = 0.22 + rng() * 0.6, at = 1 + rng() * (n - 2);
+      for (let k = 0; k <= n; k++) {
+        const d = Math.min(1, Math.abs(k - at) / Math.max(at, n - at));
+        const h = crown * (dip + (1 - dip) * Math.pow(d, 0.85)) + (rng() - 0.5) * 0.5;
+        tops.push(Math.max(0.64, h));
       }
       walls.push({ face, tops });
       for (let k = 0; k < n; k++) {
         const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
-        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k]], [a, tops[k]]], t);
-        // the step's broken stones: a few blocks proud of the break
-        if (look() < 0.5) faceBox(sink, 'stone', face, a + (b - a) * (0.25 + look() * 0.5), tops[k] + 0.09, -t / 2, 0.3 + look() * 0.3, 0.18, t * 0.8, { decor: true });
+        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
+        // the head's broken stones: a few blocks proud of the break
+        if (look() < 0.4) faceBox(sink, 'stone', face, a + (b - a) * (0.25 + look() * 0.5), Math.min(tops[k], tops[k + 1]) + 0.05, -t / 2, 0.3 + look() * 0.3, 0.18, t * 0.8, { decor: true });
       }
       heads.push(Math.max(...tops));
     }
     // the room's floor (beaten earth and the charred boards) and the hearth on the back gable
     sink.span('structureWood', -W / 2 + t, -0.05, -D / 2 + t, W / 2 - t, 0.06, D / 2 - t, { colour: char, decor: true });
-    const back = faces[1].face;
-    faceBox(sink, 'stone', back, 0.6, 0.9, -t - 0.3, 1.5, 1.8, 0.6, { decor: true });
-    faceBox(sink, 'dark', back, 0.6, 0.55, -t - 0.61, 0.9, 0.9, 0.02, { decor: true });
+    // (on the back gable's inner face, looking into the room: placed off the outer face, its room side was the face a
+    // wall-mounted box leaves out, open to a breach)
+    const hearthWall: Face = { origin: [0, 0, -D / 2 + t], u: [1, 0, 0], out: [0, 0, 1], width: W - 2 * t };
+    faceBox(sink, 'stone', hearthWall, -0.6, 0.9, 0.3, 1.5, 1.8, 0.6, { decor: true });
+    faceBox(sink, 'dark', hearthWall, -0.6, 0.55, 0.61, 0.9, 0.9, 0.02, { decor: true });
     // the rubble: a slumped heap inside, heaps along the walls' feet outside where their heads fell
     const heaps: Array<[number, number, number, number]> = [];
     const heap = (x: number, z: number, r: number, hgt: number) => {
@@ -671,19 +673,20 @@ const ruine: RegionalBuilder = (ctx) => {
     }
     if (ctx.snowCap) {
       for (const { face, tops } of walls) {
-        const L = face.width, n = tops.length;
+        const L = face.width, n = tops.length - 1;
+        // one ridge the length of the wall following its broken head, its foot a hand past each face, closed at the ends
+        // (a hip inset on a steep end strip turned its slope's normal into the wall: regionalArchitecture's inverted faces)
+        const depth = tops.map(() => 0.12 + look() * 0.1);
+        const opts = { decor: true } as const;
         for (let k = 0; k < n; k++) {
-          const a = -L / 2 + L * k / n + 0.02, b = -L / 2 + L * (k + 1) / n - 0.02, y = tops[k];
-          const h = 0.12 + look() * 0.1, r = Math.min(0.25, (b - a) / 3);
-          // the cap's foot a hand past each face, its ridge over the wall's middle, hipped at both ends
-          const fa = facePoint(face, a, y, 0.05), fb = facePoint(face, b, y, 0.05);
-          const ba = facePoint(face, a, y, -t - 0.05), bb = facePoint(face, b, y, -t - 0.05);
-          const ra = facePoint(face, a + r, y + h, -t / 2), rb = facePoint(face, b - r, y + h, -t / 2);
-          const opts = { decor: true } as const;
+          const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n, ya = tops[k], yb = tops[k + 1];
+          const fa = facePoint(face, a, ya, 0.05), fb = facePoint(face, b, yb, 0.05);
+          const ba = facePoint(face, a, ya, -t - 0.05), bb = facePoint(face, b, yb, -t - 0.05);
+          const ra = facePoint(face, a, ya + depth[k], -t / 2), rb = facePoint(face, b, yb + depth[k + 1], -t / 2);
           sink.polygon('plaster', [fa, fb, rb, ra], opts);
           sink.polygon('plaster', [bb, ba, ra, rb], opts);
-          sink.polygon('plaster', [ba, fa, ra], opts);
-          sink.polygon('plaster', [fb, bb, rb], opts);
+          if (k === 0) sink.polygon('plaster', [ba, fa, ra], opts);
+          if (k === n - 1) sink.polygon('plaster', [fb, bb, rb], opts);
         }
       }
     }
@@ -763,7 +766,7 @@ export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     // (round 2, wave 109b: "one warm tan texture on every box") grey gneiss rubble in a dark lime mortar
     // (round 3, wave 127: the shelled house still "a clean tan, regularly brick-tiled wall"): the stones laid as rubble,
     // split and pillowed in uneven courses, not as coursed greywacke; a cool blue-grey under the low April sun
-    stone: { kind: 'rubble', tint: [0.47, 0.5, 0.55] },
+    stone: { kind: 'rubble', tint: [0.4, 0.43, 0.5] },
     sourced: { plaster: false, wood: true },
     tones: {
       plaster: crepi,
