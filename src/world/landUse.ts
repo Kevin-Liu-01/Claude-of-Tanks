@@ -22,7 +22,7 @@
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'villagefield';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -228,6 +228,10 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
   // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
   secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
+  // (2026-10-07, wave 236's Verdant village-edge view: "a pale-yellow sand mound … contradicts black-earth farmland")
+  // the fields about a village are its own: meadow and hay, the black earth turned, a little young crop — no ripe grain
+  // against the houses
+  villagefield: [[0, 0.45], [13, 0.20], [4, 0.22], [3, 0.13]],
 });
 
 /** Each region's field boundary. */
@@ -236,7 +240,7 @@ const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
-  secano: 'margin',
+  secano: 'margin', villagefield: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -262,6 +266,14 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   verdant: {
     strength: 1, heading: 0.32, blockU: 230, blockV: 150, maxSplit: 3, marginM: 2.2, trackShare: 0.55, hedgeShare: 0.3,
     warpM: 26, region: 'steppe', salt: 17,
+    // (2026-10-07, wave 236: the field at the village's west edge, ripe wheat, read as "a pale-yellow sand mound" with "a
+    // hard seam" against its young-crop neighbour) the fields whose middles lie within ~100 m of the village are the
+    // village's (villagefield); past them the plateau's steppe as it was. A zone only names a field's rotation: the
+    // layout, its tracks and its hedges (and the hedges' trees) stand where they stood
+    zones: [
+      { region: 'villagefield', rect: { x0: -170, x1: 190, z0: -150, z1: 230 } },
+      { region: 'steppe', rect: { x0: -1e6, x1: 1e6, z0: -1e6, z1: 1e6 } },
+    ],
   },
   // Saltmere Coast (coastal), set against the Breton bocage (Monts d'Arrée): small irregular fields, mostly grazing,
   // hedged on most boundaries, few tracks

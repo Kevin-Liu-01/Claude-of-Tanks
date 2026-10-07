@@ -4984,6 +4984,12 @@ void splatCompute() {
         cropCol = vec3(1.239, 1.043, 0.530) * baseL * 3.0 * bright; // barley
       } else if (crop < 3.5) {
         cropCol = vec3(0.906, 1.416, 0.362) * baseL * 1.25 * bright; // young green crop
+        // (2026-10-07, wave 236's Verdant chase: "an even lime-green carpet of near-identical blades with no soil or tonal
+        // patches") a young crop's stand is uneven — thinner on the dry rises, the soil showing between its plants, lusher
+        // where it holds the damp: a 6–15 m mottle of the stand over its soil (the tiers' blades stand as they did)
+        float stand = nzq(uv, 0.083, vec2(0.41, 0.17)).x * 0.7 + n1h * 0.3;
+        float thinS = smoothstep(0.42, 0.70, stand);
+        cropCol = mix(cropCol * (0.86 + 0.26 * smoothstep(0.28, 0.62, stand)), soilF * 0.92, thinS * 0.58);
       } else if (crop < 4.5) {
         // plough: the black earth, turned in furrows across the field, pressed into bands by the tractor's passes; the
         // plough's lands (3.2 m) and the tractor's passes (13 m) carry the lines to the far field

@@ -193,4 +193,32 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
+// 2026-10-07 (wave 236, Verdant): the fields about the village are its own — meadow, hay, the black earth turned, a little
+// young crop, no ripe grain against the houses (the village-edge view's "pale-yellow sand mound" was a ripe wheat
+// field) — and a zone only names a field's rotation: the plateau's layout, its tracks and its hedges stand as they did
+{
+  const zoned = resolveLandUseProfile('verdant');
+  const plain = { ...zoned, zones: undefined };
+  const a = createLandFieldSample(), b = createLandFieldSample();
+  let inVillage = 0, wheatNear = 0, wheatBefore = 0, differs = 0;
+  for (let z = -480; z <= 480; z += 7.7) for (let x = -480; x <= 480; x += 7.7) {
+    landUseAt(zoned, x, z, a); landUseAt(plain, x, z, b);
+    if (a.active !== b.active || a.track !== b.track || a.hedge !== b.hedge || a.edgeM !== b.edgeM || a.id !== b.id) differs++;
+    if (x > -170 && x < 190 && z > -150 && z < 230 && a.active) {
+      inVillage++;
+      if (a.crop === 1 || a.crop === 2) wheatNear++;
+      if (b.crop === 1 || b.crop === 2) wheatBefore++;
+    }
+  }
+  assert.equal(differs, 0, 'the zone names rotations only: every field, track and hedge as it was');
+  // (a field decides by its middle: the grain left about the village is the plateau's fields reaching in)
+  assert.ok(inVillage > 1000 && wheatNear < wheatBefore * 0.5, `half the ripe grain about the village gone at least (${wheatNear} of ${inVillage}, was ${wheatBefore})`);
+  landUseAt(zoned, -76, 13, a);
+  assert.ok([0, 3, 4, 13].includes(a.crop), `the village-edge field is the village's (${a.crop})`);
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terrain.includes('cropCol = mix(cropCol * (0.86 + 0.26 * smoothstep(0.28, 0.62, stand)), soilF * 0.92, thinS * 0.58);'),
+    'a young crop\'s stand is uneven over its soil');
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);
