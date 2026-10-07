@@ -15,6 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorCanopy, facadeOn, facadeRng, roofDormers, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -227,10 +228,16 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
 
 export function hessianDialect(st: HessianState): HouseDialect {
   return {
-    window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
-      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' }
-        : o.storey > 0 && palette.upperBars ? { ...st.window, bars: palette.upperBars } : st.window,
-      st.rng, o.kind === 'loft' ? 0 : st.litShare),
+    window: (sink, face, o, y0, frame) => {
+      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
+        o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' }
+          : o.storey > 0 && palette.upperBars ? { ...st.window, bars: palette.upperBars } : st.window,
+        st.rng, o.kind === 'loft' ? 0 : st.litShare);
+      // a sandstone storey's windows carry a dressed lintel over the reveal (facade craft)
+      if (facadeOn() && !st.window.surround && frame.spec.storeys[o.storey]?.wall === 'stone') {
+        windowHead(sink, face, o.u, y0 + o.y0 + o.h, o.w, { kind: 'lintel', bucket: 'stone', h: 0.2, out: 0.03, ext: 0.1 });
+      }
+    },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
         gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, GATE, { bucket: 'stone', width: 0.28, out: 0.12 });
@@ -342,6 +349,17 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
   const frame = buildHouse(sink, spec, hessianDialect(st));
   if (opts.tavern) innSign(sink, frame, st);
   if (opts.school) roofTurret(sink, frame, st, 0.3);
+  // an inn's and a school's big roof carries a dormer on each eaves slope (facade craft, desktop)
+  if ((opts.tavern || opts.school) && facadeOn() && frame.roof.kind !== 'flat' && frame.roof.kind !== 'shed') {
+    const f = facadeRng();
+    if (f() < 0.7) {
+      const top = frame.bodies[frame.bodies.length - 1], z = (f() - 0.5) * frame.roof.halfD * 0.6 + (opts.school ? -frame.roof.halfD * 0.35 : 0);
+      sink.placed(0, (top.x0 + top.x1) / 2, 0, (top.z0 + top.z1) / 2, () => roofDormers(sink, frame.roof, [1, -1], [z], {
+        kind: f() < 0.5 ? 'gable' : 'shed', wall: st.infill, covering: 'roof',
+        window: (face, u, y, w, h) => windowUnit(sink, face, u, y, w, h, { ...st.window, shutters: null, bars: 'cross' }, f, 0.3),
+      }));
+    }
+  }
   dressHessianHouse(sink, frame, st, { aerial: opts.school ? 0.2 : 0.45, boxes: opts.school ? 0.2 : 0.6 });
   return sink.finish();
 }
@@ -362,6 +380,15 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
   const picks = frame.spec.openings.map(() => rng());
   if (st.mobile) return;
   const spec = frame.spec;
+  // the canopy over the front door (facade craft: its own stream, the build stream draws as before)
+  if (facadeOn()) {
+    const f = facadeRng();
+    const front = spec.openings.find((o) => o.kind === 'door' && o.storey === 0 && !o.state);
+    if (front && f() < 0.45) {
+      doorCanopy(sink, frame.faces[front.face], front.u, frame.floors[0] + front.y0 + front.h + 0.2, front.w,
+        { kind: f() < 0.5 ? 'gable' : 'shed', bucket: 'roof', timber: shade(st.timber, 1.1) });
+    }
+  }
   if (boxes) {
     let placed = 0;
     spec.openings.forEach((o, k) => {

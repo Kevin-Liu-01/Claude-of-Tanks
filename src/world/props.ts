@@ -355,6 +355,18 @@ interface PropsSettings {
    * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
+  /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
+   * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
+   * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
+   * the street-row pass draws nothing. */
+  townRowPlan?: readonly TownRowEntry[];
+  /**
+   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
+   * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
+   * packed for the carriageway post-pass (its new place dry, looked for out to 80 m), a street row or a light building
+   * is left out. Every other recorded building stands where it stood. Default off.
+   */
+  settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -449,6 +461,14 @@ export interface TownPlanEntry {
 
 /** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
 export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
+
+/** One street-row building as a recorded build seated it (PropsMapConfig.townRowPlan): its pose, its plot, whether it
+ * stood ruined, its wall, the props stream's state before its builder, and its rubble's seat, size and the street
+ * stream's state before it (absent when it spilled none). */
+export interface TownRowEntry {
+  x: number; z: number; rot: number; w: number; d: number; ruined: boolean; wall: string; rng: number;
+  rubbleX?: number; rubbleZ?: number; rubbleR?: number; rubbleRng?: number;
+}
 
 export interface PropsMapConfig {
   id: string;
@@ -3807,6 +3827,17 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB: PlacedRadius[] = [];
+  // props.settlementOverWater (Suzhou Creek): whether a footprint (grown by a metre) reaches the course's water
+  const overWater = !!P.settlementOverWater;
+  const footprintWet = (x: number, z: number, w: number, d: number, rot: number): boolean => {
+    if (!overWater) return false;
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    for (const a of [-1, -0.5, 0, 0.5, 1]) for (const b of [-1, -0.5, 0, 0.5, 1]) {
+      const lx = a * (w / 2 + 1), lz = b * (d / 2 + 1);
+      if (heightField.getWaterMaskAt(x + lx * c + lz * sn, z - lx * sn + lz * c) > 0) return true;
+    }
+    return false;
+  };
   function collectTacticalReservations(): PlacedRadius[] {
     const result: PlacedRadius[] = [];
     for (const beat of [...(P.tacticalBeats || []), ...(P.orbitalSettlement || [])]) {
@@ -3858,8 +3889,8 @@ ${snowCap ? `
   const carriagewayPackets: CarriagewayPacket[] = [];
   /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
    * in a carriageway, else null. */
-  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
-    rot: number): { w: number; d: number } | null {
+  /** A building's whole footprint (its plot or its geometry's reach about the origin, whichever is larger). */
+  function footprintOf(tmp: PropsBuckets, info: { w: number; d: number }): { w: number; d: number } {
     let w = info.w, d = info.d;
     for (const geometry of Object.values(tmp).flat()) {
       if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -3868,6 +3899,11 @@ ${snowCap ? `
       w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
       d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
     }
+    return { w, d };
+  }
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    const { w, d } = footprintOf(tmp, info);
     return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
@@ -3951,6 +3987,10 @@ ${snowCap ? `
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
+    // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
+    // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
+    // or how far (the map-revival lanes, 2026-10-05: the owner's town-plan ruling)
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
@@ -3979,8 +4019,6 @@ ${snowCap ? `
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
-    // a building that stands in a carriageway is packed for the move after every settlement building stands
-    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
@@ -4054,13 +4092,16 @@ ${snowCap ? `
     // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
+    // (the carriageway footprint is the base geometry's, as for a generated building)
+    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
+    const carriageway = (P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null)
+      ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
@@ -4171,6 +4212,37 @@ ${snowCap ? `
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
   function* placeStreetRows(): Generator<PropsBuildSlice, void, void> {
     if (!P.streetRows) return;
+    // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
+    // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
+    if (P.townRowPlan) {
+      for (const entry of P.townRowPlan) {
+        const stream = mulberry32(entry.rng);
+        let tmp: PropsBuckets = {
+          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+        };
+        const info = entry.ruined ? makeRuin(stream, tmp)
+          : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
+        const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+        jitterBuildingUvs(tmp, stream);
+        if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
+        if (regionalArchitecture) {
+          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+            { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+        }
+        addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+        _quat.setFromAxisAngle(_upAxis, entry.rot);
+        _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+        mergeInto(buckets, tmp, _mat4);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+        if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
+          addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
+        }
+        yield { fine: true };
+      }
+      return;
+    }
     const srng = mulberry32(seed + 505);
     interface StreetBounds { x: number; z: number; hx: number; hz: number }
     type RoadPoint = [number, number, number, number];
@@ -4441,6 +4513,7 @@ ${snowCap ? `
       let target: { x: number; z: number } | null = null;
       const clearsAt = (x: number, z: number): boolean => {
         if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (footprintWet(x, z, w, d, source.rot)) return false;
         if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
         if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
         const footprint = { x, z, w, d, rot: source.rot };
@@ -4451,7 +4524,8 @@ ${snowCap ? `
       if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 60 && !target; step++) {
+      // (props.settlementOverWater: a building the course's water reaches looks out to 80 m for dry ground)
+      for (let step = 1; step <= (overWater ? 160 : 60) && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
@@ -4588,6 +4662,8 @@ ${snowCap ? `
         const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
         if (!meta) continue;
         const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        // (props.settlementOverWater: one the course's water reaches is left out)
+        if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
         addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
@@ -7315,6 +7391,38 @@ ${snowCap ? `
     // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as
     // concrete-gray on every map.
     const kerbBucket = 'stone';
+    // mr1 (2026-10-05): the kerb is seated on the carriageway, not stacked on the terrain. The critics' "town behind a
+    // knee-high kerb" was the old seat: a level kerb 0.19 m over the terrain at its centre and a pavement pitched to the
+    // terrain 6.35 m out, which stood up to 0.5 m over the road where the ground rose behind it (0.9 m on Blackglass's
+    // banks). Now the kerb shows a KERB_FACE_M face over the carriageway beside it and follows the road's grade, the
+    // pavement's inner edge is flush with the kerb's top, its outer edge climbs toward rising ground by at most
+    // WALK_RISE_MAX_M, and both slabs reach down into lower ground instead of floating over it. A piece on a bridge
+    // deck's span is left to the bridge's parapets. The kerbs are render geometry only (no collision record), and the
+    // pieces skipped still draw their UV jitter, so every later draw of the dressing stream keeps its seat.
+    const KERB_OFFSET_M = 5.05, KERB_DEPTH_M = 0.34, KERB_FACE_M = 0.12, KERB_EMBED_M = 0.10;
+    const WALK_OFFSET_M = 6.35, WALK_DEPTH_M = 2.25, WALK_EMBED_M = 0.06, WALK_RISE_MAX_M = 0.25;
+    const decks = heightField.bridgeDecks ?? [];
+    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
+        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+    });
+    /**
+     * Seat a slab built along local x (its length) and z (across, +z = `outward` away from the road): each vertex takes
+     * its end's height (x < 0 the piece's start, x > 0 its end) — the top from `top(end, outer)`, the bottom from
+     * `foot(end)` — so the slab follows the grade along the road without a level step at its joints.
+     */
+    const seatSlab = (geometry: THREE.BufferGeometry, outward: number,
+      top: (end: 0 | 1, outer: boolean) => number, foot: (end: 0 | 1) => number): void => {
+      const position = geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const end = position.getX(i) > 0 ? 1 : 0;
+        const outer = position.getZ(i) * outward > 0;
+        position.setY(i, position.getY(i) > 0 ? top(end, outer) : foot(end));
+      }
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+    };
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -7331,27 +7439,38 @@ ${snowCap ? `
           const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub;
           const cx = ax + dx * tt, cz = az + dz * tt;
           for (const side of [-1, 1]) {
-            const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
+            const px = cx - tz * side * KERB_OFFSET_M, pz = cz + tx * side * KERB_OFFSET_M;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
-            const y = heightField.getHeightAt(px, pz);
-            const g = slabBox(segLen, 0.26, 0.34, 1.3);
+            // the ground at the piece's start (end 0) and end (end 1), `offset` metres off the centreline on this side
+            const ground = (end: 0 | 1, offset: number): number => {
+              const t = end ? tt1 : tt0;
+              return heightField.getHeightAt(ax + dx * t - tz * side * offset, az + dz * t + tx * side * offset);
+            };
+            // the carriageway at the kerb's face, the ground behind the kerb, and the pavement's two edges
+            const road = [ground(0, KERB_OFFSET_M - KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M - KERB_DEPTH_M / 2)];
+            const behind = [ground(0, KERB_OFFSET_M + KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M + KERB_DEPTH_M / 2)];
+            const inner = [ground(0, WALK_OFFSET_M - WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M - WALK_DEPTH_M / 2)];
+            const outer = [ground(0, WALK_OFFSET_M + WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M + WALK_DEPTH_M / 2)];
+            const kerbTop = [road[0] + KERB_FACE_M, road[1] + KERB_FACE_M];
+            const kerbFoot = [Math.min(road[0], behind[0]) - KERB_EMBED_M, Math.min(road[1], behind[1]) - KERB_EMBED_M];
+            const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
+            const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
+            const spanned = onDeckSpan(cx, cz);
+            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
             jitterUV(g, rng);
-            g.rotateY(yaw);
-            g.translate(px, y + 0.06, pz);
-            buckets[kerbBucket].push(g);
-            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
-            // flanking every street, pitched to the terrain per sub-segment.
-            // The critique's "town = boxes dropped on a lawn" came straight
-            // from streets with no built edge between asphalt and grass.
-            const sx0 = ax + dx * tt0 - tz * side * 6.35, sz0 = az + dz * tt0 + tx * side * 6.35;
-            const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
-            const h0 = heightField.getHeightAt(sx0, sz0);
-            const h1 = heightField.getHeightAt(sx1, sz1);
-            const walk = slabBox(segLen, 0.16, 2.25, 0.9); // r2: un-stretched paving
+            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
+            // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
+            const walk = slabBox(segLen, (kerbTop[0] + rise[0] / 2 - walkFoot[0] + kerbTop[1] + rise[1] / 2 - walkFoot[1]) / 2,
+              WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
-            walk.rotateZ(Math.atan2(h1 - h0, segLen));
+            if (spanned) { g.dispose(); walk.dispose(); continue; }
+            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
+            g.rotateY(yaw);
+            g.translate(px, 0, pz);
+            buckets[kerbBucket].push(g);
+            seatSlab(walk, side, (end, isOuter) => kerbTop[end] + (isOuter ? rise[end] : 0), (end) => walkFoot[end]);
             walk.rotateY(yaw);
-            walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
+            walk.translate(cx - tz * side * WALK_OFFSET_M, 0, cz + tx * side * WALK_OFFSET_M);
             buckets[kerbBucket].push(walk);
           }
         }
@@ -8315,9 +8434,14 @@ ${snowCap ? `
     // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
     // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
     // the same cells, at its own shorter distances.
+    // facades lane (2026-10-05): the facade craft's fine metalwork (gutter hangers, hopper heads, the downpipes) and its
+    // fine render work on the main render (paint, the dirt run off the sills, pilasters) cull by the same cells on a
+    // desktop build (maps/regional/facade.ts); the metal's batch takes the place of its always-drawn mesh, so it costs no
+    // draw, the render's one (the second and third renders' few fine pieces stay in their meshes). A phone builds none.
     const CELLED = new Set(['structureWood', 'regionalStone']);
+    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
     const FINE_CELL_M = 120;
-    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
     type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {

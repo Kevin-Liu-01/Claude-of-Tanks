@@ -26,11 +26,11 @@
       "concealers": 4178
     },
     "urban": {
-      "bytes": 4367639,
-      "sha256": "440d34dd3fc653bf838b9ee3da2f09f291bf1d0958d6f0bc7ba87491a7b6d583",
-      "obstacles": 2685,
-      "colliders": 6750,
-      "concealers": 2254
+      "bytes": 3203812,
+      "sha256": "ed1325b19baf2603e3bd150cd5ca40b71d07ea38c5a82bc52add8d45a34b3744",
+      "obstacles": 2547,
+      "colliders": 5429,
+      "concealers": 2259
     },
     "coastal": {
       "bytes": 1305447,
@@ -117,18 +117,18 @@
       "concealers": 2060
     },
     "ruinspires": {
-      "bytes": 6981451,
-      "sha256": "3197b7c8c3b4de66e8d1799f58e6b142ffcd48f230faf46d312e95a491b9560e",
-      "obstacles": 1932,
-      "colliders": 8349,
+      "bytes": 4915766,
+      "sha256": "8b004a7661d240c20eebf2fca1a842543e3cd47a5f421dbb6e674f5db812c0c5",
+      "obstacles": 1933,
+      "colliders": 6232,
       "concealers": 462
     },
     "blackglass": {
-      "bytes": 3007557,
-      "sha256": "be0902db31d343937524a1e4e63fde163c8af10171d1f7ae7d56e7aac7cd2ff9",
-      "obstacles": 2831,
-      "colliders": 5064,
-      "concealers": 1488
+      "bytes": 1232079,
+      "sha256": "62f37c23e2a78364004127447573421a931bf8da392292185b512ebf52b17e18",
+      "obstacles": 2713,
+      "colliders": 3124,
+      "concealers": 1492
     },
     "titan_gorge": {
       "bytes": 1165155,

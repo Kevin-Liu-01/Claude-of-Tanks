@@ -37,8 +37,8 @@ the fictional map reproduces a particular real-world location.
 | alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
 | caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
 | foundry | Industrial basin with low regional shoulders; factories remain the landmarks. |
-| ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
-| blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
+| ruinspires | Sarajevo under siege (1992–96, the map-revival lane 2026-10-05): the boulevard's tram line down the valley floor between Austro-Hungarian blocks and Yugoslav towers, the mahalas and their mosques climbing the flanks, the cemeteries below the ridges; recessive background uplands. |
+| blackglass | Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane 2026-10-05), the creek between the International Settlement and burning Zhabei with four bridges; Art Deco towers and the Bund's banks over shikumen lanes and shophouses; a flat delta horizon. |
 | titan_gorge | Long plateau edges with branching tributary recesses; playable changes held until access constraints pass. |
 | skybridge | Opposing plateau shoulders aligned with the drowned gorge; preserve crossing approaches. |
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |

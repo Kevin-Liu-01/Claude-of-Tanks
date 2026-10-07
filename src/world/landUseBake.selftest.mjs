@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  LAND_BAKE_ALONG_U_BIT, LAND_BAKE_HEDGE_BIT, LAND_BAKE_LAYERS, LAND_BAKE_TRACK_BIT, LAND_USE_GLSL, LAND_WARP_K_RANGE, bakeLandUseSteps,
+  LAND_BAKE_ALONG_U_BIT, LAND_BAKE_HEDGE_BIT, LAND_BAKE_LAYERS, LAND_BAKE_TRACK_BIT, LAND_CROP_NONE, LAND_USE_GLSL, LAND_WARP_K_RANGE, bakeLandUseSteps,
   createLandFieldSample, landUseAt, landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
 } from './landUse.ts';
 import { stackLandUseBake } from './terrain.ts';
@@ -45,7 +45,7 @@ for (const id of landUseProfileIds()) {
   for (let k = 0; k < 600; k++) {
     const i = Math.floor(rand() * n), j = Math.floor(rand() * n), t = (j * n + i) * 4;
     landUseAt(resolveLandUseProfile(id), ((i + 0.5) / n - 0.5) * MAP, ((j + 0.5) / n - 0.5) * MAP, s);
-    assert.equal(out[t] & 31, s.crop, `${id}: the crop at texel (${i}, ${j})`);
+    assert.equal(out[t] & 31, s.active ? s.crop : LAND_CROP_NONE, `${id}: the crop at texel (${i}, ${j}) (a zoned land use's ground past its zones: LAND_CROP_NONE)`);
     assert.equal(!!(out[t] & LAND_BAKE_TRACK_BIT), s.track > 0, `${id}: the track flag`);
     assert.equal(!!(out[t] & LAND_BAKE_HEDGE_BIT), s.hedge > 0, `${id}: the hedge flag`);
     assert.ok(Math.abs((out[t + 1] >> 2) / 63 - s.jitter) <= 0.5 / 63 + 1e-9, `${id}: the field's jitter (six bits)`);

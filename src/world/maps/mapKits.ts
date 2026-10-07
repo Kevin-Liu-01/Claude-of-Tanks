@@ -31,6 +31,7 @@ import {
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
+import { dressShanghai } from './shanghaiStreets.ts';
 import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
 } from '../collision.ts';
@@ -42,6 +43,7 @@ import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
+import { dressSarajevo } from './sarajevoStreets.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -1125,6 +1127,16 @@ export function dressMapExtras({
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
+  // the map-revival lane (2026-10-05): Ruinspires as Sarajevo — the boulevard's tram line, catenary, burnt trams and the
+  // container screens at its crossings, the hillside cemeteries (maps/sarajevoStreets.ts; its own streams, never this one)
+  if (kits.includes('sarajevo')) dressSarajevo(focused, mapId);
+  // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
+  // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
+  if (kits.includes('shanghai')) {
+    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
+    // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
+    dressShanghai(focused, mapId);
+  }
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
   // draw sequences are untouched. Soft dressing in the existing baked/wood buckets; no collision record.
