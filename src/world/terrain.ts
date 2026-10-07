@@ -4311,6 +4311,12 @@ void splatCompute() {
     // ~50 m, ±0.55 m over ~17 m) and swell and thin by region (±18 %), so no wall prints one level ladder
     gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;
     float bedSwell = 1.0 + 0.36 * (nz(wp.xz, 0.011, vec2(0.17, 0.53)).r - 0.5);
+    // Skies lane (2026-10-06, the gauntlet's waves 127 and 128: Glacier's and Frosthollow's ring faces "a featureless,
+    // vertically smeared grey sheet"): the stretch and the swell multiply the ABSOLUTE height, so their gradients along
+    // the wall shear its v by the height itself — about 2 m of v per metre along the wall at 50 m up, 7 at 150 m, 11 at
+    // 250 m; the snow maps' steep ring faces stand 50–390 m up, every wall projection there squeezed into vertical slivers.
+    // Their walls carry no strata: a snow map keeps the per-cliff offset and the beds' wander and no stretch.
+    if (uReduxD.y > 1.5) { wallVScale = 1.0; bedSwell = 1.0; }
     gWallUVx.y = gWallUVx.y * wallVScale * bedSwell + wallVOff + gBedWob;
     gWallUVz.y = gWallUVz.y * wallVScale * bedSwell + wallVOff + gBedWob;
     gCliffJ = cliffJ;
@@ -4532,10 +4538,28 @@ void splatCompute() {
   if (uReduxD.y > 1.5) {
     float rockW = max(fR, steepW) * (1.0 - fMs);
     if (rockW > 0.002) {
-      float lodG = max(0.0, gNoiseLog + log2(0.045));
-      float gully = mix(textureLod(uNoise, gWallUVx * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g,
-                        textureLod(uNoise, gWallUVz * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g, gWallW);
+      // Skies lane (2026-10-06, the gauntlet's waves 127 and 128 — Glacier's and Frosthollow's ring faces "a featureless,
+      // vertically smeared grey sheet", "draped cloth"; with the ground lane's ack): the gullies were one field stretched
+      // 8:1 down the height at a 22 m repeat, and a steep face lies wholly inside the hold's 45–64° band, so the face printed
+      // that field as fine vertical hatching and hung a fringe of snow tongues under every crest. A face now holds its snow
+      // in structures: couloirs — the crests of a coarse 3:1 field down the fall line (~25 m across, ~80 m long), only in
+      // the systems the slow wall field picks; the hold's own breakup at a quarter of its swing; and from ~48° a lean to
+      // bare rock outside the couloirs, so the steep band is rock carrying its snow on ledges (below). The hold line is the
+      // ground lane's law, unchanged (snowRockHoldLine swaps it per map).
+      float lodG = max(0.0, gNoiseLog + log2(0.006));
+      float coulN = mix(textureLod(uNoise, gWallUVx * vec2(0.006, 0.002) + vec2(0.41, 0.17), lodG).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.006, 0.002) + vec2(0.41, 0.17), lodG).g, gWallW);
+      float couloir = smoothstep(0.55, 0.68, coulN) * smoothstep(0.35, 0.60, 1.0 - n2Wall);
+      float gully = 0.5 + (coulN - 0.5) * 0.25 - 0.30 * smoothstep(0.34, 0.48, slope) * (1.0 - couloir) + couloir * 0.55;
       float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);
+      // ledges: snow on the shelves of round 35's warped height ladder (non-periodic beds ~14–30 m apart, the per-cliff
+      // phase, ±2 m of along-wall wander), in runs where the slow wall field is high (the couloirs' systems are where it
+      // is low), on the steep band only and gone from the sheerest faces
+      float ledgeWarp = wallNoiseG(0.02, vec2(0.31, 0.77));
+      float ledge = bedSignal(wp.y + ledgeWarp * 2.2, 0.008, gCliffJ + 0.53);
+      float ledgeHold = smoothstep(0.0, 0.35, ledge) * smoothstep(0.38, 0.56, n2Wall)
+        * smoothstep(0.26, 0.40, slope) * (1.0 - smoothstep(0.74, 0.86, slope));
+      hold = max(hold, ledgeHold * 0.9);
       gSnowRock = hold * rockW;
       if (gSnowRock > 0.002) {
         vec4 snowA = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
@@ -5343,6 +5367,9 @@ void splatCompute() {
       float ledgePhase = wp.y * 0.45 + gCliffJ * 7.0 + ledgeWarp * 1.0;
       float ledge = mix(sin(ledgePhase), bedSignal(wp.y + ledgeWarp * 2.2, 0.016, gCliffJ + 0.53), uReduxD.z); // terrain v2
       float ledgeAmp = mix(0.5, 1.0, smoothstep(0.02, 0.12, uStrata)) * wallFar;
+      // (skies lane, 2026-10-06: a snow map's exposed rock keeps its beds at full strength — the snow ledges above lie on
+      // these shelves, the seams between them stay dark rock)
+      if (uReduxD.y > 1.5) ledgeAmp = wallFar;
       a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
       vec3 rnGround = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
       vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
