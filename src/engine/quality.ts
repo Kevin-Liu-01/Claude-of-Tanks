@@ -67,6 +67,8 @@ export interface QualityPreset {
   readonly groundBounce?: boolean;
   readonly sunShafts?: boolean;
   readonly lensFlare?: boolean;
+  /** the skies lane (2026-10-06): the facade bounce (facadeBounce.ts), High and Ultra only */
+  readonly facadeBounce?: boolean;
   /**
    * Owner 2026-10-02: cavity occlusion on vehicle pixels only (vehicleOcclusion.ts, in the aerial pass) — the shaded
    * side of a hull keeps its bustle, skirt and wheel-bay depth while scene-wide GTAO stays off. Absent means off.
@@ -274,7 +276,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // poses (verdant gradient 13.3 with TAA vs 21.7 without, reference 20.8). Drive-mode flicker (production, 110 frames): per-pixel blip rate 2.57 with TAA, 3.29 without — the reference's own foliage shimmer, no shadow flashing (r8).
     // The pass, its RCAS floor and receipts stay in place: set taa: true on a preset to re-enable it.
     taa: false,
-    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, facadeBounce: true, // round 69 (2026-09-24); facadeBounce: the skies lane, 2026-10-06
     vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 2.0,
@@ -305,7 +307,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     label: 'High',
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
-    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, facadeBounce: true, // round 69 (2026-09-24); facadeBounce: the skies lane, 2026-10-06
     vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 1.5,

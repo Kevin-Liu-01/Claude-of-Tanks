@@ -108,6 +108,7 @@ import {
   GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
+import { FACADE_BOUNCE_GLSL, FACADE_BOUNCE_RANGE_M, FACADE_BOUNCE_STRENGTH, createFacadeBounceUniforms } from './facadeBounce.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
@@ -990,6 +991,8 @@ const AerialShader = {
     uFirefly: { value: 1 },
     // round 69 (2026-09-24): screen-space contact shadows (contactShadows.ts) — uContact 0 skips the block
     ...createContactShadowUniforms(),
+    // the skies lane (2026-10-06): the sunlit facades' light on the shaded ground (facadeBounce.ts) — 0 skips the block
+    ...createFacadeBounceUniforms(),
     // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts) — uVehOcc 0 skips the block
     ...createVehicleOcclusionUniforms(),
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts) — uVehGround 0 skips it
@@ -1041,6 +1044,7 @@ const AerialShader = {
     ${CONTACT_SHADOW_GLSL}
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
+    ${FACADE_BOUNCE_GLSL}
     ${HAZE_LAW_GLSL}
     // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
@@ -1159,6 +1163,11 @@ const AerialShader = {
         // the scene target's alpha (lighting.ts); before the haze, which is applied below to the lit colour
         if ( uContact > 0.5 && -viewZ < ${CONTACT_SHADOW_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotContactShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
+        }
+        // the skies lane (2026-10-06): the shaded ground's light from the sunlit facades over it (facadeBounce.ts) — a
+        // one-bounce gather for an up-facing receiver in a cast shadow, before the haze like the contact shadows
+        if ( uFacadeBounce > 0.0 && -viewZ < ${FACADE_BOUNCE_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotFacadeBounce( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
         // owner 2026-10-02: a vehicle pixel's cavity occlusion (vehicleOcclusion.ts) dims its ambient share, so the
         // shaded side of a hull keeps its bustle, skirt and wheel-bay depth; nothing else is a receiver
@@ -2287,8 +2296,11 @@ export function createPost(
   composer.addPass(lensFlare);
   let lightFxOverrides: Partial<PostLightFxFlags> | null = null;
   let lightFx: PostLightFxFlags = POST_LIGHT_FX_OFF;
+  // the skies lane (2026-10-06): the facade bounce on the High and Ultra presets only, with the contact shadows
+  let facadeBounceOn = false;
   const resolveLightFx = (): void => {
     const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
+    facadeBounceOn = resolved.contactShadows && !!preset.facadeBounce;
     const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
     renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare', 'cavity']
       .filter((_, i) => [next.contactShadows, next.groundBounce, next.sunShafts, next.lensFlare, next.vehicleOcclusion][i]).join('+') || 'off';
@@ -2820,6 +2832,8 @@ export function createPost(
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
+    // the skies lane (2026-10-06): the facade bounce, High and Ultra only, on the contact shadows' uniforms
+    aerial.uniforms.uFacadeBounce.value = facadeBounceOn && lightFx.contactShadows ? lightTune('FACADE_BOUNCE', FACADE_BOUNCE_STRENGTH) : 0;
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);
