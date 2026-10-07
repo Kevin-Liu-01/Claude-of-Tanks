@@ -1558,6 +1558,28 @@ Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 Point
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).
 
+#### 3.8.3 `combat/` (the combat media layer, 2026-10-05)
+`effects.ts` composes `src/fx/combat/combatFx.ts` and delegates the media of its ground and water impacts
+(`dirtPlume`, `waterSplash`), the muzzle blast's gas, cloud and ground dust (`spawnMuzzleFlash` after its flash
+cards and jets), a kill's fireball, cook-off, early column and ground shock (`spawnDestruction`), and the wreck
+column, deck flames and smoulder (`emitColumnPuff`, `emitSmolderPuff`). The layer owns:
+- two instanced media pools on the late-FX layer (`mediaPool.ts`, `mediaShader.ts`): every puff relaxes from its
+  launch velocity toward the scene wind x its coupling plus a terminal rise (its own drag; a ballistic term for
+  soil and spray), grows on an ease-out curve, flattens along world-up, smears along its screen-space velocity and
+  is domain-warped, so it deforms rather than scaling one sprite; lit by the published rig (sun, sky / environment,
+  ground pole, the pooled explosion light) from the normal-mapped lobed sheets (`mediaAtlas.ts`, baked once from the
+  fx seed in `warmTextures`), with optional blackbody heat: the heat x the lobe structure x the puff's side toward
+  the blast (back along its launch), so a cooling fireball's outer shell turns to smoke first and its heart glows on;
+- thrown clods in the ground's colour (`clods.ts`, a recorded landing point and time) and one crater batch
+  (`craters.ts`);
+- the surface classifier (`surface.ts`: soil, sand, snow, mud, rock, water from the height field's water mask,
+  track surface, ground type and slope).
+Recipes (`impactBurst.ts`, `muzzleBlast.ts`, `killBlast.ts`) draw from the runtime's seeded stream, so Studio's
+`resetSeed` and frozen captures stay deterministic; the clock rebase, `resetAll` and the late pass's activity cover
+the layer. The wind is the cloud layer's, slowed to the ground, until the world publishes
+`scene.userData.surfaceWind` (a world-XZ velocity, m/s). The mobile tier halves the counts and the pools and draws
+the media without the warp and frame cross-fade. Receipt: `src/fx/combat/combatFx.selftest.mjs`.
+
 `src/fx/fxRuntimeAccess.ts` owns the browser lifecycle around this API. Module
 preload is permitted on explicit intent, while `createFx` remains a singleton
 construction gate. Module and initializer failures are independently retryable;
