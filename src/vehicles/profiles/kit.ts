@@ -1292,9 +1292,10 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
 
 function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Material {
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
-  // 2026-10-06 (round 2): the shared machine gun's ammunition can is issue olive and its belt's rounds dull brass, so
-  // the station reads as a loaded weapon; neither ever takes the host camouflage
-  if (slot === MG_AMMO_CAN_SLOT) return isMaterial(mats.canvasCloth) ? mats.canvasCloth : fitMat(mats, 'gunmetalAmmo');
+  // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds take the pale issue canvas, so
+  // the station reads as a loaded weapon against the gunmetal (the vehicle canvas renders near-black on several hulls);
+  // neither ever takes the host camouflage
+  if (slot === MG_AMMO_CAN_SLOT) return isMaterial(mats.canvasPale) ? mats.canvasPale : fitMat(mats, 'gunmetalAmmo');
   if (slot === MG_CARTRIDGE_SLOT) return isMaterial(mats.canvasPale) ? mats.canvasPale : fitMat(mats, 'gunmetalAmmo');
   const m = mats[slot] || mats.dark;
   if (isMaterial(m)) return m;

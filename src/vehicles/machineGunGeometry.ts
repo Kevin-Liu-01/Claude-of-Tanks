@@ -257,7 +257,7 @@ export function addPintleBarrel(context: PintleLayout): void {
   }
 }
 
-/** The ammunition can's slot: callers paint it as issue olive (profiles: the canvas; decor: the scheme kit). */
+/** The ammunition can's slot: callers paint it in the pale issue canvas (profiles) or an olive-khaki (decor). */
 export const MG_AMMO_CAN_SLOT = 'ammoCan';
 /** The belt's cartridges: callers paint them as dull brass (profiles: the pale canvas; decor: a brass tint). */
 export const MG_CARTRIDGE_SLOT = 'cartridge';
@@ -266,7 +266,7 @@ export const MG_CARTRIDGE_SLOT = 'cartridge';
  * The ammunition: a pressed can beside the receiver, its lid, handle and latch, a feed tray on the receiver's feed side
  * and a belt of cartridges that rises from the can's mouth and drops into the tray. 2026-10-06 (round 2: the critics
  * read the guns as "a bare tube on a block with no feed tray, belt or ammunition box" and could not find a gun at play
- * distance): the can is a third larger and olive, not gunmetal, and the belt carries its rounds, the brass catching
+ * distance): the can is a third larger and pale khaki, not gunmetal, and the belt carries its rounds, the brass catching
  * the light, so the station reads as a loaded weapon from the chase camera.
  */
 export function addPintleAmmo(context: PintleLayout): void {

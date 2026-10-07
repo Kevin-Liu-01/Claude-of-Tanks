@@ -1152,8 +1152,8 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     const collector = {
       add(slot: string, geo: THREE.BufferGeometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
         xform(geo, x, y, z, rx, ry, rz);
-        // round 2 (2026-10-06): the can in issue olive and the belt's rounds in dull brass, on the painted-hardware draw
-        if (slot === MG_AMMO_CAN_SLOT) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.11, 0.13, 0.075, 0.28) }); return; }
+        // round 2 (2026-10-06): the can in olive-khaki and the belt's rounds in dull brass, on the painted-hardware draw
+        if (slot === MG_AMMO_CAN_SLOT) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.2, 0.2, 0.13, 0.28) }); return; }
         if (slot === MG_CARTRIDGE_SLOT) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.34, 0.25, 0.1, 0.2) }); return; }
         const painted = slot === 'detail' || slot === 'hull';
         parts.push({ mat: painted ? 'kit' : 'steel', geo: bakeShade(geo, painted ? 0.92 : slot === 'shadow' ? 0.32 : tone) });
