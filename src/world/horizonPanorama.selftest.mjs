@@ -278,7 +278,7 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   // went with them) — no massif's near edge inside its class's limit, and the massifs join the field after the near band's
   // press, so a massif from 3 km keeps its bossed top
   assert.ok(heightPass.includes('if (length(centre) - rad * el < uJebel3.w) continue;'), 'no massif\'s near edge nearer than its class\'s limit');
-  const pressAt = heightPass.indexOf('if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);'), joinAt = heightPass.indexOf('h += hJebel;');
+  const pressAt = heightPass.indexOf('if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * uNearBand.y, nearW);'), joinAt = heightPass.indexOf('h += hJebel;');
   assert.ok(pressAt > 0 && joinAt > pressAt, 'the massifs stand whole: their heights join after the near band\'s press');
   for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
     if (name !== 'jebel') assert.equal(c.jebelNearM, 0, `${name}: no near limit`);

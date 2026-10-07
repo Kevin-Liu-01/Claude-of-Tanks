@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
 import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL } from '../engine/atmosphere.ts';
+import { lightTune } from '../engine/lightModelCore.ts';
 import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -48,6 +49,12 @@ export const HORIZON_PANORAMA = Object.freeze({
    * integrated to its far range, over the far shore (pale slabs with sheer ends, a box of cloud in the range) */
   seaEdgeMaxM: 3200,
 });
+
+/** The near band's press at rest (QA knobs PANO_NEAR_CAP, PANO_NEAR_SQUASH, PANO_NEAR_WANDER, read at each bake): its cap
+ * 0.03 (tan, ~1.7 degrees) under the ring's skyline from the bake eye, a seventh of the excess kept, no wander. */
+const PANO_NEAR_CAP = 0.03;
+const PANO_NEAR_SQUASH = 0.15;
+const PANO_NEAR_WANDER = 0;
 
 /** The far country's vocabulary per relief character (amplitudes in m; wavelengths in m). */
 export interface HorizonPanoramaCharacter {
@@ -849,6 +856,7 @@ uniform vec4 uShore;   // the far shore's height share (0: open sea), the channe
 uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
+uniform vec4 uNearBand; // the near band's cap under the ring's skyline (tan), its squash, its cap's wander (tan)
 ${JEBEL_GLSL}
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -1075,9 +1083,18 @@ float farField(vec2 p) {
   // is mapped onto the shell 2.6 km out, and seen from anywhere but the bake eye a tall near form bends with the shell
   // (Copper Mesa's near tables arched across the frame as one slab, Nordhavn Fjord's beside its bay stood as a block);
   // its excess over a line 1.7 degrees under that skyline is compressed to a seventh, released between 3.2 and 4.8 km
-  float nearCap = uFrame.w + r * (edge.a - 0.03);
+  // (the skies lane, 2026-10-07: the press's level line is the flat top of the white band Glacier's census cameras see
+  // over the ring — off the bake eye the terrace stands above the ring's ridge. QA knobs at bake time: PANO_NEAR_CAP the
+  // cap's depth under the skyline, PANO_NEAR_SQUASH the excess kept, PANO_NEAR_WANDER the cap's wander round the
+  // compass — at rest the press as it shipped: 0.03, 0.15, no wander)
+  float capWander = 0.0;
+  if (uNearBand.z > 0.0) {
+    vec2 dn = p / max(r, 1.0);
+    capWander = uNearBand.z * (noised(dn * 9.0 + vec2(3.7, -1.9)).x * 0.65 + noised(dn * 23.0 + vec2(-5.1, 2.6)).x * 0.35);
+  }
+  float nearCap = uFrame.w + r * (edge.a - uNearBand.x + capWander);
   float nearW = 1.0 - smoothstep(3200.0, 4800.0, r);
-  if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);
+  if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * uNearBand.y, nearW);
   // (the jebels stand whole: their near edges keep past the shell, jebelNearM)
   h += hJebel;
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level — to the horizon,
@@ -1780,9 +1797,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         options.snowlineM != null && ch.snowline >= 0 ? options.snowlineM / ch.ampM : ch.snowline,
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
+      // (QA, read at each bake: the near band's press, at rest as it shipped)
+      uNearBand: { value: new THREE.Vector4(lightTune('PANO_NEAR_CAP', PANO_NEAR_CAP), lightTune('PANO_NEAR_SQUASH', PANO_NEAR_SQUASH),
+        lightTune('PANO_NEAR_WANDER', PANO_NEAR_WANDER), 0) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
-      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, ch.farAirFloor) },
+      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },

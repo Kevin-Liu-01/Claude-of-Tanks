@@ -4,7 +4,8 @@
 // and every rolling, coastal and desert country keep their bake), the maps it reaches through the bake's own character
 // path, the strip's mix and its uniform, and the worked transmittances on a CPU twin of the bake's split (the aerial pass
 // over the shell's depth, the bake past it): a far summit recedes behind the ring's ridges while the low far ground keeps
-// its haze. No GPU or art claim.
+// its haze. And the near band's press (2026-10-07: the flat top of Glacier's white band is its level line): QA knobs read at
+// each bake, at rest the press as it shipped. No GPU or art claim.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
@@ -15,7 +16,7 @@ import { HAZE_LAYER_SCALE_M, HAZE_SIGMA_PER_FOG } from '../engine/hazeLaw.ts';
 import { getMapConfig } from './maps/index.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 
-// 1. the knob: the alpine mountains' only
+// 1. the floor: the alpine mountains' only
 for (const [name, c] of Object.entries(HORIZON_PANORAMA_CHARACTERS)) {
   if (name === 'alpine') assert.ok(c.farAirFloor > 0 && c.farAirFloor < 0.5, 'the alpine mountains take a floor under half the ground\'s density');
   else assert.equal(c.farAirFloor, 0, `${name}: no floor`);
@@ -40,7 +41,21 @@ const mixAt = at('layer = mix(layer, 1.0, uAir.w);');
 const pathAt = at('vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);');
 assert.ok(layerAt < mixAt && mixAt < pathAt, 'the floor mixes the layer\'s mean before the far path\'s transmittance');
 const source = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
-assert.ok(source.includes('uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, ch.farAirFloor) },'), 'uAir.w carries the character\'s floor');
+assert.ok(source.includes("uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },"),
+  'uAir.w carries the character\'s floor (a QA knob over it, read at each bake)');
+
+// 3b. the near band's press (2026-10-07): QA knobs read at each bake, at rest the press as it shipped (a cap 0.03 under the
+// ring's skyline, a seventh of the excess kept, no wander), the wander only where asked
+const height = HORIZON_PANORAMA_SHADERS.height;
+assert.ok(/const PANO_NEAR_CAP = 0\.03;\s*const PANO_NEAR_SQUASH = 0\.15;\s*const PANO_NEAR_WANDER = 0;/.test(source), 'the press at rest: 0.03, 0.15, no wander');
+assert.ok(source.includes("uNearBand: { value: new THREE.Vector4(lightTune('PANO_NEAR_CAP', PANO_NEAR_CAP), lightTune('PANO_NEAR_SQUASH', PANO_NEAR_SQUASH),")
+  && source.includes("lightTune('PANO_NEAR_WANDER', PANO_NEAR_WANDER), 0) },"), 'the knobs reach the height pass at each bake');
+for (const needle of [
+  'uniform vec4 uNearBand;',
+  'if (uNearBand.z > 0.0) {',
+  'float nearCap = uFrame.w + r * (edge.a - uNearBand.x + capWander);',
+  'if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * uNearBand.y, nearW);',
+]) assert.ok(height.includes(needle), `the height pass: ${needle}`);
 
 // 4. the worked numbers on Glacier's air: the bake's split (the aerial pass over the shell's depth from the bake eye,
 // the layer's mean between the eye and the ray's height at the shell; the bake over the rest, the layer's mean between the
@@ -65,4 +80,4 @@ assert.ok(summit < ridge * 0.65, `a far summit well behind the ring's ridge (${s
 assert.ok(foot > foot0 * 0.85, `the low far ground keeps its haze (T ${foot0.toFixed(3)} -> ${foot.toFixed(3)})`);
 assert.ok(summit / foot < 0.85 * (summit0 / foot0), `less of a summit floating over its hazed foot (${(summit0 / foot0).toFixed(2)} -> ${(summit / foot).toFixed(2)})`);
 
-console.log(`horizonPanoramaFarAir.selftest: the floor ${floor} on the alpine mountains only (${reached.join(', ')}; Saltwind 0), the strip's mix before the far path's transmittance and its uniform, and on Glacier's air a far summit at T ${summit0.toFixed(2)} -> ${summit.toFixed(2)} behind the ring's ridge at ${ridge.toFixed(2)}, its foot ${foot0.toFixed(3)} -> ${foot.toFixed(3)} PASS; no GPU/art claim`);
+console.log(`horizonPanoramaFarAir.selftest: the floor ${floor} on the alpine mountains only (${reached.join(', ')}; Saltwind 0), the strip's mix before the far path's transmittance and its uniform, and on Glacier's air a far summit at T ${summit0.toFixed(2)} -> ${summit.toFixed(2)} behind the ring's ridge at ${ridge.toFixed(2)}, its foot ${foot0.toFixed(3)} -> ${foot.toFixed(3)}; the near band's press knobs at rest as shipped PASS; no GPU/art claim`);
