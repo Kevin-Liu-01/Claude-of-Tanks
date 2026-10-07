@@ -1663,6 +1663,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/polderTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
     'src/world/landscapeWoods.selftest.mjs',
+    // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
+    'src/world/riparianTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
