@@ -34,6 +34,7 @@ import {
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
+import { SARAJEVO_LIGHT_VARIANTS } from './sarajevoLight.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -802,4 +803,7 @@ export const SARAJEVO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   },
   // the shelling: half the city's houses show it at their windows and roofs
   wear: 0.5,
+  // the light buildings in the city's own forms (sarajevoLight.ts): the kiosk, the transformer kiosk, the checkpoint,
+  // the garage, the corner shop and the lock-ups for the generic guard post, sheds, office, garage and Nissen hut
+  lightVariants: SARAJEVO_LIGHT_VARIANTS,
 });

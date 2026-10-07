@@ -103,7 +103,7 @@ import {
   type AutumnCropRow, type AutumnHeadlandSite,
 } from './autumnHeadlands.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse, regionalLightVariant,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -3683,6 +3683,9 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (mr1, valley round 2) and the kit's own light variants, built by the kit in its render (regional types.ts LightVariant)
+    ...(regionalArchitecture?.lightVariants ? Object.fromEntries(Object.entries(regionalArchitecture.lightVariants).map(([key, variant]) =>
+      [key, regionalLightVariant(key, variant.pal, (rng) => variant.parts(rng, regionalArchitecture), variant.mat)])) : {}),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
@@ -3761,7 +3764,10 @@ ${snowCap ? `
     if (!extents) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
       const geometry = meta.build(mulberry32(0x0f0f7));
-      const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
+      // (a kit's light variant: its family's collision source, structureKit regionalLightVariant)
+      const source = geometry.userData.collisionSource as THREE.BufferGeometry | undefined;
+      const band = deriveRuntimeStructureContactBand({ baked: [source ?? geometry] });
+      source?.dispose();
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
       extents = band.parts.length
@@ -9070,6 +9076,13 @@ ${snowCap ? `
     pool: DestructiblePool,
     kind: string,
   ): GroundCoverSolidProfile | null {
+    // (mr1, valley round 2) a kit's light variant hands on its family's own build as its collision source
+    // (structureKit regionalLightVariant): the obstacles refit to the family's solids, the variant only draws
+    const collisionSource = geometry.userData.collisionSource as THREE.BufferGeometry | undefined;
+    if (collisionSource) {
+      delete geometry.userData.collisionSource;
+      try { return refitDestructibleColliders(collisionSource, pool, kind); } finally { collisionSource.dispose(); }
+    }
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return null;
     // Refit every destructible obstacle to the actual ground-bearing solids.
