@@ -53,6 +53,19 @@ export interface TreeBiome {
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
   shrubColour?: Readonly<TreeBiomeColour>;
+  /**
+   * The trees lane (2026-10-06, the gauntlet's wave 177 on Saltwind: "no olives" in the walled fields): a place whose
+   * stands inside a field's walls are groves of one slot — a stand tree whose seat lies in a field's interior, on ground
+   * no steeper than `maxSlopeDeg` and no higher than the lowest `maxHeightShare` of the square's heights (the terraced
+   * lowland: the slopes and hills keep their woods), grows as that slot (vegetation.ts placeTreeClusters; every draw
+   * keeps its seat).
+   */
+  grove?: Readonly<TreeBiomeGrove>;
+  /**
+   * The trees lane (wave 177: "a dense, uniform dark broadleaf bank fills the skyline"): a share of one slot's stand trees
+   * grows as another — by a hash of the seat, no draw (the Dalmatian holm oak woods mixed with Aleppo pine).
+   */
+  blend?: Readonly<{ slot: TreeSpecies; into: TreeSpecies; share: number }>;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -117,6 +130,22 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
 });
 
+/** The trees lane: a place's grove (TreeBiome.grove). */
+export interface TreeBiomeGrove {
+  slot: TreeSpecies;
+  maxSlopeDeg: number;
+  maxHeightShare: number;
+}
+
+/**
+ * The trees lane (2026-10-06, wave 177): the maquis (mastic, myrtle, kermes oak) under Saltwind's trees — the evergreen
+ * oak's shrubs a little lighter and greener than the holm oak's dark crowns over them.
+ */
+const MAQUIS_SCRUB: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.27, cardSat: 0.12,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.8), Math.min(1, l * 1.1)],
+});
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -133,8 +162,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   caldera: Object.freeze({ ...B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' },
     eucalyptus: { form: 'canaryPine' }, acacia: { form: 'canaryPine' } }, 'broom', VOLCANIC_FOLIAGE, undefined, true), shrubColour: ASH_SCRUB }),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
-  saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
-    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
+  // (the trees lane, 2026-10-06, the gauntlet's wave 177: the olive groves inside the dry stone walls — a stand centred
+  // in a field's interior leads with the olive; the holm oak woods on the slopes three in ten Aleppo pine; the maquis the
+  // evergreen oak's shrubs)
+  saltwind: Object.freeze({ ...B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
+    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'holmOak'), shrubColour: MAQUIS_SCRUB,
+    grove: Object.freeze({ slot: 'acacia' as const, maxSlopeDeg: 10, maxHeightShare: 0.7 }), blend: Object.freeze({ slot: 'cedar' as const, into: 'pine' as const, share: 0.3 }) }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch
@@ -241,6 +274,16 @@ const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 
 export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
   if (treeBiomeOpen(mapId)) return 1;
   return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
+}
+
+/** The trees lane: a place's grove slot (TreeBiome.grove), or none. */
+export function treeBiomeGrove(mapId: string | null | undefined): Readonly<TreeBiomeGrove> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.grove : null) ?? null;
+}
+
+/** The trees lane: a place's blend of one slot's stand trees into another (TreeBiome.blend), or none. */
+export function treeBiomeBlend(mapId: string | null | undefined): Readonly<{ slot: TreeSpecies; into: TreeSpecies; share: number }> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.blend : null) ?? null;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

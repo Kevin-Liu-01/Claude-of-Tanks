@@ -422,7 +422,12 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
   const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
-  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
+  // a place names a shrub colour only for a shrub form of its own (Las Cañadas' broom; the trees lane, 2026-10-06:
+  // Saltwind's maquis, the evergreen oak's shrubs)
+  for (const id of MAP_IDS.filter((mapId) => treeBiomeShrubColour(mapId))) {
+    assert.ok(treeBiomeShrub(id), `${id}: its shrub colour paints its own shrub form`);
+  }
+  assert.ok(treeBiomeShrubColour('saltwind') && treeBiomeShrub('saltwind') === 'holmOak', 'Saltwind names its maquis');
   report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
 }
 

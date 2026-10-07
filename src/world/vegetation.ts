@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBlend, treeBiomeColour, treeBiomeGrove, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5599,6 +5599,9 @@ function* vegetationBuildSteps(
     // trees round 2b: a palm outside the map's palm sites grows as its fallback species (every path: stands, lone trees,
     // belts, the rim); no draw moves
     if (species === 'palm' && palmElsewhere && !palmSiteOk(x, z)) species = palmElsewhere;
+    // the trees lane (2026-10-06): a grove place's tree inside a field's walls on the terraced lowland grows as the grove's
+    // slot, whichever placement seats it (groveInterior; no draw moves)
+    if (grove && species !== 'palm' && groveInterior(x, z)) species = grove.slot;
     const y = heightField.getHeightAt(x, z);
     const sc = scMin + r() * (scMax - scMin);
     const archetype = TREE_ARCHETYPES[species];
@@ -5801,6 +5804,28 @@ function* vegetationBuildSteps(
     }
     trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
   }
+  // the trees lane (2026-10-06, the gauntlet's wave 177 on Saltwind): a place's grove (treeBiomes.ts grove) — a tree whose
+  // seat lies in a field's interior (past its grass margin), on the terraced lowland (gentle and low: its slope and height
+  // share), grows as the grove's slot (pushTree), the olive grove inside its dry stone walls — and its blend (treeBiomes.ts
+  // blend), a share of one slot's stand trees growing as another by a hash of the seat. Both choose a species only: every
+  // draw keeps its seat.
+  const grove = treeBiomeGrove(cfg?.id), blend = treeBiomeBlend(cfg?.id);
+  const groveTop: number = grove ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * grove.maxHeightShare))];
+  })() : 0;
+  const groveMinNormalY = grove ? Math.cos(grove.maxSlopeDeg * Math.PI / 180) : 1;
+  const _groveLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  function groveInterior(x: number, z: number): boolean {
+    const landAt = heightField._landUseAt;
+    if (!landAt) return false;
+    if (heightField.getHeightAt(x, z) > groveTop || heightField.getNormalAt(x, z).y < groveMinNormalY) return false;
+    landAt(x, z, _groveLand);
+    return _groveLand.active > 0 && _groveLand.edgeM > _groveLand.marginM + 2;
+  }
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
     const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
@@ -5863,9 +5888,12 @@ function* vegetationBuildSteps(
       for (let i = 0; i < n * 4 && placed < n; i++) {
         // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
         const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
-        const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
+        let sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
         const p = standPoint(index, disc, a, k);
         const px = p[0], pz = p[1];
+        // (the trees lane: a place's blend — a share of one slot's stand trees as another, by a hash of the seat; a grove
+        // place's tree inside the walls grows as the grove's slot whatever it was drawn as, pushTree)
+        if (blend && sp === blend.slot && treePositionNoise(px, pz, 21) < blend.share) sp = blend.into;
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
         if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
         // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
@@ -6399,6 +6427,8 @@ function* vegetationBuildSteps(
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
+        // (the trees lane: a grove place's sapling inside a field's walls grows as the grove's slot, as pushTree's trees)
+        if (grove && spS !== 'palm' && groveInterior(sx, sz)) spS = grove.slot;
         // an upland place's sapling grows in its form's zone too (its draws already made)
         if (!uplandZoneOk(sx, sz, spS)) continue;
         const archetypeS = TREE_ARCHETYPES[spS];

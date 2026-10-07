@@ -235,7 +235,9 @@ pinyon; round 5's map-revival forms: longleafPine (tufts on a long clear bole), 
 plates, a flat top), sugi, redPine; summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
 cutover's longleafSeedling (a `fountain` profile: grass-stage needle fountains from the ground); a place's foliage
 colour where the map palette names none, the hyper-arid
-places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
+places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks;
+a place's `grove`, Saltwind's olive groves inside its dry stone walls on the terraced lowland, and its `blend`, its
+holm oak woods three in ten Aleppo pine by a hash of the seat — species only, every seat kept)
 — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
 naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's
 load is its laden sprays over the upper crown (no bough lumps); the classic tufts follow `applySnowGrassLaw` (straw,
