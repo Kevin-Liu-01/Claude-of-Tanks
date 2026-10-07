@@ -236,4 +236,24 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
     'the works\' paving and joints are stained on a works\' ground only');
 }
 
+// 2026-10-06 (the land use's far field, the coordinator's cost question: a distant quilt's warps walk every crop's
+// branch): a crop's near work is skipped exactly where its weight is zero — the plough's furrows, clods and relief past
+// half a furrow's period of footprint (stripeAA's own cut), the terra rossa's clasts and gravel past their tiles' (tileVis'),
+// the garrigue's tussocks likewise — and the standing crop's ears read the noise once
+{
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  for (const gate of ['if (furrowVis > 0.0) {', 'if (nrmOn && furrowVis > 0.0) {', 'if (uLandTier > 0.5 && clastVisF > 0.0) {',
+    'if (gravelVis > 0.0) {', 'float bareG = uLandTier > 0.5 && bareVis > 0.0 ?'])
+    assert.ok(terrain.includes(gate), `the far field skips a zero-weighted term: ${gate}`);
+  assert.ok(terrain.includes('vec2 earN = nz(uv, 1.7, vec2(0.31, 0.77)).rg;') && !terrain.includes('nz(uE, 1.13'), 'the ears read the noise once');
+  // the gates are exact: tileVis and stripeAA reach exactly zero (smoothstep's own ends), so a skipped term weighed nothing
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const tileVis = (p, foot) => smooth(4, 10, p / Math.max(foot, 1e-4));
+  assert.equal(tileVis(0.8, 0.2), 0, 'the clasts are gone by a 0.2 m footprint');
+  assert.equal(tileVis(0.12, 0.03), 0, 'the gravel by 3 cm');
+  assert.equal(tileVis(1.5, 0.375), 0, 'the garrigue\'s tussocks by 0.375 m');
+  assert.ok(tileVis(0.8, 0.19) > 0, 'and not before');
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);

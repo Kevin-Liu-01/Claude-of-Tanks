@@ -4968,6 +4968,11 @@ void splatCompute() {
       // in one, so an urban land use skips its read)
       bool luUrb = uLandE.w > 0.5;
       float nBend = bendW > 0.001 && uLandTier > 1.5 && !luUrb ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
+      // (2026-10-06, the land use's far field: the far path's coarse read goes out here with the bend's, before the bake is
+      // decoded — what it is used for still waits on the decode, but its latency no longer does)
+      float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
+      float farW = 1.0 - luNear;
+      vec2 nFarRead = farW > 0.001 && uLandTier > 0.5 ? textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0).rg : vec2(0.5);
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
       landW *= step(crop, 30.5); // (a zoned land use's texel in no zone — landUse.ts LAND_CROP_NONE: no field there)
@@ -4987,7 +4992,6 @@ void splatCompute() {
       // (9.5 m: the far wander below hands over from the near one, their amplitudes a read's — the headland's 5.5 m is
       // gone past the threshold whichever of them moves the edge)
       bool luEdge = bnd < 1.5 && edgeM < 9.5 + 1.3 * uLandB.y;
-      float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
       // (the urban fast path: a lot ends on its line — its wander a sixth of a field's, no headland and no hedge bank — so
       // an urban land use's edge zone reads none of the three)
@@ -4998,10 +5002,8 @@ void splatCompute() {
       // coarse wander of the boundary, ±3 m over 30–80 m (as the near wander hands over: their amplitudes sum to one
       // read's), and the plough's far mottle — one read of the noise at its coarse level (an 84 m tile at level 2:
       // mip-stable), Medium and High, only where a far pixel lies within 12 m + 1.3 margins of an edge or on a plough
-      float farW = 1.0 - luNear;
-      vec2 nFar = vec2(0.5);
-      if (farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5)))
-        nFar = textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0).rg;
+      vec2 nFar = farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5))
+        ? nFarRead : vec2(0.5);
       bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 17.5);
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
       // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
@@ -5080,7 +5082,7 @@ void splatCompute() {
         if (bnd > 2.5) {
           rows = 0.0;
           float bareVis = tileVis(1.5);
-          float bareG = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
+          float bareG = uLandTier > 0.5 && bareVis > 0.0 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
           vec3 redSoil = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.875, 1.159, 1.345) * 0.095;
           cropCol = mix(vec3(2.30, 2.10, 1.30) * baseL * bright, redSoil, bareG * 0.70 * bareVis + 0.20 * (1.0 - bareVis));
         }
@@ -5125,17 +5127,23 @@ void splatCompute() {
         float alongP = dot(wp.xz, rowDir);
         float acrossP = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
         float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
+        // (2026-10-06, the land use's far field: a far quilt's warps walked every crop's near work — the furrows' slices,
+        // clods and relief below are exactly zero-weighted once a furrow is under two pixels, so past that they are
+        // skipped, the result unchanged: the cracks' mean, the soil's flat relief)
+        float clodVis = 0.0, hC = 0.5, clodF = 0.5, fx = 0.0;
         // the clods: each furrow's slice breaks along its run into clods 0.2–0.45 m long (the length the furrow's own),
         // each a lump of its own height and tone with a dark crack at its ends — exact cells of an integer hash, faded as
         // a clod nears 3 px along the footprint (and as its furrow fades across it); the cracks' mean stays past the fade
-        float furI = floor(acrossP * 1.25);
-        float hF = soilHash(furI, floor(jit * 4096.0));
-        float clodL = (0.28 + 0.27 * hF) * kP;
-        float aC = alongP / clodL + hF * 17.0;
-        float clodF = fract(aC);
-        float hC = soilHash(floor(aC), furI + 7919.0);
-        float footA = abs(dot(gDwX, rowDir)) + abs(dot(gDwY, rowDir));
-        float clodVis = uLandTier > 1.5 ? smoothstep(2.5, 6.0, clodL / max(footA, 1e-4)) * furrowVis : 0.0;
+        if (furrowVis > 0.0) {
+          float furI = floor(acrossP * 1.25);
+          float hF = soilHash(furI, floor(jit * 4096.0));
+          float clodL = (0.28 + 0.27 * hF) * kP;
+          float aC = alongP / clodL + hF * 17.0;
+          clodF = fract(aC);
+          hC = soilHash(floor(aC), furI + 7919.0);
+          float footA = abs(dot(gDwX, rowDir)) + abs(dot(gDwY, rowDir));
+          clodVis = uLandTier > 1.5 ? smoothstep(2.5, 6.0, clodL / max(footA, 1e-4)) * furrowVis : 0.0;
+        }
         float crack = 1.0 - smoothstep(0.0, 0.14, min(clodF, 1.0 - clodF));
         cropCol *= 1.0 + ((hC - 0.5) * 0.36 - crack * 0.45) * clodVis - 0.03 * (1.0 - clodVis);
         // (mr4) its far mottle: the turned earth's damp and dry, its clods' clusters, ±16 % over 10–40 m where the
@@ -5144,9 +5152,11 @@ void splatCompute() {
         // the slice's own light and shade, not a breath of the rows' tone: its profile (sin x + 0.5 sin 2x + 0.22 sin 3x,
         // a lit gentle face and a steep shaded one, the higher harmonics faded with the pixel) shades its trough by the
         // soil's own occlusion and pales its dry crest, so a furrow reads as a ridge and a groove wherever it spans pixels
-        float fx = acrossP * 7.854;
-        float fprof = sin(fx) + 0.50 * sin(2.0 * fx) * stripeAA(0.4 * kP, acrossDir) + 0.22 * sin(3.0 * fx) * stripeAA(0.267 * kP, acrossDir);
-        cropCol *= 1.0 + (0.07 * smoothstep(0.5, 1.2, fprof) - 0.16 * smoothstep(0.1, -1.1, fprof)) * furrowVis;
+        if (furrowVis > 0.0) {
+          fx = acrossP * 7.854;
+          float fprof = sin(fx) + 0.50 * sin(2.0 * fx) * stripeAA(0.4 * kP, acrossDir) + 0.22 * sin(3.0 * fx) * stripeAA(0.267 * kP, acrossDir);
+          cropCol *= 1.0 + (0.07 * smoothstep(0.5, 1.2, fprof) - 0.16 * smoothstep(0.1, -1.1, fprof)) * furrowVis;
+        }
         // the lines' tone: the furrow's trough, the lands and the passes a breath (their relief carries them)
         rows = sin(acrossP * 3.927 + jit * 2.0) * 0.05 * stripeAA(1.6 * kP, acrossDir)
           + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.06
@@ -5157,9 +5167,12 @@ void splatCompute() {
         // relief stands down on the turned earth, and the furrows are relief instead: the slice leans — a lit face and a
         // steeper shaded one (the profile sin x + 0.35 sin 2x) — each clod standing its own height along it
         float soilHere = inField * landW;
-        float ridge = (cos(fx) + 1.0 * cos(2.0 * fx) * stripeAA(0.4 * kP, acrossDir) + 0.66 * cos(3.0 * fx) * stripeAA(0.267 * kP, acrossDir))
-          * mix(1.0, 0.45 + 1.10 * hC, clodVis);
-        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere) + acrossDir * ridge * 0.20 * furrowVis * soilHere;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere);
+        if (nrmOn && furrowVis > 0.0) {
+          float ridge = (cos(fx) + 1.0 * cos(2.0 * fx) * stripeAA(0.4 * kP, acrossDir) + 0.66 * cos(3.0 * fx) * stripeAA(0.267 * kP, acrossDir))
+            * mix(1.0, 0.45 + 1.10 * hC, clodVis);
+          n.xy += acrossDir * ridge * 0.20 * furrowVis * soilHere;
+        }
         // (wave 86: "no clods or furrow relief" past the furrows' reach) the lands' low crowns (each 3.2 m land a gentle
         // ridge, lit and shaded with the sun); each clod's lump along its run (rising from its crack and falling to the
         // next) and its own tilt; under them the crumbs, 4–9 cm, beside the camera
@@ -5241,21 +5254,24 @@ void splatCompute() {
         cropCol = mix(cropCol * (0.88 + 0.10 * n2), mix(cropCol, vec3(reduxLuma(cropCol)), 0.30) * 1.16, crust);
         vec3 clast = vec3(0.215, 0.205, 0.182) * bright;
         float karstStone = 0.0;
-        if (uLandTier > 0.5) {
+        float clastVisF = tileVis(0.8);
+        if (uLandTier > 0.5 && clastVisF > 0.0) {
           vec2 sq = nzq(uvW, 0.61, vec2(0.37, 0.71));
           float drift = smoothstep(0.20, 0.60, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
           karstStone = max(smoothstep(0.50, 0.66, sq.x) * (0.40 + 0.60 * drift), smoothstep(0.64, 0.74, sq.y) * 0.65);
         }
-        float clastVisF = tileVis(0.8);
         cropCol = mix(cropCol, clast, karstStone * 0.85 * clastVisF);
         cropCol = mix(cropCol, clast, 0.18 * (1.0 - clastVisF)); // the clasts' share of the far mean
         // the gravel: limestone pebbles of 3–6 cm in a 0.12 m lattice, one cell in eight (an exact integer hash), pale
         // grey; faded to their share as a cell nears 4 px
-        vec2 gC = floor(wp.xz / 0.12);
-        float gH = soilHash(gC.x + 3001.0, gC.y);
-        vec2 gF = fract(wp.xz / 0.12) - 0.5 - (vec2(fract(gH * 7.13), fract(gH * 3.77)) - 0.5) * 0.4;
-        float pebble = step(0.875, gH) * (1.0 - smoothstep(0.18 + 0.12 * fract(gH * 11.3), 0.30 + 0.12 * fract(gH * 11.3), length(gF)));
         float gravelVis = uLandTier > 0.5 ? tileVis(0.12) : 0.0;
+        float pebble = 0.0, gH = 0.5 / 5.1; // (past the gravel's visibility its share is its mean, the hash unread)
+        if (gravelVis > 0.0) {
+          vec2 gC = floor(wp.xz / 0.12);
+          gH = soilHash(gC.x + 3001.0, gC.y);
+          vec2 gF = fract(wp.xz / 0.12) - 0.5 - (vec2(fract(gH * 7.13), fract(gH * 3.77)) - 0.5) * 0.4;
+          pebble = step(0.875, gH) * (1.0 - smoothstep(0.18 + 0.12 * fract(gH * 11.3), 0.30 + 0.12 * fract(gH * 11.3), length(gF)));
+        }
         cropCol = mix(cropCol, vec3(0.20, 0.195, 0.185) * (0.85 + 0.3 * fract(gH * 5.1)), mix(0.03, pebble, gravelVis));
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
         // (as the plough's: wave 100's brush strokes were the furrows' ±0.45 m wander by the noise) the lines run straight,
@@ -5362,8 +5378,10 @@ void splatCompute() {
         // the grass tier's blades is more crop, not bare ground: its canopy of ears and their shade, a 5–6 cm mottle of
         // the noise read at its own level of detail (it averages to the field's calibrated tone with range, and is gone
         // by a 4 cm footprint) — the gaps dark and their colour deeper, the ears paler
-        vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y);
-        float ear = nz(uv, 1.7, vec2(0.31, 0.77)).r * 0.55 + nz(uE, 1.13, vec2(0.62, 0.18)).g * 0.45;
+        // (2026-10-06, the land use's far field and Aegis' chase cost: the two reads fused — the noise's two independent
+        // fields at one place, where the second read turned and rescaled the first's)
+        vec2 earN = nz(uv, 1.7, vec2(0.31, 0.77)).rg;
+        float ear = earN.x * 0.55 + earN.y * 0.45;
         float ec = clamp((ear - 0.5) * 2.4, -1.0, 1.0) * (1.0 - smoothstep(0.015, 0.04, gFootM));
         cropCol *= 1.0 + ec * vec3(0.50, 0.53, 0.62);
       }

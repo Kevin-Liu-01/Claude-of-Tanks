@@ -227,21 +227,22 @@ function checkLandUseCut(text) {
   // (wave 177, Saltwind: the karst's grazing is garrigue — its tussocks' bare soil one more field of the noise, Medium up)
   // (2026-10-05, Ruinspires' hardstanding: its grain and stains, Medium and High; its cracks, High; Ironworks' slag,
   // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
-  assert.deepEqual(reads, ['groundSamp', ...Array(7).fill('nz'), ...Array(8).fill('nzq'), 'textureLod', 'textureLod'],
-    'the block reads eight noise fields, the canopy\'s two near reads, the crumbs\' and the straw\'s, the hardstanding\'s three, the stones\' one, the bend\'s and the far path\'s coarse levels and the soil (the bake is lu_field\'s)');
+  // (2026-10-06, the land use's far field: the standing crop's two near reads fused into one, the noise's two fields)
+  assert.deepEqual(reads, ['groundSamp', ...Array(6).fill('nz'), ...Array(8).fill('nzq'), 'textureLod', 'textureLod'],
+    'the block reads eight noise fields, the canopy\'s one near read, the crumbs\' and the straw\'s, the hardstanding\'s three, the stones\' one, the bend\'s and the far path\'s coarse levels and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     // (2026-10-06, the urban fast path: a town's lots read neither the rows' bend nor the edge zone)
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 && !luUrb ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
-    ['if (farW > 0.001 && uLandTier > 0.5 && ((bnd < 1.5 && edgeM < 12.0 + 1.3 * uLandB.y) || (crop > 3.5 && crop < 4.5))) nFar = ',
-      'textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0)'],
+    // (the far field: its coarse read goes out before the decode, a far pixel's whatever its field; used only where it was)
+    ['vec2 nFarRead = farW > 0.001 && uLandTier > 0.5 ? ', 'textureLod(uNoise, uvW * 0.0119 + vec2(0.31, 0.47), 2.0)'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5 && !luUrb) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
-    ['float karstStone = 0.0; if (uLandTier > 0.5) { vec2 sq = ', 'nzq(uvW, 0.61, vec2(0.37, 0.71))'],
-    ['float bareG = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
+    // (the far field: a read whose pattern is under its visibility is not made — exactly, the term's weight is zero there)
+    ['float karstStone = 0.0; float clastVisF = tileVis(0.8); if (uLandTier > 0.5 && clastVisF > 0.0) { vec2 sq = ', 'nzq(uvW, 0.61, vec2(0.37, 0.71))'],
+    ['float bareG = uLandTier > 0.5 && bareVis > 0.0 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
-    ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
-      'nz(uv, 1.7, vec2(0.31, 0.77))'],
+    ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 earN = ', 'nz(uv, 1.7, vec2(0.31, 0.77))'],
     ['float crumbVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.02, 0.06, gFootM) : 0.0; if (crumbVis > 0.001) { vec2 cr = ',
       'nz(uv, 2.3, vec2(0.17, 0.41))'],
     ['float litVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.015, 0.04, gFootM) : 0.0; if (litVis > 0.001) { float litter = smoothstep(0.60, 0.76, ',
@@ -268,7 +269,8 @@ function checkLandUseCut(text) {
   assert.ok(/float farW = 1\.0 - luNear;/.test(block) && /nEdge = mix\(vec3\(0\.5\), vec3\(/.test(block) && /, luNear\);/.test(block),
     'the near wander fades with luNear and the far one comes in with 1 − luNear');
   const wanderAmp = Math.max(nearAmp, farAmp);
-  const [f0, f1] = num(/edgeM < ([\d.]+) \+ ([\d.]+) \* uLandB\.y\) \|\| \(crop > 3\.5 && crop < 4\.5\)\)\)\s*nFar = /, 'the far read\'s zone');
+  // (the far field: the read goes out ahead, and its zone decides where it is used)
+  const [f0, f1] = num(/edgeM < ([\d.]+) \+ ([\d.]+) \* uLandB\.y\) \|\| \(crop > 3\.5 && crop < 4\.5\)\)\s*\? nFarRead : vec2\(0\.5\);/, 'the far read\'s zone');
   assert.ok(f0 >= t0 && f1 >= t1, 'the far read\'s zone holds the near one');
   // (farmland: the fade narrows with the footprint, never past the near field's width — the proof takes that cap)
   assert.ok(/smoothstep\(marginM, marginM \+ fadeM, edgeW\)/.test(block), 'the crop fades into the margin over fadeM');
