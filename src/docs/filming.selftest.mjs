@@ -82,6 +82,10 @@ const [, fps, shutter, samples, maxSamples] = film.map(Number);
 assert.match(text, new RegExp(`3840 × 2160 and ${fps} frames per second`));
 assert.match(text, new RegExp(`average of ${samples} to ${maxSamples} complete renders at sub-pixel offsets across a ${shutter}° shutter`));
 assert.match(text, new RegExp(`at most ${FILM_MOTION_STEP_PX} pixels apart`));
+// Deep focus (owner 2026-10-06): the media builder turns depth of field and fringing off for every scene.
+const sets = read('tools/media-r5/sets.mjs');
+assert.match(sets, /export const pictureFor = \(set, extra = \{\}\) => \(\{\n\s+preset: [^\n]+\n\s+dof: \{ enabled: false \},\n\s+chromaticAberration: 0,/);
+assert.match(text, /in deep focus: sharp from the lens to the horizon/);
 assert.match(read('tools/media-r5/cinema-jobs.mjs'), /resolution: Number\(opt\.resolution \?\? 2160\)/, 'finals render at 2160p');
 assert.match(read('tools/media-r5/lens-check.mjs'), /export function lensReport\(scene, model, \{ stepMs = 100,/);
 assert.match(text, /samples the camera every 100 ms and casts five sightlines/);
