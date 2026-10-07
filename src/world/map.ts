@@ -438,6 +438,8 @@ function assembleWorld(
     ...((props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles ?? []),
     // the regional-buildings lane (2026-10-03): nor through a kit house's yard (props.ts placeRegionalYards)
     ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
+    // the landmarks lane (2026-10-07): nor through a set piece's paving (landmarks/compose.ts GROUND_HOLE_KINDS)
+    ...((props.group.userData.landmarkGroundHoles as GroundCoverHole[] | undefined) ?? []),
   ];
   const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the

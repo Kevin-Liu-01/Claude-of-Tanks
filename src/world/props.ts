@@ -4757,14 +4757,18 @@ ${snowCap ? `
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
       veto: (x, z, yaw, hw, hd) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd }); },
+      groundHole: (x, z, r) => { landmarkGroundHoles.push({ x, z, r }); },
       publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
       // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
       // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
       addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
     });
     group.userData.landmarks = receipt;
+    if (landmarkGroundHoles.length) group.userData.landmarkGroundHoles = landmarkGroundHoles;
   }
   const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
+  // the paved pieces' ground (map.ts keeps the grass off it with the scenery's and the yards' holes)
+  const landmarkGroundHoles: Array<{ x: number; z: number; r: number }> = [];
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
