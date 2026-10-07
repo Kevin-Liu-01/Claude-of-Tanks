@@ -54,8 +54,8 @@
       "concealers": 703
     },
     "railyard": {
-      "bytes": 1173086,
-      "sha256": "0fc331306ea257e774a265b9d1853d8201ae1c3ef349f02dcdae006e235a60dc",
+      "bytes": 1131366,
+      "sha256": "62f2214837b6676c0d3648c5c2052c1a40c6cd7fd98f96d59c772cf95ee71f61",
       "obstacles": 2101,
       "colliders": 2119,
       "concealers": 1091
@@ -201,8 +201,8 @@
       "concealers": 5709
     },
     "saltwind": {
-      "bytes": 1239697,
-      "sha256": "2a520233c6aa08200e7d9f7ade5c27b93f3a5826b48a74f754dbc0fdebe1eebd",
+      "bytes": 1212613,
+      "sha256": "5c3ac18fff944ceabef7052c9df50eb4157299250bf8afecb2da60c9fdd028fa",
       "obstacles": 3037,
       "colliders": 2880,
       "concealers": 3408

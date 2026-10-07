@@ -4810,7 +4810,14 @@ ${snowCap ? `
     // instanced + crushable (see the destructible layer above). The garden
     // fence keeps its role as a fence-kit run of breakable modules.
     const INH = P.inhabit || {};
-    const yardFence = INH.yardFence || 'fencepicket';
+    // (the scenery lane, 2026-10-06; the facades lane's trace of the waves' "white picket fences" on Frontier, Saltmere
+    // and Glacier: every map without a yard fence of its own drew the whitewashed American picket here) a map's own
+    // inhabit.yardFence names its free-standing garden runs; without one, its kit's yard enclosure where that is a fence
+    // other than the picket (the kits' pickets and low walls enclose their own yards, yards.ts: a free-standing run of
+    // wall is a maps lane's call), else a plank fence. Every choice is a fence kind: the same footprint and collider class
+    const kitYardFence = regionalArchitecture?.yard?.fence ?? '';
+    const yardFence = INH.yardFence
+      || (kitYardFence.startsWith('fence') && kitYardFence !== 'fencepicket' ? kitYardFence : 'fenceplank');
     const placeYardFirewood = (building: PlacedRadius): void => {
       if (yrng() >= 0.6) return;
       const spot = yardSpot(building, 1.2, 3.4);
