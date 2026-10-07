@@ -239,10 +239,12 @@ interface BoulderKindShape {
   readonly lumps: readonly [number, number, number];
 }
 
+// (b28; gauntlet wave 174, every map's boulders: "smooth low-poly loaves", "no fracture faces" — the weather rounds the
+// joints' arrises less broadly and lumps the faces less, so the joint faces read as faces)
 const KIND_SHAPES: Readonly<Record<BoulderKindName, BoulderKindShape>> = Object.freeze({
-  block: { size: [1.0, 0.8, 0.86], round: 0.1, lumps: [0.075, 0.03, 0.011] },
-  rounded: { size: [0.98, 0.84, 0.9], round: 0.13, lumps: [0.09, 0.034, 0.012] },
-  slab: { size: [1.05, 0.62, 0.92], round: 0.1, lumps: [0.06, 0.026, 0.01] },
+  block: { size: [1.0, 0.8, 0.86], round: 0.085, lumps: [0.062, 0.025, 0.011] },
+  rounded: { size: [0.98, 0.84, 0.9], round: 0.11, lumps: [0.074, 0.028, 0.012] },
+  slab: { size: [1.05, 0.62, 0.92], round: 0.085, lumps: [0.05, 0.022, 0.01] },
 });
 
 /**
@@ -267,7 +269,7 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
 });
 
 /** A fresh fracture's arris: the smooth maximum's width between the weathered mass and the break (unit space). */
-const BOULDER_FRACTURE_ROUND = 0.045;
+const BOULDER_FRACTURE_ROUND = 0.035;
 /** A notch's re-entrant corner and its arrises with the mass (unit space). */
 const BOULDER_NOTCH_ROUND = 0.07;
 /** The fracture share a notch's faces carry (an old parting or joint opened, paler than the weathered skin). */
@@ -299,7 +301,8 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   limestone: { kinds: ['block', 'slab', 'block'], soft: 1 },
   slate: { kinds: ['slab', 'block', 'slab'], soft: 0.7 },
   // (b12: the marshmallow — two of three rounded, the softest weather — gives way to fractured blocks and a slab)
-  chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },
+  // (b28; wave 174: Verdant's chalk "white soap" — its corestone gives way to a second fractured block)
+  chalk: { kinds: ['block', 'block', 'slab'], soft: 0.95 },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
@@ -396,7 +399,8 @@ function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant
     const e = i === 0 ? range(0.42, 0.85) : range(0.14, 0.42), az = az0 + (i === 0 ? 0 : (i === 1 ? 1 : -1) * range(1.31, 1.75));
     // (a corestone's weather rounds it well inside its joints' support: its breaks cut deeper to reach it)
     const deeper = kind === 'rounded' ? 0.08 : 0;
-    fractures.push(supportPlane(kind, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), (i === 0 ? range(0.74, 0.84) : range(0.8, 0.9)) - deeper, 1));
+    // (b28: a little deeper, so each break is a broad face of its own and not a chip off an arris)
+    fractures.push(supportPlane(kind, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), (i === 0 ? range(0.7, 0.8) : range(0.76, 0.86)) - deeper, 1));
   }
   let bedding: BoulderCuts['bedding'] = null;
   if (law.bed) {
@@ -629,6 +633,8 @@ export function buildBoulderForm(
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
+  // (b28: the tilt's draws after every draw the form took before it, so the form is the one it was, tipped)
+  const tiltAz = rng() * Math.PI * 2, tilt = (0.07 + rng() * 0.12) * (kind === 'slab' ? 0.75 : 1);
   const [lumpA, lumpB, lumpC] = shape.lumps;
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
@@ -650,6 +656,26 @@ export function buildBoulderForm(
     out[0] = x * foot; out[1] = y; out[2] = z * foot;
     return out;
   };
+  // (b28; gauntlet wave 174: "dropped on the ground … no lopsided burial"; the coordinator: "bedding — lopsided burial")
+  // the stone tipped on its bed four to eleven degrees about its own horizontal axis (a slab less): the ground line
+  // takes more of it on one side than the other, as a boulder settles into the soil where it came to rest — the form's
+  // every part, its joints, its breaks and its beds, turned together before the fit
+  const tax = Math.cos(tiltAz), taz = Math.sin(tiltAz), tc = Math.cos(tilt), ts = Math.sin(tilt);
+  /** A vector turned by the tilt (sign +1) or back (sign -1) about the horizontal axis (tax, 0, taz) (Rodrigues). */
+  const tip = (x: number, y: number, z: number, sign: number, o: number[]): number[] => {
+    const sn = ts * sign, kv = tax * x + taz * z;
+    o[0] = x * tc - taz * y * sn + tax * kv * (1 - tc);
+    o[1] = y * tc + (taz * x - tax * z) * sn;
+    o[2] = z * tc + tax * y * sn + taz * kv * (1 - tc);
+    return o;
+  };
+  const tipIn = [0, 0, 0], tipOut = [0, 0, 0];
+  /** The tipped stone's surface along a unit direction. */
+  const tipped = (ux: number, uy: number, uz: number, weights: Float64Array | null): number[] => {
+    tip(ux, uy, uz, -1, tipIn);
+    const p = surface(tipIn[0], tipIn[1], tipIn[2], weights);
+    return tip(p[0], p[1], p[2], 1, tipOut);
+  };
   const { points, quads, fan } = cubeGrid(n);
   const count = points.length / 3;
   // the directions: columns crowded toward the cube's edges (where the frame's arrises fall) and rows upward (the
@@ -664,7 +690,7 @@ export function buildBoulderForm(
   // the skirt's floor as deep under the fitted rock as under any other, whatever its kind's height: the rock's top (which
   // no floor reaches) sets the fit's height, and the floor goes at least 1.5 under the ground line in fitted space
   let top0 = -Infinity;
-  for (let v = 0; v < count; v++) if (dirs[v * 3 + 1] > 0) top0 = Math.max(top0, surface(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2], null)[1]);
+  for (let v = 0; v < count; v++) if (dirs[v * 3 + 1] > 0) top0 = Math.max(top0, tipped(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2], null)[1]);
   const ky0 = topY > 0 && top0 > 0 ? (topY * 0.98) / top0 : 1;
   const floorPlane = planes.find((q) => q[1] === -1);
   if (floorPlane) floorPlane[3] = Math.max(floorPlane[3], 1.5 / ky0);
@@ -674,7 +700,7 @@ export function buildBoulderForm(
   const raw = new Float64Array(count * 3);
   let top = -Infinity;
   for (let v = 0; v < count; v++) {
-    const p = surface(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2], weights);
+    const p = tipped(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2], weights);
     raw[v * 3] = p[0]; raw[v * 3 + 1] = p[1]; raw[v * 3 + 2] = p[2];
     top = Math.max(top, p[1]);
     let largest = 0, chip = 0, tone = 0;
@@ -698,10 +724,10 @@ export function buildBoulderForm(
     const theta = (j / GIRTH) * Math.PI * 2, c = Math.cos(theta), sn = Math.sin(theta);
     let lo = -1.3, hi = 1.3;
     for (let it = 0; it < 26; it++) {
-      const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
+      const e = (lo + hi) / 2, q = tipped(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
       if (q[1] > 0) hi = e; else lo = e;
     }
-    const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
+    const e = (lo + hi) / 2, q = tipped(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
     girth[j] = Math.hypot(q[0], q[2]);
   }
   const girthAt = (x: number, z: number): number => {
@@ -712,7 +738,7 @@ export function buildBoulderForm(
    * the hull (a few per cent over it where a slope's downhill side can bare it, more deeper down), so a hull never meets
    * a rock it can't see. */
   const fitted = (ux: number, uy: number, uz: number): number[] => {
-    const p = surface(ux, uy, uz, null);
+    const p = tipped(ux, uy, uz, null);
     if (p[1] < 0) {
       const r0 = Math.hypot(p[0], p[2]);
       if (r0 > 1e-6) {
@@ -767,9 +793,11 @@ export function buildBoulderForm(
   // past the partings' salt: linear in the stone, so a parting runs straight across a triangle), its height on the stone
   // (a share of the fitted top), its break share and its hollow
   const face = new Float32Array(count * 4), fittedTop = topY > 0 ? topY * 0.98 : top * ky;
+  // (the beds tipped with the stone)
+  const bedN = cuts.bedding ? tip(cuts.bedding.n[0], cuts.bedding.n[1], cuts.bedding.n[2], 1, [0, 0, 0]) : null;
   for (let v = 0; v < count; v++) {
     const b = cuts.bedding;
-    face[v * 4] = b ? (b.n[0] * raw[v * 3] + b.n[1] * raw[v * 3 + 1] + b.n[2] * raw[v * 3 + 2]) / b.thickness + b.salt : 0;
+    face[v * 4] = b && bedN ? (bedN[0] * raw[v * 3] + bedN[1] * raw[v * 3 + 1] + bedN[2] * raw[v * 3 + 2]) / b.thickness + b.salt : 0;
     face[v * 4 + 1] = clamp(pos[v * 3 + 1] / Math.max(1e-6, fittedTop), -1, 1);
     face[v * 4 + 2] = fresh[v];
     face[v * 4 + 3] = hollow[v];
@@ -791,7 +819,9 @@ export function buildBoulderForm(
 const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
   // (b12: an albedo of 0.6 to 0.7, not snow's: a cooler, greyer off-white; a fresh fracture a shade paler, to 0.76)
   // (b18; wave 121, "a smooth grey granite texture ... neither chalk nor any local field stone": a little warmer)
-  chalk: [0.11, 0.2, 0.6],
+  // (b28; waves 174 and 180 read Verdant's chalk as grey granite and "a smooth, uniform pebble": a cream off-white, a
+  // shade lighter and warmer, its flint bands and grey rind the material's)
+  chalk: [0.115, 0.24, 0.65],
 });
 
 /**
@@ -1098,7 +1128,11 @@ const ROCK_BEDS_GLSL = /* glsl */`
       float bedRun = texture2D(uGrime, vGrimeW.xz * 0.41 + vec2(kn * 0.137, kn * 0.071)).r;
       vec2 bedDu = vec2(dFdx(bu), dFdy(bu));
       float bedPx = abs(bedDu.x) + abs(bedDu.y);
-      float strength = smoothstep(0.22, 0.42, sk) * (0.5 + 0.5 * sk) * smoothstep(0.4, 0.56, bedRun) * (1.0 - smoothstep(0.1, 0.25, bedPx));
+      // (b28; waves 174 and 180: "strata and seams painted across curved forms", "ruled lines on the sandstone") a parting
+      // shows where the stone's flank cuts its bed — on the flanks, fading over the rounded shoulders and the tops,
+      // where a bed's plane runs along the surface and a line drawn there is paint
+      float bedFlank = smoothstep(0.25, 0.6, 1.0 - abs(normalize(vGrimeN).y));
+      float strength = smoothstep(0.22, 0.42, sk) * (0.5 + 0.5 * sk) * smoothstep(0.4, 0.56, bedRun) * (1.0 - smoothstep(0.1, 0.25, bedPx)) * bedFlank;
       float halfWidth = 0.045 + bedPx * 1.2, across = clamp(abs(dn) / halfWidth, 0.0, 1.0);
       float groove = strength * (1.0 - across * across * (3.0 - 2.0 * across));
       // (the softer bed under a parting weathers back under the harder one's lip: its throat darkest just below)
@@ -1131,7 +1165,8 @@ const ROCK_BEDS_GLSL = /* glsl */`
         float lamTone = (lamK - 0.5) * (1.0 - smoothstep(0.35, 0.7, lamW));
         float lamEdge = smoothstep(0.0, 0.12 + lamCW, fract(lamC)) * (1.0 - smoothstep(0.88 - lamCW, 1.0, fract(lamC)));
         float lamBundle = (lamCK - 0.5) * mix(0.6, 1.0, lamEdge) * (1.0 - smoothstep(0.3, 0.6, lamCW));
-        diffuseColor.rgb *= 1.0 + uRockFabric.x * (lamBundle * 0.42 + lamTone * 0.14 - lamLine * (lamK > 0.82 ? -0.14 : 0.16 + 0.2 * lamK));
+        // (b28: the laminae a tone a lamina, the odd fine line — not a ruled sheet — and only on the flanks)
+        diffuseColor.rgb *= 1.0 + uRockFabric.x * bedFlank * (lamBundle * 0.3 + lamTone * 0.1 - lamLine * (lamK > 0.82 ? -0.06 : 0.04 + 0.07 * lamK));
       }
     }
     if (uRockBeds.z > 0.0) {

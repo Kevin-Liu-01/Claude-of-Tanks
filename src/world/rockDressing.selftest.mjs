@@ -136,8 +136,9 @@ function checkForm(form, label, hull, legacyTop, subdiv) {
     if (form.fresh[i] > 0.3) broken++;
     onFace = Math.max(onFace, form.fresh[i]);
   }
-  // (a phone's coarser rows blend a break into the mass over a wider arris)
-  assert.ok(onFace > (subdiv >= 6 ? 0.8 : 0.6) && broken / above >= 0.1, `${label}: a break above the ground (${(broken / above * 100).toFixed(0)} % of the skin, ${onFace.toFixed(2)} on its face)`);
+  // (a phone's coarser rows blend a break into the mass over a wider arris; b28: and a tipped stone's break can fall
+  // between them)
+  assert.ok(onFace > (subdiv >= 6 ? 0.8 : 0.55) && broken / above >= 0.1, `${label}: a break above the ground (${(broken / above * 100).toFixed(0)} % of the skin, ${onFace.toFixed(2)} on its face)`);
   // the material's facts per vertex (aRockFace): the bed coordinate, the height on the stone, the break, the hollow
   const face = g.getAttribute('aRockFace');
   assert.ok(face && face.itemSize === 4 && face.count === p.count, `${label}: a face fact for every vertex`);
@@ -313,8 +314,12 @@ assert.deepEqual([rockDressingFor('mars', null).lichen[0], rockDressingFor('moon
 assert.equal(rockDressingFor('desert', null).lithology, 'sandstone');
 assert.equal(rockDressingFor('verdant', null).lithology, 'chalk', 'Prokhorovka\'s exposed rock is chalk (wave 57: no erratics south of the glacial limit)');
 assert.ok([0, 1, 2].some((v) => BOULDER_KINDS[boulderKindFor('sandstone', v)] === 'slab'), 'sandstone parts in slabs');
-assert.equal([0, 1, 2].filter((v) => BOULDER_KINDS[boulderKindFor('chalk', v)] === 'rounded').length, 1,
-  'the chalk breaks into blocks and slabs, one of three weathered round (b12: no marshmallow)');
+// (b28; wave 174, Verdant's chalk: "white soap" — and b27's limestone, Saltwind's "two smooth egg-shaped boulders": the
+// soft carbonate stones break into blocks and slabs alone, no corestone)
+for (const lith of ['chalk', 'limestone']) {
+  assert.equal([0, 1, 2].filter((v) => BOULDER_KINDS[boulderKindFor(lith, v)] === 'rounded').length, 0,
+    `the ${lith} breaks into blocks and slabs, none weathered round (no marshmallow, no egg)`);
+}
 for (const mapId of MAP_IDS) {
   const [contrast, colour, relief] = rockDressingFor(mapId, null).photo;
   assert.ok(contrast > 0.3 && contrast <= 1.3 && colour >= 0 && colour <= 1 && relief > 0.3 && relief <= 1, `${mapId}: the photographed stone's treatment bounded`);
@@ -529,8 +534,28 @@ assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
-  'the contact patches go to the ground decals, conformed to the drawn mesh, one private input and checkpoint each');
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH, spot\.outline \?\? null\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+  'the contact patches go to the ground decals, conformed to the drawn mesh, round their own outlines, one private input and checkpoint each');
+// (b28; waves 174 and 180: "a neat disc of bare brown dirt", "a hard circular edge") every patch round its own outline:
+// three harmonics of the place's own phases and a creep downhill, no draw from the props stream; the disc drawn round it
+{
+  const at = source.indexOf('  function contactOutline(');
+  const end = source.indexOf('\n  }\n', source.indexOf('  function outlineAt(', at)) + 4;
+  assert.ok(at > 0 && end > at, 'the outline law');
+  const body = source.slice(at, end);
+  assert.ok(!/\brng\(\)/.test(body), 'the outline draws nothing from the props stream');
+  const { contactOutline, outlineAt } = new Function(`const ROCK_PATCH_SEGS = ${/const ROCK_PATCH_SEGS = (\d+);/.exec(source)[1]};\n${stripTypeScriptTypes(body)}\nreturn { contactOutline, outlineAt };`)();
+  const a = contactOutline(12.3, -40.7, 0, 0), b = contactOutline(12.3, -40.7, 0, 0), c = contactOutline(80.1, 33.2, 0, 0);
+  assert.deepEqual(Array.from(a), Array.from(b), 'deterministic by place');
+  assert.ok(a.length === 24 && a.some((v, i) => Math.abs(v - c[i]) > 0.05), 'twenty-four directions, another place another outline');
+  assert.ok(Math.max(...a) - Math.min(...a) > 0.12 && Math.min(...a) > 0.6 && Math.max(...a) < 1.25, `the outline swells and narrows (${Math.min(...a).toFixed(2)} .. ${Math.max(...a).toFixed(2)})`);
+  // on a 15 % slope falling toward +x the patch runs out downhill
+  const slope = contactOutline(12.3, -40.7, -0.15, 0), flat = a;
+  assert.ok(slope[0] - flat[0] > 0.15 && Math.abs(slope[12] - flat[12]) < 1e-6, `the soil creeps downhill (${(slope[0] - flat[0]).toFixed(2)} more down the slope, none up it)`);
+  assert.ok(Math.abs(outlineAt(a, 0) - a[0]) < 1e-6 && Math.abs(outlineAt(a, Math.PI / 24) - (a[0] + a[1]) / 2) < 1e-6 && outlineAt(undefined, 1) === 1, 'the outline read between its directions as the disc draws it');
+  assert.match(source, /const rings = CONTACT_PATCH_RINGS, segs = outline \? outline\.length : 18;/, 'the disc round the outline, the other decals the compass\'s eighteen');
+  assert.match(source, /outline: contactOutline\(x, z, slope\[i \* 2\], slope\[i \* 2 \+ 1\]\) \};/, 'every boulder\'s patch its outline, by its place and its ground\'s slope');
+}
 // (b12, after the Coastal re-shoot: a 2-3 px crease at a stone's foot where the patch's inner ring showed past a bank's
 // lip) a boulder's patch lightens toward the stone, its outer shadow whole; the contact layer carries the shares in its
 // vertex alpha, the other decals keep their geometry
@@ -634,6 +659,9 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const ringsSrc = /const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
   const sharesSrc = /const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
   const contactShare = new Function(`const CONTACT_PATCH_RINGS = ${ringsSrc}, ROCK_PATCH_SHARES = ${sharesSrc};\n${stripTypeScriptTypes(source.slice(shareAt, source.indexOf('\n  }\n', shareAt) + 4))}\nreturn contactShare;`)();
+  // (b28) the outline's reader, as the beds' shades read it
+  const outlineAtAt = source.indexOf('  function outlineAt(');
+  const outlineAt = new Function(`${stripTypeScriptTypes(source.slice(outlineAtAt, source.indexOf('\n  }\n', outlineAtAt) + 4))}\nreturn outlineAt;`)();
   const SPOT_R = 2.6;
   const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
@@ -645,10 +673,11 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
     const rockBedShades = [];
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
-      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare', 'outlineAt',
+      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt,
+      { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0), ...(foldAt ? { _foldAt: foldAt } : {}) },
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
-      rockContact, rockSpotOf, rockBedShades, contactShare);
+      rockContact, rockSpotOf, rockBedShades, contactShare, outlineAt);
     const it = fn();
     let r = it.next();
     while (!r.done) r = it.next();
@@ -674,6 +703,12 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
       const a = new THREE.Vector3().fromBufferAttribute(p, idx[t]), b = new THREE.Vector3().fromBufferAttribute(p, idx[t + 1]), c = new THREE.Vector3().fromBufferAttribute(p, idx[t + 2]);
       assert.ok(b.sub(a).cross(c.sub(a)).y > 0, `${label}: every triangle faces up`);
     }
+    // (b28; waves 174 and 180: "a thin pale outline along its base") the lip lit as the ground under it and drawn by the
+    // ground's layers for its slope, never the steep-slope earth: its normals the ground's, bent a third toward its own
+    const nrm = g.attributes.normal;
+    let steepest = 1;
+    for (let v = 0; v < nrm.count; v++) steepest = Math.min(steepest, nrm.getY(v));
+    assert.ok(steepest > 0.85, `${label}: the lip's normals the ground's (the steepest ${steepest.toFixed(3)} up)`);
   }
   // the drift: the sand piled up the windward side (the wind blows along +x: its windward face looks along -x)
   const lipAt = (beds, dirX) => {
@@ -703,7 +738,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     assert.ok(Math.abs(contactShare(0) - 0.3) < 1e-9 && Math.abs(contactShare(0.55) - 0.425) < 1e-9 && Math.abs(contactShare(0.99) - (0.5 + 0.5 * (0.29 / 0.3))) < 1e-9 && contactShare(1.01) === 0, 'the share profile');
     assert.match(source, /for \(const shade of rockBedShades\) dirtDiscs\.push\(shade\);/, 'the shades join the contact layer');
     assert.match(source, /const ROCK_PATCH = ROCK_PATCH_SHARES;/, 'the disc and the shades share one profile');
-    assert.match(source, /const rings = CONTACT_PATCH_RINGS, segs = 18;/, 'and one set of rings');
+    assert.match(source, /const rings = CONTACT_PATCH_RINGS, segs = outline \? outline\.length : 18;/, 'and one set of rings');
   }
   {
     const flat = soil.beds[0].getAttribute('fold');

@@ -6153,7 +6153,8 @@ ${snowCap ? `
       slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
       slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
       if (rockContact) {
-        const spot = { x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) };
+        const spot: RockSpot = { x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)),
+          outline: contactOutline(x, z, slope[i * 2], slope[i * 2 + 1]) };
         rockSpots.push(spot);
         rockSpotOf.set(rockPlacements[vi][i], spot);
       }
@@ -6334,10 +6335,12 @@ ${snowCap ? `
             cell.pos.push(x, y, z);
             cell.fold.push(foldByte(x, z));
             if (spot && j >= 1) {
-              const rho = Math.hypot(x - spot.x, z - spot.z) / spot.r;
+              // (b28: the disc's ring at that angle: its outline's radius there)
+              const ox = x - spot.x, oz = z - spot.z, reachHere = spot.r * outlineAt(spot.outline, Math.atan2(oz, ox));
+              const rho = Math.hypot(ox, oz) / reachHere;
               shadePos.push(x, y + 0.03, z);
               const toRim = rho > 1 ? 1 / rho : 1; // (past the rim, where the shade is clear, the disc's edge texel)
-              shadeUv.push(0.5 + 0.5 * toRim * (x - spot.x) / spot.r, 0.5 + 0.5 * toRim * (z - spot.z) / spot.r);
+              shadeUv.push(0.5 + 0.5 * toRim * ox / reachHere, 0.5 + 0.5 * toRim * oz / reachHere);
               shadeTint.push(1, 1, 1, j === RINGS - 1 ? 0 : contactShare(rho));
             }
           }
@@ -6370,6 +6373,17 @@ ${snowCap ? `
       geometry.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
       geometry.setIndex(idx);
       geometry.computeVertexNormals();
+      // (b28; waves 174 and 180: "a thin pale outline along its base", "a hard tan rim") the ground's material takes its
+      // steep-slope layer — bare earth and rock — by its normal, and lights by it: the lip's own steep normals drew a pale
+      // ring round every stone. Its normals are the ground's under it, bent a third of the way toward the lip's own, so the
+      // lip reads as the turf or the soil banked against the stone, lit as the ground round it
+      const nrm = geometry.attributes.normal as THREE.BufferAttribute;
+      for (let v = 0; v < nrm.count; v++) {
+        const g = heightField.getNormalAt(pos[v * 3], pos[v * 3 + 2]);
+        const nx = g.x + (nrm.getX(v) - g.x) * 0.35, ny = g.y + (nrm.getY(v) - g.y) * 0.35, nz = g.z + (nrm.getZ(v) - g.z) * 0.35;
+        const l = Math.hypot(nx, ny, nz) || 1;
+        nrm.setXYZ(v, nx / l, ny / l, nz / l);
+      }
       geometry.computeBoundingSphere();
       out.push(geometry);
     }
@@ -6380,12 +6394,37 @@ ${snowCap ? `
   // patch, a ragged disc of soil a fifth to a third wider than its reach, to the ground decals below (none on a snow map,
   // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
   const rockContact = !snowCap && rockDressing.dust < 0.5;
-  const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  /** (b28) a boulder's contact patch: its centre, its radius and its outline (the radius's share, ROCK_PATCH_SEGS round). */
+  type RockSpot = { x: number; z: number; r: number; outline?: Float32Array };
+  const rockSpots: RockSpot[] = [];
+  // (b28; gauntlet waves 174 and 180, every map's boulders: "a neat disc of bare brown dirt", "a bright orange sand disc
+  // with a hard circular edge", "ringed by a thin, hard, dark-brown outline where it meets a flat dirt apron") the patch's
+  // outline is the ground's, not a compass's: its radius swells and narrows round the stone (three harmonics of the place's
+  // own phases, no draw from the props stream) and runs out downhill, where the soil and the stone's wash creep
+  const ROCK_PATCH_SEGS = 24;
+  function contactOutline(x: number, z: number, slopeX: number, slopeZ: number): Float32Array {
+    const h = (k: number) => ((Math.imul(Math.round(x * 13.7) + k * 0x632be5ab, 0x9e3779b1) ^ Math.imul(Math.round(z * 17.3) - k * 0x2c1b3c6d, 0x85ebca6b)) >>> 0) / 4294967296 * Math.PI * 2;
+    const p2 = h(1), p3 = h(2), p5 = h(3);
+    const grade = Math.hypot(slopeX, slopeZ), downX = grade > 1e-4 ? -slopeX / grade : 0, downZ = grade > 1e-4 ? -slopeZ / grade : 0;
+    const creep = Math.min(1, grade / 0.15);
+    const out = new Float32Array(ROCK_PATCH_SEGS);
+    for (let k = 0; k < ROCK_PATCH_SEGS; k++) {
+      const a = (k / ROCK_PATCH_SEGS) * Math.PI * 2, down = Math.max(0, Math.cos(a) * downX + Math.sin(a) * downZ);
+      out[k] = 0.84 + 0.1 * Math.sin(2 * a + p2) + 0.07 * Math.sin(3 * a + p3) + 0.04 * Math.sin(5 * a + p5) + 0.2 * creep * down * down;
+    }
+    return out;
+  }
+  /** The outline's share at an angle (linear between its directions, as the disc's straight edges draw it). */
+  function outlineAt(outline: Float32Array | undefined, angle: number): number {
+    if (!outline) return 1;
+    const n = outline.length, f = ((angle / (Math.PI * 2)) % 1 + 1) % 1 * n, k = Math.floor(f) % n, t = f - Math.floor(f);
+    return outline[k] + (outline[(k + 1) % n] - outline[k]) * t;
+  }
   // (b16; gauntlet wave 121: boulders "on pale halos or texture seams") each stone's contact patch by its placement, and
   // the patch carried over its bed: the bed (the ground's own material, risen round the foot) hid the patch's inner rings
   // and showed the clean ground as a pale ring between the stone and its soil. The patch's rings and their shares of its
   // darkness are the disc's (conformedDisc, ROCK_PATCH); a shade over the bed takes the same at the same place
-  const rockSpotOf = new Map<THREE.Matrix4, { x: number; z: number; r: number }>();
+  const rockSpotOf = new Map<THREE.Matrix4, RockSpot>();
   const CONTACT_PATCH_RINGS: readonly number[] = [0, 0.4, 0.7, 1.0];
   const ROCK_PATCH_SHARES: readonly number[] = [0.3, 0.35, 0.5, 1];
   const rockBedShades: THREE.BufferGeometry[] = [];
@@ -7903,8 +7942,10 @@ ${snowCap ? `
       profile: readonly number[],
       onMesh = false,
       shares: readonly number[] | null = null,
+      outline: Float32Array | null = null,
     ): THREE.BufferGeometry {
-      const rings = CONTACT_PATCH_RINGS, segs = 18;
+      // (b28: a boulder's patch round its own outline, ROCK_PATCH_SEGS directions; the other decals the compass's 18)
+      const rings = CONTACT_PATCH_RINGS, segs = outline ? outline.length : 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
@@ -7916,8 +7957,8 @@ ${snowCap ? `
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
         for (let k = 0; k < segs; k++) {
-          const a = (k / segs) * Math.PI * 2;
-          const px = x + Math.cos(a) * r * rings[ri], pz = z + Math.sin(a) * r * rings[ri];
+          const a = (k / segs) * Math.PI * 2, rk = outline ? r * outline[k] : r;
+          const px = x + Math.cos(a) * rk * rings[ri], pz = z + Math.sin(a) * rk * rings[ri];
           pos[vi * 3] = px;
           pos[vi * 3 + 1] = groundAt(px, pz) + profile[ri];
           pos[vi * 3 + 2] = pz;
@@ -8042,7 +8083,7 @@ ${snowCap ? `
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH, spot.outline ?? null));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
