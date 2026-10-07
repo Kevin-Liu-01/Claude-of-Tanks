@@ -5,13 +5,17 @@
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
-//     [--min-free-gb=6]
+//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
 // chunks can be large (few capture-lock waits) without ~0.77 GB of master per take on the shared disk.
 // cinema.mjs holds the shared capture lock for a whole job list, so the films go in chunks (default 10 per lease) and
-// other sessions' captures get the GPU between them.
+// other sessions' captures get the GPU between them. A chunk runs take by take, each film with its stills (one map load).
+// --keep-place (the coordinator's alternating finals, 2026-10-07): every lease joins the capture queue at the run's first
+// stamp (renders/ticket-stamp, kept across relaunches; --keep-place=<ms> sets it, e.g. the lane's earlier place in the
+// line), so after each lease the finals follow whichever lane took the GPU, and a lease ends before a take that would
+// carry it past --lease-min (45): the rest of the chunk takes the next lease.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/;
 // --tag=<round> writes renders-<round>/ and deliver-<round>/ instead, so every round's renders stay (owner 2026-10-03).
@@ -40,6 +44,25 @@ for (const f of readdirSync(scenes).filter(f => /^s\d\d-.*\.json$/.test(f))) {
 }
 console.log(`[finals] ${staged} resolved site shots in ${resolved}`);
 mkdirSync(renders, { recursive: true });
+// cinema runs as a child the runner waits on without blocking its encodes; a signal stops the child, which releases the
+// capture lock, and then the run
+let cinemaChild = null, stopping = false;
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopping = true; cinemaChild?.kill(signal); });
+const cinema = (label, cmdArgs) => new Promise((done, fail) => {
+  if (stopping) { fail(new Error('stopped by a signal')); return; }
+  console.log(`[finals] ${label}: node ${cmdArgs.join(' ')}`);
+  cinemaChild = spawn('node', cmdArgs, { stdio: 'inherit', env: { ...process.env, MEDIA_R5_LIGHT: '1' } });
+  cinemaChild.on('error', fail);
+  cinemaChild.on('exit', (code, signal) => { cinemaChild = null; done(code ?? (signal ? 1 : 0)); });
+});
+const keepPlace = 'keep-place' in flags, leaseMin = Number(flags['lease-min'] ?? 45);
+const stampFile = join(renders, 'ticket-stamp');
+const givenStamp = /^\d+$/.test(flags['keep-place'] ?? '') ? Number(flags['keep-place']) : null;
+const stamp = keepPlace ? givenStamp ?? (existsSync(stampFile) ? Number(readFileSync(stampFile, 'utf8')) : Date.now()) : null;
+if (keepPlace) { writeFileSync(stampFile, String(stamp)); console.log(`[finals] every lease joins the queue at ${stamp}, ${leaseMin} min at most`); }
+const lease = keepPlace ? [`--ticket-stamp=${stamp}`, `--lease-min=${leaseMin}`] : [];
+// between leases the lane at the head of the queue takes the GPU (it polls every 300 ms)
+const yieldGpu = () => new Promise(resolve => setTimeout(resolve, 5000));
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const minFreeGb = Number(flags['min-free-gb'] ?? 6);
@@ -75,13 +98,19 @@ for (let i = 0; i < ids.length; i += chunk) {
   }
   const part = new Set(ids.slice(i, i + chunk));
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
-  const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))].map(j => ({ ...j, resume: 'true' }));
+  const jobs = [...part].flatMap(id => [...films.filter(j => idOf(j) === id), ...stills.filter(j => idOf(j) === id)]).map(j => ({ ...j, resume: 'true' }));
   const file = join(renders, `jobs-chunk-${String(i / chunk).padStart(2, '0')}.json`);
   writeFileSync(file, JSON.stringify(jobs, null, 1));
-  run(`chunk ${i / chunk + 1} (${[...part][0]}…, ${jobs.length} jobs)`, 'node',
-    ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true']);
-  // yield once so the encode chain starts this chunk's loops now (the chunk renders block the event loop)
-  if (!('skip-loops' in flags)) { encodeLoops(part); await new Promise(resolve => setImmediate(resolve)); }
+  for (let leaseNo = 1; ; leaseNo++) {
+    if (keepPlace && (k > 0 || leaseNo > 1)) await yieldGpu();
+    const code = await cinema(`chunk ${k + 1} (${[...part][0]}…, ${jobs.length} jobs)${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
+      ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
+    if (stopping) throw new Error(`stopped by a signal in chunk ${k + 1}`);
+    if (code === 75 && keepPlace) continue; // lease over: the chunk's remaining takes rejoin the queue at the stamp
+    if (code !== 0) throw new Error(`chunk ${k + 1} failed (${code})`);
+    break;
+  }
+  if (!('skip-loops' in flags)) encodeLoops(part);
 }
 await Promise.all(encoders);
 console.log('[finals] done');

@@ -109,7 +109,14 @@ per-frame PNG digests plus a sequence digest, the ffprobe results (frame count, 
 colour tags) and SHA-256 of every master, proxy, still and review frame. `--resume=true` reuses
 complete films and stills only when the sources and settings are unchanged; a partial film
 renders again from its first frame (frames depend on the whole shutter history, so a film is
-never stitched from two runs). The shared capture lock serializes GPU work.
+never stitched from two runs). The shared capture lock serializes GPU work. A batch too long for
+one lease runs as several: `--lease-min=<minutes>` ends the lease before a film that would carry
+it past the budget (the estimate is the longest take so far, a film with the stills after it) and
+exits 75, and a `--resume=true` re-run renders the rest; `--ticket-stamp=<ms>` joins the capture
+queue at that place, so every lease of the batch rejoins at its first ticket's place and follows
+whichever lane took the GPU in between (`tools/media-r5/site50-finals.mjs --keep-place`, the
+coordinator's alternating finals of 2026-10-07). The synchronous encodes renew the lock before
+each step.
 
 Throughput, measured 2026-10-01 on the lane machine (Apple silicon GPU through headless Chrome and
 ANGLE/Metal) with the two-tank desert duel (fast rail moves, firing, a kill), in seconds per output

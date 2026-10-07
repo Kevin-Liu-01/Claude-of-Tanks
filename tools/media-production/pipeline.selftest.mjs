@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { digest, requireReview } from './pipeline.mjs';
+import { digest, requireReview, leaseClock } from './pipeline.mjs';
 import { shorelineSurvey, landscapeSurvey, mapScene, sunForCamera, MAP_SUN_MODES } from './recipes.mjs';
 import { mergePublication } from './mergePublication.mjs';
 
@@ -65,4 +65,19 @@ const shotWorld={mapId:'verdant',config:{shot:{pos:[0,20,-300],look:[0,0,0]}},he
 assert.equal(mapScene(shotWorld,'golden').light,undefined,'a default overview has no light block');
 assert.deepEqual(mapScene(shotWorld,'golden','rim').light,{sunAzimuthDeg:32});
 assert.equal(mapScene(shotWorld,'dusk','back').timeOfDay,'dusk');
-console.log('media production: rejects missing/stale/unreviewed/tampered captures; complete shoreline coverage; overview sun bearings PASS');
+// cinema --lease-min: the first film always renders; a lease ends before a film when the longest take would pass it
+{
+  const min = 60000;
+  let t = 0;
+  const clock = leaseClock(45 * min, 0, () => t);
+  for (const [at, ends, why] of [[2, false, 'the first film renders'], [12, false, '12 + 10 <= 45'], [22, false, '22 + 10 <= 45'],
+    [33, false, '33 + 11 <= 45'], [44, true, '44 + 11 > 45: the lease ends']]) {
+    t = at * min;
+    assert.equal(clock.endBefore(), ends, why);
+  }
+  assert.equal(clock.longestTake, 11 * min, 'the estimate is the longest take');
+  t = 500 * min;
+  assert.equal(leaseClock(45 * min, 0, () => t).endBefore(), false, 'a lease that began late still renders its first film');
+  assert.equal(leaseClock(0, 0, () => t).endBefore(), false, 'no budget: no lease end');
+}
+console.log('media production: rejects missing/stale/unreviewed/tampered captures; complete shoreline coverage; overview sun bearings; cinema lease clock PASS');

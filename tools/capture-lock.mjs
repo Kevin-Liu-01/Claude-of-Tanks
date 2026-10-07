@@ -130,6 +130,14 @@ function restoreTicket(queueDir, name) {
   return name;
 }
 
+/** This process's ticket at `stamp` (ms since the epoch), for acquire's `ticket` (2026-10-07): a run split over several
+ *  processes (a chain's leases, one process each) rejoins the queue at its first ticket's place. The PID is this
+ *  process's, so every copy of this module reads the ticket's liveness as usual. */
+export function ticketAt(stamp) {
+  if (!Number.isSafeInteger(stamp) || stamp <= 0 || stamp >= 1e15) throw new Error(`not a ticket stamp: ${stamp}`);
+  return `${String(stamp).padStart(15, '0')}-${'0'.repeat(12)}-${process.pid}.t`;
+}
+
 export function createCaptureLock({
   lockDir = DEFAULT_LOCK_DIR,
   queueDir = DEFAULT_QUEUE_DIR,

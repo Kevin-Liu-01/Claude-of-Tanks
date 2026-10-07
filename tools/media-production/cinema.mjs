@@ -14,21 +14,23 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync, readdir
 import { createHash } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createCaptureLock } from '../capture-lock.mjs';
-import { digest, sourceDigest, contactSheet } from './pipeline.mjs';
+import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
+import { digest, sourceDigest, contactSheet, leaseClock } from './pipeline.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
 const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
   'frames', 'stills', 'still-samples', 'still-exposure-ms', 'still-max-samples', 'supersample', 'film', 'master', 'proxy',
   'keep-frames', 'out', 'resume'];
-const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir'];
+const OPTIONS = [...JOB_OPTIONS, 'jobs', 'port', 'cache-dir', 'ticket-stamp', 'lease-min'];
 const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,portrait,square] [--resolution=1080|1440|2160]
   [--fps=24|30|60] [--samples=1-64] [--max-samples=<samples>-128] [--shutter=0-360] [--filter=gaussian|box] [--shake=0-2]
   [--start-ms=0] [--end-ms=<storyboard>] [--frames=<limit>] [--stills=<timeline ms,...>] [--still-samples=32]
   [--still-exposure-ms=0-1000] [--still-max-samples=<still-samples>-128]
   [--supersample=1-2] [--film=true|false] [--master=prores|none] [--proxy=true|false] [--keep-frames=false]
-  [--out=shots/cinema] [--resume=true] [--port=5381] [--cache-dir=<vite cache>]
+  [--out=shots/cinema] [--resume=true] [--port=5381] [--cache-dir=<vite cache>] [--ticket-stamp=<ms>] [--lease-min=<minutes>]
   or --jobs=jobs.json: an array of jobs with the same keys (without "--"); every job needs its own "out".
+--ticket-stamp joins the capture queue at that place (a run split over leases keeps its first ticket's place);
+--lease-min ends the capture lease before a film that would carry it past the budget, exit 75: resume the rest.
 Film settings default to the scene's "film" block, then the Studio defaults (30 fps, 180°, 8 samples
 adaptive to 64 on fast motion, gaussian). Speed ramps come from the scene's film.speed keys.`;
 if (process.argv.includes('--help')) { console.log(help); process.exit(0); }
@@ -47,6 +49,11 @@ if (!rawJobs.length || rawJobs.some(job => !job.scene)) throw Error(help);
 if (args.jobs && (rawJobs.some(job => !job.out) || new Set(rawJobs.map(job => resolve(job.out))).size !== rawJobs.length)) {
   throw Error('Every job needs its own "out" directory');
 }
+// 2026-10-07 (the coordinator's alternating finals): a long batch runs as several leases, one process each; every lease
+// joins the queue at the batch's first stamp, so it follows whichever lane held the GPU in between, not the line's tail.
+const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(Number(args['ticket-stamp']));
+const leaseMs = Number(args['lease-min'] ?? 0) * 60000;
+if (!(leaseMs >= 0)) throw Error(help);
 
 /** Validate one job into its settings, receipt and output paths (before taking the GPU). */
 async function prepareJob(raw) {
@@ -167,7 +174,9 @@ const framePlugin = {
 
 const lock = createCaptureLock();
 let server, browser, interrupted = false;
-await lock.acquire(6 * 60 * 60 * 1000);
+await lock.acquire(6 * 60 * 60 * 1000, { ticket });
+const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
+let leaseOver = false;
 const stop = () => { interrupted = true; void browser?.close().catch(() => {}); };
 process.once('SIGINT', stop); process.once('SIGTERM', stop);
 const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
@@ -216,7 +225,7 @@ try {
     if (errors.length) throw Error(errors.splice(0).slice(0, 4).join('\n'));
   };
 
-  for (const job of jobs) {
+  jobLoop: for (const job of jobs) {
     if (interrupted) break;
     const { receipt, save, film, scene } = job;
     receipt.renderer = rendererInfo;
@@ -227,6 +236,11 @@ try {
       // Named by the short side, so a portrait 1080x1920 film reads 1080p like its landscape sibling.
       const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p${film.fps}-n${film.samples}`;
       if (receipt.films.some(row => row.stem === stem && row.complete)) { console.log(`[cinema] preserved ${stem}`); continue; }
+      if (leaseTime.endBefore()) {
+        leaseOver = true;
+        console.log(`[cinema] lease over at ${((Date.now() - heldSince) / 60000).toFixed(1)} min (longest take ${(leaseTime.longestTake / 60000).toFixed(1)} min): ${stem} and the rest wait for the next lease`);
+        break jobLoop;
+      }
       const dir = join(job.out, 'films', stem);
       mkdirSync(dir, { recursive: true });
       for (const name of readdirSync(dir)) if (/^frame-\d+\.png$/.test(name)) unlinkSync(join(dir, name));
@@ -297,10 +311,13 @@ try {
         // Encoders tag what the frames carry: setparams marks BT.709 limited range on every frame.
         const toVideo = 'scale=out_color_matrix=bt709:out_range=tv';
         const tagged = 'setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709';
+        // The encodes and probes run synchronously and hold off the 30 s lease timer: renew the lock before each one.
         if (job.master === 'prores') {
           const path = join(job.out, 'films', `${stem}-master.mov`);
+          lock.refresh();
           execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv422p10le,${tagged}`, '-c:v', 'prores_ks', '-profile:v', '3', '-vendor', 'apl0',
             '-pix_fmt', 'yuv422p10le', ...colorTags, path]);
+          lock.refresh();
           const meta = probe(path);
           const stream = meta.streams[0];
           if (Number(stream.nb_read_frames) !== frames || stream.width !== width || stream.height !== height || stream.codec_name !== 'prores') {
@@ -310,8 +327,10 @@ try {
         }
         if (job.proxy) {
           const path = join(job.out, 'films', `${stem}-proxy.mp4`);
+          lock.refresh();
           execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv420p,${tagged}`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '14',
             '-profile:v', 'high', '-pix_fmt', 'yuv420p', ...colorTags, '-movflags', '+faststart', path]);
+          lock.refresh();
           const meta = probe(path);
           const stream = meta.streams[0];
           if (Number(stream.nb_read_frames) !== frames || stream.width !== width || stream.height !== height) {
@@ -390,4 +409,5 @@ try {
   }
 }
 if (jobs.some(job => job.receipt.errors.length)) process.exitCode = 1;
+else if (leaseOver) process.exitCode = 75;
 for (const job of jobs) console.log(`[cinema] receipt ${job.receiptFile}`);

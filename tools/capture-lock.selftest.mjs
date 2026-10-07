@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCaptureLock } from './capture-lock.mjs';
+import { createCaptureLock, ticketAt } from './capture-lock.mjs';
 // acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -118,6 +118,31 @@ async function checkRestoredTicket() {
   await assert.rejects(yielding.acquire(100, { ticket: '000000000000001-000000000000-1.t' }), /not this process/);
 }
 
+// 2026-10-07: a run split over processes (one per lease) rejoins at its first ticket's stamp: a new process's ticketAt
+// sorts at that place, ahead of a waiter that queued after the stamp, while a lane holds the GPU between the leases.
+async function checkTicketAt() {
+  const heldDir = join(root, 'stamp.lock');
+  const stampQueue = join(root, 'stamp.queue');
+  const options = { lockDir: heldDir, queueDir: stampQueue, lockStaleMs: 60_000 };
+  const stamp = Date.now() - 1_000;
+  mkdirSync(heldDir);
+  const later = createCaptureLock(options);
+  const rejoining = createCaptureLock(options);
+  const order = [];
+  const pending = [later.acquire(5_000).then(() => { order.push('later'); later.release(); })];
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const ticket = ticketAt(stamp);
+  assert.equal(ticket, `${String(stamp).padStart(15, '0')}-000000000000-${process.pid}.t`);
+  pending.push(rejoining.acquire(5_000, { ticket }).then(() => { order.push('rejoined'); rejoining.release(); }));
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(readdirSync(stampQueue).sort()[0], ticket, "the stamped ticket sorts at the run's first place");
+  rmSync(heldDir, { recursive: true });
+  await Promise.allSettled(pending);
+  assert.deepEqual(order, ['rejoined', 'later'], 'the rejoining run is served before the waiter that queued after its stamp');
+  assert.deepEqual(readdirSync(stampQueue), [], 'the stamped ticket is removed like any other');
+  for (const bad of [0, -1, 1.5, 1e15, Number.NaN]) assert.throws(() => ticketAt(bad), /not a ticket stamp/);
+}
+
 async function checkLongWaitFifo() {
   const waitingLockDir = join(root, 'long-wait.lock');
   const waitingQueueDir = join(root, 'long-wait.queue');
@@ -189,6 +214,7 @@ try {
   await checkLongWaiterKeepsPlace();
   await checkLongWaitFifo();
   await checkRestoredTicket();
+  await checkTicketAt();
 
   // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
   const probeQueue = join(root, 'probe.queue');
@@ -208,7 +234,7 @@ try {
   writeFileSync(join(root, 'queue-file'), 'not a directory');
   assert.equal(createCaptureLock({ lockDir: join(root, 'other.lock'), queueDir: join(root, 'queue-file') }).waiting(), 1,
     'an unreadable queue reports a waiter, so callers keep draining');
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket and waiting() passed');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
