@@ -57,6 +57,53 @@ pedestal now prepares links before reveal and builds the two adjacent cards in
 the quiet window (desktop residency six); `tools/garage-switch-probe.selftest.mjs`
 gates warm switches in the post group.
 
+Tank energy highlights stay on the existing vehicle surfaces and add no geometry
+or draw calls. Stable models no longer undergo periodic recursive scans: hierarchy
+change listeners discover streamed parts, while a flat binding check catches repaired
+materials. The listeners are released with the effect. Each style evaluates only its
+own wave pattern instead of computing the Juggernaut pattern before replacing it.
+The original localized hit-ripple calculation and bounded six-contact pool are
+preserved; the rim uses a simple squared falloff.
+
+`node tools/tank-energy.browser.mjs` renders the real M1A2 with one and fourteen
+vehicles, quiet and impact-active effects, and saves screenshots and timing receipts
+under `.qa-dev/tank-energy/`. It uses native GPU queries when available and explicitly
+labels the render-plus-flush fallback. Set `COT_ENERGY_BASELINE` to a Vite-served copy
+of the previous effect module for a paired comparison. These isolated effect samples
+are not whole-game FPS measurements; the game still needs its normal battle checks.
+
+Mode previews use the same readiness principle. Opening the mode selector
+transfers the optional preview code; it does not start preparing a battlefield.
+Only the actual launch controls signal deployment intent. Juggernaut, CTF and
+Infected share their compiled energy materials and change pattern/color uniforms.
+The current Garage tank also retains these materials when switching to an ordinary
+mode: a zero-strength branch restores the original paint, and returning to an aura
+applies uniforms immediately without entering the pending preparation state. This
+cache is bounded to the current tank and released on tank replacement or battle
+entry. Garage shaders omit the battle-only hit-ripple calculations; battle effects
+retain the full contact animation. First-time preparation uses the actual Garage
+forward and late-FX render targets and layer masks to avoid another program variant
+on reveal.
+The selected preview prepares new equipment and shader links before its first
+visible frame, retaining the previous complete canvas while menus and the network
+pump remain active. Tank or mode changes cancel superseded preparation, and battle
+entry cancels all pending Garage work. Mobile tank switches also wait for bounded
+shader preparation instead of deferring that cost to the reveal frame.
+
+Solo and multiplayer loading install the initial vehicle mode effects before
+shader preparation. `garageModePreviewRuntime.selftest.mjs` covers cancellation,
+readiness and retry; `tools/garage-mode-preview.browser.mjs` records mode timing,
+checks material reuse across ordinary-mode round trips and rapid selections,
+records program counts and animation-frame gaps, and captures desktop, phone landscape
+and battle-return views. Timing receipts include menu interaction, so they are
+end-to-end readiness measurements, not isolated GPU compile durations.
+
+AC-130 entry prepares an aircraft-only flight anchor rather than the selected
+tank. Solo and multiplayer skip the pilot's tank builder, camouflage textures,
+and damage-panel masks while still preparing ground escorts. Loading rosters
+identify pilots as AC-130 aircraft. Flight anchors are disposed on exit and cannot
+enter either the Garage hero cache or the reusable tank pool.
+
 ## Build-local procedural plaster relief
 
 The second and third procedural plaster palettes retain independent albedo
@@ -176,8 +223,8 @@ is presented beneath the boot cover immediately and starts the same transaction,
 so reload cannot strand a hidden pack on the renderer clear color. Stale rapid-
 switch promises never become visible. One modern four-bay maintenance graph is
 demand-loaded in quiet slices after readiness, optimized once, and shared by
-all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays occupy
-four quadrants without per-frame update work or per-variant duplication;
+all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays surround
+the podium without per-frame update work or per-variant duplication;
 Verdant's extra wall clutter remains a separate visibility branch.
 
 One frozen presentation pose is shared by the stage, hero pedestal, return path,
@@ -592,6 +639,18 @@ the prefix decomposition through `tools/frame-pass-timer.mjs`:
   in two holds and 0.4–1.1 ms in the next, and a fixed GPU ballast drawn every frame did not lower it. On this
   machine a light frame does not inflate a toggle's cost through an idle-clocked GPU; foreign GPU load does. Report a
   control beside any toggle under a millisecond, and take at least four quartets an arm.
+- The pages' agreement (2026-10-05, the ground lane's hold 51): two pages of one dist can draw different scenes — the
+  base drew 685 scene draws and 3.50 M triangles there, its twin 369 and 3.20 M, and the twin's −8.3 ms "null" compared
+  the two — so every slot reads its scene's draws and triangles at the first pose before it measures, with a census of
+  its visible meshes by subtree, and `judgeScenes` holds it against the slots before it. Scene identity is the twins'
+  triangles (slots of one root) within `--twin-tris-tol` (3 %); draws may wander `--draws-tol` (25 %: dynamic culling
+  moved them 3.8–5.9 % cycle to cycle within one dist on Verdant and ±11 % on mr2's chase pages while the triangles held
+  within 1–3 %, and the draws only need to catch a gross difference such as hold 51's 46 %); another build's own delta is
+  accepted once two of its stagings in a row repeat its triangles within `--stable-tol` (1 %). A slot that fails is
+  staged again before it measures (three readings at most), an earlier slot the judgement implicates measures again at
+  the end of the run, and a slot whose measured counts leave its staged reading, or a report row whose slots disagree,
+  is VOID. Every sample records its scene draws and triangles. `--scene-check=off` is for a change that adds or removes
+  draws on purpose.
 - Unchanged pictures: `tools/shadow-cache-truth.mjs` renders every scenario through the cache and without it inside
   one page task (temporal AA and the cloud history held, so a frame is a function of the scene state) and runs the
   2026-09-12 consecutive-frame flicker meter on live frames; `tools/frame-capture-compare.mjs` compares the probe's

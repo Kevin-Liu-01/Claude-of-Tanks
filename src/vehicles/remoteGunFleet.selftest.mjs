@@ -5,7 +5,7 @@ import {TANK_SPECS} from './specs.ts';
 import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
-import {requestAuxiliary,stepRoofGun,auxiliaryShot} from '../sim/auxiliarySystems.ts';
+import {requestAuxiliary,stepRoofGun,auxiliaryShot,auxiliaryState} from '../sim/auxiliarySystems.ts';
 const requested={...Object.fromEntries(Object.entries(NATIONAL_ROOF_LOADOUTS).map(([id,l])=>[id,l.caliber])),t14_x:7.62,t90a_vladimir_x:12.7,t90a_x:12.7,t90ms:12.7,
  t90m_proryv:12.7,t90:12.7,t14:30,challenger_3x:12.7,challenger_3:12.7,
  challenger2e:7.62,ztz100_x:12.7,type10_x:12.7,k2_x:12.7,k1a1_x:12.7,
@@ -35,8 +35,13 @@ for(const [id,caliber] of Object.entries(requested)){
  }
  const shooter={id:'shooter',team:'blue',spec:TANK_SPECS[id],state:{pos:{x:3,y:2,z:1},yaw:.2,turretYaw:.3,visualPitch:.03,visualRoll:-.04},combat:{ammo:[4,6],reload:{t:9}}};
  const target={id:'enemy',team:'red',spec:{id:'target',dims:{heightM:2.5}},state:{pos:{x:38,y:2,z:95},yaw:0,turretYaw:0},combat:{}};
- assert.equal(requestAuxiliary(shooter,'roofGun',0),true,id+' toggle works');
  const context={entities:[shooter,target],visible:()=>true,clear:()=>true};
+ assert.equal(auxiliaryState(shooter).gunOn,true,id+' equipped station starts enabled');
+ assert.equal(requestAuxiliary(shooter,'roofGun',0),true,id+' disable toggle works');
+ assert.equal(shooter.combat.auxiliary.gunOn,false,id+' toggle disables station');
+ assert.equal(stepRoofGun(shooter,0,1/60,context),false,id+' disabled station does not fire');
+ assert.equal(requestAuxiliary(shooter,'roofGun',0),true,id+' enable toggle works');
+ assert.equal(shooter.combat.auxiliary.gunOn,true,id+' toggle re-enables station');
  let fired=false;
  for(let i=0;i<700&&!fired;i++)fired=stepRoofGun(shooter,i/60,1/60,context);
  assert.ok(fired,id+' acquires a visible opponent');assert.equal(auxiliaryShot.shell.caliberMm,caliber);

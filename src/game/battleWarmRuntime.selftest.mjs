@@ -16,6 +16,7 @@ import {
 } from 'three';
 import {
   createCombatRareWarmSteps,
+  createCombatOpeningWarmSteps,
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
   primeOpeningTerrainPresentation,
@@ -1415,3 +1416,19 @@ for (const change of ['abort', 'epoch', 'info', 'context']) {
 }
 
 console.log('battleWarmRuntime.selftest: Studio invalidation and covered FX staging passed');
+
+{
+ const order=[];let staged=false;
+ const steps=createCombatOpeningWarmSteps({
+  isOpeningReady:()=>false,
+  game:{tanks:[{visual:{prewarmBurn(){order.push('burn');}}}]},
+  fx:{group:new Group(),warmTextures(){},muzzleFlash(){order.push('effects');}},
+  ensureStagedVisuals(){order.push('roster');const ready=staged;staged=true;return ready;},
+  prepareModeVisuals(){order.push('mode');},
+ });
+ steps.next();assert.deepEqual(order,['roster']);
+ steps.next();assert.deepEqual(order,['roster','roster']);
+ steps.next();assert.deepEqual(order,['roster','roster','mode','burn','effects'],
+  'mode materials and attachments exist before covered opening shader work');
+ steps.return();
+}

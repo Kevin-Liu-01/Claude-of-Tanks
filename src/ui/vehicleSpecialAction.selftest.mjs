@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { createSpecialActionPresentationReader } from './vehicleSpecialAction.ts';
+import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createCombatState } from '../sim/damage.ts';
@@ -50,3 +50,17 @@ assert.equal(read(player.spec).kind, 'guided_missile');
 player.spec.gun.shells = [...spec.gun.shells];
 assert.equal(read(player.spec).kind, 'none');
 console.log('vehicleSpecialAction: same-tank AC-130 → Drone, flight return, Gun Game, real missiles, suspension and reload passed');
+
+const missileSpec = getSpec('bwp1');
+const missileCombat = createCombatState(missileSpec);
+const missileSlot = missileSpec.gun.shells.findIndex(shell => shell.guided);
+const missileShell = missileSpec.gun.shells[missileSlot];
+assert.equal(depletedMissileLabel(missileCombat, missileSlot, missileShell), null);
+missileCombat.ammo[missileSlot] = 0;
+assert.equal(depletedMissileLabel(missileCombat, missileSlot, missileShell), `0/${missileCombat.ammoCapacity[missileSlot]}`);
+missileCombat.ammo[missileSlot] = 1;
+assert.equal(depletedMissileLabel(missileCombat, missileSlot, missileShell), null, 'resupply restores the same tank control immediately');
+assert.equal(depletedMissileLabel(missileCombat, -1, null), null, 'vehicles without missiles do not acquire an empty control');
+assert.equal(depletedMissileLabel(null, 1, missileShell), null);
+assert.equal(depletedMissileLabel({ammo:[4,0],ammoCapacity:[]}, 1, {type:'ATGM',count:6}), '0/6', 'missing snapshot capacities use authored ammo');
+console.log('vehicleSpecialAction: empty missile inventory and same-tank resupply passed');

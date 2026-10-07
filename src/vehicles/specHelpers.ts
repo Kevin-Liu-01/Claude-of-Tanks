@@ -1,4 +1,4 @@
-import type { EraProtection } from '../sim/armor.ts';
+import type { EraProtection, ArmorModel } from '../sim/armor.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
 
 // The shell record and builder live in the DOM-free sim (the mode rulesets, which the rooms Worker reaches, use them).
@@ -12,6 +12,7 @@ export type Vec3Tuple = readonly [number, number, number];
 export type MutableVec3Tuple = [number, number, number];
 
 export interface PlateOptions {
+  droneInterception?: number;
   ceMm?: number;
   era?: EraProtection;
   gunFollow?: boolean;
@@ -21,6 +22,7 @@ export interface PlateOptions {
 }
 
 export interface ArmorPlate {
+  droneInterception?: number;
   weaponHousing?: boolean;
   name: string;
   verts: Vec3Tuple[];
@@ -60,6 +62,7 @@ export interface CrewBox {
 }
 
 export interface ArmorEnvelope {
+  droneScreens?: ArmorModel['droneScreens'];
   boundingRadiusM: number;
   turretless?: boolean;
   turretPivot: MutableVec3Tuple;
@@ -96,6 +99,7 @@ export function plate(
     era: o.era || null,
     moduleLink: o.moduleLink || null,
     gunFollow: !!o.gunFollow,
+    ...(o.droneInterception !== undefined ? { droneInterception: o.droneInterception } : {}),
   };
 }
 

@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Guided missile mechanics">
-  <path d="m16 43 27-27 8-3-3 8-27 27Z" fill="#edf3f7" stroke="#edf3f7" stroke-width="2" stroke-linejoin="round"/>
-  <path d="m22 37-10-1 7-7m9 12 1 10 7-7" fill="#45c7ff" stroke="#45c7ff" stroke-width="2" stroke-linejoin="round"/>
-  <path d="m14 45-6 6m11-3-5 7" stroke="#f0a030" stroke-width="3" stroke-linecap="round"/>
-  <path d="M39 9h16v16M55 39v16H39M25 55H9V39M9 25V9h16" fill="none" stroke="#ff4d62" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="47" cy="17" r="3" fill="#f0a030"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Guided missile and flight path">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M8 52Q29 54 30 38" fill="none" stroke="#45c7ff" stroke-width="2"/><path d="M6 46Q19 47 23 38" fill="none" stroke="#7893a5" stroke-width="1.4"/><g transform="rotate(38 32 29)" ><path d="M28 12 32 5 36 12V37L32 43 28 37Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M28 12 32 5 36 12Z" fill="url(#amber)" stroke="none" stroke-width="2"/><path d="M28 26 21 35V39L28 36M36 26 43 35V39L36 36" fill="url(#cyan)" stroke="#edf3f7" stroke-width="2"/><path d="M30 43 32 53 34 43" fill="url(#red)" stroke="none" stroke-width="2"/></g><path d="M47 7H55V15M52 10H60" fill="none" stroke="#f0a030" stroke-width="1.3"/></g>
 </svg>

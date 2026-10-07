@@ -9,16 +9,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 2026-10-06: main's provenance receipt (cd0caad68) sits after the four whole-fleet CPU scans the receipt pins first (runner admission).
+    'tools/asset-provenance.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
+    'src/sim/infectedLifecycle.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
+    'src/sim/droneArmor.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
+    'src/app/garageModePreviewRuntime.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
     'src/engine/thermalVehicles.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
@@ -103,9 +108,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    'tools/m1a1-fill-clearance.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
     'tools/physical-bore-air.selftest.mjs',
+    // 2026-10-06: moving-part clearance air (pockets under the gun group, declared clearance cells) is reported apart
+    'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
@@ -171,6 +179,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    'src/vehicles/roadWheelTrackSpan.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
@@ -289,6 +298,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/abramsSepv3RoofStation.selftest.mjs',
     'src/vehicles/profiles/abramsRoofSeating.selftest.mjs',
     'src/vehicles/profiles/abramsCwsRoofSeating.selftest.mjs',
+    'src/vehicles/profiles/m1a1Mantlet.selftest.mjs',
     'src/vehicles/profiles/abramsXRoofSeating.selftest.mjs',
     'src/vehicles/profiles/abramsXTurretPivot.selftest.mjs',
     'src/vehicles/profiles/m1a3Concept.selftest.mjs',
@@ -307,6 +317,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/kf51FrontFinish.selftest.mjs',
     'src/vehicles/profiles/pumaS1.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
+    'src/vehicles/profiles/m6Linebacker.selftest.mjs',
+    'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/type100.selftest.mjs',
@@ -328,6 +340,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardRevolutionGeometry.selftest.mjs',
     'src/vehicles/profiles/leopardReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sectionSolid.selftest.mjs',
+    'tools/base-shell-audit-math.selftest.mjs',
+    'src/vehicles/profiles/abramsPlanarCheek.selftest.mjs',
+    'src/vehicles/profiles/facetedSlab.selftest.mjs',
+    'src/vehicles/profiles/nationalBaseShell.selftest.mjs',
+    'src/vehicles/profiles/oplotWing.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
     'src/vehicles/profiles/t14XReturnRollers.selftest.mjs',
     'src/vehicles/sourceXFleet.selftest.mjs',
@@ -540,6 +557,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
+    // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
+    'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
@@ -591,6 +611,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/phaseGpuResidency.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
+    'src/fx/flipbookOrientation.selftest.mjs',
+    'src/fx/combat/combatFx.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
@@ -766,7 +788,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/world/terrainStreaming.selftest.mjs',
     'src/world/terrainSplatFields.selftest.mjs',
+    'src/world/textureUploadOrientation.selftest.mjs',
+    'src/world/normalMapOrientation.selftest.mjs',
+    'src/world/roadPathStyles.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
+    'src/world/groundContrastStep2.selftest.mjs',
+    'src/world/snowRockSlope.selftest.mjs',
+    'src/world/roadPuddleGloss.selftest.mjs',
+    'src/world/snowFaces.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
@@ -776,6 +805,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
     'src/ui/battleUiVisibility.selftest.mjs',
+    'src/ui/hudPreferences.selftest.mjs',
+    'src/ui/vehicleStatusPolicy.selftest.mjs',
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',
@@ -820,8 +851,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
+    // clouds' drift veered from it (never opposed)
+    'src/world/sceneWind.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
     'src/engine/cloudShadeMap.selftest.mjs',
+    // 2026-10-05 (the skies-and-atmosphere lane): the terrain's program counted as the GPU binds it — the expanded
+    // shader's active samplers in both stages, three's DFG LUT included: sixteen units at most
+    'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
@@ -857,10 +894,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/weaponAudio.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
+    'src/audio/sfxLoudness.selftest.mjs',
+    'src/audio/propSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
@@ -958,9 +998,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    // 2026-10-05 (owner: "floor as a tail rate"): the pacing gate's arithmetic and the tail's shard merge.
+    'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
     'src/sim/movement.selftest.mjs',
+    // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
+    'src/sim/trackContact.selftest.mjs',
+    // 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 LOW gear).
+    'src/vehicles/trackContactDerivationAudit.selftest.mjs',
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
@@ -969,6 +1015,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
     'tools/physics-torture.selftest.mjs',
+    'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
@@ -1006,10 +1053,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
     'src/game/ai.patrolNoRoute.selftest.mjs',
+    // 2026-10-04 (physics lane): a fresh contact is no starved trigger; under fire in the open a settle holds nothing.
+    'src/game/ai.underFire.selftest.mjs',
+    // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
+    'src/game/ai.colliderStop.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
+    'src/game/serviceRecord.selftest.mjs',
+    'src/ui/serviceRecordView.selftest.mjs',
     'src/game/campaignProgress.selftest.mjs',
     'src/game/campaignOperations.selftest.mjs',
     'src/game/teamArrangement.selftest.mjs',
@@ -1214,6 +1267,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
     'src/world/fieldMudSurface.selftest.mjs',
+    // the scenery lane (b14, wave 97): the mud walls' crown, render losses and stains in world space
+    'src/world/mudWalls.selftest.mjs',
+    // the scenery lane (b14, wave 97): the dry-stone modules irregular and coped, settled and lichened by world place
+    'src/world/stoneWalls.selftest.mjs',
+    // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
+    'src/world/fieldWalls.selftest.mjs',
+    // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
+    'src/world/haystacks.selftest.mjs',
+    // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
+    'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
@@ -1235,6 +1298,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/tidalMangrove.selftest.mjs',
     'src/world/vegetationClearance.selftest.mjs',
     'src/world/groundCoverClearance.selftest.mjs',
+    'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
@@ -1260,6 +1324,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeCrownShading.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
+    'src/world/hedgeTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1278,6 +1343,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
+    // the map-revival lane (2026-10-06): Skybridge's Glen Canyon Dam — the canyon through the north ring and the arch
+    'src/world/horizonDam.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
@@ -1319,8 +1386,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
+    'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
+    'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
@@ -1335,6 +1406,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
+    'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
@@ -1353,6 +1425,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
+    'src/game/battleEventStats.selftest.mjs',
+    'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',

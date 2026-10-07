@@ -1320,7 +1320,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     // sky's share) over the shaded ground below the horizon; a galaxy sky keeps the authored rig and the full dome's
     // bake, as before
     const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] },
-      authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
+      authoredSunOf(preset as LightModelPreset), !!volumetricClouds); // the night's moon and the deck's pattern, as lighting.ts resolves them
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
     // 2026-10-04 (the sun-bloom lane; QA: SKY_KNEE_EV_*): an exposure-aware knee on the grounded rig — the dome eases from
     // SKY_KNEE_EV_START stops over the card as the camera shows it toward SKY_KNEE_EV_RANGE stops more, the aureole from

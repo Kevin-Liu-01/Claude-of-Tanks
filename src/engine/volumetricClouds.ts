@@ -46,7 +46,7 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
+import { CLOUD_LAYER_RULES, cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
@@ -210,8 +210,20 @@ export const CLOUD_FAR_FLAT = 0;
 export const CLOUD_EDGE_CRISP = 0;
 export const CLOUD_TOP_BILLOW = 0;
 export const CLOUD_NEAR_FIELD = 0;
-/** The share of the sun a cloud core takes (the map's darkest texel). */
-export const CLOUD_SHADOW_CORE = 0.62;
+/**
+ * The share of the sun's beam a cloud core takes (the map's darkest texel). 2026-10-05 (the skies lane, the clouds and
+ * the land; QA: CLOUD_SHADOW_CORE): 0.62 → 0.9. A fair-weather cumulus core passes about a tenth of the direct beam
+ * (optical depth past 2); the sky's light stays, so on Verdant's 3.76:1 sun/shade key (the beam 2.76 skies) the ground
+ * under a core keeps (0.1 × 2.76 + 1) / 3.76 = 34 % of the open ground's light — a clear day's cloud shadow — where 0.62
+ * kept 54 %, the faint "is that a shadow" patch the critics walked past.
+ */
+export const CLOUD_SHADOW_CORE = 0.9;
+/**
+ * The half-width of the shade map's edge band over the cut (QA: CLOUD_SHADOW_SOFT; 2026-10-05: 0.08 → 0.04). The cut is
+ * the visible cloud's own (CLOUD_LAYER_RULES.shadowCoreBand 0): the band straddles the cloud's outline, a thin margin half
+ * shaded as the penumbra and the cloud's thinning edge make it — a 1.5 km base's penumbra is 14 m, under one 23 m texel.
+ */
+const CLOUD_SHADOW_SOFT = 0.04;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
@@ -355,6 +367,35 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 		field *= cloudGate;
 	}
 	return field;
+}
+`;
+
+/**
+ * A deck's cell factor at a column (1 without cells): the trace's thickness and its open borders (cellK under 0.08 is clear
+ * air) and, since 2026-10-05 (Part 1, item 2: a deck's sun in its gaps), the shade map's open borders. Reads tShape, tDetail,
+ * tWeather, uCells, uCellTile, uBase, uThick, uLumps, uNoiseShift and uWeatherShift.
+ */
+const CLOUD_CELL_GLSL = /* glsl */`
+float cloudLumpK( vec2 cxz ) {
+	if ( uLumps <= 0.0 ) return 0.0;
+	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
+	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
+}
+float cloudCellK( vec2 cxz ) {
+	if ( uCells <= 0.0 ) return 1.0;
+	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
+	vec4 c = texture( tShape, cp );
+	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
+	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
+	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
+	float lk = cloudLumpK( cxz );
+	if ( lk > 0.0 ) {
+		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
+		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
+	}
+	return k;
 }
 `;
 
@@ -536,27 +577,7 @@ float cloudCoverageAt( vec2 pxz ) {
 // cores, and the borders open where the coverage is marginal. 1 when the regime has no cells (round 71's sheet).
 // 2026-10-03: a deck's lump strength at a column — the regime's lumps under a broad field's gate (CLOUD_LUMP_GATE), so
 // the rolls come and go across the deck instead of one even mottle; 0 without lumps
-float cloudLumpK( vec2 cxz ) {
-	if ( uLumps <= 0.0 ) return 0.0;
-	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
-	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
-}
-float cloudCellK( vec2 cxz ) {
-	if ( uCells <= 0.0 ) return 1.0;
-	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
-	vec4 c = texture( tShape, cp );
-	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
-	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
-	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
-	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
-	float lk = cloudLumpK( cxz );
-	if ( lk > 0.0 ) {
-		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
-		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
-		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
-	}
-	return k;
-}
+${CLOUD_CELL_GLSL}
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
 // foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range; cellK: the column's
 // deck cell factor (cloudCellK; 1 without cells)
@@ -1423,16 +1444,29 @@ void main() {
 /** 2026-10-03: the cloud shade map — the clouds' shade at the cloud base, undithered, over the square around the camera. */
 const FAR_SHADE_FRAGMENT = /* glsl */`
 precision highp float;
+precision highp sampler3D;
 ${CLOUD_FIELD_GLSL}
+uniform sampler3D tShape;
+uniform sampler3D tDetail;
+uniform float uCells, uCellTile, uBase, uThick, uLumps;
+uniform vec3 uNoiseShift;
+${CLOUD_CELL_GLSL}
 uniform float uThreshold;
 uniform vec3 uClear;
 uniform vec3 uFarShadeRect;
+// 2026-10-05 (the skies lane, the clouds and the land; QA: CLOUD_SHADOW_CORE / _SHIFT / _SOFT): the core's share of the sun,
+// the cut's shift against the regime's threshold, its half-width
+uniform vec3 uShadeLook;
 varying vec2 vUv;
 void main() {
 	vec2 xz = uFarShadeRect.xy + ( vUv - 0.5 ) * uFarShadeRect.z;
 	vec4 w, st;
-	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( xz, w, st ) );
+	float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y - uShadeLook.z, uThreshold + uShadeLook.y + uShadeLook.z, cloudField( xz, w, st ) );
 	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );
+	// 2026-10-05 (Part 1, item 2: the gauntlet's wave 93, Frosthollow facing the sun in a clear gap "yet the snow ... no
+	// shadows"): a deck's sky gaps are mostly its cells' open borders, which the weather field alone never cut — the ground
+	// under them stayed shaded while the sun shone through. The borders the trace draws as clear air cast no shadow here
+	if ( uCells > 0.0 ) shade *= smoothstep( 0.04, 0.2, cloudCellK( xz ) );
 	gl_FragColor = vec4( shade, 0.0, 0.0, 1.0 );
 }`;
 
@@ -1652,6 +1686,12 @@ export class VolumetricCloudLayer {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
         uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
+        // (Part 1, item 2: a deck's cells — the trace's own uniform objects)
+        tShape: this.traceMaterial.uniforms.tShape, tDetail: this.traceMaterial.uniforms.tDetail,
+        uCells: this.traceMaterial.uniforms.uCells, uCellTile: this.traceMaterial.uniforms.uCellTile,
+        uBase: this.traceMaterial.uniforms.uBase, uThick: this.traceMaterial.uniforms.uThick,
+        uLumps: this.traceMaterial.uniforms.uLumps, uNoiseShift: this.traceMaterial.uniforms.uNoiseShift,
+        uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, CLOUD_SHADOW_SOFT) },
       },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
@@ -1778,7 +1818,7 @@ export class VolumetricCloudLayer {
 
   /** Whether the clouds cast shadows this frame (the shade map the lit materials read; the ring's horizon shade follows it). */
   get shadowsActive(): boolean {
-    return this.active && !!this.preset?.shadow && this.preset.coverage > 0;
+    return this.active && (this.preset?.shadowPattern ?? 0) > 0 && (this.preset?.coverage ?? 0) > 0;
   }
 
   private refreshLifetime(): void {
@@ -2158,7 +2198,8 @@ export class VolumetricCloudLayer {
    * lighting.ts); off where the clouds cast no shadows.
    */
   private updateFarShade(preset: CloudLayerPreset): void {
-    if (!preset.shadow || preset.coverage <= 0) { this.dropCloudShade(); return; }
+    // (2026-10-05: a stratiform deck with gaps casts its cells too — CloudLayerPreset.shadowPattern)
+    if (!(preset.shadowPattern > 0) || preset.coverage <= 0) { this.dropCloudShade(); return; }
     const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
@@ -2169,6 +2210,12 @@ export class VolumetricCloudLayer {
     }
     rect.set(cx, cz, CLOUD_FAR_SHADE_SPAN_M);
     (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
+    // (a deck's cell is optically thick: CLOUD_LAYER_RULES.deckShadowCore; a deck closing toward no gaps casts less of its
+    // pattern as the light model's uniform cut takes over — the two complementary over the closing coverage)
+    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
+    const pattern = preset.shadow ? preset.shadowPattern : preset.shadowPattern * (lightTune('DECK_PATTERN', 1) > 0 ? 1 : 0);
+    (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(core * pattern,
+      lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT));
     this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;
     this.farShadeInfo.baseM = preset.baseM;
@@ -2201,7 +2248,7 @@ export class VolumetricCloudLayer {
    */
   get farShade(): { readonly texture: THREE.Texture; readonly rect: THREE.Vector3; readonly baseM: number } | null {
     const info = this.farShadeInfo;
-    return this.active && this.farShadeValid && info.texture && this.preset?.shadow ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
+    return this.active && this.farShadeValid && info.texture && (this.preset?.shadowPattern ?? 0) > 0 ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
   }
 
   /**

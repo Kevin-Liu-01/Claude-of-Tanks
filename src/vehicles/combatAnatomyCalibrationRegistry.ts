@@ -3,6 +3,7 @@
 // tools and the dedicated server register the complete generated set.
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { TrackContactReceipt } from '../sim/trackContact.ts';
 
 export interface AnatomyCalibrationBounds extends Record<string, RuntimeValue> {
   readonly min: readonly number[];
@@ -58,6 +59,8 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
     readonly left: AnatomyCalibrationBounds;
     readonly right: AnatomyCalibrationBounds;
   };
+  /** The tracks' ground contact as the builder lays it (sim/trackContact.ts): the movement solve's receipt. */
+  readonly trackContact?: TrackContactReceipt;
 }
 
 export interface AnatomyWeaponReceipt extends AnatomyCalibrationCell {

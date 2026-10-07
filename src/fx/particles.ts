@@ -305,8 +305,10 @@ void main() {
   float f0 = floor( ff );
   float f1 = min( f0 + 1.0, frames - 1.0 );
   vFMix = ff - f0;
-  vUvA = ( vec2( mod( f0, uTiles ), floor( f0 / uTiles ) ) + uv ) / uTiles;
-  vUvB = ( vec2( mod( f1, uTiles ), floor( f1 / uTiles ) ) + uv ) / uTiles;
+  // the atlas paints frame 0 top-left on a canvas and the CanvasTexture uploads it with flipY, so canvas row 0 is the
+  // texture's TOP band: a frame's row counts down from v = 1 (counting up played the rows last-first: 12-15, 8-11, ...)
+  vUvA = ( vec2( mod( f0, uTiles ), uTiles - 1.0 - floor( f0 / uTiles ) ) + uv ) / uTiles;
+  vUvB = ( vec2( mod( f1, uTiles ), uTiles - 1.0 - floor( f1 / uTiles ) ) + uv ) / uTiles;
   float peak = aC1.w;
   #ifdef FX_LIGHT_TINT
     // Studio self-lit puff: a negative peak alpha flags col0 as emission that

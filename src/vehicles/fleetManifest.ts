@@ -5,6 +5,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   nationalModernization: Object.freeze(["ua_t72b3m_hetman_ii", "pl_t72b3_zubr_ii", "ua_t80u_modern", "ua_t72b3m_modern", "ua_t72b3_modern", "pl_t80u_modern", "pl_t72b3m_modern", "pl_t72b3_modern", "cn_t80u_modern", "cn_t72b3m_modern", "cn_t72b3_modern", "ru_t80u_modern", "ru_t72b3m_modern", "ru_t72b3_modern"]),
   sinoSovietConcepts: Object.freeze(['type96_72_long','type96_80_feng','type96_72m_lei']),
   t72Rys: Object.freeze(['t72_rys']),
+  m6Linebacker: Object.freeze(['m6_linebacker']),
   marder2: Object.freeze(['marder2']),
   amx10p: Object.freeze(['amx10p', 'amx10p_25']),
   dardo: Object.freeze(['dardo']),
