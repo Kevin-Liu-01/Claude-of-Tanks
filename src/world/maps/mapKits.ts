@@ -1888,6 +1888,43 @@ function addArchedStoneBridge(
 
 /** Round 4 (map revival lane 2): the Puente Nuevo's collision bands over its arch heads (its arches are metres across). */
 const PUENTE_BAND_M = 0.5;
+/**
+ * Round 4b (map revival lane 2, 2026-10-07; mr2's round-4 frames: the Puente's face "one flat ashlar wall", the sandstone
+ * print at the stone bucket's 0.7 per metre reading as brickwork across a 38 m wall): the face's architecture. The print
+ * at 0.28 per metre on the wall, its piers, courses and rings (a monumental ashlar: courses ~0.4-0.6 m, blocks
+ * ~0.6-1.5 m), at 0.45 on the parapets.
+ */
+const PUENTE_UV_PER_M = 0.28;
+const PUENTE_PARAPET_UV_PER_M = 0.45;
+/**
+ * Round 4b: the buttress piers on both faces, mirrored about the arch — [station along the road, the three stages' widths
+ * along the road, their projections from the face] (m). The great piers frame the arch's ring; the others divide the
+ * side walls into bays, the upper arches in the outer two. Each stage rises to a course and is set back there under a
+ * moulded cap: the gorge floor to the impost, to the chamber's course, to the cornice.
+ */
+const PUENTE_PIERS: ReadonlyArray<readonly [number, readonly number[], readonly number[]]> = [
+  [20.3, [7.0, 6.2, 5.4], [3.5, 2.4, 1.4]],
+  [38, [5.0, 4.4, 3.8], [2.2, 1.6, 1.0]],
+  [56, [5.0, 4.4, 3.8], [2.2, 1.6, 1.0]],
+  [70.5, [4.4, 4.0, 3.2], [2.0, 1.5, 0.9]],
+];
+/** Round 4b: the courses, [height, projection from the face] (m) — the arch's impost, the chamber's sill course, the cornice. */
+const PUENTE_COURSE = { impost: [0.55, 0.35], chamber: [0.5, 0.3], cornice: [0.45, 0.55] } as const;
+/** Round 4b: the voussoir rings — their depth from the intrados (m), how far they stand proud of the face, how deep they run. */
+const PUENTE_RING_M = { main: 1.6, small: 0.7, proud: 0.25, depth: 0.4 } as const;
+type PuenteTone = readonly [number, number, number];
+/**
+ * Round 4b: the tones over the regional print (a regional kit's per-vertex colour): the wall a warm golden calcarenite, the
+ * piers a shade greyer, the dressed courses, caps and voussoirs paler; each darkening toward the gorge floor (the damp and
+ * the river's staining), to PUENTE_FOOT_TONE of itself there, a linear ramp (exact on the body's long triangles).
+ */
+const PUENTE_TONE = {
+  wall: [0.94, 0.87, 0.77], pier: [0.88, 0.83, 0.75], dressed: [1.03, 0.98, 0.9], ring: [1.05, 1.0, 0.91],
+  deck: [0.92, 0.88, 0.82], parapet: [0.98, 0.94, 0.86],
+} as const satisfies Record<string, PuenteTone>;
+const PUENTE_FOOT_TONE = 0.74;
+/** Round 4b: the key of the Puente's own stream (landingStream's span count; any constant). */
+const PUENTE_STREAM_KEY = 7919;
 
 /**
  * Map revival lane 2, round 4 (2026-10-06; gauntlet wave 160: "a low, even five-arch viaduct" where the Puente Nuevo of
@@ -1948,30 +1985,53 @@ function addPuenteBridge(
     hole.lineTo(o.x + o.r, o.sill!);
     profile.holes.push(hole);
   }
+  // Round 4b: the masonry on the regional kit's weathered stone where the map has one — its per-vertex tone (PUENTE_TONE)
+  // over the same print, so no mesh, draw or program is added — else on the stone bucket as before. A bucket's parts merge
+  // only with the same attributes, so the regional bucket is taken only when each of its parts has exactly position,
+  // normal, uv and colour.
+  const regional = buckets.regionalStone;
+  const tinted = !!regional?.length && regional.every((g) => {
+    const names = Object.keys(g.attributes);
+    return names.length === 4 && ['position', 'normal', 'uv', 'color'].every((name) => names.includes(name));
+  });
+  const sink = tinted && regional ? regional : buckets.stone;
+  const put = (g: THREE.BufferGeometry, tone: PuenteTone, shade = 1): void => {
+    if (tinted) {
+      const position = g.getAttribute('position');
+      const colour = new Float32Array(position.count * 3);
+      for (let i = 0; i < position.count; i++) {
+        const t = Math.min(1, Math.max(0, (position.getY(i) - floor) / Math.max(1, deckY - floor)));
+        const k = shade * (PUENTE_FOOT_TONE + (1 - PUENTE_FOOT_TONE) * t);
+        colour[i * 3] = tone[0] * k; colour[i * 3 + 1] = tone[1] * k; colour[i * 3 + 2] = tone[2] * k;
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(colour, 3));
+    }
+    sink.push(g);
+  };
   let draws = 0;
   const jitter = <T extends THREE.BufferGeometry>(g: T): T => { draws++; return jitterUV(g, rng); };
   const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 16 });
   body.translate(0, 0, -width / 2);
-  scaleUV(body, 0.7, 0.7);
+  scaleUV(body, PUENTE_UV_PER_M, PUENTE_UV_PER_M);
   jitter(body);
   alignWidth(body, ux, uz);
-  buckets.stone.push(body.translate(cx, 0, cz));
+  put(body.translate(cx, 0, cz), PUENTE_TONE.wall);
   const slab = slabBox(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
   jitter(slab);
-  buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
+  put(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz), PUENTE_TONE.deck);
   const parapetHalf = bodyHalf + 0.2;
+  const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
   for (const side of [-1, 1]) {
-    const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
-    const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, 0.7);
+    const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, PUENTE_PARAPET_UV_PER_M);
     jitter(parapet);
-    buckets.stone.push(alignWidth(parapet, ux, uz)
-      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side));
+    put(alignWidth(parapet, ux, uz)
+      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side), PUENTE_TONE.parapet);
     for (const end of [-1, 1]) {
-      const post = box(0.8, BRIDGE_PARAPET_HEIGHT_M + 0.4, 0.8, 0.7);
+      const post = box(0.8, BRIDGE_PARAPET_HEIGHT_M + 0.4, 0.8, PUENTE_PARAPET_UV_PER_M);
       jitter(post);
-      buckets.stone.push(alignWidth(post, ux, uz).translate(
+      put(alignWidth(post, ux, uz).translate(
         cx + ux * end * parapetHalf + vx * inset * side, deckY + (BRIDGE_PARAPET_HEIGHT_M + 0.4) / 2,
-        cz + uz * end * parapetHalf + vz * inset * side));
+        cz + uz * end * parapetHalf + vz * inset * side), PUENTE_TONE.dressed);
     }
   }
   for (const end of [-1, 1]) {
@@ -1980,10 +2040,10 @@ function addPuenteBridge(
       const wingZ = cz + uz * end * (bodyHalf + 2.2) + vz * (halfWidth + 1.4) * side;
       const foot = heightField.getHeightAt(wingX, wingZ) - 0.5;
       const wingTop = deckY + 0.3;
-      const wing = box(5.2, wingTop - foot, 0.9, 0.7);
+      const wing = box(5.2, wingTop - foot, 0.9, PUENTE_UV_PER_M);
       wing.rotateY(-end * side * 0.6);
       jitter(wing);
-      buckets.stone.push(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
+      put(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ), PUENTE_TONE.wall);
     }
   }
   // the arched bridge's draws on the dressing stream (its cutwaters, one pair a pier), so every later draw keeps its seat
@@ -1991,8 +2051,102 @@ function addPuenteBridge(
   const arches = Math.max(1, Math.round(wetSpan / (halfLength > 60 ? 32 : 11)));
   const arched = 1 + 1 + 2 * 3 + 2 * (arches - 1) + 4;
   for (let k = draws; k < arched; k++) for (let j = 0; j < 4; j++) rng();
-  // the record: the deck part from the crown line up, then the wall's columns
+  // Round 4b: the face's architecture, drawn from the Puente's own stream (landingStream keyed by the deck's centre), so
+  // the dressing stream's draws stay the arched bridge's
   const yaw = Math.atan2(ux, uz);
+  const own = landingStream({ x: cx, z: cz, spans: PUENTE_STREAM_KEY });
+  const at = (a: number, c: number): [number, number] => [cx + ux * a + vx * c, cz + uz * a + vz * c];
+  // a block against a face (side ±1): [a0, a1] along the road, [y0, y1] up, from `embed` inside the face to `out` past it
+  const faceBlock = (side: number, a0: number, a1: number, y0: number, y1: number, out: number, embed: number): THREE.BufferGeometry => {
+    const g = slabBox(a1 - a0, y1 - y0, out + embed, PUENTE_UV_PER_M);
+    jitterUV(g, own);
+    alignWidth(g, ux, uz);
+    const [x, z] = at((a0 + a1) / 2, side * (halfWidth + (out - embed) / 2));
+    return g.translate(x, (y0 + y1) / 2, z);
+  };
+  // the voussoir rings: every arch's ring proud of both faces, its segments the body's (curveSegments 16), its soffit a
+  // centimetre inside the opening's
+  for (const o of openings) {
+    const thick = o === main ? PUENTE_RING_M.main : PUENTE_RING_M.small;
+    for (const side of [-1, 1]) {
+      const rin = o.r - 0.01, rout = o.r + thick;
+      const shape = new THREE.Shape();
+      shape.moveTo(rout, 0);
+      shape.absarc(0, 0, rout, 0, Math.PI, false);
+      shape.lineTo(-rin, 0);
+      shape.absarc(0, 0, rin, Math.PI, 0, true);
+      shape.closePath();
+      const ring = new THREE.ExtrudeGeometry(shape, { depth: PUENTE_RING_M.depth, bevelEnabled: false, curveSegments: 16 });
+      ring.translate(o.x, o.jamb, side > 0 ? halfWidth + PUENTE_RING_M.proud - PUENTE_RING_M.depth : -halfWidth - PUENTE_RING_M.proud);
+      scaleUV(ring, PUENTE_UV_PER_M, PUENTE_UV_PER_M);
+      jitterUV(ring, own);
+      alignWidth(ring, ux, uz);
+      put(ring.translate(cx, 0, cz), PUENTE_TONE.ring);
+    }
+  }
+  // the courses: the arch's impost, the chamber's sill course (the upper arches cut through it) and the cornice under the
+  // slab; the lower two run out until the gorge's sides stand over them
+  const courseEnd = (dir: number, from: number, yTop: number): number => {
+    for (let a = from; Math.abs(a) < bodyHalf; a += dir * 0.5) {
+      let ground = -Infinity;
+      for (const c of [-halfWidth - 0.6, -halfWidth, halfWidth, halfWidth + 0.6]) {
+        const [x, z] = at(a, c);
+        ground = Math.max(ground, heightField.getHeightAt(x, z));
+      }
+      if (ground > yTop + 0.3) return Math.max(-bodyHalf, Math.min(bodyHalf, a + dir * 0.8));
+    }
+    return dir * bodyHalf;
+  };
+  const corniceTop = deckY - BRIDGE_SLAB_M, corniceBottom = corniceTop - PUENTE_COURSE.cornice[0];
+  const courses: Array<{ top: number; course: readonly [number, number]; spans: Array<[number, number]> }> = [
+    { top: main.jamb, course: PUENTE_COURSE.impost,
+      spans: [[courseEnd(-1, main.x - main.r, main.jamb), main.x - main.r], [main.x + main.r, courseEnd(1, main.x + main.r, main.jamb)]] },
+    { top: chamberSill, course: PUENTE_COURSE.chamber, spans: [[courseEnd(-1, 0, chamberSill), courseEnd(1, 0, chamberSill)]] },
+    { top: corniceTop, course: PUENTE_COURSE.cornice, spans: [[-bodyHalf, bodyHalf]] },
+  ];
+  for (const { top: courseTop, course: [h, out], spans: authored } of courses) {
+    // an opening standing across the course's height cuts it at its jambs
+    let spans = authored;
+    for (const o of openings) {
+      if ((o.sill ?? -Infinity) >= courseTop || headTop(o) <= courseTop - h) continue;
+      spans = spans.flatMap(([p, q]): Array<[number, number]> => (o.x + o.r <= p || o.x - o.r >= q ? [[p, q]]
+        : [[p, Math.min(q, o.x - o.r)], [Math.max(p, o.x + o.r), q]])).filter(([p, q]) => q - p > 0.05);
+    }
+    for (const [a0, a1] of spans) for (const side of [-1, 1]) put(faceBlock(side, a0, a1, courseTop - h, courseTop, out, 0.12), PUENTE_TONE.dressed);
+  }
+  // the piers: three stages from the gorge floor, each set back at its course under a moulded cap; their record parts
+  const stageTops = [main.jamb, chamberSill, corniceBottom];
+  const pierParts: SimpleCollisionShape[] = [];
+  let pierFoot = bottom;
+  for (const [station, widths, outs] of PUENTE_PIERS) for (const along of [-station, station]) for (const side of [-1, 1]) {
+    const shade = 0.96 + own() * 0.08;
+    let ground = Infinity;
+    for (let a = along - widths[0] / 2; a <= along + widths[0] / 2 + 1e-6; a += widths[0] / 4) {
+      for (const c of [halfWidth, halfWidth + outs[0] / 2, halfWidth + outs[0]]) {
+        const [x, z] = at(a, side * c);
+        ground = Math.min(ground, heightField.getHeightAt(x, z));
+      }
+    }
+    let y0 = ground - 0.8;
+    pierFoot = Math.min(pierFoot, y0);
+    for (let k = 0; k < 3; k++) {
+      const y1 = stageTops[k], w = widths[k], out = outs[k];
+      if (y1 - y0 < 0.5) { y0 = Math.max(y0, y1); continue; }
+      put(faceBlock(side, along - w / 2, along + w / 2, y0, y1, out, 0.3), PUENTE_TONE.pier, shade);
+      put(faceBlock(side, along - w / 2 - 0.15, along + w / 2 + 0.15, y1 - 0.35, y1, out + 0.15, 0.3), PUENTE_TONE.dressed);
+      const [px, pz] = at(along, side * (halfWidth + out / 2));
+      pierParts.push({ kind: 'obb', cx: px, cz: pz, hw: out / 2, hl: w / 2, yaw, y0, y1 });
+      y0 = y1;
+    }
+  }
+  // the parapets' coping, a dressed course proud of both their faces
+  for (const side of [-1, 1]) {
+    const coping = slabBox(parapetHalf * 2, 0.14, BRIDGE_PARAPET_THICK_M + 0.16, PUENTE_PARAPET_UV_PER_M);
+    jitterUV(coping, own);
+    put(alignWidth(coping, ux, uz).translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M + 0.07, cz + vz * inset * side),
+      PUENTE_TONE.dressed);
+  }
+  // the record: the deck part from the crown line up, then the wall's columns, the piers and the parapets
   const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: crownLine, y1: deckY }];
   const solid = (from: number, to: number, y0: number, y1: number): void => {
     if (to - from < 1e-3 || y1 - y0 < 1e-3) return;
@@ -2038,13 +2192,13 @@ function addPuenteBridge(
     }
     flush(heights[heights.length - 1]);
   }
-  const parapetInset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
+  parts.push(...pierParts);
   for (const side of [-1, 1]) {
-    parts.push({ kind: 'obb', cx: cx + vx * parapetInset * side, cz: cz + vz * parapetInset * side,
+    parts.push({ kind: 'obb', cx: cx + vx * inset * side, cz: cz + vz * inset * side,
       hw: BRIDGE_PARAPET_THICK_M / 2, hl: parapetHalf, yaw, y0: deckY, y1: deckY + BRIDGE_PARAPET_HEIGHT_M });
   }
   for (let offset = 0; offset < parts.length; offset += 64) {
-    const record = setCompoundShape({ min: [0, bottom, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts.slice(offset, offset + 64));
+    const record = setCompoundShape({ min: [0, pierFoot, 0], max: [0, deckY + BRIDGE_PARAPET_HEIGHT_M, 0], kind: 'bridge' }, parts.slice(offset, offset + 64));
     ctx.obstacles?.push(record);
     ctx.colliders?.push(cloneCollisionRecord(record));
   }
