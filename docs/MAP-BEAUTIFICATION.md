@@ -7354,6 +7354,39 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
   increment is +0.09 ± 0.31 ms in the establishing view (bound 0.70 ms) and +0.33 ± 0.26 ms in the chase (bound
   0.85 ms); the second run alone gave the chase +0.03 ± 0.30 ms, CPU p25 within 0.2 ms in both views.
 
+### 2026-10-06 — Ironworks round 2: the furnace line (the map-revival lane, mr1)
+
+**Wave 137 read the works as "a few clean brick boxes, smooth dark cylinders and chimneys scattered on a flat
+patchwork".** Round 2 builds the Völklinger Hütte's dense steel silhouette along the recorded blast-furnace block.
+- *The furnace line* (`props.townPlanAdditions`, `maps/saarWorks.ts`): the recorded block at (−74, −29) gets a furnace
+  either side along its own width, each replayed from the block's own stream at its pose, so no recorded building
+  moves. The three stand on one level floor cut into the ore berm (a hardstand at the works street's level, its 14 m
+  bank under the bank law's 0.6, worst 0.51), and the foundry service court still seats its donors.
+- *The high-line* runs level over the three bunker fronts and out past both ends on steel trestle bents. The bents
+  outside the plots are solid.
+- *The gas main* runs behind the stoves, with a branch to each dust catcher and expansion loops over the gaps. Its
+  trestles are solid, and the gas washer stands at its east end.
+- *The yards:* the receiving yard's ore and coke heaps lie west of the line, and three slag tips sit by its casting
+  side. All are vertex-coloured, solid, and kept 5 m off any road.
+- *The shells:* the blast furnaces are riveted in courses with seams, tuyere stocks and bleeders; the stoves are banded;
+  the works' brick is sooted (`soot` 0.065).
+- *Out of place, stripped:* the Nissen hut becomes a brick office of about its footprint (`props.townLightPlanSwaps`),
+  and the pool no longer offers it. The "American timber water tank" becomes the Saar's own water tower: a round brick
+  shaft corbelled out to a windowed drum under a slate cone. Its shaft and plinth stand exactly as the Ruhr kit's did:
+  a 60-seed control found the first draft's 0.5 m taller, 8 cm narrower contact shortening the median 194 → 170 s,
+  although the shards differed only in the two towers' records.
+- *The rails:* the rail kit's two western yard lines now stop at buffer stops either side of the works, instead of
+  crossing the cut, the casting houses and the works street. Their skipped spans still advance their draws, so the
+  yard's other dressing keeps its seat.
+- *Census* [3225, 3687, 2061]; coal heaps 6 (was 7: the props stream reaches the rail strip later).
+- *Pacing* (60 seeds, 36000–36059): median 196 s, p10 163 s, minimum 137 s, none under 120 s, no timeouts.
+- *Layout brief:* holds (3 lanes, sight median 122 m, symmetry 1.03, no solid in a road).
+- *Cost* (capture ticket 9; A the PR head, 8 cycles at mean load 345): void under cost v3, since one cycle stood under
+  the 250 cap. The scene is lighter (731 against 718 draws, 4.37 against 4.57 M triangles at the establishing view,
+  865 / 4.34 M against 856 / 4.55 M at the chase) and compiles no new programs.
+- *Not this round:* March-1945 bare crowns (the trees lane's `vegetation.bare`, not yet on the PR head); the stepped
+  blend edges (the ground lane's); the flat light (the skies lane's).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
