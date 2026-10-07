@@ -243,10 +243,13 @@ export default {
     // the agreed 24 × 16 m plot.
     landmarks: [
       // (each at the edge of the square's paved apron, a stamped road out to 32 m, as the plot's old building stood:
-      // a 0.5 m road-core margin; the church turned so its length lies along the plot's 24 m, its tower to the square)
-      { kind: 'townHall', x: -34, z: 40, yawDeg: 180, name: 'the Rathaus on the square', roadMargin: 0.5,
+      // a 0.5 m road-core margin; the church turned so its length lies along the plot's 24 m, its tower to the square.
+      // Every piece here is set into the map-revival lane's finished village, so each vetoes its ground (types.ts
+      // `ground`): the courts' yard clutter draws as on the map without the pieces and only what would stand on a
+      // piece's ground is left out — keep-off discs made the yards draw again round them, and every court re-rolled)
+      { kind: 'townHall', x: -34, z: 40, yawDeg: 180, name: 'the Rathaus on the square', roadMargin: 0.5, ground: 'veto',
         params: { frame: true, width: 20, depth: 11, storeys: 3, tower: 28 } },
-      { kind: 'church', x: 34, z: -40, yawDeg: -90, name: 'the village church', roadMargin: 0.5,
+      { kind: 'church', x: 34, z: -40, yawDeg: -90, name: 'the village church', roadMargin: 0.5, ground: 'veto',
         params: { tradition: 'western', length: 15.8, width: 9.5, tower: 30, walls: 'render' } },
       // round 2 (2026-10-06; gauntlet wave 156: "the Rathaus and church stand on bare mud with no market square or
       // churchyard"; the seats agreed with the map-revival lane's round 3): the market square's setts before the Rathaus
@@ -254,9 +257,9 @@ export default {
       // with the Franconian Marktbrunnen at its west end (clear of the carriageways' cores), the Rathaus's arcade open on the market with two stalls under it; the
       // churchyard along the church's south flank east of the hunting blind (the free ground south of the chapel site), its low stone wall, the gate
       // in its west side toward the road, the headstones and Latin crosses, the path to the church
-      { kind: 'path', x: -34, z: 19, yawDeg: 0, name: 'the market square', params: { length: 20, width: 30, surface: 'stone' } },
-      { kind: 'fountain', x: -46, z: 18, yawDeg: 0, name: 'the Marktbrunnen', params: { style: 'markt', radius: 2.6 } },
-      { kind: 'churchyard', x: 38.25, z: -53.45, yawDeg: 180, name: 'the churchyard', params: { width: 17.5, depth: 14, tradition: 'latin', fence: 'wallstone',
+      { kind: 'path', x: -34, z: 19, yawDeg: 0, name: 'the market square', ground: 'veto', params: { length: 20, width: 30, surface: 'stone' } },
+      { kind: 'fountain', x: -46, z: 18, yawDeg: 0, name: 'the Marktbrunnen', ground: 'veto', params: { style: 'markt', radius: 2.6 } },
+      { kind: 'churchyard', x: 38.25, z: -53.45, yawDeg: 180, name: 'the churchyard', ground: 'veto', params: { width: 17.5, depth: 14, tradition: 'latin', fence: 'wallstone',
         gate: 'right', graves: 10, path: 1.4 } },
     ],
     // 2026-10-05 (the map-revival lane): the roadside builder places nothing — the village is authored (VILLAGE_HALF)
