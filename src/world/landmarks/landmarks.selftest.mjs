@@ -87,11 +87,11 @@ const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
-  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500,
+  fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, outfall: 900,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
-  aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
-  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
+  aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
+  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500, harbour: 16000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -119,6 +119,7 @@ const VARIANTS = {
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
   quay: [{ length: 24, depth: 10, top: 1.0 }],
   slipway: [{ length: 20, width: 6, head: 0.5, toe: -1.0 }],
+  harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
@@ -331,18 +332,24 @@ for (const [label, ground] of [
   assert.ok(triangles(parts) <= BUDGET.liftBridge, `liftBridge long form within its budget (${triangles(parts)})`);
   const deck = movement.filter((part) => part.kind === 'obb' && Math.abs(part.y1 - part.y0 - 1.0) < 1e-6 && part.hw >= 1.5).sort((p, q) => p.cz - q.cz);
   assert.ok(deck.length >= 5, 'the roadway in parts');
+  // what a hull stands on at a joint: the part's top, or the bank over it (an entry plate lies under its bank)
+  const support = (part, z) => Math.max(part.y1, ground(0, z));
   for (let i = 0; i + 1 < deck.length; i++) {
-    const gap = (deck[i + 1].cz - deck[i + 1].hl) - (deck[i].cz + deck[i].hl);
+    const gap = (deck[i + 1].cz - deck[i + 1].hl) - (deck[i].cz + deck[i].hl), joint = deck[i].cz + deck[i].hl;
+    const a = support(deck[i], joint), b = support(deck[i + 1], joint);
     assert.ok(Math.abs(gap) <= 0.05, `the roadway runs on unbroken (gap ${gap.toFixed(3)} m at ${deck[i].cz.toFixed(2)})`);
-    assert.ok(Math.abs(deck[i + 1].y1 - deck[i].y1) < HULL_STEP_UP_M, `a hull steps from one roadway part to the next (${deck[i].y1.toFixed(2)} → ${deck[i + 1].y1.toFixed(2)})`);
-    assert.ok(hullPassesObstacleTop(deck[i].y1, deck[i + 1].y1, deck[i + 1].y0), 'a hull on the roadway mounts the next part');
+    assert.ok(Math.abs(b - a) < HULL_STEP_UP_M, `a hull steps from one roadway part to the next (${a.toFixed(2)} → ${b.toFixed(2)} at ${joint.toFixed(1)})`);
+    assert.ok(hullPassesObstacleTop(a, deck[i + 1].y1, deck[i + 1].y0), 'a hull on the roadway mounts the next part');
   }
-  // the roadway stands `rise` over the higher bank, and each end comes down to its ground
+  // the roadway stands `rise` over the higher bank, and each end opens with its entry plate (bridges.ts ENTRY_M): under
+  // its bank, where a flat-nosed hull's nose meets it, and longer than half the fleet's longest hull's half-length
+  // (Challenger 3, 4.58 m), so the hull's track rows stand over the record before its nose reaches the roadway
   const top = Math.max(...deck.map((part) => part.y1));
   assert.ok(top >= 1.5, `the roadway stands its rise over the water (${top.toFixed(2)})`);
   for (const [part, zs] of [[deck[0], -1], [deck[deck.length - 1], 1]]) {
     const z = part.cz + zs * part.hl, g = ground(0, z);
-    assert.ok(part.y1 - g < HULL_STEP_UP_M && part.y1 >= g - 0.05, `the ${zs < 0 ? 'near' : 'far'} ramp meets its ground (${part.y1.toFixed(2)} over ${g.toFixed(2)} at ${z.toFixed(1)})`);
+    assert.ok(part.y1 <= g - 0.15, `the ${zs < 0 ? 'near' : 'far'} entry plate lies under its bank (${part.y1.toFixed(2)} under ${g.toFixed(2)} at ${z.toFixed(1)})`);
+    assert.ok(2 * part.hl >= 0.5 * 4.58, `the ${zs < 0 ? 'near' : 'far'} entry plate's length (${(2 * part.hl).toFixed(2)} m)`);
   }
   // the whole bridge within its footprint, and its shells within the packed manifest's limits
   const [, hl] = LANDMARK_KINDS.liftBridge.footprint(params);
@@ -436,6 +443,41 @@ check('the mole and its light', () => {
   for (const g of geometries(parts)) g.dispose();
 }
 
+// ---------------------------------------------------------------------------------------------------------- approaches
+// (types.ts approaches; compose.ts composeApproaches): a door's trodden apron and its worn path to the road it faces —
+// paving only (no record, no plot, nothing refused or moved); the path laid only through a gap, never across a wall
+check('approaches', () => {
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const obstacles = [], published = [], vetoes = [];
+  // a wall module standing between the second granary's door and the road
+  obstacles.push({ kind: 'wallstone', crushable: true, min: [57, 0, 190], max: [63, 1.2, 190.6], shape2: { kind: 'obb', cx: 60, cz: 190.3, hw: 3, hl: 0.3, yaw: 0 } });
+  const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
+    architecture: null, snowCap: false, seed: 2002, tier: 'desktop', merge() {}, reserve() {}, addDestructible() {},
+    publish: (x, z, w, d, rot, kind) => published.push(kind), veto: (...a) => vetoes.push(a),
+    landmarks: [
+      { kind: 'granary', x: 0, z: 170, yawDeg: 0, ground: 'veto', name: 'the open store', approaches: [{ side: 'front', width: 2.6 }] },
+      { kind: 'granary', x: 60, z: 170, yawDeg: 0, ground: 'veto', name: 'the walled store', approaches: [{ side: 'front' }, { side: 'back', path: false }] },
+    ] };
+  const obstaclesBefore = obstacles.length;
+  const it = composeLandmarks(ctx); let st = it.next(); while (!st.done) st = it.next();
+  const receipt = st.value, by = (name) => receipt.pieces.find((p) => p.name === name);
+  const apron = by('the open store: the trodden ground at its front door'), path = by('the open store: the worn path from its front door to the road');
+  assert.equal(apron?.status, 'placed', 'the apron at the open store\'s door');
+  assert.equal(path?.status, 'placed', 'its path to the road');
+  assert.equal(by('the walled store: the trodden ground at its front door')?.status, 'placed', 'the walled store\'s apron');
+  assert.ok(!by('the walled store: the worn path from its front door to the road'), 'no path across the wall to the road');
+  assert.equal(by('the walled store: the trodden ground at its back door')?.status, 'placed', 'the back door\'s apron (path: false)');
+  assert.ok(!receipt.pieces.some((p) => p.name?.startsWith('the walled store: the worn path from its back')), 'path: false lays none');
+  // ground only: the two stores' own records and nothing more; the paving publishes no plot and vetoes nothing
+  const stores = receipt.pieces.filter((p) => p.kind === 'granary').reduce((n, p) => n + (p.records ?? 0), 0);
+  assert.ok(obstacles.length - obstaclesBefore <= stores, 'the approaches add no record');
+  assert.equal(published.filter((k) => k === 'path').length, 0, 'the paving publishes no plot');
+  // the path runs from the apron's edge to the road's core (z 200 - 3.5) along the door's facing
+  const [hw, hl] = landmarkFootprint({ kind: 'granary', x: 0, z: 170, params: {} });
+  void hw;
+  assert.ok(Math.abs(path.z - (170 + hl + 2.5 + (196.5 - (170 + hl + 2.5)) / 2)) < 0.6, `the path centred between the apron and the road (${path.z})`);
+});
+
 // ---------------------------------------------------------------------------------------------------------- composer
 {
   const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
@@ -525,6 +567,30 @@ check('the mole and its light', () => {
     for (const [cx, cz, rw, rl] of LANDMARK_KINDS.townGate.solids(resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { walls: 8 } }))) {
       assert.ok(Math.abs(cx) + rw <= thw + 1e-9 && Math.abs(cz) + rl <= thl + 1e-9, 'each solid rectangle within the footprint');
     }
+    // a gate whose road crosses its gap off the middle: each stub its own length (wallsLeft -x, wallsRight +x)
+    const asym = resolveLandmarkParams({ kind: 'townGate', x: 0, z: 0, params: { passage: 7.8, wallsLeft: 3, wallsRight: 9 } });
+    assert.ok(Math.abs(LANDMARK_KINDS.townGate.footprint(asym)[0] - (3.9 + 2.4 + 9)) < 1e-9, 'the footprint reaches the longer stub');
+    const stubRects = LANDMARK_KINDS.townGate.solids(asym);
+    assert.ok(stubRects.some(([cx, , rw]) => Math.abs(cx + 7.8) < 1e-9 && rw === 1.5) && stubRects.some(([cx, , rw]) => Math.abs(cx - 10.8) < 1e-9 && rw === 4.5),
+      'each stub its own length');
+    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  }
+  // a paved piece's ground grows no grass: its footprint as ground-cover discs, each over its cell — a path's a metre or
+  // so across (no wide spill onto the verge), a court's in cells no larger than 3 m
+  {
+    const holes = [];
+    const it = composeLandmarks({ ...ctx([
+      { kind: 'path', x: -150, z: -150, yawDeg: 90, name: 'a paved path', params: { length: 20, width: 1.6 } },
+      { kind: 'path', x: -150, z: -120, yawDeg: 0, name: 'a court', params: { length: 18, width: 18 } },
+    ]), groundHole: (x, z, r) => holes.push({ x, z, r }) });
+    let step = it.next(); while (!step.done) step = it.next();
+    assert.equal(step.value.placed, 2, 'both stand');
+    const covered = (x, z) => holes.some((h) => Math.hypot(x - h.x, z - h.z) <= h.r + 1e-6);
+    for (let t = -10; t <= 10; t += 0.5) for (const w of [-0.75, 0, 0.75]) assert.ok(covered(-150 + t, -150 + w), `the path's ground at ${t} m is held clear`);
+    for (let x = -158.5; x <= -141.5; x += 1) for (let z = -128.5; z <= -111.5; z += 1) assert.ok(covered(x, z), `the court's ground at (${x}, ${z}) is held clear`);
+    const pathHoles = holes.filter((h) => Math.abs(h.z + 150) < 3);
+    assert.ok(pathHoles.every((h) => h.r < 1.4), "the path's discs keep to it (no wide spill onto the verge)");
+    assert.ok(holes.every((h) => h.r <= 3 * Math.SQRT2 + 1e-6), 'no disc wider than a 3 m cell');
     for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
   }
   // a map without set pieces composes nothing
@@ -553,7 +619,9 @@ for (const id of MAP_IDS) {
   const discs = landmarkObjectiveDiscs(id, spawns);
   const shard = decodeCollisionManifest(JSON.parse(readFileSync(new URL(`../../../server/world-collision-manifests/${id}.json`, import.meta.url), 'utf8')));
   const structures = shard.obstacles.filter((record) => record.k === 'structure');
-  assert.equal(landmarkClearances(landmarks).length, landmarks.length, `${id}: one vegetation clearance per piece`);
+  assert.equal(landmarkClearances(landmarks).length,
+    landmarks.reduce((n, p) => n + (LANDMARK_KINDS[p.kind].solids?.(resolveLandmarkParams(p)).length ?? 1), 0),
+    `${id}: a vegetation clearance per piece (per solid rectangle where its kind names them)`);
   for (const placement of landmarks) check(`${id}/${placement.name ?? placement.kind}`, () => {
     const label = `${id}/${placement.name ?? placement.kind}`;
     assert.ok(LANDMARK_KINDS[placement.kind], `${label}: a known kind`);
