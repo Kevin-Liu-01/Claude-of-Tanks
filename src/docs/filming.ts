@@ -1,16 +1,20 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
-import { t } from '../ui/i18n.ts';
+import { getLocale, t } from '../ui/i18n.ts';
+import { hrefForLocale } from '../ui/localeRouting.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
 // four loop ... along with the process"). The media is public/media/filming-r1, built by
 // tools/media-r5/docs-media.mjs; its manifest records each file's source and filming.selftest.mjs holds the two equal.
+// Each take's scene ships beside its clips as the Studio saves it (the shot library's code), to open in the Studio from
+// a link (/studio?scene=, src/game/studioSceneLink.ts) or to save for Load JSON (owner 2026-10-07: the Studio's scene
+// export and import are "a big feature i love").
 const MEDIA_ROOT = '/media/filming-r1';
 
-export type FilmingStage = 'r4' | 'review1' | 'previz' | 'review2' | 'final';
+export type FilmingStage = 'r4' | 'review1' | 'previz' | 'review2' | 'review3' | 'final';
 /** Every stage a take can show, in the order the rounds made them. */
-export const FILMING_STAGES: readonly FilmingStage[] = ['r4', 'review1', 'previz', 'review2', 'final'];
+export const FILMING_STAGES: readonly FilmingStage[] = ['r4', 'review1', 'previz', 'review2', 'review3', 'final'];
 // A take opens on its most finished render; the frames strip is cut from its latest engine render.
-const OPENING_STAGES: readonly FilmingStage[] = ['final', 'review2', 'r4'];
+const OPENING_STAGES: readonly FilmingStage[] = ['final', 'review3', 'review2', 'r4'];
 
 interface StageText { readonly label: string; readonly detail: string; readonly note: string }
 const STAGE_TEXT: Readonly<Record<FilmingStage, StageText>> = {
@@ -18,6 +22,7 @@ const STAGE_TEXT: Readonly<Record<FilmingStage, StageText>> = {
   review1: { label: t('docs.filming.stage.review1.label'), detail: t('docs.filming.stage.review1.detail'), note: t('docs.filming.stage.review1.note') },
   previz: { label: t('docs.filming.stage.previz.label'), detail: t('docs.filming.stage.previz.detail'), note: t('docs.filming.stage.previz.note') },
   review2: { label: t('docs.filming.stage.review2.label'), detail: t('docs.filming.stage.review2.detail'), note: t('docs.filming.stage.review2.note') },
+  review3: { label: t('docs.filming.stage.review3.label'), detail: t('docs.filming.stage.review3.detail'), note: t('docs.filming.stage.review3.note') },
   final: { label: t('docs.filming.stage.final.label'), detail: t('docs.filming.stage.final.detail'), note: t('docs.filming.stage.final.note') },
 };
 
@@ -35,20 +40,23 @@ export interface FilmingTake {
 
 /** The featured takes and the stages each has shipped (tools/media-r5/docs-media.mjs DOCS_TAKES, same order). */
 export const FILMING_TAKES: readonly FilmingTake[] = Object.freeze([
-  { id: 's05-barn-advance', n: 5, title: t('docs.filming.take.s05.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s05.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's22-walking-barrage', n: 22, title: t('docs.filming.take.s22.title'), place: t('map.verdant'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s22.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's21-fields-assault', n: 21, title: t('docs.filming.take.s21.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s21.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's47-ironworks-crane', n: 47, title: t('docs.filming.take.s47.title'), place: t('map.foundry'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s47.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's04-column-under-fire', n: 4, title: t('docs.filming.take.s04.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s04.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's13-farm-race', n: 13, title: t('docs.filming.take.s13.title'), place: t('map.frontier'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s13.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's44-oasis-sunset', n: 44, title: t('docs.filming.take.s44.title'), place: t('map.oasis'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s44.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
-  { id: 's11-container-rows', n: 11, title: t('docs.filming.take.s11.title'), place: t('map.railyard'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s11.story'), stages: ['r4', 'review1', 'previz', 'review2'], frames: 'review2' },
+  { id: 's05-barn-advance', n: 5, title: t('docs.filming.take.s05.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s05.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's22-walking-barrage', n: 22, title: t('docs.filming.take.s22.title'), place: t('map.verdant'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s22.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's21-fields-assault', n: 21, title: t('docs.filming.take.s21.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s21.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's47-ironworks-crane', n: 47, title: t('docs.filming.take.s47.title'), place: t('map.foundry'), time: t('docs.filming.time.night'), story: t('docs.filming.take.s47.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's04-column-under-fire', n: 4, title: t('docs.filming.take.s04.title'), place: t('map.verdant'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s04.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's13-farm-race', n: 13, title: t('docs.filming.take.s13.title'), place: t('map.frontier'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s13.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's44-oasis-sunset', n: 44, title: t('docs.filming.take.s44.title'), place: t('map.oasis'), time: t('docs.filming.time.sunset'), story: t('docs.filming.take.s44.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
+  { id: 's11-container-rows', n: 11, title: t('docs.filming.take.s11.title'), place: t('map.railyard'), time: t('docs.filming.time.day'), story: t('docs.filming.take.s11.story'), stages: ['r4', 'review1', 'previz', 'review2', 'review3'], frames: 'review3' },
 ] satisfies readonly FilmingTake[]);
 
 export const filmingVideo = (take: FilmingTake, stage: FilmingStage): string => `${MEDIA_ROOT}/${take.id}-${stage}.mp4`;
 export const filmingPoster = (take: FilmingTake, stage: FilmingStage): string => `${MEDIA_ROOT}/${take.id}-${stage}.webp`;
 export const filmingFrames = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}-frames.webp`;
 export const filmingThumb = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}-thumb.webp`;
+export const filmingScene = (take: FilmingTake): string => `${MEDIA_ROOT}/${take.id}.scene.json`;
+/** The take's scene opened in the Studio, in the page's language. */
+export const filmingStudioLink = (take: FilmingTake): string => hrefForLocale(`/studio?scene=${filmingScene(take)}`, getLocale());
 
 // The frames strip's four moments (seconds into the take), as docs-media.mjs cuts them.
 const FRAME_TIMES = ['0.0', '2.2', '4.4', '6.5'];
@@ -87,7 +95,8 @@ function viewerMarkup(): string {
     <div class="filming-stage-bar" role="group" aria-label="${t('docs.filming.viewer.stagesAria')}">${stageButtons}</div>
     <p class="filming-stage-note" data-filming-stage-note></p>
     <figure class="filming-frames"><div class="filming-frame-row" data-filming-frames>${FRAME_TIMES.map((time) => `<span class="filming-frame" role="img" data-filming-frame="${time}"><b>${time} s</b></span>`).join('')}</div><figcaption data-filming-frames-caption></figcaption></figure>
-    <div class="filming-take-story"><h3 data-filming-take-title></h3><p class="filming-take-meta" data-filming-take-meta></p><p data-filming-take-story></p></div>
+    <div class="filming-take-story"><h3 data-filming-take-title></h3><p class="filming-take-meta" data-filming-take-meta></p><p data-filming-take-story></p>
+      <div class="filming-take-scene"><a data-filming-studio href="">${t('docs.filming.viewer.openStudio')}</a><a data-filming-scene href="" download>${t('docs.filming.viewer.sceneJson')}</a><small>${t('docs.filming.viewer.sceneNote')}</small></div></div>
     <div class="filming-take-grid" role="group" aria-label="${t('docs.filming.viewer.takesAria')}">${takeCards}</div>
   </div>`;
 }
@@ -149,6 +158,9 @@ export function mountFilming(article: HTMLElement): void {
     field('take-title').textContent = take.title;
     field('take-meta').textContent = `${takeLabel(take)} · ${take.place} · ${take.time}`;
     field('take-story').textContent = take.story;
+    field('studio').setAttribute('href', filmingStudioLink(take));
+    field('scene').setAttribute('href', filmingScene(take));
+    field('scene').setAttribute('download', `${take.id}.scene.json`);
     const strip = filmingFrames(take);
     frames.forEach((frame, index) => {
       frame.style.backgroundImage = `url("${strip}")`;

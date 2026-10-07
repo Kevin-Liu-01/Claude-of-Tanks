@@ -44,7 +44,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 291372,
-          "source": "previz50/s05-barn-advance.mp4",
+          "source": "previz50-r6/s05-barn-advance.mp4",
           "sourceSha256": "a42e0db74651d612"
         },
         "review2": {
@@ -57,11 +57,29 @@
           "bytes": 1777569,
           "source": "site50/review-r6/s05-barn-advance.mp4",
           "sourceSha256": "5534a0f4f7ff3277"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s05-barn-advance-review3.mp4",
+          "poster": "/media/filming-r1/s05-barn-advance-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 2425082,
+          "source": "site50/review-r7/s05-barn-advance.mp4",
+          "sourceSha256": "96b320e50d6e7ba5"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s05-barn-advance.scene.json",
+        "source": "tools/media-r5/site50-shots/s05-barn-advance.json",
+        "version": "v9",
+        "sha256": "cdf3d48d844060a23de077510206184a244267b79d54ef5b0cf428d49ac9c93e",
+        "bytes": 75697
       },
       "frames": {
         "image": "/media/filming-r1/s05-barn-advance-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -73,7 +91,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s05-barn-advance-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -109,7 +127,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 253721,
-          "source": "previz50/s22-walking-barrage.mp4",
+          "source": "previz50-r6/s22-walking-barrage.mp4",
           "sourceSha256": "916d974b1f6f2737"
         },
         "review2": {
@@ -122,11 +140,29 @@
           "bytes": 1614596,
           "source": "site50/review-r6/s22-walking-barrage.mp4",
           "sourceSha256": "86270654aa98dc92"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s22-walking-barrage-review3.mp4",
+          "poster": "/media/filming-r1/s22-walking-barrage-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 2938543,
+          "source": "site50/review-r7/s22-walking-barrage.mp4",
+          "sourceSha256": "c1775b698679b792"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s22-walking-barrage.scene.json",
+        "source": "tools/media-r5/site50-shots/s22-walking-barrage.json",
+        "version": "v9",
+        "sha256": "f85cf4f6a28e9208e9e011589465cf18657ee8cb82d2f4234753cec22d91c6a0",
+        "bytes": 137519
       },
       "frames": {
         "image": "/media/filming-r1/s22-walking-barrage-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -138,7 +174,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s22-walking-barrage-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -174,7 +210,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 250367,
-          "source": "previz50/s21-fields-assault.mp4",
+          "source": "previz50-r6/s21-fields-assault.mp4",
           "sourceSha256": "faf2cd2335aefedc"
         },
         "review2": {
@@ -187,11 +223,29 @@
           "bytes": 2264979,
           "source": "site50/review-r6/s21-fields-assault.mp4",
           "sourceSha256": "84b7a6b7c029e923"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s21-fields-assault-review3.mp4",
+          "poster": "/media/filming-r1/s21-fields-assault-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 3855903,
+          "source": "site50/review-r7/s21-fields-assault.mp4",
+          "sourceSha256": "5405fafc30f1cefd"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s21-fields-assault.scene.json",
+        "source": "tools/media-r5/site50-shots/s21-fields-assault.json",
+        "version": "v9",
+        "sha256": "8b2790d13a17ff8a3c2ca3ae9d28ee429ce7df17564c3e3a6fd84ddc0a6cea7c",
+        "bytes": 121949
       },
       "frames": {
         "image": "/media/filming-r1/s21-fields-assault-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -203,7 +257,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s21-fields-assault-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -239,7 +293,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 309075,
-          "source": "previz50/s47-ironworks-crane.mp4",
+          "source": "previz50-r6/s47-ironworks-crane.mp4",
           "sourceSha256": "12762be1ccd5f543"
         },
         "review2": {
@@ -252,11 +306,29 @@
           "bytes": 1512695,
           "source": "site50/review-r6/s47-ironworks-crane.mp4",
           "sourceSha256": "b2da2f758eeb18ae"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s47-ironworks-crane-review3.mp4",
+          "poster": "/media/filming-r1/s47-ironworks-crane-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 1697896,
+          "source": "site50/review-r7/s47-ironworks-crane.mp4",
+          "sourceSha256": "8e2e8e2afc39b754"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s47-ironworks-crane.scene.json",
+        "source": "tools/media-r5/site50-shots/s47-ironworks-crane.json",
+        "version": "v9",
+        "sha256": "3ba5fa63b23a45ddbd6b54f507c2ee79dd3943936a14f79fdd076e2edbcba9ec",
+        "bytes": 118678
       },
       "frames": {
         "image": "/media/filming-r1/s47-ironworks-crane-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -268,7 +340,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s47-ironworks-crane-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -304,7 +376,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 255485,
-          "source": "previz50/s04-column-under-fire.mp4",
+          "source": "previz50-r6/s04-column-under-fire.mp4",
           "sourceSha256": "a7fd54d3a97fadd1"
         },
         "review2": {
@@ -317,11 +389,29 @@
           "bytes": 2288266,
           "source": "site50/review-r6/s04-column-under-fire.mp4",
           "sourceSha256": "5b47724d9cf9d13d"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s04-column-under-fire-review3.mp4",
+          "poster": "/media/filming-r1/s04-column-under-fire-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 2304237,
+          "source": "site50/review-r7/s04-column-under-fire.mp4",
+          "sourceSha256": "9389c1a9a98e46ea"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s04-column-under-fire.scene.json",
+        "source": "tools/media-r5/site50-shots/s04-column-under-fire.json",
+        "version": "v9",
+        "sha256": "3cbfa464e8427d3a7cff1a284021d42a5c1ec0932b2a75dacc122bf4ef686640",
+        "bytes": 110677
       },
       "frames": {
         "image": "/media/filming-r1/s04-column-under-fire-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -333,7 +423,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s04-column-under-fire-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -369,7 +459,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 234175,
-          "source": "previz50/s13-farm-race.mp4",
+          "source": "previz50-r6/s13-farm-race.mp4",
           "sourceSha256": "cec2077cae2ac077"
         },
         "review2": {
@@ -382,11 +472,29 @@
           "bytes": 1226749,
           "source": "site50/review-r6/s13-farm-race.mp4",
           "sourceSha256": "aeae1cbd0db4e6a7"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s13-farm-race-review3.mp4",
+          "poster": "/media/filming-r1/s13-farm-race-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 1808304,
+          "source": "site50/review-r7/s13-farm-race.mp4",
+          "sourceSha256": "a1a4f93aaf38bd0f"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s13-farm-race.scene.json",
+        "source": "tools/media-r5/site50-shots/s13-farm-race.json",
+        "version": "v9",
+        "sha256": "dbc031a262d4f62a94ddcf26517b4a4f3c28bb4a97b4b6b1dc8d488096d02b43",
+        "bytes": 30354
       },
       "frames": {
         "image": "/media/filming-r1/s13-farm-race-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -398,7 +506,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s13-farm-race-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -434,7 +542,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 274193,
-          "source": "previz50/s44-oasis-sunset.mp4",
+          "source": "previz50-r6/s44-oasis-sunset.mp4",
           "sourceSha256": "ebd36aafb3428b6d"
         },
         "review2": {
@@ -447,11 +555,29 @@
           "bytes": 1853983,
           "source": "site50/review-r6/s44-oasis-sunset.mp4",
           "sourceSha256": "07027e4ff92f782f"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s44-oasis-sunset-review3.mp4",
+          "poster": "/media/filming-r1/s44-oasis-sunset-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 2346255,
+          "source": "site50/review-r7/s44-oasis-sunset.mp4",
+          "sourceSha256": "564a4954cef14952"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s44-oasis-sunset.scene.json",
+        "source": "tools/media-r5/site50-shots/s44-oasis-sunset.json",
+        "version": "v9",
+        "sha256": "f545a4183f0e6e3c25eebd31d5cad39a60384e7f3551b21975efb27def5040fa",
+        "bytes": 75537
       },
       "frames": {
         "image": "/media/filming-r1/s44-oasis-sunset-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -463,7 +589,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s44-oasis-sunset-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     },
     {
@@ -499,7 +625,7 @@
           "fps": 15,
           "seconds": 6.6,
           "bytes": 250754,
-          "source": "previz50/s11-container-rows.mp4",
+          "source": "previz50-r6/s11-container-rows.mp4",
           "sourceSha256": "3436267f91fad2f7"
         },
         "review2": {
@@ -512,11 +638,29 @@
           "bytes": 1478766,
           "source": "site50/review-r6/s11-container-rows.mp4",
           "sourceSha256": "506f8605d111453e"
+        },
+        "review3": {
+          "video": "/media/filming-r1/s11-container-rows-review3.mp4",
+          "poster": "/media/filming-r1/s11-container-rows-review3.webp",
+          "width": 960,
+          "height": 540,
+          "fps": 15,
+          "seconds": 6.6,
+          "bytes": 1846911,
+          "source": "site50/review-r7/s11-container-rows.mp4",
+          "sourceSha256": "d897499d8d642b34"
         }
+      },
+      "scene": {
+        "file": "/media/filming-r1/s11-container-rows.scene.json",
+        "source": "tools/media-r5/site50-shots/s11-container-rows.json",
+        "version": "v9",
+        "sha256": "1ed7c522376da1d160f1ba963f8b58ed3d57ce9a8135fd80b2cfa53060db891c",
+        "bytes": 92987
       },
       "frames": {
         "image": "/media/filming-r1/s11-container-rows-frames.webp",
-        "from": "review2",
+        "from": "review3",
         "times": [
           0,
           2.2,
@@ -528,7 +672,7 @@
       },
       "thumb": {
         "image": "/media/filming-r1/s11-container-rows-thumb.webp",
-        "from": "review2"
+        "from": "review3"
       }
     }
   ],
@@ -538,7 +682,7 @@
       "image": "/media/filming-r1/previz-sheet.webp",
       "width": 1920,
       "height": 720,
-      "source": "previz50/s05-barn-advance.jpg",
+      "source": "previz50-r6/s05-barn-advance.jpg",
       "sourceSha256": "66dfc1ad81646c15",
       "bytes": 82056
     },
@@ -565,9 +709,9 @@
       "image": "/media/filming-r1/card.webp",
       "width": 1928,
       "height": 360,
-      "source": "s13-farm-race: previz at 2.2 s | review2 at 1.4 s | site50/deliver/s13-farm-race/s13-farm-race.jpg",
-      "bytes": 61026
+      "source": "s13-farm-race: previz at 2.2 s | review3 at 1.4 s | site50/deliver/s13-farm-race/s13-farm-race.jpg",
+      "bytes": 68116
     }
   ],
-  "videoBytes": 34941489
+  "videoBytes": 54164620
 }

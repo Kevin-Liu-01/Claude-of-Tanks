@@ -4516,6 +4516,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (window.location.pathname === want) return;
       const sp = new URLSearchParams(window.location.search);
       sp.delete('studio');
+      if (!inStudio) sp.delete('scene');
       const qs = sp.toString();
       window.history.replaceState(null, '', want + (qs ? `?${qs}` : ''));
     } catch (_) { /* sandboxed frames — cosmetic only */ }

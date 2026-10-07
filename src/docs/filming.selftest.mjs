@@ -2,12 +2,14 @@
 // manifest (public/media/filming-r1, tools/media-r5/docs-media.mjs), and the numbers its copy states against the code
 // that makes them true, so the page cannot drift from the pipeline it describes.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FILMING_STAGES, FILMING_TAKES, filmingFrames, filmingPoster, filmingThumb, filmingVideo } from './filming.ts';
+import { FILMING_STAGES, FILMING_TAKES, filmingFrames, filmingPoster, filmingScene, filmingStudioLink, filmingThumb, filmingVideo } from './filming.ts';
 import { topics } from './topics.ts';
-import { CARD, CARD_FROM, DOCS_STAGES, DOCS_TAKES, ENGINE_LATEST, FIGURES } from '../../tools/media-r5/docs-media.mjs';
+import { CARD, CARD_FROM, DOCS_STAGES, DOCS_TAKES, ENGINE_LATEST, FIGURES, SCENE_LIBRARY } from '../../tools/media-r5/docs-media.mjs';
+import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import { FILM_MOTION_STEP_PX } from '../game/studioFilmPlan.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -15,6 +17,8 @@ const MEDIA = join(ROOT, 'public/media/filming-r1');
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
 const publicFile = (url) => join(ROOT, 'public', url.replace(/^\//, ''));
 const manifest = JSON.parse(readFileSync(join(MEDIA, 'manifest.json'), 'utf8'));
+const library = JSON.parse(read(`${SCENE_LIBRARY}/library.json`));
+const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 // The viewer's takes are the builder's, in its order, and their stages are what the manifest says shipped.
 assert.deepEqual(FILMING_TAKES.map((take) => take.id), DOCS_TAKES, 'the viewer shows the builder\'s takes in its order');
@@ -48,6 +52,17 @@ for (const take of FILMING_TAKES) {
     referenced.add(image.split('/').at(-1));
   }
   assert.ok(take.title && take.story && take.place && take.time, `${take.id}: title, story, place and time`);
+  // The take's scene: the shot library's current code, as the Studio saves it, opened by a scene link.
+  const scene = shipped.scene;
+  assert.ok(scene, `${take.id}: its scene shipped`);
+  assert.equal(scene.file, filmingScene(take));
+  assert.equal(scene.source, `${SCENE_LIBRARY}/${take.id}.json`);
+  assert.equal(sha256(readFileSync(publicFile(scene.file))), scene.sha256, `${take.id}: the manifest records the scene that shipped`);
+  assert.equal(sha256(readFileSync(join(ROOT, scene.source))), scene.sha256, `${take.id}: the shipped scene is the library's current code (rebuild with docs-media.mjs)`);
+  assert.equal(scene.version, library.shots[take.id].versions.at(-1).version, `${take.id}: the library's latest version`);
+  assert.equal(sceneLinkPath(new URL(filmingStudioLink(take), 'https://cot.kevinliu.studio').searchParams.get('scene')), scene.file,
+    `${take.id}: the Studio link opens the scene`);
+  referenced.add(`${take.id}.scene.json`);
 }
 assert.deepEqual(manifest.figures.map((entry) => entry.name), [...FIGURES.map((figure) => figure.name), 'card'],
   'the figures, the cover and the manual index\'s card shipped');

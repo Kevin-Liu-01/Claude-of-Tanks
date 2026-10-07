@@ -9,12 +9,14 @@
 // src/docs/filming.selftest.mjs holds the two together. Stages, in the order the rounds made them:
 //   r4       round four's delivered loop (4 Oct): site50/deliver/<id>/<id>.mp4, 1280×720
 //   review1  engine review 1 (PR #9's engine, the first motion plan, before the fixes): site50/review-r5-pr9m, 540 px
-//   previz   the schematic previz of round six's motion plan: previz50/<id>.mp4, 1280×720
+//   previz   the schematic previz of round six's motion plan: previz50-r6/<id>.mp4, 1280×720
 //   review2  engine review 2 (round six, after the fixes): site50/review-r6/<id>.mp4, 960 px
-//   final    round six's 4K final, shown at 1920×1080: site50/deliver-r6/<id>/<id>.mp4
+//   review3  engine review 3 (round seven: the plan re-staged on the 2.0 maps): site50/review-r7/<id>.mp4, 960 px
+//   final    the 4K final on the 2.0 maps (round seven), shown at 1920×1080: site50/deliver-r7/<id>/<id>.mp4
 // Every stage writes <id>-<stage>.mp4 (H.264 High, yuv420p, fast start, silent) and <id>-<stage>.webp (its first
 // frame, the player's poster). <id>-frames.webp is four frames, start to end, of the take's latest engine render;
 // <id>-thumb.webp is the take picker's card. The two figures are the previz sheet and the Studio's Plan view.
+// <id>.scene.json is the take's scene as the Studio saves it, from the shot library (SCENE_LIBRARY).
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -37,20 +39,26 @@ export const DOCS_TAKES = [
 export const DOCS_STAGES = {
   r4: { src: (id) => `site50/deliver/${id}/${id}.mp4`, size: [1280, 720], crf: 25 },
   review1: { src: (id) => `site50/review-r5-pr9m/${id}.mp4`, size: null, crf: 27 },
-  previz: { src: (id) => `previz50/${id}.mp4`, size: [1280, 720], crf: 26 },
+  previz: { src: (id) => `previz50-r6/${id}.mp4`, size: [1280, 720], crf: 26 },
   review2: { src: (id) => `site50/review-r6/${id}.mp4`, size: null, crf: 26 },
-  final: { src: (id) => `site50/deliver-r6/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
+  review3: { src: (id) => `site50/review-r7/${id}.mp4`, size: null, crf: 26 },
+  final: { src: (id) => `site50/deliver-r7/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
 };
 // The frames strip and the picker card come from the latest engine render a take has.
-export const ENGINE_LATEST = ['final', 'review2', 'review1'];
-export const CARD_FROM = ['final', 'review2', 'r4'];
+export const ENGINE_LATEST = ['final', 'review3', 'review2', 'review1'];
+export const CARD_FROM = ['final', 'review3', 'review2', 'r4'];
 const FRAME_TIMES = [0, 2.2, 4.37, 6.53];
 // The cover (the manual index's card and the page's social image) is round four's still of take 13.
 export const FIGURES = [
-  { name: 'previz-sheet', src: 'previz50/s05-barn-advance.jpg', width: 1920, q: 84 },
+  { name: 'previz-sheet', src: 'previz50-r6/s05-barn-advance.jpg', width: 1920, q: 84 },
   { name: 'plan-view', src: 'plan-view-s21.png', width: 2000, q: 84 },
   { name: 'cover', src: 'site50/deliver/s13-farm-race/s13-farm-race.jpg', width: 1920, q: 84 },
 ];
+
+// The scene each take was filmed from, as the Studio saves it: the shot library's code (tools/media-r5/site50-shots/<id>.json;
+// its history is each take's version history and library.json names each version). The page offers it to download,
+// for the Studio's Load JSON, and opens it in the Studio (/studio?scene=<file>, src/game/studioSceneLink.ts).
+export const SCENE_LIBRARY = 'tools/media-r5/site50-shots';
 
 const ids = arg('ids') ? DOCS_TAKES.filter((id) => arg('ids').split(',').some((p) => id.startsWith(p))) : DOCS_TAKES;
 const stageFilter = arg('stages')?.split(',');
@@ -87,6 +95,17 @@ function encodeStage(id, stage, spec, source) {
   return { video, poster };
 }
 
+function shipScene(id) {
+  const source = join(ROOT, SCENE_LIBRARY, `${id}.json`);
+  if (!existsSync(source)) return null;
+  const code = readFileSync(source);
+  const sha256 = createHash('sha256').update(code).digest('hex');
+  const library = JSON.parse(readFileSync(join(ROOT, SCENE_LIBRARY, 'library.json'), 'utf8'));
+  const version = library.shots[id]?.versions.findLast((entry) => entry.sha256 === sha256)?.version ?? null;
+  if (!dryRun) writeFileSync(join(OUT, `${id}.scene.json`), code);
+  return { file: `/media/filming-r1/${id}.scene.json`, source: `${SCENE_LIBRARY}/${id}.json`, version, sha256, bytes: code.length };
+}
+
 function framesStrip(id, video, out) {
   const { seconds, fps } = probe(video);
   const last = Math.max(0, seconds - 1 / fps);
@@ -103,12 +122,12 @@ function framesStrip(id, video, out) {
 }
 
 // The manual index's card: one take across the pipeline, left to right — its previz, its latest engine review and
-// its most finished still (round six's once delivered, else round four's), 640×360 panels with 4 px gaps.
+// its most finished still (the 4K final's once delivered, else round four's), 640×360 panels with 4 px gaps.
 export const CARD = { take: 's13-farm-race', previzS: 2.2, engineS: 1.4 };
 function cardStrip(takes) {
   const take = takes[CARD.take];
-  const engine = ['review2', 'review1'].find((stage) => take?.stages[stage]);
-  const still = [`site50/deliver-r6/${CARD.take}/${CARD.take}.jpg`, `site50/deliver/${CARD.take}/${CARD.take}.jpg`]
+  const engine = ['review3', 'review2', 'review1'].find((stage) => take?.stages[stage]);
+  const still = [`site50/deliver-r7/${CARD.take}/${CARD.take}.jpg`, `site50/deliver/${CARD.take}/${CARD.take}.jpg`]
     .find((path) => existsSync(join(SHOTS, path)));
   if (!take?.stages.previz || !engine || !still) return null;
   const png = join(TMP, 'card.png');
@@ -141,7 +160,9 @@ function main() {
         ...probe(video), bytes: statSync(video).size, source: spec.src(id), sourceSha256: sha(source),
       };
     }
-    if (dryRun) { console.log(id, Object.keys(take.stages).join(' ')); continue; }
+    const scene = shipScene(id);
+    if (scene) take.scene = scene;
+    if (dryRun) { console.log(id, Object.keys(take.stages).join(' '), scene ? `scene ${scene.version}` : 'no scene'); continue; }
     const engine = ENGINE_LATEST.find((stage) => take.stages[stage]);
     if (engine) {
       const out = join(OUT, `${id}-frames.webp`);

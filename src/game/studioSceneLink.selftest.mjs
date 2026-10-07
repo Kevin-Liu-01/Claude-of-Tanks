@@ -17,5 +17,7 @@ const studio = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 assert.match(studio, /import \{ sceneLinkPath \} from '\.\/studioSceneLink\.ts';/);
 assert.match(studio, /const scenePath = sceneLinkPath\(urlParam\('scene'\)\);/);
 assert.match(studio, /enter\(\{ map: json\.map \|\| map \}\)\.then\(\(\) => load\(json\)\)/);
+// Leaving the Studio drops the link from the address, so a refresh in the garage stays in the garage.
+assert.match(studio, /sp\.delete\('studio'\);\n\s+if \(!inStudio\) sp\.delete\('scene'\);/);
 
 console.log('studioSceneLink.selftest: same-origin scene paths open, every other link is refused, auto-entry loads the scene');

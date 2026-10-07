@@ -217,7 +217,7 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 .filming-screen figcaption strong{font-size:11px}
 .filming-screen figcaption small{color:#7e898d;font:700 7px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .filming-screen figcaption>b{color:var(--amber);font:800 9px/1 var(--mono);white-space:nowrap}
-.filming-stage-bar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin-top:1px;background:var(--line)}
+.filming-stage-bar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;margin-top:1px;background:var(--line)}
 .filming-stage-button{display:flex;align-items:center;gap:8px;min-width:0;min-height:46px;padding:0 12px;border:1px solid transparent;background:#0b0f12;color:#aab4b7;font-size:8px;font-weight:900;line-height:1.25;letter-spacing:.1em;text-align:left;text-transform:uppercase;cursor:pointer;transition:border-color .16s ease,background-color .16s ease}
 .filming-stage-button b{color:#667277;font:800 7px/1 var(--mono)}
 .filming-stage-button[aria-pressed="true"]{border-color:var(--amber);background:#14140f;color:var(--amber2)}
@@ -232,7 +232,11 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 .filming-take-story{margin:22px 0 0;padding:18px 20px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(18,24,28,.9),rgba(9,13,16,.96))}
 .filming-take-story h3{margin:0;font-size:clamp(20px,2.2vw,26px);line-height:1.1;letter-spacing:-.02em}
 .filming-take-meta{margin:9px 0 0;color:var(--amber);font:800 8px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase}
-.filming-take-story p:last-child{max-width:76ch;margin:12px 0 0;color:#b7c1c3;font-size:13px;line-height:1.65}
+.filming-take-story p[data-filming-take-story]{max-width:76ch;margin:12px 0 0;color:#b7c1c3;font-size:13px;line-height:1.65}
+.filming-take-scene{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+.filming-take-scene a{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid var(--line);background:#0b0f12;color:#c8cecf;font:800 8px/1 var(--mono);letter-spacing:.12em;text-decoration:none;text-transform:uppercase;transition:border-color .16s ease,background-color .16s ease}
+.filming-take-scene a[data-filming-studio]{border-color:var(--amber);background:#14140f;color:var(--amber2)}
+.filming-take-scene small{flex:1 1 240px;color:#7e898d;font-size:11px;line-height:1.5}
 .filming-take-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:18px;background:var(--line)}
 .filming-take-card{min-width:0;padding:0;border:1px solid transparent;background:#0b0f12;text-align:left;cursor:pointer;transition:border-color .16s ease,background-color .16s ease}
 .filming-take-card img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;filter:saturate(.92) contrast(1.04)}
@@ -242,7 +246,7 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 .filming-take-card small{overflow:hidden;color:#6f7b7f;font:700 7px/1.3 var(--mono);letter-spacing:.08em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
 .filming-take-card[aria-pressed="true"]{border-color:var(--amber);background:#14140f}
 .filming-take-card[aria-pressed="true"] b{color:var(--amber)}
-@media(hover:hover) and (pointer:fine){.filming-take-card:hover,.filming-stage-button:not(:disabled):hover{background:#11181d}}
+@media(hover:hover) and (pointer:fine){.filming-take-card:hover,.filming-stage-button:not(:disabled):hover,.filming-take-scene a:hover{background:#11181d}}
 .filming-numbers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
 .filming-numbers div{min-width:0;padding:16px 14px;background:#0b0f12}
 .filming-numbers dt{color:var(--ink);font-size:clamp(17px,1.9vw,23px);font-weight:900;line-height:1;letter-spacing:-.02em;white-space:nowrap}
