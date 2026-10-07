@@ -731,11 +731,12 @@ const iglesia: RegionalBuilder = (ctx) => {
     for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.6, 4.2, 0.18), facePoint(f, 0, 5.0, 0.18), 0.22, 0.3, f.out, { decor: true, exposed: true }, 0);
     faceBox(sink, 'dark', f, 0, 4.55, 0.02, 0.5, 0.45, 0.02, { decor: true });
   });
-  // the chancel: lower, square, hipped
-  const cw = W - 1.6;
-  sink.placed(0, 0, 0, nz0 - chancel / 2 + 0.2, () => {
+  // the chancel: lower, hipped, at least square; it runs back to the plot's end (0.35 m short of it: the solid within
+  // half a metre of the base's reach, regionalArchitecture's footprint coverage)
+  const cw = W - 1.6, cLen = Math.max(chancel, nz0 + ctx.info.d / 2 - 0.35);
+  sink.placed(0, 0, 0, nz0 - cLen / 2 + 0.2, () => {
     buildHouse(sink, {
-      w: cw, d: chancel + 0.4, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH - 1.4, wall: 'stone' }],
+      w: cw, d: cLen + 0.4, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH - 1.4, wall: 'stone' }],
       roof: canal(24, 0.25, 0.25, 'hip'), gableBucket: 'stone', openings: [{ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.6, h: 1.2, y0: 4.2 }],
       chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.4,
     }, plain);
@@ -1190,15 +1191,19 @@ const horno: RegionalBuilder = (ctx) => {
   const f: Face = { origin: [ox, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: B };
   faceBox(sink, 'dark', f, 0, 0.72, 0.006, 0.55, 0.42, 0.01, { decor: true });
   faceBox(sink, 'stone', f, 0, 0.47, 0.12, 0.85, 0.08, 0.24, { decor: true });
-  // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven
-  const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = h - 0.06;
+  // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven, as long as
+  // the plot is deep (0.3 m short of its ends: the solid within half a metre of the base's reach, regionalArchitecture's
+  // footprint coverage); past the oven's sides two more posts carry the lean-to's head
+  const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = Math.max(h - 0.06, D / 2 - 0.3);
   if (sw > 0.35) {
     for (const s of [-1, 1]) sink.span('wood', x1 - 0.1, 0, cz + s * rz - 0.05, x1, 1.2, cz + s * rz + 0.05);
+    if (rz > h + 0.1) for (const s of [-1, 1]) sink.span('wood', x0, 0, cz + s * rz - 0.05, x0 + 0.1, 1.2 + sw * Math.tan(14 * Math.PI / 180), cz + s * rz + 0.05);
     const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.1, thickness: 0.08, bucket: 'roof' };
     sink.placed(0, (x0 + x1) / 2, 0, cz, () => emitRoof(sink, roofGeometry(sw, 2 * rz, 1.2, lean), lean));
     if (ctx.tier !== 'mobile') {
+      // the stack against the oven's side only (it has no back where the rack runs on past the oven)
       const side: Face = { origin: [x0, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: 2 * rz };
-      woodpile(sink, side, -rz + 0.1, rz - 0.1, 0.9 + look() * 0.2, look);
+      woodpile(sink, side, -(h - 0.06) + 0.1, h - 0.06 - 0.1, 0.9 + look() * 0.2, look);
     }
   }
   return sink.finish();
