@@ -27,6 +27,7 @@ import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoad
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse } from '../structureKit.ts';
+import { DESTRUCTIBLE_TYPES, WALL_SEG } from '../inhabitKit.ts';
 import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops } from '../exteriorDetailKit.ts';
 import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
@@ -293,4 +294,46 @@ for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
     console.log(`${kit} ${key}: a ${base.family} variant, ${(g.index ? g.index.count : g.getAttribute('position').count) / 3} triangles`);
   }
 }
+// the kits' own destructible kinds (ArchitectureStyle.destructibles; the map-revival lane, 2026-10-06: the Hessian
+// court's wall and Hoftor), added to a kit map's local kinds by props.ts: never a shared kind's name (the local table
+// is read first), on a material the props own under a kit (vertex-coloured), every vertex finite and coloured, the
+// build deterministic and inside the kind's declared box (a gateway's roof may overhang its posts; a wall module is one
+// WALL_SEG with a little overlap), a broken state lower than the intact one, and a court's wall and gate resolving to a
+// kind the kit map owns. Only the kits that declare kinds have any.
+const KIT_MATS = new Set(['regionalStone', 'regionalRoof', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3',
+  'structureWood', 'structureMetal', 'structureCanvas']);
+const kitKinds = [];
+for (const style of STYLES) {
+  const own = style.destructibles ?? {};
+  for (const [key, meta] of Object.entries(own)) {
+    kitKinds.push(`${style.id}/${key}`);
+    assert.ok(!(key in DESTRUCTIBLE_TYPES) && !(key in DESTRUCTIBLE_BUILDING_TYPES), `${style.id}/${key}: shadows a shared kind`);
+    assert.ok(KIT_MATS.has(meta.mat), `${style.id}/${key}: ${meta.mat} is not a material the props own under a kit`);
+    assert.ok(meta.cls === 'break' && meta.contact === 'ob' && meta.collider === true && meta.keep > 0 && meta.keep < 1 && meta.crushMin > 0,
+      `${style.id}/${key}: a breakable collider`);
+    const g = meta.build(streamFrom(7)), again = meta.build(streamFrom(7));
+    const pos = g.getAttribute('position'), col = g.getAttribute('color');
+    assert.ok(col && col.count === pos.count, `${style.id}/${key}: vertex colours on every vertex`);
+    assert.deepEqual([...pos.array], [...again.getAttribute('position').array], `${style.id}/${key}: deterministic`);
+    for (const a of [pos, col, g.getAttribute('normal'), g.getAttribute('uv')]) assert.ok(a && a.array.every(Number.isFinite), `${style.id}/${key}: finite`);
+    g.computeBoundingBox();
+    const bb = g.boundingBox, tris = (g.index ? g.index.count : pos.count) / 3;
+    const overX = meta.wall ? 0.01 : 0.8, overZ = meta.wall ? 0.01 : 0.5;
+    assert.ok(Math.max(-bb.min.x, bb.max.x) <= meta.hw + overX && Math.max(-bb.min.z, bb.max.z) <= meta.hl + overZ,
+      `${style.id}/${key}: the build leaves its box (${bb.min.x.toFixed(2)}..${bb.max.x.toFixed(2)} x ${bb.min.z.toFixed(2)}..${bb.max.z.toFixed(2)})`);
+    assert.ok(bb.max.y <= meta.h + 0.01 && bb.min.y >= -0.01, `${style.id}/${key}: the build leaves its height (${bb.min.y.toFixed(2)}..${bb.max.y.toFixed(2)})`);
+    if (meta.wall) assert.ok(bb.max.z - bb.min.z >= WALL_SEG && bb.max.z - bb.min.z <= WALL_SEG + 0.2, `${style.id}/${key}: a wall module is one WALL_SEG`);
+    assert.ok(tris <= 600, `${style.id}/${key}: ${tris} triangles`);
+    const broken = meta.broken(streamFrom(9));
+    broken.computeBoundingBox();
+    assert.ok(broken.getAttribute('position').count > 0 && broken.getAttribute('color')?.count === broken.getAttribute('position').count
+      && broken.boundingBox.max.y < bb.max.y * 0.8, `${style.id}/${key}: a lower, coloured broken state`);
+    console.log(`${style.id} ${key}: ${meta.mat}, ${tris} triangles, ${(bb.max.x - bb.min.x).toFixed(2)} x ${(bb.max.y - bb.min.y).toFixed(2)} x ${(bb.max.z - bb.min.z).toFixed(2)} m`);
+  }
+  const court = style.yard?.court;
+  if (court) for (const kind of [court.wall, court.gate].filter(Boolean)) {
+    assert.ok(kind in own || kind in DESTRUCTIBLE_TYPES, `${style.id}: the court's ${kind} is no kind its maps own`);
+  }
+}
+assert.deepEqual(kitKinds, ['hessian/hessiancourtwall', 'hessian/hoftor'], 'only the Hessian kit brings kinds of its own');
 console.log('regional architecture: kits sound, placements preserved');

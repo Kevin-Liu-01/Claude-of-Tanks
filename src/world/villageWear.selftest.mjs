@@ -11,8 +11,9 @@ const stringify = value => JSON.stringify(value, (_key, item) => typeof item ===
 const pilots = ['coastal', 'saltwind'];
 const activityMaps = ['coastal', 'foundry', 'saltwind'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
-// the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it
-const plotMaps = ['verdant'];
+// the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
+// Frontier Basin's Hofreiten (2026-10-05)
+const plotMaps = ['verdant', 'frontier'];
 // 2026-10-01 (frozen pins retired): the all28 parent mask digests (desktop/mobile, baked on historical road, shoreline,
 // exit, Badlands and Foundry inputs), the archived pilot masks, the parent config digest and the literal Alpine/Autumn/
 // Foundry config pins were change detectors of past outputs and authored data. Every comparison below is live: each
@@ -33,7 +34,7 @@ function checkScope(resolve) {
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).terrain.villageWear === 'activity-patches'), activityMaps,
     'activity wear stays opt-in: only the three activity maps replace the blanket village apron');
   assert.deepEqual(MAP_IDS.filter(id => ![undefined, 'activity-patches'].includes(resolve(id).terrain.villageWear)), plotMaps,
-    'the village plots stay opt-in: Verdant alone, and no third mode');
+    'the village plots stay opt-in: the plot maps alone, and no third mode');
   for (const id of plotMaps) assert.equal(resolve(id).terrain.villageWear, 'plots', `${id}: the village in plots`);
   for (const id of activityMaps) {
     assert.equal(resolve(id).terrain.villageWear, 'activity-patches', `${id}: activity-patch wear mode`);

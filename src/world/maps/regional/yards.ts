@@ -16,7 +16,7 @@ import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../../sim/matchPlacement.ts';
 import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../../../sim/assaultLines.ts';
-import type { YardStyle } from './types.ts';
+import type { YardCourtStyle, YardStyle } from './types.ts';
 
 /** A placed plot (props buildingFeatures): centre, size along its local x and z, yaw. */
 export interface YardPlot { x: number; z: number; w: number; d: number; rot: number; kind?: string }
@@ -169,10 +169,11 @@ function rectClear(world: YardWorld, house: YardPlot, cx: number, cz: number, ax
 
 /**
  * Plan one house's yard (null when no side has the free ground for one). `rng` is the yards' own stream; `seg` is the
- * enclosure module's length (props: a wall's or a fence's).
+ * enclosure module's length (props: a wall's or a fence's). `only` keeps the yard to one side (the garden behind a
+ * court's barn, planCourt); without it every side is weighed.
  */
 export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rng: () => number, seg: number,
-  body?: { minX: number; maxX: number; minZ: number; maxZ: number }): YardPlan | null {
+  body?: { minX: number; maxX: number; minZ: number; maxZ: number }, only?: YardPlan['side']): YardPlan | null {
   const c = Math.cos(house.rot), s = Math.sin(house.rot);
   const dirW = (l: readonly [number, number]): [number, number] => [l[0] * c + l[1] * s, -l[0] * s + l[1] * c];
   // a side's run along the house: its length, its wall's distance from the plot centre and the shift of its middle
@@ -186,6 +187,7 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   // each side's deepest clear yard
   const options: Array<{ k: number; depth: number }> = [];
   SIDES.forEach((sd, k) => {
+    if (only && sd.side !== only) return;
     const { length, offset, shift } = sideOf(sd);
     const n = dirW(sd.n), t = dirW(sd.t);
     for (let depth = YARD_MAX; depth >= YARD_MIN; depth -= 1) {
@@ -265,6 +267,160 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
     }
   }
   return plan;
+}
+
+/**
+ * The map-revival lane (2026-10-05, Frontier Basin's Hofreiten; the coordinator approved the court flag): the court a
+ * farmhouse keeps with its outbuildings — the ground on one of its flanks between its walls and a plot of its own court
+ * (a `court.partners` kind standing across the court or behind it within `court.reach`). The court runs out to the
+ * partner, never past the partner's far side or the reach, its ground clear of everything a yard keeps off; its street
+ * end is the court's wall with the gate in its middle (the Hoftor) and its other runs are walls wherever no building
+ * closes them. Null when neither flank faces a partner. The court holds no outbuilding or beds: props.ts plans those
+ * behind the partner (planYard, its side forced away from the court).
+ */
+export function planCourt(house: YardPlot, world: YardWorld, court: YardCourtStyle, seg: number,
+  body?: { minX: number; maxX: number; minZ: number; maxZ: number }): { plan: YardPlan; partner: YardPlot } | null {
+  const c = Math.cos(house.rot), s = Math.sin(house.rot);
+  const dirW = (l: readonly [number, number]): [number, number] => [l[0] * c + l[1] * s, -l[0] * s + l[1] * c];
+  const b = body ?? { minX: -house.w / 2, maxX: house.w / 2, minZ: -house.d / 2, maxZ: house.d / 2 };
+  const sideOf = (sd: typeof SIDES[number]) => ({
+    length: sd.wide ? b.maxX - b.minX : b.maxZ - b.minZ,
+    offset: (sd.wide ? (sd.n[1] > 0 ? b.maxZ : -b.minZ) : (sd.n[0] > 0 ? b.maxX : -b.minX)) + YARD_GAP,
+    shift: sd.wide ? [(b.minX + b.maxX) / 2, 0] as const : [0, (b.minZ + b.maxZ) / 2] as const,
+  });
+  const near = SIDES.map((sd) => {
+    const { offset, shift } = sideOf(sd);
+    const [x, z] = toWorld(house, shift[0] + sd.n[0] * (offset + 2), shift[1] + sd.n[1] * (offset + 2));
+    return world.ground.roadDist(x, z);
+  });
+  const front = near.indexOf(Math.min(...near)), back = front ^ 1;
+  const reachOf = (p: YardPlot) => Math.hypot(house.w, house.d) / 2 + court.reach + Math.hypot(p.w, p.d) / 2;
+  // a partner belongs to the court of the court-keeping house nearest it (a row of courts: each its own barn)
+  const keepers = world.plots.filter((p) => !!p.kind && court.kinds.includes(p.kind));
+  const ownedHere = (p: YardPlot) => {
+    const mine = Math.hypot(p.x - house.x, p.z - house.z);
+    return keepers.every((k) => k === house || Math.hypot(p.x - k.x, p.z - k.z) >= mine);
+  };
+  const partners = world.plots.filter((p) => p !== house && !!p.kind && court.partners.includes(p.kind)
+    && Math.hypot(p.x - house.x, p.z - house.z) < reachOf(p) && ownedHere(p));
+  let best: { k: number; depth: number; partner: YardPlot; cover: number } | null = null;
+  SIDES.forEach((sd, k) => {
+    if (k === front || k === back) return;
+    const { length, offset, shift } = sideOf(sd);
+    // each partner in the flank's frame: `a` along the house side from its middle, `q` out from the wall
+    let cap = 0, cover = 0, partner: YardPlot | null = null;
+    for (const p of partners) {
+      const pc = Math.cos(p.rot), ps = Math.sin(p.rot);
+      const frame = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([ux, uz]) => {
+        const x = p.x + ux * p.w / 2 * pc + uz * p.d / 2 * ps, z = p.z - ux * p.w / 2 * ps + uz * p.d / 2 * pc;
+        const [lx, lz] = toLocal(house, x, z);
+        return [(lx - shift[0]) * sd.t[0] + (lz - shift[1]) * sd.t[1], lx * sd.n[0] + lz * sd.n[1] - offset];
+      });
+      const a0 = Math.min(...frame.map((f) => f[0])), a1 = Math.max(...frame.map((f) => f[0]));
+      const q0 = Math.min(...frame.map((f) => f[1])), q1 = Math.max(...frame.map((f) => f[1]));
+      // out on this flank within reach, and across the court or behind one of its ends
+      if (q1 < 1 || q0 > court.reach || a1 < -length / 2 - 3 || a0 > length / 2 + 3) continue;
+      const span = Math.min(q1, court.reach) - Math.max(q0, 0);
+      if (span <= 1.5) continue;
+      if (span > cover) { cover = span; partner = p; }
+      cap = Math.max(cap, Math.min(court.reach, q1));
+    }
+    if (!partner) return;
+    const n = dirW(sd.n), t = dirW(sd.t);
+    for (let depth = Math.floor(cap); depth >= YARD_MIN; depth -= 1) {
+      const [ox, oz] = toWorld(house, shift[0] + sd.n[0] * (offset + depth / 2), shift[1] + sd.n[1] * (offset + depth / 2));
+      // the court's ground clear inside its ends (a barn behind the court stands on the end's line)
+      if (!courtClear(world, house, ox, oz, t, n, Math.max(0.5, length / 2 - 1.0), depth / 2)) continue;
+      if (!best || cover > best.cover) best = { k, depth, partner, cover };
+      break;
+    }
+  });
+  if (!best) return null;
+  const { k, depth, partner } = best;
+  const sd = SIDES[k];
+  const { length, offset, shift } = sideOf(sd);
+  const n = dirW(sd.n), t = dirW(sd.t);
+  const at = (a: number, d: number): [number, number] => toWorld(house, shift[0] + sd.t[0] * a + sd.n[0] * (offset + d),
+    shift[1] + sd.t[1] * a + sd.n[1] * (offset + d));
+  const yawAlong = (d: readonly [number, number]) => Math.atan2(d[0], d[1]);
+  const plan: YardPlan = { side: sd.side, street: true, depth, length, modules: [], gate: null, shed: null, garden: null };
+  // the street end: the run nearer the road, the gate in its middle
+  const streetEnd = world.ground.roadDist(...at(-length / 2, depth / 2)) < world.ground.roadDist(...at(length / 2, depth / 2)) ? -1 : 1;
+  const free = (x: number, z: number) => pointClear(world, house, x, z, ROAD_FRONTAGE_CLEARANCE, 0.15, 0);
+  // (round 3, gauntlet wave 138: the courts did not read as closed) every run is covered without a joint open: as many
+  // modules as cover it, flush with its ends, overlapping a little where the run is not a whole number of them (they
+  // were spread a run's length apart, up to half a metre open between them). The outer run reaches past the corners by
+  // a wall's half thickness, closing them. The gate's slot is exactly one module wide, the modules either side flush
+  // with its posts and the run's ends (a side shorter than a module: one flush with the post, over the run's end; under
+  // half a module: none)
+  const cover = (lo: number, hi: number): number[] => {
+    const k = Math.max(1, Math.ceil((hi - lo) / seg - 0.04));
+    return k === 1 ? [(lo + hi) / 2] : Array.from({ length: k }, (_, i) => lo + seg / 2 + i * (hi - lo - seg) / (k - 1));
+  };
+  const beside = (lo: number, hi: number, post: number): number[] => (hi - lo < seg / 2 ? []
+    : hi - lo < seg ? [post === hi ? hi - seg / 2 : lo + seg / 2] : cover(lo, hi));
+  for (const a of cover(-length / 2 - COURT_CORNER, length / 2 + COURT_CORNER)) {
+    const [x, z] = at(a, depth);
+    if (free(x, z)) plan.modules.push({ x, z, yaw: yawAlong(t) });
+  }
+  for (const end of [-1, 1]) {
+    const gated = end === streetEnd && !!court.gate;
+    const g0 = depth / 2 - Math.min(seg, depth) / 2, g1 = depth / 2 + Math.min(seg, depth) / 2;
+    const runs = gated ? [...beside(0, g0, g0), ...beside(g1, depth, g1)] : cover(0, depth);
+    for (const d of runs) {
+      const [x, z] = at(end * length / 2, d);
+      if (free(x, z)) plan.modules.push({ x, z, yaw: yawAlong(n) });
+    }
+    if (gated) {
+      const [x, z] = at(end * length / 2, depth / 2);
+      if (free(x, z)) plan.gate = { x, z, yaw: yawAlong(n) };
+    }
+  }
+  return { plan, partner };
+}
+/** How far a court's outer run reaches past its corners (a wall's half thickness: the corner closes). */
+const COURT_CORNER = 0.25;
+
+/**
+ * Whether a court's ground is free: inside the square, off the road frontage, dry and level, off every other plot (with
+ * the yards' 0.8 m), off the hard solids that are not buildings (a building's footprint is its plot; its records' boxes
+ * stand wider on a turn) and out of the keep-outs. The farm clutter — firewood, troughs, carts, benches, bales, fence
+ * modules (every crushable record and every destructible) — may stand in a court; the court's wall modules each keep
+ * off it (pointClear).
+ */
+function courtClear(world: YardWorld, house: YardPlot, cx: number, cz: number, ax: readonly [number, number],
+  bx: readonly [number, number], ha: number, hb: number): boolean {
+  const na = Math.max(1, Math.ceil(ha * 2 / 0.9)), nb = Math.max(1, Math.ceil(hb * 2 / 0.9));
+  const solids = world.solids.filter((s) => !(s as { crushable?: boolean }).crushable && (s as { kind?: string }).kind !== 'structure');
+  for (let i = 0; i <= na; i++) for (let j = 0; j <= nb; j++) {
+    const a = -ha + 2 * ha * i / na, b = -hb + 2 * hb * j / nb;
+    const x = cx + ax[0] * a + bx[0] * b, z = cz + ax[1] * a + bx[1] * b;
+    if (Math.max(Math.abs(x), Math.abs(z)) > SQUARE) return false;
+    if (world.ground.roadDist(x, z) < ROAD_FRONTAGE_CLEARANCE) return false;
+    if (world.ground.water(x, z) > 0.05 || world.ground.normalY(x, z) < 0.9) return false;
+    for (const p of world.plots) if (p !== house && insidePlot(p, x, z, 0.8)) return false;
+    for (const s of solids) {
+      if (x < s.min[0] - 0.3 || x > s.max[0] + 0.3 || z < s.min[2] - 0.3 || z > s.max[2] + 0.3) continue;
+      if (insidePlot(house, (s.min[0] + s.max[0]) / 2, (s.min[2] + s.max[2]) / 2, 0.6)) continue;
+      return false;
+    }
+    for (const [dx, dz, r] of world.keepOut.discs) if (Math.hypot(x - dx, z - dz) < r) return false;
+    for (const r of world.keepOut.rects) {
+      const ex = x - r.x, ez = z - r.z;
+      if (Math.abs(ex * r.ux + ez * r.uz) < r.halfAlong && Math.abs(-ex * r.uz + ez * r.ux) < r.halfAcross) return false;
+    }
+  }
+  return true;
+}
+
+/** A plot's back: the side opposite the one that comes nearest a carriageway 2 m out (the garden behind a court's barn). */
+export function yardBackSide(p: YardPlot, world: YardWorld): YardPlan['side'] {
+  const near = SIDES.map((sd) => {
+    const out = (sd.wide ? p.d / 2 : p.w / 2) + 2;
+    const [x, z] = toWorld(p, sd.n[0] * out, sd.n[1] * out);
+    return world.ground.roadDist(x, z);
+  });
+  return SIDES[near.indexOf(Math.min(...near)) ^ 1].side;
 }
 
 const SOIL: readonly Rgb[] = [0x4a3a2a, 0x54402e, 0x3f3226].map(rgb);

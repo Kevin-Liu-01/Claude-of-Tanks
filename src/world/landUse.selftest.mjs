@@ -50,10 +50,17 @@ for (const id of landUseProfileIds()) {
   assert.ok(kinds.size >= 3, `${id}: at least three crops sown (${[...kinds].join(',')})`);
 }
 // the slot→kind table: the classic regions keep their identity order (their crops are what they were)
-for (const id of ['verdant', 'coastal', 'frontier']) {
+for (const id of ['verdant', 'coastal']) {
   const v = landUseUniformValues(resolveLandUseProfile(id));
   assert.deepEqual([v.landE[0], v.landE[1]], [0 + 32 * 1 + 1024 * 2 + 32768 * 3, 4 + 32 * 5 + 1024 * 6], `${id}: slots 0..6 are crops 0..6`);
   assert.equal(v.landE[2], 0, `${id}: a grass margin`);
+}
+// Frontier Basin (the map-revival lane, 2026-10-05: the Hünfeld basin's Gewannflur) left the classic temperate order for
+// the strip region's rotation, the table Urban's strips draw, still behind a grass margin
+{
+  const frontier = landUseUniformValues(resolveLandUseProfile('frontier')), strips = landUseUniformValues(resolveLandUseProfile('urban'));
+  assert.deepEqual([frontier.landE[0], frontier.landE[1]], [strips.landE[0], strips.landE[1]], 'frontier: the strip region\'s slots');
+  assert.equal(frontier.landE[2], 0, 'frontier: a grass margin');
 }
 assert.equal(landUseBoundary(resolveLandUseProfile('polders')), 'ditch');
 assert.equal(landUseBoundary(resolveLandUseProfile('delta')), 'bund');
