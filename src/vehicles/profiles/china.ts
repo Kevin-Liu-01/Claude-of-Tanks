@@ -27,6 +27,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { BufferGeometry } from 'three';
 import { mount } from './fittingMount.ts';
+import { fuelDrumParts, place } from '../accessoryPrimitives.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -101,7 +102,7 @@ export function addRearFuelDrums(
   seed: number,
   options: RearFuelDrumOptions = {},
 ): void {
-  const { cylX, cylY, box } = KIT;
+  const { cylY, box } = KIT;
   const radius = options.radius ?? 0.17;
   const length = options.length ?? 0.76;
   const centerX = options.centerX ?? 0.78;
@@ -115,18 +116,24 @@ export function addRearFuelDrums(
   // both barrel bellies and the rear plate, while four triangular-looking
   // feet carry that shelf back into the hull instead of leaving two floating
   // cylinders behind the transom.
+  // 2026-10-07 (tank-accessories round 4; wave 215: "the left rear fuel drum ends in a squared, flat block instead of
+  // a round cap", "a strap on the near cylinder is a flat colour band, not raised"): the shared fuel drum
+  // (accessoryPrimitives.fuelDrumParts): round heads recessed in rolled chimes with the bung caps on the outer head,
+  // the retaining straps raised 4.5 mm with a buckle each, and the drum in the scheme's solid matte equipment paint
+  // (FSP-06 fitting paint; equipment, never the hull armour shell) instead of the camouflaged armour bucket.
   P.add('hullDark', box(outerX * 2 + 0.10, 0.09, cradleDepth),
     0, y - radius * 0.76, z + radius * 0.55);
   for (const side of [-1, 1]) {
-    P.add('hull', cylX(radius, length, 20), side * centerX, y, z);
+    const drum = fuelDrumParts({ r: radius, len: length, seg: 20,
+      straps: [0.5 - bandOffset / length, 0.5 + bandOffset / length], buckleAt: 2.62, bungHead: side > 0 ? 1 : -1 });
+    const alongX = (geometry: BufferGeometry): BufferGeometry => place(geometry, -length / 2, 0, 0, 0, 0, -Math.PI / 2);
+    P.add('hullFittingPaint', alongX(drum.body), side * centerX, y, z);
+    for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side * centerX, y, z);
     for (const bandX of [centerX - bandOffset, centerX + bandOffset]) {
-      P.add('hullDark', cylX(radius + 0.009, 0.050, 20), side * bandX, y, z);
       P.add('hullDark', box(0.060, radius * 0.92, cradleDepth),
         side * bandX, y - radius * 0.67, z + radius * 0.42);
     }
-    P.add('hullDark', cylX(radius + 0.012, 0.042, 20),
-      side * (centerX + length / 2 - 0.018), y, z);
-    P.add('hullDetail', cylY(0.045, 0.052, 0.062, 12),
+    P.add('hullFittingPaint', cylY(0.045, 0.052, 0.062, 12),
       side * centerX, y + radius + 0.025, z - radius * 0.08);
   }
   mount(P, 'hull', FITTINGS.stowageRack({
