@@ -116,7 +116,9 @@ export default {
       { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1, steps: -1 } },
       { kind: 'colonialBungalow', x: -190, z: 262, yawDeg: 150, name: "the Deputy Commissioner's bungalow", params: { damage: 0.5 } },
       { kind: 'garden', x: -180.9, z: 246.24, yawDeg: 150, name: "the DC's garden", params: { width: 14, depth: 10 } },
-      { kind: 'path', x: -169.1, z: 246.77, yawDeg: 60.7, name: "the path from the garden to the court's steps", params: { length: 21, width: 1.4, surface: 'gravel' } },
+      // (the path leaves the garden's gate outward, clear of its front fence, and stops at the foot of the court's steps:
+      // laid into the finished map, ground 'veto', an open surface reserving no ground)
+      { kind: 'path', x: -169.47, z: 245.43, yawDeg: 55.81, ground: 'veto', name: "the path from the garden to the court's steps", params: { length: 19.05, width: 1.4, surface: 'gravel' } },
     ],
     plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
       'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
