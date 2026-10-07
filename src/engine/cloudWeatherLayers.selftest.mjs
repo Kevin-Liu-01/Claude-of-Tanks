@@ -130,7 +130,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // Clouds 2.0: a front's clear radius is the medium's (its weather fades to nothing near the camera), so the towers and
   // their shadows, which the Beer shadow map marches from the same medium, stand off alike
   assert.ok(shadersSrc.includes('if ( uClear2.z > 0.0 ) w *= smoothstep( uClear2.z * 0.6, uClear2.z * 1.4, length( xz - uClear2.xy ) );'), 'a front\'s clear radius holds the towers and their shadows off the camera');
-  assert.ok(layerSrc.includes('(m.uClear2.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);'), 'the clear centre follows the camera');
+  assert.ok(layerSrc.includes("(m.uClear2.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM * lightTune('CLOUD_CLEAR_RADIUS_SHARE', CLOUD_CLEAR_RADIUS_SHARE));"), 'the clear centre follows the camera');
+  // (2026-10-07, wave 198 on Monsoon: the towers stood round a sunlit field) a third of the regime's radius: the towers over
+  // the battlefield shade it
+  assert.match(layerSrc, /export const CLOUD_CLEAR_RADIUS_SHARE = 0\.35;/);
   assert.ok(layerSrc.includes('float patchC = 0.35 + 1.3 * cw.b;'), 'the cirrus comes in patches (the same mean coverage)');
   assert.ok(shadersSrc.includes('vec4 base = uLayerBase - thick * uLayerHang * k;'), 'a deck\'s cell cores hang under its base (a lumpy underside)');
   assert.ok(layerSrc.includes('ns.y = wrapDrift(ns.y - CLOUD_BOIL_M_PER_S'), 'the billows boil');

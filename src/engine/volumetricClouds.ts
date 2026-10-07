@@ -127,6 +127,12 @@ export const CLOUD_BSM_CASCADES = Object.freeze([
   Object.freeze({ texels: 512, span: 12000, bands: 32, every: 1 }),
   Object.freeze({ texels: 512, span: 40000, bands: 32, every: 2 }),
 ] as const);
+/**
+ * A front's clear radius over the camera, as a share of the regime's (2026-10-07, the gauntlet's wave 198 on Monsoon: "the
+ * road and trees are lit with hard, bright, clear-sky sunlight despite a heavy dark storm ceiling overhead" — at the full
+ * 2.5 km the towers stood round an open battlefield in the sun): its towers stand over the field and shade it.
+ */
+export const CLOUD_CLEAR_RADIUS_SHARE = 0.35;
 /** The tiers' stretch of the cascades' refresh (a band every n × `every` frames): the low tier's map turns over in a second. */
 export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1.5, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
@@ -398,11 +404,14 @@ vec4 cirrusLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT ) {
 		// the second octave keeps the streak axis (both axes scaled alike: unequal scales rotate the streaks
 		// into a lattice of crossing lines)
 		vec4 c2 = textureGrad( tStreets, ( q * 1.6 + uCirrusShift * 1.7 + vec2( 3100.0, 900.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX * 1.6, gradY * 1.6 );
-		float streak = c1.b * 0.7 + c2.b * 0.3;
+		// (2026-10-07, the gauntlet's wave 198 on Desert: "soft, blurred streaks that look like smeared paint"): a third,
+		// finer octave on the same axis and a sharper edge — fibres and hooks of ice, not a soft smear
+		vec4 c3 = textureGrad( tStreets, ( q * 3.1 + uCirrusShift * 2.9 + vec2( 1700.0, 5300.0 ) ) / ${f(CLOUD_CIRRUS_TILE_M)}, gradX * 3.1, gradY * 3.1 );
+		float streak = c1.b * 0.6 + c2.b * 0.25 + c3.b * 0.15;
 		float cEff = clamp( uCirrus * patchC, 0.0, 0.98 );
-		float covC = smoothstep( 1.0 - cEff, 1.0 - cEff + 0.55, streak );
-		// the fibres modulate gently: a fibrous sheet, not a comb of parallel lines
-		float fibres = mix( 0.75, 1.0, c2.a ) * mix( 0.85, 1.0, c1.a );
+		float covC = smoothstep( 1.0 - cEff, 1.0 - cEff + 0.38, streak );
+		// the fibres carve the sheet into strands (a fibrous sheet, not a comb of parallel lines)
+		float fibres = mix( 0.5, 1.0, c3.a ) * mix( 0.7, 1.0, c2.a ) * mix( 0.85, 1.0, c1.a );
 		tauC = covC * fibres * uCirrusDensity / max( dir.y, 0.1 );
 	}
 	if ( uContrails > 0.0 ) tauC += contrailDepth( pc.xz, max( length( gx ), length( gy ) ) * ${f(CLOUD_CIRRUS_TILE_M)} ) / max( dir.y, 0.1 );
@@ -557,7 +566,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     uLayerCover: { value: new THREE.Vector4() }, uLayerDensity: { value: new THREE.Vector4() },
     uLayerShape: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerDetail: { value: new THREE.Vector4(1, 1, 1, 1) },
     uLayerBias: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerFilter: { value: new THREE.Vector4(0.5, 0.5, 0.5, 0.5) },
-    uLayerExp: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerStreets: { value: new THREE.Vector4() }, uLayerEnvelope: { value: new THREE.Vector4() },
+    uLayerExp: { value: new THREE.Vector4(1, 1, 1, 1) }, uLayerStreets: { value: new THREE.Vector4() }, uLayerEnvelope: { value: new THREE.Vector4() }, uCellStretch: { value: 1 },
     uLayerCells: { value: new THREE.Vector4() }, uLayerWisp: { value: new THREE.Vector4() },
     uLayerFlat: { value: new THREE.Vector4() }, uLayerHang: { value: new THREE.Vector4() }, uLayerAnvil: { value: new THREE.Vector4() },
     uLayerCore: { value: new THREE.Vector4(0.6, 0.6, 0.6, 0.6) }, uLayerLumps: { value: new THREE.Vector4() },
@@ -993,7 +1002,20 @@ export class VolumetricCloudLayer {
     const top = t.uSunIrradianceTop.value as THREE.Vector3;
     top.setScalar(illuminance);
     if (!a.transmittanceLut && sunT) top.set(sunT.r, sunT.g, sunT.b).multiplyScalar(illuminance);
-    if (key) {
+    // 2026-10-07 (the gauntlet's wave 200: "beige low-sun clouds over neutrally lit snow"): the clouds take the scene's own
+    // sun — the light model's colour (the ground's transmittance tint, greyed by the overcast) — and keep only the air
+    // between the ground and the cloud from the LUT (the trace's T(h) over T(ground)): equal at the ground, a little less
+    // reddened aloft, warm or grey with the scene both ways. Without a grounded model, the preset's key tint as before.
+    const sceneSun = (this.scene.userData.lightModel as { mode?: string; sunColor?: readonly number[] } | undefined);
+    const lum = (r: number, g: number, b: number): number => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const sunUpNow = a.sunDir.y / Math.max(1e-6, a.sunDir.length());
+    if (sceneSun?.mode === 'physical' && sceneSun.sunColor && sunT && sunUpNow > 0.02 && lum(sunT.r, sunT.g, sunT.b) > 1e-3) {
+      const sc = sceneSun.sunColor;
+      const ls = Math.max(1e-6, lum(sc[0], sc[1], sc[2])), lt = lum(sunT.r, sunT.g, sunT.b);
+      const corr = this.scratch.set((sc[0] / ls) / Math.max(1e-4, sunT.r / lt), (sc[1] / ls) / Math.max(1e-4, sunT.g / lt), (sc[2] / ls) / Math.max(1e-4, sunT.b / lt));
+      (t.uSunRadiance.value as THREE.Vector3).multiply(corr);
+      top.multiply(corr);
+    } else if (key) {
       (t.uSunRadiance.value as THREE.Vector3).multiply(this.scratch.set(key[0], key[1], key[2]));
       top.multiply(this.scratch.set(key[0], key[1], key[2]));
     }
@@ -1240,7 +1262,7 @@ export class VolumetricCloudLayer {
       this.resetHistory();
     }
     this.hasPrev = true;
-    (m.uClear2.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM);
+    (m.uClear2.value as THREE.Vector3).set(C.pos.x, C.pos.z, preset.clearRadiusM * lightTune('CLOUD_CLEAR_RADIUS_SHARE', CLOUD_CLEAR_RADIUS_SHARE));
     this.setCameraUniforms(this.traceMaterial, C);
     this.setCameraUniforms(this.resolveMaterial, C);
     t.uPixelAngle.value = (C.tan.y * 2) / Math.max(4, this.history[0].height);

@@ -80,6 +80,8 @@ uniform vec4 uLayerExp;
 uniform vec4 uLayerStreets;
 // the stratiform field as an envelope over a convective lane's weather (organised convection)
 uniform vec4 uLayerEnvelope;
+// the deck cells' elongation along the wind (1 round)
+uniform float uCellStretch;
 uniform vec4 uLayerCells;
 // the deck cells' lookup period (m): the local weather's cell channel stretched to the regime's cell size
 uniform float uCellPeriod;
@@ -158,6 +160,8 @@ vec4 cl2Weather( vec2 xz, float h, float lod ) {
 vec2 cl2Cell( vec2 xz, float lod ) {
 	if ( dot( uLayerCells, uLayerCells ) <= 0.0 ) return vec2( 1.0 );
 	vec2 q = xz + uLocalShift * 0.9;
+	// in the wind's frame, drawn out along it (a broken deck's bands)
+	q = vec2( dot( q, uWindDir2 ) / uCellStretch, dot( q, vec2( -uWindDir2.y, uWindDir2.x ) ) );
 	float c = textureLod( tLocal, q / uCellPeriod + vec2( 0.37, 0.11 ), lod ).a;
 	float l = textureLod( tLocal, q / ( uCellPeriod * 0.31 ) + vec2( 0.71, 0.53 ), lod ).a;
 	return vec2( smoothstep( 0.15, 0.85, c ), smoothstep( 0.1, 0.9, l ) );
@@ -186,7 +190,7 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
-	d *= mix( vec4( 1.0 ), smoothstep( 0.06, 0.22, k ), gapOn );
+	d *= mix( vec4( 1.0 ), smoothstep( 0.03, 0.32, k ), gapOn );
 	return d * uLayerCore * inside;
 }
 // the extinction of every lane at a point (1/m): the shell eroded by the shape and (detail > 0) the detail, under the

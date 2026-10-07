@@ -74,6 +74,8 @@ export interface CloudStack {
   cellPeriodM: number;
   /** the shape volume's world period (m): several cumulus across it, a deck's lumps a few hundred metres */
   shapePeriodM: number;
+  /** the deck cells' elongation along the wind (1 round) */
+  cellStretch: number;
 }
 
 export const CLOUD_LANES_MAX = 4;
@@ -95,7 +97,7 @@ const DECK_CORE = 0.82;
 export function cloudShellCover(coverage: number, deck: boolean): number {
   // (a broken deck admits a little under its coverage: seen from under a 500 m slab its breaks close up with the angle —
   // the first GPU pairs drew Fjord's broken stratocumulus as a ceiling)
-  if (deck) return clamp(coverage * (1 - 0.15 * clamp((0.93 - coverage) / 0.2, 0, 1)) + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
+  if (deck) return clamp(coverage * (1 - 0.08 * clamp((0.93 - coverage) / 0.2, 0, 1)) + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
   // (a sparse humilis sky keeps a few small puffs the carving would take: a lift of 0.03, none at no coverage)
   return clamp(coverage * 1.2 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
 }
@@ -130,13 +132,20 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   const channels: [number, number, number, number] = [cu, 0, 1 - cu, 0];
   const envelope = isDeck ? 0 : clamp(preset.fieldMix, 0, 1) * 0.85;
   // a deck's cells always break its column a little (an overcast has lumps and thin lines: no flat card)
-  const cellsEff = isDeck ? Math.max(cells, 0.6) : cells;
+  const cellsEff = isDeck ? Math.max(cells, 0.75) : cells;
+  // 2026-10-07 (the gauntlet's wave 200: decks as "airbrushed pillows and lens-shaped slabs", "flat painted sheets with
+  // scalloped, hard-edged cutout silhouettes"): a broken deck is stratocumulus — lumpy domed cells on a flat base, carved
+  // by the shape and detail volumes, darker where they are thick, in bands along the wind with sky between — and only a
+  // closing deck the dense flat sheet (its structure the cells' thickness under it)
+  const mixK = (a: number, b: number, k: number): number => a + (b - a) * k;
+  const closing = isDeck ? clamp((preset.coverage - 0.85) / 0.1, 0, 1) : 0;
   // the density's ramp over the footprint: a cumulus' whole footprint (densest at the weather's peak, the shape carving
   // it inward from the edge), a deck's first third (dense to near its breaks)
   // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
   // cumulus' ramp runs past its footprint's peak, so the shape volume carves the whole cloud into its billows, not just
   // its rim — at 1 every cumulus was a smooth loaf under a bubbly fringe)
-  const filter = isDeck ? 0.55 : 1.35;
+  const filter = isDeck ? mixK(0.95, 0.55, closing) : 1.35;
+  const core = isDeck ? mixK(0.62, DECK_CORE, closing) : 0.46;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -147,28 +156,28 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // a deck's extinction at a stratocumulus' (an optical depth of ten to twenty through it, not fifty: its thick cores
     // grey, not black, beside its thin lines), a closing deck's at least twenty-five (an overcast, no disc through it)
     density: isDeck
-      ? Math.max(preset.density * 0.45, (10 + 15 * clamp((preset.coverage - 0.85) / 0.15, 0, 1)) / (thickness * DECK_CORE))
+      ? Math.max(preset.density * 0.45, (10 + 15 * clamp((preset.coverage - 0.85) / 0.15, 0, 1)) / (thickness * core))
       : preset.density,
     channels,
     streets: clamp(preset.streets, 0, 1) * (1 - deck),
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
-    shape: (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
+    shape: isDeck ? mixK(0.85, 0.7, closing) : (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
-    detail: 1 - 0.55 * deck,
+    detail: isDeck ? mixK(0.75, 0.6, closing) : 1 - 0.55 * deck,
     // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall
     // lane under the same dome (a lower bias drew its walls straight up: stone pillars, not cauliflower)
-    bias: 0.375 + 0.5 * deck,
+    bias: isDeck ? 0.65 : 0.375 + 0.5 * deck,
     filter,
     exponent: 1,
     cells: cellsEff,
     wisp: clamp(preset.wispiness - 0.3, 0, 1) * 0.8,
-    flat: clamp((deck - 0.3) / 0.5, 0, 1),
+    flat: isDeck ? mixK(0.55, 1, closing) : clamp((deck - 0.3) / 0.5, 0, 1),
     // a deck's cores hang under its base (a lumpy underside the light reads through its thickness)
     hang: isDeck ? 0.3 * cellsEff : cells > 0 ? 0.18 * cells : 0,
     anvil: clamp(preset.anvil, 0, 1),
-    core: isDeck ? DECK_CORE : 0.46,
+    core,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
@@ -217,7 +226,11 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     turbulenceM: preset.windSpeed > 0 ? 180 + preset.windSpeed * 12 : 0,
     // only a convective sky with towers pays for it (one more fetch a step)
     weatherWarpM: isDeck ? 0 : clamp((preset.towers - 0.25) / 0.75, 0, 1) * 320,
-    cellPeriodM: CLOUD_LOCAL_PERIOD_M * Math.max(100, preset.cellM) / CLOUD_LOCAL_CELL_M,
+    // (a low deck's cells at its own scale: a 300 m stratus under 1.2 km cells read as one gradient overhead)
+    cellPeriodM: CLOUD_LOCAL_PERIOD_M * Math.max(100, preset.cellM) / CLOUD_LOCAL_CELL_M * clamp(preset.baseM / 1000, 0.35, 1),
+    // a broken deck's cells drawn out along the wind into bands (sky between them)
+    // (2.2 drew the cell texture's bilinear kinks out into a saw along the bands' edges)
+    cellStretch: isDeck ? mixK(1.7, 1.2, closing) : 1,
     // (a shallow humilis takes finer billows: at the 3.2 km period its billows were as deep as the cloud and carved it away)
     shapePeriodM: deck > 0.5 ? 1400 : clamp(3200 * preset.thicknessM / 820, 1600, 3200),
   };
@@ -282,6 +295,7 @@ export function packCloudStack(stack: CloudStack, u: Record<string, { value: unk
   const range = u.uHeightRange.value as { set(x: number, y: number): unknown };
   range.set(stack.lowM, stack.highM);
   if (u.uCellPeriod) u.uCellPeriod.value = stack.cellPeriodM;
+  if (u.uCellStretch) u.uCellStretch.value = stack.cellStretch;
   if (u.uShapePeriod) u.uShapePeriod.value = stack.shapePeriodM;
   if (u.uTurbulence) u.uTurbulence.value = stack.turbulenceM;
   if (u.uWeatherWarp) u.uWeatherWarp.value = stack.weatherWarpM;
