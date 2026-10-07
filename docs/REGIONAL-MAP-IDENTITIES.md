@@ -41,7 +41,7 @@ the fictional map reproduces a particular real-world location.
 | blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
 | titan_gorge | Long plateau edges with branching tributary recesses; playable changes held until access constraints pass. |
 | skybridge | Opposing plateau shoulders aligned with the drowned gorge; preserve crossing approaches. |
-| polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |
+| polders | The polders of the Scheldt estuary, South Beveland and Walcheren in the autumn of 1944 (the map-revival lane, 2026-10-06, step 1): reclaimed clay fields boxed by dykes that stand as embankments — level crests on straight batters, the main dyke 4.5–5.2 m with its road crossings ramped over the crest, narrow field dykes 3.6 m with the lanes cut through them, a lane along one field dyke's crest and poplar rows on the long ones — round the farm court at the causeway crossing and five drainage basins held at stepped levels; a very low skyline, the deliberately low amplitude kept. Steps 2–4 (approved): the vaart and its weteringen, the lift bridge on the causeway, mills on their molenbergs, Bosman windmotors on the basin banks. |
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
 | oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
