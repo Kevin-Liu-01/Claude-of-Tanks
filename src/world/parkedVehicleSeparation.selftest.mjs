@@ -191,18 +191,19 @@ for (const mapId of MAP_IDS) {
   }
 }
 // the canonical case: Longleaf's haycart stood 0.03 m (its body more) into the fence line along its field (2026-10-06
-// shards); it now stands beside it, within the ruling's reach of its old seat
+// shards) and the seating pass slid it clear. Since gauntlet wave 211 (2026-10-07) its road station on the field's bank
+// is steeper than the carts' 12-degree tilt cap, so it stands across the road at the station's far side, and nothing is
+// left on the bank by the fence line
 {
   const obstacles = loader.get('longleaf').obstacles;
   const haycart = obstacles.filter((r) => r.k === 'haycart')
-    .sort((a, b) => Math.hypot(a.b[0] + 275.5, a.b[2] + 204.3) - Math.hypot(b.b[0] + 275.5, b.b[2] + 204.3))[0];
-  assert.ok(haycart && Math.hypot(haycart.b[0] + 275.5, haycart.b[2] + 204.3) <= CART_SLIDE_MAX_M, 'Longleaf\'s haycart is still near its seat');
+    .sort((a, b) => Math.hypot(a.b[0] + 292.5, a.b[2] + 217.32) - Math.hypot(b.b[0] + 292.5, b.b[2] + 217.32))[0];
+  assert.ok(haycart && Math.hypot(haycart.b[0] + 292.5, haycart.b[2] + 217.32) <= 0.5, 'Longleaf\'s haycart stands across the road from its steep station');
+  assert.ok(!obstacles.some((r) => (r.k === 'haycart' || r.k === 'handcart') && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) <= CART_SLIDE_MAX_M),
+    'no cart is left on the bank by the fence line');
   const fences = obstacles.filter((r) => r.k === 'fenceplank' && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) < 8);
   assert.ok(fences.length > 0, 'the fence line is there');
-  for (const fence of fences) for (const a of shardPolys(haycart)) for (const b of shardPolys(fence)) {
-    assert.ok(polygonGap(a, b).gap >= 0, 'clear of the fence line');
-  }
 }
 console.log(`parkedVehicleSeparation.selftest: the pass's footprint, order, seat and drop rules; ${vehicles} parked vehicles `
   + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m; ${carts} carts, `
-  + 'none inside an obstacle; Longleaf\'s haycart beside its fence line');
+  + 'none inside an obstacle; Longleaf\'s haycart across the road from its steep station');
