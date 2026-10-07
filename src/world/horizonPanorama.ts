@@ -87,6 +87,17 @@ export interface HorizonPanoramaCharacter {
   /** the bake's own air over the far path as a share of the haze law's σ (1: the map's fogDensity; a clean coast's air
    * less) — the same law, layer, chroma and target */
   air: number;
+  /** the regional air's floor over the far path past the shell, a share of the ground's density (0: none). The haze
+   * law's layer (hazeLaw.ts, a 400 m scale height over the battlefield's ground) leaves the air 2 km up nearly clean, so
+   * a far summit hardly receded — on Glacier's air, from the bake eye, a summit 2 km up at 8.5 km kept T 0.47 against a
+   * ring ridge's 0.62 at 2 km (well-mixed air at the ridge's density would leave it 0.13) — while its foot went into the
+   * haze (0.14): the gauntlet's wave 200, "far snow peaks crisper than nearer ridges", "peaks floating over a fog band".
+   * Over a region the air above that layer is not clean (the free troposphere's aerosol and the molecules; a boundary
+   * layer over a kilometre deep leaves such a summit about 0.3): along the far path the density never falls under this
+   * share of the ground's (the mean: mix(the layer's, 1, floor)), so a far summit recedes (0.35 at 0.2) while the low far
+   * ground (0.12) and the ring's own ridges keep theirs (the aerial pass and its layer unchanged;
+   * horizonPanoramaFarAir.selftest works the numbers) */
+  farAirFloor: number;
   /** the fill below the ring's skyline from the eye (what a camera above it sees over the ring's crest): 0, the lit
    * ground pushed toward the fog colour; 1, the lowland's own cover under the law's air over its reach */
   fillLaw: number;
@@ -121,6 +132,7 @@ const PANO_EXTRAS = Object.freeze({
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
   forestSlope: 0.32,
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
+  farAirFloor: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
   jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
 });
@@ -157,7 +169,7 @@ float jebelSection(float q, float foot, float apron, float rim) {
 `;
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
-  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
+  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, farAirFloor: 0.2 },
   polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
   rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.3, midL: 1600, gullyL: 450, gullyM: 60, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true, ...PANO_EXTRAS },
   coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.3, midL: 1500, gullyL: 450, gullyM: 55, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true, ...PANO_EXTRAS },
@@ -1260,7 +1272,7 @@ uniform vec2 uElev;
 uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
-uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
+uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief), the far air's floor
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -1513,6 +1525,8 @@ void main() {
   if (uHaze.w > 0.5) {
     vec3 target = lawTarget;
     float layer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(wp.y - uHaze.z, 0.0) * uHaze.y);
+    // the regional air's floor over the far path (the character's farAirFloor): a far summit hazes as its distance owes
+    layer = mix(layer, 1.0, uAir.w);
     vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
     col = col * T + target * (1.0 - T);
   } else {
@@ -1768,7 +1782,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
-      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
+      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, ch.farAirFloor) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
