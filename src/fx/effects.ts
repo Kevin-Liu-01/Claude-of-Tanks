@@ -16,6 +16,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
 import { createDronePresentation } from './dronePresentation.ts';
+import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
@@ -3075,7 +3076,7 @@ function* createFxSteps(
         // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
         if (shell.pos.distanceToSquared(camera.position) > 4) {
           const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
-          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation);
+          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined);
         }
         continue;
       }

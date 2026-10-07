@@ -136,7 +136,8 @@
     "media:capture": "node tools/media-production/produce.mjs",
     "media:cinema": "node tools/media-production/cinema.mjs",
     "media:publish": "node tools/media-production/publish.mjs",
-    "media:check": "node tools/media-production/pipeline.selftest.mjs"
+    "media:check": "node tools/media-production/pipeline.selftest.mjs",
+    "tank:caps:check": "node tools/circular-cap-audit.mjs"
   },
   "keywords": [
     "threejs",
