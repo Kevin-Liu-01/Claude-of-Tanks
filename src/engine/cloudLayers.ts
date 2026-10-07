@@ -92,7 +92,8 @@ const DECK_CORE = 0.82;
  */
 export function cloudShellCover(coverage: number, deck: boolean): number {
   if (deck) return clamp(coverage + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
-  return clamp(coverage * 1.08, 0, 1);
+  // (a sparse humilis sky keeps a few small puffs the carving would take: a lift of 0.03, none at no coverage)
+  return clamp(coverage * 1.08 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */
@@ -207,7 +208,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     lanes, lowM, highM,
     turbulenceM: preset.windSpeed > 0 ? 180 + preset.windSpeed * 12 : 0,
     cellPeriodM: CLOUD_LOCAL_PERIOD_M * Math.max(100, preset.cellM) / CLOUD_LOCAL_CELL_M,
-    shapePeriodM: deck > 0.5 ? 1400 : 3200,
+    // (a shallow humilis takes finer billows: at the 3.2 km period its billows were as deep as the cloud and carved it away)
+    shapePeriodM: deck > 0.5 ? 1400 : clamp(3200 * preset.thicknessM / 820, 1600, 3200),
   };
 }
 
