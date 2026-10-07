@@ -5,6 +5,9 @@
 //            and the vertical joint sets, their arrises rounded, stacked in two to four columns parted by open vertical
 //            joints, the sheet rock breaking the turf round them, the clitter strewn down the slope (Dartmoor, the
 //            Breton chaos);
+//   boules   granite: the chaos de boules — the corestones the weather rounded out of the jointed granite and the sea
+//            washed clean, big domed boulders bedded in the sand and the turf, a few perched on the others, smaller
+//            ones leaning on their flanks, cobbles round the foot (north Finistère: Brignogan, Meneham, Ploumanac'h);
 //   outcrop  sandstone or limestone beds: hard beds standing proud over recessed soft ones, each higher bed stepping
 //            back from a scarp that faces downhill, the beds split into blocks by the vertical joints, fallen blocks
 //            at the foot (Buntsandstein ledges, the Dalmatian scars, the Franconian castle rocks);
@@ -526,6 +529,154 @@ function graniteTor(spec: RockFormationSpec, ground: RockGround, noise: SimplexN
       mobile || size < 0.9 ? 2 : 3, noise, rng, { weather: 0.08, cuts: 1, cutDepth: 0.8, seedOffset: 80 + i });
     const y = ground.getHeightAt(x, z) + size * (0.05 - rng() * 0.3);
     pieces.push({ geometry: place(g, x, y, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.35, (rng() - 0.5) * 0.35), layer: -1, standing: false });
+  }
+}
+
+/**
+ * (b28; Saltmere's strand, wave 184: the tor's sheets read as "a stack of smooth, straight-sided, flat-topped cylinders
+ * like millstones") A granite boule: the corestone the weather leaves of a joint block, rounded from the arrises in
+ * until little of the block's faces is left, and the sea and the wind wash it smooth. A cube grid pushed out to a
+ * superellipsoid (squareness 2.3 to 2.9: a woolsack, never a cylinder), its top domed and its flanks bulging; the
+ * weather's broad swells over it; now and then a sheeting joint flattening one flank under a broad round arris; and on
+ * a big one's top, a weathering pan, the shallow dish the rain stands in. Unit extents scaled by (hx, hy, hz); its
+ * base flattened a little where it bears. Welded.
+ */
+function graniteBoule(
+  hx: number, hy: number, hz: number, segments: number, noise: SimplexNoise, rng: Rng,
+  { squareness = 2.6, seedOffset = 0, joint = true, pan = 0 } = {},
+): THREE.BufferGeometry {
+  const box = new THREE.BoxGeometry(2, 2, 2, segments, segments, segments);
+  box.deleteAttribute('uv');
+  box.deleteAttribute('normal');
+  const g = mergeVertices(box);
+  box.dispose();
+  const p = g.attributes.position;
+  const sq = squareness, s = seedOffset * 13.71;
+  // a sheeting joint: a flank cut flat at 0.78 to 0.9 of its reach, under an arris rounded over a fifth of the boule
+  let jn: [number, number, number] | null = null, jd = 0;
+  const jk = 0.22;
+  if (joint && rng() < 0.55) {
+    const a = rng() * Math.PI * 2, e = (rng() - 0.35) * 0.7;
+    jn = [Math.cos(e) * Math.cos(a), Math.sin(e), Math.cos(e) * Math.sin(a)];
+    jd = 0.78 + rng() * 0.12;
+  } else { rng(); rng(); rng(); }
+  const panAt = [rng() * 0.5 - 0.25, rng() * 0.5 - 0.25];
+  for (let i = 0; i < p.count; i++) {
+    const x0 = p.getX(i), y0 = p.getY(i), z0 = p.getZ(i);
+    const l = Math.hypot(x0, y0, z0) || 1;
+    const dx = x0 / l, dy = y0 / l, dz = z0 / l;
+    let r = Math.pow(Math.pow(Math.abs(dx), sq) + Math.pow(Math.abs(dy), sq) + Math.pow(Math.abs(dz), sq), -1 / sq);
+    // the weather's swells: a metre-scale bulge and a finer one, receding at most a tenth
+    const w1 = noise.noise3d(dx * 1.15 + s, dy * 1.15 - s, dz * 1.15 + 2.3) * 0.5 + 0.5;
+    const w2 = noise.noise3d(dx * 2.9 - s, dy * 2.9 + 5.1, dz * 2.9 + s) * 0.5 + 0.5;
+    r *= 1 - 0.075 * w1 - 0.03 * w2;
+    let x = dx * r, y = dy * r, z = dz * r;
+    if (jn) {
+      // the joint's flat under a smooth minimum: the flank meets it over a broad round arris
+      const proj = x * jn[0] + y * jn[1] + z * jn[2];
+      const h = clamp(0.5 + 0.5 * (jd - proj) / jk, 0, 1);
+      const cut = jd + (proj - jd) * h - jk * h * (1 - h);
+      if (cut < proj) { const t = proj - cut; x -= t * jn[0]; y -= t * jn[1]; z -= t * jn[2]; }
+    }
+    // the bearing base: flattened a little below a third of its height down (it is under the ground)
+    if (y < -0.62) y = -0.62 + (y + 0.62) * 0.55;
+    // the weathering pan: a shallow dish on the dome where the rain stands
+    if (pan > 0 && y > 0.55) {
+      const px = x - panAt[0], pz = z - panAt[1];
+      const d = Math.hypot(px, pz) / 0.42;
+      if (d < 1) y -= pan * (1 - d * d) * (1 - d * d) * smooth(0.55, 0.8, y);
+    }
+    p.setXYZ(i, x * hx, y * hy, z * hz);
+  }
+  return g;
+}
+
+/** A boule's top over a point of its plan (its local frame, before its turn): the superellipsoid's dome there. */
+function bouleTop(b: { hx: number; hy: number; hz: number; sq: number }, ox: number, oz: number): number {
+  const u = Math.pow(Math.abs(ox / b.hx), b.sq) + Math.pow(Math.abs(oz / b.hz), b.sq);
+  return u >= 1 ? 0 : b.hy * Math.pow(1 - u, 1 / b.sq) * 0.92;
+}
+
+function chaosDeBoules(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  // The chaos de boules of the north Finistère coast (b28; the coordinator, for Saltmere's strand: "big, smooth,
+  // weathered rounded boulders and boulder piles bedded in sand and turf"): the granite's joint blocks rounded into
+  // corestones in the ground, the ground washed off them, the sea and the wind smoothing them. The big boules lie along
+  // the main joint set where the grid spaced them, each bedded a fifth to two fifths of its height in the sand or the
+  // turf, the tallest near the middle; a smaller boule or two perched on a big one's dome; others fallen against the
+  // big ones' flanks, leaning on them; and round the foot the cobbles, half sunk.
+  const R = spec.radius, H = Math.max(0.8, spec.height);
+  const yaw = THREE.MathUtils.degToRad(spec.yawDeg ?? rng() * 180);
+  const ca = Math.cos(yaw), sa = Math.sin(yaw);
+  const at = (along: number, across: number): [number, number] => [spec.x + ca * along - sa * across, spec.z + sa * along + ca * across];
+  const segBig = mobile ? 4 : 7, segMid = mobile ? 3 : 5, segSmall = mobile ? 2 : 3;
+  type Boule = { x: number; z: number; cy: number; hx: number; hy: number; hz: number; sq: number; turn: number };
+  const bigs: Boule[] = [];
+  const nBig = clamp(Math.round(R / 2.3) + (rng() < 0.5 ? 1 : 0), 2, mobile ? 4 : 6);
+  for (let i = 0; i < nBig; i++) {
+    // the tallest first, at the middle; the rest along the joint grid, touching or a joint's width apart
+    const bury = 0.18 + rng() * 0.2;
+    const hy = i === 0 ? H / (2 * (1 - bury)) : (H / (2 * (1 - bury))) * (0.5 + rng() * 0.35);
+    const hx = hy * (1.08 + rng() * 0.5), hz = hy * (0.82 + rng() * 0.36), sq = 2.3 + rng() * 0.6;
+    let x = spec.x, z = spec.z;
+    for (let attempt = 0; attempt < 14; attempt++) {
+      const along = i === 0 ? (rng() - 0.5) * R * 0.25 : (rng() * 2 - 1) * R * 0.7;
+      const across = i === 0 ? (rng() - 0.5) * R * 0.2 : (rng() * 2 - 1) * R * 0.45;
+      [x, z] = at(along, across);
+      const reach = Math.max(hx, hz);
+      // never deeper into a neighbour than a fifth of the smaller's reach (they bear on each other, they do not merge)
+      if (bigs.every((b) => Math.hypot(b.x - x, b.z - z) > (Math.max(b.hx, b.hz) + reach) * 0.8)) break;
+    }
+    const floor = lowestGround(ground, x, z, Math.max(hx, hz) * 0.8).min;
+    const b: Boule = { x, z, cy: floor + hy * (1 - 2 * bury), hx, hy, hz, sq, turn: yaw + (rng() - 0.5) * 0.7 };
+    bigs.push(b);
+    const g = graniteBoule(hx, hy, hz, segBig, noise, rng, { squareness: sq, seedOffset: 11 + i, pan: hy > 1.1 && rng() < 0.45 ? 0.07 + rng() * 0.05 : 0 });
+    pieces.push({ geometry: place(g, x, b.cy, z, b.turn, (rng() - 0.5) * 0.14, (rng() - 0.5) * 0.14), layer: -1, standing: true });
+  }
+  // a boule or two perched on a big one's dome (never the tallest's), no higher than the pile's authored height
+  const perched = mobile ? 1 : 1 + (rng() < 0.5 ? 1 : 0);
+  const ceiling = bigs[0].cy + bigs[0].hy * 1.04;
+  for (let k = 0; k < perched && bigs.length > 1; k++) {
+    const b = bigs[1 + Math.floor(rng() * (bigs.length - 1))];
+    const ox = (rng() - 0.5) * b.hx * 0.7, oz = (rng() - 0.5) * b.hz * 0.7;
+    const top = b.cy + bouleTop(b, ox, oz);
+    const hy = Math.min(b.hy * (0.38 + rng() * 0.2), (ceiling - top) / 1.84), hx = hy * (1 + rng() * 0.45), hz = hy * (0.8 + rng() * 0.3), sq = 2.4 + rng() * 0.5;
+    if (hy < 0.25) continue;
+    // (it bears on the dome a little into it: two round stones meet at a patch, not a point)
+    const cy = top + hy * 0.84;
+    const c = Math.cos(b.turn), sn = Math.sin(b.turn);
+    const x = b.x + c * ox - sn * oz, z = b.z + sn * ox + c * oz;
+    const g = graniteBoule(hx, hy, hz, segMid, noise, rng, { squareness: sq, seedOffset: 41 + k });
+    pieces.push({ geometry: place(g, x, cy, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.3, (rng() - 0.5) * 0.3), layer: -1, standing: true });
+  }
+  // the fallen boules against the big ones' flanks, leaning on them, bedded
+  const leaners = Math.round((mobile ? 2 : 4) * (0.7 + R / 12));
+  for (let k = 0; k < leaners; k++) {
+    const b = bigs[Math.floor(rng() * bigs.length)];
+    const a = rng() * Math.PI * 2;
+    const hy = b.hy * (0.3 + rng() * 0.25), hx = hy * (1 + rng() * 0.5), hz = hy * (0.8 + rng() * 0.35), sq = 2.3 + rng() * 0.6;
+    const out = (Math.max(b.hx, b.hz) * 0.82 + Math.max(hx, hz) * 0.7);
+    const x = b.x + Math.cos(a) * out, z = b.z + Math.sin(a) * out;
+    const floor = lowestGround(ground, x, z, Math.max(hx, hz) * 0.7).min;
+    const bury = 0.15 + rng() * 0.2;
+    // its long side along the big one's flank, its top leaning in on it (local +z turned toward the big one, +y tipped
+    // toward +z)
+    const lean = 0.12 + rng() * 0.2, toward = Math.atan2(-Math.cos(a), -Math.sin(a));
+    const g = graniteBoule(hx, hy, hz, segMid, noise, rng, { squareness: sq, seedOffset: 61 + k });
+    pieces.push({ geometry: place(g, x, floor + hy * (1 - 2 * bury), z, toward, lean, (rng() - 0.5) * 0.1), layer: -1, standing: true });
+  }
+  // the cobbles round the foot, half sunk, more of them down the slope and toward the sea's side of the pile
+  const shed = spec.shed ?? 1;
+  const cobbles = Math.round((mobile ? 6 : 16) * shed * (0.7 + R / 10));
+  const [dx, dz] = downhill(ground, spec.x, spec.z, R);
+  for (let i = 0; i < cobbles; i++) {
+    const a = rng() * Math.PI * 2, far = Math.pow(rng(), 1.3);
+    const rr = R * (0.65 + far * 0.75);
+    const x = spec.x + Math.cos(a) * rr + dx * R * 0.5 * far, z = spec.z + Math.sin(a) * rr + dz * R * 0.5 * far;
+    const size = (0.18 + Math.pow(rng(), 2) * 0.55) * Math.min(1.3, H / 3.5);
+    const g = graniteBoule(size * (1 + rng() * 0.4), size * (0.6 + rng() * 0.3), size * (0.8 + rng() * 0.3), segSmall, noise, rng,
+      { squareness: 2.2 + rng() * 0.4, seedOffset: 90 + i, joint: false });
+    const y = ground.getHeightAt(x, z) + size * (0.05 - rng() * 0.35);
+    pieces.push({ geometry: place(g, x, y, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.3, (rng() - 0.5) * 0.3), layer: -1, standing: false });
   }
 }
 
@@ -1291,7 +1442,7 @@ export function buildBedrock(
 
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
-  tor: graniteTor, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
+  tor: graniteTor, boules: chaosDeBoules, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
   menhir, cairn, calvary,
 });
 

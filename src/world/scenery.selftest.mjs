@@ -52,6 +52,7 @@ const noise = new SimplexNoise({ random: mulberry32(4242) });
 const FORMS = [
   // form, geology, radius, height, desktop triangle cap, mobile cap, standing
   ['tor', 'granite', 7, 5.5, 9000, 3000, true],
+  ['boules', 'granite', 7, 4.5, 9000, 2600, true],
   ['outcrop', 'sandstone', 8, 4.5, 3000, 1600, true],
   ['outcrop', 'limestone', 7, 3.2, 3000, 1600, true],
   ['crag', 'slate', 6, 5, 4500, 2200, true],
@@ -105,6 +106,29 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
 {
   const tor = buildRockFormation({ form: 'tor', geology: 'granite', x: 0, z: 0, radius: 6, height: 5 }, { getHeightAt: () => 0 }, noise, mulberry32(3));
   assert.ok(Math.abs(tor.masses[0].y1 - 5) < 1.0, `the tor stands its 5 m (${tor.masses[0].y1.toFixed(2)})`);
+  // (b28; wave 184 on Saltmere's strand: the tor "a stack of smooth, straight-sided, flat-topped cylinders like millstones")
+  // the chaos de boules: domed corestones, not sheets — little of its up-facing skin lies level (a tor's sheets: most of
+  // it); its authored height within a tenth on every stream; bedded (its boules run on under the ground)
+  const levelShare = (g) => {
+    const p = g.attributes.position.array; let up = 0, level = 0;
+    for (let t = 0; t < p.length; t += 9) {
+      const ux = p[t + 3] - p[t], uy = p[t + 4] - p[t + 1], uz = p[t + 5] - p[t + 2], vx = p[t + 6] - p[t], vy = p[t + 7] - p[t + 1], vz = p[t + 8] - p[t + 2];
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, a = Math.hypot(nx, ny, nz);
+      if (ny / (a || 1) > 0.3) up += a;
+      if (ny / (a || 1) > 0.985) level += a;
+    }
+    return level / up;
+  };
+  assert.ok(levelShare(tor.geometry) > 0.4, `the tor's sheets lie level (${(levelShare(tor.geometry) * 100).toFixed(0)} %)`);
+  for (const seed of [3, 77, 1234]) {
+    const boules = buildRockFormation({ form: 'boules', geology: 'granite', x: 0, z: 0, radius: 7, height: 4.5 }, { getHeightAt: () => 0 }, noise, mulberry32(seed));
+    const share = levelShare(boules.geometry);
+    assert.ok(share < 0.2, `the boules domed, not flat-topped (${(share * 100).toFixed(1)} % of their up-facing skin level)`);
+    assert.ok(Math.abs(boules.masses[0].y1 - 4.5) < 0.45, `the chaos stands its 4.5 m (${boules.masses[0].y1.toFixed(2)})`);
+    const low = Math.min(...boules.geometry.attributes.position.array.filter((_, i) => i % 3 === 1));
+    assert.ok(low < -0.3, `its boules bedded in the ground (${low.toFixed(2)} m)`);
+    assert.ok(boules.pieces >= 20 && boules.covers !== true, `a chaos of boules and cobbles (${boules.pieces}), the ground cover up to them`);
+  }
   const pave = buildRockFormation({ form: 'pavement', geology: 'limestone', x: 0, z: 0, radius: 12, height: 0 }, { getHeightAt: () => 0 }, noise, mulberry32(3));
   assert.equal(pave.masses.length, 0, 'a pavement without a scar publishes no mass');
   const top = Math.max(...pave.geometry.attributes.position.array.filter((_, i) => i % 3 === 1));

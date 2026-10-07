@@ -10,9 +10,10 @@ import type { StructureClearance } from './vegetationClearance.ts';
 export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate';
 /**
  * The rock forms: what made the rock decides its shape. The last three are rock that people shaped — a standing stone,
- * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock.
+ * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock. (b28)
+ * 'boules' is the granite's other ruin: the chaos de boules, its corestones rounded and washed (sceneryRocks.ts).
  */
-export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary';
+export type RockForm = 'tor' | 'boules' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {
@@ -184,7 +185,8 @@ export function isDestructibleLandmark(kind: string): kind is SceneryDestructibl
 
 /** How far a formation's standing ground reaches from its centre (a tor's clitter-free shoulders included). */
 export function rockReach(rock: Pick<SceneryRock, 'form' | 'radius'>): number {
-  return rock.radius * (rock.form === 'tor' ? 1.2 : 1);
+  // (a tor's clitter and a chaos's leaning boules and cobbles reach past the standing mass)
+  return rock.radius * (rock.form === 'tor' ? 1.2 : rock.form === 'boules' ? 1.25 : 1);
 }
 
 /**

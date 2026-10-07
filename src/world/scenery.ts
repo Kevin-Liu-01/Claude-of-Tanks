@@ -385,7 +385,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       if (treeNear(x, z, reach)) continue;
       if (standing && solidConflicts(ctx.obstacles, x, z, reach).hard) continue;
       // (only a pavement draws here: its scar's roll; the field's later candidates follow the draws as authored)
-      const height = form === 'tor' ? r * 0.75 : form === 'crag' ? r * 0.9 : form === 'outcrop' ? r * 0.45
+      const height = form === 'tor' ? r * 0.75 : form === 'boules' ? r * 0.6 : form === 'crag' ? r * 0.9 : form === 'outcrop' ? r * 0.45
         : form === 'hoodoo' ? r * 1.9 : form === 'menhir' ? r * 2.6 : form === 'cairn' ? r * 0.6
           : form === 'pavement' ? (rng() < 0.35 ? 0.8 : 0) : 0;
       const yawDeg = rng() * 180;
