@@ -2737,7 +2737,13 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
           // a6 print's loader lid rides higher than the commander's.
           const wedgeTurretV3TurretCourse5 = (): void => {
             const hT = (lo && hatchTopL) ? hatchTopL : hatchTop;
-            P.add('turret', cylY(lo ? 0.15 : 0.19, lo ? 0.13 : 0.17, hT - h - 0.05, P.q ? 20 : 12), st.x, (h + 0.05 + hT) / 2, st.z);
+            // 2026-10-07 (sealed gate): where the roof rises within 5 cm of the lid line (the 2A6 commander, both
+            // 2A6M stations) the drum's height goes negative and three.js builds the same band inside out, its
+            // walls facing in (the sealed check's hatch-line "holes"). The identical solid is built right side out:
+            // the same span and centre with the radius order swapped, so the silhouette and every mask hold.
+            const drumH = hT - h - 0.05, drumR0 = lo ? 0.15 : 0.19, drumR1 = lo ? 0.13 : 0.17;
+            P.add('turret', drumH >= 0 ? cylY(drumR0, drumR1, drumH, P.q ? 20 : 12) : cylY(drumR1, drumR0, -drumH, P.q ? 20 : 12),
+              st.x, (h + 0.05 + hT) / 2, st.z);
             if (T.hatchRound) {
               // owner circularity law (shaded-parity r2 #7): RAISED true circular
               // ring readable from straight top — proud rim torus at the certified
