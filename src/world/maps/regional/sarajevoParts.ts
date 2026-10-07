@@ -183,7 +183,10 @@ export function pediment(sink: PartSink, face: Face, u: number, y: number, w: nu
  * skin round a wall block's head — its faces 15 mm proud of the block's, from `y0` up past the block's top in a ragged
  * line of uneven notches and slants — so no wall of a ruin ends in a level box top. The block itself (the kit's solid,
  * unchanged) stays the wall the battle meets: a per-strip collision changed what the bots saw through the walls and
- * left two pacing seeds unresolved. The skin's strips are convex quads (a concave crown triangulates) and cast shadows.
+ * left two pacing seeds unresolved. The skin's strips are convex quads (a concave crown triangulates). They are fine
+ * joinery (EmitOptions.fine): drawn within the preset's fine-detail distance, never on a phone, casting no shadow. The
+ * crown stands at most 0.3 m over the block's level top, a sub-pixel line at a long view; as a shadow caster in every
+ * cascade it cost the round-2 cost gate +1.47 M triangles at the establishing view (2.5 k a ruin).
  * The block spans [u0, u1] on the face, `t` thick inward, its top at `top`; `r` the look stream.
  */
 export function raggedCrown(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y0: number, top: number, t: number,
@@ -196,7 +199,7 @@ export function raggedCrown(sink: PartSink, bucket: RegionalBucket, face: Face, 
   const us: number[] = [], hs: number[] = [];
   for (let i = 0; i <= n; i++) { const u = a + (b - a) * i / n; us.push(u); hs.push(Math.max(top + 0.04, head(u))); }
   const P = (u: number, y: number, d: number) => facePoint(face, u, y, d);
-  const skin = { decor: true, shadow: true } as const;
+  const skin = { decor: true, fine: true } as const;
   for (let i = 0; i < n; i++) {
     const ua = us[i], ub = us[i + 1], ha = hs[i], hb = hs[i + 1];
     sink.quad(bucket, P(ua, y0, e), P(ub, y0, e), P(ub, hb, e), P(ua, ha, e), skin);
