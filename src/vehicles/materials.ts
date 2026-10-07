@@ -2311,13 +2311,14 @@ const VEHICLE_GROUND_IDLE_Y = -1e5;
  * differ only in the mud-flap colour", "a pale uniform haze over the upper surfaces or a flat dark band over the running
  * gear that stops at the skirt line"). The round-3 dust blended at most half-way to a pale grey, its deck film was one
  * even haze, and its mud was as dark as the running gear it covered. Now, per mode:
- * - 1 painted bodywork (hull, barrel, fitting paint, gunmetal, markings) and 4 cloth and wood: ochre dust thrown up off
- *   the tracks, heaviest on the skirt bottoms and lower hull under a ragged, streaky top edge, thinning to a graded film
- *   up the hull and to patches on the decks and roof; dried mud caked over the lowest band; clusters of wet mud spatter
- *   above the tracks; exhaust soot on the rear plate's upper band and the last stretch of the engine deck; dark, slightly
- *   glossy oil and fuel pools on the engine deck; sun-faded paint on the plates that face the sky. Mode 1 alone adds
- *   sharp chips of bare, slightly metallic steel where boots and tools rub (deck and roof plates, the rear plate's top
- *   edge) and grime packed into the plate seams, welds and bolts of its normal map.
+ * - 1 painted bodywork (hull, barrel, fitting paint, gunmetal, markings) and 4 cloth and wood: ochre-brown dust thrown
+ *   up off the tracks, a heavy coat up to about the skirts' mid-height under a ragged, streaky top edge, a thin film
+ *   above it and only a light film on the decks and turret, so the upper camouflage stays crisp; dried mud caked over
+ *   the lowest band; clusters of wet mud spatter above the tracks; exhaust soot on the rear plate's upper band and the
+ *   last stretch of the engine deck; dark, slightly glossy oil and fuel pools on the engine deck; sun-faded darker paint
+ *   on the plates that face the sky. Mode 1 alone adds sharp chips of dark, slightly metallic bare steel where boots and
+ *   tools rub (the plate edges at deck height, more sparsely the decks and roof) and grime packed into the plate seams,
+ *   welds and bolts of its normal map.
  * - 2 running gear (wheel paint, tyres, track links, spare track, flaps): a light dusty coat over the dark steel and
  *   rubber, caked dried mud and wet clods thickening toward the ground.
  * - 3 the scrolling track band: a pattern-free dusty coat, caked on the ground run.
@@ -2545,12 +2546,12 @@ const FIELD_WEAR_FRAGMENT = `
 		float wearFine = 1.0 - smoothstep( 0.18, 0.4, 10.0 * wearPx );
 		// dust thrown up off the tracks: a heavy coat under a ragged, streaky top edge that wanders about 0.3 m, a graded
 		// film above it up the hull, and patches settled on the plates that face the sky, thinner up the turret
-		float wearEdge = ( wearB1 - 0.5 ) * 0.7 + ( wearB2 - 0.5 ) * 0.5;
-		wearDust = max( ( 1.0 - smoothstep( 0.72, 0.96, wearH + wearEdge ) ) * ( 0.74 + 0.26 * wearB2 ),
-			( 1.0 - smoothstep( 0.8, 2.0, wearH + wearEdge * 0.5 ) ) * ( 0.14 + 0.14 * wearB2 ) );
-		wearDust = max( wearDust, wearSky * ( 0.1 + 0.14 * wearB2 + 0.1 * wearB1 ) * ( 1.0 - 0.5 * smoothstep( 1.7, 2.5, wearH ) ) );
+		float wearEdge = ( wearB1 - 0.5 ) * 0.55 + ( wearB2 - 0.5 ) * 0.65;
+		wearDust = max( ( 1.0 - smoothstep( 0.84, 0.98, wearH + wearEdge ) ) * ( 0.78 + 0.22 * wearB2 ),
+			( 1.0 - smoothstep( 0.95, 1.6, wearH + wearEdge * 0.5 ) ) * ( 0.12 + 0.14 * wearB2 ) );
+		wearDust = max( wearDust, wearSky * ( 0.03 + 0.09 * wearB2 + 0.06 * wearB1 ) * ( 1.0 - 0.5 * smoothstep( 1.7, 2.5, wearH ) ) );
 		// dried mud caked over the lowest band
-		wearCake = ( 1.0 - smoothstep( 0.3, 0.68, wearH + wearEdge * 0.6 ) ) * ( 0.5 + 0.5 * wearB2 );
+		wearCake = ( 1.0 - smoothstep( 0.36, 0.7, wearH + wearEdge * 0.6 ) ) * ( 0.55 + 0.45 * wearB2 );
 		// wet mud flung up off the tracks: clusters of drops, thick low on the skirts, glacis and rear plate
 		float wearSpatZone = 1.0 - smoothstep( 0.35, 1.45, wearH + ( wearB1 - 0.5 ) * 0.5 );
 		float wearSpatEdge = 0.02 + 15.0 * wearPx;
@@ -2573,9 +2574,10 @@ const FIELD_WEAR_FRAGMENT = `
 		// sun-faded paint where the plates face the sky, in patches
 		wearSun = wearSky * ( 0.6 + 0.4 * wearB1 );
 		#if COT_FIELD_WEAR == 1
-		// bare steel where boots and tools rub: the deck and roof plates crews walk (less on the engine deck), the
-		// plate edges at deck height they climb over; sharp-edged, a few centimetres across
-		float wearTread = clamp( wearSky * ( 1.0 - 0.7 * wearEngine ) + wearFramed * smoothstep( 0.3, 0.7, abs( wearFacing ) )
+		// bare steel where boots and tools rub: the plate edges at deck height crews climb over, more sparsely the deck and
+		// roof plates they walk (less on the engine deck); sharp-edged, a few centimetres across, darker than the paint (a
+		// light chip read as "flour dust" speckle in the r8-r10 painter rounds)
+		float wearTread = clamp( wearSky * 0.5 * ( 1.0 - 0.7 * wearEngine ) + wearFramed * smoothstep( 0.3, 0.7, abs( wearFacing ) )
 			* ( 1.0 - smoothstep( 0.04, 0.16, abs( wearDeckH + 0.06 ) ) ), 0.0, 1.0 );
 		float wearChipEdge = 0.015 + 12.0 * wearPx;
 		wearChip = ( 1.0 - smoothstep( 0.18 - wearChipEdge, 0.18 + wearChipEdge,
@@ -2606,24 +2608,24 @@ const FIELD_WEAR_FRAGMENT = `
 		wearSoot = clamp( wearSoot * ( 0.7 + 0.3 * wearStreak ) * ( 0.35 + 0.65 * wearW ), 0.0, 1.0 );
 		vec3 wearPaint = diffuseColor.rgb;
 		float wearLuma = dot( wearPaint, vec3( 0.2126, 0.7152, 0.0722 ) );
-		wearPaint = mix( wearPaint, wearLuma * vec3( 1.08, 1.0, 0.84 ), wearSun * 0.14 * wearW * ( 1.0 - smoothstep( 0.08, 0.25, wearLuma ) ) );
+		wearPaint = mix( wearPaint, wearLuma * vec3( 1.08, 1.0, 0.84 ), wearSun * 0.08 * wearW * ( 1.0 - smoothstep( 0.08, 0.25, wearLuma ) ) );
 		wearPaint *= 1.0 - wearSeam * 0.5 * wearW;
 		wearPaint = mix( wearPaint, vec3( 0.02, 0.017, 0.013 ), wearOil * 0.8 );
 		wearPaint = mix( wearPaint, vec3( 0.017, 0.016, 0.015 ), clamp( wearExhaust, 0.0, 1.0 ) * ( 0.45 + 0.4 * wearW ) );
 		float wearDustCover = clamp( wearDust * wearW, 0.0, 1.0 ) * wearCover;
-		wearPaint = mix( wearPaint, mix( vec3( 0.2, 0.16, 0.105 ), vec3( 0.31, 0.255, 0.17 ), wearTone ) * wearShade, wearDustCover );
+		wearPaint = mix( wearPaint, mix( vec3( 0.19, 0.135, 0.075 ), vec3( 0.3, 0.22, 0.12 ), wearTone ) * wearShade, wearDustCover );
 		float wearCakeCover = clamp( wearCake * wearW, 0.0, 1.0 ) * 0.8;
-		wearPaint = mix( wearPaint, vec3( 0.13, 0.104, 0.075 ), wearCakeCover );
-		wearPaint = mix( wearPaint, vec3( 0.046, 0.035, 0.025 ), wearMud * 0.9 );
-		wearPaint = mix( wearPaint, vec3( 0.15, 0.15, 0.16 ), wearChip );
+		wearPaint = mix( wearPaint, vec3( 0.125, 0.09, 0.056 ), wearCakeCover );
+		wearPaint = mix( wearPaint, vec3( 0.05, 0.034, 0.02 ), wearMud * 0.9 );
+		wearPaint = mix( wearPaint, vec3( 0.065, 0.064, 0.062 ), wearChip );
 		wearPaint = mix( wearPaint, vec3( 0.012, 0.011, 0.01 ), wearSoot * 0.85 );
 		diffuseColor.rgb = wearPaint;
 		// dust, mud and soot are matte; oil is slick; bare steel a little metallic
 		roughnessFactor = mix( roughnessFactor, 1.0, max( max( wearDustCover, wearCakeCover ), max( wearMud, wearSoot ) ) * 0.85 );
 		#if COT_FIELD_WEAR == 1
 		roughnessFactor = mix( roughnessFactor, 0.34, wearOil );
-		roughnessFactor = mix( roughnessFactor, 0.42, wearChip );
-		metalnessFactor = mix( metalnessFactor, 0.6, wearChip );
+		roughnessFactor = mix( roughnessFactor, 0.45, wearChip );
+		metalnessFactor = mix( metalnessFactor, 0.45, wearChip );
 		#endif
 	}
 	#endif`;

@@ -395,9 +395,10 @@ weather sets the define; `cloneVehicleMaterial` keeps it. Soot sources are the r
 clone JSON-copies it (the thumbnail masks clone roots).
 Round 4 (2026-10-07; blind wave 240 scored round 3 flat: "a pale uniform haze over the upper surfaces or a flat dark
 band over the running gear"). Wear that a critic can see at the 20 m chase is structured, not a veil: dust lightens the
-dark running gear instead of darkening it, the lower hull carries a heavy ochre coat under a ragged streaky edge that
-grades to a film by the turret, and the discrete marks (wet spatter, oil pools, bare-steel chips, exhaust soot, muzzle
-carbon) are thresholded shapes, never washes. Mode 4 is cloth and wood (no chips, slick oil or seam grime); the decor
+dark running gear instead of darkening it, the lower hull carries a heavy ochre-brown coat up to about the skirts'
+mid-height under a ragged streaky edge, a thin film above it and only a light film on the decks and turret (the upper
+camouflage stays crisp: a veil there reads as haze), and the discrete marks (wet spatter, oil pools, dark bare-steel
+chips, exhaust soot, muzzle carbon) are thresholded shapes, never washes. Mode 4 is cloth and wood (no chips, slick oil or seam grime); the decor
 kit opts in by key (`decorations.ts` hard kit 1, soft goods 4; nets, mesh, lenses and leaves stay clean). The exhaust
 soot, engine-deck oil and climbing wear read a hull frame measured at build end from the hull's own plates
 (`setVehicleWearFrame`: rear plate, engine deck, bow, half width; null skips them). The muzzle (`rig_muzzle`) leads

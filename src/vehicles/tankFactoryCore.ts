@@ -1593,8 +1593,9 @@ function collectVehicleSootSources(root: THREE.Object3D): VehicleSootSource[] {
  * Round 4 field wear (2026-10-07; critics: "the rear plate and engine grilles carry no exhaust soot or oil", "no fuel
  * stains"): the hull frame the shader reads the exhaust soot, the engine-deck oil and the climbing wear off
  * (materials.ts setVehicleWearFrame), measured from the hull's own camouflaged plates outside the turret, in the root's
- * frame (origin at the ground contact, +Y up, +Z forward). The rear plate is the rear-facing plate with the most area in
- * the hull's last third (a rack or bin behind it is smaller), the engine deck the up-facing plate with the most area in
+ * frame (origin at the ground contact, +Y up, +Z forward). The rear plate is the rearmost rear-facing plate in the hull's
+ * last third with at least two fifths of the largest one's area (a rack's bars behind it are smaller, a step ahead of it
+ * does not win), the engine deck the up-facing plate with the most area in
  * the rear half of the hull's middle (fenders and roof furniture lie outside it). A mesh contributes at most about
  * 4,000 sampled triangles, so the measurement stays a few milliseconds. Null when the hull has no such plates.
  */
@@ -1656,7 +1657,12 @@ function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null 
     const bin = Math.floor(rear[at] / 0.05);
     rearBins.set(bin, (rearBins.get(bin) ?? 0) + rear[at + 1]);
   }
-  const sternZ = mode(rearBins) ?? minZ;
+  // the rearmost plate holding at least two fifths of the largest one's area: a step or a hatch face ahead of a smaller
+  // rear plate loses to it, a rack's bars behind it do not count
+  let sternBin: number | null = null;
+  const sternArea = Math.max(0, ...rearBins.values());
+  for (const [bin, area] of rearBins) if (area >= sternArea * 0.4 && (sternBin === null || bin < sternBin)) sternBin = bin;
+  const sternZ = sternBin === null ? minZ : (sternBin + 0.5) * 0.05;
   const deckBins = new Map<number, number>();
   for (let at = 0; at < up.length; at += 4) {
     if (up[at + 1] > sternZ + (maxZ - sternZ) * 0.5 || up[at + 2] > maxX * 0.55) continue;
