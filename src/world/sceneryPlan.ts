@@ -111,6 +111,47 @@ interface SceneryBedrock {
 }
 
 /**
+ * A castle rock (castleRock.ts buildCastleRock; the map-revival lane, Chimney Valley round 3): a tuff pinnacle's skin over
+ * a knoll landform of the same centre — lobes, clefts and flutes, rooms cut back into it, the dovecotes' bands, pinnacles
+ * over its brow and a passage through its foot at each `gates` bearing. The knoll stays the battlefield's rock (the
+ * skin hugs it where a hull reaches); a gate's buttress, proud of the wall at its foot, is the one mass it adds.
+ */
+interface SceneryCastle {
+  x: number;
+  z: number;
+  /** The knoll's radii. */
+  rx: number;
+  rz: number;
+  /** Bearings of the passages' mouths (radians from +x toward +z). */
+  gates?: readonly number[];
+  /** Pinnacles over the brow (default 2). */
+  towers?: number;
+  /** Rooms as a share of the default (1). */
+  rooms?: number;
+  tone?: readonly [number, number, number];
+  name?: string;
+}
+
+/**
+ * A caprock (caprockRim.ts buildCaprockRim; Chimney Valley round 3, Skybridge round 5): the hard bed lying on the
+ * brows of a ridge (or, `trench`, a canyon arm) landform of the same centre, length, width and bearing, its lip a little
+ * proud of the wall, split into blocks by its joints. Decor on the brow: the landform stays the rock.
+ */
+interface SceneryCaprock {
+  x: number;
+  z: number;
+  length: number;
+  width: number;
+  yawDeg: number;
+  trench?: boolean;
+  span?: number;
+  tone?: readonly [number, number, number];
+  thickness?: readonly [number, number];
+  blockM?: readonly [number, number];
+  name?: string;
+}
+
+/**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
  * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
@@ -130,6 +171,8 @@ export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
   bedrock?: readonly SceneryBedrock[];
+  castles?: readonly SceneryCastle[];
+  caprock?: readonly SceneryCaprock[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
@@ -210,6 +253,8 @@ export function sceneryClearances(scenery: SceneryConfig | null | undefined): St
     for (const [x, z] of line.towers) disc(x, z, pylonLegHalf(line.heightM) * 1.1 + 1.5);
   }
   for (const hill of scenery.bedrock ?? []) disc(hill.x, hill.z, hill.radius * BEDROCK_TREE_CLEAR);
+  // (a castle rock's skin stands off its knoll's wall: the trees keep off its foot as well)
+  for (const rock of scenery.castles ?? []) disc(rock.x, rock.z, Math.max(rock.rx, rock.rz) * 1.05);
   return out;
 }
 
