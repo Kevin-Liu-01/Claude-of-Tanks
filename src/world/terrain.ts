@@ -4445,6 +4445,10 @@ void splatCompute() {
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
   if (uReduxFold.w > 0.001 && uRockGate > 0.5) fR = max(fR, rockGate * uReduxFold.w * (1.0 - roadCore));
+  // Ground lane (2026-10-06, Ironworks round 3): on a works' ground (uLandE.w 2) a slag landform — the tips and the
+  // banks the rock gate reads (landformRock) — is slag over its whole surface, its gentle top and flanks as well as its
+  // faces: the works' lots, which now run up the ore berms to ~40°, stop at the slag (every other map as it was)
+  if (uLandE.w > 1.5 && uRockGate > 0.5) fR = max(fR, rockGate * (1.0 - roadCore));
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -4868,12 +4872,16 @@ void splatCompute() {
     // its wear keep the fields off)
     // (Ironworks: a works' ground is uLandE.w 2 — the village's gate reads it as the urban 1)
     landW = uLandA.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a) * (1.0 - step(0.5, uLandE.w)))
-      * (1.0 - shoulder) * (1.0 - smoothstep(0.040, 0.100, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
-      * (1.0 - smoothstep(0.35, 0.70, woods));
+      * (1.0 - shoulder) * (1.0 - (uLandE.w > 1.5 ? smoothstep(0.22, 0.40, slope) : smoothstep(0.040, 0.100, slope)))
+      * (1.0 - smoothstep(0.02, 0.10, fM)) * (1.0 - smoothstep(0.35, 0.70, woods));
     // (wave 81, Frontier's establishing view: "an edgeless blotch of mud-brown, sand and lawn") a field ended wherever
     // its ground passed ~11° — along the contours, so on a rolling map every field was a blob — and around every lone
     // tree (a single crown's 4 m cover read 0.1–0.45). A field is worked up to ~16° and gone by ~25°, and only a closed
     // stand stops it (tallGrass.ts and vegetation.ts read the same slope gate; the trees' own layout is the trees lane's)
+    // (2026-10-06, Ironworks round 3, wave 176: "the stair-stepped diagonal green band" was the ore berm's flanks — past
+    // the fields' 25° the meadow under the land use came through, a wavy green strip down the works with the berm's
+    // grid-stepped contours for its edges) a works' lots run up its berms and tips to ~40° and are gone by ~53°: the
+    // spoil is the works' ground too (its rock-gated slag tips and their faces stay the rock layer's)
     if (landW > 0.003) {
       // (the GPU cut, hold 13: the block was bound by its rounds of reads — a read that waited on another's answer cost a
       // whole fetch latency at this material's occupancy, its ALU next to nothing. Two rounds now: the field-wide reads
@@ -5228,7 +5236,8 @@ void splatCompute() {
         a.rgb = mix(a.rgb, marginCol, (1.0 - inField) * (1.0 - track) * landW * (uLandE.w > 1.5 ? 0.90 : 0.80));
         if (hedgeL > 0.01) {
           float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nEdge.z));
-          a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
+          // (a works' hedge is its birch scrub over cinder: a sooty base, not a green bank)
+          a.rgb = mix(a.rgb, a.rgb * (uLandE.w > 1.5 ? vec3(0.56, 0.56, 0.53) : vec3(0.52, 0.60, 0.46)), hb * (1.0 - track) * landW * 0.85);
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
@@ -6080,10 +6089,23 @@ void splatCompute() {
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
         float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
-        pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
+        // (a works' outer joints fill with cinder and soot, not moss)
+        pav.rgb = mix(pav.rgb, pav.rgb * (uLandE.w > 1.5 ? vec3(0.62, 0.60, 0.58) : vec3(0.70, 0.96, 0.50)), joint * outer * 0.85);
         float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
         a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
         a.a = mix(a.a, max(a.a, 0.94), margin);
+      }
+      // (2026-10-06, Ironworks round 3, wave 176: "the clean concrete apron needs staining" — the casting yard's and the
+      // furnace line's hardstands) a works' paving carries its work: soot settled in drifts, oil and tar in blotches where
+      // the wagons and the engines stood, a little glossier, and rust run-off between them (uLandE.w 2: a works' ground
+      // only — every other map's paving is what it was)
+      if (uLandE.w > 1.5 && paveCore > 0.003) {
+        vec2 sq = nzq(uv, 0.071, vec2(0.53, 0.21));
+        float soot = smoothstep(0.38, 0.78, sq.x);
+        float oil = smoothstep(0.64, 0.80, nz(uv, 0.29, vec2(0.17, 0.83)).r) * smoothstep(0.40, 0.70, sq.y) * tileVis(1.2);
+        pav.rgb *= (1.0 - 0.38 * soot) * (1.0 - 0.50 * oil);
+        pav.rgb = mix(pav.rgb, pav.rgb * vec3(1.12, 0.90, 0.76), 0.30 * smoothstep(0.58, 0.80, sq.y) * (1.0 - oil));
+        pav.a = mix(pav.a, 0.62, oil);
       }
       // (a styled path's surface carries its own albedo: the map's tint calibrates its sett print)
       a.rgb = mix(a.rgb, pav.rgb * (gRoadClass > 0.5 && gRoadClass < 3.5 ? vec3(1.0) : uRoadTint), paveCore * 0.94);

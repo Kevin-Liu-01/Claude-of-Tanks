@@ -193,4 +193,27 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
+// 2026-10-06 (Ironworks round 3, wave 176's "stair-stepped diagonal green band" — the ore berm's flanks past the fields'
+// slope gate, the meadow under the land use showing through): a works' lots run up its berms to ~40° and are gone by ~53°,
+// the material and the two tiers on the ground reading the one gate, and the sample carries the works flag for them
+{
+  const { readFileSync } = await import('node:fs');
+  const read = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const terrain = read('./terrain.ts'), grass = read('./tallGrass.ts'), veg = read('./vegetation.ts');
+  assert.ok(terrain.includes('(1.0 - (uLandE.w > 1.5 ? smoothstep(0.22, 0.40, slope) : smoothstep(0.040, 0.100, slope)))'),
+    'the material: a works\' lots to ~40°, every other map\'s fields to ~25°');
+  assert.ok(grass.includes('(1 - (_field.works ? smoothstep(0.22, 0.40, slopeN) : smoothstep(0.04, 0.10, slopeN)))'),
+    'the tall grass reads the same gate');
+  assert.ok(veg.includes('(1 - (f.works ? smoothstepJs(0.22, 0.40, 1 - normalY) : smoothstepJs(0.04, 0.10, 1 - normalY)))'),
+    'the tufts read the same gate');
+  const s0 = createLandFieldSample();
+  landUseAt(resolveLandUseProfile('foundry'), 0, -72, s0);
+  assert.equal(s0.works, 1, 'Ironworks\' ground is a works\' ground');
+  landUseAt(resolveLandUseProfile('verdant'), 0, 0, s0);
+  assert.equal(s0.works, 0, 'a farm is not');
+  // a works' paving carries its soot, oil and rust, and its outer joints its cinder — on a works' ground alone
+  assert.ok(terrain.includes('if (uLandE.w > 1.5 && paveCore > 0.003) {') && terrain.includes('uLandE.w > 1.5 ? vec3(0.62, 0.60, 0.58) : vec3(0.70, 0.96, 0.50)'),
+    'the works\' paving and joints are stained on a works\' ground only');
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);

@@ -513,6 +513,9 @@ export interface LandFieldSample {
   weed: number;
   /** 1 on an urban land use (LandUseProfile.urban): its fields lie inside the village too. */
   urban: number;
+  /** 1 on a works' ground (LandUseProfile.works): its lots run up the berms' and tips' flanks (the slope gate's ~40°);
+   * optional, so a record built without it reads as 0. */
+  works?: number;
   /**
    * On a track's two wheel lanes: the signed offset from the nearer lane's wandering centre line in its own half-widths
    * (trackLaneMeander / trackLaneCentre / trackLaneHalfWidth; |laneQ| < 1 is the sunk lane, − toward the crown between
@@ -524,7 +527,7 @@ export interface LandFieldSample {
 
 export function createLandFieldSample(): LandFieldSample {
   return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, sU: 1e9, sV: 1e9, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0,
-    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
+    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0, works: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -545,7 +548,7 @@ function cropFromRoll(c: Float64Array, roll: number): number {
 interface CompiledLandUse {
   ch: number; sh: number; blockU: number; blockV: number; maxSplit: number; marginM: number;
   trackShare: number; hedgeShare: number; warpM: number; salt: number; cum: Float64Array; kinds: Uint8Array;
-  boundary: number; urban: number; zones: readonly CompiledLandZone[] | null;
+  boundary: number; urban: number; works: number; zones: readonly CompiledLandZone[] | null;
 }
 /** A zone's test and its rotation (the same float32 packing as a profile's). */
 interface CompiledLandZone { zone: LandZone; cum: Float64Array; kinds: Uint8Array; trackShare: number; hedgeShare: number }
@@ -593,7 +596,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   c = {
     ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
-    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0,
+    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0, works: v.landE[3] > 1.5 ? 1 : 0,
     zones: profile.zones?.length ? profile.zones.map((zone) => ({ zone, ...compileRotation(zone.region),
       trackShare: Math.min(1, Math.max(0, zone.trackShare ?? profile.trackShare)),
       hedgeShare: Math.min(1, Math.max(0, zone.hedgeShare ?? profile.hedgeShare)) })) : null,
@@ -612,9 +615,9 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0; out.laneQ = 1e9;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0; out.works = 0; out.laneQ = 1e9;
   if (!profile || !(profile.strength > 0)) return out;
-  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, zones } = compile(profile);
+  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, works, zones } = compile(profile);
   let { trackShare, hedgeShare, cum, kinds } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
   const qu = ch * px + sh * pz, qv = -sh * px + ch * pz;
@@ -677,6 +680,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
   out.active = 1;
   out.urban = urban;
+  out.works = works;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;
