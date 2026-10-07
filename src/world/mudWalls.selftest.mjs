@@ -90,9 +90,11 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 // 3. the wiring
 {
   const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-  assert.match(props, /materialKind === 'fieldMud' \? mudHook : grimeHook/, 'the mud print takes the mud hook');
+  // (b25: and the building mud — the ksar gate post's and watch hut's walls — its own, its crown left whole)
+  assert.match(props, /materialKind === 'fieldMud' \? mudHook : materialKind === 'fieldMudBuilding' \? mudBuildingHook : grimeHook/, 'the mud print takes the mud hook');
   // (b15: the hay shares the straw's program; the mud print keeps its own)
-  assert.match(props, /const programKind = materialKind === 'burlap' \? 'structureCanvas' : materialKind === 'hay' \? 'straw' : materialKind;/, 'the mud print has its own program');
+  assert.match(props, /const programKind = materialKind === 'burlap' \? 'structureCanvas' : materialKind === 'hay' \? 'straw'\s*: materialKind === 'fieldMudBuilding' \? 'fieldMud' : materialKind;/,
+    'the mud print has its own program (b25: the building mud shares it)');
   assert.match(props, /if \(material === mats\.fieldMud && kind === 'walladobe'\) \{[\s\S]{0,400}mudShapeFor\(geoI\.boundingBox!, mudShape\.value\);[\s\S]{0,200}imI\.customDepthMaterial = depth;/,
     'the mud walls\' pool: its shape from its geometry, its shadows through the mud depth material');
 }

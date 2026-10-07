@@ -154,7 +154,8 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
   assert.match(props, /const straw = makeStraw\(noi, aniso, T\.straw \|\| null\);/, 'the roofs and reeds keep the straw print');
   assert.match(props, /const hay = yield\* makeHay\(aniso, T\.straw \|\| null, getDeviceTier\(\) === 'mobile' \? 256 : 512\);/, 'the hay print, half size on phones');
   assert.match(props, /hay: new THREE\.MeshStandardMaterial\(\{ map: hay\.albedo, normalMap: hay\.normal,/, 'the hay material');
-  assert.match(props, /let material = \(meta\.mat === 'straw' \? mats\.hay : mats\[meta\.mat\]\) \|\| mats\.baked;/, 'a straw destructible wears the hay material');
+  // (b25: the kind's single material is \`single\`; a kind of two materials by its groups names them in its record)
+  assert.match(props, /let single: THREE\.MeshStandardMaterial = \(meta\.mat === 'straw' \? mats\.hay : mats\[meta\.mat\]\) \|\| mats\.baked;/, 'a straw destructible wears the hay material');
   assert.match(props, /materialKind === 'hay' \? 'straw'/, 'the hay shares the straw\'s program');
   assert.match(props, /const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = \{ \.\.\.DESTRUCTIBLE_TYPES, \.\.\.SCENERY_DESTRUCTIBLE_TYPES, \.\.\.HAYSTACK_DESTRUCTIBLE_TYPES \};/,
     'the stacks join the props registry after the scenery\'s kinds (not landmarks: the scenery plan never places them)');
