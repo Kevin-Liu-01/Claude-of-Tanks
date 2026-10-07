@@ -15,7 +15,8 @@
 //     the piers;
 //   - the composer: a flat world places a church and a square (with its centre piece, benches and lamps), reserves their
 //     ground, publishes their footprints, and refuses a piece on a spawn pad, on an objective disc, in a road core or
-//     on a hard solid — and a map without set pieces runs nothing;
+//     on a hard solid; a piece set into a finished map vetoes its ground instead (an open path's setts not at all) —
+//     and a map without set pieces runs nothing;
 //   - the authoring maps: every authored piece resolves, its static admission passes, and the committed collision shard
 //     carries its structure record (it stood when the shard was captured).
 import assert from 'node:assert/strict';
@@ -459,6 +460,24 @@ check('the mole and its light', () => {
     && roadway.some((r) => r.min[0] === o.min[0] && r.max[2] === o.max[2] && r.shape2.parts.length === o.shape2.parts.length));
   assert.equal(shellCopies.length, roadway.length, 'each run cloned into the shells');
   for (const g of geometries(built.parts)) g.dispose();
+  // a piece set into a finished map (`ground: 'veto'`) reserves no disc: its footprint, turned with it, goes to the
+  // props' veto — and an open surface (a path's setts) keeps what the passes after it stand on it
+  {
+    const vetoes = [], reservedBefore = reserved.length;
+    const it = composeLandmarks({ ...ctx([
+      { kind: 'obelisk', x: 150, z: -150, yawDeg: 30, ground: 'veto', name: 'a vetoed obelisk' },
+      { kind: 'path', x: 150, z: -100, ground: 'veto', name: 'a vetoed path' },
+    ]), veto: (x, z, yaw, hw, hd) => vetoes.push({ x, z, yaw, hw, hd }) });
+    let step = it.next(); while (!step.done) step = it.next();
+    assert.equal(step.value.placed, 2, 'both stand');
+    assert.equal(reserved.length, reservedBefore, 'a vetoed piece reserves no disc');
+    assert.equal(vetoes.length, 1, "the obelisk's ground is vetoed, the open path's is not");
+    const [vhw, vhl] = LANDMARK_KINDS.obelisk.footprint(resolveLandmarkParams({ kind: 'obelisk', x: 0, z: 0 }));
+    assert.ok(vetoes[0].x === 150 && vetoes[0].z === -150 && Math.abs(vetoes[0].yaw - Math.PI / 6) < 1e-9
+      && vetoes[0].hw === vhw && vetoes[0].hd === vhl, 'its whole footprint, turned with it');
+    assert.ok(step.value.pieces.every((p) => p.ground === 'veto'), 'the receipt names the vetoed ground');
+    for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  }
   // a map without set pieces composes nothing
   const empty = run([]);
   assert.deepEqual(empty, { pieces: [], placed: 0, skipped: 0, triangles: 0 });

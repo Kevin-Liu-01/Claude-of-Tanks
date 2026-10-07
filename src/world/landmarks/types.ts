@@ -56,6 +56,14 @@ export interface LandmarkPlacement {
   roadMargin?: number;
   /** A variant seed: another draw of the same kind at the same place. */
   seed?: number;
+  /**
+   * How the passes after the composer meet the piece's ground. 'reserve' (the default): discs in the props' placement
+   * list that they keep off, drawing again round them — a piece composed with its map shapes what grows up round it.
+   * 'veto': a piece set into a finished map (round 2, 2026-10-06: Frontier's square and churchyard among the
+   * map-revival lane's courts): they draw as on the map without it, and what they would stand on its ground is left out
+   * (props.ts), so no record of theirs moves for it.
+   */
+  ground?: 'reserve' | 'veto';
 }
 
 /** What a builder may read. It never draws from the props placement streams. */
