@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeCrest, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -195,6 +195,15 @@ interface VegetationConfig {
   palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
+  /**
+   * Trees lane (2026-10-07, the scenery lane's bocage banks: the field works' built crests, handed over by the world once
+   * props and vegetation stand — map.ts `plantBankCrests`): the shrubs along a field bank's crest. Sparse clumps of
+   * `form` (gorse on Saltmere's north Finistère banks, blackthorn on Frontier's Hesse ones), a clump every `gapM` (a
+   * range) along a crest line, `clump` shrubs (a range) to one, each `scale` (a range) — seated on the built crown, decor
+   * only: no collider, no concealment, no tree record. Unset, no crest grows a shrub.
+   */
+  crestShrubs?: Readonly<{ form: GrowthSpecies; gapM: readonly [number, number]; clump: readonly [number, number];
+    scale?: readonly [number, number] }>;
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
@@ -344,6 +353,12 @@ export interface VegetationRuntime {
   /** Round 77c: bake the far tier's impostor atlas now (the covered activation warm), so no presented frame pays
    * for it; true when an atlas is baked after the call, false without a library (mobile, the receipts). */
   warmImpostors(): boolean;
+  /**
+   * Trees lane (2026-10-07): seat the map's crest shrubs (VegetationConfig `crestShrubs`) on the field banks' built
+   * crests (fieldWorks.ts FieldBankCrests: 5 floats a row — x, the crown's world y, z, the crest's direction — and each
+   * line's first row, then the total). Once; a no-op unset. Census: group.userData.crestShrubs.
+   */
+  plantBankCrests(crests: Readonly<{ points: Float32Array; lines: Uint32Array }>): void;
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
@@ -433,6 +448,8 @@ const RIM_UNDERSTOREY_BOUND_M = 506;
 /** p2 trees lane: the gust's share of a crown's albedo (the leaves a gust turns over catch more sky). */
 const TREE_WIND_LEAF_FLASH = 0.11;
 const BUSH_SHADOW_CASCADES = 0b0111;
+// (the trees lane: the crest shrubs' placement scratch, vegetation.ts plantBankCrests)
+const _quatCrest = new THREE.Quaternion(), _upCrest = new THREE.Vector3(0, 1, 0), _posCrest = new THREE.Vector3(), _sclCrest = new THREE.Vector3();
 const UNDERSTOREY_SHADOW_CASCADES = 0b0011;
 
 function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
@@ -8100,9 +8117,76 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
+  // Trees lane (2026-10-07): the field banks' crest shrubs (VegetationConfig `crestShrubs`), seated on the built crests
+  // the world hands over (fieldWorks.ts; map.ts calls this once props and vegetation both stand): sparse clumps along
+  // each crest line, every shrub at the crown's own height, one instanced mesh of the form's shrub on its own atlas —
+  // the bushes' material law, their near cascades and their hull fade; decor only (no collider, no concealment)
+  let crestsPlanted = false;
+  function plantBankCrests(crests: Readonly<{ points: Float32Array; lines: Uint32Array }>): void {
+    const cs = veg.crestShrubs ?? treeBiomeCrest(cfg?.id);
+    if (!cs || crestsPlanted || !grownTrees || disposed) return;
+    crestsPlanted = true;
+    const crestRng = mulberry32((seed ^ 0xc4e57) >>> 0);
+    const [g0, g1] = cs.gapM, [c0, c1] = cs.clump, [s0, s1] = cs.scale ?? [0.7, 1.05];
+    const P = crests.points, L = crests.lines, rows = (L[L.length - 1] ?? 0);
+    const placements: THREE.Matrix4[] = [];
+    let clumps = 0, linesUsed = 0;
+    for (let li = 0; li + 1 < L.length; li++) {
+      const r0 = L[li], r1 = Math.min(L[li + 1], rows);
+      if (r1 - r0 < 3) continue;
+      linesUsed++;
+      let along = 0, next = g0 * (0.3 + 0.7 * crestRng());
+      for (let r = r0 + 1; r < r1 - 1; r++) {
+        along += Math.hypot(P[r * 5] - P[(r - 1) * 5], P[r * 5 + 2] - P[(r - 1) * 5 + 2]);
+        if (along < next) continue;
+        next = along + g0 + crestRng() * (g1 - g0);
+        clumps++;
+        const n = c0 + Math.floor(crestRng() * (c1 - c0 + 1));
+        for (let j = 0; j < n; j++) {
+          // the clump's shrubs strung along the crest a metre or so apart, a hand's width off its line
+          const k = Math.max(r0, Math.min(r1 - 1, r + Math.round((j - (n - 1) / 2) * (0.7 + 0.5 * crestRng()))));
+          const x = P[k * 5], y = P[k * 5 + 1], z = P[k * 5 + 2], ax = P[k * 5 + 3], az = P[k * 5 + 4];
+          const across = (crestRng() - 0.5) * 0.4, sc = s0 + crestRng() * (s1 - s0), yaw = crestRng() * Math.PI * 2;
+          _quatCrest.setFromAxisAngle(_upCrest, yaw);
+          placements.push(new THREE.Matrix4().compose(_posCrest.set(x - az * across, y - 0.06, z + ax * across), _quatCrest,
+            _sclCrest.set(sc, sc * (0.9 + 0.2 * crestRng()), sc)));
+        }
+      }
+    }
+    group.userData.crestShrubs = { form: cs.form, lines: linesUsed, clumps, shrubs: placements.length };
+    if (placements.length === 0) return;
+    const mats = shrubMaterials(cs.form, {});
+    if (!mats) return;
+    const geometry = buildGrownShrub('bush', mulberry32((seed ^ 0xc4e58) >>> 0), {}, cs.form, true);
+    geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(placements.length), 1));
+    geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(placements.length), 1));
+    const mesh = new THREE.InstancedMesh(geometry, mats[0], placements.length);
+    const fadeAttr = attribute(geometry, 'aFadeI');
+    const tint = new THREE.Color();
+    for (let i = 0; i < placements.length; i++) {
+      const e = placements[i].elements;
+      // the bushes' near-neutral value law, a shrub a shade lighter or darker by its place (no draw)
+      const v = 0.6 + 0.3 * treePositionNoise(e[12], e[14], 61);
+      tint.setRGB(v * 0.98, v, v * 0.94);
+      mesh.setMatrixAt(i, placements[i]);
+      mesh.setColorAt(i, tint);
+      bushFadeReg.push({ attr: fadeAttr, slot: i, x: e[12], z: e[14], fade: 0 });
+    }
+    mesh.castShadow = true;
+    setShadowCasterCascades(mesh, BUSH_SHADOW_CASCADES);
+    mesh.receiveShadow = canopyShadowReceive;
+    mesh.matrixAutoUpdate = false;
+    mesh.customDepthMaterial = mats[1];
+    mesh.userData.aoExclude = true;
+    mesh.userData.bush = true;
+    mesh.userData.crestShrubs = true;
+    mesh.computeBoundingSphere();
+    group.add(mesh);
+  }
+  rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
-    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
+    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false), plantBankCrests };
 }

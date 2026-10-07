@@ -32,6 +32,12 @@ export interface TreeBiome {
   /** The form the map's shrubs (its bushes and understorey) grow as, with their own atlas (vegetation.ts createBushes). */
   shrub?: GrowthSpecies;
   /**
+   * Trees lane (2026-10-07, the scenery lane's bocage banks): the shrubs on the place's field-bank crests (vegetation.ts
+   * plantBankCrests; a map's own `crestShrubs` wins) — sparse clumps of a shrub-only form, a clump every `gapM` along a
+   * crest, `clump` shrubs to one, each `scale`: north Finistère's gorse, Hesse's blackthorn.
+   */
+  crest?: Readonly<{ form: GrowthSpecies; gapM: readonly [number, number]; clump: readonly [number, number]; scale?: readonly [number, number] }>;
+  /**
    * The place's foliage colour where the map palette names none (treeBiomePalette fills the gaps, every grown slot):
    * the texture tone and the card hue and saturation.
    */
@@ -136,9 +142,13 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
-  coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
+  coastal: Object.freeze({ ...B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
+    // (2026-10-07) the talus banks' crests: gorse in flower, a clump of one to three every 14–30 m — sparse, no wall
+    crest: Object.freeze({ form: 'gorse' as const, gapM: [14, 30] as const, clump: [1, 3] as const, scale: [0.7, 1.05] as const }) }),
   // the Fulda Gap: beech woods with spruce, oak and birch
-  frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
+  frontier: Object.freeze({ ...B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
+    // (2026-10-07) the hedged banks' crests: blackthorn, a clump of one or two every 18–36 m
+    crest: Object.freeze({ form: 'blackthorn' as const, gapM: [18, 36] as const, clump: [1, 2] as const, scale: [0.75, 1.1] as const }) }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
   verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
@@ -168,6 +178,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   copper_mesa: B('an open-pit copper mine, the Arizona uplands', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom',
     SONORAN_FOLIAGE, undefined, true, true),
 });
+
+/** Trees lane (2026-10-07): the shrubs a place seats on its field banks' crests (vegetation.ts plantBankCrests), or none. */
+export function treeBiomeCrest(mapId: string | null | undefined): TreeBiome['crest'] | null {
+  return (mapId ? TREE_BIOMES[mapId]?.crest : null) ?? null;
+}
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
 export function treeBiomeShrub(mapId: string | null | undefined): GrowthSpecies | null {

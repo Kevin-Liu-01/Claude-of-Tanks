@@ -31,11 +31,14 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   // the winter kinds (a map's `vegetation.bare`): the oak's and the poplar's bare twigs, the buddleia's winter canes
   | 'oak-bare' | 'poplar-bare' | 'buddleia-bare'
   // the Streuobst meadow orchard's fruit trees (one form: apple, pear and plum sprays on its tiles)
-  | 'apple';
+  | 'apple'
+  // the trees lane (2026-10-07): the bocage banks' crest shrubs — gorse (north Finistère), blackthorn (Hesse)
+  | 'gorse' | 'blackthorn';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple',
+  'gorse', 'blackthorn']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 // the winter kinds' opaque shares (measured as the table's)
@@ -57,6 +60,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
   'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
   apple: APPLE_COVERAGE,
+  gorse: 0.214, blackthorn: 0.164,
 });
 
 /**
@@ -128,6 +132,10 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   'buddleia-bare': { hue: 0.065, sat: 0.45, light: 0.17 },
   // the orchard's mid green, a little grey with the leaves' down
   apple: { hue: 0.225, sat: 0.34, light: 0.21 },
+  // the trees lane (2026-10-07): gorse's dark spiny green (its yellow flowers painted over it), blackthorn's small dark
+  // leaves on black twigs
+  gorse: { hue: 0.27, sat: 0.34, light: 0.18 },
+  blackthorn: { hue: 0.265, sat: 0.3, light: 0.16 },
   lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
   sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
   redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
@@ -357,6 +365,9 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
   acacia: { shape: 'pinnate', leafLen: 0.13, leafAspect: 0.15, petiole: 0.10, spacing: 0.044, leafAngle: 0.9, twigs: [5, 7], twigLen: [0.24, 0.38], twigAngle: 0.95, hang: 0, droop: 0.05, stemWidth: 2.2 },
   eucalyptus: { shape: 'falcate', leafLen: 0.15, leafAspect: 0.17, petiole: 0.10, spacing: 0.044, leafAngle: 0.55, twigs: [4, 6], twigLen: [0.30, 0.46], twigAngle: 0.45, hang: 0.7, droop: 0.7, stemWidth: 2.0 },
   birch: { shape: 'oval', leafLen: 0.078, leafAspect: 0.46, petiole: 0.3, spacing: 0.032, leafAngle: 0.95, twigs: [5, 7], twigLen: [0.30, 0.50], twigAngle: 0.55, hang: 0.85, droop: 0.4, stemWidth: 1.5 },
+  // the trees lane (2026-10-07): the blackthorn of the hedged banks — small elliptic leaves crowded on many short, stiff,
+  // spurred twigs
+  blackthorn: { shape: 'oval', leafLen: 0.052, leafAspect: 0.42, petiole: 0.12, spacing: 0.022, leafAngle: 0.8, twigs: [7, 9], twigLen: [0.18, 0.3], twigAngle: 0.95, hang: 0, droop: 0.12, stemWidth: 2.2 },
   aspen: { shape: 'round', leafLen: 0.074, leafAspect: 0.5, petiole: 0.42, spacing: 0.034, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.22, 0.36], twigAngle: 0.6, hang: 0, droop: 0.45, stemWidth: 1.9 },
   mangrove: { shape: 'oval', leafLen: 0.10, leafAspect: 0.40, petiole: 0.10, spacing: 0.038, leafAngle: 0.8, twigs: [4, 6], twigLen: [0.24, 0.36], twigAngle: 0.6, hang: 0, droop: 0.22, stemWidth: 2.6 },
   // trees round 2: the beech's level two-ranked sprays of wavy ovals, the chestnut's long serrated blades, the holm
@@ -776,6 +787,57 @@ function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[
     }
   }
   return rods;
+}
+
+/**
+ * The trees lane (2026-10-07, the bocage banks' crests: Saltmere's north Finistère): gorse — a dense mound of short, stiff
+ * green shoots from the base, the spines in tufts along them, the yellow pea-flowers clustered on their outer halves
+ * (a crest shrub in flower, not the broom's arching switches).
+ */
+function paintGorseTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.gorse;
+  const p0 = { x: S * 0.5, y: S * 0.96 };
+  const shoots: Pt[][] = [];
+  const n = 26 + ((rng() * 8) | 0);
+  for (let k = 0; k < n; k++) {
+    const lean = (rng() - 0.5) * 1.9, a = -Math.PI / 2 + lean;
+    const len = S * (0.32 + rng() * 0.36);
+    const start = { x: p0.x + (rng() - 0.5) * S * 0.22, y: p0.y - rng() * S * 0.1 };
+    shoots.push(twigPoints(start, a, len, (rng() - 0.5) * 0.5, 8));
+  }
+  // the mound's dark heart, then the shoots with their spine tufts, then the flowers
+  paintSprayBody(ctx, shoots.slice(0, 12), S * 0.05, base, 0.4, 0.18);
+  ctx.lineCap = 'round';
+  for (const shoot of shoots) {
+    const light = base.light * (0.8 + rng() * 0.45);
+    taperStroke(ctx, shoot, S * 0.008, S * 0.004, css(base.hue + (rng() - 0.5) * 0.03, base.sat, light));
+    for (let t = 0.12; t < 0.98; t += 0.05 + rng() * 0.04) {
+      const at = pointAt(shoot, t);
+      const tuft = 3 + ((rng() * 3) | 0);
+      for (let q = 0; q < tuft; q++) {
+        const angle = at.a + (rng() < 0.5 ? -1 : 1) * (0.4 + rng() * 0.9);
+        const spine = S * (0.018 + rng() * 0.016);
+        ctx.strokeStyle = css(base.hue + 0.01, base.sat * (0.9 + rng() * 0.3), light * (0.9 + rng() * 0.4));
+        ctx.lineWidth = Math.max(1, S * 0.0035);
+        ctx.beginPath();
+        ctx.moveTo(at.p.x, at.p.y);
+        ctx.lineTo(at.p.x + Math.cos(angle) * spine, at.p.y + Math.sin(angle) * spine);
+        ctx.stroke();
+      }
+    }
+    if (rng() < 0.7) {
+      const flowers = 3 + ((rng() * 5) | 0);
+      for (let q = 0; q < flowers; q++) {
+        const at = pointAt(shoot, 0.5 + rng() * 0.48);
+        ctx.fillStyle = css(0.13 + rng() * 0.02, 0.85, 0.5 + rng() * 0.1);
+        ctx.beginPath();
+        ctx.ellipse(at.p.x + (rng() - 0.5) * S * 0.02, at.p.y + (rng() - 0.5) * S * 0.02, S * (0.008 + rng() * 0.005),
+          S * (0.006 + rng() * 0.004), rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  return shoots;
 }
 
 /** Bare winter twigs: a fine forked lattice (birch / aspen crowns without leaves). */
@@ -1305,6 +1367,7 @@ function paintOrchardTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ti
 }
 
 const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng, tile?: number) => Pt[][]>>> = Object.freeze({
+  gorse: paintGorseTile,
   apple: paintOrchardTile,
   buddleia: paintBuddleiaTile,
   longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),

@@ -29,7 +29,9 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'apple'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
-  | 'broom' | 'longleafSeedling' | 'buddleia';
+  | 'broom' | 'longleafSeedling' | 'buddleia'
+  // the trees lane (2026-10-07): the bocage banks' crest shrubs (VegetationConfig `crestShrubs`) — never a tree slot
+  | 'gorse' | 'blackthorn';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
@@ -397,6 +399,25 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.05, upturn: 0.3, sidePerM: 1.0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
     leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.6, 0.9], aspect: 0.56, habit: 'upright', tipSprays: 1,
     cardBend: 0.04, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.36, 0.38, 0.30], barkTopTint: null,
+  }),
+  // the trees lane (2026-10-07, the bocage banks' crests): gorse (Ulex europaeus) — a dense, low, rounded mound of stiff
+  // spiny shoots in flower, only ever a shrub (growShrubSkeleton reads the aspect, the bend and the family); and the
+  // blackthorn (Prunus spinosa) — a dense twiggy thicket of small dark leaves; the tree fields mirror the broom's
+  gorse: P({
+    family: 'broadleaf', height: 1.6, heightSpread: 0.14, trunkR: 0.06, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.05, crownR: 0.9,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.02, upturn: 0.2, sidePerM: 1.0, sideAngle: 0.5, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.55, 0.85], aspect: 0.8, habit: 'upright', tipSprays: 1,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.30, 0.31, 0.24], barkTopTint: null,
+  }),
+  blackthorn: P({
+    family: 'broadleaf', height: 2.2, heightSpread: 0.16, trunkR: 0.06, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.08, crownR: 1.1,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.7, angleHigh: 0.35,
+    droop: 0.1, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.2, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.6, 0.9], aspect: 0.86, habit: 'spray', tipSprays: 1,
+    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.20, 0.18, 0.17], barkTopTint: null,
   }),
   // the European larch (the Alps): a narrow open cone of level whorls whose side shoots hang, soft light-green needles
   // in rosettes along them
