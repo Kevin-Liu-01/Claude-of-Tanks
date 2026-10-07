@@ -4179,7 +4179,18 @@ void splatCompute() {
   // patch). The arid maps' sand patches and the snow maps' scoured crests keep the whole patch.
   float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
   float grazeT = worn - wornCore;
-  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // Ground lane (2026-10-07, wave 182's Frosthollow bird view: "dark untextured rectangles" — the two 56 m graded
+  // hardstands the zone discs sit on): a hardstand is stamped as the carriageway's full coverage (R) with no centreline
+  // near it (G 0, hardstandSurface.ts), so the whole pad was shoulder and none of it road — the dirt layer laid bare
+  // over 56 m, which a snow map's wear lets through as bare ground. A pad is graded road ground: the carriageway's own
+  // packed surface (dW below: the map's packed earth, or on a snow map packed, trodden snow) with no wheel lanes, ruts
+  // or crown (they follow a centreline), and its feather the ground around it — the shoulder's dirt stands down over the
+  // whole pad (a ring of bare ground outlined it). A paved map's pads stay paved; a road crossing a pad keeps its own
+  // paint (its centreline's G)
+  float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, uRoadTex));
+  float apronK = smoothstep(0.50, 0.90, mk.r) * padK;
+  float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;
+  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -5558,7 +5569,7 @@ void splatCompute() {
     // dark wheel ruts, damp borders. uRoadTex (0..1) cross-fades to PAVED
     // town streets: the rock layer (cobble/sett) laid across the full
     // carriageway at every distance, ruts nearly gone.
-    float dW = roadCore * 0.9 * (1.0 - uRoadTex);
+    float dW = max(roadCore, apronK) * 0.9 * (1.0 - uRoadTex); // (a pad is the carriageway's packed ground too)
     // Build the compacted core from a deliberately low-frequency dirt
     // sample. Keeping only a quarter of the underlying terrain preserves
     // local variation without baking the source texture's AO/cavity blobs
