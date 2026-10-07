@@ -34,14 +34,16 @@ const common = source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source.in
 assert.ok(common.length > 10000, 'the shared fragment found');
 const count = (text, needle) => text.split(needle).length - 1;
 const BASIS_GUARD = 'if (uReduxD.y > 1.5) { wallVScale = 1.0; bedSwell = 1.0; }';
-const STRETCH_X = 'gWallUVx.y = gWallUVx.y * wallVScale * bedSwell + wallVOff + gBedWob;';
-const STRETCH_Z = 'gWallUVz.y = gWallUVz.y * wallVScale * bedSwell + wallVOff + gBedWob;';
 assert.equal(count(common, BASIS_GUARD), 1, 'the basis guard once');
-assert.equal(count(common, STRETCH_X), 1, 'the x stretch line verbatim, once');
-assert.equal(count(common, STRETCH_Z), 1, 'the z stretch line verbatim, once');
+// (written against either basis form — the multiplicative stretch or the ground lane's bounded band, both of which read
+// wallVScale * bedSwell: the guard sits after the swell's declaration and before the wall's v is first written, so every
+// form evaluates with the stretch at 1 on a snow map and untouched elsewhere)
 const guardAt = common.indexOf(BASIS_GUARD);
-assert.match(common.slice(guardAt + BASIS_GUARD.length), new RegExp(`^\\s*${STRETCH_X.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${STRETCH_Z.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-  'the guard stands right above the two stretch lines (every other map evaluates them unchanged)');
+const swellAt = common.indexOf('float bedSwell = ');
+const firstV = common.indexOf('gWallUVx.y = ', swellAt);
+assert.ok(swellAt > 0 && swellAt < guardAt, "the guard follows the swell's declaration");
+assert.ok(firstV > guardAt, "and precedes the wall's v");
+assert.ok(common.slice(guardAt, common.indexOf('gCliffJ = cliffJ;', guardAt)).includes('wallVScale * bedSwell'), 'the basis reads the stretch the guard sets');
 assert.equal(count(common, SNOW_ROCK_HOLD_LINE), 1, "the ground lane's hold line once, verbatim (snowRockHoldLine swaps it per map)");
 const snowAt = common.indexOf('if (uReduxD.y > 1.5) {\n    float rockW = max(fR, steepW) * (1.0 - fMs);');
 assert.ok(snowAt > 0, 'the snow-on-rock branch');
@@ -95,4 +97,4 @@ assert.ok(shear[250].stretch > 5, `the stretch form at 250 m: a median ${shear[2
 for (const h of [50, 150, 250]) assert.ok(shear[h].snowP90 < 2, `the snow form at ${h} m: p90 ${shear[h].snowP90.toFixed(2)} (the offset and the wander only)`);
 assert.ok(Math.abs(shear[250].snow - shear[50].snow) < 0.05, 'and the snow form does not grow with height');
 
-console.log(`snowFaces.selftest: uReduxD.y > 1.5 selects exactly ${SNOW.join('/')} of ${MAP_IDS.length} maps (the rest 0 or 1); the basis guard above the verbatim stretch lines, the couloirs and ledges around the hold line, the farRock guard; the stretch form's shear (median ${[50, 150, 250].map((h) => shear[h].stretch.toFixed(1)).join(' / ')} at 50 / 150 / 250 m) against the snow form's (${[50, 150, 250].map((h) => shear[h].snow.toFixed(2)).join(' / ')}) PASS; no GPU/art claim`);
+console.log(`snowFaces.selftest: uReduxD.y > 1.5 selects exactly ${SNOW.join('/')} of ${MAP_IDS.length} maps (the rest 0 or 1); the basis guard between the swell and the wall's v, the couloirs and ledges around the hold line, the farRock guard; the stretch form's shear (median ${[50, 150, 250].map((h) => shear[h].stretch.toFixed(1)).join(' / ')} at 50 / 150 / 250 m) against the snow form's (${[50, 150, 250].map((h) => shear[h].snow.toFixed(2)).join(' / ')}) PASS; no GPU/art claim`);
