@@ -548,6 +548,8 @@ export const GORAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'goral',
   region: 'Podhale under the Tatra (the Biały Dunajec valley, Nowy Targ to Zakopane), 1945: spruce log houses on granite under steep shingle',
   surfaces: {
+    // (round 3, the cost of round 1's chase view: an in-page toggle hold read the log village's wood cavity map at ~2 ms)
+    woodAo: 0,
     // spruce shingle (gont), weathered silver-brown
     roof: { kind: 'shingle', tint: [0.46, 0.41, 0.36] },
     // the Tatra granite of the foundations

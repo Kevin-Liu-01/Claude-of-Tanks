@@ -3387,6 +3387,8 @@ ${snowCap ? `
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
+  // map revival lane 2 (2026-10-06): a log-walled kit may leave out the wood's cavity map (ArchitectureSurfaces.woodAo)
+  if (regionalArchitecture?.surfaces.woodAo === 0) { mats.wood.aoMap = null; mats.structureWood.aoMap = null; }
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {

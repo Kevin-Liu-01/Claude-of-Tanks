@@ -222,17 +222,9 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.62, blockU: 200, blockV: 84, maxSplit: 4, marginM: 1.2, trackShare: 0.5, hedgeShare: 0.15,
     warpM: 18, region: 'strip', salt: 67,
   },
-  // Frosthollow (winter: the Podhale under the Tatra, the Biały Dunajec valley in January 1945, map revival lane 2,
-  // 2026-10-05): the highlanders' long narrow strip fields laid across the valley from the village street (the road's
-  // north-south line turned a right angle) to the river and up the slopes, under the snow: the crop's colour only a
-  // trace over the snowpack (strength 0.3), the furrows and the stubble grey and straw through a thin cover, the hay
-  // meadows white; a track along some of the strips' long lines, a few balks grown up with scrub
-  winter: {
-    // (round 3, gauntlet wave 128: "an empty, dead-flat, uniformly white plain with no field strips ... or tracks") the
-    // strips' traces back over half way (round 2 had taken them to 0.14), more of their long lines tracked and grown up
-    strength: 0.26, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.38, hedgeShare: 0.22,
-    warpM: 14, region: 'podhale', salt: 107,
-  },
+  // Frosthollow (winter) has no land use (map revival lane 2, round 3, 2026-10-06): the Podhale's strip fields under
+  // the January snow showed as a trace at most (strength 0.14–0.26), while the land-use path cost the chase view 1.0–1.5 ms
+  // of GPU in an in-page toggle hold; the 'podhale' region stays for a map that shows its strips.
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)
   delta: {
     strength: 1, heading: 1.05, blockU: 80, blockV: 52, maxSplit: 3, marginM: 0.7, trackShare: 0.12, hedgeShare: 0.12,
