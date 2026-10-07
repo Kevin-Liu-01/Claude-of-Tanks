@@ -1021,13 +1021,17 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
   // -4.242 m extremum, but it cannot be a free silhouette whisker.
   P.add('hull', box(1.76, 0.040, 0.68), 0, 1.45, -3.91);                       // backs the complete cable trough to z -4.25
   {
+    // Round 3 (2026-10-07, critics: "a stiff bent tube hanging across the stowage with neither end secured"): the
+    // loop lies flat in its tray (top 1.47) instead of arching 14 cm over it, and both eyes drop over the rack legs
+    // at x +-0.80, so each end is held. The -4.24 m rear extremum is unchanged.
     const rearCable = FITTINGS.towCable({ mats: P.mats, r: 0.024, seed: 12,
       pts: [
-        [-0.84, 1.55, -3.52], [-0.67, 1.61, -3.82], [-0.34, 1.58, -4.10],
-        [0, 1.48, -4.24], [0.34, 1.58, -4.10], [0.67, 1.61, -3.82],
-        [0.84, 1.55, -3.52],
+        [-0.80, 1.50, -3.50], [-0.70, 1.494, -3.80], [-0.36, 1.494, -4.08],
+        [0, 1.494, -4.24], [0.36, 1.494, -4.08], [0.70, 1.494, -3.80],
+        [0.80, 1.50, -3.50],
       ] });
     P.hullG.add(rearCable);
+    for (const x of [-0.45, 0.45]) P.add('hullDetail', box(0.05, 0.03, 0.05), x, 1.484, -4.00);   // tray clips
   }
   // ---- glacis furniture ON the 16.3-deg plane: center driver hatch +
   // periscopes, splash V, mirror stalks, lights, tow cable -----------------

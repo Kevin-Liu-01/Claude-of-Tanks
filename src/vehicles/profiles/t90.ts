@@ -7791,11 +7791,18 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   }
   P.add('hullCloth', cylX(0.105, 1.48, 14), 0, 0.79, -3.42);
   for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
+  // Round 3 (2026-10-07, critics: "the tow cable droops in a free arc below the rear plate ... held by no clips or
+  // hooks"): the cable is stowed ON the transom. It runs eye to eye between the two tow hooks along the plate's lower
+  // band, under the roll's strap shoes, and four bolted clips hold it to the plate.
   const rearCable = FITTINGS.towCable({
-    mats: P.mats, eyes: false, r: 0.018,
-    pts: [[-1.02, 0.62, -3.39], [-0.52, 0.48, -3.43], [0, 0.43, -3.44], [0.52, 0.48, -3.43], [1.02, 0.62, -3.39]], seed: 91,
+    mats: P.mats, eyes: true, r: 0.018,
+    pts: [[-0.82, 0.68, -3.365], [-0.42, 0.665, -3.372], [0, 0.66, -3.374], [0.42, 0.665, -3.372], [0.82, 0.68, -3.365]], seed: 91,
   });
   P.hullG.add(rearCable);
+  for (const x of [-0.62, -0.21, 0.21, 0.62]) {
+    P.add('hullDark', box(0.05, 0.055, 0.016), x, 0.665, -3.346);                // clip saddle bolted to the plate
+    P.add('hullDark', box(0.05, 0.012, 0.05), x, 0.692, -3.372);                 // clip strap over the cable
+  }
 }
 
 function addT90MProryvTurretFoundation(P: T90BuilderPort): void {
