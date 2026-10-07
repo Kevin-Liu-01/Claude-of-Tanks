@@ -28,7 +28,7 @@ import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from '../maps
 import type { ArchitectureStyle } from '../maps/regional/types.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
-import { LANDMARK_KINDS, resolveLandmarkParams } from './plan.ts';
+import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.ts';
 import { LANDMARK_BUILDERS } from './index.ts';
 import type { LandmarkKind, LandmarkPlacement } from './types.ts';
 
@@ -187,7 +187,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
   const probes = footprintProbes(x, z, hw, hl, yaw);
   if (probes.some(([px, pz]) => Math.max(Math.abs(px), Math.abs(pz)) > SQUARE)) return 'outside the square';
   for (const s of ctx.spawns) if (discMeetsFootprint(s.x, s.z, SPAWN_CLEAR, x, z, hw, hl, yaw)) return 'spawn pad';
-  for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
+  // (a dressing piece — a square's setts, a path — has no solid to change an objective's ground: it may lie in a disc)
+  if (!isDressingPiece(placement)) for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
   if (probes.some(([px, pz]) => ctx.heightField.getWaterMaskAt(px, pz) > 0.05)) {
     // a bridge stands over its water and a valve tower in it (plan.ts inWater); every other piece keeps dry
     if (LANDMARK_KINDS[placement.kind].family !== 'bridge' && !LANDMARK_KINDS[placement.kind].inWater) return 'water';

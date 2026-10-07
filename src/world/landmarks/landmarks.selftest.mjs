@@ -491,7 +491,8 @@ for (const id of MAP_IDS) {
     assert.ok(LANDMARK_KINDS[placement.kind], `${label}: a known kind`);
     const [hw, hl] = landmarkFootprint(placement), yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
     for (const s of spawns) assert.ok(Math.hypot(s.x - placement.x, s.z - placement.z) > 22 + Math.hypot(hw, hl) * 0.5, `${label}: off the spawn pads`);
-    for (const [x, z, r] of discs) {
+    // (a dressing piece has no solid to change an objective's ground: it may lie in a disc, as the composer admits it)
+    if (!isDressingPiece(placement)) for (const [x, z, r] of discs) {
       const ox = x - placement.x, oz = z - placement.z, lx = ox * Math.cos(yaw) - oz * Math.sin(yaw), lz = ox * Math.sin(yaw) + oz * Math.cos(yaw);
       const ex = Math.max(0, Math.abs(lx) - hw), ez = Math.max(0, Math.abs(lz) - hl);
       assert.ok(ex * ex + ez * ez >= r * r, `${label}: clear of the objective disc at (${x}, ${z})`);
