@@ -8,6 +8,7 @@
  */
 
 import { AUTHORED_PAINT_ENTRIES, AUTHORED_PAINT_IDS } from './authoredPaintCatalog.ts';
+import type { VehicleEra } from './taxonomy.ts';
 
 export const CUSTOM_CAMO_BRUSHES = Object.freeze([
   'round', 'flat', 'spray', 'pixel', 'eraser', 'stamp',
@@ -768,6 +769,175 @@ export function camoInCollection(patternId: string, collection: CamoCollectionId
 export function camoCollectionFor(patternId: string): CamoCollectionId {
   if (camoInCollection(patternId, 'default')) return 'default';
   return CAMO_COUNTRY_TAG_IDS.find(id => sharedCamoPreset(patternId)?.tags.includes(id)) || 'default';
+}
+
+// ---------------------------------------------------------------------------
+// AUTO (map) camouflage. Tank-accessories round 3 (2026-10-07): the blind critics of battle wave 196 on Sirocco
+// Wadi saw "every nation in the same three-tone desert scheme" — AUTO drew one generic biome pool for every hull.
+// AUTO now asks the vehicle's nation for its own scheme in the battlefield's environment (IDF Sinai grey everywhere,
+// British green/black bands, PLA digital, the US three-colour coats) and falls back to the shared biome pool only when
+// the nation has none, never to another nation's own scheme. The pick is a pure function of (vehicle id, nation,
+// era, biome), so the Garage preview, the battle paint, the repaint cache and every multiplayer peer agree; only the
+// selection ('auto') travels on the wire.
+// ---------------------------------------------------------------------------
+
+/** AUTO's concrete result: a built-in pattern, or the internal urban grey only AUTO reaches (never on the wire). */
+export type AutoCamoPatternId = Exclude<CamoPatternId, 'auto'> | 'urban';
+
+/** The environments a nation can answer for, named by the catalog's environment tags. */
+export const AUTO_CAMO_ENVIRONMENTS = Object.freeze(['woodland', 'desert', 'winter', 'urban'] as const);
+export type AutoCamoEnvironment = typeof AUTO_CAMO_ENVIRONMENTS[number];
+
+interface AutoCamoBiome {
+  /** The shared fallback pool; element 0 is the biome's canonical scheme (camo r8). */
+  readonly pool: readonly AutoCamoPatternId[];
+  /** The environment a nation is asked for. Null keeps the seasonal pool for every nation (no army paints autumn). */
+  readonly environment: AutoCamoEnvironment | null;
+}
+
+const autoBiome = (environment: AutoCamoEnvironment | null, pool: readonly AutoCamoPatternId[]): AutoCamoBiome =>
+  Object.freeze({ environment, pool: Object.freeze([...pool]) });
+
+/**
+ * One row per battlefield biome (moved here from materials.ts BIOME_PATTERN; unknown map ids read as verdant).
+ * Camo r8/r2: each pool lists only schemes that belong on its field — the coastal pool stays green-family (grey-blue
+ * bots on grass defeated biome matching), Amberford wears the autumn blotches, the hay-gold steppe reads tan,
+ * Cinder Junction and the lunar basin are industrial grey ('urban' is the AUTO-only neutral grey 3-tone).
+ */
+export const AUTO_CAMO_BIOMES: Readonly<Record<string, AutoCamoBiome>> = Object.freeze({
+  verdant: autoBiome('woodland', ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc']),
+  desert: autoBiome('desert', ['desert', 'chocchip', 'digitaldesert', 'pinkdesert']),
+  winter: autoBiome('winter', ['winter', 'washworn', 'winterbands', 'merdcwinter']),
+  urban: autoBiome('urban', ['urban', 'urbanblock', 'berlin']),
+  autumn: autoBiome(null, ['autumn', 'oakleaf']),
+  coastal: autoBiome('woodland', ['summer', 'dpm', 'merdc']),
+  steppe: autoBiome('desert', ['desert', 'digitaldesert', 'chocchip']),
+  railyard: autoBiome('urban', ['urban', 'urbanblock', 'berlin']),
+  moon: autoBiome(null, ['urban', 'urbanblock']),
+  cliffbridge: autoBiome('woodland', ['summer', 'flecktarn', 'dpm']),
+});
+
+/** The AUTO biome a map paints for; any id without its own row (including inherited keys) reads as verdant. */
+export function autoCamoBiomeId(mapId: string): string {
+  return Object.prototype.hasOwnProperty.call(AUTO_CAMO_BIOMES, mapId) ? mapId : 'verdant';
+}
+
+/** A concrete scheme: never one of the vehicle-relative aliases. */
+type NationalAutoCamoSchemeId = Exclude<CamoPatternId, 'auto' | 'factory' | 'signature'>;
+
+interface NationalAutoCamoRow {
+  /** Only vehicles of these eras (absent: every era). The first matching row of an environment answers. */
+  readonly eras?: readonly VehicleEra[];
+  /** The nation's real schemes there; AUTO draws one per vehicle and biome. */
+  readonly schemes: readonly NationalAutoCamoSchemeId[];
+}
+type NationalAutoCamoTable = Readonly<Partial<Record<AutoCamoEnvironment, readonly NationalAutoCamoRow[]>>>;
+
+const WARTIME_ERAS: readonly VehicleEra[] = Object.freeze(['interwar', 'ww2']);
+const COLD_WAR_ERAS: readonly VehicleEra[] = Object.freeze(['cold-war']);
+const CURRENT_ERAS: readonly VehicleEra[] = Object.freeze(['modern', 'next-generation']);
+const row = (schemes: readonly NationalAutoCamoSchemeId[], eras?: readonly VehicleEra[]): NationalAutoCamoRow =>
+  Object.freeze({ schemes: Object.freeze([...schemes]), ...(eras ? { eras } : {}) });
+const nationTable = (table: NationalAutoCamoTable): NationalAutoCamoTable => Object.freeze(Object.fromEntries(
+  Object.entries(table).map(([environment, rows]) => [environment, Object.freeze([...rows])])));
+const SINAI_GREY = [row(['service_merkava2d'])];
+
+/**
+ * Each nation's own vehicle schemes per environment, from the existing catalog only (the painters and recipes are
+ * unchanged). An environment a nation lacks falls back to the shared biome pool. Every scheme carries this nation's
+ * tag or no nation tag at all (autoCamoNational.selftest.mjs). Woodland rows name patterned service coats: the plain
+ * delivery greens (national_*) sit within a shade of each other and would put every nation back in one paint.
+ */
+export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoCamoTable>> = Object.freeze({
+  // MERDC until the mid-1980s, then the three-colour CARC coat the Abrams fleet is authored in; the US desert
+  // service coat on sand (CARC Tan 686 has no plain preset yet).
+  usa: nationTable({
+    woodland: [row(['merdc', 'paint_m1a1'], COLD_WAR_ERAS), row(['paint_m1a1'])],
+    desert: [row(['service_usa_desert'])],
+    winter: [row(['merdcwinter'], COLD_WAR_ERAS)],
+  }),
+  // Soviet 4BO field blotch, the Cold War amoeba, today's service digital; the T-90MS desert export coat and plain
+  // khaki-brown on sand; the Berlin '45 white band for the wartime hulls in a city.
+  ru: nationTable({
+    woodland: [row(['service_soviet_ww2'], WARTIME_ERAS), row(['service_soviet_coldwar'], COLD_WAR_ERAS),
+      row(['service_t90m'])],
+    desert: [row(['sig_t90ms', 'paint_t90ms'], CURRENT_ERAS)],
+    urban: [row(['berlin45'], WARTIME_ERAS)],
+  }),
+  // Deep bronze green and black bands; the Caunter desert family; the Berlin Brigade blocks.
+  uk: nationTable({
+    woodland: [row(['service_challenger_3', 'paint_chieftain5'])],
+    desert: [row(['pinkdesert'])],
+    urban: [row(['berlin'])],
+  }),
+  // Hinterhalt ambush paint for the wartime hulls, the Bundeswehr three-colour coats after.
+  de: nationTable({ woodland: [row(['ambushdot'], WARTIME_ERAS), row(['service_leo2a6m', 'paint_marder2'])] }),
+  // Plain vert armée until the mid-1980s, the French NATO three-colour after; plain khaki on sand.
+  fr: nationTable({
+    woodland: [row(['national_fr', 'service_leclerc_xlr'], COLD_WAR_ERAS), row(['service_leclerc_xlr'])],
+    desert: [row(['paint_amx40'])],
+  }),
+  // PLA digital woodland; on sand the tan pixel field of the PLA desert digital.
+  cn: nationTable({ woodland: [row(['service_type99a', 'paint_cn_t80u_modern'])], desert: [row(['digitaldesert'])] }),
+  it: nationTable({ woodland: [row(['service_ariete_c1'])] }),
+  jp: nationTable({ woodland: [row(['service_type10', 'paint_type74'])] }),
+  pl: nationTable({ woodland: [row(['paint_pl_t80u_modern', 'service_pl01'])] }),
+  kr: nationTable({ woodland: [row(['service_bmp3_rok'])] }),
+  se: nationTable({ woodland: [row(['service_strv122', 'm90'])] }),
+  // The IDF paints every vehicle Sinai grey, in every theatre.
+  il: nationTable({ woodland: SINAI_GREY, desert: SINAI_GREY, winter: SINAI_GREY, urban: SINAI_GREY }),
+  ua: nationTable({ woodland: [row(['paint_ua_t80u_modern', 'service_ua_m2a3_bradley'])] }),
+});
+
+/** The nation's own schemes for one environment and era; empty when it has none there. */
+export function nationalAutoCamoSchemes(
+  nation: string | null | undefined,
+  era: string | null | undefined,
+  environment: AutoCamoEnvironment,
+): readonly NationalAutoCamoSchemeId[] {
+  const nationTag = camoNationTag(nation ?? null) as CamoCountryTagId | null;
+  const rows = nationTag ? NATIONAL_AUTO_CAMO[nationTag]?.[environment] : undefined;
+  for (const candidate of rows || []) {
+    if (!candidate.eras || candidate.eras.includes(era as VehicleEra)) return candidate.schemes;
+  }
+  return [];
+}
+
+const CAMO_COUNTRY_TAG_SET = new Set<string>(CAMO_COUNTRY_TAG_IDS);
+
+/** The biome pool minus other nations' own schemes (a Leopard never borrows US chocolate-chip or British pink).
+ * A vehicle without a known nation keeps the whole pool. */
+function sharedAutoCamoPool(biome: AutoCamoBiome, nation: string | null | undefined): readonly AutoCamoPatternId[] {
+  const own = camoNationTag(nation ?? null);
+  if (!own) return biome.pool;
+  const neutral = biome.pool.filter((patternId) => !camoPatternTags(patternId)
+    .some((tag) => CAMO_COUNTRY_TAG_SET.has(tag) && tag !== own));
+  return neutral.length ? neutral : biome.pool;
+}
+
+/** Camo r2: the deterministic per-(vehicle, biome) draw — the same tank always wears the same scheme on one map,
+ * while a roster of AUTO tanks fans out across the candidates. */
+function seededAutoCamoPick<T>(candidates: readonly T[], key: string): T {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return candidates[(h >>> 0) % candidates.length];
+}
+
+/** The identity AUTO reads: the vehicle id seeds the draw, nation and era choose the national schemes. */
+export interface AutoCamoVehicle {
+  readonly id: string;
+  readonly nation?: string | null;
+  readonly era?: string | null;
+}
+
+/** The concrete scheme AUTO paints `vehicle` in on `mapId`: national first, the shared biome pool otherwise. */
+export function autoCamoPatternIdFor(vehicle: AutoCamoVehicle, mapId: string): AutoCamoPatternId {
+  const biomeId = autoCamoBiomeId(mapId);
+  const biome = AUTO_CAMO_BIOMES[biomeId];
+  const national = biome.environment
+    ? nationalAutoCamoSchemes(vehicle.nation, vehicle.era, biome.environment) : [];
+  const candidates: readonly AutoCamoPatternId[] = national.length ? national : sharedAutoCamoPool(biome, vehicle.nation);
+  return seededAutoCamoPick(candidates, `${vehicle.id}:${biomeId}`);
 }
 
 export const CUSTOM_CAMO_ID = 'custom';

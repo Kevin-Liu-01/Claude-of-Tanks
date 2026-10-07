@@ -110,6 +110,13 @@ shadow-floor hooks, and destroyed-vehicle burn resources. Preserve its painter
 constants, deterministic RNG order, shader strings, and demand-owned wreck
 atlases; extend its local cache and repaint-role contracts instead of casting
 through an untyped material bag.
+AUTO (map) camouflage is decided in the pure `camoPolicy.ts` (tank-accessories round 3, 2026-10-07):
+`AUTO_CAMO_BIOMES` holds each biome's shared pool and environment, `NATIONAL_AUTO_CAMO` each nation's own schemes
+per environment (with era rows), and `autoCamoPatternIdFor(vehicle, mapId)` draws one per vehicle and biome from
+(id, nation, era) alone, so the Garage swatch, battle paint, repaint cache and every multiplayer peer agree;
+`materials.ts` only holds the active biome. A nation without a scheme for an environment keeps the shared pool,
+never another nation's scheme. Change AUTO there, never with a map or nation literal elsewhere, and run
+`autoCamoNational.selftest.mjs`.
 `profiles/russia.ts` owns both the strict T-44/T-54/T-62/T-64 Russian profile
 pack and the shared Soviet geometry vocabulary consumed by China, Poland,
 T-72, T-80, and Ukraine. Keep its hull, dome, gun, ERA, Shtora, mudguard, and
