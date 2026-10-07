@@ -125,9 +125,12 @@ export default {
     // map pass 2026-09-12: limestone-terrace identity — scrub, pale rock and
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
-    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
+    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.52, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
     // ground lane: the tufts a garrigue's dry grey-olive, not a meadow's green
-    tuftTone: (_h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
+    // (wave 177: "thick, evenly spaced and plastic-looking" blades, a "lush lawn-green carpet") the cards' own paint cured
+    // yellow-grey as well as their tint, and fewer of them
+    grassTexTone: (_h: number, s: number, l: number) => [0.135, Math.min(1, s * 0.45), Math.min(1, l * 0.98 + 0.06)],
+    tuftTone: (_h: number, s: number, l: number) => [0.14, s * 0.45, Math.min(1, l * 0.96 + 0.04)],
   },
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
