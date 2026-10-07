@@ -240,14 +240,17 @@ const TREE_MARGIN_M = 2.5;
 
 /**
  * The vegetation keep-out of a map's set pieces, from its config alone: each piece's footprint, turned to its heading,
- * with a working margin. A map without set pieces gets none, and its vegetation is exact.
+ * with a working margin — or, for a kind that names its solid's rectangles (a gate's tower and its wall stubs), each of
+ * those with the margin, so a gate's short stub clears no trees past its end. A map without set pieces gets none, and its
+ * vegetation is exact.
  */
 export function landmarkClearances(landmarks: readonly LandmarkPlacement[] | null | undefined): StructureClearance[] {
   if (!landmarks?.length) return [];
-  return landmarks.map((placement) => {
-    const [hw, hl] = landmarkFootprint(placement);
-    const yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
-    return { x: placement.x, z: placement.z, halfWidth: hw + TREE_MARGIN_M, halfLength: hl + TREE_MARGIN_M,
-      cos: Math.cos(yaw), sin: Math.sin(yaw) };
+  return landmarks.flatMap((placement) => {
+    const yaw = (placement.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+    const params = resolveLandmarkParams(placement), spec = LANDMARK_KINDS[placement.kind];
+    const rects = spec.solids?.(params) ?? [[0, 0, ...spec.footprint(params)] as const];
+    return rects.map(([cx, cz, hw, hl]) => ({ x: placement.x + cx * c + cz * s, z: placement.z - cx * s + cz * c,
+      halfWidth: hw + TREE_MARGIN_M, halfLength: hl + TREE_MARGIN_M, cos: c, sin: s }));
   });
 }

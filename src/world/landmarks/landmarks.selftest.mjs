@@ -559,7 +559,9 @@ for (const id of MAP_IDS) {
   const discs = landmarkObjectiveDiscs(id, spawns);
   const shard = decodeCollisionManifest(JSON.parse(readFileSync(new URL(`../../../server/world-collision-manifests/${id}.json`, import.meta.url), 'utf8')));
   const structures = shard.obstacles.filter((record) => record.k === 'structure');
-  assert.equal(landmarkClearances(landmarks).length, landmarks.length, `${id}: one vegetation clearance per piece`);
+  assert.equal(landmarkClearances(landmarks).length,
+    landmarks.reduce((n, p) => n + (LANDMARK_KINDS[p.kind].solids?.(resolveLandmarkParams(p)).length ?? 1), 0),
+    `${id}: a vegetation clearance per piece (per solid rectangle where its kind names them)`);
   for (const placement of landmarks) check(`${id}/${placement.name ?? placement.kind}`, () => {
     const label = `${id}/${placement.name ?? placement.kind}`;
     assert.ok(LANDMARK_KINDS[placement.kind], `${label}: a known kind`);
