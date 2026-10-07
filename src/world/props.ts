@@ -3662,8 +3662,9 @@ ${snowCap ? `
     // Dalmatian suhozid, laid by the coursing law the field works are laid by, its top a crown of rubble, no cope on edge
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket,
-        ...(snowCap ? { build: snowLoadedWallstone }
-          : fieldWallBucket === 'fieldStone' && fieldStoneLithologyFor(mapId) === 'limestone' ? { build: bWallSuhozid, broken: bWallSuhozidBroken } : {}) } }),
+        ...(snowCap ? { build: snowLoadedWallstone } : {}),
+        ...(!snowCap && fieldWallBucket === 'fieldStone' && fieldStoneLithologyFor(mapId) === 'limestone'
+          ? { build: bWallSuhozid, broken: bWallSuhozidBroken } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // (b22; waves 147, 154 and 157: "modern round bales" on the WW2 and 1950s maps — the round baler came in the 1970s)
@@ -5056,9 +5057,10 @@ ${snowCap ? `
         let head = style === 'adobe'
           ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1))
           : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
-        // (b26: a dry-stone head carries its stones' own print windows and its hearting's band: the props stream spends
-        // jitterUV's four draws all the same, and the head keeps its windows)
-        if (style === 'adobe') jitterUV(head, rng); else for (let k = 0; k < 4; k++) rng();
+        // (b26: a dry-stone head on the field print carries its stones' own print windows and its hearting's band: the
+        // props stream spends jitterUV's four draws all the same, and the head keeps its windows; a mud head and a
+        // brick-print map's head take their jittered window, as before)
+        if (wallB === 'fieldStone') { for (let k = 0; k < 4; k++) rng(); } else jitterUV(head, rng);
         if (corner && !pier) { head.dispose(); return; }
         if (corner) corner.built = true;
         if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's

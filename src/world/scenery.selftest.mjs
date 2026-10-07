@@ -720,7 +720,9 @@ assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wa
 assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
 assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
 assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
-assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
+// (b26: a dry-stone head on the field print keeps its stones' own windows, laid in the print's bands by its builder; the
+// props stream spends the jittered window's four draws all the same)
+assert.match(propsSource, /if \(wallB === 'fieldStone'\) \{ for \(let k = 0; k < 4; k\+\+\) rng\(\); \} else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
 assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
