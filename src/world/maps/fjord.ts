@@ -123,8 +123,9 @@ export default {
     // round 3 (wave 129: the peninsulas' cliffs "one smooth, uniformly grey vertical wall ... no ledges, joints or
     // glacial rounding"): the gneiss's sheeting and joints drawn on the steep rock only (the material's beds, partings,
     // joint blocks and varnish streaks, as Aegis's walls); a geology on the peninsula ridges themselves moved the
-    // props' stream (any height change re-seats every later rock and tree) onto zone 1's apron
-    strata: 0.1,
+    // props' stream (any height change re-seats every later rock and tree) onto zone 1's apron. At 0.1 (pair10) the wall
+    // still read smooth; at 0.18 the joint blocks and the varnish streaks are drawn in full (the material's law: from 0.16)
+    strata: 0.18,
   },
   vegetation: {
     // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
