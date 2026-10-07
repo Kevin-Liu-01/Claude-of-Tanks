@@ -137,7 +137,9 @@ const en = readJson('src/ui/i18nCatalog.en-US.json');
 const zh = readJson('src/ui/i18nCatalog.zh-CN.json');
 const real = scanPageCatalogs({ root: ROOT, pages, english: en });
 assert.deepEqual(real.issues, [], `a public page could show a raw key:\n${real.issues.join('\n')}`);
-assert.deepEqual(Object.keys(real.catalogs), ['docs', 'docsTopic', 'gallery', 'game', 'home', 'notFound']);
+// 2026-10-06: main's 1f4c1d003 added site/hud-preview.html (the HUD editor's frame of the production HUD); it loads
+// its own `hudPreview` page catalog.
+assert.deepEqual(Object.keys(real.catalogs), ['docs', 'docsTopic', 'gallery', 'game', 'home', 'hudPreview', 'notFound']);
 assert.deepEqual(real.catalogs[FULL_CATALOG].pages, ['index.html'], 'only the game loads the full catalogs');
 assert.deepEqual(real.catalogs.docsTopic.pages.sort(), topicPages.sort());
 const fullKeys = Object.keys(en);

@@ -1,7 +1,6 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
-    'tools/asset-provenance.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
     // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
@@ -10,6 +9,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 2026-10-06: main's provenance receipt (cd0caad68) sits after the four whole-fleet CPU scans the receipt pins first (runner admission).
+    'tools/asset-provenance.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
@@ -111,6 +112,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
     'tools/physical-bore-air.selftest.mjs',
+    // 2026-10-06: moving-part clearance air (pockets under the gun group, declared clearance cells) is reported apart
+    'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
@@ -1403,6 +1406,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
+    'src/game/battleEventStats.selftest.mjs',
+    'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',

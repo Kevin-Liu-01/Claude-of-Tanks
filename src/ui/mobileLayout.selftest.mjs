@@ -266,8 +266,9 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] \.cot-si-diag\{display:none\}/,
   'phone combat cards must remove side diagrams to preserve the battlefield and controls');
+// 2026-10-06: main's fab8d4a9c anchors the report above the minimap through REPORT_MAP_GAP (12 px) instead of a literal 8.
 assert.match(await readFile(new URL('./battleHudLayout.ts', import.meta.url), 'utf8'),
-  /map\.top - 8[\s\S]*read\('\.cot-ear\.r'\)/,
+  /export const REPORT_MAP_GAP = \d+;[\s\S]*map\.top - REPORT_MAP_GAP[\s\S]*read\('\.cot-ear\.r'\)/,
   'ballistic reports and logs must share the live lane between the enemy roster and minimap');
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');

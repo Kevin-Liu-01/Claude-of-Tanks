@@ -74,6 +74,7 @@ export function resolveFinalBlow(
 /** The hero line under the verdict: "Final blow — A destroyed B with X" and its ram / fire / you variants. */
 export function finalBlowLine(blow: FinalBlow): string {
   const attacker = blow.attacker || t('killcam.enemy');
+  if (blow.cause === 'ammorack') return t('endScreen.finalBlow.ammorack', { attacker, target: blow.target });
   if (blow.cause === 'ram') return t('endScreen.finalBlow.ram', { attacker, target: blow.target });
   if (blow.cause === 'fire') return t('endScreen.finalBlow.fire', { target: blow.target });
   if (blow.cause === 'impact') return t('endScreen.finalBlow.impact', { target: blow.target });

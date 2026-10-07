@@ -1,3 +1,6 @@
+import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
+import { iconUrl } from './icons.ts';
+import { killPresentation } from './killPresentation.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
@@ -7,7 +10,7 @@ import {
 } from '../game/serviceRecord.ts';
 import { formatDate, formatNumber, t } from './i18n.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
-import { uiIconSVG } from './uiIcons.ts';
+import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 // The garage's Service Record: career totals, the medal case, achievement
 // tiers and the last battles, each with its kills laid out as a chain of
 // thought. Rendered on demand into the record dialog (garage.ts owns the
@@ -56,6 +59,15 @@ function safe(value: string): string {
   } as Record<string, string>)[char] ?? char);
 }
 
+function mapStyle(id: string): string {
+  const art = battleMapArt(id);
+  return art ? ` style="--battle-map:url('${art}')"` : '';
+}
+function vehicleArt(id: string, className = 'cot-record-vehicle'): string {
+  return /^[a-zA-Z0-9_-]+$/.test(id)
+    ? `<img class="${className}" src="${iconUrl(id, 'angle')}" alt="" loading="lazy" decoding="async">` : '';
+}
+
 function clock(seconds: number): string {
   const whole = Math.max(0, Math.round(seconds));
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
@@ -95,8 +107,12 @@ export function recordSummary(view: ServiceRecordView = getServiceRecord()): { c
   };
 }
 
-function metric(label: string, value: string, note: string): string {
-  return `<div class="cot-record-metric"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`;
+function statLabel(label: string, icon: UiIconId): string {
+  return `<span class="cot-record-stat-label" data-stat-icon="${icon}">${uiIconSVG(icon, 16)}${label}</span>`;
+}
+
+function metric(label: string, value: string, note: string, icon: UiIconId): string {
+  return `<div class="cot-record-metric">${statLabel(label, icon)}<strong>${value}</strong><small>${note}</small></div>`;
 }
 
 function overview(view: ServiceRecordView, names: RecordViewNames): string {
@@ -104,21 +120,19 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
   const pct = record.matches ? Math.round((record.wins / record.matches) * 100) : 0;
   const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
   const avgKills = record.matches ? record.kills / record.matches : 0;
-  const career = `<div class="cot-record-overview">` +
-    `<div class="cot-record-ring" style="--record-pct:${pct}"><div class="cot-record-ring-copy">` +
-    `<strong>${record.matches ? `${pct}%` : '—'}</strong><span>${t('garage.record.winrate')}</span></div></div>` +
-    `<div><div class="cot-record-outcomes">` +
-    `<div class="cot-record-outcome win"><span>${t('garage.record.victories')}</span><strong>${num(record.wins)}</strong></div>` +
-    `<div class="cot-record-outcome"><span>${t('garage.record.defeats')}</span><strong>${num(record.losses)}</strong></div>` +
-    `<div class="cot-record-outcome"><span>${t('garage.record.draws')}</span><strong>${num(record.draws)}</strong></div></div>` +
+  const career = `<div class="cot-record-overview"><div class="cot-record-outcomes">` +
+    `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}<strong>${record.matches ? `${pct}%` : '—'}</strong></div>` +
+    `<div class="cot-record-outcome win">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +
+    `<div class="cot-record-outcome">${statLabel(t('garage.record.defeats'), 'statDefeat')}<strong>${num(record.losses)}</strong></div>` +
+    `<div class="cot-record-outcome">${statLabel(t('garage.record.draws'), 'statDraw')}<strong>${num(record.draws)}</strong></div></div>` +
     `<div class="cot-record-metrics">` +
-    metric(t('garage.record.battles'), num(record.matches), t('garage.record.completedLocally')) +
-    metric(t('garage.record.destroyed'), num(record.kills), `${avgKills.toFixed(2)} ${t('garage.record.perBattle')}`) +
-    metric(t('garage.record.totalDamage'), num(record.damage), t('garage.record.careerOutput')) +
-    metric(t('garage.record.avgDamage'), num(avgDamage), t('garage.record.perBattle')) +
-    metric(t('garage.record.bestDamage'), num(record.bestDamage), t('garage.record.singleBattle')) +
-    metric(t('garage.record.longestKill'), view.stats.longestKillM ? `${num(view.stats.longestKillM)} m` : '—', t('garage.record.singleShot')) +
-    `</div></div></div>`;
+    metric(t('garage.record.battles'), num(record.matches), t('garage.record.completedLocally'), 'battleRecord') +
+    metric(t('garage.record.destroyed'), num(record.kills), `${avgKills.toFixed(2)} ${t('garage.record.perBattle')}`, 'skull') +
+    metric(t('garage.record.totalDamage'), num(record.damage), t('garage.record.careerOutput'), 'damage') +
+    metric(t('garage.record.avgDamage'), num(avgDamage), t('garage.record.perBattle'), 'statAverage') +
+    metric(t('garage.record.bestDamage'), num(record.bestDamage), t('garage.record.singleBattle'), 'statBest') +
+    metric(t('garage.record.longestKill'), view.stats.longestKillM ? `${num(view.stats.longestKillM)} m` : '—', t('garage.record.singleShot'), 'statRange') +
+    `</div></div>`;
 
   // The reasoning set leads the record: the commander's own Chain of Thought.
   const reasoning = MEDALS.filter((medal) => medal.group === 'reasoning');
@@ -132,9 +146,9 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
     `<small>${t('garage.record.reasoningNote')}</small></header>` +
     `<div class="cot-record-reason-row">${reasoningTiles}</div>` +
     `<div class="cot-record-reason-stats">` +
-    `<span>${t('garage.record.longestChain')}<b>${t('garage.record.chainKills', { count: num(view.stats.bestChain) })}</b></span>` +
-    `<span>${t('garage.record.bestStreak')}<b>${t('garage.record.streakRounds', { count: num(view.stats.bestStreak) })}</b></span>` +
-    `<span>${t('garage.record.bestKills')}<b>${num(view.stats.bestKills)}</b></span></div></section>`;
+    `<div>${statLabel(t('garage.record.longestChain'), 'statChain')}<b>${t('garage.record.chainKills', { count: num(view.stats.bestChain) })}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestStreak'), 'statVictory')}<b>${t('garage.record.streakRounds', { count: num(view.stats.bestStreak) })}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestKills'), 'skull')}<b>${num(view.stats.bestKills)}</b></div></div></section>`;
 
   const latest = MEDALS
     .filter((medal) => view.medals[medal.id])
@@ -152,23 +166,23 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
   let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
   if (record.lastBattle) {
     const last = record.lastBattle;
-    lastBattle = `<div class="cot-last-battle"><div class="cot-last-battle-head">` +
+    lastBattle = `<div class="cot-last-battle"${mapStyle(last.mapId)}>${vehicleArt(last.vehicleId)}<div class="cot-last-battle-head">` +
       `<strong>${safe(resultLabel(last.result))}</strong><time>${safe(when(last.completedAt))}</time></div>` +
       `<div class="cot-last-battle-grid">` +
-      `<div><span>${t('garage.record.deployment')}</span><b>${safe(names.vehicle(last.vehicleId))} · ${safe(names.map(last.mapId))}</b></div>` +
-      `<div><span>${t('garage.record.damage')}</span><b>${num(last.damage)}</b></div>` +
-      `<div><span>${t('garage.record.kills')}</span><b>${num(last.kills)}</b></div>` +
-      `<div><span>${t('garage.record.duration')}</span><b>${clock(last.durationS)}</b></div></div></div>`;
+      `<div>${statLabel(t('garage.record.deployment'), 'map')}<b>${safe(names.vehicle(last.vehicleId))} · ${safe(names.map(last.mapId))}</b></div>` +
+      `<div>${statLabel(t('garage.record.damage'), 'damage')}<b>${num(last.damage)}</b></div>` +
+      `<div>${statLabel(t('garage.record.kills'), 'skull')}<b>${num(last.kills)}</b></div>` +
+      `<div>${statLabel(t('garage.record.duration'), 'clock')}<b>${clock(last.durationS)}</b></div></div></div>`;
   }
   // batch 19/20 (2026-09-14): the campaign ladder's standing — operations cleared, stars, best push
   const ladder = campaignSummary();
   const front = frontlineSummary();
   const standing = front.attempts
     ? `<div class="cot-last-battle-grid">` +
-      `<div><span>${t('garage.record.campaignOperations')}</span><b>${num(ladder.cleared)} / ${num(ladder.total)}</b></div>` +
-      `<div><span>${t('garage.record.campaignStars')}</span><b>${num(ladder.stars)} / ${num(ladder.maxStars)}</b></div>` +
-      `<div><span>${t('garage.record.campaignPush')}</span><b>${num(front.bestLine)} / ${num(front.total)}</b></div>` +
-      `<div><span>${t('garage.record.campaignHeld')}</span><b>${num(front.held)}</b></div></div>`
+      `<div>${statLabel(t('garage.record.campaignOperations'), 'battleRecord')}<b>${num(ladder.cleared)} / ${num(ladder.total)}</b></div>` +
+      `<div>${statLabel(t('garage.record.campaignStars'), 'star')}<b>${num(ladder.stars)} / ${num(ladder.maxStars)}</b></div>` +
+      `<div>${statLabel(t('garage.record.campaignPush'), 'moveForward')}<b>${num(front.bestLine)} / ${num(front.total)}</b></div>` +
+      `<div>${statLabel(t('garage.record.campaignHeld'), 'shield')}<b>${num(front.held)}</b></div></div>`
     : `<div class="cot-record-empty">${t('garage.record.campaignNone')}</div>`;
   const campaign = `<div class="cot-last-battle cot-record-campaign"><div class="cot-last-battle-head">` +
     `<strong>${t('garage.record.campaign')}</strong><time>${safe(t(`campaign.op.${ladder.next.id}.title`))}</time></div>${standing}</div>`;
@@ -226,8 +240,8 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
     const linked = gap <= LINK_S;
     return `<li class="${linked ? 'linked' : ''}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
       `<span class="cot-record-step-time">${clock(step.t)}</span>` +
-      `<b>${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
-      `<small>${[step.distM ? `${num(step.distM)} m` : '', step.cause === 'ammorack' ? t('garage.record.causeAmmo') : step.cause === 'ram' ? t('garage.record.causeRam') : '']
+      `<b class="cot-record-trace-vehicle">${vehicleArt(step.specId, 'cot-record-trace-icon')}${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
+      `<small>${uiIconSVG(killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[step.distM ? `${num(step.distM)} m` : '', killPresentation({ cause: step.cause, drone: step.cause === 'drone', victimId: '' }).label]
         .filter(Boolean).join(' · ')}</small>` +
       `<span class="cot-record-step-gap">${linked ? t('garage.record.traceGap', { seconds: num(Math.round(gap)) }) : ''}</span></li>`;
   }).join('');
@@ -242,19 +256,24 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       return medal ? `<span tabindex="0" data-medal-tip="${id}" aria-label="${safe(medalName(id))}">${medalSVG(medal, 28)}</span>` : '';
     }).join('');
     const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '—';
-    return `<li><details class="cot-record-battle result-${battle.result}">` +
-      `<summary tabindex="0"><span class="cot-record-battle-row"><span class="cot-record-result">${resultLabel(battle.result)}</span>` +
+    return `<li><details class="cot-record-battle result-${battle.result}"${mapStyle(battle.mapId)}>` +
+      `<summary tabindex="0"><span class="cot-record-battle-row">${vehicleArt(battle.vehicleId)}<span class="cot-record-result">${resultLabel(battle.result)}</span>` +
       `<span class="cot-record-battle-what"><b>${safe(names.vehicle(battle.vehicleId))}</b>` +
       `<small>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))} · ${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</small></span>` +
-      `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${t('garage.record.kills')}</small></span>` +
-      `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${t('garage.record.damage')}</small></span>` +
+      `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${statLabel(t('garage.record.kills'), 'skull')}</small></span>` +
+      `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${statLabel(t('garage.record.damage'), 'damage')}</small></span>` +
       `<span class="cot-record-battle-medals">${medalArt}</span>` +
-      `<time>${safe(when(battle.at))}</time></span></summary>` +
-      `<div class="cot-record-battle-body"><div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong>` +
+      `<time>${safe(when(battle.at))}</time><span class="cot-record-expand" aria-hidden="true">${uiIconSVG('chevronDown', 16)}</span></span></summary>` +
+      `<div class="cot-record-battle-body"><div class="cot-record-battle-metrics">` +
+      metric(t('garage.record.accuracy'), `${shotAccuracy(battle.hits, battle.shots)}%`, accuracy, 'scope') +
+      metric(t('garage.record.duration'), clock(battle.durationS), '', 'clock') +
+      metric(t('garage.record.longestChain'), num(battle.bestChain), '', 'statChain') +
+      metric(t(battle.survived ? 'garage.record.survived' : 'garage.record.destroyedStatus'), uiIconSVG(battle.survived ? 'shield' : 'skull', 24), '', battle.survived ? 'shield' : 'skull') +
+      `</div><div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong>` +
       `<span>${t('garage.record.accuracy')} ${accuracy} · ${t('garage.record.duration')} ${clock(battle.durationS)}</span></div>` +
       `${trace(battle, names)}</div></details></li>`;
   }).join('');
-  return `<ol class="cot-record-history">${rows}</ol>`;
+  return `<p class="cot-record-log-intro">${t('garage.record.logIntro')}</p><ol class="cot-record-history">${rows}</ol>`;
 }
 
 /** The markup for one tab of the record. */

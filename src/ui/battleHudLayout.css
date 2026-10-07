@@ -331,3 +331,14 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-sixth,.cot-alert){
   left:12px;transform:none;animation:none;width:calc(50vw - 36px);max-width:248px;white-space:normal;
 }
+
+/* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
+.cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:#ffd18a;font-weight:800;font-variant-numeric:tabular-nums;font-size:11px;line-height:1}
+.cot-hud .cot-er .kills[hidden]{display:none}
+.cot-hud .cot-ear.icon-grid .cot-er .kills{position:absolute;bottom:2px;right:3px;min-width:10px;padding:1px 2px;font-size:9px;background:#0a121cdd}
+.cot-hud .cot-ear.icon-grid.r .cot-er .kills{right:auto;left:3px}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:4px;color:#c8d6df}
+.cot-kf .relation{display:inline-flex;align-self:center;flex:none;color:#ffcc75}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:#291717eb;border:1px solid #d79568}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}

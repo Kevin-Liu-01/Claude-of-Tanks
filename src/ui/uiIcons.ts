@@ -3,6 +3,22 @@
 // controls and combat reports read as one authored set at 12-34px.
 
 const P = {
+  statWinRate: '<circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 20 19 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  statVictory: '<path d="M7 3h10v6a5 5 0 0 1-10 0ZM7 5H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4M12 14v6m-4 1h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  statDefeat: '<path d="m12 2 8 3v6c0 5-8 11-8 11S4 16 4 11V5Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m9 8 6 6m0-6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  statDraw: '<path d="M3 6h18M12 3v17m-5 1h10M6 6l-4 8h8ZM18 6l-4 8h8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  statAverage: '<path d="M4 20V11h4v9m3 0V4h4v16m3 0v-6h3v6M2 9h20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  statBest: '<path d="m12 2 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 8.6l6.2-.9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 22h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  statRange: '<path d="M3 8v11m18-11v11M3 14h18m-14-4-4 4 4 4m10-8 4 4-4 4M8 5h8M12 2v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  statChain: '<path d="m9 15 6-6m-6 3-2 2a3.5 3.5 0 0 0 5 5l2-2m1-5 2-2a3.5 3.5 0 0 0-5-5l-2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  chevronDown: '<path d="m4 8 8 8 8-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+
+  killRam: '<path d="M2 8h6l3 4-3 4H2m20-8h-6l-3 4 3 4h6M9 3l3 4 3-4M9 21l3-4 3 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  killFriendly: '<path d="m12 2 10 18H2Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v6m0 3v1M5 5l14 14" stroke="currentColor" stroke-width="1.8"/>',
+  killSelf: '<path d="M6 6a8 8 0 1 1-2 8M3 3v6h6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m9 10 6 6m0-6-6 6" stroke="currentColor" stroke-width="1.8"/>',
+  killFall: '<path d="M12 2v12m-4-4 4 4 4-4M2 20h20m-16-3 3 3m9-3-3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  player: '<circle cx="12" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 21v-3a7 7 0 0 1 14 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+
   statusConcealed: '<path d="M2.5 10c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 13.6l-1.5 2M12 15.6v2.3M18 13.6l1.5 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   statusFire: '<path d="M13 2c1 6-4 6-2 10 2-1 3-3 3-5 5 4 7 8 4 12-3 4-10 4-13-1C2 12 8 9 8 6c0 4 2 4 2 4-1-4 2-5 3-8Z" fill="currentColor"/><path d="M12 13c2 3 4 4 2 6-2 2-5 0-4-2Z" fill="#101920"/>',
   visionInfrared: '<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6 3v2m6-3v2m6-1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
