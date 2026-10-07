@@ -13,6 +13,12 @@
      "sha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "34ce28b755ba9793a7b852b4df937f164672bc8fd8c56986fe6cc35ee6192418",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -50,6 +56,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "34ce28b755ba9793a7b852b4df937f164672bc8fd8c56986fe6cc35ee6192418",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -79,6 +94,12 @@
      "sha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "7c99ce99fdf44138dfb33e98c08b38658b6c6fa4602ee4caba8093170bf17d04",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -116,6 +137,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "7c99ce99fdf44138dfb33e98c08b38658b6c6fa4602ee4caba8093170bf17d04",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
@@ -145,6 +175,12 @@
      "sha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "4bdcc908aa8208a20e02e164865810c058708657b5e383a43eb5e20cd6aa0352",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -182,6 +218,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "4bdcc908aa8208a20e02e164865810c058708657b5e383a43eb5e20cd6aa0352",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Leclerc XLR crosses the burning square",
@@ -211,6 +256,12 @@
      "sha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "c060ce9f5c526aed2d204070aa7abf2528ee2eee17e0a8cfbe8bfac8766f45c1",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -248,6 +299,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "c060ce9f5c526aed2d204070aa7abf2528ee2eee17e0a8cfbe8bfac8766f45c1",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90M column drives into the fight on the country road",
@@ -277,6 +337,12 @@
      "sha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "a35d614d31337771f615933fdf4c29fa8889aa4512331c0c5d307dd5ab3ef323",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -314,6 +380,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "a35d614d31337771f615933fdf4c29fa8889aa4512331c0c5d307dd5ab3ef323",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -343,6 +418,12 @@
      "sha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "a2963e2401726df7ec4ca165f58d06293bd74a989a4323229bd05ff2e32b50c1",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -380,6 +461,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "a2963e2401726df7ec4ca165f58d06293bd74a989a4323229bd05ff2e32b50c1",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A KF51 Panther charges past the farmhouse through artillery",
@@ -409,6 +499,12 @@
      "sha256": "f55d2ee8df0d399a20c0536c16136b9a9ce30e496bc95706cd82147f6803d85a",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "63eb0a1da745908dc8eee2533db1018e695965b6aaf78f50f06a18aee6d187ba",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -433,6 +529,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "63eb0a1da745908dc8eee2533db1018e695965b6aaf78f50f06a18aee6d187ba",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
@@ -462,6 +567,12 @@
      "sha256": "2d3e79ce44b2d5d5506ffdab5fc32112313e2ed3acf36d51948c76885351328a",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "ae1112972ba313e3defc228f0dd796d0957f864423893257552464afa94294e2",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -486,6 +597,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "ae1112972ba313e3defc228f0dd796d0957f864423893257552464afa94294e2",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "An M1A2 Abrams column pushes through the market street of Sunscar Oasis",
@@ -515,6 +635,12 @@
      "sha256": "76542ede6f5c4c6fb5ad1784840168039d7e1858dfe8e283480cb32e9387908e",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "beda0f692204950998eca2bea4bc1aacbfe3cd96ca5aade00d9b70511b3afc52",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -539,6 +665,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "beda0f692204950998eca2bea4bc1aacbfe3cd96ca5aade00d9b70511b3afc52",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
@@ -568,6 +703,12 @@
      "sha256": "588a7b5edd95a2fd8bd807b489942ad3849184c23b6f0a2a579bc5da5a4b536d",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "0d5bf24f65204a15697c7176adfad6d012591606fb056b56275034d28bc79e82",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -579,6 +720,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "0d5bf24f65204a15697c7176adfad6d012591606fb056b56275034d28bc79e82",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A ZTZ-100 fords the river as shells land around it",
@@ -608,6 +758,12 @@
      "sha256": "679da03c1b2440cf9fb6ff3f4dbb635d7ca2b8d803fe10e6c2b9e1b7c5ec6fa1",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "ab6a13ae6d2e320ad0622bde4661f7c2eb6d812bd02eaeb04c9b4e748f198424",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -619,9 +775,18 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "ab6a13ae6d2e320ad0622bde4661f7c2eb6d812bd02eaeb04c9b4e748f198424",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
-   "title": "A Challenger 1 weaves between the container rows at Cinder Junction",
+   "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
    "map": "railyard",
    "time": "day",
    "hero": "challenger1_x",
@@ -648,6 +813,12 @@
      "sha256": "8c2918bb13a527a87bf6ca85e291967bea1f0f08e8a47e19c9b23afcbed10385",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "c94e1408296562e7f7088f1883b41b7c5d51a99241f4aeeb69484c3941eaf53d",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -659,6 +830,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "c94e1408296562e7f7088f1883b41b7c5d51a99241f4aeeb69484c3941eaf53d",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90MS Tagil column advances under the Ironworks gantries",
@@ -688,6 +868,12 @@
      "sha256": "6904ae43eaf8747573b35ee42003581eb0464dda117d06ffe32f0236768f85e0",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "70d8960b1f21089c7b0f6ff8e7421c081a2c664cac5fe5f615b8b0ef53ff0497",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -699,6 +885,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "70d8960b1f21089c7b0f6ff8e7421c081a2c664cac5fe5f615b8b0ef53ff0497",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A K2 Black Panther races past the red-roofed farm at sunset",
@@ -728,6 +923,12 @@
      "sha256": "d481ccdfb87bf687c8bc1b315a21a6aaf449e2bf57a9a9ab2164d569400037e5",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "da5b852ee34c3e254bc0bc06cc56229362787dcc2d385d80c1f1944f88e79a53",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -739,6 +940,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "da5b852ee34c3e254bc0bc06cc56229362787dcc2d385d80c1f1944f88e79a53",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-80U pushes through snowy Frosthollow",
@@ -768,6 +978,12 @@
      "sha256": "9dd3c4432f8bb7ca5a60534eb8e08190ce72635448fd2384a48581b6bed6b30b",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "79f200a76121cb102886f651a82c9eef8a228b5a139b809aa4d55afaa8161166",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -779,6 +995,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "79f200a76121cb102886f651a82c9eef8a228b5a139b809aa4d55afaa8161166",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A C1 Ariete column drives through the orchard village under fire",
@@ -808,6 +1033,12 @@
      "sha256": "668fe111367b25512e850143e57be33c8970d394c2cffb69f77549225267cc57",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "144bb2065557650ddfcbe0411280d2cbd0fab4aebb26087ca6efebbb235241a7",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -819,6 +1050,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "144bb2065557650ddfcbe0411280d2cbd0fab4aebb26087ca6efebbb235241a7",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Street duel at night: a KF51 Panther trades fire down a Steinburg street",
@@ -848,6 +1088,12 @@
      "sha256": "a13b5c5e266108125fa0b1bb00a53a2a38d3f74d42b862d811cfcb9bc5d4efe9",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "9d9544abc8a453bf78ed1eb91378566b1a3b7a1d6fcd4f8991150c02c02817bd",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -859,6 +1105,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9d9544abc8a453bf78ed1eb91378566b1a3b7a1d6fcd4f8991150c02c02817bd",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Fire at the Steinburg crossroads at noon",
@@ -882,6 +1137,12 @@
      "sha256": "0bccead7e6adbd8c248f809acd08a2961e8d46dcae031d0acc1342b5c689d2e1",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "98f6cde361f0a90bdd70209a12c4d60b43f63b78b2f64b602bbdf90e23ed9c60",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -893,6 +1154,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "98f6cde361f0a90bdd70209a12c4d60b43f63b78b2f64b602bbdf90e23ed9c60",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90A is knocked out at the end of a Steinburg street at night",
@@ -922,6 +1192,12 @@
      "sha256": "5e29fede10d863af26e667803c237ea6fcd06933d09e48248a11ff63af40fcc7",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "1c32ce97823d41fcd5a3fae228f1d6fd01b6106be52f6a3bcec676a352664a51",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -933,6 +1209,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "1c32ce97823d41fcd5a3fae228f1d6fd01b6106be52f6a3bcec676a352664a51",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Roof tiles rain down as a Leopard 2A6 fires up the street",
@@ -962,6 +1247,12 @@
      "sha256": "72fde7c53a504d6706e586a61a8c7cdabd7867fd5fd6a5b6b50a73b692b3961e",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "ab0f12b76aa69e0e9d7b703298c41734ed04fa0096d37aac7add69a1e6a756e0",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -973,6 +1264,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "ab0f12b76aa69e0e9d7b703298c41734ed04fa0096d37aac7add69a1e6a756e0",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90M column returns fire across the fields at sunset",
@@ -1002,6 +1302,12 @@
      "sha256": "57f63e3fbb6e1fe09eb013d4c0d30036635dc71e1ee63900b87358b59b6dd9ea",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "aeb50b0b2646213c2151028cd27fc56c3eced63f91b707d5100d1a0c6ca573e8",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1013,6 +1319,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "aeb50b0b2646213c2151028cd27fc56c3eced63f91b707d5100d1a0c6ca573e8",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90SM wedge assaults through the burning fields",
@@ -1036,6 +1351,12 @@
      "sha256": "deeef6ab22eb5759946398018bf356aa9ff019996249643c8972748e501dfcc1",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "af7560103019747c901e5dfe6eaa285b5b9a1018947510cb9719129dfc00dcd2",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1047,6 +1368,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "af7560103019747c901e5dfe6eaa285b5b9a1018947510cb9719129dfc00dcd2",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Artillery walks across the fields toward the wedge at night",
@@ -1076,6 +1406,12 @@
      "sha256": "d654b74fbebdaa021daee23e53a83fa1d62a74642af22dd97ebc693dcab708a7",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "9268bbc928ffea0665d5abfe40b3334927260b8fa6c2ee9f7beaf38aa74f58cb",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1087,6 +1423,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9268bbc928ffea0665d5abfe40b3334927260b8fa6c2ee9f7beaf38aa74f58cb",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "T-14 and T-90M tanks hold the village crossroads",
@@ -1116,6 +1461,12 @@
      "sha256": "e3b18c3390ef95cd0662f4d40c484bb2c2350f07c49ed4a31ded97eb9d7a991b",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "c1660e4409a77d4cbd8d492da0a1e431c3098eb8555a299baf4eae73a16de0c1",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1127,6 +1478,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "c1660e4409a77d4cbd8d492da0a1e431c3098eb8555a299baf4eae73a16de0c1",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A duel on the frozen lake: a T-80U takes the hit",
@@ -1156,6 +1516,12 @@
      "sha256": "07c40f31a4786d951b9871d9b0309b7b102b04840d15b47416110a43e411827e",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "def8092cbc125ddb5a80c444aed1f79c010a7658daf886b9d3e430a1ef6b4aa8",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1167,6 +1533,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "def8092cbc125ddb5a80c444aed1f79c010a7658daf886b9d3e430a1ef6b4aa8",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Leopard 2A5 and a CV90105 fight through the alpine village",
@@ -1196,6 +1571,12 @@
      "sha256": "99d3d2a2a9c1e0e3f970c4f2f8f29d83028be162d04aad8f21279f4d38d35e3a",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "12facf6c82fb61de44296472309dc5a49e441f8274fdde3a07f5dee6b1d4410e",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1207,9 +1588,18 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "12facf6c82fb61de44296472309dc5a49e441f8274fdde3a07f5dee6b1d4410e",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
-   "title": "A Merkava Mk 3D fires past the minaret at Sunscar Oasis",
+   "title": "A Merkava Mk 3D fires at Sunscar Oasis",
    "map": "oasis",
    "time": "day",
    "hero": "merkava3d_x",
@@ -1230,6 +1620,12 @@
      "sha256": "60cf018617803fb7ce7ac4b0b8112acaae6619825f5b3f621442a15c0dfdb577",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "3783976078f263ed33ca33a9f84b7dcc6853a280773ab52aca69ae733bf84cae",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1241,6 +1637,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "3783976078f263ed33ca33a9f84b7dcc6853a280773ab52aca69ae733bf84cae",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-62MV-1 is knocked out by the caravanserai",
@@ -1270,6 +1675,12 @@
      "sha256": "a11bcc12783e0d0db49e6bf8ab0719fb1edd8d1815f21b08ffb23e5267882576",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "b7ed9a1a8901e51b15dea683f6e51bbcc7bcabd8392c1128d7fc08c79cf3cdc2",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1281,6 +1692,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "b7ed9a1a8901e51b15dea683f6e51bbcc7bcabd8392c1128d7fc08c79cf3cdc2",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Stridsvagn 122 and a CV9040C hold the fjord village",
@@ -1304,6 +1724,12 @@
      "sha256": "377fc484bbbde167b38558f4dfa4d74c6fe1555866d2bbade7465f58f8d9adfd",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "a24348fa7c426e5164b5eec0886037422fb46dcb44277cede771f9151a4738f0",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1315,6 +1741,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "a24348fa7c426e5164b5eec0886037422fb46dcb44277cede771f9151a4738f0",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A T-90 burns on the road above the fjord",
@@ -1344,6 +1779,12 @@
      "sha256": "adf292009191be35b3fdd4eed04400355fc9318b87a57bdb05bdceec61638660",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "89f4a3d568cf6659895308ba4725e7a8ddd109e0d2b0290250b98ef670f3a10a",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1355,6 +1796,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "89f4a3d568cf6659895308ba4725e7a8ddd109e0d2b0290250b98ef670f3a10a",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
@@ -1384,6 +1834,12 @@
      "sha256": "4dbc2ce4e0e193bd9be755e81085b42082bd19fc3702e30afa949bf7478700fa",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "ec3922da22680d0c77d5aeaf7c9d4d87411cad4a87647db0c44eecd027d0f760",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1395,6 +1851,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "ec3922da22680d0c77d5aeaf7c9d4d87411cad4a87647db0c44eecd027d0f760",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Type 96B fires across the river ford",
@@ -1424,6 +1889,12 @@
      "sha256": "ec1a9f90ebd96c1475b0a8ed3cc4a6b6e529f3162cfa216c9a1866874d33d6c3",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "41079a6f24ce7b91c98a0f01ee19c4466849470765f166dce92c20d61f59f76f",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1435,6 +1906,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "41079a6f24ce7b91c98a0f01ee19c4466849470765f166dce92c20d61f59f76f",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
@@ -1464,6 +1944,12 @@
      "sha256": "3b53e5e1b50af1d85c99d34f9279014a125c7b4e2d90f2ccfc0cdba33c0b7016",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "911fa1bef534009853c7f6af09de399f5907e00a9292bf751618baa213177643",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1475,6 +1961,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "911fa1bef534009853c7f6af09de399f5907e00a9292bf751618baa213177643",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "The line advances past the burning water tower at night",
@@ -1498,6 +1993,12 @@
      "sha256": "07b6cad166d1b1ffac38bba85fdc158986ec022bb5ed1e9de2ace9a60db02e46",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "4055fb3865253e0e278110ee6cd31024dc83283f17b8621bda89fc1e85cb1a23",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1509,6 +2010,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "4055fb3865253e0e278110ee6cd31024dc83283f17b8621bda89fc1e85cb1a23",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "T-14 Armatas fire a rippling salvo in the Ironworks yard at night",
@@ -1538,6 +2048,12 @@
      "sha256": "64c37b5d47c63535bda0da201f1e508acf15fc8857aa63cb35dfdb9eb4980acf",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "9599db16aff29493373be98114411cddd785e063cad19bd25e8292660d1554ab",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1549,6 +2065,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9599db16aff29493373be98114411cddd785e063cad19bd25e8292660d1554ab",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
@@ -1572,6 +2097,12 @@
      "sha256": "a299afeb591d1f3ed98fe2a58debedfde72d4c8502a5d5d2c5cffdf72350e7c2",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "6a59d4c468e4acc7f565735992205b6466789440d8fc6355dd0ca79c13456f3d",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1583,6 +2114,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "6a59d4c468e4acc7f565735992205b6466789440d8fc6355dd0ca79c13456f3d",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Type 10 knocks out a T-90M beside the burning barn",
@@ -1612,6 +2152,12 @@
      "sha256": "ed0ebe8e5697d5702ec7940138cc03493e647fc01aa63a3aacc03993c8861c9e",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "535682c47963fe3d6984106d467cda16860f905d57a724c0605d75c2195bb201",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1623,6 +2169,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "535682c47963fe3d6984106d467cda16860f905d57a724c0605d75c2195bb201",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "ZTZ-100 tanks fight through the river village of the Jade River Delta",
@@ -1646,6 +2201,12 @@
      "sha256": "014507bce7203e18552a9ba8b7a03fce959b5b30ca6844ca2f898367f6ce31fc",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "9be35eb79ef74c18f8bc15412458be8d4e55f2fec4864a8604b42493e20cf8b9",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1657,6 +2218,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9be35eb79ef74c18f8bc15412458be8d4e55f2fec4864a8604b42493e20cf8b9",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
@@ -1686,6 +2256,12 @@
      "sha256": "add83b9b61065c8f44dc0e59679a3164f9cc527e0448b94b58f86641ec32f5b2",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "c01b033b149b7012e3baaeacf3c83bd83936b6eb0dd2ca46ca500f37022b7643",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1697,6 +2273,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "c01b033b149b7012e3baaeacf3c83bd83936b6eb0dd2ca46ca500f37022b7643",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
@@ -1726,6 +2311,12 @@
      "sha256": "05a9daf5b4f19846bc7781335cd7d50fc11a8a9cc3f4f0f889265a6e44819890",
      "at": "2026-10-04T16:02:09.809Z",
      "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    },
+    {
+     "version": "v7",
+     "sha256": "2d32e1f166be73ef04f6e0c003e5f106ecb0fe12fbfa29d61d22d9d34866f439",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1750,6 +2341,15 @@
      "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "2d32e1f166be73ef04f6e0c003e5f106ecb0fe12fbfa29d61d22d9d34866f439",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Smoke columns rise over the rooftops of Steinburg",
@@ -1779,6 +2379,12 @@
      "sha256": "ec300a0f280ab64dd35c704692b0af8936235cc978ac0bafcc9fce6eb67397c3",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "9b0675132f577cb2ea579e7bbe5bf723c497661963797586f7877f38ab78eeb0",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1790,6 +2396,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9b0675132f577cb2ea579e7bbe5bf723c497661963797586f7877f38ab78eeb0",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "The night street fight seen from the church tower",
@@ -1819,6 +2434,12 @@
      "sha256": "f4242e75600d3634246e41e031d94f10d1c2758181d083f348a7964fcf65f80d",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "6aa0fd80414f6ed60a7a6210104cfa84aab73d147e083d724bfcb9fa6dbd7ac4",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1830,6 +2451,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "6aa0fd80414f6ed60a7a6210104cfa84aab73d147e083d724bfcb9fa6dbd7ac4",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Verdant Fields from above as the assault rolls in",
@@ -1859,6 +2489,12 @@
      "sha256": "229dcbc70553c70cdc84d16b8171f58fb567e64e6594d466e2e822672bd9d73b",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "4a20e8003ac755f46e35857d0907b259eb6d708938ee24bbe41380b490c5f85d",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1870,6 +2506,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "4a20e8003ac755f46e35857d0907b259eb6d708938ee24bbe41380b490c5f85d",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
@@ -1899,6 +2544,12 @@
      "sha256": "bbf93b237609daab192947398ae9220472fdabc7797246ea017e1b813f5838f2",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "f1c4fa48bdd1c6fe4eaf0a98bab4f993b1e9e21086c064e96a8d6d6fb4e28856",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1910,6 +2561,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "f1c4fa48bdd1c6fe4eaf0a98bab4f993b1e9e21086c064e96a8d6d6fb4e28856",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
@@ -1945,6 +2605,12 @@
      "sha256": "eb88a0dbdb2c6f535137d8e7503d93e483f734c355da4bba5905ca25ba497d69",
      "at": "2026-10-04T16:02:09.809Z",
      "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    },
+    {
+     "version": "v7",
+     "sha256": "b599e43e8a3ac0c37905f682112c9ff31eb77f3e79b0bf9d195326a8311b4b54",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -1969,6 +2635,15 @@
      "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "b599e43e8a3ac0c37905f682112c9ff31eb77f3e79b0bf9d195326a8311b4b54",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
@@ -1998,6 +2673,12 @@
      "sha256": "d22523e4b41da95d2b8ee09c4135ae898dcb52d5201348d4d3cba1d6385025a3",
      "at": "2026-10-04T16:02:09.809Z",
      "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    },
+    {
+     "version": "v7",
+     "sha256": "2c2ff413dd381acc715ec3976b61e6ac7ecfea1653aa09cfa36e381ef059cb54",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -2022,11 +2703,20 @@
      "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "2c2ff413dd381acc715ec3976b61e6ac7ecfea1653aa09cfa36e381ef059cb54",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
-   "title": "Monsoon Ridge at golden hour: shells land along the jungle river",
+   "title": "Monsoon Ridge: shells land along the jungle river",
    "map": "monsoon",
-   "time": "golden",
+   "time": "day",
    "hero": "aft10_x",
    "paint": {
     "unit": "tropic",
@@ -2045,6 +2735,12 @@
      "sha256": "6c359ab5e2a60a61356731301f7d584ffd30456adf7907532bc158aef65602ee",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "9b50b566c3624528dd5680d10392848b62beb6e46ebf0ef944e07ec8d8296959",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -2056,6 +2752,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "9b50b566c3624528dd5680d10392848b62beb6e46ebf0ef944e07ec8d8296959",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Ironworks at night: the yard burns between the smoke stacks",
@@ -2079,6 +2784,12 @@
      "sha256": "fab3196cc2a16acbd9a3383f6c75d9d3221fb47e0d3a070ee9f77bcdf42ea04f",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v7",
+     "sha256": "4f4806673610adb04099dded47272deecab13d8a592e7cdda2a2014316cebfd3",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -2090,6 +2801,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "4f4806673610adb04099dded47272deecab13d8a592e7cdda2a2014316cebfd3",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Jade River Delta: the river village under fire, mountains beyond",
@@ -2125,6 +2845,12 @@
      "sha256": "93d104951223463245d7a6b5b8d938fd9ca27085c3263f76adefdc16e03240e5",
      "at": "2026-10-04T16:02:09.809Z",
      "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    },
+    {
+     "version": "v7",
+     "sha256": "a4dc8b375b87856abbad947c037269998fcd5a07159b2dfb09244ed6a2d17d71",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -2149,11 +2875,20 @@
      "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "a4dc8b375b87856abbad947c037269998fcd5a07159b2dfb09244ed6a2d17d71",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
-   "title": "Orchard Valley at golden hour: smoke drifts over the orchards",
+   "title": "Orchard Valley: smoke drifts over the orchards",
    "map": "orchard",
-   "time": "golden",
+   "time": "day",
    "hero": "amx30_x",
    "paint": {
     "unit": "oakleaf",
@@ -2178,6 +2913,12 @@
      "sha256": "700ea188ff60137f6e17aa6f00fa1ed21b9414db1f515c059ed5497d3a6ecb0f",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v7",
+     "sha256": "30f17a7b79598c5d97ad7248320bb9c65e633ee675e00f5860a63e45d5e52528",
+     "at": "2026-10-07T21:25:16.682Z",
+     "note": "round five on PR #9: the first motion plan (owner 2026-10-05: the lens on a 3D track, fast tanks in every direction), as engine review 1 rendered it"
     }
    ],
    "renders": [
@@ -2189,6 +2930,15 @@
      "at": "2026-10-04T15:15:24.537Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    },
+    {
+     "round": "review-r5-pr9m",
+     "sceneVersion": "v7",
+     "sceneSha256": "30f17a7b79598c5d97ad7248320bb9c65e633ee675e00f5860a63e45d5e52528",
+     "renderer": "0ac6eec79",
+     "at": "2026-10-07T21:25:17.867Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "engine review 1: 540 px, 15 fps (chain4); clips in shots/media-r5/site50/review-r5-pr9m"
     }
    ],
    "title": "Highland Reservoir at sunset: the lake beyond the burning village",
