@@ -1292,11 +1292,13 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
 
 function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Material {
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
-  // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds take the pale issue canvas, so
-  // the station reads as a loaded weapon against the gunmetal (the vehicle canvas renders near-black on several hulls);
-  // neither ever takes the host camouflage
-  if (slot === MG_AMMO_CAN_SLOT) return isMaterial(mats.canvasPale) ? mats.canvasPale : fitMat(mats, 'gunmetalAmmo');
-  if (slot === MG_CARTRIDGE_SLOT) return isMaterial(mats.canvasPale) ? mats.canvasPale : fitMat(mats, 'gunmetalAmmo');
+  // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds must read against the gunmetal
+  // (the vehicle canvas renders near-black on several hulls), and neither ever takes the host camouflage.
+  // 2026-10-07 (round 3): they take the solid fitting paint, the FSP-06 role for small painted steel accessories. The
+  // pale issue canvas is the desert/IDF soft-kit role, and appearanceAudit keeps it off every non-desert kit.
+  if (slot === MG_AMMO_CAN_SLOT || slot === MG_CARTRIDGE_SLOT) {
+    return isMaterial(mats.detail) ? mats.detail : fitMat(mats, 'gunmetalAmmo');
+  }
   const m = mats[slot] || mats.dark;
   if (isMaterial(m)) return m;
   for (const value of Object.values(mats)) if (isMaterial(value)) return value;

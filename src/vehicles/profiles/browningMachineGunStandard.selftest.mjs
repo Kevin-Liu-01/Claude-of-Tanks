@@ -93,14 +93,15 @@ try {
     assert.equal(body.userData.appearanceRole, 'machineGun');
 
     // 2026-10-06 (tank-accessories round 2): the critics could not read the gunmetal can against the gunmetal gun, so
-    // the can and the belt's rounds take the pale issue canvas (khaki, dull brass); neither is camouflage.
+    // the can and the belt's rounds take a lighter, never-camouflage material. 2026-10-07 (round 3): the solid fitting
+    // paint (FSP-06 small painted accessories); the pale issue canvas stays the desert/IDF soft-kit role.
     const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'ammoCan');
     assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected ammunition can`);
-    assert.equal(ammo.material, mats.canvasPale,
-      `${weaponClass}: the ammunition can resolves to the pale issue canvas, never host camouflage`);
+    assert.equal(ammo.material, mats.detail,
+      `${weaponClass}: the ammunition can resolves to the fitting paint, never host camouflage`);
     const rounds = weapon.children.find((node) => node.userData.fittingSlot === 'cartridge');
     assert.ok(rounds?.isMesh, `${weaponClass}: the belt carries its rounds`);
-    assert.equal(rounds.material, mats.canvasPale, `${weaponClass}: the rounds resolve to the dull brass`);
+    assert.equal(rounds.material, mats.detail, `${weaponClass}: the rounds resolve to the fitting paint`);
 
     for (const node of weapon.children) {
       assert.equal(node.userData.combatHitboxRole, 'equipment',
