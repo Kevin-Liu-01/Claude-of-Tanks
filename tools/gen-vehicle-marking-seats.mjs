@@ -18,7 +18,8 @@ const vector = (values) => values.map(round);
 const records = {};
 
 for (const id of ALL_TANK_IDS) {
-  const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  // the one caller of the live surface solver: every other build applies the seats this file writes
+  const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, solveMarkingSeats: true });
   const seats = [];
   visual.root.traverse((object) => {
     if (!object.userData?.vehicleMarking) return;

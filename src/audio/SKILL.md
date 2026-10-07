@@ -12,7 +12,9 @@ audio without owning gameplay decisions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-Start from [`docs/AUDIO.md`](../../docs/AUDIO.md): the runtime design, the generation
+For generating or repairing sounds and crew lines, follow the
+[audio-generation skill](../../docs/audio-generation/SKILL.md) and its prompt
+cookbook. Start from [`docs/AUDIO.md`](../../docs/AUDIO.md): the runtime design, the generation
 pipeline (SFX and crew voices) and how to change or extend it.
 `audioEngine.ts` owns the bus subscriptions, listener frame, vehicle rigs,
 weapons, impacts, ambience, alarms and the `window.__COT_AUDIO` debug surface.

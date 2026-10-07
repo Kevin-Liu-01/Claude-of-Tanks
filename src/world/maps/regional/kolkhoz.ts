@@ -65,7 +65,7 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 const thatch = (pitch: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave: 0.5, verge: 0.5, thickness: 0.34, bucket: 'straw', ridge: 'round' });
 const shifer = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' });
 
-/** The khata: whitewashed walls on a brick plinth, painted joinery, a hipped thatch (or a later sheet roof). */
+/** The khata: whitewashed walls on a brick plinth, painted joinery, a hipped thatch. */
 function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
@@ -84,7 +84,11 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, W: number, D: number): void {
   const rng = st.rng;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
-  const thatched = rng() < 0.7;
+  // (b12, gauntlet wave 81: the village "mixes a thatched roof, a red tile roof … with no coherent regional building
+  // vocabulary") every khata under its thatch; the asbestos sheet keeps to the kolkhoz's own buildings (the cowshed, the
+  // club and the school), not drawn house by house at random. The old roof draw is still spent, so a house's other
+  // details keep their stream.
+  rng();
   const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: D * 0.2, w: 0.95, y0: 0, h: 1.95 }];
   for (const face of ['left', 'right'] as const) {
     for (const o of windowRhythm(face, 0, D, { w: 0.72, h: 0.95, sill: 0.85, spacing: 2.0, margin: 0.9, max: 3,
@@ -93,8 +97,8 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, 
   for (const o of windowRhythm('front', 0, W, { w: 0.72, h: 0.95, sill: 0.85, spacing: 1.8, margin: 0.9, max: 2 })) openings.push(o);
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.45 + rng() * 0.2, wall }],
-    roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
-    chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
+    roof: thatch(40 + rng() * 6), gableBucket: wall, openings,
+    chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: 0.55, bucket: 'plaster', cap: 'slab' }],
     // clay-rendered timber or adobe: no brick under the whitewash to show where it has spalled
     gutters: null, verge: null, spall: null,
   }, dialect(st));

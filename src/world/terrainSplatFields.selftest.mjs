@@ -161,7 +161,10 @@ try {
   assert.equal(candidate.state.noiseCalls, calls, 'warm synchronous path does no noise work');
   const warm = drain(candidate.api.steps());
   assert.equal(warm.count, 0); assert.equal(warm.value, completed.value);
-  synchronous.api.noiseTexture(3011); candidate.api.noiseTexture(3011);
+  synchronous.api.noiseTexture(3011);
+  // (2026-10-05) the upload's orientation: row 0 at v = 0, the rows the CPU twin's fieldSample reads (a canvas defaults
+  // to flipY, which mirrored every field in z against its twin)
+  assert.equal(candidate.api.noiseTexture(3011).flipY, false, 'the noise texture uploads unflipped: the shader reads the twin\'s rows');
   assert.deepEqual(candidate.state.uploads, synchronous.state.uploads, 'exact quantized RGBA and upload options');
   assert.equal(candidate.state.uploads[0].size, 256);
   assert.equal(candidate.state.uploads[0].options.anisotropy, 16);

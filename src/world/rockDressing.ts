@@ -39,6 +39,8 @@ export interface RockDressing {
   varnish: number;
   /** The photographed stone's treatment for the lithology: its contrast, its colour's share, its relief's strength. */
   photo: readonly [number, number, number];
+  /** The lithology's own surface: its flint nodules, its weathered grey rind, the soil's stain up its foot. */
+  surface: readonly [number, number, number];
 }
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
@@ -106,7 +108,23 @@ const LITHOLOGY_PHOTO: Readonly<Record<BoulderLithology, readonly [number, numbe
   sandstone: [0.9, 0.5, 0.8],
   limestone: [0.75, 0.3, 0.7],
   slate: [1.0, 0.3, 0.9],
-  chalk: [0.45, 0.15, 0.5],
+  // (b12, wave 74: the chalk read as "a white marshmallow, a fleece or a snow heap" — a pale stone, but a rough one: pitted,
+  // fractured, its relief as strong as the limestone's)
+  chalk: [0.8, 0.15, 0.9],
+});
+
+/**
+ * The lithologies' own surfaces (b12): the flint nodules in the chalk's bands, the weathered grey rind of the soft
+ * carbonate stones (algae, soot and the lichen's crust on a pale stone), and the soil's stain up a pale block's foot.
+ */
+const LITHOLOGY_SURFACE: Readonly<Record<BoulderLithology, readonly [number, number, number]>> = Object.freeze({
+  granite: [0, 0, 0],
+  gneiss: [0, 0, 0],
+  basalt: [0, 0, 0],
+  sandstone: [0, 0, 0],
+  limestone: [0, 0.35, 0.5],
+  slate: [0, 0, 0],
+  chalk: [1, 0.6, 1],
 });
 
 /** The battlefield's boulder lithology (the detail tile is drawn for it). */
@@ -140,6 +158,7 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
     lichen: [cover, split, snowCap ? 1 : 0], lichenA: linearOf(a), lichenB: linearOf(b),
     varnish: climate.varnish ?? 0,
     photo: LITHOLOGY_PHOTO[climate.lith],
+    surface: LITHOLOGY_SURFACE[climate.lith],
   };
 }
 
@@ -188,7 +207,8 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   sandstone: { kinds: ['block', 'slab', 'block'], soft: 0.9 },
   limestone: { kinds: ['block', 'slab', 'rounded'], soft: 1 },
   slate: { kinds: ['slab', 'block', 'slab'], soft: 0.7 },
-  chalk: { kinds: ['rounded', 'rounded', 'block'], soft: 1.25 },
+  // (b12: the marshmallow — two of three rounded, the softest weather — gives way to fractured blocks and a slab)
+  chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
@@ -516,7 +536,8 @@ export function buildBoulderForm(
  * (wave 66 read the grey of the round before as "slate-blue … painted concrete" against Verdant's golden grass).
  */
 const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
-  chalk: [0.105, 0.38, 0.7],
+  // (b12: an albedo of 0.6 to 0.7, not snow's: a cooler, greyer off-white; a fresh fracture a shade paler, to 0.76)
+  chalk: [0.11, 0.16, 0.6],
 });
 
 /**
@@ -532,11 +553,13 @@ export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | unde
   for (let i = 0; i < p.count; i++) {
     const up = clamp(n.getY(i), 0, 1), worn = clamp(form.edge[i] * 1.6, 0, 1), fresh = clamp(form.fresh[i], 0, 1);
     const hollow = form.hollow[i];
-    const l = bl + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.025 + fresh * 0.05 + worn * 0.03 - hollow * (chalk ? 0.2 : 0.05);
+    // (b12: a fresh break gathers no grime, so the hollow's darkening keeps to the weathered skin: a chalk fracture reads
+    // white even where its cut lies in a hollow of the mass)
+    const l = bl + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.025 + fresh * 0.05 + worn * 0.03 - hollow * (chalk ? 0.2 : 0.05) * (1 - fresh);
     let h = bh + form.facet[i] * 0.008, s = bs * (1 - fresh * 0.45) * (1 - hollow * (chalk ? 0.85 : 0.3));
-    let lt = clamp(l, 0.15, bl > 0.4 ? 0.82 : 0.5);
+    let lt = clamp(l, 0.15, chalk ? 0.76 : bl > 0.4 ? 0.82 : 0.5);
     if (tone) { const t = tone(h, s, lt); h = t[0]; s = t[1]; lt = clamp(t[2], 0, 1); }
-    _soil.setHSL(h, s, clamp(lt * (0.86 + up * 0.22), 0, 1), THREE.SRGBColorSpace);
+    _soil.setHSL(h, s, clamp(lt * (0.86 + up * (chalk ? 0.1 : 0.22)), 0, 1), THREE.SRGBColorSpace);
     col[i * 3] = _soil.r; col[i * 3 + 1] = _soil.g; col[i * 3 + 2] = _soil.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -751,6 +774,7 @@ export function applyRockShaderHook(
   shader.uniforms.uRockVarnish = { value: dressing.varnish };
   shader.uniforms.uRockLichenTile = { value: lichenTile };
   shader.uniforms.uRockPhoto = { value: new THREE.Vector3(...dressing.photo) };
+  shader.uniforms.uRockSurface = { value: new THREE.Vector3(...dressing.surface) };
   // the stone's linear mean, per channel: the procedural stand-in's mid grey until the photographed stone lands (its
   // owner updates the vector in place, sourcedTextures.ts applySourcedRock)
   shader.uniforms.uRockStoneMean = { value: stoneMean ?? new THREE.Vector3(0.214, 0.214, 0.214) };
@@ -777,6 +801,7 @@ uniform vec3 uRockLichenB;
 uniform float uRockVarnish;
 uniform sampler2D uRockLichenTile;
 uniform vec3 uRockPhoto;
+uniform vec3 uRockSurface;
 uniform vec3 uRockStoneMean;`);
   // the stone in the map slot, triplanar (order-free): the map's terrain rock layer, photographed (sourcedTextures.ts
   // applySourcedRock; the procedural tile until it loads), divided by its own mean, so it multiplies its structure into
@@ -784,11 +809,22 @@ uniform vec3 uRockStoneMean;`);
   // tone's. The laws mix after the vertex tone has multiplied (three's color_fragment): the final colour, not a tint under it
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
 vec3 rockTw = abs(vGrimeN); rockTw = rockTw * rockTw * rockTw * rockTw; rockTw /= max(1e-4, rockTw.x + rockTw.y + rockTw.z);
+// each boulder its own cut of the stone (the scenery lane, b12; Sonnet, wave 74: "identical banding recognisable" from
+// rock to rock): on an instanced boulder the photo's frame turns about the vertical by its hash, its strata tip up to
+// ten degrees, its scale runs 0.44 to 0.69 per metre and its phase is its own; a merged formation keeps the world frame
+mat3 rockR = mat3(1.0);
 vec3 rockPw = vGrimeW * 0.55;
+if (vRockSeed >= 0.0) {
+  float rockYaw = vRockSeed * 6.2831853, rockTip = (fract(vRockSeed * 7.13) - 0.5) * 0.35;
+  float rcy = cos(rockYaw), rsy = sin(rockYaw), rct = cos(rockTip), rst = sin(rockTip);
+  rockR = mat3(rcy, 0.0, -rsy, 0.0, 1.0, 0.0, rsy, 0.0, rcy) * mat3(1.0, 0.0, 0.0, 0.0, rct, rst, 0.0, -rst, rct);
+  rockPw = rockR * vGrimeW * (0.44 + 0.25 * fract(vRockSeed * 3.71)) + vRockSeed * vec3(31.7, 7.3, 19.1);
+}
+vec3 rockTp = abs(rockR * vGrimeN); rockTp = rockTp * rockTp * rockTp * rockTp; rockTp /= max(1e-4, rockTp.x + rockTp.y + rockTp.z);
 float rockDetail = 0.8;
 #ifdef USE_MAP
 {
-  vec3 rockPhoto = texture2D(map, rockPw.yz).rgb * rockTw.x + texture2D(map, rockPw.xz).rgb * rockTw.y + texture2D(map, rockPw.xy).rgb * rockTw.z;
+  vec3 rockPhoto = texture2D(map, rockPw.yz).rgb * rockTp.x + texture2D(map, rockPw.xz).rgb * rockTp.y + texture2D(map, rockPw.xy).rgb * rockTp.z;
   vec3 rockF = rockPhoto / max(uRockStoneMean, vec3(0.01));
   float rockFL = dot(rockF, vec3(0.2126, 0.7152, 0.0722));
   rockF = max(vec3(0.0), mix(vec3(1.0), mix(vec3(rockFL), rockF, uRockPhoto.y), uRockPhoto.x));
@@ -804,7 +840,8 @@ float rockDetail = 0.8;
   vec3 rockTx = texture2D(normalMap, rockPw.yz).xyz * 2.0 - 1.0;
   vec3 rockTy = texture2D(normalMap, rockPw.xz).xyz * 2.0 - 1.0;
   vec3 rockTz = texture2D(normalMap, rockPw.xy).xyz * 2.0 - 1.0;
-  vec3 rockPert = vec3(0.0, rockTx.x, rockTx.y) * rockTw.x + vec3(rockTy.x, 0.0, rockTy.y) * rockTw.y + vec3(rockTz.x, rockTz.y, 0.0) * rockTw.z;
+  vec3 rockPert = vec3(0.0, rockTx.x, rockTx.y) * rockTp.x + vec3(rockTy.x, 0.0, rockTy.y) * rockTp.y + vec3(rockTz.x, rockTz.y, 0.0) * rockTp.z;
+  rockPert = transpose(rockR) * rockPert; // (the perturbation drawn in the boulder's frame, turned back to the world)
   vec3 rockN = normalize(normalize(vGrimeN) + rockPert * uRockPhoto.z);
   normal = normalize((viewMatrix * vec4(rockN, 0.0)).xyz);
 }
@@ -812,6 +849,28 @@ float rockDetail = 0.8;
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`#include <color_fragment>
 {
   if (vRockSeed >= 0.0) {
+    // the soft carbonate stones' own surface (b12; wave 74 read Verdant's chalk as "a white marshmallow, a fleece or a
+    // snow heap"): the weathered rind greys a pale stone (algae, soot, the lichen's crust), most on the tops and the
+    // weather side, broken by the grime field; the chalk's flints, knobbly dark nodules in bands about 0.6 m apart, a
+    // hand to a forearm across; and the soil's stain, soft and uneven, half a metre up its foot
+    if (uRockSurface.y > 0.0) {
+      float rindN = texture2D(uGrime, vGrimeW.xz * 0.37 + vGrimeW.y * 0.21).r;
+      float rind = uRockSurface.y * smoothstep(0.25, 0.95, 0.5 + 0.45 * vGrimeN.y + (rindN - 0.5) * 0.9);
+      float rindL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(rindL * 0.84, rindL * 0.85, rindL * 0.86), rind * 0.65);
+    }
+    if (uRockSurface.x > 0.0) {
+      float flintBand = abs(fract(vGrimeW.y * 1.65 + vRockSeed * 5.3 + (texture2D(uGrime, vGrimeW.xz * 0.11).g - 0.5) * 0.7) - 0.5);
+      float flintN = texture2D(uGrime, rockPw.xz * 2.7 + rockPw.y * 1.3).r;
+      float flint = uRockSurface.x * (1.0 - smoothstep(0.07, 0.17, flintBand)) * smoothstep(0.6, 0.68, flintN) * smoothstep(0.15, 0.5, vRockAbove);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.052, 0.058), flint);
+    }
+    if (uRockSurface.z > 0.0) {
+      float stainTop = 0.5 + (texture2D(uGrime, vGrimeW.xz * 0.6).g - 0.5) * 0.45;
+      float stain = uRockSurface.z * (1.0 - smoothstep(0.0, stainTop, vRockAbove));
+      vec3 stainTint = uRockSoil / max(dot(uRockSoil, vec3(0.3333)), 0.01);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * stainTint * 0.6, stain * 0.75);
+    }
     // desert varnish: a dark patina run down the exposed faces from their brows
     if (uRockVarnish > 0.0) {
       float runs = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.7, vGrimeW.y * 0.05)).g;
@@ -861,7 +920,12 @@ float rockDetail = 0.8;
   float soilTop = (texture2D(uGrime, vGrimeW.xz * 0.47 + vGrimeW.y * 0.11).g - 0.5) * 0.3;
   float soilMask = (1.0 - smoothstep(-0.12 + soilTop, 0.34 + soilTop, vRockAbove)) * (0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92);
-  // and a boulder darkens where it meets the ground (the occlusion of the turf and the soil round its foot)
-  if (vRockSeed >= 0.0) diffuseColor.rgb *= 0.55 + 0.45 * smoothstep(-0.04 + soilTop * 0.5, 0.3 + soilTop * 0.5, vRockAbove);
+  // and a boulder darkens where it meets the ground (the occlusion of the turf and the soil round its foot); on a dusty
+  // map less and softer (b12, wave 72 on Redrock: "a uniformly dark crisp ring"): drifted sand fills the foot and
+  // takes the light, the darkening fading over half a metre
+  if (vRockSeed >= 0.0) {
+    float contactK = 0.45 * (1.0 - 0.6 * uRockDust);
+    diffuseColor.rgb *= (1.0 - contactK) + contactK * smoothstep(-0.04 + soilTop * 0.5, 0.3 + 0.25 * uRockDust + soilTop * 0.5, vRockAbove);
+  }
 }`);
 }

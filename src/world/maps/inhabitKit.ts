@@ -1904,7 +1904,11 @@ export const DESTRUCTIBLE_TYPES = {
   barrier:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 1.0,  hw: 0.42, hl: 1.42, build: bBarrier, broken: bBarrierBroken, collider: true, keep: 0.83, crushMin: 2.4 },
   // fortifications (2026-09-17): shoot-through wire a hull crushes with a bite; a pillbox no hull crushes and shells stop on
   barbedwire:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.4,  h: 1.05, hw: 0.10, hl: 1.32, build: bBarbedWire, broken: bBarbedWireBroken, keep: 0.9, crushMin: 1.5 },
-  bunker:      { cls: 'break',  mat: 'stone', contact: 'ob',   r: 3.9,  h: 2.45, hw: 2.98, hl: 2.68, build: bBunker, broken: bBunkerBroken, collider: true, keep: 0.0, crushMin: 999 },
+  // (b12, gauntlet wave 81: Verdant's and Frontier's villages "mix a thatched roof, a red tile roof … and a red quonset-style
+  // roof": the concrete pillbox drew the 'stone' bucket, which a map's regional kit lays as its masonry — the kolkhoz's red
+  // brick, the Hessian red Buntsandstein — so a pillbox by the village read as a red brick hut with red berms. It draws
+  // its own palette (concrete, earth berms, sandbags) on the vertex-colour material on every map; same kit and footprint)
+  bunker:      { cls: 'break',  mat: 'baked', contact: 'ob',   r: 3.9,  h: 2.45, hw: 2.98, hl: 2.68, build: bBunker, broken: bBunkerBroken, collider: true, keep: 0.0, crushMin: 999 },
   roadsign:    { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.48, h: 2.85, shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bRoadsign, broken: null, keep: 0.96 },
   cone:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null, bodyR: 0.27, mass: 0.34, bounce: 0.20, friction: 3.8, angularDrag: 2.4, groundConstrained: true },
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
