@@ -9,6 +9,7 @@ import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts
 import {
   archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, moulding, prismBody, railing, revolve, smoothRender, tentRoof,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
+import { ageWall } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const IRON_RED = rgb(0x7a3b2e), IRON_GREEN = rgb(0x4f7d5a), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
@@ -153,7 +154,7 @@ export const valveTower: LandmarkBuilder = (ctx) => {
     // on facet centres (every 18 degrees), the five round the side away from the bridge (at 180 degrees: the door's)
     const a = k * (Math.PI * 2 / 5), rw = (R + (rTop - R) * 0.45) * facet + 0.02;
     const win: ArchHole = { u: 0, w: 0.95, y0: deckY + C * 0.3, spring: deckY + C * 0.62, form: 'round' };
-    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false);
+    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false, { coarse: true });
     archSurround(sink, 'stone', face(a, rw), win, 0.2, 0.07);
   }
   plankDoor(sink, face(Math.PI, R * facet + 0.02), 0, deckY, 1.3, 2.4, IRON_GREEN, 0.03);
@@ -176,6 +177,17 @@ export const valveTower: LandmarkBuilder = (ctx) => {
     sink.span('stone', x0, deckY, zS, x0 + 0.36, deckY + 1.0, zFace);
     sink.span('stone', x0 - 0.06, deckY + 1.0, zS, x0 + 0.42, deckY + 1.12, zFace, { decor: true });
     sink.span('stone', sx > 0 ? W / 2 : -W / 2 - 0.12, deckY - 0.45, zS, sx > 0 ? W / 2 + 0.12 : -W / 2, deckY - 0.3, zFace, { decor: true });
+  }
+  // the abutment at the bank (gauntlet wave 158: "the footbridge simply ends at a grassy mound with no dam or
+  // abutment"): the deck's end carried on a dressed block down to the bed, its wing walls splayed back into the bank and
+  // coped, the parapets' end piers over them
+  const abut = 1.6;
+  sink.span('stone', -W / 2 - 0.3, bed, zS - abut, W / 2 + 0.3, deckY, zS + 0.05);
+  for (const sx of [-1, 1]) {
+    const x0 = sx * (W / 2 + 0.3), wing = 1.8;
+    const a: Vec3 = [x0, 0, zS], b: Vec3 = [x0 + sx * wing * 0.35, 0, zS - abut - wing * 0.94];
+    sink.member('stone', [a[0], bed + (deckY - bed) / 2, a[2]], [b[0], bed + (deckY - bed) / 2, b[2]], 0.5, deckY - bed, [0, 1, 0], { exposed: true }, (deckY - bed) / 2);
+    sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.6, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
   }
   return { parts: sink.finish() };
 };
@@ -423,6 +435,10 @@ export const campanile: LandmarkBuilder = (ctx) => {
   const H = Math.max(16, Number(ctx.params.height)), S = Math.max(3.6, Number(ctx.params.side));
   const base = -0.6 - ctx.groundFall;
   sink.span('stone', -S / 2 - 0.2, base, -S / 2 - 0.2, S / 2 + 0.2, 0.7, S / 2 + 0.2);
+  // its stepped foot (gauntlet wave 158: "rises straight out of bare sandy dirt with no plinth, steps, paving"): a broad
+  // step round the plinth and the flight up to the door
+  sink.span('stone', -S / 2 - 0.75, base, -S / 2 - 0.75, S / 2 + 0.75, 0.35, S / 2 + 0.75, { decor: true });
+  sink.span('stone', -0.9, base, S / 2 + 0.75, 0.9, 0.18, S / 2 + 1.05, { decor: true });
   const shaftTop = H * 0.68, bellTop = H * 0.82, stages = Math.max(3, Math.round(shaftTop / 6));
   const stageY = (k: number) => 0.7 + (shaftTop - 0.7) * k / stages;
   const slit = (y: number): ArchHole => ({ u: 0, w: 0.28, y0: y, spring: y + 1.1, form: 'round' });
@@ -444,6 +460,11 @@ export const campanile: LandmarkBuilder = (ctx) => {
     }
     const faces = archedBody(sink, 'stone', 0, 0, S, S, y0, y1, holes, 0.36);
     if (k === 0) front = faces;
+    // its age (age.ts): the grime washed down the stone from each string course and sill
+    if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+      ageWall(sink, ctx.age, { face: faces[name], bucket: 'stone', area: { u0: -S / 2 + 0.3, u1: S / 2 - 0.3, y0: y0 + 0.1, y1: y1 - 0.3 },
+        openings: holes[name], ledge: y1 - 0.22, grime: 0.24 });
+    }
   }
   const f = front!;
   sink.quad('structureWood', facePoint(f.front, -0.6, 0.7, -0.34), facePoint(f.front, 0.6, 0.7, -0.34), facePoint(f.front, 0.6, 2.6, -0.34),
