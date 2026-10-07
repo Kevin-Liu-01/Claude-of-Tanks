@@ -120,6 +120,9 @@ export default {
     // the curved four-sided roof, the smaller cella and its roof above (eight slopes), the kalasa finial, the triple
     // arched front faced with terracotta plaques turned toward the square.
     landmarks: [
+      // round 2 (2026-10-06; gauntlet wave 158: the temple "sits on bare lawn with no courtyard, path or village"): its
+      // brick court, the temple standing on it (the court authored first: a dressing piece, it refuses nothing)
+      { kind: 'path', x: -44, z: -6, yawDeg: 45, name: "the temple's brick court", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
     ],
     plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
