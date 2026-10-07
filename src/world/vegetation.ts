@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -97,6 +97,8 @@ interface CanopyPalette {
 interface VegetationPalette {
   /** Leaf-bearing birch/aspen; omitted for the existing bare winter crowns. */
   birchLeaves?: boolean;
+  /** Trees lane: a bare form's winter twigs (the map's `vegetation.bare`; set by the grown definitions, never by a map). */
+  bare?: boolean;
   /** Trees round 2: the regional form the slot grows as on the desktop tiers (treeBiomes.ts; the map's word wins). */
   form?: GrowthSpecies;
   canopy?: CanopyPalette;
@@ -192,10 +194,31 @@ interface VegetationConfig {
   palmSites?: readonly VegetationDisc[];
   palmFallback?: Species;
   clusterScrub?: number;
+  /**
+   * Trees lane (2026-10-06, the coordinator's ruling on the gauntlet's wave 178: "the meadows are peppered with isolated
+   * trees and small clumps like a park or savanna ... the ridges should be wooded"): a map's woods follow its landscape.
+   * A woodlot's centre stands only on the wood-zone ground — the share `zone` of the square ranked by height and slope
+   * (the ridges, their slopes, ground steeper than `slopeDeg`, default 12°) — neighbouring stands may close into one wood
+   * (their outlines overlapping by up to `merge` m, default 30), and a wood keeps no thin patches. Every stand keeps its
+   * count; the field trees keep the field law; unset, the woods stand as before. The woods hold a tree budget, the target
+   * stands' mean count: stands are placed until they hold it, a quarter past the target at most. `budget` (default 1) is
+   * that budget's share for a map whose own woods seat fewer trees a stand than the mean (Monsoon Ridge's spurs, 0.81:
+   * its stands under the field law hold about 49 trees, the law's mean 60.75) — its woods hold its own count.
+   */
+  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number; budget?: number }>;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
+  /**
+   * Trees lane (2026-10-05, the cities lane's Ironworks in March 1945): the map's deciduous broadleaves stand bare —
+   * each grows its own trunk, limbs and twigs, its sprays painted as winter twigs in the species' habit (the birch's fine
+   * lattice, the oak's crooked twigs and clustered buds, the poplar's straight climbing shoots; BARE_SPRAY_KINDS), at the
+   * twigs' grey-brown, their shadow as open as the twigs. A shrub of such a form goes bare too (the buddleia's winter
+   * canes under last summer's dry panicles). Conifers and the evergreen broadleaves (olive, holm oak, eucalyptus, the
+   * mangrove, the acacia) keep their leaves. The desktop grown builds; the phones keep their cards.
+   */
+  bare?: boolean;
   /**
    * Trees round 5: the map's own shrub form (a shrub-only growth form: 'broom', 'longleafSeedling', 'buddleia'), over its
    * place's (treeBiomes.ts `shrub`); the desktop grown builds only. The bush slot keeps its records, seeds and mobile look.
@@ -2396,11 +2419,40 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
   return grownFormSprayKind(species as GrowthSpecies, palette);
 }
 
+/**
+ * Trees lane (2026-10-05): the winter twigs a deciduous form paints on a bare map (VegetationConfig `bare`): the
+ * birch's fine lattice for the slender-twigged (birch, aspen, willow, beech), the oak's crooked twigs for the stout
+ * (oak, chestnut), the poplar's climbing shoots, the buddleia's winter canes. A form not named keeps its leaves.
+ */
+export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>>> = Object.freeze({
+  birch: 'birch-bare', aspen: 'birch-bare', willow: 'birch-bare', beech: 'birch-bare',
+  oak: 'oak-bare', chestnut: 'oak-bare', poplar: 'poplar-bare', buddleia: 'buddleia-bare',
+  // the Streuobst fruit trees' crooked spurs are the oak's habit
+  apple: 'oak-bare',
+});
+
 /** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
- * says so (a slot's biome entry can say so too, through palOf). */
+ * says so (a slot's biome entry can say so too, through palOf); a bare palette's form its winter twigs. */
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
+  if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
+  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts), the
+  // chestnut-oak the chestnut's
+  if (growth === 'khasiPine') return 'redPine';
+  if (growth === 'bamboo') return 'willow';
+  if (growth === 'castanopsis') return 'chestnut'; // (the chestnut's sprays on the Naga Hills' lighter frame)
   return growth as SprayKind;
+}
+
+/**
+ * Trees lane: the palette a form grows with on a bare map — its winter twigs (`bare`), without the leaf colours a map
+ * palette tunes for its crowns (the twigs take the twig law, grownTintLaw); unchanged for a form that keeps its leaves
+ * or on a map in leaf.
+ */
+export function bareFormPalette<P extends VegetationPalette>(pal: P, growth: GrowthSpecies, bare: boolean): P {
+  if (!bare || !BARE_SPRAY_KINDS[growth]) return pal;
+  return { ...pal, bare: true, birchLeaves: false, cardHue: undefined, cardSat: undefined };
 }
 
 /**
@@ -2481,7 +2533,9 @@ const FOLIAGE_SHRUB_THIN = 0.011;
  * card colour (Prokhorovka's pine and willow slots, the Fulda Gap's aspens, the junction's birches) fell back to the
  * twigs' law and grew olive-brown crowns among the green ones (the round-2 hand-over's Verdant and Frontier frames).
  */
-export function grownTintLaw(family: string, leafy = false): readonly [number, number, number] {
+export function grownTintLaw(family: string, leafy = false, bare = false): readonly [number, number, number] {
+  // trees lane: a bare form's winter twigs take the birch twigs' warm grey, whatever its family
+  if (bare) return [0.08, 0.06, 1.8];
   if (family === 'conifer') return [0.30, 0.18, 1.95];
   if (family === 'birch') return leafy ? [0.228, 0.19, 1.8] : [0.08, 0.06, 1.8];
   if (family === 'dead') return [0.08, 0.05, 1.7];
@@ -2516,7 +2570,7 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
     // trees round 5: the sprays keep to the shrub atlas' leaf tiles (its last is the stems')
     skeleton.leaves.forEach((site, i) => { if (site.tile === SHRUB_STEM_TILE) site.tile = i % SHRUB_STEM_TILE; });
   }
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true, pal.bare === true);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
   // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
@@ -2598,10 +2652,17 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
   // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
   const tidal = species === 'mangrove';
-  parts.push(paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0));
+  // (the trees lane, 2026-10-07: a clump — the bamboo's culms from one rootstock — has no stem foot to flare and no
+  // buttress roots: its flare and tongues are drawn and left out, every draw taken, so the clump's own stream keeps its
+  // seats; a quarter of its wood, and Monsoon Ridge's forms back inside their triangle budget)
+  const flare = paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0);
+  if (!profile.clump) parts.push(flare);
+  else flare.dispose();
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   const rootFirst = parts.length;
-  addRootButtresses(parts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  const rootParts: THREE.BufferGeometry[] = profile.clump ? [] : parts;
+  addRootButtresses(rootParts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  for (const g of rootParts === parts ? [] : rootParts) g.dispose();
   const rootEnd = parts.length;
   if (tidal) {
     // the arches are drawn round the origin's axis: each joins the grown stem where it stands at the arch's collar
@@ -2743,7 +2804,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
   // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
   // ones.
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true, pal.bare === true);
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
@@ -5205,9 +5266,14 @@ function* vegetationBuildSteps(
   // variants beside the forest-grown ones, each pool mesh carrying its open geometry as userData.formAlt, so the frame
   // probe's forest-form toggle swaps them in one page)
   const forestQuery = typeof location !== 'undefined' ? location.search ?? '' : '';
+  // (trees lane, 2026-10-05: an orchard form's slot stays open-grown in a wood too, its variants its own species)
   const forestSpecies = new Set<Species>(grownTrees && treeBiomeWoodSpread(cfg?.id) > 1 && !/[?&]forestForm=0(&|$)/.test(forestQuery)
-    ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm') : []);
+    ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm'
+      && !TREE_GROWTH_PROFILES[(formOf(sp)?.form ?? sp) as GrowthSpecies]?.orchard) : []);
   const forestAB = forestSpecies.size > 0 && /[?&]forestAB=1(&|$)/.test(forestQuery);
+  // trees lane (2026-10-05): a bare map's deciduous broadleaves and shrubs stand leafless (VegetationConfig `bare`;
+  // `?bare=1` stands any map's bare, the probes' same-build A/B)
+  const bareMap = grownTrees && (veg.bare === true || /[?&]bare=1(&|$)/.test(forestQuery));
   function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
@@ -5220,7 +5286,9 @@ function* vegetationBuildSteps(
     const family = TREE_GROWTH_PROFILES[growth].family;
     const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
     const placeColour = treeBiomeColour(cfg?.id);
-    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily, placeColour);
+    // (trees lane, 2026-10-05: on a bare map a deciduous form's palette is its winter twigs')
+    const formPal = (pal: VegetationPalette): VegetationPalette => bareFormPalette(treeBiomePalette(pal, form, crossFamily, placeColour),
+      growth, bareMap);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
@@ -5684,12 +5752,38 @@ function* vegetationBuildSteps(
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
+  // the trees lane (2026-10-06): a landscape map's woods (VegetationConfig `landscapeWoods`) — the wood-zone score of a
+  // point (its height's quantile over the square, and half a point more at the zone's slope), the score a woodlot's
+  // centre needs (the share `zone` of the square's ground scores over it) and the overlap its stands may close by
+  const landscape = veg.landscapeWoods ?? null;
+  const landscapeHeights: number[] = [];
+  if (landscape) {
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) landscapeHeights.push(heightField.getHeightAt(x, z));
+    landscapeHeights.sort((a, b) => a - b);
+  }
+  const landscapeSlope = Math.tan(((landscape?.slopeDeg ?? 12) * Math.PI) / 180);
+  function woodZoneScore(x: number, z: number): number {
+    const h = heightField.getHeightAt(x, z);
+    let lo = 0, hi = landscapeHeights.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (landscapeHeights[mid] < h) lo = mid + 1; else hi = mid; }
+    const ny = Math.max(0.05, heightField.getNormalAt(x, z).y), grade = Math.sqrt(Math.max(0, 1 - ny * ny)) / ny;
+    return lo / Math.max(1, landscapeHeights.length) + 0.5 * Math.min(1, grade / landscapeSlope);
+  }
+  const landscapeThreshold: number = landscape ? (() => {
+    const scores: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) scores.push(woodZoneScore(x, z));
+    scores.sort((a, b) => a - b);
+    return scores[Math.min(scores.length - 1, Math.floor(scores.length * (1 - Math.min(1, Math.max(0, landscape.zone)))))];
+  })() : 0;
+  const landscapeMerge = landscape ? (landscape.merge ?? 30) : null;
   function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
     // trees round 2: a woodlot keeps clear of the others by a little of its own reach too (the round-1 stands by the
     // others' only). Round 2b: a tenth of it, not half — at half, the round-1-sized woodlots fitted a third fewer stands
     // on the crowded maps (Nordhavn Fjord 81 -> 49, Monsoon Ridge 120 -> 75) and their corridors lost their cover
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.1) return false;
+      // (the trees lane: a landscape map's stands may close into one wood, their outlines overlapping by its merge)
+      const need = landscapeMerge !== null ? Math.max(6, c.r + r - landscapeMerge) : c.r + 26 + r * 0.1;
+      if (Math.hypot(x - c.x, z - c.z) < need) return false;
     }
     return true;
   }
@@ -5789,7 +5883,13 @@ function* vegetationBuildSteps(
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
-    while (clusters.length < clusterTarget && attempts++ < 6000) {
+    // (the trees lane: a landscape map keeps its woods' tree budget — the target stands' mean count, a round-2b stand's
+    // 24-57 trees half again — placing stands past the target, up to a quarter more, until its stands hold it)
+    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) * Math.max(0, landscape.budget ?? 1) : 0;
+    let standTrees = 0;
+    // (a budget's share under 1 may hold its count with fewer stands than the target: the stands stop once they hold it)
+    while ((landscape ? clusters.length < clusterTarget * 1.25 && standTrees < standBudget
+      : clusters.length < clusterTarget) && attempts++ < 6000) {
       // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
       // the wadi, the spring), any other anywhere on the field
       const species = pickSpecies(veg.clusterMix, wr());
@@ -5801,6 +5901,8 @@ function* vegetationBuildSteps(
         x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
       }
       if (!siteOk(x, z, 6)) continue;
+      // (the trees lane: a landscape map's woodlot stands on its wood-zone ground)
+      if (landscape && woodZoneScore(x, z) < landscapeThreshold) continue;
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
       if (!uplandZoneOk(x, z, species)) continue;
       // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
@@ -5835,14 +5937,16 @@ function* vegetationBuildSteps(
       const disc: VegetationDisc = { x, z, r };
       let cx = 0, cz = 0;
       if (clearing) { const p = standPoint(index, disc, clearing.a, clearing.k); cx = p[0]; cz = p[1]; }
-      for (let i = 0; i < n * 4 && placed < n; i++) {
+      // (the trees lane: a landscape map's stand, closing into its neighbours, tries twice as long to seat its count)
+      for (let i = 0; i < n * (landscape ? 8 : 4) && placed < n; i++) {
         // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
         const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
         const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
         const p = standPoint(index, disc, a, k);
         const px = p[0], pz = p[1];
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
-        if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        // (the trees lane: a landscape map's wood keeps no thin patches — the draw is made all the same)
+        if (!landscape && k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
         // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
@@ -5862,12 +5966,18 @@ function* vegetationBuildSteps(
         // add trees or change RNG.
         rememberAuthoredDonors(cb0, Math.floor(placed / 4));
         clusters.push(disc);
+        standTrees += placed;
       } else {
         // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
         // steep cinder left a scatter of strays over it); its draws are spent as they were
         woodlotShapes.length = index;
         trees.length = cb0; treeObstacles.length = ob0; concealers.length = cc0;
       }
+    }
+    // (the trees lane: a landscape map's census — its stands against their target, the score a centre needed)
+    if (landscape) {
+      group.userData.landscapeWoods = { stands: clusters.length, target: clusterTarget, attempts: Math.min(attempts, 6000),
+        threshold: +landscapeThreshold.toFixed(3), standTrees, standBudget: Math.round(standBudget) };
     }
   }
   placeTreeClusters();
@@ -6511,6 +6621,7 @@ function* vegetationBuildSteps(
   // decal. A snag is a look only: the obstacle and concealment records the simulation reads (collision, spotting,
   // the host's world) are the living tree's, the same on every tier and on `?legacyTrees=1` — the phones grow no
   // snags, and a mixed lobby must share one world.
+  const snagValueRange: readonly [number, number] = treeBiomeSnagValue(cfg?.id) ?? [0.62, 0.87];
   function convertSnags(): number {
     if (!(snagShare > 0)) return 0;
     const SNAG = { canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2 };
@@ -6529,7 +6640,8 @@ function* vegetationBuildSteps(
       t.fallH = SNAG.fallHeightM * sy;
       t.fallR = SNAG.fallRadiusM * sxz;
       t.dr = SNAG.rootDecalRadiusM * sxz;
-      const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
+      // (the trees lane: a place may char its snags darker — treeBiomes.ts snagValue — the hash and the count as before)
+      const value = snagValueRange[0] + treePositionNoise(t.x, t.z, 10) * (snagValueRange[1] - snagValueRange[0]);
       t.tint.setRGB(value, value * 0.96, value * 0.92);
       converted++;
     }
@@ -6941,12 +7053,18 @@ function* vegetationBuildSteps(
     // trees round 4: a place's own shrub colour (treeBiomes.ts shrubColour) wins over the bush slot's palette, as a form's
     // own colour does over its slot's (the Las Cañadas broom ash-dulled, where the slot's acacia palette read green)
     const shrubColour = grownTrees ? treeBiomeShrubColour(cfg?.id) : null;
-    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id))
-      : palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
-    const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null;
+    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
+      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
+    // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
+    const bushPal = grownTrees
+      ? bareFormPalette(treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id)),
+        shrubGrowth, bareMap)
+      : palOf(bushSpecies);
+    const shrubMats = shrubMaterials(shrubForm, bushPal);
     // trees round 4: a shrub grown from its slot's sprays shares that slot's crowns' texture and program but not their
     // near reach (FOLIAGE_NEAR_REACH): its own material over the one program, with the shrub hook's uniform — made when
     // the first shrub is planted (a world without shrubs registers none)
@@ -6987,8 +7105,6 @@ function* vegetationBuildSteps(
       }
       return bushMatCache;
     };
-    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
-      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas),
         buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas)]

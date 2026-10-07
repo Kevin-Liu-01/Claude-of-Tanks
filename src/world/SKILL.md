@@ -232,7 +232,9 @@ its fringe (world-anchored, the wood never opens, closing where a cascade's texe
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
 (new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch, the Arizona uplands' juniper and
 pinyon; round 5's map-revival forms: longleafPine (tufts on a long clear bole), lebanonCedar (the `shelf` envelope: level
-plates, a flat top), sugi, redPine; summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
+plates, a flat top), sugi, redPine; Kohima's khasiPine (the red pine's needles on a taller, straighter bole) and bamboo
+(a `clump`: unforked culms from a stub at the ground, bare at the foot, arching over the top; Monsoon Ridge plants no
+palm); summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
 cutover's longleafSeedling (a `fountain` profile: grass-stage needle fountains from the ground); a place's foliage
 colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
@@ -263,7 +265,13 @@ and keep variant 2 open-grown, the woods' trees take the pair and the field tree
 impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes). On a map with a field system
 a field tree stands on a hedged boundary, a field's edge or a wood's edge, never in a field's interior (`addFieldTree`,
 `fieldTreeMove`: the draws stay, only the seats move; a conifer form stands in the open only at a wood's edge; the
-census is `group.userData.fieldTreeLaw`).
+census is `group.userData.fieldTreeLaw`). A map's `vegetation.bare` stands its deciduous broadleaves leafless
+(`BARE_SPRAY_KINDS`: each form's winter twigs in its own habit, the birch's lattice, the oak's crooked twigs, the
+poplar's climbing shoots, the buddleia's winter canes under dry panicles; `bareFormPalette` drops the leaf colours and
+`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes. The `apple`
+form is the Streuobst fruit tree (an `orchard` profile: never forest-grown, its slot never a forest species): its
+`variantShape` grows the plum, the apple and the pear at their ages, its `variantTiles` give each its own atlas tiles
+(`paintOrchardTile`: leaves and summer fruit).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
