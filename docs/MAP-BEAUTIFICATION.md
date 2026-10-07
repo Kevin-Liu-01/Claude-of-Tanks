@@ -7265,6 +7265,18 @@ floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
 
+### 2026-10-06 — Highland Reservoir round 2: the valve tower's windows framed, its footbridge on an abutment (the landmarks lane)
+
+**The gauntlet's wave 158:** the valve tower's "unframed black-void windows" and its footbridge that "simply ends at a
+grassy mound with no dam or abutment". The chamber's windows carry frames and bars a long view resolves, and the deck's
+end at the bank sits on a coped abutment a metre into the bank with the parapets' end piers over it (inside the
+footprint the piece always had: a larger one moved the clutter round it). Against the round-1 shard: the tower's own
+records; no other record moved; census unchanged [5128, 5058, 5942]. Pacing (seeds 50000–50003) 154 / 368 / 324 / 198 s
+against the head's 154 / 302 / 324 / 198 s. Receipts: the 74 selected for the round's seven maps (the landmarks library,
+the collision drift and pins, the layout brief, the maps' world and village receipts) green but the Delta plaster
+palette, whose fixture build times out under the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3):
+census close at every view (+0 draws, +0.14 to +0.25 % triangles).
+
 ### 2026-10-05 — Highland Reservoir: the valve tower and its footbridge (the landmarks lane)
 
 The basin is closed by its ridges and holds no dam, so the Roer dams' set piece is the one that stands off their walls:
