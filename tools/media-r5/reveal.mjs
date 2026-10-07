@@ -26,7 +26,7 @@ export const REVEALS = [
 export function revealScene([id, tank, setId, [o0, o1], opt = {}]) {
   const set = setById(setId);
   const base = { ...set, lineup: [tank], formation: 'solo', count: 1, enemies: null, turret: 0,
-    time: T(set.time), picture: pictureFor(set, { dof: { enabled: true, focusActor: 'hero', fStop: 2.8, sensor: 'super35' }, ...(set.time === 'night' ? { exposure: 0.4 } : {}) }), light: set.light };
+    time: T(set.time), picture: pictureFor(set, set.time === 'night' ? { exposure: 0.4 } : {}), light: set.light };
   // night reveals bring their own practical light: a flare overhead and a fire off the camera side
   const night = set.time === 'night' ? [flare(H(-10, 30), 0, { heightM: 70, burnS: 40, intensity: 1.3, driftMps: 0.6 }), fireField(H(o0 + o1 > 0 ? 9 : -9, 7), 0, { radiusM: 2.5 })] : [];
   const scene = buildShot(base, { durMs: 2600, speed: 0, turretSweep: o0 + o1 > 0 ? -14 : 14, effects: [exhaust('hero', 100), ...night],

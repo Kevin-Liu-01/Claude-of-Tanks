@@ -156,7 +156,7 @@ for (const entry of entries) {
     const out = join(OUT, `${entry.id}_${v}.wav`), level = master(entry, pick.channels, out);
     manifest.sounds[entry.id].variants.push({ file: out, take: pick.take, score: pick.score, ...pick.m, ...level });
   }
-  console.log(`[kit] ${entry.id}: picked take ${picks.map((p) => p.take).join('+')} of ${judged.length} (${judged.map((j) => `${j.take}:${Number.isFinite(j.score) ? j.score : 'x'}`).join(' ')})`
+  console.log(`[kit] ${entry.id}: picked take ${picks.map((p) => p.take).join('+')} of ${judged.length} (${judged.map((j) => `${j.take}:${Number.isFinite(j.score) ? j.score : 'n/a'}`).join(' ')})`
     + ` · ${JSON.stringify(picks[0].m)}`);
 }
 manifest.credits = credits;

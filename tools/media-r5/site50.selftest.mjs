@@ -46,7 +46,9 @@ for (const shot of SHOTS) {
   assert.ok(BATTLEFIELDS.has(scene.map), `${id}: ${scene.map} is one of the chosen battlefields`);
   assert.ok(HOURS.has(scene.meta.time), `${id}: a planned hour (${scene.meta.time})`);
   if (scene.meta.time === 'night') assert.ok(scene.effects.some(e => e.type === 'flare'), `${id}: a night fight is lit by a flare`);
-  assert.ok((scene.picture?.dof?.fStop ?? 0) >= 5.6, `${id}: deep focus keeps the surroundings sharp (f/${scene.picture?.dof?.fStop})`);
+  // owner 2026-10-06: no blur in front of the tanks: deep focus (no depth of field) and no colour fringing
+  assert.equal(scene.picture?.dof?.enabled, false, `${id}: deep focus, everything sharp from the lens to the horizon`);
+  assert.equal(scene.picture?.chromaticAberration, 0, `${id}: no colour fringing softening the frame edges`);
   assert.equal(scene.meta.id, `s${String(n).padStart(2, '0')}-${id}`);
   const dur = scene.storyboard.durationMs, ramp = Array.isArray(scene.film?.speed) && scene.film.speed.length > 0;
   assert.ok(ramp || dur === DUR, `${id}: one ${DUR} ms take (a speed ramp may stretch a shorter timeline)`);

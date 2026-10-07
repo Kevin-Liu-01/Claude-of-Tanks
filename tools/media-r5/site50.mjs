@@ -20,8 +20,8 @@ import { hullOf, waterBlocks } from './route-check.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
-/** The site lens: a touch of streak and fringe, no anamorphic bokeh (the references read crisp edge to edge). */
-const SITE_LENS = { streaks: { amount: 0.22, length: 0.6 }, chromaticAberration: 0.08 };
+/** The site lens: a touch of streak; deep focus and no fringe (sets.mjs pictureFor), crisp edge to edge. */
+const SITE_LENS = { streaks: { amount: 0.22, length: 0.6 } };
 const hold = (a, b) => [{ tMs: 0, ...a }, { tMs: 'end', ...b }];
 // night fights are lit the way the game lights them: an illumination flare drifting over the street, the wrecks' fires
 const NIGHT_FLARE = (at, h = 90) => flare(at, 0, { heightM: h, burnS: 40, intensity: 1.4, driftMps: 1.0 });
@@ -34,8 +34,8 @@ const NIGHT_FLARE = (at, h = 90) => flare(at, 0, { heightM: h, burnS: 40, intens
 // Reservoir), by day, with deep focus so the street or field around the tank stays sharp. Anchors come from the
 // validated sets and from road points whose next 70 m are clear of buildings (shots/media-r5/tmp/anchor-candidates.py).
 const CLEAN = { grain: { amount: 0.05, size: 1, color: 0.1, response: 0.7 }, vignette: { amount: 0.22, roundness: 0.55, softness: 0.65 } };
-const stage = (id, map, time, seed, anchor, heading, more = {}) => ({ id, map, time, seed, anchor, heading, camo: 'factory', fStop: 8, picture: CLEAN, ...more });
-const from = (setId, more = {}) => ({ ...setById(setId), fStop: 8, picture: CLEAN, ...more });
+const stage = (id, map, time, seed, anchor, heading, more = {}) => ({ id, map, time, seed, anchor, heading, camo: 'factory', picture: CLEAN, ...more });
+const from = (setId, more = {}) => ({ ...setById(setId), picture: CLEAN, ...more });
 const DESERT_DAY = { ...CLEAN, exposure: -0.4, contrast: 1.12 };
 const pair = (a, b, states = ['burning', 'intact'], more = {}) => ({ along: 74, lat: 2, count: 2, formation: 'pair', lineup: [a, b], states, ...more });
 

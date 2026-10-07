@@ -24,7 +24,7 @@ for (const set of SETS) {
   if (mode === 'films') for (const f of set.films) {
     if (only && !only.includes(f.id)) continue;
     const t = f.time ?? set.time;
-    const fb = { ...base, time: T(t), picture: pictureFor({ ...set, time: t }, { ...FILM_LENS, anamorphic: 0.5, ...(f.picture ?? {}) }),
+    const fb = { ...base, time: T(t), picture: pictureFor({ ...set, time: t }, { ...FILM_LENS, ...(f.picture ?? {}) }),
       ...(f.formation ? { formation: f.formation, count: f.count } : {}), ...(f.lineup ? { lineup: f.lineup } : {}), ...('enemies' in f ? { enemies: f.enemies } : {}),
       ...(f.anchor ? { anchor: f.anchor } : {}), ...(f.heading != null ? { heading: f.heading } : {}) };
     const scene = finish(set, buildShot(fb, f));

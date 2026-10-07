@@ -4,7 +4,7 @@
 //   node tools/media-r5/cinema-jobs.mjs films  <resolvedDir> <outRoot> <jobs.json> [--resolution=1440] [--formats=landscape]
 //   node tools/media-r5/cinema-jobs.mjs blur   <resolvedDir> <outRoot> <jobs.json> [--resolution=2160]   (fifty frames; --still-exposure-ms)
 // Still scenes carry cameraVariants (from the campaign); each chosen variant becomes its own resolved scene file.
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 const [mode, dir, outRoot, jobsFile, ...rest] = process.argv.slice(2);
 const opt = Object.fromEntries(rest.map(a => { const m = /^--([a-z-]+)=(.*)$/.exec(a); return m ? [m[1], m[2]] : [a, true]; }));
@@ -15,6 +15,13 @@ const sceneDir = resolve(outRoot, 'scenes'); mkdirSync(sceneDir, { recursive: tr
 for (const f of files) {
   const name = basename(f, '.resolved.json');
   const scene = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+  // The look is the builder's current picture, from the source scene the caller staged beside the resolved one. The
+  // lab's resolve fixes placement and timing, not the picture (2026-10-06: deep focus came after review 2 resolved).
+  const sourceFile = join(dir, `${name}.scene.json`);
+  if (existsSync(sourceFile)) {
+    const picture = JSON.parse(readFileSync(sourceFile, 'utf8')).picture;
+    if (picture) scene.picture = picture;
+  }
   if (mode === 'stills') {
     const source = JSON.parse(readFileSync(join(dir, `${name}.scene.json`), 'utf8'));
     const want = opt.variants ? String(opt.variants).split(',') : null;

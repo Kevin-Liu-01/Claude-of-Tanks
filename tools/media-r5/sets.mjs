@@ -247,12 +247,16 @@ const EXTRA_BY_TIME = {
   dusk: { exposure: 0.45 },
   golden: { saturation: 0.92 },
 };
-const FSTOP_BY_TIME = { morning: 2.8, day: 2.8, golden: 2.8, sunset: 2, dusk: 2.8, night: 1.4, dawn: 2.8 };
-/** Film shots add the trailer lens: anamorphic bokeh, streaks, a touch of fringing (letterbox stays in the edit). */
-export const FILM_LENS = { streaks: { amount: 0.4, length: 0.75 }, chromaticAberration: 0.15 };
+/** Film shots add the trailer lens's streaks (letterbox stays in the edit). */
+export const FILM_LENS = { streaks: { amount: 0.4, length: 0.75 } };
+// Deep focus (owner 2026-10-06: "a bunch of weird blur in front of tanks and stuff. remove that"). Depth of field,
+// focused on the hero at f/1.4 to f/8, blurred everything nearer the lens than the hero's centre (a gun pointed at the
+// lens, the front of the hull, fences and grass in the foreground). The presets' colour fringing, which softens the
+// frame edges, goes with it, so every film and still is sharp from the lens to the horizon.
 export const pictureFor = (set, extra = {}) => ({
   preset: LOOK_BY_TIME[set.time] ?? 'cinematic',
-  dof: { enabled: true, focusActor: 'hero', fStop: set.fStop ?? FSTOP_BY_TIME[set.time] ?? 4, sensor: 'super35', ...(extra.anamorphic ? { anamorphic: extra.anamorphic } : {}) },
+  dof: { enabled: false },
+  chromaticAberration: 0,
   vignette: { amount: 0.32, roundness: 0.55, softness: 0.6 },
   grain: { amount: 0.08, size: 1.1, color: 0.15, response: 0.7 },
   ...(EXTRA_BY_TIME[set.time] ?? {}),

@@ -88,7 +88,7 @@ export const FRAMES = [
 
   // --- long exposures: light painting ----------------------------------------------------------
   S(29, 'b29-tracers', 'Long exposure', 'Half-second exposure: machine-gun tracers draw lines across Frosthollow',
-    { set: 'frosthollow-night-village', picture: { dof: { enabled: true, focusActor: 'hero', fStop: 8, sensor: 'super35' } }, shot: still(2000, { side: -3, along: -14, lift: 2.4, fov: 44, lookHero: [0, 40, 2] }, { effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), mg('hero', 900, 18), mg('ally1', 1000, 18), mg('ally2', 1100, 14)] }), tMs: 1250, exposureMs: 500 }),
+    { set: 'frosthollow-night-village', shot: still(2000, { side: -3, along: -14, lift: 2.4, fov: 44, lookHero: [0, 40, 2] }, { effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), mg('hero', 900, 18), mg('ally1', 1000, 18), mg('ally2', 1100, 14)] }), tMs: 1250, exposureMs: 500 }),
   S(30, 'b30-salvo-longexp', 'Long exposure', 'Four T-14 and T-90M guns in one half-second frame',
     { set: 'ironworks-night-yard', shot: still(1800, { side: 6, along: 22, lift: 1.0, fov: 40, lookHero: [-6, 0, 1.8] }, { effects: [flare([40, -60], 0, { heightM: 110, burnS: 40, intensity: 1.3, driftMps: 1.2 }), fireField([60, -110], 0), fire('hero', 1000), fire('ally1', 1100), fire('ally2', 1200), fire('ally3', 1300)] }), tMs: 1180, exposureMs: 450 }),
   S(31, 'b31-barrage-longexp', 'Long exposure', 'Counter-battery barrage behind the Ironworks line, 0.4 s exposure',
@@ -106,6 +106,7 @@ export const FRAMES = [
     { set: 'saltmere-sunset-lighthouse', backlight: { offsetDeg: 4, elevationDeg: 3 }, shot: still(1500, { side: 3, along: 26, lift: 0.4, fov: 30, lookHero: [0, -10, 2.4] }), tMs: 900, exposureMs: 8 }),
   S(36, 'b36-backlit-dust', 'Backlight', 'Leclerc XLR backlit through its own dust at golden hour',
     { set: 'redrock-golden-canyon', backlight: { offsetDeg: 18, elevationDeg: 6 }, shot: { durMs: 2400, speed: 7, cam: RIG.lead({ side: 4, along: [22, 18], lift: 0.8, fov: 34 }) }, tMs: 1600, exposureMs: 16 }),
+  // The rack-focus pair keeps its depth of field: the focus change is the frame (the media's one exception to deep focus).
   S(37, 'b37-rack-near', 'Rack focus (near)', 'Focus on the K2 Black Panther in the foreground, the burning T-90M soft',
     { set: 'amberford-golden-ford', picture: { dof: { enabled: true, focusActor: 'hero', fStop: 1.8, sensor: 'super35', anamorphic: 0.4 } },
       shot: still(2600, { side: -3.5, along: -10, lift: 2.6, fov: 26, lookHero: [6, 100, 2] }, { effects: [burn('foe0', 0), smoke('foe0', 0)] }), tMs: 2000, exposureMs: 8 }),
@@ -121,7 +122,7 @@ export const FRAMES = [
   S(42, 'b42-ots', 'Over the shoulder', 'Over the T-90M\'s turret toward the burning line',
     { set: 'verdant-day-assault', shot: still(2600, { side: -1.4, along: -5.5, lift: 3.0, fov: 30, lookHero: [-4, 80, 2] }, { effects: [burn('foe0', 0), burn('foe1', 0), smoke('foe1', 0), boom([-20, 40], 1800, 'large')] }), tMs: 2100, exposureMs: 8 }),
   S(43, 'b43-cookoff', 'Explosion', 'Ammunition cook-off: the T-90M turret leaves the hull',
-    { set: 'redrock-golden-kill', picture: { dof: { enabled: true, focusActor: 'foe0', fStop: 4, sensor: 'super35' } }, shot: still(1400, { side: 18, along: 64, lift: 1.6, fov: 34, lookHero: [3, 72, 3] }, { effects: [fire('hero', 300), pen('foe0', 380), kill('foe0', 430), debris('foe0', 450)] }), tMs: 640, exposureMs: 16 }),
+    { set: 'redrock-golden-kill', shot: still(1400, { side: 18, along: 64, lift: 1.6, fov: 34, lookHero: [3, 72, 3] }, { effects: [fire('hero', 300), pen('foe0', 380), kill('foe0', 430), debris('foe0', 450)] }), tMs: 640, exposureMs: 16 }),
   S(44, 'b44-leading-lines', 'Leading lines', 'Parapets converge on the C2 Ariete column across the Aegis viaduct',
     { set: 'aegis-morning-viaduct', shot: { durMs: 1600, speed: 3, absY: true, cam: hold({ side: 0.6, along: 34, lift: 4.3, fov: 30, lookHero: [0, -14, 3.4] }) }, tMs: 1000, exposureMs: 8 }),
   S(45, 'b45-symmetry', 'Symmetry', 'Head-on down the Kestrel runway: SEPv3 and Leopard 2A7V in perfect symmetry',
