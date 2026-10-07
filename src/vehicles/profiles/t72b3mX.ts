@@ -10,6 +10,7 @@ import {sourceMachineGun} from './sourceMachineGun.ts';
 import {T72B3M_X_SOURCE_DATUMS} from '../t72b3mXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addT72B3MSideMounts,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
+import {barkLog} from '../accessoryPrimitives.ts';
 
 const T72B3M_X_DATUMS=T72B3M_X_SOURCE_DATUMS;
 const YAW=T72B3M_X_DATUMS.turretPivot,GUN=T72B3M_X_DATUMS.trunnion;
@@ -136,7 +137,11 @@ function rearEquipment(P:TankBuilderPort):void {
     P.addEquipment('hullDetail',roofSheet([[-3.674,x-.1833,x+.1833,1.23,1.23],[-3.455,x-.1833,x+.1833,.93,.93]],.011));
     P.addEquipment('hullDetail',beamBetween([x,1.34,-3.31],[x,1.365,-3.665],.011));
   }
-  P.addEquipment('hullDetail',cylX(.115,2.68,28),-.001,1.012,-3.29);
+  // 2026-10-07 (tank-accessories round 4; wave 217: soft-looking rounds on the T-72B3M "wear the hull's camo decal"):
+  // the transom's 2.68 m round is the unditching log, a camouflaged 28-sided cylinder until now; it is the shared
+  // barked log in its own baked wood colours (hullBark, as the T-90M and the fitting logs), same axis and seat.
+  const log=barkLog({len:2.68,r:.115,seed:7230,detail:P.q===false?0:1,relief:2,tinted:true});
+  for(const part of [log.bark,...(log.stub?[log.stub]:[]),...log.ends,...log.grain])P.addEquipment('hullBark',part,-.001,1.012,-3.29);
   for(const x of [-.786,.78])P.addEquipment('hullDetail',torus(.07,.023,20,8),x,.85,-3.215);
   for(const x of [-1.58,1.576])P.addEquipment('hullDetail',torus(.06,.018,20,8),x,1.38,-3.28);
   for(const x of [-.60,.45]){

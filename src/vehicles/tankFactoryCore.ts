@@ -6122,14 +6122,24 @@ function seatStowagePart(geometry: THREE.BufferGeometry, alongX: boolean, lift: 
   return geometry;
 }
 
+/**
+ * Soft goods never take the hull's camouflage projection (2026-10-07, tank-accessories round 4; wave 217 on the
+ * T-72B3M: "the bedrolls wear the hull's camo decal"): a pack, bedroll or tarp authored into a camouflaged bucket
+ * rides the owner's canvas bucket instead (FSP-06 cloth role); every other bucket is kept as authored.
+ */
+function softGoodsBucket(bucket: string): string {
+  if (!CAMO_BUCKETS.has(bucket)) return bucket;
+  return bucket.startsWith('turret') ? 'turretCloth' : bucket.startsWith('gun') ? 'gunMountCloth' : 'hullCloth';
+}
 function stowage(
   builder: object,
-  bucket: string,
+  authoredBucket: string,
   rngSource: RuntimeValue,
   spots: readonly StowageSpot[],
 ): void {
   const P = requireEquipmentBuilderPort(builder);
   const rng = requireRng(rngSource);
+  const bucket = softGoodsBucket(authoredBucket);
   // Shared soft-kit vocabulary. Seeded shape selection keeps fleet-wide
   // variation deterministic while preserving each authored cargo envelope.
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
@@ -6231,10 +6241,11 @@ function jerryCan(
   }
 }
 function tarpRoll(
-  builder: object, bucket: string, x: number, y: number, z: number,
+  builder: object, authoredBucket: string, x: number, y: number, z: number,
   len: number, r = 0.1, alongX = true, seg = 10,
 ): void {
   const P = requireEquipmentBuilderPort(builder);
+  const bucket = softGoodsBucket(authoredBucket);
   // 2026-10-05: a firm rolled tarp loft (round sections, flat rolled ends) cinched by
   // two webbing straps, the rolled spiral showing at each end; same axis and envelope.
   // 2026-10-07 (tank-accessories round 3: "rolls with eight visible facets"): at full geometry quality a roll draws
