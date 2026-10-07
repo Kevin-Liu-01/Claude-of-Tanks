@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
+  barkLog, block, fabricBody, fabricSleeve, fabricStrap, hash01, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
   type AccessoryDetail, type FabricSpec,
 } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer, foliageCardPoints, type FoliageCard } from './vehicleFoliage.ts';
@@ -229,23 +229,36 @@ function canPair(P: AccessoryPainter, a: RGB, b: RGB, scale: number, cradle: boo
 
 /**
  * A fabric body along local X (bags lie across the piece frame), seated on y = 0 at its measured lowest point, with
- * webbing straps at its cinches. Returns the seat lift and the body's top height (both in the piece frame).
+ * webbing straps at its cinches. Returns the seat lift and the body's top height (both in the piece frame). `roll`
+ * turns the bag about its own long axis first (round 4: a bag's seam and straps need not face straight up).
  */
 function bag(P: AccessoryPainter, spec: FabricSpec, at: readonly [number, number, number], yaw = 0, tone = 0.75,
-  rgb?: RGB, strapTone = 0.55): { lift: number; top: number } {
+  rgb?: RGB, strapTone = 0.55, roll = 0): { lift: number; top: number } {
   const s: FabricSpec = { ...spec, detail: P.detail };
-  const body = place(fabricBody(s), 0, 0, 0, 0, Math.PI / 2, 0);
+  const body = place(fabricBody(s), 0, 0, 0, 0, Math.PI / 2, roll);
   body.computeBoundingBox();
   // copy: applyMatrix4 below recomputes the geometry's own box in place
   const box = body.boundingBox!.clone();
   const lift = -box.min.y;
   P.cloth(place(body, at[0], at[1] + lift, at[2], 0, yaw, 0), tone, rgb);
   for (const z of s.cinch ?? []) {
-    const strap = place(place(fabricStrap(s, z), 0, 0, 0, 0, Math.PI / 2, 0), at[0], at[1] + lift, at[2], 0, yaw, 0);
+    const strap = place(place(fabricStrap(s, z), 0, 0, 0, 0, Math.PI / 2, roll), at[0], at[1] + lift, at[2], 0, yaw, 0);
     webbing(P, strap, strapTone);
   }
   return { lift, top: at[1] + lift + box.max.y };
 }
+
+// Round 4 (2026-10-07, waves 216-217: "straps ... neither wrap nor compress their loads"): a bag's own straps cinch it
+// visibly, a sixth to a fifth of its section at the band (duffels, packs, the folded tarp pack and the helmet bag).
+
+/**
+ * Issue fabric families a crew's bags come in (multipliers on the nation's canvas): issue olive, a greener drab, a
+ * sun-faded khaki and a darker, newer bag. 2026-10-07 (round 4).
+ */
+const BAG_TINTS: readonly RGB[] = [[1, 1, 1], [0.9, 1.02, 0.84], [1.12, 1.04, 0.84], [0.86, 0.9, 0.82], [1.05, 1.03, 0.94]];
+
+/** A bag's own seeded values in [0, 1) (no draw from the piece's stream, so placement streams never move). */
+const bagNoise = (seed: number, salt: number) => (k: number): number => hash01(seed, salt, k);
 
 /** A carry handle: a flattened webbing loop on top of a bag (near level only). */
 function webbingLoop(P: AccessoryPainter, x: number, y: number, z: number, span: number, rise: number, yaw = 0): void {
@@ -258,12 +271,31 @@ function webbingLoop(P: AccessoryPainter, x: number, y: number, z: number, span:
   webbing(P, sweptTube(pts, 0.006, 4, 6), 0.6);
 }
 
+/**
+ * A duffel along local X. 2026-10-07 (tank-accessories round 4, wave 214 on the Challenger 1: "the duffel bags ... all
+ * share the exact same size and fold pattern, reading as one asset repeated four times"): every bag is its own, from
+ * its seed — length and girth, fill (round to boxy), how far it slumps, its fabric family and shade, two or three
+ * straps at their own stations and tension, the handle's station and a roll about its long axis. No draw comes from
+ * the piece's stream, so seats and later pieces never move.
+ */
 export function duffel(P: AccessoryPainter, len: number, radius: number, at: readonly [number, number, number], yaw: number,
   tone: number, seed: number, rgb?: RGB): void {
-  const spec: FabricSpec = { len, hw: radius * 1.05, hh: radius, exponent: 2.5, endScale: 0.62, endLength: 0.12,
-    flatten: 0.32, wrinkle: 0.05, seg: 10, stations: 6, cinch: [-len * 0.28, len * 0.28], seed };
-  const { top } = bag(P, spec, at, yaw, tone, rgb);
-  webbingLoop(P, at[0], top - 0.008, at[2], len * 0.3, 0.032, yaw);
+  const h = bagNoise(seed, 0xd0f);
+  const L = len * (0.86 + 0.26 * h(0)), R = radius * (0.88 + 0.22 * h(1));
+  const shift = (h(2) - 0.5) * 0.1 * L;
+  const cinch = h(3) < 0.34
+    ? [-L * 0.32 + shift, shift * 0.5, L * 0.31 + shift]
+    : [-L * (0.22 + 0.1 * h(4)) + shift, L * (0.2 + 0.1 * h(5)) + shift];
+  const spec: FabricSpec = { len: L, hw: R * (0.98 + 0.16 * h(6)), hh: R * (0.9 + 0.12 * h(7)), exponent: 2.2 + 1.3 * h(8),
+    endScale: 0.5 + 0.22 * h(9), endLength: 0.1 + 0.06 * h(10), flatten: 0.24 + 0.18 * h(11), wrinkle: 0.04 + 0.04 * h(12),
+    seg: 10, stations: 6, cinch, cinchDepth: 0.13 + 0.08 * h(13), seed };
+  const tint = rgb ?? BAG_TINTS[Math.floor(h(14) * BAG_TINTS.length) % BAG_TINTS.length];
+  const { top } = bag(P, spec, at, yaw, tone * (0.86 + 0.26 * h(15)), tint, 0.48 + 0.14 * h(16), (h(17) - 0.5) * 0.4);
+  // the carry handle lies on the full section between its first two straps, a flat loop sewn on (near level only, so
+  // it stays low: the coarse level's envelope keeps four fifths of the near's height)
+  const c = Math.cos(yaw), s = Math.sin(yaw), hx = (cinch[0] + cinch[1]) / 2;
+  webbingLoop(P, at[0] + hx * c, top - 0.012, at[2] - hx * s, Math.min(L * (0.24 + 0.08 * h(19)), (cinch[1] - cinch[0]) * 0.66),
+    0.02, yaw);
 }
 
 /**
@@ -274,29 +306,51 @@ const ROLL_SEG_COARSE = 10;
 
 /** The rolled faces at both ends of a fabric roll lying along X in the piece frame (as bag() turns it). */
 function rollEnds(P: AccessoryPainter, len: number, radius: number, at: readonly [number, number, number], lift: number,
-  yaw: number, tone: number, rgb: RGB | undefined, steps: number): void {
+  yaw: number, tone: number, rgb: RGB | undefined, steps: number, turn = 0): void {
   for (const end of [-1, 1] as const) {
-    const spiral = place(rolledEndSpiral(radius, end * len / 2, end, steps), 0, 0, 0, 0, Math.PI / 2, 0);
+    const spiral = place(rolledEndSpiral(radius, end * len / 2, end, steps), 0, 0, 0, 0, Math.PI / 2, turn);
     P.cloth(place(spiral, at[0], at[1] + lift, at[2], 0, yaw, 0), tone, rgb);
   }
 }
 
+/**
+ * The strap pinch of a firm roll (2026-10-07, tank-accessories round 4, wave 214 on the Challenger 1: "the rolled tarp
+ * ... a single uniform tan cylinder with no strap-compression bulges"): each strap squeezes the roll to about three
+ * quarters of its radius over a hand's width and the cloth swells between the straps, on shoulder stations
+ * (FabricSpec.shoulders) that replace the even spread, so the near level costs what it did.
+ */
+const ROLL_PINCH = { cinchWidth: 0.028, shoulders: true } as const;
+
+/** A roll's girth between its straps for a nominal radius (the pinch's swell included): seats and spacings. */
+const pinchedRadius = (radius: number, bulge: number): number => radius * (1 + bulge);
+
 export function bedroll(P: AccessoryPainter, len: number, radius: number, at: readonly [number, number, number], yaw: number,
-  tone: number, seed: number, rgb?: RGB, seg = 14): void {
-  const spec: FabricSpec = { len, hw: radius, hh: radius, exponent: 2.05, endScale: 0.9, endLength: 0.05,
-    flatten: 0.14, wrinkle: 0.035, seg: near(P) ? seg : ROLL_SEG_COARSE, stations: 4, cinch: [-len * 0.3, len * 0.3],
-    cinchDepth: 0.1, seed };
-  const { lift } = bag(P, spec, at, yaw, tone, rgb, 0.5);
+  tone: number, seed: number, rgb?: RGB, seg = 12): void {
+  // round 4: its own length, girth, strap stations and tension, slump and wound ends from its seed (see duffel)
+  const h = bagNoise(seed, 0xbed);
+  const L = len * (0.92 + 0.14 * h(0)), R = radius * (0.93 + 0.12 * h(1));
+  const spec: FabricSpec = { len: L, hw: R, hh: R, exponent: 2.05, endScale: 0.9, endLength: 0.05,
+    flatten: 0.1 + 0.08 * h(2), wrinkle: 0.035, seg: near(P) ? seg : ROLL_SEG_COARSE, stations: 2,
+    cinch: [-L * (0.26 + 0.07 * h(3)), L * (0.26 + 0.07 * h(4))], cinchDepth: 0.2 + 0.08 * h(5), bulge: 0.04 + 0.03 * h(6),
+    ...ROLL_PINCH, seed };
+  const shade = rgb ? 1 : 0.9 + 0.2 * h(7);
+  const { lift } = bag(P, spec, at, yaw, tone * shade, rgb, 0.5);
   if (!near(P)) return;
   // the rolled layers wound at each end
-  rollEnds(P, len, radius * 0.9, at, lift, yaw, tone * 0.62, rgb, 16);
+  rollEnds(P, L, R * 0.9, at, lift, yaw, tone * shade * 0.62, rgb, 14, h(8) * Math.PI * 2);
 }
 
 /** A frame or ALICE-pattern rucksack lying on its back panel: main bag, lid flap, side pockets and compression straps. */
-export function rucksack(P: AccessoryPainter, w: number, len: number, h: number, at: readonly [number, number, number], yaw: number,
-  tone: number, seed: number, rgb?: RGB): void {
-  const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 4, endScale: 0.76, endLength: 0.13,
-    flatten: 0.42, wrinkle: 0.04, seg: 10, stations: 5, cinch: [-len * 0.16, len * 0.2], cinchDepth: 0.06, seed };
+export function rucksack(P: AccessoryPainter, w0: number, len0: number, h0: number, at: readonly [number, number, number], yaw: number,
+  tone0: number, seed: number, rgb0?: RGB): void {
+  // round 4: each pack its own size, fill, strap stations, fabric family and shade from its seed (see duffel)
+  const n = bagNoise(seed, 0x5ac);
+  const w = w0 * (0.9 + 0.18 * n(0)), len = len0 * (0.9 + 0.18 * n(1)), h = h0 * (0.86 + 0.24 * n(2));
+  const tone = tone0 * (0.88 + 0.22 * n(3));
+  const rgb = rgb0 ?? BAG_TINTS[Math.floor(n(4) * BAG_TINTS.length) % BAG_TINTS.length];
+  const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 3.4 + 1.2 * n(5), endScale: 0.76, endLength: 0.13,
+    flatten: 0.36 + 0.12 * n(6), wrinkle: 0.035 + 0.025 * n(7), seg: 10, stations: 5,
+    cinch: [-len * (0.12 + 0.08 * n(8)), len * (0.16 + 0.08 * n(9))], cinchDepth: 0.1 + 0.05 * n(10), seed };
   const { top } = bag(P, main, at, yaw, tone, rgb, 0.5);
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const local = (lx: number, ly: number, lz: number): [number, number, number] =>
@@ -353,21 +407,25 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     hardCase(P, { w: 0.5, h: 0.42, d: 0.34, body: [0.30, 0.36, 0.19], lid: [0.34, 0.40, 0.21], lidShare: 0.18, radius: 0.045,
       latches: 'steel', handles: 'ends', ribs: 2 });
     break;
+  // round 4 (2026-10-07): the bags draw their own shape from a seed taken off this piece's existing draws, so two
+  // tanks' duffels differ while the piece's stream is consumed exactly as before
   case 'long-duffel':
-    duffel(P, 0.78, 0.15, [0, 0, 0], (r[0] - 0.5) * 0.1, 0.66 + r[1] * 0.06, 11);
+    duffel(P, 0.78, 0.15, [0, 0, 0], (r[0] - 0.5) * 0.1, 0.66 + r[1] * 0.06, 11 + Math.floor(r[2] * 9973));
     break;
   case 'large-rucksack':
-    rucksack(P, 0.38, 0.56, 0.24, [0, 0, 0], (r[0] - 0.5) * 0.18, 0.62 + r[1] * 0.05, 23);
+    rucksack(P, 0.38, 0.56, 0.24, [0, 0, 0], (r[0] - 0.5) * 0.18, 0.62 + r[1] * 0.05, 23 + Math.floor(r[2] * 9973));
     break;
-  case 'bedroll-pair':
+  case 'bedroll-pair': {
     // 2026-10-07 (round 3, Strv 103A: "the two rolled bags overlap each other with no shadow or gap"): a hand's gap
-    // between the rolls, so the deck shows between them
-    bedroll(P, 0.6, 0.082, [0, 0, -0.112], (r[0] - 0.5) * 0.06, 0.66, 31, [0.94, 0.98, 0.86]);
-    bedroll(P, 0.58, 0.085, [0.01, 0, 0.112], (r[1] - 0.5) * 0.06, 0.8, 37, [1.04, 1.0, 0.9]);
+    // between the rolls, so the deck shows between them (round 4: measured off each roll's pinched girth)
+    const ra = 0.082, rb = 0.085, gap = 0.04;
+    bedroll(P, 0.6, ra, [0, 0, -(pinchedRadius(ra, 0.08) + gap / 2)], (r[0] - 0.5) * 0.06, 0.66, 31 + Math.floor(r[2] * 9973), [0.94, 0.98, 0.86]);
+    bedroll(P, 0.58, rb, [0.01, 0, pinchedRadius(rb, 0.08) + gap / 2], (r[1] - 0.5) * 0.06, 0.8, 37 + Math.floor(r[3] * 9973), [1.04, 1.0, 0.9]);
     break;
+  }
   case 'folded-tarp-pack': {
     const spec: FabricSpec = { len: 0.5, hw: 0.17, hh: 0.075, exponent: 6, endScale: 0.86, endLength: 0.07,
-      flatten: 0.55, wrinkle: 0.03, seg: 12, stations: 5, cinch: [-0.14, 0.14], cinchDepth: 0.07, seed: 41 };
+      flatten: 0.55, wrinkle: 0.03, seg: 12, stations: 5, cinch: [-0.14, 0.14], cinchDepth: 0.13, seed: 41 };
     bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.08, 0.7, [0.95, 0.97, 0.9]);
     break;
   }
@@ -494,7 +552,7 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     // 2026-10-07 (round 3: three helmet domes in a row read as "bags made of clustered spheres"): the crew's helmets ride
     // in a sewn kit bag cinched by two straps, one helmet clipped on top of it by its chin strap
     const spec: FabricSpec = { len: 0.5, hw: 0.16, hh: 0.12, exponent: 2.7, endScale: 0.55, endLength: 0.2, flatten: 0.34,
-      wrinkle: 0.07, seg: near(P) ? 12 : 10, stations: 6, cinch: [-0.15, 0.15], cinchDepth: 0.1, seed: 75 };
+      wrinkle: 0.07, seg: near(P) ? 12 : 10, stations: 6, cinch: [-0.15, 0.15], cinchDepth: 0.15, seed: 75 };
     const { top } = bag(P, spec, [0, 0, 0], (r[2] - 0.5) * 0.2, 0.6, [0.9, 1.0, 0.84]);
     const seg = near(P) ? 12 : 8;
     const helmet = latheY([[0.146, 0], [0.152, 0.008], [0.143, 0.02], [0.122, 0.07], [0.08, 0.118], [0.0005, 0.138]], seg);
@@ -508,7 +566,7 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     break;
   }
   case 'crew-backpack':
-    rucksack(P, 0.32, 0.42, 0.2, [0, 0, 0], (r[0] - 0.5) * 0.2, 0.6, 61, [0.98, 1.0, 0.92]);
+    rucksack(P, 0.32, 0.42, 0.2, [0, 0, 0], (r[0] - 0.5) * 0.2, 0.6, 61 + Math.floor(r[1] * 9973), [0.98, 1.0, 0.92]);
     break;
   case 'folding-chair': {
     // camp chair: aluminium X-frame, sling seat and back
@@ -561,14 +619,16 @@ export function buildPackCluster(P: AccessoryPainter, n: number): number {
     const [kind, toneR, yawR] = picks.slice(i * 3, i * 3 + 3);
     const tone = 0.56 + toneR * 0.3;
     const at = x;
+    // round 4 (2026-10-07): each bag's seed carries its own tone draw, so a pack of four is four different bags
+    const own = Math.floor(toneR * 7919);
     if (kind < 0.4) {
-      pieces.push(() => rucksack(P, 0.3, 0.38, 0.2, [at + 0.15, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 100 + i));
+      pieces.push(() => rucksack(P, 0.3, 0.38, 0.2, [at + 0.15, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 100 + i + own));
       x += 0.34;
     } else if (kind < 0.75) {
-      pieces.push(() => bedroll(P, 0.5, 0.08, [at + 0.09, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.3, tone, 200 + i));
+      pieces.push(() => bedroll(P, 0.5, 0.08, [at + 0.09, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.3, tone, 200 + i + own));
       x += 0.19;
     } else {
-      pieces.push(() => duffel(P, 0.46, 0.11, [at + 0.12, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 300 + i));
+      pieces.push(() => duffel(P, 0.46, 0.11, [at + 0.12, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 300 + i + own));
       x += 0.26;
     }
   }
@@ -576,58 +636,103 @@ export function buildPackCluster(P: AccessoryPainter, n: number): number {
   return x;
 }
 
-/** A rolled tarp along local X, seated on y = 0: firm roll, cinched by two straps, the rolled ends visible. */
+/**
+ * A rolled tarp along local X, seated on y = 0: firm roll pinched under two straps (round 4: ROLL_PINCH), the rolled
+ * ends visible. Its seed sets the straps' stations and tension and the swell between them.
+ */
 export function buildTarpRoll(P: AccessoryPainter, len: number, radius: number, tone: number, seed = 71): void {
+  const h = bagNoise(seed, 0x7a2);
   const spec: FabricSpec = { len, hw: radius, hh: radius * 0.94, exponent: 2.1, endScale: 0.92, endLength: 0.04,
-    flatten: 0.16, wrinkle: 0.03, seg: near(P) ? 16 : ROLL_SEG_COARSE, stations: 4, cinch: [-len * 0.3, len * 0.3],
-    cinchDepth: 0.1, seed };
+    flatten: 0.16, wrinkle: 0.03, seg: near(P) ? 14 : ROLL_SEG_COARSE, stations: 2,
+    cinch: [-len * (0.27 + 0.06 * h(0)), len * (0.27 + 0.06 * h(1))], cinchDepth: 0.22 + 0.06 * h(2), bulge: 0.05 + 0.03 * h(3),
+    ...ROLL_PINCH, seed };
   const { lift } = bag(P, spec, [0, 0, 0], 0, tone);
   if (!near(P)) return;
-  rollEnds(P, len, radius * 0.92, [0, 0, 0], lift, 0, tone * 0.6, undefined, 18);
-}
-
-/** Rolled camouflage net: a lumpy, gathered bundle with the net's garnish skin over its upper half and three ties. */
-export function buildNetRoll(P: AccessoryPainter, len: number, tone: number): void {
-  const R = 0.13;
-  const spec: FabricSpec = { len, hw: R * 1.05, hh: R, exponent: 2.1, endScale: 0.62, endLength: 0.12, flatten: 0.2,
-    wrinkle: 0.14, seg: near(P) ? 14 : ROLL_SEG_COARSE, stations: 6, cinch: [-len * 0.32, 0.02, len * 0.34],
-    cinchDepth: 0.16, seed: 83 };
-  const { lift } = bag(P, spec, [0, 0, 0], 0, tone, [0.92, 1.02, 0.84], 0.45);
-  // garnish skin: an open sleeve over the roll's upper half (net material, seen from both sides)
-  const skinSeg = near(P) ? 14 : 6;
-  const skin = new THREE.CylinderGeometry(R * 1.1, R * 1.1, len * 0.9, skinSeg, 1, true, 0, Math.PI).toNonIndexed();
-  P.net(place(skin, 0, lift, 0, 0, 0, Math.PI / 2), 0.95);
+  rollEnds(P, len, radius * 0.92, [0, 0, 0], lift, 0, tone * 0.6, undefined, 16, h(4) * Math.PI * 2);
 }
 
 /**
- * A draped camouflage net patch over a deck: a sagging sheet hung from its high middle, ragged hem, folds, and garnish
- * tufts standing proud of the sheet (near level). Piece frame: footprint w (X) by len (Z), seated on y = 0.
+ * Rolled camouflage net: a lumpy, gathered bundle pinched under three ties (ROLL_PINCH), the net's own skin laid over
+ * it. 2026-10-07 (tank-accessories round 4; wave 213: decor nets "sit proud of the hull with dead-straight hems"; wave
+ * 215 on the M60A1: "the bundled net ... reads as a speckled green caterpillar"): the skin is no longer a rigid
+ * half-cylinder standing off the roll but follows the roll's pinches and swells a few millimetres off it, tucked under
+ * each tie, its hem ragged — every station drops it to its own depth down each flank. Seeded per roll.
+ */
+export function buildNetRoll(P: AccessoryPainter, len: number, tone: number, seed = 83): void {
+  const R = 0.13;
+  const h = bagNoise(seed, 0x4e1);
+  const cinch = [-len * (0.3 + 0.05 * h(0)), (h(1) - 0.5) * 0.1 * len, len * (0.3 + 0.05 * h(2))];
+  const spec: FabricSpec = { len, hw: R * 1.05, hh: R, exponent: 2.1, endScale: 0.62, endLength: 0.12, flatten: 0.2,
+    wrinkle: 0.14, seg: near(P) ? 10 : ROLL_SEG_COARSE, stations: 2, cinch, cinchDepth: 0.2 + 0.06 * h(3), bulge: 0.06,
+    ...ROLL_PINCH, seed };
+  const { lift } = bag(P, spec, [0, 0, 0], 0, tone, [0.92, 1.02, 0.84], 0.45);
+  const tucked = (z: number): number => (cinch.some((c) => Math.abs(z - c) < 0.02) ? 0.002 : 0.007);
+  const hem = (z: number): readonly [number, number] => {
+    const k = Math.round(z * 97);
+    return [-0.4 - 0.4 * hash01(seed, 11, k), Math.PI + 0.4 + 0.4 * hash01(seed, 13, k)];
+  };
+  const skin = fabricSleeve({ ...spec, detail: P.detail }, hem, tucked, near(P) ? 7 : 4);
+  P.net(place(place(skin, 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0), 0.95);
+}
+
+/**
+ * A camouflage net laid over a deck. 2026-10-07 (tank-accessories round 4; wave 213: nets "sit proud of the hull with
+ * dead-straight hems"): the sheet lies on its support — placement conforms every vertex to the deck under it
+ * (decorations.ts conformDrape, keyed by `parts.meta.drape`) at its own relief, carried per vertex in
+ * `geometry.userData.drapeRelief` (non-indexed order): loose bunching and folds over the middle, pleats gathered toward
+ * each tie point, the hem down on the armour. In plan the hem is irregular: pulled in at tie points spaced unevenly
+ * round the edge, sagging out between them. Off a deck (a kit sheet) it lies on y = 0 at that relief. Piece frame:
+ * footprint w (X) by len (Z).
  */
 export function buildNetDrape(P: AccessoryPainter, w: number, len: number, seed: number): void {
   const nx = near(P) ? 10 : 5, nz = near(P) ? 12 : 6;
-  const positions: number[] = [];
-  const at = (i: number, k: number): [number, number, number] => {
-    const u = i / nx, v = k / nz;
-    const x = (u - 0.5) * w, z = (v - 0.5) * len;
-    const edge = Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) * 2;
-    // round 2 (2026-10-06): a heap that sags off its supports, not a flat sticker — deep folds, the middle
-    // humped where the net bunches, the edges hanging well down in scallops between the tie points
-    const fold = Math.sin(x * 9 + seed) * Math.cos(z * 7 - seed) * 0.045 + Math.sin(z * 15 + x * 3 + seed * 2) * 0.016;
-    const hump = Math.max(0, 1 - edge * 1.15) * 0.07 * (0.6 + 0.4 * Math.sin(x * 4.1 + z * 3.3 + seed));
-    const scallop = edge > 0.7 ? 0.05 * Math.pow(Math.abs(Math.sin((u + v) * Math.PI * 3 + seed)), 1.5) : 0;
-    const ragged = (edge > 0.8 ? -0.04 * ((Math.sin(i * 7.1 + k * 3.3 + seed) + 1) / 2) : 0);
-    return [x * (1 + ragged * 0.6), 0.075 + fold + hump - edge * edge * 0.14 - scallop, z * (1 + ragged * 0.6)];
+  const s0 = Math.floor(seed * 1000);
+  const per = 2 * (w + len);
+  const count = Math.max(6, Math.round(per / 0.36));
+  const ties: number[] = [];
+  for (let k = 0; k < count; k++) ties.push(((k + 0.5 + (hash01(s0, 0x7e, k) - 0.5) * 0.6) / count) * per);
+  const tieGap = (t: number): number => {
+    let best = Infinity;
+    for (const c of ties) { const g = Math.abs(t - c); best = Math.min(best, g, per - g); }
+    return best;
   };
+  // the nearest edge: its perimeter parameter, the distance to it and the inward direction
+  const edge = (x: number, z: number): { t: number; d: number; ix: number; iz: number } => {
+    const dl = x + w / 2, dr = w / 2 - x, db = z + len / 2, df = len / 2 - z;
+    const d = Math.min(dl, dr, db, df);
+    if (d === db) return { t: dl, d, ix: 0, iz: 1 };
+    if (d === dr) return { t: w + db, d, ix: -1, iz: 0 };
+    if (d === df) return { t: w + len + dr, d, ix: 0, iz: -1 };
+    return { t: 2 * w + len + df, d, ix: 1, iz: 0 };
+  };
+  const phase = hash01(s0, 0x9a) * Math.PI * 2;
+  const vertex = (i: number, k: number): { p: [number, number, number]; r: number } => {
+    let x = (i / nx - 0.5) * w, z = (k / nz - 0.5) * len;
+    const e = edge(x, z);
+    const gap = tieGap(e.t);
+    const gather = Math.exp(-((gap / 0.07) ** 2));
+    const rim = Math.max(0, 1 - e.d / 0.22);
+    const pull = rim * rim * (0.09 * gather - 0.035 * (1 - gather) * (0.6 + 0.8 * hash01(s0, i, k)));
+    x += e.ix * pull; z += e.iz * pull;
+    const bunch = 0.035 + 0.05 * (0.5 + 0.5 * Math.sin(x * 5.3 + phase) * Math.cos(z * 4.1 - phase * 0.7));
+    const fold = 0.025 * Math.max(0, Math.sin(x * 11 + z * 6 + phase * 2));
+    const pleat = 0.03 * Math.exp(-gap / 0.18) * Math.max(0, Math.sin(gap * 40 + phase));
+    const inner = Math.min(1, e.d / 0.18);
+    const r = 0.004 + (bunch + fold) * inner * inner + pleat * (1 - rim * 0.5);
+    return { p: [x, r, z], r };
+  };
+  const positions: number[] = [], relief: number[] = [];
+  const push = (v: { p: [number, number, number]; r: number }): void => { positions.push(...v.p); relief.push(v.r); };
   for (let k = 0; k < nz; k++) {
     for (let i = 0; i < nx; i++) {
-      const a = at(i, k), b = at(i + 1, k), c = at(i + 1, k + 1), d = at(i, k + 1);
-      positions.push(...a, ...d, ...c, ...a, ...c, ...b);
+      const a = vertex(i, k), b = vertex(i + 1, k), c = vertex(i + 1, k + 1), d = vertex(i, k + 1);
+      push(a); push(d); push(c); push(a); push(c); push(b);
     }
   }
   const sheet = new THREE.BufferGeometry();
   sheet.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   sheet.computeVertexNormals();
-  // the flat garnish tufts read as origami cards (round 2); the rags are in the net's own texture now
+  sheet.userData.drapeRelief = relief;
   P.net(sheet, 1.0);
 }
 
