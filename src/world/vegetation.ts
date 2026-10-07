@@ -2435,9 +2435,11 @@ const GROWN_LEAF_BILLBOARD = 1;
  * foreground bush "a screen-door mesh", "a cross-hatched net-like texture artifact"): a grown crown's cluster leaves
  * whole — it shrinks to its centre at its own threshold in the band (a hash of where it sits), so a near crown thins by
  * clusters and a still frame keeps no dither (the desktop tiers run no temporal AA to average one away: quality.ts);
- * the palms' fronds, the trunks and the phones' cards keep the pixel dissolve.
+ * the palms' fronds, the trunks and the phones' cards keep the pixel dissolve. Round 7 (2026-10-07, the coordinator's
+ * ruling on fold ticket 1's A/B: Saltwind's olives bald at 3.5–6 m against the chase camera's clearance in a wood): the
+ * band 1.5–5 m (from 2.5–8) — a crown 4 m off stays whole; 1–3.5 put whole cards before the chase camera.
  */
-const CANOPY_NEAR_DISSOLVE = Object.freeze([2.5, 8.0] as const);
+const CANOPY_NEAR_DISSOLVE = Object.freeze([1.5, 5.0] as const);
 /**
  * The bark's near-camera dissolve band (m from the camera; the trunks, the limbs and the twigs). Trees lane (2026-10-05,
  * the gauntlet's wave 122 on round 5's close frames: the near tree's trunk "a see-through dotted tube", "trunk bark
@@ -5347,7 +5349,7 @@ function* vegetationBuildSteps(
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v25'; // trees round 4: the shrink after the wind; each material's near reach, gate lift and inside fade (round 3b: the clusters' near dissolve; round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v26'; // round 7: the near band 1.5–5 m; trees round 4: the shrink after the wind; each material's near reach, gate lift and inside fade (round 3b: the clusters' near dissolve; round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -6914,7 +6916,7 @@ function* vegetationBuildSteps(
       COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
     engineCtx.setupShadowMaterial(material, shrubFoliageHook);
     material.userData.cotShrubThin = uShrubThin; // the frame probe's same-page A/B (its shrub-thin toggle)
-    material.customProgramCacheKey = () => 'world-tree-foliage-v25';
+    material.customProgramCacheKey = () => 'world-tree-foliage-v26';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
     retainedMaterials.push(material, depth);
     retainedTextures.push(map);
@@ -6966,7 +6968,7 @@ function* vegetationBuildSteps(
         }
         engineCtx.setupShadowMaterial(shrub, shrubFoliageHook);
         shrub.userData.cotShrubThin = uShrubThin;
-        shrub.customProgramCacheKey = () => 'world-tree-foliage-v25';
+        shrub.customProgramCacheKey = () => 'world-tree-foliage-v26';
         retainedMaterials.push(shrub);
         bushMatCache = shrub;
       }

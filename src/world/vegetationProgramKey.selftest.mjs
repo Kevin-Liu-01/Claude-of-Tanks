@@ -81,8 +81,8 @@ function library(species, fade, environment) {
   // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale;
   // trees round 3b (2026-10-04): v21 — the clusters' near dissolve by whole clusters; trees round 4: v22 — each
   // material's near reach (uCotNearReach), v23 — and its gate lift (uCotGateLift), v24 — and its inside fade, v25 —
-  // the card's shrink applied after the wind
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v25'));
+  // the card's shrink applied after the wind; round 7 (2026-10-07): v26 — the near band 1.5–5 m
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v26'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -234,7 +234,7 @@ function checkEdgeFade(material, parameters) {
   // to its centre at a threshold hashed from where it sits — and its fragment takes no near dither (the pixel dissolve
   // stays for a card without the frame: the palms' fronds)
   assert.match(vertex, /float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);/, 'the card centre\'s distance in world metres');
-  assert.match(vertex, /float cotKeep = smoothstep\( 2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, cotNear \);/, 'the near band by the crown\'s size');
+  assert.match(vertex, /float cotKeep = smoothstep\( 1\.50 \* vCotNearScale, 5\.00 \* vCotNearScale, cotNear \);/, 'the near band by the crown\'s size');
   // trees round 4 (the gauntlet's wave 68: a bush's top cluster left hanging in the sky): the gate leans on the cluster's
   // height in its shrub by the material's lift — a shrub thins from the top down, a crown by the hash alone
   assert.match(vertex, /uniform float uCotGateLift;/, 'the gate lift is a uniform of the material');
@@ -259,7 +259,7 @@ function checkEdgeFade(material, parameters) {
   assert.ok(turn < factor && factor < vertex.indexOf('float lean = uWind.x'), 'the factor after the turn, before the wind');
   assert.ok(shrink > vertex.lastIndexOf('transformed.y += fl * 0.3') && shrink < vertex.indexOf('#include <project_vertex>'), 'the shrink after the wind, before the projection');
   assert.match(vertex, /vCotGeoNear = 0\.0;[\s\S]*vCotGeoNear = 1\.0;/, 'only a framed card leaves geometrically');
-  assert.match(fragment, /fadeKeep \*= mix\(smoothstep\(2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, length\(vViewPosition\)\), 1\.0, vCotGeoNear\);/,
+  assert.match(fragment, /fadeKeep \*= mix\(smoothstep\(1\.50 \* vCotNearScale, 5\.00 \* vCotNearScale, length\(vViewPosition\)\), 1\.0, vCotGeoNear\);/,
     'a framed card\'s fragment takes no near dither; the rest keep the near dissolve by the crown\'s size');
   // trees round 4 (the gauntlet's wave 51: 3b's near shrub "a handful of identical, flat, hard-outlined leaf cutouts"):
   // the band's reach is the material's own uniform over the one program — a crown's whole, a shrub's a third
@@ -284,7 +284,7 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v25'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v26'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
@@ -403,7 +403,7 @@ function checkShrubMaterial(environment) {
   try {
     const bush = vegetation.group.children.find(m => m.userData.bush === true && m.count > 0);
     assert.ok(bush, 'the shrubs are planted');
-    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v25'
+    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v26'
       && m.map?.name === 'sprayAtlas:oak');
     assert.ok(crown && bush.material !== crown, 'the shrubs draw with their own material, beside their slot\'s crowns\'');
     // trees round 5 (the gauntlet's wave 98: the near bush's "lobed leaf cards two to four times life size"): on their own
@@ -412,7 +412,7 @@ function checkShrubMaterial(environment) {
     assert.equal(bush.material.map?.name, 'shrubAtlas:oak', 'the shrubs paint their own atlas');
     assert.equal(bush.material.map.image.width, crown.map.image.width * 2, 'at twice the crowns\' texels');
     assert.equal(bush.customDepthMaterial?.map, bush.material.map, 'their shadow caster reads it');
-    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v25', 'on the one foliage program');
+    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v26', 'on the one foliage program');
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
     assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
@@ -453,7 +453,7 @@ function checkShrubInside(environment) {
       [/vCotNearScale = mix\( 0\.45, 1\.0, smoothstep\( 1\.6, 3\.6, aCard\.w \* length\( instanceMatrix\[ 0 \]\.xyz \) \) \) \* uCotNearReach;/, 'the band by the crown\'s size'],
       [/vec3 cotCam = - \( transpose\( mat3\( modelViewMatrix \) \) \* modelViewMatrix\[ 3 \]\.xyz \) - instanceMatrix\[ 3 \]\.xyz;\s*cotCam = vec3\( dot\( cotIm\[ 0 \], cotCam \) \/ dot\( cotIm\[ 0 \], cotIm\[ 0 \] \), dot\( cotIm\[ 1 \], cotCam \) \/ dot\( cotIm\[ 1 \], cotIm\[ 1 \] \),\s*dot\( cotIm\[ 2 \], cotCam \) \/ dot\( cotIm\[ 2 \], cotIm\[ 2 \] \) \);/, 'the camera in the instance frame'],
       [/vec3 cotRight = cross\( aAxis, cotCam - aCard\.xyz \);\s*float cotRightL = length\( cotRight \);\s*if \( cotRightL > 1e-4 \) \{\s*vec3 cotFacing = aCard\.xyz \+ cotRight \* \( aLeaf\.x \/ cotRightL \) \+ aAxis \* aLeaf\.y - vec3\( 0\.0, aLeaf\.z, 0\.0 \);\s*transformed = mix\( transformed, cotFacing, COT_LEAF_BILLBOARD \);/, 'the turn'],
-      [/float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);\s*float cotKeep = smoothstep\( 2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, cotNear \);/, 'the near dissolve'],
+      [/float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);\s*float cotKeep = smoothstep\( 1\.50 \* vCotNearScale, 5\.00 \* vCotNearScale, cotNear \);/, 'the near dissolve'],
       [/float cotHash = fract\( sin\( dot\( aCard\.xyz \+ instanceMatrix\[ 3 \]\.xyz, vec3\( 12\.9898, 78\.233, 37\.719 \) \) \) \* 43758\.5453 \);\s*float cotGate = 0\.1 \+ 0\.8 \* mix\( cotHash, clamp\( aCard\.y \/ \( 1\.5 \* aCard\.w \), 0\.0, 1\.0 \), uCotGateLift \);/, 'the gate'],
       [/float cotIn = uCotInsideFade \* \( 1\.0 - smoothstep\( 0\.94, 1\.04, length\( cotCam\.xz \) \/ max\( aCard\.w, 1e-3 \) \) \)\s*\* \( 1\.0 - smoothstep\( 1\.4, 1\.8, cotCam\.y \/ max\( aCard\.w, 1e-3 \) \) \);/, 'the inside fade'],
       [/float cotThin = step\( length\( cotCam \) \* uCotShrubThin, aCard\.w \);\s*cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \) \* mix\( step\( 0\.5, fract\( cotHash \* 7\.13 \) \) \* 1\.25, 1\.0, cotThin \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/, 'the shrink factor'],
