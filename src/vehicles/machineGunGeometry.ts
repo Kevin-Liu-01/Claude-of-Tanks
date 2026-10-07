@@ -64,6 +64,8 @@ export interface PintleOptions {
   ring?: boolean | { r?: number; stubs?: number };
   /** A remote station's weapon: a solenoid housing at the back plate instead of crew grips or a butt. */
   remote?: boolean;
+  /** 1 = near (default); 0 = the decor coarse level: the same envelope without the small hardware. */
+  detail?: 0 | 1;
 }
 
 export interface PintleLayout {
@@ -95,6 +97,7 @@ export interface PintleLayout {
   readonly remote: boolean;
   /** The caller's scale before the true-scale floor (cls.s x scale). */
   readonly authoredScale: number;
+  readonly detail: 0 | 1;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
@@ -136,6 +139,7 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
     bodyW, bodyH, bodyBottom,
     remote: Boolean(opts.remote),
     authoredScale,
+    detail: opts.detail === 0 ? 0 : 1,
   };
 }
 
@@ -156,11 +160,11 @@ export function addPintleMount(context: PintleLayout): void {
   const cheekBottom = colTop + 0.028 * s, cheekTop = trunY + 0.010 * s;
   for (const side of [-1, 1]) {
     parts.add(weaponSlot, block(0.012 * s, cheekTop - cheekBottom, 0.15 * s), side * cx, (cheekTop + cheekBottom) / 2, 0.035 * s);
-    parts.add(weaponSlot, cylX(0.016 * s, 0.008 * s, 10), side * (cx + 0.009 * s), colTop + 0.105 * s, 0.065 * s);
+    if (context.detail) parts.add(weaponSlot, cylX(0.016 * s, 0.008 * s, 10), side * (cx + 0.009 * s), colTop + 0.105 * s, 0.065 * s);
   }
   parts.add(weaponSlot, block(2 * cx + 0.012 * s, 0.010 * s, 0.15 * s), 0, Math.max(colTop + 0.04 * s, bodyBottom - 0.005 * s), 0.035 * s);
   parts.add(weaponSlot, cylX(0.009 * s, 2 * cx + 0.026 * s, 8), 0, colTop + 0.105 * s, 0.065 * s);
-  parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
+  if (context.detail) parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
     cx + 0.013 * s, colTop + 0.075 * s, -0.01 * s);
 }
 
@@ -196,12 +200,12 @@ export function addPintleReceiver(context: PintleLayout): void {
   parts.add(weaponSlot, block(bodyW * 0.3, coverH * 0.8, 0.016 * s), 0, coverY + coverH * 0.4, recZ - rd * 0.12);
   // the feedway on the can side where the belt enters, and the side plates' riveted trunnion lugs at the front
   parts.add(weaponSlot, block(0.022 * s, bodyH * 0.3, 0.075 * s), -bodyW / 2 - 0.009 * s, trunY + bodyH * 0.12, recZ + rd * 0.16);
-  for (const side of [-1, 1]) {
+  if (context.detail) for (const side of [-1, 1]) {
     parts.add(weaponSlot, block(0.008 * s, bodyH * 0.55, rd * 0.18), side * (bodyW / 2 + 0.003 * s), bodyBottom + bodyH * 0.36, frontZ - rd * 0.1);
   }
   // the charging handle and its slide on the side away from the can
   parts.add(weaponSlot, block(0.010 * s, bodyH * 0.22, rd * 0.42), bodyW / 2 + 0.004 * s, trunY - bodyH * 0.05, recZ - 0.02 * s);
-  parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.011 * s, 0], [0.012 * s, 0.026 * s], [0.0005, 0.03 * s]], 6),
+  if (context.detail) parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.011 * s, 0], [0.012 * s, 0.026 * s], [0.0005, 0.03 * s]], 6),
     0, 0, 0, 0, 0, -Math.PI / 2), bodyW / 2 + 0.008 * s, trunY - bodyH * 0.05, recZ + rd * 0.12);
   // armoured back plate (buffer housing)
   parts.add(weaponSlot, moldedBox(bodyW * 0.8, bodyH * 0.62, 0.05 * s, 0.008 * s, 1, 0.005 * s), 0, bodyBottom + bodyH * 0.42, backZ - 0.025 * s);
@@ -213,7 +217,7 @@ export function addPintleReceiver(context: PintleLayout): void {
     // the GPMG's pistol grip and trigger guard under the receiver's rear third, and its butt
     const gz = backZ + rd * 0.2;
     parts.add(weaponSlot, place(block(0.024 * s, 0.085 * s, 0.034 * s), 0, 0, 0, 0.32, 0, 0), 0, bodyBottom - 0.036 * s, gz - 0.012 * s);
-    parts.add(weaponSlot, sweptTube([[0, bodyBottom + 0.002 * s, gz + 0.07 * s], [0, bodyBottom - 0.026 * s, gz + 0.062 * s],
+    if (context.detail) parts.add(weaponSlot, sweptTube([[0, bodyBottom + 0.002 * s, gz + 0.07 * s], [0, bodyBottom - 0.026 * s, gz + 0.062 * s],
       [0, bodyBottom - 0.03 * s, gz + 0.02 * s], [0, bodyBottom - 0.012 * s, gz + 0.004 * s]], 0.0035 * s, 4, 6));
     // the butt: a slim wrist off the buffer, then the stock dropping to its butt plate
     parts.add(weaponSlot, block(bodyW * 0.46, bodyH * 0.42, 0.04 * s), 0, trunY - bodyH * 0.06, backZ - 0.068 * s);
@@ -318,9 +322,9 @@ export function addPintleBarrel(context: PintleLayout): void {
     // the gas cylinder under the barrel with its gas block (GPMGs, NSVT, Kord, DShK)
     const gasZ0 = 0.10 * s + bl * 0.04, gasZ1 = 0.10 * s + bl * 0.56;
     parts.add(weaponSlot, aim(cylZ(r0 * 0.62, gasZ1 - gasZ0, 8), (gasZ0 + gasZ1) / 2, -r0 * 1.75), 0, trunY, trunZ);
-    parts.add(weaponSlot, aim(block(r0 * 1.6, r0 * 2.9, 0.016 * s), gasZ1, -r0 * 0.9), 0, trunY, trunZ);
+    if (context.detail) parts.add(weaponSlot, aim(block(r0 * 1.6, r0 * 2.9, 0.016 * s), gasZ1, -r0 * 0.9), 0, trunY, trunZ);
   }
-  if (cls.handle) {
+  if (cls.handle && context.detail) {
     // the barrel's carrying handle, standing on two lugs
     const hz0 = 0.10 * s + bl * 0.12, hz1 = 0.10 * s + bl * 0.3, rise = r0 * 1.12 + 0.03 * s;
     parts.add(weaponSlot, sweptTube([[0, trunY + r0 * 0.6, trunZ + hz0], [0, trunY + rise, trunZ + hz0 + (hz1 - hz0) * 0.25],
@@ -361,19 +365,21 @@ export function addPintleAmmo(context: PintleLayout): void {
   parts.add(canSlot, moldedBox(canW * 1.04, 0.01 * s, canD * 1.025, 0.006 * s, 1, 0.003 * s), ax, lidY, canZ);
   // separate hardware that stands off the can and throws its own shadow: the lid's hinge pin along the outer edge,
   // the carrying handle on two posts, and the clamp latch on the can's front end
-  parts.add(weaponSlot, roundBar([ax - canW * 0.52, lidY - 0.003 * s, canZ - canD * 0.42], [ax - canW * 0.52, lidY - 0.003 * s, canZ + canD * 0.42],
-    0.0045 * s, 6));
-  for (const dz of [-0.22, 0.22]) parts.add(weaponSlot, block(0.008 * s, 0.018 * s, 0.008 * s), ax, lidY + 0.012 * s, canZ + dz * canD);
-  parts.add(weaponSlot, roundBar([ax, lidY + 0.021 * s, canZ - canD * 0.26], [ax, lidY + 0.021 * s, canZ + canD * 0.26], 0.0045 * s, 6));
-  parts.add(weaponSlot, cylX(0.006 * s, canW * 0.5, 8), ax, lidY - 0.024 * s, canZ + canD / 2 + 0.006 * s);
-  parts.add(weaponSlot, place(block(canW * 0.42, 0.034 * s, 0.007 * s), 0, 0, 0, 0.22, 0, 0), ax, lidY - 0.012 * s, canZ + canD / 2 + 0.01 * s);
+  if (context.detail) {
+    parts.add(weaponSlot, roundBar([ax - canW * 0.52, lidY - 0.003 * s, canZ - canD * 0.42], [ax - canW * 0.52, lidY - 0.003 * s, canZ + canD * 0.42],
+      0.0045 * s, 6));
+    for (const dz of [-0.22, 0.22]) parts.add(weaponSlot, block(0.008 * s, 0.018 * s, 0.008 * s), ax, lidY + 0.012 * s, canZ + dz * canD);
+    parts.add(weaponSlot, roundBar([ax, lidY + 0.021 * s, canZ - canD * 0.26], [ax, lidY + 0.021 * s, canZ + canD * 0.26], 0.0045 * s, 6));
+    parts.add(weaponSlot, cylX(0.006 * s, canW * 0.5, 8), ax, lidY - 0.024 * s, canZ + canD / 2 + 0.006 * s);
+    parts.add(weaponSlot, place(block(canW * 0.42, 0.034 * s, 0.007 * s), 0, 0, 0, 0.22, 0, 0), ax, lidY - 0.012 * s, canZ + canD / 2 + 0.01 * s);
+  }
   // the can tray on a pintle: a floor under the can, its strap and the arm to the cradle under the receiver (an external
   // cradle's host carries the can)
   const canBottom = canY - canH / 2;
   const armX0 = ax + canW / 2, armX1 = -bodyW * 0.3;
   if (tall) {
     parts.add(weaponSlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
-    parts.add(weaponSlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax + canW / 2 + 0.004 * s, canBottom + canH * 0.35, canZ + canD * 0.18);
+    if (context.detail) parts.add(weaponSlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax + canW / 2 + 0.004 * s, canBottom + canH * 0.35, canZ + canD * 0.18);
     if (armX1 > armX0) {
       const armY = Math.max(canBottom, bodyBottom) + 0.005 * s;
       parts.add(weaponSlot, block(armX1 - armX0, 0.009 * s, 0.03 * s), (armX0 + armX1) / 2, armY, canZ + canD * 0.18);

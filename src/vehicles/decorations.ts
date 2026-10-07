@@ -1146,7 +1146,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   // and belt. Weapon steel and ammunition stay gunmetal; the shield and ring
   // take the scheme's kit paint. Gun and shield stow ~7 deg muzzle-up about
   // the trunnion; the mount stays plumb.
-  aamg({ rng, v = 'm2', shield = false, ring = false }) {
+  aamg({ rng, v = 'm2', shield = false, ring = false, detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.56 + rng() * 0.06;
     const collector = {
@@ -1159,8 +1159,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
         parts.push({ mat: painted ? 'kit' : 'steel', geo: bakeShade(geo, painted ? 0.92 : slot === 'shadow' ? 0.32 : tone) });
       },
     };
+    // round 3 (2026-10-07): the coarse level (detail 0) keeps the envelope without the gun's small hardware
     const layout = createPintleLayout({
       cls: v === 'dshk' ? 'dshk' : 'm2', shield, ring: ring ? { r: 0.33, stubs: 4 } : false, ammo: true, tone: 'two-tone',
+      detail: detail ? 1 : 0,
     }, collector);
     addPintleRing(layout);
     addPintleMount(layout);
@@ -2821,7 +2823,7 @@ function clonePartList(parts: DecorPartList): DecorPartList {
  * draw must still carry every piece of that bucket.
  */
 const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 'cargo', 'basket', 'tools', 'drums',
-  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock']);
+  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
 /**
