@@ -4,5 +4,5 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "lrmv_lynx": { v: 0.025, o: [-1.7031, 0.021727, -3.612], t: [0, 2.061, -0.135], g: [-0.010476, 2.343024, 0.63] },
+  "lrmv_lynx": { v: 0.025, o: [-1.7031, 0.021727, -3.612], t: [0, 2.061, -0.135], g: [-0.010476, 2.343024, 0.63], turret: "FwBmAG8AFwBmAG8A" },
 });
