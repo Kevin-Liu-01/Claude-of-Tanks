@@ -35,3 +35,25 @@ The test-registry assertion was also stale on the starting main revision: asset
 provenance had already been inserted before the four fleet scans. Its assertion
 now explicitly preserves that fifth entry and the original scan order; no test
 was removed or suppressed.
+
+## Published result
+
+Runtime commit `c6b60311c280914c68375762424aa8b74e4a4348` was rebased onto
+`c86165ba3` and pushed normally to origin/main. The only overlapping test-list
+file retained every incoming UI test. Production deployment 202 is Ready and
+serves `v1.0.0+gc6b60311c` / `main-8cmqavln.js`. All 818 selected entry, vehicle
+family and changed icon/diagram assets match the local production bytes; ten
+routes return 200 and a missing hashed asset returns non-immutable 404.
+
+The exact integrated commit passed TypeScript/core-unused checks, test-registry
+validation (1,313 registered checks), cap regression controls, generic overlap
+controls, and the public production build. Both full-fleet CPU data freshness
+checks passed: 220 anatomy receipts and 220 marking-seat receipts in 82 groups.
+This does not certify the rendered diagrams or full composed anatomy gate.
+
+The immediate npm-test queue-admission attempt used a 1-second wait and timed out
+before checks ran. It is **incomplete**, not a failing functional test result.
+The targeted 83-ID release invocation remains in standard scoring at this
+checkpoint. Native visual review, rendered regeneration and the full 1,313-check
+run remain incomplete. None of the 157 circular-cap failures were waived or
+relabelled. See [production-verification.json](production-verification.json).
