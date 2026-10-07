@@ -214,8 +214,9 @@ export default {
       // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
       // vocabulary is the wharf's cable reels and the road signs
       // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
-      // (round 5, wave 243: "an oversized cable drum" in the chase's foreground) three cable reels, not ten
-      drumClusters: 6, camps: 2, modernClutter: { cablespool: 3, roadsign: 8 },
+      // (round 5, wave 243: "an oversized cable drum" in the chase's foreground) four cable reels, not ten, and the rest of
+      // the period budget (mapQuality: 18 pieces) in the roads' direction signs
+      drumClusters: 6, camps: 2, modernClutter: { cablespool: 4, roadsign: 14 },
       // round 4 (the coordinator, waves 182-184: no white picket fences off the American maps): the gardens' runs split
       // rails, the nearest to a Norwegian skigard (no colliders, as the pickets)
       roadFence: 'fencerail', yardFence: 'fencerail',
