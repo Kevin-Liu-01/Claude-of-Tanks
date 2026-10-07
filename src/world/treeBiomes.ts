@@ -49,6 +49,12 @@ export interface TreeBiome {
    */
   upland?: true;
   /**
+   * The trees lane (2026-10-06, the gauntlet's wave 179 on Monsoon: "pale eucalyptus poles"): the value range of a place's
+   * battle-zone snags (vegetation.ts convertSnags; unset, the charred grey 0.62-0.87) — the jungle's shell-killed trunks
+   * charred near-black, their count kept.
+   */
+  snagValue?: readonly [number, number];
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
@@ -174,8 +180,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
   // (Castanopsis) and oaks (the tall eucalyptus slot and the low willow slot, the oak a dark evergreen oak, never the
   // Mediterranean's grey), bamboo clumps (the oak slot) and the evergreen oak's shrubs in the understorey
-  monsoon: B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'chestnut' },
+  monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'chestnut' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
+    // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
+    snagValue: Object.freeze([0.16, 0.26] as const) }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
@@ -257,6 +265,11 @@ const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 
 export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
   if (treeBiomeOpen(mapId)) return 1;
   return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
+}
+
+/** The trees lane: a place's snag value range (TreeBiome.snagValue), or none (the charred grey default). */
+export function treeBiomeSnagValue(mapId: string | null | undefined): readonly [number, number] | null {
+  return (mapId ? TREE_BIOMES[mapId]?.snagValue : null) ?? null;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

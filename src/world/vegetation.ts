@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -6540,6 +6540,7 @@ function* vegetationBuildSteps(
   // decal. A snag is a look only: the obstacle and concealment records the simulation reads (collision, spotting,
   // the host's world) are the living tree's, the same on every tier and on `?legacyTrees=1` — the phones grow no
   // snags, and a mixed lobby must share one world.
+  const snagValueRange: readonly [number, number] = treeBiomeSnagValue(cfg?.id) ?? [0.62, 0.87];
   function convertSnags(): number {
     if (!(snagShare > 0)) return 0;
     const SNAG = { canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2 };
@@ -6558,7 +6559,8 @@ function* vegetationBuildSteps(
       t.fallH = SNAG.fallHeightM * sy;
       t.fallR = SNAG.fallRadiusM * sxz;
       t.dr = SNAG.rootDecalRadiusM * sxz;
-      const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
+      // (the trees lane: a place may char its snags darker — treeBiomes.ts snagValue — the hash and the count as before)
+      const value = snagValueRange[0] + treePositionNoise(t.x, t.z, 10) * (snagValueRange[1] - snagValueRange[0]);
       t.tint.setRGB(value, value * 0.96, value * 0.92);
       converted++;
     }

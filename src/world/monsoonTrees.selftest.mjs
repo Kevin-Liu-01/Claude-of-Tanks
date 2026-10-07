@@ -67,9 +67,12 @@ try {
       const at = world._trees.find((t) => Math.hypot(t.mat.elements[12] - x, t.mat.elements[14] - z) < 0.01);
       assert.ok(at && at.species === 'pine', `a living Khasi pine at (${x}, ${z}) (${at?.species})`);
     }
-    console.log(JSON.stringify({ map: 'monsoon', trees: total, census, authored }));
+    // (round 2, wave 179's "pale eucalyptus poles"): the battle zone's snags charred near-black, their count kept
+    const snags = world._trees.filter((t) => t.species === 'snag');
+    assert.ok(snags.length > 50 && snags.every((t) => t.tint.r <= 0.3), `the snags charred (${snags.length}, the palest ${Math.max(...snags.map((t) => t.tint.r)).toFixed(2)})`);
+    console.log(JSON.stringify({ map: 'monsoon', trees: total, census, authored, snags: snags.length }));
   } finally {
     world.dispose(); disposeObject3DResources(world.group);
   }
 } finally { restore(); }
-console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus; the bungalow\'s two Khasi pines seated PASS');
+console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus; the bungalow\'s two Khasi pines seated; its snags charred PASS');
