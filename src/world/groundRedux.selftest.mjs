@@ -86,6 +86,7 @@ assert.equal(resolveGroundReduxProfile('verdant').grass.reedMargin, 0);
 assert.deepEqual(resolveGroundReduxProfile('monsoon').rimTint, resolveGroundReduxProfile('mangrove').rimTint, 'moss on the wet maps\' outcrops');
 assert.ok(resolveGroundReduxProfile('desert').lip < resolveGroundReduxProfile('verdant').lip, 'the arid lip stays low');
 assert.equal(resolveGroundReduxProfile('mars').foldMoist, 0, 'no moisture in the folds of Mars');
+for (const id of SNOW) assert.equal(resolveGroundReduxProfile(id).foldMoist, 0, `${id}: a snow-filled hollow is not damp ground (no fold moisture, no green tint)`);
 
 // 3. The uniform packing the material reads: four packed vectors, the rate is 2π / period, clamped bands.
 const u = groundReduxUniformValues(resolveGroundReduxProfile('coastal'));
