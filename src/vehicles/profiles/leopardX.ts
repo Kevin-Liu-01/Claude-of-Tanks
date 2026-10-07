@@ -1014,7 +1014,10 @@ function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
   // cheeks and from the outboard receiver/ammunition body.
   equip(P,d,'turretDetail',box(.55891,.12256,.40355),.73998,2.7160,-.9222);
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
-  mg(P,d,.766,2.79,-.969,false,1.713,.74);
+  // 2026-10-07 (tank-accessories round 4): the same round-3 butt growth (4.2 cm local, 7.2 cm under the 1.713 stretch)
+  // put the RWS receiver's rear station at -1.276 (source -1.214). The gun moves 4.4 cm forward, onto the source
+  // pedestal's own centre (-0.926), and the stretch drops to 1.609: rear -1.214, barrel -0.087 again.
+  mg(P,d,.766,2.79,-.925,false,1.609,.74);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);
   equip(P,d,'turretDark',box(.204,.138,.014),.381,3.005,-.897);
@@ -1300,7 +1303,9 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
     roofHatch(P,d,x,2.566,z);
   }
   a5Optics(P,d);
-  mg(P,d,.954,2.612,-.161,false,1.92,1.077);
+  // 2026-10-07 (tank-accessories round 4): round 3's butt growth under the 1.92 stretch put the stock at -0.505 (source
+  // -0.437). The gun moves 4.6 cm forward and the stretch drops to 1.795: stock -0.437, muzzle 0.820 again.
+  mg(P,d,.954,2.612,-.115,false,1.795,1.077);
   equip(P,d,'turretDetail',box(.386,.036,.247),1.041,2.663,.013);
   equip(P,d,'turretDetail',box(.20,.13,.20),1.137,2.777,.030);
   equip(P,d,'turretDark',box(.20,.025,.22),1.137,2.854,.030);
