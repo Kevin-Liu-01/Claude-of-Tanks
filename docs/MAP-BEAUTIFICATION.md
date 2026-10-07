@@ -101,7 +101,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign |
 | Amberford | Norman / English river-ford market town (round 48): the river SW→NE through a sculpted valley, the stone bridge and the ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
-| Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands; on the square, the half-timbered Rathaus and the village church with its west tower and spire (the landmarks lane, 2026-10-05) |
+| Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands; on the square, the half-timbered Rathaus and the village church with its west tower and spire (the landmarks lane, 2026-10-05), the market's setts and the Marktbrunnen before the Rathaus and the walled churchyard on the church's south flank (round 2, 2026-10-06) |
 | Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
 | Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
@@ -7100,6 +7100,37 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
   critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
+### 2026-10-06 — Frontier Basin round 2: the market's setts, the Marktbrunnen and the churchyard (the landmarks lane)
+
+**The gauntlet's wave 156:** the Rathaus and the church "stand on bare mud with no market square or churchyard". Round 2
+sets them in their village, on the map-revival lane's round 3 (312dbd001, its walled Hofreiten), at the seats agreed with
+that lane:
+- the market's setts before the Rathaus (`path`, stone, 30 × 20 m over x −49..−19, z 9..29: half on the square's
+  hardstand, off the carriageways, south of the assault line's keep-out);
+- the Franconian Marktbrunnen (a column on an octagonal basin) at the setts' west end (−46, 18), clear of the road cores
+  (at the first seat, (−36, 20), the composer refused it as standing in the road);
+- the Rathaus's arcade open on the market, two stalls under it;
+- the churchyard on the church's south flank, east of the hunting blind: 17.5 × 14 m at (38.25, −53.45), its low stone
+  wall, the gate in its west side toward the road, ten headstones and Latin crosses, the path to the church;
+- the church's and the Rathaus's age (the library's spalled render, rain streaks under the cornices and sills).
+
+**Every piece vetoes its ground** (`landmarks/types.ts` `ground: 'veto'`, new this round). With the default reserve, the
+pieces' keep-off discs sit in the props' placement list, and the yard clutter's spot search draws again round any disc.
+On the courts' shared stream that re-rolled every court's yard and both mills (about 240 records, the first build). A
+vetoed piece instead leaves the passes after it drawing as on the map without it. A destructible they would stand on its
+ground (its centre inside, or within half a metre of the edge) is left out, with its draws taken and no record, pool slot,
+body or contact made. An open surface (the setts) keeps what stands on it.
+
+**Against 312dbd001's shard:**
+- the church and the chapel give their plots to the Rathaus and the church;
+- a bench (33.0, −46.9) and a bale (36.4, −52.0) on the churchyard are left out;
+- three trees whose crowns reached the pieces are cleared;
+- every other record stands where it stood (a few fence pickets within 1 mm, the packing's rounding).
+
+Census [6393, 6690, 6331] → [6410, 6750, 6328]. Pacing on the fleet receipt's four seeds (29000–29003): 341 / 185 / 188 /
+176 s against the base's 214 / 185 / 188 / 182 s (none under 120 s). Receipts: the 30 selected (the landmarks library,
+the collision drift and pins, the map's land use, villages, roads and minimap) green.
 
 ### 2026-10-05 — Frontier Basin: the Rathaus and the village church on the square (the landmarks lane)
 
