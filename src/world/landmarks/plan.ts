@@ -32,6 +32,9 @@ interface LandmarkKindSpec {
    *  tower between thin wall stubs): the composer tests these, not the footprint, against the solids already standing,
    *  and a vetoed ground is theirs. */
   solids?: (p: LandmarkParams) => ReadonlyArray<readonly [number, number, number, number]>;
+  /** The ground it is seated on, [hw, hl], where its footprint reaches past it (a tower mill's sails sweep over ground
+   *  its base never touches): the composer seats it, and measures its fall, on this rectangle alone. */
+  seat?: (p: LandmarkParams) => readonly [number, number] | null;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -109,7 +112,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
   // a mill's outfall: the culvert's headwall at the bank's top and its runnel pitched in stone down to the water, along +z
   // from the headwall (`length` m, `width` the runnel's)
-  outfall: { family: 'park', drapes: true, dressing: () => true, defaults: { length: 4, width: 0.8 },
+  outfall: { family: 'park', drapes: true, inWater: true, dressing: () => true, defaults: { length: 4, width: 0.8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.6, num(p, 'length') / 2 + 0.5] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
@@ -183,7 +186,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
-      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]) },
+      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]),
+    // (a tower mill stands on its brick base, 4.5 m round: on a terp's crest its sails' span reaches over the batter)
+    seat: (p) => (p.style === 'tower' ? [4.6, 4.6] : null) },
   // ------------------------------------------------------------------------------------------------ civic buildings
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)
