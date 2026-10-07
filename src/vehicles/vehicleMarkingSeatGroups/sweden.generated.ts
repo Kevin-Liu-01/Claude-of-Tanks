@@ -63,22 +63,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.339804,
-          1.4978605,
-          -0.7199759
+          1.3398032,
+          1.4978608,
+          -0.720104
         ],
         "quaternion": [
-          0.1279401,
-          0.6939925,
-          -0.1284544,
-          0.6967821
+          0.1293037,
+          0.7013889,
+          -0.1270817,
+          0.6893362
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0888677
+        "maximumSurfaceErrorM": 0.0898129
       },
       {
         "kind": "designation",
@@ -107,15 +107,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.22,
         "pos": [
-          1.1647973,
-          1.0205348,
-          0.8702093
+          1.1749343,
+          1.0205343,
+          0.8698341
         ],
         "quaternion": [
-          0.1337101,
-          0.6816688,
-          -0.1384607,
-          0.705888
+          0.1379739,
+          0.7034062,
+          -0.1342123,
+          0.6842295
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "udes03",
@@ -156,22 +156,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.5384746,
-          1.4612791,
-          3.0432381
+          -1.5578577,
+          1.4613903,
+          3.0433702
         ],
         "quaternion": [
-          0.4436485,
-          -0.5082518,
-          0.4854064,
-          0.5560905
+          0.4148907,
+          -0.5215389,
+          0.4641508,
+          0.5834612
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103a",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0144963
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0123292
       }
     ]
   },

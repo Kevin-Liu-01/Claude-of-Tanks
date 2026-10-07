@@ -1,0 +1,16 @@
+{
+  "release": 202,
+  "revision": "c6b60311c280914c68375762424aa8b74e4a4348",
+  "stamp": "v1.0.0+gc6b60311c",
+  "entry": "main-8cmqavln.js",
+  "verifiedAssets": 818,
+  "routes": 10,
+  "missingAssetStatus": 404,
+  "checks": "HTTP and byte identity; browser visual test blocked by capture queue",
+  "deployment": "https://claude-of-tanks-ig5brkl8l-kl01s-projects.vercel.app",
+  "production": "https://cot.kevinliu.studio",
+  "verifiedAt": "2026-10-07T09:23:25.616899+00:00",
+  "fullSuite": "Incomplete: queue admission timed out; no checks in this invocation ran",
+  "scopedRelease": "Incomplete: 83-ID standard/scoring phase still running at publication",
+  "capLint": "Failed: 157 of 220 models at each quality, 361 overlapping cap groups per quality"
+}
