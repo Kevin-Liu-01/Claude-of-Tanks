@@ -148,8 +148,10 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   delta: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   mangrove: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   polders: { density: 0.8 },
-  // a limestone coast: pale stone, warm rather than grey-blue
-  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
+  // (2026-10-07, the map-revival lane; gauntlet wave 184: "black pebble-dot decals") the Léon's granite clasts in the
+  // turf: fewer, and the granite's grey as pale as the stone-dark law allows (the limestone's dark warm tint read black on
+  // the sward)
+  coastal: { stones: 0.7, splinters: 0.3, stoneTint: [0.24, 0.235, 0.22] },
   saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
 });
 
