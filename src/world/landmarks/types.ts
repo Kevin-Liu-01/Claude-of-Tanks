@@ -17,7 +17,7 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden' | 'outfall'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
@@ -31,7 +31,7 @@ export type LandmarkKind =
   // village works
   | 'lavoir' | 'khan'
   // harbour works
-  | 'lighthouse' | 'mole' | 'quay' | 'slipway'
+  | 'lighthouse' | 'mole' | 'quay' | 'slipway' | 'harbour'
   // wrecks
   | 'aircraftWreck';
 
@@ -64,6 +64,33 @@ export interface LandmarkPlacement {
    * (props.ts), so no record of theirs moves for it.
    */
   ground?: 'reserve' | 'veto';
+  /**
+   * The worn ground at its doors (the landmarks lane, 2026-10-07; gauntlet wave 201: "spotless … set onto lawn"): at each,
+   * a trodden apron of beaten earth or gravel the door's width and 2 m more, and a worn path on from it straight out to
+   * the road the door faces. Ground only — paving draped over the ground, no record, no height and nothing cleared or
+   * moved (compose.ts composeApproaches).
+   */
+  approaches?: readonly LandmarkApproach[];
+}
+
+/** One door's worn ground (LandmarkPlacement.approaches). */
+export interface LandmarkApproach {
+  /** The face the door is in, in the piece's frame at its footprint's edge: front +z, back -z, right +x, left -x. */
+  side: 'front' | 'back' | 'left' | 'right';
+  /** The door's offset along that face from its middle (m): toward +x on the front and back, toward +z on the sides. */
+  u?: number;
+  /** The door's width (m, default 1.6): the apron is 2 m wider. */
+  width?: number;
+  /** How far the apron runs out from the face (m, default 2.5). */
+  depth?: number;
+  /** The worn ground: beaten earth (default) or gravel. */
+  surface?: 'earth' | 'gravel';
+  /**
+   * A worn path on from the apron, straight out along the door's facing to the road within 40 m (default true). It is
+   * laid only where nothing stands between (no building, wall, fence or water): a path keeps to an existing gap, it
+   * never cuts across a yard.
+   */
+  path?: boolean;
 }
 
 /** What a builder may read. It never draws from the props placement streams. */
@@ -89,6 +116,9 @@ export interface LandmarkBuildContext {
    * a bridge foots its piers on the bed and lays its deck to the banks. Absent in receipts that build on flat ground.
    */
   ground?: (lx: number, lz: number) => number;
+  /** The water's depth over the ground at a point of the piece's frame (0 where it is dry): a harbour's boats ride at
+   *  their moorings where it floats them and lie heeled on the sand where it does not. Absent in receipts. */
+  water?: (lx: number, lz: number) => number;
   /** The map paints its masonry as brick (a kit's stone surface): a builder picks courses and dressings to suit. */
   brick: boolean;
   snowCap: boolean;
