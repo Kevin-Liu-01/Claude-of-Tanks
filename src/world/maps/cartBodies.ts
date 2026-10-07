@@ -85,9 +85,14 @@ interface Ctx {
   readonly seed: number;
   /** The model's wood shades. */
   readonly woods: readonly Mat[];
-  /** A snowbound map (VehicleClimate snow): runner grooves, snow on the decks and loads (all dressing). */
+  /** A snowbound map (VehicleClimate snow): snow on the decks and loads, a drift against the runners (all dressing). */
   readonly snow?: boolean;
+  /** Round 3: where the runners' tracks lie (cartRunners reads them; the props press them into the ground). */
+  runners?: RunnerTrack[];
 }
+
+/** A sled's runners and the track they press (model space): the runner lines' x, from z0 (far behind) to z1 (ahead). */
+export interface RunnerTrack { readonly xs: readonly number[]; readonly z0: number; readonly z1: number; readonly width: number }
 
 function hash01(a: number, b: number): number {
   let h = Math.imul(a | 0, 0x9e3779b1) ^ Math.imul(b | 0, 0x85ebca6b);
@@ -1755,19 +1760,36 @@ function trailer(c: Ctx, s: TrailerSpec): Assembly {
 // the wave-161 sled pass (2026-10-07): on a snowbound map a sled sits in the snow it was drawn through — two grooves
 // pressed by its runners out behind it, snow lodged on its deck and settled on its load; a load is lashed down
 const SNOW_LYING = material('cargo', linearHex(0xe6ecf0), 0.92, 0, 0, 0.7);
-const SNOW_GROOVE = material('cargo', linearHex(0x8e9aa8), 0.95, 0, 0, 0.6);
 const MUTED_CANVAS = fixed(0x6a6650, 0.92, 0, 'canvas');
 const OLIVE_CAN = fixed(0x4b5132, 0.62, 0.15, 'steel');
 const ROPE = material('cargo', linearHex(0x7a6a48), 0.9, 0, 0, 0.6);
 
-/** The runners' grooves in the snow: a pressed strip under each runner, out behind the tail and a little ahead (dressing). */
+/**
+ * The runners' grooves in the snow, recorded: a pressed track under each runner, out behind the tail and a little ahead.
+ * Round 3 (wave 234: "pristine snow with no runner track, sinkage or drift"): no longer a flat strip in the sled's own
+ * frame (buried uphill and in the air downhill on a tilted sled); the props press it into the ground itself, conformed
+ * to it (vehicleContactShadow.ts buildRunnerTracks), from the layout cartRunners reads here.
+ */
 function runnerGrooves(c: Ctx, xs: readonly number[], z0: number, z1: number, width: number): void {
+  c.runners?.push({ xs: [...xs], z0, z1, width });
+}
+
+/**
+ * The snow drifted against a sled's windward runner (round 3): banked up against its outer face and running out to
+ * nothing away from it, tapering at both ends, lumpy (a wedge, not a loaf: the wind piles it against anything standing
+ * in the snow). Its foot sinks under the snow surface (dressing; snowbound maps, desktop).
+ */
+function windDrift(c: Ctx, x: number, z0: number, z1: number, side: 1 | -1): void {
   if (!c.snow || c.coarse) return;
-  for (const x of xs) {
-    c.mesh.dressing(() => c.mesh.box(x, 0.004, (z0 + z1) / 2, width, 0.008, z1 - z0, SNOW_GROOVE, 0));
-    // the ridge of snow pushed up beside each groove
-    for (const side of [-1, 1]) c.mesh.dressing(() => c.mesh.box(x + side * (width / 2 + 0.03), 0.012, (z0 + z1) / 2, 0.05, 0.024, z1 - z0, SNOW_LYING, 0.01));
-  }
+  const nu = 10, nv = 5, seed = 977 + Math.round(x * 100), reach = 0.42, crest = 0.14;
+  // i runs along z, j outward from the runner: i x j points up on the +x side, down on the -x side
+  c.mesh.dressing(() => c.mesh.grid(nu, nv, (i, j, out) => {
+    const u = i / nu, v = j / nv, along = Math.pow(Math.sin(Math.PI * u), 0.6);
+    const lump = 1 + 0.35 * (valueNoise(u * 3.3, v * 2.1, 0.5, seed) - 0.5);
+    out[0] = x + side * (0.02 + v * reach * (0.55 + 0.45 * along));
+    out[1] = -0.025 + (crest * along * lump + 0.025) * Math.pow(1 - v, 1.5);
+    out[2] = z0 + (z1 - z0) * u;
+  }, () => SNOW_LYING, { flip: side < 0 }));
 }
 
 /** Snow settled on a surface: a few uneven drifts lying on it, lumpy and thin, never one smooth lid (dressing). */
@@ -1865,6 +1887,7 @@ function sledge(c: Ctx, s: SledgeSpec): Assembly {
     } else firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
   };
   runnerGrooves(c, [-rw, rw], -hl - 2.4, hl + 0.2, 0.09);
+  windDrift(c, rw, -hl, hl * 0.5, 1);
   return { wheels: [], body, load, debris: { w: 0.16, l: 1.4 } };
 }
 
@@ -1936,6 +1959,7 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     snowCover(c, 0, deckY + 0.03, hl * 0.33, rw * 0.85, hl * 0.12, 0.04);
     snowCover(c, 0, deckY + 0.03, -hl * 0.85, rw * 0.85, hl * 0.1, 0.035);
     runnerGrooves(c, [-rw, rw], -hl - 2.2, hl * 0.6, 0.06);
+    windDrift(c, rw, -hl, hl * 0.3, 1);
     return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 } };
   }
   // the komatik: plank runners on edge with turned-up noses, plastic shoes, cross slats lashed on, a handle frame
@@ -1952,22 +1976,24 @@ function sled(c: Ctx, s: SledSpec): Assembly {
         const b = 0.3 * rise * rise, tp = top + 0.14 * Math.pow(rise, 1.6);
         return [z, b, Math.max(b + 0.035, tp)];
       };
+      // (round 3) the board's four faces outward: i runs toward the nose (+z), so a side face (j up) faces -x and a
+      // top or shoe face (j across from the outside) faces -sx up; each was flipped the other way
       c.mesh.grid(n * 2, 1, (i, j, out) => {
         const [z, b, t] = outline(i / (n * 2));
         out[0] = sx * rw + sx * 0.0175; out[1] = j ? t : b; out[2] = z;
-      }, () => woodOf(c, 1 + sx), { flip: sx < 0 });
+      }, () => woodOf(c, 1 + sx), { flip: sx > 0 });
       c.mesh.grid(n * 2, 1, (i, j, out) => {
         const [z, b, t] = outline(i / (n * 2));
         out[0] = sx * rw - sx * 0.0175; out[1] = j ? t : b; out[2] = z;
-      }, () => woodOf(c, 1 + sx), { flip: sx > 0 });
+      }, () => woodOf(c, 1 + sx), { flip: sx < 0 });
       c.mesh.grid(n * 2, 1, (i, j, out) => {
         const [z, , t] = outline(i / (n * 2));
         out[0] = sx * rw + (j ? -1 : 1) * sx * 0.0175; out[1] = t; out[2] = z;
-      }, () => woodOf(c, 1 + sx), { flip: sx < 0 });
+      }, () => woodOf(c, 1 + sx), { flip: sx > 0 });
       c.mesh.grid(n * 2, 1, (i, j, out) => {
         const [z, b] = outline(i / (n * 2));
         out[0] = sx * rw + (j ? -1 : 1) * sx * 0.022; out[1] = b - 0.012; out[2] = z;
-      }, () => UHMW, { flip: sx > 0 });
+      }, () => UHMW, { flip: sx < 0 });
     }
     const slats = Math.round((s.len * 0.82) / 0.115);
     for (let k = 0; k < slats; k++) {
@@ -2015,6 +2041,7 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     } else firewood(c, 0, top + 0.025, 0, s.width * 0.9, s.len * 0.7, 2);
   };
   runnerGrooves(c, [-rw, rw], -hl - 2.6, hl + 0.3, 0.07);
+  windDrift(c, rw, -hl, hl * 0.4, 1);
   return { wheels: [], body, load, debris: { w: 0.07, l: 0.8 } };
 }
 
@@ -2074,6 +2101,13 @@ export function buildCart(mesh: VehicleMesh, m: CartModel, o: CartBuildOptions):
   if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked); return; }
   // the hay sledge's spill lies a little closer since its heap sits within the rack (the wave-161 pass)
   wreckSled(c, a, m.kind === 'sled' ? m.width / 2 : m.kind === 'sledge' ? m.bedW / 2 + 0.3 : 0.3, m.kind === 'sledge' ? 1.6 : 1.9);
+}
+
+/** A sled's runner tracks (model space; null for a wheeled cart): what its builder records (runnerGrooves). */
+export function cartRunners(m: CartModel): RunnerTrack | null {
+  const c: Ctx = { mesh: new VehicleMesh(), coarse: true, seed: 0, woods: m.wood.map((hex) => woodMat(hex)), runners: [] };
+  assembly(c, m);
+  return c.runners?.[0] ?? null;
 }
 
 /** The cart's wheels (axle z, centre height, radius): the spray zones its weathering darkens. */

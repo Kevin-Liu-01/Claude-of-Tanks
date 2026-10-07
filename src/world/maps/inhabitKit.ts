@@ -19,6 +19,7 @@ import {
 } from '../structureConnectivity.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, civilianVehicleOverrides } from './civilianVehicleKit.ts';
 import { CART_RECEIPTS, cartOverrides } from './cartKit.ts';
+import type { RunnerTrack } from './cartBodies.ts';
 import type { StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
@@ -61,6 +62,9 @@ export interface DestructiblePropType {
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
+   * into the ground (vehicleContactShadow.ts buildRunnerTracks). */
+  runners?: RunnerTrack;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
@@ -1870,7 +1874,8 @@ export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<str
   }
   for (const [kind, override] of Object.entries(cartOverrides(mapId, mobile))) {
     const entry = { ...CART_RECORD_FIELDS[kind as keyof typeof CART_RECORD_FIELDS], build: override.build, broken: override.broken,
-      instancePaint: override.instancePaint, ...(override.shadowBuild ? { shadowBuild: override.shadowBuild } : {}) } as DestructiblePropType;
+      instancePaint: override.instancePaint, ...(override.shadowBuild ? { shadowBuild: override.shadowBuild } : {}),
+      ...(override.runners ? { runners: override.runners } : {}) } as DestructiblePropType;
     out[kind] = Object.defineProperties(entry, {
       hw: { enumerable: true, get: () => override.hw },
       hl: { enumerable: true, get: () => override.hl },

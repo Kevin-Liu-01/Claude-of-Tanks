@@ -80,7 +80,7 @@ import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civil
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
-import { buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
+import { buildRunnerTracks, buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
 import {
   CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
   type FootprintPolygon,
@@ -8826,6 +8826,10 @@ ${snowCap ? `
       return meta?.instancePaint && meta.hw !== undefined && meta.hl !== undefined ? { hw: meta.hw, hl: meta.hl } : null;
     }, (record) => !record.dropped);
     if (contact) group.add(contact);
+    // round 3 (the map-vehicles lane, 2026-10-07): the tracks the sleds' runners pressed into the snow behind them
+    const tracks = buildRunnerTracks(destructibles, heightField, aniso, (kind) => LOCAL_TYPES[kind]?.runners ?? null,
+      (record) => !record.dropped && record.state === 0);
+    if (tracks) group.add(tracks);
   }
 
   // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once

@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
 import { keepStreams } from '../geometryStreams.ts';
-import { buildCart, cartWheels, type CartModel } from './cartBodies.ts';
+import { buildCart, cartRunners, cartWheels, type CartModel, type RunnerTrack } from './cartBodies.ts';
 import { climateForMap, type VehicleClimate } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
@@ -360,6 +360,16 @@ interface CartOverride {
   /** Its body's plan (CartFootprint hull), the same on every tier. */
   readonly bodyHull: readonly number[];
   readonly contactBand: StructureCollisionRuntimeBand;
+  /** Round 3: a sled's runner tracks on a snowbound map, in the placed copy's frame (the fit's centre and scale). */
+  readonly runners?: RunnerTrack;
+}
+
+/** A sled's runner tracks in the fitted frame (its builder's layout, shifted to the footprint's centre and scaled). */
+function fittedRunners(e: CartEntry, role: CartRole): RunnerTrack | undefined {
+  const raw = cartRunners(e.model);
+  if (!raw) return undefined;
+  const { cz, s } = cartFit(e.model, role);
+  return { xs: raw.xs.map((x) => x * s), z0: (raw.z0 - cz) * s, z1: (raw.z1 - cz) * s, width: raw.width * s };
 }
 
 /** One map's carts: each role's builders from the map's set and soil, its copies' colours, its collision (lazily). */
@@ -376,6 +386,7 @@ export function cartOverrides(mapId: string, mobile: boolean): Record<CartRole, 
       broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(e, role, ctx, true, seed)),
       instancePaint: paintPicker(e, salt + role.length * 131),
       ...(mobile ? {} : { shadowBuild: () => canonicalSolid(e, role) }),
+      ...(ctx.climate.snow ? { runners: fittedRunners(e, role) } : {}),
     };
     out[role] = Object.defineProperties(o, {
       hw: { enumerable: true, get: () => cartFootprint(e, role).hw },
