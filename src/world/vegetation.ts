@@ -200,9 +200,12 @@ interface VegetationConfig {
    * A woodlot's centre stands only on the wood-zone ground — the share `zone` of the square ranked by height and slope
    * (the ridges, their slopes, ground steeper than `slopeDeg`, default 12°) — neighbouring stands may close into one wood
    * (their outlines overlapping by up to `merge` m, default 30), and a wood keeps no thin patches. Every stand keeps its
-   * count; the field trees keep the field law; unset, the woods stand as before.
+   * count; the field trees keep the field law; unset, the woods stand as before. The woods hold a tree budget, the target
+   * stands' mean count: stands are placed until they hold it, a quarter past the target at most. `budget` (default 1) is
+   * that budget's share for a map whose own woods seat fewer trees a stand than the mean (Monsoon Ridge's spurs, 0.81:
+   * its stands under the field law hold about 49 trees, the law's mean 60.75) — its woods hold its own count.
    */
-  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number }>;
+  landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number; budget?: number }>;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
@@ -5855,9 +5858,10 @@ function* vegetationBuildSteps(
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
     // (the trees lane: a landscape map keeps its woods' tree budget — the target stands' mean count, a round-2b stand's
     // 24-57 trees half again — placing stands past the target, up to a quarter more, until its stands hold it)
-    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) : 0;
+    const standBudget = landscape ? clusterTarget * (open ? 14.2 : 60.75) * Math.max(0, landscape.budget ?? 1) : 0;
     let standTrees = 0;
-    while ((landscape ? clusters.length < clusterTarget * 1.25 && (clusters.length < clusterTarget || standTrees < standBudget)
+    // (a budget's share under 1 may hold its count with fewer stands than the target: the stands stop once they hold it)
+    while ((landscape ? clusters.length < clusterTarget * 1.25 && standTrees < standBudget
       : clusters.length < clusterTarget) && attempts++ < 6000) {
       // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
       // the wadi, the spring), any other anywhere on the field

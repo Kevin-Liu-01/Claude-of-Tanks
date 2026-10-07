@@ -97,6 +97,14 @@ export default {
     loneMix: [['eucalyptus', 0.34], ['pine', 0.28], ['willow', 0.24], ['oak', 0.14]], rimMix: [['eucalyptus', 0.38], ['willow', 0.28], ['pine', 0.22], ['oak', 0.12]],
     clusterCount: 118, loneCount: 238, rimCount: 148, grassDensity: 1.38,
     clusterScrub: 2.7, bushCount: 1.72, bushSpecies: 'oak',
+    // the trees lane (2026-10-07, the coordinator's ruling on the gauntlet's waves 178 and 179: the spurs wooded): the
+    // woods on the spur ridges and their slopes, closed (vegetation.ts `landscapeWoods`), on three fifths of the ground —
+    // at half of it the low ground's cover went and the battles shortened (pacing median 250 -> 188 s; 247 s here); the
+    // budget's share 0.81 holds the woods to the field law's count (8,238 -> 8,306 wood trees, 111 stands for 130)
+    landscapeWoods: { zone: 0.6, slopeDeg: 12, merge: 30, budget: 0.81 },
+    // the DC's compound on Garrison Hill (the landmarks lane's bungalow, garden, path and court) stays the woods' clearing:
+    // the spur's wood stands round it, the two Khasi pines frame it (their seats outside these discs)
+    avoid: [{ x: -190, z: 262, r: 13 }, { x: -180.9, z: 246.2, r: 9 }, { x: -169, z: 247, r: 6 }, { x: -148, z: 245, r: 20 }],
     // the trees lane (2026-10-06, with the landmarks lane's DC's bungalow garden): two Khasi pines framing the compound,
     // off the garden's west corner and by the tennis court's north-west bank, both clear of the set pieces' footprints
     // and margins (records moved from the pine stands; no new tree; the west one half a metre north of the asked seat,

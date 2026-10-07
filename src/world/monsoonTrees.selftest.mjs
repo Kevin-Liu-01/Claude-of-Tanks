@@ -67,12 +67,22 @@ try {
       const at = world._trees.find((t) => Math.hypot(t.mat.elements[12] - x, t.mat.elements[14] - z) < 0.01);
       assert.ok(at && at.species === 'pine', `a living Khasi pine at (${x}, ${z}) (${at?.species})`);
     }
+    // (2026-10-07, the coordinator's ruling on waves 178 and 179: the spurs wooded) the woods on the spur ridges and their
+    // slopes, closed (vegetation.ts landscapeWoods): its budget's share holds the field law's count (8,560 with the
+    // compound's discs) with fewer stands than the target, each seated full; the DC's compound stays their clearing
+    const lw = world.group.userData.landscapeWoods;
+    assert.ok(lw && lw.standTrees >= lw.standBudget && lw.stands < lw.target, `the spurs' woods hold their budget (${JSON.stringify(lw)})`);
+    assert.ok(Math.abs(total - 8560) <= 0.03 * 8560, `the woods keep the field law's count (8560 -> ${total})`);
+    for (const av of veg.avoid) {
+      const inside = world._trees.filter((t) => Math.hypot(t.mat.elements[12] - av.x, t.mat.elements[14] - av.z) < av.r).length;
+      assert.equal(inside, 0, `no tree in the compound's disc at (${av.x}, ${av.z})`);
+    }
     // (round 2, wave 179's "pale eucalyptus poles"): the battle zone's snags charred near-black, their count kept
     const snags = world._trees.filter((t) => t.species === 'snag');
     assert.ok(snags.length > 50 && snags.every((t) => t.tint.r <= 0.3), `the snags charred (${snags.length}, the palest ${Math.max(...snags.map((t) => t.tint.r)).toFixed(2)})`);
-    console.log(JSON.stringify({ map: 'monsoon', trees: total, census, authored, snags: snags.length }));
+    console.log(JSON.stringify({ map: 'monsoon', trees: total, census, authored, snags: snags.length, landscapeWoods: lw }));
   } finally {
     world.dispose(); disposeObject3DResources(world.group);
   }
 } finally { restore(); }
-console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus; the bungalow\'s two Khasi pines seated; its snags charred PASS');
+console.log('monsoonTrees.selftest: Kohima plants no palm and grows every slot as a Naga Hills form — the Khasi pine, the montane chestnut-oak and evergreen oak, the bamboo clump — no palm, no eucalyptus; the bungalow\'s two Khasi pines seated; its snags charred; the spurs\' woods closed on their budget, the compound clear PASS');
