@@ -66,6 +66,10 @@ const TWINE = material('cargo', linearHex(0x6a5a38), 0.9, 0, 0, 0.6);
 const CRATE_PINE = material('wood', linearHex(0x9c7a4e), 0.86, 0, 0.3, 1);
 const CRATE_PINE_OLD = material('wood', linearHex(0x7a6044), 0.88, 0, 0.3, 1);
 const CRATE_INSIDE = material('wood', linearHex(0x2c241a), 0.9, 0, 0.3, 1);
+// round 3 (wave 234: crates "spotless and unlashed"): boards gone grey, the shipper's stencil, the grime of the road
+const CRATE_PINE_GREY = material('wood', linearHex(0x857d6a), 0.9, 0, 0.3, 1);
+const CRATE_STENCIL = material('paint', linearHex(0x1e1b16), 0.8, 0, 0, 0.6);
+const CRATE_GRIME = material('paint', linearHex(0x3a2f24), 0.92, 0, 0, 0.4);
 const STRAP = material('cargo', linearHex(0x2c2b27), 0.7, 0, 0, 0.6);
 const KELP_A = material('cargo', linearHex(0x5a5628), 0.68, 0, 0, 0.4);
 const KELP_B = material('cargo', linearHex(0x3e3a1e), 0.7, 0, 0, 0.4);
@@ -439,21 +443,65 @@ function drum(c: Ctx, x: number, y: number, z: number, r: number, h: number, m: 
 /** A crate (a slatted box). */
 function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d: number, yaw: number): void {
   c.mesh.push().translate(x, y, z).rotateY(yaw);
-  const m = hash01(Math.round((x * 13 + z * 7 + y * 5) * 10), c.seed + 41) < 0.5 ? CRATE_PINE : CRATE_PINE_OLD;
+  const salt = Math.round((x * 13 + z * 7 + y * 5) * 10);
+  const m = hash01(salt, c.seed + 41) < 0.5 ? CRATE_PINE : CRATE_PINE_OLD;
   if (c.coarse) { board(c, 0, h / 2, 0, w, h, d, m); c.mesh.pop(); return; }
   // (round 2) a slatted crate: three boards a side with gaps showing its dark inside, corner posts, a lid of three (square
   // edges: the crates are many and small)
   const box = (bx: number, by: number, bz: number, bw: number, bh: number, bd: number, bm: Mat) => c.mesh.box(bx, by, bz, bw, bh, bd, bm, 0);
+  // (round 3) each board its own age: most of the crate's pine, some the other, a few gone grey
+  let boardNo = 0;
+  const age = (): Mat => {
+    const a = hash01(salt + 7 * boardNo++, c.seed + 43);
+    return a < 0.16 ? CRATE_PINE_GREY : a < 0.34 ? (m === CRATE_PINE ? CRATE_PINE_OLD : CRATE_PINE) : m;
+  };
   box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE);
   const rows = 3, sh = h / rows - 0.022;
   for (let k = 0; k < rows; k++) {
     const yy = (k + 0.5) * (h / rows);
-    for (const sz of [-1, 1]) box(0, yy, sz * (d / 2 - 0.006), w - 0.05, sh, 0.012, m);
-    for (const sx of [-1, 1]) box(sx * (w / 2 - 0.006), yy, 0, 0.012, sh, d - 0.05, m);
+    for (const sz of [-1, 1]) box(0, yy, sz * (d / 2 - 0.006), w - 0.05, sh, 0.012, age());
+    for (const sx of [-1, 1]) box(sx * (w / 2 - 0.006), yy, 0, 0.012, sh, d - 0.05, age());
   }
-  for (let k = 0; k < 3; k++) box(0, h - 0.006, -d / 2 + (k + 0.5) * (d / 3), w - 0.02, 0.012, d / 3 - 0.018, m);
+  for (let k = 0; k < 3; k++) box(0, h - 0.006, -d / 2 + (k + 0.5) * (d / 3), w - 0.02, 0.012, d / 3 - 0.018, age());
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m);
+  // (round 3) the road's grime along each side's foot, the shipper's stencil on the middle board of one end
+  c.mesh.dressing(() => {
+    const g = 0.05 + 0.05 * hash01(salt, c.seed + 47), f = 0.004;
+    for (const sz of [-1, 1]) {
+      const zf = sz * (d / 2 + 0.002);
+      face4(c.mesh, [[-w / 2 + 0.01, f, zf], [w / 2 - 0.01, f, zf], [w / 2 - 0.01, g, zf], [-w / 2 + 0.01, g * 0.7, zf]], [0, 0, sz], CRATE_GRIME);
+    }
+    for (const sx of [-1, 1]) {
+      const xf = sx * (w / 2 + 0.002);
+      face4(c.mesh, [[xf, f, -d / 2 + 0.01], [xf, f, d / 2 - 0.01], [xf, g * 0.8, d / 2 - 0.01], [xf, g, -d / 2 + 0.01]], [sx, 0, 0], CRATE_GRIME);
+    }
+    if (hash01(salt, c.seed + 49) < 0.8) {
+      const sx = hash01(salt, c.seed + 51) < 0.5 ? 1 : -1, xs = sx * (w / 2 + 0.003), n: Vec3 = [sx, 0, 0];
+      const mark = (z0: number, z1: number, y0: number, y1: number) =>
+        face4(c.mesh, [[xs, h * y0, d * z0], [xs, h * y0, d * z1], [xs, h * y1, d * z1], [xs, h * y1, d * z0]], n, CRATE_STENCIL);
+      mark(-0.3, 0.1, 0.45, 0.58); mark(0.15, 0.3, 0.45, 0.58); mark(-0.3, 0.02, 0.38, 0.41);
+    }
+  });
   c.mesh.pop();
+}
+
+/**
+ * A lashing over a stack of crates (round 3, wave 234: "unlashed"): a rope from the deck on one side up over the stack's
+ * shoulders and across its top, down to the deck on the other, at z. `layers` lists each tier's half-width and top from
+ * the bottom up (narrowing), `baseY` the deck under it (dressing; desktop).
+ */
+function lashStack(c: Ctx, z: number, baseY: number, layers: readonly (readonly [number, number])[], r = 0.009): void {
+  if (c.coarse) return;
+  const e = r + 0.004, half: Vec3[] = [[layers[0][0] + 0.05, baseY + 0.01, z]];
+  layers.forEach(([hw, top], i) => {
+    half.push([hw + e, top - 0.03, z]);
+    const next = layers[i + 1];
+    if (next) half.push([next[0] + e, top + e, z]);
+  });
+  const [hwTop, top] = layers[layers.length - 1];
+  half.push([hwTop - 0.015, top + e, z]);
+  const path: Vec3[] = [...half.map(([px, py, pz]) => [-px, py, pz] as Vec3), ...half.slice().reverse()];
+  c.mesh.dressing(() => bentRod(c, path, r, ROPE, true));
 }
 
 /** An open plastic produce crate (slotted sides), its vegetables showing over the rim. */
@@ -666,6 +714,7 @@ function charrette(c: Ctx, s: CharretteSpec): Assembly {
       crate(c, -hw * 0.45, y, -hl * 0.4, hw * 0.85, 0.32, 0.42, 0.05);
       crate(c, hw * 0.45, y, -hl * 0.35, hw * 0.85, 0.32, 0.42, -0.04);
       crate(c, 0, y + 0.32, -hl * 0.38, hw * 0.9, 0.3, 0.42, 0.12);
+      for (const dz of [-0.1, 0.1]) lashStack(c, -hl * 0.38 + dz, y, [[hw * 0.875, y + 0.32], [hw * 0.47, y + 0.62]]);
     } else if (s.load === 'firewood') {
       firewood(c, 0, y, -0.05, s.bedW * 0.86, s.bedL * 0.7, 3);
     } else {
@@ -985,6 +1034,8 @@ function trolley(c: Ctx, s: TrolleySpec): Assembly {
       crate(c, hw * 0.45, y, -hl * 0.4, hw * 0.85, 0.34, 0.46, -0.06);
       crate(c, 0, y, hl * 0.2, hw * 1.6, 0.3, 0.42, 0.02);
       crate(c, 0.02, y + 0.38, -hl * 0.42, hw * 0.9, 0.3, 0.4, 0.15);
+      for (const dz of [-0.09, 0.09]) lashStack(c, -hl * 0.42 + dz, y, [[hw * 0.875, y + 0.38], [hw * 0.5, y + 0.68]]);
+      lashStack(c, hl * 0.2, y, [[hw * 0.8, y + 0.3]]);
     } else if (s.load === 'sacks') {
       for (let k = 0; k < 3; k++) sack(c, 0, y + (k === 2 ? 0.2 : 0), -hl * 0.4 + k * hl * 0.4 - (k === 2 ? hl * 0.6 : 0), hw * 1.5, 0.22, 0.5, 0.05 * k, k % 2 ? BURLAP : BURLAP_DARK);
     } else {
@@ -1035,6 +1086,7 @@ function tyrecart(c: Ctx, s: TyreCartSpec): Assembly {
     const y = deckY + 0.013;
     if (s.load === 'crates') {
       for (let k = 0; k < 4; k++) crate(c, (k % 2 ? 1 : -1) * hw * 0.45, y + (k > 1 ? 0.3 : 0), -0.2 + (k > 1 ? 0.05 : 0), hw * 0.82, 0.28, 0.4, 0.06 * k);
+      for (const dz of [-0.09, 0.08]) lashStack(c, -0.17 + dz, y, [[hw * 0.87, y + 0.58]]);
     } else if (s.load === 'sacks') {
       sack(c, -hw * 0.42, y, -0.05, hw * 0.8, 0.26, s.deckL * 0.5, 0.04, BURLAP);
       sack(c, hw * 0.42, y, 0.0, hw * 0.8, 0.24, s.deckL * 0.46, -0.06, BURLAP_DARK);
@@ -1137,6 +1189,7 @@ function thela(c: Ctx, s: ThelaSpec): Assembly {
         k % 2 ? fixed(0xd8d2be, 0.95, 0, 'canvas') : BURLAP);
     } else {
       for (let k = 0; k < 4; k++) crate(c, 0, y + Math.floor(k / 2) * 0.3, -hl * 0.4 + (k % 2) * hl * 0.6, s.deckW * 0.8, 0.28, 0.5, 0.04 * k);
+      for (const zc of [-hl * 0.4, hl * 0.2]) lashStack(c, zc, y, [[s.deckW * 0.41, y + 0.58]]);
     }
   };
   return { wheels, body, load, debris: { w: 0.18, l: s.deckW } };
@@ -1555,6 +1608,7 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
       firewood(c, 0, y, 0, s.bedW * 0.9, s.bedL * 0.85, 4);
     } else {
       for (let k = 0; k < 4; k++) crate(c, (k % 2 ? 1 : -1) * hw * 0.45, y + (k > 1 ? 0.34 : 0), -hl * 0.3 + (k > 1 ? hl * 0.1 : 0), hw * 0.85, 0.32, 0.5, 0.05 * k);
+      for (const dz of [-0.1, 0.1]) lashStack(c, -hl * 0.25 + dz, y, [[hw * 0.88, y + 0.66]]);
     }
   };
   const rest = s.rest === 'shafts' ? { y: R, z: axleZ, pitch: restPitch(R, axleZ, [s.pole ? tipY - 0.25 : tipY - 0.035, tipZ]) } : undefined;
@@ -1702,6 +1756,8 @@ function wagon4(c: Ctx, s: Wagon4Spec): Assembly {
       }
     } else {
       for (let k = 0; k < 6; k++) crate(c, (k % 2 ? 1 : -1) * hw * 0.48, y + (k > 3 ? 0.4 : 0), -hl * 0.55 + Math.floor((k % 4) / 2) * hl * 0.8, hw * 0.85, 0.4, 0.6, 0.04 * k);
+      for (const dz of [-0.14, 0.14]) lashStack(c, -hl * 0.55 + dz, y, [[hw * 0.91, y + 0.8]]);
+      lashStack(c, hl * 0.25, y, [[hw * 0.91, y + 0.4]]);
     }
   };
   return { wheels, body, load, debris: { w: 0.2, l: s.bedL * 0.6 } };

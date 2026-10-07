@@ -62,6 +62,8 @@ export interface DestructiblePropType {
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
+  castShadow?: boolean;
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
    * into the ground (vehicleContactShadow.ts buildRunnerTracks). */
   runners?: RunnerTrack;
@@ -1875,6 +1877,9 @@ export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<str
   for (const [kind, override] of Object.entries(cartOverrides(mapId, mobile))) {
     const entry = { ...CART_RECORD_FIELDS[kind as keyof typeof CART_RECORD_FIELDS], build: override.build, broken: override.broken,
       instancePaint: override.instancePaint, ...(override.shadowBuild ? { shadowBuild: override.shadowBuild } : {}),
+      // round 3 (wave 234: the airfield's cylinder cart "hovers"): every cart casts the sun's shadow on desktop through
+      // its coarse stand-in (one instanced draw a cascade), the handcart and the sled under the size rule's 1.15 m too
+      ...(override.shadowBuild ? { castShadow: true } : {}),
       ...(override.runners ? { runners: override.runners } : {}) } as DestructiblePropType;
     out[kind] = Object.defineProperties(entry, {
       hw: { enumerable: true, get: () => override.hw },
