@@ -87,6 +87,14 @@ const SEA_SWELL = Object.freeze({ slope: 0.08, lengthM: 55, classicNormal: 0.6 }
 export const SEA_SHELF_RISE_M = 30;
 export const SEA_SHELF_WIDTH_K = 1.25;
 export const SEA_SHELF_WIDTH_M: readonly [number, number] = [8, 60];
+/**
+ * 2026-10-07 (the skies lane; the gauntlet's wave 247 on Saltmere's bird: "an unexplained dark-blue wedge stains the water
+ * off the shore", there before and after): each water cell took the shelf width of its NEAREST shore cell, and where a cliff
+ * (8 m) meets a beach (60 m) the nearest cell switches along the medial axis between them — a straight line from the
+ * junction out into the bay, the deep colour on the cliff's side of it in the first tens of metres: a wedge. The width
+ * field is averaged over the water within this many metres (a box filter twice, about a 40 m triangle), so it grades.
+ */
+export const SEA_SHELF_SMOOTH_M = 40;
 export function seaShelfWidthM(riseSlope: number): number {
   return Math.min(SEA_SHELF_WIDTH_M[1], Math.max(SEA_SHELF_WIDTH_M[0], SEA_SHELF_WIDTH_K / Math.max(riseSlope, 1e-3)));
 }
@@ -134,10 +142,35 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
     }
     return w;
   };
+  // the widths over the water, graded (SEA_SHELF_SMOOTH_M): a weighted box filter twice along the rows and the columns,
+  // the land and the cells with no width out of the average
+  const width = new Float32Array(N * N), weight = new Float32Array(N * N);
+  for (let k = 0; k < N * N; k++) {
+    const w = d[k] > 0 ? shelf(seed[k]) : 0;
+    if (w > 0) { width[k] = w; weight[k] = 1; }
+  }
+  const R = Math.max(1, Math.round(SEA_SHELF_SMOOTH_M / 2 / cell));
+  const sumW = new Float32Array(N * N), sumV = new Float32Array(N * N);
+  const pass = (along: 'row' | 'col'): void => {
+    for (let a = 0; a < N; a++) {
+      let accW = 0, accV = 0;
+      const at = (b: number): number => (along === 'row' ? a * N + b : b * N + a);
+      for (let b = -R; b < N + R; b++) {
+        const inK = b + R, outK = b - R - 1;
+        if (inK >= 0 && inK < N) { accW += weight[at(inK)]; accV += width[at(inK)] * weight[at(inK)]; }
+        if (outK >= 0 && outK < N) { accW -= weight[at(outK)]; accV -= width[at(outK)] * weight[at(outK)]; }
+        if (b >= 0 && b < N) { const k = at(b); sumW[k] = accW; sumV[k] = accV; }
+      }
+    }
+    for (let k = 0; k < N * N; k++) {
+      if (weight[k] > 0 && sumW[k] > 0) width[k] = sumV[k] / sumW[k];
+    }
+  };
+  if (riseAt) { pass('row'); pass('col'); pass('row'); pass('col'); }
   const out = new Uint8Array(N * N * 2);
   for (let k = 0; k < N * N; k++) {
     out[k * 2] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
-    out[k * 2 + 1] = Math.min(255, Math.round(shelf(seed[k])));
+    out[k * 2 + 1] = weight[k] > 0 ? Math.min(255, Math.round(width[k])) : 0;
   }
   const tex = new THREE.DataTexture(out, N, N, THREE.RGFormat, THREE.UnsignedByteType);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
@@ -319,10 +352,12 @@ export function createShallowWaterSurface(
   // 2026-10-04 (the sea's shelf and swell): a coast with an FFT ocean and a readable mask only
   const shoreDist = profile.kind === 'coast' && ocean
     ? shoreDistanceTexture(mask, size, ramp[0] + 0.02, (geometry.userData.landRiseAt as ((x: number, z: number) => number) | undefined) ?? null) : null;
-  const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
+  // (2026-10-07: a coast's own clarity over the shelf and share of the deep blue — the northern seas, waterContact.ts)
+  const seaShallowAlpha = profile.seaShallowAlpha ?? SEA_SHELF.shallowAlpha, seaDeepBlue = profile.seaDeepBlue ?? SEA_TINT.deepBlue;
+  const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, seaShallowAlpha) };
   // (2026-10-06: a coast's own shelf turquoise and deep darkening — Nordhavn's fjord is dark to its walls)
   const seaTurquoise = profile.seaTurquoise ?? SEA_TINT.turquoise, seaDeepDarken = profile.seaDeepDarken ?? SEA_TINT.deepDarken;
-  const seaTint = { value: new THREE.Vector4(seaTurquoise, SEA_TINT.deepBlue, seaDeepDarken, 0) };
+  const seaTint = { value: new THREE.Vector4(seaTurquoise, seaDeepBlue, seaDeepDarken, 0) };
   const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
   const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
   // 2026-10-05 (the sea's second round, QA): the sky mirror's grazing exponent (1 = as before) and the per-coast shelf share
@@ -844,8 +879,8 @@ export function createShallowWaterSurface(
       waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', WATER_ENV_GRAZING), lightTune('WATER_SPEC_CAP', 1.15),
         lightTune('WATER_BODY_GRAZE', 0.35));
       seaShelf.value.set(shoreDist ? lightTune('SEA_SHELF', 1) : 0, lightTune('SEA_SHELF_COLOUR_M', SEA_SHELF.colourM),
-        lightTune('SEA_SHELF_ALPHA_M', SEA_SHELF.alphaM), lightTune('SEA_SHALLOW_ALPHA', SEA_SHELF.shallowAlpha));
-      seaTint.value.set(lightTune('SEA_TURQUOISE', seaTurquoise), lightTune('SEA_DEEP_BLUE', SEA_TINT.deepBlue),
+        lightTune('SEA_SHELF_ALPHA_M', SEA_SHELF.alphaM), lightTune('SEA_SHALLOW_ALPHA', seaShallowAlpha));
+      seaTint.value.set(lightTune('SEA_TURQUOISE', seaTurquoise), lightTune('SEA_DEEP_BLUE', seaDeepBlue),
         lightTune('SEA_DEEP_DARKEN', seaDeepDarken), 0);
       swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
         ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);

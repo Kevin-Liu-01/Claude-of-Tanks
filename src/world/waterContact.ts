@@ -18,6 +18,12 @@ interface WaterContactProfile {
   seaTurquoise?: number;
   /** the skies lane (2026-10-06): a coast's deep-body darkening (shallowWater.ts SEA_TINT.deepDarken when absent) */
   seaDeepDarken?: number;
+  /** the skies lane (2026-10-07): a coast's share of the shader's deep blue over its own deep colour (SEA_TINT.deepBlue when
+   *  absent) — a northern sea keeps its own slate */
+  seaDeepBlue?: number;
+  /** the skies lane (2026-10-07): a coast's clarity over the shelf (SEA_SHELF.shallowAlpha when absent) — a northern sea's
+   *  shallows are opaque green-grey, not a window onto a sand bed */
+  seaShallowAlpha?: number;
 }
 
 const COAST: Readonly<WaterContactProfile> = Object.freeze({
@@ -48,13 +54,16 @@ const POLDER: Readonly<WaterContactProfile> = Object.freeze({
   ...MARSH, color: 0x1f3835, opacity: 0.73, roughness: 0.40,
   shoreColor: 0x66715d, waveScale: 0.048, waveStrength: 0.6,
 });
+// The northern seas (the skies lane, 2026-10-07; the gauntlet's wave 189 on Nordhavn's bird: "rounded turquoise ponds
+// rather than dark, steep-walled water", wave 243: "the fjord arms read as shallow turquoise lagoons with blotchy pale
+// patches", wave 247 on Saltmere: "swimming-pool turquoise water"): North Atlantic, Channel and Norwegian water is dark
+// green-grey to slate, deep and opaque, the sky's reflection carrying its light — never a sand bed's turquoise. Their own
+// palette: no shelf turquoise, little of the shader's deep blue over their own slate, the shallows opaque green-grey.
 const FJORD: Readonly<WaterContactProfile> = Object.freeze({
-  ...COAST, color: 0x143548, opacity: 0.76, roughness: 0.22, shallowColor: 0x3f7f86, foam: 0.7,
-  shoreColor: 0x5c747c, flowX: 0.009, flowZ: 0.006, waveScale: 0.057, waveStrength: 1.0,
-  // the skies lane (2026-10-06, gauntlet wave 189 on Nordhavn's bird view: "the fjord reads as rounded turquoise ponds
-  // rather than dark, steep-walled water"): a fjord's water is deep to its walls — no sand shelf's turquoise, the body a
-  // step darker, its bank tint the cold green-grey of a rock shore
-  seaTurquoise: 0, seaDeepDarken: 0.42,
+  ...COAST, color: 0x16292e, opacity: 0.80, roughness: 0.22, shallowColor: 0x34484a, foam: 0.7,
+  shoreColor: 0x4f6264, flowX: 0.009, flowZ: 0.006, waveScale: 0.057, waveStrength: 1.0,
+  // a fjord's water is deep to its walls: no shelf turquoise, the body darker, the bank the cold grey of a rock shore
+  seaTurquoise: 0, seaDeepDarken: 0.45, seaDeepBlue: 0.15, seaShallowAlpha: 0.8,
 });
 const SALTWIND: Readonly<WaterContactProfile> = Object.freeze({
   ...COAST, color: 0x22484f, opacity: 0.74, roughness: 0.34, shallowColor: 0x5a8f88, foam: 1.0,
@@ -104,8 +113,14 @@ const TANNIN_CREEK: Readonly<WaterContactProfile> = Object.freeze({
   ...MARSH, color: 0x2b2a1a, opacity: 0.78, roughness: 0.40, shallowColor: 0x5a5731, foam: 0.12,
   shoreColor: 0x5e5a3e, waveScale: 0.040, waveStrength: 0.45,
 });
+// Tidegate Polders' oxbow and canals (the skies lane, 2026-10-07; the gauntlet's wave 248: "a flat, opaque teal decal",
+// "a hard white outline at the waterline", "a glowing pale-green halo at the waterline"): still, silty Scheldt water is
+// grey-brown-green and dull. The halo was the bank band — the sunlit-bed tint at the waterline, a pale green (0x5f8a6e)
+// against the dark body, under a pale bank tint and the foam: a lake's shore read on still water. The bank now rises out
+// of the body's own silt (a step lighter, no green), the bank tint is wet mud, no foam, and the surface is duller.
 const CANAL: Readonly<WaterContactProfile> = Object.freeze({
-  ...POLDER, color: 0x24403a, shallowColor: 0x5f8a6e, roughness: 0.36, waveScale: 0.044, waveStrength: 0.5,
+  ...POLDER, color: 0x353a2e, shallowColor: 0x434634, shoreColor: 0x3f3d31, foam: 0, roughness: 0.42,
+  waveScale: 0.044, waveStrength: 0.4,
 });
 const INDUSTRIAL_BASIN: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x2c3a3c, opacity: 0.78, roughness: 0.30, shallowColor: 0x56706c, foam: 0.15,
@@ -135,8 +150,10 @@ const CLEAR_OASIS: Readonly<WaterContactProfile> = Object.freeze({
 const MONSOON_FLOOD: Readonly<WaterContactProfile> = Object.freeze({
   ...MONSOON, color: 0x4d4a2e, shallowColor: 0x5a5233, opacity: 0.78, foam: 0.12,
 });
+// Saltmere (Brittany's granite coast): the bay over sand a cold grey-green, the body slate, opaque (the northern seas, above)
 const COLD_SEA: Readonly<WaterContactProfile> = Object.freeze({
-  ...COAST, color: 0x1b4a63, shallowColor: 0x4a90a0,
+  ...COAST, color: 0x1c3036, shallowColor: 0x4a5f58, shoreColor: 0x5a6660,
+  seaTurquoise: 0, seaDeepDarken: 0.55, seaDeepBlue: 0.15, seaShallowAlpha: 0.7,
 });
 
 export function waterContactProfile(mapId: string): Readonly<WaterContactProfile> {
