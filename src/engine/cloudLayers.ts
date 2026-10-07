@@ -129,7 +129,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   const cellsEff = isDeck ? Math.max(cells, 0.6) : cells;
   // the density's ramp over the footprint: a cumulus' whole footprint (densest at the weather's peak, the shape carving
   // it inward from the edge), a deck's first third (dense to near its breaks)
-  const filter = isDeck ? 0.35 : 1;
+  // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple)
+  const filter = isDeck ? 0.55 : 1;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -146,7 +147,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     streets: clamp(preset.streets, 0, 1) * (1 - deck),
     envelope,
     shape: 1 - 0.55 * deck,
-    detail: 1 - 0.4 * deck,
+    // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
+    detail: 1 - 0.7 * deck,
     // a cumulus dome (widest near its base) relaxing toward a flat sheet; towers keep a narrower head
     bias: 0.35 + 0.5 * deck - 0.1 * preset.towers,
     filter,
