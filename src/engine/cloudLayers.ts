@@ -85,14 +85,14 @@ const DECK_CORE = 0.82;
 
 /**
  * The coverage law: a map's coverage (the fraction of the sky its clouds cover, cloudscapes.ts) as the lane's cover, the
- * share of the equalised weather admitted at the shell's widest height. A cumulus' cover runs under its coverage (the
- * authored coverages were set against the old layer, which drew about half the cloud its coverage named; at 1.15 the same
- * Verdant drew a third of the sky overhead and a wall of puffs on the horizon); a deck's admits its coverage itself — its breaks are the weather's
+ * share of the equalised weather admitted at the shell's widest height. A cumulus' cover runs a little over its coverage:
+ * its shape carves most of what is admitted into billows (its core is low and its ramp long, so the billows are the
+ * cloud); a deck's admits its coverage itself — its breaks are the weather's
  * low columns — and from the light model's closing coverage (lightModelCore.ts DECK_CLOSED_COVERAGE, 0.95) it closes.
  */
 export function cloudShellCover(coverage: number, deck: boolean): number {
   if (deck) return clamp(coverage + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
-  return clamp(coverage * 0.8, 0, 1);
+  return clamp(coverage * 1.08, 0, 1);
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */
@@ -129,8 +129,10 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   const cellsEff = isDeck ? Math.max(cells, 0.6) : cells;
   // the density's ramp over the footprint: a cumulus' whole footprint (densest at the weather's peak, the shape carving
   // it inward from the edge), a deck's first third (dense to near its breaks)
-  // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple)
-  const filter = isDeck ? 0.55 : 1;
+  // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
+  // cumulus' ramp runs past its footprint's peak, so the shape volume carves the whole cloud into its billows, not just
+  // its rim — at 1 every cumulus was a smooth loaf under a bubbly fringe)
+  const filter = isDeck ? 0.55 : 1.5;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -149,8 +151,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     shape: 1 - 0.55 * deck,
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
     detail: 1 - 0.7 * deck,
-    // a cumulus dome (widest near its base) relaxing toward a flat sheet; towers keep a narrower head
-    bias: 0.35 + 0.5 * deck - 0.1 * preset.towers,
+    // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall
+    // lane under the same dome (a lower bias drew its walls straight up: stone pillars, not cauliflower)
+    bias: 0.375 + 0.5 * deck,
     filter,
     exponent: 1,
     cells: cellsEff,
@@ -159,7 +162,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // a deck's cores hang under its base (a lumpy underside the light reads through its thickness)
     hang: isDeck ? 0.3 * cellsEff : cells > 0 ? 0.18 * cells : 0,
     anvil: clamp(preset.anvil, 0, 1),
-    core: isDeck ? DECK_CORE : 0.56,
+    core: isDeck ? DECK_CORE : 0.4,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
@@ -179,14 +182,15 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
       channels: [0, 1, 0, 0],
       streets: 0,
       envelope: 0,
-      shape: 0.9,
-      detail: 0.8,
+      // a broken layer of soft patches, not a scatter of hard puffs (a lens profile, eroded lightly)
+      shape: 0.6,
+      detail: 0.5,
       bias: 0.6,
-      filter: 1,
+      filter: 1.6,
       exponent: 1,
       cells: 0,
       wisp: 0.4,
-      flat: 0.3,
+      flat: 0.5,
       hang: 0,
       anvil: 0,
       core: 0.55,

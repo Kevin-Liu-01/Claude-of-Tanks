@@ -43,7 +43,7 @@ for (const id of MAP_IDS) {
     assert.ok(lane.topM > lane.baseM && lane.baseM > 0, `${id} lane ${i}: a slab over the ground`);
     assert.ok(lane.cover >= 0 && lane.cover <= 1.25 && lane.density > 0 && lane.density < 1, `${id} lane ${i}: cover and density`);
     assert.ok(lane.core > 0.3 && lane.core <= 1, `${id} lane ${i}: the shell's core density`);
-    assert.ok(lane.bias > 0 && lane.filter > 0 && lane.filter <= 1, `${id} lane ${i}: shell law`);
+    assert.ok(lane.bias > 0 && lane.filter > 0 && lane.filter <= 2, `${id} lane ${i}: shell law (a ramp up to twice the admitted share)`);
     const w = lane.channels.reduce((a, b) => a + b, 0) + lane.streets;
     assert.ok(w > 0.5 && w <= 2.01, `${id} lane ${i}: the weather channels carry the lane (${w.toFixed(2)})`);
   }

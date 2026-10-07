@@ -30,12 +30,13 @@ for (const line of [
   'vec4 base = uLayerBase - thick * uLayerHang * k;',
   'vec4 top = uLayerBase + thick * ( 0.15 + 0.85 * k );',
   'vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );',
-  'vec4 heightScale = mix( cl2ShapeAlter( hf, uLayerBias ), box, uLayerFlat );',
+  'vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );',
   'vec4 admitted = uLayerCover * heightScale;',
   'vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );',
   'vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );',
   'return d * uLayerCore * inside;',
 ]) assert.ok(shellSrc.includes(line), `the shell twin mirrors: ${line}`);
+assert.ok(shaders.includes('return smoothstep( 0.0, 0.06, hf ) * ( 1.0 - pow( hf, 1.0 / max( bias, vec4( 0.05 ) ) ) );'), 'the profile twin mirrors the GLSL');
 const bsmSrc = shaders.slice(shaders.indexOf('export const CLOUD2_BSM_FRAGMENT'), shaders.indexOf('export const CLOUD2_SHADE_FRAGMENT'));
 for (const line of [
   'for ( int i = 0; i < 4; i++ ) if ( uLayerDensity[ i ] > 0.0 ) total += ( uLayerTop[ i ] - uLayerBase[ i ] ) * ( 1.0 + uLayerHang[ i ] );',
@@ -76,7 +77,7 @@ assert.equal(plane, laneFloorM(lane), 'the map\'s plane under the hanging cores'
 // ---- the twins
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const shapeAlter = (hf, bias) => { const x = clamp(Math.pow(Math.max(hf, 1e-4), bias) * 2 - 1, -1, 1); return 1 - x * x; };
+const shapeAlter = (hf, bias) => smooth(0, 0.06, hf) * (1 - Math.pow(hf, 1 / Math.max(bias, 0.05)));
 // the extinction at p of every lane under weather w (one value for the deck's channel) and a uniform cell (c = l = 1)
 function extinction(p, weather) {
   const h = p.y + (p.x * p.x + p.z * p.z) * (0.5 / 6.36e6);

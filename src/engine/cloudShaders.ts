@@ -128,11 +128,12 @@ float cl2Height( vec3 p ) { return p.y + dot( p.xz, p.xz ) * ( 0.5 / CL2_EARTH_R
 // the height fraction of every lane (0..1 inside a lane; clamped outside)
 vec4 cl2Fraction( float h ) { return clamp( ( vec4( h ) - uLayerBase ) / max( uLayerTop - uLayerBase, vec4( 1.0 ) ), 0.0, 1.0 ); }
 vec4 cl2Inside( float h ) { return step( uLayerBase, vec4( h ) ) * step( vec4( h ), uLayerTop ) * step( vec4( 1e-6 ), uLayerDensity ); }
-// [ported] the shape-altering function: a semicircle over the height fraction, its widest point lowered by the bias
-vec4 cl2ShapeAlter( vec4 hf, vec4 bias ) {
-	vec4 biased = pow( max( hf, vec4( 1e-4 ) ), bias );
-	vec4 x = clamp( biased * 2.0 - 1.0, -1.0, 1.0 );
-	return 1.0 - x * x;
+// the convective profile over the height fraction: full width a few percent over the flat base (the condensation
+// level), narrowing toward the top as 1 − hf^(1/bias) — a low bias a tower's column, a high one a lens. (Takram's
+// semicircle, widest a sixth of the way up and pinched to nothing at the base, drew every cumulus as a mushroom on a
+// stem from below.)
+vec4 cl2Profile( vec4 hf, vec4 bias ) {
+	return smoothstep( 0.0, 0.06, hf ) * ( 1.0 - pow( hf, 1.0 / max( bias, vec4( 0.05 ) ) ) );
 }
 // the weather of every lane at a world xz (lod: the local weather's mip level)
 vec4 cl2Weather( vec2 xz, float lod ) {
@@ -170,7 +171,7 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 inside = step( base, vec4( h ) ) * step( vec4( h ), top ) * step( vec4( 1e-6 ), uLayerDensity );
 	vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );
 	// [ported] the shape-altering function (a semicircle over the height fraction, its widest point lowered by the bias)
-	vec4 heightScale = mix( cl2ShapeAlter( hf, uLayerBias ), box, uLayerFlat );
+	vec4 heightScale = mix( cl2Profile( hf, uLayerBias ), box, uLayerFlat );
 	heightScale = max( heightScale, uLayerAnvil * smoothstep( 0.74, 0.9, hf ) * ( 1.0 - smoothstep( 0.97, 1.0, hf ) ) );
 	// the footprint's share at this height, and the density rising over the footprint from its edge to the weather's
 	// peak (the filter: the ramp's share of the footprint — a cumulus' whole footprint, so the shape carves it bulge by

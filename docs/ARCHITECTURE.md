@@ -525,7 +525,9 @@ flat on both faces, an anvil) into a shell that a 3.2 km Perlin–Worley shape v
 (`cloudVolumeNoise.ts`, baked on the GPU at load) carve under a density profile (`cloudShaders.ts`). The shells curve
 with a parabolic Earth so the field converges at the horizon; the march (36 km on High) strides by the footprint and
 refines on entering a cloud. Each sample's optical depth to the sun is a short secondary march plus a Beer shadow map —
-two toroidal, world-anchored cascades (12 km and 64 km) of the same medium marched along the sun, a band a frame —
+two toroidal, world-anchored cascades (12 km about the camera and 40 km about the camera's point at the stack's
+middle height carried down the sun) of the same medium marched along the sun by lanes and altitude slices, a band a
+frame, read as the four texels' depths blended as transmittances —
 under the multiple-scattering octaves, a dual-lobe phase, the powder term, the sky and ground light and a deck's
 diffusion; the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's variance. The
 near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
