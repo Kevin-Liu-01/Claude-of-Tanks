@@ -846,7 +846,14 @@ interface DecorMaterials {
   all(): Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>>;
 }
 
-// 2026-10-06 (round 2): water cans in slate-olive and extinguishers in a dirty issue red, not toy blue and red
+/**
+ * Decor optic glass (lenses, vision blocks, searchlight faces): near-black with a faint green cast. 2026-10-07 (round 3:
+ * the old 0x161d23 folded into the steel draw as a dark navy the probe flagged blue on the Challenger 1's sights).
+ */
+const DECOR_GLASS = 0x171b17;
+
+// 2026-10-06 (round 2): water cans in slate-olive and extinguishers in a dirty issue red, not toy blue and red.
+// 2026-10-07 (round 3): the extinguisher red is now only the bottle's band, an oxide red that no longer reads as a toy.
 const BASE_EQUIPMENT_PALETTE = Object.freeze({
   canvas: 0x746f58,
   burlap: 0x8a7857,
@@ -858,7 +865,7 @@ const BASE_EQUIPMENT_PALETTE = Object.freeze({
   fuelB: [0.35, 0.38, 0.22],
   waterA: [0.203, 0.275, 0.292],
   waterB: [0.172, 0.235, 0.250],
-  extinguisher: [0.369, 0.092, 0.072],
+  extinguisher: [0.30, 0.12, 0.085],
   toolCan: [0.34, 0.39, 0.23],
   ammoCase: [0.28, 0.34, 0.20],
 } satisfies FleetEquipmentPalette);
@@ -870,7 +877,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   american: {
     canvas: 0x777158, burlap: 0x8d7854, steel: 0x3b3d3d, net: 0x687052,
     accent: [0.38, 0.35, 0.22], fuelA: [0.50, 0.40, 0.21], fuelB: [0.38, 0.36, 0.18],
-    extinguisher: [0.392, 0.084, 0.067], ammoCase: [0.30, 0.35, 0.18],
+    extinguisher: [0.31, 0.115, 0.08], ammoCase: [0.30, 0.35, 0.18],
   },
   british: {
     canvas: 0x696a50, burlap: 0x817052, steel: 0x343938, net: 0x59634a,
@@ -890,7 +897,7 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
   german: {
     canvas: 0x62665a, burlap: 0x7a705d, steel: 0x35393b, net: 0x59624f,
     accent: [0.28, 0.31, 0.27], fuelA: [0.34, 0.35, 0.25], fuelB: [0.26, 0.31, 0.23],
-    extinguisher: [0.342, 0.074, 0.062], toolCan: [0.30, 0.34, 0.25],
+    extinguisher: [0.29, 0.11, 0.08], toolCan: [0.30, 0.34, 0.25],
   },
   israeli: {
     canvas: 0x80765f, burlap: 0x918064, steel: 0x3a3b38, net: 0x6d7058,
@@ -916,13 +923,13 @@ const EQUIPMENT_PALETTE_OVERRIDES: Record<
     canvas: 0x596047, burlap: 0x75694c, steel: 0x303532, net: 0x505b42,
     accent: [0.24, 0.32, 0.18], fuelA: [0.28, 0.35, 0.18], fuelB: [0.22, 0.29, 0.16],
     waterA: [0.167, 0.237, 0.231], waterB: [0.141, 0.199, 0.198],
-    extinguisher: [0.307, 0.091, 0.068], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
+    extinguisher: [0.28, 0.115, 0.08], toolCan: [0.25, 0.34, 0.17], ammoCase: [0.24, 0.32, 0.17],
   },
   ukrainian: {
     canvas: 0x636b50, burlap: 0x7e7251, steel: 0x343836, net: 0x58654a,
     accent: [0.29, 0.35, 0.20], fuelA: [0.39, 0.38, 0.19], fuelB: [0.27, 0.34, 0.17],
     waterA: [0.188, 0.263, 0.285], waterB: [0.161, 0.225, 0.248],
-    extinguisher: [0.327, 0.102, 0.071], toolCan: [0.27, 0.35, 0.18],
+    extinguisher: [0.29, 0.12, 0.085], toolCan: [0.27, 0.35, 0.18],
   },
   neutral: {},
 });
@@ -1023,8 +1030,10 @@ function buildDecorMaterials(
       map: gridTex(), color: equipmentPalette.mesh, roughness: 0.7, metalness: 0.35,
       alphaTest: 0.3, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.25,
     }),
-    lens: () => ({ // optic faces / vision blocks / searchlight glass
-      color: 0x161d23, roughness: 0.28, metalness: 0.6, envMapIntensity: 0.55,
+    // optic faces / vision blocks / searchlight glass. 2026-10-07 (tank-accessories round 3: blue optics read as UI
+    // placeholders): dark coated glass with a faint green cast, in the matte steel draw it folds into
+    lens: () => ({
+      color: DECOR_GLASS, roughness: 0.42, metalness: 0.3, envMapIntensity: 0.3,
       vertexColors: true,
     }),
     // fresh-cut branches: the trees lane's species spray atlas on alpha-cut cards (vehicleFoliage.ts); the map and
@@ -1107,7 +1116,10 @@ function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation 
     // Burlap shares the canvas draw (same weave map, near-identical finish): a warmer tint of the issue fabric.
     burlap(geo, tone = 0.9) { parts.push({ mat: 'canvas', geo: bakeTint(boxUV(geo, 2.8), 1.42 * tone, 1.16 * tone, 0.94 * tone, 0.3) }); },
     steel(geo, tone = 0.55) { parts.push({ mat: 'steel', geo: bakeShade(geo, tone) }); },
-    wood(geo, tone = 0.8) { parts.push({ mat: 'wood', geo: bakeShade(boxUV(geo, 2.2), tone) }); },
+    wood(geo, tone = 0.8, rgb) {
+      const uv = boxUV(geo, 2.2);
+      parts.push({ mat: 'wood', geo: rgb ? bakeTint(uv, rgb[0] * tone, rgb[1] * tone, rgb[2] * tone, 0.3) : bakeShade(uv, tone) });
+    },
     // Small wooden parts ride the painted-hardware draw (grain does not read on a handle; 2026-10-05 draw audit): the
     // wood family's colour, woodTex ground #8d7a5e x 0x97815f over the hardware map's #cbc9c1 (linear).
     trim(geo, tone = 0.7) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.138 * tone, 0.0735 * tone, 0.0242 * tone, 0.28) }); },
@@ -3019,7 +3031,7 @@ const RESIDENT_FAMILIES: ReadonlySet<DecorMaterialKey> = new Set<DecorMaterialKe
  * hardware draw, over the hardware map's ground (#cbc9c1). Linear values.
  */
 function decorFamilyFolds(palette: FleetEquipmentPalette): ReadonlyMap<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }> {
-  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(0x161d23), rubber = new THREE.Color(0x232425);
+  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(DECOR_GLASS), rubber = new THREE.Color(0x232425);
   const ground = new THREE.Color(0xcbc9c1);
   return new Map<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }>([
     ['lens', { to: 'steel', k: [glass.r / steel.r, glass.g / steel.g, glass.b / steel.b] }],

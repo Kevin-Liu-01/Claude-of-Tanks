@@ -183,7 +183,10 @@ assert.ok(basket.length >= 30,
   `shared decorative basket exposes a real lattice and shaped cargo (${basket.length} parts)`);
 assert.ok(!basket.some((part) => part.geo instanceof THREE.PlaneGeometry),
   'decorative basket no longer uses opaque/texture-plane proxy walls');
-assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 7,
+// 2026-10-07 (tank-accessories round 3): the tarp roll's rolled ends are one wound spiral each instead of two
+// concentric eight-segment rings each (the critics read those rings as facets), so the canvas parts are the two
+// duffels, the tarp roll and its two spiral ends; the floor moves from seven parts to five with the same contents.
+assert.ok(basket.filter((part) => part.mat === 'canvas').length >= 5,
   'decorative basket includes shaped packs, flaps, pockets, straps, and a tarp roll');
 assert.equal(basket.meta?.basket, true, 'decorative basket retains placement metadata');
 for (const part of basket) part.geo.dispose();

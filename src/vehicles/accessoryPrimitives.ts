@@ -268,6 +268,192 @@ export function rolledEndLayers(r: number, len: number, segments = 8): THREE.Buf
   return out;
 }
 
+/**
+ * The rolled face at one end of a roll lying along +Z (radius `r`, end plane at z = `zEnd`, `facing` +1 for the +Z end):
+ * an Archimedean ribbon wound from near the core to near the rim a couple of millimetres proud of the end cap, so the end
+ * reads as rolled cloth. 2026-10-07 (tank-accessories round 3: the blind critics read the two eight-segment concentric
+ * rings of rolledEndLayers as "eight visible facets" up close): `steps` ribbon quads, two triangles each.
+ */
+export function rolledEndSpiral(r: number, zEnd: number, facing: 1 | -1, steps = 18, turns = 1.6): THREE.BufferGeometry {
+  const r0 = r * 0.14, r1 = r * 0.8, half = r * 0.045;
+  const z = zEnd + facing * 0.002;
+  const at = (k: number, edge: number): THREE.Vector3 => {
+    const u = k / steps;
+    const a = u * turns * TAU + (facing > 0 ? 0 : Math.PI);
+    const rr = r0 + (r1 - r0) * u + edge * half * (0.6 + 0.4 * u);
+    return new THREE.Vector3(Math.cos(a) * rr, Math.sin(a) * rr, z);
+  };
+  const positions: number[] = [];
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  const tri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
+    // every triangle faces out of the end (+Z at the +Z end, -Z at the other)
+    const flip = ab.subVectors(b, a).cross(ac.subVectors(c, a)).z * facing < 0;
+    for (const v of flip ? [a, c, b] : [a, b, c]) positions.push(v.x, v.y, v.z);
+  };
+  for (let k = 0; k < steps; k++) {
+    const a0 = at(k, -1), a1 = at(k, 1), b0 = at(k + 1, -1), b1 = at(k + 1, 1);
+    tri(a0, b0, b1);
+    tri(a0, b1, a1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return withBoxUV(geometry);
+}
+
+/**
+ * A firm fabric roll lying along +X, centred on its axis (a rolled tarp, an anti-thermal cover, a canvas bundle): round
+ * sections with flat rolled ends, pinched under the caller's straps at `cinch` (local x), and the wound spiral on both
+ * ends. 2026-10-07 (round 3): the profile packs' plain 12-16 sided cylinders read as pipes with visible facets.
+ */
+export function fabricRollParts(len: number, r: number, cinch: readonly number[], seg = 18, seed = 71):
+  { body: THREE.BufferGeometry; ends: THREE.BufferGeometry[] } {
+  const spec: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.93, endLength: 0.04, flatten: 0, wrinkle: 0.025,
+    seg, stations: 5, cinch, cinchDepth: 0.08, seed };
+  const alongX = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry, 0, 0, 0, 0, Math.PI / 2, 0);
+  const steps = Math.max(14, Math.round(seg * 1.1));
+  return {
+    body: alongX(fabricBody(spec)),
+    ends: ([-1, 1] as const).map((end) => alongX(rolledEndSpiral(r * 0.93, end * len / 2, end, steps))),
+  };
+}
+
+/**
+ * A 200 L class steel drum as a lathe along +Y from y = 0 to `len`: rolled chimes at both heads and two rolling hoops
+ * (round 3: the T-90M's rear drums were plain canvas-green cylinders).
+ */
+export function drumLathe(R: number, len: number, seg = 16): THREE.BufferGeometry {
+  const hoop = (y: number): XY[] => [[R, y - 0.016], [R + 0.012, y], [R, y + 0.016]];
+  return latheY([[0.0005, 0.01], [R - 0.012, 0.012], [R + 0.004, 0], [R, 0.02], ...hoop(len * 0.29), ...hoop(len * 0.71),
+    [R, len - 0.02], [R + 0.004, len], [R - 0.012, len - 0.012], [0.0005, len - 0.01]], seg);
+}
+
+export interface BarkLogSpec {
+  /** Length along local +X (metres) and radius at the butt (the -X end). */
+  len: number;
+  r: number;
+  seed?: number;
+  /** Share of the radius the trunk loses from butt to tip. */
+  taper?: number;
+  detail?: AccessoryDetail;
+}
+
+export interface BarkLogParts {
+  /** The barked trunk lying along X: furrowed ridges running the length with a slow twist, knots, closed sawn ends. */
+  bark: THREE.BufferGeometry;
+  /** A cut branch stub standing out of one knot (near level), its own sawn face included. */
+  stub: THREE.BufferGeometry | null;
+  /** The pale sawn faces, a hair proud of each end inside a rim of bark (near level). */
+  ends: THREE.BufferGeometry[];
+  /** Growth rings and the radial drying checks on the sawn faces (near level), darker than the face. */
+  grain: THREE.BufferGeometry[];
+  /** Mean bark radius at u in [0, 1] (butt to tip): seats bands, chains and straps on the actual trunk. */
+  radiusAt(u: number): number;
+}
+
+/**
+ * An unditching log (2026-10-07, tank-accessories round 3: the blind critics read the old lathe as "a smooth green
+ * pipe"): bark ridges and furrows running the length with a slow twist, raised knots and one cut branch stub, a trunk
+ * that swells and tapers, and sawn ends in pale end grain with growth rings and radial checks inside a rim of bark. Centred
+ * on the origin, lying along +X, deterministic in `seed`. The coarse level (`detail` 0) is the same envelope without the
+ * furrows, knots and grain.
+ */
+export function barkLog(spec: BarkLogSpec): BarkLogParts {
+  const detail = spec.detail ?? 1;
+  const seed = spec.seed ?? 1;
+  const seg = detail ? 18 : 9;
+  const count = detail ? 9 : 4;
+  const taper = spec.taper ?? 0.06;
+  const phase = hash01(seed, 3) * TAU;
+  const radiusAt = (u: number): number =>
+    spec.r * (1 - taper * u) * (1 + 0.03 * Math.sin(u * 9.4 + phase) + 0.02 * Math.sin(u * 23 + phase * 2));
+  const twist = (hash01(seed, 5) - 0.5) * 0.7;
+  // the first knot carries the cut branch stub and faces up and out of the load (it never digs into its support)
+  const knots = detail ? [0, 1, 2].map((k) => ({
+    a: k ? hash01(seed, 31, k) * TAU : Math.PI / 2 + (hash01(seed, 31, k) - 0.5) * 0.9,
+    u: 0.14 + 0.72 * hash01(seed, 37, k), h: 0.09 + 0.08 * hash01(seed, 41, k),
+  })) : [];
+  const angleGap = (a: number, b: number): number => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  const ring = (u: number): XY[] => {
+    const R = radiusAt(u);
+    const out: XY[] = [];
+    for (let i = 0; i < seg; i++) {
+      const a = (i / seg) * TAU + twist * u;
+      let k = 1;
+      if (detail) {
+        // a ridge on every even vertex, a furrow on every odd one, each ridge its own height along the run
+        const ridge = i % 2 === 0 ? 1 : -0.75;
+        k += ridge * 0.05 * (0.55 + 0.9 * hash01(seed, i)) * (0.8 + 0.2 * Math.sin(u * 11 + i * 1.7));
+        for (const knot of knots) {
+          k += knot.h * Math.exp(-((angleGap(a, knot.a) / 0.34) ** 2) - (((u - knot.u) * spec.len) / 0.06) ** 2);
+        }
+      }
+      out.push([Math.cos(a) * R * k, Math.sin(a) * R * k]);
+    }
+    return out;
+  };
+  const sections: LoftSection[] = [];
+  for (let s = 0; s < count; s++) {
+    const u = s / (count - 1);
+    sections.push({ z: (u - 0.5) * spec.len, ring: ring(u) });
+  }
+  // smooth bark (welded side), crisp sawn caps
+  const side = loftZ(sections, false, false);
+  side.deleteAttribute('normal');
+  side.deleteAttribute('uv');
+  const welded = mergeVertices(side, 1e-6);
+  side.dispose();
+  welded.computeVertexNormals();
+  const smooth = welded.toNonIndexed();
+  welded.dispose();
+  const capRing = (s: number): THREE.Vector3[] => {
+    const pts = sections[s].ring.map(([x, y]) => new THREE.Vector3(x, y, sections[s].z));
+    pts.push(pts[0].clone());
+    return pts;
+  };
+  const caps: FanCap[] = [
+    { center: new THREE.Vector3(0, 0, sections[0].z), ring: capRing(0), outward: new THREE.Vector3(0, 0, -1) },
+    { center: new THREE.Vector3(0, 0, sections[count - 1].z), ring: capRing(count - 1), outward: new THREE.Vector3(0, 0, 1) },
+  ];
+  const bark = withFanCaps(withBoxUV(smooth), caps);
+  const alongX = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry, 0, 0, 0, 0, Math.PI / 2, 0);
+  alongX(bark);
+  const ends: THREE.BufferGeometry[] = [];
+  const grain: THREE.BufferGeometry[] = [];
+  for (const end of [-1, 1] as const) {
+    const u = end < 0 ? 0 : 1;
+    const R = radiusAt(u);
+    const z = end * spec.len / 2;
+    if (!detail) continue;
+    const face = new THREE.CircleGeometry(R * 0.88, 16).toNonIndexed();
+    ends.push(alongX(withBoxUV(place(face, 0, 0, z + end * 0.002, 0, end > 0 ? 0 : Math.PI, 0))));
+    for (const [inner, outer] of [[0.3, 0.35], [0.6, 0.65]] as const) {
+      const rings = new THREE.RingGeometry(R * inner, R * outer, 12, 1).toNonIndexed();
+      grain.push(alongX(withBoxUV(place(rings, 0, 0, z + end * 0.0035, 0, end > 0 ? 0 : Math.PI, 0))));
+    }
+    // two radial drying checks from the pith toward the bark
+    for (const k of [0, 1]) {
+      const a = hash01(seed, 53 + end, k) * TAU;
+      const check = new THREE.PlaneGeometry(0.007, R * 0.62).toNonIndexed();
+      place(check, 0, R * 0.36, 0, 0, 0, 0);
+      place(check, 0, 0, 0, 0, 0, a);
+      grain.push(alongX(withBoxUV(place(check, 0, 0, z + end * 0.004, 0, end > 0 ? 0 : Math.PI, 0))));
+    }
+  }
+  let stub: THREE.BufferGeometry | null = null;
+  if (detail && knots.length) {
+    // a branch sawn off flush with a hand's width of wood left: a short tapered round out of the biggest knot
+    const knot = knots[0];
+    const R = radiusAt(knot.u);
+    const sr = R * 0.3;
+    const g = latheY([[sr * 1.25, 0], [sr, R * 0.2], [sr * 0.92, R * 0.28]], 8);
+    place(g, 0, R * 0.92, 0);                                   // its foot sunk in the bark
+    place(g, 0, 0, 0, 0, 0, knot.a - Math.PI / 2);              // turned out to the knot's bearing
+    stub = alongX(place(g, 0, 0, (knot.u - 0.5) * spec.len));
+  }
+  return { bark, stub, ends, grain, radiusAt };
+}
+
 /** A plain six-face block (12 triangles) for small hardware where a fillet would not read: latches, clips, ribs. */
 export function block(w: number, h: number, d: number): THREE.BufferGeometry {
   const geometry = new THREE.BoxGeometry(w, h, d);

@@ -9,8 +9,9 @@
 // the same envelope from fewer segments, without the small hardware. Random draws happen before any detail branch,
 // so both levels of one piece always agree (the placement engine seats the coarse copy with the near copy's matrix).
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, roundBar, sweptTube,
+  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
   type AccessoryDetail, type FabricSpec,
 } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer } from './vehicleFoliage.ts';
@@ -31,8 +32,8 @@ export interface AccessoryPainter {
   strap(geometry: THREE.BufferGeometry, tone?: number): void;
   burlap(geometry: THREE.BufferGeometry, tone?: number): void;
   steel(geometry: THREE.BufferGeometry, tone?: number): void;
-  /** Wood family (grained): crates, beams, logs. */
-  wood(geometry: THREE.BufferGeometry, tone?: number): void;
+  /** Wood family (grained): crates, beams, logs; `rgb` tints the wood (bark is greyer, sawn end grain paler). */
+  wood(geometry: THREE.BufferGeometry, tone?: number, rgb?: RGB): void;
   /** Small wooden parts (tool handles, reel flanges, cut stems): the wood's colour in the painted-hardware draw. */
   trim(geometry: THREE.BufferGeometry, tone?: number): void;
   rubber(geometry: THREE.BufferGeometry, tone?: number): void;
@@ -71,7 +72,14 @@ interface CaseSpec {
   ribs?: number;
 }
 
-/** A molded / pressed case: filleted body, overhanging lid with a parting line, latches and handles. */
+/**
+ * A molded / pressed case: filleted body, overhanging lid over a dark parting line, latches and hinges standing proud
+ * on dark contact plates, and handles. 2026-10-07 (tank-accessories round 3: on the Leopard 2A4's olive case the
+ * critics read flush latches and hinges as "molded on, casting no separate shadow, reading as a texture"; decor casts
+ * no shadow): the over-centre latch levers stand two centimetres proud with their keepers on the lid lip, two barrel
+ * hinges sit on the back at the parting line, and each piece of hardware lies on a dark plate set a little low that
+ * stands in for the shadow it would cast.
+ */
 export function hardCase(P: AccessoryPainter, c: CaseSpec): void {
   const r = c.radius ?? 0.03;
   const lidH = c.h * (c.lidShare ?? 0.24);
@@ -80,22 +88,35 @@ export function hardCase(P: AccessoryPainter, c: CaseSpec): void {
   P.paint(place(moldedBox(c.w, bodyH, c.d, r, seg, r * 0.55), 0, bodyH / 2, 0), c.body, 0.32);
   P.paint(place(moldedBox(c.w * 1.018, lidH, c.d * 1.024, r * 1.1, seg, r * 0.7), 0, bodyH + lidH / 2, 0), c.lid, 0.22);
   if (!near(P)) return;
+  // the parting line: a dark gasket band under the lid's overhang
+  P.paint(place(moldedBox(c.w * 1.008, 0.009, c.d * 1.012, 0, 0, 0.002), 0, bodyH - 0.002, 0), BLACK_PLASTIC, 0);
   if ((c.ribs ?? 0) > 0) {
     const n = c.ribs ?? 0;
     for (let i = 0; i < n; i++) {
       const x = (i - (n - 1) / 2) * (c.w * 0.62 / Math.max(1, n - 1 || 1));
       for (const side of [-1, 1]) {
-        P.paint(place(block(0.034, bodyH * 0.62, 0.008), x, bodyH * 0.5, side * (c.d / 2 + 0.003)),
-          scaleRgb(c.body, 1.07), 0.3);
+        P.paint(place(block(0.034, bodyH * 0.62, 0.014), x, bodyH * 0.5, side * (c.d / 2 + 0.006)),
+          scaleRgb(c.body, 1.1), 0.3);
       }
     }
   }
+  const hardware = (geometry: THREE.BufferGeometry, steel: boolean, tone = 0.6): void => {
+    if (steel) P.steel(geometry, tone); else P.paint(geometry, BLACK_PLASTIC, 0.2);
+  };
   if (c.latches !== 'none') {
     for (const side of [-1, 1]) {
-      const x = side * c.w * 0.3;
-      const latch = place(block(0.05, 0.062, 0.016), x, bodyH + 0.006, c.d / 2 + 0.008);
-      if (c.latches === 'steel') P.steel(latch, 0.6); else P.paint(latch, BLACK_PLASTIC, 0.2);
+      const x = side * c.w * 0.3, face = c.d / 2;
+      P.paint(place(block(0.058, 0.074, 0.004), x, bodyH - 0.034, face + 0.002), BLACK_PLASTIC, 0);       // contact plate
+      hardware(place(moldedBox(0.04, 0.062, 0.02, 0.006, 0, 0.004), x, bodyH - 0.026, face + 0.012), c.latches === 'steel');
+      hardware(place(block(0.046, 0.016, 0.016), x, bodyH + lidH * 0.32, c.d * 0.512 + 0.008), c.latches === 'steel', 0.5);
     }
+  }
+  // two barrel hinges on the back at the parting line, a leaf on the body and one on the lid
+  for (const side of [-1, 1]) {
+    const x = side * c.w * 0.27, back = -c.d / 2;
+    P.paint(place(block(0.084, 0.05, 0.004), x, bodyH - 0.012, back - 0.002), BLACK_PLASTIC, 0);         // contact plate
+    P.steel(roundBar([x - 0.036, bodyH + 0.002, back - 0.012], [x + 0.036, bodyH + 0.002, back - 0.012], 0.011, 6), 0.55);
+    P.steel(place(block(0.064, 0.024, 0.006), x, bodyH + 0.018, c.d * -0.512 - 0.004), 0.5);
   }
   if (c.handles === 'ends') {
     for (const side of [-1, 1]) {
@@ -140,27 +161,39 @@ export interface JerrycanParts {
  */
 export function jerrycanParts(scale = 1, faces: readonly number[] = [-1, 1], nearLevel = true): JerrycanParts {
   const t = 0.165 * scale, h = 0.44 * scale, w = 0.345 * scale;
-  const body = place(moldedBox(t, h, w, 0.022 * scale, nearLevel ? 1 : 0, 0.012 * scale), 0, h / 2, 0);
+  const shell = place(moldedBox(t, h, w, 0.022 * scale, nearLevel ? 1 : 0, 0.012 * scale), 0, h / 2, 0);
   if (!nearLevel) {
     const spine = place(moldedBox(t * 0.5, 0.03 * scale, w * 0.62, 0, 0, 0.004), 0, h + 0.015 * scale, -w * 0.06);
-    return { body, stamps: [], spine, grips: [], spout: null };
+    return { body: shell, stamps: [], spine, grips: [], spout: null };
   }
+  // 2026-10-07 (tank-accessories round 3: the blind critics read the cans as car batteries — a block with a few studs on
+  // top): the welded seam where the two pressed halves meet stands proud round the narrow faces, the stamped X stands a
+  // centimetre proud so its flanks shade, three arched handles span the top and the spout carries its cap's clamp lever.
+  const seam = place(moldedBox(0.012 * scale, h + 0.008 * scale, w + 0.008 * scale, 0, 0, 0.003 * scale), 0, h / 2, 0);
+  const body = mergeGeometries([shell, seam], false) ?? shell;
+  if (body !== shell) shell.dispose();
+  seam.dispose();
   const diag = Math.atan2(h * 0.62, w * 0.62);
   const ribLen = Math.hypot(h * 0.62, w * 0.62);
   const stamps: THREE.BufferGeometry[] = [];
   for (const f of faces) {
     for (const s of [-1, 1]) {
-      stamps.push(place(block(0.006, ribLen, 0.026 * scale), f * (t / 2 + 0.002), h * 0.47, 0, s * (Math.PI / 2 - diag), 0, 0));
+      stamps.push(place(block(0.016 * scale, ribLen, 0.034 * scale), f * (t / 2 + 0.002 * scale), h * 0.47, 0,
+        s * (Math.PI / 2 - diag), 0, 0));
     }
   }
-  // handle comb: a pressed spine along the top and three grips across it, behind the spout, inside the top's outline
-  const top = h + 0.004 * scale;
-  const spine = place(block(t * 0.42, 0.024 * scale, w * 0.5), 0, top + 0.008 * scale, -w * 0.17);
-  const grips = [-0.125, -0.06, 0.005].map((z) =>
-    roundBar([-t * 0.36, top + 0.03 * scale, z * scale], [t * 0.36, top + 0.03 * scale, z * scale], 0.0085 * scale, 4));
-  // spout and bayonet cap on the forward shoulder
-  const spout = place(latheY([[0.024, 0], [0.026, 0.03], [0.03, 0.034], [0.03, 0.05], [0.001, 0.052]], 6),
-    0, h - 0.02 * scale, w * 0.36, 0.42, 0, 0, scale);
+  // handle comb: a pressed spine along the top and three arched grips across it, behind the spout, their feet welded on
+  const spine = place(block(t * 0.42, 0.022 * scale, w * 0.5), 0, h + 0.006 * scale, -w * 0.17);
+  const grips = [-0.125, -0.06, 0.005].map((z) => sweptTube([
+    [-t * 0.34, h - 0.003 * scale, z * scale], [-t * 0.27, h + 0.036 * scale, z * scale],
+    [t * 0.27, h + 0.036 * scale, z * scale], [t * 0.34, h - 0.003 * scale, z * scale]], 0.0075 * scale, 4, 4));
+  // spout and bayonet cap on the forward shoulder, the cap's clamp lever folded down its side
+  const spoutBody = latheY([[0.024, 0], [0.026, 0.03], [0.03, 0.034], [0.03, 0.05], [0.001, 0.052]], 6);
+  const lever = place(block(0.012, 0.042, 0.016), 0.034, 0.03, 0);
+  const merged = mergeGeometries([spoutBody, lever], false);
+  const spout = place(merged ?? spoutBody, 0, h - 0.02 * scale, w * 0.36, 0.42, 0, 0, scale);
+  if (merged) spoutBody.dispose();
+  lever.dispose();
   return { body, stamps, spine, grips, spout };
 }
 
@@ -233,38 +266,55 @@ export function duffel(P: AccessoryPainter, len: number, radius: number, at: rea
   webbingLoop(P, at[0], top - 0.008, at[2], len * 0.3, 0.032, yaw);
 }
 
+/**
+ * Radial segments of a roll at the near level: 2026-10-07 (tank-accessories round 3: "rolls with eight visible facets")
+ * — the near rolls draw 14 to 16 sides with spiral ends; the coarse level keeps its old ten (six after the coarse cut).
+ */
+const ROLL_SEG_COARSE = 10;
+
+/** The rolled faces at both ends of a fabric roll lying along X in the piece frame (as bag() turns it). */
+function rollEnds(P: AccessoryPainter, len: number, radius: number, at: readonly [number, number, number], lift: number,
+  yaw: number, tone: number, rgb: RGB | undefined, steps: number): void {
+  for (const end of [-1, 1] as const) {
+    const spiral = place(rolledEndSpiral(radius, end * len / 2, end, steps), 0, 0, 0, 0, Math.PI / 2, 0);
+    P.cloth(place(spiral, at[0], at[1] + lift, at[2], 0, yaw, 0), tone, rgb);
+  }
+}
+
 export function bedroll(P: AccessoryPainter, len: number, radius: number, at: readonly [number, number, number], yaw: number,
-  tone: number, seed: number, rgb?: RGB): void {
+  tone: number, seed: number, rgb?: RGB, seg = 14): void {
   const spec: FabricSpec = { len, hw: radius, hh: radius, exponent: 2.05, endScale: 0.9, endLength: 0.05,
-    flatten: 0.14, wrinkle: 0.035, seg: 10, stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.1, seed };
+    flatten: 0.14, wrinkle: 0.035, seg: near(P) ? seg : ROLL_SEG_COARSE, stations: 4, cinch: [-len * 0.3, len * 0.3],
+    cinchDepth: 0.1, seed };
   const { lift } = bag(P, spec, at, yaw, tone, rgb, 0.5);
   if (!near(P)) return;
-  // the rolled layers at each end (the roll lies along X in the piece frame, as bag() turns it)
-  for (const layer of rolledEndLayers(radius, len)) {
-    P.cloth(place(place(layer, 0, 0, 0, 0, Math.PI / 2, 0), at[0], at[1] + lift, at[2], 0, yaw, 0), tone * 0.62, rgb);
-  }
+  // the rolled layers wound at each end
+  rollEnds(P, len, radius * 0.9, at, lift, yaw, tone * 0.62, rgb, 16);
 }
 
 /** A frame or ALICE-pattern rucksack lying on its back panel: main bag, lid flap, side pockets and compression straps. */
 export function rucksack(P: AccessoryPainter, w: number, len: number, h: number, at: readonly [number, number, number], yaw: number,
   tone: number, seed: number, rgb?: RGB): void {
-  const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 3.6, endScale: 0.72, endLength: 0.14,
-    flatten: 0.4, wrinkle: 0.04, seg: 10, stations: 5, cinch: [-len * 0.16, len * 0.2], cinchDepth: 0.06, seed };
+  const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 4, endScale: 0.76, endLength: 0.13,
+    flatten: 0.42, wrinkle: 0.04, seg: 10, stations: 5, cinch: [-len * 0.16, len * 0.2], cinchDepth: 0.06, seed };
   const { top } = bag(P, main, at, yaw, tone, rgb, 0.5);
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const local = (lx: number, ly: number, lz: number): [number, number, number] =>
     [at[0] + lz * s + lx * c, at[1] + ly, at[2] + lz * c - lx * s];
   // the lid flap folded over the top end
-  const flap: FabricSpec = { len: w * 0.92, hw: len * 0.17, hh: h * 0.16, exponent: 3, endScale: 0.8, endLength: 0.1,
+  const flap: FabricSpec = { len: w * 0.94, hw: len * 0.17, hh: h * 0.15, exponent: 4, endScale: 0.84, endLength: 0.08,
     flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: seed + 3 };
   const fl = local(len * 0.36, top - h * 0.12, 0);
   P.cloth(place(fabricBody({ ...flap, detail: P.detail }), fl[0], fl[1], fl[2], 0, yaw, 0), tone * 0.92, rgb);
-  // two side pockets (part of the silhouette at both levels)
+  // two flat side pockets sewn flush to the flanks under their own compression straps (part of the silhouette at both
+  // levels). 2026-10-07 (round 3: the six-sided pockets standing off the flanks read as spheres clustered on the bag).
   for (const side of [-1, 1]) {
-    const pocket: FabricSpec = { len: len * 0.36, hw: w * 0.11, hh: h * 0.26, exponent: 3.4, endScale: 0.7, endLength: 0.2,
-      flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: seed + 7 + side, detail: P.detail };
-    const p = local(-len * 0.02, h * 0.3, side * (w / 2 + w * 0.08));
-    P.cloth(place(fabricBody(pocket), p[0], p[1], p[2], 0, Math.PI / 2 + yaw, 0), tone * 0.88, rgb);
+    const pocket: FabricSpec = { len: len * 0.4, hw: w * 0.085, hh: h * 0.27, exponent: 4.5, endScale: 0.86,
+      endLength: 0.14, flatten: 0.3, wrinkle: 0.025, seg: 8, stations: 4, cinch: near(P) ? [0] : [], cinchDepth: 0.06,
+      seed: seed + 7 + side, detail: P.detail };
+    const p = local(-len * 0.02, h * 0.3, side * (w / 2 + w * 0.03));
+    P.cloth(place(fabricBody(pocket), p[0], p[1], p[2], 0, Math.PI / 2 + yaw, 0), tone * 0.86, rgb);
+    if (near(P)) webbing(P, place(fabricStrap(pocket, 0), p[0], p[1], p[2], 0, Math.PI / 2 + yaw, 0), 0.5);
   }
 }
 
@@ -276,6 +326,10 @@ export function rucksack(P: AccessoryPainter, w: number, len: number, h: number,
 // civilian boxes. Crews carry them, but in issue colours: olive drab, coyote and dark green, lids a shade lighter.
 const BLUE_COOLER: RGB = [0.22, 0.26, 0.15];
 const COOLER_LID: RGB = [0.27, 0.30, 0.19];
+/** The extinguisher bottle in olive drab (round 3); the palette's `extinguisher` red is only its band. */
+const EXTINGUISHER_BODY: RGB = [0.29, 0.33, 0.2];
+/** The helmets' issue olive. */
+const HELMET_OLIVE: RGB = [0.27, 0.33, 0.18];
 
 export function buildCargoVariant(variant: string, P: AccessoryPainter, colours: EquipmentColours, flat?: boolean): void {
   // Every random draw happens here, before any detail branch (both LOD levels agree).
@@ -306,8 +360,10 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     rucksack(P, 0.38, 0.56, 0.24, [0, 0, 0], (r[0] - 0.5) * 0.18, 0.62 + r[1] * 0.05, 23);
     break;
   case 'bedroll-pair':
-    bedroll(P, 0.6, 0.085, [0, 0, -0.095], (r[0] - 0.5) * 0.06, 0.66, 31, [0.94, 0.98, 0.86]);
-    bedroll(P, 0.58, 0.085, [0.01, 0, 0.095], (r[1] - 0.5) * 0.06, 0.8, 37, [1.04, 1.0, 0.9]);
+    // 2026-10-07 (round 3, Strv 103A: "the two rolled bags overlap each other with no shadow or gap"): a hand's gap
+    // between the rolls, so the deck shows between them
+    bedroll(P, 0.6, 0.082, [0, 0, -0.112], (r[0] - 0.5) * 0.06, 0.66, 31, [0.94, 0.98, 0.86]);
+    bedroll(P, 0.58, 0.085, [0.01, 0, 0.112], (r[1] - 0.5) * 0.06, 0.8, 37, [1.04, 1.0, 0.9]);
     break;
   case 'folded-tarp-pack': {
     const spec: FabricSpec = { len: 0.5, hw: 0.17, hh: 0.075, exponent: 6, endScale: 0.86, endLength: 0.07,
@@ -378,7 +434,9 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     if (near(P)) {
       P.paint(place(moldedBox(w + 0.004, 0.006, 0.07, 0, 0, 0.002), 0, h + 0.001, 0), [0.6, 0.47, 0.28], 0.2);
       for (const x of [-w * 0.3, w * 0.3]) P.steel(place(moldedBox(0.014, h + 0.008, d + 0.008, 0, 0, 0.002), x, h / 2, 0), 0.4);
-      P.paint(place(moldedBox(0.16, 0.08, 0.004, 0, 0, 0.001), 0.04, h * 0.55, d / 2 + 0.002), [0.78, 0.72, 0.56], 0.15);
+      // the label sits clear of the centre line, where the load's tie-down crosses the face (round 3: the strap cut it
+      // into a clipped decal)
+      P.paint(place(moldedBox(0.14, 0.08, 0.004, 0, 0, 0.001), -w * 0.26, h * 0.55, d / 2 + 0.002), [0.78, 0.72, 0.56], 0.15);
     }
     break;
   }
@@ -386,8 +444,11 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     hardCase(P, { w: 0.42, h: 0.24, d: 0.28, body: [0.30, 0.38, 0.2], lid: [0.34, 0.43, 0.22], lidShare: 0.3, radius: 0.025,
       latches: 'steel', handles: 'top' });
     if (near(P)) {
-      for (const [cw, ch] of [[0.04, 0.12], [0.12, 0.04]]) {
-        P.paint(place(new THREE.BoxGeometry(cw, ch, 0.004).toNonIndexed(), 0, 0.11, 0.143), [0.86, 0.84, 0.78], 0.12);
+      // the white cross off the centre line, where the load's tie-down strap crosses the face, and in world-scale UVs
+      // (2026-10-07, round 3, Challenger 1: the strap cut the centred cross into a clipped decal over a hard UV seam)
+      for (const [cw, ch] of [[0.024, 0.07], [0.07, 0.024]]) {
+        P.paint(place(block(cw, ch, 0.004), -0.057, 0.075, 0.143), [0.86, 0.84, 0.78], 0.12);      // front, under the lid
+        P.paint(place(block(cw * 1.3, 0.004, ch * 1.3), -0.14, 0.242, 0), [0.86, 0.84, 0.78], 0.12); // lid top
       }
     }
     break;
@@ -402,8 +463,11 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
       [0.03, len], [0.0005, len + 0.004]], seg);
     const upright = flat === false;
     const lay = (g: THREE.BufferGeometry): THREE.BufferGeometry => (upright ? g : place(g, -len / 2, rad + 0.03, 0, 0, 0, -Math.PI / 2));
-    P.paint(lay(shell), colours.extinguisher, 0.3);
+    // 2026-10-07 (round 3: the red bottle read as a toy-red box on the deck): an olive-drab bottle, its contents named by a
+    // narrow issue-red band under the valve
+    P.paint(lay(shell), EXTINGUISHER_BODY, 0.3);
     if (near(P)) {
+      P.paint(lay(latheY([[rad + 0.002, len - 0.115], [rad + 0.002, len - 0.08]], seg)), colours.extinguisher, 0.3);
       P.steel(lay(place(block(0.05, 0.05, 0.04), 0, len + 0.03, 0)), 0.55);
       P.steel(lay(place(block(0.12, 0.012, 0.024), 0.04, len + 0.06, 0, 0, 0, -0.2)), 0.5);
       P.paint(lay(sweptTube([[0.02, len + 0.03, 0.02], [0.06, len - 0.02, rad + 0.01], [0.04, len * 0.6, rad + 0.012]], 0.008, 4, 6)), BLACK_PLASTIC, 0.2);
@@ -427,12 +491,20 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     break;
   }
   case 'helmet-bundle': {
-    const seg = near(P) ? 9 : 6;
-    const shell = (): THREE.BufferGeometry => latheY([[0.15, 0], [0.142, 0.016], [0.122, 0.07], [0.08, 0.122], [0.0005, 0.142]], seg);
-    for (const [x, ry, tilt] of [[-0.16, 0.2, 0.25], [0, -0.3, 0], [0.16, 0.5, -0.25]] as const) {
-      P.paint(place(shell(), x, tilt ? 0.02 : 0, 0, 0, ry + r[2] * 0.3, tilt), [0.27, 0.33, 0.18], 0.35);
+    // 2026-10-07 (round 3: three helmet domes in a row read as "bags made of clustered spheres"): the crew's helmets ride
+    // in a sewn kit bag cinched by two straps, one helmet clipped on top of it by its chin strap
+    const spec: FabricSpec = { len: 0.5, hw: 0.16, hh: 0.12, exponent: 2.7, endScale: 0.55, endLength: 0.2, flatten: 0.34,
+      wrinkle: 0.07, seg: near(P) ? 12 : 10, stations: 6, cinch: [-0.15, 0.15], cinchDepth: 0.1, seed: 75 };
+    const { top } = bag(P, spec, [0, 0, 0], (r[2] - 0.5) * 0.2, 0.6, [0.9, 1.0, 0.84]);
+    const seg = near(P) ? 12 : 8;
+    const helmet = latheY([[0.146, 0], [0.152, 0.008], [0.143, 0.02], [0.122, 0.07], [0.08, 0.118], [0.0005, 0.138]], seg);
+    const hx = 0.03, hy = top - 0.035;
+    P.paint(place(helmet, hx, hy, 0.01, 0.12, r[2] * 0.6, -0.16), HELMET_OLIVE, 0.35);
+    if (near(P)) {
+      // the chin strap from the helmet's rim down over the bag to its buckle
+      webbing(P, sweptTube([[hx + 0.12, hy + 0.01, 0.08], [hx + 0.17, hy - 0.04, 0.1], [hx + 0.19, hy - 0.11, 0.11],
+        [hx + 0.17, hy - 0.16, 0.12]], 0.008, 4, 6), 0.5);
     }
-    webbing(P, place(block(0.5, 0.02, 0.03), 0, 0.09, 0.14), 0.55);
     break;
   }
   case 'crew-backpack':
@@ -507,20 +579,22 @@ export function buildPackCluster(P: AccessoryPainter, n: number): number {
 /** A rolled tarp along local X, seated on y = 0: firm roll, cinched by two straps, the rolled ends visible. */
 export function buildTarpRoll(P: AccessoryPainter, len: number, radius: number, tone: number, seed = 71): void {
   const spec: FabricSpec = { len, hw: radius, hh: radius * 0.94, exponent: 2.1, endScale: 0.92, endLength: 0.04,
-    flatten: 0.16, wrinkle: 0.03, seg: 10, stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.1, seed };
+    flatten: 0.16, wrinkle: 0.03, seg: near(P) ? 16 : ROLL_SEG_COARSE, stations: 4, cinch: [-len * 0.3, len * 0.3],
+    cinchDepth: 0.1, seed };
   const { lift } = bag(P, spec, [0, 0, 0], 0, tone);
   if (!near(P)) return;
-  for (const layer of rolledEndLayers(radius, len)) P.cloth(place(layer, 0, lift, 0, 0, Math.PI / 2, 0), tone * 0.6);
+  rollEnds(P, len, radius * 0.92, [0, 0, 0], lift, 0, tone * 0.6, undefined, 18);
 }
 
 /** Rolled camouflage net: a lumpy, gathered bundle with the net's garnish skin over its upper half and three ties. */
 export function buildNetRoll(P: AccessoryPainter, len: number, tone: number): void {
   const R = 0.13;
   const spec: FabricSpec = { len, hw: R * 1.05, hh: R, exponent: 2.1, endScale: 0.62, endLength: 0.12, flatten: 0.2,
-    wrinkle: 0.14, seg: 10, stations: 6, cinch: [-len * 0.32, 0.02, len * 0.34], cinchDepth: 0.16, seed: 83 };
+    wrinkle: 0.14, seg: near(P) ? 14 : ROLL_SEG_COARSE, stations: 6, cinch: [-len * 0.32, 0.02, len * 0.34],
+    cinchDepth: 0.16, seed: 83 };
   const { lift } = bag(P, spec, [0, 0, 0], 0, tone, [0.92, 1.02, 0.84], 0.45);
   // garnish skin: an open sleeve over the roll's upper half (net material, seen from both sides)
-  const skinSeg = near(P) ? 10 : 6;
+  const skinSeg = near(P) ? 14 : 6;
   const skin = new THREE.CylinderGeometry(R * 1.1, R * 1.1, len * 0.9, skinSeg, 1, true, 0, Math.PI).toNonIndexed();
   P.net(place(skin, 0, lift, 0, 0, 0, Math.PI / 2), 0.95);
 }
@@ -598,28 +672,25 @@ export function buildTools(P: AccessoryPainter, set: readonly string[]): void {
   });
 }
 
-/** An unditching log along X: an irregular trunk with bark tone, pale end grain and two chain straps. */
+/** Grey-brown bark over the wood family's warm grain, and the paler sawn end grain (round 3). */
+const BARK_TINT: RGB = [0.8, 1.0, 1.7];
+const END_GRAIN_TINT: RGB = [1.35, 1.42, 1.65];
+
+/**
+ * An unditching log along X (accessoryPrimitives.barkLog): furrowed bark, knots and a cut branch stub, pale sawn ends
+ * with growth rings and drying checks, and two chain straps on the actual trunk. 2026-10-07 (round 3: "the unditching
+ * log is a smooth green pipe").
+ */
 export function buildLog(P: AccessoryPainter, len: number, R: number, tone: number, seed: number): void {
-  const seg = near(P) ? 10 : 6;
-  const stations = near(P) ? 6 : 2;
-  const profile: Array<readonly [number, number]> = [];
-  profile.push([0.0005, 0]);
-  for (let i = 0; i <= stations; i++) {
-    const t = i / stations;
-    const swell = 1 + 0.06 * Math.sin(t * 9.4 + seed) + 0.04 * Math.sin(t * 23 + seed * 2);
-    profile.push([R * (1 - 0.06 * t) * swell, t * len]);
-  }
-  profile.push([0.0005, len]);
-  P.wood(place(latheY(profile, seg), -len / 2, 0, 0, 0, 0, -Math.PI / 2), tone * 0.62);
-  if (near(P)) {
-    // pale end grain, a hair proud of each sawn end
-    for (const side of [-1, 1]) {
-      const cut = new THREE.CircleGeometry(R * (side < 0 ? 0.9 : 0.85), seg).toNonIndexed();
-      P.wood(place(cut, side * (len / 2 + 0.002), 0, 0, 0, side * Math.PI / 2, 0), 1.0);
-    }
-  }
+  const log = barkLog({ len, r: R, seed, detail: P.detail });
+  P.wood(log.bark, tone * 0.62, BARK_TINT);
+  if (log.stub) P.wood(log.stub, tone * 0.56, BARK_TINT);
+  for (const end of log.ends) P.wood(end, 1.0, END_GRAIN_TINT);
+  for (const ring of log.grain) P.wood(ring, 0.55, BARK_TINT);
+  const seg = near(P) ? 12 : 6;
   for (const s of [-1, 1]) {
-    P.steel(place(new THREE.TorusGeometry(R + 0.006, 0.012, 3, seg).toNonIndexed(), s * len * 0.31, 0, 0, 0, Math.PI / 2, 0), 0.42);
+    const band = log.radiusAt(0.5 + s * 0.31) * 1.09 + 0.006;
+    P.steel(place(new THREE.TorusGeometry(band, 0.012, 3, seg).toNonIndexed(), s * len * 0.31, 0, 0, 0, Math.PI / 2, 0), 0.42);
   }
 }
 
@@ -772,17 +843,22 @@ export function buildCupola(P: AccessoryPainter, v: string, tone: number): void 
       P.kit(place(place(moldedBox(0.13, 0.02, 0.04, 0.006, 0, 0.004), 0, 0.2, r + 0.012), 0, 0, 0, 0, a, 0), tone * 0.94); // brow
     }
   } else {
-    // 'split': ring and an open lid leaned on its hinge
-    const r = 0.28, lidR = r * 0.55;
-    P.kit(latheY([[r * 0.95, 0], [r, 0.05], [r, 0.13], [r * 0.72, 0.155], [r * 0.6, 0.16], [0.001, 0.165]], seg), tone);
+    // 'split': a ring whose hatch stands open — the collar steps down into a dark well, and the lid, hinged at the
+    // well's back rim, has swung up past vertical to rest behind the ring. 2026-10-07 (round 3: "open hatch lids hinge
+    // up over solid bodies": the lid leaned forward over a closed ring top)
+    const r = 0.28, lidR = r * 0.55, wellR = r * 0.62, rimY = 0.16, hingeZ = -(wellR + 0.022);
+    P.kit(latheY([[r * 0.95, 0], [r, 0.05], [r, 0.13], [r * 0.86, 0.152], [r * 0.7, 0.158], [wellR, 0.152],
+      [wellR, 0.11], [0.001, 0.11]], seg), tone);
+    P.steel(place(new THREE.CircleGeometry(wellR * 0.99, seg).toNonIndexed(), 0, 0.112, 0, -Math.PI / 2, 0, 0), 0.12); // the open well
     const lid = latheY([[lidR, 0], [lidR, 0.02], [lidR * 0.7, 0.034], [0.001, 0.04]], seg);
-    place(lid, 0, 0, lidR);                       // hinge at the disc edge
-    place(lid, 0, 0, 0, -68 * Math.PI / 180, 0, 0);
-    P.kit(place(lid, 0, 0.165, -r * 0.72), tone * 1.05);
-    P.steel(place(block(0.08, 0.03, 0.05), 0, 0.155, -r * 0.8), 0.55);                                  // hinge block
+    place(lid, 0, 0, lidR);                       // its hinge edge on the hinge line, the lid over the well
+    place(lid, 0, 0, 0, -108 * Math.PI / 180, 0, 0);
+    P.kit(place(lid, 0, rimY + 0.012, hingeZ), tone * 1.05);
+    P.steel(place(block(0.08, 0.03, 0.05), 0, rimY - 0.004, hingeZ - 0.012), 0.55);                     // hinge block
     if (!near(P)) return;
-    P.steel(bossX(0.016, 0.06, 0, 0.17, -r * 0.8), 0.5);
-    P.steel(sweptTube([[-0.04, 0.165, r * 0.3], [-0.04, 0.19, r * 0.36], [0.04, 0.19, r * 0.36], [0.04, 0.165, r * 0.3]], 0.008, 4, 6), 0.5);
+    P.steel(bossX(0.016, 0.06, 0, rimY + 0.012, hingeZ), 0.5);
+    P.steel(sweptTube([[-0.04, rimY - 0.006, r * 0.76], [-0.04, rimY + 0.02, r * 0.8], [0.04, rimY + 0.02, r * 0.8],
+      [0.04, rimY - 0.006, r * 0.76]], 0.008, 4, 6), 0.5);                                              // grab handle
   }
 }
 
@@ -792,11 +868,12 @@ export function buildHatch(P: AccessoryPainter, v: string, tone: number): void {
     const r = 0.25;
     // pressed lid: raised rim, a shallow dome, the hinge knuckles and arm, a grab handle and the latch lug
     P.kit(latheY([[r, 0], [r, 0.03], [r * 0.95, 0.04], [r * 0.88, 0.044], [r * 0.86, 0.052], [r * 0.5, 0.068], [0.001, 0.075]], seg), tone);
-    P.steel(place(block(0.12, 0.026, 0.05), 0, 0.02, r * 0.9), 0.6);                                    // hinge block
+    // 2026-10-07 (round 3): the hinge stands at the rim, outside the lid, not sunk into it
+    P.steel(place(block(0.12, 0.03, 0.05), 0, 0.015, r + 0.02), 0.6);                                   // hinge block
     if (!near(P)) return;
-    P.steel(bossX(0.018, 0.05, -0.05, 0.03, r * 0.92), 0.55);
-    P.steel(bossX(0.018, 0.05, 0.05, 0.03, r * 0.92), 0.55);
-    P.kit(place(block(0.05, 0.012, r * 0.55), 0, 0.058, r * 0.6), tone * 0.94);                         // hinge arm
+    P.steel(bossX(0.018, 0.05, -0.05, 0.036, r + 0.022), 0.55);
+    P.steel(bossX(0.018, 0.05, 0.05, 0.036, r + 0.022), 0.55);
+    P.kit(place(block(0.05, 0.012, r * 0.5), 0, 0.058, r * 0.8), tone * 0.94);                          // hinge arm
     P.steel(sweptTube([[-0.045, 0.07, -r * 0.42], [-0.045, 0.094, -r * 0.46], [0.045, 0.094, -r * 0.46], [0.045, 0.07, -r * 0.42]], 0.009, 4, 6), 0.55);
     P.kit(place(moldedBox(0.08, 0.02, 0.05, 0.006, 0, 0.004), 0, 0.03, -r * 0.88), tone);                // latch lug
   } else {
@@ -847,7 +924,12 @@ export function buildSearchlight(P: AccessoryPainter, v: string, tone: number): 
   const D = v === 'ir_large' ? 0.3 : 0.19;     // drum depth
   const axleY = R + 0.07;
   P.kit(place(moldedBox(0.16, 0.035, 0.16, 0.01, near(P) ? 1 : 0, 0.006), 0, 0.018, 0), tone);           // base plate
-  for (const s of [-1, 1]) P.steel(roundBar([s * (R + 0.014), 0.03, 0], [s * (R + 0.014), axleY, 0], 0.012, near(P) ? 6 : 4), 0.55); // yoke
+  // the yoke stands on the plate: a pivot boss, the cross bar under the drum and the two arms up to the trunnions.
+  // 2026-10-07 (round 3: the arms stood on the support beside the plate, "planted on the ground")
+  const yokeY = 0.052, armX = R + 0.014, rs = near(P) ? 6 : 4;
+  P.steel(roundBar([0, 0.03, 0], [0, yokeY + 0.008, 0], 0.03, rs), 0.5);                                // pivot boss
+  P.steel(roundBar([-armX, yokeY, 0], [armX, yokeY, 0], 0.012, rs), 0.55);                              // cross bar
+  for (const s of [-1, 1]) P.steel(roundBar([s * armX, yokeY - 0.01, 0], [s * armX, axleY, 0], 0.012, rs), 0.55); // arms
   // drum: domed rear cap, body and the front bezel, one lathe along the beam
   P.kit(place(latheZ([[R * 0.55, 0], [R * 0.86, D * 0.06], [R, D * 0.18], [R, D * 0.94], [R * 1.05, D * 0.95], [R * 1.05, D], [R * 0.95, D * 1.01]], seg),
     0, axleY, -D * 0.68), tone);
