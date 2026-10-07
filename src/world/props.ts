@@ -8302,18 +8302,27 @@ ${snowCap ? `
     const CELLED = new Set(['structureWood', 'regionalStone']);
     const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
     const FINE_CELL_M = 120;
+    // facades lane (2026-10-06, Steinburg's round-2 cost: 124k of the craft's 164k fine triangles at the chase view lay
+    // past 80 m, a 120 m cell showing from 120 m off): the craft's finest pieces (geometry.ts EmitOptions.fine 'near': a
+    // flower box, a shop's lettering, a gutter's hangers) merge by 40 m cell and show within half the fine-detail
+    // distance (updateFineDetail): more instances of the same batches, no draw or program more
+    const NEAR_CELL_M = 40;
     const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
-    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
-    const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
+    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number; near?: true };
+    const fineCells = (list: THREE.BufferGeometry[], size = FINE_CELL_M): Cell[] => {
       const cells = new Map<number, Cell>();
       for (const g of list) {
         if (!g.boundingBox) g.computeBoundingBox();
         const b = g.boundingBox;
         if (!b || b.isEmpty()) continue;
-        const key = (Math.floor((b.min.x + b.max.x) * 0.5 / FINE_CELL_M) + 4096) * 8192 + Math.floor((b.min.z + b.max.z) * 0.5 / FINE_CELL_M) + 4096;
+        const key = (Math.floor((b.min.x + b.max.x) * 0.5 / size) + 4096) * 8192 + Math.floor((b.min.z + b.max.z) * 0.5 / size) + 4096;
         let cell = cells.get(key);
-        if (!cell) { cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; cells.set(key, cell); }
+        if (!cell) {
+          cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity };
+          if (size !== FINE_CELL_M) cell.near = true;
+          cells.set(key, cell);
+        }
         cell.list.push(g);
         cell.minX = Math.min(cell.minX, b.min.x); cell.maxX = Math.max(cell.maxX, b.max.x);
         cell.minY = Math.min(cell.minY, b.min.y); cell.maxY = Math.max(cell.maxY, b.max.y);
@@ -8322,7 +8331,7 @@ ${snowCap ? `
       return [...cells.values()];
     };
     /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
-    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list'> }> }> = [];
+    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list' | 'near'>; near?: true }> }> = [];
     group.userData.fineDetail = fineDetail;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
@@ -8353,7 +8362,8 @@ ${snowCap ? `
       if (!fine.length) continue;
       // the batch: the always-drawn receive-only dressing (instance 0, when there is any) and one instance per cell of
       // fine joinery; every instance starts visible, so the deployment warm uploads and links it with the rest
-      const cells = fineCells(fine);
+      const cells = [...fineCells(fine.filter((g) => g.userData.fineNear !== true)),
+        ...fineCells(fine.filter((g) => g.userData.fineNear === true), NEAR_CELL_M)];
       const parts: THREE.BufferGeometry[] = [];
       if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
       for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
@@ -8378,7 +8388,8 @@ ${snowCap ? `
       const ids = parts.map((g) => batch.addInstance(batch.addGeometry(g)));
       for (const g of parts) g.dispose();
       fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
-        box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ } })) });
+        box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ },
+        ...(cell.near ? { near: true as const } : {}) })) });
       group.add(batch);
       yield { fine: true };
     }
@@ -9152,15 +9163,16 @@ ${snowCap ? `
   };
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
-    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
+    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near?: true }> }> | undefined;
     if (!batches?.length || !cameraPos) return;
     if (fineFrames-- <= 0) { fineFar = FINE_DETAIL_M[resolvePresetName()] ?? 90; fineFrames = 60; }
-    for (const { mesh, cells } of batches) for (const { id, box: b } of cells) {
+    for (const { mesh, cells } of batches) for (const { id, box: b, near } of cells) {
       const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
       const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
       const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
-      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id);
-      if (shown ? d > fineFar + 15 : d < fineFar) mesh.setVisibleAt(id, !shown);
+      // the craft's near cells (mergeMaterialBuckets NEAR_CELL_M) show within half the distance
+      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id), far = near ? fineFar * 0.5 : fineFar;
+      if (shown ? d > far + 15 : d < far) mesh.setVisibleAt(id, !shown);
     }
   }
 

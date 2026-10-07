@@ -97,7 +97,8 @@ const townHouse: RegionalBuilder = (ctx) => {
       for (const end of [1, -1] as const) {
         const face: Face = { origin: [cx, 0, cz + end * hd], u: [end, 0, 0], out: [0, 0, end], width: top.x1 - top.x0 };
         gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0, (u, y, w, h) => {
-          windowUnit(sink, face, u, y, w, h, style, f, 0.25);
+          // (the attic light's frame and bars draw near the camera only: PartSink.near)
+          sink.near(() => windowUnit(sink, face, u, y, w, h, style, f, 0.25));
           // (paint in the first render family: its fine paint draws by the fine-detail cells, out of the shadow maps)
           paintSurround(sink, 'plaster', face, u, y, w, h, 0.12, fasche);
         });

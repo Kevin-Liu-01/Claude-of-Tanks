@@ -72,7 +72,7 @@ export function faceSlab(sink: PartSink, bucket: RegionalBucket, face: Face, pol
   const o1 = o0 + depth;
   const base = { ...DECOR, ...opts };
   sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, o1)), base);
-  const edge = coarseEdges ? base : { ...base, fine: true };
+  const edge: EmitOptions = coarseEdges ? base : { ...base, fine: 'near' };
   for (let i = 0; i < poly.length; i++) {
     const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
     if (Math.hypot(ub - ua, yb - ya) < 1e-4) continue;
@@ -111,8 +111,8 @@ export function nalichnikCrest(sink: PartSink, face: Face, u: number, y: number,
   const paint = { colour: style.colour };
   // the head board over the opening and the ledge on it, standing proud of the jambs, a little wider than the surround
   const lw = outer + 0.12;
-  faceBox(sink, wood, face, u, y + 0.05, 0.02, outer, 0.1, 0.04, { ...DECOR, ...paint, fineSides: true });
-  faceBox(sink, wood, face, u, y + 0.13, 0.035, lw, 0.06, 0.07, { ...DECOR, ...paint, fineSides: true });
+  faceBox(sink, wood, face, u, y + 0.05, 0.02, outer, 0.1, 0.04, { ...DECOR, ...paint, fineSides: 'near' });
+  faceBox(sink, wood, face, u, y + 0.13, 0.035, lw, 0.06, 0.07, { ...DECOR, ...paint, fineSides: 'near' });
   // the crest board over the ledge
   const bw = outer + 0.04, half = bw / 2, base = y + 0.16, top = base + style.rise;
   const shoulder = base + Math.min(0.08, style.rise * 0.4);
@@ -130,20 +130,20 @@ export function nalichnikCrest(sink: PartSink, face: Face, u: number, y: number,
     // a stepped head: a wide lower board, a narrower upper one (two convex outlines)
     const mid = shoulder + (top - shoulder) * 0.5;
     poly = [[u - half, base], [u + half, base], [u + half, mid], [u - half, mid]];
-    faceSlab(sink, wood, face, [[u - half * 0.62, mid], [u + half * 0.62, mid], [u + half * 0.62, top], [u - half * 0.62, top]], 0, 0.03, { ...paint, fineSides: true });
+    faceSlab(sink, wood, face, [[u - half * 0.62, mid], [u + half * 0.62, mid], [u + half * 0.62, top], [u - half * 0.62, top]], 0, 0.03, { ...paint, fineSides: 'near' });
   }
   faceSlab(sink, wood, face, poly, 0, 0.032, paint);
   // the carved field: the fretwork's shadowed ground in the second paint, inset in the board (fine: 6 mm proud)
   const inset = 0.035;
   const fieldPoly = shrink(poly, u, (base + Math.max(...poly.map(([, py]) => py))) / 2, inset);
-  if (fieldPoly) faceSlab(sink, wood, face, fieldPoly, 0.032, 0.006, { colour: style.field, fine: true });
+  if (fieldPoly) faceSlab(sink, wood, face, fieldPoly, 0.032, 0.006, { colour: style.field, fine: 'near' });
   // three rosettes (the carving's bosses) in the board's paint on the field, and the finial on the peak
   const fy = base + (top - base) * 0.42;
   for (const du of [-half * 0.55, 0, half * 0.55]) {
     const s = du === 0 ? 0.045 : 0.032;
-    faceSlab(sink, wood, face, [[u + du, fy - s], [u + du + s, fy], [u + du, fy + s], [u + du - s, fy]], 0.038, 0.008, { colour: style.colour, fine: true });
+    faceSlab(sink, wood, face, [[u + du, fy - s], [u + du + s, fy], [u + du, fy + s], [u + du - s, fy]], 0.038, 0.008, { colour: style.colour, fine: 'near' });
   }
-  faceSlab(sink, wood, face, [[u, top - 0.02], [u + 0.05, top + 0.05], [u, top + 0.13], [u - 0.05, top + 0.05]], 0, 0.03, { colour: style.colour, fine: true });
+  faceSlab(sink, wood, face, [[u, top - 0.02], [u + 0.05, top + 0.05], [u, top + 0.13], [u - 0.05, top + 0.05]], 0, 0.03, { colour: style.colour, fine: 'near' });
 }
 
 /** The apron (podzor) under a nalichnik's sill: a board cut to a pointed drop, its field in the second paint. */
@@ -152,7 +152,7 @@ export function nalichnikApron(sink: PartSink, face: Face, u: number, y: number,
   const poly: Array<[number, number]> = [[u - half, y - drop * 0.62], [u, y - drop], [u + half, y - drop * 0.62], [u + half, y], [u - half, y]];
   faceSlab(sink, 'structureWood', face, poly, 0, 0.03, { colour });
   const f = shrink(poly, u, y - drop * 0.45, 0.04);
-  if (f) faceSlab(sink, 'structureWood', face, f, 0.03, 0.006, { colour: field, fine: true });
+  if (f) faceSlab(sink, 'structureWood', face, f, 0.03, 0.006, { colour: field, fine: 'near' });
 }
 
 /** A convex outline pulled in toward (cu, cy) by `d` along each corner's ray (a carved field's border). */
@@ -320,7 +320,7 @@ export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, 
       return 0.64 + 0.36 * t;
     };
     sink.polygon(bucket, [facePoint(face, cu - half, bottom, 0.012), facePoint(face, cu + half, bottom, 0.012),
-      facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: true, shadeAt: at });
+      facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: 'near', shadeAt: at });
   }
 }
 
@@ -344,7 +344,7 @@ export function windowHead(sink: PartSink, face: Face, u: number, y: number, w: 
   const span = w + 2 * head.ext;
   const front: EmitOptions = { ...DECOR, ...paint };
   if (head.kind === 'lintel') {
-    faceBox(sink, head.bucket, face, u, y + head.h / 2, head.out / 2, span, head.h, head.out, { ...front, fineSides: true });
+    faceBox(sink, head.bucket, face, u, y + head.h / 2, head.out / 2, span, head.h, head.out, { ...front, fineSides: 'near' });
     return;
   }
   if (head.kind === 'segment') {
@@ -361,9 +361,9 @@ export function windowHead(sink: PartSink, face: Face, u: number, y: number, w: 
   }
   // hood and pediment: the frieze, then the ledge standing further out, its underside the hood's shadow line
   const frieze = head.h * 0.55, ledge = head.h - frieze;
-  faceBox(sink, head.bucket, face, u, y + frieze / 2, head.out * 0.3, span, frieze, head.out * 0.6, { ...front, fineSides: true });
+  faceBox(sink, head.bucket, face, u, y + frieze / 2, head.out * 0.3, span, frieze, head.out * 0.6, { ...front, fineSides: 'near' });
   sink.box(head.bucket, facePoint(face, u, y + frieze + ledge / 2, head.out / 2), [span / 2 + 0.03, ledge / 2, head.out / 2],
-    { ...front, uv: { kind: 'world' } }, faceFrame(face), { nz: true }, { pz: true, ny: true });
+    { ...front, uv: { kind: 'world' }, fineSides: 'near' }, faceFrame(face), { nz: true }, { pz: true, ny: true });
   if (head.kind === 'pediment') {
     const base = y + head.h, half = span / 2 + 0.03;
     faceSlab(sink, head.bucket, face, [[u - half, base], [u + half, base], [u, base + head.rise]], 0, head.out * 0.7, paint);
@@ -378,7 +378,7 @@ function faceFrame(face: Face): LocalFrame {
 /**
  * A moulded run along a face (a cornice, a string course, a plinth's water table): layers stacked upward from `y`,
  * each `h` tall standing `out` proud, from u0 to u1, and returned round the corners onto the side faces by `ret`.
- * The fronts and the undersides read at range (the shadow line under a cornice); tops and ends are fine.
+ * The fronts and the undersides read at range (the shadow line under a cornice); tops and ends are near fine joinery.
  */
 export function trimRun(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number,
   layers: ReadonlyArray<{ h: number; out: number }>, opts: { ret?: number; wrap?: boolean; colour?: Rgb; tint?: Rgb } = {}): void {
@@ -388,7 +388,7 @@ export function trimRun(sink: PartSink, bucket: RegionalBucket, face: Face, u0: 
   for (const layer of layers) {
     // a wrapped run (round a whole body) carries on past the corner by its projection, meeting the next face's run
     const o = layer.out, len = u1 - u0 + (ret > 0 || opts.wrap ? 2 * o : 0);
-    sink.box(bucket, facePoint(face, (u0 + u1) / 2, yy + layer.h / 2, o / 2), [len / 2, layer.h / 2, o / 2], { ...paint, uv: { kind: 'world' } },
+    sink.box(bucket, facePoint(face, (u0 + u1) / 2, yy + layer.h / 2, o / 2), [len / 2, layer.h / 2, o / 2], { ...paint, uv: { kind: 'world' }, fineSides: 'near' },
       faceFrame(face), { nz: true }, { pz: true, ny: true });
     if (ret > 0) {
       // the returns: short runs on the side faces from the corner back along them
@@ -398,7 +398,7 @@ export function trimRun(sink: PartSink, bucket: RegionalBucket, face: Face, u0: 
           out: [face.u[0] * end, face.u[1] * end, face.u[2] * end], width: 0 };
         const along = Math.min(ret, 0.6);
         sink.box(bucket, facePoint(side, end < 0 ? -along / 2 : along / 2, yy + layer.h / 2, o / 2), [along / 2, layer.h / 2, o / 2],
-          { ...paint, uv: { kind: 'world' } }, faceFrame(side), { nz: true }, { pz: true, ny: true });
+          { ...paint, uv: { kind: 'world' }, fineSides: 'near' }, faceFrame(side), { nz: true }, { pz: true, ny: true });
       }
     }
     yy += layer.h;
@@ -419,10 +419,10 @@ export function doorCanopy(sink: PartSink, face: Face, u: number, y: number, w: 
   for (const side of [-1, 1]) {
     const cu = u + side * (span / 2 - 0.12);
     sink.member('structureWood', facePoint(face, cu, wall - 0.62, 0.02), facePoint(face, cu, wall - 0.06, depth - 0.12), 0.08, 0.08, face.u,
-      { ...timber, exposed: true, fine: true }, 0);
-    faceBox(sink, 'structureWood', face, cu, wall - 0.04, (depth - 0.08) / 2, 0.08, 0.08, depth - 0.08, { ...timber, fine: true });
+      { ...timber, exposed: true, fine: 'near' }, 0);
+    faceBox(sink, 'structureWood', face, cu, wall - 0.04, (depth - 0.08) / 2, 0.08, 0.08, depth - 0.08, { ...timber, fine: 'near' });
   }
-  faceBox(sink, 'structureWood', face, u, wall - 0.04, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: true });
+  faceBox(sink, 'structureWood', face, u, wall - 0.04, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: 'near' });
   if (style.kind === 'shed') {
     // one slab from the wall falling to the front beam
     const drop = 0.28;
@@ -478,7 +478,7 @@ export function dentilCornice(sink: PartSink, bucket: RegionalBucket, face: Face
   const n = Math.max(2, Math.floor((u1 - u0) / 0.25));
   for (let k = 0; k < n; k++) {
     const u = u0 + (u1 - u0) * (k + 0.5) / n;
-    faceBox(sink, bucket, face, u, y + 0.075 + 0.04, 0.05, 0.12, 0.08, 0.1, { ...DECOR, fine: true });
+    faceBox(sink, bucket, face, u, y + 0.075 + 0.04, 0.05, 0.12, 0.08, 0.1, { ...DECOR, fine: 'near' });
   }
   trimRun(sink, bucket, face, u0, u1, y + 0.155, [{ h: 0.075, out: 0.12 }, { h: 0.075, out: 0.16 }], { ret: opts.ret });
 }
@@ -512,7 +512,7 @@ export function roofDormers(sink: PartSink, roof: { s: number; halfD: number; ta
       // the front wall and its window
       sink.quad(style.wall, facePoint(face, -dw / 2, yb, 0), facePoint(face, dw / 2, yb, 0), facePoint(face, dw / 2, yt, 0), facePoint(face, -dw / 2, yt, 0),
         { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) });
-      style.window(face, 0, yb + 0.32, 0.72, fh - 0.5);
+      sink.near(() => style.window(face, 0, yb + 0.32, 0.72, fh - 0.5));
       // the cheeks: triangles from the front back to the slope
       for (const end of [-1, 1]) {
         const z = zc + end * dw / 2;
@@ -559,15 +559,15 @@ function orientedPrism(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], n: V
  */
 export function balconette(sink: PartSink, face: Face, u: number, y: number, w: number, slab: RegionalBucket, iron: Rgb, depth = 0.5): void {
   const sw = w + 0.5, t = 0.13;
-  faceBox(sink, slab, face, u, y - t / 2 - 0.02, depth / 2, sw, t, depth, { ...DECOR, fineSides: true });
+  faceBox(sink, slab, face, u, y - t / 2 - 0.02, depth / 2, sw, t, depth, { ...DECOR, fineSides: 'near' });
   // the corbels: stepped blocks under the slab's ends
   for (const side of [-1, 1]) {
     const cu = u + side * (sw / 2 - 0.16);
-    faceBox(sink, slab, face, cu, y - t - 0.12, depth * 0.35, 0.18, 0.2, depth * 0.7, { ...DECOR, fineSides: true });
-    faceBox(sink, slab, face, cu, y - t - 0.3, depth * 0.2, 0.16, 0.16, depth * 0.4, { ...DECOR, fine: true });
+    faceBox(sink, slab, face, cu, y - t - 0.12, depth * 0.35, 0.18, 0.2, depth * 0.7, { ...DECOR, fineSides: 'near' });
+    faceBox(sink, slab, face, cu, y - t - 0.3, depth * 0.2, 0.16, 0.16, depth * 0.4, { ...DECOR, fine: 'near' });
   }
   // the railing: a top rail and a foot rail round the three open sides, bars between
-  const rail = { colour: iron, decor: true, fine: true } as EmitOptions;
+  const rail: EmitOptions = { colour: iron, decor: true, fine: 'near' };
   const h = 0.92, o = depth - 0.05;
   faceBox(sink, 'structureMetal', face, u, y + h, o, sw - 0.06, 0.04, 0.04, { colour: iron, decor: true });
   faceBox(sink, 'structureMetal', face, u, y + 0.08, o, sw - 0.06, 0.03, 0.03, rail);
@@ -596,13 +596,13 @@ export function carvedVerge(sink: PartSink, x0: number, y0: number, apex: number
       const p = (t: number): [number, number] => [side * x0 * (1 - t), y0 + (apex - y0) * t - 0.11];
       const [ua, ya] = p(t0), [ub, yb] = p(t1), [um, ym] = p(tm);
       const tri: Array<[number, number]> = side * end > 0 ? [[ua, ya], [um, ym - 0.1], [ub, yb]] : [[ua, ya], [ub, yb], [um, ym - 0.1]];
-      faceSlab(sink, 'structureWood', face, tri.map(([u, y]): [number, number] => [u * end, y]), 0, 0.03, { colour, fine: true });
+      faceSlab(sink, 'structureWood', face, tri.map(([u, y]): [number, number] => [u * end, y]), 0, 0.03, { colour, fine: 'near' });
     }
   }
   // the towel board from the apex
   const w = 0.22, top = apex - 0.12, bottom = top - 1.0;
   faceSlab(sink, 'structureWood', face, [[-w / 2, bottom + 0.14], [0, bottom], [w / 2, bottom + 0.14], [w / 2, top], [-w / 2, top]], 0, 0.035, c);
-  faceSlab(sink, 'structureWood', face, [[0, bottom + 0.42], [0.07, bottom + 0.52], [0, bottom + 0.62], [-0.07, bottom + 0.52]], 0.035, 0.008, { colour: [colour[0] * 0.6, colour[1] * 0.6, colour[2] * 0.6], fine: true });
+  faceSlab(sink, 'structureWood', face, [[0, bottom + 0.42], [0.07, bottom + 0.52], [0, bottom + 0.62], [-0.07, bottom + 0.52]], 0.035, 0.008, { colour: [colour[0] * 0.6, colour[1] * 0.6, colour[2] * 0.6], fine: 'near' });
 }
 
 // -------------------------------------------------------------------------------------------------------------------
@@ -643,7 +643,7 @@ export function plinthPaint(sink: PartSink, bucket: RegionalBucket, half: readon
  */
 export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, riser: number, back: number,
   paint: Rgb, frame: Rgb, surround: number, top: number): void {
-  const fine = { ...DECOR, colour: frame, fine: true };
+  const fine: EmitOptions = { ...DECOR, colour: frame, fine: 'near' };
   const bar = 0.045, barO = 0.05;
   const n = Math.max(2, Math.ceil(w / 0.8));
   for (let k = 1; k < n; k++) faceBox(sink, 'structureWood', face, u - w / 2 + w * k / n, y + h / 2, back + barO / 2, bar, h - 0.1, barO, fine, 'caps');
@@ -653,12 +653,12 @@ export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: numbe
   for (let k = 1; k < 2 * n; k += 2) faceBox(sink, 'structureWood', face, u - w / 2 + w * k / (2 * n), ty + 0.21, back + barO / 2, 0.03, 0.36, barO, fine, 'caps');
   // the stall riser: a painted panel across the opening's foot, a raised field in it
   const rw = w + 2 * surround, panel = { ...DECOR, colour: paint };
-  faceBox(sink, 'structureWood', face, u, y - riser / 2, 0.025, rw, riser - 0.04, 0.05, { ...panel, fineSides: true });
+  faceBox(sink, 'structureWood', face, u, y - riser / 2, 0.025, rw, riser - 0.04, 0.05, { ...panel, fineSides: 'near' });
   const fields = Math.max(1, Math.round(rw / 1.1));
   for (let k = 0; k < fields; k++) {
     const fu = u - rw / 2 + rw * (k + 0.5) / fields;
     faceBox(sink, 'structureWood', face, fu, y - riser / 2, 0.06, rw / fields - 0.16, riser - 0.2, 0.02,
-      { ...DECOR, colour: [paint[0] * 0.82, paint[1] * 0.82, paint[2] * 0.82], fine: true });
+      { ...DECOR, colour: [paint[0] * 0.82, paint[1] * 0.82, paint[2] * 0.82], fine: 'near' });
   }
   // the fascia: a painted board over the opening's head, a moulded cornice on it, as deep as the storey leaves room for
   const foot = y + h + surround + 0.02, room = top - 0.06 - foot, board = Math.min(0.4, room - 0.08);
@@ -670,7 +670,7 @@ export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: numbe
     for (let k = 0; cu < u + span / 2 - 0.06; k++) {
       const wk = 0.07 + 0.06 * hash01(face.origin[0], face.origin[2], u, k);
       if (cu + wk > u + span / 2) break;
-      faceBox(sink, 'structureWood', face, cu + wk / 2, cy, o, wk, height, 0.004, { ...DECOR, colour: ink, fine: true });
+      faceBox(sink, 'structureWood', face, cu + wk / 2, cy, o, wk, height, 0.004, { ...DECOR, colour: ink, fine: 'near' });
       cu += wk + (k % 6 === 5 ? 0.12 : 0.035);
     }
   };
@@ -678,8 +678,8 @@ export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: numbe
     lettering(ty + 0.21, 0.15, back + barO + 0.004, [0.86, 0.72, 0.36], w - 0.3);
     return;
   }
-  faceBox(sink, 'structureWood', face, u, foot + board / 2, 0.05, rw + 0.3, board, 0.1, { ...panel, fineSides: true });
-  faceBox(sink, 'structureWood', face, u, foot + board + 0.035, 0.09, rw + 0.44, 0.07, 0.18, { ...panel, fineSides: true });
+  faceBox(sink, 'structureWood', face, u, foot + board / 2, 0.05, rw + 0.3, board, 0.1, { ...panel, fineSides: 'near' });
+  faceBox(sink, 'structureWood', face, u, foot + board + 0.035, 0.09, rw + 0.44, 0.07, 0.18, { ...panel, fineSides: 'near' });
   const light = paint[0] + paint[1] + paint[2] > 1.2;
   lettering(foot + board / 2, Math.min(0.2, board * 0.5), 0.101, light ? [0.06, 0.05, 0.05] : [0.86, 0.72, 0.36], rw - 0.1);
 }
@@ -699,13 +699,13 @@ export function innEmblem(sink: PartSink, face: Face, u: number, y: number, out:
     const c = -side * out;
     const r = Math.min(w, h) * 0.32, cy = y;
     faceSlab(sink, 'structureWood', f, [[c - w / 2 + 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy - h / 2 + 0.03], [c + w / 2 - 0.03, cy + h / 2 - 0.03], [c - w / 2 + 0.03, cy + h / 2 - 0.03]],
-      half, 0.004, { colour: rim, fine: true });
+      half, 0.004, { colour: rim, fine: 'near' });
     for (const turn of [0, Math.PI]) {
       const tri: Array<[number, number]> = [0, 1, 2].map((k) => {
         const a = turn + Math.PI / 2 + k * Math.PI * 2 / 3;
         return [c + Math.cos(a) * r, cy + Math.sin(a) * r] as [number, number];
       });
-      faceSlab(sink, 'structureWood', f, tri, half + 0.004, 0.003, { colour: gold, fine: true });
+      faceSlab(sink, 'structureWood', f, tri, half + 0.004, 0.003, { colour: gold, fine: 'near' });
     }
   }
 }

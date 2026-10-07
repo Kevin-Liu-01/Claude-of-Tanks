@@ -721,10 +721,11 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       sink.span('structureMetal', px - 0.045, baseY, pz - 0.045, px + 0.045, gy - 0.07, pz + 0.045, { colour, decor: true, fine: true });
       if (facadeOn()) downpipeFittings(sink, px, pz, side, baseY, gy - 0.13, colour);
     }
-    // the gutter's hangers under it, one every other rafter: their straps' fronts and undersides (facade craft, desktop)
+    // the gutter's hangers under it, one every other rafter: their straps' fronts and undersides (facade craft, desktop;
+    // drawn near the camera only, EmitOptions.fine 'near')
     if (facadeOn()) {
       moveRoof(() => {
-        const n = Math.max(2, Math.round(2 * gz / 1.2)), hanger = { colour: shadeRgb(colour, 0.7), decor: true, fine: true };
+        const n = Math.max(2, Math.round(2 * gz / 1.2)), hanger = { colour: shadeRgb(colour, 0.7), decor: true, fine: 'near' as const };
         for (const side of [1, -1]) for (let k = 0; k <= n; k++) {
           const z = -gz + 0.12 + (2 * gz - 0.24) * k / n, x0 = side * ex - 0.08, x1 = side * ex + 0.08, y = gy - 0.085;
           sink.quad('structureMetal', [x0, y, z + 0.02], [x0, y, z - 0.02], [x1, y, z - 0.02], [x1, y, z + 0.02], hanger);
@@ -828,14 +829,15 @@ function shadeRgb(c: Rgb, k: number): Rgb {
 
 /**
  * A downpipe's fittings (facade craft): the hopper head under the swan neck, two clips holding it to the wall and the
- * shoe kicking the water off at its foot. (x, z) is the pipe's axis, `side` the eaves side its wall faces (+x or -x).
+ * shoe kicking the water off at its foot, drawn near the camera only (EmitOptions.fine 'near'). (x, z) is the pipe's
+ * axis, `side` the eaves side its wall faces (+x or -x).
  */
 function downpipeFittings(sink: PartSink, x: number, z: number, side: number, baseY: number, topY: number, colour: Rgb): void {
-  const fine = { colour, decor: true, fine: true };
+  const fine = { colour, decor: true, fine: 'near' as const };
   sink.span('structureMetal', x - 0.09, topY - 0.24, z - 0.09, x + 0.09, topY - 0.02, z + 0.09, fine);
   const y = baseY + (topY - baseY) * 0.5;
   sink.span('structureMetal', Math.min(x, x - side * 0.08) - 0.055, y, z - 0.055, Math.max(x, x - side * 0.08) + 0.055, y + 0.035, z + 0.055,
-    { colour: shadeRgb(colour, 0.75), decor: true, fine: true });
+    { colour: shadeRgb(colour, 0.75), decor: true, fine: 'near' });
   sink.span('structureMetal', Math.min(x, x + side * 0.16) - 0.045, baseY, z - 0.045, Math.max(x, x + side * 0.16) + 0.045, baseY + 0.09, z + 0.045, fine);
 }
 

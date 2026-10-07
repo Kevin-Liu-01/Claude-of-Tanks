@@ -538,8 +538,14 @@ do not move), it is desktop only (a phone's build is byte for byte its craftless
 stream (index.ts forks it from the wear seed) or hashes positions, so a kit's build and look streams draw exactly as
 often with it as without it. Its fine metal and render work (hangers, fittings, streaks, the edges of trims) join the
 fine-detail cells: on a desktop build `structureMetal` and the three `regionalPlaster` buckets batch like the timber and
-stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
-`facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
+stone (the metal's batch takes the place of its always-drawn mesh). Its finest pieces are near fine joinery
+(`EmitOptions.fine: 'near'`, `fineSides: 'near'`, or a whole call inside `PartSink.near`: a flower box, a shop's
+lettering, a gutter's hangers and fittings, the sills' dirt runs, the attic and dormer lights' frames, the sides and
+tops of trims): they merge by 40 m cell and show within half the fine-detail distance (60 m at High), so a street view
+draws them and the town beyond it does not (Steinburg's chase view drew 164k of the craft's fine triangles, 124k of
+them past 80 m; the near tier leaves 56k). Paint (bands, Faschen, the plinth's band) and pilasters stay with the kit's
+fine joinery, at the full distance. A new part follows the same laws: decor, behind `facadeOn()`, no draw from
+`ctx.rng` or `ctx.variant`.
 
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after

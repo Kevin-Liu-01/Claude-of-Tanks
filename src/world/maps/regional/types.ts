@@ -63,14 +63,14 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
-  /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
-  yard?: YardStyle;
   /**
    * the churchyard round the kit's church (the facades lane, 2026-10-06; wave 150: "both German churches stand on bare
    * dirt"): a yard on the church's freest side walled like a house's, its graves in place of the beds. A map opts in
    * (props `churchyard: true`): its walls are destructibles with colliders, so the map's collision shard regenerates
    */
   churchyard?: YardStyle;
+  /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
+  yard?: YardStyle;
 }
 
 /**

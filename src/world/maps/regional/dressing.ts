@@ -11,8 +11,9 @@ const DECOR = { decor: true } as const;
 /** A planted window box on its brackets under a window (u, y: the window's bottom-centre on the face). */
 export function flowerBox(sink: PartSink, face: Face, u: number, y: number, w: number, box: Rgb, bloom: Rgb, rng: () => number,
   fine = false): void {
-  // (`fine`: the facade craft's boxes are fine dressing, drawn within the fine-detail distance, in no shadow map)
-  const d = fine ? { ...DECOR, fine: true } : DECOR;
+  // (`fine`: the facade craft's boxes are fine dressing, drawn near the camera only, in no shadow map: EmitOptions.fine
+  // 'near')
+  const d = fine ? { ...DECOR, fine: 'near' as const } : DECOR;
   const bw = w + 0.12, by = y - 0.24;
   faceBox(sink, 'structureWood', face, u, by, 0.13, bw, 0.18, 0.2, { ...d, colour: box });
   for (const side of [-1, 1]) faceBox(sink, 'structureMetal', face, u + side * (bw / 2 - 0.08), by - 0.12, 0.08, 0.03, 0.12, 0.14, { ...d, colour: [0.12, 0.12, 0.12] });
@@ -181,8 +182,8 @@ export function hollyhocks(sink: PartSink, face: Face, u: number, bloom: Rgb, rn
     for (let f = 0; f < flowers; f++) {
       const t = 0.5 + 0.48 * f / flowers, s = 0.1 - f * 0.008;
       const x = foot[0] + (tip[0] - foot[0]) * t, y = foot[1] + (tip[1] - foot[1]) * t, z = foot[2] + (tip[2] - foot[2]) * t;
-      // the flowers read near (fine joinery); past the fine-detail distance the stalks and the leafy foot remain
-      sink.box('structureWood', [x, y, z], [s / 2, s / 2, s / 2], { ...DECOR, colour: c, fine: true });
+      // the flowers read near (EmitOptions.fine 'near'); past that distance the stalks and the leafy foot remain
+      sink.box('structureWood', [x, y, z], [s / 2, s / 2, s / 2], { ...DECOR, colour: c, fine: 'near' });
     }
   }
 }
