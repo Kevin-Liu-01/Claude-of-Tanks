@@ -614,6 +614,15 @@ Round four (wave 199, October 7: round three scored 4.85):
   loss shows ochre daub, not a grey blob.
 - A rendered tower's quoins run long and short by turns.
 
+Round five (wave 199's remaining "wallpaper" reads, October 7), texture only:
+- The render no longer prints Plaster 007's broad blotches. `Plaster007_1K-JPG_Color-even.jpg` is a first-party
+  derivative (docs/ATTRIBUTION.md): a periodic FFT high-pass takes 70 % of the broad luminance blotching out and pulls
+  the chroma 80 % toward the tile's mean, keeping the grain. A wall's variation comes from the craft's own weathering.
+- A kit's thatched roofs ("thatch that reads like carpet") take `props.ts makeThatch`: one combed coat per course, six
+  wandering courses down a 2.2 m tile, the straw's own strands and a slow drift of tone along the ridge, in the straw
+  print's palette. At the merge they leave the straw bucket for a mesh of their own (`buckets.thatch`) under the
+  straw's program key. The bales, stooks and stacks keep their own prints.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
