@@ -134,6 +134,63 @@ export function hardCase(P: AccessoryPainter, c: CaseSpec): void {
   }
 }
 
+/**
+ * A welded sheet-steel chest (round 4, 2026-10-07; the critics on the Strv 103A's insulated food container: "the stowage
+ * box's glossy, rounded-corner surface reads as injection-molded plastic, like a cooler, rather than welded sheet
+ * steel"): flat pressed panels with tight folded edges instead of a 4.5 cm filleted moulding, a raised weld bead down
+ * each vertical corner, a flanged lid whose folded skirt laps the body, pressed stiffening ribs, steel over-centre
+ * clamps, barrel hinges and end grips. The case's envelope (w x h x d, lid share, the lid's 1.018 x 1.024 overhang) and
+ * its draws are hardCase's, so every seat, support probe and LOD envelope is unchanged; no random draws; no more
+ * triangles than the moulded case at either level.
+ */
+function steelChest(P: AccessoryPainter, c: CaseSpec): void {
+  const lidH = c.h * (c.lidShare ?? 0.24);
+  const bodyH = c.h - lidH;
+  const fold = 0.006;                                   // the folded sheet edge, not a moulded fillet
+  P.paint(place(moldedBox(c.w, bodyH, c.d, fold, 1, fold * 0.6), 0, bodyH / 2, 0), c.body, 0.34);
+  P.paint(place(moldedBox(c.w * 1.018, lidH, c.d * 1.024, fold, 1, fold * 0.7), 0, bodyH + lidH / 2, 0), c.lid, 0.24);
+  if (!near(P)) return;
+  const hw = c.w / 2, hd = c.d / 2;
+  // the lid's folded skirt lapping the body, over a dark gasket line
+  P.paint(place(block(c.w * 1.03, 0.014, c.d * 1.036), 0, bodyH + 0.006, 0), scaleRgb(c.lid, 0.94), 0.3);
+  P.paint(place(block(c.w * 1.006, 0.006, c.d * 1.01), 0, bodyH - 0.003, 0), BLACK_PLASTIC, 0);
+  // a weld bead down each vertical corner (three-sided: no more triangles than the moulding it replaces)
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    P.paint(roundBar([sx * (hw - 0.001), 0.012, sz * (hd - 0.001)], [sx * (hw - 0.001), bodyH - 0.012, sz * (hd - 0.001)], 0.0035, 3),
+      scaleRgb(c.body, 0.86), 0.36);
+  }
+  // pressed stiffening ribs on the long faces
+  const n = c.ribs ?? 0;
+  for (let i = 0; i < n; i++) {
+    const x = (i - (n - 1) / 2) * (c.w * 0.62 / Math.max(1, n - 1 || 1));
+    for (const side of [-1, 1]) {
+      P.paint(place(block(0.03, bodyH * 0.66, 0.008), x, bodyH * 0.48, side * (hd + 0.003)), scaleRgb(c.body, 1.06), 0.32);
+    }
+  }
+  // steel over-centre clamps with their keepers on the lid skirt, standing proud of the face
+  for (const side of [-1, 1]) {
+    const x = side * c.w * 0.3, face = hd;
+    P.paint(place(block(0.058, 0.074, 0.004), x, bodyH - 0.034, face + 0.002), BLACK_PLASTIC, 0);
+    P.steel(place(moldedBox(0.04, 0.062, 0.02, 0.004, 0, 0.003), x, bodyH - 0.026, face + 0.012), 0.6);
+    P.steel(place(block(0.046, 0.016, 0.016), x, bodyH + lidH * 0.32, c.d * 0.512 + 0.008), 0.5);
+  }
+  // barrel hinges on the back at the parting line
+  for (const side of [-1, 1]) {
+    const x = side * c.w * 0.27, back = -hd;
+    P.paint(place(block(0.084, 0.05, 0.004), x, bodyH - 0.012, back - 0.002), BLACK_PLASTIC, 0);
+    P.steel(roundBar([x - 0.036, bodyH + 0.002, back - 0.012], [x + 0.036, bodyH + 0.002, back - 0.012], 0.011, 6), 0.55);
+    P.steel(place(block(0.064, 0.024, 0.006), x, bodyH + 0.018, c.d * -0.512 - 0.004), 0.5);
+  }
+  // steel end grips on welded lugs
+  for (const side of [-1, 1]) {
+    const x = side * (hw + 0.016);
+    P.steel(roundBar([x, bodyH * 0.62, -c.d * 0.2], [x, bodyH * 0.62, c.d * 0.2], 0.01, 6), 0.55);
+    for (const z of [-c.d * 0.2, c.d * 0.2]) {
+      P.paint(place(block(0.022, 0.03, 0.024), side * (hw + 0.006), bodyH * 0.62, z), scaleRgb(c.body, 0.9), 0.3);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Jerrycans
 // ---------------------------------------------------------------------------------------------------------------
@@ -403,9 +460,9 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
       latches: 'none', handles: 'top' });
     break;
   case 'insulated-chest-olive':
-    // Mermite-style insulated food container: tall pressed can, clamp latches, side grips
-    hardCase(P, { w: 0.5, h: 0.42, d: 0.34, body: [0.30, 0.36, 0.19], lid: [0.34, 0.40, 0.21], lidShare: 0.18, radius: 0.045,
-      latches: 'steel', handles: 'ends', ribs: 2 });
+    // Mermite-style insulated food container: a welded sheet-steel chest with clamp latches and end grips (round 4,
+    // 2026-10-07: the filleted moulding read as an injection-moulded cooler; steelChest keeps its envelope)
+    steelChest(P, { w: 0.5, h: 0.42, d: 0.34, body: [0.30, 0.36, 0.19], lid: [0.34, 0.40, 0.21], lidShare: 0.18, ribs: 2 });
     break;
   // round 4 (2026-10-07): the bags draw their own shape from a seed taken off this piece's existing draws, so two
   // tanks' duffels differ while the piece's stream is consumed exactly as before
