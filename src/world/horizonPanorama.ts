@@ -438,14 +438,12 @@ interface ShellAir {
    *  under the camera; whether the dome's lookup is live */
   uPanoTint: THREE.IUniform<THREE.Vector3>;
   uPanoTerms: THREE.IUniform<THREE.Vector3>;
-  /** 2026-10-06 (QA PANO_FAR_EARTH_VARY): the far earth's land patches' amplitude (0 off) */
-  uPanoFarVary: THREE.IUniform<number>;
-  /** 2026-10-06 (QA PANO_FAR_EARTH_NEAR): the apron's and the far earth's colour from the column's near ground (0 the skyline's) */
+  /** 2026-10-06 (QA PANO_FAR_EARTH_NEAR, on): the apron's and the far earth's colour from the column's near ground (0 the skyline's) */
   uPanoFarNear: THREE.IUniform<number>;
-  /** 2026-10-06 (QA PANO_APRON_HIGH): the apron's colour from the column's near ground for a high camera (0 off) */
+  /** 2026-10-06 (QA PANO_APRON_HIGH, on): the apron's colour from the column's near ground for a high camera (0 off) */
   uPanoApronHigh: THREE.IUniform<number>;
-  /** 2026-10-06 (QA PANO_FAR_SEA_FADE): the far earth beside a sea opening fades into the air (0 off) */
-  uPanoSeaFade: THREE.IUniform<number>;
+  /** 2026-10-07 (QA PANO_GROUND_MEET, on): a high camera's ray down the wall shows the ground it meets first (0 off) */
+  uPanoGroundMeet: THREE.IUniform<number>;
   /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
    *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
   uDeckHorizon: THREE.IUniform<THREE.Vector4>;
@@ -597,15 +595,32 @@ float panoCloudShade( vec2 cp ) {
  * the strip at which the camera's ray meets the ground, so it converges to the law's target toward the horizontal. A
  * ground or tank-height camera's rays to the wall's sky point above its own horizontal, so its view is unchanged. */
 /**
- * 2026-10-06 (the skies lane; the gauntlet's waves 144-148: from a high camera an inland map's far earth reads as "a sea with a
- * white surf line", "a flat haze sheet"): the far earth was one colour per column, constant up the ray, hazed toward the
- * horizon. QA knob: the land the camera's ray meets there carries broad field and wood patches (two octaves, 1.4 km and
- * 420 m, ± this share of its colour, the woods a touch greener), so it recedes as land into the haze. 0 keeps the sheet.
+ * 2026-10-06/07 (the skies lane; the gauntlet's waves 144-148 and 189: from a high camera an inland map's far earth read as
+ * "a sea with a white surf line", Nordhavn's as white shards and slabs over the water). The far-earth knobs' pair (far3:
+ * Airfield, Autumn, Longleaf and Nordhavn from the bird, the coordinator's call 2026-10-07): the column's near ground for
+ * the far earth and for a high camera's apron (PANO_FAR_EARTH_NEAR, PANO_APRON_HIGH) take the white lip off the ring's
+ * skyline with no change at ground cameras, so they ship on; the land patches and the sea fade were dropped (the fade
+ * left the slabs: they are already at the haze target, pale over the darker water). PANO_GROUND_MEET (below) answers the
+ * slabs and the shards. Each stays a QA knob (lightTune; 0 off).
  */
-const PANO_FAR_EARTH_VARY = 0;
-const PANO_FAR_EARTH_NEAR = 0;
-const PANO_APRON_HIGH = 0;
-const PANO_FAR_SEA_FADE = 0;
+const PANO_FAR_EARTH_NEAR = 1;
+const PANO_APRON_HIGH = 1;
+/**
+ * 2026-10-07: a high camera's ray down the shell's wall meets the ground (or the sea) long before the far country painted
+ * there for the bake eye — the cylinder's parallax: from 250 m a texel 2.6 km out at the bake eye's horizon lies 5.5 degrees
+ * under the camera's, so the painted far ridges, islands and fill stood over the near ground and the water as pale slabs
+ * and shards (Nordhavn's bird and its wave-189 pose; pano-diag: noshell removes them, nofarearth keeps the shards). Where
+ * the ray meets the haze datum inside the strip's far country (PANO_GROUND_MEET_M), the wall shows what the bake eye saw
+ * at that ground point — the strip at the meet point's elevation from the eye — and where that point is open water inside
+ * the game's own sea apron, nothing (the water plane shows). A ray over the camera's horizontal, or meeting the ground past
+ * the far country, keeps the painting: a ground or tank-height camera sees no change (its rays down the wall are behind
+ * the ring, or over the sea, where the water plane already stands in front).
+ */
+const PANO_GROUND_MEET = 1;
+const PANO_GROUND_MEET_M = 8500;
+/** ...for cameras this far over the haze datum: the bird and overview cameras (~300 m), never a ground, tank-height or
+ *  establishing camera (~50 m), whose painting is unchanged */
+const PANO_GROUND_MEET_CAMERA_M = 120;
 function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
@@ -625,10 +640,9 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uAtmoIntensity: { value: 1 },
     uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
     uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
-    uPanoFarVary: { value: 0 },
     uPanoFarNear: { value: 0 },
     uPanoApronHigh: { value: 0 },
-    uPanoSeaFade: { value: 0 },
+    uPanoGroundMeet: { value: 0 },
     uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uDeckClosed: { value: 0 },
     tClouds: { value: null },
@@ -660,7 +674,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
-uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarVary, uPanoFarNear, uPanoApronHigh, uPanoSeaFade;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma; uniform float uPanoFarNear, uPanoApronHigh, uPanoGroundMeet;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
 uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
@@ -689,6 +703,25 @@ ${HAZE_LAW_GLSL}`)
         // (QA PANO_FAR_EARTH_NEAR / PANO_APRON_HIGH) the column's near ground: the strip's lowest rows, the bake's lit fill
         // under the ring's skyline — nearer than the shell, so carrying no air
         vec4 nearTap = uPanoFarNear + uPanoApronHigh > 0.0 ? texture2D(map, vec2(vPanoU, 0.012)) : vec4(0.0);
+        // (QA PANO_GROUND_MEET) a high camera's ray down the wall meets the ground first (the painting is the bake eye's):
+        // past the shell and inside the strip's far country it shows what the eye saw at that ground point — the strip at
+        // the point's own azimuth and elevation from the eye — and over open water inside the game's sea apron nothing,
+        // so the water plane shows
+        if (uPanoGroundMeet > 0.5 && vPanoApron < 0.5 && uPanoHaze.w > 0.5
+            && cameraPosition.y - uPanoHaze.z > ${PANO_GROUND_MEET_CAMERA_M.toFixed(1)} && vPanoWorld.y < cameraPosition.y) {
+          vec3 vm = vPanoWorld - cameraPosition;
+          float hm = length(vm.xz);
+          float meetH = (cameraPosition.y - uPanoHaze.z) * hm / max(cameraPosition.y - vPanoWorld.y, 1e-3);
+          vec2 mp = cameraPosition.xz + vm.xz * (meetH / max(hm, 1e-3));
+          float rM = length(mp);
+          if (meetH > hm && rM > ${P.shellM.toFixed(1)} && rM < ${PANO_GROUND_MEET_M.toFixed(1)}) {
+            float eM = atan(uPanoHaze.z - uPanoEye.y, rM);
+            vec2 meetUv = vec2(fract(atan(mp.y, mp.x) * 0.15915494309), clamp((eM - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
+            vec4 atMeet = texture2D(map, meetUv);
+            if (atMeet.a < 0.5) { if (rM < ${SEA_APRON_OUTER_RADIUS_M.toFixed(1)}) discard; }
+            else { pano = atMeet; panoUv = meetUv; e = eM; }
+          }
+        }
         if (pano.a < 0.5) {
           // over its column's skyline: open (the sky), unless the shell is ground for this camera, on a ray under the
           // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
@@ -723,14 +756,6 @@ ${HAZE_LAW_GLSL}`)
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
             ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
-            // (QA PANO_FAR_EARTH_VARY) the land the ray meets as broad fields and woods, not one sheet per column
-            if (uPanoFarVary > 0.0) {
-              vec2 mp = cameraPosition.xz + rd.xz * meet;
-              float pn = vnoise(mp * (1.0 / 1400.0)) * 0.6 + vnoise(mp * (1.0 / 420.0) + vec2(3.1, 7.7)) * 0.4;
-              vec3 vary = (1.0 + (pn - 0.5) * 2.0 * uPanoFarVary) * mix(vec3(1.0), vec3(0.9, 1.03, 0.88), smoothstep(0.58, 0.78, pn) * min(1.0, uPanoFarVary * 3.0));
-              ground *= vary;
-              nearC *= vary;
-            }
             // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
             // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
             // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
@@ -777,24 +802,11 @@ ${HAZE_LAW_GLSL}`)
             // (QA PANO_FAR_EARTH_NEAR) the near ground hazed by the law over the reach from the shell to where the ray meets
             // the ground (the aerial pass hazes the rest, to the shell), giving way to the skyline's path as the meet nears
             // the far country's own distance
-            // (QA PANO_FAR_SEA_FADE) beside a sea opening the far earth stood as one slab per run of land columns, cut
-            // sheer where the open-sea columns discard (Nordhavn's white shards from the bird): the run fades into the
-            // air over the share of land columns round it (±6 degrees)
-            if (uPanoSeaFade > 0.0) {
-              float landN = 0.0;
-              for (int k = -4; k <= 4; k++) landN += step(0.0, texture2D(uPanoSkyline, vec2(vPanoU + float(k) * 0.004, 0.25)).a);
-              ground = mix(ground, inScatter, uPanoSeaFade * (1.0 - smoothstep(0.7, 1.0, landN / 9.0)));
-            }
             if (nearW > 0.0) {
               float reachN = max(0.0, meet - length(vd));
               float layerN = hazeLayerMean(max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
               vec3 TN = hazeTransmittance(uPanoHaze.x, reachN, layerN, uPanoHazeChroma);
               vec3 nearG = nearC * TN + inScatter * (1.0 - TN);
-              if (uPanoSeaFade > 0.0) {
-                float landM = 0.0;
-                for (int k = -4; k <= 4; k++) landM += step(0.0, texture2D(uPanoSkyline, vec2(vPanoU + float(k) * 0.004, 0.25)).a);
-                nearG = mix(nearG, inScatter, uPanoSeaFade * (1.0 - smoothstep(0.7, 1.0, landM / 9.0)));
-              }
               ground = mix(ground, nearG, nearW * (1.0 - smoothstep(0.45, 1.0, meet / ${P.outerM.toFixed(1)})));
             }
           }
@@ -816,7 +828,7 @@ ${HAZE_LAW_GLSL}`)
           if (uPanoShadeOn > 0.5) {
             vec4 aux = texture2D(uPanoAux, panoUv);
             if (aux.b > 0.5) {
-              float rr = aux.r / aux.b * 10000.0, share = clamp(aux.g / aux.b, 0.0, 1.0), az = vPanoU * 6.2831853;
+              float rr = aux.r / aux.b * 10000.0, share = clamp(aux.g / aux.b, 0.0, 1.0), az = panoUv.x * 6.2831853;
               vec3 fp = vec3(cos(az) * rr, uPanoEye.y + tan(e) * rr, sin(az) * rr);
               land *= 1.0 - share * (1.0 - cotCloudSun(fp));
             }
@@ -1768,10 +1780,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const overcast = Math.min(1, Math.max(0, data.lightModel?.overcast ?? 0));
     hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
     air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
-    air.uPanoFarVary.value = lightTune('PANO_FAR_EARTH_VARY', PANO_FAR_EARTH_VARY);
     air.uPanoFarNear.value = lightTune('PANO_FAR_EARTH_NEAR', PANO_FAR_EARTH_NEAR);
     air.uPanoApronHigh.value = lightTune('PANO_APRON_HIGH', PANO_APRON_HIGH);
-    air.uPanoSeaFade.value = lightTune('PANO_FAR_SEA_FADE', PANO_FAR_SEA_FADE);
+    air.uPanoGroundMeet.value = lightTune('PANO_GROUND_MEET', PANO_GROUND_MEET);
     // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
     if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
     const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
