@@ -388,7 +388,8 @@ function bindGroundBanks(terrain: TerrainRoot, propsGroup: THREE.Group): void {
   mesh.name = 'field-banks';
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  setShadowCasterProfile(mesh, { heightM: BANK_MAX_M });
+  // (b34: the stone-free maps' earthwork mounds stand taller than a bank)
+  setShadowCasterProfile(mesh, { heightM: Math.max(BANK_MAX_M, (propsGroup.userData.groundBanksHeightM as number | undefined) ?? 0) });
   propsGroup.add(mesh);
 }
 

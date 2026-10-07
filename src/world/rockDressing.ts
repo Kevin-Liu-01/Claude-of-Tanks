@@ -170,6 +170,16 @@ function rockBedsFor(climate: RockClimate): [number, number, number, number] {
   ];
 }
 
+/**
+ * (b34, the scenery lane; gauntlet wave 234 on Jade River Delta: "two huge smooth boulders… on what should be
+ * stone-free Bengal delta alluvium") The alluvial battlefields — Jade River Delta, the mangrove coast — whose ground is
+ * river silt and clay: no loose stone lies on it. props.ts leaves every loose boulder out there (the scatter, the
+ * embedded stones, the outcrop clusters and the landform aprons), its draws still taken and its count kept, so every
+ * other placement in those passes keeps its seat; the tactical arcs keep their colliders under earthwork mounds. (The
+ * polders' stone is the maps lane's own map config, its round 4.)
+ */
+export const STONE_FREE_MAPS: ReadonlySet<string> = new Set(['delta', 'mangrove']);
+
 /** The battlefield's boulder lithology (the detail tile is drawn for it). */
 export function rockLithologyFor(mapId: string): BoulderLithology {
   return (ROCK_CLIMATE[mapId] ?? DEFAULT_CLIMATE).lith;

@@ -415,6 +415,47 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
   return { geometry: merge(parts, true, false), legHalf: base, arms };
 }
 
+/** A wooden pole line's timber (creosoted, weathered) and its porcelain insulators (sRGB HSL). */
+const POLE_TIMBER: Palette = [0.07, 0.3, 0.2];
+const POLE_ARM: Palette = [0.08, 0.16, 0.3];
+const PORCELAIN: Palette = [0.1, 0.12, 0.8];
+
+/**
+ * (b34, the scenery lane; gauntlet wave 236 on Verdant: "the steel lattice high-voltage pylon… has no place in 1943
+ * village farmland") A period distribution pole: a village feeder of the 1930s and 40s (6 to 10 kV) on a tarred wooden
+ * pole, a cross-arm near its top on two braces, three porcelain pin insulators (one each end of the arm, one on the
+ * pole's top). At an angle or an end of the line an A-frame: two poles leaning together along the line, bolted at the
+ * top. Local frame: the arm across the line (x), the line along z; its foot buried. `arms` are the wires' seats.
+ */
+export function buildWoodPole(rng: Rng, height = 8.5, aFrame = false, mobile = false): { geometry: THREE.BufferGeometry; arms: Array<[number, number]> } {
+  const parts: THREE.BufferGeometry[] = [];
+  const H = height * (0.96 + rng() * 0.08), segs = mobile ? 5 : 7;
+  const pole = (x0: number, z0: number, x1: number, z1: number) => {
+    const dx = x1 - x0, dy = H + 0.4, dz = z1 - z0, len = Math.hypot(dx, dy, dz);
+    const g = new THREE.CylinderGeometry(0.1, 0.14, len, segs, 1);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / len, dy / len, dz / len)));
+    g.translate((x0 + x1) / 2, (H - 0.4) / 2, (z0 + z1) / 2);
+    parts.push(paint(g, POLE_TIMBER, 0.05, rng));
+  };
+  if (aFrame) { pole(0, 1.15, 0, 0.1); pole(0, -1.15, 0, -0.1); } else pole(0, 0, 0, 0);
+  // the cross-arm and its two braces
+  const armY = H - 0.45;
+  parts.push(paint(box(2.0, 0.1, 0.12).translate(0, armY, 0), POLE_ARM, 0.05, rng));
+  for (const side of [-1, 1]) {
+    const len = Math.hypot(0.62, 0.62), brace = box(0.05, len, 0.05);
+    brace.rotateZ(side * Math.PI / 4).translate(side * 0.31, armY - 0.31, 0);
+    parts.push(paint(brace, POLE_ARM, 0.05, rng));
+  }
+  // the pin insulators: a bell on a pin, each a wire's seat
+  const arms: Array<[number, number]> = [];
+  for (const [ix, iy] of [[-0.85, armY + 0.05], [0.85, armY + 0.05], [0, H + 0.02]] as const) {
+    parts.push(paint(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 4, 1).translate(ix, iy + 0.06, 0), POLE_ARM, 0.04, rng));
+    parts.push(paint(new THREE.CylinderGeometry(0.035, 0.07, 0.11, mobile ? 5 : 6, 1).translate(ix, iy + 0.16, 0), PORCELAIN, 0.04, rng));
+    arms.push([ix, iy + 0.2]);
+  }
+  return { geometry: merge(parts, true, false), arms };
+}
+
 /** A sagging conductor between two attachment points as one thin box per segment (baked, dark). */
 export function buildConductor(
   ax: number, ay: number, az: number, bx: number, by: number, bz: number, sag: number, segments: number, radius: number,

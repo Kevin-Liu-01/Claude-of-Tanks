@@ -195,7 +195,9 @@ export default {
       { kind: 'orthodoxcross', x: 14.4, z: -70, yawDeg: 180, name: 'the cross at the south village entry' },
       { kind: 'orthodoxcross', x: 13.9, z: 150, yawDeg: 0, name: 'the cross at the north village entry' },
     ],
-    powerLines: [{ towers: [[-440, -170], [-150, -180], [140, -190], [440, -200]], heightM: 30, name: 'the 110 kV line' }],
+    // (b34; gauntlet wave 236: "the steel lattice high-voltage pylon… has no place in 1943 village farmland") the village
+    // feeder on wooden poles along the same stations (sceneryPlan.ts kind 'wood'; its stations keep their clearings)
+    powerLines: [{ kind: 'wood', towers: [[-440, -170], [-150, -180], [140, -190], [440, -200]], heightM: 30, name: 'the village feeder' }],
   },
 
   horizon: {

@@ -5,10 +5,10 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1288307,
-      "sha256": "0ab8c5c24d6eb72d0223d51e1ce834422bceaeb20441233310c70d7f1801c487",
-      "obstacles": 5298,
-      "colliders": 4906,
+      "bytes": 1286185,
+      "sha256": "ffc0c4971ef863bdcf7b9b2007116f25e3da52503a141b7d20568abdef941102",
+      "obstacles": 5286,
+      "colliders": 4894,
       "concealers": 5934
     },
     "desert": {
@@ -75,10 +75,10 @@
       "concealers": 5190
     },
     "delta": {
-      "bytes": 1450778,
-      "sha256": "516b73319833bfa7bb0398c4425daf30cbc255b5ce6bbb37697422bb7115b366",
-      "obstacles": 6574,
-      "colliders": 6203,
+      "bytes": 1401755,
+      "sha256": "f04f625a3ac46323f112969324640bb31e867d46569a0056e7d7399b6c3cdc9a",
+      "obstacles": 6447,
+      "colliders": 6076,
       "concealers": 8252
     },
     "badlands": {
@@ -145,10 +145,10 @@
       "concealers": 1486
     },
     "polders": {
-      "bytes": 1179496,
-      "sha256": "fc84f9407cd2d38730601d8d7d2e922c62db5afd9bbfa6069002adda6118f116",
-      "obstacles": 3425,
-      "colliders": 3261,
+      "bytes": 1177391,
+      "sha256": "1de5ba36ef08dfaeb67b54b556368f716e90671c1209c4608f9caa94c410d84d",
+      "obstacles": 3413,
+      "colliders": 3249,
       "concealers": 2712
     },
     "copper_mesa": {
@@ -194,10 +194,10 @@
       "concealers": 5798
     },
     "mangrove": {
-      "bytes": 1208703,
-      "sha256": "f59c5503b7ee8eb7962b7adeedd85e9315f669e40922784478e8b2eb236f144e",
-      "obstacles": 4574,
-      "colliders": 4313,
+      "bytes": 1162086,
+      "sha256": "fc48ad72ca021d7591c059fb210175eeaf46c0fdb45d4e1d7b2440811188f1b7",
+      "obstacles": 4455,
+      "colliders": 4194,
       "concealers": 5709
     },
     "saltwind": {

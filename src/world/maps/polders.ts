@@ -137,7 +137,9 @@ export default {
       { kind: 'windpump', x: 36, z: 250, yawDeg: 300, name: 'the windmotor on the overflow reach' },
       { kind: 'windpump', x: -122, z: 228, yawDeg: 300, name: 'the windmotor by the oxbow' },
     ],
-    powerLines: [{ towers: [[-440, -330], [-150, -140], [120, 90], [430, 260]], heightM: 32, name: 'the 150 kV line' }],
+    // (b34; the period rule after gauntlet wave 236: steel lattice towers only after about 1950 or in a 1940s heavy
+    // industry) the polder's 10 kV feeder on wooden poles along the same stations (sceneryPlan.ts kind 'wood')
+    powerLines: [{ kind: 'wood', towers: [[-440, -330], [-150, -140], [120, 90], [430, 260]], heightM: 32, name: 'the polder feeder' }],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a second skyline rank of windbreak crowns on
   // the very low ring, sparse stone heaps on the outland (treeline 0.30 fell in the rockfield's dead zone) and more

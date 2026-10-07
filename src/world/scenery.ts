@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
-import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import { buildConductor, buildPylon, buildWoodPole, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../sim/assaultLines.ts';
@@ -433,8 +433,76 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
   });
   yield { fine: true, progress: false, stage: 'scenery' };
 
+  // ---- (b34) a period feeder on wooden poles: an A-frame at each station (the authored towers: one feature each), single
+  // poles about every 50 m between, each where the ground admits it and clear of the solids and the trunks; three wires
+  // between consecutive standing poles. Its own stream (the line's), no draw from the props streams.
+  const woodPoleLine = function* (line: NonNullable<typeof scenery.powerLines>[number], li: number): Generator<SceneryBuildSlice, void, void> {
+    const rng = mulberry32(ctx.seed + 13901 + 131 * li);
+    const POLE_M = 8.5, GAP_M = 50;
+    const trunkNear = (x: number, z: number): boolean => (ctx.trees ?? []).some((t) => {
+      const cx = (t.min[0] + t.max[0]) * 0.5, cz = (t.min[2] + t.max[2]) * 0.5;
+      return Math.abs(cx - x) < 2.5 && Math.abs(cz - z) < 2.5 && Math.hypot(cx - x, cz - z) < 2.2;
+    });
+    const seats: Array<{ x: number; z: number; yaw: number; station: boolean }> = [];
+    for (let t = 0; t < line.towers.length; t++) {
+      const [x, z] = line.towers[t];
+      const [px, pz] = line.towers[Math.max(0, t - 1)], [nx, nz] = line.towers[Math.min(line.towers.length - 1, t + 1)];
+      seats.push({ x, z, yaw: Math.atan2(nx - px, nz - pz), station: true });
+      if (t + 1 < line.towers.length) {
+        const span = Math.hypot(nx - x, nz - z), n = Math.max(1, Math.round(span / GAP_M)), yaw = Math.atan2(nx - x, nz - z);
+        for (let k = 1; k < n; k++) seats.push({ x: x + (nx - x) * k / n, z: z + (nz - z) * k / n, yaw, station: false });
+      }
+    }
+    const standing: Array<{ x: number; y: number; z: number; yaw: number; arms: Array<[number, number]> }> = [];
+    for (const seat of seats) {
+      const pole = buildWoodPole(rng, POLE_M, seat.station, ctx.mobile);
+      const feature: SceneryFeatureReceipt = { family: 'powerLine', kind: seat.station ? 'wood A-frame' : 'wood pole', name: line.name ?? null,
+        x: seat.x, z: seat.z, status: 'placed', heightM: POLE_M, authoredHeightM: POLE_M };
+      const foot = seat.station ? 1.3 : 0.4;
+      const refused = admission(ctx, seat.x, seat.z, foot, 2) ?? (solidConflicts(ctx.obstacles, seat.x, seat.z, foot).hard ? 'solid' : null)
+        ?? (trunkNear(seat.x, seat.z) ? 'tree' : null);
+      if (refused) {
+        pole.geometry.dispose();
+        if (seat.station) skip(feature, refused);
+        continue;
+      }
+      const y = ground.getHeightAt(seat.x, seat.z) - 0.05;
+      // the A-frames stand (a tank stops at a station's two legs, as at a tree); a single pole is a thin stick a hull
+      // shoulders aside, decor like the props' telegraph line (a solid at every 50 m left bots stuck on the line)
+      if (seat.station) {
+        const rec = setCircleShape({ min: [seat.x - foot, y - 1, seat.z - foot], max: [seat.x + foot, y + POLE_M, seat.z + foot] } as CollisionRecord, seat.x, seat.z, 0.45);
+        ctx.obstacles.push(rec); ctx.colliders.push(cloneCollisionRecord(rec)); receipt.colliders++;
+      }
+      const piece = pole.geometry;
+      piece.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(seat.x, y, seat.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), seat.yaw), new THREE.Vector3(1, 1, 1)));
+      ctx.conform(piece, ctx.baked);
+      ctx.baked.push(piece);
+      receipt.bakedTriangles += piece.attributes.position.count / 3;
+      standing.push({ x: seat.x, y, z: seat.z, yaw: seat.yaw, arms: pole.arms });
+      if (seat.station) {
+        feature.triangles = piece.attributes.position.count / 3;
+        receipt.placed++;
+        receipt.features.push(feature);
+      }
+    }
+    for (let t = 0; t + 1 < standing.length; t++) {
+      const a = standing[t], b = standing[t + 1];
+      const span = Math.hypot(b.x - a.x, b.z - a.z);
+      for (let w = 0; w < a.arms.length; w++) {
+        const [ax, ay] = a.arms[w], [bx, by] = b.arms[w];
+        const pa = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), a.yaw);
+        const pb = new THREE.Vector3(bx, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), b.yaw);
+        const wire = buildConductor(a.x + pa.x, a.y + ay, a.z + pa.z, b.x + pb.x, b.y + by, b.z + pb.z, span * 0.025, ctx.mobile ? 6 : 10, 0.012);
+        wires.push(wire);
+        receipt.wireTriangles += wire.index!.count / 3;
+      }
+    }
+    yield { fine: true, progress: false, stage: 'scenery' };
+  };
+
   // ---- power lines: towers into the baked bucket, legs as colliders, conductors between consecutive towers
   for (const [li, line] of (scenery.powerLines ?? []).entries()) {
+    if (line.kind === 'wood') { yield* woodPoleLine(line, li); continue; }
     // wave 16 ("the conductors run through the crowns"): real lines span woods on tall towers. The line's towers stand
     // tall enough that the lowest conductor, hanging in its sag, clears every crown under the span by 3 m and the
     // ground by 12 m; they keep the authored tower's breadth, footing and leg colliders, so the trees and the solids

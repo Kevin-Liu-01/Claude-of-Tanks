@@ -59,6 +59,13 @@ interface SceneryPowerLine {
   towers: ReadonlyArray<readonly [number, number]>;
   heightM?: number;
   name?: string;
+  /**
+   * (b34) The line's build: 'lattice' (default) the steel HV towers, for maps set after about 1950 or a 1940s heavy
+   * industry; 'wood' a period feeder on wooden poles (sceneryKit.ts buildWoodPole): an A-frame at each station, single
+   * poles every 50 m or so between, three wires. A wood line keeps its stations' clearings (the reserve its heightM
+   * gives), so no tree moves.
+   */
+  kind?: 'lattice' | 'wood';
 }
 
 /**

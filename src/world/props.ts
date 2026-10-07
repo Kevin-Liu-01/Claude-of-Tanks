@@ -51,7 +51,7 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
   applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  rockDressingFor, rockLithologyFor,
+  rockDressingFor, rockLithologyFor, STONE_FREE_MAPS,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
@@ -5900,6 +5900,12 @@ ${snowCap ? `
   yield { fine: true, stage: 'rock-variants' };
   const rockPlacements: THREE.Matrix4[][] = [[], [], []];
   const rockTalus = P.rockTalusDeg === undefined ? TALUS_DEG : P.rockTalusDeg;
+  // (b34) an alluvial or floodplain map's silt holds no loose stone (rockDressing.ts STONE_FREE_MAPS); its tactical arcs'
+  // cover is earth instead (the coordinator: "earthwork mounds ... of the same footprint and height in the boulders'
+  // seats"): each seat keeps the boulder's collider and draws an earthwork mound over it on the ground's own material
+  const stoneFree = STONE_FREE_MAPS.has(mapId);
+  const earthworks: THREE.BufferGeometry[] = [];
+  let earthworksTopM = 0;
   // The no-overlap law (the mountains lane, 2026-10-04, gauntlet wave 52: "polyhedra that pass through each other"):
   // the scaled, turned hulls of the boulders placed so far, on a 16 m grid. A candidate whose hull reaches more than
   // 5 cm into one of them is pushed clear of it (tryRock), else left out.
@@ -5956,6 +5962,70 @@ ${snowCap ? `
     }
     return null;
   }
+  /**
+   * (b34) An earthwork mound on a stone-free map's tactical seat: earth heaped over the boulder's projected hull (its
+   * collider's footprint) to the collider's top, revetted steep at its foot and rounded over its crown, a little lumpy,
+   * its foot buried a hand. On the ground's own material (map.ts bindGroundBanks, with the field banks): position,
+   * normal turned toward the ground's like the banks' turf (BANK_TURF_NORMAL, so the material reads turf, not its rock
+   * layer) and the ground's fold. No draw from the props stream.
+   */
+  function earthworkMound(local: readonly number[], x: number, z: number, sc: number, yawR: number, top: number): THREE.BufferGeometry {
+    const c = Math.cos(yawR), s = Math.sin(yawR), n = local.length / 2, SEG = 18;
+    // the hull resampled to SEG directions from its centre (a convex outline: its radius by angle)
+    const hx: number[] = [], hz: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const lx = local[i * 2] * sc, lz = local[i * 2 + 1] * sc;
+      hx.push(lx * c + lz * s); hz.push(-lx * s + lz * c);
+    }
+    const radiusAt = (a: number): number => {
+      const dx = Math.cos(a), dz = Math.sin(a);
+      let best = 0;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, ex = hx[j] - hx[i], ez = hz[j] - hz[i], den = dx * ez - dz * ex;
+        if (Math.abs(den) < 1e-9) continue;
+        const t = (hx[i] * ez - hz[i] * ex) / den, u = (hx[i] * dz - hz[i] * dx) / den;
+        if (t > 0 && u >= -1e-6 && u <= 1 + 1e-6) best = Math.max(best, t);
+      }
+      return best || 0.5;
+    };
+    const base = heightField.getHeightAt(x, z) - 0.12, H = Math.max(0.4, top - base);
+    // the profile: [radius share, height share] from the buried foot to the crown
+    const PROFILE: ReadonlyArray<readonly [number, number]> = [[1.06, -0.06], [1.0, 0.12], [0.95, 0.4], [0.84, 0.66], [0.64, 0.86], [0.34, 0.97], [0, 1]];
+    const pos: number[] = [], nor: number[] = [], fold: number[] = [], idx: number[] = [];
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    for (let k = 0; k < PROFILE.length; k++) {
+      const [rs, hs] = PROFILE[k];
+      for (let j = 0; j < SEG; j++) {
+        const a = (j / SEG) * Math.PI * 2, r = radiusAt(a) * rs;
+        const lump = 1 + 0.05 * Math.sin(a * 3 + x * 0.7) * Math.cos(a * 2 - z * 0.5) * (k > 0 && k < PROFILE.length - 1 ? 1 : 0);
+        const px = x + Math.cos(a) * r * lump, pz = z + Math.sin(a) * r * lump;
+        const py = k === 0 ? heightField.getHeightAt(px, pz) - 0.08 : base + H * hs;
+        pos.push(px, py, pz);
+        const f = foldAt ? foldAt(px, pz) : 0;
+        fold.push(Math.max(-127, Math.min(127, Math.round(Math.max(-1, Math.min(1, f)) * 127))));
+      }
+    }
+    for (let k = 0; k + 1 < PROFILE.length; k++) {
+      for (let j = 0; j < SEG; j++) {
+        const a = k * SEG + j, b = k * SEG + (j + 1) % SEG, d = a + SEG, e = b + SEG;
+        idx.push(a, d, b, b, d, e);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const nrm = g.attributes.normal as THREE.BufferAttribute;
+    for (let i = 0; i < nrm.count; i++) {
+      const gn = heightField.getNormalAt(pos[i * 3], pos[i * 3 + 2]);
+      let nx = gn.x + (nrm.getX(i) - gn.x) * 0.55, ny = gn.y + (nrm.getY(i) - gn.y) * 0.55, nz = gn.z + (nrm.getZ(i) - gn.z) * 0.55;
+      const m = Math.hypot(nx, ny, nz) || 1; nx /= m; ny /= m; nz /= m;
+      nor.push(nx, ny, nz);
+    }
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
+    return g;
+  }
   function tryRock(
     x: number,
     z: number,
@@ -6002,6 +6072,9 @@ ${snowCap ? `
       if (!rockResiteHolds(x, z, reach)) return true;
       footprint = turnedRockHull(hull, x, z, sc, yawR);
     }
+    // (b34) on an alluvial or floodplain map the boulder is left out here, after every site rule (none of which reads the
+    // stones placed before it), its draws taken and its count kept, so the pass's later candidates keep their seats
+    if (stoneFree && !tactical) return true;
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     // (b14; Sonnet, wave 97: "the smaller boulders … identical in shape and size") one of the stone's horizontal axes
@@ -6011,7 +6084,12 @@ ${snowCap ? `
     const stretch = 0.74 + 0.26 * ((stretchRoll * 7.31) % 1);
     _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(stretchRoll < 0.5 ? sc * stretch : sc, scaleY, stretchRoll < 0.5 ? sc : sc * stretch));
     const placement = _mat4.clone();
-    rockPlacements[vv].push(placement);
+    if (stoneFree) {
+      // (b34) a tactical seat on a stone-free map: an earthwork mound over the boulder's hull and to its height
+      const top = y + sc * 1.1;
+      earthworks.push(earthworkMound(rockHulls[vv], x, z, sc, yawR, top));
+      earthworksTopM = Math.max(earthworksTopM, top - heightField.getHeightAt(x, z));
+    } else rockPlacements[vv].push(placement);
     addPlacedRock(x, z, reach, footprint);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
@@ -9251,6 +9329,18 @@ ${snowCap ? `
     if (built.bankCrests) group.userData.bankCrests = built.bankCrests;
   }
   yield* placeFieldBoundaryWorks();
+  // (b34) the stone-free maps' earthwork mounds join the field banks on the ground's material (map.ts bindGroundBanks)
+  if (earthworks.length) {
+    const banks = group.userData.groundBanks as THREE.BufferGeometry | undefined;
+    const parts = banks ? [banks, ...earthworks] : earthworks;
+    const merged = mergeGeometries(parts, false);
+    if (merged) {
+      for (const g of earthworks) g.dispose();
+      group.userData.groundBanks = merged;
+      group.userData.groundBanksHeightM = Math.max(earthworksTopM, (group.userData.groundBanksHeightM as number | undefined) ?? 0);
+      group.userData.earthworks = { mounds: earthworks.length, triangles: merged.index ? merged.index.count / 3 : 0 };
+    }
+  }
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();
