@@ -489,6 +489,18 @@ export interface BarkLogSpec {
   /** Share of the radius the trunk loses from butt to tip. */
   taper?: number;
   detail?: AccessoryDetail;
+  /**
+   * Bark relief at the near level (2026-10-07, round 4): 1 is the round-3 trunk the decor kit keeps inside its triangle
+   * budget; the vehicle logs (profile and fitting) take 2: deeper furrows on 26 ridges and 13 stations, so the bark
+   * breaks the silhouette and the light at close range ("a smooth orange or peach tube", "a smooth brown tub").
+   */
+  relief?: 1 | 2;
+  /**
+   * Bake the wood's own colours into a linear `color` attribute on every part (round 4): grey-brown bark, darker in
+   * the furrows and lighter on the ridges, the sawn faces pale sapwood round a warmer heart, darker growth rings and
+   * near-black checks. For the vehicle `bark` material (vertex colours over white); the decor painter tints its own.
+   */
+  tinted?: boolean;
 }
 
 export interface BarkLogParts {
@@ -514,8 +526,10 @@ export interface BarkLogParts {
 export function barkLog(spec: BarkLogSpec): BarkLogParts {
   const detail = spec.detail ?? 1;
   const seed = spec.seed ?? 1;
-  const seg = detail ? 18 : 9;
-  const count = detail ? 9 : 4;
+  const deep = detail === 1 && spec.relief === 2;
+  const seg = detail ? (deep ? 26 : 18) : 9;
+  const count = detail ? (deep ? 13 : 9) : 4;
+  const ridgeAmp = deep ? 0.085 : 0.05;
   const taper = spec.taper ?? 0.06;
   const phase = hash01(seed, 3) * TAU;
   const radiusAt = (u: number): number =>
@@ -536,7 +550,7 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
       if (detail) {
         // a ridge on every even vertex, a furrow on every odd one, each ridge its own height along the run
         const ridge = i % 2 === 0 ? 1 : -0.75;
-        k += ridge * 0.05 * (0.55 + 0.9 * hash01(seed, i)) * (0.8 + 0.2 * Math.sin(u * 11 + i * 1.7));
+        k += ridge * ridgeAmp * (0.55 + 0.9 * hash01(seed, i)) * (0.8 + 0.2 * Math.sin(u * 11 + i * 1.7));
         for (const knot of knots) {
           k += knot.h * Math.exp(-((angleGap(a, knot.a) / 0.34) ** 2) - (((u - knot.u) * spec.len) / 0.06) ** 2);
         }
@@ -604,7 +618,58 @@ export function barkLog(spec: BarkLogSpec): BarkLogParts {
     place(g, 0, 0, 0, 0, 0, knot.a - Math.PI / 2);              // turned out to the knot's bearing
     stub = alongX(place(g, 0, 0, (knot.u - 0.5) * spec.len));
   }
+  if (spec.tinted) tintBarkLog({ bark, stub, ends, grain, radiusAt }, spec.len, ridgeAmp, seed);
   return { bark, stub, ends, grain, radiusAt };
+}
+
+// Linear wood colours (round 4): sRGB (44,36,28) furrow, (74,60,46) bark, (104,90,72) ridge, (174,148,106) sapwood,
+// (148,110,70) heart, (106,78,52) growth ring, (40,30,22) check.
+const BARK_FURROW: Rgb3 = [0.0252, 0.0176, 0.0103];
+const BARK_MID: Rgb3 = [0.0685, 0.0452, 0.0273];
+const BARK_RIDGE: Rgb3 = [0.140, 0.102, 0.0648];
+const SAPWOOD: Rgb3 = [0.423, 0.296, 0.146];
+const HEARTWOOD: Rgb3 = [0.297, 0.157, 0.0612];
+const GROWTH_RING: Rgb3 = [0.145, 0.0762, 0.0343];
+const DRYING_CHECK: Rgb3 = [0.0176, 0.0103, 0.0060];
+type Rgb3 = readonly [number, number, number];
+
+function paintVertices(geometry: THREE.BufferGeometry, colorAt: (x: number, y: number, z: number, i: number) => Rgb3): void {
+  const position = geometry.getAttribute('position');
+  const color = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    const c = colorAt(position.getX(i), position.getY(i), position.getZ(i), i);
+    color[i * 3] = c[0]; color[i * 3 + 1] = c[1]; color[i * 3 + 2] = c[2];
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(color, 3));
+}
+
+const mix3 = (a: Rgb3, b: Rgb3, t: number): Rgb3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const scale3 = (a: Rgb3, k: number): Rgb3 => [a[0] * k, a[1] * k, a[2] * k];
+
+/** Bake the log's wood colours (see `BarkLogSpec.tinted`); positions are the placed log's (axis along X). */
+function tintBarkLog(parts: BarkLogParts, len: number, ridgeAmp: number, seed: number): void {
+  const phase = hash01(seed, 71) * TAU;
+  // weathering: slow grey-to-warm patches along the trunk and round it, the same at every copy of a position
+  const patch = (x: number, a: number): number => 0.9 + 0.08 * Math.sin(x * 6.1 + phase) + 0.07 * Math.sin(a * 3 + x * 2.3 + phase * 2);
+  paintVertices(parts.bark, (x, y, z) => {
+    const r = Math.hypot(y, z);
+    const u = Math.min(1, Math.max(0, x / len + 0.5));
+    const f = (r / parts.radiusAt(u) - 1) / ridgeAmp;                 // -1 in a furrow, +1 on a ridge
+    const base = f < 0 ? mix3(BARK_MID, BARK_FURROW, Math.min(1, -f * 1.1)) : mix3(BARK_MID, BARK_RIDGE, Math.min(1, f * 0.8));
+    return scale3(base, patch(x, Math.atan2(z, y)));
+  });
+  if (parts.stub) paintVertices(parts.stub, (x, y, z) => scale3(BARK_MID, patch(x, Math.atan2(z, y)) * 1.1));
+  for (const face of parts.ends) {
+    face.computeBoundingSphere();
+    const rim = face.boundingSphere?.radius || 1;
+    // the face is a disc in the YZ plane: its centre is the pith (heart), its rim the sapwood under the bark
+    paintVertices(face, (_x, y, z) => mix3(HEARTWOOD, SAPWOOD, Math.min(1, Math.max(0, (Math.hypot(y, z) / rim - 0.2) / 0.55))));
+  }
+  for (const mark of parts.grain) {
+    // rings are annuli (many vertices); a drying check is a thin quad of six vertices
+    const check = mark.getAttribute('position').count <= 6;
+    paintVertices(mark, () => (check ? DRYING_CHECK : GROWTH_RING));
+  }
 }
 
 /** A plain six-face block (12 triangles) for small hardware where a fillet would not read: latches, clips, ribs. */

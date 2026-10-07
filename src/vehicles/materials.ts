@@ -2969,6 +2969,15 @@ export function createTankMaterials(
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
     bumpMap: roughTex, bumpScale: 0.3,
   })));
+  // Unditching logs (2026-10-07, tank-accessories round 4; wave 214 on the T-90M: "a smooth orange or peach tube. Give
+  // it bark, end grain and a darker brown"; wave 216 on the PT-91: "a smooth brown tub"): the plain wood tone above lit
+  // to peach under the warm key and could not tell bark from end grain. Logs carry their own linear wood colours in
+  // the vertex colour (accessoryPrimitives.barkLog `tinted`: grey-brown furrowed bark, pale sapwood round a warmer
+  // heart, darker rings), over a white, fully matte, sky-blind base; sawn ends, rings and bark share this one draw.
+  const bark = track(setup(new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: 0.97, metalness: 0.0,
+    bumpMap: roughTex, bumpScale: 0.6, envMapIntensity: 0.18,
+  })));
   // Charred wreck: a baked scorched variant of the CAMO map (soot blotches +
   // rising streaks over the darkened pattern) instead of the r2 flat clay
   // color — plus a patchy ember emissiveMap that tankFactory pulses/cools
@@ -3113,6 +3122,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(canvasCloth, 'canvas', 'canvas');
   tagVehicleMaterial(canvasPale, 'canvasPale', 'canvas-pale');
   tagVehicleMaterial(wood, 'wood', 'wood');
+  tagVehicleMaterial(bark, 'wood', 'bark');
   tagVehicleMaterial(burnt, 'burnt', 'burnt');
   tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
   tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
@@ -3121,7 +3131,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   // dust, mud and soot of the vehicle frame (1); the wheels, tyres and track links their own running-gear wear (2); the
   // scrolling track band a pattern-free film (3). Glass, the AO panels and the wreck stay as they are.
   for (const [mode, materials] of [
-    [1, [hull, barrel, detail, dark, canvasCloth, canvasPale, wood]],
+    [1, [hull, barrel, detail, dark, canvasCloth, canvasPale, wood, bark]],
     [2, [wheels, wheelsRecessed, rubber, trackLink, spareTrack]],
     [3, [trackL, trackR]],
   ] as const) {
@@ -3148,7 +3158,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
 
   return {
     hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
-    canvasCloth, canvasPale, wood, burnt,
+    canvasCloth, canvasPale, wood, bark, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
     prepareBurnt,

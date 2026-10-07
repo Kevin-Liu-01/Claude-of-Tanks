@@ -7800,12 +7800,11 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   }
   {
     // the unditching log: barked trunk, knots, pale sawn ends with their rings (accessoryPrimitives.barkLog), not a
-    // canvas-green pipe (round 3)
-    const log = barkLog({ len: 1.48, r: 0.105, seed: 7790, detail: P.q === false ? 0 : 1 });
-    P.add('hullWood', log.bark, 0, 0.79, -3.42);
-    if (log.stub) P.add('hullWood', log.stub, 0, 0.79, -3.42);
-    for (const end of log.ends) P.add('hullCanvasPale', end, 0, 0.79, -3.42);
-    for (const grain of log.grain) P.add('hullWood', grain, 0, 0.79, -3.42);
+    // canvas-green pipe (round 3). Round 4 (2026-10-07, wave 214: "a smooth orange or peach tube. Give it bark, end
+    // grain and a darker brown"): the deep-furrowed trunk with its own baked wood colours in the vertex-coloured log
+    // wood (hullBark): grey-brown bark, pale sapwood ends round a warmer heart, darker rings, one draw.
+    const log = barkLog({ len: 1.48, r: 0.105, seed: 7790, detail: P.q === false ? 0 : 1, relief: 2, tinted: true });
+    for (const part of [log.bark, ...(log.stub ? [log.stub] : []), ...log.ends, ...log.grain]) P.add('hullBark', part, 0, 0.79, -3.42);
   }
   for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
   // Round 3 (2026-10-07, critics: "the tow cable droops in a free arc below the rear plate ... held by no clips or
@@ -8483,9 +8482,9 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // the front shoulder and rear sponson undersides under full-course sweep.
   const rideHeightIncreaseM = 0.16;
   // (2026-10-07: the unditching log's pale sawn ends ride in hullCanvasPale and rise with it; round 4: the rear fuel
-  // drums' shells ride in hullFittingPaint)
+  // drums' shells ride in hullFittingPaint and the whole log in hullBark)
   P.offsetBuckets([
-    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale', 'hullFittingPaint',
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth', 'hullCanvasPale', 'hullFittingPaint', 'hullBark',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
     'hullEquipment', 'hullCupola',
