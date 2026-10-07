@@ -115,11 +115,13 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
   assert.match(sky, /float deckW = max\( uDeckHorizon\.w \* \( 1\.0 - smoothstep\( 0\.0, 0\.12, direction\.y \) \), uDeckClosed \);\s*if \( deckW > 0\.0 \) \{\s*float deckTintL = max\( dot\( uDeckHorizon\.rgb, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);[\s\S]{0,300}float deckL = dot\( skyCol, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \);\s*if \( uDeckClosed > 0\.0 \) \{\s*vec2 hzXZ = length\( direction\.xz \) > 1e-4 \? normalize\( direction\.xz \) : vec2\( 1\.0, 0\.0 \);\s*deckL = mix\( deckL, dot\( atmoSky\( vec3\( hzXZ\.x, 0\.0, hzXZ\.y \) \), vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), uDeckClosed \);\s*\}\s*skyCol = mix\( skyCol, uDeckHorizon\.rgb \* \( deckL \/ deckTintL \), deckW \);\s*\}\s*float cosSun = dot\( direction, uSunDirection \);/,
     'the dome: the deck\'s grey at the horizon (a closed deck\'s everywhere, at the horizon\'s level), after the environment bake\'s early return and before the knee');
   assert.ok(sky.indexOf('float deckW') > sky.indexOf('if ( uEnvBake > 0.5 ) {'), 'the environment bake keeps the raw sky');
-  // the hole itself was the cloud field's: a closed deck keeps a thin sheet where its weather field runs at its floor
-  assert.match(clouds, /o\.cov = max\( o\.cov, uClosedFloor \* smoothstep\( 0\.97, 1\.0, uCoverage \) \);/, 'the slab\'s closed-deck floor');
-  assert.match(clouds, /float covB = max\( smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \), uClosedFloor \* smoothstep\( 0\.97, 1\.0, uCoverage \) \)/, 'the far band\'s');
-  assert.match(clouds, /t\.uClosedFloor\.value = lightTune\('CLOUD_CLOSED_COVER_FLOOR', CLOUD_CLOSED_COVER_FLOOR\);/, 'the floor per frame (QA-tunable)');
-  assert.match(clouds, /const CLOUD_CLOSED_COVER_FLOOR = 0\.7;/, 'Titan Gorge closed at establishing and bird (0.5 left a cream patch, ΔE 11.5 from the deck; 0.7 a thin brighter patch, ΔE 4.1)');
+  // the hole itself was the cloud field's: a closed deck keeps no hole — (Clouds 2.0, 2026-10-06) its lane admits every
+  // column from the light model's closing coverage (the old slab's closed floor and its far band went with the slab)
+  {
+    const { cloudShellCover } = await import('./cloudLayers.ts');
+    for (const c of [0.97, 0.99, 1]) assert.ok(cloudShellCover(c, true) >= 1, `a closing deck admits every column (${c})`);
+    assert.ok(cloudShellCover(0.86, true) < 0.95, 'a broken deck keeps its breaks');
+  }
   assert.match(sky, /deckOvercast = model\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast\)\) : 0;\s*const deckKnob = lightTune\('SKY_DECK_HORIZON', 1\);\s*\(u\.uDeckHorizon\.value as THREE\.Vector4\)\.set\(tint\.r, tint\.g, tint\.b, deckOvercast \* deckKnob\);/,
     'by the light model\'s overcast, on the grounded rig only');
   // a closed deck (Titan Gorge's dense overcast, Whiteout's stratus) greys the whole dome, ramped in over the last tenth of
