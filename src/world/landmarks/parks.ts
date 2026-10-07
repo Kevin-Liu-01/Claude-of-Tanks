@@ -4,7 +4,7 @@
 import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smoothRender } from './kit.ts';
-import { drapedPath, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
+import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
@@ -298,4 +298,63 @@ export const churchyard: LandmarkBuilder = (ctx) => {
     }
   }
   return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+};
+
+// ---------------------------------------------------------------------------------------------------------- garden
+
+const FOLIAGE: readonly Rgb[] = [rgb(0x2f4a2c), rgb(0x3a5532), rgb(0x2a4230), rgb(0x445c36)];
+const BLOOM: readonly Rgb[] = [rgb(0xb8323c), rgb(0xd86a8a), rgb(0xe8e2d8), rgb(0xd88a2c), rgb(0x9a3a6a)];
+const SOIL_DARK = rgb(0x3a2e24), BRICK_EDGE = rgb(0x8a4a36), BOX_GREEN = rgb(0x2c4428);
+
+/**
+ * A garden (gauntlet wave 157: the bungalow "has no garden, path or sign of age"): an enclosure of the props' fence
+ * modules round a lawn (the ground's own), its gate in the front (+z) and its back (-z, toward the house) open unless
+ * `back: 'fence'`; the gravel path from the gate to the back; flower borders inside the side and front fences — beds of
+ * dug earth edged in brick, the bushes in them in leaf and flower — and two clipped box hedges at the path's mouth.
+ * Dressing, but for the fence.
+ */
+export const garden: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(6, Number(ctx.params.width)), D = Math.max(5, Number(ctx.params.depth));
+  const fence = String(ctx.params.fence || 'fencepicket'), pathW = Math.max(0, Number(ctx.params.path) || 0);
+  const destructibles: GroundsDestructible[] = [];
+  const hw = W / 2, hd = D / 2;
+  if (String(ctx.params.back) === 'fence') enclosure(destructibles, fence, { cx: 0, cz: 0, hw, hd }, { side: '+z', kind: 'gate' });
+  else {
+    fenceRun(destructibles, fence, [hw, -hd], [hw, hd]);
+    fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
+    fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
+  }
+  if (pathW > 0) drapedPath(sink, 'plaster3', ctx.ground, [0, hd + 0.3], [0, -hd - 0.6], pathW, { lift: 0.04 });
+  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them
+  const look = ctx.variant;
+  const bed = (cx: number, cz: number, bw: number, bd: number) => {
+    drapedRect(sink, 'structureWood', ctx.ground, { cx, cz, hw: bw / 2, hd: bd / 2 }, { lift: 0.07, cell: 1.5, emit: { colour: SOIL_DARK } });
+    for (const [ex, ez, ew, ed] of [[cx, cz - bd / 2, bw / 2 + 0.06, 0.06], [cx, cz + bd / 2, bw / 2 + 0.06, 0.06], [cx - bw / 2, cz, 0.06, bd / 2], [cx + bw / 2, cz, 0.06, bd / 2]] as const) {
+      drapedRect(sink, 'structureWood', ctx.ground, { cx: ex, cz: ez, hw: ew, hd: ed }, { lift: 0.13, cell: 2, skirt: 0.2, emit: { colour: BRICK_EDGE } });
+    }
+    const along = bw > bd, len = Math.max(bw, bd), n = Math.max(1, Math.floor(len / 0.85));
+    for (let k = 0; k < n; k++) {
+      if (look() < 0.15) continue;
+      const t = -len / 2 + len * (k + 0.5) / n + (look() - 0.5) * 0.3, off = (look() - 0.5) * 0.25;
+      const x = cx + (along ? t : off), z = cz + (along ? off : t), y = ctx.ground?.(x, z) ?? 0;
+      const r = 0.22 + look() * 0.2, h = 0.45 + look() * 0.55;
+      const leaf = FOLIAGE[Math.floor(look() * FOLIAGE.length) % FOLIAGE.length];
+      sink.span('structureWood', x - r, y + 0.05, z - r, x + r, y + h, z + r, { colour: leaf, decor: true });
+      if (look() < 0.7) {
+        const bloom = BLOOM[Math.floor(look() * BLOOM.length) % BLOOM.length], br = r * 0.85;
+        sink.span('structureWood', x - br, y + h - 0.02, z - br, x + br, y + h + 0.14, z + br, { colour: bloom, decor: true, fine: true });
+      }
+    }
+  };
+  bed(-hw + 0.75, -0.2, 1.0, D - 2.2);
+  bed(hw - 0.75, -0.2, 1.0, D - 2.2);
+  const front = (W - pathW) / 2 - 2.0;
+  if (front > 1.2) for (const sx of [-1, 1]) bed(sx * (pathW / 2 + 0.9 + front / 2), hd - 0.8, front, 0.9);
+  // the clipped box hedges either side of the path inside the gate
+  for (const sx of [-1, 1]) {
+    const x = sx * (pathW / 2 + 0.55), z = hd - 1.6, y = ctx.ground?.(x, z) ?? 0;
+    sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
+  }
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT.gravel }, destructibles };
 };
