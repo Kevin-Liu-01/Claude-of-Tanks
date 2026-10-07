@@ -9,6 +9,7 @@ import {
   LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
   type ArchHole, type FaceName,
 } from './kit.ts';
+import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 
 const GREEN_IRON = rgb(0x4f7d5a), DOME_GREEN = rgb(0x3f7a52), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
@@ -221,6 +222,24 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     const tip = needle(sink, 0, cap - 0.2, zt, R3 * 0.22, Math.max(3, towerTop - cap - 1.6));
     cross(sink, 'structureMetal', 0, tip - 0.1, zt, 1.5, 'orthodox', GILT);
   }
+  // ---- its age (age.ts; gauntlet wave 154: "pristine … no socle, staining, cracking or peeling"): the render fallen
+  // from the brick at the wall foot and under the sills, the grime run down from the cornices and the sills
+  const age = ctx.age;
+  if (age) for (const name of ['left', 'right'] as const) {
+    const porch = { u: 0, w: Math.min(6.6, W * 0.6) + 0.8, y0: plinthTop, spring: Hc * 0.6 + 1.4, form: 'flat' };
+    ageWall(sink, age, { face: cubeFaces[name], bucket: wall, area: { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: plinthTop, y1: Hc - 0.6 },
+      openings: [...(cubeHoles[name] ?? []), porch], ledge: Hc - 0.5, spall: 'stone', spallCount: 3, grime: 0.3 });
+    ageWall(sink, age, { face: refFaces[name], bucket: wall, area: { u0: -Lr / 2 + 0.4, u1: Lr / 2 - 0.4, y0: plinthTop, y1: Hr - 0.5 },
+      openings: refHoles[name] ?? [], ledge: Hr - 0.4, spall: 'stone', grime: 0.3 });
+  }
+  if (age) for (const [u0, u1] of [[-W / 2 + 0.5, -Ra - 0.3], [Ra + 0.3, W / 2 - 0.5]] as const) {
+    ageWall(sink, age, { face: cubeFaces.back, bucket: wall, area: { u0, u1, y0: plinthTop, y1: Hc - 0.6 }, openings: cubeHoles.back ?? [],
+      ledge: Hc - 0.5, spall: 'stone', spallCount: 1, grime: 0.3 });
+  }
+  if (age) for (const name of ['front', 'left', 'right'] as const) {
+    ageWall(sink, age, { face: towerFaces[name], bucket: wall, area: { u0: -T / 2 + 0.5, u1: T / 2 - 0.5, y0: plinthTop, y1: H1 - 0.5 },
+      openings: towerHoles[name] ?? [], ledge: H1 - 0.4, spall: 'stone', grime: 0.3 });
+  }
   return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [1.0, 1.0, 0.99], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
 }
 
@@ -382,6 +401,13 @@ export const stationHall: LandmarkBuilder = (ctx) => {
         archSurround(sink, surround.bucket, faces[name], h, surround.width, surround.out);
       }
     }
+    // its age: the soot and the rain run down the brick from the cornice and the sills
+    if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+      const len = name === 'front' || name === 'back' ? Ww : D;
+      if (!holes[name] && name !== (side < 0 ? 'left' : 'right')) continue;
+      ageWall(sink, ctx.age, { face: faces[name], bucket: wall, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth, y1: Hw - 0.7 },
+        openings: holes[name] ?? [], ledge: Hw - 0.62, grime: 0.28 });
+    }
     // the corbelled cornice: a brick band stepped out under a white frieze
     sink.placed(0, cx, 0, 0, () => {
       moulding(sink, trim, Ww, D, Hw - 0.62, 0.3, 0.04);
@@ -415,6 +441,14 @@ export const stationHall: LandmarkBuilder = (ctx) => {
     }
   }
   cornerPilasters(sink, trim, 0, 0, Wc, Dc, plinth, H2 - 0.6, 0.5, 0.07);
+  if (ctx.age) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? Wc : Dc;
+    // each storey runs off its own ledge: the string course and the cornice
+    ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: plinth, y1: H1 - 0.1 },
+      openings: (cHoles[name] ?? []).filter((h) => h.y0 < H1), ledge: H1 - 0.02, grime: 0.24 });
+    ageWall(sink, ctx.age, { face: cf[name], bucket: wall, area: { u0: -len / 2 + 0.6, u1: len / 2 - 0.6, y0: H1 + 0.35, y1: H2 - 0.7 },
+      openings: (cHoles[name] ?? []).filter((h) => h.y0 >= H1), ledge: H2 - 0.66, grime: 0.28 });
+  }
   // the string course between the storeys and the cornice
   moulding(sink, trim, Wc, Dc, H1 + 0.05, 0.26, 0.08);
   moulding(sink, trim, Wc, Dc, H2 - 0.64, 0.32, 0.04);
@@ -724,7 +758,8 @@ export const granary: LandmarkBuilder = (ctx) => {
   const L = Math.max(14, Number(ctx.params.length)), W = Math.max(7, Number(ctx.params.width)), timber = String(ctx.params.walls) === 'timber';
   const base = -0.6 - ctx.groundFall, plinth = 0.9, H = plinth + 3.8;
   const wall: RegionalBucket = timber ? 'structureWood' : 'stone', wallOpts = timber ? { colour: rgb(0x6f5f4c) } : {};
-  sink.span('stone', -L / 2 - 0.1, base, -W / 2 - 0.1, L / 2 + 0.1, plinth, W / 2 + 0.1);
+  // (gauntlet wave 155: "no plinth, mortar loss, damp or soot staining") the plinth in a dark cement render
+  sink.span(timber ? 'stone' : 'plaster2', -L / 2 - 0.1, base, -W / 2 - 0.1, L / 2 + 0.1, plinth, W / 2 + 0.1);
   const doors = Math.max(2, Math.round(L / 9)), du = (i: number) => -L / 2 + L * (i + 0.5) / doors;
   const front: ArchHole[] = Array.from({ length: doors }, (_, i) => ({ u: du(i), w: 2.6, y0: plinth, spring: plinth + 2.8, form: 'flat' as const }));
   const vents = (len: number) => Array.from({ length: Math.round(len / 3.2) }, (_, i) => ({ u: -len / 2 + 1.6 + i * 3.2, w: 0.6, y0: H - 1.0, spring: H - 0.6, form: 'flat' as const }));
@@ -739,6 +774,11 @@ export const granary: LandmarkBuilder = (ctx) => {
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.6, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
   sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(W, L, H, roof), roof));
   if (!timber) moulding(sink, 'stone', L, W, H - 0.25, 0.25, 0.1);
+  if (ctx.age && !timber) for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const len = name === 'front' || name === 'back' ? L : W;
+    ageWall(sink, ctx.age, { face: f[name], bucket: wall, area: { u0: -len / 2 + 0.3, u1: len / 2 - 0.3, y0: plinth, y1: H - 0.3 },
+      openings: holes[name] ?? [], ledge: H - 0.26, grime: 0.3 });
+  }
   // the hoist gable over the middle door: a small cross gable, its loft door and the beam out of its peak
   const hg: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.2, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: null };
   sink.placed(0, 0, 0, W / 2 - 1.2, () => {
@@ -747,7 +787,7 @@ export const granary: LandmarkBuilder = (ctx) => {
     emitRoof(sink, roofGeometry(3.2, 2.6, H + 1.6, hg), hg);
     bar(sink, 'structureWood', [0, H + 2.4, 1.0], [0, H + 2.4, 2.6], 0.2, { colour: rgb(0x4a3b2e), decor: true });
   });
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), tints: { plaster2: [0.6, 0.58, 0.55] } };
 };
 
 /** A double plank door hung in a flat-headed opening. */

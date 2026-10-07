@@ -321,6 +321,48 @@ export const windmill: LandmarkBuilder = (ctx) => {
 // ---------------------------------------------------------------------------------------------------------- bell towers
 
 /**
+ * The Podhale belfry (a dzwonnica of the Tatra foothills' timber churches, Łopuszna's and Dębno's): the square tower's
+ * battered lower storey clad in upright larch boards, the pent roof of shingles skirting it, the bell chamber (the
+ * izbica) over it shingled all round with its tall louvred openings, the bell inside, and the steep tented roof of
+ * shingles with its iron cross. `S` the side at the foot.
+ */
+function podhaleBelfry(sink: PartSink, H: number, S: number, base: number): ReturnType<LandmarkBuilder> {
+  const q = Math.PI / 4, k = Math.SQRT2 / 2;
+  const h1 = H * 0.46, S1 = S * 0.74, Si = S1 + 0.5, h2 = h1 + Math.max(3.0, H * 0.2);
+  const boards = { colour: BOARD_GREY };
+  sink.span('stone', -S / 2 - 0.12, base, -S / 2 - 0.12, S / 2 + 0.12, 0.4, S / 2 + 0.12);
+  // the battered lower storey, its upright boards and their battens, the door
+  revolve(sink, 'structureWood', 0, 0, [[S * k, 0.4], [S1 * k, h1 + 0.12]], 4, boards, q);
+  for (const [nx, nz] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
+    for (let i = 1; i < 6; i++) {
+      const u = -0.5 + i / 6;
+      const a: Vec3 = [nx * S / 2 + nz * u * S, 0.45, nz * S / 2 - nx * u * S], b: Vec3 = [nx * S1 / 2 + nz * u * S1, h1 - 0.1, nz * S1 / 2 - nx * u * S1];
+      const lean = (S - S1) / 2 / (h1 - 0.4), off = 0.04 / Math.sqrt(1 + lean * lean);
+      bar(sink, 'structureWood', [a[0] + nx * off, a[1], a[2] + nz * off], [b[0] + nx * off, b[1], b[2] + nz * off], 0.06,
+        { colour: TIMBER_DARK, decor: true, fine: true });
+    }
+  }
+  {
+    const lean = (S - S1) / 2 / (h1 - 0.4), zAt = (y: number) => S / 2 - lean * (y - 0.4) + 0.02;
+    sink.quad('structureWood', [-0.55, 0.4, zAt(0.4)], [0.55, 0.4, zAt(0.4)], [0.55, 2.4, zAt(2.4)], [-0.55, 2.4, zAt(2.4)], { colour: TIMBER_DARK, decor: true });
+  }
+  // the shingled pent roof skirting the top of the lower storey
+  revolve(sink, 'roof', 0, 0, [[(Si / 2 + 0.8) * Math.SQRT2, h1 - 0.95], [(Si / 2) * Math.SQRT2, h1 + 0.12]], 4, {}, q);
+  // the izbica: shingled all round, its tall openings, the bell
+  const holes: ArchHole[] = [-0.22, 0.22].map((u) => ({ u: u * Si, w: Si * 0.16, y0: h1 + 0.75, spring: h2 - 0.65, form: 'flat' as const }));
+  archedBody(sink, 'roof', 0, 0, Si, Si, h1 + 0.1, h2, { front: holes, back: holes, left: holes, right: holes }, 0.18);
+  sink.span('structureWood', -Si / 2 + 0.2, h1 + 0.1, -Si / 2 + 0.2, Si / 2 - 0.2, h1 + 0.3, Si / 2 - 0.2, { colour: TIMBER_DARK });
+  const by = h2 - 0.75;
+  revolve(sink, 'structureMetal', 0, 0, [[0.55, by - 1.05], [0.5, by - 0.85], [0.32, by - 0.35], [0.24, by - 0.08], [0, by]], 10, { colour: BELL, decor: true });
+  sink.span('structureWood', -Si / 2 + 0.2, by, -0.1, Si / 2 - 0.2, by + 0.2, 0.1, { colour: TIMBER_DARK, decor: true });
+  // the steep tented roof of shingles and its iron cross
+  const top = h2 + Si * 1.2;
+  revolve(sink, 'roof', 0, 0, [[(Si / 2 + 0.45) * Math.SQRT2, h2 - 0.15], [(Si / 2 + 0.45) * Math.SQRT2, h2], [0, top]], 4, {}, q);
+  cross(sink, 'structureMetal', 0, top - 0.1, 0, 1.4, 'latin', IRON);
+  return { parts: sink.finish() };
+}
+
+/**
  * The free-standing belfry (a monastery's or a town square's bell tower): a square base with an arched passage or a
  * door, the open bell stage with its bells, an octagon, and a crown — an onion, a tent, a needle or a helm.
  */
@@ -328,6 +370,7 @@ export const belfry: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const H = Math.max(14, Number(ctx.params.height)), S = Math.max(4, Number(ctx.params.side)), crown = String(ctx.params.crown);
   const base = -0.6 - ctx.groundFall, wall: RegionalBucket = 'plaster';
+  if (String(ctx.params.style) === 'podhale') return podhaleBelfry(sink, Math.max(10, H), S, base);
   sink.span('stone', -S / 2 - 0.15, base, -S / 2 - 0.15, S / 2 + 0.15, 0.5, S / 2 + 0.15);
   const H1 = H * 0.36;
   const door: ArchHole = { u: 0, w: Math.min(2.2, S * 0.4), y0: 0.5, spring: Math.min(3.6, H1 - 1.5), form: 'round' };
