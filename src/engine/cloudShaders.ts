@@ -127,9 +127,6 @@ const float CL2_TURB = ${f(CLOUD2_PERIODS.turbulence)};
 const float CL2_EARTH_R = ${f(CLOUD2_EARTH_R)};
 // the altitude of a world point over the parabolic Earth under the battlefield's origin
 float cl2Height( vec3 p ) { return p.y + dot( p.xz, p.xz ) * ( 0.5 / CL2_EARTH_R ); }
-// the height fraction of every lane (0..1 inside a lane; clamped outside)
-vec4 cl2Fraction( float h ) { return clamp( ( vec4( h ) - uLayerBase ) / max( uLayerTop - uLayerBase, vec4( 1.0 ) ), 0.0, 1.0 ); }
-vec4 cl2Inside( float h ) { return step( uLayerBase, vec4( h ) ) * step( vec4( h ), uLayerTop ) * step( vec4( 1e-6 ), uLayerDensity ); }
 // the convective profile over the height fraction: full width a few percent over the flat base (the condensation
 // level), narrowing toward the top as 1 − hf^(1/bias) — a low bias a tower's column, a high one a lens. (Takram's
 // semicircle, widest a sixth of the way up and pinched to nothing at the base, drew every cumulus as a mushroom on a
