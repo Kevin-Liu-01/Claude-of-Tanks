@@ -314,14 +314,17 @@ export default {
     // 183–184; the props layer's default is still the picket in this tree)
     inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
+  // (step 4, 2026-10-07; the coordinator: "Dutch steel windmotors (the Bosman type) were common in Zeeland's polders by the
+  // 1930s ... The critic read an American farm wind-pump") the three windmotors in the Dutch form (sceneryKit.ts windmotor):
+  // the braced lattice tower, the rosette with its tail vane, the brick pump house at the foot over the ditch.
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the drainage machinery of a
   // Zeeland polder. A steel windmotor stands on the bank of each low basin it lifts water out of, every rotor turned
   // into the same sea wind; a 150 kV line on lattice towers strides across the flats from the old land to the new.
   scenery: {
     landmarks: [
-      { kind: 'windpump', x: 82, z: -206, yawDeg: 300, name: 'the windmotor on the retention bay' },
-      { kind: 'windpump', x: 36, z: 250, yawDeg: 300, name: 'the windmotor on the overflow reach' },
-      { kind: 'windpump', x: -122, z: 228, yawDeg: 300, name: 'the windmotor by the oxbow' },
+      { kind: 'windmotor', x: 82, z: -206, yawDeg: 300, name: 'the windmotor on the retention bay' },
+      { kind: 'windmotor', x: 36, z: 250, yawDeg: 300, name: 'the windmotor on the overflow reach' },
+      { kind: 'windmotor', x: -122, z: 228, yawDeg: 300, name: 'the windmotor by the oxbow' },
     ],
     powerLines: [{ towers: [[-440, -330], [-150, -140], [120, 90], [430, 260]], heightM: 32, name: 'the 150 kV line' }],
   },
