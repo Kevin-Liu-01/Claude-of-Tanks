@@ -28,6 +28,8 @@ assert.match(terrainSource, /packedRoadN = mix\(vec2\(0\.5\), packedRoadN, 0\.30
   'the packed-earth normal stays shallow (30% of the smoothed sample)');
 assert.doesNotMatch(terrainSource, /vec4 (?:grav|roadGrit) = texture2D\(uAlbR,[\s\S]{0,180}roadCore/,
   'near dirt roads cannot mix the raw rock tile (its cavities) into the carriageway');
+// (2026-10-05, the road styles: every road term reads the styled paved share gRoadTex — the map's uRoadTex on every
+// unstyled road, a styled path's own surface on a styled one; roadPathStyles pins the decode)
 assert.match(terrainSource,
   // (map revival lane 2, Aegis Crossing, 2026-10-05: gRoadTex is uRoadTex, or 1 inside a map's paved town rect — SplatConfig
   // townPaving — so the dirt road's grain, lanes and ruts stop at the setts as they stop on a textured road)

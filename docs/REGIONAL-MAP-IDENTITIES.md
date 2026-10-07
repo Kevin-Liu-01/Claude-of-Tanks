@@ -34,20 +34,20 @@ the fictional map reproduces a particular real-world location.
 | delta | Low braided floodplain, elongated levees and islands; limited distant uplands. |
 | badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
-| alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
-| caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
-| foundry | Industrial basin with low regional shoulders; factories remain the landmarks. |
-| ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
-| blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
-| titan_gorge | Long plateau edges with branching tributary recesses; playable changes held until access constraints pass. |
-| skybridge | Opposing plateau shoulders aligned with the drowned gorge; preserve crossing approaches. |
+| alpine | The Col du Mont-Cenis, April 1945 (map revival 2026-10-05): lake-aligned ranges, trough shoulders, broken spurs and oblique saddles round the frozen lake; the village in the Savoyard kit (grey rubble houses under lauze roofs with whitewashed bands and larch galleries, granges, mazots, chapels with bell turrets, the parish church's tin bulb, the hospice, the Italian frontier barracks, the Vallo Alpino's blockhouses and casemate, houses roofless from the April 1945 shelling), the Grande Croix. Round 2 (gauntlet wave 109b): the gneiss grey and the lauzes heavy and blue-grey, snow banked against the walls, the lake under snow, the col above the treeline nearly bare. Round 3: the village as two tight hamlets, Le Planay round its church and Les Tavernettes round the crossroads, the open col between them treeless and without scrub; the stone a cool grey rubble, the shelled houses broken to a breach under snow with their stones on the heaps; the roadside clutter of 1945 only. |
+| caldera | The Aso caldera, Kyushu (settlement and trees 2026-10-05): an off-centre, breached volcanic rim with unequal shelves and radial drainage over a farmed and settled floor; not red mesas recoloured black. |
+| foundry | The Völklingen ironworks on the Saar, March 1945 (the map-revival lane 2026-10-05): the blast furnaces and their Cowper stoves, the rolling mills under north lights, gas holders, conveyor galleries and the colliery headframe in an industrial basin with low regional shoulders; the works remain the landmarks. |
+| ruinspires | Sarajevo under siege (1992–96, the map-revival lane 2026-10-05): the boulevard's tram line down the valley floor between Austro-Hungarian blocks and Yugoslav towers, the mahalas and their mosques climbing the flanks, the cemeteries below the ridges; recessive background uplands. |
+| blackglass | Suzhou Creek: Shanghai in the autumn of 1937 (the map-revival lane 2026-10-05), the creek between the International Settlement and burning Zhabei with four bridges; Art Deco towers and the Bund's banks over shikumen lanes and shophouses; a flat delta horizon. |
+| titan_gorge | Monument Valley (layout 2026-10-03, settlement and land cover 2026-10-05): stepped sandstone shelves with cliff bands over talus, buttes standing free on a sand floor, braided dry washes; the Oljato chapter's hogans and trading posts. |
+| skybridge | Glen Canyon above Lake Powell (layout 2026-10-03, settlement 2026-10-05): opposing plateau shoulders aligned with the drowned gorge, the dam's concrete works and Page; preserve crossing approaches. |
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
-| oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
+| oasis | Siwa (settlement 2026-10-05): asymmetric dune arms and sparse distant rock around a protected spring basin; old Shali's kershef town. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
 | orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
-| longleaf | Interlocking wooded logging-country ridges, creek spurs and clearcut shoulders. |
+| longleaf | Longleaf, Louisiana: the Crowell Long Leaf Lumber Company's sawmill town in the pine flatwoods, crossed by the Louisiana Maneuvers of 1941 (the map-revival lane, 2026-10-05): interlocking wooded logging-country ridges, creek spurs and clearcut shoulders under longleaf pine; the town in the longleaf kit — the sawmill and its wigwam burner, the commissary, the engine shed and water tank, shotgun and dogtrot houses on brick piers under tin. |
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |
 | saltwind | Western limestone bay with an open sea sector and stepped scrub headlands. |
 | reservoir | Waterworks basin framed by unequal reservoir-aligned ridges and tributary shoulders. |

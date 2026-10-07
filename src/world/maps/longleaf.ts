@@ -1,5 +1,16 @@
 // A logging country T-junction with a diagonal clearcut, a wet western
 // bypass and a screened eastern spur. Planted belts define the cut edges.
+//
+// Reference: Longleaf, Rapides Parish, Louisiana — the Crowell Long Leaf Lumber Company's sawmill town in the longleaf
+// pine flatwoods (its mill now the Southern Forest Heritage Museum), crossed in September 1941 by the Louisiana
+// Maneuvers: the mill and its burner by the log pond, the planer mill and lumber sheds, the dry kilns, the logging
+// railroad's engine shed and water tank, the commissary on its loading platform, the boarding house, the manager's
+// raised cottage, the workers' shotgun and dogtrot houses on brick piers under tin, the clearcuts and the planted pine.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the town is built in that construction (maps/regional/longleaf.ts), every building where it stood, the houses' yards
+// fenced in plank with their privies and gardens; the pines grow as longleaf pine over its grass-stage seedlings
+// (treeBiomes.ts).
 import frontier from './frontier.ts';
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -18,6 +29,10 @@ export default {
       [[-306, 280], [-172, 236], [-28, 256], [104, 224], [228, 254], [354, 278]],
     ]) },
     marshes: [{ x: -342, z: -124, r: 38, dip: 0.9 }, { x: -334, z: -32, r: 35, dip: 0.9 }, { x: -350, z: 158, r: 36, dip: 0.8 }],
+    // (the map-revival lane, round 2; gauntlet wave 124: "no log pond … in any frame"): the mill's log pond at the foot of
+    // its slip, the logs floated down to it from the woods
+    softLakes: true,
+    lakes: [{ x: -52, z: 136, r: 12, depth: 1.1, boats: 0 }],
     // One worked southern harvest, following the existing stump/log stations.
     // Irregular edges leave fingers of regrowth beside the retained pine belt;
     // the rest of the diagonal opening remains older, grassed-over ground.
@@ -46,9 +61,12 @@ export default {
   ] },
   splat: { sourcedPalette: 'verdant', townWear: 1.6, fieldPatch: 0.6, midRelief: 0.80, tintA: [0.82, 0.97, 0.65], tintB: [0.54, 0.70, 0.48], tintC: [1.0, 1.02, 0.73], roadTint: [0.69, 0.61, 0.48] },
   vegetation: {
-    species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 0.70], ['cedar', 0.2], ['oak', 0.1]],
-    loneMix: [['pine', 0.64], ['cedar', 0.20], ['oak', 0.16]], rimMix: [['pine', 0.72], ['cedar', 0.22], ['oak', 0.06]],
-    clusterCount: 62, loneCount: 86, rimCount: 104, grassDensity: 1.0, bushCount: 1.1, bushSpecies: 'oak', clusterScrub: 1.8,
+    // (round 2, wave 124: "saturated broccoli-crowned blobs rather than tall, sparse-crowned longleaf"): the flatwoods are
+    // longleaf alone — open groves over the wiregrass (treeBiomes `open`), the grass-stage seedlings for scrub — and the
+    // hardwoods keep to the creek bottom (the belts below)
+    species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 1.0]],
+    loneMix: [['pine', 0.96], ['oak', 0.04]], rimMix: [['pine', 0.92], ['oak', 0.08]],
+    clusterCount: 62, loneCount: 86, rimCount: 104, grassDensity: 1.0, bushCount: 0.9, bushSpecies: 'pine', clusterScrub: 0.5,
     // The two existing west loading bays are worked short. Keep every grass
     // record and the terrain/prop safety masks; only its height is reduced.
     stubblePatches: [
@@ -61,10 +79,27 @@ export default {
     belts: [
       { x0: -244, z0: -304, x1: 206, z1: 202, gap: 21, jitter: 5, skip: 0.18, species: 'pine' },
       { x0: -72, z0: -278, x1: 328, z1: 208, gap: 22, jitter: 5, skip: 0.18, species: 'pine' },
+      // the creek bottom's hardwoods (water oak and sweetgum in the oak slot) along the basin's two banks
+      { x0: -356, z0: -196, x1: -352, z1: 196, gap: 13, jitter: 4, skip: 0.2, species: 'oak' },
+      { x0: -322, z0: -186, x1: -318, z1: 186, gap: 15, jitter: 4, skip: 0.3, species: 'oak' },
     ],
   },
   props: {
     sourcedPalette: 'frontier',
+    // the map-revival lane (2026-10-05): the mill-town kit (maps/regional/longleaf.ts) builds the plan in the company
+    // town's construction, every building where it stood
+    architecture: 'longleaf',
+    // The landmarks lane (2026-10-06; src/world/landmarks/towers.ts fireLookout): the forest's fire lookout on the western
+    // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
+    // zig-zag stair inside its frame, seen over the canopy from both deployments.
+    landmarks: [
+      // round 2 (2026-10-06; gauntlet waves 154-158: the set pieces "in no setting"): the towerman's compound round the
+      // tower's foot, its split-rail fence and gate toward the road, and the beaten track from the gate down to the forest
+      // road (both dressing pieces, authored before the tower: they refuse nothing)
+      { kind: 'garden', x: -216, z: -46, yawDeg: -90, name: "the lookout's compound", params: { width: 16, depth: 16, fence: 'fencerail', beds: false, path: 0, back: 'fence' } },
+      { kind: 'path', x: -246.6, z: -51.35, yawDeg: -102.4, name: "the track from the lookout to the road", params: { length: 44, width: 2.6, surface: 'earth' } },
+      { kind: 'fireLookout', x: -216, z: -46, yawDeg: 0, name: 'the fire lookout on the western ridge', params: { height: 26 } },
+    ],
     loggingYard: {
       // Existing flatbeds load beside grounded cut timber inside the western
       // garage apron. The existing access loop and defensive bay stay clear.
@@ -80,24 +115,40 @@ export default {
       clearcut: [[-114, -238], [-74, -176], [-20, -100]],
     },
     plan: ['rangerlodge', 'woodshed', 'depot', 'barn', 'logcabin', 'warehouse', 'woodshed', 'tavern', 'granary', 'depot', 'logcabin', 'ruin', 'woodshed', 'barn', 'farmhouse', 'rangerlodge', 'depot', 'logcabin'],
-    destructibleBuildings: ['leanto', 'huntingblind', 'fieldhut', 'servicegarage'],
+    // (round 2, wave 124: "a breeze-block shed", "a log cabin"): the town's own board sheds — lean-tos, the fire watch,
+    // board shacks and a creek camp on stilts
+    destructibleBuildings: ['leanto', 'huntingblind', 'fishershack', 'stilthouse'],
     buildingLat: [13, 2], destructibleBuildingLat: [17, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
-      { id: 'crossing-timber-yard', role: 'brawl', x: -64, z: 74, yawDeg: 90, structure: 'servicegarage', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'crossing-timber-yard', role: 'brawl', x: -64, z: 74, yawDeg: 90, structure: 'leanto', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
       { id: 'eastern-cut-fire-watch', role: 'scout', x: 310, z: -60, yawDeg: -90, structure: 'huntingblind', outcrop: { count: 4, radius: 9 } },
-      { id: 'western-creek-camp', role: 'support', x: -268, z: 238, yawDeg: 90, structure: 'leanto', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
+      { id: 'western-creek-camp', role: 'support', x: -268, z: 238, yawDeg: 90, structure: 'stilthouse', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.62,
-    wallRuns: [[-118, 52, -118, 114, 2], [-108, 142, -44, 142, 3], [4, 68, 70, 68, 2], [4, 68, 4, -2, 3], [-300, 208, -300, 282, 2], [292, 10, 292, 88, 2]],
+    // (round 2, wave 124: "cut stone"): no fieldstone walls in the Louisiana pinewoods — the yards are fenced in plank
+    wallRuns: [],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
-    haystacks: 8, rocks: 164, outcrops: 24, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
+    haystacks: 8, rocks: 30, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['m1a1', 'm2a2_bradley', 'm551_sheridan', 'm60a3', 'm1a2_sepv3'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
+  // the map-revival lane (2026-10-05, round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill yard"): the
+  // mill yard between the sawmill and the loading flatbeds — the sawn pine stickered in its drying stacks — and the log deck
+  // beside the slip down to the pond (maps/sceneryKit.ts lumberstack, logdeck)
+  scenery: {
+    landmarks: [
+      ...[[-76, 88], [-76, 97], [-76, 106], [-68, 88], [-68, 97], [-68, 106]].map(([x, z], i) => (
+        { kind: 'lumberstack' as const, x, z, yawDeg: 2 * ((i % 3) - 1), name: `the drying stacks ${i + 1}` })),
+      { kind: 'logdeck', x: -63, z: 117, yawDeg: 0, name: 'the log deck at the slip' },
+    ],
+  },
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): longleaf pine flatwoods: flat, the
   // skyline its pine woods
-  horizon: { baseHex: 0x52674a, amp: 0.4, style: 'rolling', treeline: 0.92, panorama: { regional: 'plain', trees: 22 }, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
+  // 2026-10-05 (the map-revival lane, round 2; gauntlet wave 124: hill-country relief and "a flat water-like band on the
+  // horizon" behind the flatwoods — the plain panorama's far band reads as sea, as it did on Kestrel): the ring closes in
+  // two rows of pinewoods and the far country is the flatwoods' low swells under the haze
+  horizon: { baseHex: 0x52674a, amp: 0.3, style: 'rolling', treeline: 0.95, treelineLayers: 2, panorama: { regional: 'upland', ampM: 110, trees: 22 }, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.32, streets: 0.5, towers: 0.2, rain: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, fogDensity: 0.00062, fogTintHex: 0x8f9f9c, fogMix: 0.52, cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.7 },

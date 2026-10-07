@@ -212,12 +212,14 @@ for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry'
 // strata). Every battlefield after the sixteen legacy ids now routes deliberately; `null` marks a map that keeps
 // the legacy own-id building route instead of an authored props.sourcedPalette.
 const newMapPalettes = {
-  ruinspires: ['ruinspires', null],
+  // 2026-10-05 (the map-revival lane): Ruinspires' Sarajevo kit takes Steinburg's lime-render tint, warm enough for the
+  // kit's ochre, cream, green and pink washes (its own-id tint browned them)
+  ruinspires: ['ruinspires', 'urban'],
   blackglass: ['blackglass', null],
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],
   polders: ['verdant', 'coastal'],
-  copper_mesa: ['badlands', 'foundry'],
+  copper_mesa: ['copper_mesa', 'foundry'],
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
   whiteout: ['winter', 'winter'],
@@ -264,10 +266,12 @@ const volcanicLayers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
 await applySourcedTerrain('caldera', volcanicLayers);
 // 2026-10-03 the ground lane: Caldera's ash and cinder (the sand set, desaturated, a warm dark grey) and its basalt (the
 // rock set desaturated) replace the dirt set's twig litter (its fibres tiled into the "wind ripple" the critics read)
+// (2026-10-05, the map-revival lane's Caldera round 2: Aso — the grass set's summer green, the black Andosol of the dirt
+// set, the lava's near-black basalt lifted 0.015 off black: the lift path still runs through the R layer)
 const volcanicPixels = {
-  G: [25, 26, 27, 130, 12, 11, 11, 104, 73, 65, 61, 255, 6, 6, 6, 26],
-  D: [20, 21, 22, 135, 10, 10, 9, 108, 59, 50, 47, 255, 6, 6, 6, 27],
-  R: [38, 42, 45, 120, 19, 17, 15, 96, 123, 98, 87, 255, 9, 9, 9, 24],
+  G: [34, 52, 52, 125, 22, 11, 4, 100, 219, 113, 42, 255, 1, 2, 2, 25],
+  D: [19, 23, 27, 130, 9, 6, 4, 104, 90, 57, 41, 255, 1, 1, 1, 26],
+  R: [22, 23, 25, 130, 10, 9, 9, 104, 69, 57, 51, 255, 5, 5, 5, 26],
 };
 for (const [key, expected] of Object.entries(volcanicPixels)) {
   assert.deepEqual([...volcanicLayers[key].albedo.image.pixels], expected,
@@ -302,7 +306,14 @@ for (let i = 0; i < winterRgb.length; i++) {
   assert.ok(Math.abs(gradedRgb[i] - expected) <= 1, `graded snow byte ${i}: ${gradedRgb[i]} vs winter ${winterRgb[i]} × ${whiteoutSnowTint[i % 3]}`);
 }
 assert.equal(snowRgb(winterLayer).length, winterRgb.length, 'grading Whiteout leaves the winter composite bytes in place');
-for (const mapId of ['oasis', 'copper_mesa', 'titan_gorge', 'skybridge']) {
+// (2026-10-05, the map-revival lane's Copper Mesa round 2: Queenstown's hills are pink-grey conglomerate, not
+// sandstone — its rock layer is the sourced rock set toned pink-grey, below)
+{
+  const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+  await applySourcedTerrain('copper_mesa', layers, getMapConfig('copper_mesa').splat);
+  assert.equal(layers.R.albedo.disposeCount, 1, 'copper_mesa: the conglomerate is the sourced rock set, toned pink-grey');
+}
+for (const mapId of ['oasis', 'titan_gorge', 'skybridge']) {
   const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
   await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
   assert.equal(layers.G.albedo.disposeCount, 1, `${mapId}: sand replaces the base fallback`);
@@ -366,7 +377,8 @@ for (const name of ['albedo', 'normal', 'surface']) {
 }
 for (const bucket of ['plaster', 'wood']) assert.deepEqual(sourcedBuildingTintPolicy('orchard', bucket),
   sourcedBuildingTintPolicy('autumn', bucket), 'the Orchard-only change does not recolor its other building surfaces');
-for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['copper_mesa', 'desert']]) {
+// (2026-10-05, the map-revival lane: Copper Mesa is Queenstown's button grass now, no longer the desert's tones)
+for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert']]) {
   const vegetation = getMapConfig(mapId).vegetation;
   const parentVegetation = getMapConfig(parent).vegetation;
   assert.equal(vegetation.grassTexTone, parentVegetation.grassTexTone,

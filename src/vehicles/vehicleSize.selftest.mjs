@@ -29,7 +29,11 @@ for(const [id,b] of Object.entries(before)){
     for(const side of ['min','max'])mesh.geometry.boundingBox[side].toArray().forEach((v,k)=>near(v,box[side][k]*factor,`${id}/${quality}/${name}/${side}/${k}`,quality==='low'?.015:.00002));
    }
    for(const [name,key] of [['rig_turret','turret'],['rig_gun','gun']])t.root.getObjectByName(name).position.toArray().forEach((v,k)=>near(v,b[key][k]*factor,`${id}/${key}/${k}`));
-   for(const key of ['halfLenM','halfWidM','bottomYM','zCenterM'])near(t.contactGeom[key],b.contact[key]*factor,`${id}/contact/${key}`);
+   // 2026-10-04 (aa5fdca05): the published track run is read off the drawn band, not the profile's pinned flat run the
+   // f88172442 fixture measured, so its length and centre follow the spec's published contact (the combat anatomy's
+   // 4-decimal receipt of this build); the band's width and floor still scale with the size factor.
+   for(const key of ['halfWidM','bottomYM'])near(t.contactGeom[key],b.contact[key]*factor,`${id}/contact/${key}`);
+   for(const key of ['halfLenM','zCenterM'])near(t.contactGeom[key],spec.armor.trackContact[key],`${id}/contact/${key} (published)`,.00006);
    t.gunMuzzleWorld(new THREE.Vector3()).toArray().forEach((v,k)=>near(v,b.muzzle[k]*factor,`${id}/muzzle/${k}`));
    const yaw=t.root.getObjectByName('rig_turret'),pitch=t.root.getObjectByName('rig_gun');
    for(const angle of [-Math.PI/2,Math.PI/2,Math.PI]){

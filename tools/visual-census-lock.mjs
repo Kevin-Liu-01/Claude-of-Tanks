@@ -5,6 +5,14 @@
 // when the session mutex is busy, or the FIFO holder outlasts that wait, give the head away by re-queueing directly
 // behind the next live waiter (its stamp + 1 ms) — so neither lock is ever held while waiting out the other's queue.
 // tools/visual-census.mjs uses it for `capture --probe-lock=<dir>`; without that flag it takes createCaptureLock().
+//
+// 2026-10-05 (the patient head; the coordinator, after a skies hold yielded the head twelve rounds running and a
+// landmarks hold died on the lock timeout after two hours): the step-behind rule is fair across sessions but not within
+// one — the waiter it passes is often a sibling lane's, which takes the session mutex the moment it frees, so the older
+// waiter loses every round. At the head with the session mutex busy, the waiter now keeps its place and polls the mutex
+// every patientPollMs (2 s) for up to patientHeadMs (20 min), never taking the FIFO lock while it waits — the mutex's
+// holder is mid-hold and holds the FIFO lock itself, so waiting at the head costs nobody anything; past the cap it logs
+// the wait and steps behind as before. patientHeadMs 0 keeps the old rule.
 import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -49,7 +57,7 @@ export function ticketName(stamp, arrivedMs, pid, bump = 0) {
 /** A FIFO + session-mutex lock with the capture-lock interface: acquire(timeoutMs), refresh(), release(). */
 export function createPoliteCaptureLock({
   probeDir, queueDir = DEFAULT_QUEUE_DIR, lockDir = DEFAULT_LOCK_DIR, maxHolderWaitMs = 8 * 60 * 1000,
-  requeuePauseMs = 3000, headPollMs = 1000, log = () => {},
+  requeuePauseMs = 3000, headPollMs = 1000, log = () => {}, patientHeadMs = 20 * 60 * 1000, patientPollMs = 2000,
   ticketStaleMs = TICKET_STALE_MS, ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
   probeDeadGraceMs = PROBE_DEAD_GRACE_MS,
 }) {
@@ -121,7 +129,32 @@ export function createPoliteCaptureLock({
           if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
           await sleep(headPollMs);
         }
-        if (tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir))) {
+        let gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+        // the patient head: keep the place while the session mutex is busy (the FIFO lock untouched), up to the cap
+        if (!gotProbe && patientHeadMs > 0) {
+          const waitSince = Date.now();
+          log(`FIFO head, the session mutex busy (round ${round}): holding the head, polling it every ${Math.round(patientPollMs / 1000)} s for up to ${Math.round(patientHeadMs / 60000)} min`);
+          let lostHead = false;
+          while (!gotProbe && Date.now() - waitSince < patientHeadMs) {
+            if (late()) throw new Error('cot-shots lock timeout');
+            await sleep(patientPollMs);
+            if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
+            // (an older ticket can reappear ahead — a waiter restoring its first place — and then it goes first)
+            if (head(ticket) !== ticket) { lostHead = true; break; }
+            gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+          }
+          if (gotProbe) log(`the session mutex freed after ${Math.round((Date.now() - waitSince) / 1000)} s at the head`);
+          else if (lostHead) {
+            log('an older ticket came ahead while the head waited: back in line');
+            while (head(ticket) !== ticket) {
+              if (late()) throw new Error('cot-shots lock timeout');
+              if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
+              await sleep(headPollMs);
+            }
+            gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+          } else log(`the patient head waited ${Math.round((Date.now() - waitSince) / 60000)} min for the session mutex: stepping behind`);
+        }
+        if (gotProbe) {
           probeHeld = true;
           writeFileSync(join(probeDir, 'pid'), String(process.pid));
           const headSince = Date.now();

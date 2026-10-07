@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createForwardProgramWarmOwner } from './programWarm.ts';
+import { prepareGarageModePrograms } from '../app/garageModePreviewRuntime.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 let passed = 0;
@@ -743,7 +744,7 @@ const networkCompileBody = mainSource.match(
   /compile: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n\s{10}\},/,
 )?.[1];
 assert.ok(networkCompileBody, 'network entry retains its scoped async compile adapter');
-const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame',
+const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame', 'battlePresentation',
   `return async (signal) => {${networkCompileBody.replace(': ForwardProgramCompileTiming', '')}};`);
 for (const composited of [false, true]) {
   const camera = new THREE.PerspectiveCamera();
@@ -760,8 +761,10 @@ for (const composited of [false, true]) {
   let paints = 0;
   let finalized = false;
   let receivedTiming;
+  let modeVisualsPrepared = 0;
   const compile = networkCompileFactory(post, camera, LATE_FX_LAYER, {
     *prepareSceneSteps(options) {
+      assert.equal(modeVisualsPrepared, 1, 'mode effects are present before program preparation');
       assert.equal(options.signal, signal);
       assert.equal(options.strict, true, 'network adapter opts into completion-enforced bounded admission');
       assert.equal(camera.layers.mask, initialMask, 'the adapter never leaves camera state changed');
@@ -781,7 +784,7 @@ for (const composited of [false, true]) {
         return { status: 'complete', pending: 0 };
       } finally { finalized = true; }
     },
-  }, async () => { paints++; });
+  }, async () => { paints++; }, { prepareModeVisuals() { modeVisualsPrepared++; } });
   const receipt = await compile(signal);
   assert.deepEqual(receipt, { programsAfter: 3, preparation: { status: 'complete', pending: 0 } });
   assert.notEqual(receipt, receivedTiming, 'the adapter returns its completed diagnostic copy');
@@ -960,10 +963,32 @@ for (const terminal of ['abort', 'return', 'throw', 'epoch', 'info', 'context', 
       try { yield; assert.fail('rejected caller must not resume preparation'); }
       finally { finalized = true; }
     },
-  }, async () => { throw reason; });
+  }, async () => { throw reason; }, { prepareModeVisuals() {} });
   await assert.rejects(compile(), (error) => error === reason);
   assert.equal(finalized, true, 'adapter closes strict owner when nextPaintFrame rejects');
   passed++;
 }
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);
+
+// The Garage aura adapter must warm the exact forward targets/layers too.
+{
+ const body=mainSource.match(/prepare: async \(root, current\) => \{([\s\S]*?)\n  \},\n  invalidate:/)?.[1];
+ assert.ok(body);
+ const run=new Function('forwardProgramWarm','post','camera','LATE_FX_LAYER','nextFrame','game','prepareGarageModePrograms',
+   `return async (root,current)=>{${body.replace('undefined as never','undefined')}}`);
+ for(const composed of [false,true]){
+  const camera=new THREE.PerspectiveCamera();camera.layers.enable(LATE_FX_LAYER);
+  const post=composed?{composer:{},sceneAA:{sceneTarget:{}},lateFx:{target:{}}}:null;
+  let prepared=0;const root=new THREE.Group();
+  await run({*prepareSceneSteps(options){
+   prepared++;assert.equal(options.visibleRoot,root);assert.equal(options.strict,true);
+   assert.deepEqual(options.passes,composed?[
+    {layerMask:camera.layers.mask&~(1<<LATE_FX_LAYER),target:post.sceneAA.sceneTarget},
+    {layerMask:1<<LATE_FX_LAYER,target:post.lateFx.target},
+   ]:undefined);return {status:'complete',pending:0};
+  }},post,camera,LATE_FX_LAYER,async()=>{},{phase:'garage'},prepareGarageModePrograms)(root,()=>true);
+  assert.equal(prepared,1);
+ }
+ console.log('sceneProgramWarm: Garage aura uses exact rendered targets and light layers');
+}

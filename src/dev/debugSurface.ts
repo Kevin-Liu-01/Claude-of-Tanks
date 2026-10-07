@@ -38,6 +38,7 @@ export interface DebugSurfaceDependencies {
   getBattleAtmosphere?(): RuntimeValue;
   getNightLighting?(): RuntimeValue;
   getPedestalVisual(): RuntimeValue;
+  isGarageModePreviewPending?(): boolean;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
   getPedestalCacheIds(): readonly string[];
@@ -108,6 +109,7 @@ export function installDebugSurface(
     garage: deps.garage,
     quality: deps.quality,
     get pedestalVisual() { return deps.getPedestalVisual(); },
+    get garageModePreviewPending() { return deps.isGarageModePreviewPending?.() ?? false; },
     get pedestalOnStage() { return deps.isPedestalOnStage(); },
     get selectedSpecId() { return deps.getSelectedSpecId(); },
     get pedestalCacheIds() { return [...deps.getPedestalCacheIds()]; },

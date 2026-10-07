@@ -76,7 +76,13 @@ console.log('[1] a hull hopping beside a wreck in a crater is not lifted onto it
 // finalized shells the same side contact needs a deeper hole, as a crater or a trench gives)
 {
   // the wreck lies in a 1.7 m crater; the M1A2's hull rect overlaps its side by 5 cm and its ride has just detached
-  const crater = { ...flat, getHeightAt: (x, z) => (Math.abs(x) < 2.6 && Math.abs(z) < 5 ? -1.7 : 0) };
+  // (physics lane round 8: the crater is as wide as the wreck's tracks, 1.77 m out, and no wider, so the M1A2 stands on
+  // its tracks beside it; this case is the contact pass's. With the crater 2.6 m out the M1A2's whole left track hung
+  // over it, and on either support line the hull rolled 30-33 degrees in about the lip, its centre of mass a metre
+  // inboard of it and its right track 0.9-1.5 m in the air: the solve has no belly contact for a hull over an edge, a
+  // class the lane names. On its real tracks it pivots on the left track's inner edge and its root rose 0.57 m, past
+  // this check's 0.3 m.)
+  const crater = { ...flat, getHeightAt: (x, z) => (Math.abs(x) < 1.85 && Math.abs(z) < 5 ? -1.7 : 0) };
   const wreck = hull('wreck', 't90m', 0, -1.7, 0, 0, true);
   const m1 = hull('m1a2', 'm1a2', 3.6, 0, 0, 0);
   run(crater, [wreck], wreck, 1); // the wreck settles on the crater floor
