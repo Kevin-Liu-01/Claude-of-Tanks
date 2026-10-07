@@ -26,6 +26,8 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
+import { buildCastleRock } from './castleRock.ts';
+import { buildCaprockRim } from './caprockRim.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -98,7 +100,7 @@ interface SceneryBuildContext {
 }
 
 interface SceneryFeatureReceipt {
-  family: 'rock' | 'rockField' | 'bedrock' | 'landmark' | 'powerLine';
+  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'landmark' | 'powerLine';
   kind: string;
   name: string | null;
   x: number;
@@ -338,6 +340,35 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const built = buildBedrock({ geology: hill.geology, x: hill.x, z: hill.z, radius: hill.radius, minGrade: hill.minGrade, beds: hill.beds, crown: hill.crown, tone: hill.tone },
       ground, noise, mulberry32(ctx.seed + 17101 + 131 * hi), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no flank steeper than the hulls climb'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- castle rocks: a tuff pinnacle's skin over its knoll, its rooms, dovecotes and passages (castleRock.ts); a
+  // gate's buttress is a mass, the rest a skin no hull reaches; one stream each
+  for (const [ci, rock] of (scenery.castles ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'castle', kind: 'tuff castle', name: rock.name ?? null, x: rock.x, z: rock.z, status: 'placed' };
+    if (Math.max(Math.abs(rock.x), Math.abs(rock.z)) > SQUARE) { skip(feature, 'outside the square'); continue; }
+    const built = buildCastleRock(rock, ground, noise, mulberry32(ctx.seed + 17301 + 131 * ci), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall to skin'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- caprock: a ridge's or a trench's hard bed along its brows (caprockRim.ts), a skin no hull reaches; one stream each
+  for (const [bi, bench] of (scenery.caprock ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'caprock', kind: 'tuff caprock', name: bench.name ?? null, x: bench.x, z: bench.z, status: 'placed' };
+    const built = buildCaprockRim(bench, ground, noise, mulberry32(ctx.seed + 17501 + 131 * bi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no rim'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
     rockPieces.push(built.geometry);
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
