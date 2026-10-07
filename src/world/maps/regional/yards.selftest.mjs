@@ -79,5 +79,24 @@ for (const list of Object.values(bed)) for (const g of list) {
 }
 assert.ok(tris > 20 && tris < 1200, `a bed is a few hundred triangles (${tris})`);
 assert.ok(minY <= -0.3, 'the raised bed reaches down to the ground on its low side');
+// (b35; gauntlet wave 241 on Verdant's gardens: "green cubes on poles", "smooth green boxes") the crops are plants: over
+// many beds every one inside the budget, and their green no longer boxes — most of its faces stand off the axes
+let worstBed = 0, green = 0, offAxis = 0;
+for (let seed = 1; seed <= 120; seed++) {
+  let t = 0;
+  for (const list of Object.values(gardenParts(3.6, 2.4, streamFrom(seed), 0))) for (const g of list) {
+    const p = g.getAttribute('position'), c = g.getAttribute('color'), n = g.getAttribute('normal');
+    t += p.count / 3;
+    if (!c || !n) continue;
+    for (let i = 0; i < p.count; i += 3) {
+      if (!(c.getY(i) > c.getX(i) * 1.1 && c.getY(i) > c.getZ(i) * 1.05)) continue;
+      green++;
+      if (Math.max(Math.abs(n.getX(i)), Math.abs(n.getY(i)), Math.abs(n.getZ(i))) < 0.98) offAxis++;
+    }
+  }
+  worstBed = Math.max(worstBed, t);
+}
+assert.ok(worstBed < 1200, `every bed a few hundred triangles (${worstBed} at most)`);
+assert.ok(green > 1000 && offAxis / green > 0.8, `the crops plants, not boxes (${(offAxis / Math.max(1, green) * 100).toFixed(0)} % of ${green} green faces off the axes)`);
 console.log(`yards.selftest: ${plan.side} yard ${plan.depth} m deep, ${plan.modules.length} modules, gate, outbuilding and beds; `
   + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles`);

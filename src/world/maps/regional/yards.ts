@@ -268,51 +268,126 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
 }
 
 const SOIL: readonly Rgb[] = [0x4a3a2a, 0x54402e, 0x3f3226].map(rgb);
-const CROP: readonly Rgb[] = [0x4f6b2e, 0x5f7f34, 0x6b8a3a, 0x3e5a2a, 0x7a8a3e].map(rgb);
+/** (b35) The plants' tones: cabbage heads pale and blue-green, their outer leaves darker, beans and potato haulm green. */
+const CABBAGE: readonly Rgb[] = [0x9db27a, 0x8faa70, 0xa6b884].map(rgb);
+const CABBAGE_LEAF: readonly Rgb[] = [0x5f8a58, 0x55804f, 0x6a9160].map(rgb);
+const BEAN_LEAF: readonly Rgb[] = [0x4b7a31, 0x568436, 0x426f2c].map(rgb);
+const HAULM: readonly Rgb[] = [0x5c8237, 0x517832, 0x678c3e].map(rgb);
+type V3 = [number, number, number];
 
 /**
- * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width (cabbage and
- * potato rows as low green ridges with gaps, a row of beans on canes), centred on the origin, its rows along local x.
+ * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width, centred on the
+ * origin, its rows along local x.
+ *
+ * (b35, the scenery lane; gauntlet wave 241 on Verdant's gardens: "green cubes on poles", "smooth green boxes") The
+ * crops are plants: a cabbage row's heads — each a rounded head (a six-sided double cone, faceted) in a rosette of
+ * three outer leaves spread low round it; a potato row's leafy haulm in clumps along a hilled ridge; a bean row's
+ * canes, each twined by its vine (a thin stem spiralling up it) with heart-shaped leaves alternating round it all the
+ * way up. A leaf is a kite drawn on both faces; the plants sample one place of the bed's print (a tone, no grain).
+ * Within a bed's few hundred triangles (yards.selftest).
  */
 export function gardenParts(w: number, d: number, look: () => number, drop = 0): RegionalParts {
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
+  const plant = { decor: true, density: 0.04 } as const;
   const soil = SOIL[Math.floor(look() * SOIL.length) % SOIL.length];
+  const pick = (list: readonly Rgb[]) => list[Math.floor(look() * list.length) % list.length];
   // on a slope the bed is raised to its high side, its soil and board edging carried down to the ground (`drop`)
   sink.span('structureWood', -w / 2, -0.12 - drop, -d / 2, w / 2, 0.05, d / 2, { ...dec, colour: soil });
   const board = shade(rgb(0x7a6a52), 0.8 + look() * 0.3);
   for (const sz of [-1, 1]) sink.span('structureWood', -w / 2 - 0.03, -drop, sz * d / 2 - 0.03, w / 2 + 0.03, 0.12, sz * d / 2 + 0.03, { ...dec, colour: board });
   for (const sx of [-1, 1]) sink.span('structureWood', sx * w / 2 - 0.03, -drop, -d / 2 + 0.03, sx * w / 2 + 0.03, 0.12, d / 2 - 0.03, { ...dec, colour: board });
+  // a leaf from its base out along `a` (radians round y), `len` long and `wid` wide, tipped up `rise`, both faces: a
+  // kite (a bean's, a heart narrowing to its tip) or an oval (a cabbage's or a potato's, broad and blunt)
+  const leaf = (bx: number, by: number, bz: number, a: number, len: number, wid: number, rise: number, colour: Rgb, oval = false) => {
+    const ca = Math.cos(a), sa = Math.sin(a), cr = Math.cos(rise), sr = Math.sin(rise);
+    // (the leaf curls up toward its tip: the far points rise a little more than its plane)
+    const at = (t: number, side: number): V3 => [bx + ca * cr * len * t - sa * side, by + sr * len * t + (oval ? 0.12 * len * t * t : 0), bz + sa * cr * len * t + ca * side];
+    const pts: V3[] = oval
+      ? [at(0, 0), at(0.42, wid / 2), at(0.9, wid * 0.3), at(0.9, -wid * 0.3), at(0.42, -wid / 2)]
+      : [at(0, 0), at(0.42, wid / 2), at(1, 0), at(0.42, -wid / 2)];
+    sink.polygon('structureWood', pts, { ...plant, colour });
+    sink.polygon('structureWood', [...pts].reverse(), { ...plant, colour });
+  };
+  // a triangle wound to face away from `c`
+  const tri = (a: V3, b: V3, e: V3, c: V3, colour: Rgb) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = e[0] - a[0], vy = e[1] - a[1], vz = e[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const mx = (a[0] + b[0] + e[0]) / 3 - c[0], my = (a[1] + b[1] + e[1]) / 3 - c[1], mz = (a[2] + b[2] + e[2]) / 3 - c[2];
+    sink.polygon('structureWood', nx * mx + ny * my + nz * mz >= 0 ? [a, b, e] : [a, e, b], { ...plant, colour });
+  };
   const rows = Math.max(2, Math.floor((d - 0.3) / 0.55));
+  let beans = false;
   for (let r = 0; r < rows; r++) {
     const z = -d / 2 + 0.3 + (d - 0.6) * (r + 0.5) / rows;
-    const crop = CROP[Math.floor(look() * CROP.length) % CROP.length];
-    if (look() < 0.18) {
-      // beans on canes: a line of canes and the green climbing up each of them
-      // (the scenery lane, b30; wave 199 on Verdant's long khata: the row's one green slab read as "a hedge of flat green
-      // boards") each cane carries its own vine: three or four leafy clumps of their own size and shade, offset round it
-      // and up it, thinning toward the top, with daylight between one cane's vine and the next
-      for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.45) {
-        const top = 1.25 + look() * 0.3;
-        sink.span('structureWood', x - 0.015, 0.05, z - 0.015, x + 0.015, top, z + 0.015, { ...dec, colour: rgb(0x8a7a5a) });
-        const clumps = 3 + (look() < 0.5 ? 1 : 0);
-        for (let c = 0; c < clumps; c++) {
-          const y = 0.3 + (top - 0.45) * (c / clumps) + look() * 0.12;
-          const half = (0.14 - c * 0.02) * (0.8 + look() * 0.4), hh = 0.12 + look() * 0.1;
-          const ox = (look() - 0.5) * 0.1, oz = (look() - 0.5) * 0.08;
-          sink.span('structureWood', x + ox - half, y, z + oz - half * 0.7, x + ox + half, y + hh, z + oz + half * 0.7,
-            { ...dec, colour: shade(crop, 0.78 + look() * 0.3) });
+    const kind = look();
+    // (one row of beans to a bed: a second bean draw is a cabbage row)
+    if (kind < 0.18 && !beans) {
+      beans = true;
+      // beans on canes: each cane twined by its vine, heart-shaped leaves alternating round it up to its top
+      // (the scenery lane, b30: a vine a cane, daylight between them; b35: leaves, not clumps)
+      for (let x = -w / 2 + 0.3; x < w / 2 - 0.2; x += 0.6) {
+        const top = 1.2 + look() * 0.25, phase = look() * Math.PI * 2, tone = pick(BEAN_LEAF);
+        sink.span('structureWood', x - 0.012, 0.05, z - 0.012, x + 0.012, top, z + 0.012, { ...dec, colour: rgb(0x8a7a5a) });
+        // the stem: a thin spiral twined once round the cane up to its leaves' top
+        const a1 = phase + Math.PI * 1.5;
+        sink.member('structureWood', [x + Math.cos(phase) * 0.025, 0.06, z + Math.sin(phase) * 0.025], [x + Math.cos(a1) * 0.025, top - 0.1, z + Math.sin(a1) * 0.025],
+          0.012, 0.012, [Math.cos(a1), 0, Math.sin(a1)], { ...plant, colour: shade(tone, 0.8) }, 0);
+        // the leaves: broad hearts held out on short stalks in pairs, the pairs turning round the cane all the way up,
+        // smaller toward the top
+        const pairs = 8;
+        for (let k = 0; k < pairs; k++) {
+          const t = (k + 0.5) / pairs, y = 0.2 + (top - 0.32) * t;
+          for (const side of [0, 1]) {
+            const a = phase + k * 1.3 + side * 2.7 + (look() - 0.5) * 0.4;
+            leaf(x + Math.cos(a) * 0.03, y + side * 0.05, z + Math.sin(a) * 0.03, a, (0.22 + look() * 0.05) * (1 - t * 0.3), 0.19 * (1 - t * 0.25),
+              0.05 + look() * 0.3, shade(tone, 0.85 + look() * 0.3));
+          }
         }
       }
       continue;
     }
-    // a ridge of crops in two or three runs with gaps where a plant failed or was cut
-    let x = -w / 2 + 0.2;
-    while (x < w / 2 - 0.4) {
-      const run = Math.min(w / 2 - 0.2 - x, 0.8 + look() * 1.6);
-      const h = 0.16 + look() * 0.14;
-      sink.span('structureWood', x, 0.05, z - 0.13, x + run, 0.05 + h, z + 0.13, { ...dec, colour: shade(crop, 0.85 + look() * 0.3) });
-      x += run + 0.15 + look() * 0.35;
+    if (kind < 0.6) {
+      // cabbages: a head every 0.4 m or so in a rosette of three outer leaves, the odd one cut
+      for (let x = -w / 2 + 0.32; x < w / 2 - 0.28; x += 0.44 + look() * 0.08) {
+        if (look() < 0.1) continue;
+        const R = 0.1 + look() * 0.035, H = 0.18 + look() * 0.05, cx = x + (look() - 0.5) * 0.05, cz = z + (look() - 0.5) * 0.05;
+        const head = shade(pick(CABBAGE), 0.9 + look() * 0.2), outer = pick(CABBAGE_LEAF), turn = look() * Math.PI * 2;
+        // the head: six sides, its belly a little below half its height, its shoulder drawn in, a blunt crown
+        const c: V3 = [cx, 0.05 + H * 0.45, cz], top: V3 = [cx, 0.05 + H, cz], foot: V3 = [cx, 0.06, cz];
+        const ring = (y: number, r: number, twist: number): V3[] => Array.from({ length: 6 }, (_, i) => {
+          const a = turn + twist + (i / 6) * Math.PI * 2;
+          return [cx + Math.cos(a) * r, 0.05 + y, cz + Math.sin(a) * r];
+        });
+        const belly = ring(H * 0.42, R, 0), shoulder = ring(H * 0.8, R * 0.66, Math.PI / 6);
+        for (let i = 0; i < 6; i++) {
+          const j = (i + 1) % 6;
+          tri(belly[i], belly[j], foot, c, shade(head, 0.8));
+          tri(belly[i], belly[j], shoulder[i], c, head);
+          tri(belly[j], shoulder[j], shoulder[i], c, head);
+          tri(shoulder[i], shoulder[j], top, c, shade(head, 1.08));
+        }
+        // three broad outer leaves spread low round it, curling up at their edges
+        for (let k = 0; k < 3; k++) {
+          const a = turn + 0.5 + (k / 3) * Math.PI * 2 + (look() - 0.5) * 0.4;
+          leaf(cx + Math.cos(a) * R * 0.45, 0.07, cz + Math.sin(a) * R * 0.45, a, R * 1.9 + look() * 0.04, R * 1.9, 0.28 + look() * 0.22,
+            shade(outer, 0.85 + look() * 0.3), true);
+        }
+      }
+      continue;
+    }
+    // potatoes: a hilled ridge, the haulm in leafy clumps along it, a gap where a plant failed
+    // (the ridge a hilled bank of soil, sloping sides and a rounded crown, not a plank)
+    const ridgeTone = shade(soil, 0.9 + look() * 0.2), x0 = -w / 2 + 0.2;
+    sink.prism('structureWood', [[x0, 0.05, z - 0.15], [x0, 0.05, z + 0.15], [x0, 0.12, z + 0.07], [x0, 0.14, z], [x0, 0.12, z - 0.07]].reverse() as V3[],
+      [1, 0, 0], w - 0.4, { ...dec, colour: ridgeTone });
+    for (let x = -w / 2 + 0.3; x < w / 2 - 0.25; x += 0.33 + look() * 0.08) {
+      if (look() < 0.12) continue;
+      const tone = shade(pick(HAULM), 0.85 + look() * 0.3), spin = look() * Math.PI * 2;
+      for (let k = 0; k < 3; k++) {
+        const a = spin + (k / 3) * Math.PI * 2;
+        leaf(x, 0.11, z, a, 0.2 + look() * 0.08, 0.15, 0.55 + look() * 0.35, shade(tone, 0.9 + look() * 0.2), true);
+      }
     }
   }
   return sink.finish();
