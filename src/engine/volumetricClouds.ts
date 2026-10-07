@@ -83,7 +83,9 @@ const CLOUD_CIRRUS_TILE_M = 30000;
  * lobe the sun's light keeps diffused through a deck (a dual Henyey–Greenstein of g 0.6 over the isotropic share, its
  * mean over the sky unchanged); the deck's deep diffusion carries it.
  */
-export const CLOUD_DECK_SUN_LOBE = 0.2;
+// (round 6, wave 222: an overcast "with no brighter patch to give the sun's direction" — the critics' advice "a lower,
+// subtler deck that shows the sun's direction, not more cloud contrast": the forward lobe through a deck at 0.45)
+export const CLOUD_DECK_SUN_LOBE = 0.45;
 /**
  * The ground's return on a closing deck's base, a multiple of the law's (2026-10-07, round 5): the cover's own light
  * raised from the snow or sand under it (round four's Whiteout deck sat at 163 of 255 over a snowfield near white).
@@ -989,10 +991,10 @@ export class VolumetricCloudLayer {
     t.uSunGain.value = preset.sunGain;
     t.uAmbientScale.value = preset.ambientScale;
     t.uBase.value = preset.baseM;
-    // (2026-10-07, wave 198 on Desert: the upper sky's streaks read as smeared paint, and round two's fibres still left a
-    // sky-wide sheet over the cumulus in pair W — the cirrus is a trace of ice, not the sky's subject: 0.7 of its cover,
-    // 0.6 of its depth; QA: CLOUD_CIRRUS_COVER, CLOUD_CIRRUS_DEPTH)
-    t.uCirrus.value = preset.cirrus * lightTune('CLOUD_CIRRUS_COVER', 0.7);
+    // (2026-10-07, wave 198 on Desert: the upper sky's streaks read as smeared paint; at round five's trace — 0.7 of its
+    // cover, 0.6 of its depth — wave 221 still read "airbrushed smears": the cirrus is dropped (its pass skipped, the
+    // contrails keep theirs); QA: CLOUD_CIRRUS_COVER, CLOUD_CIRRUS_DEPTH bring it back)
+    t.uCirrus.value = preset.cirrus * lightTune('CLOUD_CIRRUS_COVER', 0);
     (t.uCirrusDir.value as THREE.Vector2).set(Math.cos(preset.cirrusAngleRad), Math.sin(preset.cirrusAngleRad));
     t.uCirrusAlt.value = preset.cirrusAltM;
     t.uCirrusDensity.value = preset.cirrusDensity * lightTune('CLOUD_CIRRUS_DEPTH', 0.6);

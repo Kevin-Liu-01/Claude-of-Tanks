@@ -142,7 +142,9 @@ vec4 cl2Weather( vec2 xz, float h, float lod ) {
 	if ( uWeatherWarp > 0.0 ) {
 		// the turbulence field read a little further along at every altitude: the footprint's edge moves with height (a
 		// tower was the extrusion of one outline — every wiggle of it a groove the height of the tower)
-		vec2 tv = textureLod( tTurb, ( xz + vec2( 0.37, 0.61 ) * h ) / CL2_TURB, 0.0 ).rg * 2.0 - 1.0;
+		// (round 6, wave 221 on Monsoon: blue sky through a tower's dark core — the footprint turned a whole cycle up the
+		// column and arched over a gap): the read point moves 0.4 as far per metre, the drift a lean more than a twist
+		vec2 tv = textureLod( tTurb, ( xz + vec2( 0.15, 0.24 ) * h ) / CL2_TURB, 0.0 ).rg * 2.0 - 1.0;
 		xz += tv * uWeatherWarp;
 	}
 	vec4 lw = textureLod( tLocal, ( xz + uLocalShift ) / CL2_LOCAL, lod );
@@ -164,6 +166,11 @@ vec2 cl2Cell( vec2 xz, float lod ) {
 	// in the wind's frame, drawn out along it (a broken deck's bands)
 	q = vec2( dot( q, uWindDir2 ) / uCellStretch, dot( q, vec2( -uWindDir2.y, uWindDir2.x ) ) );
 	float c = textureLod( tLocal, q / uCellPeriod + vec2( 0.37, 0.11 ), lod ).a;
+	// (round 6, the gauntlet's wave 222: the decks "repeat the same shapes in an even pattern"): a second lattice of cells
+	// at 0.62 of the size, the deck passing from one to the other over tens of kilometres (an analytic selector, no fetch)
+	float c2 = textureLod( tLocal, q / ( uCellPeriod * 0.62 ) + vec2( 0.83, 0.29 ), lod ).a;
+	float sel = sin( dot( xz, vec2( 0.00021, 0.00013 ) ) + 1.7 * sin( dot( xz, vec2( -0.00011, 0.00017 ) ) ) );
+	c = mix( c, c2, smoothstep( -0.35, 0.35, sel ) );
 	float l = textureLod( tLocal, q / ( uCellPeriod * 0.31 ) + vec2( 0.71, 0.53 ), lod ).a;
 	return vec2( smoothstep( 0.15, 0.85, c ), smoothstep( 0.1, 0.9, l ) );
 }
@@ -191,7 +198,10 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
-	d *= mix( vec4( 1.0 ), smoothstep( 0.03, 0.32, k ), gapOn );
+	// (round 6, wave 221 on Frosthollow: "pillow masses around a large blue gap" over a deck 86 % closed): the lanes between
+	// the cells narrow as the deck closes — their share by the deck's open share, a fifth at the least
+	vec4 gapW = clamp( ( 1.0 - uLayerCover ) / 0.45, 0.2, 1.0 );
+	d *= mix( vec4( 1.0 ), smoothstep( 0.03 * gapW, 0.32 * gapW, k ), gapOn );
 	return d * uLayerCore * inside;
 }
 // the extinction of every lane at a point (1/m): the shell eroded by the shape and (detail > 0) the detail, under the
@@ -750,6 +760,10 @@ void main() {
 				// return is the light the deck passes down, uGroundRadiance's own law, not the map's ambient scale over it)
 				float flatK = dot( wgt, uLayerFlat );
 				float groundK = ( 1.0 - skyK ) * 0.5 * mix( uAmbientScale, 1.0, flatK * uDeckTune.y ) * ( 1.0 - 0.5 * flatK ) * mix( 1.0, uDeckTune.z, smoothstep( 0.6, 1.0, flatK ) );
+				// (round 6, wave 221 on Monsoon's chase: a storm's underside "a soft, evenly lit grey-white blob with no flat dark
+				// base"): the ground under a cumulonimbus lies in its own shade, so its base takes the ground's return through
+				// the tower's column, by the lane's anvil
+				groundK *= mix( 1.0, skyThrough, dot( wgt, uLayerAnvil ) );
 				radiance += uSkyIrradiance * ( skyK * 0.5 * skyThrough ) + uGroundRadiance * groundK;
 				// [ported] the powder term: a thin edge has not built up its in-scattered light yet
 				radiance *= 1.0 - uPhase.w * powderFade * exp( -sigma * uPowderExp );

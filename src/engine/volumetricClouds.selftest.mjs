@@ -282,7 +282,8 @@ assert.deepEqual(table, {
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 6, rain: 0, virga: 0, fogBank: 0 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
-  whiteout: { regime: 'low-stratus', coverage: 1, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-07, the clouds lane after wave 222: the deck "too high for low Arctic stratus" — its base at 180 m)
+  whiteout: { regime: 'low-stratus', coverage: 1, baseM: 180, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.3, virga: 0, fogBank: 0 },
   mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
@@ -320,7 +321,7 @@ assert.deepEqual(table, {
   const monsoon = deriveCloudLayerPreset(skyOf('monsoon'));
   assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange, monsoon.fieldMix], [2500, 1, true, 1, [0.65, 1], 0.9], 'the front: wide masses of the broad field, clustered towers, anvils, scud, the sky over the camera open');
   const whiteout = deriveCloudLayerPreset(skyOf('whiteout'));
-  assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 300 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
+  assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 180 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
   const winter = deriveCloudLayerPreset(skyOf('winter'));
   assert.ok(winter.stratiform < CLOUD_LAYER_RULES.sheetStratiform && winter.typeRange[1] <= 0.45 && winter.coverage >= 0.8, 'winter: a lumpy closed deck, not a flat sheet');
   // round 76: the deck identities — winter's cells and transmitted lighting, foundry's and railyard's industrial
@@ -692,16 +693,21 @@ assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT',
 // sun direction under a closed deck without a disc
 assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);\s*vec3 eTop = sunE \* sunUp \* lobe \+ uSkyIrradiance \* CL_PI;/,
   'the lobe on the sun\'s diffused share only, the sky\'s untouched');
-assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.2;/);
+// (round 6, wave 222: an overcast with no brighter patch toward the sun — the lobe at 0.45)
+assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.45;/);
 assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE\);/);
 {
   // the lobe's mean over the sphere is 1 (phaseDual integrates to one): the deck's mean light is unchanged
   const hg = (c, g) => (1 - g * g) / (4 * Math.PI * Math.pow(1 + g * g - 2 * g * c, 1.5));
   // the deck lobe's dual Henyey–Greenstein (g 0.6 over a back lobe of −0.225, 70 / 30)
   const dual = (c, g) => hg(c, g) * 0.7 + hg(c, -0.375 * g) * 0.3;
-  let mean = 0; const n = 20000;
-  for (let i = 0; i < n; i++) { const c = -1 + 2 * (i + 0.5) / n; mean += (1 + 0.2 * (dual(c, 0.6) * 4 * Math.PI - 1)) / n; }
+  let mean = 0, least = Infinity; const n = 20000;
+  for (let i = 0; i < n; i++) {
+    const c = -1 + 2 * (i + 0.5) / n, lobe = 1 + CLOUD_DECK_SUN_LOBE * (dual(c, 0.6) * 4 * Math.PI - 1);
+    mean += lobe / n; least = Math.min(least, lobe);
+  }
   assert.ok(Math.abs(mean - 1) < 1e-3, `the lobe's mean over the sky ${mean.toFixed(4)}`);
+  assert.ok(least > 0.5, `away from the sun the deck keeps most of its light (${least.toFixed(3)})`);
   assert.ok(1 + CLOUD_DECK_SUN_LOBE * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
 }
 console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');
