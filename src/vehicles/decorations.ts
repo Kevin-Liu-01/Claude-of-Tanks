@@ -577,52 +577,70 @@ function tiePath(meshes: THREE.Mesh[], axis: 'x' | 'z', lateral: number, lo: num
 }
 
 /**
- * A webbing band along a crossing-plane path: 3 mm thick, laid 1.5-4.5 mm off the surface it follows, `width` wide
- * across the crossing plane, closed (both faces, both edges, end caps). Piece-local, non-indexed, flat normals.
+ * A tie's path with its straight runs merged (round 4 follow-up, 2026-10-07): an interior point that lies within 3 mm
+ * of the line through its neighbours on the same face (all three share an outward normal) adds a span and no shape,
+ * so a flat lid's four stations become its two edges. The rings, the face stations and every corner stay.
  */
-function tieBand(path: ReadonlyArray<{ a: number; y: number; na: number; ny: number }>, axis: 'x' | 'z', lateral: number,
+function simplifyTiePath<T extends { a: number; y: number; na: number; ny: number }>(path: readonly T[]): T[] {
+  const out: T[] = [path[0]];
+  for (let i = 1; i < path.length - 1; i++) {
+    const p = out[out.length - 1], q = path[i], r = path[i + 1];
+    const same = p.na === q.na && p.ny === q.ny && q.na === r.na && q.ny === r.ny;
+    const dx = r.a - p.a, dy = r.y - p.y, len = Math.hypot(dx, dy) || 1;
+    if (same && Math.abs((q.a - p.a) * dy - (q.y - p.y) * dx) / len < 0.003) continue;
+    out.push(q);
+  }
+  out.push(path[path.length - 1]);
+  return out;
+}
+
+/**
+ * A webbing band along a crossing-plane path, `width` wide across the crossing plane, laid 3.5 mm off the surface it
+ * follows. Round 4 follow-up (2026-10-07: the triangle budget is full on many hulls, and the closed three-sided
+ * section cost six triangles a span): a ribbon with a face each way, four triangles a span, over the simplified path
+ * (simplifyTiePath), so a case's tie costs what the round-3 box tie did. Piece-local, non-indexed, flat normals.
+ */
+function tieBand(path0: ReadonlyArray<{ a: number; y: number; na: number; ny: number }>, axis: 'x' | 'z', lateral: number,
   width: number): THREE.BufferGeometry {
+  const path = simplifyTiePath(path0);
   const P = (a: number, y: number, l: number): [number, number, number] => (axis === 'z' ? [lateral + l, y, a] : [a, y, lateral + l]);
-  // a flat outer face 4.5 mm off the surface and two faces folding back to a centre line 1 mm off it: a closed
-  // three-sided section (six triangles a span) that reads as a flat strap from outside
-  const rings: Array<Array<[number, number, number]>> = path.map((p, i) => {
+  const rings: Array<[[number, number, number], [number, number, number]]> = path.map((p, i) => {
     // the band's own normal at a corner: the mean of its neighbours' outward normals
     const prev = path[Math.max(0, i - 1)], next = path[Math.min(path.length - 1, i + 1)];
     let na = p.na + (prev.na + next.na) * 0.5, ny = p.ny + (prev.ny + next.ny) * 0.5;
     const l = Math.hypot(na, ny) || 1; na /= l; ny /= l;
-    const inner = 0.001, outer = 0.0045, hw = width / 2;
-    return [
-      P(p.a + na * outer, p.y + ny * outer, -hw), P(p.a + na * outer, p.y + ny * outer, hw),
-      P(p.a + na * inner, p.y + ny * inner, 0),
-    ];
+    const off = 0.0035, hw = width / 2;
+    return [P(p.a + na * off, p.y + ny * off, -hw), P(p.a + na * off, p.y + ny * off, hw)];
   });
+  // the front face's winding, taken where the path is longest from its ends: it must face the path's outward normal
+  const m = Math.floor(path.length / 2), r0 = rings[Math.max(0, m - 1)], r1 = rings[m];
+  const e1 = new THREE.Vector3(...r1[0]).sub(new THREE.Vector3(...r0[0]));
+  const e2 = new THREE.Vector3(...r0[1]).sub(new THREE.Vector3(...r0[0]));
+  const pm = path[m];
+  const outward = new THREE.Vector3(...P(pm.na, pm.ny, 0)).sub(new THREE.Vector3(...P(0, 0, 0)));
+  const flip = e1.cross(e2).dot(outward) < 0;
   const positions: number[] = [];
   const tri = (a: number[], b: number[], c: number[]): void => { positions.push(...a, ...b, ...c); };
-  const quad = (a: number[], b: number[], c: number[], d: number[]): void => { tri(a, b, c); tri(a, c, d); };
   for (let i = 0; i < rings.length - 1; i++) {
-    const r0 = rings[i], r1 = rings[i + 1];
-    for (let k = 0; k < 3; k++) {
-      const k2 = (k + 1) % 3;
-      quad(r0[k], r1[k], r1[k2], r0[k2]);
-    }
-  }
-  const first = rings[0], last = rings[rings.length - 1];
-  tri(first[0], first[1], first[2]);
-  tri(last[2], last[1], last[0]);
-  // wind every face outward: the band's outer face over its middle station must face the path's outward normal
-  const m = Math.floor(path.length / 2), r0 = rings[m], r1 = rings[Math.min(rings.length - 1, m + 1)];
-  const e1 = new THREE.Vector3(...r1[0]).sub(new THREE.Vector3(...r0[0]));
-  const e2 = new THREE.Vector3(...r1[1]).sub(new THREE.Vector3(...r0[0]));
-  const outward = new THREE.Vector3(...P(path[m].na, path[m].ny, 0)).sub(new THREE.Vector3(...P(0, 0, 0)));
-  if (e1.cross(e2).dot(outward) < 0) {
-    for (let i = 0; i < positions.length; i += 9) {
-      for (let c = 0; c < 3; c++) { const t = positions[i + 3 + c]; positions[i + 3 + c] = positions[i + 6 + c]; positions[i + 6 + c] = t; }
-    }
+    const [a, b] = rings[i], [d, c] = rings[i + 1];
+    // front (outward) and back (toward the load): the back face is the front's reverse
+    if (!flip) { tri(a, d, b); tri(b, d, c); tri(a, b, d); tri(b, c, d); }
+    else { tri(a, b, d); tri(b, c, d); tri(a, d, b); tri(b, d, c); }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.computeVertexNormals();
   return g;
+}
+
+/** A flat upward quad `w` by `d` centred at (x, y, z) (round 4 follow-up: the contact pad). */
+function padQuad(w: number, d: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  const hw = w / 2, hd = d / 2;
+  const a = [x - hw, y, z - hd], b = [x + hw, y, z - hd], c = [x + hw, y, z + hd], e = [x - hw, y, z + hd];
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([...a, ...e, ...c, ...a, ...c, ...b], 3));
+  g.computeVertexNormals();
+  return withBoxUV(g);
 }
 
 const SECURED_HARD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations']);
@@ -637,7 +655,9 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   if (bb.isEmpty() || bb.min.y < -0.03 || bb.max.y < 0.06) return; // a piece not authored on its foot
   const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, h = bb.max.y;
   const cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
-  parts.push({ mat: 'cans', role: 'pad', geo: bakeTint(place(block(w * 0.86, 0.003, d * 0.86), cx, 0.0015, cz), 0.03, 0.03, 0.026, 0) });
+  // round 4 follow-up (2026-10-07): the pad is one upward quad 1.5 mm proud (two triangles; its 3 mm block cost twelve,
+  // and its sides sat inside the footprint where nothing sees them)
+  parts.push({ mat: 'cans', role: 'pad', geo: bakeTint(padQuad(w * 0.86, d * 0.86, cx, 0.0015, cz), 0.03, 0.03, 0.026, 0) });
   const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant));
   if (!detail || !hard) return;
   const alongX = w >= d; // the tie crosses the short axis
@@ -674,10 +694,12 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
         ? place(block(wx, wy, wz), lateral, y, a) : place(block(wz, wy, wx), a, y, lateral));
       ring(along(path[0].a - 0.006, 0.006, 0.046, 0.012, 0.03));
       ring(along(path[path.length - 1].a + 0.006, 0.006, 0.046, 0.012, 0.03));
-      // the cam buckle on the near face, a hand's width up
-      const b0 = path[1], b1 = path[2];
-      const by = b0.y + (b1.y - b0.y) * 0.45, ba = b0.a + (b1.a - b0.a) * 0.45 - 0.008;
-      ring(along(ba, by, band + 0.012, 0.03, 0.012));
+      // the cam buckle on the near face, a hand's width up (round 4 follow-up: on the first tie only; the budget)
+      if (k === 0) {
+        const b0 = path[1], b1 = path[2];
+        const by = b0.y + (b1.y - b0.y) * 0.45, ba = b0.a + (b1.a - b0.a) * 0.45 - 0.008;
+        ring(along(ba, by, band + 0.012, 0.03, 0.012));
+      }
       continue;
     }
     if (alongX) {
@@ -2128,8 +2150,16 @@ function fieldFoliageRows(spec: FleetTankSpec): DecorManifestRow[] {
   ];
 }
 
-/** Field-equipment variants no loadout carries (round 4, 2026-10-07; see decorManifestFor's service items). */
-const RETIRED_CARGO: ReadonlySet<FleetEquipmentVariant> = new Set<FleetEquipmentVariant>(['cable-reel', 'folding-chair']);
+/**
+ * Field-equipment variants no loadout carries, and what a draw that lands on one carries instead (round 4,
+ * 2026-10-07; see decorManifestFor's service items). Round 4 follow-up: a light soft load of about the retired piece's
+ * cost (the chair 260 triangles, the spool 494), so the budget still has room for the rows after it; the next service
+ * item (a tool can or the helmet bag, 420-720 on a rack) cost the fleet loads.
+ */
+const RETIRED_STAND_IN: Readonly<Partial<Record<FleetEquipmentVariant, FleetEquipmentVariant>>> = {
+  'folding-chair': 'folded-tarp-pack',
+  'cable-reel': 'camo-net-bag',
+};
 
 // Curated per-tank manifests: marquee/composition tanks get an authored,
 // period-documented loadout replacing the era default. Fleet profile agents
@@ -2528,12 +2558,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Round 4 (2026-10-07): no loadout carries a cable spool or a camp chair. Wave 215 on the M60A1 and Type 99A: "a
   // wooden cable spool ... with no bracket or lashing ... decor cargo rather than crew kit" (both critics: strapping it
   // down would be the wrong fix); wave 217 on the Leclerc (and the Challenger 1 before it): "a camp chair hangs off the
-  // turret with its legs in the air", read as toys. A tank whose draw lands on either takes the pool's next service
-  // item, so no other tank's equipment moves; both stay in the vocabulary.
+  // turret with its legs in the air", read as toys. A tank whose draw lands on either carries its stand-in
+  // (RETIRED_STAND_IN: a folded tarp pack for the chair, a net bag for the spool), so no other tank's equipment moves;
+  // both stay in the vocabulary.
   const service = (offset: number): FleetEquipmentVariant => {
-    let step = 0, item = choose(serviceGear, 'fender-service', offset);
-    while (RETIRED_CARGO.has(item) && step < serviceGear.length) item = choose(serviceGear, 'fender-service', offset + ++step);
-    return item;
+    const item = choose(serviceGear, 'fender-service', offset);
+    return RETIRED_STAND_IN[item] ?? item;
   };
   const serviceItem = service(0);
   const cargo: DecorManifestRow[] = [
@@ -3025,8 +3055,10 @@ function rearRackParts(bb: THREE.Box3, plateZ: number, detail: 0 | 1, brace = re
   const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const rail = 0.03;
   for (const [i, x] of [x0, x1].entries()) steel(angleStock(d, 'z', x, cz, i ? 1 : -1, rail));
-  for (const [i, z] of [z0 + rail / 2, z1 - rail / 2].entries()) steel(angleStock(w + rail, 'x', z, cx, i ? 1 : -1, rail));
-  const slats = detail ? Math.max(3, Math.round(d / 0.09)) : 2;
+  // the short cross rails are plain bar (round 4 follow-up: the budget); the long side rails stay angle stock
+  for (const z of [z0 + rail / 2, z1 - rail / 2]) steel(place(block(w + rail, rail, rail), cx, -rail / 2, z));
+  // round 4 follow-up: a slat every 12 cm (it was 9; the budget is full on many hulls)
+  const slats = detail ? Math.max(3, Math.round(d / 0.12)) : 2;
   for (let k = 0; k < slats; k++) {
     const z = z0 + rail + (k + 0.5) * ((d - 2 * rail) / slats);
     steel(place(block(w - rail, 0.008, 0.035), cx, -0.004, z));
@@ -3037,7 +3069,7 @@ function rearRackParts(bb: THREE.Box3, plateZ: number, detail: 0 | 1, brace = re
     const fz = footZ[i];
     steel(roundBar([x, -rail, z0 + 0.04], [x, -braceTop, fz - 0.012], 0.012, detail ? 8 : 5));   // diagonal under-strut
     steel(footPlate(x, -braceTop, fz, 0.07, 0.09, detail));                         // foot plate bolted to the hull
-    steel(footPlate(x, -rail / 2, z1, 0.07, 0.07, detail));                        // upper foot at the rail
+    steel(footPlate(x, -rail / 2, z1, 0.07, 0.07, 0));                             // upper foot at the rail (under the load)
   }
   return parts;
 }
@@ -3060,11 +3092,27 @@ function angleStock(len: number, along: 'x' | 'z', across: number, mid: number, 
   return merged;
 }
 
+/**
+ * A bolt head standing on a face (round 4 follow-up, 2026-10-07): a low square pyramid, `size` across and `rise`
+ * proud, its base on the face at `faceZ` and its point toward -z. Four triangles where a block cost twelve; its base
+ * sits on the plate, so it closes there.
+ */
+function boltHead(x: number, y: number, faceZ: number, size = 0.016, rise = 0.008): THREE.BufferGeometry {
+  const h = size / 2, apex = [x, y, faceZ - rise];
+  const c = [[x - h, y - h, faceZ], [x + h, y - h, faceZ], [x + h, y + h, faceZ], [x - h, y + h, faceZ]];
+  const positions: number[] = [];
+  for (let k = 0; k < 4; k++) positions.push(...c[k], ...apex, ...c[(k + 1) % 4]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.computeVertexNormals();
+  return withBoxUV(g);
+}
+
 /** A foot plate on a plate face at z = `faceZ` (the plate behind it, +z), with two bolt heads at the near level. */
 function footPlate(x: number, y: number, faceZ: number, w: number, h: number, detail: 0 | 1): THREE.BufferGeometry {
   const plate = place(block(w, h, 0.01), x, y, faceZ - 0.005);
   if (!detail) return plate;
-  const bolts = [-1, 1].map((s) => place(block(0.016, 0.016, 0.008), x + s * w * 0.3, y, faceZ - 0.014));
+  const bolts = [-1, 1].map((s) => boltHead(x + s * w * 0.3, y, faceZ - 0.01));
   const merged = mergeGeometries([plate, ...bolts], false) ?? plate;
   if (merged !== plate) { plate.dispose(); for (const b of bolts) b.dispose(); }
   return merged;
@@ -3200,20 +3248,23 @@ interface DecorKeepOut { x: number; z: number; r: number }
  * one from the olive bag"). Per fitting type: how tall a foot to read (m) and the clearance round it. A roof gun keeps
  * its pintle or ring base clear (its barrel rides above the loads).
  */
+// Round 4 follow-up (2026-10-07): the discs are the support audit's own (whip foot + 5 cm, gun mounts at most 0.22 or
+// 0.30 m, hatch and cupola patches 0.8 of their half-diagonal); the wider margins turned away loads the audit judged
+// clear, and the fleet lost 116 of its 1,375 loads in round 4.
 const KEEP_OUT_FITTINGS: Readonly<Record<string, { foot: number; clear: number; maxR: number }>> = {
-  antennaWhip: { foot: 0.12, clear: 0.08, maxR: 0.2 },
+  antennaWhip: { foot: 0.12, clear: 0.05, maxR: 0.2 },
   // a gun body without its own pintle (the Challenger 1's L37) reads its receiver as the foot: a disc round its
   // centre, never the whole gun's length
-  pintleMG: { foot: 0.22, clear: 0.1, maxR: 0.26 },
-  americanM2: { foot: 0.22, clear: 0.1, maxR: 0.26 },
-  americanRws: { foot: 0.22, clear: 0.08, maxR: 0.34 },
-  openYokeRws: { foot: 0.22, clear: 0.08, maxR: 0.34 },
+  pintleMG: { foot: 0.22, clear: 0.05, maxR: 0.22 },
+  americanM2: { foot: 0.22, clear: 0.05, maxR: 0.22 },
+  americanRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
+  openYokeRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
 };
-/** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their clearance (m). */
+/** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their disc's share of the patch's half-diagonal. */
 const KEEP_OUT_STRUCTURE_RE = /(?:Hatch|Cupola)$/;
-const KEEP_OUT_STRUCTURE_CLEAR = 0.06;
+const KEEP_OUT_STRUCTURE_SHARE = 0.8;
 /** Decor equipment committed before the loads keeps a disc of this radius round its seat (m). */
-const KEEP_OUT_DECOR: Readonly<Record<string, number>> = { antenna: 0.14, aamg: 0.3, hatch: 0.3, cupola: 0.36 };
+const KEEP_OUT_DECOR: Readonly<Record<string, number>> = { antenna: 0.1, aamg: 0.3, hatch: 0.3, cupola: 0.36 };
 
 /**
  * The keep-out discs of one frame (`group`-local), read off the built geometry: each whip or roof-gun fitting's foot
@@ -3274,18 +3325,19 @@ function collectKeepOut(group: THREE.Group): DecorKeepOut[] {
       }
     }
     const w = (x1 - x0 + 1) * CELL, d = (z1 - z0 + 1) * CELL;
-    out.push({ x: (x0 + x1 + 1) * CELL / 2, z: (z0 + z1 + 1) * CELL / 2, r: Math.hypot(w, d) / 2 * 0.86 + KEEP_OUT_STRUCTURE_CLEAR });
+    out.push({ x: (x0 + x1 + 1) * CELL / 2, z: (z0 + z1 + 1) * CELL / 2, r: Math.hypot(w, d) / 2 * KEEP_OUT_STRUCTURE_SHARE });
   }
   return out;
 }
 
-/** True when the frame-local box's deck footprint reaches into any keep-out disc. */
-function keepOutHit(bb: THREE.Box3, discs: readonly DecorKeepOut[]): boolean {
-  for (const { x, z, r } of discs) {
+/** The first keep-out disc the frame-local box's deck footprint reaches into, or null. */
+function keepOutDisc(bb: THREE.Box3, discs: readonly DecorKeepOut[]): DecorKeepOut | null {
+  for (const disc of discs) {
+    const { x, z, r } = disc;
     const dx = Math.max(bb.min.x - x, 0, x - bb.max.x), dz = Math.max(bb.min.z - z, 0, z - bb.max.z);
-    if (dx * dx + dz * dz < r * r) return true;
+    if (dx * dx + dz * dz < r * r) return disc;
   }
-  return false;
+  return null;
 }
 
 /** How dark a load's foot is baked where it meets its support, and over what height the darkening fades (round 4). */
@@ -3894,6 +3946,44 @@ export function* attachTankDecorationsSteps(
       }
       return out.filter((e) => e.dist < PACK_REACH).sort((a, b) => a.dist - b.dist).map((e) => e.at);
     }
+    // Round 4 follow-up (2026-10-07): the last commit a keep-out disc turned away (its frame, the disc, the placed box).
+    let keepOutMiss: { frame: DecorFrame; disc: DecorKeepOut; bb: THREE.Box3 } | null = null;
+    /**
+     * Seat a load on `prober` at (x, z) through supportedSeat and commit (round 4 follow-up). A keep-out disc used to
+     * cost the load its station outright; it now steps the footprint straight away from the disc it met, 4-40 cm in
+     * 3 cm steps to the first spot clear of every disc of its frame, and tries that station once, if `allowed` takes
+     * it. Returns true when the load is committed.
+     */
+    function seatLoad(o: {
+      name: string; parts: DecorPartList; frame: DecorFrame; prober: SurfaceProber; ledger: THREE.Box3[];
+      x: number; z: number; yaw: number; w: number; d: number; fromY: number; spread: number; soft: boolean;
+      off: readonly [number, number]; minNy: number; sink: number; seatOpts?: boolean;
+      allowed?: (x: number, z: number) => boolean;
+    }): boolean {
+      let { x, z } = o;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const seat = supportedSeat(o.prober, x, z, o.w, o.d, o.fromY, o.spread, o.soft, o.off[0], o.off[1]);
+        if (!seat || !seat.n || seat.n.y < o.minNy) return false;
+        if (commit(o.name, o.parts, o.frame, V(x, seat.y - o.sink, z), roofMountEuler(seat.n, o.yaw), o.ledger,
+          o.seatOpts ? { seatY: seat.y } : {})) return true;
+        const miss = keepOutMiss;
+        if (attempt || !miss || miss.frame !== o.frame) return false;
+        const cx = (miss.bb.min.x + miss.bb.max.x) / 2, cz = (miss.bb.min.z + miss.bb.max.z) / 2;
+        let ux = cx - miss.disc.x, uz = cz - miss.disc.z;
+        const l = Math.hypot(ux, uz);
+        if (l < 1e-4) return false;
+        ux /= l; uz /= l;
+        let step: number | null = null;
+        for (let t = 0.04; t <= 0.4; t += 0.03) {
+          const moved = miss.bb.clone().translate(new THREE.Vector3(ux * t, 0, uz * t));
+          if (!keepOutDisc(moved, keepOut[o.frame])) { step = t; break; }
+        }
+        if (step === null) return false;
+        x += ux * step; z += uz * step;
+        if (o.allowed && !o.allowed(x, z)) return false;
+      }
+      return false;
+    }
     const keepClear = KEEP_CLEAR_HULL[spec.id] ?? [];
     function keepClearHit(bb: THREE.Box3, frame: DecorFrame): boolean {
       if (!keepClear.length) return false;
@@ -4001,6 +4091,7 @@ export function* attachTankDecorationsSteps(
       ledger: THREE.Box3[],
       { allowOverlap = false, seatY = null, zExtra = 0, attachment }: CommitOptions = {},
     ): boolean {
+      keepOutMiss = null;
       let tris = 0;
       for (const p of parts) tris += triCount(p.geo);
       if (budget.tris + tris > budget.max) return rejectCommit(name, parts, 'budget');
@@ -4017,7 +4108,8 @@ export function* attachTankDecorationsSteps(
         : guardTurretCommit(name, parts, bb);
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
-      if (isLoadPiece(name) && keepOutHit(bb, keepOut[frame])) return rejectCommit(name, parts, 'keep-out');
+      const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
+      if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
       }
@@ -4160,7 +4252,21 @@ export function* attachTankDecorationsSteps(
         // semantically compatible seats. Different turret/hull layouts can
         // make one preferred station unreachable; silently losing the model
         // was the reason only a cooler appeared on some vehicles.
-        for (const [slotName, slotArgs] of args.routes || []) {
+        // Round 4 follow-up (2026-10-07: keep-out, the rear-plate floor and the retired spools and chairs cost the fleet
+        // 116 of its 1,375 loads): a load whose authored routes are all taken tries the same stations on the other
+        // side of the vehicle (side, corner and x mirrored) before it is dropped.
+        const routes = args.routes || [];
+        const mirrored = routes.flatMap(([slotName, slotArgs]): Array<[string, DecorSlotArgs]> => {
+          // hullRoof stations are measured points (the Strv 103's Gallery markup), never mirrored
+          if (slotName === 'hullRoof') return [];
+          if (slotArgs.side === undefined && slotArgs.corner === undefined && slotArgs.x === undefined) return [];
+          const m: DecorSlotArgs = { ...slotArgs };
+          if (m.side !== undefined) m.side = -m.side;
+          if (m.corner !== undefined) m.corner = -m.corner;
+          if (m.x !== undefined) m.x = -m.x;
+          return [[slotName, m]];
+        });
+        for (const [slotName, slotArgs] of [...routes, ...(isLoadPiece(name) ? mirrored : [])]) {
           const slot = SLOTS[slotName];
           if (!slot || slot === SLOTS.fleetCargo) continue;
           const candidate = clonePartList(parts);
@@ -4186,22 +4292,20 @@ export function* attachTankDecorationsSteps(
           const soft = sagsOnSupport(name);
           const inward = -Math.sign(xs || 1);
           // round 4: pack against a load already on the deck first (packStations), square to it
+          const deckLoad = (px: number, pz: number, yaw: number): boolean => seatLoad({ name, parts, frame: 'hull',
+            prober: hullP, ledger: placedHull, x: px, z: pz, yaw, w, d, fromY: topFrom, spread: 0.28, soft,
+            off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: casemate ? 0.8 : LOAD_MIN_NY, sink: 0.01,
+            seatOpts: true });
           for (const station of packStations('hull', parts, xs, z0)) {
             const yaw = transitYaw(slotRng) * 0.4;
             const [px, pz] = station(yaw);
-            const seat = supportedSeat(hullP, px, pz, w, d, topFrom, 0.28, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-            if (!seat || !seat.n || seat.n.y < (casemate ? 0.8 : LOAD_MIN_NY)) continue;
-            if (commit(name, parts, 'hull', V(px, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
-              { seatY: seat.y })) return true;
+            if (deckLoad(px, pz, yaw)) return true;
           }
           for (const dz of [0, -0.25, 0.28, -0.5, 0.14, -0.38]) {
             for (const dx of [0, inward * 0.16, inward * 0.32]) {
               const yaw = transitYaw(slotRng) + (args.spread ? (slotRng() - 0.5) * 0.8 : 0);
               const px = xs + dx + (slotRng() - 0.5) * 0.05, pz = z0 + dz + (slotRng() - 0.5) * 0.05;
-              const seat = supportedSeat(hullP, px, pz, w, d, topFrom, 0.28, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-              if (!seat || !seat.n || seat.n.y < (casemate ? 0.8 : LOAD_MIN_NY)) continue;
-              if (commit(name, parts, 'hull', V(px, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
-                { seatY: seat.y })) return true;
+              if (deckLoad(px, pz, yaw)) return true;
             }
           }
           disposePartList(parts);
@@ -4260,10 +4364,8 @@ export function* attachTankDecorationsSteps(
           for (const dz of [0, 0.18, -0.18, 0.36, -0.36]) {
             const yaw = (rot90 ? Math.PI / 2 : 0) + transitYaw(slotRng);
             const pz = z + dz + (slotRng() - 0.5) * 0.04;
-            const seat = supportedSeat(hullP, side * fx, pz, w, d, topFrom, 0.26, soft);
-            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
-            if (commit(name, parts, 'hull', V(side * fx, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
-              { seatY: seat.y })) return true;
+            if (seatLoad({ name, parts, frame: 'hull', prober: hullP, ledger: placedHull, x: side * fx, z: pz, yaw, w, d,
+              fromY: topFrom, spread: 0.26, soft, off: [0, 0], minNy: LOAD_MIN_NY, sink: 0.01, seatOpts: true })) return true;
           }
           disposePartList(parts);
           return false;
@@ -4540,20 +4642,26 @@ export function* attachTankDecorationsSteps(
         // up, and it rides a few degrees off square and a few centimetres off its station.
         const load = isLoadPiece(name), soft = sagsOnSupport(name);
         if (load) cands.push([0.36, -0.12], [-0.36, 0.1], [0.2, -0.46], [-0.16, -0.5], [0.42, 0.24], [-0.44, -0.36], [0.32, 0.3], [-0.06, -0.62]);
+        // the gun corridor and the repaired Leopard throats (real air beside the moving shield)
+        const roofAllowed = (x: number, z: number): boolean => {
+          if (Math.abs(x) < 0.24 && z > 0 && !casemate) return false;
+          if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
+            const pivot = turretG.getObjectByName('rig_gun')?.position;
+            if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) return false;
+          }
+          return true;
+        };
+        const roofLoad = (x: number, z: number, yaw: number, minN: number): boolean => seatLoad({ name, parts,
+          frame: 'turret', prober: turP, ledger: placedTurret, x, z, yaw, w, d, fromY: 3.5, spread, soft,
+          off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: minN, sink: 0.006, allowed: roofAllowed });
         // round 4: a load first tries to pack against a load already on the roof (packStations), square to it
         if (load && !casemate) {
           for (const station of packStations('turret', parts, xBase, zBase)) {
             const yaw = transitYaw(slotRng) * 0.4;
             const [x, z] = station(yaw);
             if (z > zBase + 0.1) continue; // packed kit stays aft: the roof's front is hatches and sights
-            if (Math.abs(x) < 0.24 && z > 0) continue; // gun corridor
-            if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
-              const pivot = turretG.getObjectByName('rig_gun')?.position;
-              if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
-            }
-            const seat = supportedSeat(turP, x, z, w, d, 3.5, spread, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
-            if (commit(name, parts, 'turret', V(x, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+            if (!roofAllowed(x, z)) continue;
+            if (roofLoad(x, z, yaw, LOAD_MIN_NY)) return true;
           }
         }
         for (const [dx, dz] of cands) {
@@ -4568,9 +4676,7 @@ export function* attachTankDecorationsSteps(
             if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
           }
           if (load) {
-            const seat = supportedSeat(turP, x, z, w, d, 3.5, spread, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-            if (!seat || !seat.n || seat.n.y < (casemate ? minNy : LOAD_MIN_NY)) continue;
-            if (commit(name, parts, 'turret', V(x, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+            if (roofLoad(x, z, yaw, casemate ? minNy : LOAD_MIN_NY)) return true;
             continue;
           }
           const seat = seatProbe(turP, x, z, Math.min(w, 0.42), Math.min(d, 0.42), 3.5, spread);
@@ -4594,21 +4700,20 @@ export function* attachTankDecorationsSteps(
           const soft = sagsOnSupport(name), w = bb.max.x - bb.min.x;
           const toward = -Math.sign(x || 1);
           // round 4: pack against a load already on the bustle first (packStations), square to it
+          const rearLoad = (px: number, z: number, yaw: number): boolean => seatLoad({ name, parts, frame: 'turret',
+            prober: turP, ledger: placedTurret, x: px, z, yaw, w, d, fromY: 3.5, spread: 0.2, soft,
+            off: [(bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2], minNy: LOAD_MIN_NY, sink: 0.006 });
           for (const station of packStations('turret', parts, x, -(sweepR * 0.55 + 0.3) - d * 0.2)) {
             const yaw = transitYaw(slotRng) * 0.4;
             const [px, z] = station(yaw);
-            const seat = supportedSeat(turP, px, z, w, d, 3.5, 0.2, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
-            if (commit(name, parts, 'turret', V(px, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+            if (rearLoad(px, z, yaw)) return true;
           }
           for (const back of [0.1, 0.3, 0.55, 0.75]) {
             for (const dx of [0, toward * 0.14, -toward * 0.14, toward * 0.28]) {
               const yaw = transitYaw(slotRng);
               const px = x + dx + (slotRng() - 0.5) * 0.05;
               const z = -(sweepR * 0.55 + back) - d * 0.2 + (slotRng() - 0.5) * 0.05;
-              const seat = supportedSeat(turP, px, z, w, d, 3.5, 0.2, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
-              if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
-              if (commit(name, parts, 'turret', V(px, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+              if (rearLoad(px, z, yaw)) return true;
             }
           }
           disposePartList(parts);
