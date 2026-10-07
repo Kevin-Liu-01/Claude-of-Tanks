@@ -518,8 +518,9 @@ const caserma: RegionalBuilder = (ctx) => {
     const b = frame.bodies[0];
     for (const yb of [frame.floors[1], frame.eaveY - 0.25]) sink.band('plaster3', b.x0 - 0.05, yb - 0.12, b.z0 - 0.05, b.x1 + 0.05, yb + 0.12, b.z1 + 0.05, { decor: true });
     const f = frame.faces.front;
-    // the canopy over the door on two piers, the inscription band over it
-    for (const s of [-1, 1]) faceBox(sink, 'plaster3', f, s * 1.45, 1.5, 1.4, 0.35, 3.0, 0.35, {});
+    // the canopy over the door on two piers, the inscription band over it; the piers stand at the canopy's lip, their
+    // outer faces within half a metre of the plot's front (the base's reach, regionalArchitecture's footprint coverage)
+    for (const s of [-1, 1]) faceBox(sink, 'plaster3', f, s * 1.45, 1.5, 1.45, 0.35, 3.0, 0.35, {});
     faceBox(sink, 'plaster3', f, 0, 3.05, 0.85, 3.6, 0.22, 1.7, { decor: true, shadow: true });
     faceBox(sink, 'plaster3', f, 0, frame.floors[1] + 0.05 + 0.6, 0.015, 4.2, 0.5, 0.03, { decor: true });
     faceBox(sink, 'dark', f, 0, frame.floors[1] + 0.05 + 0.6, 0.03, 3.6, 0.16, 0.01, { decor: true });

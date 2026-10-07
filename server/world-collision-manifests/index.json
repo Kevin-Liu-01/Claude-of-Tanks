@@ -96,8 +96,8 @@
       "concealers": 9700
     },
     "alpine": {
-      "bytes": 1303972,
-      "sha256": "6471062d19a7128a3647aaa2ad9fa66b5a3bf33b05544d218f00f42410b4fb06",
+      "bytes": 1303970,
+      "sha256": "05311954a744c54e3b26106d9a394917a24b8afff614eba81e2c8fdc4a9b052b",
       "obstacles": 4262,
       "colliders": 4018,
       "concealers": 2992
