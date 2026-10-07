@@ -5808,8 +5808,9 @@ function* vegetationBuildSteps(
   // Placed structures that need clear ground (Mangrove's fishery wharf) join them with the footprint their own plan
   // gives; no other map publishes one.
   // The scenery lane (2026-10-03): a map's rock formations and landmarks claim their ground from the config alone.
+  // The landmarks lane (2026-10-05): a map's set pieces claim their footprints the same way (landmarks/plan.ts).
   const placedClearances = placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
-    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery);
+    cfg?.props?.riverLandings ?? [], cfg?.props?.landmarks, (cfg as SceneryMapConfig | null)?.scenery);
   const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
   ), ...placedClearances];
