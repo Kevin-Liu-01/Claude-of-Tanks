@@ -150,14 +150,20 @@ try {
     try {
       const trees = world._trees.filter(inside), groves = world._clusters;
       assert.ok(groves.length >= 8 && groves.length <= 16, `a dozen or so sugi blocks (${groves.length})`);
-      assert.ok(trees.length < 1000, `the farmed floor stays open between them (${trees.length} trees)`);
+      // (batch 4, 2026-10-06: the map-revival lane's 13 sugi blocks (ae19fa97b) are filled by the trees lane's closed
+      // woods (through ba3fc82c8, round 5), so the bound counts only the floor between them: a floor tree stands beyond
+      // 1.6 of every grove's outline. Measured: 151 at the lane's tip, 176 merged; the total, 707 then 1056, keeps a
+      // loose backstop so a runaway producer still fails. mr3's ruling.)
+      const floor = trees.filter((t) => groves.every((_, i) => world._standOutline(i, t.x, t.z) > 1.6)).length;
+      assert.ok(floor < 220, `the farmed floor stays open between the groves (${floor} floor trees)`);
+      assert.ok(trees.length < 1400, `the square's trees stay bounded (${trees.length} trees)`);
       let closed = 0;
       for (let i = 0; i < groves.length; i++) {
         const g = groves[i], members = trees.filter((t) => world._standOutline(i, t.x, t.z) <= 1).length;
         if (members > 2 && (Math.PI * g.r * g.r) / members <= 120) closed++;
       }
       assert.ok(closed >= groves.length * 0.75, `most blocks are closed woods (${closed} of ${groves.length})`);
-      report.caldera = { trees: trees.length, groves: groves.length, closed };
+      report.caldera = { trees: trees.length, floor, groves: groves.length, closed };
     } finally { world.dispose(); }
   }
   // (Copper Mesa's Arizona zoning test — juniper and pinyon on the high ground, mesquite in the washes — went with the
