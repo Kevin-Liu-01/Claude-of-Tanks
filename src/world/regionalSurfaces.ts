@@ -445,9 +445,11 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
 // proportions — courses of 22-34 cm, blocks of 45-90 cm — under tight dark joints, each block its own tone and bedding
 // (wave 199 on Steinburg's shops: "a large-scale tan ashlar texture with heavy dark outlines") the joints thinner and in
 // the stone's own tone, darker than its face only by the shadow they hold
-const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 0.9,
-  mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.6, spread: 0.16, hue: 0.07, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
-  speckle: 0.04, lichen: 0.22, grime: 0.7, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55 });
+// (r6 views, round 4: the shop fronts still read as a grid of orange and grey blocks) one stone's tone close to the
+// next's, the broad grime clouds lighter: the soiling runs and the joints' shadow carry the wall
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 56, courseMax: 88, blockMin: 115, blockMax: 230, mortar: 0.8,
+  mortarTint: [0.42, 0.39, 0.36] as Tint, mortarOfStone: 0.7, spread: 0.1, hue: 0.04, relief: 0.35, pillow: 0.12, faceRamp: 0.16,
+  speckle: 0.04, lichen: 0.22, grime: 0.55, rubble: 0.15, bedding: 0.05, mottle: 0.36, streaks: 0.55 });
 
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
 export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
