@@ -148,6 +148,7 @@ import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
+import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -323,6 +324,8 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  /** The map-revival lane (2026-10-06): scattered rocks and outcrops keep off the zone-control hints' discs. */
+  rocksKeepOffZones?: boolean;
   /** regional-buildings lane: the regional architecture kit of this map's settlements (maps/regional/index.ts). */
   architecture?: string;
   bathhouseStyle?: 'timber';
@@ -5721,8 +5724,13 @@ ${snowCap ? `
   }
   // A boulder's site: inside the square's scatter margin, off the village and the road, on firm ground clear of the
   // vegetation, away from the spawns — and, for a re-site, clear of the road core and resting on the talus.
+  // the map-revival lane (2026-10-06, Tidegate Polders): a map may keep its scattered stone off the zone-control discs
+  // (their authored hints, 33 m), so a rock re-rolled by its rebuilt ground never pushes a zone off its apron
+  const rockKeepDiscs = P.rocksKeepOffZones
+    ? (MATCH_OBJECTIVE_LAYOUTS[mapId]?.zones ?? []).map((zone) => [zone.x, zone.z, 33] as const) : [];
   function rockSiteOpen(x: number, z: number): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 485) return false;
+    for (const [dx, dz, r] of rockKeepDiscs) if (Math.hypot(x - dx, z - dz) < r) return false;
     if (x > v.x0 - 8 && x < v.x1 + 8 && z > v.z0 - 8 && z < v.z1 + 8) return false;
     if (heightField._roadDist(x, z) < 6) return false;
     if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
