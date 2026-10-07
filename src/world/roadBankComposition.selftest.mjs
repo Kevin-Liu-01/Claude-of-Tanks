@@ -62,6 +62,8 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       // round 63: heightAt ends with the rail cutting (railCuttingHeight, on final queries); this fixture authors none
       railCuttings = null, railCuttingPortalYs = null, railCuttingsOn = false, railCuttingsSuspended = false,
       railCuttingHeight = (cuttings, portalYs, x, z, h) => h,
+      // the map-revival lane (2026-10-06): heightAt ends with the built mounds (final queries); this fixture authors none
+      moundCrestYs = null, mounds = [], raiseMounds = (x, z, h) => h,
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
       // the classic rim the authoring queries keep (the stub's own rim) and the road grades' landform pass (off here)
       clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false } = fixture;
