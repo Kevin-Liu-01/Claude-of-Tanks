@@ -79,7 +79,12 @@ for (const species of GROWTH_SPECIES) {
       if (index === 0) return;
       const parent = skeleton.branches[branch.parent];
       assert.ok(parent && branch.parent < index, `${species}: a branch's parent grows before it`);
-      assert.ok(distanceToBranch(parent, branch.nodes[0]) <= parent.nodes[0].r + 0.02, `${species}/${variant}: branch ${index} rooted on its parent`);
+      // (the trees lane, round 2: a clump's culm roots in its rhizome base — the disc clumpR round the stem's foot — not on
+      // the stem)
+      if (profile.clump && branch.order === 1) {
+        assert.ok(branch.nodes[0].y < 0.6 && Math.hypot(branch.nodes[0].x, branch.nodes[0].z) <= (profile.clumpR ?? 0) + 0.05,
+          `${species}/${variant}: culm ${index} rooted in the clump's base`);
+      } else assert.ok(distanceToBranch(parent, branch.nodes[0]) <= parent.nodes[0].r + 0.02, `${species}/${variant}: branch ${index} rooted on its parent`);
       for (const node of branch.nodes) assert.ok(node.y >= 0.2 && node.y <= skeleton.height + 0.6, `${species}: wood within the tree's height`);
       if (branch.mesh && branch.order === 1 && profile.form === 'excurrent') {
         assert.ok(Math.min(...branch.nodes.map((n) => n.y)) >= GROWTH_LOWEST_WOOD_M - 1e-6, `${species}: no limb wood in the stem's collision band`);
@@ -263,11 +268,15 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
       let foot = 0, tip = 0;
       for (const c of culms) {
         const [n0, n1] = c.nodes, last = c.nodes.at(-1), prev = c.nodes.at(-2);
-        assert.ok(n0.y < 0.6 && Math.hypot(n0.x, n0.z) < 0.15, `bamboo/${variant}: every culm from the rootstock`);
+        assert.ok(n0.y < 0.6 && Math.hypot(n0.x, n0.z) <= bb.clumpR + 0.05, `bamboo/${variant}: every culm from the rhizome base`);
         foot += Math.atan2(Math.hypot(n1.x - n0.x, n1.z - n0.z), n1.y - n0.y) / culms.length;
         tip += Math.atan2(Math.hypot(last.x - prev.x, last.z - prev.z), last.y - prev.y) / culms.length;
       }
-      assert.ok(foot < 0.45 && tip > foot + 0.5, `bamboo/${variant}: upright at the foot (${foot.toFixed(2)} rad), arched at the tip (${tip.toFixed(2)})`);
+      assert.ok(foot < 0.25 && tip > foot + 0.5, `bamboo/${variant}: upright at the foot (${foot.toFixed(2)} rad), arched at the tip (${tip.toFixed(2)})`);
+      // (round 2, the gauntlet's wave 179: "a single fountain" from one point) the culms rise from a broad base: their
+      // seats spread over the rhizome disc, a third of them past half its radius
+      const far = culms.filter((c) => Math.hypot(c.nodes[0].x, c.nodes[0].z) > bb.clumpR * 0.5).length;
+      assert.ok(culms.length >= 16 && far >= culms.length / 3, `bamboo/${variant}: ${culms.length} culms from a broad base (${far} past half its radius)`);
       const lowest = Math.min(...skeleton.leaves.map((l) => l.y));
       assert.ok(lowest > 0.25 * skeleton.height, `bamboo/${variant}: the culms bare at the foot (the lowest spray at ${lowest.toFixed(2)} m)`);
     }

@@ -157,6 +157,11 @@ interface GrowthProfile {
    */
   clump?: boolean;
   /**
+   * Trees lane (2026-10-06, the gauntlet's wave 179: "the bamboo culms fan out from one point ... a single fountain"): the
+   * radius (m) of a clump's rhizome base — each culm rises from its own seat on that disc, leaning out from it.
+   */
+  clumpR?: number;
+  /**
    * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
    * variant's age as every profile is; unset, the variants are the profile at three ages.
    */
@@ -503,12 +508,15 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // straight bole, dark and plated below and red-brown up into the crown, under a high, open, irregularly rounded crown
   // of long limbs ending in tufts of long slender needles in threes (the red pine's needle sprays, a straighter, taller
   // tree than the red pine's leaning one)
+  // (round 2, the gauntlet's wave 179: "red plated trunks but broadleaf-looking crowns" — open tiers of limbs with their
+  // needles in tufts at the ends, airy: the whorls a metre apart, two or three limbs each, the needles on their outer
+  // two fifths)
   khasiPine: P({
     family: 'conifer', height: 8.6, heightSpread: 0.14, trunkR: 0.25, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.52, crownR: 2.7,
-    envelope: 'ellipsoid', whorled: true, perWhorl: [2, 4], spacing: 0.78, angleLow: 1.36, angleHigh: 0.85,
-    droop: 0.28, upturn: 0.55, sidePerM: 1.3, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.12, twigPerM: 0,
-    leafOrder: 1, leafPerM: 2.3, leafFrom: 0.48, spray: [0.82, 1.12], aspect: 0.9, habit: 'tuft', tipSprays: 3,
+    envelope: 'ellipsoid', whorled: true, perWhorl: [2, 3], spacing: 1.0, angleLow: 1.36, angleHigh: 0.85,
+    droop: 0.28, upturn: 0.55, sidePerM: 0.9, sideAngle: 0.75, sideRatio: 0.45, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.62, spray: [0.78, 1.04], aspect: 0.9, habit: 'tuft', tipSprays: 3,
     cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.18, ragged: 0.45, bark: 1, barkTint: [0.40, 0.31, 0.27],
     barkTopTint: [0.78, 0.44, 0.30], foliageValue: 1.1,
   }),
@@ -518,15 +526,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // supporting twig past the side-tube budget) — a fountain of foliage wider at the top than at the ground
   // (the umbrella envelope's vase); smooth green-yellow culms banded at their nodes (bark style 2). (growPolyline's droop
   // turns a limb toward the vertical and its upturn its last third toward the ground — every profile is tuned to that —
-  // so a culm's arch is a little negative droop under an upturn: about 15 degrees out at the foot, 60 at the tip)
+  // so a culm's arch is an upturn alone). Round 2 (the gauntlet's wave 179: "a single fountain" from one point — a clump
+  // is many culms rising from a broad rhizome base, close-packed, arching outward only near their tops): eighteen to
+  // twenty-six culms, each from its own seat on a disc 1.2 m across (clumpR), nearly upright, arching in their top
+  // third
   bamboo: P({
-    family: 'broadleaf', height: 9.4, heightSpread: 0.12, trunkR: 0.085, form: 'decurrent',
-    forkAt: [0.036, 0.05], scaffolds: [11, 16], scaffoldAngle: [0.1, 0.48], crownBase: 0.04, crownR: 3.6,
+    family: 'broadleaf', height: 9.8, heightSpread: 0.12, trunkR: 0.085, form: 'decurrent',
+    forkAt: [0.036, 0.05], scaffolds: [18, 26], scaffoldAngle: [0.03, 0.2], crownBase: 0.04, crownR: 3.6,
     envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.0, angleHigh: 0.6,
-    droop: -0.15, upturn: 0.85, sidePerM: 0, sideAngle: 1.0, sideRatio: 0.12, sideDroop: -0.3, twigPerM: 0,
+    droop: 0, upturn: 1.0, sidePerM: 0, sideAngle: 1.0, sideRatio: 0.12, sideDroop: -0.3, twigPerM: 0,
     leafOrder: 1, leafPerM: 4.2, leafFrom: 0.42, spray: [0.7, 1.0], aspect: 0.55, habit: 'spray', tipSprays: 2,
     cardBend: 0.32, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.50, 0.56, 0.32], barkTopTint: [0.46, 0.54, 0.30],
-    foliageValue: 1.12, clump: true,
+    foliageValue: 1.12, clump: true, clumpR: 0.62,
   }),
   // the trees lane (2026-10-05, the farmland lane's Streuobst behind Frontier Basin's farm courtyards): the old meadow
   // orchard's fruit tree, open-grown in rows over the grass — a short trunk of 1.2-1.8 m (at the placed trees' mean scale)
@@ -926,9 +937,11 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     const rise = ctx.crownTopY - fork.y;
     const len = Math.min(Math.hypot(reach, rise * 0.85), reach / Math.max(0.35, Math.sin(a)) * 1.05);
     const r0 = fork.r * (0.62 + rng() * 0.12) * (n > 3 ? 0.9 : 1);
-    // (a clump's culm grows its whole length, arching under its own weight: no envelope stops it)
-    const grown = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
-      profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, !profile.clump);
+    // (a clump's culm grows its whole length, arching under its own weight: no envelope stops it; trees lane, round 2:
+    // each rises from its own seat on the clump's rhizome base, out along its azimuth)
+    const seat = profile.clump && profile.clumpR ? Math.sqrt(rng()) * profile.clumpR : 0;
+    const grown = growPolyline(ctx, v3(fork.x + Math.cos(az) * seat, fork.y - 0.12, fork.z + Math.sin(az) * seat), dir, len,
+      4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025, profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, !profile.clump);
     // (trees round 5: a dead limb snapped a third short, before anything grows on it — its tip a splintered stub)
     const nodes = dead ? grown.slice(0, Math.max(2, Math.ceil(grown.length * 0.7))) : grown;
     ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: dead });
