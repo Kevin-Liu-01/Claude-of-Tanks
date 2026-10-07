@@ -4604,6 +4604,9 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.mats.glass.color.setHex(0x46525b);
     P.mats.glass.roughness = 0.52;
     P.mats.glass.metalness = 0.50;
+    // round 3 (2026-10-07, critics: the M60A1 "IR searchlight has a bright blue lens"): the full sky env still
+    // mirrored blue off the smoked pane; the family keeps its tone and loses the mirror.
+    P.mats.glass.envMapIntensity = 0.3;
   };
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;

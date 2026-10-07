@@ -2742,9 +2742,14 @@ export function createTankMaterials(
     color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.06,
   })));
-  // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
+  // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
+  // (0x2a3540, metalness 0.85, full env) fired the PMREM sky as the most saturated blue on the vehicle. Critics:
+  // T-90M "the optics are flat, saturated royal-blue patches", Oplot "the saturated blue box on the turret roof",
+  // Type 99A "flat cyan/blue rectangular patches ... leftover UI or placeholder texture". The Pershing, Challenger
+  // and Leopard families had each patched it locally (the 'glass calm-down' lineage). The shared lens now takes
+  // that smoked tint fleet-wide: a dark faintly green body, a soft sheen at close range, and almost no sky mirror.
   const glass = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x2a3540, roughness: 0.12, metalness: 0.85,
+    color: 0x343b34, roughness: 0.42, metalness: 0.3, envMapIntensity: 0.3,
   })));
   // Gun tube: painted in the vehicle scheme like the hull — crews paint the
   // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
