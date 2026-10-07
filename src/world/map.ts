@@ -38,7 +38,6 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { setShadowCasterProfile } from '../engine/renderLayers.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
