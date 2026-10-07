@@ -7783,6 +7783,28 @@ Whiteout):
   pooled over two holds (2 more void over load 250), GPU p25 −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms — ACCEPT; the census
   identical (5,466,742 triangles, 724 draws).
 
+### 2026-10-07 — the ground bounce no longer counts a face's self-shade twice (the skies lane)
+
+**The trace** (the scenery lane's, wave 174; Saltwind's walls "slate blue" in wave 177): Verdant's chalk yard wall cream in
+the sun (B/R 0.84) and grey-blue in its shade (87, 95, 99; B/R 1.13) in front of sunlit grass.
+
+**The cause** (`groundBounce.ts`): the bounce's receiver factor read the raw CSM visibility, `mix(0.4, 1, cotSunVis)`. A face
+turned from the sun lies in its own shadow (`cotSunVis` ≈ 0), so its bounce took the shadowed receiver's 0.4 on top of the
+self-shade the term already applies (`cotSide`, 1 − 0.6 · away · low). It was counted twice, and once the hemisphere's
+ground pole is taken off it often reached zero, leaving those faces only the sky's blue light.
+
+**The fix:** the receiver reads `cotAmbVis`, the visibility the ambient dims already correct for facing (`lighting.ts`,
+`uCotShadowFacing`). A face toward the sun inside a cast shadow keeps the cascade's 0.4 (its ground is shaded too); a face
+turned from the sun keeps its whole bounce. The cost of the rule: a back face that also stands in another object's cast
+shadow takes a little too much bounce (the CSM cannot tell the two shadows apart there). The legacy rig reads
+`cotAmbVis = cotSunVis`, so it is unchanged.
+
+**Measured:**
+- *the look* (the facades lane's r3c fill check, the PR head against the branch on Steinburg and Verdant's wall views):
+  shaded walls +1.8–3.9 % and warmer; nothing else moved.
+- *cost* (v3: Steinburg's shops-eye, the PR head against the branch against a head twin, desktop high): 8 cycles, GPU p25
+  +0.42 ± 1.04 ms (null +0.88), CPU p50 −0.09 ± 0.17 ms — ACCEPT; the census identical (4,664,349 triangles, 495 draws).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
