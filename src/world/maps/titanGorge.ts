@@ -72,7 +72,10 @@ export default {
       // the shale's concave talus, as Monument Valley's walls stand — the wall band narrowed to [0.5, 0.545] of the
       // half-width, the talus a third of the height, 28 m high over the same footprint; thicker beds with smaller
       // risers and less knobbly relief, so the wall reads as one cliff instead of a banded slope)
-      ...[[-390, 0], [390, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 28, yawDeg: 90,
+      // (2026-10-06, the batch-4 integration: round 3's sheer west wall stood on the road border corridor's admission
+      // line, x = -430, where roadContinuity's 2 mm seam probe read its 21:1 face as a 4.3 cm step; both shelves stand
+      // 3 m further out, so no wall meets the line)
+      ...[[-393, 0], [393, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 28, yawDeg: 90,
         corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.5, 0.545] as const, apron: 0.34, cliffEnd: 'both' as const,
           strata: { stepM: 8, riser: 0.25 }, outline: 0.25, rough: 0.45, gullies: { count: 2, depthM: 1.5, width: 0.45 } } })),
       // buttes standing free on the valley floor, the shelves' outliers, in pairs that are each other's rotation about the
