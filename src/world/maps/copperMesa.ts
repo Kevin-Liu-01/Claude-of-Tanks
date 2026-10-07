@@ -19,6 +19,10 @@ export default {
   terrain: {
     hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
+    // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
+    // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
+    // apron under zone 1 levels its disc, sited by tools/hardstand-site.mjs under the apron bank law)
+    hardstands: [{ x: 95.76, z: 25.16, width: 56, length: 56, yawDeg: 0, level: 1.2, grade: 0, bankM: 20 }],
     roads: { paths: roundRoadBends([
       // A stepped loading apron on the eastern shelf puts the gantries and
       // stores beside the haul road; the pit floor remains a separate lane.
