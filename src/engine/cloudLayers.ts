@@ -182,7 +182,9 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
       topM: base + aloft.thickness,
       cover: cloudShellCover(aloft.coverage, false),
       density: aloft.density,
-      channels: [0, 1, 0, 0],
+      // the elements aloft at the large-scale field's kilometres, their own channel breaking the patches' edges (on the
+      // aloft channel alone — its cells a few hundred metres — the layer was a confetti of dark specks against the sun)
+      channels: [0, 0.35, 0.65, 0],
       streets: 0,
       envelope: 0,
       // a broken layer of soft patches, not a scatter of hard puffs (a lens profile, eroded lightly)
