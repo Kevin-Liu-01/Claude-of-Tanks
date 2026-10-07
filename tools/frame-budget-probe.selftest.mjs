@@ -186,6 +186,13 @@ assert.equal(stats([]).med, null);
   assert.deepEqual(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase,chase@7']).views, ['chase', 'chase@7'],
     'a moving view glides at <m/s>');
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase@0']), /moving view/);
+  // cost rule v3, amended 2026-10-07: a map hold (the default staging tank) hides the bots' vehicles, a vehicle hold
+  // (its own --spec) keeps them; =0 and =1 override either way
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A']).hideBots, true, 'a map hold hides the bots');
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--spec=m1a2']).hideBots, false, 'a vehicle hold keeps them');
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--hide-bots=0']).hideBots, false);
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--spec=m1a2', '--hide-bots']).hideBots, true);
+  assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--hide-bots=yes']), /hide-bots/);
 }
 {
   // the lock order: FIFO first; a busy session mutex gives the FIFO back before queueing again
