@@ -14,6 +14,10 @@ interface WaterContactProfile {
   shallowColor: number;
   /** Water 2026-09-12: shoreline foam and crest strength (0 disables). */
   foam: number;
+  /** the skies lane (2026-10-06): a coast's shelf turquoise share (shallowWater.ts SEA_TINT.turquoise when absent) */
+  seaTurquoise?: number;
+  /** the skies lane (2026-10-06): a coast's deep-body darkening (shallowWater.ts SEA_TINT.deepDarken when absent) */
+  seaDeepDarken?: number;
 }
 
 const COAST: Readonly<WaterContactProfile> = Object.freeze({
@@ -47,6 +51,10 @@ const POLDER: Readonly<WaterContactProfile> = Object.freeze({
 const FJORD: Readonly<WaterContactProfile> = Object.freeze({
   ...COAST, color: 0x143548, opacity: 0.76, roughness: 0.22, shallowColor: 0x3f7f86, foam: 0.7,
   shoreColor: 0x5c747c, flowX: 0.009, flowZ: 0.006, waveScale: 0.057, waveStrength: 1.0,
+  // the skies lane (2026-10-06, gauntlet wave 189 on Nordhavn's bird view: "the fjord reads as rounded turquoise ponds
+  // rather than dark, steep-walled water"): a fjord's water is deep to its walls — no sand shelf's turquoise, the body a
+  // step darker, its bank tint the cold green-grey of a rock shore
+  seaTurquoise: 0, seaDeepDarken: 0.42,
 });
 const SALTWIND: Readonly<WaterContactProfile> = Object.freeze({
   ...COAST, color: 0x22484f, opacity: 0.74, roughness: 0.34, shallowColor: 0x5a8f88, foam: 1.0,
