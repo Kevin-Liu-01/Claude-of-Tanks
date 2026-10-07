@@ -266,6 +266,37 @@ export const path: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 
+/**
+ * A mill's outfall (Polders round 2, the gauntlet: the mills "need a mound, a yard and a link to the water"): where the
+ * drain under a mill's terp comes out, a brick headwall at the top of the bank with the culvert's round mouth in its face,
+ * and the runnel below it pitched in stone down the bank to the water, its kerbs a course higher, the wet down its middle.
+ * The headwall stands at the piece's -z end, the runnel runs `length` metres along +z. Dressing: no solid.
+ */
+export const outfall: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.5, Number(ctx.params.width));
+  const z0 = -L / 2, z1 = L / 2, ground = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  // the headwall: brick across the runnel's head, its coping proud of it, its face (+z) toward the water
+  const half = w / 2 + 0.45, g0 = Math.min(ground(-half, z0), ground(half, z0), ground(0, z0)), top = g0 + 0.95;
+  sink.span('stone', -half, g0 - 0.35, z0 - 0.38, half, top, z0, { decor: true });
+  sink.span('stone', -half - 0.06, top, z0 - 0.44, half + 0.06, top + 0.1, z0 + 0.06, { decor: true, shade: 0.9 });
+  // the mouth: a dark disc a hair proud of the face, ringed by its voussoirs
+  const r = Math.min(0.34, w * 0.42), cy = g0 + 0.12 + r, n = 12, zf = z0 + 0.006;
+  const ringAt = (k: number, rr: number, dz: number): Vec3 => [Math.cos(k / n * Math.PI * 2) * rr, cy + Math.sin(k / n * Math.PI * 2) * rr, zf + dz];
+  const disc: Vec3[] = [];
+  for (let k = 0; k < n; k++) disc.push(ringAt(k, r, 0));
+  sink.polygon('dark', disc, { decor: true });
+  for (let k = 0; k < n; k++) {
+    sink.quad('stone', ringAt(k, r, 0.01), ringAt(k, r + 0.14, 0.03), ringAt(k + 1, r + 0.14, 0.03), ringAt(k + 1, r, 0.01), { decor: true, shade: 0.8 });
+  }
+  // the runnel: pitched stone from the headwall's foot down the bank, its kerbs, and the wet down its middle
+  drapedPath(sink, 'stone', ctx.ground, [0, z0 + 0.02], [0, z1], w, { lift: 0.04, emit: { shade: 0.86 } });
+  for (const sx of [-1, 1]) drapedPath(sink, 'stone', ctx.ground, [sx * (w / 2 + 0.09), z0], [sx * (w / 2 + 0.09), z1], 0.18, { lift: 0.085 });
+  drapedPath(sink, 'structureWood', ctx.ground, [0, z0 + 0.02], [0, z1], Math.max(0.16, w * 0.3), { lift: 0.05, emit: { colour: WET_RUNNEL } });
+  return { parts: sink.finish() };
+};
+const WET_RUNNEL: Rgb = rgb(0x2b3330);
+
 // ---------------------------------------------------------------------------------------------------------- churchyard
 
 const GREEN_IRON = rgb(0x4f7d5a);
@@ -286,11 +317,14 @@ export const churchyard: LandmarkBuilder = (ctx) => {
   const orthodox = String(ctx.params.tradition || 'orthodox') === 'orthodox';
   const hw = W / 2, hd = D / 2, gateW = 2.2, pier = 0.85;
   const destructibles: GroundsDestructible[] = [];
-  // the fence: the two sides from the church to the front, the front either side of the gate (the back is the church's)
-  fenceRun(destructibles, fence, [hw, -hd], [hw, hd]);
-  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
+  // the fence: the two sides from the church to the front, the front either side of the gate (the back is the church's);
+  // `gate: 'right' | 'left'` hangs a plain gate in that side instead (the front fenced through)
+  const side = String(ctx.params.gate ?? 'front');
+  fenceRun(destructibles, fence, [hw, -hd], [hw, hd], side === 'right' ? { gateAt: hd, gate: 'gate' } : {});
+  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd], side === 'left' ? { gateAt: hd, gate: 'gate' } : {});
   if (String(ctx.params.back) === 'fence') fenceRun(destructibles, fence, [-hw, -hd], [hw, -hd]);
-  if (holy) {
+  if (side === 'right' || side === 'left') fenceRun(destructibles, fence, [hw, hd], [-hw, hd]);
+  else if (holy) {
     const gx = gateW / 2 + pier;
     fenceRun(destructibles, fence, [hw, hd], [gx + 0.15, hd]);
     fenceRun(destructibles, fence, [-gx - 0.15, hd], [-hw, hd]);
@@ -308,7 +342,13 @@ export const churchyard: LandmarkBuilder = (ctx) => {
     fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
   }
   // the path from the gate to the church door (the way on to the road is a `path` piece of its own)
-  if (pathW > 0) drapedPath(sink, 'stone', ctx.ground, [0, hd + 0.4], [0, -hd], pathW);
+  if (pathW > 0) {
+    if (side === 'right' || side === 'left') {
+      const sx = side === 'right' ? 1 : -1;
+      drapedPath(sink, 'stone', ctx.ground, [sx * (hw + 0.4), 0], [0, 0], pathW);
+      drapedPath(sink, 'stone', ctx.ground, [0, 0.4], [0, -hd], pathW);
+    } else drapedPath(sink, 'stone', ctx.ground, [0, hd + 0.4], [0, -hd], pathW);
+  }
   // the graves either side of the path, in rows across the yard, their markers toward the church
   const max = Math.max(0, Math.round(Number(ctx.params.graves) || 0));
   const markers: readonly GraveMarker[] = orthodox ? ['orthodox', 'orthodox', 'orthodox', 'railed'] : ['latin', 'latin', 'stone', 'stone'];

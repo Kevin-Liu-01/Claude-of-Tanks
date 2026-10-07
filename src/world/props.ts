@@ -3537,6 +3537,13 @@ ${snowCap ? `
     quaternion: _dq,
     euler: _de,
   };
+  // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
+  // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
+  // would stand on a piece's ground is left out here — its draws already taken, and no record, pool slot, body or
+  // contact made — so nothing else they place moves for the piece. The pieces' own furniture is exempt.
+  const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
+  const landmarkVetoed: Record<string, number> = {};
+  let landmarkFurniture = false;
   function addDestructible(
     kind: string,
     x: number,
@@ -3547,6 +3554,18 @@ ${snowCap ? `
     tiltX = 0,
     tiltZ = 0,
   ): DestructibleRecord {
+    if (landmarkVetoes.length && !landmarkFurniture) {
+      // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
+      // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = Math.min(r, 0.5);
+      for (const v of landmarkVetoes) {
+        const dx = x - v.x, dz = z - v.z;
+        if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) {
+          landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
+          return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+        }
+      }
+    }
     return addDestructibleRecord(
       destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ,
     );
@@ -4493,14 +4512,19 @@ ${snowCap ? `
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
+      veto: (x, z, yaw, hw, hd) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd }); },
+      groundHole: (x, z, r) => { landmarkGroundHoles.push({ x, z, r }); },
       publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
       // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
       // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
       addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
     });
     group.userData.landmarks = receipt;
+    if (landmarkGroundHoles.length) group.userData.landmarkGroundHoles = landmarkGroundHoles;
   }
   const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
+  // the paved pieces' ground (map.ts keeps the grass off it with the scenery's and the yards' holes)
+  const landmarkGroundHoles: Array<{ x: number; z: number; r: number }> = [];
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
@@ -8074,7 +8098,11 @@ ${snowCap ? `
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  landmarkFurniture = false;
+  // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
+  if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.
