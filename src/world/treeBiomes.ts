@@ -160,6 +160,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
   // the Alps: spruce and larch
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
+  // Sarajevo and the Miljacka valley (the trees lane, 2026-10-06, with the cities lane's valley rebuild after the gauntlet's
+  // wave 162: the ring read as "arid savanna with palm and acacia trees"): Trebević's and Igman's beech closing into
+  // broadleaf masses — the oak slot grows as the beech; the map's spruce and fir lead its ring
+  ruinspires: B('Sarajevo, the Miljacka valley', { oak: { form: 'beech' } }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
