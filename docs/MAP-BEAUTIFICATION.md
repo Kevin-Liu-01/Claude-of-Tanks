@@ -7113,7 +7113,9 @@ that lane:
 - the Rathaus's arcade open on the market, two stalls under it;
 - the churchyard on the church's south flank, east of the hunting blind: 17.5 × 14 m at (38.25, −53.45), its low stone
   wall, the gate in its west side toward the road, ten headstones and Latin crosses, the path to the church;
-- the church's and the Rathaus's age (the library's spalled render, rain streaks under the cornices and sills).
+- the church's and the Rathaus's age (the library's spalled render, rain streaks under the eaves, cornices and sills);
+- the Rathaus's upper storey and the church tower's windows over its door, which stood blank: a wall column took only its
+  first opening (the library's archedFace, fixed for every piece; the Rathaus's storeys now one body each).
 
 **Every piece vetoes its ground** (`landmarks/types.ts` `ground: 'veto'`, new this round). With the default reserve, the
 pieces' keep-off discs sit in the props' placement list, and the yard clutter's spot search draws again round any disc.
@@ -7128,7 +7130,7 @@ body or contact made. An open surface (the setts) keeps what stands on it.
 - three trees whose crowns reached the pieces are cleared;
 - every other record stands where it stood (a few fence pickets within 1 mm, the packing's rounding).
 
-Census [6393, 6690, 6331] → [6410, 6750, 6328]. Pacing on the fleet receipt's four seeds (29000–29003): 341 / 185 / 188 /
+Census [6393, 6690, 6331] → [6410, 6754, 6328]. Pacing on the fleet receipt's four seeds (29000–29003): 341 / 185 / 188 /
 176 s against the base's 214 / 185 / 188 / 182 s (none under 120 s). Receipts: the 30 selected (the landmarks library,
 the collision drift and pins, the map's land use, villages, roads and minimap) green.
 
