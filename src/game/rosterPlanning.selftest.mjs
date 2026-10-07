@@ -144,3 +144,16 @@ for (const [era, ids] of catalogByEra) {
 }
 
 console.log('rosterPlanning.selftest: session diversity, deterministic preload/entry, recent-roster rotation and same-nation waves passed');
+
+// A nation with only the player's type still gets a complete allied side,
+// with independent identities, while planning remains free of pool mutation.
+{
+ const player=game.tankById.get('m1a2');
+ const sparse={...game,allTanks:game.allTanks.filter(entity=>entity===player||entity.spec.nation!==player.spec.nation)};
+ const before=sparse.tankById.size;
+ const participants=pickBattleParticipants(sparse,'m1a2',true,5,[],13,null,6);
+ assert.equal(participants.length,14);
+ assert.ok(participants.slice(-6).every(entity=>entity.specId==='m1a2'&&entity.id!=='m1a2'));
+ assert.equal(new Set(participants.map(entity=>entity.id)).size,14);
+ assert.equal(sparse.tankById.size,before,'preloading must not register battle entities');
+}

@@ -5,6 +5,7 @@ interface NetworkPlayerSelection {
 }
 
 interface NetworkBattleEntity {
+  aerial?: { kind: string };
   spec: RuntimeValue;
   visual?: RuntimeValue;
   equip?: RuntimeValue;
@@ -175,8 +176,10 @@ export function createActivationRuntime({
         const player = game.player;
         if (!player) throw new Error('The local network vehicle is unavailable.');
         playerActions.setTank(player.spec);
-        damagePanel.setTank(player.spec, player.visual);
-        damagePanel.setEquipment(player.equip ?? {});
+        if (player.aerial?.kind !== 'gunship') {
+          damagePanel.setTank(player.spec, player.visual);
+          damagePanel.setEquipment(player.equip ?? {});
+        }
       }
 
       presentation.hideGarage();

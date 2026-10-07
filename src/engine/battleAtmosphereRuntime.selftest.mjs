@@ -11,7 +11,7 @@ assert.equal(Object.isFrozen(BATTLE_WEATHER_BIOMES), true);
 assert.equal(BATTLE_WEATHER_BIOMES.winter, 'cold'); assert.equal(BATTLE_WEATHER_BIOMES.alpine, 'cold');
 assert.equal(BATTLE_WEATHER_BIOMES.desert, 'arid'); assert.equal(BATTLE_WEATHER_BIOMES.monsoon, 'tropical');
 assert.equal(BATTLE_WEATHER_BIOMES.whiteout, 'cold'); assert.equal(BATTLE_WEATHER_BIOMES.mangrove, 'tropical');
-assert.equal(BATTLE_WEATHER_BIOMES.polders, 'coastal'); assert.equal(BATTLE_WEATHER_BIOMES.copper_mesa, 'arid');
+assert.equal(BATTLE_WEATHER_BIOMES.polders, 'coastal'); assert.equal(BATTLE_WEATHER_BIOMES.copper_mesa, 'temperate'); // 2026-10-05: Queenstown under Mount Lyell (mr3) — the wet West Coast, not a desert
 const scene = new THREE.Scene();
 const base = Object.freeze({ sunElevationDeg: 38, sunAzimuthDeg: 104,
   fogDensity: .0006, fogTintHex: 0x849ea0, fogMix: .56, envIntensity: .22,

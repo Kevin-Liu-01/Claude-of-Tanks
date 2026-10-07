@@ -8,6 +8,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as THREE from 'three';
+import { PROJECT_COPYRIGHT, PROJECT_CREATOR } from '../src/authorship.ts';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 const option = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -104,7 +105,9 @@ function exportTree(object) {
 }
 const tree = exportTree(original.root);
 tree.name = 'first_party_preservation_baseline';
-const binary = await new GLTFExporter().parseAsync(tree, { binary: true, onlyVisible: true });
+tree.userData.provenance = { creator: PROJECT_CREATOR, copyright: PROJECT_COPYRIGHT, sourceCommit: commit, sourceId, ...baselineReceipt, rights: 'See LICENSE-POLICY.md and LICENSE at the pinned source revision; historical grants remain valid.' };
+const exporter = new GLTFExporter().register(writer => ({ afterParse() { writer.json.asset.copyright = PROJECT_COPYRIGHT; } }));
+const binary = await exporter.parseAsync(tree, { binary: true, onlyVisible: true });
 const bytes = Buffer.from(binary);
 const receipt = { comparisonPurpose: 'preservation', sourceCommit: commit, sourceId,
   ...baselineReceipt, glbSha256: createHash('sha256').update(bytes).digest('hex'),

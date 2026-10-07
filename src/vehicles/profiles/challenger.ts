@@ -14,6 +14,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
+import { facetedSlab } from './facetedSlab.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -1686,13 +1687,13 @@ function addCr2HullCrossSection(
   b: Cr2HullSection,
   side: number,
 ): void {
-  const ai = side < 0 ? -a.bw : 0.33, ao = side < 0 ? -0.33 : a.bw;
-  const bi = side < 0 ? -b.bw : 0.33, bo = side < 0 ? -0.33 : b.bw;
-  const ati = side < 0 ? -a.tw : 0.33, ato = side < 0 ? -0.33 : a.tw;
-  const bti = side < 0 ? -b.tw : 0.33, bto = side < 0 ? -0.33 : b.tw;
-  P.add('hull', slab(
-    [ai, a.bot, a.z], [ao, a.bot, a.z], [bo, b.bot, b.z], [bi, b.bot, b.z],
-    [ati, a.top, a.z], [ato, a.top, a.z], [bto, b.top, b.z], [bti, b.top, b.z]));
+  // Courses are listed stern-to-bow: reverse that order once, then reflect
+  // the exact triangles. Mirroring rings used opposite wall diagonals.
+  P.add('hull',facetedSlab([
+    [.33,b.bot,b.z],[b.bw,b.bot,b.z],[a.bw,a.bot,a.z],[.33,a.bot,a.z],
+  ],[
+    [.33,b.top,b.z],[b.tw,b.top,b.z],[a.tw,a.top,a.z],[.33,a.top,a.z],
+  ],side));
 }
 
 function cr2HullCrossLoft(P: ChallengerBuilderPort, sections: readonly Cr2HullSection[]): void {
@@ -4782,9 +4783,13 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       [-0.52, 0.02, 1.70], [0.52, 0.02, 1.70], [0.78, 0.02, 1.22], [-0.78, 0.02, 1.22],
       [-0.40, 0.17, 1.60], [0.40, 0.17, 1.60], [0.50, 0.34, 1.22], [-0.50, 0.34, 1.22]));
     for (const s of [-1, 1]) {
-      P.add('turret', mslab1(s,
+      // A-C folded the low cheek roof inward by 91 degrees. B-D gives the
+      // authored convex ridge and preserves all silhouette datums.
+      P.add('turret', facetedSlab([
         [0.40, 0.02, 1.70], [0.98, 0.02, 1.52], [1.40, 0.02, 1.22], [0.78, 0.02, 1.22],
-        [0.40, 0.17, 1.60], [0.92, 0.42, 1.43], [1.20, 0.30, 1.22], [0.50, 0.34, 1.22]));
+      ],[
+        [0.40, 0.17, 1.60], [0.92, 0.42, 1.43], [1.20, 0.30, 1.22], [0.50, 0.34, 1.22],
+      ],s,'bd'));
       P.add('turretDetail', box(0.025, 0.07, 1.20), s * 1.325, 0.635, -0.84, 0, 0, s * 0.045);
     }
     // embrasure: recessed collar + canvas boot (§B3.1 — no bare notch);
