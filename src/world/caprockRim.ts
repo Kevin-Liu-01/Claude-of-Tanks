@@ -35,6 +35,8 @@ export interface CaprockSpec {
   tone?: readonly [number, number, number];
   /** The bed's thickness range (m; default 1.2-2.5). */
   thickness?: readonly [number, number];
+  /** The blocks' length range between the joints (m; default 5-12): a massive sandstone parts less often. */
+  blockM?: readonly [number, number];
 }
 
 interface CaprockBuildOptions {
@@ -66,6 +68,7 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
   const crest = (s: number) => groundAt(spec.x + ax[0] * s, spec.z + ax[2] * s);
   const tone = spec.tone ?? [0.075, 0.13, 0.52];
   const [tMin, tMax] = spec.thickness ?? [1.2, 2.5];
+  const [bMin, bMax] = spec.blockM ?? [5, 12];
   const mesh = new SkinMesh();
   let blocks = 0;
   const salt = rng() * 100;
@@ -111,11 +114,11 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
     }
     // over the void: out from the ridge's axis, toward the trench's
     const voidDir = trench ? -side : side;
-    // the joints: blocks of 5 to 12 m along the brow, a hand apart where one ends and the next begins
+    // the joints: blocks of 5 to 12 m (blockM) along the brow, a hand apart where one ends and the next begins
     let k = 0;
     while (k < stations) {
       while (k < stations && !rims[k]) k++;
-      const len = Math.max(2, Math.round((5 + rng() * 7) / step));
+      const len = Math.max(2, Math.round((bMin + rng() * (bMax - bMin)) / step));
       const k1 = Math.min(stations, k + len);
       let end = k;
       while (end < k1 && rims[end + 1]) end++;
