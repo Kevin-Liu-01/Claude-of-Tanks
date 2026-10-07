@@ -177,3 +177,51 @@ export function pediment(sink: PartSink, face: Face, u: number, y: number, w: nu
   // a prism from the wall plane outward: points ccw seen from outside (+out), extruded along the face's normal
   sink.prism(bucket, pts.map(([uu, yy]) => facePoint(face, uu, yy, 0)), face.out, out, { ...DECOR, fineSides: true });
 }
+
+/**
+ * A ruined wall's broken crown (wave 162: ruins "need irregular breaks, not Lego steps or crenellations"): a dressing
+ * skin round a wall block's head — its faces 15 mm proud of the block's, from `y0` up past the block's top in a ragged
+ * line of uneven notches and slants — so no wall of a ruin ends in a level box top. The block itself (the kit's solid,
+ * unchanged) stays the wall the battle meets: a per-strip collision changed what the bots saw through the walls and
+ * left two pacing seeds unresolved. The skin's strips are convex quads (a concave crown triangulates) and cast shadows.
+ * The block spans [u0, u1] on the face, `t` thick inward, its top at `top`; `r` the look stream.
+ */
+export function raggedCrown(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y0: number, top: number, t: number,
+  r: () => number): void {
+  const len = u1 - u0;
+  if (len < 0.2 || top - y0 < 0.3) return;
+  const head = raggedHead(r, u0, u1, top + 0.32, top + 0.32, 0.5);
+  const e = 0.015, a = u0 - e, b = u1 + e;
+  const n = Math.max(1, Math.ceil((b - a) / 0.4));
+  const us: number[] = [], hs: number[] = [];
+  for (let i = 0; i <= n; i++) { const u = a + (b - a) * i / n; us.push(u); hs.push(Math.max(top + 0.04, head(u))); }
+  const P = (u: number, y: number, d: number) => facePoint(face, u, y, d);
+  const skin = { decor: true, shadow: true } as const;
+  for (let i = 0; i < n; i++) {
+    const ua = us[i], ub = us[i + 1], ha = hs[i], hb = hs[i + 1];
+    sink.quad(bucket, P(ua, y0, e), P(ub, y0, e), P(ub, hb, e), P(ua, ha, e), skin);
+    sink.quad(bucket, P(ua, ha, -t - e), P(ub, hb, -t - e), P(ub, y0, -t - e), P(ua, y0, -t - e), skin);
+    sink.quad(bucket, P(ua, ha, e), P(ub, hb, e), P(ub, hb, -t - e), P(ua, ha, -t - e), skin);
+  }
+  sink.quad(bucket, P(a, y0, e), P(a, hs[0], e), P(a, hs[0], -t - e), P(a, y0, -t - e), skin);
+  sink.quad(bucket, P(b, y0, -t - e), P(b, hs[n], -t - e), P(b, hs[n], e), P(b, y0, e), skin);
+}
+
+/**
+ * A ragged head profile over a wall's run [u0, u1]: a base line from h0 to h1 with notches bitten into it (deep, narrow
+ * V's and broad shallow scoops) and a small tremor, from the stream `r`. Returns at(u), continuous along the run.
+ */
+export function raggedHead(r: () => number, u0: number, u1: number, h0: number, h1: number, bite: number): (u: number) => number {
+  const span = Math.max(0.01, u1 - u0);
+  const notches: Array<{ u: number; w: number; d: number }> = [];
+  for (let k = 0, n = 1 + Math.floor(span / 2.2 * (0.6 + r() * 0.8)); k < n; k++) {
+    notches.push({ u: u0 + r() * span, w: 0.35 + r() * r() * 2.2, d: bite * (0.3 + r() * 0.9) });
+  }
+  const tremor = [r() * 6.28, r() * 6.28];
+  return (u: number) => {
+    const k = (u - u0) / span;
+    let h = h0 + (h1 - h0) * k + 0.12 * Math.sin(u * 3.1 + tremor[0]) + 0.07 * Math.sin(u * 7.3 + tremor[1]);
+    for (const nt of notches) { const q = Math.abs(u - nt.u) / nt.w; if (q < 1) h -= nt.d * (1 - q) ** 1.4; }
+    return h;
+  };
+}

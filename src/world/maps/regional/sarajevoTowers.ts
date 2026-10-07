@@ -68,7 +68,9 @@ function curtainFace(sink: PartSink, face: Face, y0: number, floors: number, fh:
     // the spandrel panel (the burnt floor's charred), or the bare slab edge where the panels fell
     if (s === 'gone') faceBox(sink, slab, face, 0, y + 0.08, 0.06, w + 0.1, 0.34, 0.12, { decor: true, fineSides: true });
     else faceBox(sink, 'structureMetal', face, 0, y + fh * 0.16, 0.07, w + 0.1, fh * 0.32 + 0.04, 0.06, { decor: true, colour: s === 'burnt' ? CHAR : shade(spandrel, 0.92 + look() * 0.14) });
-    if (s === 'burnt') sootBand(sink, slab, face, -w / 2, w / 2, y + fh, Math.min(y + 2 * fh, y0 + floors * fh));
+    // the fire's soot climbing the face from a burnt floor's head two floors and more (wave 162: "no burnt towers" — one
+    // floor's band under the next floor's glass read as a dark spandrel, not a fire)
+    if (s === 'burnt') sootBand(sink, slab, face, -w / 2, w / 2, y + fh * 0.9, Math.min(y + fh * (2.4 + look() * 0.8), y0 + floors * fh));
   }
 }
 
@@ -127,7 +129,7 @@ const unisTowers: RegionalBuilder = (ctx) => {
       faces.forEach((face, fi) => {
         const state = (f: number): PaneState => {
           const r = look();
-          if (f >= gutFrom && f < gutTo) return r < 0.22 ? 'burnt' : r < 0.9 ? 'gone' : 'glass';
+          if (f >= gutFrom && f < gutTo) return r < 0.5 ? 'burnt' : r < 0.92 ? 'gone' : 'glass';
           return r < 0.12 ? 'gone' : r < 0.16 ? 'sheet' : r < 0.18 ? 'lit' : 'glass';
         };
         curtainFace(sink, face, lobbyH, floors, fh, bronze, slab, state, look, fi % 2 ? 0.1 : 0.25);

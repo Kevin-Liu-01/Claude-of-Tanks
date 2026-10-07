@@ -207,14 +207,19 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
     }
   }
   push(ctx, bed);
-  // ---- the catenary: poles in pairs at the kerbs, cross-spans, the contact wire over each track between the spans
+  // ---- the catenary: poles in pairs at the kerbs, a cross-span between each standing pair (a lone pole carries a
+  // bracket arm out over both tracks instead), the contact wire over each track from span to span. A wire runs only
+  // between two supports one bay apart along the line (wave 162: "floating catenary wires" where the line leaves the
+  // limit and comes back, or a span had fallen); a bay whose support is down ends its wires, one hanging to the roadway.
   const wires = new PartSink([0, 0]);
   const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
-  let prev: { y: number; s: Station } | null = null;
-  for (let i = 0; i < st.length; i += Math.round(SPAN / 2)) {
+  const BAY = Math.round(SPAN / 2);
+  let prev: { y: number; s: Station; carried: boolean } | null = null;
+  for (let i = 0; i < st.length; i += BAY) {
     const s = st[i];
     const y = hf.getHeightAt(s.x, s.z);
     const tops: Vec3[] = [];
+    const lone: Array<{ side: number; px: number; py: number; pz: number }> = [];
     for (const side of [1, -1]) {
       const [px, , pz] = at(s, side * POLE_OFFSET);
       if (!clears(records, px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
@@ -228,49 +233,87 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
         wires.member('structureMetal', [px, py + SPAN_Y - 0.3, pz], [px - s.nx * side * 1.3, py + SPAN_Y - 0.1, pz - s.nz * side * 1.3], 0.08, 0.08,
           normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
         tops.push([px, py + SPAN_Y, pz]);
+        lone.push({ side, px, py, pz });
       }
     }
-    if (mobile) { prev = { y, s }; continue; }
+    // the station carries the contact wires when its span stands, or its one standing pole's bracket arm does
+    let carried = tops.length === 2;
+    if (!carried && lone.length === 1) {
+      const { side, px, py, pz } = lone[0];
+      const reach = POLE_OFFSET + TRACK + 0.6;
+      const tip: Vec3 = [px - s.nx * side * reach, py + SPAN_Y - 0.25, pz - s.nz * side * reach];
+      wires.member('structureMetal', [px, py + SPAN_Y - 0.2, pz], tip, 0.09, 0.09, normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
+      // its tie-rod back to the pole, a metre and a half below
+      wires.member('structureMetal', [px, py + SPAN_Y - 1.7, pz], [(px + tip[0]) / 2, py + SPAN_Y - 0.25, (pz + tip[2]) / 2], 0.05, 0.05,
+        normalize3([s.tx, 0, s.tz]), { colour: POLE, decor: true, exposed: true }, 0);
+      carried = true;
+    }
+    if (mobile) { prev = { y, s, carried }; continue; }
     if (tops.length === 2) wires.member('structureWood', tops[0], tops[1], 0.03, 0.03, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
-    if (prev && i > 0) {
+    // one bay back along the line (a station further off means the line left the limit and came back)
+    const bayOk = prev !== null && s.s - prev.s.s <= SPAN * 1.25;
+    if (prev && bayOk && (prev.carried || carried)) {
       for (const t of [-1, 1]) {
         const a = at(prev.s, t * TRACK), b = at(s, t * TRACK);
         const down = look() < 0.06;
-        if (down) {
-          // a wire down: from the span it hangs to the roadway
-          wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.05, (a[2] + b[2]) / 2], 0.025, 0.025, [0, 1, 0],
-            { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
+        if (prev.carried && carried && !down) {
+          wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [b[0], y + WIRE_Y, b[2]], 0.025, 0.025, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
           continue;
         }
-        wires.member('structureWood', [a[0], prev.y + WIRE_Y, a[2]], [b[0], y + WIRE_Y, b[2]], 0.025, 0.025, [0, 1, 0], { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
+        // a wire down: from the support that still holds it, hanging to the roadway mid-bay
+        const [from, fy] = prev.carried ? [a, prev.y] : [b, y];
+        wires.member('structureWood', [from[0], fy + WIRE_Y, from[2]], [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.05, (a[2] + b[2]) / 2], 0.025, 0.025, [0, 1, 0],
+          { colour: WIRE, decor: true, fine: true, exposed: true }, 0);
       }
     }
-    prev = { y, s };
+    prev = { y, s, carried };
   }
   push(ctx, wires);
   // ---- two burnt trams, rotation-symmetric about the map's centre: derailed and shoved against the kerb, one on each
   // side, each midway between two poles of the catenary (its inner side clear of the boulevard's core)
   const poles = st.filter((_c, i) => i % Math.round(SPAN / 2) === 0);
-  const TRAM_OFF = ROAD_CLEAR + 1.25 + 0.1;
-  const tramAt = (sTarget: number, side: number) => {
+  const poleFeet = poles.flatMap((p) => [1, -1].map((side) => { const q = at(p, side * POLE_OFFSET); return [q[0], q[2]] as const; }));
+  // (wave 162: "the total absence of any burnt tram car": the kerbs' lamps, rubble and the rows' fronts refused every bay
+  // the wrecks tried.) A wreck stands where the trams died, on its track in the boulevard's middle: the other track and
+  // both carriageways stay open, and the layout brief counts it a roadblock (tools/map-layout-metrics.mjs
+  // ROADBLOCK_KINDS), not dressing in a road; failing its track in a dozen bays, shoved against the kerb as before
+  const others = roads.filter((_line, r) => r !== road);
+  const TRAM_SEATS: Array<{ off: number; onTrack: boolean }> = [{ off: TRACK, onTrack: true }, { off: ROAD_CLEAR + 1.25 + 0.1, onTrack: false }];
+  // each wreck stands with its rotation twin about the map's centre (the layout is its own rotation): a seat is taken
+  // only when its twin's seat (the station nearest (-x, -z), on the other side) clears as well
+  const tramSeat = (s: Station, side: number, seat: { off: number; onTrack: boolean }): [number, number] | null => {
+    const [cx, , cz] = at(s, side * seat.off);
+    if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(seat.onTrack ? others : roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
+      || !clearOfKeepOut(keep, cx, cz, 10.9, 1.25, s.tx, s.tz)) return null;
+    return [cx, cz];
+  };
+  const placeTram = (s: Station, cx: number, cz: number, onTrack: boolean): void => {
+    const y = hf.getHeightAt(cx, cz);
+    const sink = new PartSink([look() * 5, look() * 5]);
+    sink.placed(Math.atan2(-s.tz, s.tx), cx, y + (onTrack ? 0.08 : 0.02), cz, () => burntTram(sink, look));
+    push(ctx, sink);
+    block(ctx, cx, cz, 10.9, 1.25, s.tx, s.tz, y, y + 3.1, 'tram-wreck');
+    records.push(...(ctx.obstacles ?? []).slice(-1));
+  };
+  const tramPair = (sTarget: number, side: number) => {
     const bays = poles.slice(0, -1).map((p) => p.s + SPAN / 2).sort((a, b) => Math.abs(a - sTarget) - Math.abs(b - sTarget));
-    for (const target of bays.slice(0, 6)) {
+    for (const seat of TRAM_SEATS) for (const target of bays.slice(0, 12)) {
       const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
-      const [cx, , cz] = at(s, side * TRAM_OFF);
-      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
-        || !clearOfKeepOut(keep, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
-      const y = hf.getHeightAt(cx, cz);
-      const sink = new PartSink([look() * 5, look() * 5]);
-      sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
-      push(ctx, sink);
-      block(ctx, cx, cz, 10.9, 1.25, s.tx, s.tz, y, y + 3.1, 'tram-wreck');
-      records.push(...(ctx.obstacles ?? []).slice(-1));
+      const twin = st.reduce((best, c) => (Math.hypot(c.x + s.x, c.z + s.z) < Math.hypot(best.x + s.x, best.z + s.z) ? c : best));
+      if (Math.hypot(twin.x + s.x, twin.z + s.z) > 2.5) continue;
+      const a = tramSeat(s, side, seat);
+      if (!a) continue;
+      const b = tramSeat(twin, -side, seat);
+      if (!b) continue;
+      placeTram(s, a[0], a[1], seat.onTrack);
+      placeTram(twin, b[0], b[1], seat.onTrack);
       return;
     }
   };
   const total = st[st.length - 1].s, mid = st.reduce((best, c) => (Math.hypot(c.x, c.z) < Math.hypot(best.x, best.z) ? c : best)).s;
-  tramAt(mid - Math.min(110, total * 0.12), 1);
-  tramAt(mid + Math.min(110, total * 0.12), -1);
+  tramPair(mid - Math.min(110, total * 0.12), 1);
+  // a second pair nearer the Square, on the other track
+  tramPair(mid - Math.min(45, total * 0.05), -1);
   // ---- the container screens at the crossings: along the kerb on each side, clear of the cross street. They stand in
   // rotation pairs about the Square (the layout is its own rotation): each crossing seats its screens from the cross
   // street's own end point, and each seat draws its rotation-canonical seat's lot (turned half round, a seat's side of
@@ -293,10 +336,15 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
         const key = canon ? [end[0], end[1], side, dir] : [-end[0], -end[1], -side, -dir];
         if (streamFrom(hashSeed('sarajevo-screen', Math.round(key[0]), Math.round(key[1]), key[2], key[3]))() < 0.5) continue;
         // the corner between the two roads (the street rows keep 9.5 m clear of a crossing road): the first seat clear
-        const off = side * (POLE_OFFSET + 1.5);
-        for (const at0 of [7.4, 8.6, 9.8]) {
-          const along = dir * at0;
+        // (wave 162: "no container screens in view" — one seat in the whole city cleared the kerb's lamps; the seats now
+        // run on along the boulevard and step in toward the kerb)
+        const seats: Array<[number, number]> = [];
+        for (const at0 of [7.4, 8.6, 9.8, 11.4, 13.2, 15.4]) for (const o of [POLE_OFFSET + 1.5, POLE_OFFSET + 0.4]) seats.push([at0, o]);
+        for (const [at0, o] of seats) {
+          const along = dir * at0, off = side * o;
           const cx = end[0] + hit.tx * along + hit.nx * off, cz = end[1] + hit.tz * along + hit.nz * off;
+          // (the catenary's poles are dressing, not records: a screen keeps off their feet)
+          if (poleFeet.some(([px, pz]) => Math.hypot(px - cx, pz - cz) < BOX_HL + 0.6)) continue;
           if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)
             || !clearOfKeepOut(keep, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)) continue;
           const y = Math.min(hf.getHeightAt(cx - hit.tx * BOX_HL, cz - hit.tz * BOX_HL), hf.getHeightAt(cx + hit.tx * BOX_HL, cz + hit.tz * BOX_HL));
@@ -331,6 +379,10 @@ function cross(sink: PartSink, x: number, y: number, z: number, h: number, yaw: 
  * The cemeteries: rows of graves along the contour, each a white nišan (a turban on a man's, a pointed head on a
  * woman's, the plain rounded pillar of the siege's dead) or a cross, gaps where the rows break, clear of every record.
  */
+/** The props scattered before the cemeteries were laid that a grave's tomb can stand over (wave 162: "a dark cube" among
+ * the stones, the camp scatter's crate). */
+const LOOSE_KINDS = new Set(['crate', 'barrel', 'drum', 'ammobox', 'pallet', 'firewood', 'handcart']);
+
 function dressCemeteries(ctx: TramContext): void {
   const hf = ctx.heightField;
   const mobile = getDeviceTier() === 'mobile';
@@ -338,6 +390,20 @@ function dressCemeteries(ctx: TramContext): void {
   for (const [k, c] of CEMETERIES.entries()) {
     const look = streamFrom(hashSeed('sarajevo-cemetery', k, c.x, c.z));
     const sink = new PartSink([look() * 5, look() * 5]);
+    // a loose prop left on the plot stands inside a tomb: a white stone chest under its gabled lid, along the rows
+    for (const r of ctx.obstacles ?? []) {
+      if (r.dead || !LOOSE_KINDS.has(r.kind ?? '')) continue;
+      const rx = (r.min[0] + r.max[0]) / 2, rz = (r.min[2] + r.max[2]) / 2;
+      if (Math.abs(rx - c.x) > c.hx || Math.abs(rz - c.z) > c.hz) continue;
+      const hx = Math.max(0.65, (r.max[0] - r.min[0]) / 2 + 0.25), hz = Math.max(1.05, (r.max[2] - r.min[2]) / 2 + 0.25);
+      const y0 = Math.min(hf.getHeightAt(rx - hx, rz - hz), hf.getHeightAt(rx + hx, rz + hz), r.min[1]) - 0.15;
+      const top = Math.max(r.max[1] + 0.12, y0 + 1.15);
+      sink.span('stone', rx - hx - 0.08, y0, rz - hz - 0.08, rx + hx + 0.08, y0 + 0.32, rz + hz + 0.08, { decor: true });
+      sink.span('stone', rx - hx, y0 + 0.32, rz - hz, rx + hx, top, rz + hz, { decor: true });
+      // the lid: a gabled prism along the chest (its profile counter-clockwise seen from +z, prism()'s extrusion side)
+      const z0 = rz - hz - 0.06;
+      sink.prism('stone', [[rx - hx - 0.06, top, z0], [rx + hx + 0.06, top, z0], [rx, top + 0.28, z0]], [0, 0, 1], 2 * hz + 0.12, { decor: true });
+    }
     const step = mobile ? 2.2 : 1.15, rowGap = 2.3;
     for (let z = c.z - c.hz; z <= c.z + c.hz; z += rowGap) {
       let x = c.x - c.hx + look() * step;
