@@ -437,11 +437,14 @@ function openingOutline(face: Face, h: ArchHole, o: number, n = 8): Vec3[] {
  * The glazing of an opening archedFace cut: the pane at the back of the reveal (a lit curtain at night for a share of
  * them, else dark glass), a frame round it, a mullion and a transom at the spring line (the frame is fine joinery).
  */
-export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number, frame: Rgb, lit: boolean, opts: { bars?: boolean } = {}): void {
+export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: number, frame: Rgb, lit: boolean,
+  opts: { bars?: boolean; coarse?: boolean } = {}): void {
   const back = -reveal;
   sink.polygon(lit ? 'curtain' : 'glass', openingOutline(face, h, back + 0.012), { decor: true, window: face.out });
-  const f = { colour: frame, decor: true, fine: true };
-  const line = archLine(h, 8), fw = 0.06, fo = back + 0.035;
+  // (`coarse`: a frame and bars a long view resolves, on a building that stands alone — gauntlet wave 158 read a valve
+  // tower's fine-only frames as "unframed black-void windows")
+  const f = { colour: frame, decor: true, fine: !opts.coarse };
+  const line = archLine(h, 8), fw = opts.coarse ? 0.1 : 0.06, fo = back + 0.035;
   const u0 = h.u - h.w / 2 + fw / 2, u1 = h.u + h.w / 2 - fw / 2;
   sink.member('structureWood', facePoint(face, u0, h.y0, fo), facePoint(face, u0, h.spring, fo), fw, 0.05, face.out, f);
   sink.member('structureWood', facePoint(face, u1, h.y0, fo), facePoint(face, u1, h.spring, fo), fw, 0.05, face.out, f);
