@@ -329,34 +329,17 @@ export const viaduct: LandmarkBuilder = (ctx) => {
 
 // ---------------------------------------------------------------------------------------------------------- lift bridge
 
-/**
- * The Dutch double-leaf lift bridge (a dubbele ophaalbrug — Amsterdam's Magere Brug and a polder canal's): two timber
- * leaves hinged on the brick abutments and meeting over the channel; over each abutment a portal (the hamei) of two posts
- * and a beam, carrying the balance beams (the balans) that lean back over the approach, their tails tied by a crossbar
- * and their heads linked to the leaf's tip by iron rods; the railings, the portals and the balances painted white with
- * black feet, the deck boards bare; the abutments brick (the map's masonry) with stone copings. The leaves lie down: the
- * bridge is closed and a road crosses it.
- */
-export const liftBridge: LandmarkBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx.rng));
-  const span = Math.max(8, Number(ctx.params.span)), W = Math.max(3.5, Number(ctx.params.width)), deck = Math.max(1.2, Number(ctx.params.deck));
-  const top = deckProfile(ctx, span, deck, Math.min(0.25, span * 0.012));
-  const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK }, iron = { colour: IRON };
-  const postX = W / 2 + 0.32, portalH = Math.max(4.6, W * 0.85);
-  // ---- the abutments: brick blocks from below the bed to the deck's underside, a stone coping along the channel face
-  for (const zs of [-1, 1]) {
-    const face = zs * span / 2, back = zs * (span / 2 + 3.2), y = Math.min(top(face), top(zs * span / 2)) - 0.42;
-    const bed = Math.min(groundAt(ctx, 0, face), groundAt(ctx, -W / 2, face), groundAt(ctx, W / 2, face)) - 1.0;
-    const z0 = Math.min(face, back), z1 = Math.max(face, back);
-    sink.span('stone', -W / 2 - 0.9, bed, z0, W / 2 + 0.9, y, z1);
-    sink.span('stone', -W / 2 - 1.0, y - 0.04, face - 0.18, W / 2 + 1.0, y + 0.1, face + 0.18, { decor: true });
-    // the wing walls along the banks
-    for (const sx of [-1, 1]) {
-      const g = groundAt(ctx, sx * (W / 2 + 0.9), zs * (span / 2 + 3.2));
-      sink.member('stone', [sx * (W / 2 + 0.55), y - 0.1, face], [sx * (W / 2 + 0.55), Math.min(y - 0.1, g + 0.3), zs * (span / 2 + 3.6)], 0.6, 1.6, [0, 1, 0], { exposed: true }, 1.2);
-    }
-  }
-  // ---- the leaves: girders, cross-beams and the deck boards, each leaf from its abutment to the meeting line
+/** The long form's lift piers, along the span: the brick piers in the water the leaves hinge on. */
+const LIFT_PIER_M = 2.6;
+/** The long form's bank abutments, along the span (as the short form's). */
+const LIFT_ABUTMENT_M = 3.2;
+/** The fixed approach spans' pile bents stand at most this far apart. */
+const LIFT_BENT_PITCH_M = 3.4;
+
+/** The leaves: girders, cross-beams and the deck boards, each leaf from its pier face (±span/2) to the meeting line,
+ * the white edge beams and the railing. */
+function liftLeaves(sink: PartSink, span: number, W: number, top: (z: number) => number): void {
+  const white = { colour: PAINT_WHITE };
   for (const zs of [-1, 1]) {
     const zA = zs * span / 2, zB = 0;
     for (const x of [-W * 0.38, 0, W * 0.38]) bar(sink, 'structureWood', [x, top(zA) - 0.36, zA], [x, top(zB) - 0.36, zB - zs * 0.02], 0.28, { colour: TIMBER_DARK });
@@ -385,7 +368,11 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
       bar(sink, 'structureWood', [x, top(zA) + 0.55, zA], [x, top(zB) + 0.55, zB], 0.06, { ...white, decor: true, fine: true });
     }
   }
-  // ---- the portals over the abutments and the balances on them
+}
+
+/** The portals over the piers (or the abutments) at ±(span/2 + 0.55) and the balances on them. */
+function liftPortals(sink: PartSink, span: number, W: number, top: (z: number) => number, postX: number, portalH: number): void {
+  const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK }, iron = { colour: IRON };
   for (const zs of [-1, 1]) {
     const z = zs * (span / 2 + 0.55), y0 = top(zs * span / 2), yTop = y0 + portalH;
     for (const sx of [-1, 1]) {
@@ -414,6 +401,44 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureWood', [-postX, midY, mid - zs * 1.5], [postX, midY, mid + zs * 1.5], 0.1, { ...white, decor: true });
     bar(sink, 'structureWood', [postX, midY, mid - zs * 1.5], [-postX, midY, mid + zs * 1.5], 0.1, { ...white, decor: true });
   }
+}
+
+/**
+ * The Dutch double-leaf lift bridge (a dubbele ophaalbrug — Amsterdam's Magere Brug and a polder canal's): two timber
+ * leaves hinged on the brick abutments and meeting over the channel; over each abutment a portal (the hamei) of two posts
+ * and a beam, carrying the balance beams (the balans) that lean back over the approach, their tails tied by a crossbar
+ * and their heads linked to the leaf's tip by iron rods; the railings, the portals and the balances painted white with
+ * black feet, the deck boards bare; the abutments brick (the map's masonry) with stone copings. The leaves lie down: the
+ * bridge is closed and a road crosses it.
+ *
+ * The long form (`approach` or `rise` over 0; the Magere Brug's own composition, and a polder bridge over water that lies
+ * level with its fields): the leaves hinge on two brick piers standing in the water, a fixed timber span on pile bents
+ * (`approach` long) runs from each pier to its bank, the roadway stands `rise` over the higher bank on brick abutments
+ * paved on top, and a brick ramp between parapets runs down from each abutment at `grade` to where it meets the ground.
+ */
+export const liftBridge: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const span = Math.max(8, Number(ctx.params.span)), W = Math.max(3.5, Number(ctx.params.width)), deck = Math.max(1.2, Number(ctx.params.deck));
+  const approach = Math.max(0, Number(ctx.params.approach ?? 0)), rise = Math.max(0, Number(ctx.params.rise ?? 0));
+  const postX = W / 2 + 0.32, portalH = Math.max(4.6, W * 0.85);
+  if (approach > 0 || rise > 0) return liftBridgeLong(ctx, sink, span, W, approach, rise, Math.min(0.25, Math.max(0.05, Number(ctx.params.grade ?? 1 / 7))), postX, portalH);
+  const top = deckProfile(ctx, span, deck, Math.min(0.25, span * 0.012));
+  // ---- the abutments: brick blocks from below the bed to the deck's underside, a stone coping along the channel face
+  for (const zs of [-1, 1]) {
+    const face = zs * span / 2, back = zs * (span / 2 + 3.2), y = Math.min(top(face), top(zs * span / 2)) - 0.42;
+    const bed = Math.min(groundAt(ctx, 0, face), groundAt(ctx, -W / 2, face), groundAt(ctx, W / 2, face)) - 1.0;
+    const z0 = Math.min(face, back), z1 = Math.max(face, back);
+    sink.span('stone', -W / 2 - 0.9, bed, z0, W / 2 + 0.9, y, z1);
+    sink.span('stone', -W / 2 - 1.0, y - 0.04, face - 0.18, W / 2 + 1.0, y + 0.1, face + 0.18, { decor: true });
+    // the wing walls along the banks
+    for (const sx of [-1, 1]) {
+      const g = groundAt(ctx, sx * (W / 2 + 0.9), zs * (span / 2 + 3.2));
+      sink.member('stone', [sx * (W / 2 + 0.55), y - 0.1, face], [sx * (W / 2 + 0.55), Math.min(y - 0.1, g + 0.3), zs * (span / 2 + 3.6)], 0.6, 1.6, [0, 1, 0], { exposed: true }, 1.2);
+    }
+  }
+  // ---- the leaves, the portals over the abutments and the balances on them
+  liftLeaves(sink, span, W, top);
+  liftPortals(sink, span, W, top, postX, portalH);
   const movement = ctx.params.drivable === false ? undefined : (() => {
     const parts = deckMovement(span, W, top, 1.05, 0.2);
     // the abutments from the bed to the deck's underside, and the portal posts
@@ -425,3 +450,152 @@ export const liftBridge: LandmarkBuilder = (ctx) => {
   })();
   return { parts: sink.finish(), movement };
 };
+
+/** The lift bridge's long form (liftBridge's note): the lift span, its piers, the fixed spans, the abutments, the ramps. */
+function liftBridgeLong(ctx: LandmarkBuildContext, sink: PartSink, span: number, W: number, approach: number, rise: number, grade: number,
+  postX: number, portalH: number): ReturnType<LandmarkBuilder> {
+  const s = span / 2, P = approach > 0 ? LIFT_PIER_M : 0, E = s + P + approach, AB = LIFT_ABUTMENT_M;
+  const white = { colour: PAINT_WHITE }, dark = { colour: TIMBER_DARK };
+  // the roadway: `rise` over the higher bank, a slight hump over the lift span, level to the abutments' backs
+  const bank = (zs: number) => groundAt(ctx, 0, zs * (E + 1.2)) + 0.05;
+  const yD = Math.max(bank(-1), bank(1)) + rise, hump = Math.min(0.25, span * 0.012);
+  // each ramp from its abutment's back down at `grade` to where it meets the ground (at most (rise + 0.5) / grade long)
+  const rampMax = rise > 0 ? (rise + 0.5) / grade : 0;
+  const rampOf = (zs: number): number => {
+    if (rampMax <= 0) return 0;
+    for (let d = 0; d < rampMax; d += 0.25) if (yD - d * grade <= groundAt(ctx, 0, zs * (E + AB + d)) + 0.05) return d;
+    return rampMax;
+  };
+  const ramp = new Map([[-1, rampOf(-1)], [1, rampOf(1)]]);
+  const top = (z: number): number => {
+    const a = Math.abs(z);
+    if (a <= s) { const t = z / s; return yD + hump * (1 - t * t); }
+    if (a <= E + AB) return yD;
+    return yD - Math.min(a - E - AB, ramp.get(z < 0 ? -1 : 1) ?? 0) * grade;
+  };
+  /** The deck boards from z0 to z1 (either order) at the roadway. */
+  const boards = (z0: number, z1: number, colourShift = 0) => {
+    const a0 = Math.min(z0, z1), a1 = Math.max(z0, z1), n = Math.max(1, Math.round((a1 - a0) / 0.3));
+    for (let k = 0; k < n; k++) {
+      const a = a0 + (a1 - a0) * k / n, b = a + (a1 - a0) / n * 0.93;
+      extrude(sink, 'structureWood', [[-W / 2, top(a) - 0.1, a], [-W / 2, top(a), a], [-W / 2, top(b), b], [-W / 2, top(b) - 0.1, b]], [1, 0, 0], W,
+        { colour: shade(DECK_BOARD, 0.86 + ((k + colourShift) % 3) * 0.07), ...(k % 2 ? { fine: true, decor: true } : {}) });
+    }
+  };
+  /** A white railing each side from z0 to z1 at the roadway (posts every 1.5 m or so, a top and a mid rail, the edge beam). */
+  const whiteRailing = (z0: number, z1: number) => {
+    for (const sx of [-1, 1]) {
+      const x = sx * (W / 2 - 0.06);
+      bar(sink, 'structureWood', [x, top(z0) + 0.02, z0], [x, top(z1) + 0.02, z1], 0.16, white);
+      const posts = Math.max(1, Math.round(Math.abs(z1 - z0) / 1.5));
+      for (let k = 0; k <= posts; k++) {
+        const z = z0 + (z1 - z0) * k / posts;
+        sink.span('structureWood', x - 0.05, top(z), z - 0.05, x + 0.05, top(z) + 1.05, z + 0.05, { ...white, decor: true });
+      }
+      bar(sink, 'structureWood', [x, top(z0) + 1.05, z0], [x, top(z1) + 1.05, z1], 0.09, { ...white, decor: true });
+      bar(sink, 'structureWood', [x, top(z0) + 0.55, z0], [x, top(z1) + 0.55, z1], 0.06, { ...white, decor: true, fine: true });
+    }
+  };
+  const groundUnder = (z0: number, z1: number, halfW: number) => {
+    let g = Infinity;
+    for (const z of [z0, (z0 + z1) / 2, z1]) for (const x of [-halfW, 0, halfW]) g = Math.min(g, groundAt(ctx, x, z));
+    return g;
+  };
+  for (const zs of [-1, 1]) {
+    // ---- the lift pier in the water (the long form with approach spans): brick from the bed to under the boards, stone
+    // copings along both faces, the boards over it
+    if (P > 0) {
+      const z0 = zs * s, z1 = zs * (s + P), bed = groundUnder(z0, z1, W / 2 + 0.9) - 1.0;
+      sink.span('stone', -W / 2 - 0.9, bed, Math.min(z0, z1), W / 2 + 0.9, yD - 0.42, Math.max(z0, z1));
+      for (const z of [z0, z1]) sink.span('stone', -W / 2 - 1.0, yD - 0.46, z - 0.18, W / 2 + 1.0, yD - 0.32, z + 0.18, { decor: true });
+      boards(z0, z1, 1);
+      whiteRailing(z0, z1);
+    }
+    // ---- the fixed span: three stringers from the pier to the bank abutment on capped pile bents, cross-beams, boards
+    if (approach > 0) {
+      const zA = zs * (s + P), zB = zs * E;
+      for (const x of [-W * 0.38, 0, W * 0.38]) bar(sink, 'structureWood', [x, yD - 0.36, zA], [x, yD - 0.36, zB], 0.28, dark);
+      const bents = Math.max(1, Math.ceil(approach / LIFT_BENT_PITCH_M));
+      for (let k = 1; k < bents; k++) {
+        const z = zA + (zB - zA) * k / bents, y = yD - 0.5, g = groundUnder(z - 0.2, z + 0.2, W / 2 + 0.25) - 0.8;
+        sink.span('structureWood', -W / 2 - 0.5, y - 0.3, z - 0.2, W / 2 + 0.5, y, z + 0.2, dark);
+        for (const x of [-W / 2 - 0.25, -W * 0.17, W * 0.17, W / 2 + 0.25]) bar(sink, 'structureWood', [x, g, z], [x, y - 0.3, z], 0.26, dark);
+        if (y - g > 2.0) {
+          bar(sink, 'structureWood', [-W / 2 - 0.25, g + 0.5, z + 0.16], [W / 2 + 0.25, y - 0.4, z + 0.16], 0.1, { ...dark, decor: true });
+          bar(sink, 'structureWood', [W / 2 + 0.25, g + 0.5, z - 0.16], [-W / 2 - 0.25, y - 0.4, z - 0.16], 0.1, { ...dark, decor: true });
+        }
+      }
+      const ribs = Math.max(2, Math.round(approach / 1.6));
+      for (let k = 0; k <= ribs; k++) {
+        const z = zA + (zB - zA) * k / ribs;
+        sink.span('structureWood', -W / 2 - 0.1, yD - 0.5, z - 0.09, W / 2 + 0.1, yD - 0.2, z + 0.09, { ...dark, decor: true });
+      }
+      boards(zA, zB, 2);
+      whiteRailing(zA, zB);
+    }
+    // ---- the bank abutment: brick from the bed to the roadway, paved on top, a stone coping on its channel face, the
+    // wing walls along the bank, its white railing's last post where the brick parapet takes over
+    const face = zs * E, back = zs * (E + AB);
+    const bed = groundUnder(face, back, W / 2 + 0.9) - 1.0;
+    sink.span('stone', -W / 2 - 0.9, bed, Math.min(face, back), W / 2 + 0.9, yD, Math.max(face, back));
+    sink.span('stone', -W / 2 - 1.0, yD - 0.46, face - 0.18, W / 2 + 1.0, yD - 0.32, face + 0.18, { decor: true });
+    for (const sx of [-1, 1]) {
+      const g = groundAt(ctx, sx * (W / 2 + 0.9), zs * (E + AB));
+      sink.member('stone', [sx * (W / 2 + 0.55), yD - 0.5, face], [sx * (W / 2 + 0.55), Math.min(yD - 0.5, g + 0.3), zs * (E + AB + 0.4)], 0.6, 1.6, [0, 1, 0], { exposed: true }, 1.2);
+    }
+    // ---- the ramp down to the ground: a brick body between its parapets, paved
+    const R = ramp.get(zs) ?? 0, far = zs * (E + AB + R), yEnd = top(far);
+    if (R > 0.2) {
+      const gLow = groundUnder(back, far, W / 2 + 0.9) - 0.4;
+      extrude(sink, 'stone', [[-W / 2 - 0.9, gLow, back], [-W / 2 - 0.9, yD, back], [-W / 2 - 0.9, yEnd, far], [-W / 2 - 0.9, gLow, far]], [1, 0, 0], W + 1.8);
+    }
+    // ---- the parapets: brick walls with a stone coping along the abutment and down the ramp
+    for (const sx of [-1, 1]) {
+      const x0 = sx > 0 ? W / 2 : -W / 2 - 0.4;
+      sink.span('stone', x0, yD - 0.1, Math.min(face, back), x0 + 0.4, yD + 0.75, Math.max(face, back));
+      sink.span('stone', x0 - 0.05, yD + 0.75, Math.min(face, back), x0 + 0.45, yD + 0.85, Math.max(face, back), { decor: true });
+      if (R > 0.2) {
+        extrude(sink, 'stone', [[x0, yD - 0.1, back], [x0, yD + 0.75, back], [x0, yEnd + 0.45, far], [x0, yEnd - 0.1, far]], [1, 0, 0], 0.4);
+        extrude(sink, 'stone', [[x0 - 0.05, yD + 0.75, back], [x0 - 0.05, yD + 0.85, back], [x0 - 0.05, yEnd + 0.55, far], [x0 - 0.05, yEnd + 0.45, far]], [1, 0, 0], 0.5,
+          { decor: true });
+      }
+      // the white newel where the railing meets the brick
+      sink.span('structureWood', sx * (W / 2 - 0.06) - 0.09, yD, face - 0.09, sx * (W / 2 - 0.06) + 0.09, yD + 1.2, face + 0.09, white);
+    }
+  }
+  // ---- the leaves and the portals over the lift piers (or the abutments) with their balances
+  liftLeaves(sink, span, W, top);
+  liftPortals(sink, span, W, top, postX, portalH);
+  const movement = ctx.params.drivable === false ? undefined : (() => {
+    // the roadway: parts at most `step` long a metre deep under its surface, its edges (the railings, the parapets) in
+    // runs at most `edgeStep` long from the run's lowest surface to `edge` over its highest
+    const parts: SimpleCollisionShape[] = [];
+    const run = (z0: number, z1: number, step: number, edge: number, edgeStep: number) => {
+      const n = Math.max(1, Math.ceil((z1 - z0) / step - 1e-6));
+      for (let i = 0; i < n; i++) {
+        const a = z0 + (z1 - z0) * i / n, b = z0 + (z1 - z0) * (i + 1) / n, c = (a + b) / 2, y = Math.max(top(a), top(c), top(b));
+        parts.push({ kind: 'obb', cx: 0, cz: c, hw: W / 2, hl: (b - a) / 2, yaw: 0, y0: y - DECK_PART_M, y1: y });
+      }
+      const m = Math.max(1, Math.ceil((z1 - z0) / edgeStep - 1e-6));
+      for (let i = 0; i < m; i++) {
+        const a = z0 + (z1 - z0) * i / m, b = z0 + (z1 - z0) * (i + 1) / m, c = (a + b) / 2;
+        const lo = Math.min(top(a), top(c), top(b)), hi = Math.max(top(a), top(c), top(b));
+        for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * (W / 2 - 0.1), cz: c, hw: 0.1, hl: (b - a) / 2, yaw: 0, y0: lo, y1: hi + edge });
+      }
+    };
+    // the lift span (its hump in 3 m parts), the level roadway over the piers, the fixed spans and the abutments (one part
+    // each side), the ramps in 1 m parts (a 1:7 ramp steps 0.14 m: collision.ts HULL_STEP_UP_M is 0.55)
+    run(-s, s, 3, 1.05, 3);
+    for (const zs of [-1, 1]) {
+      const R = ramp.get(zs) ?? 0, a = zs * s, b = zs * (E + AB), c = zs * (E + AB + R);
+      run(Math.min(a, b), Math.max(a, b), Infinity, 1.05, Infinity);
+      if (R > 0) run(Math.min(b, c), Math.max(b, c), 1, 0.6, 2);
+      // the piers and the abutments from the bed to under the roadway's parts, and the portal posts
+      if (P > 0) parts.push({ kind: 'obb', cx: 0, cz: zs * (s + P / 2), hw: W / 2 + 0.9, hl: P / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (s + P / 2)) - 1.0, y1: yD - DECK_PART_M });
+      parts.push({ kind: 'obb', cx: 0, cz: zs * (E + AB / 2), hw: W / 2 + 0.9, hl: AB / 2, yaw: 0, y0: groundAt(ctx, 0, zs * (E + AB / 2)) - 1.0, y1: yD - DECK_PART_M });
+      for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * postX, cz: zs * (s + 0.55), hw: 0.17, hl: 0.17, yaw: 0, y0: top(zs * s) - 0.45, y1: top(zs * s) + portalH });
+    }
+    return parts;
+  })();
+  return { parts: sink.finish(), movement };
+}

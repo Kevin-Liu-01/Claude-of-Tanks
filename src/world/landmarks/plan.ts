@@ -4,7 +4,7 @@
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
 
-type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck';
+type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour';
 
 interface LandmarkKindSpec {
   family: LandmarkFamily;
@@ -17,6 +17,22 @@ interface LandmarkKindSpec {
   /** How far its footprint keeps from a road's line (default the carriageway's 3.5 m core): a plot a map lane hands over
    *  against an apron (whose paving the road field counts) keeps none. */
   roadMargin?: number;
+  /** The piece stands in the water and reaches its bank (a reservoir's valve tower and its bridge): the composer admits
+   *  water under its footprint and the bank's fall above its foot, as it does a bridge's. */
+  inWater?: boolean;
+  /** The piece is all dressing (a square's green, a path, a churchyard without its gateway): no solid, no collision record. */
+  dressing?: (p: LandmarkParams) => boolean;
+  /** The piece follows the ground itself (draped paving and beds, a terrace that levels itself and banks to the slope):
+   *  the composer seats it at any fall under its footprint (the 3.2 m limit keeps a rigid piece from burying its side). */
+  drapes?: boolean;
+  /** Its surface carries the map's street life (a market square's setts, a path): on a vetoed ground (types.ts `ground`)
+   *  what the passes after it stand on it stays. */
+  open?: boolean;
+}
+
+/** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
+export function isDressingPiece(placement: LandmarkPlacement): boolean {
+  return LANDMARK_KINDS[placement.kind].dressing?.(resolveLandmarkParams(placement)) ?? false;
 }
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
@@ -36,12 +52,20 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   baileyBridge: { family: 'bridge', spansRoad: true, defaults: { bays: 8, width: 4.2, deck: 2.4, drivable: true },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'bays') * 3.048 / 2 + 6] },
   // (the abutments run 3.2 m back into the banks; the balance beams' tails reach back over the approaches)
-  liftBridge: { family: 'bridge', spansRoad: true, defaults: { span: 14, width: 5.5, deck: 2.4, drivable: true },
-    footprint: (p) => [num(p, 'width') / 2 + 1.1, num(p, 'span') / 2 + 0.75 + Math.max(3.6, num(p, 'span') * 0.42)] },
+  // (the balances' tails reach back over the approach; the long form — `approach` or `rise` — runs on over its lift piers,
+  // its fixed spans, its abutments and its ramps, each ramp at most (rise + 0.5) / grade long: bridges.ts liftBridge)
+  liftBridge: { family: 'bridge', spansRoad: true, defaults: { span: 14, width: 5.5, deck: 2.4, drivable: true, approach: 0, rise: 0, grade: 1 / 7 },
+    footprint: (p) => {
+      const span = num(p, 'span'), approach = Math.max(0, num(p, 'approach')), rise = Math.max(0, num(p, 'rise'));
+      const balances = span / 2 + 0.75 + Math.max(3.6, span * 0.42);
+      const grade = Math.min(0.25, Math.max(0.05, num(p, 'grade')));
+      const long = approach > 0 || rise > 0 ? span / 2 + (approach > 0 ? 2.6 : 0) + approach + 3.2 + (rise > 0 ? (rise + 0.5) / grade : 0) + 0.3 : 0;
+      return [num(p, 'width') / 2 + 1.1, Math.max(balances, long)];
+    } },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
   // ------------------------------------------------------------------------------------------------ monuments
-  obelisk: { family: 'monument', defaults: { height: 9, finial: 'star', railing: true },
+  obelisk: { family: 'monument', defaults: { height: 9, finial: 'star', railing: true, inscription: '' },
     footprint: (p) => { const r = 1.6 + num(p, 'height') * 0.12 + (p.railing ? 1.4 : 0); return [r, r]; } },
   columnMonument: { family: 'monument', defaults: { height: 16 },
     footprint: (p) => { const r = 2.2 + num(p, 'height') * 0.1; return [r, r]; } },
@@ -52,35 +76,84 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   equestrianStatue: { family: 'monument', defaults: { scale: 1.6, plinth: 3.6 },
     footprint: (p) => [1.6 + num(p, 'scale') * 0.9, 2.6 + num(p, 'scale') * 1.7] },
   // ------------------------------------------------------------------------------------------------ parks and squares
-  fountain: { family: 'park', defaults: { radius: 4.5, tiers: 2 },
-    footprint: (p) => [num(p, 'radius') + 0.4, num(p, 'radius') + 0.4] },
+  // (style 'ottoman': the octagonal basin round its pillar, its corners on the radius / cos 22.5 degrees; style 'markt':
+  // the Franconian trough on its step, 0.6 m past the corners)
+  fountain: { family: 'park', defaults: { radius: 4.5, tiers: 2, style: 'tiered' },
+    footprint: (p) => { const r = (p.style === 'ottoman' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.1 : p.style === 'markt' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.6 : num(p, 'radius')) + 0.4; return [r, r]; } },
   bandstand: { family: 'park', defaults: { radius: 4.2 },
     footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 0.9] },
   // (the end piers' caps past the railings; the open leaves swing 2 m into the park)
   parkGate: { family: 'park', spansRoad: true, defaults: { width: 4.4, railing: 10 },
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'railing') + 2.3, 2.2] },
   // a square: a lawn, its paths and railing, benches and lamps (the props destructibles) round a centre piece
-  parkSquare: { family: 'park', defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
+  parkSquare: { family: 'park', dressing: () => true, defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
+  // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
+  // the graves (the gateway's piers and cornice 0.35 m past the front fence)
+  churchyard: { family: 'park', drapes: true, dressing: (p) => p.holyGate === false || p.gate === 'left' || p.gate === 'right', defaults: { width: 24, depth: 12, fence: 'fencepicket', holyGate: true, path: 1.6,
+    graves: 10, tradition: 'orthodox', back: 'open', gate: 'front' },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
+  // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
+  // and the box at the path's mouth
+  garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
+    footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
+  // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
+  // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
+  // it leaves (no road margin) and stands on nothing.
+  path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
+    footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
     footprint: (p) => [num(p, 'passage') / 2 + 2.4 + num(p, 'walls'), num(p, 'depth') / 2 + 0.6] },
   triumphalArch: { family: 'gate', spansRoad: true, defaults: { passage: 7, height: 16, arches: 1 },
     footprint: (p) => [(num(p, 'arches') > 1 ? num(p, 'passage') * 1.9 : num(p, 'passage') / 2 + 3.4) + 0.4, 3.4] },
   // (the flags stream a metre past the pillars)
-  kolkhozArch: { family: 'gate', spansRoad: true, defaults: { span: 10, height: 6.2 },
-    footprint: (p) => [num(p, 'span') / 2 + 1.7, 0.9] },
+  // (`sign`: the farm's name on the banner, both faces; `wings`: a fence run of that length off each pillar, the props'
+  // own destructible `wingFence` modules)
+  kolkhozArch: { family: 'gate', spansRoad: true, defaults: { span: 10, height: 6.2, sign: 'КОЛХОЗ «КРАСНЫЙ ОКТЯБРЬ»', wings: 0, wingFence: 'fencepicket' },
+    footprint: (p) => [num(p, 'span') / 2 + 1.7 + Math.max(0, num(p, 'wings')), 0.9] },
   torii: { family: 'gate', spansRoad: true, defaults: { span: 6, height: 7.5 },
     footprint: (p) => [num(p, 'span') / 2 + 1.6, 0.9] },
   // ------------------------------------------------------------------------------------------------ towers
-  belfry: { family: 'tower', defaults: { height: 26, side: 6, crown: 'onion' },
+  // (style 'podhale': the timber dzwonnica, its pent roof skirting the battered lower storey inside the side at its foot)
+  belfry: { family: 'tower', defaults: { height: 26, side: 6, crown: 'onion', style: 'masonry' },
     footprint: (p) => [num(p, 'side') / 2 + 0.8, num(p, 'side') / 2 + 0.8] },
+  // (its broad step and the door's flight are dressing within a metre of the shaft: the footprint, and the ground it
+  // reserves, stay the shaft's own)
   campanile: { family: 'tower', defaults: { height: 30, side: 5 },
     footprint: (p) => [num(p, 'side') / 2 + 0.5, num(p, 'side') / 2 + 0.5] },
   waterTower: { family: 'tower', defaults: { height: 18, style: 'railway' },
     footprint: (p) => { const r = p.style === 'railway' ? 4.6 : p.style === 'rozhnovsky' ? 3.4 : 4.2; return [r, r]; } },
   fireLookout: { family: 'tower', defaults: { height: 22 },
     footprint: (p) => { const r = 2.6 + num(p, 'height') * 0.05; return [r, r]; } },
+  // ------------------------------------------------------------------------------------------------ village works
+  // (the floor a step proud of the walls, the hipped roof's eaves past them)
+  lavoir: { family: 'civic', defaults: { length: 12, depth: 7, bays: 3 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.6, num(p, 'depth') / 2 + 0.6] },
+  // (the street range alone for `form: 'arcade'`; the gate's dressed frame 0.25 m proud of the street front)
+  // (`forecourt`: a paved front that deep before the street front; the footprint keeps its depth both ways)
+  khan: { family: 'civic', defaults: { width: 26, depth: 24, range: 6, form: 'court', forecourt: 0 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.2 + (num(p, 'forecourt') > 0 ? 0.6 : 0),
+      (p.form === 'arcade' ? num(p, 'range') : num(p, 'depth')) / 2 + 0.45 + Math.max(0, num(p, 'forecourt') || 0)] },
+  // ------------------------------------------------------------------------------------------------ harbour works
+  // (the light's battered plinth, and the skerry's boulders round it when it stands on a rock: harbour.ts lighthouse)
+  lighthouse: { family: 'harbour', inWater: true, defaults: { height: 11, radius: 1.6, paint: 'red', base: 'plinth', rise: 1.5 },
+    footprint: (p) => { const r = num(p, 'radius') + 1.1 + (p.base === 'rock' ? 1.3 : 0.05); return [r, r]; } },
+  // (the frame from the root's end to the round head's: the light's axis `length` from the root, the head's platform
+  // half the width and 1.6 m past it, the batter; the steps by the root stand inside the head's width)
+  // a quay wall `length` along the sea (local x), its top `top` over the lowest ground, `depth` back to the land
+  quay: { family: 'harbour', inWater: true, drapes: true, defaults: { length: 40, depth: 14, top: 1.4 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'depth') / 2 + 0.4] },
+  // a slipway running down along +z from its head into the water (dressing)
+  slipway: { family: 'harbour', inWater: true, drapes: true, dressing: () => true, defaults: { length: 12, width: 5, head: 0.2, toe: -0.6 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 0.3] },
+  mole: { family: 'harbour', inWater: true,
+    defaults: { length: 40, width: 6, deck: 2.2, sea: 'left', light: 'red', height: 11, radius: 1.6 },
+    footprint: (p) => { const Rh = num(p, 'width') / 2 + 1.6; return [Rh + 0.45, (num(p, 'length') + Rh) / 2 + 0.45]; } },
+  // (the tower's axis at (bridge - radius) / 2 along its frame, the bridge's bank end at -(bridge + radius) / 2: the whole
+  // piece centred on its frame; its batter, cornice and roof 1.1 m past the shaft)
+  valveTower: { family: 'tower', inWater: true, defaults: { radius: 4.2, bridge: 34, width: 3.2, chamber: 5.4 },
+    footprint: (p) => [Math.max(num(p, 'radius') + 1.1, num(p, 'width') / 2 + 1.2), (num(p, 'bridge') + num(p, 'radius')) / 2 + 1.1] },
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
@@ -108,7 +181,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   colonialBungalow: { family: 'civic', defaults: { width: 17, depth: 11, veranda: 2.6, damage: 0 },
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'veranda') + 0.7, num(p, 'depth') / 2 + num(p, 'veranda') + 3.9] },
   // the terraced tennis court (a doubles court and its run-off, 36.6 × 18.3 m) and its retaining walls
-  tennisCourt: { family: 'park', defaults: { damage: 0 }, footprint: () => [9.9, 19.1] as const },
+  // (round 2: the banks fall from the terrace's edge to the slope, `bank` metres out at most; `steps` the side whose bank
+  // carries a flight of steps, -1, +1 or 0)
+  tennisCourt: { family: 'park', drapes: true, defaults: { damage: 0, steps: 0, bank: 4 },
+    footprint: (p) => [9.9 + 0.5 + Math.max(0, num(p, 'bank')), 19.1 + 0.5 + Math.max(0, num(p, 'bank'))] },
   // ------------------------------------------------------------------------------------------------ temples
   // the Bengal aat-chala temple: the plinth (0.9 m round the cella), the steps 1.3 m out at the front, the eaves' overhang
   bengalTemple: { family: 'civic', defaults: { side: 7.5 },

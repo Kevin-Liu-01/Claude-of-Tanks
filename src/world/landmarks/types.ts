@@ -17,17 +17,21 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
-  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill'
+  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill' | 'valveTower'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
   // a hill station's colonial pieces
   | 'colonialBungalow' | 'tennisCourt'
   // temples
   | 'bengalTemple'
+  // village works
+  | 'lavoir' | 'khan'
+  // harbour works
+  | 'lighthouse' | 'mole' | 'quay' | 'slipway'
   // wrecks
   | 'aircraftWreck';
 
@@ -52,6 +56,14 @@ export interface LandmarkPlacement {
   roadMargin?: number;
   /** A variant seed: another draw of the same kind at the same place. */
   seed?: number;
+  /**
+   * How the passes after the composer meet the piece's ground. 'reserve' (the default): discs in the props' placement
+   * list that they keep off, drawing again round them — a piece composed with its map shapes what grows up round it.
+   * 'veto': a piece set into a finished map (round 2, 2026-10-06: Frontier's square and churchyard among the
+   * map-revival lane's courts): they draw as on the map without it, and what they would stand on its ground is left out
+   * (props.ts), so no record of theirs moves for it.
+   */
+  ground?: 'reserve' | 'veto';
 }
 
 /** What a builder may read. It never draws from the props placement streams. */
@@ -63,6 +75,11 @@ export interface LandmarkBuildContext {
   rng: () => number;
   /** A second stream for look-only choices: a new choice never reshuffles the geometry drawn after it. */
   variant: () => number;
+  /**
+   * A third stream for the piece's age (age.ts: spalled render, rain streaks, soot), so a piece's weathering never
+   * moves its geometry or its look choices. Absent in receipts that build without the composer.
+   */
+  age?: () => number;
   /** 'mobile' builds leave out the finest dressing (never a structural part: the collision is tier-independent). */
   tier: 'desktop' | 'mobile';
   /** The ground's fall under the footprint (m): the plinths reach this far below the base on a slope. */
