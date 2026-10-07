@@ -257,6 +257,11 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
   const before = ctx.obstacles.slice(0, obstacleStart);
   const c = Math.cos(yaw), s = Math.sin(yaw), out: LandmarkPlacement[] = [];
   const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
+  // (a face with several doors numbers them along it, so each receipt line names its own)
+  const nth = (k: number): string => {
+    const side = placement.approaches![k].side, all = placement.approaches!.filter((d) => d.side === side);
+    return all.length > 1 ? ` ${all.indexOf(placement.approaches![k]) + 1}` : '';
+  };
   placement.approaches.forEach((door, k) => {
     const u = door.u ?? 0, width = Math.max(0.8, door.width ?? 1.6), depth = Math.max(1, door.depth ?? 2.5);
     const ex = hw - Math.max(0, door.inset ?? 0), ez = hl - Math.max(0, door.inset ?? 0);
@@ -269,7 +274,7 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
     const ax = px + wx * depth / 2, az = pz + wz * depth / 2;
     if (solidConflicts(before, ax, az, (width + 2) / 2, depth / 2, Math.atan2(wx, wz), ctx.hardKinds).hard) return;
     out.push({ kind: 'path', x: ax, z: az, yawDeg: heading, ground: 'veto', seed: (placement.seed ?? 0) * 31 + 101 + k,
-      name: `${label}: the trodden ground at its ${door.side} door`, params: { length: depth, width: width + 2, surface } });
+      name: `${label}: the trodden ground at its ${door.side} door${nth(k)}`, params: { length: depth, width: width + 2, surface } });
     if (door.path === false) return;
     // the path: straight out from the apron to the road's edge, through a gap only
     const qx = px + wx * depth, qz = pz + wz * depth;
@@ -284,7 +289,7 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
     const found = solidConflicts(before, cx, cz, 0.9, reach / 2, Math.atan2(wx, wz), ctx.hardKinds);
     if (found.hard || found.soft.length) return;
     out.push({ kind: 'path', x: cx, z: cz, yawDeg: heading, ground: 'veto', seed: (placement.seed ?? 0) * 31 + 201 + k,
-      name: `${label}: the worn path from its ${door.side} door to the road`, params: { length: reach, width: 1.6, surface } });
+      name: `${label}: the worn path from its ${door.side} door${nth(k)} to the road`, params: { length: reach, width: 1.6, surface } });
   });
   return out;
 }
