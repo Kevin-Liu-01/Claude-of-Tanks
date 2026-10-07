@@ -153,6 +153,7 @@ interface SceneryCaprock {
   span?: number;
   tone?: readonly [number, number, number];
   thickness?: readonly [number, number];
+  blockM?: readonly [number, number];
   name?: string;
 }
 
