@@ -6155,6 +6155,13 @@ void splatCompute() {
     // veins, not a blue static field
     float iceGrey = dot(a.rgb, vec3(0.30, 0.45, 0.25));
     a.rgb = mix(a.rgb, vec3(iceGrey) * vec3(0.965, 1.0, 1.05), fMs * farM * 0.6 * (1.0 - uSea));
+    // ground lane (2026-10-07, wave 182's Frosthollow bird: "grey decal-like ice ponds" — and mr2's river ribbon reads as one
+    // grey band from above): a frozen sheet in a snowfield is dusted. Wind-sifted snow and hoar lie over its whole face in
+    // patches — thin over the clear-ice fields, a third of the way to snow where it gathers — so the sheet reads as ice lying
+    // in the snow, its cracks, depth fields and drifts kept under the dust, rather than a grey cut-out. The snow is the base
+    // layer's measured mean (uMeanG) and the patches the existing fields (no read); open water (uSea) takes none
+    float iceDust = (0.14 + 0.24 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3)) * fMs * (1.0 - uSea);
+    a.rgb = mix(a.rgb, uMeanG.rgb, iceDust);
     // ground lane (2026-10-03, the gauntlet: "grey frozen ponds dotted with white blobs"): snow on lake ice lies in
     // drifts the wind combs out along itself — long tongues and streaks three times their width — not round blots
     vec2 iceWind = vec2(0.6220, 0.7830); // the snow maps' sastrugi wind (the drift waves above)

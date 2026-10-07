@@ -303,4 +303,13 @@ let bedLawNote = '';
   assert.ok(shader.includes('float bedH = bedY + (bedF / 1.06 - 1.0) * 7.6394 * sin((bedY + gCliffJ * 9.7) * 0.13090);'),
     'the strata read the banded bed height');
 }
+// (2026-10-07, wave 182's "grey decal-like ice ponds") the frozen sheet dusted with snow in patches: the base layer's
+// measured mean over the ice, by the existing fields (no read), never on open water
+{
+  const frag = shaderOf(terrain);
+  assert.ok(frag.includes('float iceDust = (0.14 + 0.24 * smoothstep(0.30, 0.75, n2w * 0.7 + n1 * 0.3)) * fMs * (1.0 - uSea);')
+    && frag.includes('a.rgb = mix(a.rgb, uMeanG.rgb, iceDust);'), 'the frozen sheet takes a patchy dust of snow, off the sea');
+  const ice = frag.slice(frag.indexOf('if (uIceDrift > 0.001 && fMs > 0.02) {'), frag.indexOf('float iceDust ='));
+  assert.ok(ice.length > 0 && ice.includes('vec4 iceMacro'), 'the dust lies inside the ice sheet block, after its macro and grey');
+}
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${bedLawNote}, ${mutants.length + 4} mutation controls PASS; no GPU/art claim`);
