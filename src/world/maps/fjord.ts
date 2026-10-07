@@ -116,10 +116,10 @@ export default {
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
     // round 3 (wave 129: "one smooth lime-green grass carpet") took the steppe's withered grass under an olive cast;
     // round 4 (wave 189: "a dead-flat, near-black bare-earth plane dotted with white pebbles ... scorched or unfinished
-    // ground"): a Nordland meadow in early summer — the fjord row's own grass, its blades a green-yellow (Grass004's
-    // mean 0.12/0.154/0.031 linear to ~0.091/0.122/0.037: red three quarters of the green, the blue lifted half again
-    // so the sward is a softer green than the photo's lime), its dirt and dark blue-grey gneiss the row's own
-    sourcedTint: { G: [1.0, 0.92, 1.5] },
+    // ground"): a Nordland meadow in early summer — the fjord row's own grass, a shade brighter and toward green-yellow
+    // (under round 2's warm macro tints the sward's albedo ~0.096/0.141/0.018 linear; the PR head's ~0.075/0.119/0.022).
+    // (pair15: a blue lift, 1.0/0.92/1.5, read grey-blue in the street's light — the sky's fill already carries the blue)
+    sourcedTint: { G: [1.15, 1.2, 0.95] },
     // the dirt on the tracks and the yards only: the noise-worn field patches grazed turf (was the default 0.84)
     wornDirtStrength: 0.35,
     // the gneiss breaks the sod in places: the outcrop patches take rock from ~15 degrees (the knolls' and roches
@@ -151,9 +151,9 @@ export default {
     // spruce scrub and more coastal rock give the slopes a fjord texture.
     // (wave 111b: "evenly spaced identical lime-green grass billboards") the sward short and thin after the snow, last year's
     // straw over the new blades; round 4 (wave 189: "a few yellow tufts" on bare ground): the early summer's sward, most
-    // of the ground covered, the blades green-yellow and each card keeping its own shades (the hue follows the
+    // of the ground covered (0.8, the PR head's 0.78), the blades green-yellow and each card keeping its own shades (the hue follows the
     // texture's, a little yellower where it is pale)
-    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.62,
+    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.8,
     grassTexTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.21 + (h - 0.25) * 0.35 - (l - 0.5) * 0.05), clamp01(s * 0.42 + 0.08), clamp01(l * 0.84 + 0.08)],
     // (wave 189: "dotted with white pebbles") fewer field stones, and a lichened gneiss grey at the turf's value
     litter: { density: 0.45, stones: 0.6, clods: 0.35, splinters: 0.45, stoneTint: [0.105, 0.11, 0.1] },
