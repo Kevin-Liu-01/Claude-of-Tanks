@@ -2,7 +2,8 @@
 // on the real seeded producer of Ruinspires. Off (the default), every tree keeps out of the village rect and 24 m round
 // it, and a map with `parks` grows trees only inside them, so the parks inside its town grew nothing. On, a belt's trees
 // and a park's stand inside the village (the road, ground, slope and spawn rules still hold), and a belt's trees need no
-// park. A construction receipt: no GPU, no art claim (the city's trees are the cities lane's to place).
+// park. A construction receipt: no GPU, no art claim (the city's trees are the cities lane's to place); a map that
+// sets it (Ruinspires, the cities lane's) is a town map.
 import assert from 'node:assert/strict';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
@@ -31,8 +32,11 @@ function canvasFixture() {
   } };
 }
 
-// no map sets it here: the cities lane opts Ruinspires in on its own branch
-for (const id of MAP_IDS) assert.notEqual(getMapConfig(id).vegetation?.townTrees, true, `${id}: no map sets townTrees in this commit`);
+// the maps that opt in are town maps: a village with parks or tree belts to plant in it (the cities lane's Ruinspires)
+for (const id of MAP_IDS) {
+  const veg = getMapConfig(id).vegetation;
+  if (veg?.townTrees === true) assert.ok((veg.parks ?? []).length || (veg.belts ?? []).length, `${id}: townTrees on a map with parks or belts`);
+}
 
 const cfg = getMapConfig('ruinspires'), field = createHeightField(1337, cfg);
 const village = field._layout.village; // (the layout's, as vegetation.ts reads it)
@@ -49,7 +53,8 @@ const nearBelt = (x, z) => Math.abs(x - BELT.x0) < 0.5 && z > BELT.z0 - 0.5 && z
 const restore = canvasFixture();
 try {
   const build = (vegetation) => createVegetation(field, { setupShadowMaterial() {} }, 2001, { ...cfg, vegetation: { ...cfg.vegetation, ...vegetation } });
-  const off = build({ belts: [...(cfg.vegetation.belts ?? []), BELT] }), on = build({ townTrees: true, belts: [...(cfg.vegetation.belts ?? []), BELT] });
+  // (each side says its own setting: the map may set townTrees itself)
+  const off = build({ townTrees: false, belts: [...(cfg.vegetation.belts ?? []), BELT] }), on = build({ townTrees: true, belts: [...(cfg.vegetation.belts ?? []), BELT] });
   try {
     const at = (t) => [t.mat.elements[12], t.mat.elements[14]];
     const townOff = off._trees.filter((t) => inTown(...at(t))), townOn = on._trees.filter((t) => inTown(...at(t)));
@@ -67,4 +72,4 @@ try {
     for (const w of [off, on]) { w.dispose(); disposeObject3DResources(w.group); }
   }
 } finally { restore(); }
-console.log('townTrees.selftest: off, no tree in the town; on, its parks grow and its belts stand in it, nothing else enters; no map sets it PASS');
+console.log('townTrees.selftest: off, no tree in the town; on, its parks grow and its belts stand in it, nothing else enters; the maps that set it are town maps PASS');
