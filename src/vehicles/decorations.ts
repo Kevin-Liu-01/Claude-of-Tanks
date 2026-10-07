@@ -2336,9 +2336,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
 
   const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
   // Viper's tall launcher makes the old upright fallback conspicuous. Its
-  // towing cable has a dedicated, armor-seated run along the hull side.
+  // towing cable has a dedicated, armor-seated run along the hull side, and it
+  // is always carried (round 3: a 0.85 roll on the shared stream let unrelated
+  // seating changes drop it).
   if (spec.id === 'griffin_viper') {
-    for (const row of base) if (row.kit === 'cable') row.slot = ['hullSideCable', { side: 1 }];
+    for (const row of base) if (row.kit === 'cable') { row.slot = ['hullSideCable', { side: 1 }]; row.p = 1; }
   }
   const serviceItem = choose(serviceGear, 'fender-service');
   const cargo: DecorManifestRow[] = [
@@ -3152,9 +3154,11 @@ export function* attachTankDecorationsSteps(
 
     const decorId = decorIdentityFor(spec.id);
     const rng = mulberry32(fnv1a(`decor:${decorId}`));
-    // Round 3: a load's transit yaw and station jitter draw from their own stream, so seating retries never shift
-    // the manifest's rolls (which optional rows appear) on the main stream.
-    const placeRng = mulberry32(fnv1a(`decor-place:${decorId}`));
+    // Round 3 (2026-10-07): every slot draw (yaw, station jitter, transit yaw) comes from a per-row stream seeded by
+    // the row's own jitter seed. The main stream then advances exactly two draws per row (its roll and its seed)
+    // whatever the seating retries, so no geometry change upstream can flip which optional rows dress a tank
+    // (griffinViper's tow cable flipped twice in this round).
+    let slotRng: Rng = mulberry32(0x51a7e);
     const materials = buildDecorMaterials(spec, engineCtx);
     mats = materials;
     const dims = spec.dims;
@@ -3673,8 +3677,8 @@ export function* attachTankDecorationsSteps(
           const inward = -Math.sign(xs || 1);
           for (const dz of [0, -0.25, 0.28, -0.5, 0.14, -0.38]) {
             for (const dx of [0, inward * 0.16, inward * 0.32]) {
-              const yaw = transitYaw(placeRng) + (args.spread ? (placeRng() - 0.5) * 0.8 : 0);
-              const px = xs + dx + (placeRng() - 0.5) * 0.05, pz = z0 + dz + (placeRng() - 0.5) * 0.05;
+              const yaw = transitYaw(slotRng) + (args.spread ? (slotRng() - 0.5) * 0.8 : 0);
+              const px = xs + dx + (slotRng() - 0.5) * 0.05, pz = z0 + dz + (slotRng() - 0.5) * 0.05;
               const seat = supportedSeat(hullP, px, pz, w, d, topFrom, 0.28, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
               if (!seat || !seat.n || seat.n.y < (casemate ? 0.8 : LOAD_MIN_NY)) continue;
               if (commit(name, parts, 'hull', V(px, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
@@ -3687,7 +3691,7 @@ export function* attachTankDecorationsSteps(
         for (const dz of [0, -0.25, 0.28, -0.5]) {
           const seat = seatProbe(hullP, xs, z0 + dz, w, d, topFrom, 0.28);
           if (!seat) continue;
-          const yaw = (rng() - 0.5) * 0.16 + (args.spread ? (rng() - 0.5) * 0.8 : 0);
+          const yaw = (slotRng() - 0.5) * 0.16 + (args.spread ? (slotRng() - 0.5) * 0.8 : 0);
           if (commit(name, parts, 'hull', V(xs, seat.y - 0.012, z0 + dz), E(0, yaw, 0), placedHull, { seatY: seat.y })) return true;
         }
         disposePartList(parts);
@@ -3706,7 +3710,7 @@ export function* attachTankDecorationsSteps(
           return false;
         }
         const embedM = 0.004;
-        const yaw = (rng() - 0.5) * 0.04;
+        const yaw = (slotRng() - 0.5) * 0.04;
         return commit(name, parts, 'hull', roofMountPosition(parts, hit, embedM),
           roofMountEuler(hit.n, yaw), placedHull, {
             seatY: seat.y,
@@ -3733,8 +3737,8 @@ export function* attachTankDecorationsSteps(
           // Round 3: a load on the fender takes a supported seat (see supportedSeat), stepping along the run.
           const soft = sagsOnSupport(name);
           for (const dz of [0, 0.18, -0.18, 0.36, -0.36]) {
-            const yaw = (rot90 ? Math.PI / 2 : 0) + transitYaw(placeRng);
-            const pz = z + dz + (placeRng() - 0.5) * 0.04;
+            const yaw = (rot90 ? Math.PI / 2 : 0) + transitYaw(slotRng);
+            const pz = z + dz + (slotRng() - 0.5) * 0.04;
             const seat = supportedSeat(hullP, side * fx, pz, w, d, topFrom, 0.26, soft);
             if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
             if (commit(name, parts, 'hull', V(side * fx, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
@@ -3745,7 +3749,7 @@ export function* attachTankDecorationsSteps(
         }
         const seat = seatProbe(hullP, side * fx, z, Math.min(w, 0.34), Math.min(d, 0.4), topFrom, 0.26);
         if (!seat) { disposePartList(parts); return false; }
-        const yaw = (rot90 ? Math.PI / 2 : 0) + (rng() - 0.5) * 0.08;
+        const yaw = (rot90 ? Math.PI / 2 : 0) + (slotRng() - 0.5) * 0.08;
         return commit(name, parts, 'hull', V(side * fx, seat.y - 0.012, z), E(0, yaw, 0), placedHull, { seatY: seat.y });
       },
       glacis(args, parts, name) {
@@ -3872,7 +3876,7 @@ export function* attachTankDecorationsSteps(
         const gap = 0.02;
         const pieceZ = h.p.z - gap - bb.max.z;
         const plateZ = h.p.z - pieceZ;
-        const yaw = transitYaw(placeRng) * 0.5;
+        const yaw = transitYaw(slotRng) * 0.5;
         const pivotX = (bb.min.x + bb.max.x) / 2, pivotZ = (bb.min.z + bb.max.z) / 2;
         const about = new THREE.Matrix4().makeTranslation(pivotX, 0, pivotZ)
           .multiply(new THREE.Matrix4().makeRotationY(yaw))
@@ -3925,7 +3929,7 @@ export function* attachTankDecorationsSteps(
         const y = Math.max(H * 0.33, rearDeckY * 0.62);
         const h = hullP.zface(0, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
-        return commit(name, parts, 'hull', V(0, y, h.p.z - 0.16), E(0, 0, (rng() - 0.5) * 0.04), placedHull,
+        return commit(name, parts, 'hull', V(0, y, h.p.z - 0.16), E(0, 0, (slotRng() - 0.5) * 0.04), placedHull,
           { seatY: y, zExtra: 0.35 });
       },
       hullRearHang(_args, parts, name) {
@@ -3994,8 +3998,8 @@ export function* attachTankDecorationsSteps(
         const load = isLoadPiece(name), soft = sagsOnSupport(name);
         if (load) cands.push([0.36, -0.12], [-0.36, 0.1], [0.2, -0.46], [-0.16, -0.5], [0.42, 0.24], [-0.44, -0.36], [0.32, 0.3], [-0.06, -0.62]);
         for (const [dx, dz] of cands) {
-          const yaw = load ? transitYaw(placeRng) : 0;
-          const jx = load ? (placeRng() - 0.5) * 0.06 : 0, jz = load ? (placeRng() - 0.5) * 0.06 : 0;
+          const yaw = load ? transitYaw(slotRng) : 0;
+          const jx = load ? (slotRng() - 0.5) * 0.06 : 0, jz = load ? (slotRng() - 0.5) * 0.06 : 0;
           const x = xBase + dx + jx, z = zBase + dz + jz;
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) continue; // gun corridor
           // The repaired Leopard throats are real air, including the full
@@ -4012,7 +4016,7 @@ export function* attachTankDecorationsSteps(
           }
           const seat = seatProbe(turP, x, z, Math.min(w, 0.42), Math.min(d, 0.42), 3.5, spread);
           if (!seat || !seat.n || seat.n.y < minNy) continue;
-          if (commit(name, parts, 'turret', V(x, seat.y - 0.008, z), E(0, (rng() - 0.5) * 0.2, 0), placedTurret)) return true;
+          if (commit(name, parts, 'turret', V(x, seat.y - 0.008, z), E(0, (slotRng() - 0.5) * 0.2, 0), placedTurret)) return true;
         }
         disposePartList(parts);
         return false;
@@ -4023,7 +4027,7 @@ export function* attachTankDecorationsSteps(
         if (args.onBasket && basketAnchor) {
           return commit(name, parts, 'turret',
             V(basketAnchor.x, basketAnchor.y + 0.02, basketAnchor.z - (basketAnchor.d || 0.4) / 2),
-            E(0, (rng() - 0.5) * 0.3, 0), placedTurret, { allowOverlap: true });
+            E(0, (slotRng() - 0.5) * 0.3, 0), placedTurret, { allowOverlap: true });
         }
         const x = (args.side || 0) * Math.min(W * 0.18, Math.max(0.22, sweepR * 0.22));
         if (isLoadPiece(name)) {
@@ -4032,9 +4036,9 @@ export function* attachTankDecorationsSteps(
           const toward = -Math.sign(x || 1);
           for (const back of [0.1, 0.3, 0.55, 0.75]) {
             for (const dx of [0, toward * 0.14, -toward * 0.14, toward * 0.28]) {
-              const yaw = transitYaw(placeRng);
-              const px = x + dx + (placeRng() - 0.5) * 0.05;
-              const z = -(sweepR * 0.55 + back) - d * 0.2 + (placeRng() - 0.5) * 0.05;
+              const yaw = transitYaw(slotRng);
+              const px = x + dx + (slotRng() - 0.5) * 0.05;
+              const z = -(sweepR * 0.55 + back) - d * 0.2 + (slotRng() - 0.5) * 0.05;
               const seat = supportedSeat(turP, px, z, w, d, 3.5, 0.2, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
               if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
               if (commit(name, parts, 'turret', V(px, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
@@ -4047,7 +4051,7 @@ export function* attachTankDecorationsSteps(
           const z = -(sweepR * 0.55 + back) - d * 0.2;
           const seat = seatProbe(turP, x, z, Math.min(bb.max.x - bb.min.x, 0.5), Math.min(d, 0.35), 3.5, 0.2);
           if (!seat) continue;
-          if (commit(name, parts, 'turret', V(x, seat.y - 0.01, z), E(0, (rng() - 0.5) * 0.3, 0), placedTurret)) return true;
+          if (commit(name, parts, 'turret', V(x, seat.y - 0.01, z), E(0, (slotRng() - 0.5) * 0.3, 0), placedTurret)) return true;
         }
         disposePartList(parts);
         return false;
@@ -4111,7 +4115,7 @@ export function* attachTankDecorationsSteps(
               if (candidate.coarse) carry(candidate.coarse, 0);
             }
             if (commit(name, candidate, 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z),
-              E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (rng() - 0.5) * 0.1), placedTurret)) {
+              E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1), placedTurret)) {
               disposePartList(parts);
               return true;
             }
@@ -4204,7 +4208,9 @@ export function* attachTankDecorationsSteps(
       row: DecorManifestRow,
       slotFn: SlotPlacer,
       parts: DecorPartList,
+      jitterSeed: number,
     ): void {
+      slotRng = mulberry32((jitterSeed ^ 0x51a7e) >>> 0);
       try {
         const before = summary.skipped.length;
         const pieceName = row.kit === 'cargo'
@@ -4239,7 +4245,7 @@ export function* attachTankDecorationsSteps(
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
         const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts);
+        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       }
       // Radio whips stand at their mounts before loose cargo fills the rear roof
       // (2026-10-05: the molded cargo's larger footprints otherwise crowded every
@@ -4252,7 +4258,7 @@ export function* attachTankDecorationsSteps(
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
         const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts);
+        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       }
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
@@ -4262,7 +4268,7 @@ export function* attachTankDecorationsSteps(
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
             const parts = createManifestParts(row, kitFn, jitterSeed);
-            if (parts) placeManifestParts(row, slotFn, parts);
+            if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
           }
         }
         yield { stage: 'manifest-row', completed: index + 1, total: manifest.length };
