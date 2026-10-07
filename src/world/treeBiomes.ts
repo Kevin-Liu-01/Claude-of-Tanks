@@ -61,6 +61,13 @@ export interface TreeBiome {
    */
   denseStands?: true;
   /**
+   * Trees round 8 (2026-10-07, the gauntlet's wave 236 on Verdant): the form a slot's forest-grown variants take on a map
+   * whose woods close — its wood trees — over the slot's own form, which its field and shelterbelt trees keep (their open
+   * variants). Its sprays, palette and records are the slot's: the woods' poplars of Prokhorovka grow as ash, the rows
+   * along the tracks stay poplar.
+   */
+  woodForms?: Readonly<Partial<Record<TreeSpecies, GrowthSpecies>>>;
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
@@ -165,7 +172,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // (the trees lane, 2026-10-06, wave 178: "a loose grove of tall, spindly, birch-like trees ... standing apart in the
   // black-earth plough" — the birch kolki and oak dubravy close: denseStands)
   verdant: Object.freeze({ ...B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
-    denseStands: true as const }),
+    denseStands: true as const,
+    // (round 8, the gauntlet's wave 236: the forest-steppe's woods are oak and ash — the poplar slot's wood trees grow as ash)
+    woodForms: Object.freeze({ poplar: 'ash' as const }) }),
   // Wadi Rum: sparse, dust-dulled umbrella acacias (and the spring's palms) over white-broom scrub (Retama raetam: the
   // map's oak bushes read as lawn shrubs on the sand)
   badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
@@ -283,6 +292,10 @@ export function treeBiomeSnagValue(mapId: string | null | undefined): readonly [
 /** The trees lane: whether a place's stands are closed (TreeBiome.denseStands). */
 export function treeBiomeDenseStands(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.denseStands);
+}
+/** Trees round 8: the form a slot's wood trees take on a place (TreeBiome.woodForms), or none (the slot's own). */
+export function treeBiomeWoodForm(mapId: string | null | undefined, slot: TreeSpecies): GrowthSpecies | null {
+  return (mapId ? TREE_BIOMES[mapId]?.woodForms?.[slot] : null) ?? null;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

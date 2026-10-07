@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeDenseStands, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodForm, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -206,6 +206,14 @@ interface VegetationConfig {
    * its stands under the field law hold about 49 trees, the law's mean 60.75) — its woods hold its own count.
    */
   landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number; budget?: number }>;
+  /**
+   * Trees round 8 (2026-10-07, the gauntlet's waves 236-238: "open grass beneath" the woods, "a flat sunlit meadow" under
+   * Monsoon's spur wood): the stand floor the terrain draws under a closed canopy (the woods mask, _woodsMask, its
+   * applyWoodsMask: the ground lane's forest floor and no field under the trees). `'canopy'`: a wood tree's disc in the
+   * mask is the radius its drawn crown spreads (its pool's geometry at its scale), never less than its record's, so the
+   * floor runs where round 8's crowns meet; unset, every disc is its record's crown radius, as before.
+   */
+  standFloor?: 'canopy';
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
@@ -5298,7 +5306,12 @@ function* vegetationBuildSteps(
         const fp = formPal(pal);
         return makeSprayAtlas(grownFormSprayKind(growth, fp), r, texSize(512), (fp.snow ?? 0) > 0.05 ? null : fp.texTone || null, fp.snow ?? 0);
       },
-      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS),
+      // (trees round 8: a slot's wood form — Verdant's poplars in its woods grow as ash — takes the forest-grown variants;
+      // the open variant and the field crowns keep the slot's own form)
+      near: (k, pal) => {
+        const forest = forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS;
+        return buildGrownTree(forest ? treeBiomeWoodForm(cfg?.id, species) ?? growth : growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forest);
+      },
       nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
       far: legacy.far,
     };
@@ -8155,8 +8168,25 @@ function* vegetationBuildSteps(
   // harnesses compile the sections above on their own, the grass-work receipt its slices from dispose to the return).
   const woodsSize = 256, woodsCell = 1024 / 256;
   const woodsCrowns = new Float32Array(woodsSize * woodsSize);
+  // (trees round 8, `standFloor: 'canopy'`: a wood tree's disc spreads as its drawn crown — its pool's spray cards at its
+  // scale — never under its record's radius; the field trees and every map without the option keep the records')
+  const canopyFloor = veg.standFloor === 'canopy';
+  const poolCrownR = new Map<string, number>();
+  const drawnCrownR = (tree: TreeRecord): number => {
+    const key = `${tree.species}_${tree.variant}`;
+    let r = poolCrownR.get(key);
+    if (r === undefined) {
+      const cards = treeGeo[tree.species]?.[tree.variant]?.cards;
+      if (cards && !cards.boundingBox) cards.computeBoundingBox();
+      const b = cards?.boundingBox;
+      r = b ? Math.max(-b.min.x, b.max.x, -b.min.z, b.max.z) : 0;
+      poolCrownR.set(key, r);
+    }
+    const e = tree.mat.elements;
+    return r * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10]));
+  };
   for (const tree of trees) {
-    const r = Math.max(1.5, tree.cr) * 1.15;
+    const r = Math.max(1.5, canopyFloor && tree.wood ? Math.max(tree.cr, drawnCrownR(tree)) : tree.cr) * 1.15;
     const i0 = Math.max(0, Math.floor((tree.x - r + 512) / woodsCell)), i1 = Math.min(woodsSize - 1, Math.floor((tree.x + r + 512) / woodsCell));
     const j0 = Math.max(0, Math.floor((tree.z - r + 512) / woodsCell)), j1 = Math.min(woodsSize - 1, Math.floor((tree.z + r + 512) / woodsCell));
     for (let j = j0; j <= j1; j++) {

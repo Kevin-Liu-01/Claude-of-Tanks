@@ -91,6 +91,8 @@ export default {
   },
 
   vegetation: {
+    // trees round 8 (2026-10-07): the stand floor under round 8's closed canopy (vegetation.ts standFloor)
+    standFloor: 'canopy',
     species: ['oak', 'poplar', 'willow', 'pine'],
     clusterMix: [['oak', 0.34], ['poplar', 0.28], ['willow', 0.20], ['pine', 0.18]],
     loneMix: [['oak', 0.32], ['poplar', 0.28], ['willow', 0.22], ['pine', 0.18]],

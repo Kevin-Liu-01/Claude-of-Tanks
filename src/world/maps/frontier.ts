@@ -120,6 +120,8 @@ export default {
     soilTint: [1.22, 0.98, 0.78], ploughLift: 1.3,
   },
   vegetation: {
+    // trees round 8 (2026-10-07): the stand floor under round 8's closed canopy (vegetation.ts standFloor)
+    standFloor: 'canopy',
     species: ['pine', 'spruce', 'oak', 'aspen'], clusterMix: [['pine', 0.36], ['spruce', 0.28], ['oak', 0.24], ['aspen', 0.12]],
     loneMix: [['oak', 0.34], ['aspen', 0.26], ['pine', 0.22], ['spruce', 0.18]], rimMix: [['pine', 0.38], ['spruce', 0.34], ['oak', 0.18], ['aspen', 0.10]],
     clusterCount: 78, loneCount: 188, rimCount: 116, grassDensity: 1.08,

@@ -91,6 +91,8 @@ export default {
     slopeGrassHold: 0.10,
   },
   vegetation: {
+    // trees round 8 (2026-10-07): the stand floor under round 8's closed canopy (vegetation.ts standFloor)
+    standFloor: 'canopy',
     // the trees lane (2026-10-06, the gauntlet's wave 157): no palm at Kohima — the pine slot takes its share (every draw
     // keeps its seat) and grows as the Khasi pine; the slots' Naga Hills forms are treeBiomes.ts's
     species: ['eucalyptus', 'pine', 'willow', 'oak'], clusterMix: [['eucalyptus', 0.36], ['willow', 0.28], ['pine', 0.22], ['oak', 0.14]],
