@@ -38,7 +38,7 @@ export const DOCS_STAGES = {
   r4: { src: (id) => `site50/deliver/${id}/${id}.mp4`, size: [1280, 720], crf: 25 },
   review1: { src: (id) => `site50/review-r5-pr9m/${id}.mp4`, size: null, crf: 27 },
   previz: { src: (id) => `previz50/${id}.mp4`, size: [1280, 720], crf: 26 },
-  review2: { src: (id) => `site50/review-r6/${id}.mp4`, size: null, crf: 24 },
+  review2: { src: (id) => `site50/review-r6/${id}.mp4`, size: null, crf: 26 },
   final: { src: (id) => `site50/deliver-r6/${id}/${id}.mp4`, size: [1920, 1080], crf: 24 },
 };
 // The frames strip and the picker card come from the latest engine render a take has.
