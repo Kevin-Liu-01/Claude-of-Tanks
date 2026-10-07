@@ -112,7 +112,8 @@ function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) 
   assert.equal(rayCollisionRecord({x:x-10,y:high+.01,z},{x:1,y:0,z:0},collider,20,new THREE.Vector3()),-1);
 }
 function dispose(result) {for(const geometries of Object.values(result.buckets)) for(const geometry of geometries) geometry.dispose();}
-const railMaps=['railyard','foundry','skybridge','caldera'];
+// (batch 4: Skybridge round 3, e53ee9c50 — Page never had a railway: the yard's lines, coal heaps and stores are gone)
+const railMaps=['railyard','foundry','caldera'];
 const totals={};
 for(const mapId of MAP_IDS) {
   const field=createHeightField(1337,getMapConfig(mapId));
@@ -128,13 +129,14 @@ for(const mapId of MAP_IDS) {
     // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
-    // the map-revival lane (2026-10-05): Ruinspires' street kit (sarajevoStreets.ts) blocks with its burnt trams and its
-    // container screens, a convex footprint in both sinks like the heaps; the Miljacka valley (2026-10-07) adds the quays'
-    // sandbag barricades and burnt cars, the mahalas' garden walls and the crests' parapets and bunkers
+    // the map-revival lane (2026-10-05): Suzhou Creek's street kit (shanghaiStreets.ts) and Ruinspires' (sarajevoStreets.ts)
+    // block with their burnt trams (Ruinspires' container screens too), a convex footprint in both sinks like the heaps;
+    // Ruinspires' Miljacka valley (2026-10-07) adds the quays' sandbag barricades and burnt cars, the mahalas' garden walls
+    // and the crests' parapets and bunkers
     const STREET_KINDS=new Set(['tram-wreck','container-screen','sandbagwall','car-wreck','gardenwall','bunker']);
     const street=record=>STREET_KINDS.has(record.kind);
     const screens=candidate.obstacles.filter(street);
-    assert.equal(screens.length>0,mapId==='ruinspires',`${mapId}: only Ruinspires' street kit stands trams, screens, barricades and walls`);
+    assert.equal(screens.length>0,mapId==='blackglass'||mapId==='ruinspires',`${mapId}: only Suzhou Creek's and Ruinspires' street kits stand trams, screens, barricades and walls`);
     assert.equal(candidate.colliders.filter(street).length,screens.length);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
     // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
@@ -146,8 +148,10 @@ for(const mapId of MAP_IDS) {
     // records of at most 64 parts, so the footprint contract below holds for each deck's records read in order.
     // 2026-10-07: Ruinspires' Miljacka is the third (its five decks, the street kit's arches; mapKits.ts dressMapExtras)
     const bridges=candidate.obstacles.filter(record=>record.kind==='bridge'), decks=field.bridgeDecks??[];
-    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='ruinspires',
-      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct and Ruinspires' Miljacka span a bridge`);
+    // 2026-10-05 (the map-revival lane): Suzhou Creek's four bridges are the arched stone builder's third map;
+    // 2026-10-07: Ruinspires' Miljacka the fourth (its five decks, the street kit's arches; mapKits.ts dressMapExtras)
+    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='blackglass'||mapId==='ruinspires',
+      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct, Suzhou Creek's and Ruinspires' bridges span a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
     const deckRecords=decks.map(()=>[]);
     for(const bridge of bridges){

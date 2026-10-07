@@ -126,7 +126,7 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     if (ctx.tier !== 'mobile') boardWall(sink, front, -W / 2 + 0.05, W / 2 - 0.05, 0.55, 2.15, plank);
     doorUnit(sink, front, -W * 0.15, 0.5, 0.8, 1.6, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: null, leafKind: 'plank' });
     // the thatch: steep, deep eaves sweeping down to near a metre off the ground
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round' };
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
     const rg = roofGeometry(W, D, 2.2, roof);
     emitRoof(sink, rg, roof);
     // the front gable boarded up under the thatch
@@ -146,7 +146,7 @@ const granary: RegionalBuilder = (ctx) => {
   const W = Math.max(2.8, Math.min(4, ctx.info.w - 1)), D = Math.max(3.2, Math.min(5, ctx.info.d - 1.5));
   stilts(sink, W, D, 1.0, rgb(0x6a5a46), { brace: false });
   sink.span('structureWood', -W / 2 + 0.05, 1.16, -D / 2 + 0.05, W / 2 - 0.05, 2.9, D / 2 - 0.05, { colour: BAMBOO_MAT });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.5, verge: 0.4, thickness: 0.3, bucket: 'straw', ridge: 'round' };
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.5, verge: 0.4, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'rows' };
   emitRoof(sink, roofGeometry(W, D, 2.9, roof), roof);
   return sink.finish();
 };
