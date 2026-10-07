@@ -2675,7 +2675,7 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
  *   shadows, rotation=[rx,ry,rz]
  */
 function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
-  const { box } = KIT;
+  const { box, cylX, cylY } = KIT;
   const links = Math.max(1, opts.links || 4);
   const width = opts.width || 0.5;
   const pitch = opts.pitch || 0.165;
@@ -2685,17 +2685,36 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
   // isolated pads. The rails meet the underside of every link and the four
   // broad feet recess into the host armor, providing one continuous load
   // path even when the fitting is rotated onto a glacis or turret wall.
+  // 2026-10-07 (tank-accessories round 4; wave 214 on the Oplot-M stow-0: "a grey stepped block of identical bars reads
+  // as a placeholder. Give it material and fixings"): every link is a link, not two boxes: a shoe plate between two
+  // round hinge barrels, a grouser bar, and an end connector with its wedge-bolt head at each end; two clamp bars run
+  // the course over the rails, drop to the rails' ends on bolted brackets and are bolted down. Same envelope above
+  // the carrier (links -0.0225..0.05, clamps to 0.062), same rails, feet and base offset; the rails run 2.5 cm past
+  // the course at each end to take the brackets.
   const railY = -0.0315;
+  const clampZ = runDepth / 2 + 0.02;
   for (const x of [-width * 0.32, width * 0.32]) {
-    parts.add('detail', box(0.030, 0.018, runDepth), x, railY, 0);
+    parts.add('detail', box(0.030, 0.018, runDepth + 0.05), x, railY, 0);
     for (const z of [-runDepth * 0.4, runDepth * 0.4]) {
       parts.add('detail', box(0.105, 0.019, 0.045), x, -0.031, z);
     }
+    parts.add('dark', box(0.026, 0.008, runDepth + 0.05), x, 0.054, 0);                    // clamp bar over the grousers
+    for (const end of [-1, 1]) {
+      parts.add('dark', box(0.026, 0.094, 0.008), x, 0.011, end * clampZ);                 // bracket down to the rail
+      parts.add('dark', cylY(0.009, 0.009, 0.008, 6), x, 0.062, end * (clampZ - 0.012));   // clamp bolt head
+    }
   }
+  const connectorX = width / 2 - Math.min(0.016, width * 0.16);
+  const connectorW = Math.min(0.032, width * 0.3);
   for (let k = 0; k < links; k++) {
     const z = (k - (links - 1) / 2) * pitch;
-    parts.add('spareTrack', box(width, 0.045, 0.15), 0, 0, z);
-    parts.add('spareTrack', box(width * 0.88, 0.06, 0.05), 0, 0.02, z);
+    parts.add('spareTrack', box(width * 0.94, 0.026, 0.118), 0, -0.0095, z);               // shoe plate
+    for (const side of [-1, 1]) {
+      parts.add('spareTrack', cylX(0.0215, width * 0.9, 8), 0, 0, z + side * 0.0565);      // hinge barrels
+      parts.add('dark', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);             // end connector
+      parts.add('dark', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);          // wedge-bolt head
+    }
+    parts.add('spareTrack', box(width * 0.82, 0.0465, 0.036), 0, 0.02675, z);              // grouser
   }
   const fitting = fitAssemble('spareTrackLinks', parts, opts);
   fitting.userData.designFamily = 'cot-spare-track-carrier-v2';
