@@ -96,7 +96,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
-  coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
+  // (2026-10-07, the map-revival lane; gauntlet wave 184: "lime shrubs" — the Léon's gorse and broom on the banks and the
+  // downs: the shrubs grow as broom)
+  coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }, 'broom'),
   // the Fulda Gap: beech woods with spruce, oak and birch
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
