@@ -3,7 +3,7 @@ import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
-import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import { markSmokeTube, alignSmokeBanks, transferSmokeSockets, smokeSocketsFor } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -36,6 +36,7 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
+  setVehicleSootSources, VEHICLE_FIELD_WEAR_GARAGE, type VehicleSootSource,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
@@ -1537,7 +1538,8 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
     if (!(object as THREE.Mesh).isMesh) return;
     const before = object.onBeforeRender, after = object.onAfterRender;
     object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
-      setVehicleGroundFromRoot(root);
+      // the render call's frame counter lets the field-wear soot sources be placed once per frame (materials.ts)
+      setVehicleGroundFromRoot(root, args[0]?.info?.render?.frame ?? -1);
       before.apply(this, args);
     };
     object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
@@ -1545,6 +1547,38 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
       resetVehicleGround();
     };
   });
+}
+
+/**
+ * 2026-10-07 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE; wave 195: "smoke dischargers show no soot or scorch
+ * behind or around the tubes"): every launcher mesh's tube mouths (its registered smoke sockets) grouped into banks a
+ * hand-span apart, each a soot source on its own mesh so it traverses with a turret bank; the banks with the most tubes
+ * win the slots. Exhausts publish none: no exhaust outlet is registered on the geometry (the battle puff is a generic
+ * rear-deck point, and the Merkavas and T-series vent elsewhere), so soot there would be guessed.
+ */
+function collectVehicleSootSources(root: THREE.Object3D): VehicleSootSource[] {
+  const banks: Array<VehicleSootSource & { tubes: number }> = [];
+  root.traverse((object) => {
+    const sockets = smokeSocketsFor(object);
+    if (!sockets.length) return;
+    const groups: Array<{ mouths: THREE.Vector3[]; axes: THREE.Vector3[] }> = [];
+    for (const socket of sockets) {
+      const mouth = new THREE.Vector3().fromArray(socket.position);
+      const axis = new THREE.Vector3().fromArray(socket.direction);
+      const group = groups.find((entry) => entry.mouths.some((other) => other.distanceTo(mouth) < 0.35));
+      if (group) { group.mouths.push(mouth); group.axes.push(axis); } else groups.push({ mouths: [mouth], axes: [axis] });
+    }
+    for (const group of groups) {
+      const mouth = group.mouths.reduce((sum, at) => sum.add(at), new THREE.Vector3()).divideScalar(group.mouths.length);
+      const axis = group.axes.reduce((sum, at) => sum.add(at), new THREE.Vector3());
+      if (axis.lengthSq() < 1e-8) axis.set(0, 1, 0);
+      axis.normalize();
+      const spread = Math.max(...group.mouths.map((at) => at.distanceTo(mouth)));
+      banks.push({ owner: object, mouth, axis, radius: spread + 0.11, length: 0.3, strength: 0.85, tubes: group.mouths.length });
+    }
+  });
+  banks.sort((a, b) => b.tubes - a.tubes);
+  return banks.map(({ tubes: _tubes, ...source }) => source);
 }
 
 function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[] {
@@ -8960,6 +8994,7 @@ function* createTankOwnedSteps(
      * normal battle build would have produced.
      */
     prepareForSimulation() {
+      root.userData.fieldWear = 1; // battle wears the full field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE)
       if (this.contactGeom) return this.contactGeom;
       const prepared = composeContactGeom(measureRestContact(root));
       if (!prepared) return null;
@@ -9698,6 +9733,7 @@ function* createTankOwnedSteps(
      * layer must be cleared before the garage render loop stops syncing it.
      */
     resetForGaragePresentation() {
+      root.userData.fieldWear = VEHICLE_FIELD_WEAR_GARAGE;
       this.resetDestroyed();
       groundSampler = null;
       gearAccumDt = 0;
@@ -9920,6 +9956,10 @@ function* createTankOwnedSteps(
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
     installCoplanarDepthLayers(root, depthLayers);
+    // 2026-10-07 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE): the Garage showroom build wears it lighter than a
+    // battle build (prepareForSimulation and resetForGaragePresentation switch it), and the vehicle publishes its soot
+    root.userData.fieldWear = staticPreview ? VEHICLE_FIELD_WEAR_GARAGE : 1;
+    setVehicleSootSources(root, collectVehicleSootSources(root));
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();

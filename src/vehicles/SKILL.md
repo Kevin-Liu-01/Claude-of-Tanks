@@ -384,6 +384,15 @@ Weathering marks in the plate painter (`materialPainter.ts`) are stains, so they
 camo bands as "an unresolved texture seam", repeating with the 2 m tile (wave 165, Challenger 1). Never paint a bright,
 narrow, saturated mark over the paint. A new weathering mark multiplies (or darkens), keeps a core of at least 2.5 mm,
 and falls off softly at its sides.
+Field wear (2026-10-07) is split by what knows the geometry. Worn, chipped plate seams and hatch rings sit in the albedo
+tile (`paintEdgeWear`). Dust, mud and soot are a shader term (materials.ts `VEHICLE_FIELD_WEAR_GARAGE`) on the
+materials that set `COT_FIELD_WEAR`: 1 for bodywork, 2 for running gear, 3 for the scrolling band. Height comes from the
+per-draw ground reference. The break-up pattern comes from each mesh's own vertex frame, so it rides turrets, wheels and
+links instead of swimming. Strength is the reference's w: 1 in battle, 0.45 on the Garage showroom build (switched by
+`prepareForSimulation` / `resetForGaragePresentation`), 0 without a vehicle root. A new vehicle material that should
+weather sets the define; `cloneVehicleMaterial` keeps it. Soot sources are the registered smoke sockets
+(`setVehicleSootSources`) and are kept beside the root: never put live objects in `root.userData`, because three's
+clone JSON-copies it (the thumbnail masks clone roots).
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

@@ -3160,6 +3160,65 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       }
     };
     paintChips();
+    // 2026-10-07 field wear (tank-accessories lane round 3; critics: "spotless toy-like tri-tone blotches", "factory-
+    // clean"): worn plate edges. Along every panel seam and around every hatch ring the paint is rubbed thin and chipped:
+    // grime multiplied into the seam's shoulders and clusters of dark chips (primer and bare steel showing through, also
+    // multiplied, never a bright mark), both thickening and thinning along the run. Every mark keeps the 2.5 mm core the
+    // weeps keep (S / 820 texels). It draws from its own seed-derived stream, so every existing draw keeps its place; the
+    // dust, mud and soot that depend on height live in the vehicle shader (materials.ts VEHICLE_FIELD_WEAR_GARAGE).
+    const paintEdgeWear = (): void => {
+      const wearRng = mulberry32((seed ^ 0x3d9e1f5) | 0);
+      const core = S / 820;
+      const prevOp = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'multiply';
+      // a flake: two overlapping ellipses at different sizes and turns, so no chip is a clean oval
+      const chip = (x: number, y: number, along: number, across: number, horizontal: boolean, alpha: number): void => {
+        ctx.fillStyle = `rgba(78,72,63,${alpha.toFixed(3)})`;
+        for (let lobe = 0; lobe < 2; lobe++) {
+          const k = lobe ? 0.45 + wearRng() * 0.35 : 1;
+          const ox = lobe ? (wearRng() - 0.5) * along : 0, oy = lobe ? (wearRng() - 0.5) * across : 0;
+          ctx.beginPath();
+          ctx.ellipse(x + (horizontal ? ox : oy), y + (horizontal ? oy : ox), (horizontal ? along : across) * k,
+            (horizontal ? across : along) * k, (wearRng() - 0.5) * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+      const wornRun = (horizontal: boolean, at: number, from: number, to: number): void => {
+        let t = from;
+        while (t < to) {
+          const piece = Math.min(to - t, S * (0.02 + wearRng() * 0.07));
+          const intensity = wearRng() < 0.3 ? 0.15 + wearRng() * 0.25 : 0.45 + wearRng() * 0.55;
+          for (const [spread, alpha] of [[6, 0.09], [3, 0.13]] as const) {
+            ctx.fillStyle = `rgba(122,112,96,${(alpha * intensity).toFixed(3)})`;
+            const half = core * spread / 2;
+            if (horizontal) ctx.fillRect(t, at - half, piece, half * 2);
+            else ctx.fillRect(at - half, t, half * 2, piece);
+          }
+          const chips = Math.round(piece / S * 160 * intensity);
+          for (let k = 0; k < chips; k++) {
+            const along = t + wearRng() * piece;
+            const across = at + (wearRng() - 0.5) * core * 7;
+            const length = core * (0.6 + wearRng() * 1.4), width = core * (0.5 + wearRng() * 0.4);
+            const alpha = 0.28 + wearRng() * 0.32;
+            if (horizontal) chip(along, across, length, width, true, alpha);
+            else chip(across, along, length, width, false, alpha);
+          }
+          t += piece;
+        }
+      };
+      for (const line of feats.hLines) for (const [a, b] of lineSegs(line)) wornRun(true, px(line.p), px(a), px(b));
+      for (const line of feats.vLines) for (const [a, b] of lineSegs(line)) wornRun(false, px(line.p), px(a), px(b));
+      for (const ring of feats.rings) {
+        const n = 10 + ((wearRng() * 10) | 0);
+        for (let k = 0; k < n; k++) {
+          const angle = wearRng() * Math.PI * 2, r = px(ring.r) * (1.12 + wearRng() * 0.25);
+          chip(px(ring.x) + Math.cos(angle) * r, px(ring.y) + Math.sin(angle) * r,
+            core * (0.6 + wearRng() * 1.2), core * (0.5 + wearRng() * 0.4), wearRng() < 0.5, 0.3 + wearRng() * 0.35);
+        }
+      }
+      ctx.globalCompositeOperation = prevOp;
+    };
+    paintEdgeWear();
     // rust weeps from plan sources + below some bolts. 2026-10-06 (wave 165, Challenger 1: "a bright vertical
     // orange sliver splits the dark mantlet cheek like an unresolved texture seam"). The old weep was a 1.4-3 px
     // orange stroke laid OVER the paint. On a black camo band it lit up as a one-texel line that repeated with
