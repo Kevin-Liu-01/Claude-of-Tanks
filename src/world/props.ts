@@ -2477,6 +2477,31 @@ function resolveDestructibleMeta(
   return meta;
 }
 
+const CART_KINDS: ReadonlySet<string> = new Set(Object.keys(CART_RECEIPTS));
+
+interface CartGroundPose { y: number; tiltX: number; tiltZ: number; min: number; max: number; steep: boolean }
+
+/**
+ * A cart's seat on the ground under its footprint (wave 211: a hay sledge on a 19-degree bank, seated level at its
+ * lowest corner, had its runners buried uphill and its downhill side in the air): the plane through the ground at its
+ * four corners, pitch and roll each clamped at 12 degrees (the integrator's ruling, 2026-10-07), its centre at the
+ * plane's height there. `steep`: the plane itself tilts past the cap (a road-cart station refuses such a seat).
+ */
+function cartGroundPose(heightField: Pick<HeightField, 'getHeightAt'>, x: number, z: number, yaw: number, hw: number,
+  hl: number): CartGroundPose {
+  const max = (12 * Math.PI) / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+  const at = (lx: number, lz: number) => heightField.getHeightAt(x + lx * c + lz * s, z - lx * s + lz * c);
+  const fl = at(-hw, hl), fr = at(hw, hl), bl = at(-hw, -hl), br = at(hw, -hl);
+  const pitch = Math.atan2((fl + fr) / 2 - (bl + br) / 2, 2 * hl), roll = Math.atan2((fr + br) / 2 - (fl + bl) / 2, 2 * hw);
+  const clamp = (v: number) => Math.max(-max, Math.min(max, v));
+  // three's 'YXZ' order: a positive X turn dips the cart's nose (+z), a positive Z turn lifts its right side (+x)
+  return {
+    y: (fl + fr + bl + br) / 4, tiltX: -clamp(pitch), tiltZ: clamp(roll),
+    min: Math.min(fl, fr, bl, br), max: Math.max(fl, fr, bl, br),
+    steep: Math.atan(Math.hypot(Math.tan(pitch), Math.tan(roll))) > max,
+  };
+}
+
 function groundDestructiblePlacement(
   heightField: HeightField,
   meta: PropsDestructibleMeta,
@@ -2660,9 +2685,15 @@ function addDestructibleRecord(
   tiltZ = 0,
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
-  const placement = groundDestructiblePlacement(
-    context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ,
-  );
+  let placement: GroundedDestructiblePlacement;
+  if (CART_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
+    // a cart sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
+    const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
+    tiltX = pose.tiltX; tiltZ = pose.tiltZ;
+    placement = { y: pose.y - 0.03, support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+  } else {
+    placement = groundDestructiblePlacement(context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ);
+  }
   const pool = ensureDestructiblePool(context, kind, meta);
   context.euler.set(tiltX, yaw, tiltZ, 'YXZ');
   context.quaternion.setFromEuler(context.euler);
@@ -2738,11 +2769,21 @@ function relocateParkedVehicleRecord(context: DestructibleBuildContext, record: 
     throw new Error('Parked-vehicle separation requires an unfinalized vehicle obstacle');
   }
   const meta = resolveDestructibleMeta(context, record.kind);
-  const placement = groundDestructiblePlacement(context.heightField, meta, x, context.heightField.getHeightAt(x, z) - 0.04, z,
-    record.yaw, record.sc, 0, 0);
+  let placement: GroundedDestructiblePlacement;
+  if (CART_KINDS.has(record.kind)) {
+    // a cart slid to a clear seat takes that seat's ground pose (cartGroundPose), as it took its first one
+    const pose = cartGroundPose(context.heightField, x, z, record.yaw, (meta.hw ?? meta.r) * record.sc, (meta.hl ?? meta.r) * record.sc);
+    placement = { y: pose.y - 0.03, support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+    context.euler.set(pose.tiltX, record.yaw, pose.tiltZ, 'YXZ');
+    context.quaternion.setFromEuler(context.euler);
+    matrix.compose(_posv.set(x, placement.y, z), context.quaternion, _scalev.set(record.sc, record.sc, record.sc));
+  } else {
+    placement = groundDestructiblePlacement(context.heightField, meta, x, context.heightField.getHeightAt(x, z) - 0.04, z,
+      record.yaw, record.sc, 0, 0);
+    matrix.setPosition(x, placement.y, z);
+  }
   record.x = x; record.z = z; record.y = placement.y;
   record.groundSupport = placement.support;
-  matrix.setPosition(x, placement.y, z);
   const extents = getDestructibleContactExtents(meta, record.sc, record.yaw, record.r);
   for (const obstacle of [record.ob, record.col]) {
     if (!obstacle) continue;
@@ -6557,9 +6598,26 @@ ${snowCap ? `
       if (Math.max(Math.abs(cxp), Math.abs(czp)) > 440) continue;
       if (heightField._roadDist(cxp, czp) < 6) continue;
       if (heightField.getGroundType(cxp, czp) === 'soft' || noVeg(cxp, czp)) continue;
-      const y = heightField.getHeightAt(cxp, czp);
-      addDestructible(carts % 2 ? 'handcart' : 'haycart', cxp, y - 0.04, czp,
-        rng() * Math.PI * 2, 0.95 + rng() * 0.12);
+      const kind = carts % 2 ? 'handcart' : 'haycart';
+      const yaw = rng() * Math.PI * 2, sc = 0.95 + rng() * 0.12;
+      // (wave 211) a station steeper than the carts' tilt cap passes its cart to the nearest neighbouring station that
+      // is not, along the same road, short of the next cart station either way; with none, the cart is not placed (its
+      // draws are spent either way)
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      const hwK = (meta.hw ?? meta.r) * sc, hlK = (meta.hl ?? meta.r) * sc;
+      let seat: [number, number] | null = null;
+      // each station on its own side of the road first, then across it
+      for (const step of [0, 1, -1, 2, -2, 3, -3, 4, -4]) for (const side of [1, -1]) {
+        if (seat) break;
+        const near = step === 0 ? at : authoredRoadStationIndex(L, 1, i + step);
+        if (near < 0) continue;
+        const [nx, nz] = L.roads[1][near];
+        const sx = nx + side * 8.5, sz = nz + side * 6.5;
+        if ((step !== 0 || side < 0) && (Math.max(Math.abs(sx), Math.abs(sz)) > 440 || heightField._roadDist(sx, sz) < 6
+          || heightField.getGroundType(sx, sz) === 'soft' || noVeg(sx, sz))) continue;
+        if (!cartGroundPose(heightField, sx, sz, yaw, hwK, hlK).steep) seat = [sx, sz];
+      }
+      if (seat) addDestructible(kind, seat[0], heightField.getHeightAt(seat[0], seat[1]) - 0.04, seat[1], yaw, sc);
       carts++;
     }
   }
