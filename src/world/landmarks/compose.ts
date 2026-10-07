@@ -253,7 +253,17 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     const yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
     const refused = admission(ctx, discs, placement, hw, hl, yaw);
     if (refused) { skip(refused); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
-    const { hard, soft } = solidConflicts(ctx.obstacles, placement.x, placement.z, hw, hl, yaw, ctx.hardKinds);
+    // (its solid's own rectangles where the kind names them — a gate's tower and its wall stubs — else its footprint)
+    const c0 = Math.cos(yaw), s0 = Math.sin(yaw);
+    const solidRects = (spec.solids?.(params) ?? [[0, 0, hw, hl] as const]).map(([cx, cz, rw, rl]) =>
+      [placement.x + cx * c0 + cz * s0, placement.z - cx * s0 + cz * c0, rw, rl] as const);
+    let hard: string | null = null;
+    const soft: string[] = [];
+    for (const [rx, rz, rw, rl] of solidRects) {
+      const found = solidConflicts(ctx.obstacles, rx, rz, rw, rl, yaw, ctx.hardKinds);
+      for (const kind of found.soft) if (soft.length < 8) soft.push(kind);
+      if (found.hard) { hard = found.hard; break; }
+    }
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
@@ -334,7 +344,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // is left out (an open surface, a path's setts, keeps what stands on it)
     if (placement.ground === 'veto') {
       entry.ground = 'veto';
-      if (!spec.open) ctx.veto?.(placement.x, placement.z, yaw, hw, hl);
+      if (!spec.open) for (const [rx, rz, rw, rl] of solidRects) ctx.veto?.(rx, rz, yaw, rw, rl);
     } else {
       const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
       const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));
