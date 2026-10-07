@@ -76,7 +76,9 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   railyard: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.06, PALE, ORANGE, 0.7] },
   foundry: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.05, PALE, ORANGE, 0.7] },
   ruinspires: { moss: 0.25, dust: 0.1, lith: 'sandstone', lichen: [0.09, PALE, ORANGE, 0.6] },
-  skybridge: { moss: 0.2, dust: 0.1, lith: 'sandstone', lichen: [0.1, ORANGE, PALE, 0.5] },
+  // (the map-revival lane, Skybridge round 4, gauntlet waves 170-171: "grey granite boulders" — Glen Canyon is the
+  // Arizona desert: its blocks are Navajo sandstone under the dust and the varnish of the dry country, as Titan Gorge's)
+  skybridge: { moss: 0, dust: 0.65, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.25 },
   caldera: { moss: 0.05, dust: 0.35, lith: 'basalt', lichen: [0.06, PALE, ORANGE, 0.6] },
   blackglass: { moss: 0, dust: 0.25, lith: 'basalt', lichen: [0.04, PALE, ORANGE, 0.7] },
   steppe: { moss: 0.15, dust: 0.4, lith: 'granite', lichen: [0.15, ORANGE, GREY_GREEN, 0.5], varnish: 0.06 },

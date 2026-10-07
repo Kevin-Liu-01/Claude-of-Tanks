@@ -30,6 +30,8 @@ import {
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
 } from './shoreJetty.ts';
 import { createSnowDrift } from './snowDrift.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import { mooredHullPhase } from './mooredHullMotion.ts';
 import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
@@ -1136,6 +1138,9 @@ export function dressMapExtras({
   // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
   // its earlier dressing; a map without one draws nothing here.
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
+  // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
+  // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
+  if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);
 }
 
 // =============================================================================

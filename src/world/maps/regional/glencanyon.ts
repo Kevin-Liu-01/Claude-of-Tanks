@@ -62,6 +62,31 @@ function latticeTower(sink: PartSink, x: number, z: number, b0: number, b1: numb
   }
 }
 
+/**
+ * A porcelain bushing standing from `base` (Skybridge round 4, gauntlet waves 170-171: "the switchyard bushings read as
+ * chimneys" — the smooth 1.6 m brown columns): a slim core ringed by sheds, wide and thin, alternately larger and
+ * smaller, under an aluminium terminal cap with its stud.
+ */
+function bushing(sink: PartSink, base: Vec3, height: number, s: number): void {
+  // (the switchyard's structure keeps the kit's 12,000-triangle budget: four sheds of six sides, the cap a short drum)
+  const core = 0.07 * s, sheds = 4;
+  sink.cylinder('structureMetal', base, 'y', height, core, 6, { colour: PORCELAIN, decor: true });
+  for (let k = 0; k < sheds; k++) {
+    const y = base[1] + 0.12 + (height - 0.3) * (k / (sheds - 1)), r = (k % 2 ? 0.15 : 0.21) * s;
+    sink.cylinder('structureMetal', [base[0], y, base[2]], 'y', 0.05, r, 6, { colour: PORCELAIN, decor: true, fine: true }, r * 0.82);
+  }
+  sink.cylinder('structureMetal', [base[0], base[1] + height, base[2]], 'y', 0.18, 0.12 * s, 6, { colour: ALUMINIUM, decor: true });
+}
+
+/** An insulator string hung from `top`: its rod and a stack of porcelain discs (the dead-end towers' strain strings). */
+function insulatorString(sink: PartSink, top: Vec3, length: number): void {
+  sink.member('structureMetal', top, [top[0], top[1] - length, top[2]], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  const discs = Math.max(4, Math.round(length / 0.26));
+  for (let d = 0; d < discs; d++) {
+    sink.cylinder('structureMetal', [top[0], top[1] - 0.15 - d * (length - 0.3) / (discs - 1), top[2]], 'y', 0.05, 0.14, 6, { colour: PORCELAIN, decor: true, fine: true }, 0.14);
+  }
+}
+
 /** A power transformer at (x, z) turned `yaw`: the tank (structure), radiator banks, three bushings, the conservator. */
 function transformer(sink: PartSink, x: number, z: number, yaw: number, s: number, colour: Rgb): void {
   sink.placed(yaw, x, 0, z, () => {
@@ -77,7 +102,7 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
     }
     for (let k = 0; k < 3; k++) {
       const bx = (k - 1) * w * 0.3;
-      sink.cylinder('structureMetal', [bx, 0.25 + h, -d * 0.2], 'y', 1.6 * s, 0.17, 8, { colour: PORCELAIN, decor: true }, 0.1);
+      bushing(sink, [bx, 0.25 + h, -d * 0.2], 1.3 * s, s);
     }
     sink.cylinder('structureMetal', [-w / 2 + 0.2, 0.25 + h + 0.55, d * 0.25], 'x', w - 0.4, 0.38 * s, 10, { colour: shade(colour, 1.05), decor: true });
     for (const xx of [-w / 2 + 0.6, w / 2 - 0.6]) sink.span('structureMetal', xx - 0.05, 0.25 + h, d * 0.25 - 0.05, xx + 0.05, 0.25 + h + 0.3, d * 0.25 + 0.05, { colour: IRON, decor: true });
@@ -354,7 +379,7 @@ const switchyard: RegionalBuilder = (ctx) => {
     sink.member('structureMetal', [-W * 0.28, h - 0.4, -D / 2 + 2.6], [W * 0.28, h - 0.4, -D / 2 + 2.6], 0.5, 0.7, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
     for (let k = 0; k < 3; k++) {
       const x = (k - 1) * W * 0.2;
-      sink.cylinder('structureMetal', [x, h - 2.6, -D / 2 + 2.6], 'y', 2.2, 0.13, 6, { colour: PORCELAIN, decor: true }, 0.13);
+      insulatorString(sink, [x, h - 0.5, -D / 2 + 2.6], 2.1);
       sink.member('structureMetal', [x, h - 2.6, -D / 2 + 2.6], [x, 9.4, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     }
     for (const x of [-W * 0.22, 0, W * 0.22]) busFrame(sink, x, -D / 2 + 6.8, -D / 2 + 8.4, 9.6, steel);

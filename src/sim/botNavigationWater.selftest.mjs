@@ -127,7 +127,8 @@ assert.equal(frozenGrid.blocked.reduce((a, b) => a + b, 0), 0, 'ice adds no liqu
 // Amberford joins Reservoir in the dry-route policy; every other map keeps its authored wading.
 for (const id of MAP_IDS) {
   assert.equal(getMapConfig(id).navigationWaterPolicy,
-    id === 'reservoir' || id === 'autumn' ? 'avoid-liquid' : undefined, 'only Reservoir and Amberford opt in: ' + id);
+    id === 'reservoir' || id === 'autumn' || id === 'skybridge' ? 'avoid-liquid' : undefined,
+    'only Reservoir, Amberford and Skybridge (round 4: its canyon arm, walls straight into the water) opt in: ' + id);
 }
 
 // Dry nodes can straddle liquid. Cache both cardinal and diagonal sampled

@@ -168,11 +168,16 @@ for(const mapId of MAP_IDS) {
     // Round 67's tunnel portals (Tarkhan's spur, 2026-10-01 Cinder Junction's main line) are retired (2026-10-03, the
     // map-borders lane): a cutting's line runs on in the open past the edge and publishes no record (railCutting.selftest).
     assert.equal(candidate.obstacles.filter(record=>record.kind==='tunnel-portal').length,0,`${mapId}: no tunnel portal`);
-    const solids=coal.length+mills.length+bridges.length;
+    // the map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam's parapets and the tailwater pocket's kerb
+    // are the third kit footprint, one compound record (reservoirDam.selftest certifies it)
+    const dams=candidate.obstacles.filter(record=>record.kind==='dam-parapet');
+    assert.equal(dams.length,mapId==='skybridge'?1:0,`${mapId}: only Skybridge's dressing stands a dam`);
+    assert.equal(candidate.colliders.filter(record=>record.kind==='dam-parapet').length,dams.length);
+    const solids=coal.length+mills.length+bridges.length+dams.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge';
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='dam-parapet';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));

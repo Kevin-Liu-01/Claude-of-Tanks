@@ -454,6 +454,8 @@ function pnoiseXY(x: number, y: number, size: number, cellsX: number, cellsY: nu
  * weather took the print down — the boards' fins and planes, the butt joints and the lift lines at a third to a half of
  * their contrast, the ties grouted (pale cones, not dark holes) and a rust tear under one in five, and the runoff's dark
  * streaks down the wall over the broad pour mottling.)
+ * (Skybridge round 4, gauntlet waves 170-171: "the board-form planks are still there": the boards go — no planes, fins,
+ * grain or butt joints, the face one pour with its lifts, ties, mottling and runoff; its relief at two thirds.)
  */
 function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
@@ -462,23 +464,15 @@ function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSli
   const mottle = field(s, 32, 3, 3, seed + 1), pores = field(s, 128, 32, 2, seed + 3);
   const wrap = (v: number) => ((v % s) + s) % s;
   for (let y = 0; y < s; y++) {
-    const b = Math.floor(y / bh), yb = y - b * bh;
-    const plane = hash2(b, 1, seed + 5), tone = hash2(b, 2, seed + 5), butt = hash2(b, 3, seed + 5) * s;
     const below = y % lift;
     for (let x = 0; x < s; x++) {
       const i = y * s + x, j = i * 4;
-      // the board: its plane and tone, the grain of its timber printed along it (long along x, fine across)
-      const grain = smooth(0.6, 0.86, pnoiseXY(x, y, s, 5, 64, seed + 7 + b * 13));
+      // (round 4: one pour — the boards' planes, grain, fins and butt joints are gone)
       // the runoff: dark streaks down the wall from the lift lines, a few to a tile
       const runoff = smooth(0.55, 0.92, pnoiseXY(x, y, s, 9, 2, seed + 19));
-      let v = 0.47 + (tone - 0.5) * 0.03 + (mottle(x, y) - 0.5) * 0.1 - grain * 0.022 - runoff * 0.06;
-      let h = 0.45 + (plane - 0.5) * 0.12 - grain * 0.05;
+      let v = 0.47 + (mottle(x, y) - 0.5) * 0.1 - runoff * 0.06;
+      let h = 0.45;
       let r = 0.86 + (pores(x, y) - 0.5) * 0.1;
-      // the fin where it met the board above, and the shadow line under the board below's fin
-      if (yb < k) { v += 0.012; h += 0.08; r -= 0.03; } else if (yb >= bh - k) { v -= 0.012; h -= 0.04; }
-      // the butt joint
-      const db = Math.abs(wrap(x - butt + s / 2) - s / 2);
-      if (db < 0.75 * k) { v -= 0.02; h -= 0.06; }
       // the lift line: the groove of the cold joint, a lime bleed in streaks below it
       if (below < 2 * k) { v -= 0.05; h = 0.2; r = 0.96; } else if (below < bleed) {
         const t = 1 - (below - 2 * k) / (bleed - 2 * k);
@@ -555,7 +549,7 @@ export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uin
   const s = 256;
   const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}`, () => boardFormed(s, [1, 1, 1], seed));
   tone?.(px);
-  return finish(px, hgt, rough, s, anisotropy, 1.4, 0.72);
+  return finish(px, hgt, rough, s, anisotropy, 0.95, 0.72);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
