@@ -9,6 +9,15 @@
 // layouts these keep clear); one welded mesh, casting no shadow: the walls (group 0) on their own stone (the face
 // print, fieldWallFace.ts), the banks (group 1) on the props rock material.
 //
+// (b29; wave 184 on Saltmere Bay, both critics: "no hedge or bank silhouette anywhere", "flat, hard-edged colour
+// changes"; the coordinator: "turf-toned with stone showing at the foot, casting shadow"; mr4, the maps owner: decor, its
+// crest a metre at most wherever a hull can meet it, the hedge on top carrying the line) a bocage bank is the talus of
+// the Pays de Leon: an earth bank up to a metre high (a map's own height, `bankHeightM`), faced at its foot with the
+// field's granite, turfed over its flanks and crown. Its body is the ground's own (the terrain material draws it, as it
+// draws the boulders' beds: the field's turf on the bank, the ground's earth and rock layer on the stone-faced foot,
+// whose normals stay steep) and it casts; the odd granite block of the facing stands proud along each foot on the props
+// rock material.
+//
 // The walls (the scenery lane, b13; gauntlet wave 87, Saltwind: "a smooth grey kerb-like strip of even width ... cast
 // concrete rather than a drystone wall", "a wall built like stacked cinder blocks", and on corner-ne a wall that ran
 // through the wall it met and ended in the open with its head drawn inside out): each line is laid as dry stone —
@@ -29,7 +38,9 @@ interface FieldSample { active: number; edgeM: number; boundary: number; track: 
 interface FieldWorksGround {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
-  getNormalAt(x: number, z: number): { y: number };
+  getNormalAt(x: number, z: number): { x?: number; y: number; z?: number };
+  /** (b29) The ground's fold (-1 crest .. +1 hollow, terrain.ts), the ground material's moisture and occlusion read it. */
+  _foldAt?(x: number, z: number): number;
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
   _villageMask?(x: number, z: number): number;
@@ -50,8 +61,64 @@ export interface FieldWorksKeepOut {
   rects: readonly FieldWorksRect[];
 }
 
-/** The tallest a field wall or a bank stands above its own ground (m): a low wall, never the cover the game gives. */
+/** The tallest a field wall stands above its own ground (m): a low wall, never the cover the game gives. */
 const FIELD_WORKS_MAX_M = 1.0;
+/**
+ * (b29) The tallest a bank's crown stands above its own ground (m): decor, no collision, so never over the metre a hull
+ * drives over unremarked (mr4); a map's own height (`bankHeightM`) is clamped to it.
+ */
+export const BANK_MAX_M = FIELD_WORKS_MAX_M;
+/** (b29) A bank's crown when its map names no height (m): Saltmere's talus. */
+export const BANK_HEIGHT_M = 1.0;
+/**
+ * (b29) The bank's section, one foot over the crown to the other: across (m), height and whether the point is the stone
+ * facing's (a facing point's height in metres, the turf's a share of the bank's height). The toe runs under the ground;
+ * the facing stands near upright to its top; the turf's flank, shoulder and crown above it.
+ */
+// (the crown rounded, the coordinator: no ridge and no flat top a hull's lower edge would read against)
+const BANK_SECTION: ReadonlyArray<readonly [number, number, boolean]> = [
+  [-1.62, -0.22, true], [-1.5, 0.3, true], [-1.16, 0.58, false], [-0.8, 0.82, false], [-0.42, 0.96, false], [0, 1, false],
+  [0.42, 0.96, false], [0.8, 0.82, false], [1.16, 0.58, false], [1.5, 0.3, true], [1.62, -0.22, true],
+];
+/** (b29) The phones' section: the flank, the shoulder and the crown's round on fewer points. */
+const BANK_SECTION_MOBILE: ReadonlyArray<readonly [number, number, boolean]> = [
+  [-1.62, -0.22, true], [-1.5, 0.3, true], [-0.95, 0.72, false], [-0.4, 0.96, false], [0.4, 0.96, false], [0.95, 0.72, false],
+  [1.5, 0.3, true], [1.62, -0.22, true],
+];
+/** (b29) How far the turf's normals turn back toward the ground's: its flanks lit and layered as the field round it. */
+const BANK_TURF_NORMAL = 0.55;
+
+/**
+ * (b29) The banks' crest law, pure, for the vegetation tier (the trees lane seats gorse and blackthorn on a bank's crown):
+ * a land-use sample on a bocage bank's line — a hedged margin, no track — as the field works read it.
+ */
+export function isFieldBankSample(s: { boundary: number; hedge: number; edgeM: number; track: number }): boolean {
+  return s.boundary === 0 && s.hedge > 0.85 && s.edgeM < 1.1 && s.track < 0.5;
+}
+
+/** A smooth value noise in 0..1 on an 11 m lattice, by place alone (the crown's breath: the same for every reader). */
+function bankBreath(x: number, z: number): number {
+  const fx = x / 11, fz = z / 11, x0 = Math.floor(fx), z0 = Math.floor(fz), tx = fx - x0, tz = fz - z0;
+  const h = (i: number, k: number): number => ((Math.imul(i * 0x27d4eb2d ^ k * 0x165667b1, 0x85ebca6b) ^ Math.imul(k + 0x3c6ef372, i - 0x61c88647)) >>> 0) / 4294967296;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const a = h(x0, z0), b = h(x0 + 1, z0), c = h(x0, z0 + 1), d = h(x0 + 1, z0 + 1);
+  return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sz;
+}
+
+/**
+ * (b29) A bank's crown over its own ground at a place on its line (m), before its ends draw down: 0.86 to 1 of its map's
+ * height (`heightM`, BANK_HEIGHT_M by default, clamped to BANK_MAX_M), breathing along the bank.
+ */
+export function fieldBankCrownAt(x: number, z: number, heightM = BANK_HEIGHT_M): number {
+  return Math.min(BANK_MAX_M, heightM) * (0.86 + 0.14 * bankBreath(x, z));
+}
+
+/**
+ * (b29) The banks as built, for the vegetation tier: every row of every bank's line — its place, its crown's height in the
+ * world (its ends drawn down, every cut the layout made), the line's direction there — five floats a row; `lines` the
+ * first row of each line and, last, the row count.
+ */
+export interface FieldBankCrests { points: Float32Array; lines: Uint32Array }
 /** A wall's batter: its faces run from the foot's half width to the crown's at this height over the ground (m). */
 const BATTER_H = 0.9;
 /** (b17) How far the body's faces stand back behind the stones laid over them: the dry joints' depth (m). */
@@ -68,9 +135,12 @@ interface FieldWorksOptions {
   /** The layout's aprons, yards, bridges, trenches and objective discs. */
   keepOut?: FieldWorksKeepOut;
   mobile: boolean;
-  /** sRGB HSL base tones of the wall stone and the bank's earth. */
+  /** sRGB HSL base tones of the wall stone and the bank's earth (b29: the bank's body is the ground's own and its facing
+   * the field's granite; the earth tone no longer reads). */
   wallTone?: readonly [number, number, number];
   bankTone?: readonly [number, number, number];
+  /** (b29) The banks' crown over their ground (m): BANK_HEIGHT_M by default, at most BANK_MAX_M. */
+  bankHeightM?: number;
   /** Also merge the walls' cells into one near and one far geometry (the receipts read them whole). */
   merged?: boolean;
 }
@@ -126,7 +196,12 @@ export interface FieldWorksBuilt {
   /** The merged walls, near and far, when asked for (options.merged). */
   wallGeometry: THREE.BufferGeometry | null;
   wallFarGeometry: THREE.BufferGeometry | null;
+  /** The banks' facing stones (the rock material's). */
   bankGeometry: THREE.BufferGeometry | null;
+  /** (b29) The banks' body, for the ground's own material: position, normal and the ground's fold, world space. */
+  bankTurfGeometry: THREE.BufferGeometry | null;
+  /** (b29) The banks' crests as built (null without banks). */
+  bankCrests: FieldBankCrests | null;
   receipt: FieldWorksReceipt;
   /** (b17) The source of the cells' stone forms (desktop; null on a phone or without walls). */
   fine: FieldWallFineSource | null;
@@ -138,7 +213,7 @@ const SPAWN_CLEAR = 24;
 /** The road's painted core at its widest (terrain.ts: a 3.85 m half width and its edge noise): a work's toe stays out. */
 const FIELD_WORKS_ROAD_CORE_M = 5.7;
 /** A work's half width at its toe (a wall's fallen stones lie up to 0.87 m out; a bank's base with its lump). */
-const TOE_M = [0.9, 1.36] as const;
+const TOE_M = [0.9, 1.7] as const;
 
 function smooth(a: number, b: number, x: number): number { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 
@@ -876,7 +951,7 @@ export function* buildFieldWorks(
 ): Generator<FieldWorksSlice, FieldWorksBuilt, void> {
   const receipt: FieldWorksReceipt = { wallPieces: 0, bankPieces: 0, wallM: 0, bankM: 0, triangles: 0, farTriangles: 0, cells: 0, scanned: 0 };
   const landAt = ground._landUseAt;
-  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt, fine: null };
+  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, bankTurfGeometry: null, bankCrests: null, receipt, fine: null };
   const s: FieldSample = { active: 0, edgeM: 0, boundary: 0, track: 0, hedge: 0 };
   const edgeAt = (x: number, z: number) => landAt(x, z, s).edgeM;
   const heightAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
@@ -965,7 +1040,7 @@ export function* buildFieldWorks(
       landAt(x, z, s);
       if (!s.active) continue;
       const wall = options.walls && s.boundary === 3 && s.edgeM < 1.05 && s.track < 0.5;
-      const bank = options.banks && s.boundary === 0 && s.hedge > 0.85 && s.edgeM < 1.1 && s.track < 0.5;
+      const bank = options.banks && isFieldBankSample(s);
       if (!wall && !bank) continue;
       // down the distance field's gradient onto the boundary's line; the line runs square to it (a point right on the
       // line, where the field folds, reads its gradient from a step to the side)
@@ -981,7 +1056,7 @@ export function* buildFieldWorks(
       const ux = gx / gl, uz = gz / gl;
       const fx = px - ux * e0, fz = pz - uz * e0;
       if (near(fx, fz, 0.9)) continue;
-      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 1.0 : 1.5) || inKeepOut(fx, fz, wall ? 1.0 : 1.8)) continue;
+      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 1.0 : 1.8) || inKeepOut(fx, fz, wall ? 1.0 : 2.1)) continue;
       if (ground._roadDist(fx, fz) < FIELD_WORKS_ROAD_CORE_M + TOE_M[wall ? 0 : 1]) continue;
       if (options.spawns.some((p) => Math.hypot(p.x - fx, p.z - fz) < SPAWN_CLEAR)) continue;
       const list = hash.get(key(fx, fz));
@@ -1076,8 +1151,9 @@ export function* buildFieldWorks(
   };
   const wallLines: number[][] = [];
   const bankBuf = newBuffers();
+  const turfBuf = { positions: [] as number[], normals: [] as number[], folds: [] as number[], index: [] as number[] };
+  const crestRows: number[] = [], crestLines: number[] = [];
   const [wh, ws, wl] = options.wallTone ?? [0.11, 0.06, 0.8];
-  const [bh, bs, bl] = options.bankTone ?? [0.2, 0.28, 0.24];
   let lineIndex = 0;
   const env: WallEnv = { ground, noise, heightAt, receipt, wallTone: [wh, ws, wl], mobile: options.mobile, stones: false };
   for (const line of lines) {
@@ -1086,53 +1162,115 @@ export function* buildFieldWorks(
   }
 
   /**
-   * Sweep one bank: a section at every point — the foot sunk in the ground, the battered faces, the crown lumpy where
-   * the clods lie — welded point to point, its two ends capped facing out; the tone mottled clod by clod, darker at
-   * the foot.
+   * (b29) Sweep one bank, the talus: a section at every point of its line (BANK_SECTION) — the toe under the ground, the
+   * granite facing near upright to its top a third of a metre up, the turf's flank, shoulder and crown above it, the
+   * crown its map's height over the ground breathing along the bank and its flanks lumped — welded row to row into the
+   * ground material's body (turfBuf: smooth normals, the turf's turned back toward the ground's, the facing's steep), its
+   * ends drawn down to the ground over three metres and capped; and along each foot the odd block of the facing standing
+   * proud on the props rock material (buf).
    */
   function sweepBank(pts: number[], buf: Buffers): void {
-    const halfBase = 1.3, halfTop = 0.5;
-    const section: Array<[number, number]> = options.mobile
-      ? [[-halfBase, -0.1], [-halfTop, 1.0], [halfTop, 1.0], [halfBase, -0.1]]
-      : [[-halfBase, -0.1], [-halfBase * 0.6, 0.55], [-halfTop, 1.0], [halfTop, 1.0], [halfBase * 0.6, 0.55], [halfBase, -0.1]];
+    const section = options.mobile ? BANK_SECTION_MOBILE : BANK_SECTION;
     const ns = section.length;
-    const rows: number[][][] = [];
+    // (no lump lifts a crown over its map's height, nor over the metre)
+    const crownCap = Math.min(BANK_MAX_M, options.bankHeightM ?? BANK_HEIGHT_M);
     const len = pts.length / 2;
+    const base = turfBuf.positions.length / 3;
+    const rowGround: number[] = [];
+    crestLines.push(crestRows.length / 5);
+    const axis: number[] = [];
     for (let c = 0; c < len; c++) {
       const x = pts[c * 2], z = pts[c * 2 + 1];
       const pi = Math.max(0, c - 1), ni = Math.min(len - 1, c + 1);
       let dx = pts[ni * 2] - pts[pi * 2], dz = pts[ni * 2 + 1] - pts[pi * 2 + 1];
       const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
       const ax = -dz, az = dx;
-      const endTaper = Math.min(1, Math.min(c, len - 1 - c) / 1.5) * 0.35 + 0.65;
-      const height = 0.78 * (0.82 + 0.36 * (noise.noise(x * 0.11 + 5.1, z * 0.11 - 3.3) * 0.5 + 0.5)) * endTaper;
-      const row: number[][] = [];
-      for (const [a, b] of section) {
-        const lump = b > 0.9 ? noise.noise(x * 2.1 + a * 3, z * 2.1) * 0.06 : noise.noise(x * 1.7 + 9, z * 1.7 + a) * 0.04;
-        const px = x + ax * (a + (b > 0 && b < 0.9 ? lump : 0)), pz = z + az * (a + (b > 0 && b < 0.9 ? lump : 0));
+      axis.push(ax, az);
+      // the ends drawn down to the ground over four metres (the chain's feet stand 1.4 m apart)
+      const endM = Math.min(c, len - 1 - c) * 1.4;
+      const taper = 0.22 + 0.78 * smooth(0, 4.2, endM);
+      const height = fieldBankCrownAt(x, z, options.bankHeightM) * taper;
+      crestRows.push(x, heightAt(x, z) + height, z, dx, dz);
+      const footTop = Math.min(0.3, height * 0.42);
+      for (const [a, b, facing] of section) {
+        const lump = facing ? 0 : noise.noise(x * 1.3 + a * 2.1, z * 1.3 - a) * 0.07;
+        const across = a * (facing ? 1 : 1 + lump * 0.6);
+        const px = x + ax * across, pz = z + az * across;
         const g = heightAt(px, pz);
-        row.push([px, g + Math.min(FIELD_WORKS_MAX_M, b * height + (b > 0.9 ? lump : 0)), pz, g]);
+        const above = facing ? (b > 0 ? footTop : b) : Math.min(crownCap, Math.max(footTop + 0.04, b * height + (b > 0.95 ? lump * 0.8 : lump * 0.4)));
+        turfBuf.positions.push(px, g + above, pz);
+        const f = ground._foldAt ? ground._foldAt(px, pz) : 0;
+        turfBuf.folds.push(Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127))));
+        rowGround.push(g);
       }
-      rows.push(row);
     }
-    const col = (p: number[]): [number, number, number] => {
-      const above = p[1] - p[3];
-      const mott = noise.noise(p[0] * 0.9 + 31, p[2] * 0.9 - 17) * 0.5 + 0.5;
-      return hsl(bh + (mott - 0.5) * 0.02, bs * (0.85 + mott * 0.3), bl * (0.72 + mott * 0.36) * (0.62 + 0.38 * smooth(0, 0.3, above)));
+    const at = (c: number, k: number): number => base + c * ns + k;
+    for (let c = 0; c + 1 < len; c++) for (let k = 0; k + 1 < ns; k++) {
+      const a = at(c, k), b = at(c, k + 1), d = at(c + 1, k), e = at(c + 1, k + 1);
+      turfBuf.index.push(a, d, b, b, d, e);
+    }
+    // the normals: the grid's own (across the section and along the line), the turf's turned back toward the ground's
+    const P = turfBuf.positions;
+    for (let c = 0; c < len; c++) for (let k = 0; k < ns; k++) {
+      const i0 = at(Math.max(0, c - 1), k), i1 = at(Math.min(len - 1, c + 1), k), j0 = at(c, Math.max(0, k - 1)), j1 = at(c, Math.min(ns - 1, k + 1));
+      const tx = P[i1 * 3] - P[i0 * 3], ty = P[i1 * 3 + 1] - P[i0 * 3 + 1], tz = P[i1 * 3 + 2] - P[i0 * 3 + 2];
+      const sx = P[j1 * 3] - P[j0 * 3], sy = P[j1 * 3 + 1] - P[j0 * 3 + 1], sz = P[j1 * 3 + 2] - P[j0 * 3 + 2];
+      let nx = sy * tz - sz * ty, ny = sz * tx - sx * tz, nz = sx * ty - sy * tx;
+      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      if (!section[k][2]) {
+        const i = at(c, k), gn = ground.getNormalAt(P[i * 3], P[i * 3 + 2]);
+        const gx = gn.x ?? 0, gy = gn.y, gz = gn.z ?? 0;
+        nx = gx + (nx - gx) * BANK_TURF_NORMAL; ny = gy + (ny - gy) * BANK_TURF_NORMAL; nz = gz + (nz - gz) * BANK_TURF_NORMAL;
+        const m = Math.hypot(nx, ny, nz) || 1; nx /= m; ny /= m; nz /= m;
+      }
+      turfBuf.normals.push(nx, ny, nz);
+    }
+    // the ends capped: a fan over the end row from a point on the ground under the crown, facing out along the line
+    for (const [c, sign] of [[0, -1], [len - 1, 1]] as const) {
+      const mid = at(c, (ns - 1) >> 1);
+      const cx = P[mid * 3], cz = P[mid * 3 + 2], cy = heightAt(cx, cz) - 0.05;
+      const centre = turfBuf.positions.length / 3;
+      const pi = Math.max(0, c - 1), ni = Math.min(len - 1, c + 1);
+      let ox = pts[ni * 2] - pts[pi * 2], oz = pts[ni * 2 + 1] - pts[pi * 2 + 1];
+      const ol = Math.hypot(ox, oz) || 1; ox = ox / ol * sign; oz = oz / ol * sign;
+      turfBuf.positions.push(cx, cy, cz);
+      turfBuf.normals.push(ox * 0.7, 0.71, oz * 0.7);
+      turfBuf.folds.push(0);
+      for (let k = 0; k + 1 < ns; k++) {
+        if (sign > 0) turfBuf.index.push(centre, at(c, k), at(c, k + 1));
+        else turfBuf.index.push(centre, at(c, k + 1), at(c, k));
+      }
+    }
+    // the facing's blocks standing proud along each foot: one a few metres where the facing shows, set into it
+    const blockTone = (p: number[]): [number, number, number] => {
+      const mott = noise.noise(p[0] * 1.7 + 11, p[2] * 1.7 - 7) * 0.5 + 0.5;
+      // (the field's granite, a weathered grey: the facing's blocks, not the bank's earth)
+      return hsl(0.1 + (mott - 0.5) * 0.03, 0.07 * (0.6 + mott * 0.6), 0.48 * (0.84 + mott * 0.3) * (0.78 + 0.22 * smooth(0, 0.25, p[1] - p[3])));
     };
     const uv = (p: number[]): [number, number] => [p[0] * 0.37 + p[1] * 0.21, p[2] * 0.37 - p[1] * 0.17];
-    for (let c = 0; c + 1 < len; c++) {
-      const r0 = rows[c], r1 = rows[c + 1];
-      for (let k = 0; k + 1 < ns; k++) { tri(buf, r0[k], r0[k + 1], r1[k], col, uv); tri(buf, r0[k + 1], r1[k + 1], r1[k], col, uv); }
+    const stride = options.mobile ? 4 : 2;
+    for (let c = 1; c + 1 < len; c += stride) {
+      for (const side of [-1, 1]) {
+        const x = pts[c * 2], z = pts[c * 2 + 1], ax = axis[c * 2], az = axis[c * 2 + 1];
+        const show = noise.noise(x * 0.31 + side * 7.3, z * 0.31 - side * 2.9) * 0.5 + 0.5;
+        if (show < 0.42) continue;
+        const half = 0.2 + 0.16 * (noise.noise(x * 2.3, z * 2.3 + side) * 0.5 + 0.5), hgt = 0.2 + 0.14 * show, deep = 0.16;
+        const ux = az, uz = -ax; // along the line
+        const cx = x + ax * side * 1.5, cz = z + az * side * 1.5, g = heightAt(cx, cz);
+        // a box set into the facing: its outer face 6 cm proud, its back in the bank
+        const corner = (al: number, out: number, up: number): number[] => {
+          const px = cx + ux * al + ax * side * out, pz = cz + uz * al + az * side * out, gy = heightAt(px, pz);
+          return [px, g - 0.06 + up, pz, gy];
+        };
+        const f0 = [corner(-half, 0.06, 0), corner(half, 0.06, 0), corner(half, 0.06, hgt), corner(-half, 0.06, hgt)];
+        const b0 = [corner(-half, -deep, 0), corner(half, -deep, 0), corner(half, -deep, hgt), corner(-half, -deep, hgt)];
+        const quad = (q: number[][]) => { tri(buf, q[0], q[1], q[2], blockTone, uv); tri(buf, q[0], q[2], q[3], blockTone, uv); };
+        if (side > 0) { quad([f0[0], f0[1], f0[2], f0[3]]); quad([b0[3], b0[2], f0[2], f0[3]]); quad([f0[0], f0[3], b0[3], b0[0]]); quad([f0[1], b0[1], b0[2], f0[2]]); }
+        else { quad([f0[1], f0[0], f0[3], f0[2]]); quad([f0[3], f0[2], b0[2], b0[3]]); quad([b0[0], b0[3], f0[3], f0[0]]); quad([f0[2], b0[2], b0[1], f0[1]]); }
+      }
     }
-    // the ends: a fan over the section, facing out of the bank (the start back along it, the end ahead)
-    const capAt = (r: number[][], atEnd: boolean) => {
-      const mx = (r[0][0] + r[ns - 1][0]) / 2, mz = (r[0][2] + r[ns - 1][2]) / 2, mg = (r[0][3] + r[ns - 1][3]) / 2;
-      const centre = [mx, mg + 0.05, mz, mg];
-      for (let k = 0; k + 1 < ns; k++) { if (atEnd) tri(buf, centre, r[k], r[k + 1], col, uv); else tri(buf, centre, r[k + 1], r[k], col, uv); }
-    };
-    capAt(rows[0], false);
-    capAt(rows[len - 1], true);
+    void rowGround;
     receipt.bankPieces++; receipt.bankM += (len - 1) * 1.4;
   }
 
@@ -1198,10 +1336,23 @@ export function* buildFieldWorks(
   const wallFarGeometry = options.merged ? yield* build(concat(cellBuffers.map((c) => c.coarse)), true) : null;
   const bankGeometry = yield* build(bankBuf, false);
   if (bankGeometry) receipt.triangles += bankBuf.index.length / 3;
+  // (b29) the banks' body for the ground's own material
+  let bankTurfGeometry: THREE.BufferGeometry | null = null;
+  if (turfBuf.index.length) {
+    bankTurfGeometry = new THREE.BufferGeometry();
+    bankTurfGeometry.setAttribute('position', new THREE.BufferAttribute(yield* copy(turfBuf.positions, new Float32Array(turfBuf.positions.length)), 3));
+    bankTurfGeometry.setAttribute('normal', new THREE.BufferAttribute(yield* copy(turfBuf.normals, new Float32Array(turfBuf.normals.length)), 3));
+    bankTurfGeometry.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(turfBuf.folds), 1, true));
+    bankTurfGeometry.setIndex(new THREE.BufferAttribute(yield* copy(turfBuf.index, new Uint32Array(turfBuf.index.length)), 1));
+    bankTurfGeometry.computeBoundingBox(); bankTurfGeometry.computeBoundingSphere();
+    receipt.triangles += turfBuf.index.length / 3;
+  }
+  const bankCrests: FieldBankCrests | null = crestLines.length
+    ? { points: Float32Array.from(crestRows), lines: Uint32Array.from([...crestLines, crestRows.length / 5]) } : null;
   // (b17) the cells' stone forms are built when the camera comes near (props.ts updateFieldWallLod), from the lines
   const fine = !options.mobile && wallLines.length
     ? { lines: wallLines, cellLines, env: { ground, noise, heightAt, wallTone: [wh, ws, wl] as const, mobile: false } } : null;
-  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine };
+  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, bankTurfGeometry, bankCrests, receipt, fine };
 }
 
 /**

@@ -9174,7 +9174,7 @@ ${snowCap ? `
     });
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
-    if (!built.wallCells.length && !built.bankGeometry) return;
+    if (!built.wallCells.length && !built.bankGeometry && !built.bankTurfGeometry) return;
     // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
     // banks on the rock material)
     const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
@@ -9230,6 +9230,10 @@ ${snowCap ? `
       group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells, fine: built.fine, material: wallMaterial } satisfies FieldWallLod;
     }
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
+    // (b29) the banks' turfed body, for the world to draw with the ground's own material and cast (map.ts bindRockBeds)
+    if (built.bankTurfGeometry) group.userData.groundBanks = built.bankTurfGeometry;
+    // (and their crests as built, for the vegetation tier's gorse and blackthorn: map.ts hands them over)
+    if (built.bankCrests) group.userData.bankCrests = built.bankCrests;
   }
   yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;

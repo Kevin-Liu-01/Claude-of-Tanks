@@ -38,6 +38,8 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { setShadowCasterProfile } from '../engine/renderLayers.ts';
+import { BANK_MAX_M, type FieldBankCrests } from './fieldWorks.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -368,6 +370,28 @@ function bindRockBeds(terrain: TerrainRoot, propsGroup: THREE.Group): void {
   }
 }
 
+/**
+ * The scenery lane (b29): a bocage's banks (fieldWorks.ts sweepBank — the talus, up to a metre of turfed earth on a
+ * granite-faced foot) draw with the battlefield's own terrain material, as the beds do, so their turf is the field's; unlike
+ * the beds they cast, into the near cascades (their height their shadow profile). One mesh, world space.
+ */
+function bindGroundBanks(terrain: TerrainRoot, propsGroup: THREE.Group): void {
+  const banks = propsGroup.userData.groundBanks as THREE.BufferGeometry | undefined;
+  if (!banks) return;
+  let ground: THREE.Material | null = null;
+  terrain.traverse((object) => {
+    const material = (object as THREE.Mesh).isMesh ? (object as THREE.Mesh).material : null;
+    if (!ground && material && !Array.isArray(material) && material.userData.layerMeans && material.userData.groundClock) ground = material;
+  });
+  if (!ground) return;
+  const mesh = new THREE.Mesh(banks, ground);
+  mesh.name = 'field-banks';
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  setShadowCasterProfile(mesh, { heightM: BANK_MAX_M });
+  propsGroup.add(mesh);
+}
+
 
 function assembleWorld(
   engineCtx: EngineContext,
@@ -386,6 +410,11 @@ function assembleWorld(
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
   bindRockBeds(terrain, props.group);
+  bindGroundBanks(terrain, props.group);
+  // (b29) the banks' crests as built, to the vegetation tier where it seats the gorse and blackthorn on them (the trees
+  // lane's plantBankCrests; until it has one, nothing)
+  const bankCrests = props.group.userData.bankCrests as FieldBankCrests | undefined;
+  if (bankCrests) (vegetation as { plantBankCrests?: (crests: FieldBankCrests) => void }).plantBankCrests?.(bankCrests);
   engineCtx.scene.add(group);
   // Round 77c: where the world baked an impostor atlas (desktop, a renderer) the horizon ring's forest over the red
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the

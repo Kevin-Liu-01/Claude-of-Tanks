@@ -518,7 +518,7 @@ export function* composeFieldWorks(
 ): Generator<SceneryBuildSlice, Omit<FieldWorksBuilt, 'receipt'> & { receipt: FieldWorksReceipt | null }, void> {
   const works = ctx.scenery?.fieldWorks;
   if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) {
-    return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt: null, fine: null };
+    return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, bankTurfGeometry: null, bankCrests: null, receipt: null, fine: null };
   }
   // (the hard solids: buildings, walls, the rock masses; not the trees, not the crushable clutter)
   const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
@@ -526,6 +526,6 @@ export function* composeFieldWorks(
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
   return yield* buildFieldWorks(ctx.heightField, noise, {
     walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, solids, keepOut, mobile: ctx.mobile,
-    wallTone: works.wallTone, bankTone: works.bankTone,
+    wallTone: works.wallTone, bankTone: works.bankTone, bankHeightM: works.bankHeightM,
   });
 }

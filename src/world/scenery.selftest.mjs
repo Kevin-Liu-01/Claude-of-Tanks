@@ -32,7 +32,7 @@ import {
   sceneryClearances, withGroundCoverHoles,
 } from './sceneryPlan.ts';
 import { composeScenery } from './scenery.ts';
-import { buildFieldWorks } from './fieldWorks.ts';
+import { BANK_HEIGHT_M, BANK_MAX_M, buildFieldWorks, fieldBankCrownAt, isFieldBankSample } from './fieldWorks.ts';
 import { certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
 import { collisionFootprintContainsPoint } from './collision.ts';
 
@@ -576,6 +576,50 @@ function compose(scenery, solids = [], mobile = false) {
   let bankOff = 0;
   for (let i = 0; i < bp.length; i += 3) { const u = ((bp[i] % 40) + 40) % 40; if (Math.min(u, 40 - u) > 1.6) bankOff++; }
   assert.equal(bankOff, 0, 'every bank stands under a hedge line');
+  // (b29; wave 184 on Saltmere: "no hedge or bank silhouette anywhere"; the coordinator: "turf-toned with stone showing
+  // at the foot, casting shadow"; mr4: decor, a metre at most) the bank is a talus: its body the ground's own (position,
+  // normal and the ground's fold for the terrain material), its crown its map's height (a metre) and rounded, its turf's normals the ground's
+  // turned back toward their own (lit and layered as the field) and its granite foot's steep (the ground's earth and rock
+  // layer shows there); the facing's blocks are the stone geometry above; its crests handed over as built
+  const turf = banks.bankTurfGeometry;
+  assert.ok(turf && turf.getAttribute('position') && turf.getAttribute('normal') && turf.getAttribute('fold') && turf.index && !turf.getAttribute('uv'),
+    'the banks\' body for the ground\'s material: world space, its normals and the ground\'s fold');
+  const tp = turf.attributes.position.array, tn = turf.attributes.normal.array;
+  let turfOff = 0, crown = 0, tall = 0, turfSteep = 1, toes = 0, steepToes = 0;
+  for (let i = 0; i < tp.length; i += 3) {
+    const u = ((tp[i] % 40) + 40) % 40, above = tp[i + 1] - (2 + 0.01 * tp[i]);
+    if (Math.min(u, 40 - u) > 1.9) turfOff++;
+    crown = Math.max(crown, above);
+    if (above > 0.8) tall++;
+    if (above > 0.36) turfSteep = Math.min(turfSteep, tn[i + 1]);
+    if (above < -0.1) { toes++; if (tn[i + 1] < 0.45) steepToes++; }
+  }
+  assert.equal(turfOff, 0, 'every bank\'s body under its hedge line');
+  assert.ok(BANK_MAX_M <= 1 && crown <= BANK_MAX_M + 1e-6 && crown > 0.9 && tall > 100, `a talus a metre high, no higher (its crown ${crown.toFixed(2)} m)`);
+  assert.ok(turfSteep > 0.8, `the turf lit as the field (its steepest normal ${turfSteep.toFixed(2)} up)`);
+  assert.ok(toes > 100 && steepToes / toes > 0.8, `the granite foot steep (${(steepToes / toes * 100).toFixed(0)} % of its toe's normals under 0.45 up)`);
+  const crests = banks.bankCrests;
+  assert.ok(crests && crests.lines.length >= 2 && crests.points.length === crests.lines[crests.lines.length - 1] * 5, 'the crests as built, five floats a row');
+  for (let r = 0; r < crests.points.length / 5; r++) {
+    const x = crests.points[r * 5], y = crests.points[r * 5 + 1], ax = crests.points[r * 5 + 3], az = crests.points[r * 5 + 4];
+    const above = y - (2 + 0.01 * x);
+    assert.ok(above > 0.15 && above <= BANK_MAX_M + 1e-6 && Math.abs(Math.hypot(ax, az) - 1) < 1e-4, `a crest row over its ground (${above.toFixed(2)} m)`);
+  }
+  // the pure law the vegetation tier reads: the field works' own test, the crown by place alone
+  assert.ok(isFieldBankSample({ boundary: 0, hedge: 1, edgeM: 0.5, track: 0 }) && !isFieldBankSample({ boundary: 0, hedge: 1, edgeM: 0.5, track: 1 })
+    && !isFieldBankSample({ boundary: 3, hedge: 1, edgeM: 0.5, track: 0 }), 'a hedged margin is a bank\'s line, a track or a wall line not');
+  for (const [x, z] of [[0, 0], [123.4, -56.7], [-400, 300]]) {
+    const h = fieldBankCrownAt(x, z);
+    assert.ok(h >= 0.86 * BANK_HEIGHT_M - 1e-9 && h <= BANK_HEIGHT_M + 1e-9 && h === fieldBankCrownAt(x, z), `the crown by place (${h.toFixed(3)} m)`);
+    assert.ok(fieldBankCrownAt(x, z, 0.8) <= 0.8 + 1e-9 && fieldBankCrownAt(x, z, 2) <= BANK_MAX_M + 1e-9, 'a map\'s own height, never over the metre');
+  }
+  // a map's own height (Frontier's strip-end banks, mr4: about 0.8 m)
+  const low = lay(fields(0, true), { walls: false, banks: true, bankHeightM: 0.8 });
+  const lp = low.bankTurfGeometry.attributes.position.array;
+  let lowCrown = 0;
+  for (let i = 0; i < lp.length; i += 3) lowCrown = Math.max(lowCrown, lp[i + 1] - (2 + 0.01 * lp[i]));
+  assert.ok(lowCrown <= 0.8 + 1e-6 && lowCrown > 0.7, `a map's lower banks (${lowCrown.toFixed(2)} m)`);
+  low.geometry.dispose(); low.bankTurfGeometry.dispose();
   // a placed solid on a field line (a barn across the x = 40 line): the wall stops short of it
   const fenced = lay(fields(3, false), { walls: true, banks: false, solids: [{ min: [34, 0, -6], max: [46, 4, 6] }] });
   const fp = fenced.geometry.attributes.position.array;
@@ -605,7 +649,7 @@ const [maps, terrain, vegetationModule, props, fleet, models, placementModule, l
  * sectors, the spawn pads' flats, the roads' painted core and the bridge decks with their approaches — and the
  * largest height a work stands over its own ground.
  */
-function fieldWorksClearances(mapId, config, heightField, dressing, flora, works) {
+function fieldWorksClearances(mapId, config, heightField, dressing, flora, works, maxHeight = 1.05) {
   const spawns = heightField._layout.spawns;
   const anchors = placementModule.matchPlacementAnchors(spawns);
   const obstacles = [...dressing.obstacles, ...flora.treeObstacles];
@@ -666,7 +710,7 @@ function fieldWorksClearances(mapId, config, heightField, dressing, flora, works
     assert.ok(road > 5.7, `${mapId}: a field work stands on the road's core (${x.toFixed(1)}, ${z.toFixed(1)}: ${road.toFixed(2)} m)`);
     roadGap = Math.min(roadGap, road);
   }
-  assert.ok(height <= 1.05, `${mapId}: the field works stand at most 1.05 m (${height.toFixed(3)} m)`);
+  assert.ok(height <= maxHeight, `${mapId}: the field works stand at most ${maxHeight} m (${height.toFixed(3)} m)`);
   return { discs: discs.length, rects: rects.length, height, discGap, rectGap, roadGap };
 }
 await models.preloadPropModels();
@@ -702,6 +746,12 @@ for (const mapId of maps.MAP_IDS) {
     const far = dressing.group.getObjectByName('props-field-works-far');
     if (far) fieldWorksClearances(mapId, config, heightField, dressing, flora, far);
     const c = fieldWorksClearances(mapId, config, heightField, dressing, flora, built);
+    // (b29) and the banks' turfed body, a talus up to BANK_MAX_M (a metre)
+    const turfBanks = dressing.group.userData.groundBanks;
+    if (works.banks) {
+      assert.ok(turfBanks, `${mapId}: the banks' body stands`);
+      fieldWorksClearances(mapId, config, heightField, dressing, flora, { geometry: turfBanks }, BANK_MAX_M + 0.05);
+    }
     worksLine = `; field works ${Math.round(receipt.fieldWorks.wallM)} m walls + ${Math.round(receipt.fieldWorks.bankM)} m banks clear of ${c.discs} discs `
       + `(${c.discGap.toFixed(1)} m) and ${c.rects} aprons/yards/bridges (${c.rectGap.toFixed(1)} m), ${c.roadGap.toFixed(1)} m off the roads, `
       + `${c.height.toFixed(2)} m tall at most`;

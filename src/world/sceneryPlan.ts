@@ -113,7 +113,8 @@ interface SceneryBedrock {
 
 /**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
- * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
+ * wall boundaries, the earth banks under a bocage's hedge lines (b29: the talus, up to a metre of turfed earth on a
+ * granite-faced foot, drawn with the terrain material and casting), on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
  */
 interface SceneryFieldWorks {
@@ -121,10 +122,14 @@ interface SceneryFieldWorks {
   banks?: boolean;
   /**
    * sRGB HSL base tones of the wall stone and the bank's earth. The wall's tone multiplies its face print (near white
-   * stones, dark joints: fieldWallFace.ts), so a limestone at sRGB lightness 0.6 asks about 0.8 here.
+   * stones, dark joints: fieldWallFace.ts), so a limestone at sRGB lightness 0.6 asks about 0.8 here. (b29: the bank's
+   * body is the ground's own and its facing the field's granite: the bank's tone no longer reads.)
    */
   wallTone?: readonly [number, number, number];
   bankTone?: readonly [number, number, number];
+  /** (b29) The banks' crown over their ground (m): 1.0 by default (Saltmere's talus), at most 1.0, the metre a hull drives
+   * over (decor, no collision; mr4): Frontier's strip-end hedge banks about 0.8. */
+  bankHeightM?: number;
 }
 
 export interface SceneryConfig {
