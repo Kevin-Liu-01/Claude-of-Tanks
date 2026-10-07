@@ -4,12 +4,15 @@
 // the sward in the grikes alone, where the soil is thin (terrain.ts karstCoverAt, the height field's _karstCoverAt, the
 // pavement's patch weight 0..1). This is the stone that stands proud of it, in three families by that weight:
 //
-//   - the bosses and the tilted blocks (cover over 0.5): the bedrock's own rounded slabs, 0.2 to 0.6 m proud, long along
-//     the master joints (the field grid's heading), their tops following the bedding and tipped a few degrees their own
-//     way, their sides fluted by the rain (rundkarren). Drawn with the terrain's own material (map.ts), so their stone is
-//     the pavement's — its clints, its grikes, its lichen — and they cast their shadows;
+//   - the bosses and the tilted blocks (cover over 0.5): the bedrock's own rounded slabs, long along the master joints (the
+//     field grid's heading), their tops following the bedding and tipped a few degrees their own way, their sides fluted
+//     by the rain (rundkarren). (b27; gauntlet wave 177 on b23's: "long tan slabs with thick edges, warmer than the
+//     pavement"; the coordinator: "buried and tone-matched") 0.12 to 0.38 m proud, their sides sloping down into the
+//     ground over a hand and more (no edge standing up out of the turf), and the formations' own stone in the pavement's
+//     pale grey (sceneryRocks.ts finishKarstStone: the scenery rock material; the terrain's material on a raised form
+//     drew its beach and its rock layer, tan);
 //   - the loose blocks (cover 0.15 to 0.5, the patch's edge, where the soil gains on the slabs): angular stones lying in
-//     twos to fives, the field walls' own stone (the field-stone print).
+//     twos to fives, sunk a third, the same stone.
 //
 // (The third family, the clearance heaps — gromače, where the cover is thin — follows in a batch of its own: they are
 // collision, and their form wants its own round.) Neither family is collision: a block a tank drives over is no wall.
@@ -21,8 +24,10 @@
 // crest term only adds), so a boss never stands where the pavement does not. A stream of its own, so every other
 // placement keeps its seat. A height field without the hook (every map but a walled karst) builds nothing.
 import * as THREE from 'three';
+import type { SimplexNoise } from '../engine/simplexFast.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { fieldStone } from './maps/fieldWallDressing.ts';
+import { finishKarstStone } from './sceneryRocks.ts';
 
 type Rng = () => number;
 
@@ -41,6 +46,8 @@ export interface KarstGround {
 
 interface KarstReliefOptions {
   seed: number;
+  /** The formations' shared noise (their tone's mottle). */
+  noise: SimplexNoise;
   /** The field grid's heading (landUse.ts LandUseProfile heading): the master joints run along it. */
   heading: number;
   /** True where something placed before stands within r of (x, z). */
@@ -50,12 +57,17 @@ interface KarstReliefOptions {
 }
 
 interface KarstRelief {
-  /** Every boss merged, world space (position, normal, fold): for the terrain's material (map.ts). Null on a phone. */
-  bosses: THREE.BufferGeometry | null;
-  /** The loose blocks, world space (position, normal, uv): for the field-stone bucket. */
-  stones: THREE.BufferGeometry[];
+  /** The bosses and the loose blocks, finished as the formations' stone (world space: position, normal, colour,
+   *  aRockGround, uv) for the scenery rock material; null where none stands. */
+  stone: THREE.BufferGeometry | null;
+  /** Each piece of it in order (its triangles a run of the stone's), for the receipts: a boss or a block, its seat and
+   *  its triangles, a boss's height proud. */
+  parts: Array<{ kind: 'boss' | 'block'; x: number; z: number; triangles: number; proud?: number }>;
   counts: { bosses: number; blocks: number; candidates: number };
 }
+
+/** (b27) The karst stone's tone (HSL): the pavement's pale grey, a little warm (the formations' limestone is cream). */
+export const KARST_STONE_TONE: readonly [number, number, number] = [0.1, 0.035, 0.6];
 
 /** The candidates' lattice (m) and the square they cover. */
 const KARST_CELL_M = 5;
@@ -66,7 +78,7 @@ export const KARST_COVER = Object.freeze({ boss: 0.5, blocks: [0.15, 0.5] as con
  * terrain normal's least y (the rock layer's faces start steeper). */
 export const KARST_KEEP = Object.freeze({ roadM: 9.5, village: 0.02, wet: 0.05, normalY: 0.85 });
 /** A boss's height proud of the ground (m) and its plan (the long side, m). */
-export const KARST_BOSS_PROUD: readonly [number, number] = [0.2, 0.6];
+export const KARST_BOSS_PROUD: readonly [number, number] = [0.12, 0.38];
 const KARST_BOSS_LONG: readonly [number, number] = [0.8, 2.2];
 /** How far a boss's foot is sunk under the ground (m): the ground covers the seam. */
 export const KARST_BOSS_SINK_M = 0.18;
@@ -109,23 +121,16 @@ function planRadius(a: number, long: number, wide: number, p: number, h: readonl
 /**
  * One boss in world space at (cx, cz): its rings from the sunk foot up the fluted side to the shoulder and the domed
  * top, every height on the ground under it (the top follows the bedding, the ground's own slope) plus the tilt along
- * its short axis. Appended to the merged arrays.
+ * its short axis. (b27) Its side slopes down into the ground: the foot ring sunk a fifth wider than the shoulder, so no
+ * edge stands up out of the turf. Its own indexed geometry.
  */
-function addBoss(ground: KarstGround, cx: number, cz: number, yaw: number, long: number, wide: number, proud: number,
-  tilt: number, p: number, harm: readonly number[], cuts: readonly number[], pan: number, pos: number[], fold: number[],
-  index: number[]): void {
+function bossGeometry(ground: KarstGround, cx: number, cz: number, yaw: number, long: number, wide: number, proud: number,
+  tilt: number, p: number, harm: readonly number[], cuts: readonly number[], pan: number): THREE.BufferGeometry {
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
-  const foldAt = ground._foldAt;
-  const foldByte = (x: number, z: number): number => {
-    if (!foldAt) return 0;
-    const f = foldAt(x, z);
-    return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
-  };
-  // [scale of the plan, height share of the boss's proud, the flutes' share]: the sunk foot, the side standing near
-  // upright, the shoulder crisp where the rain has rounded it a little, the top's edge (the top's centre is the fan's
-  // apex, a solution pan on some)
-  const rings: ReadonlyArray<readonly [number, number, number]> = [[1.04, -1, 0], [1.0, 0.78, 0.03], [0.94, 0.97, 0.015], [0.6, 1.0, 0]];
-  const base = pos.length / 3;
+  // [scale of the plan, height share of the boss's proud, the flutes' share]: the sunk foot well out, the side sloping
+  // up to the shoulder, the shoulder rounded, the top's edge (the top's centre is the fan's apex, a solution pan on some)
+  const rings: ReadonlyArray<readonly [number, number, number]> = [[1.22, -1, 0], [1.07, 0.42, 0.025], [0.93, 0.86, 0.015], [0.62, 1.0, 0]];
+  const pos: number[] = [], index: number[] = [];
   for (const [scale, rise, flute] of rings) {
     for (let k = 0; k < BOSS_SEGS; k++) {
       const a = (k / BOSS_SEGS) * Math.PI * 2;
@@ -136,22 +141,23 @@ function addBoss(ground: KarstGround, cx: number, cz: number, yaw: number, long:
       // (the tilt: the block tipped about its long axis, its v side up)
       const y = rise < 0 ? g - KARST_BOSS_SINK_M : g + proud * rise + tilt * lv * Math.min(1, rise);
       pos.push(x, y, z);
-      fold.push(foldByte(x, z));
     }
   }
   const apex = pos.length / 3;
-  const g0 = ground.getHeightAt(cx, cz);
-  pos.push(cx, g0 + proud * (1.04 - pan), cz);
-  fold.push(foldByte(cx, cz));
+  pos.push(cx, ground.getHeightAt(cx, cz) + proud * (1.04 - pan), cz);
   for (let ring = 0; ring < rings.length - 1; ring++) {
     for (let k = 0; k < BOSS_SEGS; k++) {
-      const a = base + ring * BOSS_SEGS + k, b = base + ring * BOSS_SEGS + (k + 1) % BOSS_SEGS;
+      const a = ring * BOSS_SEGS + k, b = ring * BOSS_SEGS + (k + 1) % BOSS_SEGS;
       const c = a + BOSS_SEGS, d = b + BOSS_SEGS;
       index.push(a, c, b, b, c, d);
     }
   }
-  const top = base + (rings.length - 1) * BOSS_SEGS;
+  const top = (rings.length - 1) * BOSS_SEGS;
   for (let k = 0; k < BOSS_SEGS; k++) index.push(top + k, apex, top + (k + 1) % BOSS_SEGS);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.setIndex(index);
+  return geometry;
 }
 
 /** The relief of one karst map, or null without the hook. A generator: it yields every so many candidates. */
@@ -160,8 +166,8 @@ export function* buildKarstRelief(ground: KarstGround, o: KarstReliefOptions): G
   if (!coverAt || !landAt) return null;
   const r = mulberry32((o.seed ^ 0x6b5a7) >>> 0);
   const field = {} as LandFieldSample;
-  const pos: number[] = [], fold: number[] = [], index: number[] = [];
-  const stones: THREE.BufferGeometry[] = [];
+  const pieces: THREE.BufferGeometry[] = [];
+  const parts: KarstRelief['parts'] = [];
   const counts = { bosses: 0, blocks: 0, candidates: 0 };
   let clusters = 0;
   const kept = (x: number, z: number, ny = ground.getNormalAt(x, z).y): boolean =>
@@ -202,7 +208,8 @@ export function* buildKarstRelief(ground: KarstGround, o: KarstReliefOptions): G
           cuts.push(side, reachThere * (0.68 + local() * 0.1));
         }
         const pan = local() < 0.33 ? 0.06 + local() * 0.08 : 0;
-        addBoss(ground, x, z, yaw, long, wide, proud, tilt, p, harm, cuts, pan, pos, fold, index);
+        pieces.push(bossGeometry(ground, x, z, yaw, long, wide, proud, tilt, p, harm, cuts, pan));
+        parts.push({ kind: 'boss', x, z, triangles: pieces[pieces.length - 1].index!.count / 3, proud });
         counts.bosses++;
       } else if (cover > KARST_COVER.blocks[0]) {
         if (clusters >= KARST_MAX.clusters || pick > 0.12) continue;
@@ -215,7 +222,8 @@ export function* buildKarstRelief(ground: KarstGround, o: KarstReliefOptions): G
           const size = 0.15 + Math.pow(local(), 1.5) * 0.3;
           const stone = fieldStone(size * (1.1 + local() * 0.7), size * (0.5 + local() * 0.4), size * (0.75 + local() * 0.4), local, 0.36, 1.2);
           stone.rotateZ((local() - 0.5) * 0.5); stone.rotateX((local() - 0.5) * 0.4); stone.rotateY(local() * Math.PI);
-          stones.push(stone.translate(px, ground.getHeightAt(px, pz) - size * 0.18, pz));
+          pieces.push(stone.translate(px, ground.getHeightAt(px, pz) - size * 0.3, pz));
+          parts.push({ kind: 'block', x: px, z: pz, triangles: stone.index!.count / 3 });
           counts.blocks++;
         }
         clusters++;
@@ -223,14 +231,7 @@ export function* buildKarstRelief(ground: KarstGround, o: KarstReliefOptions): G
     }
     if (j & 1) yield; // (every other row: a slice of a few milliseconds at the loading screen)
   }
-  let bosses: THREE.BufferGeometry | null = null;
-  if (pos.length) {
-    bosses = new THREE.BufferGeometry();
-    bosses.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    bosses.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
-    bosses.setIndex(index);
-    bosses.computeVertexNormals();
-    bosses.computeBoundingSphere();
-  }
-  return { bosses, stones, counts };
+  // (the formations' finish: their colour, their ground and their normals split at the cleavage angle)
+  const stone = finishKarstStone(pieces, ground, o.noise, KARST_STONE_TONE, o.seed * 0.0013);
+  return { stone, parts, counts };
 }

@@ -63,7 +63,7 @@ import { fieldStoneLithologyFor, liftFieldStoneMean, paintFieldStoneBuffers, typ
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, ROUND_BALE_MAPS, type HaystackStyle } from './maps/haystackKit.ts';
-import { buildKarstRelief, type KarstGround } from './karstRelief.ts';
+import { KARST_BOSS_PROUD, buildKarstRelief, type KarstGround } from './karstRelief.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
@@ -8557,22 +8557,30 @@ ${snowCap ? `
     autumnFieldContext = null;
   }
   // (b23, the scenery lane) the limestone in relief over a karst map's flush pavement (karstRelief.ts, on the ground
-  // lane's patch weight, the height field's _karstCoverAt): its bosses for the world to draw with the ground's own
-  // material (map.ts), its loose blocks of the field walls' stone. Neither is collision. The last of the placements,
-  // from a stream of its own and clear of everything placed before it, so every other seat is kept. Nothing on a map
-  // without the hook.
+  // lane's patch weight, the height field's _karstCoverAt): its bosses and its loose blocks, (b27) one mesh of the
+  // formations' stone on the rock material in the pavement's pale grey, casting its shadows. Neither is collision. The
+  // last of the placements, from a stream of its own and clear of everything placed before it, so every other seat is
+  // kept. Nothing on a map without the hook.
   function* placeKarstRelief(): Generator<undefined, void, void> {
     // (the hook is the ground lane's: optional on the height field until it lands, read through the relief's own view)
     const profile = resolveLandUseProfile(mapId), ground: KarstGround = heightField;
     if (!profile || !ground._karstCoverAt) return;
     const near = createObstacleGrid([...obstacles, ...(vegetation?.treeObstacles ?? [])], 16), hits: CollisionRecord[] = [];
     const relief = yield* buildKarstRelief(ground, {
-      seed, heading: profile.heading, mobile: mobileProps,
+      seed, noise: noi, heading: profile.heading, mobile: mobileProps,
       blocked: (x, z, r) => near(x - r, z - r, x + r, z + r, hits).length > 0,
     });
     if (!relief) return;
-    (fieldWallBucket === 'fieldStone' ? buckets.fieldStone : buckets.stone).push(...relief.stones);
-    if (relief.bosses) group.userData.karstBosses = relief.bosses;
+    if (relief.stone) {
+      const mesh = new THREE.Mesh(relief.stone, mats.rock);
+      mesh.name = 'props-karst-stone';
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      // (a block at most this proud casts a shadow the far cascades cannot resolve: the footprint law hides it there)
+      setShadowCasterProfile(mesh, { heightM: KARST_BOSS_PROUD[1] });
+      group.add(mesh);
+    }
     group.userData.karstRelief = relief.counts;
   }
   yield* placeKarstRelief();

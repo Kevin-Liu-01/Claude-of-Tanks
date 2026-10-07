@@ -295,7 +295,8 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   gneiss: { kinds: ['block', 'rounded', 'slab'], soft: 0.9 },
   basalt: { kinds: ['block', 'rounded', 'block'], soft: 0.85 },
   sandstone: { kinds: ['block', 'slab', 'block'], soft: 0.9 },
-  limestone: { kinds: ['block', 'slab', 'rounded'], soft: 1 },
+  // (b27; gauntlet wave 177, Saltwind: "two smooth egg-shaped boulders" — the corestone gives way to a fractured block)
+  limestone: { kinds: ['block', 'slab', 'block'], soft: 1 },
   slate: { kinds: ['slab', 'block', 'slab'], soft: 0.7 },
   // (b12: the marshmallow — two of three rounded, the softest weather — gives way to fractured blocks and a slab)
   chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },

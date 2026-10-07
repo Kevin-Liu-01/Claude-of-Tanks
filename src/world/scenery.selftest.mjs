@@ -109,6 +109,29 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
   assert.equal(pave.masses.length, 0, 'a pavement without a scar publishes no mass');
   const top = Math.max(...pave.geometry.attributes.position.array.filter((_, i) => i % 3 === 1));
   assert.ok(top < 0.55, `the clints stay under a hull's 0.55 m step (${top.toFixed(2)})`);
+  // (b27; gauntlet wave 177, Saltwind: "flat tan slabs with thick vertical edges") the clints emerge from the ground: a
+  // few centimetres proud, their edges under the turf, no face standing up out of it — every triangle wholly above the
+  // ground faces up more than it faces out — and the pavement covers its ground (the ground cover keeps off it)
+  assert.ok(top < 0.15, `the clints a few centimetres proud (${top.toFixed(3)})`);
+  const pp = pave.geometry.attributes.position.array;
+  let walls = 0, faces = 0;
+  for (let t = 0; t < pp.length; t += 9) {
+    if (pp[t + 1] <= 0 || pp[t + 4] <= 0 || pp[t + 7] <= 0) continue;
+    const ux = pp[t + 3] - pp[t], uy = pp[t + 4] - pp[t + 1], uz = pp[t + 5] - pp[t + 2], vx = pp[t + 6] - pp[t], vy = pp[t + 7] - pp[t + 1], vz = pp[t + 8] - pp[t + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    faces++;
+    if (Math.abs(ny) / (Math.hypot(nx, ny, nz) || 1) < 0.5) walls++;
+  }
+  assert.ok(faces > 100 && walls === 0, `no wall stands out of the ground (${walls} of ${faces} faces above it steeper than 60 degrees)`);
+  assert.equal(pave.covers, true, 'its clints cover its ground');
+  // (b27; the coordinator: "place them by the ground lane's _karstCoverAt patch weight") on a field with the ground
+  // lane's karst the pavement is the ground's own: the form lays no clint (and covers nothing), only its scar
+  const karstGround = { getHeightAt: () => 0, _karstCoverAt: () => 1 };
+  const onKarst = buildRockFormation({ form: 'pavement', geology: 'limestone', x: 0, z: 0, radius: 12, height: 0 }, karstGround, noise, mulberry32(3));
+  assert.equal(onKarst.geometry, null, 'on the ground lane\'s karst a pavement without a scar lays nothing');
+  assert.equal(onKarst.covers, false, 'and covers no ground (its sward keeps to the grikes)');
+  const scarred = buildRockFormation({ form: 'pavement', geology: 'limestone', x: 0, z: 0, radius: 12, height: 1.6 }, karstGround, noise, mulberry32(3));
+  assert.ok(scarred.geometry && scarred.masses.length === 1 && scarred.covers === false, 'its scar alone, a standing mass');
 }
 
 // ---------------------------------------------------------------------------------------------- 2. the kit

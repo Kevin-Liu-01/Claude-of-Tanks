@@ -36,6 +36,9 @@ interface RockGround {
   getHeightAt(x: number, z: number): number;
   /** The baked 1 m height grid, when the field has one: per-vertex ground reads use it. */
   getHeightAtFast?(x: number, z: number): number;
+  /** (b27) The ground lane's karst (terrain.ts karstCoverAt): where a field has it, its limestone pavement is the
+   *  ground's own (the terrain material's clints and grikes, the stone in relief over it karstRelief.ts's). */
+  _karstCoverAt?: unknown;
 }
 
 /** One authored rock formation. */
@@ -69,6 +72,9 @@ interface RockFormationBuild {
   /** Pieces (blocks, beds, plates, slabs, stones) the formation laid. */
   pieces: number;
   triangles: number;
+  /** (b27) Whether the formation lays its stone over its whole footprint (a pavement's clints, a scree fan): its ground
+   *  is a hole in the ground cover. A pavement on the ground lane's karst lays none (its sward keeps to the grikes). */
+  covers?: boolean;
 }
 
 interface RockBuildOptions {
@@ -591,30 +597,98 @@ function beddedOutcrop(spec: RockFormationSpec, ground: RockGround, noise: Simpl
   }
 }
 
+/**
+ * (b27) One clint: its outline (world x, z pairs, counter-clockwise seen from above) laid on the ground as a low dome of
+ * rock — its middle `rise` over the ground under it, its top at nine-tenths of that out to a ring `slope` metres inside
+ * the outline, the outline itself `bury` under the ground — so it emerges from the ground with no wall standing round it.
+ * Indexed (welded): a fan over the top and the skirt down into the ground.
+ */
+function clintMound(outline: readonly number[], ground: RockGround, rise: number, slope: number, bury: number, dome: number): THREE.BufferGeometry {
+  const n = outline.length / 2;
+  let cx = 0, cz = 0;
+  for (let k = 0; k < n; k++) { cx += outline[k * 2]; cz += outline[k * 2 + 1]; }
+  cx /= n; cz /= n;
+  const positions: number[] = [cx, ground.getHeightAt(cx, cz) + rise * (1 + dome), cz];
+  for (let k = 0; k < n; k++) {
+    const ox = outline[k * 2], oz = outline[k * 2 + 1], dx = cx - ox, dz = cz - oz, d = Math.hypot(dx, dz) || 1;
+    const t = Math.min(0.45, slope / d), ix = ox + dx * t, iz = oz + dz * t;
+    positions.push(ix, ground.getHeightAt(ix, iz) + rise * 0.9, iz);
+  }
+  for (let k = 0; k < n; k++) positions.push(outline[k * 2], ground.getHeightAt(outline[k * 2], outline[k * 2 + 1]) - bury, outline[k * 2 + 1]);
+  const index: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n, ik = 1 + k, ij = 1 + j, ok = 1 + n + k, oj = 1 + n + j;
+    index.push(0, ij, ik); // (counter-clockwise from above: the fan faces up)
+    index.push(ik, ij, oj, ik, oj, ok);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(index);
+  return g;
+}
+
 function limestonePavement(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
   // Limestone pavement: the bare top of a limestone bed, dissolved along its joints into clints (the blocks) and grikes
   // (the fissures between), lying nearly flush with the turf; a low scar (the next bed's broken edge) behind it.
+  // (b27; gauntlet wave 177, Saltwind: "a grid of near-identical flat tan slabs with thick vertical edges" — "they need
+  // to emerge from the ground: buried edges, irregular plan forms, varied sizes, and clints and grikes rather than
+  // discrete pavers"; the coordinator: "place them by the ground lane's _karstCoverAt patch weight") On a field with the
+  // ground lane's karst the pavement is the ground's own — the terrain material draws its clints and grikes flush where
+  // its patch weight says, and karstRelief.ts sets the stone in relief over it — so this lays the scar alone. Elsewhere
+  // the clints: the bands between the master joints along the strike, each its own width, cut by cross joints at their
+  // own spacing and slant, staggered band to band, a clint now and then two cross joints long; each the cell less its
+  // grikes (a few centimetres to a hand wide, each joint its own), its corners rounded off, laid as a low dome that
+  // emerges from the ground — a few centimetres proud at its middle, its edges sloping down under the turf, lower and
+  // sparser toward the pavement's ragged rim, the odd clint gone to a soil pocket.
   const R = spec.radius;
   const yaw = THREE.MathUtils.degToRad(spec.yawDeg ?? rng() * 180);
   const c = Math.cos(yaw), s = Math.sin(yaw);
-  const cellU = mobile ? 3.0 : 2.4, cellV = cellU * 1.45;
-  const nu = Math.ceil(R / cellU), nv = Math.ceil(R / cellV);
-  const sides = mobile ? 10 : 14;
-  for (let i = -nu; i <= nu; i++) {
-    for (let j = -nv; j <= nv; j++) {
-      // the master joints run straight along the strike; the cross joints wander
-      const u = (i + (rng() - 0.5) * 0.25) * cellU, v = (j + (rng() - 0.5) * 0.45) * cellV;
-      const d = Math.hypot(u, v * 0.85) / R;
-      const rim = 0.7 + noise.noise(u * 0.16 + spec.x * 0.01, v * 0.16) * 0.3;
-      if (d > rim || rng() < 0.07) continue;
-      const x = spec.x + u * c - v * s, z = spec.z + u * s + v * c;
-      const grike = 0.12 + rng() * 0.12;
-      const hu = cellU * 0.5 - grike * 0.5, hv = cellV * 0.5 * (0.7 + rng() * 0.3) - grike * 0.5;
-      const rise = 0.06 + (1 - d) * 0.16 + rng() * 0.08;
-      const thick = 0.35 + rise;
-      const g = beddedSlab(hu, hv, thick, 0.04, sides, noise, i * 3.1 + j * 1.7 + spec.z * 0.01, { roughness: 0.07, squareness: 7, topWobble: 0.05 });
-      const gy = ground.getHeightAt(x, z);
-      pieces.push({ geometry: place(g, x, gy + rise - thick, z, -yaw + (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.04, (rng() - 0.5) * 0.04), layer: -1, standing: false });
+  const sides = mobile ? 10 : 14; // (the scar's blocks)
+  if (!ground._karstCoverAt) {
+    const clintSides = mobile ? 6 : 10;
+    const world = (u: number, v: number): [number, number] => [spec.x + u * c - v * s, spec.z + u * s + v * c];
+    let v = -R - rng() * 1.2;
+    while (v < R) {
+      const bandW = (mobile ? 1.9 : 1.4) + rng() * 1.6, v0 = v, v1 = v + bandW;
+      v = v1;
+      const gv0 = 0.025 + rng() * 0.06, gv1 = 0.025 + rng() * 0.06, slant = (rng() - 0.5) * 0.3;
+      let u = -R - rng() * 2.5;
+      while (u < R) {
+        const twice = rng() < 0.2;
+        const len = ((mobile ? 1.6 : 1.1) + Math.pow(rng(), 1.3) * 2.4) * (twice ? 1.9 : 1);
+        const u0 = u, u1 = u + len;
+        u = u1;
+        // (every cell draws the same numbers whatever it lays: one clint's verdict never moves another's)
+        const gu0 = 0.015 + rng() * 0.07, gu1 = 0.015 + rng() * 0.07, pocket = rng(), riseR = rng(), domeR = rng(), slopeR = rng();
+        const chamfers = [rng(), rng(), rng(), rng()], bowU = (rng() - 0.5) * 0.12, bowV = (rng() - 0.5) * 0.12;
+        const cu = (u0 + u1) / 2 + ((v0 + v1) / 2) * slant, cv = (v0 + v1) / 2;
+        const d = Math.hypot(cu, cv * 0.85) / R;
+        const rim = 0.7 + noise.noise(cu * 0.16 + spec.x * 0.01, cv * 0.16) * 0.3;
+        if (d > rim || pocket < 0.07 + 0.25 * smooth(0.5, 1, d / rim)) continue;
+        // the cell less its grikes: its four corners (u along the strike, v across it), slanted with the cross joints
+        const a0 = u0 + gu0, a1 = u1 - gu1, b0 = v0 + gv0, b1 = v1 - gv1;
+        if (a1 - a0 < 0.4 || b1 - b0 < 0.4) continue;
+        const corners: Array<[number, number]> = [[a0 + b0 * slant, b0], [a1 + b0 * slant, b0], [a1 + b1 * slant, b1], [a0 + b1 * slant, b1]];
+        // each corner rounded off (its own reach), each side bowed a little out or in at its middle
+        const outline: number[] = [];
+        for (let k = 0; k < 4; k++) {
+          const p = corners[k], q = corners[(k + 1) % 4], o = corners[(k + 3) % 4];
+          const cut = (0.12 + chamfers[k] * 0.3) * Math.min(a1 - a0, b1 - b0) * 0.5;
+          const towardO = Math.hypot(o[0] - p[0], o[1] - p[1]) || 1, towardQ = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+          outline.push(...world(p[0] + (o[0] - p[0]) * cut / towardO, p[1] + (o[1] - p[1]) * cut / towardO));
+          outline.push(...world(p[0] + (q[0] - p[0]) * cut / towardQ, p[1] + (q[1] - p[1]) * cut / towardQ));
+          if (clintSides > 8) {
+            // the side's middle, bowed (along the strike for the long sides, across it for the short ones)
+            const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2, along = k % 2 === 0;
+            const bow = along ? bowV * (k === 0 ? -1 : 1) : bowU * (k === 1 ? 1 : -1);
+            outline.push(...world(mx + (along ? 0 : bow), mz + (along ? bow : 0)));
+          }
+        }
+        const fade = 1 - smooth(0.45, 1, d / rim);
+        const rise = (0.025 + riseR * 0.07) * (0.35 + 0.65 * fade);
+        const g = clintMound(outline, ground, rise, 0.1 + slopeR * 0.12, 0.03, (domeR - 0.3) * 0.35);
+        pieces.push({ geometry: g, layer: -1, standing: false });
+      }
     }
   }
   // the scar: the next bed's broken edge, a low step of jointed blocks along the strike on the upslope side
@@ -1222,6 +1296,18 @@ const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
 });
 
 /**
+ * (b27) The karst's loose stone in relief (karstRelief.ts: the bosses and the blocks over the ground lane's pavement), as
+ * the formations' own family: welded world-space pieces coloured, grounded and shaded as a limestone formation's (the
+ * scenery rock mesh's material), under the tone given (the pavement's pale grey, karstRelief.ts KARST_STONE_TONE).
+ */
+export function finishKarstStone(
+  geometries: readonly THREE.BufferGeometry[], ground: RockGround, noise: SimplexNoise, tone: readonly [number, number, number], salt: number,
+): THREE.BufferGeometry | null {
+  if (!geometries.length) return null;
+  return finish(geometries.map((geometry) => ({ geometry, layer: -1, standing: false })), 'limestone', tone, ground, noise, salt);
+}
+
+/**
  * Build one rock formation in world space. The stream `rng` is the formation's own; the noise field is shared and
  * read-only. Returns the welded vertex-coloured geometry, the standing masses' collision and the counts.
  */
@@ -1243,5 +1329,7 @@ export function buildRockFormation(
   const count = pieces.length;
   const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
   const triangles = geometry ? geometry.attributes.position.count / 3 : 0;
-  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles };
+  // (a scree fan's stones, and a pavement's clints where it lays them, cover its footprint: the ground cover keeps off it)
+  const covers = spec.form === 'scree' || (spec.form === 'pavement' && !ground._karstCoverAt);
+  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles, covers };
 }

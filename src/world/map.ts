@@ -39,7 +39,6 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { setShadowCasterProfile } from '../engine/renderLayers.ts';
-import { KARST_BOSS_PROUD } from './karstRelief.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -370,29 +369,6 @@ function bindRockBeds(terrain: TerrainRoot, propsGroup: THREE.Group): void {
   }
 }
 
-/**
- * The scenery lane (b23): a karst map's bosses and tilted blocks (props.ts placeKarstRelief, karstRelief.ts) — the
- * bedrock standing proud of the pavement — draw with the same terrain material as the beds, so their stone is the
- * pavement's own (its clints, its grikes, its lichen). Unlike the beds they cast: a block 0.2 to 0.6 m proud reads by
- * its shadow (into the near cascades, its height its shadow profile). One mesh, world space.
- */
-function bindKarstBosses(terrain: TerrainRoot, propsGroup: THREE.Group): void {
-  const bosses = propsGroup.userData.karstBosses as THREE.BufferGeometry | undefined;
-  if (!bosses) return;
-  let ground: THREE.Material | null = null;
-  terrain.traverse((object) => {
-    const material = (object as THREE.Mesh).isMesh ? (object as THREE.Mesh).material : null;
-    if (!ground && material && !Array.isArray(material) && material.userData.layerMeans && material.userData.groundClock) ground = material;
-  });
-  if (!ground) return;
-  const mesh = new THREE.Mesh(bosses, ground);
-  mesh.name = 'karst-bosses';
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  // (a block at most this proud casts a shadow the far cascades cannot resolve: the footprint law hides it there)
-  setShadowCasterProfile(mesh, { heightM: KARST_BOSS_PROUD[1] });
-  propsGroup.add(mesh);
-}
 
 function assembleWorld(
   engineCtx: EngineContext,
@@ -411,7 +387,6 @@ function assembleWorld(
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
   bindRockBeds(terrain, props.group);
-  bindKarstBosses(terrain, props.group);
   engineCtx.scene.add(group);
   // Round 77c: where the world baked an impostor atlas (desktop, a renderer) the horizon ring's forest over the red
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the

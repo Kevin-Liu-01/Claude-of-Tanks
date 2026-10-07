@@ -322,7 +322,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     if (!built.geometry) { skip(feature, 'empty'); continue; }
     rockPieces.push(built.geometry);
     for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
-    if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
+    if (!standing && built.covers) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
     receipt.placed++;
@@ -398,7 +398,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       if (!built.geometry) continue;
       rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
-      if (!standing) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
+      if (!standing && built.covers) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
       standingSites.push({ x, z, r: reach });
       feature.triangles! += built.triangles;
       receipt.rockTriangles += built.triangles;
