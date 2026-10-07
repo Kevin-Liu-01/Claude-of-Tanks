@@ -4161,15 +4161,35 @@ export function* attachTankDecorationsSteps(
       },
       turretCheekPair(_args, parts, name) {
         let ok = false;
+        const stations = [[0.3, 0.5], [0.2, 0.42], [0.36, 0.6]];
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
           let done = false;
-          for (const [z, yf] of [[0.3, 0.5], [0.2, 0.42], [0.36, 0.6]]) {
+          for (const [z, yf] of stations) {
             const y = Math.max(0.24, pivotTopY() * yf);
             const h = turP.side(y, z, s, W / 2 + 1);
             if (!h) continue;
             const yaw = s * 0.55; // forward fan, mirrored about local +Z
             if (commit(name, cl, 'turret', V(h.p.x + s * 0.03, y, z), E(0, yaw, 0), placedTurret)) { done = true; break; }
+          }
+          // Round 3 (2026-10-07): a declared smoke bank is a gameplay fitting, and a change in the turret's dressing
+          // alone must not drop it. When every station overhangs the width guard, the bank seats on the turret under
+          // any soft cover (a ghillie suit's net and garnish stand up to half a metre off the armour, leo2a6_ua), and a
+          // last overhang of at most 3 mm (a stowage roll's finer facets, k2b) is taken inboard. A bank that seats at
+          // a station never reaches this; one that overhangs by more stays off, as before.
+          if (!done) {
+            const solid = solidTurretProber();
+            for (const [z, yf] of stations) {
+              const y = Math.max(0.24, pivotTopY() * yf);
+              const h = solid.side(y, z, s, W / 2 + 1);
+              if (!h) continue;
+              const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, s * 0.55, 0);
+              const bb = placedBox(cl, pos, rot);
+              const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+              if (over > 0.003) continue;
+              if (over > 0) pos.x -= s * (over + 0.0005);
+              if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+            }
           }
           if (!done) disposePartList(cl);
           ok = ok || done;
@@ -4178,6 +4198,18 @@ export function* attachTankDecorationsSteps(
         return ok;
       },
     };
+
+    // The turret's solid surfaces for a rigid fitting's seat: soft cover (a ghillie suit's net and garnish, named
+    // by ghillieSuit.ts; their alpha cut exists only where a canvas does, so it cannot be the test) is left out.
+    // Built once, on first use, as a plain raycast prober (a handful of rays).
+    let _solidTurP: SurfaceProber | null = null;
+    function solidTurretProber(): SurfaceProber {
+      if (_solidTurP) return _solidTurP;
+      const solid = turretProbeTargets.filter((mesh) => mesh.userData.vehicleFoliage === undefined
+        && !mesh.name.includes('_ghillie_'));
+      _solidTurP = solid.length === turretProbeTargets.length ? turP : makeProber(turretG, solid, null);
+      return _solidTurP;
+    }
 
     // turret roof height above the pivot (probed once, cached)
     let _pivotTopY: number | null = null;
