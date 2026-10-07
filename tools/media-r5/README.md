@@ -3,9 +3,10 @@
 Scene Studio production tools for the r5 media generation ("Around the Clock"): staged
 scenes, moving-camera films, motion-blur stills, the site fifty, the HyperFrames films,
 posters and the review kit. Kevin personally directs promotional media; nothing here
-publishes to `public/media` or deploys.
+deploys, and only `docs-media.mjs` (the Filming manual's media, which he asked for on
+2026-10-06) writes into `public/media`.
 
-Scripts live here; everything they generate goes to `shots/media-r5/` (ignored by git).
+Scripts live here; everything else they generate goes to `shots/media-r5/` (ignored by git).
 Run from the repo root.
 
 ## Pipeline
@@ -61,6 +62,12 @@ Run from the repo root.
    for the true spend.
 6. **Kit** — `kit-assemble.mjs` collects films, frames, key art, posters and the site
    fifty into `shots/media-r5/kit/manifest.json`; `kit-page.mjs` renders its `index.html`.
+7. **Docs** — `docs-media.mjs [--ids=] [--stages=] [--force]` builds the Filming manual's media
+   (`public/media/filming-r1`, the one output here that is tracked): eight featured takes at each stage
+   whose source exists (round four's loop, engine review 1, the previz, engine review 2, the 4K final),
+   their frames strips and cards, the page's figures, its cover and the manual index's card, with a
+   manifest of every source. Re-run it as review-r6 and deliver-r6 land, then list the new stages in
+   `src/docs/filming.ts`; `src/docs/filming.selftest.mjs` fails until the two agree.
 
 Review helpers: `peek.mjs`, `film-sheet.mjs`, `finals-sheet.mjs`, `mosaic.mjs`,
 `plate.mjs`, `strip.mjs`. UI capture scripts for `studio-ui.mjs` live in `ui/`.

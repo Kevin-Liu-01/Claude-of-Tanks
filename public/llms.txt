@@ -26,6 +26,7 @@ Use the official pages below as the primary public sources. Current runtime docu
 - [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Fifteen weapon report classes that arrive late with distance, hits confirmed by the impact at the target and called by the gunner, engines by powertrain, national crew radio in 13 languages, battlefield ambience, mode sounds, and Sound settings.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, dual reticle, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch controls.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene format, placement, cameras, timelines, effects, capture output, and review workflow.
+- [Filming the media](https://cot.kevinliu.studio/docs/filming): How the site takes and films were shot in Scene Studio: shots as code, motion search, previz, engine reviews, 4K finals, stills, and sound.
 
 ## Repository, authorship, and policies
 
