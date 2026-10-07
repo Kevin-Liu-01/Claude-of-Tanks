@@ -94,24 +94,28 @@ export default {
     plan: ['bathhouse', 'farmhouse', 'marketRow', 'rangerlodge', 'granary', 'woodshed', 'cottage', 'barn', 'market', 'farmhouse', 'tavern', 'granary', 'woodshed', 'ruin', 'barn', 'cottage', 'farmhouse', 'marketRow'],
     // (round 2, wave 123: "leftover Western forms … wood barns"): the war's own light structures in place of the timber
     // huts and the longhouse — a checkpoint hut, sentry posts, command and aid tents
-    destructibleBuildings: ['checkpointhut', 'guardpost', 'commandtent', 'fieldhospital'],
+    // (round 3, gauntlet wave 208: "modern tarps among the fields") no command or aid tents: the checkpoint hut and the
+    // sentry posts only
+    destructibleBuildings: ['checkpointhut', 'guardpost'],
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,
     tacticalBeats: [
       { id: 'village-packing-court', role: 'brawl', x: 70, z: 56, yawDeg: -90, structure: 'checkpointhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
       { id: 'western-orchard-watch', role: 'scout', x: -330, z: 140, yawDeg: 110, structure: 'guardpost', outcrop: { count: 4, radius: 8 } },
-      { id: 'upper-harvest-store', role: 'support', x: 246, z: 238, yawDeg: -105, structure: 'commandtent', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'upper-harvest-store', role: 'support', x: 246, z: 238, yawDeg: -105, structure: 'guardpost', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.68,
     // Retaining/garden walls parallel the planted terraces, ending at the
     // working tracks. Shorter runs reclaim geometry from remote field edges.
     wallRuns: [[-210, -112, -94, -84, 3], [-212, 22, -112, 48, 3], [92, 54, 242, 78, 3], [108, 110, 266, 130, 2], [-108, 90, -108, 142, 2], [122, -116, 262, -98, 3]],
     // (round 2, wave 123: hay bales and stacks are the Western farm's; the Chouf threshes on the roof and the floor)
-    well: true, hayCrates: false, fences: true, telegraph: false, carts: true, logs: true,
+    // (round 3, wave 208: "a storybook European well") no village well: the landmarks lane's Ottoman sabil is the square's water
+    well: false, hayCrates: false, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 0, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
-    // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards
-    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
+    // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards; (round 3, wave
+    // 208) no camps — no modern tarps in Deir el Qamar
+    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 0, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
   },
   // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a Maronite cross at the village's
   // south entry and another on the western spur over the terraces, a cairn on the eastern flank's crest
