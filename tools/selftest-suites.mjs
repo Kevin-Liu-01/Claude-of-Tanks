@@ -1202,6 +1202,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/stoneWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
+    // the scenery lane (b26, wave 177): how a dry-stone face is laid (random rubble brought to courses), for the field
+    // works' stone form and print and the suhozid module
+    'src/world/dryStoneCourses.selftest.mjs',
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     // the scenery lane (b23): the limestone in relief over a karst map's flush pavement (bosses, loose blocks, heaps)

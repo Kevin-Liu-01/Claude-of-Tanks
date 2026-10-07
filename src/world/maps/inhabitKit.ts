@@ -20,6 +20,7 @@ import {
 import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
+import { layDryStoneFace } from '../dryStoneCourses.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
 import { STRAW_STAND_IN_TOP_M, buildHaycock, buildHaycockContactProxy, buildKopna, buildStook, mapToBand, prismStandIn } from './haystackKit.ts';
@@ -1259,6 +1260,221 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   return g;
 }
 
+/**
+ * (b26) A stone of a laid face as geometry: its outline (`pts`: module z along, y up, counter-clockwise as the coursing
+ * law gives it) on the face of `side` (+1 the +x face), its face standing `out(z, y)` beyond the face's plane and
+ * swelling `swell` at its middle, its sides back `depth` into the wall where they can be seen (its top, a turned end
+ * standing proud, a cut end at a head). A window of the field print of its own (the face band: one stone's skin): u
+ * along from `uz` (the unshifted place: a stone split at a module's end keeps one window across the joint), v about the
+ * band's own place for it.
+ */
+function laidStone(
+  pts: number[], side: number, halfAt: (y: number) => number, out: (z: number, y: number) => number,
+  swell: number, depth: number, uz: number, uv0: number, vMid: number, round: number, ends: readonly boolean[],
+  /** The whole stone's height range (a part cut at a module's end maps its print as the whole stone does). */
+  yRange: readonly [number, number],
+): THREE.BufferGeometry {
+  const n = pts.length / 2, pos: number[] = [], nor: number[] = [], uv: number[] = [];
+  let cz = 0, cy = 0;
+  for (let k = 0; k < n; k++) { cz += pts[k * 2]; cy += pts[k * 2 + 1]; }
+  cz /= n; cy /= n;
+  const yMid = (yRange[0] + yRange[1]) / 2;
+  const squash = Math.min(1, (FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0]) / Math.max(1e-3, (yRange[1] - yRange[0]) * DRY_UV));
+  const point = (z: number, y: number, o: number): [number, number, number] => [side * (halfAt(y) + o), y, z];
+  const uvOf = (z: number, y: number): [number, number] => [uv0 + (z - uz) * DRY_UV, vMid + (y - yMid) * DRY_UV * squash];
+  // the face's normal (the batter tips it up, the stone's own turn turns it): the gradient of x = side (half + out)
+  const dh = (halfAt(cy + 0.05) - halfAt(cy - 0.05)) / 0.1, eps = 0.01;
+  const tz = (out(cz + eps, cy) - out(cz - eps, cy)) / (2 * eps), ty = (out(cz, cy + eps) - out(cz, cy - eps)) / (2 * eps);
+  const fn = new THREE.Vector3(side, -(dh + ty), -tz).normalize();
+  const C = point(cz, cy, out(cz, cy) + swell);
+  const ring = Array.from({ length: n }, (_, k) => point(pts[k * 2], pts[k * 2 + 1], out(pts[k * 2], pts[k * 2 + 1])));
+  const push = (p: readonly number[], q: THREE.Vector3, t: [number, number]) => { pos.push(p[0], p[1], p[2]); nor.push(q.x, q.y, q.z); uv.push(t[0], t[1]); };
+  const tmp = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3();
+  const ringNormal = (k: number): THREE.Vector3 => {
+    tmp.set(ring[k][0] - C[0], ring[k][1] - C[1], ring[k][2] - C[2]);
+    tmp.addScaledVector(fn, -tmp.dot(fn)).normalize();
+    return new THREE.Vector3().copy(fn).addScaledVector(tmp, round).normalize();
+  };
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n;
+    a.set(ring[k][0] - C[0], ring[k][1] - C[1], ring[k][2] - C[2]); b.set(ring[j][0] - C[0], ring[j][1] - C[1], ring[j][2] - C[2]);
+    const [p, q] = a.cross(b).dot(fn) >= 0 ? [k, j] : [j, k];
+    push(C, fn, uvOf(cz, cy));
+    push(ring[p], ringNormal(p), uvOf(pts[p * 2], pts[p * 2 + 1]));
+    push(ring[q], ringNormal(q), uvOf(pts[q * 2], pts[q * 2 + 1]));
+  }
+  // the sides that show: back into the wall along the edge's outward direction
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n, ds = pts[j * 2] - pts[k * 2], dyv = pts[j * 2 + 1] - pts[k * 2 + 1];
+    const el = Math.hypot(ds, dyv) || 1, nz = dyv / el, ny = -ds / el;
+    const standsOut = Math.max(out(pts[k * 2], pts[k * 2 + 1]), out(pts[j * 2], pts[j * 2 + 1])) > 0.03;
+    if (ny < 0.3 && !ends[k] && !(standsOut && ny > -0.35)) continue;
+    const pk = ring[k], pj = ring[j];
+    const bk = point(pts[k * 2], pts[k * 2 + 1], -depth), bj = point(pts[j * 2], pts[j * 2 + 1], -depth);
+    const dirv = new THREE.Vector3(0, ny, nz).addScaledVector(fn, 0.25).normalize();
+    a.set(pj[0] - pk[0], pj[1] - pk[1], pj[2] - pk[2]); b.set(bk[0] - pk[0], bk[1] - pk[1], bk[2] - pk[2]);
+    const flip = a.clone().cross(b).dot(dirv) < 0;
+    const quadPts = flip ? [pk, bk, bj, pj] : [pk, pj, bj, bk];
+    const t = (p: readonly number[]): [number, number] => [uv0 + 0.31 + (p[2] - uz) * DRY_UV, vMid + 0.05 + (p[1] - yMid) * DRY_UV * squash * 0.5];
+    for (const [i0, i1, i2] of [[0, 1, 2], [0, 2, 3]]) for (const i of [i0, i1, i2]) push(quadPts[i], dirv, t(quadPts[i]));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return g;
+}
+
+/**
+ * (b26) A rubble lump (a top stone of the crown): a ring of five corners round its plan, a rounded top fanned from a
+ * high point off its middle, its sides down to where it beds. World-free: centred on (x, bed, z), its own draws.
+ */
+function rubbleLump(r: Rng, x: number, z: number, bed: number, h: number, halfL: number, halfW: number, uv0: number, sides = true): THREE.BufferGeometry {
+  const yaw = (r() - 0.5) * 0.5, cyaw = Math.cos(yaw), syaw = Math.sin(yaw), phase = r() * 1.2566;
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [];
+  const at = (la: number, lw: number, y: number): [number, number, number] => [x + lw * cyaw + la * syaw, y, z - lw * syaw + la * cyaw];
+  const shoulder: Array<[number, number, number]> = [], foot: Array<[number, number, number]> = [];
+  for (let k = 0; k < 5; k++) {
+    const ang = phase + k * 1.2566, reach = 0.78 + r() * 0.3, lift = (0.6 + r() * 0.28) * (sides ? 1 : 0.3);
+    // (a lump without sides — one wedged in a gap — is a mound out of what it lies in: its corners down at its bed)
+    shoulder.push(at(Math.cos(ang) * halfL * reach, Math.sin(ang) * halfW * reach, bed + h * lift));
+    foot.push(at(Math.cos(ang) * halfL * reach * 0.86, Math.sin(ang) * halfW * reach * 0.86, bed - 0.01));
+  }
+  const top = at((r() - 0.5) * 0.7 * halfL, (r() - 0.5) * 0.7 * halfW, bed + h);
+  const up = new THREE.Vector3(0, 1, 0), tmp = new THREE.Vector3();
+  const t = (p: readonly number[]): [number, number] => [uv0 + (p[0] + p[2]) * DRY_UV * 0.7, FIELD_STONE_FACE_V[0] + 0.3 + (p[1] - bed) * DRY_UV];
+  const push = (p: readonly number[], q: THREE.Vector3) => { pos.push(p[0], p[1], p[2]); nor.push(q.x, q.y, q.z); const w = t(p); uv.push(w[0], w[1]); };
+  for (let k = 0; k < 5; k++) {
+    const p = shoulder[k], q = shoulder[(k + 1) % 5];
+    const np = tmp.set(p[0] - top[0], 0, p[2] - top[2]).normalize().multiplyScalar(0.55).add(up).normalize().clone();
+    const nq = tmp.set(q[0] - top[0], 0, q[2] - top[2]).normalize().multiplyScalar(0.55).add(up).normalize().clone();
+    // (wound to face up: the ring runs counter-clockwise seen from above when its cross product points up)
+    const ccw = ((p[2] - top[2]) * (q[0] - top[0]) - (p[0] - top[0]) * (q[2] - top[2])) > 0;
+    if (ccw) { push(top, up); push(p, np); push(q, nq); } else { push(top, up); push(q, nq); push(p, np); }
+    if (!sides) continue;
+    const f0 = foot[k], f1 = foot[(k + 1) % 5];
+    const side = tmp.set((p[0] + q[0]) / 2 - top[0], 0, (p[2] + q[2]) / 2 - top[2]).normalize().clone();
+    const quadPts = ccw ? [p, f0, f1, q] : [p, q, f1, f0];
+    for (const [i0, i1, i2] of [[0, 1, 2], [0, 2, 3]]) for (const i of [i0, i1, i2]) push(quadPts[i], side);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return g;
+}
+
+/** (b26) Cut a stone's outline at z = cut, keeping the side `keep` (-1: z <= cut, +1: z >= cut). */
+function clipOutline(pts: number[], cut: number, keep: number): number[] {
+  const outPts: number[] = [], n = pts.length / 2;
+  const inside = (z: number) => (keep < 0 ? z <= cut : z >= cut);
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n, za = pts[k * 2], ya = pts[k * 2 + 1], zb = pts[j * 2], yb = pts[j * 2 + 1];
+    if (inside(za)) outPts.push(za, ya);
+    if (inside(za) !== inside(zb)) { const t = (cut - za) / (zb - za); outPts.push(cut, ya + (yb - ya) * t); }
+  }
+  return outPts;
+}
+
+/**
+ * (b26; gauntlet wave 177, Saltwind: "neat stacks of uniform rectangular slabs with upright coping", the coordinator:
+ * "Saltwind needs one suhozid kit: rough, irregular pale limestone of uneven sizes … no upright coping, no decal grout")
+ * The Dalmatian suhozid module, a limestone map's field wall: the hearting as the dry-stone module's, each face laid by
+ * the coursing law the field works' stone form and their print are laid by (dryStoneCourses.ts) — chunky lumps of every
+ * size in wandering courses, the footing's big stones at the foot, knocked corners leaving their voids, each face turned
+ * a little its own way — a through-stone or two, and a crown of rubble top stones laid across it (the material drops
+ * the odd one and settles the run by world place, as it does the copes: they carry the cope's kind). Each face is laid
+ * on a skyline that wraps at the module's length, so a run of modules is one face with no joint ruled down it every
+ * three metres: a stone over the module's end is cut there, its two parts flat-faced so the next module's part meets it
+ * as one stone. Like the dry-stone module, built on the original envelope's seed after its draws.
+ */
+function suhozidModule(r: Rng, broken: boolean): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.92, bottom = 0.27, top = broken ? 0.22 : 0.19;
+  const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, Math.max(0, y) / 0.92);
+  const topReserve = broken ? 0 : 0.11;
+  // the hearting: the dry-stone module's battered core, its top under the crown's stones
+  {
+    const core = new THREE.BoxGeometry(2, 1, 2, 1, 1, 2);
+    const cp = core.attributes.position, coreH = H - topReserve - 0.02;
+    for (let i = 0; i < cp.count; i++) {
+      const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * coreH, side = Math.sign(cp.getX(i));
+      cp.setXYZ(i, side * (halfAt(y) - 0.045 - Math.max(0, u - 0.5) * 0.03), y, u * (L / 2) * 0.995);
+    }
+    core.computeVertexNormals();
+    const cn = core.attributes.normal, cuv = core.attributes.uv;
+    const [h0, h1] = FIELD_STONE_HEARTING_V;
+    for (let i = 0; i < cp.count; i++) {
+      const upF = Math.abs(cn.getY(i)) > 0.5, across = Math.abs(cn.getX(i)) > 0.5;
+      const t = upF ? 0.5 + cp.getX(i) / (2 * bottom) : Math.min(1, Math.max(0, cp.getY(i) / coreH));
+      cuv.setXY(i, (across || upF ? cp.getZ(i) : cp.getX(i)) * DRY_UV, h0 + (h1 - h0) * t);
+    }
+    parts.push(tagStone(keepFaces(core, [0, 1, 2, 4, 5]), DRY_STONE_KIND.core));
+  }
+  // the faces, by the coursing law on a skyline wrapped at the module's length
+  for (const side of [-1, 1]) {
+    const face = layDryStoneFace(r, L, {
+      // (a little bigger than the field works' stone form's: the module is a field's wall seen across it, every three
+      // metres the same one)
+      crown: () => H - topReserve, foot: 0.05, footH: [0.21, 0.31], footL: [0.4, 0.8], courseH: [0.13, 0.27], courseL: [0.24, 0.68], wrap: true,
+    });
+    for (const st of face) {
+      const proud = (st.kind === 1 ? 0.018 : 0) + (r() < 0.22 ? 0.014 + r() * 0.016 : r() * 0.01);
+      // (each face turned a little its own way: less than the stone form's, the module seen across a field)
+      const tS = (r() - 0.5) * 0.16, tY = (r() - 0.5) * 0.14, swell = 0.018 + r() * 0.022, uv0 = r() * 8;
+      const vMid = FIELD_STONE_FACE_V[0] + 0.12 + r() * (FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0] - 0.24);
+      // (its place on the wrapped face: the module whose span holds it, or the two it spans, cut at the end)
+      const k0 = Math.floor(st.s0 / L), k1 = Math.floor((st.s1 - 1e-6) / L);
+      const pieces: Array<{ pts: number[]; shift: number; cut: boolean }> = k0 === k1
+        ? [{ pts: st.pts, shift: k0 * L, cut: false }]
+        : [{ pts: clipOutline(st.pts, k1 * L, -1), shift: k0 * L, cut: true }, { pts: clipOutline(st.pts, k1 * L, 1), shift: k1 * L, cut: true }];
+      for (const piece of pieces) {
+        if (piece.pts.length < 6) continue;
+        const pts = piece.pts.map((v, i) => (i % 2 === 0 ? v - piece.shift - L / 2 : v));
+        let cz = 0, cy = 0, lowest = Infinity;
+        for (let k = 0; k < pts.length; k += 2) { cz += pts[k]; cy += pts[k + 1]; }
+        cz /= pts.length / 2; cy /= pts.length / 2;
+        // (a cut stone's two parts lie in one plane, flat-faced, so they meet across the module's end as one stone)
+        const turnS = piece.cut ? 0 : tS, turnY = piece.cut ? 0 : tY;
+        for (let k = 0; k < pts.length; k += 2) lowest = Math.min(lowest, turnS * (pts[k] - cz) + turnY * (pts[k + 1] - cy));
+        const out = (z: number, y: number) => proud + turnS * (z - cz) + turnY * (y - cy) - lowest - 0.03;
+        const ends = pts.filter((_, i) => i % 2 === 0).map(() => false);
+        const g = laidStone(pts, side, halfAt, out, piece.cut ? 0 : swell, 0.06, st.s0 - piece.shift - L / 2, uv0, vMid, piece.cut ? 0 : 0.5, ends, [st.y0, st.y1]);
+        parts.push(tagStone(g, DRY_STONE_KIND.face));
+      }
+    }
+  }
+  if (!broken) {
+    // a through-stone or two, its ends jutting from both faces, laid at about a third of the wall's height
+    for (let k = 0, n = 1 + (r() < 0.5 ? 1 : 0); k < n; k++) {
+      const y = H * (0.3 + r() * 0.15), len = 0.2 + r() * 0.12, th = 0.09 + r() * 0.05;
+      const ts = roughStone(halfAt(y) * 2 + 0.14, th, len, r, [0, 1, 2, 4, 5]);
+      parts.push(tagStone(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)), DRY_STONE_KIND.through));
+    }
+    // the crown: rubble top stones across the wall, each its own length, height and lean, the odd small one lower
+    let z = -L / 2 + r() * 0.04;
+    while (z < L / 2 - 0.08) {
+      const len = 0.22 + r() * 0.24, gap = 0.01 + r() * 0.05, h = (0.1 + r() * 0.075) * (r() < 0.15 ? 1.25 : 1);
+      const mid = Math.min(L / 2 - 0.1, z + len / 2);
+      const halfW = (top + 0.02) * (0.68 + r() * 0.38), across = (r() - 0.5) * 2 * Math.max(0, top + 0.02 - halfW);
+      parts.push(tagStone(rubbleLump(r, across, mid, H - topReserve - 0.03, h, len / 2, halfW, r() * 8), DRY_STONE_KIND.cope));
+      if (r() < 0.3) parts.push(tagStone(rubbleLump(r, (r() - 0.5) * 0.12, Math.min(L / 2 - 0.06, z + len + gap / 2), H - topReserve - 0.04, 0.06 + r() * 0.04, 0.05 + r() * 0.04, 0.07 + r() * 0.05, r() * 8, false), DRY_STONE_KIND.cope));
+      z += len + gap;
+    }
+  } else {
+    // the stones that came off it, tumbled on both sides
+    for (let k = 0; k < 9; k++) {
+      const bs = 0.14 + r() * 0.16;
+      const stone = roughStone(bs * (1.4 + r() * 0.6), bs * 0.55, bs, r, [0, 1, 2, 3, 4, 5]);
+      stone.rotateY(r() * Math.PI); stone.rotateX((r() - 0.5) * 0.5);
+      parts.push(tagStone(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.25, (r() - 0.5) * L * 0.9), DRY_STONE_KIND.tumbled));
+    }
+  }
+  const g = merge(parts), zEnd = (L / 2) * 0.995, gp = g.attributes.position;
+  for (let i = 0; i < gp.count; i++) gp.setZ(i, Math.max(-zEnd, Math.min(zEnd, gp.getZ(i))));
+  return g;
+}
+
 /** Map a geometry affinely onto a box (each axis on its own), so its extents are the box's. */
 function fitToEnvelope(g: THREE.BufferGeometry, box3: THREE.Box3): THREE.BufferGeometry {
   g.computeBoundingBox();
@@ -1283,25 +1499,129 @@ function fitToEnvelope(g: THREE.BufferGeometry, box3: THREE.Box3): THREE.BufferG
   return g;
 }
 
+/** (b26) The hearting's box for a head or a stub: its sides and top on the field print's hearting band. */
+function heartingBox(w: number, h: number, d: number): THREE.BufferGeometry {
+  const core = new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0);
+  const cp = core.attributes.position, cn = core.attributes.normal, cuv = core.attributes.uv;
+  const [h0, h1] = FIELD_STONE_HEARTING_V;
+  for (let i = 0; i < cp.count; i++) {
+    const upF = Math.abs(cn.getY(i)) > 0.5, across = Math.abs(cn.getX(i)) > 0.5;
+    const t = upF ? 0.5 + cp.getX(i) / Math.max(1e-3, w) : Math.min(1, Math.max(0, cp.getY(i) / h));
+    cuv.setXY(i, (across || upF ? cp.getZ(i) : cp.getX(i)) * DRY_UV, h0 + (h1 - h0) * t);
+  }
+  return keepFaces(core, [0, 1, 2, 4, 5]);
+}
+
+/**
+ * (b26) Lay a face round a closed or open run of flat sides by the coursing law: `sides` their origins (x, z), unit
+ * directions along (tx, tz) and lengths, the run's outward side on the right of the direction; a stone over a corner is
+ * cut there into flat-faced parts (a quoin turning the corner), a stone on one side keeps its own turn and swell.
+ */
+function layFacesRound(
+  r: Rng, parts: THREE.BufferGeometry[], sides: ReadonlyArray<{ ox: number; oz: number; tx: number; tz: number; len: number }>,
+  wrap: boolean, crown: (s: number) => number, inset: (y: number) => number,
+  sizes: { footH: readonly [number, number]; footL: readonly [number, number]; courseH: readonly [number, number]; courseL: readonly [number, number] },
+): void {
+  const starts: number[] = [];
+  let total = 0;
+  for (const side of sides) { starts.push(total); total += side.len; }
+  const face = layDryStoneFace(r, total, { crown, foot: 0.04, ...sizes, wrap });
+  for (const st of face) {
+    const proud = (st.kind === 1 ? 0.014 : 0) + r() * 0.012, tS = (r() - 0.5) * 0.2, tY = (r() - 0.5) * 0.16;
+    const swell = 0.016 + r() * 0.02, uv0 = r() * 8;
+    const vMid = FIELD_STONE_FACE_V[0] + 0.12 + r() * (FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0] - 0.24);
+    const pieces: Array<{ k: number; pts: number[]; shift: number }> = [];
+    for (let m = 0; m < (wrap ? 2 : 1); m++) {
+      for (let k = 0; k < sides.length; k++) {
+        const s0 = starts[k] + m * total, s1 = s0 + sides[k].len;
+        if (st.s1 <= s0 + 1e-6 || st.s0 >= s1 - 1e-6) continue;
+        let pts = st.pts;
+        if (st.s0 < s0) pts = clipOutline(pts, s0, 1);
+        if (st.s1 > s1 && pts.length >= 6) pts = clipOutline(pts, s1, -1);
+        if (pts.length >= 6) pieces.push({ k, pts, shift: s0 });
+      }
+    }
+    const cut = pieces.length > 1;
+    for (const piece of pieces) {
+      const side = sides[piece.k];
+      // (a part at a corner reaches a couple of centimetres past it, so the two parts' faces meet over the corner)
+      const pts = piece.pts.map((v, i) => (i % 2 === 0 ? v - piece.shift : v))
+        .map((v, i) => (i % 2 === 0 && cut ? (v < 0.003 ? v - 0.02 : v > side.len - 0.003 ? v + 0.02 : v) : v));
+      let cz = 0, cy = 0, lowest = Infinity;
+      for (let k = 0; k < pts.length; k += 2) { cz += pts[k]; cy += pts[k + 1]; }
+      cz /= pts.length / 2; cy /= pts.length / 2;
+      const turnS = cut ? 0 : tS, turnY = cut ? 0 : tY;
+      for (let k = 0; k < pts.length; k += 2) lowest = Math.min(lowest, turnS * (pts[k] - cz) + turnY * (pts[k + 1] - cy));
+      const out = (z: number, y: number) => proud + turnS * (z - cz) + turnY * (y - cy) - lowest;
+      const g = laidStone(pts, 1, inset, out, cut ? 0 : swell, 0.06, st.s0 - piece.shift, uv0, vMid, cut ? 0 : 0.5,
+        pts.filter((_, i) => i % 2 === 0).map(() => false), [st.y0, st.y1]);
+      // (the canonical face, +x out and z along, turned onto the side: +z to its direction, +x to its outward side)
+      g.rotateY(Math.atan2(side.tx, side.tz)).translate(side.ox, 0, side.oz);
+      parts.push(g);
+    }
+  }
+}
+
 /**
  * The scenery lane (wave 16, "a miniature castle battlement"): where a dry-stone run ends or opens, a rubble wall head —
- * the wall's own stones racked up square, a little broader than the wall and about its height, the top stones laid
- * across it unevenly; no post, no cap slab. World-free: centred on its foot, its own stream (the seed names the place).
+ * a little broader than the wall and about its height, its top stones laid across it unevenly; no post, no cap slab.
+ * (b26; gauntlet wave 174, Verdant's yard wall: "a neatly stacked column at its corner") its faces laid by the coursing
+ * law round all four sides at once (dryStoneCourses.ts: the courses run on round its corners, a stone over a corner cut
+ * into a quoin's two faces), its top a heap of rubble lumps, the hearting under them. World-free: centred on its foot,
+ * its own stream (the seed names the place).
  */
 export function buildDryStoneWallHead(seed: number, thick: number, height: number): THREE.BufferGeometry {
-  const r = dryStoneRng(seed), parts: THREE.BufferGeometry[] = [];
-  const w = thick + 0.1 + r() * 0.06, top = height * (0.92 + r() * 0.12);
-  let y = 0;
-  while (y < top - 0.08) {
-    const h = Math.min(top - y, 0.12 + r() * 0.12);
-    // each lift two or three stones across, alternating, so the head is bonded like a quoin
-    const n = r() < 0.5 ? 2 : 3;
-    for (let k = 0; k < n; k++) {
-      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22);
-      stone.rotateY((r() - 0.5) * 0.12); stone.rotateZ((r() - 0.5) * 0.08);
-      parts.push(stone.translate(-w / 2 + (k + 0.5) * (w / n) + (r() - 0.5) * 0.03, y + h / 2, (r() - 0.5) * 0.04));
+  const r = dryStoneRng(seed ^ 0x6b26), parts: THREE.BufferGeometry[] = [];
+  const w = thick + 0.1 + r() * 0.06, d = w * (0.9 + r() * 0.15), top = height * (0.92 + r() * 0.12), crown = top - 0.1;
+  const lean = 0.03 + r() * 0.02;
+  parts.push(heartingBox(w - 0.1, crown - 0.01, d - 0.1));
+  // (a head is built of the wall's biggest stones, a corner pier's bigger still)
+  const grow = 1.15 * Math.pow(Math.max(1, w / 0.6), 0.6);
+  layFacesRound(r, parts, [
+    { ox: -w / 2, oz: -d / 2, tx: 1, tz: 0, len: w }, { ox: w / 2, oz: -d / 2, tx: 0, tz: 1, len: d },
+    { ox: w / 2, oz: d / 2, tx: -1, tz: 0, len: w }, { ox: -w / 2, oz: d / 2, tx: 0, tz: -1, len: d },
+  ], true, () => crown, (y) => -lean * Math.min(1, Math.max(0, y) / crown),
+  { footH: [0.18 * grow, 0.28 * grow], footL: [0.32 * grow, 0.62 * grow], courseH: [0.12 * grow, 0.24 * grow], courseL: [0.2 * grow, 0.56 * grow] });
+  // the top: a few rubble lumps over it, each its own height
+  const nx = w > 1.0 ? 2 : 1, nz = d > 1.0 ? 2 : 1;
+  for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) {
+    const hw = (w - 0.06) / nx / 2, hd = (d - 0.06) / nz / 2;
+    const x = -w / 2 + 0.03 + hw * (2 * i + 1) + (r() - 0.5) * hw * 0.3, z = -d / 2 + 0.03 + hd * (2 * k + 1) + (r() - 0.5) * hd * 0.3;
+    parts.push(rubbleLump(r, x, z, crown - 0.03, 0.1 + r() * 0.08, hd * (0.9 + r() * 0.25), hw * (0.9 + r() * 0.25), r() * 8));
+  }
+  return merge(parts);
+}
+
+/**
+ * (b26) A breach's stub (props.ts addBrokenBreach): what is left of the wall either side of a gap — low and ragged, its
+ * top fallen lower toward the gap's side, its faces laid as the wall's (the coursing law), its broken ends the hearting
+ * with the rubble core's lumps standing out of it, a few rubble lumps along its top. World-free: its foot at the origin,
+ * along z, its own stream (the seed names the place).
+ */
+export function buildDryStoneStub(seed: number, thick: number, height: number, length: number): THREE.BufferGeometry {
+  const r = dryStoneRng(seed ^ 0x57b2), parts: THREE.BufferGeometry[] = [];
+  const half = thick / 2 + 0.02, L = length, ph = r() * 6.28;
+  const crown = (s: number) => Math.max(0.14, height * Math.pow(0.5 + 0.5 * Math.sin(Math.PI * Math.min(1, Math.max(0, s / L))), 0.55) * (0.92 + 0.08 * Math.sin(s * 7.1 + ph)));
+  const lean = 0.05;
+  parts.push(heartingBox(thick - 0.06, height * 0.7, L * 0.96));
+  // its two faces (the run's +x face along +z, the -x face back along -z), open at their ends
+  const sizes = { footH: [0.2, 0.3], footL: [0.36, 0.7], courseH: [0.13, 0.26], courseL: [0.24, 0.6] } as const;
+  layFacesRound(r, parts, [{ ox: half, oz: -L / 2, tx: 0, tz: 1, len: L }], false, (s) => crown(s) - 0.05,
+    (y) => -lean * Math.min(1, Math.max(0, y) / height), sizes);
+  layFacesRound(r, parts, [{ ox: -half, oz: L / 2, tx: 0, tz: -1, len: L }], false, (s) => crown(L - s) - 0.05,
+    (y) => -lean * Math.min(1, Math.max(0, y) / height), sizes);
+  // its broken ends: the rubble core's lumps standing out of the hearting
+  for (const end of [-1, 1]) {
+    const hEnd = crown(end < 0 ? 0.02 : L - 0.02);
+    for (let k = 0, n = 3 + Math.floor(r() * 2); k < n; k++) {
+      const y = 0.02 + r() * Math.max(0.04, hEnd - 0.1);
+      parts.push(rubbleLump(r, (r() - 0.5) * (thick - 0.16), end * (L / 2 - 0.02 + r() * 0.04), y, 0.07 + r() * 0.05, 0.06 + r() * 0.04, 0.06 + r() * 0.04, r() * 8));
     }
-    y += h;
+  }
+  // its top: rubble lumps along it
+  for (let z = -L / 2 + 0.08 + r() * 0.06; z < L / 2 - 0.1; z += 0.18 + r() * 0.14) {
+    const s = z + L / 2;
+    parts.push(rubbleLump(r, (r() - 0.5) * 0.06, z, Math.max(0.05, crown(s) - 0.12 - r() * 0.05), 0.08 + r() * 0.07, 0.09 + r() * 0.06, thick / 2 - 0.03, r() * 8, false));
   }
   return merge(parts);
 }
@@ -1340,6 +1660,25 @@ function bWallStone(rng: Rng): THREE.BufferGeometry {
   envelope.dispose();
   const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3);
   return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false), box3);
+}
+
+/**
+ * (b26) The suhozid module for a limestone map's field walls (props.ts takes it where fieldStoneLithologyFor gives
+ * 'limestone'): the dry-stone module's envelope and seed (its draws spent as the original's), its own laying.
+ */
+export function bWallSuhozid(rng: Rng): THREE.BufferGeometry {
+  const envelope = wallStoneEnvelope(rng);
+  envelope.computeBoundingBox();
+  const box3 = envelope.boundingBox!.clone();
+  envelope.dispose();
+  const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3);
+  return fitToEnvelope(suhozidModule(dryStoneRng(seed ^ 0x5b02), false), box3);
+}
+
+/** (b26) The suhozid module's remnant (the dry-stone module's draws first). */
+export function bWallSuhozidBroken(rng: Rng): THREE.BufferGeometry {
+  wallStoneBrokenDraws(rng).dispose();
+  return suhozidModule(dryStoneRng(0x5d0f), true);
 }
 
 function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {

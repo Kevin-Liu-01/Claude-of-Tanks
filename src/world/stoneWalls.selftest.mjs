@@ -5,6 +5,12 @@
 //      and lengths spread wide), its top a coping of stones on edge of their own heights, every part tagged with its
 //      centre and kind (aStone), the centres fitted with the module into the old envelope (the collider's box), the
 //      hearting's top under the copes;
+//   1b. (b26; gauntlet wave 177, Saltwind: "neat stacks of uniform rectangular slabs with upright coping"; the
+//      coordinator: "Saltwind needs one suhozid kit") the suhozid module (a limestone map's): in the dry-stone module's
+//      envelope, every part tagged, its faces laid by the coursing law in stones of many sizes, its top a crown of
+//      rubble lumps lying on the wall (none on edge) of their own heights over the hearting, and its courses running on
+//      across the module's ends (a stone over an end cut into two parts that meet the next module's as one); the run's
+//      heads, corner piers and breach stubs on the same law, carrying only what the static bucket merges, in budget;
 //   2. the material (stoneWallShader.ts): its hook applies to three's standard and depth shaders, the settling bounded
 //      (STONE_SETTLE_M) and only ever down, a stone moved whole by its centre's place, the copes dropped only where
 //      enabled (never under a snow load), lichen by world place;
@@ -13,7 +19,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { DESTRUCTIBLE_TYPES, DRY_STONE_KIND } from './maps/inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES, DRY_STONE_KIND, WALL_SEG, bWallSuhozid, bWallSuhozidBroken, buildDryStoneStub, buildDryStoneWallHead } from './maps/inhabitKit.ts';
 import { STONE_SETTLE_M, applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor } from './stoneWallShader.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -56,6 +62,68 @@ for (const seed of [7, 11, 2049]) {
   assert.ok(Math.abs(box.min.y) < 0.02 && box.max.y > 1.0 && box.max.y < 1.3, `the module in its envelope (top ${box.max.y.toFixed(3)} m)`);
 }
 
+// 1b. the suhozid module, the heads, the piers and the stubs
+const partsOf = (g) => {
+  const p = g.attributes.position, tag = g.getAttribute('aStone'), parts = new Map();
+  for (let i = 0; i < p.count; i++) {
+    const key = `${tag.getX(i).toFixed(4)},${tag.getY(i).toFixed(4)},${tag.getZ(i).toFixed(4)},${tag.getW(i)}`;
+    let s = parts.get(key);
+    if (!s) parts.set(key, s = { kind: tag.getW(i), min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] });
+    for (const [a, v] of [p.getX(i), p.getY(i), p.getZ(i)].entries()) { s.min[a] = Math.min(s.min[a], v); s.max[a] = Math.max(s.max[a], v); }
+  }
+  return [...parts.values()];
+};
+for (const seed of [7, 11, 2049]) {
+  const g = bWallSuhozid(mulberry32(seed)), dry = DESTRUCTIBLE_TYPES.wallstone.build(mulberry32(seed));
+  g.computeBoundingBox(); dry.computeBoundingBox();
+  const tag = g.getAttribute('aStone');
+  assert.ok(tag && tag.count === g.attributes.position.count, 'every vertex of the suhozid carries its stone\'s centre and kind');
+  for (let a = 0; a < 3; a++) {
+    assert.ok(Math.abs(g.boundingBox.min.getComponent(a) - dry.boundingBox.min.getComponent(a)) < 1e-4
+      && Math.abs(g.boundingBox.max.getComponent(a) - dry.boundingBox.max.getComponent(a)) < 1e-4, 'in the dry-stone module\'s envelope (the collider\'s box)');
+  }
+  const parts = partsOf(g);
+  for (const s of parts) assert.ok(Object.values(DRY_STONE_KIND).includes(s.kind), `a known kind (${s.kind})`);
+  const faces = parts.filter((s) => s.kind === DRY_STONE_KIND.face), tops = parts.filter((s) => s.kind === DRY_STONE_KIND.cope);
+  const heights = faces.map((s) => s.max[1] - s.min[1]), lengths = faces.map((s) => s.max[2] - s.min[2]);
+  assert.ok(faces.length > 25, `face stones (${faces.length})`);
+  assert.ok(cv(heights) > 0.3 && cv(lengths) > 0.4, `stones of many sizes (heights cv ${cv(heights).toFixed(2)}, lengths cv ${cv(lengths).toFixed(2)})`);
+  assert.ok(tops.length >= 6, `a crown of rubble top stones (${tops.length})`);
+  const onEdge = tops.filter((s) => (s.max[2] - s.min[2]) < (s.max[1] - s.min[1])).length;
+  assert.ok(onEdge / tops.length < 0.35, `the top stones lie on the wall, none of the crown a coping on edge (${onEdge} of ${tops.length} thinner along the wall than tall: the small wedges)`);
+  const topY = tops.map((s) => s.max[1]);
+  assert.ok(Math.max(...topY) - Math.min(...topY) > 0.06, 'the crown ragged, no dead-level top');
+  const core = parts.find((s) => s.kind === DRY_STONE_KIND.core);
+  assert.ok(core && core.max[1] < Math.min(...topY), 'the hearting under the top stones');
+  // the courses run on across the module's ends: a stone part at one end meets one at the other end, on the same face,
+  // over the same heights (the module repeats every three metres)
+  const zEnd = g.boundingBox.max.z - 1e-3, zStart = g.boundingBox.min.z + 1e-3;
+  const atEnd = faces.filter((s) => s.max[2] >= zEnd), atStart = faces.filter((s) => s.min[2] <= zStart);
+  let met = 0;
+  for (const e of atEnd) {
+    const side = Math.sign(e.min[0] + e.max[0]);
+    if (atStart.some((b) => Math.sign(b.min[0] + b.max[0]) === side
+      && Math.min(e.max[1], b.max[1]) - Math.max(e.min[1], b.min[1]) > 0.8 * Math.min(e.max[1] - e.min[1], b.max[1] - b.min[1]))) met++;
+  }
+  assert.ok(atEnd.length >= 4 && met >= atEnd.length * 0.7, `the courses run on across the module's end (${met} of ${atEnd.length} end stones meet the next module's)`);
+  void WALL_SEG;
+  const broken = bWallSuhozidBroken(mulberry32(seed));
+  broken.computeBoundingBox();
+  assert.ok(broken.getAttribute('aStone') && broken.boundingBox.max.y < 0.62, 'its remnant low, tagged');
+  for (const geo of [g, dry, broken]) geo.dispose();
+}
+for (const [name, g, budget, height] of [
+  ['a head', buildDryStoneWallHead(1234567, 0.46, 1.1), 700, 1.1], ['a corner pier', buildDryStoneWallHead(7654321, 0.97, 1.5), 1200, 1.5],
+  ['a breach stub', buildDryStoneStub(424242, 0.46, 0.45, 1.2), 600, 0.45],
+]) {
+  assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${name} carries what the static bucket merges`);
+  const tris = g.attributes.position.count / 3;
+  assert.ok(tris <= budget, `${name} within its budget (${tris} of ${budget} triangles)`);
+  g.computeBoundingBox();
+  assert.ok(g.boundingBox.max.y < height * 1.12 + 0.02 && g.boundingBox.min.y > -0.06, `${name} stands about its height (${g.boundingBox.max.y.toFixed(3)} m)`);
+  g.dispose();
+}
+
 // 2. the material
 {
   const standard = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
@@ -88,4 +156,4 @@ for (const seed of [7, 11, 2049]) {
   assert.match(props, /for \(let i = 0; i < n; i\+\+\) tag\[i \* 4 \+ 3\] = DRY_STONE_KIND\.snow;/, 'the snow load settles with the wall');
 }
 
-console.log('stoneWalls.selftest: stones of many sizes under a coping on edge, every stone tagged and fitted; settling, dropped copes and lichen by world place, in the shadows too; wired');
+console.log('stoneWalls.selftest: stones of many sizes under a coping on edge, every stone tagged and fitted; the suhozid laid by the coursing law under a crown of rubble, its courses running on across its ends; heads, piers and stubs on the same law; settling, dropped copes and lichen by world place, in the shadows too; wired');

@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
-import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneStub, buildDryStoneWallHead } from './maps/inhabitKit.ts';
 import { createWallDressing } from './maps/fieldWallDressing.ts';
 import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -289,10 +289,10 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print; a dry-stone run's
   // posts and breach draw the field walls' print)
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
-    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'wallDressing',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildDryStoneStub', 'buildAdobePilaster', 'fieldWallBucket', 'wallDressing',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone',
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildDryStoneStub, buildAdobePilaster, 'fieldStone',
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
     createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }));
   runs.forEach((args, runIndex) => {

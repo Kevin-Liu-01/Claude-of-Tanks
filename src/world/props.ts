@@ -87,6 +87,9 @@ import {
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
+  buildDryStoneStub,
+  bWallSuhozid,
+  bWallSuhozidBroken,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import {
@@ -3655,8 +3658,12 @@ ${snowCap ? `
     // coursed module on the stone print
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
     // top, so a breached module loses it with its stones)
+    // (b26; gauntlet wave 177 and the coordinator: "Saltwind needs one suhozid kit") a limestone map's module is the
+    // Dalmatian suhozid, laid by the coursing law the field works are laid by, its top a crown of rubble, no cope on edge
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket,
+        ...(snowCap ? { build: snowLoadedWallstone }
+          : fieldWallBucket === 'fieldStone' && fieldStoneLithologyFor(mapId) === 'limestone' ? { build: bWallSuhozid, broken: bWallSuhozidBroken } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // (b22; waves 147, 154 and 157: "modern round bales" on the WW2 and 1950s maps — the round baler came in the 1970s)
@@ -5042,7 +5049,9 @@ ${snowCap ? `
         let head = style === 'adobe'
           ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1))
           : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
-        if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
+        // (b26: a dry-stone head carries its stones' own print windows and its hearting's band: the props stream spends
+        // jitterUV's four draws all the same, and the head keeps its windows)
+        if (style === 'adobe') jitterUV(head, rng); else for (let k = 0; k < 4; k++) rng();
         if (corner && !pier) { head.dispose(); return; }
         if (corner) corner.built = true;
         if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
@@ -5066,8 +5075,19 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
         const y = heightField.getHeightAt(x, z) - 0.15;
         const height = 0.30 + rng() * 0.25;
+        // (b26; gauntlet wave 177: the breach's stubs were plain boxes on the print, "a striped strip" between the
+        // modules) a dry-stone wall's stub is its wall's remnant — the coursing law's faces, its broken ends' rubble core,
+        // a ragged top (a stream named by its place; the props stream spends jitterUV's four draws all the same); a mud
+        // wall's and a brick-print wall's stay their blocks
+        if (wallB === 'fieldStone') {
+          for (let k = 0; k < 4; k++) rng();
+          const stub = buildDryStoneStub((Math.round(x * 61.3) * 73471) ^ Math.round(z * 29.9) * 52757, thick, height, WALL_SEG * 0.4);
+          stub.rotateY(yaw);
+          buckets[wallB].push(stub.translate(x, y + 0.1, z));
+          continue;
+        }
         const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
-        if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
+        jitterUV(stub, rng); // (a mud wall's block on its print, a brick-print wall's on its stone)
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
       }

@@ -2,18 +2,21 @@
 // smooth grey kerb-like strip of even width ... cast concrete rather than a drystone wall", "a wall built like stacked
 // cinder blocks", and on corner-ne a wall that ran through the wall it met and ended in the open with its head drawn
 // inside out). Pinned:
-//   1. the face print (fieldWallFace.ts): deterministic; stones of many sizes between dark dry joints (a few per cent of
-//      the face, never a mortar grid), bigger at the foot; near white so the map's tone sets the colour; periodic
-//      along the wall;
+//   1. the face print (fieldWallFace.ts): deterministic; (b26) the face laid by the coursing law the stone form is laid
+//      by (wave 177: "a crazy-paving decal with thick black grout"): stones of many sizes between dry joints as wide as
+//      the stones leave them, the footing's biggest at the foot; near white so the map's tone sets the colour;
+//      periodic along the wall;
 //   2. the walls (fieldWorks.ts): a stepped, uneven crown (top stones of their own heights, never above a metre), its
 //      heads wound to face out, fallen stretches and breaches along a long wall, fallen stones at its foot within the
 //      line's band, a line that overshoots the wall it meets cut back to it, indexed, the phones' fewer and longer;
 //   2b. the stone form (b17; gauntlet wave 121: "a smooth extruded strip with a blue-grey crazy-paving texture",
 //      "mortared, not dry-stone"): a cell's near form stone by stone, built when the camera comes near — its stones
-//      proud of the body's darkened faces (the dry joints), courses bigger at the foot, through-stones jutting from both
-//      faces, a coping of slabs on edge over the body, never above a metre, within the wall's band; the same stones
-//      whichever cell is laid first and however often; a cell's stones in its own square; within its triangle budget; the
-//      phones without it;
+//      proud of the body's darkened faces (the dry joints), through-stones jutting from both faces, never above a
+//      metre, within the wall's band; the same stones whichever cell is laid first and however often; a cell's stones in
+//      its own square; within its triangle budget; the phones without it; (b26; wave 177: "neat stacks of uniform
+//      rectangular slabs with upright coping", "a jumbled, collapsed pile of flat slabs at odd angles") its faces laid by
+//      the coursing law, its top a crown of rubble lumps with no slab on edge, and on a slope its beds following the
+//      ground vertex by vertex (no stone stepped and tipped on the ground under its own middle);
 //   3. the wiring: the walls on their own lit material (the print, the cascades), no shadow cast, the banks on the rock
 //      material; the stone tier built on demand near the camera, one cell a frame, the mid form hidden under it;
 //      Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round;
@@ -48,23 +51,29 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
     lum += (a.px[i * 4] + a.px[i * 4 + 1] + a.px[i * 4 + 2]) / 765;
   }
   const jointShare = joints / n, mean = lum / n;
-  assert.ok(jointShare > 0.04 && jointShare < 0.14, `dry joints between the stones, not a mortar grid (${(jointShare * 100).toFixed(1)} % of the face)`);
+  // (b26: the joints as the coursing law leaves them — a few per cent would be a mortar grid's ruled lines, a quarter a
+  // heap of rubble)
+  assert.ok(jointShare > 0.08 && jointShare < 0.24, `dry joints between the stones, as wide as the stones leave them (${(jointShare * 100).toFixed(1)} % of the face)`);
   assert.ok(mean > 0.62 && mean < 0.86, `near-white stones under the map's tone (face mean ${mean.toFixed(3)})`);
   // stones of many sizes, the biggest at the foot
   const areas = a.stones.map((s) => (s.u1 - s.u0) * (s.y1 - s.y0)).filter((x) => x > 0.002);
-  assert.ok(a.stones.length >= 30, `a tile is many stones (${a.stones.length})`);
+  assert.ok(a.stones.length >= 16, `a tile is many stones (${a.stones.length})`);
   assert.ok(Math.max(...areas) / Math.min(...areas) > 4, 'stones of many sizes');
-  const footH = a.stones.filter((s) => s.y1 < 0.3).map((s) => s.y1 - s.y0), topH = a.stones.filter((s) => s.y0 > 0.7).map((s) => s.y1 - s.y0);
+  // (b26: the footing course from the sunk foot; the stones over 0.6 m)
+  const footH = a.stones.filter((s) => s.y0 < 0.06).map((s) => s.y1 - s.y0), topH = a.stones.filter((s) => s.y0 > 0.6).map((s) => s.y1 - s.y0);
   const avg = (xs) => xs.reduce((p, q) => p + q, 0) / xs.length;
   assert.ok(footH.length && topH.length && avg(footH) > avg(topH) * 1.25, `the biggest stones at the foot (${avg(footH).toFixed(3)} m against ${avg(topH).toFixed(3)} m)`);
-  // periodic along the wall: the face band's first and last columns are neighbours
-  let seam = 0, inner = 0;
+  // periodic along the wall: the face band's first and last columns are neighbours — the step across the seam is one
+  // of the steps between any two columns (b26: against all of them, not one: a head joint of the coursing law lies
+  // wherever the stones leave it, the seam's column included; a tile that did not wrap would step there in every row)
+  const colSteps = new Array(size).fill(0);
   for (const y of faceRows) {
     const row = y * size;
     const d = (i, j) => Math.abs(a.px[i * 4] - a.px[j * 4]) + Math.abs(a.px[i * 4 + 1] - a.px[j * 4 + 1]);
-    seam += d(row, row + size - 1); inner += d(row + 100, row + 101);
+    for (let c = 0; c < size; c++) colSteps[c] += d(row + c, row + (c + 1) % size);
   }
-  assert.ok(seam < inner * 2.5, `the print wraps along the wall (seam ${seam} against a column step ${inner})`);
+  const seam = colSteps[size - 1], inner = colSteps.slice(0, size - 1).sort((p, q) => p - q), p95 = inner[Math.floor(inner.length * 0.95)];
+  assert.ok(seam <= p95, `the print wraps along the wall (seam ${seam} against the columns' 95th per cent step ${p95})`);
   assert.equal(DRY_WALL_TILE_M, 2);
   // (b17) the stone band: one stone's skin for the stone form's stones — no joint, no cell edge, a pale mottled stone;
   // its own band, clear of the face's and the crown's, room for the tallest stone (0.34 m) about its middle
@@ -92,8 +101,8 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
 // ---------------------------------------------------------------------------------------------- 2. the walls
 const noise = new SimplexNoise({ random: mulberry32(9299) });
 /** A flat field at y = 2 with the given field lines (edgeM the distance to the nearest), no roads, no village. */
-const fieldOf = (lines) => ({
-  getHeightAt: () => 2, getNormalAt: () => ({ y: 1 }), getWaterMaskAt: () => 0, _villageMask: () => 0, _roadDist: () => 99,
+const fieldOf = (lines, slope = 0) => ({
+  getHeightAt: (x) => 2 + slope * x, getNormalAt: () => ({ y: 1 }), getWaterMaskAt: () => 0, _villageMask: () => 0, _roadDist: () => 99,
   _landUseAt: (x, z, out) => {
     let e = 99;
     for (const [x0, z0, x1, z1] of lines) {
@@ -172,7 +181,7 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   // the same stones whichever cell is laid first, and however often
   const again = [...keys].reverse().map((key) => buildFieldWallFine(built.fine, key)).reverse();
   forms.forEach((g, i) => assert.deepEqual(Array.from(g?.attributes.position.array ?? []), Array.from(again[i]?.attributes.position.array ?? []), 'deterministic, cell by cell'));
-  let tris = 0, high = 0, off = 0, outOfCell = 0, copeTops = 0, jut = 0;
+  let tris = 0, high = 0, off = 0, outOfCell = 0, crownTops = 0, onEdge = 0, jut = 0;
   const faceLum = [];
   const CELL = 64;
   forms.forEach((g, i) => {
@@ -190,8 +199,10 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
         faceLum.push((0.2126 * c[v * 3] + 0.7152 * c[v * 3 + 1] + 0.0722 * c[v * 3 + 2]) / 255);
 
       }
-      // the coping's top edges, over the body (whose crown and stones stand a coping's height lower)
-      if (n[v * 3 + 1] > 0.85 && y > 0.75) copeTops++;
+      // (b26) the crown's rubble lumps, their tops up over the body; and no slab on edge along the top (a cope's faces
+      // look along the wall)
+      if (n[v * 3 + 1] > 0.85 && y > 0.65) crownTops++;
+      if (Math.abs(n[v * 3]) > 0.85 && y > 0.8) onEdge++;
       // a through-stone's sides: faces along the wall, out past the body's faces, under the coping and off the heads (the
       // stones on the faces have no sides, only their faces and their bevels)
       if (Math.abs(n[v * 3]) > 0.9 && y > 0.1 && y < 0.55 && Math.abs(z) > 0.22 && Math.abs(x) < 195) jut++;
@@ -210,7 +221,8 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.ok(dark.length > 0 && dark.length < faceLum.length * 0.35 && darkMean < med * 0.62,
     `the stones over the body's darkened faces, the dark only in the joints (${dark.length} of ${faceLum.length} face vertices at ${(darkMean / med).toFixed(2)} of the median)`);
   assert.ok(jut >= metres * 3, `through-stones jut from both faces (${jut} side vertices over ${metres.toFixed(0)} m)`);
-  assert.ok(copeTops >= metres * 6, `a coping of slabs on edge along the top (${copeTops} top vertices over 0.75 m over ${metres.toFixed(0)} m)`);
+  assert.ok(crownTops >= metres * 30, `a crown of rubble top stones along the top (${crownTops} up-facing vertices over 0.65 m over ${metres.toFixed(0)} m)`);
+  assert.ok(onEdge < metres * 13, `no coping of slabs on edge (${onEdge} faces looking along the wall over 0.8 m over ${metres.toFixed(0)} m; b17's copes drew 19 a metre)`);
   assert.ok(tris / metres < 330, `within its budget (${(tris / metres).toFixed(0)} triangles a metre)`);
   assert.ok(tris > built.receipt.triangles * 3, `stone by stone: several times the mid form (${tris} against ${built.receipt.triangles})`);
   // built in slices (the props' switch runs them within a frame budget): every few dozen stones a slice
@@ -223,6 +235,30 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
     step.value.dispose();
   }
   for (const g of [...forms, ...again]) g?.dispose();
+  built.wallGeometry.dispose(); built.wallFarGeometry.dispose();
+  for (const c of built.wallCells) { c.near?.dispose(); c.far?.dispose(); }
+}
+// (b26; wave 177, "a jumbled, collapsed pile of flat slabs at odd angles") the stone form on a slope: each face stone's
+// bed on the ground under each of its own corners, so the footing's beds lie at one depth under the ground all along
+// the wall (b17's stones each took the ground under its own middle: on a 12 % slope their beds spread over 2.5 cm and
+// the stones stepped and tipped)
+{
+  const built = drain(buildFieldWorks(fieldOf([[-200, 0, 200, 0]], 0.12), noise, { walls: true, banks: false, spawns: [{ x: 0, z: -400 }], mobile: false, merged: true }));
+  const beds = [];
+  for (const c of built.wallCells) {
+    const g = buildFieldWallFine(built.fine, c.key);
+    if (!g) continue;
+    const p = g.attributes.position.array, n = g.attributes.normal.array;
+    for (let v = 0; v < p.length / 3; v++) {
+      const y = p[v * 3 + 1] - (2 + 0.12 * p[v * 3]);
+      if (Math.abs(n[v * 3 + 2]) > 0.7 && y > -0.095 && y < -0.055) beds.push(y);
+    }
+    g.dispose();
+  }
+  beds.sort((a, b) => a - b);
+  const spread = beds[Math.floor(beds.length * 0.95)] - beds[Math.floor(beds.length * 0.05)];
+  assert.ok(beds.length > built.receipt.wallM * 4, `the footing's beds found (${beds.length})`);
+  assert.ok(spread < 0.01, `on a 12 % slope the beds follow the ground (${(spread * 100).toFixed(2)} cm between the 5th and 95th per cent)`);
   built.wallGeometry.dispose(); built.wallFarGeometry.dispose();
   for (const c of built.wallCells) { c.near?.dispose(); c.far?.dispose(); }
 }
