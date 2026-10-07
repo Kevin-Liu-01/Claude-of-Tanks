@@ -513,10 +513,12 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     const w = W, d = D;
     const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: 0, w: 1.8, y0: 0, h: 2.9 }];
     for (let i = 0; i < 4; i++) {
-      // (the hospice's rows wide-set on the lake side and the far end: the kit's 12 000-triangle building budget)
+      // (the hospice's rows wide-set on the lake side and the far end: the kit's 12 000-triangle building budget; the lake
+      // side's rows 4.3 m apart and the far end's 4.0 since the PR head's facade craft added its surrounds' triangles,
+      // 2026-10-07: three windows a storey on each)
       for (const o of windowRhythm('left', i, d, { w: 0.9, h: i ? 1.35 : 1.2, sill: i ? 0.8 : 1.1, spacing: 2.5, margin: 1.2, avoid: i ? [] : [[-1.4, 1.4]] })) openings.push(o);
-      for (const o of windowRhythm('right', i, d, { w: 0.85, h: 1.25, sill: 0.9, spacing: 3.2, margin: 1.4 })) openings.push(o);
-      for (const o of windowRhythm('back', i, w, { w: 0.85, h: 1.25, sill: 0.9, spacing: 3.4, margin: 1.6 })) openings.push(o);
+      for (const o of windowRhythm('right', i, d, { w: 0.85, h: 1.25, sill: 0.9, spacing: 4.3, margin: 1.4 })) openings.push(o);
+      for (const o of windowRhythm('back', i, w, { w: 0.85, h: 1.25, sill: 0.9, spacing: 4.0, margin: 1.6 })) openings.push(o);
       // the chapel's end: windows only above the chapel's roof
       if (i === 3) for (const o of windowRhythm('front', i, w, { w: 0.85, h: 1.2, sill: 0.9, spacing: 3.4, margin: 2.4 })) openings.push(o);
     }
