@@ -38,14 +38,10 @@ const CARGO_SIDE = [
   // crowned by a dome with spidery legs, a placeholder". A second gabled hangar stands in its place, with roller
   // doors toward the apron and the sheet cladding below.
   { structure: 'tower', x: -282, z: -128, yawDeg: 0 },
-  // 2026-10-03 (maps lane B, gauntlet wave 28: "a cobbled plaza … a single barn-sized shed", where Hostomel has the
-  // Antonov hangars): the hangar plot at the back of the cargo apron, 56 m across (x -253..-197) by 36 m deep
-  // (z -230..-194), its doors on the north face toward the apron, which it meets 2 m past the apron's south edge, its
-  // ground the plateau's graded level, 12 m clear of the access road behind it. The plot is authored at its size, so
-  // the regional kit raises its barrel-vault cargo hangar across it (a warehouse plot 21 m wide or more); without the
-  // kit the gabled hangar builds to it.
-  { structure: 'warehouse', x: -225, z: -212, yawDeg: 0, plot: { w: 56, d: 36 } },
-  { structure: 'warehouse', x: -160, z: -208, yawDeg: 90 },
+  // (2026-10-07, Kestrel round 5) the cargo side's hangar plot is the An-225's (ANTONOV_PLOT below); the regional kit's
+  // barrel-vault cargo hangar stands on the terminal side only (TERMINAL_HANGAR). The store beside the plot 5 m east,
+  // 8 m off the burnt hangar's east wall.
+  { structure: 'warehouse', x: -155, z: -208, yawDeg: 90 },
   // the hangar line, the fire station and the stores along the taxiway
   { structure: 'warehouse', x: -207, z: -82, yawDeg: 90 },
   { structure: 'depot', x: -160, z: -115, yawDeg: 90 },
@@ -62,6 +58,23 @@ const CARGO_SIDE = [
 ];
 const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }) =>
   ({ ...site, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180 });
+// 2026-10-03 (maps lane B, gauntlet wave 28: "a cobbled plaza … a single barn-sized shed", where Hostomel has the
+// Antonov hangars): the hangar plot at the back of the apron, 56 m across by 36 m deep, its doors toward the apron, which
+// it meets 2 m past the apron's edge, its ground the plateau's graded level. The plot is authored at its size, so the
+// regional kit raises its barrel-vault cargo hangar across it (a warehouse plot 21 m wide or more); without the kit the
+// gabled hangar builds to it. (2026-10-07, Kestrel round 5) on the terminal side only: behind the cargo apron the An-225
+// stands in the ruin of its own hangar.
+const TERMINAL_HANGAR = { structure: 'warehouse', x: 225, z: 212, yawDeg: 180, plot: { w: 56, d: 36 } };
+// 2026-10-07 (the map-revival lane, Kestrel round 5; the coordinator: the An-225 at true scale, 84 m long with its
+// 88.4 m span, inside a hangar sized to it — the landmarks lane's aircraftWreck, seated as a landmark on this plot): the
+// burnt hangar's slab behind the cargo apron, 105 m across (x -282..-177) by 97 m deep (z -278..-181), its doors on the
+// north face over the apron's back strip, 1 m off the zone disc (-225, -150, r 30), at the apron's own level; its back
+// third cut into the plateau's rise. Its rotation on the terminal side keeps the kit's hangar on its own plot and the
+// ground round it, cleared of trees like the slab (the roads keep the rotation; the cover does not, so the fairness gate
+// runs on it).
+const ANTONOV_PLOT = { x: -229.5, z: -229.5, width: 105, length: 97 };
+// the cargo apron's level, pinned (its own plane, 2026-10-07: 5.923 m) so the hangar slab meets it without a step
+const CARGO_APRON_Y = 5.92;
 // 2026-10-05 (the map-revival lane): the dacha cooperative on the south valley's shoulder, east of the access road's
 // climb (its rotation on the north shoulder): two rows of four plots, 30 m apart, the houses' gables to the lane that runs
 // between the rows, the yards' fenced gardens and sheds round them. The shoulder there is the plateau's smoothest edge
@@ -91,6 +104,12 @@ const PLANTATION_BLOCKS = [[376, 440, -236, -96], [376, 440, 92, 236]].flatMap((
 const TAXIWAY: Array<[number, number]> = [[-310, 0], [-300, -48], [-276, -88], [-230, -98], [-160, -98], [-90, -96],
   [-56, -92], [-30, -74], [-12, -46], [-3, -20], [0, 0]];
 const rotatePoint = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
+// The access road (path 1; path 2 is its rotation): up from the south valley's edge to the plateau, behind the hangar
+// line to the runway road's west end. (2026-10-07, round 5) it passes behind the An-225's hangar, 17 m off the back wall
+// and 14 m and more off its corners, outside the slab's bank (it ran at z -242 across the plot).
+const ACCESS_ROAD: Array<[number, number]> = [[100, -448], [92, -400], [56, -330], [0, -284], [-70, -252], [-125, -262],
+  [-158, -282], [-172, -295], [-205, -295], [-262, -295], [-292, -288], [-316, -262], [-330, -215], [-336, -170], [-338, -150],
+  [-338, -80], [-338, 0]];
 // The concrete's slabs (the splat pavement) — the paint breaks at their joints.
 const SLAB_M = 6;
 // 2026-10-05 (the map-revival lane; the coordinator: the apron markings as receive-only decal strips, "faded paint with
@@ -132,9 +151,9 @@ const APRON_MARKINGS = {
   keepOut: [
     // the runway
     { x0: -330, x1: 330, z0: -26, z1: 26 },
-    // the cargo hangar's plot and the apron's back strip (the An-225 set piece), and their rotation
-    { x0: -263, x1: -187, z0: -230, z1: -180 },
-    { x0: 187, x1: 263, z0: 180, z1: 230 },
+    // the An-225's hangar slab (round 5; it takes the apron's back strip), and its rotation
+    { x0: -282, x1: -177, z0: -278, z1: -181 },
+    { x0: 177, x1: 282, z0: 181, z1: 278 },
   ],
   slabM: SLAB_M,
 };
@@ -153,8 +172,11 @@ export default {
       { x: 0, z: 0, width: 45, length: 620, yawDeg: 90 },
       // the holding apron where the taxiways meet the runway's centre
       { x: 0, z: 0, width: 90, length: 90, yawDeg: 0, grade: 0 },
-      { x: -225, z: -150, width: 76, length: 84, yawDeg: 0, grade: 0 },
+      { x: -225, z: -150, width: 76, length: 84, yawDeg: 0, grade: 0, level: CARGO_APRON_Y },
       { x: 225, z: 150, width: 76, length: 84, yawDeg: 0, grade: 0 },
+      // (2026-10-07, round 5) the An-225's hangar slab behind the cargo apron (the terminal side keeps its ground: a slab
+      // there stood 3.5 m over the falling ground behind the kit's hangar and put a 25 % ramp in the access road)
+      { ...ANTONOV_PLOT, yawDeg: 0, grade: 0, level: CARGO_APRON_Y },
     ],
     // The graded airfield: the whole runway, the aprons and the hangar lines behind them. The plateau is levelled out
     // past the runway's ends, so its paving meets the ground without a bank (maps lane A's apron-wall scan: 0 points).
@@ -166,10 +188,9 @@ export default {
         [-150, 0], [-120, 0], [-90, 0], [-60, 0], [-30, 0], [0, 0], [30, 0], [60, 0], [90, 0], [120, 0], [150, 0],
         [180, 0], [210, 0], [240, 0], [270, 0], [300, 0], [330, 0], [360, 0], [390, 0], [420, -12], [448, -34]],
       // 1 / 2 — the access roads, up from each valley's edge to the plateau, past the apron to the runway road.
-      [[100, -448], [92, -400], [56, -330], [0, -284], [-70, -248], [-150, -242], [-250, -242], [-305, -212],
-        [-334, -150], [-338, -80], [-338, 0]],
-      [[-100, 448], [-92, 400], [-56, 330], [0, 284], [70, 248], [150, 242], [250, 242], [305, 212], [334, 150],
-        [338, 80], [338, 0]],
+      // (2026-10-07, round 5) behind the An-225's hangar (17 m off its back wall), and its rotation behind the kit's hangar
+      ACCESS_ROAD,
+      ACCESS_ROAD.map(rotatePoint),
       // 3 / 4 — the taxiway halves: from the runway's end along the south (west half) or the north (east half) side to
       // the runway's centre, past the cargo or the terminal apron.
       TAXIWAY,
@@ -240,7 +261,9 @@ export default {
     belts: [...PLANTATIONS, ...PLANTATIONS.map((b) => ({ ...b, x0: -b.x0, z0: -b.z0, x1: -b.x1, z1: -b.z1 }))],
     // (2026-10-06) each plantation block holds its rows alone — no woodlot, lone tree or sapling stands inside it, so its
     // edge reads ruled and the woods round it stay woods (the coordinator: the trim plus the keep-out, about +15 %)
-    standKeepOut: PLANTATION_BLOCKS,
+    // (2026-10-07, round 5) and no stand on the An-225's hangar slab past the plateau's tree line (z -254..-278), nor on
+    // its rotation behind the kit's hangar
+    standKeepOut: [...PLANTATION_BLOCKS, { x0: -282, x1: -177, z0: -278, z1: -254 }, { x0: 177, x1: 282, z0: 254, z1: 278 }],
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
   },
@@ -255,7 +278,7 @@ export default {
       { id: 'terminal-hut-line', role: 'support', x: 122, z: 150, yawDeg: -90, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
-    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
+    plannedSites: [...CARGO_SIDE, TERMINAL_HANGAR, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
     // the taxiway centrelines and the apron stands' paint (world/groundMarkings.ts; above)
     groundMarkings: APRON_MARKINGS,
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
@@ -269,7 +292,8 @@ export default {
     wallStyle: 'fieldstone', wallStoneChance: 0.6,
     // Blast walls along the hangar line and the terminal forecourt (rotation pairs).
     // (the hangar line's wall ends west of the hangar plot)
-    wallRuns: [[-300, -205, -262, -205, 2], [300, 205, 262, 205, 2], [-160, -118, -100, -118, 3], [160, 118, 100, 118, 3],
+    // (round 5: the hangar line's wall ends 4 m short of the An-225's hangar slab, x -282)
+    wallRuns: [[-300, -205, -286, -205, 2], [300, 205, 286, 205, 2], [-160, -118, -100, -118, 3], [160, 118, 100, 118, 3],
       [-60, -150, -60, -110, 1], [60, 150, 60, 110, 1]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,

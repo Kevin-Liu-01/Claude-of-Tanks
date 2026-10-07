@@ -91,8 +91,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // the runway road; each taxiway half runs from the runway road at the runway's end to the runway road at its centre.
   // (2026-10-05, the map-revival lane: each dacha cooperative's lane leaves its access road and rejoins it round the
   // cooperative's back row)
+  // (2026-10-07, Kestrel round 5: each lane rejoins its access road on the road's own line — the access road's leg
+  // (56, -330)-(0, -284) at nine tenths, on the plateau's edge, where [5, -288] stood 8 cm off it — and the rotation)
   airfield: [through, ['boundary', { junction: 0 }], ['boundary', { junction: 0 }], join(0, 0), join(0, 0),
-    [{ junction: 1 }, { junction: 1, at: [5, -288] }], [{ junction: 2 }, { junction: 2, at: [-5, 288] }]],
+    [{ junction: 1 }, { junction: 1, at: [5.6, -288.6] }], [{ junction: 2 }, { junction: 2, at: [-5.6, 288.6] }]],
   oasis: [through, through, through, join(1, 2), join(1, 2)],
   whiteout: [join(1, 3), through, through, through, join(1, 3)],
   orchard: [through, through, through, join(1, 2), join(1, 2)],
