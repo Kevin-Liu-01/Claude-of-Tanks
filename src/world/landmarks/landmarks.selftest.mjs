@@ -113,7 +113,7 @@ const VARIANTS = {
   trussBridge: [{ spans: 2, span: 60 }],
   lighthouse: [{ paint: 'green', base: 'rock' }],
   khan: [{ form: 'arcade', width: 30 }],
-  fountain: [{ style: 'ottoman', radius: 2.6 }],
+  fountain: [{ style: 'ottoman', radius: 2.6 }, { style: 'markt', radius: 2.6 }],
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);

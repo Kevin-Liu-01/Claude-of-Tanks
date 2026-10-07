@@ -73,9 +73,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   equestrianStatue: { family: 'monument', defaults: { scale: 1.6, plinth: 3.6 },
     footprint: (p) => [1.6 + num(p, 'scale') * 0.9, 2.6 + num(p, 'scale') * 1.7] },
   // ------------------------------------------------------------------------------------------------ parks and squares
-  // (style 'ottoman': the octagonal basin round its pillar, its corners on the radius / cos 22.5 degrees)
+  // (style 'ottoman': the octagonal basin round its pillar, its corners on the radius / cos 22.5 degrees; style 'markt':
+  // the Franconian trough on its step, 0.6 m past the corners)
   fountain: { family: 'park', defaults: { radius: 4.5, tiers: 2, style: 'tiered' },
-    footprint: (p) => { const r = (p.style === 'ottoman' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.1 : num(p, 'radius')) + 0.4; return [r, r]; } },
+    footprint: (p) => { const r = (p.style === 'ottoman' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.1 : p.style === 'markt' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.6 : num(p, 'radius')) + 0.4; return [r, r]; } },
   bandstand: { family: 'park', defaults: { radius: 4.2 },
     footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 0.9] },
   // (the end piers' caps past the railings; the open leaves swing 2 m into the park)

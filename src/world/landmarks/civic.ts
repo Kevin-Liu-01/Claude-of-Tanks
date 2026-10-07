@@ -540,6 +540,24 @@ export const townHall: LandmarkBuilder = (ctx) => {
     front: [{ u: 0, w: 1.6, y0: plinth, spring: plinth + 2.6, form: 'round' }],
   }, 0.3);
   doorLeaf(sink, back.front, { u: 0, w: 1.6, y0: plinth, spring: plinth + 2.6, form: 'round' }, 0.3);
+  // the arcade's own interior (gauntlet wave 156: "its ground-floor arches are filled with cream render, so the market
+  // hall reads as a painted facade"): the hall's front in the arcade's shadow (the render's own bucket under the kit
+  // weathering's occlusion), the boarded ceiling on its beams under the floor above, and the market's stalls under it
+  const zIn = D / 2 - 0.8, zWall = back.front.origin[2] + 0.02;
+  for (const [u0, u1] of [[-(W - 1.0) / 2, -1.0], [1.0, (W - 1.0) / 2]] as const) {
+    sink.quad(render, facePoint(back.front, u0, plinth, 0.02), facePoint(back.front, u1, plinth, 0.02), facePoint(back.front, u1, plinth + g, 0.02),
+      facePoint(back.front, u0, plinth + g, 0.02), { decor: true, shade: 0.5 });
+  }
+  // (the boards face down into the arcade)
+  sink.quad('structureWood', [-W / 2 + 0.4, plinth + g - 0.02, zWall], [W / 2 - 0.4, plinth + g - 0.02, zWall], [W / 2 - 0.4, plinth + g - 0.02, zIn],
+    [-W / 2 + 0.4, plinth + g - 0.02, zIn], { colour: rgb(0x3a2c22), decor: true });
+  for (let i = 0; i <= bays; i++) {
+    const x = -W / 2 + bw * i;
+    sink.span('structureWood', x - 0.12, plinth + g - 0.32, zWall, x + 0.12, plinth + g - 0.02, zIn, { colour: OAK, decor: true, fine: true });
+  }
+  const stalls = Math.max(0, Math.min(bays - 1, Math.round(Number(ctx.params.stalls ?? 2))));
+  const arcadeStalls = Array.from({ length: stalls }, (_, k) => ({ kind: 'stall', x: -W / 2 + bw * (k * 2 + 0.5 + (bays > 4 ? 1 : 0)), z: (zIn + zWall) / 2, yawDeg: 0 }))
+    .filter((d) => Math.abs(d.x) > 1.6);
   // the upper storeys over the whole plan, a window to a bay, each storey's string course
   const holes: Partial<Record<FaceName, ArchHole[]>> = { front: [], back: [], left: [], right: [] };
   for (let k = 0; k < storeys - 1; k++) {
@@ -658,7 +676,7 @@ export const townHall: LandmarkBuilder = (ctx) => {
   bell(sink, 0, lanternTop - 0.2, 0, 0.42);
   const helm = dome(sink, 'structureMetal', 0, lanternTop + 0.25, 0, tb * 0.52, 'onion', 12, { colour: SLATE_BLUE });
   revolve(sink, 'structureMetal', 0, 0, [[0.12, helm - 0.1], [0.02, Math.max(helm + 1.5, towerTop)], [0, Math.max(helm + 1.6, towerTop + 0.1)]], 6, { colour: GILT, decor: true });
-  return { parts: sink.finish(), tints: { plaster: [1.0, 0.94, 0.84] } };
+  return { parts: sink.finish(), tints: { plaster: [1.0, 0.94, 0.84] }, destructibles: arcadeStalls };
 };
 const ARCH_GAP_M_CIVIC = 0.002;
 

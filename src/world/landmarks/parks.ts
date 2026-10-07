@@ -1,13 +1,15 @@
 // src/world/landmarks/parks.ts — parks and squares (the landmarks lane, 2026-10-05): the fountain, the bandstand, the
 // park gate with its railings, and the square that gathers them — a green with its paths and railing, the props'
 // destructible benches and lamps along the paths, and a centre piece (an obelisk, a statue, a fountain, a bandstand).
-import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { LIMEWASH_UV, archedSlab, bar, cross, moulding, railing, revolve, smoothRender } from './kit.ts';
 import { drapedPath, drapedRect, enclosure, fenceRun, grave, type GraveMarker, type GroundsDestructible } from './grounds.ts';
+import { figure } from './monuments.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkPlacement } from './types.ts';
 
 const IRON = rgb(0x26282a), IRON_GREEN = rgb(0x334a3c), GILT = rgb(0xb8933e), PAINT_WHITE = rgb(0xe6e2d8), PICKET = rgb(0xdedad0);
+const SANDSTONE = rgb(0xb59a7c);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
@@ -20,6 +22,7 @@ export const fountain: LandmarkBuilder = (ctx) => {
   const R = Math.max(2, Number(ctx.params.radius)), tiers = Math.max(1, Math.min(3, Math.round(Number(ctx.params.tiers))));
   const base = -0.6 - ctx.groundFall;
   if (String(ctx.params.style) === 'ottoman') return ottomanFountain(sink, R, base);
+  if (String(ctx.params.style) === 'markt') return marktFountain(sink, R, base);
   // the basin wall: a ring with its coping (outer face, top, inner face down to the water)
   revolve(sink, 'stone', 0, 0, [[R, base], [R, 0.55], [R + 0.08, 0.55], [R + 0.08, 0.7], [R - 0.42, 0.7], [R - 0.42, 0.42]], 28);
   // the water (dark glass, the sky in it) and the basin floor under it
@@ -38,6 +41,29 @@ export const fountain: LandmarkBuilder = (ctx) => {
   revolve(sink, 'stone', 0, 0, [[r * 1.3, y], [r * 1.1, y + 0.4], [r * 1.6, y + 0.6], [0, y + 0.95]], 10);
   return { parts: sink.finish() };
 };
+
+/**
+ * The Franconian market fountain (Marktbrunnen: Rothenburg's St George's, Dinkelsbühl's; gauntlet wave 156: Steinburg's
+ * Brunnen "a generic Italianate tiered fountain; a Franconian Marktbrunnen is a column on an octagonal basin"): an
+ * octagonal trough of dressed sandstone on a step, its coping waist-high, the water in it; from its middle a moulded
+ * pedestal carrying a slender column, its capital, and the saint standing on it; four iron spouts from the pedestal
+ * into the trough.
+ */
+function marktFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+  const oct = Math.PI / 8, Ro = R / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[Ro + 0.6, base], [Ro + 0.6, 0.18], [Ro, 0.18]], 8, {}, oct);
+  revolve(sink, 'stone', 0, 0, [[Ro, 0.18], [Ro, 0.82], [Ro + 0.12, 0.82], [Ro + 0.12, 1.0], [Ro - 0.3, 1.0], [Ro - 0.3, 0.5]], 8, {}, oct);
+  revolve(sink, 'glass', 0, 0, [[Ro - 0.3, 0.72], [0.62, 0.72]], 8, { decor: true }, oct);
+  const shaftTop = 4.7;
+  revolve(sink, 'stone', 0, 0, [[0.66, 0.5], [0.66, 1.25], [0.54, 1.38], [0.4, 1.48], [0.33, 1.62], [0.29, shaftTop - 0.3], [0.38, shaftTop - 0.2],
+    [0.52, shaftTop], [0.52, shaftTop + 0.18], [0, shaftTop + 0.19]], 8, {}, oct);
+  figure(sink, shaftTop + 0.18, 1.85, SANDSTONE, shade(SANDSTONE, 0.78), 'robe');
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+    bar(sink, 'structureMetal', [c * 0.6, 1.05, s * 0.6], [c * 1.15, 0.98, s * 1.15], 0.05, { colour: IRON, decor: true });
+  }
+  return { parts: sink.finish(), tints: { stone: [1.04, 0.95, 0.85] } };
+}
 
 /**
  * The Ottoman village fountain (a Levantine market square's, Deir el Qamar's on its Midan): an octagonal basin of dressed
