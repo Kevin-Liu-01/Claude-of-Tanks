@@ -103,7 +103,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
 | Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
-| Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
+| Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest; the square's Ottoman fountain on its setts (the landmarks lane, 2026-10-06) |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
@@ -6104,6 +6104,24 @@ neither confirmed nor refuted, and the g1 reading stands as written: +1.8 ms med
 quiet, against −129 draws and −0.83 M triangles. Ready to run in the next quiet window without changes:
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
+
+### 2026-10-06 — Orchard Valley: the Ottoman fountain on the square (the landmarks lane)
+
+On the map-revival lane's round 2 (ba23cc1f7), at the seat agreed with it: the square's Ottoman fountain — its octagonal
+basin round the spouted column under its little dome — on 11 m of setts at (17.5, 5), turned 142° to the village grid.
+Set into the finished village, it vetoes its ground (`landmarks/types.ts` `ground: 'veto'`): against ba23cc1f7's shard
+one tree whose crown reached the square is cleared and every other record stands where it stood. Census [3716, 3661,
+3917] → [3717, 3668, 3916].
+
+**The khan is withdrawn.** A silk khan beside the square (Deir el Qamar's kind, 26 × 24 m) was planned with the map's
+lane. The valley's long sight lines run through the village: the layout brief's long-sight share (at least 0.03) stands
+at 0.0302 without it — 1 247 of 41 251 sight rays reach 300 m — and the khan, at any seat within 60 m of the square and
+at any size down to 16 × 14 m, cut 58 to 84 of them where 30 could go (0.028 at the agreed seat). The fountain cuts 13.
+
+Pacing (the fleet receipt's four seeds, 46000–46003): 171 / 236 / 207 / 272 s against the base's 203 / 167 / 207 / 241
+s. Receipts: the 28 selected (the landmarks library, the collision drift and pins, the layout brief, the village and
+road receipts) green. Cost (rule v3): the census closes at every view — +0 draws at the establishing shot, the chase and
+the fountain's view, +0.06 %, +0.06 % and +0.09 % triangles, no program compiled.
 
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
