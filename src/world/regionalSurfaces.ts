@@ -332,7 +332,12 @@ interface MasonryRecipe {
   bedding?: number;
   /** the cloudy tone variation inside one stone (default 0.3; dressed stone is even) */
   mottle?: number;
+  /** the lichen's crust colour (default the warm yellow-grey crust, 0.68 / 0.64 / 0.48) */
+  lichenTint?: Tint;
 }
+
+/** The masonry's default lichen: a warm yellow-grey crust. */
+const LICHEN_CRUST: Tint = [0.68, 0.64, 0.48];
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
   sandstone: { courseMin: 52, courseMax: 92, blockMin: 90, blockMax: 210, mortar: 1.8, mortarTint: [0.62, 0.57, 0.52],
@@ -353,6 +358,14 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
     tint: [1, 1, 1], spread: 0.2, hue: 0.04, relief: 0.7, pillow: 0.5, speckle: 0.2, lichen: 0.3, grime: 0.35, rubble: 0.5 },
   rubble: { courseMin: 36, courseMax: 90, blockMin: 50, blockMax: 160, mortar: 4.2, mortarTint: [0.66, 0.62, 0.55],
     tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.75, pillow: 0.7, speckle: 0.1, lichen: 0.2, grime: 0.3, rubble: 0.7 },
+  // the Alpine gneiss rubble (map revival lane 2, Glacier Pass round 4; gauntlet wave 188: the shelled house and a house
+  // base still "a regular tiling tan ashlar with pale joints"): the split slabs of a foliated gneiss laid flat — long,
+  // low stones in wandering courses, most of them split within the course; the joints deep and dark (raked lime, a dry
+  // wall's shadow), never a pale mortar grid; the foliation's faint light and dark bands inside each slab, the mica's
+  // glints, grey-green crustose lichen, no tan anywhere (the style's tint gives the stone its grey)
+  gneiss: { courseMin: 22, courseMax: 52, blockMin: 64, blockMax: 190, mortar: 3.4, mortarTint: [0.26, 0.26, 0.27],
+    tint: [1, 1, 1], spread: 0.24, hue: 0.03, relief: 0.85, pillow: 0.35, speckle: 0.3, lichen: 0.15, grime: 0.35, rubble: 0.6,
+    bedding: 0.06, mottle: 0.22, lichenTint: [0.62, 0.66, 0.6] },
   // concrete masonry units (0.4 x 0.2 m hollow blocks in running bond): plinths, godowns, desert houses
   block: { courseMin: 51, courseMax: 52, blockMin: 102, blockMax: 103, mortar: 1.5, mortarTint: [0.7, 0.69, 0.66],
     tint: [1, 1, 1], spread: 0.08, hue: 0.02, relief: 0.25, pillow: 0.05, speckle: 0.35, lichen: 0.05, grime: 0.45, rubble: 0 },
@@ -416,7 +429,8 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): 
         const v = (1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * cloud + bed - grime + speck * 0.12;
         const h = (k2 - 0.5) * R.hue * 2;
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
-        rr = rr * (1 - lichen) + 0.68 * lichen; gg = gg * (1 - lichen) + 0.64 * lichen; bb = bb * (1 - lichen) + 0.48 * lichen;
+        const lt = R.lichenTint ?? LICHEN_CRUST;
+        rr = rr * (1 - lichen) + lt[0] * lichen; gg = gg * (1 - lichen) + lt[1] * lichen; bb = bb * (1 - lichen) + lt[2] * lichen;
         hgt[i] = clamp(0.3 + pill * 0.45 + (tex - 0.5) * R.relief * 0.5);
         rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1);
       }

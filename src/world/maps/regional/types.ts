@@ -37,7 +37,7 @@ export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
 /** An HSL remap of a procedural surface (props.ts ToneFunction). */
 export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'gneiss';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
