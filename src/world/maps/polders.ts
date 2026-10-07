@@ -254,13 +254,26 @@ export default {
     // polders in the east were drained by the steel windmotors — one stellingmolen on the field drain's east bank, one at
     // the oxbow's east tip, each with its stage and thatched cap and its sails turned into the sea wind as the
     // windmotors' are (yaw 300); and over the oxbow's waist a white double-leaf lift bridge in the Magere Brug's
-    // composition: the leaves on two brick piers in the water, a fixed span on pile bents to each bank, the roadway
-    // 1.5 m over the banks (the basin lies level with its fields) on paved brick abutments with short ramps down.
+    // composition: the leaves on two brick piers in the water, a fixed span on pile bents to each bank, the roadway on
+    // paved brick abutments.
+    // Round 2 (2026-10-07; the gauntlet: the lift bridge "needs a road over the water", the mills "a mound, a yard and a
+    // link to the water"; the seats agreed with the map-revival lane, whose step 2 lays the lane over the oxbow on x -158
+    // with the crossing's deck plane at 2.90 and raises a terp 1.8 m under each mill): the bridge's roadway on that plane,
+    // the road's own embankment for its approaches (no brick ramps: rise 0); each mill on its terp's level crest behind a
+    // plank-fenced yard, its gate toward the fields, and at the terp's foot toward its water the outfall of the drain
+    // under it — a brick headwall with the culvert's mouth and its runnel pitched in stone down to the water. Every piece
+    // is set into the finished map (ground 'veto').
     landmarks: [
-      { kind: 'liftBridge', x: -158, z: 265.5, yawDeg: 0, name: 'the lift bridge over the oxbow',
-        params: { span: 12, approach: 5.6, rise: 1.5 } },
-      { kind: 'windmill', x: -106, z: 262, yawDeg: 300, name: 'the oxbow mill', params: { style: 'tower', height: 20 } },
-      { kind: 'windmill', x: -171, z: -316, yawDeg: 300, name: 'the drain mill', params: { style: 'tower', height: 18 } },
+      { kind: 'liftBridge', x: -158, z: 265.5, yawDeg: 0, ground: 'veto', name: 'the lift bridge over the oxbow',
+        params: { span: 12, approach: 5.6, rise: 0 } },
+      { kind: 'garden', x: -99, z: 262, yawDeg: 90, ground: 'veto', name: "the oxbow mill's yard",
+        params: { width: 12, depth: 12, fence: 'fenceplank', back: 'fence', beds: false, path: 0 } },
+      { kind: 'windmill', x: -99, z: 262, yawDeg: 300, ground: 'veto', name: 'the oxbow mill', params: { style: 'tower', height: 20 } },
+      { kind: 'outfall', x: -111.56, z: 264.21, yawDeg: 280, ground: 'veto', name: "the oxbow mill's outfall", params: { length: 6.9, width: 0.8 } },
+      { kind: 'garden', x: -171, z: -316, yawDeg: 84, ground: 'veto', name: "the drain mill's yard",
+        params: { width: 12, depth: 12, fence: 'fenceplank', back: 'fence', beds: false, path: 0 } },
+      { kind: 'windmill', x: -171, z: -316, yawDeg: 300, ground: 'veto', name: 'the drain mill', params: { style: 'tower', height: 18 } },
+      { kind: 'outfall', x: -182.96, z: -311.17, yawDeg: 292, ground: 'veto', name: "the drain mill's outfall", params: { length: 7.2, width: 0.8 } },
     ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     // (2026-10-06, the map-revival lane, step 1) the farm court stands exactly as the PR head seated it (the town-plan
