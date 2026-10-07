@@ -232,4 +232,33 @@ assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[ch
   assert.ok(lo >= -2.15 - 1e-9 && hi <= 2.15 + 1e-9, `the bed wander stays inside ±2.15 m (${lo.toFixed(2)}..${hi.toFixed(2)})`);
   assert.ok(sd > 0.2, `the beds wander (sd ${sd.toFixed(2)} m)`);
 }
+// 2026-10-07 the ground lane (wave 212, Orchard's risers "near-black gashes", then cream rock): a terrace riser is a
+// dry-stone wall — the riser band's weight (gRiserW, the map-revival lane's T2 band) drives a coursed-stone pass inside
+// the rock branch; a map without terrace zones (uTerraceParam.x 0) never sets it, so its rock draws as before
+const dryStone = (source) => {
+  const frag = shaderOf(source);
+  assert.ok(/float gRiserW = 0\.0;/.test(frag), 'the riser weight is a module-level zero (no terrace zone, no pass)');
+  const riser = blockAfter(frag, 'uTerraceParam.x > 0.5', 'the terrace riser band');
+  assert.ok(riser.includes('gRiserW = terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope);'),
+    'the riser weight is the T2 band: the zone, off the carriageways, the riser slope band');
+  assert.ok(riser.includes('fR = max(fR, gRiserW);'), 'the risers take the rock layer');
+  const pass = blockAfter(frag, 'gRiserW > 0.002', 'the dry-stone pass');
+  const steepAt = frag.indexOf('if (steepW > 0.001) {');
+  assert.ok(steepAt > 0 && frag.indexOf('if (gRiserW > 0.002) {') > steepAt,
+    'the wall is laid after the rock and the steep wall passes (both lay the photo rock on a riser)');
+  assert.ok(pass.includes('float stoneVis = tileVis(0.45);') && pass.includes('* stoneVis;'),
+    'the coursing and its joints fade by the footprint before a 0.45 m block can alias');
+  assert.ok(pass.includes('a.rgb = mix(a.rgb, dry, gRiserW);'), 'the wall replaces the rock print by the riser weight');
+};
+dryStone(terrain);
+for (const [from, to, label] of [
+  ['if (gRiserW > 0.002) {', 'if (fR > 0.002) {', 'the pass on every rock face'],
+  ['    a.rgb = mix(a.rgb, dry, gRiserW);\n', '', 'the wall never laid'],
+  ['float stoneVis = tileVis(0.45);', 'float stoneVis = 1.0;', 'the coursing unfaded'],
+  ['    fR = max(fR, gRiserW);\n', '', 'risers without their rock'],
+]) {
+  assert.equal(terrain.split(from).length, 2, `dry-stone mutation seam exists: ${label}`);
+  assert.throws(() => dryStone(terrain.replace(from, to)), `dry-stone mutant refused: ${label}`);
+}
+
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);
