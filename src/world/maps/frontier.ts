@@ -299,7 +299,9 @@ export default {
       stalls: 2, benches: 3, coreClutter: 18, bales: 14, stooks: 12,
       troughs: 2, churns: 2, laundry: 2, handcarts: 3, carts: 4,
       trucks: 5, jeeps: 4, drumClusters: 5, camps: 4, modernClutter: 18,
-      roadFence: 'fenceplank', yardFence: 'fencepicket',
+      // (round 4) no yardFence: the white picket is gone (waves 183–184); the free-standing garden runs take the props
+      // layer's default (the scenery lane: the kit's own non-picket fence, else plank)
+      roadFence: 'fenceplank',
     },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Buntsandstein breaks out

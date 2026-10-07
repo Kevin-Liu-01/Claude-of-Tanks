@@ -52,7 +52,9 @@ function merged(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 }
 const tone = (c: Rgb, rng: Rng, spread: number): Rgb => shade(c, 1 - spread / 2 + rng() * spread);
 
-const STONE_UV = BUCKET_UV_DENSITY.regionalStone, WOOD_UV = BUCKET_UV_DENSITY.structureWood;
+// (round 4, gauntlet wave 183: "oversized salmon brick") the wall's courses at 1.7 times the kit's print density: about
+// 30 cm courses of blocks half a metre long, the scale of a court wall's red sandstone, not of a house front's ashlar
+const STONE_UV = BUCKET_UV_DENSITY.regionalStone * 1.7, WOOD_UV = BUCKET_UV_DENSITY.structureWood;
 // the stone print is the kit's sandstone already: the tints are the kit's weathered stone (hessian.ts weather.stone),
 // the coping a weathered top
 const STONE_TINTS: readonly Rgb[] = [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]];
