@@ -267,17 +267,73 @@ export function jerrycan(P: AccessoryPainter, x: number, rgb: RGB, scale = 1, ou
   P.paint(can.spout.translate(x, 0, 0), scaleRgb(rgb, 0.85), 0.3);
 }
 
-function canPair(P: AccessoryPainter, a: RGB, b: RGB, scale: number, cradle: boolean): void {
-  // two cans in a welded cradle with a centre divider between them
+/**
+ * How a nation's crews rack their jerrycans (round 4 follow-up, 2026-10-07; wave 240: "the same generic cable reel and
+ * jerrycan rack on several nations"): 'soviet' (Soviet, Russian, Ukrainian and Polish hulls), a welded frame round the
+ * cans, closed at the top; 'nato', a sheet holder with a back plate and a hinged latch bar across the cans' handles;
+ * 'israeli', end plates with a retaining bar across the cans' faces; 'chinese', a welded back frame with a flat clamp
+ * bar over each can.
+ */
+export type CanRackStyle = 'soviet' | 'nato' | 'israeli' | 'chinese';
+export function canRackStyleFor(nation = ''): CanRackStyle {
+  if (/USSR|Russia|Ukraine|Poland/i.test(nation)) return 'soviet';
+  if (/Israel/i.test(nation)) return 'israeli';
+  if (/China/i.test(nation)) return 'chinese';
+  return 'nato';
+}
+
+/** Rack steel's tone (round 4): shaded steel, never the near-black of the round-3 cradles. */
+const CAN_RACK_TONE = 1.0;
+
+/**
+ * A jerrycan rack in a nation's style (canRackStyleFor) round a row of upright cans `w` wide (X) and `d` deep (Z) whose
+ * tops stand at `h`, on y = 0 (round 4 follow-up). It draws nothing from the piece's stream. 56-72 triangles, so a can
+ * pair stays inside the 700-triangle piece budget (decorationsEquipment).
+ */
+export function canRack(P: AccessoryPainter, style: CanRackStyle, w: number, d: number, h: number, cans = 2): void {
+  const st = (geo: THREE.BufferGeometry, tone = CAN_RACK_TONE): void => P.steel(geo, tone);
+  // the welded Soviet frame stands on the deck itself; the others carry the cans on a floor tray
+  if (style !== 'soviet') st(place(block(w, 0.02, d), 0, 0.01, 0));
+  if (style === 'soviet') {
+    // welded angle frame: four corner posts, closed at the top by a rail along each long side
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      st(place(block(0.022, h * 0.72, 0.022), sx * (w / 2 - 0.011), 0.02 + h * 0.36, sz * (d / 2 - 0.011)));
+    }
+    for (const sz of [-1, 1]) st(place(block(w, 0.022, 0.022), 0, 0.02 + h * 0.72, sz * (d / 2 - 0.011)));
+    return;
+  }
+  if (style === 'nato') {
+    // sheet holder: a back plate behind the cans, a flat upright at each end carrying a hinged latch bar across the
+    // cans' handles
+    st(place(block(w, h * 0.8, 0.01), 0, 0.02 + h * 0.4, -d / 2 - 0.005));
+    for (const sx of [-1, 1]) st(place(block(0.012, h + 0.03, 0.03), sx * (w / 2 + 0.006), 0.02 + (h + 0.03) / 2, -d * 0.2));
+    st(roundBar([-w / 2 - 0.012, h + 0.04, -d * 0.2], [w / 2 + 0.012, h + 0.04, -d * 0.2], 0.009, near(P) ? 6 : 4), 0.9);
+    return;
+  }
+  if (style === 'israeli') {
+    // end plates and a retaining bar across the cans' faces at two thirds of their height
+    for (const sx of [-1, 1]) st(place(block(0.012, h * 0.75, d), sx * (w / 2 + 0.006), 0.02 + h * 0.375, 0));
+    st(roundBar([-w / 2 - 0.012, h * 0.66, d / 2 + 0.012], [w / 2 + 0.012, h * 0.66, d / 2 + 0.012], 0.011, near(P) ? 6 : 4), 0.9);
+    return;
+  }
+  // 'chinese': a welded back frame (two uprights and a top rail) and a flat clamp bar over each can's top, hooked on
+  // the rail
+  for (const sx of [-1, 1]) st(place(block(0.022, h + 0.02, 0.022), sx * (w / 2 - 0.011), 0.02 + (h + 0.02) / 2, -d / 2 + 0.011));
+  st(place(block(w, 0.022, 0.022), 0, h + 0.03, -d / 2 + 0.011));
+  const pitch = w / cans;
+  for (let i = 0; i < cans; i++) {
+    const x = -w / 2 + pitch * (i + 0.5);
+    st(place(block(0.03, 0.01, d * 0.7), x, h + 0.045, -d * 0.15));
+  }
+}
+
+function canPair(P: AccessoryPainter, a: RGB, b: RGB, scale: number, cradle: boolean, style: CanRackStyle = 'nato'): void {
+  // two cans in their nation's rack (round 4 follow-up: canRack; the round-3 cradle was one welded box for every nation)
   const gap = 0.215 * scale;
   jerrycan(P, -gap / 2, a, scale, -1);
   jerrycan(P, gap / 2, b, scale, 1);
   if (!cradle) return;
-  const w = 0.43 * scale, d = 0.37 * scale;
-  P.steel(place(block(w, 0.022, d), 0, 0.011, 0), 0.48);
-  for (const z of [-d / 2 + 0.012, d / 2 - 0.012]) P.steel(place(block(w, 0.17 * scale, 0.012), 0, 0.085 * scale, z), 0.46);
-  P.steel(place(block(0.02, 0.2 * scale, d - 0.03), 0, 0.1 * scale, 0), 0.46);
-  if (near(P)) webbing(P, place(block(w + 0.012, 0.028, 0.012), 0, 0.33 * scale, 0), 0.62);
+  canRack(P, style, 0.43 * scale, 0.37 * scale, 0.44 * scale);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -442,7 +498,8 @@ const EXTINGUISHER_BODY: RGB = [0.29, 0.33, 0.2];
 /** The helmets' issue olive. */
 const HELMET_OLIVE: RGB = [0.27, 0.33, 0.18];
 
-export function buildCargoVariant(variant: string, P: AccessoryPainter, colours: EquipmentColours, flat?: boolean): void {
+export function buildCargoVariant(variant: string, P: AccessoryPainter, colours: EquipmentColours, flat?: boolean,
+  rackStyle: CanRackStyle = 'nato'): void {
   // Every random draw happens here, before any detail branch (both LOD levels agree).
   const r = [P.rng(), P.rng(), P.rng(), P.rng()];
   switch (variant) {
@@ -501,13 +558,13 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     break;
   }
   case 'nato-fuel-can':
-    canPair(P, colours.fuelA, colours.fuelB, 0.94, true);
+    canPair(P, colours.fuelA, colours.fuelB, 0.94, true, rackStyle);
     break;
   case 'blue-water-can':
-    canPair(P, colours.waterA, colours.waterB, 0.94, true);
+    canPair(P, colours.waterA, colours.waterB, 0.94, true, rackStyle);
     break;
   case 'twin-can-cradle':
-    canPair(P, colours.fuelA, colours.fuelB, 0.92, true);
+    canPair(P, colours.fuelA, colours.fuelB, 0.92, true, rackStyle);
     break;
   case 'soviet-tool-can': {
     // cylindrical ZIP tube: rolled ends, clamp bands and a hinged end lid
