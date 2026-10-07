@@ -5,7 +5,7 @@
       "id": "m3a3_bradley",
       "quality": "high",
       "scope": "hull-gear",
-      "sha256": "e41b7393a9b09e6c4635acaa81036958e8b2f73025b7aefe39068db2c23bdfb0"
+      "sha256": "503f3f49cd10b7c2cb5767af7adaef7dccb9321b12a9dd14be75356f6a041a2f"
     },
     {
       "id": "m3a3_bradley",
@@ -17,14 +17,14 @@
       "id": "ua_m2a3_bradley",
       "quality": "high",
       "scope": "all",
-      "sha256": "7976645aaaed391bf21487ae58b0371f6f90bcfa629fff31193739dbb13d7e77"
+      "sha256": "42d8623da5cb4b42c7b7b77e18b9058f0b9b26edacead374c6c33160a059b444"
     },
     {
       "id": "ua_m2a3_bradley",
       "quality": "low",
       "scope": "all",
-      "sha256": "dd16bf8d871ea14692d1088c7391e047fe90241e37ced9bbbc947d926d6dc63c"
+      "sha256": "26645808c732d7c3b29ed5937109ec724bc5d9b0fa7ebc8dc89377c1e3ff43d2"
     }
   ],
-  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering. 2026-10-06: m3a3_bradley hull-gear re-pinned over the accessory lane's closed primitive shells (latheY end caps add 228 hullDark vertices, fabricStrap's buried-edge band removes 132 hullCloth vertices); the chassis is otherwise unchanged."
+  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering. 2026-10-06: m3a3_bradley hull-gear re-pinned over the accessory lane's closed primitive shells (latheY end caps add 228 hullDark vertices, fabricStrap's buried-edge band removes 132 hullCloth vertices); the chassis is otherwise unchanged. 2026-10-07 (tank-accessories round 3): m3a3_bradley hull-gear (high) and ua_m2a3_bradley (high, low) re-pinned over the shared kit's round-3 props: fourteen-sided soft stowage and eighteen-sided tarp rolls with spiral ends at full geometry quality, the jerrycan's seam bead, raised X and arched handles, the ammo can's proud latches and hinge leaves, and the stowage rack's sixteen-sided rolls; the m3a3 low tier is unchanged and the chassis is otherwise unchanged."
 }

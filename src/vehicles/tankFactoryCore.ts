@@ -72,7 +72,8 @@ import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import {
-  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, roundBar, sweptTube, type FabricSpec,
+  block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, rolledEndSpiral, roundBar, sweptTube,
+  type FabricSpec,
 } from './accessoryPrimitives.ts';
 import { jerrycanParts } from './accessoryKits.ts';
 import {
@@ -6062,7 +6063,7 @@ function openRackGrid(
 // and the authored seats are unchanged.
 const STOWAGE_PROFILES = ['folded-canvas', 'duffel', 'field-ruck'] as const;
 
-function stowageFabricSpec(style: number, width: number, height: number, depth: number): FabricSpec {
+function stowageFabricSpec(style: number, width: number, height: number, depth: number, seg = 10): FabricSpec {
   const len = Math.max(width, depth), cross = Math.min(width, depth);
   const shape = style === 0
     ? { exponent: 6, endScale: 0.86, endLength: 0.08, flatten: 0.5, wrinkle: 0.03, cinch: [-len * 0.28, len * 0.28], cinchDepth: 0.07 }
@@ -6072,7 +6073,7 @@ function stowageFabricSpec(style: number, width: number, height: number, depth: 
   // a fabric section stands (2 + wrinkle - 0.82 flatten) half-heights tall on its pressed base; fill the authored height
   const crossFill = style === 2 ? cross - 2 * stowagePocketHalf(cross) * 0.9 : cross;
   return { len, hw: crossFill / 2 / (1 + shape.wrinkle), hh: height / (2 + shape.wrinkle - 0.82 * shape.flatten),
-    seg: 10, stations: 5, seed: 11 + style * 7, ...shape };
+    seg, stations: 5, seed: 11 + style * 7, ...shape };
 }
 
 function stowagePocketHalf(cross: number): number { return Math.min(0.05, cross * 0.11); }
@@ -6098,7 +6099,8 @@ function stowage(
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
     const style = Math.min(2, Math.floor(rng() * 3));
-    const spec = stowageFabricSpec(style, w, h, d);
+    // 2026-10-07 (round 3): fourteen sides at full geometry quality (ten read as facets up close); the low tier keeps ten
+    const spec = stowageFabricSpec(style, w, h, d, P.q === false ? 10 : 14);
     const alongX = w >= d;
     const body = fabricBody(spec);
     body.computeBoundingBox();
@@ -6172,8 +6174,9 @@ function jerryCan(
   // 2026-10-05: the fleet's one pressed 20 L can (accessoryKits.ts jerrycanParts: filleted body, the
   // stamped X on the outer broad face, the three-grip handle comb, the spout) on two cradle rails; the
   // same seats and footprint, inside the old shoulder line.
+  // 2026-10-07 (round 3): the low geometry tier takes the shared can's coarse level (body and handle block)
   for (const [pairIndex, localX] of [-0.095, 0.095].entries()) {
-    const can = jerrycanParts(1, [localX < 0 ? -1 : 1]);
+    const can = jerrycanParts(1, [localX < 0 ? -1 : 1], P.q !== false);
     can.body.userData.designFamily = 'cot-field-jerry-can-v3';
     can.body.userData.stampedRibs = 4;
     can.body.userData.bridgeHandles = 3;
@@ -6197,8 +6200,12 @@ function tarpRoll(
   const P = requireEquipmentBuilderPort(builder);
   // 2026-10-05: a firm rolled tarp loft (round sections, flat rolled ends) cinched by
   // two webbing straps, the rolled spiral showing at each end; same axis and envelope.
+  // 2026-10-07 (tank-accessories round 3: "rolls with eight visible facets"): at full geometry quality a roll draws
+  // at least eighteen sides and its rolled ends wind as a spiral; the low tier keeps its authored count and layers.
+  const full = P.q !== false;
   const spec: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0,
-    wrinkle: 0.03, seg: Math.max(8, seg), stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.1, seed: 71 };
+    wrinkle: 0.03, seg: full ? Math.max(18, seg) : Math.max(8, seg), stations: 4, cinch: [-len * 0.3, len * 0.3],
+    cinchDepth: 0.1, seed: 71 };
   const orient = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => (alongX ? place(geometry, 0, 0, 0, 0, Math.PI / 2, 0) : geometry);
   const roll = orient(fabricBody(spec));
   roll.userData.designFamily = 'cot-rolled-fabric-v3';
@@ -6207,7 +6214,11 @@ function tarpRoll(
   P.addEquipment(bucket, roll, x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const station of spec.cinch ?? []) P.addEquipment(dark, orient(fabricStrap(spec, station)), x, y, z); // straps
-  for (const layer of rolledEndLayers(r, len)) P.addEquipment(dark, orient(layer), x, y, z);    // rolled layers at the ends
+  if (full) {
+    for (const end of [-1, 1] as const) P.addEquipment(dark, orient(rolledEndSpiral(r * 0.92, end * len / 2, end, 20)), x, y, z);
+  } else {
+    for (const layer of rolledEndLayers(r, len)) P.addEquipment(dark, orient(layer), x, y, z);  // rolled layers at the ends
+  }
 }
 function ammoCan(
   builder: object, bucket: string, x: number, y: number, z: number, yaw = 0,
@@ -6224,11 +6235,25 @@ function ammoCan(
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
   // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
   P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
-  for (const side of [-1, 1]) {
-    addEquipmentLocal(P, dark, block(0.024, 0.072, 0.02), x, y, z, yaw, side * 0.045, 0.035, 0.158); // latches
-    addEquipmentLocal(P, dark, roundBar([-0.02, 0, 0], [0.02, 0, 0], 0.012, 6), x, y, z, yaw,
-      side * 0.045, 0.08, -0.158);                                                                  // hinge barrels
-    addEquipmentLocal(P, bucket, block(0.01, 0.15, 0.22), x, y, z, yaw, side * 0.072, -0.005, 0); // pressed side ribs
+  // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
+  // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
+  // geometry tier keeps its lighter latch blocks and barrels
+  if (P.q === false) {
+    for (const side of [-1, 1]) {
+      addEquipmentLocal(P, dark, block(0.024, 0.072, 0.02), x, y, z, yaw, side * 0.045, 0.035, 0.158); // latches
+      addEquipmentLocal(P, dark, roundBar([-0.02, 0, 0], [0.02, 0, 0], 0.012, 6), x, y, z, yaw,
+        side * 0.045, 0.08, -0.158);                                                                  // hinge barrels
+      addEquipmentLocal(P, bucket, block(0.01, 0.15, 0.22), x, y, z, yaw, side * 0.072, -0.005, 0); // pressed side ribs
+    }
+  } else for (const side of [-1, 1]) {
+    addEquipmentLocal(P, dark, block(0.034, 0.05, 0.006), x, y, z, yaw, side * 0.045, 0.03, 0.153);    // latch plates
+    addEquipmentLocal(P, dark, moldedBox(0.024, 0.07, 0.016, 0.005, 0, 0.004), x, y, z, yaw,
+      side * 0.045, 0.04, 0.165);                                                                      // latch levers
+    addEquipmentLocal(P, dark, block(0.03, 0.02, 0.014), x, y, z, yaw, side * 0.045, 0.112, 0.163);    // lid keepers
+    addEquipmentLocal(P, dark, roundBar([-0.024, 0, 0], [0.024, 0, 0], 0.014, 8), x, y, z, yaw,
+      side * 0.045, 0.098, -0.166);                                                                    // hinge barrels
+    addEquipmentLocal(P, dark, block(0.042, 0.04, 0.005), x, y, z, yaw, side * 0.045, 0.072, -0.153); // hinge leaves
+    addEquipmentLocal(P, bucket, block(0.012, 0.15, 0.22), x, y, z, yaw, side * 0.073, -0.005, 0); // pressed side ribs
   }
   addEquipmentLocal(P, dark, sweptTube([[0, 0.125, -0.045], [0, 0.15, -0.03], [0, 0.15, 0.03], [0, 0.125, 0.045]], 0.007, 4, 6),
     x, y, z, yaw, 0, 0.03, 0);                                                                       // folding carry handle

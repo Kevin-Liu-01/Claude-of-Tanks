@@ -16,7 +16,9 @@ import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
   createPintleLayout, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, type PintleLayout,
 } from '../machineGunGeometry.ts';
-import { block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
+import {
+  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, type FabricSpec,
+} from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -2454,6 +2456,9 @@ function addStowageRackFrame(
   return {floorCross,floorStrings,nPosts};
 }
 
+/** Radial segments of the rack's rolls (2026-10-07, round 3: ten sides read as facets up close). */
+const RACK_ROLL_SEG = 16;
+
 // 2026-10-05 (tank-accessories lane): the rack's load in the sewn / molded grammar of the newest equipment
 // (accessoryPrimitives.ts): nailed crates with steel bands, rolled bedrolls with their rolled layers showing, sewn
 // duffels cinched by their straps with a lid flap and a front pocket, and a strapped tarp roll over the load. The
@@ -2502,10 +2507,13 @@ function addStowageRackBundle(
     const r=0.10 + rng() * 0.035;
     const len=0.22 + rng() * 0.10;
     // a rolled bedroll: two straps, its rolled layers showing at the ends
+    // 2026-10-07 (round 3: "rolls with eight visible facets"): sixteen sides and a wound spiral at each end
     const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.14,
-      wrinkle: 0.035, seg: 10, stations: 4, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.1, seed: 31 + index };
+      wrinkle: 0.035, seg: RACK_ROLL_SEG, stations: 4, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.1, seed: 31 + index };
     const { lift }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
-    for (const layer of rolledEndLayers(r,len)) parts.add('dark',place(layer,0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
+    for (const end of [-1,1] as const) {
+      parts.add('dark',place(rolledEndSpiral(r * 0.92,end * len / 2,end,16),0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
+    }
     return true;
   }
   const bw=0.22 + rng() * 0.08;
@@ -2545,11 +2553,11 @@ function addStowageRackFill(
   if (w > 0.8 && fill >= 0.5) {
     const r=0.085, len=w * 0.55, axisY=h * 0.9 + r * 0.4;
     const tarp: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0.1,
-      wrinkle: 0.03, seg: 10, stations: 5, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.1, seed: 67 };
+      wrinkle: 0.03, seg: RACK_ROLL_SEG, stations: 5, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.1, seed: 67 };
     const alongX=(geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry,0,0,0,0,Math.PI / 2,0);
     parts.add('canvasCloth',alongX(fabricBody(tarp)),0,axisY,d * 0.02);
     for (const station of tarp.cinch ?? []) parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
-    for (const layer of rolledEndLayers(r,len)) parts.add('dark',alongX(layer),0,axisY,d * 0.02);
+    for (const end of [-1,1] as const) parts.add('dark',alongX(rolledEndSpiral(r * 0.92,end * len / 2,end,18)),0,axisY,d * 0.02);
   }
   return softBundleCount;
 }
@@ -2800,27 +2808,19 @@ function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
   const straps = Math.max(0, opts.straps ?? 2);
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
-  // 2026-10-05 (tank-accessories lane): a trunk, not a pipe. One lathe whose radius swells and tapers along the run
-  // (deterministic in the seed, so the strap draws are unchanged), pale sawn ends with growth rings, and open steel
-  // bands with their buckles; inside the old envelope (straps at 1.06 r, ends a hair past the run).
-  const phase = ((opts.seed ?? 1) * 0.7311) % (Math.PI * 2);
-  const radiusAt = (t: number): number => r * (1 - 0.05 * t) * (1 + 0.035 * Math.sin(t * 9.4 + phase) + 0.02 * Math.sin(t * 23 + phase * 2));
-  const profile: Array<readonly [number, number]> = [[0.0005, 0]];
-  for (let i = 0; i <= 8; i++) profile.push([radiusAt(i / 8), (i / 8) * len]);
-  profile.push([0.0005, len]);
-  parts.add('wood', place(latheY(profile, 14), -len / 2, 0, 0, 0, 0, -Math.PI / 2));
-  for (const side of [-1, 1]) {
-    const end = radiusAt(side < 0 ? 0 : 1);
-    const cut = new THREE.CircleGeometry(end * 0.92, 14).toNonIndexed();
-    parts.add('detail', place(cut, side * (len / 2 + 0.003), 0, 0, 0, side * Math.PI / 2, 0));       // sawn end grain
-    for (const [inner, outer] of [[0.42, 0.47], [0.68, 0.72]] as const) {
-      const ring = new THREE.RingGeometry(end * inner, end * outer, 12, 1).toNonIndexed();
-      parts.add('wood', place(ring, side * (len / 2 + 0.005), 0, 0, 0, side * Math.PI / 2, 0));       // growth rings
-    }
-  }
+  // 2026-10-05 (tank-accessories lane): a trunk, not a pipe. 2026-10-07 (round 3: the critics still read "a smooth green
+  // pipe" — the PT-91's log took a green-grey wood and every log's sawn ends took the scheme's fitting paint): the shared
+  // bark log (accessoryPrimitives.barkLog) with furrowed bark, knots and a cut branch stub, pale sawn ends in the fixed
+  // pale canvas tone with darker growth rings and drying checks, and open steel bands with their buckles seated on the
+  // bark; inside the old envelope, the strap draws unchanged.
+  const log = barkLog({ len, r, seed: opts.seed ?? 1 });
+  parts.add('wood', log.bark);
+  if (log.stub) parts.add('wood', log.stub);
+  for (const end of log.ends) parts.add('canvasPale', end);                                       // sawn end grain
+  for (const grain of log.grain) parts.add('wood', grain);                                        // rings and checks
   for (let i = 0; i < straps; i++) {
     const x = -len / 2 + (i + 1) * (len / (straps + 1)) + (rng() - 0.5) * 0.10;
-    const band = radiusAt((x + len / 2) / len) * 1.03;
+    const band = log.radiusAt((x + len / 2) / len) * 1.09;
     parts.add('dark', place(latheY([[band, 0], [band + 0.006, 0.003], [band + 0.006, 0.029], [band, 0.032]], 14),
       x - 0.016, 0, 0, 0, 0, -Math.PI / 2));                                                            // steel band
     parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);                // buckle
