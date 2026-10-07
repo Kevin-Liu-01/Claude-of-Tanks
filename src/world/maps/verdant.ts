@@ -165,15 +165,25 @@ export default {
     // road where it leaves the village; the 1920s memorial to the Civil War dead on a railed green by the crossroads;
     // a post mill on the southern swell's crest and a smock mill on the northern, the steppe's two kinds of mill, both
     // turned to the south-west wind. (The two kurgans keep their standing stones, the scenery lane's.)
+    //
+    // Round 2 (2026-10-06; gauntlet waves 154-155, "the landmarks exist but sit in no setting", the arch's banner "garbled,
+    // mirror-reversed"): the church's yard before its west front — its picket fence round the open sides, the holy gateway
+    // on the bell tower's axis, the brick path to the portal and the graves under their Orthodox crosses — and the path on
+    // to the country road; the arch's banner lettered КОЛХОЗ «КРАСНЫЙ ОКТЯБРЬ» on both faces and a picket fence run off
+    // each pillar; the memorial's plaque inscribed БОРЦАМ ЗА ВЛАСТЬ СОВЕТОВ 1918–1920. The pieces themselves age
+    // (landmarks/age.ts): the render fallen from the church's brick, the grime run down from the cornices and sills.
     landmarks: [
       { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },
+      { kind: 'churchyard', x: -51.4, z: 96, yawDeg: -90, name: 'the churchyard', params: { width: 25, depth: 12, graves: 12 } },
+      { kind: 'path', x: -56.55, z: 81.1, yawDeg: -8.8, name: 'the path from the churchyard gate to the road', params: { length: 29.4, width: 1.6 } },
       { kind: 'stationHall', x: 128, z: 66.2, yawDeg: -2.57, name: 'Prokhorovka station' },
       { kind: 'waterTower', x: 97.5, z: 68, yawDeg: -5.14, params: { style: 'railway' }, name: 'the station water tower' },
       { kind: 'granary', x: -90, z: -29, yawDeg: -3, name: 'the kolkhoz grain store' },
       { kind: 'waterTower', x: -65, z: 2, yawDeg: 0, params: { style: 'trestle', height: 15 }, name: 'the kolkhoz water tower' },
-      { kind: 'kolkhozArch', x: -70, z: 60.6, yawDeg: 83.7, name: 'the kolkhoz arch' },
+      { kind: 'kolkhozArch', x: -70, z: 60.6, yawDeg: 83.7, name: 'the kolkhoz arch', params: { wings: 6 } },
       { kind: 'parkSquare', x: 43, z: 55, yawDeg: 0, name: 'the Civil War memorial',
-        params: { width: 16, depth: 14, paths: 'cross', railing: 'iron', benches: 2, lamps: 0, centre: 'obelisk', centreHeight: 5.5 } },
+        params: { width: 16, depth: 14, paths: 'cross', railing: 'iron', benches: 2, lamps: 0, centre: 'obelisk', centreHeight: 5.5,
+          inscription: 'БОРЦАМ ЗА|ВЛАСТЬ|СОВЕТОВ|1918 – 1920' } },
       { kind: 'windmill', x: -231, z: -246, yawDeg: 210, params: { style: 'post' }, name: 'the post mill on the southern swell' },
       { kind: 'windmill', x: 267, z: 288, yawDeg: 225, params: { style: 'smock' }, name: 'the smock mill on the northern swell' },
     ],
