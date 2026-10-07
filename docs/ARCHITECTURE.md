@@ -529,7 +529,10 @@ two toroidal, world-anchored cascades (12 km about the camera and 40 km about th
 middle height carried down the sun) of the same medium marched along the sun by lanes and altitude slices, a band a
 frame, read as the four texels' depths blended as transmittances —
 under the multiple-scattering octaves, a dual-lobe phase, the powder term, the sky and ground light and a deck's
-diffusion; the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's variance. The
+diffusion (by the vertical depth over the point — in a deck, the column over it in its own cell, so a thick core is dark
+beside a thin seam); the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's
+variance. The clouds' sun is the light model's colour (`scene.userData.lightModel`) times the air between the ground and
+the cloud, and under a closing deck the ground light the bases see is what the deck passes down (`cloudGroundLight`). The
 near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
 its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model. The dome composite,
 the history the lens flare / sun shafts / horizon panorama read and the sky beyond the medium (rain, fog bank, cirrus,

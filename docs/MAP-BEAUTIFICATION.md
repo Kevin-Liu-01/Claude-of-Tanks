@@ -7471,6 +7471,41 @@ blips 0.0003 against the old layer's 0.00071 on Verdant and 0.00017 against 0.00
 changed by a one-pixel shift. The GPU pair (before / after frames, the hardware meters) and the rule-v3 cost holds are
 queued at the lane's stamp.
 
+### 2026-10-07 — Clouds 2.0 rounds 2–6: the scene's sun, decks lit by their own column (the clouds lane)
+
+**Why.** Wave 198 (pair B) passed the cumulus and the towers (sky +0.47, Monsoon's front the standout); wave 200 (pair
+A2) failed the decks ("airbrushed pillows and lens-shaped slabs", "flat painted sheets with scalloped, hard-edged cutout
+silhouettes"), and the coordinator's round asked for deck cells with internal structure, broken decks in bands with blue
+between, an overcast with structure, the clouds lit by the scene's own sun both ways and storms shading the field.
+
+**What changed.**
+- The clouds' sun is the light model's colour (the ground's transmittance tint, greyed by the overcast) times the air
+  between the ground and the cloud: warm or grey with the scene, never beige clouds over neutrally lit snow.
+- A broken deck is stratocumulus — lumpy domed cells on a flat base, carved whole by the shape and detail volumes, in
+  bands along the wind (1.7:1) with sky between — and reads the cumuliform field's six-kilometre cells as at least half
+  its weather (on the stratiform field's sixteen-kilometre features alone the fjord's sky-w view was clear to the
+  horizon). A closing deck stays the dense sheet.
+- A deck is lit by its own column: the diffusion and the sky through the deck take the vertical depth over the point in
+  its own cell (the sun ray's depth under a low sun averaged a kilometre of slant over several cells into one grey), so a
+  thick core sits dark beside a thin, bright seam and a hanging lump is darker than the base around it.
+- Under a closing deck the ground's light is what the deck passes down (`cloudLayers.ts` `cloudGroundLight`: the
+  diffuse share of its column raised by the ground's bounce) — the old law let the open sky's blue irradiance through a
+  closed deck untouched and lit its base blue. A broken deck and a convective sky keep the old law (over snow the new one
+  lit a broken deck's bases white).
+- A front keeps no clear zone over the camera: its towers stand over the field and shade it.
+- The cirrus is a trace of ice (0.7 of its cover, 0.6 of its depth) with a third, finer octave: not the sky's subject.
+- The low tier marches the near Beer-shadow cascade alone at 0.6 of the stack's slices and refreshes the shade every
+  four frames.
+
+**Lessons.**
+- Measure the overcast: Whiteout's sky luminance spread over the top of the sky-w frame was 2.9 of 255 on the old layer
+  and 2.5 on round 2 — one card; the local column took it to 9.8. A mottle from the point's own noise (round 5) barely
+  moved it (7.7 / 8.1 / 8.3 off, on, doubled) and was dropped rather than shipped as dead cost.
+- A physically right ground bounce is not always the brief: over snow it whitens a broken deck's bases, the look the
+  critics had already marked down.
+- Cost holds hide every bot vehicle (rule v3, amended): a bot in or out of the chase frame staged a different scene on
+  the twin page.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
