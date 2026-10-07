@@ -75,10 +75,10 @@
       "concealers": 7075
     },
     "delta": {
-      "bytes": 1991151,
-      "sha256": "7aa864cc753e2de12b27660af6b66897b8719f9ba1e32549e6e83936137a85da",
+      "bytes": 1997608,
+      "sha256": "8233d5d62782343239e8f5f534194c5830ea019b27e81f4e9022244e50846d67",
       "obstacles": 8824,
-      "colliders": 8475,
+      "colliders": 8477,
       "concealers": 10433
     },
     "badlands": {
@@ -201,15 +201,15 @@
       "concealers": 6816
     },
     "saltwind": {
-      "bytes": 1437384,
-      "sha256": "591de66dbdb916a88dab849ca58e6cde17096260f32026381ba40e7066648a46",
+      "bytes": 1437353,
+      "sha256": "cbf60191c28771c2e147303ef310a5cc400a35e2bac8d7ef7b54f9431f081a0d",
       "obstacles": 3900,
       "colliders": 3795,
-      "concealers": 4303
+      "concealers": 4302
     },
     "reservoir": {
-      "bytes": 1635447,
-      "sha256": "eb007bd3f8e94eac1c369ed12f7727714a408cd068616d85b5d34e527f6cc03d",
+      "bytes": 1636311,
+      "sha256": "94da7fa58bcaee20b560aff967f3d9b5fe08174599429d6c386d4f3e0bd24794",
       "obstacles": 6572,
       "colliders": 6508,
       "concealers": 7362
