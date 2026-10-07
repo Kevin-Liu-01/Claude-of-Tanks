@@ -59,11 +59,19 @@ export default {
     { x: -256, z: 386 }, { x: -174, z: 408 }, { x: -90, z: 382 }, { x: -6, z: 424 },
     { x: 80, z: 384 }, { x: 164, z: 426 }, { x: 248, z: 388 },
   ] },
-  splat: { sourcedPalette: 'verdant', fieldPatch: 1, midRelief: 0.74, tintA: [0.9, 1.06, 0.76], tintB: [0.63, 0.80, 0.53], tintC: [1.1, 1.08, 0.80], roadTint: [0.76, 0.7, 0.58] },
+  // (round 4, gauntlet wave 212: the terrace risers "near-black, blue-slate gashes ... cold dark bluish-grey rubble instead
+  // of the warm dressed cream sandstone") the rock layer (Verdant's Rock058, a dark blue-grey slate) tinted to the
+  // Chouf's cream limestone, the ground lane's measure (about sRGB 140 / 132 / 110: their renders at [2.1, 1.8, 1.4] drew the
+  // risers near-white from the bird; Saltwind's mechanism)
+  splat: { sourcedPalette: 'verdant', sourcedTint: { R: [1.85, 1.6, 1.25] }, fieldPatch: 1, midRelief: 0.74, tintA: [0.9, 1.06, 0.76], tintB: [0.63, 0.80, 0.53], tintC: [1.1, 1.08, 0.80], roadTint: [0.76, 0.7, 0.58] },
   vegetation: {
     species: ['oak', 'cedar', 'pine'], clusterMix: [['cedar', 0.46], ['pine', 0.34], ['oak', 0.2]],
     loneMix: [['oak', 0.64], ['cedar', 0.26], ['pine', 0.1]], rimMix: [['cedar', 0.54], ['pine', 0.36], ['oak', 0.1]],
     clusterCount: 42, loneCount: 38, rimCount: 88, grassDensity: 0.95, bushCount: 1.0, bushSpecies: 'oak',
+    // (round 4, wave 212: "the cedars and umbrella pines on the upper slopes are missing") the woods on the valley's upper
+    // slopes and its ridges, closed (the trees lane's landscape-woods hook: the stands' centres on the top 35 % of the
+    // square by height and slope), their cedar and pine mix the clusters'; the field trees keep the field law
+    landscapeWoods: { zone: 0.35, slopeDeg: 12, merge: 30 },
     belts: [
       { x0: -206, z0: -96, x1: -92, z1: -68, gap: 17, jitter: 0.8, species: 'oak' },
       { x0: -204, z0: -44, x1: -104, z1: -22, gap: 17, jitter: 0.8, species: 'oak' },
@@ -92,6 +100,18 @@ export default {
     // village's sandstone, every building where it stood
     architecture: 'chouf',
     plan: ['bathhouse', 'farmhouse', 'marketRow', 'rangerlodge', 'granary', 'woodshed', 'cottage', 'barn', 'market', 'farmhouse', 'tavern', 'granary', 'woodshed', 'ruin', 'barn', 'cottage', 'farmhouse', 'marketRow'],
+    // (round 4; the landmarks lane lays the square's setts out to the house fronts round its sabil — the rectangle
+    // (5.7, 3.2) (18.7, 13.3) (29.6, -0.8) (16.7, -10.9), yaw 142 — and this lane closes it) the houses that close the
+    // square stand after the plan has placed its own, so every plan house keeps its seat; each front 0.5 m back from the
+    // setts, toward the square: the souk's arcade on the south-east side (the south corner left open, a lane out toward
+    // road 3), a store at the north-east side's end beside the plan's house there, a dar at the south-west side's south
+    // end beside the plan's store. The south-west side's west end stays open (inside the 7.5 m road clearance of road 0).
+    plannedSitesAfterPlan: true,
+    plannedSites: [
+      { structure: 'marketRow', x: 27.07, z: -6.89, yawDeg: -38.04, infill: true },
+      { structure: 'granary', x: 31.34, z: 3.09, yawDeg: -127.7, infill: true },
+      { structure: 'cottage', x: 10.57, z: -11.5, yawDeg: 52.08, infill: true },
+    ],
     // (round 2, wave 123: "leftover Western forms … wood barns"): the war's own light structures in place of the timber
     // huts and the longhouse — a checkpoint hut, sentry posts, command and aid tents
     // (round 3, gauntlet wave 208: "modern tarps among the fields") no command or aid tents: the checkpoint hut and the
@@ -133,7 +153,9 @@ export default {
   // banded mountainside): Mount Lebanon is long rounded limestone ridges — pale rock on the steeper flanks, pine and
   // oak scrub below — not alpine peaks: the rolling ring and the upland panorama raised to the Barouk's bulk
   // (the border's land past the edge keeps its alpine landform; the ring's own relief rolls — horizonRelief ringStyle)
-  horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'alpine', ringStyle: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
+  // (round 4, wave 212: "jagged alpine-looking peaks on the skyline (Mount Lebanon's ridges are rounder)") the near ring's
+  // ridges rolling, the far panorama's upland at its height
+  horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'rolling', ringStyle: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
   sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },

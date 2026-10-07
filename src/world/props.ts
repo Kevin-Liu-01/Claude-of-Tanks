@@ -333,7 +333,14 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** The map-revival lane (2026-10-07, Orchard's square): an infill house set against its neighbours, past the
+     * planned-site spacing (the site still keeps 7.5 m off every road). */
+    infill?: boolean }[];
+  /** The map-revival lane (2026-10-07, Orchard round 4): the planned sites stand after the roadside plan has placed every
+   * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
+   * sites stand first, as before. */
+  plannedSitesAfterPlan?: boolean;
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -4069,13 +4076,20 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
-  for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
-    if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
-    if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
+  const plannedSiteFits = (site: NonNullable<PropsSettings['plannedSites']>[number]): boolean =>
+    !(heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) && (!!site.infill || isRoadBuildingSiteClear(site.x, site.z));
+  for (const site of P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []) {
+    if (!plannedSiteFits(site)) continue;
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
+  // (the map-revival lane, 2026-10-07) the sites that close a square stand last, between the plan's houses
+  for (const site of P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []) {
+    if (!plannedSiteFits(site)) continue;
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
+    yield { fine: true };
+  }
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
