@@ -66,6 +66,7 @@ import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
+import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
@@ -411,6 +412,12 @@ interface PropsSettings {
   haystacks: number;
   /** b15: the region's field stack (maps/haystackKit.ts HAYSTACK_STYLE_BY_MAP gives the map's; 'none' draws none). */
   haystackStyle?: HaystackStyle;
+  /**
+   * b16 (gauntlet wave 121: "a modern prefab with blue glass windows" at Sirocco Wadi's gates): a region's own build in
+   * place of a generic light kind under the same key — its footprint, ground fit and beats kept (maps/regional
+   * ksarGate.ts STRUCTURE_VARIANTS: { checkpointhut: 'ksargate' }).
+   */
+  structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
   craters: number;
@@ -3656,6 +3663,12 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
+    ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
+      const variant = STRUCTURE_VARIANTS[name];
+      if (!variant) throw new Error(`world/props: unknown structure variant ${name} for ${key}`);
+      return [key, variant];
+    })),
   };
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
@@ -6195,7 +6208,11 @@ ${snowCap ? `
       ground[i] = heightField.getHeightAt(x, z);
       slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
       slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
-      if (rockContact) rockSpots.push({ x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) });
+      if (rockContact) {
+        const spot = { x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) };
+        rockSpots.push(spot);
+        rockSpotOf.set(rockPlacements[vi][i], spot);
+      }
     }
     // round 79; the scenery lane: the height a shadow can show, from the deepest seat (0.6 of a scale under the centre),
     // not the skirt the rock carries deep under the ground
@@ -6298,7 +6315,16 @@ ${snowCap ? `
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
     const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
     const sections = rockGeos.map((g) => boulderSections(g));
-    const cells = new Map<number, { pos: number[]; idx: number[] }>();
+    // (b16) the ground's fold under every vertex, as the terrain's chunks carry it (terrain.ts: one normalised byte, -1
+    // crest .. +1 hollow): the ground material's hollow moisture, fold occlusion and crest dryness read it, so a bed
+    // without it drew the plain ground round a stone that sits in a hollow or on a crest
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    const foldByte = (x: number, z: number): number => {
+      if (!foldAt) return 0;
+      const f = foldAt(x, z);
+      return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+    };
+    const cells = new Map<number, { pos: number[]; fold: number[]; idx: number[] }>();
     const radius = new Float64Array(SEGMENTS), ground = new Float64Array(SEGMENTS), local = new Float64Array(SEGMENTS * 3);
     let built = 0;
     for (let vi = 0; vi < 3; vi++) {
@@ -6326,8 +6352,13 @@ ${snowCap ? `
         const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
         const key = Math.floor((px + 512) / CELL) * 64 + Math.floor((pz + 512) / CELL);
         let cell = cells.get(key);
-        if (!cell) cells.set(key, cell = { pos: [], idx: [] });
+        if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
         const base = cell.pos.length / 3;
+        // (b16) the stone's contact patch over its bed: the disc's soil at the same place (its uv and its share of the
+        // darkness at the same distance from its centre), a few centimetres over the bed's rings from the face out, gone
+        // where the bed has sunk under the ground the disc itself lies on
+        const spot = rockContact ? rockSpotOf.get(placement) : undefined;
+        const shadePos: number[] = [], shadeUv: number[] = [], shadeTint: number[] = [];
         for (let k = 0; k < SEGMENTS; k++) {
           const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
           const windward = Math.max(0, -(dx * wx + dz * wz)), lee = Math.max(0, dx * wx + dz * wz);
@@ -6355,21 +6386,44 @@ ${snowCap ? `
           const ringR = [face * 0.7, face, r + width * 0.25, r + width * 0.55, r + width];
           const ringY = [lip, lip, lip * 0.5625, lip * 0.2025, -0.05];
           for (let j = 0; j < RINGS; j++) {
-            const x = px + dx * ringR[j], z = pz + dz * ringR[j];
-            cell.pos.push(x, (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j], z);
+            const x = px + dx * ringR[j], z = pz + dz * ringR[j], y = (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j];
+            cell.pos.push(x, y, z);
+            cell.fold.push(foldByte(x, z));
+            if (spot && j >= 1) {
+              const rho = Math.hypot(x - spot.x, z - spot.z) / spot.r;
+              shadePos.push(x, y + 0.03, z);
+              const toRim = rho > 1 ? 1 / rho : 1; // (past the rim, where the shade is clear, the disc's edge texel)
+              shadeUv.push(0.5 + 0.5 * toRim * (x - spot.x) / spot.r, 0.5 + 0.5 * toRim * (z - spot.z) / spot.r);
+              shadeTint.push(1, 1, 1, j === RINGS - 1 ? 0 : contactShare(rho));
+            }
           }
         }
         for (let k = 0; k < SEGMENTS; k++) {
           const a = base + k * RINGS, b = base + ((k + 1) % SEGMENTS) * RINGS;
           for (let j = 0; j < RINGS - 1; j++) cell.idx.push(a + j, b + j, a + j + 1, a + j + 1, b + j, b + j + 1);
         }
+        if (spot) {
+          const rings = RINGS - 1, idx: number[] = [];
+          for (let k = 0; k < SEGMENTS; k++) {
+            const a = k * rings, b = ((k + 1) % SEGMENTS) * rings;
+            for (let j = 0; j < rings - 1; j++) idx.push(a + j, b + j, a + j + 1, a + j + 1, b + j, b + j + 1);
+          }
+          const shade = new THREE.BufferGeometry();
+          shade.setAttribute('position', new THREE.Float32BufferAttribute(shadePos, 3));
+          shade.setAttribute('uv', new THREE.Float32BufferAttribute(shadeUv, 2));
+          shade.setAttribute('color', new THREE.Float32BufferAttribute(shadeTint, 4));
+          shade.setIndex(idx);
+          shade.computeVertexNormals();
+          rockBedShades.push(shade);
+        }
         if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
       }
     }
     const out: THREE.BufferGeometry[] = [];
-    for (const { pos, idx } of cells.values()) {
+    for (const { pos, fold, idx } of cells.values()) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geometry.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
       geometry.setIndex(idx);
       geometry.computeVertexNormals();
       geometry.computeBoundingSphere();
@@ -6383,6 +6437,26 @@ ${snowCap ? `
   // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
   const rockContact = !snowCap && rockDressing.dust < 0.5;
   const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  // (b16; gauntlet wave 121: boulders "on pale halos or texture seams") each stone's contact patch by its placement, and
+  // the patch carried over its bed: the bed (the ground's own material, risen round the foot) hid the patch's inner rings
+  // and showed the clean ground as a pale ring between the stone and its soil. The patch's rings and their shares of its
+  // darkness are the disc's (conformedDisc, ROCK_PATCH); a shade over the bed takes the same at the same place
+  const rockSpotOf = new Map<THREE.Matrix4, { x: number; z: number; r: number }>();
+  const CONTACT_PATCH_RINGS: readonly number[] = [0, 0.4, 0.7, 1.0];
+  const ROCK_PATCH_SHARES: readonly number[] = [0.3, 0.35, 0.5, 1];
+  const rockBedShades: THREE.BufferGeometry[] = [];
+  /** The contact patch's share of its darkness at a distance from its centre (a share of its radius): the disc's rings'
+   * shares, linear between them as the disc's triangles draw them, none past its rim. */
+  function contactShare(rho: number): number {
+    if (rho >= 1) return 0;
+    for (let i = 1; i < CONTACT_PATCH_RINGS.length; i++) {
+      if (rho <= CONTACT_PATCH_RINGS[i]) {
+        const t = (rho - CONTACT_PATCH_RINGS[i - 1]) / (CONTACT_PATCH_RINGS[i] - CONTACT_PATCH_RINGS[i - 1]);
+        return ROCK_PATCH_SHARES[i - 1] + (ROCK_PATCH_SHARES[i] - ROCK_PATCH_SHARES[i - 1]) * t;
+      }
+    }
+    return 0;
+  }
   const rockDepth = createRockDepthMaterial();
   retainedSurfaceMaterials.push(rockDepth);
   const rockLod: RockLodPools[] = [];
@@ -7914,7 +7988,7 @@ ${snowCap ? `
     // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
     // contact). Only the contact layer passes shares; the other decals keep their geometry as it was.
     const FULL_PATCH: readonly number[] = [1, 1, 1, 1];
-    const ROCK_PATCH: readonly number[] = [0.3, 0.35, 0.5, 1];
+    const ROCK_PATCH = ROCK_PATCH_SHARES; // (b16: the bed shades take the same, buildRockBeds)
     function conformedDisc(
       x: number,
       z: number,
@@ -7923,7 +7997,7 @@ ${snowCap ? `
       onMesh = false,
       shares: readonly number[] | null = null,
     ): THREE.BufferGeometry {
-      const rings = [0, 0.4, 0.7, 1.0], segs = 18;
+      const rings = CONTACT_PATCH_RINGS, segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
@@ -8061,6 +8135,8 @@ ${snowCap ? `
         dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
+      // (b16) and over each bed, its patch's soil where the bed stands above the ground the disc lies on
+      for (const shade of rockBedShades) dirtDiscs.push(shade);
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
       const roadDistance = heightField._roadDist(x, z);
