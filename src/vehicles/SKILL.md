@@ -344,6 +344,12 @@ forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v
 The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
 `paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
 hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
+The digital patterns stay pixel art on their own raster (80 / `digitalCellK` cells across the tile), but since
+2026-10-07 their cells are drawn by box coverage (`paintPixels`), their boundaries break into pixel clusters
+(`fragmentPixelEdges`) and no tone sits under `DIGITAL_TONE_LUMA_FLOOR`. Thresholding the smooth fields straight onto
+the grid and scaling it nearest-neighbour read as "blown-up low-resolution images" with "uniform stair-stepped edges",
+and the near-black tone as an unshaded hole. The service stripes (`stripeField`) keep whole-tile harmonics only: a
+term that does not repeat a whole number of times per tile opens a seam at the 2 m repeat.
 Weathering marks in the plate painter (`materialPainter.ts`) are stains, so they multiply into the paint. Since
 2026-10-06 the rust weeps multiply a warm brown. The old 1.4-3 px orange stroke laid over the paint lit up on black
 camo bands as "an unresolved texture seam", repeating with the 2 m tile (wave 165, Challenger 1). Never paint a bright,

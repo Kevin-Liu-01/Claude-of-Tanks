@@ -53,6 +53,97 @@ function noise(rng: Rng, size: number): (x: number, y: number) => number {
   };
 }
 
+// A raster cell's hash in 0..1. It draws nothing from the RNG stream and is tile-periodic because callers pass wrapped
+// cell indices.
+function cellHash(x: number, y: number, seed: number): number {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ seed;
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+/**
+ * 2026-10-07 (tank-accessories lane, round 3; blind critics: the T-90M digital "shows jagged stair-stepping along its
+ * edges", the Oplot "a large black camo blob with uniform stair-stepped edges", "blown-up low-resolution images"). The
+ * digital fields are smooth macro blobs thresholded on the pixel raster, so every boundary traced a smooth curve in
+ * uniform one-pixel stairs: exactly how an upscaled low-resolution mask reads. Digital camouflage is drawn in pixel
+ * clusters, and its boundaries break into teeth, notches and stray pixels a cluster or two deep. Each raster pixel's
+ * field moves by a per-pixel hash and a per-two-pixel-block hash, scaled by the field's own change per pixel there, so
+ * every boundary wanders by up to about two pixels in clusters whatever the macro gradient. The caller thresholds after
+ * this, so each tone keeps its coverage.
+ */
+function fragmentPixelEdges(field: Float32Array, n: number, seed: number): void {
+  const source = field.slice();
+  for (let y = 0; y < n; y++) {
+    const row = y * n, up = ((y + n - 1) % n) * n, down = ((y + 1) % n) * n;
+    for (let x = 0; x < n; x++) {
+      const left = (x + n - 1) % n, right = (x + 1) % n;
+      const change = (Math.abs(source[row + right] - source[row + left]) + Math.abs(source[down + x] - source[up + x])) * .5;
+      const jitter = 1.5 * (cellHash(x, y, seed) - .5) + 2.4 * (cellHash(x >> 1, y >> 1, seed ^ 0x5bd1e995) - .5);
+      field[row + x] = source[row + x] + change * jitter;
+    }
+  }
+}
+
+/**
+ * 2026-10-07 (lead, T-90M rear plate: a large dark digital cluster between the drum brackets read as "a flat black
+ * unshaded void ... the rack frames a hole"). The digital schemes' darkest tones were near-black (#171d1a to #23261e,
+ * sRGB luma 27-40), which renders as an unshaded hole in shadow. Russian and Chinese digital vehicle patterns use a
+ * very dark green or brown, not black: a pixel tone under DIGITAL_TONE_LUMA_FLOOR is lifted to it along a dark olive,
+ * so a near-black tone keeps its own cast and gains a little olive.
+ */
+export const DIGITAL_TONE_LUMA_FLOOR = 54;
+const OLIVE_LIFT: Color = [1, 1.08, .82];
+const lumaOf = (c: Color): number => .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+export function liftDigitalTone(color: Color): Color {
+  const short = DIGITAL_TONE_LUMA_FLOOR - lumaOf(color);
+  if (short <= 0) return color;
+  const k = short / lumaOf(OLIVE_LIFT);
+  return color.map((v, ch) => Math.min(255, v + OLIVE_LIFT[ch] * k)) as Color;
+}
+
+/**
+ * 2026-10-07: the pixel raster drawn onto the tile by exact box coverage. The cells are crisp squares whose edges sit at
+ * their true positions: a texel a cell edge crosses blends the two cells by area (one texel), every other texel is its
+ * cell's colour. Nearest-neighbour scaling snapped the 25.6-texel cells (2048 Garage bake, 80 cells) to alternating
+ * 25- and 26-texel widths with hard aliased edges. A tile smaller than the raster (a swatch) averages its cells.
+ */
+function paintPixels(ctx: Context, size: number, n: number, cells: Uint8ClampedArray): void {
+  const scale = n / size;
+  const first = new Int32Array(size + 1), cell: number[] = [], weight: number[] = [];
+  for (let at = 0; at < size; at++) {
+    const a = at * scale, b = (at + 1) * scale;
+    first[at] = cell.length;
+    for (let c = Math.floor(a); c < b; c++) {
+      const w = (Math.min(b, c + 1) - Math.max(a, c)) / scale;
+      if (w > 1e-6) { cell.push(wrap(c, n)); weight.push(w); }
+    }
+  }
+  first[size] = cell.length;
+  const out = ctx.createImageData(size, size), data = out.data;
+  for (let Y = 0; Y < size; Y++) {
+    const y0 = first[Y], y1 = first[Y + 1];
+    for (let X = 0; X < size; X++) {
+      const x0 = first[X], x1 = first[X + 1], at = (Y * size + X) * 4;
+      if (y1 - y0 === 1 && x1 - x0 === 1) {
+        const src = (cell[y0] * n + cell[x0]) * 4;
+        data[at] = cells[src]; data[at + 1] = cells[src + 1]; data[at + 2] = cells[src + 2]; data[at + 3] = 255;
+        continue;
+      }
+      let r = 0, g = 0, b = 0;
+      for (let j = y0; j < y1; j++) {
+        const row = cell[j] * n;
+        for (let i = x0; i < x1; i++) {
+          const w = weight[j] * weight[i], src = (row + cell[i]) * 4;
+          r += cells[src] * w; g += cells[src + 1] * w; b += cells[src + 2] * w;
+        }
+      }
+      data[at] = r; data[at + 1] = g; data[at + 2] = b; data[at + 3] = 255;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
 // All design coordinates are fractions of the canonical two-metre tile.
 // Wrap the entire mark (including its outline), never just its centre.
 function repeat(ctx: Context, paint: () => void): void {
@@ -93,13 +184,32 @@ function paintField<C extends MaterialCanvas>(
   const palette = [visual.base, ...(visual.patches || [])].map(parse);
   if (id === 'pacific45') palette.length = 2;
   if (palette.length === 1) palette.push(parse(visual.weather || visual.base));
+  if (pixel) for (let tone = 0; tone < palette.length; tone++) palette[tone] = liftDigitalTone(palette[tone]);
+  /**
+   * 2026-10-07 (tank-accessories lane, round 3; Challenger 1: the stripes "tile visibly: regular, evenly spaced green
+   * and black bands along the barrel, glacis and hull sides ... wrapped in a tiled texture"). The service stripes were
+   * one horizontal sine of three periods per tile under a shallow warp: three equal bands at equal spacing, every 67 cm
+   * on every plate. They now run on a diagonal whose spacing breathes with whole-tile harmonics (the bands narrow, widen,
+   * bow and change slope across the tile), a weaker crossing family makes them fork and merge, and a macro field
+   * thickens, thins and occasionally breaks a band. Every term repeats a whole number of times per tile, so the
+   * two-metre shared tile stays seamless; the harmonic phases come from the drawn phase (no new draws).
+   */
+  const stripeField = (u: number, v: number, wx: number, wy: number): number => {
+    const along = v * 3 + u + .3 * Math.sin(TAU * v + phase * 1.37) + .1 * Math.sin(TAU * 2 * v + phase * 2.71)
+      + .14 * Math.sin(TAU * u + phase * .53) + .1 * Math.sin(TAU * 2 * u + phase * 1.9)
+      + .05 * Math.sin(TAU * 3 * u + phase * .77) + warpX(u, v) * .45;
+    const across = v * 2 - u * 2 + .2 * Math.sin(TAU * u + phase * 2.3) + warpY(u, v) * .35;
+    return .5 + .24 * Math.sin(TAU * along + phase) + .13 * Math.sin(TAU * across + phase * 1.7)
+      + (macro(wx, wy) - .5) * .42 + (detail(u, v) - .5) * .16;
+  };
   const sampleFields = (): void => {
     for (let index = 0; index < n * n; index++) {
       const x = index % n, y = Math.floor(index / n);
       const u = x / n, v = y / n;
       const wx = u + (warpX(u, v) - .5) * .16, wy = v + (warpY(u, v) - .5) * .16;
       let f = macro(id === 'dpm' ? wx + wy : wx, id === 'dpm' ? wy * 2 : wy) * .84 + detail(u, v) * .16;
-      if (band) {
+      if (id === 'service-stripes') f = stripeField(u, v, wx, wy);
+      else if (band) {
         const angled = id === 'winterbands' || id === 'dpm';
         f = .5 + .31 * Math.sin(TAU * ((angled ? u + v : v) * 3 + warpX(u, v) * .52) + phase)
           + (detail(u, v) - .5) * .2;
@@ -109,6 +219,11 @@ function paintField<C extends MaterialCanvas>(
     }
   };
   sampleFields();
+  if (pixel) {
+    const seed = Math.floor(phase * 0x10000) | 0;
+    fragmentPixelEdges(values, n, seed);
+    fragmentPixelEdges(secondary, n, seed ^ 0x68e31da4);
+  }
   // Independent stencils overlap instead of forming concentric contour lines.
   // Histograms keep coverage balanced without sorting texels on picker clicks.
   function threshold(field: Float32Array, q: number): number {
@@ -147,12 +262,17 @@ function paintField<C extends MaterialCanvas>(
       image.data[index * 4 + 3] = 255;
     }
   };
-  // The digital patterns are pixel art by design, and a tile no larger than the field raster (the picker swatches) is
-  // the raster itself: both keep the raster path.
-  if (pixel || size <= n) {
+  // The digital patterns are pixel art by design: their raster cells are drawn as crisp squares by box coverage. A tile
+  // no larger than the field raster (the picker swatches) is the raster itself.
+  if (pixel) {
+    colorFields();
+    paintPixels(ctx, size, n, image.data);
+    return;
+  }
+  if (size <= n) {
     colorFields();
     raster.putImageData(image, 0, 0);
-    ctx.save(); ctx.imageSmoothingEnabled = !pixel;
+    ctx.save(); ctx.imageSmoothingEnabled = true;
     ctx.drawImage(scratch, 0, 0, size, size); ctx.restore();
     return;
   }
