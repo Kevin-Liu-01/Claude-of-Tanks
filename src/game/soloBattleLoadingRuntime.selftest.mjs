@@ -481,3 +481,21 @@ for (const heldStage of ['constructor', 'preload', 'upload']) {
 delete globalThis.__BATTLE_LOAD;
 delete globalThis.__VISUAL_LOAD_TIMINGS;
 console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm, reveal and abandoned FX upload order pass');
+
+{
+ const prepared=[],built=[],cards=[];
+ const aircraftVisual={root:new Object3D()};aircraftVisual.root.userData.aircraftOnly=true;
+ const entry=createSoloBattleLoadingRuntime({...loadingOptions,
+  battleIntent:{...loadingOptions.battleIntent,prepareRoster:async options=>{prepared.push(options);}},
+  planRoster:(_id,_random,_campaign,mode)=>{assert.equal(mode,'ac130');return ['m1a2','t90m'];},
+  ensureTankBuilders:async ids=>{built.push(...ids);},
+  startBattle:()=>{game.player=game.tanks[0];game.player.visual=aircraftVisual;},
+  warmShotCards:ids=>cards.push(...ids),
+ });
+ await entry.begin('m1a2',null,{randomRoster:false,gameMode:'ac130'});
+ assert.deepEqual(prepared[0].rosterIds,['t90m']);
+ assert.deepEqual(prepared[0].autoCamoIds,[]);
+ assert.ok(!built.includes('m1a2'),'pilot tank never enters builder preparation');
+ assert.deepEqual(cards,['t90m']);game.tanks[0].visual=playerVisual;
+ delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
+}

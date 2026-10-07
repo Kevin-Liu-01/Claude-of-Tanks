@@ -101,8 +101,8 @@ export interface SoloBattleLoadingRuntimeOptions {
   preloadSettings(): AsyncLoadResult;
   preloadArmorAim(): AsyncLoadResult;
   preloadGarageReturn(): AsyncLoadResult;
-  planRoster(specId: string, randomRoster: boolean, campaignOperationId?: string | null): string[];
-  planCamoOverrides(specId: string, mapId: string, randomRoster: boolean, campaignOperationId?: string | null): string[];
+  planRoster(specId: string, randomRoster: boolean, campaignOperationId?: string | null, gameMode?: string): string[];
+  planCamoOverrides(specId: string, mapId: string, randomRoster: boolean, campaignOperationId?: string | null, gameMode?: string): string[];
   ensureTankBuilders(specIds: string[]): AsyncLoadResult;
   preloadSoloAuthority(): AsyncLoadResult;
   preloadBattleClient(): AsyncLoadResult;
@@ -394,8 +394,10 @@ export function createSoloBattleLoadingRuntime(
       ]);
 
       battleLoad.progress(0.02, 'Loading battlefield');
-      const plannedRoster = planRoster(specId, randomRoster, campaignOperationId);
-      const plannedAutoCamoIds = planCamoOverrides(specId, resolved, randomRoster, campaignOperationId);
+      const plannedRoster = planRoster(specId, randomRoster, campaignOperationId, normalizedGameMode)
+        .filter(id => normalizedGameMode !== 'ac130' || id !== specId);
+      const plannedAutoCamoIds = planCamoOverrides(specId, resolved, randomRoster, campaignOperationId, normalizedGameMode)
+        .filter(id => normalizedGameMode !== 'ac130' || id !== specId);
       const rosterTexture = battleIntent.prepareRoster({
         specId,
         mapId: resolved,
@@ -513,7 +515,7 @@ export function createSoloBattleLoadingRuntime(
       playerVisualTiming.totalMs = Math.round(now() - playerVisualStartedAt);
       mark('roster');
       battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
-      warmShotCards(game.tanks.map((entity) => entity.specId));
+      warmShotCards(game.tanks.filter(entity => normalizedGameMode !== 'ac130' || !entity.isPlayer).map((entity) => entity.specId));
       battleLoad.progress(0.58, 'Painting vehicles');
       const openingVisual = (entity: BattleVisualEntity): boolean =>
         !!(entity as LoadingEntity).isPlayer;
