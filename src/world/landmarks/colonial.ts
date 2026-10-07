@@ -13,10 +13,11 @@
 // the terrace, and the trench the siege dug across it (`damage` > 0). The terrace authors its movement record (a
 // standable floor a hull drives onto from the uphill side, the retaining walls a hull meets from below).
 import { PartSink, faceBox, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type Opening, type RoofSpec, emitRoof, roofGeometry } from '../maps/regional/house.ts';
+import { buildHouse, windowRhythm, withWear, type HouseDialect, type Opening, type RoofSpec, emitRoof, roofGeometry } from '../maps/regional/house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from '../maps/regional/openings.ts';
 import type { SimpleCollisionShape } from '../collision.ts';
 import { bar } from './kit.ts';
+import { sootOver } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const TIN: readonly Rgb[] = [0x8a3a2e, 0x7a3428, 0x4f6a4a, 0x5a7a52].map(rgb);
@@ -101,13 +102,18 @@ export const colonialBungalow: LandmarkBuilder = (ctx) => {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.4),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: GREEN_TRIM, frame: { bucket: 'structureWood', width: 0.12, out: 0.05, colour: WHITE }, transom: true, steps: { bucket: 'stone' }, leafKind: 'glazed' }, y0 + o.y0),
   };
-  const frame = buildHouse(sink, {
+  // its age (round 2, gauntlet wave 157: "a clean, believable model … no sign of age"): the house grammar's own wear,
+  // drawn from the piece's age stream — burnt and boarded windows, a roof patch stripped, the render spalled to the
+  // plinth's stone — as much as the siege's damage
+  const age = ctx.age;
+  const wear = age ? { amount: Math.max(0.25, damage), rng: () => age(), spall: () => age() } : null;
+  const frame = withWear(wear, () => buildHouse(sink, {
     w: W, d: D, plinth: { h: plinth, out: 0.12, bucket: 'stone' }, storeys: [{ h: storey, wall: 'plaster' }],
     roof: tin(26, 'hip'), roofColour, gableBucket: 'plaster', openings,
     chimneys: [{ x: -W * 0.28, z: -D * 0.18, sx: 0.7, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'slab' },
       { x: W * 0.3, z: D * 0.12, sx: 0.7, sz: 0.7, above: 1.0, bucket: 'stone', cap: 'slab' }],
-    gutters: null, verge: null, spall: null,
-  }, dialect);
+    gutters: null, verge: null, spall: age ? 'stone' : null,
+  }, dialect));
   // the verandas on the front and both ends; the siege's damage along the front from its left corner
   const stripRun = Math.round(damage * 3);
   const frontBays = Math.max(2, Math.round(W / 2.4));
@@ -130,13 +136,11 @@ export const colonialBungalow: LandmarkBuilder = (ctx) => {
   const yawF = Math.atan2(f.out[0], f.out[2]);
   const pc = [f.origin[0] + f.out[0] * (V + (porchD - V) / 2), f.origin[2] + f.out[2] * (V + (porchD - V) / 2)];
   sink.placed(yawF, pc[0], 0, pc[1], () => emitRoof(sink, prg, porchRoof, roofColour));
-  // the scorching round the windows (decor), heavier with the damage
+  // the scorching over the windows (the render's own bucket darkened by the kit weathering; a coloured box in the
+  // plaster bucket drew no soot at all), heavier with the damage
   if (damage > 0) {
     const scorched = openings.filter((o) => o.kind === 'window').filter((_, i) => i % 3 === 0 || damage > 0.7);
-    for (const o of scorched) {
-      const face = frame.faces[o.face];
-      faceBox(sink, 'plaster', face, o.u, plinth + o.y0 + o.h + 0.35, 0.025, o.w + 0.5, 0.7, 0.03, { colour: SOOT, decor: true, fine: true });
-    }
+    for (const o of scorched) sootOver(sink, 'plaster', frame.faces[o.face], o.u, plinth + o.y0 + o.h, o.w, 1.3, { depth: 0.55 + 0.3 * damage });
   }
   return { parts: sink.finish(), tints: { plaster: [1.02, 1.0, 0.95] } };
 };
@@ -144,20 +148,32 @@ export const colonialBungalow: LandmarkBuilder = (ctx) => {
 /**
  * The terraced tennis court (plan.ts tennisCourt): see the module's note. The piece's frame: the court's long axis
  * along z, its net across at z = 0; y = 0 the lowest ground under the terrace.
+ *
+ * Round 2 (2026-10-06; gauntlet wave 157: "a free-standing red slab on sheer beige plinth walls perched on an untouched
+ * grass slope, with no steps, path or garden", its wall "a modern-looking stamped concrete-block texture"): the terrace
+ * is made ground — the court level with its uphill edge, its sides falling to the slope in banks of rough grass, a low
+ * dry-stone wall along its edge where the bank falls, a flight of stone steps down the bank toward the bungalow (`steps`:
+ * the side, -1 the court's -x side, +1 its +x side, 0 none) with a gap in the wall and the wire for them, the clay worn
+ * to the earth along the base lines and round the net, shell holes and the siege's trench across it.
  */
 export const tennisCourt: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = 36.6, Wt = 18.3, damage = Math.max(0, Math.min(1, Number(ctx.params.damage)));
+  const stepSide = Math.sign(Number(ctx.params.steps) || 0);
   const g = (x: number, z: number) => (ctx.ground ? ctx.ground(x, z) : 0);
   // the terrace's level: the highest ground under it (its uphill edge flush), 15 cm proud
   let top = 0;
   for (let i = 0; i <= 6; i++) for (let j = 0; j <= 4; j++) top = Math.max(top, g(-Wt / 2 + Wt * j / 4, -L / 2 + L * i / 6));
   top += 0.15;
-  // the terrace: the platform's slab (the clay's bed) and the court's surface on it
+  // the terrace: the clay's bed and the court's surface on it
   sink.span('stone', -Wt / 2, top - 0.6, -L / 2, Wt / 2, top - 0.12, L / 2, { decor: true });
   sink.span('plaster', -Wt / 2, top - 0.12, -L / 2, Wt / 2, top, L / 2);
-  // the lines (a doubles court 23.77 × 10.97 m, its singles side lines, the service lines and the centre line)
+  // the clay worn to the earth behind the base lines, round the net posts and along the side lines (dressing)
   const CL = 23.77 / 2, CW = 10.97 / 2, SW = 8.23 / 2, SV = 6.4, lw = 0.05;
+  const worn = (x0: number, z0: number, x1: number, z1: number) => sink.span('plaster3', x0, top, z0, x1, top + 0.006, z1, { decor: true });
+  for (const sz of [-1, 1]) worn(-2.6, sz * (CL + 0.2), 2.6, sz * (CL + 2.8));
+  for (const sx of [-1, 1]) worn(sx * (CW + 0.5) - 0.8, -1.2, sx * (CW + 0.5) + 0.8, 1.2);
+  // the lines (a doubles court 23.77 × 10.97 m, its singles side lines, the service lines and the centre line), faded
   const line = (x0: number, z0: number, x1: number, z1: number) => sink.span('structureWood', Math.min(x0, x1) - lw, top, Math.min(z0, z1) - lw, Math.max(x0, x1) + lw, top + 0.012, Math.max(z0, z1) + lw, { colour: LINE_WHITE, decor: true });
   for (const sx of [-1, 1]) { line(sx * CW, -CL, sx * CW, CL); line(sx * SW, -CL, sx * SW, CL); }
   for (const sz of [-1, 1]) { line(-CW, sz * CL, CW, sz * CL); line(-SW, sz * SV, SW, sz * SV); }
@@ -169,7 +185,83 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
     const sag = (x: number) => 0.16 * (1 - (x / (CW + 0.9)) ** 2);
     sink.span('structureWood', x0, top + 0.05, -0.012, x1, top + 1.0 - Math.max(sag(x0), sag(x1)), 0.012, { colour: NET, decor: true, fine: k % 2 === 1 });
   }
-  // the fence: posts every 3 m round the terrace, rails and the wire's bands (a run torn down with the damage)
+  // the banks: from the terrace's edge down to the slope at about 40 degrees, trodden earth (plaster3), sampled every
+  // 2 m along each side; the corners fan between their two sides' last samples
+  const BANK = 1.2, edgeOut = 0.5, bankMax = Math.max(0.5, Number(ctx.params.bank) || 4);
+  type Side = { a: [number, number]; b: [number, number]; n: [number, number] };
+  const sideList: Side[] = [
+    { a: [Wt / 2, -L / 2], b: [Wt / 2, L / 2], n: [1, 0] }, { a: [-Wt / 2, L / 2], b: [-Wt / 2, -L / 2], n: [-1, 0] },
+    { a: [Wt / 2, L / 2], b: [-Wt / 2, L / 2], n: [0, 1] }, { a: [-Wt / 2, -L / 2], b: [Wt / 2, -L / 2], n: [0, -1] },
+  ];
+  const movement: SimpleCollisionShape[] = [];
+  for (const side of sideList) {
+    const len = Math.hypot(side.b[0] - side.a[0], side.b[1] - side.a[1]), ux = (side.b[0] - side.a[0]) / len, uz = (side.b[1] - side.a[1]) / len;
+    const n = Math.max(2, Math.round(len / 2));
+    let reach = 0;
+    const inner: Array<[number, number, number]> = [], outer: Array<[number, number, number]> = [];
+    for (let k = 0; k <= n; k++) {
+      const t = len * k / n, ex = side.a[0] + ux * t + side.n[0] * edgeOut, ez = side.a[1] + uz * t + side.n[1] * edgeOut;
+      // the bank's foot: where the slope meets the fall from the terrace's level at the bank's angle
+      let d = 0.3;
+      for (let it = 0; it < 4; it++) d = Math.min(bankMax, Math.max(0.3, (top - g(ex + side.n[0] * d, ez + side.n[1] * d)) * BANK));
+      reach = Math.max(reach, d);
+      inner.push([ex, top - 0.02, ez]);
+      outer.push([ex + side.n[0] * d, g(ex + side.n[0] * d, ez + side.n[1] * d) - 0.15, ez + side.n[1] * d]);
+    }
+    for (let k = 0; k < n; k++) {
+      // counter-clockwise seen from above and outside: along the terrace's edge, then down to the foot
+      sink.quad('plaster2', inner[k], inner[k + 1], outer[k + 1], outer[k], { decor: true });
+    }
+    // the low dry-stone wall along the edge where the bank falls more than half a metre (a gap for the steps)
+    const fall = Math.max(...outer.map((p) => top - p[1]));
+    if (fall > 0.6) {
+      // (for the stepped side, the wall leaves a gap over the flight at the net line)
+      const spans: Array<[number, number]> = stepSide !== 0 && side.n[0] === stepSide ? [[0, len / 2 - 1.3], [len / 2 + 1.3, len]] : [[0, len]];
+      for (const [t0, t1] of spans) {
+        const ax = side.a[0] + ux * t0, az = side.a[1] + uz * t0, bx = side.a[0] + ux * t1, bz = side.a[1] + uz * t1;
+        const nx = side.n[0], nz = side.n[1];
+        sink.span('stone', Math.min(ax, bx) + Math.min(0, nx * 0.5), top - 0.4, Math.min(az, bz) + Math.min(0, nz * 0.5),
+          Math.max(ax, bx) + Math.max(0, nx * 0.5), top + 0.62, Math.max(az, bz) + Math.max(0, nz * 0.5), { decor: true });
+      }
+    }
+    // the bank's footprint a hull meets from below (its foot to the terrace's edge)
+    const cxs = (side.a[0] + side.b[0]) / 2 + side.n[0] * (edgeOut + reach) / 2, czs = (side.a[1] + side.b[1]) / 2 + side.n[1] * (edgeOut + reach) / 2;
+    const lowest = Math.min(...outer.map((p) => p[1]));
+    if (top - lowest > 0.35) {
+      movement.push({ kind: 'obb', cx: cxs, cz: czs, hw: side.n[0] !== 0 ? (edgeOut + reach) / 2 : len / 2, hl: side.n[0] !== 0 ? len / 2 : (edgeOut + reach) / 2,
+        yaw: 0, y0: lowest - 0.3, y1: top });
+    }
+  }
+  // the corners' fans between their sides' end samples (a quarter cone of earth)
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+    const cx = sx * (Wt / 2 + edgeOut), cz = sz * (L / 2 + edgeOut);
+    const pts: Array<[number, number, number]> = [];
+    for (let k = 0; k <= 4; k++) {
+      const a = Math.atan2(sz, 0) * 0 + (sx > 0 ? 0 : Math.PI) + (sx > 0 === sz > 0 ? 1 : -1) * (Math.PI / 2) * k / 4;
+      const nx = Math.cos(a), nz = Math.sin(a);
+      let d = 0.3;
+      for (let it = 0; it < 4; it++) d = Math.min(bankMax, Math.max(0.3, (top - g(cx + nx * d, cz + nz * d)) * BANK));
+      pts.push([cx + nx * d, g(cx + nx * d, cz + nz * d) - 0.15, cz + nz * d]);
+    }
+    for (let k = 0; k < 4; k++) {
+      const tri = [[cx, top - 0.02, cz] as [number, number, number], pts[k], pts[k + 1]];
+      // wind each triangle to face up and out
+      const ux1 = tri[1][0] - tri[0][0], uz1 = tri[1][2] - tri[0][2], ux2 = tri[2][0] - tri[0][0], uz2 = tri[2][2] - tri[0][2];
+      sink.polygon('plaster2', ux1 * uz2 - uz1 * ux2 < 0 ? tri : [tri[0], tri[2], tri[1]], { decor: true });
+    }
+  }
+  // the flight of stone steps down the bank on the stepped side, at the net line
+  if (stepSide !== 0) {
+    const x0 = stepSide * (Wt / 2 + edgeOut);
+    let y = top, x = x0, k = 0;
+    while (y - g(x + stepSide * 0.35, 0) > 0.1 && k < 24) {
+      const tread = 0.36, rise = Math.min(0.19, y - g(x + stepSide * tread, 0));
+      sink.span('stone', Math.min(x, x + stepSide * tread), y - rise - 0.25, -0.9, Math.max(x, x + stepSide * tread), y - rise + 0.02, 0.9, { decor: true });
+      x += stepSide * tread; y -= rise; k++;
+    }
+  }
+  // the fence: posts every 3 m round the terrace, rails and the wire's bands (a run torn down with the damage; open
+  // over the steps)
   const torn = damage > 0 ? Math.round(2 + damage * 4) : 0;
   const ring: Array<[number, number]> = [];
   const perimeter = [[-Wt / 2, -L / 2], [Wt / 2, -L / 2], [Wt / 2, L / 2], [-Wt / 2, L / 2]] as const;
@@ -177,46 +269,41 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
     const [ax, az] = perimeter[e], [bx, bz] = perimeter[(e + 1) % 4], n = Math.round(Math.hypot(bx - ax, bz - az) / 3);
     for (let k = 0; k < n; k++) ring.push([ax + (bx - ax) * k / n, az + (bz - az) * k / n]);
   }
+  const overSteps = (x: number, z: number, nx: number, nz: number) => stepSide !== 0 && Math.sign(x) === stepSide && Math.abs(Math.abs(x) - Wt / 2) < 0.01
+    && Math.abs(nx - x) < 0.01 && Math.min(z, nz) < 1.5 && Math.max(z, nz) > -1.5;
   for (let k = 0; k < ring.length; k++) {
     const [x, z] = ring[k], [nx, nz] = ring[(k + 1) % ring.length];
     const down = k >= ring.length / 2 && k < ring.length / 2 + torn;
     if (down) { bar(sink, 'structureMetal', [x, top + 0.1, z], [x + (nx - x) * 0.4, top + 0.25, z + (nz - z) * 0.4 + 0.6], 0.06, { colour: POST_GREEN, decor: true }); continue; }
     sink.span('structureMetal', x - 0.04, top - 0.3, z - 0.04, x + 0.04, top + 3.0, z + 0.04, { colour: POST_GREEN });
-    if (k + 1 < ring.length + 1 && !(k + 1 >= ring.length / 2 && k + 1 < ring.length / 2 + torn)) {
+    if (overSteps(x, z, nx, nz)) continue;
+    if (!(k + 1 >= ring.length / 2 && k + 1 < ring.length / 2 + torn)) {
       for (const y of [0.1, 1.5, 2.95]) bar(sink, 'structureMetal', [x, top + y, z], [nx, top + y, nz], 0.035, { colour: POST_GREEN, decor: true, fine: y === 1.5 });
-      // the wire's mesh as two dark bands (it reads as a grey veil at a distance)
-      bar(sink, 'structureMetal', [x, top + 0.8, z], [nx, top + 0.8, nz], 0.012, { colour: shade(POST_GREEN, 0.7), decor: true, fine: true });
-      bar(sink, 'structureMetal', [x, top + 2.2, z], [nx, top + 2.2, nz], 0.012, { colour: shade(POST_GREEN, 0.7), decor: true, fine: true });
+      // the wire's mesh: five strands of a grey veil at a distance
+      for (const y of [0.45, 0.8, 1.15, 1.85, 2.2, 2.55]) bar(sink, 'structureMetal', [x, top + y, z], [nx, top + y, nz], 0.012, { colour: shade(POST_GREEN, 0.7), decor: true, fine: true });
     }
   }
-  // the retaining walls where the ground falls away from the terrace (each side's lowest point), dressed stone
-  const walls: SimpleCollisionShape[] = [];
-  const sides = [
-    { x0: -Wt / 2 - 0.5, x1: Wt / 2 + 0.5, z0: -L / 2 - 0.5, z1: -L / 2, low: Math.min(g(-Wt / 2, -L / 2 - 0.5), g(0, -L / 2 - 0.5), g(Wt / 2, -L / 2 - 0.5)) },
-    { x0: -Wt / 2 - 0.5, x1: Wt / 2 + 0.5, z0: L / 2, z1: L / 2 + 0.5, low: Math.min(g(-Wt / 2, L / 2 + 0.5), g(0, L / 2 + 0.5), g(Wt / 2, L / 2 + 0.5)) },
-    { x0: -Wt / 2 - 0.5, x1: -Wt / 2, z0: -L / 2, z1: L / 2, low: Math.min(g(-Wt / 2 - 0.5, -L / 3), g(-Wt / 2 - 0.5, 0), g(-Wt / 2 - 0.5, L / 3)) },
-    { x0: Wt / 2, x1: Wt / 2 + 0.5, z0: -L / 2, z1: L / 2, low: Math.min(g(Wt / 2 + 0.5, -L / 3), g(Wt / 2 + 0.5, 0), g(Wt / 2 + 0.5, L / 3)) },
-  ];
-  for (const side of sides) {
-    if (top - side.low < 0.35) continue;
-    sink.span('stone', side.x0, side.low - 0.5, side.z0, side.x1, top + 0.08, side.z1);
-    walls.push({ kind: 'obb', cx: (side.x0 + side.x1) / 2, cz: (side.z0 + side.z1) / 2, hw: (side.x1 - side.x0) / 2, hl: (side.z1 - side.z0) / 2, yaw: 0, y0: side.low - 0.5, y1: top });
-  }
-  // the trench the siege dug across the court's far half (a dark cut and its spoil)
+  // the siege on the court: the trench dug across its far half (a dark cut and its spoil) and shell holes
   if (damage > 0) {
     const zt = L * 0.22;
     for (let k = 0; k < 5; k++) {
       const x0 = -Wt / 2 + 1 + (Wt - 2) * k / 5, x1 = x0 + (Wt - 2) / 5, dz = (k % 2 ? 0.9 : -0.9) * damage;
       sink.span('structureWood', x0, top + 0.002, zt + dz - 0.45, x1, top + 0.015, zt + dz + 0.45, { colour: SOOT, decor: true });
-      sink.span('stone', x0, top, zt + dz + 0.5, x1, top + 0.35, zt + dz + 1.2, { decor: true });
+      sink.span('plaster3', x0, top, zt + dz + 0.5, x1, top + 0.35, zt + dz + 1.2, { decor: true });
+    }
+    for (const [hx, hz, r] of [[-4.2, -9.5, 1.3], [5.1, -2.6, 0.9], [-2.0, 14.5, 1.1]] as const) {
+      const ring2: Array<[number, number, number]> = [];
+      for (let i = 0; i < 10; i++) { const a = -i / 10 * Math.PI * 2; ring2.push([hx + Math.cos(a) * r, top + 0.008, hz + Math.sin(a) * r]); }
+      sink.polygon('structureWood', ring2, { colour: shade(SOOT, 1.4), decor: true });
     }
   }
-  // the terrace's movement record: a standable floor in panels a metre deep under the clay, and the retaining walls
-  const movement: SimpleCollisionShape[] = [...walls];
+  // the terrace's movement record: a standable floor in panels a metre deep under the clay, the banks a hull meets from
+  // below, and the net's posts
   for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
     movement.push({ kind: 'obb', cx: -Wt / 4 + Wt / 2 * j, cz: -L / 2 + L / 8 + L / 4 * i, hw: Wt / 4, hl: L / 8, yaw: 0, y0: top - 1.0, y1: top });
   }
   for (const sx of [-1, 1]) movement.push({ kind: 'obb', cx: sx * (CW + 0.9), cz: 0, hw: 0.05, hl: 0.05, yaw: 0, y0: top, y1: top + 1.07 });
-  // the court's clay: the plaster bucket in the clay's colour (the piece's own tint)
-  return { parts: sink.finish(), movement, tints: { plaster: [CLAY[0] * 1.6, CLAY[1] * 1.6, CLAY[2] * 1.6] } };
+  // the court's clay (the plaster bucket in the clay's colour) and the trodden earth of its banks and worn patches
+  // (the banks in plaster2: rough grass gone to earth in patches, the hill's own green; the worn clay and the spoil in plaster3)
+  return { parts: sink.finish(), movement, tints: { plaster: [CLAY[0] * 1.5, CLAY[1] * 1.5, CLAY[2] * 1.5], plaster2: [0.5, 0.56, 0.36], plaster3: [0.62, 0.5, 0.38] } };
 };
