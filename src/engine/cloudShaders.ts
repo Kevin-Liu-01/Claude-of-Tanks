@@ -165,7 +165,7 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 thick = uLayerTop - uLayerBase;
 	vec4 k = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
 	vec4 base = uLayerBase - thick * uLayerHang * k;
-	vec4 top = uLayerBase + thick * ( 0.3 + 0.7 * k );
+	vec4 top = uLayerBase + thick * ( 0.15 + 0.85 * k );
 	hf = clamp( ( vec4( h ) - base ) / max( top - base, vec4( 1.0 ) ), 0.0, 1.0 );
 	vec4 inside = step( base, vec4( h ) ) * step( vec4( h ), top ) * step( vec4( 1e-6 ), uLayerDensity );
 	vec4 box = smoothstep( 0.0, 0.12, hf ) * ( 1.0 - smoothstep( 0.82, 1.0, hf ) );

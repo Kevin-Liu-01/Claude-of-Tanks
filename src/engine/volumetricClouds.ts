@@ -824,6 +824,12 @@ export class VolumetricCloudLayer {
         this.bsmMaterial.uniforms.uSlices.value = cloudBsmSlices(stack);
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
+        // QA: a convective lane's extinction scaled (the decks keep theirs)
+        const cu = lightTune('CLOUD_CU_DENSITY', 1);
+        if (cu !== 1) {
+          const d = this.medium.uLayerDensity.value as THREE.Vector4;
+          stack.lanes.forEach((lane, i) => { if (lane.flat < 0.5) d.setComponent(i, d.getComponent(i) * cu); });
+        }
       }
     }
     this.preset = preset;

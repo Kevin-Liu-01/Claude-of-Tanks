@@ -96,11 +96,9 @@ export function cloudShellCover(coverage: number, deck: boolean): number {
 }
 
 /** The aloft layer a regime carries over its main one (none where the meteorology has none). */
+// (a fair-weather sky and its streets carry none: at a few percent cover the altocumulus drew a confetti of small puffs
+// two kilometres over the cumulus — the critics' "puffs at random heights"; the cirrus above stays the sky's own)
 const ALOFT: Readonly<Partial<Record<string, { lift: number; thickness: number; coverage: number; density: number }>>> = Object.freeze({
-  // a fair-weather sky: a few patches of altocumulus two kilometres over the cumulus
-  'fair-weather-cumulus': { lift: 1900, thickness: 320, coverage: 0.05, density: 0.035 },
-  'cloud-streets': { lift: 2200, thickness: 300, coverage: 0.06, density: 0.05 },
-  'sea-streets': { lift: 1800, thickness: 300, coverage: 0.07, density: 0.05 },
   // humid towers: a broken altocumulus layer between the towers' heads
   'towering-cumulus': { lift: 600, thickness: 450, coverage: 0.12, density: 0.06 },
   // a front: the high cumulus and the spreading anvils' debris
@@ -128,7 +126,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   const channels: [number, number, number, number] = [cu, 0, 1 - cu, 0];
   const envelope = isDeck ? 0 : clamp(preset.fieldMix, 0, 1) * 0.85;
   // a deck's cells always break its column a little (an overcast has lumps and thin lines: no flat card)
-  const cellsEff = isDeck ? Math.max(cells, 0.4) : cells;
+  const cellsEff = isDeck ? Math.max(cells, 0.6) : cells;
   // the density's ramp over the footprint: a cumulus' whole footprint (densest at the weather's peak, the shape carving
   // it inward from the edge), a deck's first third (dense to near its breaks)
   const filter = isDeck ? 0.35 : 1;

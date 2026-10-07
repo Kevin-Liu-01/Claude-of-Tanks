@@ -71,7 +71,8 @@ assert.ok(stacks.monsoon.lanes[0].channels[0] === 1 && stacks.monsoon.lanes[0].e
 assert.ok(stacks.monsoon.lanes[0].cover < 0.6, 'a front\'s towers stand apart');
 assert.ok(cloudBsmSlices(stacks.monsoon) === 64 && cloudBsmSlices(stacks.winter) === 24, 'a front\'s towers take the most slices, a thin deck the least');
 assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves a stack (${Object.keys(stacks).length})`);
-assert.ok(stacks.verdant.lanes.length === 2, 'a fair-weather sky carries its altocumulus aloft');
+assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
+assert.ok(stacks.monsoon.lanes.length === 2, 'a front carries its debris aloft');
 assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
 
 // ---- the packing: vec4 lanes, an absent lane without density, the channel matrix column-major as GLSL reads M * v
@@ -81,7 +82,7 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
     'uLayerExp', 'uLayerStreets', 'uLayerEnvelope', 'uLayerCells', 'uLayerWisp', 'uLayerFlat', 'uLayerHang', 'uLayerAnvil', 'uLayerCore', 'uLayerLumps', 'uProfA', 'uProfB', 'uProfC', 'uProfD', 'uLayerDiffuse']) u[k] = { value: new THREE.Vector4() };
   u.uLayerChannels = { value: new THREE.Matrix4() };
   u.uHeightRange = { value: new THREE.Vector2() };
-  const stack = stacks.verdant;
+  const stack = stacks.monsoon;
   packCloudStack(stack, u);
   assert.equal(u.uLayerBase.value.x, stack.lanes[0].baseM);
   assert.equal(u.uLayerTop.value.y, stack.lanes[1].topM);
