@@ -131,8 +131,7 @@ export const CLOUD_BSM_CASCADES = Object.freeze([
 export const CLOUD_BSM_TIER_STRETCH: Readonly<Record<string, number>> = Object.freeze({ low: 2, medium: 1.5, high: 1, ultra: 1 });
 /** The Beer shadow map's march: altitude slices through the shadow lanes (the stack's own count: cloudLayers.ts cloudBsmSlices). */
 export const CLOUD_BSM_SLICES = 32;
-/** The march limits and the dome shell radius (inside camera.far). */
-export const CLOUD_MARCH_STEPS = 128;
+/** The march's reach on High and the dome shell radius (inside camera.far); the tiers own the step counts. */
 export const CLOUD_MARCH_MAX_M = 36000;
 export const CLOUD_DOME_RADIUS_M = 3400;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
