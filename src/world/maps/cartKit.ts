@@ -21,6 +21,7 @@ import { buildCart, cartWheels, type CartModel } from './cartBodies.ts';
 import { climateForMap, type VehicleClimate } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { convexHull2 } from '../collision.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -277,9 +278,24 @@ function canonicalSolid(e: CartEntry, role: CartRole): THREE.BufferGeometry {
 }
 
 /** A role's collision on a map: its visible half extents and the contact band of its solids. */
-interface CartFootprint { hw: number; hl: number; contactBand: StructureCollisionRuntimeBand }
+interface CartFootprint {
+  hw: number;
+  hl: number;
+  contactBand: StructureCollisionRuntimeBand;
+  /** The body's plan at every height (its wheels, flaring sides and load; the shafts and handles are dressing), local
+   *  and fitted, flat [x, z, ...]: what a fence, a wall or a tree must stay clear of (props.ts seats the carts). */
+  hull: readonly number[];
+}
 const FOOTPRINTS = new WeakMap<CartModel, Map<CartRole, CartFootprint>>();
 const mm = (v: number) => Math.round(v * 1000) / 1000;
+
+/** The plan of a solid's kept triangles (the dressing is out of its index), millimetre-rounded. */
+function bodyHull(solid: THREE.BufferGeometry): number[] {
+  const position = solid.attributes.position, used = new Set<number>(solid.index!.array as ArrayLike<number> as number[]);
+  const points: [number, number][] = [];
+  for (const v of used) points.push([mm(position.getX(v)), mm(position.getZ(v))]);
+  return convexHull2(points);
+}
 
 /** The footprint a map's role collides with (once per model and role in a session: maps share models). */
 function cartFootprint(e: CartEntry, role: CartRole): CartFootprint {
@@ -292,6 +308,7 @@ function cartFootprint(e: CartEntry, role: CartRole): CartFootprint {
   const footprint = {
     hw: mm(Math.max(-b.min.x, b.max.x)), hl: mm(Math.max(-b.min.z, b.max.z)),
     contactBand: deriveRuntimeStructureContactBand({ baked: [solid] }),
+    hull: bodyHull(solid),
   };
   solid.dispose();
   byRole.set(role, footprint);
@@ -336,6 +353,8 @@ interface CartOverride {
   /** The role's footprint and contact band on this map (the same on every tier), read on first use. */
   readonly hw: number;
   readonly hl: number;
+  /** Its body's plan (CartFootprint hull), the same on every tier. */
+  readonly bodyHull: readonly number[];
   readonly contactBand: StructureCollisionRuntimeBand;
 }
 
@@ -358,6 +377,7 @@ export function cartOverrides(mapId: string, mobile: boolean): Record<CartRole, 
       hw: { enumerable: true, get: () => cartFootprint(e, role).hw },
       hl: { enumerable: true, get: () => cartFootprint(e, role).hl },
       contactBand: { enumerable: true, get: () => cartFootprint(e, role).contactBand },
+      bodyHull: { enumerable: true, get: () => cartFootprint(e, role).hull },
     }) as CartOverride;
   }
   return out;

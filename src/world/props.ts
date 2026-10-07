@@ -76,10 +76,14 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CART_RECEIPTS } from './maps/cartKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import { buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
-import { PARKED_VEHICLE_CLEARANCE, separateParkedVehicles } from './parkedVehicleSeparation.ts';
+import {
+  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
+  type FootprintPolygon,
+} from './parkedVehicleSeparation.ts';
 import {
   boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
 } from './roadFootprint.ts';
@@ -106,8 +110,8 @@ import {
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
 import {
-  cloneCollisionRecord, convexHull2, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
-  type SimpleCollisionShape,
+  cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
+  setObbShape, type SimpleCollisionShape,
 } from './collision.ts';
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
@@ -8147,6 +8151,120 @@ ${snowCap ? `
     });
   }
   separateParkedVehicleRecords();
+
+  // 2026-10-06 (the integrator's ruling): no cart stands inside anything. A handcart, haycart or sled whose body (its
+  // wheels, sides and load; the shafts and handles are dressing) meets an obstacle (a fence, a wall, firewood, a trough,
+  // a building, rubble, a rock), a tree, a vehicle or a cart seated before it slides the smallest way that clears it,
+  // within 3 m and on its own lot (its way out crosses nothing it did not already stand in), or is dropped
+  // (parkedVehicleSeparation.ts seatCartsClear). Longleaf's haycart stood in a fence line. No stream draws.
+  function seatCartRecords(): void {
+    const cartKinds = new Set(Object.keys(CART_RECEIPTS));
+    const carts = destructibles.filter((record) => cartKinds.has(record.kind) && record.state === 0 && !record.dropped);
+    if (!carts.length) return;
+    const parked = new Map<CollisionRecord, DestructibleRecord>();
+    for (const record of destructibles) {
+      if (record.ob && (cartKinds.has(record.kind) || CIVILIAN_VEHICLE_RECEIPTS[record.kind as keyof typeof CIVILIAN_VEHICLE_RECEIPTS])) {
+        parked.set(record.ob, record);
+      }
+    }
+    const trees = sceneryTrees, pads = [L.spawns.player, ...L.spawns.enemies];
+    const reach = CART_SLIDE_MAX_M + 6, CART_CLEARANCE = 0.05;
+    // a destructible building still wears its placement box here; the finalization refits it to its ground-bearing
+    // solids, which can stand up to ~0.8 m past that box (Skybridge's quonset hut, a porch, a step), so a cart keeps a
+    // metre more off a building's box than off a solid that is final already
+    const BUILDING_REFIT_MARGIN_M = 1;
+    const buildings = new Set<CollisionRecord>();
+    for (const record of destructibles) if (record.ob && DESTRUCTIBLE_BUILDING_TYPES[record.kind]) buildings.add(record.ob);
+    const buildingPolys = (ob: CollisionRecord): FootprintPolygon[] => {
+      const shape = ob.shape2;
+      if (shape?.kind === 'obb') {
+        return shapePolygons({ ...ob, shape2: { ...shape, hw: shape.hw + BUILDING_REFIT_MARGIN_M, hl: shape.hl + BUILDING_REFIT_MARGIN_M } });
+      }
+      return shapePolygons(ob).map((poly) => {
+        let cx = 0, cz = 0;
+        for (const [px, pz] of poly) { cx += px; cz += pz; }
+        cx /= poly.length; cz /= poly.length;
+        return poly.map(([px, pz]) => {
+          const d = Math.hypot(px - cx, pz - cz) || 1, grow = (BUILDING_REFIT_MARGIN_M * Math.SQRT2) / d;
+          return [px + (px - cx) * grow, pz + (pz - cz) * grow] as const;
+        });
+      });
+    };
+    const bodyAt = (record: DestructibleRecord, x: number, z: number): FootprintPolygon => {
+      const type = LOCAL_TYPES[record.kind];
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw), out: [number, number][] = [];
+      const hull = type.bodyHull?.length ? type.bodyHull
+        : [-(type.hw ?? type.r), -(type.hl ?? type.r), type.hw ?? type.r, -(type.hl ?? type.r), type.hw ?? type.r, type.hl ?? type.r, -(type.hw ?? type.r), type.hl ?? type.r];
+      for (let k = 0; k + 1 < hull.length; k += 2) {
+        const lx = hull[k] * record.sc, lz = hull[k + 1] * record.sc;
+        out.push([x + lx * c + lz * s, z - lx * s + lz * c]);
+      }
+      return out;
+    };
+    type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null };
+    const nearOf = new Map<DestructibleRecord, Near[]>();
+    for (const cart of carts) {
+      const near: Near[] = [];
+      const x0 = cart.x - reach, x1 = cart.x + reach, z0 = cart.z - reach, z1 = cart.z + reach;
+      for (const list of [obstacles, trees] as const) {
+        for (const ob of list) {
+          if (ob === cart.ob || ob === cart.col || ob.max[0] < x0 || ob.min[0] > x1 || ob.max[2] < z0 || ob.min[2] > z1) continue;
+          const owner = parked.get(ob) ?? null;
+          near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : shapePolygons(ob), parked: owner });
+        }
+      }
+      nearOf.set(cart, near);
+    }
+    // the cart's body at a seat against what stands near it: a vehicle or a cart keeps the parked clearance, the rest
+    // a hand's breadth; `seen` collects each meeting's way out
+    const meets = (cart: DestructibleRecord, x: number, z: number, seen?: (nx: number, nz: number, depth: number) => void) => {
+      const body = bodyAt(cart, x, z);
+      let met = false;
+      for (const n of nearOf.get(cart)!) {
+        if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
+        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE : CART_CLEARANCE;
+        for (const poly of n.polys ?? shapePolygons(n.ob)) {
+          const g = polygonGap(body, poly);
+          if (g.gap >= clearance) continue;
+          if (!seen) return true;
+          met = true;
+          seen(g.nx, g.nz, clearance - g.gap);
+        }
+      }
+      return met;
+    };
+    group.userData.cartSeats = seatCartsClear(carts, {
+      blocked: (cart, x, z) => meets(cart, x, z),
+      away: (cart) => {
+        let ax = 0, az = 0;
+        meets(cart, cart.x, cart.z, (nx, nz, depth) => { ax += nx * depth; az += nz * depth; });
+        return [ax, az];
+      },
+      seatOk: (cart, x, z) => {
+        if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
+        if (heightField.getNormalAt(x, z).y < Math.min(0.9, heightField.getNormalAt(cart.x, cart.z).y - 0.02)) return false;
+        if (heightField.getGroundType(x, z) === 'soft' && heightField.getGroundType(cart.x, cart.z) !== 'soft') return false;
+        for (const pad of pads) {
+          if (Math.hypot(x - pad.x, z - pad.z) < Math.min(24, Math.hypot(cart.x - pad.x, cart.z - pad.z))) return false;
+        }
+        const type = LOCAL_TYPES[cart.kind], hw = (type.hw ?? type.r) * cart.sc, hl = (type.hl ?? type.r) * cart.sc;
+        if (!boxClearOfRoadCore(heightField, x, z, hw + 0.05, hl + 0.05, cart.yaw)) return false;
+        // its own lot: the way from its seat crosses nothing it did not already stand in
+        const steps = Math.ceil(Math.hypot(x - cart.x, z - cart.z) / 0.1);
+        for (const n of nearOf.get(cart)!) {
+          if (n.parked || collisionFootprintContainsPoint(n.ob, cart.x, cart.z)) continue;
+          for (let k = 1; k <= steps; k++) {
+            const t = k / steps;
+            if (collisionFootprintContainsPoint(n.ob, cart.x + (x - cart.x) * t, cart.z + (z - cart.z) * t)) return false;
+          }
+        }
+        return true;
+      },
+      move: (cart, x, z) => relocateParkedVehicleRecord(destructibleContext, cart, x, z),
+      drop: (cart) => dropParkedVehicleRecord(destructibleContext, cart),
+    });
+  }
+  seatCartRecords();
 
   // -------------------------------------------------------------------------
   // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron

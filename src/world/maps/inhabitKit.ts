@@ -37,6 +37,8 @@ export interface DestructiblePropType {
   broken: PropBuilder | null;
   hw?: number;
   hl?: number;
+  /** The map-vehicles lane (2026-10-06): a cart's body plan (cartKit.ts CartFootprint hull), local, flat [x, z, ...]. */
+  bodyHull?: readonly number[];
   shape?: 'circle';
   collisionR?: number;
   groundR?: number;
@@ -1797,6 +1799,7 @@ function cartEntry(kind: keyof typeof CART_RECORD_FIELDS): DestructiblePropType 
     hw: { enumerable: true, get: () => receipt.footprint().hw },
     hl: { enumerable: true, get: () => receipt.footprint().hl },
     contactBand: { enumerable: true, get: () => receipt.footprint().contactBand },
+    bodyHull: { enumerable: true, get: () => receipt.footprint().hull },
   });
 }
 
@@ -1872,6 +1875,7 @@ export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<str
       hw: { enumerable: true, get: () => override.hw },
       hl: { enumerable: true, get: () => override.hl },
       contactBand: { enumerable: true, get: () => override.contactBand },
+      bodyHull: { enumerable: true, get: () => override.bodyHull },
     });
   }
   return out;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
-  PARKED_VEHICLE_CLEARANCE, parkedFootprintsOverlap, separateParkedVehicles,
+  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, parkedFootprintsOverlap, polygonGap, seatCartsClear, separateParkedVehicles,
+  shapePolygons,
 } from './parkedVehicleSeparation.ts';
 import { createCollisionManifestLoader } from '../../server/collisionManifestLoader.ts';
 import { MAP_IDS } from './maps/index.ts';
@@ -8,7 +9,10 @@ import { MAP_IDS } from './maps/index.ts';
 // The map-vehicles lane (2026-10-05): parked vehicles never stand inside each other. The pass moves only the later
 // vehicle of an overlapping pair, along its heading, onto a seat clear of every other vehicle and judged clear by the
 // caller, or drops it; and no map's committed collision shard (which collisionManifestDrift holds to the tree) has
-// two vehicles within the clearance.
+// two vehicles within the clearance. 2026-10-06 (the integrator's ruling): no cart stands inside anything either — a
+// cart whose body meets an obstacle, a tree, a vehicle or another cart slides the smallest way that clears it, within
+// 3 m and on its own lot, or is dropped; on every shard the carts keep the vehicles' clearance and stand clear of every
+// other obstacle, and Longleaf's haycart, which stood in a fence line, stands beside it.
 
 const box = { hw: 0.9, hl: 2.1 };
 const car = (x, z, yaw = 0, kind = 'sedan') => ({ kind, x, z, yaw, sc: 1 });
@@ -78,9 +82,40 @@ assert.equal(parkedFootprintsOverlap(car(0, 0), box, diagonal, box), parkedFootp
   assert.equal(JSON.stringify(apart), before, 'nothing moves without an overlap');
 }
 
+// the cart seating: the separating axis and its gap; a record's footprint as polygons; a cart straddling a fence line
+// slides out on its own side by the smallest step that clears it, a boxed-in cart is dropped, a clear one stays
+{
+  const box = (cx, cz, hw, hl) => [[cx - hw, cz - hl], [cx + hw, cz - hl], [cx + hw, cz + hl], [cx - hw, cz + hl]];
+  let g = polygonGap(box(0, 0, 1, 1), box(3, 0, 1, 1));
+  assert.ok(Math.abs(g.gap - 1) < 1e-9 && g.nx === -1 && g.nz === 0, 'a 1 m gap, the first box leaving the second to -x');
+  g = polygonGap(box(0, 0.2, 1.1, 0.6), box(0, 0, 10, 0.05));
+  assert.ok(Math.abs(g.gap + 0.45) < 1e-9 && g.nz === 1, 'a cart 0.45 m into a fence leaves it the short way');
+  const obb = shapePolygons({ min: [-1, 0, -2], max: [1, 1, 2], shape2: { kind: 'obb', cx: 0, cz: 0, hw: 1, hl: 2, yaw: 0 } })[0];
+  assert.deepEqual(obb.map(([x, z]) => [Math.round(x), Math.round(z)]), [[-1, -2], [1, -2], [1, 2], [-1, 2]], 'an OBB as its corners');
+  const compound = shapePolygons({ min: [0, 0, 0], max: [1, 1, 1], shape2: { kind: 'compound', cx: 0, cz: 0, parts: [
+    { kind: 'circle', cx: 0, cz: 0, r: 1 }, { kind: 'convex', cx: 0, cz: 0, points: [0, 0, 1, 0, 0, 1] }] } });
+  assert.equal(compound.length, 2); assert.equal(compound[0].length, 12); assert.equal(compound[1].length, 3);
+  const fence = box(0, 0, 10, 0.05), body = (x, z) => box(x, z, 1.1, 0.6);
+  const run = (cart, opts) => seatCartsClear([cart], { blocked: (c, x, z) => polygonGap(body(x, z), fence).gap < 0.05,
+    away: (c) => { const q = polygonGap(body(c.x, c.z), fence); return [q.nx, q.nz]; },
+    seatOk: (c, x, z) => z > 0, move: (c, x, z) => { c.x = x; c.z = z; }, drop: (c) => { c.dropped = true; }, ...opts });
+  const cart = { kind: 'haycart', x: 0, z: 0.2, yaw: Math.PI / 2, sc: 1 };
+  const receipt = run(cart);
+  assert.equal(receipt.slid.length, 1);
+  assert.ok(Math.abs(cart.x) < 1e-9 && cart.z > 0.65 && cart.z <= 0.2 + 1, `straight out on its own side, the least (z ${cart.z})`);
+  assert.deepEqual(run({ ...cart, x: 0, z: 0.2 }), receipt, 'no stream: the same seat every time');
+  const boxed = { kind: 'sled', x: 0, z: 0.2, yaw: 0, sc: 1 };
+  assert.equal(run(boxed, { seatOk: () => false }).dropped.length, 1, 'no seat within reach: dropped');
+  assert.ok(boxed.dropped);
+  const clear = { kind: 'handcart', x: 0, z: 5, yaw: 0, sc: 1 };
+  assert.equal(run(clear, { move: () => assert.fail('a clear cart stays') }).blocked, 0);
+  assert.equal(CART_SLIDE_MAX_M, 3, 'the ruling\'s reach');
+}
+
 // every map's committed collision shard: no two vehicles' ground footprints (the convex hull of their contact band)
-// come within the clearance (less a centimetre's packing slack)
-const VEHICLES = new Set(['sedan', 'wagon', 'pickup', 'van', 'jeep', 'truck', 'truckbox', 'truckflatbed']);
+// come within the clearance (less a centimetre's packing slack); since 2026-10-06 the carts are vehicles of the pass
+const CARTS = new Set(['handcart', 'haycart', 'sled']);
+const VEHICLES = new Set(['sedan', 'wagon', 'pickup', 'van', 'jeep', 'truck', 'truckbox', 'truckflatbed', ...CARTS]);
 function hull(points) {
   const p = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -128,5 +163,46 @@ for (const mapId of MAP_IDS) {
       `${mapId}: a ${a.r.k} and a ${b.r.k} stand ${g.toFixed(2)} m apart at (${a.r.b[0].toFixed(1)}, ${a.r.b[2].toFixed(1)})`);
   }
 }
+// and no cart's footprint stands in any other obstacle (a fence, a wall, firewood, a trough, a building, rubble, a rock,
+// a tree, a hedgehog): the pass seats each cart's whole body clear by 5 cm, its collision footprint lies inside that
+let carts = 0;
+const shardPolys = (record) => shapePolygons({ min: [record.b[0], 0, record.b[2]], max: [record.b[0], 0, record.b[2]],
+  shape2: decodeShape(record.s) });
+function decodeShape(s) {
+  if (!s) return undefined;
+  if (s[0] === 'm') return { kind: 'compound', cx: 0, cz: 0, parts: s.slice(1).map(decodeShape) };
+  if (s[0] === 'o') return { kind: 'obb', cx: s[1], cz: s[2], hw: s[3], hl: s[4], yaw: s[5] };
+  if (s[0] === 'c') return { kind: 'circle', cx: s[1], cz: s[2], r: s[3] };
+  return { kind: 'convex', cx: 0, cz: 0, points: s[0] === 'w' ? s.slice(3) : s.slice(1) };
+}
+for (const mapId of MAP_IDS) {
+  const obstacles = loader.get(mapId).obstacles;
+  for (const cart of obstacles.filter((r) => CARTS.has(r.k))) {
+    carts++;
+    const own = shardPolys(cart);
+    for (const other of obstacles) {
+      if (other === cart || VEHICLES.has(other.k)) continue;
+      if (Math.abs(other.b[0] - cart.b[0]) > 15 || Math.abs(other.b[2] - cart.b[2]) > 15) continue;
+      for (const a of own) for (const b of shardPolys(other)) {
+        const g = polygonGap(a, b).gap;
+        assert.ok(g >= -0.02, `${mapId}: a ${cart.k} at (${cart.b[0].toFixed(1)}, ${cart.b[2].toFixed(1)}) stands ${(-g).toFixed(2)} m into a ${other.k ?? 'solid'}`);
+      }
+    }
+  }
+}
+// the canonical case: Longleaf's haycart stood 0.03 m (its body more) into the fence line along its field (2026-10-06
+// shards); it now stands beside it, within the ruling's reach of its old seat
+{
+  const obstacles = loader.get('longleaf').obstacles;
+  const haycart = obstacles.filter((r) => r.k === 'haycart')
+    .sort((a, b) => Math.hypot(a.b[0] + 275.5, a.b[2] + 204.3) - Math.hypot(b.b[0] + 275.5, b.b[2] + 204.3))[0];
+  assert.ok(haycart && Math.hypot(haycart.b[0] + 275.5, haycart.b[2] + 204.3) <= CART_SLIDE_MAX_M, 'Longleaf\'s haycart is still near its seat');
+  const fences = obstacles.filter((r) => r.k === 'fenceplank' && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) < 8);
+  assert.ok(fences.length > 0, 'the fence line is there');
+  for (const fence of fences) for (const a of shardPolys(haycart)) for (const b of shardPolys(fence)) {
+    assert.ok(polygonGap(a, b).gap >= 0, 'clear of the fence line');
+  }
+}
 console.log(`parkedVehicleSeparation.selftest: the pass's footprint, order, seat and drop rules; ${vehicles} parked vehicles `
-  + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m`);
+  + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m; ${carts} carts, `
+  + 'none inside an obstacle; Longleaf\'s haycart beside its fence line');
