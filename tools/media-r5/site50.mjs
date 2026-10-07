@@ -19,6 +19,8 @@ import { worldModel } from './world-model.mjs';
 import { hullOf, waterBlocks } from './route-check.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
+/** A site still's longest exposure (ms): crisp at round six's camera speeds (siteScene). */
+export const STILL_EXPOSURE_MS = 8;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
 /** The site lens: a touch of streak; deep focus and no fringe (sets.mjs pictureFor), crisp edge to edge. */
 const SITE_LENS = { streaks: { amount: 0.22, length: 0.6 } };
@@ -532,6 +534,10 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   const world = modelOf(set.map), moments = world && scene.still ? stillMoments(scene, world, scene.still.tMs) : null;
   if (moments && moments[0] !== scene.still.tMs) scene.still = { ...scene.still, tMs: moments[0] };
   if (moments?.length > 1) scene.stillsExtra = moments.slice(1);
+  // Crisp stills (owner 2026-10-06: "weird blur ... remove that"). The table's 25 to 33 ms exposures came from round
+  // four's near-still cameras; round six's lens moves fast, so 25 ms smeared the whole 4K frame (more than twice the
+  // film's own 11 ms shutter). A still exposes STILL_EXPOSURE_MS at most: motion reads, the frame stays sharp.
+  if (scene.still && (scene.still.exposureMs ?? 0) > STILL_EXPOSURE_MS) scene.still = { ...scene.still, exposureMs: STILL_EXPOSURE_MS };
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },

@@ -17,7 +17,9 @@
 //   <id>-4k.png           the 4K still master; <id>-4k.jpg (q95) and <id>.webp (1920, q92) from it
 //   <id>.scene.json       the Studio scene the take was rendered from (map, hour, cast and paint, turrets, effects,
 //                         lens path); the still is the same scene at meta.still.tMs (owner 2026-10-02)
-//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters] [--loop-master] [--force]
+//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters] [--loop-master] [--force] [--stills-only]
+// --stills-only delivers the stills (and the scene) without the video and GIF encodes: for takes whose formats are
+// written and whose ProRes masters are gone (re-encoding them from the H.264 proxy would cost quality).
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 // --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays).
 import { execFileSync } from 'node:child_process';
@@ -60,10 +62,20 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   // a still by its milliseconds, and a name sort put a 1200 ms portrait before a 4380 ms still (2026-10-06)
   const sceneFile = join(renders, 'films', 'scenes', `${id}.json`), src = existsSync(sceneFile) ? JSON.parse(readFileSync(sceneFile, 'utf8')) : null;
   const stillAt = (ms) => pick(join(renders, 'stills', id, 'stills'), new RegExp(`-still-${Math.round(ms)}ms(-e\\d+ms)?\\.png$`));
-  const still = (src?.still ? stillAt(src.still.tMs) : null) ?? pick(join(renders, 'stills', id, 'stills'), /\.png$/);
-  const closeStill = src?.stillsExtra?.length ? stillAt(src.stillsExtra[0]) : null;
+  const designated = src?.still ?? src?.meta?.still;
+  const still = (designated ? stillAt(designated.tMs) : null) ?? pick(join(renders, 'stills', id, 'stills'), /\.png$/);
+  // the close portrait: the scene's stillsExtra; a scene resolved before 2026-10-06's still moments carries only
+  // meta.still, so then it is the other still the stills job rendered (it reads the builder's current scene)
+  const extra = src?.stillsExtra ?? src?.meta?.stillsExtra;
+  const stillDir = join(renders, 'stills', id, 'stills');
+  const others = existsSync(stillDir) ? readdirSync(stillDir).filter(f => /-still-\d+ms(-e\d+ms)?\.png$/.test(f)).map(f => join(stillDir, f)).filter(f => f !== still) : [];
+  const closeStill = extra?.length ? stillAt(extra[0]) : (others[0] ?? null);
   if (!master) { console.log(`${id}: no film yet`); continue; }
   const out = join(deliver, id);
+  const stillsOnly = flags.has('--stills-only');
+  const files = {};
+  let L = null, uhd = false;
+  if (!stillsOnly) {
   // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
   const done = existsSync(join(out, `${id}.mp4`)) && existsSync(join(out, `${id}-share.gif`)) && (!still || existsSync(join(out, `${id}-4k.png`)));
   const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
@@ -71,12 +83,12 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     console.log(`${id}: formats up to date`); continue;
   }
   mkdirSync(out, { recursive: true });
-  const D = probe(master), X = XFADE_MS / 1000, L = +(D - X).toFixed(3), uhd = heightOf(master) >= 2160;
+  const D = probe(master), X = XFADE_MS / 1000;
+  L = +(D - X).toFixed(3); uhd = heightOf(master) >= 2160;
   if (!(L >= 2)) throw new Error(`${id}: take of ${D}s is too short for a ${X}s crossfade`);
   // tail (L..D) dissolves into head (0..X); then the body (X..L): out(L-) = clip(L-) and out(0) = clip(L), so the wrap is continuous
   const loop = `[0:v]split=3[a][b][c];[a]trim=start=0:end=${X},setpts=PTS-STARTPTS[head];[b]trim=start=${X}:end=${L},setpts=PTS-STARTPTS[body];` +
     `[c]trim=start=${L}:end=${D},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
-  const files = {};
   for (const [key, suffix, post, enc, needsUhd] of VIDEO) {
     if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
@@ -95,6 +107,10 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   }
   ff('-i', master, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
   files.poster = `${id}/${id}.jpg`;
+  } else {
+    if (!existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
+    L = +(probe(join(out, `${id}.mp4`))).toFixed(3);
+  }
   const scene = join(renders, 'films', 'scenes', `${id}.json`);
   if (existsSync(scene)) { copyFileSync(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
   if (still) {
@@ -118,7 +134,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     writeFileSync(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
     Object.assign(files, { close4k: `${id}/${id}-close-4k.png`, close4kJpg: `${id}/${id}-close-4k.jpg`, close: `${id}/${id}-close.webp` });
   }
-  if (filmMaster && flags.has('--drop-film-masters')) unlinkSync(filmMaster);
+  if (filmMaster && flags.has('--drop-film-masters') && !stillsOnly) unlinkSync(filmMaster);
   const size = f => statSync(join(deliver, f)).size, mb = k => files[k] ? `${(size(files[k]) / 1e6).toFixed(1)} MB` : '—';
   rows.push({ id, loopS: L, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, size(f)])) });
   console.log(`${id}: loop ${L}s${uhd ? ' (2160p)' : ''}; 4k ${mb('mp4k')}, mp4 ${mb('mp4')}, webm ${mb('webm')}, mobile ${mb('mobile')}, gif ${mb('gif')}, share ${mb('gifShare')}${still ? ', still' : ', no still yet'}`);
@@ -126,7 +142,8 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
 // the index is rebuilt from the deliver folder itself, so overlapping runs (one per render chunk) never drop a shot
 const index = join(deliver, 'deliver-index.json');
 const KEYS = { master: '-loop-master.mov', mp4k: '-4k.mp4', mp4: '.mp4', webm: '.webm', mobile: '-mobile.mp4', gif: '.gif', gifShare: '-share.gif',
-  poster: '.jpg', still4k: '-4k.png', still4kJpg: '-4k.jpg', still: '.webp', scene: '.scene.json' };
+  poster: '.jpg', still4k: '-4k.png', still4kJpg: '-4k.jpg', still: '.webp', close4k: '-close-4k.png', close4kJpg: '-close-4k.jpg',
+  close: '-close.webp', scene: '.scene.json' };
 const merged = readdirSync(deliver).filter(d => /^s\d\d-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
   const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(deliver, id, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
   const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
