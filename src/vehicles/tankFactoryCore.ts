@@ -6686,6 +6686,11 @@ const CAMO_BUCKETS = new Set([
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
 ]);
+/** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
+const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
+  hullDetail: 'hullFittingPaint', hullPaintedDetail: 'hullFittingPaint',
+  turretDetail: 'turretFittingPaint', turretPaintedDetail: 'turretFittingPaint',
+});
 /** FSP-06 (tools/material-roles-audit.mjs): the material key a bucket merges into, or null for an unknown bucket.
  * `hull`/`barrel` carry the camouflage map; `wheels`/`detail`/`canvasCloth` are scheme-tinted solids; the rest are
  * fixed non-camouflage finishes. Read-only view of BUCKET_DEF for diagnostics. */
@@ -7139,9 +7144,14 @@ function* createTankOwnedSteps(
         ?? (activeDestructibleCluster
           ? (bucket.startsWith('turret') ? 'turret' : 'hull')
           : null);
+      // 2026-10-07 (tank-accessories round 4; wave 217 on the Merkava 4: "the smoke-grenade tubes render as bright
+      // polished chrome pipes"): a discharger tube authored into a camouflaged paint-only bucket takes the scheme's
+      // solid matte fitting paint (the camo bucket's clearcoat and 1.3 normal scale on a 4 cm tube read as chrome);
+      // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged).
+      const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
       const targetBucket = eraOwner
         ? `${eraOwner}ExternalArmor`
-        : bucket;
+        : smokeTube && SMOKE_TUBE_PAINT_BUCKET[bucket] ? SMOKE_TUBE_PAINT_BUCKET[bucket] : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
       partCensus?.(targetBucket, part, 'add');
       if (activeDestructibleCluster) {
