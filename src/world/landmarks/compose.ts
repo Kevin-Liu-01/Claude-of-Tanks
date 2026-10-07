@@ -241,6 +241,53 @@ function partList(parts: RegionalParts): THREE.BufferGeometry[] {
 const _matrix = new THREE.Matrix4(), _position = new THREE.Vector3(), _quaternion = new THREE.Quaternion(), _scale = new THREE.Vector3(1, 1, 1);
 const _up = new THREE.Vector3(0, 1, 0);
 
+/** A path's longest reach from a door to its road (m). */
+const APPROACH_REACH_M = 40;
+
+/**
+ * A piece's worn ground at its doors (types.ts LandmarkPlacement.approaches): for each door, a trodden apron (an open
+ * paving, ground 'veto': it refuses nothing, publishes no plot and leaves every record where it stood) the door's width
+ * and 2 m more, running out from the footprint's edge, and a worn path on from it straight along the door's facing to
+ * the road it meets within APPROACH_REACH_M — only where nothing stands between (no building, wall, fence or water): a
+ * path keeps to an existing gap and never cuts across a yard. In the world frame, for the queue.
+ */
+function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlacement, hw: number, hl: number, yaw: number,
+  obstacleStart: number): LandmarkPlacement[] {
+  if (!placement.approaches?.length) return [];
+  const before = ctx.obstacles.slice(0, obstacleStart);
+  const c = Math.cos(yaw), s = Math.sin(yaw), out: LandmarkPlacement[] = [];
+  const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
+  placement.approaches.forEach((door, k) => {
+    const u = door.u ?? 0, width = Math.max(0.8, door.width ?? 1.6), depth = Math.max(1, door.depth ?? 2.5);
+    const [lx, lz, nx, nz] = door.side === 'front' ? [u, hl, 0, 1] : door.side === 'back' ? [u, -hl, 0, -1]
+      : door.side === 'right' ? [hw, u, 1, 0] : [-hw, u, -1, 0];
+    const [px, pz] = toWorld(lx, lz), wx = nx * c + nz * s, wz = -nx * s + nz * c;
+    const heading = Math.atan2(wx, wz) * 180 / Math.PI, surface = door.surface ?? 'earth';
+    const label = placement.name ?? placement.kind;
+    // the apron: its ground clear of every other building (its own piece aside)
+    const ax = px + wx * depth / 2, az = pz + wz * depth / 2;
+    if (solidConflicts(before, ax, az, (width + 2) / 2, depth / 2, Math.atan2(wx, wz), ctx.hardKinds).hard) return;
+    out.push({ kind: 'path', x: ax, z: az, yawDeg: heading, ground: 'veto', seed: (placement.seed ?? 0) * 31 + 101 + k,
+      name: `${label}: the trodden ground at its ${door.side} door`, params: { length: depth, width: width + 2, surface } });
+    if (door.path === false) return;
+    // the path: straight out from the apron to the road's edge, through a gap only
+    const qx = px + wx * depth, qz = pz + wz * depth;
+    let reach = -1;
+    for (let d = 0.5; d <= APPROACH_REACH_M; d += 0.5) {
+      const x = qx + wx * d, z = qz + wz * d;
+      if ((ctx.heightField.getWaterMaskAt(x, z) ?? 0) > 0.05) break;
+      if (ctx.heightField._roadDist(x, z) < ROAD_CORE_M) { reach = d; break; }
+    }
+    if (reach < 1) return;
+    const cx = qx + wx * reach / 2, cz = qz + wz * reach / 2;
+    const found = solidConflicts(before, cx, cz, 0.9, reach / 2, Math.atan2(wx, wz), ctx.hardKinds);
+    if (found.hard || found.soft.length) return;
+    out.push({ kind: 'path', x: cx, z: cz, yawDeg: heading, ground: 'veto', seed: (placement.seed ?? 0) * 31 + 201 + k,
+      name: `${label}: the worn path from its ${door.side} door to the road`, params: { length: reach, width: 1.6, surface } });
+  });
+  return out;
+}
+
 /** Place the map's set pieces. A generator: one slice per piece. */
 export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice, LandmarkReceipt, void> {
   const receipt: LandmarkReceipt = { pieces: [], placed: 0, skipped: 0, triangles: 0 };
@@ -319,6 +366,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // that is all dressing (a square's paths and fence) publishes none
     const baseY = ground.y;
     let records = 0;
+    // (the obstacles the passes before this piece made: its approaches test their ground against these, not its own)
+    const obstacleStart = ctx.obstacles.length;
     if (hasStructure(parts)) try {
       let shell;
       const movement: CollisionRecord[] = [];
@@ -399,7 +448,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const [x, z] = toWorld(child.x, child.z);
       return { ...child, x, z, yawDeg: (placement.yawDeg ?? 0) + (child.yawDeg ?? 0), seed: (placement.seed ?? 0) * 31 + k + 1,
         name: child.name ?? (placement.name ? `${placement.name}: its ${child.kind}` : undefined) };
-    }));
+    }), ...composeApproaches(ctx, placement, hw, hl, yaw, obstacleStart));
     entry.records = records;
     entry.fall = +ground.spread.toFixed(2);
     receipt.triangles += entry.triangles;

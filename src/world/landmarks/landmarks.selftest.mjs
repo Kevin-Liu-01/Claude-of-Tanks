@@ -443,6 +443,41 @@ check('the mole and its light', () => {
   for (const g of geometries(parts)) g.dispose();
 }
 
+// ---------------------------------------------------------------------------------------------------------- approaches
+// (types.ts approaches; compose.ts composeApproaches): a door's trodden apron and its worn path to the road it faces —
+// paving only (no record, no plot, nothing refused or moved); the path laid only through a gap, never across a wall
+check('approaches', () => {
+  const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
+  const obstacles = [], published = [], vetoes = [];
+  // a wall module standing between the second granary's door and the road
+  obstacles.push({ kind: 'wallstone', crushable: true, min: [57, 0, 190], max: [63, 1.2, 190.6], shape2: { kind: 'obb', cx: 60, cz: 190.3, hw: 3, hl: 0.3, yaw: 0 } });
+  const ctx = { mapId: 'selftest', heightField: flat, spawns: [{ x: -400, z: -400 }, { x: 400, z: 400 }], obstacles, colliders: [],
+    architecture: null, snowCap: false, seed: 2002, tier: 'desktop', merge() {}, reserve() {}, addDestructible() {},
+    publish: (x, z, w, d, rot, kind) => published.push(kind), veto: (...a) => vetoes.push(a),
+    landmarks: [
+      { kind: 'granary', x: 0, z: 170, yawDeg: 0, ground: 'veto', name: 'the open store', approaches: [{ side: 'front', width: 2.6 }] },
+      { kind: 'granary', x: 60, z: 170, yawDeg: 0, ground: 'veto', name: 'the walled store', approaches: [{ side: 'front' }, { side: 'back', path: false }] },
+    ] };
+  const obstaclesBefore = obstacles.length;
+  const it = composeLandmarks(ctx); let st = it.next(); while (!st.done) st = it.next();
+  const receipt = st.value, by = (name) => receipt.pieces.find((p) => p.name === name);
+  const apron = by('the open store: the trodden ground at its front door'), path = by('the open store: the worn path from its front door to the road');
+  assert.equal(apron?.status, 'placed', 'the apron at the open store\'s door');
+  assert.equal(path?.status, 'placed', 'its path to the road');
+  assert.equal(by('the walled store: the trodden ground at its front door')?.status, 'placed', 'the walled store\'s apron');
+  assert.ok(!by('the walled store: the worn path from its front door to the road'), 'no path across the wall to the road');
+  assert.equal(by('the walled store: the trodden ground at its back door')?.status, 'placed', 'the back door\'s apron (path: false)');
+  assert.ok(!receipt.pieces.some((p) => p.name?.startsWith('the walled store: the worn path from its back')), 'path: false lays none');
+  // ground only: the two stores' own records and nothing more; the paving publishes no plot and vetoes nothing
+  const stores = receipt.pieces.filter((p) => p.kind === 'granary').reduce((n, p) => n + (p.records ?? 0), 0);
+  assert.ok(obstacles.length - obstaclesBefore <= stores, 'the approaches add no record');
+  assert.equal(published.filter((k) => k === 'path').length, 0, 'the paving publishes no plot');
+  // the path runs from the apron's edge to the road's core (z 200 - 3.5) along the door's facing
+  const [hw, hl] = landmarkFootprint({ kind: 'granary', x: 0, z: 170, params: {} });
+  void hw;
+  assert.ok(Math.abs(path.z - (170 + hl + 2.5 + (196.5 - (170 + hl + 2.5)) / 2)) < 0.6, `the path centred between the apron and the road (${path.z})`);
+});
+
 // ---------------------------------------------------------------------------------------------------------- composer
 {
   const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
