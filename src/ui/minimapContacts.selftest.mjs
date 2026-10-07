@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { minimapYawForHeading } from './minimapOrientation.ts';
+import { BattleKillLedger } from '../game/battleEventStats.ts';
 
 // Exercise the production HUD's retained contacts and event listeners without
 // constructing the rest of the DOM/WebGL presentation.
@@ -56,10 +57,11 @@ for(const event of ['tank:destroyed','mode:respawn']){
   const start=source.indexOf(`  on('${event}',`);
   const end=source.indexOf('\n  });',start)+6;
   assert.ok(start>=0&&end>start);
-  new Function('on','spotById','playerId','pushKill','reviveCountdown','showAlert','t',
+  // main's 8c1ed73c9: the handlers keep the battle kill ledger and the drone-target set
+  new Function('on','spotById','playerId','pushKill','reviveCountdown','showAlert','t','killLedger','teamById','lethalDroneTargets',
     stripTypeScriptTypes(source.slice(start,end)))(
     (name,fn)=>{listeners[name]=fn;},spotById,player.id,()=>{},
-    {onDestroyed(){},hide(){}},()=>{},()=>''
+    {onDestroyed(){},hide(){}},()=>{},()=>'',new BattleKillLedger(),new Map(),new Set()
   );
   seen=true;tick();assert.equal(spotById.get(enemy.id).ever,true);
   listeners[event]({id:enemy.id});
