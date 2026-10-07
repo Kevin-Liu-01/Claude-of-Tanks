@@ -494,11 +494,14 @@ const minersHouse: RegionalBuilder = (ctx) => {
 const saarWaterTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const half = Math.min(ctx.info.w, ctx.info.d) / 2;
-  const T = Math.max(1.6, half - 0.35), R = Math.max(1.2, Math.min(T - 0.6, 2.0)), H = 12.0, SEG = 16, turn = Math.PI / SEG;
-  sink.cylinder('stone', [0, -0.4, 0], 'y', 1.0, R + 0.25, SEG, {}, R + 0.2, true, turn);
-  sink.cylinder('stone', [0, 0.6, 0], 'y', H - 0.6, R, SEG, {}, R * 0.94, true, turn);
+  // the shaft on its plinth stand as the Ruhr kit's tower stood (its radius, its octagonal plinth, its 11.5 m head): the
+  // ground contact a tower's base offers the battle (structureCollision.ts) is unchanged, only the tank house's look is
+  // the Saar's (a 60-seed pacing control: the taller, narrower first draft's contact shortened the median 194 -> 170 s)
+  const T = Math.max(1.6, half - 0.35), R = Math.max(1.5, Math.min(2.2, half - 0.75)), H = 11.5, SEG = 16, turn = Math.PI / SEG;
+  sink.cylinder('stone', [0, -0.4, 0], 'y', 0.9, R + 0.25, 8, {}, R + 0.2, true, Math.PI / 8);
+  sink.cylinder('stone', [0, 0.5, 0], 'y', H - 0.5, R, SEG, {}, R * 0.94, true, turn);
   for (const y of [3.4, 7.0, 10.6]) {
-    const r = R * (1 - 0.06 * (y - 0.6) / (H - 0.6)) + 0.05;
+    const r = R * (1 - 0.06 * (y - 0.5) / (H - 0.5)) + 0.05;
     sink.cylinder(YELLOW_BRICK, [0, y, 0], 'y', 0.3, r, SEG, { decor: true }, r, true, turn);
   }
   // the corbel out to the drum, the drum, its sill band and cornice. The corbel starts 2 cm over the shaft's head, so
