@@ -449,11 +449,12 @@ layout turns about the centre: each deployment, valley, bench ramp, castle rock 
 Three lanes cross the middle: the valley floor through the town, and on each side the chimney field with the bench top
 beyond it. The zone discs stand on the town square and on the chimney fields' aprons (seated on their hints, 0.0 m).
 
-Its brief: separation 798 m, route stretch 1.033, 3 lanes, choke 780 m, sight median 92 m (long 0.036, close 0.54),
-cover 0.446 (poorest sector 0.243), hull-down 0.185, relief 4.54 m, orphans 0.034, nothing in the roads, objective
-symmetry 1.058. Two through roads cross in the junction square. Three strongpoint pairs (lookouts on the benches'
+Its brief (round 2, October 6: higher benches and valley sides cut into ravines, the street rows run on to 21
+buildings): separation 798 m, route stretch 1.033, 3 lanes, choke 780 m, sight median 88 m (long 0.033, close 0.56),
+cover 0.463 (poorest sector 0.272), hull-down 0.187, relief 5.13 m, orphans 0, nothing in the roads, objective
+symmetry 1.059. Two through roads cross in the junction square. Three strongpoint pairs (lookouts on the benches'
 ends, brawl posts at the valley heads, support camps below the town) stand within 60 m of a road, so they are not
-orphans. Pacing at eight seeds: median 240 s (168–350 s).
+orphans. Pacing at eight seeds: median 199 s (137–322 s); round 1's was 240 s (168–350 s).
 
 - **A kit that fills its plots narrows the streets.** Every kit building fills its base's reach (the coverage law).
   At the base plan's 7 m spacing pad the cappadocia kit's squared-tuff blocks closed the lanes between the minaret,
@@ -461,6 +462,13 @@ orphans. Pacing at eight seeds: median 240 s (168–350 s).
   and their opening route's waypoint behind the buildings (705, 392, 622 and 269 s). The yards were not the cause
   (without them 519, 392, 622 and 269 s). A 10 m pad (`spacingPad`) re-seats the same eighteen buildings with lanes a
   tank wide. Play a kit's town at more than four seeds before its shard is pinned.
+- **Block fill closes a valley town's long sight lines.** Round 2 first filled the blocks behind the street rows
+  (`blockFill`, 28 buildings). The long-sight share fell from 0.036 to 0.027, under the brief's 0.03. One fill court
+  also stood in the west road's core, because the fill keeps only its centre 11 m off a road. Shards regenerated per
+  variant put the loss on the fill (no fill: 0.032), not on the deeper chimney fields (0.028). The 8.5 m bowl tried in
+  the same round cost more still: from inside, it hid the valleys past its rim. The town grows along its street rows
+  instead, with no fill and the bowl at 6 m. A brief metric read off a stale shard only measures the terrain, so
+  regenerate the shard (`capture-world-collision-manifests --node`) before attributing a dressing change.
 
 ## Regional building kits
 

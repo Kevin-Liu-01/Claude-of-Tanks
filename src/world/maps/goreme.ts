@@ -24,6 +24,7 @@
 
 import { roundRoadBends } from './roadBends.ts';
 import type { RoadPoint } from './roadEndpoints.ts';
+import type { RockRoomsSite } from './rockRooms.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -31,17 +32,35 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const turned = <T extends { x: number; z: number }>(site: T): T => ({ ...site, x: -site.x, z: -site.z });
 
 /** The tuff tables: bedded walls over a talus apron, a broad cap, rills down the walls; each end a ramp. */
+// (round 2, gauntlet wave 136: "no fluted tuff walls or bench rims": the walls sheerer and their rills cut deeper)
 const benchGeology = () => ({
-  profile: 'butte' as const, wall: [0.4, 0.58] as const, apron: 0.26,
-  strata: { stepM: 3.4, riser: 0.42 }, outline: 0.22, rough: 0.7, gullies: { count: 2.6, depthM: 2.4, width: 0.42 },
+  profile: 'butte' as const, wall: [0.42, 0.55] as const, apron: 0.26,
+  strata: { stepM: 4.0, riser: 0.42 }, outline: 0.24, rough: 0.7, gullies: { count: 4, depthM: 3, width: 0.42 },
 });
 
 /** The castle rocks: tuff pinnacles, a near-level crown over sheer fluted walls and a talus skirt. */
+// (round 2, gauntlet wave 136: "a straight-sided grey drum ... ringed by white egg-shaped boulders": the plan lobed like
+// Uçhisar's, its alcoves deeper, half the boulders)
 const castleGeology = (flutes: number, bosses: number) => ({
-  profile: 'inselberg' as const, outline: 0.2, foot: 0.62, footVary: 0.12, apron: 0.24, rim: 0.82,
-  flutes: { count: flutes, depth: 0.32 }, bosses: { count: bosses, heightM: 3.5 }, rough: 0.9, boulders: 12, strata: { stepM: 3 },
+  profile: 'inselberg' as const, outline: 0.32, foot: 0.62, footVary: 0.14, apron: 0.24, rim: 0.82,
+  flutes: { count: flutes, depth: 0.4 }, bosses: { count: bosses, heightM: 3.5 }, rough: 0.9, boulders: 6, strata: { stepM: 3 },
   gullies: { count: 5, depthM: 1.4, width: 0.4 },
 });
+
+/** The castle rocks over the valley sides beside the middle, each the other's rotation. */
+const CASTLE_ROCKS = [{ x: -150, z: 80, rx: 26, rz: 23, height: 30 }, { x: 150, z: -80, rx: 26, rz: 23, height: 30 }] as const;
+/** The gate rocks at the valley heads, screening each deployment down the axis. */
+const GATE_ROCKS = [{ x: 6, z: -300, rx: 24, rz: 20, height: 18 }, { x: -6, z: 300, rx: 24, rz: 20, height: 18 }] as const;
+
+/**
+ * The rooms cut into the castle and gate rocks (rockRooms.ts, laid by the 'rockRooms' dressing kit): their doorways,
+ * windows, dovecotes and built fronts, and the passage cut through each gate rock along the valley's axis, its mouth on
+ * both faces (round 2, gauntlet wave 136: "a straight-sided grey drum", "no gate, passage or doorway cut through it").
+ */
+export const GOREME_ROCK_ROOMS: readonly RockRoomsSite[] = [
+  ...CASTLE_ROCKS.map((rock) => ({ ...rock, apron: 0.24 })),
+  ...GATE_ROCKS.map((rock) => ({ ...rock, apron: 0.24, gateBearings: [Math.atan2(-rock.z, -rock.x), Math.atan2(rock.z, rock.x)] })),
+];
 
 const westRoad: readonly RoadPoint[] = [[-470, -262], [-396, -258], [-318, -244], [-246, -206], [-176, -150], [-112, -92], [-58, -40], [0, 0]];
 const southRoad: readonly RoadPoint[] = [[-88, -470], [-74, -390], [-60, -300], [-44, -200], [-24, -100], [0, 0]];
@@ -74,22 +93,24 @@ export default {
     landforms: [
       // the plateau's two benches along the valley sides, each running out on a ramp at both ends, so its top is a
       // lane from one valley head to the other (a ridge at yaw 90 runs along z)
-      { kind: 'ridge', x: -350, z: -14, length: 470, width: 70, height: 17, yawDeg: 90, corridorScale: 1, settlementScale: 1,
+      // (round 2: 17 -> 20 m, the valley's rims standing over it)
+      { kind: 'ridge', x: -350, z: -14, length: 470, width: 70, height: 20, yawDeg: 90, corridorScale: 1, settlementScale: 1,
         geology: benchGeology() },
-      { kind: 'ridge', x: 350, z: 14, length: 470, width: 70, height: 17, yawDeg: 90, corridorScale: 1, settlementScale: 1,
+      { kind: 'ridge', x: 350, z: 14, length: 470, width: 70, height: 20, yawDeg: 90, corridorScale: 1, settlementScale: 1,
         geology: benchGeology() },
       // the valley sides between the floor and the benches, rising toward the tables (the chimney fields stand on them)
-      { kind: 'ridge', x: -212, z: -6, length: 430, width: 64, height: 5.5, yawDeg: 90, corridorScale: 0.8,
-        geology: { outline: 0.25, rough: 0.6, gullies: { count: 3.2, depthM: 1.6, width: 0.5 } } },
-      { kind: 'ridge', x: 212, z: 6, length: 430, width: 64, height: 5.5, yawDeg: 90, corridorScale: 0.8,
-        geology: { outline: 0.25, rough: 0.6, gullies: { count: 3.4, depthM: 1.5, width: 0.48 } } },
+      // (round 2, gauntlet wave 136: "a broad flat basin ... smooth sand dunes": the valley sides rise further and the rain
+      // has cut them into ravines between spurs, the ground the chimney fields stand on)
+      { kind: 'ridge', x: -212, z: -6, length: 430, width: 64, height: 8, yawDeg: 90, corridorScale: 0.8,
+        geology: { outline: 0.28, rough: 0.8, gullies: { count: 6, depthM: 2.6, width: 0.42 } } },
+      { kind: 'ridge', x: 212, z: 6, length: 430, width: 64, height: 8, yawDeg: 90, corridorScale: 0.8,
+        geology: { outline: 0.28, rough: 0.8, gullies: { count: 6.4, depthM: 2.5, width: 0.42 } } },
       // the castle rocks over the valley sides beside the middle (each the other's rotation)
-      { kind: 'knoll', x: -150, z: 80, rx: 26, rz: 23, height: 30, corridorScale: 1, settlementScale: 1, geology: castleGeology(12, 2) },
-      { kind: 'knoll', x: 150, z: -80, rx: 26, rz: 23, height: 30, corridorScale: 1, settlementScale: 1, geology: castleGeology(13, 2) },
+      ...CASTLE_ROCKS.map((rock, i) => ({ kind: 'knoll' as const, ...rock, corridorScale: 1, settlementScale: 1, geology: castleGeology(12 + i, 2) })),
       // the gate rocks at the valley heads, screening each deployment down the axis
-      { kind: 'knoll', x: 6, z: -300, rx: 24, rz: 20, height: 18, corridorScale: 1, settlementScale: 1, geology: castleGeology(9, 1) },
-      { kind: 'knoll', x: -6, z: 300, rx: 24, rz: 20, height: 18, corridorScale: 1, settlementScale: 1, geology: castleGeology(10, 1) },
-      // the bowl where the two valleys meet
+      ...GATE_ROCKS.map((rock, i) => ({ kind: 'knoll' as const, ...rock, corridorScale: 1, settlementScale: 1, geology: castleGeology(9 + i, 1) })),
+      // the bowl where the two valleys meet (round 2 kept it at 6 m: 8.5 m hid the valleys past its rim from inside it,
+      // and the layout brief's long sight lines fell under their band)
       { kind: 'basin', x: 0, z: 0, rx: 180, rz: 168, height: -6.0, corridorScale: 0.7, geology: { outline: 0.2, rough: 0.4 } },
     ],
   },
@@ -100,9 +121,9 @@ export default {
   },
   splat: {
     // the tuff's cream and rose: the procedural fallback's tones (the rendered albedo is the sourced 'goreme' row)
-    grassTone: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.42), clamp01(0.22 + l * 0.66)],
-    dirtTone: (h: number, s: number, l: number) => [0.07, clamp01(s * 0.36), clamp01(0.26 + l * 0.52)],
-    rockTone: (h: number, s: number, l: number) => [0.07, clamp01(s * 0.32), clamp01(0.52 + (l - 0.5) * 0.6)],
+    grassTone: (_h: number, s: number, l: number) => [0.12, clamp01(s * 0.42), clamp01(0.22 + l * 0.66)],
+    dirtTone: (_h: number, s: number, l: number) => [0.07, clamp01(s * 0.36), clamp01(0.26 + l * 0.52)],
+    rockTone: (_h: number, s: number, l: number) => [0.07, clamp01(s * 0.32), clamp01(0.52 + (l - 0.5) * 0.6)],
     sourcedPalette: 'goreme',
     tintA: [1.02, 0.96, 0.9], tintB: [0.9, 0.84, 0.8], tintC: [1.04, 0.92, 0.84],
     roadTint: [0.8, 0.74, 0.66], strata: 0.16, sandMacro: 0.2, midRelief: 0.9,
@@ -113,15 +134,21 @@ export default {
     species: ['poplar', 'oak', 'acacia'], clusterMix: [['poplar', 0.4], ['oak', 0.35], ['acacia', 0.25]],
     loneMix: [['acacia', 0.45], ['oak', 0.35], ['poplar', 0.2]], rimMix: [['oak', 0.5], ['acacia', 0.35], ['poplar', 0.15]],
     clusterCount: 10, loneCount: 22, rimCount: 16, grassDensity: 0.28, bushCount: 0.4, bushSpecies: 'acacia',
-    grassTexTone: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.45), clamp01(l * 0.92 + 0.08)],
-    tuftTone: (h: number, s: number, l: number) => [0.12, 0.26, clamp01(l * 0.7 + 0.12)],
+    grassTexTone: (_h: number, s: number, l: number) => [0.12, clamp01(s * 0.45), clamp01(l * 0.92 + 0.08)],
+    tuftTone: (_h: number, _s: number, l: number) => [0.12, 0.26, clamp01(l * 0.7 + 0.12)],
   },
   props: {
     // the Cappadocian kit (regional/cappadocia.ts): squared-tuff houses, the courtyard gates, the caravanserai, the
     // minaret, rooms cut into fairy chimneys and outcrops
     architecture: 'cappadocia',
+    // (round 2, gauntlet wave 136: "the cave town is about fifteen tiny white boxes round an empty dirt plaza", "a dozen
+    // small buildings ... tens of metres apart": the street rows run on with more houses and courts, as many as their
+    // frontage seats, and most houses are the honey-cream squared tuff rather than white render. The blocks behind the
+    // rows stay open: filled, they closed the valley's long sight lines under the layout brief's band, 0.036 -> 0.027 of
+    // rays at 300 m)
     plan: ['adobe', 'compound', 'minaret', 'market', 'marketRow', 'adobe', 'compound', 'tower', 'adobe', 'ruin',
-      'caravanserai', 'adobe', 'compoundSouk', 'bathhouse', 'adobe', 'ruin', 'compound', 'adobe'],
+      'caravanserai', 'adobe', 'compoundSouk', 'bathhouse', 'adobe', 'ruin', 'compound', 'adobe',
+      'adobe', 'compound', 'adobe', 'adobe', 'ruin', 'adobe', 'compound', 'adobe', 'adobe', 'compound', 'adobe', 'adobe'],
     destructibleBuildings: ['guardpost', 'deserttent', 'commandtent'],
     buildingLat: [16.5, 2], destructibleBuildingLat: [16, 3],
     // the strongpoints in rotated pairs (each the other's turn about the centre), at least 180 m apart and within 60 m of
@@ -138,7 +165,9 @@ export default {
     // (the cappadocia kit's buildings fill their whole plots: at the base plan's 7 m pad the squared-tuff blocks closed
     // the lanes between the minaret, the arasta and the courts, and the pacing seeds' bots circled them for ten minutes;
     // the town's lanes are a tank wide again at 10 m)
-    wallStyle: 'adobe', wallStoneChance: 0.5, sideSkip: 0.14, spacingPad: 10,
+    wallStyle: 'adobe', wallStoneChance: 0.7, sideSkip: 0.14, spacingPad: 10,
+    // (round 2: the rooms cut into the castle and gate rocks, mapKits.ts dressMapExtras -> rockRooms.ts)
+    extraKits: ['rockRooms'],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: false,
     rocks: 120, outcrops: 20, craters: 30, rubblePiles: 10, sandbagLines: 10, hedgehogs: 6,
     tankWrecks: { era: 'modern', count: 4, debris: true, ids: ['m60a3', 't72b3m', 'm1a1', 'leo2a7v'] },
@@ -146,18 +175,20 @@ export default {
   // the fairy chimneys (sceneryRocks.ts 'chimney' on the 'tuff' geology): the chimney fields on the valley sides, two
   // discs a side (each the other's rotation), clear of the zone aprons and the castle rocks, and a cluster beside each
   // gate rock; every chimney its own height, girth, profile, flutes and cap
+  // (round 2, gauntlet wave 136: "identical smooth pink pins with puck caps, each alone on flat ground": half again as
+  // many, on the ravined slopes rather than anywhere in the disc, more of them twins and triplets on a shared mound)
   scenery: {
     rockFields: [
-      { geology: 'tuff' as const, x: -206, z: -118, radius: 92, count: 15, size: [2.4, 6.0] as const, slopeBias: 0.15, talusDeg: 32,
+      { geology: 'tuff' as const, x: -206, z: -118, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
         avoid: [[-214, 12, 40], [-150, 80, 34]] as const, name: 'the west chimney field (south)' },
-      { geology: 'tuff' as const, x: -206, z: 122, radius: 92, count: 15, size: [2.4, 6.0] as const, slopeBias: 0.15, talusDeg: 32,
+      { geology: 'tuff' as const, x: -206, z: 122, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
         avoid: [[-214, 12, 40], [-150, 80, 34]] as const, name: 'the west chimney field (north)' },
-      { geology: 'tuff' as const, x: 206, z: 118, radius: 92, count: 15, size: [2.4, 6.0] as const, slopeBias: 0.15, talusDeg: 32,
+      { geology: 'tuff' as const, x: 206, z: 118, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
         avoid: [[214, -12, 40], [150, -80, 34]] as const, name: 'the east chimney field (north)' },
-      { geology: 'tuff' as const, x: 206, z: -122, radius: 92, count: 15, size: [2.4, 6.0] as const, slopeBias: 0.15, talusDeg: 32,
+      { geology: 'tuff' as const, x: 206, z: -122, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
         avoid: [[214, -12, 40], [150, -80, 34]] as const, name: 'the east chimney field (south)' },
-      { geology: 'tuff' as const, x: 74, z: -268, radius: 40, count: 5, size: [2.2, 4.8] as const, slopeBias: 0.1, talusDeg: 32, name: 'the south gate chimneys' },
-      { geology: 'tuff' as const, x: -74, z: 268, radius: 40, count: 5, size: [2.2, 4.8] as const, slopeBias: 0.1, talusDeg: 32, name: 'the north gate chimneys' },
+      { geology: 'tuff' as const, x: 74, z: -268, radius: 40, count: 8, size: [2.0, 5.4] as const, slopeBias: 0.35, talusDeg: 32, name: 'the south gate chimneys' },
+      { geology: 'tuff' as const, x: -74, z: 268, radius: 40, count: 8, size: [2.0, 5.4] as const, slopeBias: 0.35, talusDeg: 32, name: 'the north gate chimneys' },
     ],
   },
   horizon: {

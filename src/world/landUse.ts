@@ -158,7 +158,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // the valley floors of Cappadocia (Göreme, the Pigeon and Love valleys): small plots on the pale volcanic sand — vines
   // trained low, stubble and ripe wheat, dry grazing gone to cured grass, a little green pasture by the stream; no dark
   // plough (the tuff soil is pale) and no walls (margins between the plots)
-  tuff: [[12, 0.30], [5, 0.20], [17, 0.18], [1, 0.12], [0, 0.12], [2, 0.08], [13, 0.0]],
+  // (Chimney Valley round 2, gauntlet wave 136: "a dead-flat grid of pastel field rectangles": the vines lead, the pale
+  // stubble and cured grass give way)
+  tuff: [[12, 0.42], [5, 0.12], [17, 0.14], [1, 0.10], [0, 0.14], [2, 0.08], [13, 0.0]],
 });
 
 /** Each region's field boundary. */
@@ -248,9 +250,11 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // Chimney Valley (goreme: Göreme in Cappadocia): small plots along the two valleys (their axis runs north-south, the
   // blocks along it), apricot and poplar lines on some short boundaries, tracks between some rows
+  // (round 2, gauntlet wave 136: "a broad flat basin of pastel field rectangles": the plots smaller, bent harder and
+  // half as strong, so the valley reads as the tuff's ground with vineyards on it rather than a cropped plain)
   goreme: {
-    strength: 0.85, heading: Math.PI / 2, blockU: 72, blockV: 44, maxSplit: 3, marginM: 1.1, trackShare: 0.3, hedgeShare: 0.15,
-    warpM: 14, region: 'tuff', salt: 101,
+    strength: 0.45, heading: Math.PI / 2, blockU: 52, blockV: 30, maxSplit: 3, marginM: 1.4, trackShare: 0.25, hedgeShare: 0.15,
+    warpM: 24, region: 'tuff', salt: 101,
   },
 });
 

@@ -236,11 +236,11 @@
       "concealers": 4093
     },
     "goreme": {
-      "bytes": 1086482,
-      "sha256": "94c0fb0bcd44cde160747a14cac2f4c4f60d82eab0d67f21178ef229ba724082",
-      "obstacles": 1587,
-      "colliders": 1488,
-      "concealers": 670
+      "bytes": 1210698,
+      "sha256": "5423b3b13cf2b3e73fd5624172e3535e0495dffb998d39fc4350efd1373ac92f",
+      "obstacles": 1636,
+      "colliders": 1571,
+      "concealers": 692
     }
   }
 }

@@ -71,6 +71,12 @@ const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
 });
 
+/** A walnut's dusty summer green on the Anatolian plateau: half a leaf's saturation, a shade paler (Chimney Valley). */
+const WALNUT_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.2,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.23, Math.min(1, s * 0.5), Math.min(1, l * 1.06 + 0.02)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -123,7 +129,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // Göreme's valleys (Chimney Valley): Lombardy poplars along the stream beds (the poplar slot as it is), walnuts in the
   // orchards (the oak slot as the chestnut's broad crown) and the silver-leaved Russian olive, iğde, of every Anatolian
   // stream bank (the acacia slot as an olive in its silver); the steppe's low scrub as broom
-  goreme: B('Göreme and its valleys, Cappadocia', { oak: { form: 'chestnut' }, acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'broom'),
+  // (Chimney Valley round 2, gauntlet wave 136: "saturated cartoon-green broadleaf trees": the walnuts' crowns the dusty,
+  // half-saturated green of an Anatolian summer)
+  goreme: B('Göreme and its valleys, Cappadocia', { oak: { form: 'chestnut', colour: WALNUT_FOLIAGE }, acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'broom'),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */

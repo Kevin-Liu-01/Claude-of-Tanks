@@ -87,7 +87,9 @@ const GEOLOGY_TONE: Readonly<Record<RockGeology, readonly [number, number, numbe
   sandstone: [0.035, 0.42, 0.42], // Buntsandstein / desert red
   limestone: [0.11, 0.08, 0.66], // pale grey-cream
   slate: [0.58, 0.07, 0.27],     // blue-grey
-  tuff: [0.085, 0.24, 0.74],      // Cappadocia's ignimbrite: cream, its bands rose and grey-white (the map-revival lane)
+  // Cappadocia's ignimbrite: cream, its bands rose and grey-white (the map-revival lane; Chimney Valley round 2, wave
+  // 136's "identical smooth pink pins": a cream that leans less to rose, the rose left to the bands)
+  tuff: [0.1, 0.17, 0.76],
 });
 /** A piece's layer at or past this is the hard cap rock over a soft formation (a fairy chimney's basalt cap). */
 const CAP_LAYER = 100;
@@ -385,7 +387,7 @@ function finish(
           // the rain's streaks down the flutes, the dust at the foot
           const band = Math.sin((y - gy) * 2.1 + mott * 1.6 + salt * 3.1) + 0.6 * Math.sin((y - gy) * 0.83 + salt * 1.7);
           const rose = smooth(0.35, 1.1, band), white = smooth(0.4, 1.2, -band);
-          h += -0.045 * rose; s += 0.1 * rose - 0.08 * white; l *= 1 + 0.07 * white - 0.05 * rose;
+          h += -0.05 * rose; s += 0.12 * rose - 0.08 * white; l *= 1 + 0.09 * white - 0.08 * rose;
           const vertical = 1 - Math.abs(ny);
           const streak = smooth(0.45, 0.85, noise.noise((x + z) * 0.9 + salt, y * 0.12) * 0.5 + 0.5) * vertical;
           l *= 1 - streak * 0.1;
@@ -782,7 +784,8 @@ function chimneyCone(x: number, z: number, foot: number, H: number, R: number, p
   const flutes = 5 + Math.floor(rng() * 8), fluteDepth = 0.05 + rng() * 0.12, flutePow = 2 + rng() * 3, phase = rng() * 6.283;
   const seed = rng() * 100;
   const leanA = rng() * Math.PI * 2, lean = (rng() * rng()) * 0.05;
-  const capT = capped ? Math.max(0.5, Math.min(1.4, H * (0.05 + rng() * 0.04))) : 0;
+  // (Chimney Valley round 2, wave 136: "puck caps": the hard bed a slab of real thickness, overhanging the neck well)
+  const capT = capped ? Math.max(0.7, Math.min(2.0, H * (0.07 + rng() * 0.05))) : 0;
   const coneH = H - capT;
   const neck = capped ? 0.2 + rng() * 0.14 : 0;
   const ys: number[] = [];
@@ -815,7 +818,7 @@ function chimneyCone(x: number, z: number, foot: number, H: number, R: number, p
     // the cap: a slab of the hard bed over the neck, wider than it, a little tilted, its rim broken
     const [ox, oz] = offsetAt(rings - 1);
     const neckR = R * neck;
-    const capR = Math.max(neckR * 1.7, R * (0.3 + rng() * 0.22));
+    const capR = Math.max(neckR * 2.1, R * (0.4 + rng() * 0.3));
     const cap = beddedSlab(capR, capR * (0.72 + rng() * 0.22), capT, 0.08, sides, noise, seed + 11,
       { roughness: 0.24, overhang: 0.08, squareness: 2.2, topWobble: 0.1 });
     pieces.push({ geometry: place(cap, x + ox, ys[rings - 1] - capT * 0.15, z + oz, rng() * 6.283, (rng() - 0.5) * 0.12, (rng() - 0.5) * 0.12),
@@ -827,16 +830,17 @@ function fairyChimney(spec: RockFormationSpec, ground: RockGround, noise: Simple
   // Göreme's fairy chimneys: the soft ignimbrite eroded into cones wherever a cap of the harder bed shielded it; each
   // its own height, girth, profile and flutes. A group shares one mound of the tuff it rose from; a chimney whose cap
   // fell keeps a bare point and its cap lies broken at the foot.
-  const R = spec.radius, H = spec.height * (0.8 + rng() * 0.4);
+  // (round 2, wave 136: "identical ... pins": a wider spread of heights, and groups more often than lone cones)
+  const R = spec.radius, H = spec.height * (0.6 + rng() * 0.8);
   const { min } = lowestGround(ground, spec.x, spec.z, R * 0.6);
-  const profiles: readonly ChimneyProfile[] = ['cone', 'cone', 'bell', 'pillar', 'waisted'];
+  const profiles: readonly ChimneyProfile[] = ['cone', 'bell', 'pillar', 'waisted', 'pillar'];
   const pick = () => profiles[Math.floor(rng() * profiles.length)];
   const kind = rng();
-  if (kind < 0.62) {
+  if (kind < 0.42) {
     chimneyCone(spec.x, spec.z, min, H, R, pick(), true, noise, rng, mobile, pieces);
-  } else if (kind < 0.9) {
+  } else if (kind < 0.88) {
     // twins or a triplet on a shared mound, each its own height and lean
-    const n = kind < 0.8 ? 2 : 3, yaw = rng() * Math.PI * 2;
+    const n = kind < 0.68 ? 2 : 3, yaw = rng() * Math.PI * 2;
     const mound = lathe([min - 0.6, min + 0.4, min + H * 0.12], mobile ? 10 : 16,
       (k, a) => R * [1.25, 1.05, 0.7][k] * (1 + noise.noise(Math.cos(a) * 1.2 + spec.x, Math.sin(a) * 1.2) * 0.1), () => [0, 0], min + H * 0.12);
     pieces.push({ geometry: place(mound, spec.x, 0, spec.z, 0), layer: -1, standing: true });
