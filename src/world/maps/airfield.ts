@@ -281,6 +281,17 @@ export default {
     plannedSites: [...CARGO_SIDE, TERMINAL_HANGAR, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
     // the taxiway centrelines and the apron stands' paint (world/groundMarkings.ts; above)
     groundMarkings: APRON_MARKINGS,
+    // The landmarks lane (round 3, 2026-10-07; src/world/landmarks/wrecks.ts aircraftWreck; the seat agreed with the
+    // map-revival lane, whose round 5 lays this plot): the Antonov An-225 Mriya as Hostomel's hangar left it in
+    // February 2022, at true scale — one airframe 84 m long with its 88.4 m span, the fuselage burnt through amidships
+    // between its glazed nose and its twin-fin H-tail, the wing roots collapsed and the six engines fallen — inside the
+    // ruin of a hangar built to it: the soot-black slab on the plot's 5.92 m level, the arch ribs torn and buckled over
+    // the fire, the cladding down in heaps and sheets, the doors' gap on the north face over the cargo apron. Set into
+    // the finished map (ground 'veto').
+    landmarks: [
+      { kind: 'aircraftWreck', x: ANTONOV_PLOT.x, z: ANTONOV_PLOT.z, yawDeg: 0, ground: 'veto', name: 'the An-225 Mriya in its hangar',
+        params: { width: 105, depth: 95, strip: 0 } },
+    ],
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
