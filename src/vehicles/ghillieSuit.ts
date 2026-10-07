@@ -246,7 +246,7 @@ function hemTies(panel: SidePanel, suitSeed: number): HemTies {
   let k = 0;
   for (let z = panel.z0 - hash01(k++, 7, s) * 0.35; z < panel.z1 + 0.9; z += 0.42 + hash01(k++, 8, s) * 0.62) {
     at.push(z);
-    depth.push(0.014 + hash01(k++, 9, s) * 0.05);
+    depth.push(0.03 + hash01(k++, 9, s) * 0.08);   // round 4: 3-11 cm scallops (were 1.4-6.4 cm)
   }
   const ties = { at, depth };
   HEM_CACHE.set(panel, ties);
@@ -308,7 +308,24 @@ function clothTop(panel: TopPanel, suitSeed: number, style: GhillieStyle): THREE
   return makeGeometry(positions, uvs);
 }
 
-function clothSide(panel: SidePanel, suitSeed: number, style: GhillieStyle): THREE.BufferGeometry {
+/**
+ * A flank drape's outward offset past its authored wall line at (z, t): fine pleats, the billow between the hem ties
+ * (the cord draws the hem in at a tie), and a slow belly over the drape's height. Round 4 (2026-10-07, wave 216 on the
+ * PT-91: "the side net is a straight vertical wall"): the billow and belly grew from about 1 cm to 3-6 cm. The cloth
+ * and the garnish seated on it read the same offset.
+ */
+function drapeOffset(panel: SidePanel, suitSeed: number, z: number, t: number): number {
+  const s = panelSeed(panel, suitSeed) ^ (panel.side > 0 ? 0x2b : 0x71);
+  const hem = hemAt(hemTies(panel, suitSeed), z);
+  const low = 1 - t;
+  const pleatField = clothNoise(z, t * 0.6, 0.11, s);
+  const pleat = 0.009 * (pleatField > 0 ? pleatField : 1.7 * pleatField) * (0.45 + 0.55 * low);
+  const draw = low * (0.034 * hem.span - 0.03 * hem.tie);
+  const belly = 0.022 * Math.sin(Math.PI * Math.min(1, t * 1.15)) * (0.6 + 0.4 * clothNoise(z, 0.5, 0.85, s + 13));
+  return pleat + draw + belly;
+}
+
+function clothSide(panel: SidePanel, suitSeed: number, style: GhillieStyle, maxHalfWidth = Infinity): THREE.BufferGeometry {
   const {
     side, z0, z1, nz = 30, ny = 9, topAt, bottomAt, outAt, shoulder,
   } = panel;
@@ -326,14 +343,12 @@ function clothSide(panel: SidePanel, suitSeed: number, style: GhillieStyle): THR
     const hem = hemAt(ties, z);
     const bottom = Math.max(authoredBottom - hem.drop, Math.min(authoredBottom, NET_HEM_FLOOR_M));
     if (row <= ny) {
-      const t = row / ny, low = 1 - t;
-      const pleatField = clothNoise(z, t * 0.6, 0.11, s);
-      const pleat = 0.009 * (pleatField > 0 ? pleatField : 1.7 * pleatField) * (0.45 + 0.55 * low);
-      // between ties the drape billows out a little; at a tie the cord draws the hem in toward the hull
-      const draw = low * low * (0.012 * hem.span - 0.018 * hem.tie);
+      const t = row / ny;
+      // between ties the drape billows out; at a tie the cord draws the hem in toward the hull (drapeOffset)
       const wobble = 0.008 * clothNoise(z, t, 0.3, s + 5) * (1 - t * t * t * t);
       const y = THREE.MathUtils.lerp(bottom, top, t) + wobble;
-      return { p: [side * (outAt(z, t) + pleat + draw), y, z], v: y };
+      // a suit with a certified half-width keeps its billow inside it (the A4's 3.70 m receipt)
+      return { p: [side * Math.min(outAt(z, t) + drapeOffset(panel, suitSeed, z, t), maxHalfWidth - 0.002), y, z], v: y };
     }
     // the roll over the wall's top edge into the roof net: a quadratic from the drape's top to the net's edge
     const k = (row - ny) / SHOULDER_ROWS;
@@ -457,9 +472,12 @@ function cardSize(cfg: GhillieConfig, rng: () => number): { length: number; widt
 }
 
 /** Sprays per square metre of carrier (times the suit's density), and clump sizes in sprays (drawn uniformly). */
-const GARNISH_PER_M2 = { leafy: 10.5, cut: 7.0 } as const;
-const LEAFY_CLUMP_SIZES = [1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9] as const;
-const CUT_CLUMP_SIZES = [1, 1, 2, 2, 3, 3, 4, 5] as const;
+// Round 4 (2026-10-07, wave 216 on the Strv 103A: "leaf cards spread evenly across the net like a printed pattern", "a
+// single green blanket draped over the vehicle ... the hull's own silhouette is barely legible"): about 40 % fewer
+// sprays, in bigger bunches with more bare net between them (placeGarnishClumps).
+const GARNISH_PER_M2 = { leafy: 6.2, cut: 4.6 } as const;
+const LEAFY_CLUMP_SIZES = [2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9] as const;
+const CUT_CLUMP_SIZES = [1, 2, 2, 3, 3, 4, 5] as const;
 const clumpRadius = (size: number): number => 0.07 + 0.034 * size;
 
 function pickClumpSize(cfg: GhillieConfig, rng: () => number): number {
@@ -493,10 +511,11 @@ function placeGarnishClumps(
     const [ru, rv] = bias(rng);
     const u = u0 + ru * (u1 - u0), v = v0 + rv * (v1 - v0);
     const size = pickClumpSize(cfg, rng);
-    const gap = 0.55 + rng() * 0.75;
+    const gap = 0.9 + rng() * 1.0;
     const accept = rng();
     if (!allowed(u, v)) continue;
-    if (accept > 0.25 + 0.75 * stuffing(u, v)) continue;
+    // round 4: the crew's stuffing field decides more (bunches gather where it is high, bare net where it is low)
+    if (accept > 0.1 + 0.9 * Math.pow(stuffing(u, v), 1.6)) continue;
     const r = clumpRadius(size);
     if (clumps.some((c) => Math.hypot(c.u - u, c.v - v) < (r + clumpRadius(c.size)) * gap)) continue;
     clumps.push({ u, v, size });
@@ -581,7 +600,7 @@ function addTopFoliage(
   const perM2 = cfg.style === 'leafy' ? GARNISH_PER_M2.leafy : GARNISH_PER_M2.cut;
   const clumps = placeGarnishClumps(rng, cfg, [panel.x0, panel.x1, panel.z0, panel.z1], seatAllowed,
     cells * 0.01 * perM2 * cfg.density * (panel.garnishDensity ?? 1));
-  const riseMax = panel.garnishRiseM ?? 0.22;
+  const riseMax = panel.garnishRiseM ?? 0.11;
   const seated = panel.seatGapM !== undefined;
   for (const clump of clumps) {
     const base = clumpTint(cfg, rng);
@@ -601,11 +620,14 @@ function addTopFoliage(
       let { length, width } = cardSize(cfg, rng);
       const grow = 0.86 + central * 0.26;
       length *= grow; width *= grow;
-      let lift = 0.34 + rng() * 0.46 + central * 0.3;
+      // round 4 (wave 216: "fern fronds hover above the grey hatch slab with their shadows offset beneath them", "the
+      // leaf clusters cast separate drop shadows with gaps beneath, so they float"; wave 213: "leaf cards floating off
+      // the armour"): a spray is tucked stem-first and lies back along the net, lifted 3-19 degrees (was 19-63)
+      let lift = 0.06 + rng() * 0.18 + central * 0.1;
       const roll = (rng() - 0.5) * 0.9;
       const jr = rng() * r * 0.35, ja = rng() * Math.PI * 2;
-      const bend = 0.07 + rng() * 0.15;
-      const fold = 0.32 + rng() * 0.32;
+      const bend = 0.03 + rng() * 0.06;
+      const fold = 0.16 + rng() * 0.16;
       const tile = Math.floor(rng() * 4) % 4;
       const tint = sprayTint(base, rng);
       const sx = clump.u + Math.cos(ja) * jr, sz = clump.v + Math.sin(ja) * jr;
@@ -664,15 +686,15 @@ function addSideFoliage(
       let sweep = sweep0 + (share - 0.5) * fan + (rng() - 0.5) * 0.3;
       const { length, width } = cardSize(cfg, rng);
       const dz = (rng() - 0.5) * 0.1, dt = (rng() - 0.5) * 0.08;
-      const tiltOut = 0.08 + rng() * 0.3;
-      const bend = 0.04 + rng() * 0.1;
-      const fold = 0.2 + rng() * 0.22;
+      const tiltOut = 0.03 + rng() * 0.1;   // round 4: lies on the drape (was 0.08-0.38 rad off it)
+      const bend = 0.03 + rng() * 0.06;
+      const fold = 0.12 + rng() * 0.14;
       const tile = Math.floor(rng() * 4) % 4;
       const tint = sprayTint(base, rng);
       const z = THREE.MathUtils.clamp(clump.u + dz, panel.z0 + 0.05, panel.z1 - 0.05);
       const t = THREE.MathUtils.clamp(clump.v + dt, 0.1, 0.98);
       const bottom = panel.bottomAt(z), top = panel.topAt(z);
-      const x = panel.side * (panel.outAt(z, t) + 0.012);
+      const x = panel.side * (Math.min(panel.outAt(z, t) + drapeOffset(panel, cfg.seed, z, t), ctx.maxHalfWidth - 0.002) + 0.01);
       let placed: FoliageCard | null = null;
       for (const scale of [1, 0.75, 0.55]) {
         for (const tilt of [tiltOut, tiltOut * 0.4, 0]) {
@@ -721,9 +743,9 @@ function addFaceFoliage(
       const swing = swing0 + (share - 0.5) * fan + (rng() - 0.5) * 0.3;
       const { length, width } = cardSize(cfg, rng);
       const dx = (rng() - 0.5) * 0.08, dy = (rng() - 0.5) * 0.06;
-      const standOut = 0.12 + rng() * 0.3;
-      const bend = 0.05 + rng() * 0.1;
-      const fold = 0.25 + rng() * 0.25;
+      const standOut = 0.04 + rng() * 0.12;   // round 4: lies on the face net (was 0.12-0.42 rad off it)
+      const bend = 0.03 + rng() * 0.06;
+      const fold = 0.14 + rng() * 0.16;
       const tile = Math.floor(rng() * 4) % 4;
       const tint = sprayTint(base, rng);
       const px = clump.u + dx, py = clump.v + dy;
@@ -1215,9 +1237,12 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         yAt: ptHullY,
         outline: [[-1.10, -3.15], [1.10, -3.15], [1.55, -2.70], [1.55, 2.40], [1.00, 3.22], [-1.00, 3.22], [-1.55, 2.40], [-1.55, -2.70]],
         holes: [rect(-1.43, 1.43, -1.82, 1.42), rect(-0.24, 0.24, 0.96, 1.52)], seed: 5 }],
-      side: [-1, 1].map((side) => ({ side, z0: -2.65, z1: 2.58, nz: 38, ny: 9,
-        topAt: (z) => ptHullY(0, z), bottomAt: (z) => 0.63 + Math.sin(z * 2.8) * 0.035,
-        outAt: (_z, t) => 1.80 + (1 - t) * 0.045, seed: 13 + side })),
+      // round 4 (2026-10-07, wave 216: "the side net is a straight vertical wall of evenly spaced clumps"): each flank
+      // hangs as two drapes of different lengths with a bare stretch of skirt between them
+      side: [-1, 1].flatMap((side) => [[-2.65, -0.18 + side * 0.22, 0], [0.42 + side * 0.22, 2.58, 1]].map(([z0, z1, k]) => ({
+        side, z0, z1, nz: k ? 16 : 20, ny: 9,
+        topAt: (z: number) => ptHullY(0, z), bottomAt: (z: number) => 0.63 + Math.sin(z * 2.8) * 0.035,
+        outAt: (_z: number, t: number) => 1.80 + (1 - t) * 0.045, seed: 13 + side + k * 5 }))),
       face: [{ z: 3.48, x0: -1.08, x1: 1.08, y0: 0.82, y1: 1.28, nx: 14, ny: 6,
         outline: [[-0.88, 0.82], [0.88, 0.82], [1.08, 1.00], [0.78, 1.28], [-0.78, 1.28], [-1.08, 1.00]], seed: 19 }],
     },
@@ -1243,11 +1268,17 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       top: [{ x0: -1.66, x1: 1.66, z0: -3.30, z1: 3.46, nx: 26, nz: 52,
         yAt: strv103aHullY,
         outline: [[-1.30, -3.30], [1.30, -3.30], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
-        holes: [rect(-0.27, 0.27, 0.78, 3.58), rect(0.03, 0.91, -1.30, 0.12), rect(-0.90, -0.28, -1.22, -0.46)], seed: 71 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.12, z1: 2.78, nz: 42, ny: 7,
-        topAt: (z) => strv103aHullY(0, z) - 0.02,
-        bottomAt: (z) => 1.34 + Math.sin(z * 2.7) * 0.028,
-        outAt: (_z, t) => 1.84 + (1 - t) * 0.030, seed: 79 + side })),
+        // round 4 (2026-10-07, wave 216: "the thick-corded net passes under the slab instead of over or around it"):
+        // the net opens round the spare links planted on the right glacis shoulder (sweden.ts: 0.98, z 2.30, 0.60 wide)
+        holes: [rect(-0.27, 0.27, 0.78, 3.58), rect(0.03, 0.91, -1.30, 0.12), rect(-0.90, -0.28, -1.22, -0.46),
+          rect(0.62, 1.34, 1.96, 2.64)], seed: 71 }],
+      // round 4 (wave 216: "a single green blanket draped over the vehicle ... the hull's own silhouette is barely
+      // legible"): each flank hangs as two drapes with the hull side bare between them, hems 8 cm higher
+      side: [-1, 1].flatMap((side) => [[-3.12, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
+        nz: k ? 18 : 20, ny: 7,
+        topAt: (z: number) => strv103aHullY(0, z) - 0.02,
+        bottomAt: (z: number) => 1.42 + Math.sin(z * 2.7) * 0.028,
+        outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
   strv103: {
@@ -1522,7 +1553,7 @@ function appendSideGhilliePanels(
 ): number {
   let panelIndex = initialIndex;
   for (const panel of panels) {
-    buckets.net.push(clothSide(panel, cfg.seed, cfg.style));
+    buckets.net.push(clothSide(panel, cfg.seed, cfg.style, cfg.maxHalfWidth ?? Infinity));
     if (cfg.foliage !== false) addSideFoliage(buckets.foliage, panel, cfg, cfg.seed + panelIndex * 1000, ctx);
     panelIndex++;
   }
