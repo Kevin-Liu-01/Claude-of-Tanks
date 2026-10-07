@@ -86,6 +86,16 @@ contact pad (`secureLoadParts`, decor casts no shadow); branch bundles lie lashe
 upright; nets are knotted on an uneven lattice and billow, sag and pleat between tie points; and the machine gun's can
 is issue olive with a belt of dull-brass rounds into a feed tray. Primitives close their shells (lathe and tube caps,
 straps sunk into the fabric), because the sealed-hull census counts any inside seen from outside as a hole.
+Round 3 (2026-10-07) seats loads on the support they actually have. A load (`isLoadPiece`: cargo, cans, bags, rolls,
+drums, wheels) on a roof, bustle, deck or fender takes `supportedSeat`: a 3 x 3 probe grid over its whole footprint
+and a fitted support plane. Rigid loads need 3 cm or less of residual and lean at most 12 degrees. Soft loads
+(`sagsOnSupport`) take up to 5 cm and sag onto the high points. Loads ride 2-7 degrees off square and a few
+centimetres off their station (`transitYaw`). The rear-plate rack slot builds a real cantilever rack under its load
+(`rearRackParts`), and the turret-side slot builds welded L-arms with a strap (`sideLedgeParts`). Both drop the
+contact pad, which now sits inset inside the footprint so it never shows as a rectangle. Rear-hung pieces hang from
+a hook bracket. Commander rings in `KEEP_CLEAR_HULL` stay free for the gun's traverse. `.qa-dev`-style support audits
+(rays from inside each placed piece onto the tank's own geometry) measured 46 % of deck-seated loads floating
+before and 2 % after, with 441 loads in mid-air before and 18 after.
 For player-reported Garage defects, also verify the actual carousel/pedestal
 path with its live engine context, AI geometry quality, static batching and
 cache return. Bare procedural or Gallery captures are insufficient. Record

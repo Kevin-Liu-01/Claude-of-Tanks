@@ -108,6 +108,8 @@ interface DecorPartMeta {
 interface DecorPart {
   mat: DecorMaterialKey;
   geo: THREE.BufferGeometry;
+  /** 'pad': the contact pad under a secured load; slots that carry the piece on a built rack drop it. */
+  role?: 'pad';
 }
 
 interface DecorPartList extends Array<DecorPart> {
@@ -514,6 +516,9 @@ function partsBBox(parts: DecorPartList): THREE.Box3 {
  * get webbing tie-downs over the top across their short axis, down both faces to steel D-rings at the foot (near level).
  * Soft goods keep their own cinch straps. Everything rides the painted-hardware ('cans') and steel draws the pieces
  * already carry.
+ * Round 3 (2026-10-07, critics: "on a hard-edged black rectangle", "with its own flat shadow-plane beneath it"): the pad
+ * is inset INSIDE the footprint (86 %), so it can only darken the contact line under a piece that rests on its
+ * support; it never shows as a rectangle around one. Pieces carried on a built rack drop it (role 'pad').
  */
 const SECURED_HARD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations']);
 const SECURED_PAD_KITS: ReadonlySet<string> = new Set(['cargo', 'jerry', 'rations', 'bin', 'packs', 'tarp', 'camonet']);
@@ -525,12 +530,14 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   if (bb.isEmpty() || bb.min.y < -0.03 || bb.max.y < 0.06) return; // a piece not authored on its foot
   const w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z, h = bb.max.y;
   const cx = (bb.max.x + bb.min.x) / 2, cz = (bb.max.z + bb.min.z) / 2;
-  parts.push({ mat: 'cans', geo: bakeTint(place(block(w + 0.03, 0.003, d + 0.03), cx, 0.0015, cz), 0.014, 0.014, 0.012, 0) });
+  parts.push({ mat: 'cans', role: 'pad', geo: bakeTint(place(block(w * 0.86, 0.003, d * 0.86), cx, 0.0015, cz), 0.03, 0.03, 0.026, 0) });
   const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant));
   if (!detail || !hard) return;
   const alongX = w >= d; // the tie crosses the short axis
-  const count = Math.max(w, d) > 0.7 ? 2 : 1;
-  const band = 0.032, thick = 0.006;
+  // Round 3: a pair or a wide case gets two ties, one over each half; a single tie down the middle of a can pair ran
+  // along the gap between the cans, and the critics read the pair as "upright and unstrapped".
+  const count = Math.max(w, d) > 0.38 ? 2 : 1;
+  const band = 0.038, thick = 0.006;
   const strap = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
   const ring = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5) });
   for (let k = 0; k < count; k++) {
@@ -1228,8 +1235,12 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       parts.push({ mat: 'kit', geo: bakeShade(xform(box(w * 0.78, h * 0.7, t), 0, h * 0.42, t * 1.45), tone * 1.03) });
     }
     const bx = w / 2 - 0.06, by = h - 0.06;
+    // Round 3 (2026-10-07, catalog wave: "raised panels bury their own bolts"): a bolt under the wedge's raised face
+    // sits on that face instead of inside it.
+    const rw = w * 0.78 / 2, ry0 = h * 0.42 - h * 0.35, ry1 = h * 0.42 + h * 0.35;
     for (const [px, py] of [[-bx, 0.06], [bx, 0.06], [-bx, by], [bx, by], [0, by], [0, 0.06]]) {
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.016, 0.02, 6), px, py, t + 0.008), 0.58) });
+      const raised = v === 'wedge' && Math.abs(px) < rw && py > ry0 && py < ry1;
+      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.016, 0.02, 6), px, py, (raised ? t * 1.45 + t / 2 : t) + 0.008), 0.58) });
     }
     return parts;
   },
@@ -1584,6 +1595,27 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     for (let i = 0; i < 6; i++) { // hub bolts
       const a = (i / 6) * Math.PI * 2;
       parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.02, 0.02, 0.03, 5), Math.sin(a) * r * 0.2, W + 0.008, Math.cos(a) * r * 0.2), 0.55) });
+    }
+    // Round 3 (2026-10-07, critics: "a spare road wheel lies flat and unsecured on the deck ... where it would slide
+    // off at the first turn"): the wheel is held. A threaded stud rises through the hub from a deck foot with a clamp
+    // plate and nut. Two webbing straps cross over the tyre and run down its sides to D-rings at the deck. Upright,
+    // the stud carries it against the plate.
+    parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.018, 0.018, W + 0.06, 6), 0, (W + 0.06) / 2, 0), 0.5) });
+    parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(r * 0.24, r * 0.24, 0.012, 10), 0, W + 0.03, 0), 0.46) });
+    parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.03, 0.03, 0.024, 6), 0, W + 0.048, 0), 0.4) });
+    if (flat) {
+      const strapRgb: RGB = [0.30, 0.31, 0.21];
+      for (const turn of [0.35, 0.35 + Math.PI / 2]) {
+        const strap: THREE.BufferGeometry[] = [
+          xform(box(0.038, 0.006, r * 2 + 0.012), 0, W + 0.004, 0),
+          xform(box(0.038, W, 0.006), 0, W / 2, r + 0.004),
+          xform(box(0.038, W, 0.006), 0, W / 2, -r - 0.004),
+        ];
+        for (const g of strap) parts.push({ mat: 'cans', geo: bakeTint(xform(g, 0, 0, 0, 0, turn, 0), strapRgb[0], strapRgb[1], strapRgb[2], 0.25) });
+        for (const sz of [-1, 1]) {
+          parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.012, 0.03), 0, 0.006, sz * (r + 0.022), 0, turn, 0), 0.5) });
+        }
+      }
     }
     if (!flat) xformParts(parts, 0, r, -W / 2, Math.PI / 2, 0, 0); // upright against a plate
     return parts;
@@ -2777,6 +2809,150 @@ function seatProbe(
   return { y: top, n, spread: top - bot };
 }
 
+/**
+ * A cantilever stowage rack bolted to the rear plate, built in the carried piece's own frame (round 3, 2026-10-07).
+ * The hull rear rack slot hung loads behind the plate with nothing under them; the critics read the M1A2 bag as
+ * "floats entirely clear of the hull above it and the ground below it" and the T-90M's cans and chest the same way.
+ * The rack is a welded frame of square rails under the piece's footprint, slats, a retaining lip at the rear edge
+ * and a diagonal bracket on each side from a plate foot down to the rail end. It is painted steel and rides the
+ * steel draw. `plateZ` is the local z of the rear plate face; the piece occupies `bb` on its foot (y = 0).
+ */
+function rearRackParts(bb: THREE.Box3, plateZ: number, detail: 0 | 1): DecorPart[] {
+  const parts: DecorPart[] = [];
+  const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.4) });
+  const x0 = bb.min.x - 0.025, x1 = bb.max.x + 0.025, z0 = bb.min.z - 0.03, z1 = plateZ;
+  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const rail = 0.03;
+  for (const x of [x0, x1]) steel(place(block(rail, rail, d), x, -rail / 2, cz));
+  for (const z of [z0 + rail / 2, z1 - rail / 2]) steel(place(block(w + rail, rail, rail), cx, -rail / 2, z));
+  const slats = detail ? Math.max(3, Math.round(d / 0.09)) : 2;
+  for (let k = 0; k < slats; k++) {
+    const z = z0 + rail + (k + 0.5) * ((d - 2 * rail) / slats);
+    steel(place(block(w - rail, 0.008, 0.035), cx, -0.004, z));
+  }
+  steel(place(block(w + rail, 0.06, 0.012), cx, 0.03, z0 + 0.006));               // retaining lip at the rear edge
+  const braceTop = Math.min(0.24, Math.max(0.12, (bb.max.y - bb.min.y) * 0.55));
+  for (const x of [x0, x1]) {
+    steel(roundBar([x, -rail, z0 + 0.04], [x, -braceTop, z1 - 0.01], 0.012, detail ? 8 : 5));  // diagonal under-strut
+    steel(place(block(0.07, 0.09, 0.012), x, -braceTop, z1 - 0.006));            // foot plate bolted to the hull
+    steel(place(block(0.07, 0.07, 0.012), x, -rail / 2, z1 - 0.006));           // upper foot at the rail
+  }
+  return parts;
+}
+
+/**
+ * Turret-side carriage for a hung load (round 3, 2026-10-07), built in the piece's frame, where the turret wall lies
+ * at local z = `wallZ` and the piece's foot at y = 0. The side slot pressed bags and rolls against the wall with
+ * nothing under or around them, so they read as stuck on. Each load now sits on two welded L-arms that run from the
+ * wall out under its far edge, held by a webbing strap from a wall cleat over its top to the arm tip.
+ */
+function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB): DecorPart[] {
+  const parts: DecorPart[] = [];
+  const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.42) });
+  const reach = Math.max(0.06, bb.max.z + 0.02 - wallZ);
+  const len = bb.max.x - bb.min.x;
+  const arms = len > 0.5 ? [bb.min.x + len * 0.2, bb.max.x - len * 0.2] : [(bb.min.x + bb.max.x) / 2];
+  const top = bb.max.y;
+  for (const x of arms) {
+    steel(place(block(0.03, 0.025, reach), x, -0.0125, wallZ + reach / 2));            // arm under the load
+    steel(place(block(0.03, 0.05, 0.012), x, 0.025, wallZ + reach - 0.006));           // upturned tip
+    steel(place(block(0.06, 0.08, 0.012), x, -0.02, wallZ + 0.006));                  // wall foot plate
+    if (detail) steel(roundBar([x, -0.075, wallZ + 0.008], [x, -0.012, wallZ + reach * 0.7], 0.009, 6)); // gusset strut
+    const band = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
+    band(place(block(0.035, 0.006, reach), x, top + 0.003, wallZ + reach / 2));         // over the top
+    band(place(block(0.035, top, 0.006), x, top / 2, wallZ + reach + 0.003));            // down the outer face
+    steel(place(block(0.05, 0.03, 0.02), x, top + 0.012, wallZ + 0.01));                // wall cleat
+  }
+  return parts;
+}
+
+// Round 3 (2026-10-07). The 5-point seat above seats a piece at the MAX height under a probe pattern capped at 0.42 m
+// and accepts spreads of 0.12-0.42 m, so a piece could rest on one high point and float over the rest of its
+// footprint. A census of 220 tanks found 41 % of seated pieces over 5 cm of spread and 247 over 10 cm. The critics
+// read that as "perched on a thin post", "the olive stowage bag floats entirely clear of the hull" and "placed rather
+// than secured". A cargo seat is now judged on the support it really has. A 3 x 3 grid spans the piece's whole
+// footprint and a least-squares support plane is fitted through it. A rigid piece needs every probe within
+// RIGID_SPREAD_M of that plane, so it rests flat (tilted onto a sloped plate at most LOAD_MIN_NY) or the slot walks on
+// to another candidate. A soft piece accepts up to SOFT_SPREAD_M and sags onto the high points: its fabric takes the
+// gap, so it never bridges air.
+const RIGID_SPREAD_M = 0.03;
+const SOFT_SPREAD_M = 0.05;
+/** A load rests on a deck, not a ramp: its support plane may lean at most 12 degrees (casemate roofs excepted). */
+const LOAD_MIN_NY = Math.cos((12 * Math.PI) / 180);
+const SOFT_SAG_M = 0.05;
+/** Kits and cargo variants whose fabric can sag over uneven support (everything else rests rigidly). */
+const SAGGING_KITS: ReadonlySet<string> = new Set(['packs', 'tarp', 'camonet']);
+const SAGGING_CARGO: ReadonlySet<string> = new Set(['long-duffel', 'large-rucksack', 'bedroll-pair', 'folded-tarp-pack',
+  'camo-net-bag', 'crew-backpack', 'helmet-bundle']);
+/** Pieces judged as loads on their support (cargo, cans, bags, rolls, drums...), not roof equipment (lights, sights, whips). */
+const LOAD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations', 'packs', 'tarp', 'camonet', 'bin', 'drums', 'wheel',
+  'bucket', 'sandbags', 'log']);
+function isLoadPiece(pieceName: string): boolean {
+  return pieceName.startsWith('cargo:') || LOAD_KITS.has(pieceName);
+}
+function sagsOnSupport(pieceName: string): boolean {
+  if (pieceName.startsWith('cargo:')) return SAGGING_CARGO.has(pieceName.slice(6));
+  return SAGGING_KITS.has(pieceName);
+}
+function supportedSeat(
+  prober: SurfaceProber,
+  cx: number,
+  cz: number,
+  w: number,
+  d: number,
+  fromY: number,
+  slotMaxSpread: number,
+  soft: boolean,
+  offX = 0,
+  offZ = 0,
+): SurfaceSeat | null {
+  // Least-squares support plane through the grid (symmetric offsets, so the cross terms vanish): a flat but sloped
+  // plate is full support for a rigid piece tilted onto it; what must stay small is the residual off that plane.
+  const hx = Math.max(0.03, w * 0.44), hz = Math.max(0.03, d * 0.44);
+  cx += offX; cz += offZ;
+  const ys: number[] = [];
+  let sum = 0, sx = 0, sz = 0;
+  for (const fx of [-1, 0, 1]) {
+    for (const fz of [-1, 0, 1]) {
+      const h = prober.top(cx + fx * hx, cz + fz * hz, fromY);
+      if (!h) return null;
+      ys.push(h.p.y);
+      sum += h.p.y; sx += fx * hx * h.p.y; sz += fz * hz * h.p.y;
+    }
+  }
+  const a = sum / 9, b = sx / (6 * hx * hx), c = sz / (6 * hz * hz);
+  let above = 0, below = 0, k = 0;
+  for (const fx of [-1, 0, 1]) {
+    for (const fz of [-1, 0, 1]) {
+      const r = ys[k++] - (a + b * fx * hx + c * fz * hz);
+      if (r > above) above = r;
+      if (-r > below) below = -r;
+    }
+  }
+  const residual = above + below;
+  if (residual > Math.min(slotMaxSpread, soft ? SOFT_SPREAD_M : RIGID_SPREAD_M)) return null;
+  const n = new THREE.Vector3(-b, 1, -c).normalize();
+  // A rigid piece rests on the highest points above the plane; a soft one sags back toward the plane through them.
+  const lift = soft ? above - Math.min(residual, SOFT_SAG_M) * 0.7 : above;
+  return { y: a + lift, n, spread: residual };
+}
+
+/**
+ * Stations decor must leave clear (round 3, 2026-10-07), in the HULL frame as [x, z, radius]: commander machine-gun
+ * rings and cupolas whose traverse a load would block. The critics read the Strv 103's "dark duffel bag lying over
+ * the machine-gun ring, so the gun can be neither seen nor traversed". The radius covers the ring and the gun's sweep.
+ */
+const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, number, number]>>> = {
+  strv103: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
+  strv103a: [[0.28, -0.40, 0.70]],
+};
+
+/** Lashed cargo rides a little off square and off centre ("shifted in transit"): 2-7 degrees of yaw either way. */
+function transitYaw(rng: Rng): number {
+  const sign = rng() < 0.5 ? -1 : 1;
+  return sign * (0.035 + rng() * 0.085);
+}
+
 // piece record for guard bookkeeping: local-frame AABB after placement.
 function placedBox(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): THREE.Box3 {
   const bb = partsBBox(parts);
@@ -2810,7 +2986,7 @@ function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Eu
 }
 
 function clonePartList(parts: DecorPartList): DecorPartList {
-  const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone() })) as DecorPartList;
+  const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone(), ...(p.role ? { role: p.role } : {}) })) as DecorPartList;
   if (parts.meta) clone.meta = { ...parts.meta };
   if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
   if (parts.coarse) clone.coarse = clonePartList(parts.coarse);
@@ -2976,6 +3152,9 @@ export function* attachTankDecorationsSteps(
 
     const decorId = decorIdentityFor(spec.id);
     const rng = mulberry32(fnv1a(`decor:${decorId}`));
+    // Round 3: a load's transit yaw and station jitter draw from their own stream, so seating retries never shift
+    // the manifest's rolls (which optional rows appear) on the main stream.
+    const placeRng = mulberry32(fnv1a(`decor-place:${decorId}`));
     const materials = buildDecorMaterials(spec, engineCtx);
     mats = materials;
     const dims = spec.dims;
@@ -3269,6 +3448,18 @@ export function* attachTankDecorationsSteps(
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
+    const keepClear = KEEP_CLEAR_HULL[spec.id] ?? [];
+    function keepClearHit(bb: THREE.Box3, frame: DecorFrame): boolean {
+      if (!keepClear.length) return false;
+      const ox = frame === 'turret' ? turretG.position.x : 0, oz = frame === 'turret' ? turretG.position.z : 0;
+      for (const [x, z, r] of keepClear) {
+        const cx = x - ox, cz = z - oz;
+        const dx = Math.max(bb.min.x - cx, 0, cx - bb.max.x), dz = Math.max(bb.min.z - cz, 0, cz - bb.max.z);
+        if (dx * dx + dz * dz < r * r) return true;
+      }
+      return false;
+    }
+
     function rejectCommit(
       name: string,
       parts: DecorPartList,
@@ -3375,6 +3566,7 @@ export function* attachTankDecorationsSteps(
         ? guardHullCommit(name, parts, bb, pos, rot, seatY, zExtra)
         : guardTurretCommit(name, parts, bb);
       if (!guarded) return false;
+      if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
       }
@@ -3474,6 +3666,24 @@ export function* attachTankDecorationsSteps(
           ? sternZ + d / 2 + 0.2
           : Math.max(sternZ + d / 2 + 0.16, pivot[2] - sweepR - d / 2 - (args.small ? 0.5 : 0.24));
         if (casemate) z0 = sternZ + d / 2 + 0.25 + (args.back ? 0 : 0.3);
+        if (isLoadPiece(name)) {
+          // Round 3: loads on the deck take a supported seat (see supportedSeat); the louvre grilles and hatch rims
+          // that used to hold one corner up now send the piece on to a flat stretch of deck.
+          const soft = sagsOnSupport(name);
+          const inward = -Math.sign(xs || 1);
+          for (const dz of [0, -0.25, 0.28, -0.5, 0.14, -0.38]) {
+            for (const dx of [0, inward * 0.16, inward * 0.32]) {
+              const yaw = transitYaw(placeRng) + (args.spread ? (placeRng() - 0.5) * 0.8 : 0);
+              const px = xs + dx + (placeRng() - 0.5) * 0.05, pz = z0 + dz + (placeRng() - 0.5) * 0.05;
+              const seat = supportedSeat(hullP, px, pz, w, d, topFrom, 0.28, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+              if (!seat || !seat.n || seat.n.y < (casemate ? 0.8 : LOAD_MIN_NY)) continue;
+              if (commit(name, parts, 'hull', V(px, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
+                { seatY: seat.y })) return true;
+            }
+          }
+          disposePartList(parts);
+          return false;
+        }
         for (const dz of [0, -0.25, 0.28, -0.5]) {
           const seat = seatProbe(hullP, xs, z0 + dz, w, d, topFrom, 0.28);
           if (!seat) continue;
@@ -3519,6 +3729,20 @@ export function* attachTankDecorationsSteps(
         const w = rot90 ? bb.max.z - bb.min.z : bb.max.x - bb.min.x;   // across
         const d = rot90 ? bb.max.x - bb.min.x : bb.max.z - bb.min.z;   // along
         const z = (args.zFrac ?? 0) * L;
+        if (isLoadPiece(name)) {
+          // Round 3: a load on the fender takes a supported seat (see supportedSeat), stepping along the run.
+          const soft = sagsOnSupport(name);
+          for (const dz of [0, 0.18, -0.18, 0.36, -0.36]) {
+            const yaw = (rot90 ? Math.PI / 2 : 0) + transitYaw(placeRng);
+            const pz = z + dz + (placeRng() - 0.5) * 0.04;
+            const seat = supportedSeat(hullP, side * fx, pz, w, d, topFrom, 0.26, soft);
+            if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
+            if (commit(name, parts, 'hull', V(side * fx, seat.y - 0.01, pz), roofMountEuler(seat.n, yaw), placedHull,
+              { seatY: seat.y })) return true;
+          }
+          disposePartList(parts);
+          return false;
+        }
         const seat = seatProbe(hullP, side * fx, z, Math.min(w, 0.34), Math.min(d, 0.4), topFrom, 0.26);
         if (!seat) { disposePartList(parts); return false; }
         const yaw = (rot90 ? Math.PI / 2 : 0) + (rng() - 0.5) * 0.08;
@@ -3643,7 +3867,26 @@ export function* attachTankDecorationsSteps(
         if (y < H * 0.22) { disposePartList(parts); return false; }
         const h = hullP.zface((args.x || 0) * W, Math.max(H * 0.3, y + ph * 0.4), 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
-        return commit(name, parts, 'hull', V((args.x || 0) * W, y, h.p.z - (bb.max.z - bb.min.z) / 2 - 0.03),
+        // Round 3: the load rides a built cantilever rack (rearRackParts) instead of hanging in air behind the plate;
+        // the rack replaces the contact pad, and it rides a few degrees off square on its slats.
+        const gap = 0.02;
+        const pieceZ = h.p.z - gap - bb.max.z;
+        const plateZ = h.p.z - pieceZ;
+        const yaw = transitYaw(placeRng) * 0.5;
+        const pivotX = (bb.min.x + bb.max.x) / 2, pivotZ = (bb.min.z + bb.max.z) / 2;
+        const about = new THREE.Matrix4().makeTranslation(pivotX, 0, pivotZ)
+          .multiply(new THREE.Matrix4().makeRotationY(yaw))
+          .multiply(new THREE.Matrix4().makeTranslation(-pivotX, 0, -pivotZ));
+        const carry = (list: DecorPartList, detail: 0 | 1) => {
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
+          }
+          for (const part of list) part.geo.applyMatrix4(about);
+          list.push(...rearRackParts(bb, plateZ, detail));
+        };
+        carry(parts, 1);
+        if (parts.coarse) carry(parts.coarse, 0);
+        return commit(name, parts, 'hull', V((args.x || 0) * W, y, pieceZ),
           E(), placedHull, { seatY: y, zExtra: 0.35 });
       },
       hullSide(args, parts, name) {
@@ -3690,7 +3933,18 @@ export function* attachTankDecorationsSteps(
         const h = hullP.zface(W * 0.26, y, 1, sternZ - 1.4);
         if (!h) { disposePartList(parts); return false; }
         const bb = partsBBox(parts);
-        return commit(name, parts, 'hull', V(W * 0.26, y - (bb.max.y - bb.min.y), h.p.z - 0.09), E(), placedHull,
+        // Round 3 (2026-10-07, critics: "a white ring-shaped object hovers detached in mid-air"): the hung piece
+        // hangs from a visible hook. A welded bracket arm runs from the plate face out to the piece's top tab and
+        // drops a hook through it, so the bucket hangs from the hull instead of beside it.
+        const hookY = bb.max.y - 0.01, plateZ = 0.09;
+        const hook = (list: DecorPartList, detail: 0 | 1) => {
+          list.push({ mat: 'steel', geo: bakeShade(place(block(0.022, 0.018, plateZ + 0.01), 0, hookY + 0.03, plateZ / 2), 0.45) });
+          list.push({ mat: 'steel', geo: bakeShade(place(block(0.05, 0.06, 0.01), 0, hookY + 0.03, plateZ - 0.004), 0.45) });
+          if (detail) list.push({ mat: 'steel', geo: bakeShade(place(block(0.012, 0.045, 0.012), 0, hookY + 0.008, 0.012), 0.45) });
+        };
+        hook(parts, 1);
+        if (parts.coarse) hook(parts.coarse, 0);
+        return commit(name, parts, 'hull', V(W * 0.26, y - (bb.max.y - bb.min.y), h.p.z - plateZ), E(), placedHull,
           { zExtra: 0.3 });
       },
       hullRearCage(_args, parts, name) {
@@ -3735,14 +3989,26 @@ export function* attachTankDecorationsSteps(
         const minNy = casemate ? 0.6 : 0.8;
         const cands = [[0, 0], [-0.15, -0.1], [0.15, 0.12], [0, -0.24], [-0.1, 0.2], [0.24, 0], [-0.24, 0.06], [0.1, -0.34], [-0.3, -0.2]];
         if (casemate) cands.push([0, -0.7], [0.25, -0.6], [-0.25, -0.85], [0, 0.5], [0.3, 0.45]);
+        // Round 3: a load seats only on real support (supportedSeat), so it walks a wider ring before the slot gives
+        // up, and it rides a few degrees off square and a few centimetres off its station.
+        const load = isLoadPiece(name), soft = sagsOnSupport(name);
+        if (load) cands.push([0.36, -0.12], [-0.36, 0.1], [0.2, -0.46], [-0.16, -0.5], [0.42, 0.24], [-0.44, -0.36], [0.32, 0.3], [-0.06, -0.62]);
         for (const [dx, dz] of cands) {
-          const x = xBase + dx, z = zBase + dz;
+          const yaw = load ? transitYaw(placeRng) : 0;
+          const jx = load ? (placeRng() - 0.5) * 0.06 : 0, jz = load ? (placeRng() - 0.5) * 0.06 : 0;
+          const x = xBase + dx + jx, z = zBase + dz + jz;
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) continue; // gun corridor
           // The repaired Leopard throats are real air, including the full
           // footprint beside the moving shield, not just its center ray.
           if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
             const pivot = turretG.getObjectByName('rig_gun')?.position;
             if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
+          }
+          if (load) {
+            const seat = supportedSeat(turP, x, z, w, d, 3.5, spread, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+            if (!seat || !seat.n || seat.n.y < (casemate ? minNy : LOAD_MIN_NY)) continue;
+            if (commit(name, parts, 'turret', V(x, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+            continue;
           }
           const seat = seatProbe(turP, x, z, Math.min(w, 0.42), Math.min(d, 0.42), 3.5, spread);
           if (!seat || !seat.n || seat.n.y < minNy) continue;
@@ -3760,6 +4026,23 @@ export function* attachTankDecorationsSteps(
             E(0, (rng() - 0.5) * 0.3, 0), placedTurret, { allowOverlap: true });
         }
         const x = (args.side || 0) * Math.min(W * 0.18, Math.max(0.22, sweepR * 0.22));
+        if (isLoadPiece(name)) {
+          // Round 3: loads on the bustle take a supported seat (see supportedSeat), sweeping the deck sideways too.
+          const soft = sagsOnSupport(name), w = bb.max.x - bb.min.x;
+          const toward = -Math.sign(x || 1);
+          for (const back of [0.1, 0.3, 0.55, 0.75]) {
+            for (const dx of [0, toward * 0.14, -toward * 0.14, toward * 0.28]) {
+              const yaw = transitYaw(placeRng);
+              const px = x + dx + (placeRng() - 0.5) * 0.05;
+              const z = -(sweepR * 0.55 + back) - d * 0.2 + (placeRng() - 0.5) * 0.05;
+              const seat = supportedSeat(turP, px, z, w, d, 3.5, 0.2, soft, (bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2);
+              if (!seat || !seat.n || seat.n.y < LOAD_MIN_NY) continue;
+              if (commit(name, parts, 'turret', V(px, seat.y - 0.006, z), roofMountEuler(seat.n, yaw), placedTurret)) return true;
+            }
+          }
+          disposePartList(parts);
+          return false;
+        }
         for (const back of [0.1, 0.3, 0.55]) {
           const z = -(sweepR * 0.55 + back) - d * 0.2;
           const seat = seatProbe(turP, x, z, Math.min(bb.max.x - bb.min.x, 0.5), Math.min(d, 0.35), 3.5, 0.2);
@@ -3807,12 +4090,27 @@ export function* attachTankDecorationsSteps(
         const bb = partsBBox(parts);
         const out = (bb.max.z - bb.min.z) * 0.35;
         const sideStations = args.rear ? [-0.78, -1.02, -0.58, -1.24] : [-0.2, -0.45, 0.05];
+        // Round 3: a hung load rides welded L-arms with a strap over it (sideLedgeParts), not bare against the wall.
+        // The arms are built in the piece frame, where the wall is local -z at the push-out distance, and the pad goes.
+        const hung = isLoadPiece(name);
         for (const z of sideStations) {
           for (const yf of [0.35, 0.5]) {
             const y = Math.max(0.18, pivotTopY() * yf);
             const h = turP.side(y, z, side, W / 2 + 1);
             if (!h || Math.abs(h.n.x) < 0.55) continue;
-            if (commit(name, clonePartList(parts), 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z),
+            const candidate = clonePartList(parts);
+            if (hung) {
+              const wallZ = -out * 0.3;
+              const carry = (list: DecorPartList, detail: 0 | 1) => {
+                for (let i = list.length - 1; i >= 0; i--) {
+                  if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
+                }
+                list.push(...sideLedgeParts(bb, wallZ, detail, webbingRgb));
+              };
+              carry(candidate, 1);
+              if (candidate.coarse) carry(candidate.coarse, 0);
+            }
+            if (commit(name, candidate, 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z),
               E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (rng() - 0.5) * 0.1), placedTurret)) {
               disposePartList(parts);
               return true;
