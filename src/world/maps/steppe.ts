@@ -387,6 +387,10 @@ export default {
     // (2026-10-07, wave 204: "dry-stone walls") the corrals, the yard walls and the field boundaries in saman (adobe), as
     // the Virgin Lands built them
     wallStyle: 'adobe',
+    // (2026-10-07, the cost trim; the coordinator's ruling) the mud walls' apron at the mobile tier's density on every
+    // tier (fieldWallDressing.ts adobeApronCoarse): Tarkhan runs some 785 m of them, and their dressing was one map-wide
+    // shadow caster of 125.7k triangles
+    adobeApronCoarse: true,
     inhabit: {
       // (wave 204: "a patio awning") no market stalls
       stalls: 0, benches: 1, coreClutter: 6,
