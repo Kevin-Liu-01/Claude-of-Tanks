@@ -20,7 +20,7 @@
 // Every refusal is named in the receipt (props.group.userData.landmarks); nothing is moved silently.
 import * as THREE from 'three';
 import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
-import { cloneCollisionRecord, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
+import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
 import { REGIONAL_BUCKETS, hashSeed, streamFrom, type RegionalParts } from '../maps/regional/geometry.ts';
@@ -37,6 +37,8 @@ const SQUARE = 480;
 const SPAWN_CLEAR = 22;
 /** A road core a body may not stand in (the layout brief's carriageway). */
 const ROAD_CORE_M = 3.5;
+/** The parts one compound record holds (server/collisionManifestCodec.ts: a compound of at most 64). */
+const MOVEMENT_PART_LIMIT = 64;
 /** The steepest fall under a footprint a piece is seated on (its plinths reach down this far). */
 const MAX_FALL_M = 3.2;
 
@@ -140,6 +142,25 @@ function discMeetsFootprint(dx: number, dz: number, r: number, x: number, z: num
   return ex * ex + ez * ez < r * r;
 }
 
+/**
+ * True when a record's exact footprint (its compound shape) reaches into the piece's footprint: the footprint sampled
+ * on a grid of about a metre, edges included. The coarse disc test above it stands for a record by the disc inscribed in
+ * its box, which for a large building turned on the diagonal (a khan, a church) reaches far past its walls and refused
+ * the paving laid against its front (2026-10-06, Orchard's khan).
+ */
+function footprintTouchesRecord(record: CollisionRecord, x: number, z: number, hw: number, hl: number, yaw: number): boolean {
+  if (!record.shape2) return true;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const nx = Math.max(1, Math.ceil(hw * 2)), nz = Math.max(1, Math.ceil(hl * 2));
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= nz; j++) {
+      const lx = -hw + hw * 2 * i / nx, lz = -hl + hl * 2 * j / nz;
+      if (collisionFootprintContainsPoint(record, x + lx * c + lz * s, z - lx * s + lz * c, 0.05)) return true;
+    }
+  }
+  return false;
+}
+
 /** The hard solid (by kind) standing in the footprint, and the soft ones it overlaps. */
 function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: number, hw: number, hl: number, yaw: number,
   hardKinds: ReadonlySet<string> | undefined = undefined): { hard: string | null; soft: string[] } {
@@ -151,6 +172,7 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
     const cx = (ob.min[0] + ob.max[0]) * 0.5, cz = (ob.min[2] + ob.max[2]) * 0.5;
     const r = Math.max(0.3, Math.min(ob.max[0] - ob.min[0], ob.max[2] - ob.min[2]) * 0.5);
     if (!discMeetsFootprint(cx, cz, r, x, z, hw, hl, yaw)) continue;
+    if (!footprintTouchesRecord(ob, x, z, hw, hl, yaw)) continue;
     const kind = ob.kind ?? (ob.crushable ? 'crushable' : 'rock');
     if ((!ob.crushable && !SOFT_KINDS.has(kind)) || hardKinds?.has(kind)) return { hard: kind, soft };
     if (soft.length < 8) soft.push(kind);
@@ -167,8 +189,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
   for (const s of ctx.spawns) if (discMeetsFootprint(s.x, s.z, SPAWN_CLEAR, x, z, hw, hl, yaw)) return 'spawn pad';
   for (const [dx, dz, r] of discs) if (discMeetsFootprint(dx, dz, r, x, z, hw, hl, yaw)) return 'objective disc';
   if (probes.some(([px, pz]) => ctx.heightField.getWaterMaskAt(px, pz) > 0.05)) {
-    // a bridge stands over its water; every other piece keeps dry
-    if (LANDMARK_KINDS[placement.kind].family !== 'bridge') return 'water';
+    // a bridge stands over its water and a valve tower in it (plan.ts inWater); every other piece keeps dry
+    if (LANDMARK_KINDS[placement.kind].family !== 'bridge' && !LANDMARK_KINDS[placement.kind].inWater) return 'water';
   }
   const spec = LANDMARK_KINDS[placement.kind], margin = placement.roadMargin ?? spec.roadMargin ?? ROAD_CORE_M;
   if (!spec.spansRoad && margin > 0 && probes.some(([px, pz]) => ctx.heightField._roadDist(px, pz) < margin)) return 'road';
@@ -226,13 +248,14 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
-    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge') { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
+    if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
     const built = builder({
       kind: placement.kind, params,
       rng: streamFrom(hashSeed(`landmark:${ctx.mapId}:${placement.kind}`, ...identity)),
       variant: streamFrom(hashSeed(`landmark:variant:${ctx.mapId}:${placement.kind}`, ...identity)),
+      age: streamFrom(hashSeed(`landmark:age:${ctx.mapId}:${placement.kind}`, ...identity)),
       tier: ctx.tier, groundFall: ground.spread, brick: ctx.architecture?.surfaces.stone.kind === 'brick',
       ground: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);
@@ -265,24 +288,29 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     let records = 0;
     if (hasStructure(parts)) try {
       let shell;
+      const movement: CollisionRecord[] = [];
       if (built.movement?.length) {
-        ctx.obstacles.push(movementRecord(built.movement, placement.x, baseY, placement.z, yaw));
+        // a compound holds at most 64 parts (server/collisionManifestCodec.ts): a long bridge's record in runs of 64.
+        // (A set-piece bridge's roadway stays a 'structure', not a 'bridge' record as the map kits' are: the bots read a
+        // 'bridge' record as a deck their route planner knows from the terrain's bridgeDecks and drive into it, and a
+        // set piece's deck is no terrain deck — they steer round it, the players drive over it.)
+        for (let i = 0; i < built.movement.length; i += MOVEMENT_PART_LIMIT) {
+          movement.push(movementRecord(built.movement.slice(i, i + MOVEMENT_PART_LIMIT), placement.x, baseY, placement.z, yaw));
+        }
+        ctx.obstacles.push(...movement);
         shell = deriveRuntimeStructureShellBands(parts);
       } else {
         const profile = deriveRuntimeStructureCollisionProfile(parts);
         appendStructureCollisionBand(ctx.obstacles, profile.contact, placement.x, baseY, placement.z, yaw).kind = 'structure';
         shell = profile.shell;
       }
-      records++;
+      records += Math.max(1, movement.length);
       for (const band of shell) {
         appendStructureCollisionBand(ctx.colliders, band, placement.x, baseY, placement.z, yaw).kind = 'structure';
         records++;
       }
-      if (built.movement?.length) {
-        // the deck is also what a shell meets over the water: its movement record joins the shells' list as well
-        ctx.colliders.push(cloneCollisionRecord(ctx.obstacles[ctx.obstacles.length - 1]));
-        records++;
-      }
+      // the deck is also what a shell meets over the water: its movement record joins the shells' list as well
+      for (const record of movement) { ctx.colliders.push(cloneCollisionRecord(record)); records++; }
     } catch (error) {
       for (const geometry of partList(parts)) geometry.dispose();
       skip(`collision: ${(error as Error).message}`);

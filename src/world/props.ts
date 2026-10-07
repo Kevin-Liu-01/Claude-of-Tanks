@@ -5178,10 +5178,12 @@ ${snowCap ? `
     const placeSoukObjects = (): void => {
       const potCount = richCount(inh.pots ?? 0);
       if (potCount <= 0) return;
+      // the buildings alone: a set piece's reserved ground (the landmarks pass) is no doorstep, and counting it among the
+      // buildings would turn every pick after it — a map's pots, then the rest of the dressing stream
+      const soukSites = placedB.some((b) => b.landmark) ? placedB.filter((b) => !b.landmark) : placedB;
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
-        const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
+        const pb = soukSites.length ? soukSites[(drng() * soukSites.length) | 0] : null;
         if (!pb) break;
-        if (pb.landmark) continue;
         const a = drng() * Math.PI * 2, r = pb.rr + 0.8 + drng() * 2.6;
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
         if (heightField._roadDist(x, z) < 3.6 || noVeg(x, z)) continue;
