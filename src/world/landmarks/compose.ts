@@ -259,8 +259,9 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
   const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
   placement.approaches.forEach((door, k) => {
     const u = door.u ?? 0, width = Math.max(0.8, door.width ?? 1.6), depth = Math.max(1, door.depth ?? 2.5);
-    const [lx, lz, nx, nz] = door.side === 'front' ? [u, hl, 0, 1] : door.side === 'back' ? [u, -hl, 0, -1]
-      : door.side === 'right' ? [hw, u, 1, 0] : [-hw, u, -1, 0];
+    const ex = hw - Math.max(0, door.inset ?? 0), ez = hl - Math.max(0, door.inset ?? 0);
+    const [lx, lz, nx, nz] = door.side === 'front' ? [u, ez, 0, 1] : door.side === 'back' ? [u, -ez, 0, -1]
+      : door.side === 'right' ? [ex, u, 1, 0] : [-ex, u, -1, 0];
     const [px, pz] = toWorld(lx, lz), wx = nx * c + nz * s, wz = -nx * s + nz * c;
     const heading = Math.atan2(wx, wz) * 180 / Math.PI, surface = door.surface ?? 'earth';
     const label = placement.name ?? placement.kind;
