@@ -6,7 +6,7 @@
 //   2. the forms (haystackKit.ts, the straw kinds of inhabitKit and sceneryKit): every kind's geometry inside its
 //      record's radius and height, its footprint (collider) inside its visible hay, its print in the bands, within its
 //      triangle budget; the stog and the plast round a pole that stands out of the crown, the hooiberg's roof on four
-//      poles over its stack, the Diemen longer than it is wide; the stook a teepee of sheaves inside the Autumn
+//      poles over its stack, the Diemen's pole out of its cap over an oval body; the stook a teepee of sheaves inside the Autumn
 //      harvest envelope;
 //   3. the maps (haystackKit HAYSTACK_STYLE_BY_MAP): each region's stack where the coordinator's survey placed one,
 //      none at the default and on the maps that stack no hay, the steppe's cone left to the maps lane;
@@ -121,9 +121,53 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
   let polesHigh = 0;
   for (let i = 0; i < hp.count; i++) if (Math.abs(Math.abs(hp.getX(i)) - Math.abs(hp.getZ(i))) < 0.3 && Math.hypot(hp.getX(i), hp.getZ(i)) > 2.6 && hp.getY(i) > 5.5) polesHigh++;
   assert.ok(polesHigh >= 4, 'the hooiberg: its four poles stand above its roof at the corners');
-  const diemen = REG.diemen.build(mulberry32(5));
+  // (b31; the coordinator: "loose hay stacked round a central pole, with the pole tip showing at the top, a thatched or
+  // hay cap shedding rain, a slightly bulging round or oval body, and loose wisps at the base") the Diemen a pole stack:
+  // its pole's tip out of its cap, a little oval and taller than wide, its cap's eave proud of its shoulder and inside its
+  // belly (no hut), its foot wisped
+  const diemen = REG.diemen.build(mulberry32(5)), dp = diemen.attributes.position, duv = diemen.attributes.uv;
   diemen.computeBoundingBox();
-  assert.ok(diemen.boundingBox.max.z > diemen.boundingBox.max.x * 1.5, 'the Diemen: a long rick');
+  const db = diemen.boundingBox, H = db.max.y, ovalness = (db.max.z - db.min.z) / (db.max.x - db.min.x);
+  const inBand = (v, b) => v >= b[0] - 1e-6 && v <= b[1] + 1e-6, rOf = (i) => Math.hypot(dp.getX(i), dp.getZ(i) / ovalness);
+  let dCrown = -Infinity, eaveR = 0, eaveY = Infinity, belly = 0, shoulder = 0;
+  for (let i = 0; i < dp.count; i++) {
+    const y = dp.getY(i), v = duv.getY(i);
+    if (Math.hypot(dp.getX(i), dp.getZ(i)) > 0.3) dCrown = Math.max(dCrown, y);
+    if (inBand(v, HAY_THATCH_V) && y < H * 0.75) { eaveR = Math.max(eaveR, rOf(i)); eaveY = Math.min(eaveY, y); }
+    if (inBand(v, HAY_FACE_V) && y > H * 0.2 && y < H * 0.4) belly = Math.max(belly, rOf(i));
+  }
+  for (let i = 0; i < dp.count; i++) if (inBand(duv.getY(i), HAY_FACE_V) && Math.abs(dp.getY(i) - eaveY) < 0.2) shoulder = Math.max(shoulder, rOf(i));
+  assert.ok(tops(diemen, 0.15) > dCrown + 0.4, `the Diemen: its pole's tip out of its cap (${(tops(diemen, 0.15) - dCrown).toFixed(2)} m)`);
+  assert.ok(ovalness > 1.05 && ovalness < 1.3, `the Diemen: a little oval (${ovalness.toFixed(2)})`);
+  assert.ok(H > (db.max.x - db.min.x) * 1.05, `the Diemen: taller than it is wide (${H.toFixed(2)} over ${(db.max.x - db.min.x).toFixed(2)})`);
+  assert.ok(eaveR > shoulder + 0.03 && eaveR < belly, `the Diemen: its cap's eave proud of its shoulder and inside its belly (${eaveR.toFixed(2)}: ${shoulder.toFixed(2)}, ${belly.toFixed(2)})`);
+  // the wisps: loose tufts, each a part of its own (welded by position), low and small, round its foot
+  const vid = new Int32Array(dp.count), ids = new Map(), parent = [];
+  const find = (a) => { while (parent[a] !== a) a = parent[a] = parent[parent[a]]; return a; };
+  for (let i = 0; i < dp.count; i++) {
+    const k = `${Math.round(dp.getX(i) * 1e4)},${Math.round(dp.getY(i) * 1e4)},${Math.round(dp.getZ(i) * 1e4)}`;
+    let id = ids.get(k);
+    if (id === undefined) { id = parent.length; parent.push(id); ids.set(k, id); }
+    vid[i] = id;
+  }
+  const corner = (t, k) => vid[diemen.index ? diemen.index.getX(t * 3 + k) : t * 3 + k];
+  for (let t = 0; t < (diemen.index ? diemen.index.count : dp.count) / 3; t++) {
+    const a = find(corner(t, 0));
+    for (const k of [1, 2]) { const b = find(corner(t, k)); if (b !== a) parent[b] = a; }
+  }
+  const parts = new Map();
+  for (let i = 0; i < dp.count; i++) {
+    const root = find(vid[i]), b = parts.get(root) ?? { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+    b.x0 = Math.min(b.x0, dp.getX(i)); b.x1 = Math.max(b.x1, dp.getX(i)); b.y0 = Math.min(b.y0, dp.getY(i)); b.y1 = Math.max(b.y1, dp.getY(i));
+    b.z0 = Math.min(b.z0, dp.getZ(i)); b.z1 = Math.max(b.z1, dp.getZ(i));
+    parts.set(root, b);
+  }
+  const wisps = [...parts.values()].filter((b) => b.y0 < 0.05 && b.y1 < 0.6 && b.x1 - b.x0 < 0.6 && b.z1 - b.z0 < 0.6).length;
+  assert.ok(wisps >= 6, `the Diemen: loose wisps at its foot (${wisps} tufts)`);
+  let ddraws = 0;
+  const dbase = mulberry32(77);
+  REG.diemen.build(() => { ddraws++; return dbase(); });
+  assert.equal(ddraws, 4 + 8 * 8 + 24 * 24 + 24 * 24, 'the Diemen spends exactly its old rick\'s draws (every later pool keeps its geometry)');
   // the stook inside the Autumn harvest envelope (props.ts autumnHarvestRadius: .22 + .16 + .625 sin .34)
   const stook = REG.stook.build(mulberry32(5));
   stook.computeBoundingBox();
@@ -171,7 +215,7 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
 
 // ---------------------------------------------------------------------------------------------- 5. by hand
 {
-  for (const kind of ['stog', 'plast', 'meule', 'haystack']) {
+  for (const kind of ['stog', 'plast', 'meule', 'haystack', 'diemen']) {
     const g = REG[kind].build(mulberry32(11)), p = g.attributes.position;
     g.computeBoundingBox();
     const H = g.boundingBox.max.y, bins = new Float64Array(16);

@@ -9,7 +9,8 @@
 //   - the hooiberg (the Dutch polders): a square stack under a thatched pyramid roof that slides on four tall poles;
 //   - the meule (France: Lorraine, Normandy, Brittany): a broad drum of hay drawn up into a dome, a twist of straw at its
 //     top;
-//   - the Diemen (Germany: Hesse, the Eifel): a long rick, its walls drawn down, a rounded thatched ridge, hipped ends;
+//   - the Diemen (Germany: Hesse, the Eifel): hay stacked round a central pole into a slightly oval, bulging body under a
+//     thatched cap that sheds the rain, the pole's tip standing out of it, loose wisps at its foot (b31; it was a rick);
 //   - the Bengal and Mekong pole stack: sceneryKit's strawstack (rice straw round a bamboo pole).
 //
 // Every one is hay over a settled foot: a skirt of loose hay pressed into the ground round it, the stack's face drawn
@@ -109,20 +110,6 @@ function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: 
 /** A band's v at a share of its height (0 its start, 1 its end). */
 const bandV = (band: readonly [number, number], t: number) => band[0] + (band[1] - band[0]) * Math.min(1, Math.max(0, t));
 
-/** Each triangle wound to face away from `centre` (a convex part's own inside), its normals recomputed. */
-function faceOutward(g: THREE.BufferGeometry, centre: THREE.Vector3): THREE.BufferGeometry {
-  const p = g.attributes.position as THREE.BufferAttribute, idx = g.index!.array as ArrayLike<number> & { [i: number]: number };
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3(), m = new THREE.Vector3();
-  for (let t = 0; t < idx.length; t += 3) {
-    a.fromBufferAttribute(p, idx[t]); b.fromBufferAttribute(p, idx[t + 1]); c.fromBufferAttribute(p, idx[t + 2]);
-    n.subVectors(b, a).cross(m.subVectors(c, a));
-    m.copy(a).add(b).add(c).multiplyScalar(1 / 3).sub(centre);
-    if (n.dot(m) < 0) { const k = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = k; }
-  }
-  g.computeVertexNormals();
-  return g;
-}
-
 /**
  * An existing straw part's print moved into one band of the hay print: its v (0 to its largest) laid along the band,
  * its u as it was (every band is periodic along u).
@@ -164,41 +151,6 @@ function footSkirt(r: number, out: number, segs: number, rng: Rng, tilesU: numbe
     [r * 1.02, 0.2, bandV(HAY_FACE_V, 0.06), 0.03],
     [r * 0.9, 0.24, bandV(HAY_FACE_V, 0.07), 0.0],
   ], segs, rng, tilesU);
-}
-
-/**
- * A rick's settled foot: footSkirt's profile round a rounded rectangle of half extents (hx, hz) — a superellipse —
- * from inside the rick's foot out and down to under the ground `out` beyond it.
- */
-function rectSkirt(hx: number, hz: number, out: number, rng: Rng): THREE.BufferGeometry {
-  const segs = 36, rows: Array<[number, number, number, number]> = [
-    // [offset beyond the outline (m), y, v share of the face band, rag]
-    [out * 1.0 + 0.04, -0.06, 0, out * 0.35], [out * 0.55 + 0.03, 0.05, 0.02, out * 0.3], [0.02, 0.2, 0.06, 0.03], [-0.2, 0.24, 0.07, 0],
-  ];
-  const locks = noiseTable(rng, 24), cols = segs + 1;
-  const pos = new Float32Array(rows.length * cols * 3), uv = new Float32Array(rows.length * cols * 2), index: number[] = [];
-  const tiles = Math.max(2, Math.round((4 * (hx + hz)) / 4));
-  for (let k = 0; k < rows.length; k++) {
-    const [off, y, f, rag] = rows[k];
-    for (let j = 0; j < cols; j++) {
-      const t = (j % segs) / segs, a = t * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), p = 6;
-      const ox = hx * Math.sign(c) * Math.pow(Math.abs(c), 2 / p), oz = hz * Math.sign(s) * Math.pow(Math.abs(s), 2 / p);
-      const l = Math.hypot(ox, oz) || 1, wob = (sampleTable(locks, 24, t * 3, y * 1.6) - 0.5) * 2 * rag;
-      const o = (k * cols + j) * 3;
-      pos[o] = ox + (ox / l) * (off + wob); pos[o + 1] = y; pos[o + 2] = oz + (oz / l) * (off + wob);
-      uv[(k * cols + j) * 2] = (j / segs) * tiles; uv[(k * cols + j) * 2 + 1] = bandV(HAY_FACE_V, f);
-    }
-  }
-  for (let k = 0; k < rows.length - 1; k++) for (let j = 0; j < segs; j++) {
-    const a = k * cols + j, b = a + 1, c = a + cols, d = c + 1;
-    index.push(a, c, b, b, c, d);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  g.setIndex(index);
-  g.computeVertexNormals();
-  return g;
 }
 
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
@@ -430,76 +382,69 @@ function bMeule(rng: Rng): THREE.BufferGeometry {
 function bMeuleBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.3, false); }
 
 /**
- * The Diemen: a long rick — its walls drawn down, a rounded thatched ridge over them, its ends hipped round — swept
- * along z: the cross-section's outline (foot, wall, eave, ridge) at each station, the stations near the ends drawn in.
+ * The draws the Diemen's old build took from the destructible stream (b15's long rick: its four sizes, its two noise
+ * tables and its skirt's): the new build spends exactly these first, so every later pool keeps its geometry.
+ */
+const DIEMEN_RICK_DRAWS = 4 + 8 * 8 + 24 * 24 + 24 * 24;
+
+/**
+ * (b31; gauntlet wave 180 read the rick as nothing Hessian; the coordinator: "A Hessian Diemen/Feime is loose hay
+ * stacked round a central pole, with the pole tip showing at the top, a thatched or hay cap shedding rain, a slightly
+ * bulging round or oval body, and loose wisps at the base") The Diemen of Hesse and the Eifel: hay stacked round a
+ * central pole, taller than it is wide, a little oval in plan: drawn in at its foot, bulging a third of the way up and
+ * drawn in again to its shoulder, built by hand (one side fuller, the hay raked down in a slight twist, locks proud);
+ * over the shoulder a steep cap of thatched straw, its ragged eave a hand proud of the hay and turned down (the rain
+ * runs off it, not down the stack's face), rounded up to the pole, whose tip stands out of it. No hut: the cap
+ * continues the stack's egg, no wall stands under it and no flat roof over it (a thatched cap with a broad eave read as
+ * a hut's roof on the meule, wave 139). Loose wisps of hay round its foot over the settled skirt. From a stream of its
+ * own, seeded by the rick's draws once they are spent.
  */
 function bDiemen(rng: Rng): THREE.BufferGeometry {
-  const halfL = 3.2 + rng() * 0.5, halfW = 1.7 + rng() * 0.15, wall = 2.3 + rng() * 0.3, ridge = wall + 1.5 + rng() * 0.3;
-  const lumps = noiseTable(rng, 8), locks = noiseTable(rng, 24);
-  // the section's outline from the left foot over the ridge to the right foot: (x, y, v, rag)
-  const outline: ProfilePoint[] = [];
-  const sideRows: Array<[number, number]> = [[-0.1, 0], [0.15, 0.06], [wall * 0.5, 0.5], [wall, 1]];
-  for (const [y, f] of sideRows) outline.push([-halfW * (1 + 0.04 * Math.sin(Math.PI * f)), y, bandV(HAY_FACE_V, f), 0.1]);
-  for (let i = 1; i <= 6; i++) {
-    const t = i / 7, ang = Math.PI * (1 - t);
-    outline.push([Math.cos(ang) * halfW * 1.04, wall + Math.sin(ang) * (ridge - wall), bandV(HAY_THATCH_V, Math.min(t, 1 - t) * 2), 0.08]);
+  // the rick's draws spent, the first four of them seeding this stack's own stream: every Diemen its own, and every
+  // later pool keeps its geometry
+  let seed = 0xd1e7e3;
+  for (let i = 0; i < DIEMEN_RICK_DRAWS; i++) {
+    const v = rng();
+    if (i < 4) seed = Math.imul(seed ^ Math.floor(v * 4294967296), 0x9e3779b1);
   }
-  for (let k = sideRows.length - 1; k >= 0; k--) {
-    const [y, f] = sideRows[k];
-    outline.push([halfW * (1 + 0.04 * Math.sin(Math.PI * f)), y, bandV(HAY_FACE_V, f), 0.1]);
+  const own = ownStream(seed);
+  const R = 1.75 + own() * 0.15, oval = 1.1 + own() * 0.06, H = 4.5 + own() * 0.35, eaveY = H * (0.6 + own() * 0.04), segs = 16;
+  const tiles = Math.max(2, Math.round((Math.PI * 2 * R * (1 + oval) / 2) / 4));
+  const face = (y: number) => bandV(HAY_FACE_V, Math.min(1, y / eaveY));
+  const thatch = (t: number) => bandV(HAY_THATCH_V, t);
+  const footR = R * 0.84;
+  const profile: ProfilePoint[] = [
+    [footR * 0.97, -0.1, face(0), 0.04],
+    [footR * 1.02, 0.12, face(0.12), 0.06],
+    [R * 0.95, H * 0.12, face(H * 0.12), 0.08],
+    [R * 1.01, H * 0.24, face(H * 0.24), 0.09],
+    [R * 1.02, H * 0.33, face(H * 0.33), 0.09],
+    [R * 0.96, H * 0.45, face(H * 0.45), 0.09],
+    [R * 0.8, eaveY - 0.04, face(eaveY), 0.08],
+    // the cap's eave: a hand proud of the hay at the shoulder and turned down, its drip edge
+    [R * 0.84, eaveY - 0.12, thatch(0), 0.05],
+    [R * 0.83, eaveY + 0.04, thatch(0.06), 0.04],
+  ];
+  // the cap drawn up to the pole, steep enough to shed the rain (some fifty degrees), its thatch ragged at the eave and the tip
+  for (let i = 1; i <= 4; i++) {
+    const t = i / 4, y = eaveY + (H - eaveY) * t;
+    profile.push([R * 0.81 * Math.pow(1 - t, 0.85) + 0.06, y, thatch(0.06 + 0.9 * t), 0.05 * (1 - t) + 0.02]);
   }
-  // the stations along the rick: its ends drawn in a little and rounded at their corners, then cut square (b19; the
-  // b15 frames: a deep hip drew the thatch's courses down over the end like the ribs of a shell — "a barrel or a log
-  // end"; a rick's end is its cut face, the hay standing in it as in its walls)
-  const stations: number[] = [];
-  for (let i = 0; i <= 12; i++) stations.push(-halfL + (2 * halfL * i) / 12);
-  const rows = stations.length, cols = outline.length;
-  const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), index: number[] = [];
-  const along = (2 * halfL) / 4;
-  for (let i = 0; i < rows; i++) {
-    const z = stations[i], e = Math.abs(z) / halfL, hip = e > 0.84 ? Math.sqrt(Math.max(0, 1 - Math.pow((e - 0.84) / 0.16, 2))) : 1;
-    for (let k = 0; k < cols; k++) {
-      const [x, y, v, rag] = outline[k];
-      const t = k / (cols - 1);
-      const wobble = (sampleTable(lumps, 8, z / 8 + 0.5, y * 0.4 + t) - 0.5) * 0.14 + (sampleTable(locks, 24, z / 4 + t * 2, y * 1.6) - 0.5) * 2 * rag;
-      const scale = 0.8 + 0.2 * hip, yScale = y > wall ? 0.9 + 0.1 * hip : 1;
-      const o = (i * cols + k) * 3;
-      pos[o] = (x + Math.sign(x) * wobble) * scale; pos[o + 1] = y * yScale; pos[o + 2] = z * (e > 0.84 ? 1 - 0.04 * (1 - hip) : 1);
-      uv[(i * cols + k) * 2] = ((z + halfL) / (2 * halfL)) * along; uv[(i * cols + k) * 2 + 1] = v;
-    }
+  const body = turn(profile, segs, own, tiles, R * 1.14);
+  const skirt = footSkirt(footR, 0.3, segs, own, tiles);
+  // the loose wisps at its foot: thin tufts leaning out of the skirt, every one its own height and lean
+  const wisps: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + (own() - 0.5) * 0.6, h = 0.3 + own() * 0.25, lean = 0.25 + own() * 0.3;
+    const tuft = turn([[0.09, -0.04, bandV(HAY_FACE_V, 0.02), 0.01], [0.06, h * 0.5, bandV(HAY_FACE_V, 0.06), 0.01], [0.012, h, bandV(HAY_FACE_V, 0.1), 0]], 4, own, 1);
+    tuft.rotateZ(-lean);
+    tuft.rotateY(-a);
+    const r = footR * (1.04 + own() * 0.1);
+    wisps.push(tuft.translate(Math.cos(a) * r, 0, Math.sin(a) * r));
   }
-  for (let i = 0; i < rows - 1; i++) for (let k = 0; k < cols - 1; k++) {
-    const a = i * cols + k, b = a + 1, c = a + cols, d = c + 1;
-    index.push(a, c, b, b, c, d);
-  }
-  const body = new THREE.BufferGeometry();
-  body.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  body.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  body.setIndex(index);
-  body.computeVertexNormals();
-  // the hipped ends closed: a fan at each end from the section's centre (its last station's outline, drawn in).
-  // (b19; the b15 frames: the fan's thatch laid round it read as "a barrel or a log end", radial stripes on a shell —
-  // the end is the rick's cut face now, the face band's hanging straw by its height and across it, as its walls wear it)
-  const parts: THREE.BufferGeometry[] = [body];
-  const endV = (y: number): number => bandV(HAY_FACE_V, Math.min(1, Math.max(0, y / ridge)));
-  for (const end of [0, rows - 1]) {
-    const ring: number[] = [];
-    for (let k = 0; k < cols; k++) { const o = (end * cols + k) * 3; ring.push(pos[o], pos[o + 1], pos[o + 2]); }
-    const cx = 0, cy = ridge * 0.45, cz = stations[end] * 0.985;
-    const fpos: number[] = [], fuv: number[] = [], fidx: number[] = [];
-    fpos.push(cx, cy, cz); fuv.push((cx + halfW) / 4, endV(cy));
-    for (let k = 0; k < cols; k++) { fpos.push(ring[k * 3], ring[k * 3 + 1], ring[k * 3 + 2]); fuv.push((ring[k * 3] + halfW) / 4, endV(ring[k * 3 + 1])); }
-    for (let k = 0; k < cols - 1; k++) fidx.push(0, k + 1, k + 2);
-    fidx.push(0, cols, 1); // (and across its foot: the cut face is whole down to the ground)
-    const fan = new THREE.BufferGeometry();
-    fan.setAttribute('position', new THREE.Float32BufferAttribute(fpos, 3));
-    fan.setAttribute('uv', new THREE.Float32BufferAttribute(fuv, 2));
-    fan.setIndex(fidx);
-    parts.push(faceOutward(fan, new THREE.Vector3(0, ridge * 0.4, 0)));
-  }
-  // the settled foot along its walls and round its ends
-  parts.push(rectSkirt(halfW, halfL, 0.32, rng));
-  return merge(parts);
+  const hay = merge([body, skirt, ...wisps]);
+  hay.scale(1, 1, oval);
+  return merge([hay, pole(0.07, -0.4, H + 0.45 + own() * 0.3, (own() - 0.5) * 0.12, (own() - 0.5) * 0.12)]);
 }
 
 function bDiemenBroken(rng: Rng): THREE.BufferGeometry {
@@ -615,9 +560,9 @@ export function buildHaycock(): THREE.BufferGeometry {
  * don't stop short of the hay they see"). A stack's colliders are refit from its build (props.ts
  * refitDestructibleColliders), and a lumpy, many-part form ear-clips into dozens of convex parts — 37 a stog, 56 a
  * stook, 18,130 over the shards — every one a polygon each contact tests, for crushable, shoot-through props. Each kind
- * names a convex stand-in instead: an upright prism (a box for the square stack and the rick) inside its hay's plan
- * footprint below the contact band's top (the gaps between a stook's sheaves read as one cone), from the ground to
- * that top or its own height. haystacks.selftest measures every one inside its footprint.
+ * names a convex stand-in instead: an upright prism (a box for the square stack, an oval one for the Diemen) inside
+ * its hay's plan footprint below the contact band's top (the gaps between a stook's sheaves read as one cone), from the
+ * ground to that top or its own height. haystacks.selftest measures every one inside its footprint.
  */
 export const STRAW_STAND_IN_TOP_M = 1.8;
 /** An upright prism of `segs` sides, radius r, from the ground to h. */
@@ -653,8 +598,8 @@ export const ROUND_BALE_MAPS: ReadonlySet<string> = new Set(['airfield', 'fronti
  * The field stacks' destructible kinds (merged into the props type registry after the scenery's, so no existing kind
  * moves; not landmarks: the haystack pass places them, never a map's scenery plan).
  * Shoot-through crushable obstacles like the legacy stack. r is the hay's reach above its skirt (the stog's belly, the
- * hooiberg's eaves at the corners, the Diemen's hipped ends), h its top with the poles; the footprints follow the hay at
- * the ground: the stog's and the plast's foot, the hooiberg's stack, the meule's drum, the Diemen's walls.
+ * hooiberg's eaves at the corners, the Diemen's belly on its long axis), h its top with the poles; the footprints follow
+ * the hay at the ground: the stog's and the plast's foot, the hooiberg's stack, the meule's drum, the Diemen's oval foot.
  */
 export const HAYSTACK_DESTRUCTIBLE_TYPES = {
   stog: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.3, h: 6.1, shape: 'circle', collisionR: 1.7, build: bStog, broken: bStogBroken,
@@ -665,8 +610,10 @@ export const HAYSTACK_DESTRUCTIBLE_TYPES = {
     contactProxy: () => boxStandIn(1.8, 1.8, STRAW_STAND_IN_TOP_M) },
   meule: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.7, h: 5.2, shape: 'circle', collisionR: 2.2, build: bMeule, broken: bMeuleBroken,
     contactProxy: () => prismStandIn(2.38, STRAW_STAND_IN_TOP_M) },
-  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.9, h: 4.35, hw: 1.8, hl: 3.5, build: bDiemen, broken: bDiemenBroken,
-    contactProxy: () => boxStandIn(1.65, 3.2, STRAW_STAND_IN_TOP_M) },
+  // (b31: the Diemen a pole stack, a little oval: its hay's reach at the belly, its pole's tip, its box its hay's below a metre;
+  // its stand-in the oval prism inside its belly at the least of its seeds, R 1.75 and 1.1 long)
+  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.75, h: 5.65, hw: 1.7, hl: 1.85, build: bDiemen, broken: bDiemenBroken,
+    contactProxy: () => prismStandIn(1.6, STRAW_STAND_IN_TOP_M).scale(1, 1, 1.1) },
 } satisfies Record<string, DestructiblePropType>;
 
 /** Each style's kind and the radius of its grounding disc (props.ts stackSpots) at scale 1. */
@@ -675,7 +622,7 @@ export const HAYSTACK_STYLE_KINDS: Readonly<Record<Exclude<HaystackStyle, 'none'
   plast: { kind: 'plast', spotR: 2.0 },
   hooiberg: { kind: 'hooiberg', spotR: 3.4 },
   meule: { kind: 'meule', spotR: 3.3 },
-  diemen: { kind: 'diemen', spotR: 4.4 },
+  diemen: { kind: 'diemen', spotR: 3.2 },
   strawstack: { kind: 'strawstack', spotR: 2.4 },
   haystack: { kind: 'haystack', spotR: 2.85 },
 });
