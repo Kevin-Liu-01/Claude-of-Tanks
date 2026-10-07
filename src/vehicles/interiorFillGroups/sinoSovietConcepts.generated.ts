@@ -4,7 +4,7 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "type96_72_long": { v: 0.025, o: [-1.8655, 0.208217, -3.43535], t: [0, 1.475, 0.065591], g: [0, 1.7352, 1.815591], hull: "dwAqAO4AdwAqAO4AdwApAPcAdwApAPcA" },
-  "type96_72m_lei": { v: 0.025, o: [-2.03, 0.231406, -3.545], t: [0, 1.545, 0.114315], g: [0, 1.8052, 1.864315], hull: "JQAuAAgBKAAuAAkBeQAuAAgBfQAuAAkB" },
+  "type96_72_long": { v: 0.025, o: [-1.8655, 0.208217, -3.43535], t: [0, 1.475, 0.065591], g: [0, 1.7352, 1.815591] },
+  "type96_72m_lei": { v: 0.025, o: [-2.03, 0.231406, -3.545], t: [0, 1.545, 0.114315], g: [0, 1.8052, 1.864315] },
   "type96_80_feng": { v: 0.025, o: [-1.797, 0.208593, -3.435], t: [0, 1.565, 0.07187], g: [0, 1.8252, 1.82187] },
 });

@@ -12,6 +12,8 @@ await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id));
 for(const quality of ['high','low']) {
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  // These fixed source calipers predate the owner-approved uniform resize.
+  tank.root.scale.setScalar(1/.90);
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((level,i)=>level.object.visible=i===0);}});
   const probe=sourceOpeningRayProbe(tank.root);
   const y=(x,z,up=false)=>probe.cast([x,up ? .5 : 5,z],[0,up?1:-1,0])?.point.y;
@@ -24,8 +26,8 @@ for(const quality of ['high','low']) {
   near(y(0,-2.80,true),.5239,.001,`${quality} real tub floor`);
   near(y(0,-3.10),1.85257,.001,`${quality} aft central deck slope`);
   // A broad rear filler must be detected instead of passing a bounds check.
-  const filler=new THREE.Mesh(new THREE.BoxGeometry(1.2,.10,.30),new THREE.MeshBasicMaterial());
-  filler.position.set(0,1.5,-3.7);tank.root.add(filler);filler.updateMatrixWorld(true);
+  const filler=new THREE.Mesh(new THREE.BoxGeometry(1.2*.90,.10*.90,.30*.90),new THREE.MeshBasicMaterial());
+  filler.position.set(0,1.5,-3.7).multiplyScalar(.90);tank.root.add(filler);filler.updateMatrixWorld(true);
   const filled=sourceOpeningRayProbe(tank.root);
   assert.ok(filled.cast([0,5,-3.7],[0,-1,0]),'filled-recess negative fixture is observable');
   filled.dispose();tank.root.remove(filler);filler.geometry.dispose();filler.material.dispose();

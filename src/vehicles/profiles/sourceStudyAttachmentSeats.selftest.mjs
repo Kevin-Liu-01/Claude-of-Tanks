@@ -10,7 +10,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
   try {
     const root = tank.root;
     // Retain the original source witness coordinates after the exact uniform resize.
-    if (id === 'k21_x') root.scale.setScalar(1 / .90);
+    if (['k21_x','kurganets25_x','bmp3m_dragun125_x'].includes(id)) root.scale.setScalar(1 / .90);
     root.updateMatrixWorld(true);
     const meshes = [];
     root.traverseVisible(o => {

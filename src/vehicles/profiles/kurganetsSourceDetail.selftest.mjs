@@ -12,12 +12,12 @@ for (const quality of ['high', 'low']) {
     const hull = tank.root.getObjectByName('rig_hull');
     const meshes = [];
     tank.root.traverseVisible(mesh => { if (mesh.isMesh) meshes.push(mesh); });
-    const scale = hull.getWorldScale(new THREE.Vector3()).x;
+    const scale = hull.getWorldScale(new THREE.Vector3()).x, vehicleScale = .90;
     const ray = (position, direction, far) => new THREE.Raycaster(
-      hull.localToWorld(new THREE.Vector3(...position)),
-      new THREE.Vector3(...direction).transformDirection(hull.matrixWorld), 0, far * scale,
+      hull.localToWorld(new THREE.Vector3(...position).multiplyScalar(vehicleScale)),
+      new THREE.Vector3(...direction).transformDirection(hull.matrixWorld), 0, far * scale * vehicleScale,
     ).intersectObjects(meshes, false).map(hit => ({
-      name: hit.object.name, point: hull.worldToLocal(hit.point.clone()),
+      name: hit.object.name, point: hull.worldToLocal(hit.point.clone()).divideScalar(vehicleScale),
     }));
     // Source Object_23 full-scene witnesses distinguish outboard folded banks
     // from the old false center grille and the mudguard-derived stern plane.

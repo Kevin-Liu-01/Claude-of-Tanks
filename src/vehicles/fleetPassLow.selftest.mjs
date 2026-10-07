@@ -3,6 +3,7 @@
 // eraGameplayRegistration.selftest. The ledger's LOW rows are digested first, before anything reads the build (re-pin
 // moved rows with npm run tank:geometry:update after review); the ERA audit strips and resets every depletable zone,
 // which the pass verifies leaves the build unchanged; gun articulation poses the gun, so it comes last.
+import { createCircularCapAudit } from '../../tools/circular-cap-audit.mjs';
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
@@ -19,6 +20,7 @@ await runFleetPass({
   ids: ALL_TANK_IDS,
   audits: [
     { name: 'fleetGeometryLedger', create: () => createFleetGeometryLedgerPassAudit(BUILD) },
+    { name: 'circularCapOverlap', create: () => createCircularCapAudit({ quality: 'low' }) },
     { name: 'eraGameplayRegistration', create: createEraGameplayRegistrationAudit },
     { name: 'gunArticulation', create: createGunArticulationAudit },
   ],

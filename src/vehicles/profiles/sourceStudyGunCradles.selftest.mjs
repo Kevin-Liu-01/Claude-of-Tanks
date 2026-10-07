@@ -13,7 +13,8 @@ const cases = [
     dark:{origin:[1.1,.022,-.70],direction:[-1,0,0]} },
   { id:'fv510_milan_x', origin:[.18,.10,.6], direction:[0,0,-1], planeAxis:2,
     plane:.04+(.26+Math.sin(-.09)*.10)/Math.cos(-.09), seatZ:.20 },
-  { id:'bmp3m_dragun125_x', origin:[.154,0,.5], direction:[0,0,-1], planeAxis:2, plane:.0895, seatZ:.04 },
+  // Owner-requested armored mantlet replaces the earlier small source boot.
+  { id:'bmp3m_dragun125_x', origin:[.154,0,.5], direction:[0,0,-1], planeAxis:2, plane:.265, seatZ:.04 },
   { id:'griffin50_x', origin:[0,.4*.9,.75*.9], direction:[0,-1,0], planeAxis:1,
     plane:(.165+(.1493-.165)*(.59/.60))*.9, seatZ:.30*.9 },
   { id:'k21_x', origin:[.14,.08,.6], direction:[0,0,-1], planeAxis:2,
@@ -25,7 +26,7 @@ await ensureInteriorFills(cases.map(row=>row.id));
 
 for (const quality of ['high','low']) for (const sourceRow of cases) {
   // These source witnesses predate the owner's uniform 90% vehicle sizing.
-  const factor = ['griffin50_x','k21_x','ajax_x'].includes(sourceRow.id) ? .90 : 1;
+  const factor = ['griffin50_x','k21_x','ajax_x','kurganets25_x','bmp3m_dragun125_x'].includes(sourceRow.id) ? .90 : 1;
   const row = {...sourceRow, origin:sourceRow.origin.map(v=>v*factor),
     plane:sourceRow.plane*factor, seatZ:sourceRow.seatZ*factor,
     ...(sourceRow.dark ? {dark:{...sourceRow.dark,origin:sourceRow.dark.origin.map(v=>v*factor)}} : {})};
