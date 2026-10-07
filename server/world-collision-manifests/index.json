@@ -145,11 +145,11 @@
       "concealers": 1486
     },
     "polders": {
-      "bytes": 1236779,
-      "sha256": "3f4e2cf269ae4f27aed493333bdb51092de0925c5006abe3311ed8162e25474f",
-      "obstacles": 3466,
-      "colliders": 3305,
-      "concealers": 2743
+      "bytes": 1230937,
+      "sha256": "a9347cade0cc25ed168a9b1e90c73f399294d6bcdefa9c4b5bfcbff722d16657",
+      "obstacles": 3483,
+      "colliders": 3322,
+      "concealers": 2767
     },
     "copper_mesa": {
       "bytes": 739289,
