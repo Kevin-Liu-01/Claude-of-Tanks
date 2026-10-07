@@ -188,6 +188,7 @@ interface CompletePropsBuckets extends GeometryBuckets {
   dark: THREE.BufferGeometry[];
   glass: THREE.BufferGeometry[];
   curtain: THREE.BufferGeometry[];
+  /** (and, on a map with a kit's thatched roofs, `thatch`: those roofs, split from the straw at the merge — makeThatch) */
   straw: THREE.BufferGeometry[];
   baked: THREE.BufferGeometry[];
   steel: THREE.BufferGeometry[];
@@ -1026,6 +1027,73 @@ function makeStraw(
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 2.4, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.88, roughMax: 1.0, aoMin: 0.74 }),
+  };
+}
+
+/**
+ * A thatched roof's print (facades lane, round 5, 2026-10-07; wave 199 read the khatas' straw roofs as "thatch that reads
+ * like carpet"): the straw laid in courses down the slope, as a thatcher lays it. Texture u runs down the slope (house.ts
+ * swaps a straw roof's axes), v along the ridge; a 512 px tile is 2.2 m of roof (the straw bucket's density):
+ *   - seven courses, each about 32 cm down the slope, its butt line wandering a little along the ridge, the straw
+ *     thickening toward it and a shadow under its frayed edge on the course below;
+ *   - bundles 8.5 cm wide along the ridge, each its own tone and bulge;
+ *   - strands down the slope, 4 mm a strand, each its own tone and length;
+ *   - the weather's broad clouds.
+ * The colour is the straw print's own family and mean (makeStraw's hue, saturation and lightness, under the map's
+ * straw tone): the structure changes, not the palette. Every pattern is periodic in the tile (integer counts, wrapped
+ * lattices), so it tiles without a seam.
+ */
+function makeThatch(anisotropy: number, tone: ToneFunction | null, seed: number): GeneratedSurfaceTextures {
+  const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const hash = (a: number, b: number, c: number): number => {
+    let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b1) ^ seed) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
+    return (h >>> 0) / 4294967296;
+  };
+  const wrap = (i: number, n: number) => ((i % n) + n) % n;
+  // periodic value noise over cx x cy cells of the tile
+  const vnoise = (x: number, y: number, cx: number, cy: number, salt: number): number => {
+    const fx = x / s * cx, fy = y / s * cy, ix = Math.floor(fx), iy = Math.floor(fy);
+    const tx = fx - ix, ty = fy - iy, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const v = (i: number, j: number) => hash(wrap(i, cx), wrap(j, cy), salt);
+    return (v(ix, iy) * (1 - sx) + v(ix + 1, iy) * sx) * (1 - sy) + (v(ix, iy + 1) * (1 - sx) + v(ix + 1, iy + 1) * sx) * sy;
+  };
+  const COURSES = 7, BUNDLES = 26, STRANDS = 320;
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      // the course: t runs 0 at its top (up the slope) to 1 at its butt line, which wanders along the ridge
+      const cu = x / s * COURSES + (vnoise(x, y, 2, 12, 3) - 0.5) * 0.18;
+      const c = Math.floor(cu), t = cu - c;
+      // the bundle along the ridge and the strand within it
+      const bf = y / s * BUNDLES + (vnoise(x, y, 6, 4, 5) - 0.5) * 0.5;
+      const b = Math.floor(bf), bt = bf - b;
+      const strand = Math.floor(y / s * STRANDS);
+      const bundleTone = hash(wrap(b, BUNDLES), wrap(c, COURSES), 7);
+      const strandTone = hash(wrap(strand, STRANDS), wrap(c, COURSES), 9);
+      // a strand's own length: some stop short of the butt line (a frayed edge)
+      const reach = 0.78 + hash(wrap(strand, STRANDS), wrap(c, COURSES), 11) * 0.22;
+      const past = t > reach;
+      const lip = smoothstep(0.82, 1, t) * (past ? 0.4 : 1);
+      // the shadow the course above casts on this one's top, under its frayed edge
+      const shade = 1 - 0.2 * (1 - smoothstep(0, 0.14, t));
+      const weather = vnoise(x, y, 3, 3, 13);
+      const bulge = Math.sin(bt * Math.PI);
+      // along the strand: each one's tone wanders down its length (a stalk, not a painted line)
+      const along = vnoise(x, y, 28, STRANDS, 17);
+      // the straw print's family and mean: hue 0.098-0.12, saturation about 0.3-0.42, lightness about 0.24-0.55
+      const light = (0.215 + strandTone * 0.11 + along * 0.06 + bundleTone * 0.045 + lip * 0.05 + bulge * 0.03) * shade
+        * (0.88 + weather * 0.22) * (past ? 0.8 : 1);
+      _col.setHSL(0.098 + bundleTone * 0.022, 0.4 - (1 - shade) * 0.25 - weather * 0.06, light);
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
+      hgt[i] = Math.min(1, Math.max(0, 0.2 + t * 0.5 * (past ? 0.6 : 1) + bulge * 0.12 + strandTone * 0.08 - (1 - shade) * 0.3));
+    }
+  }
+  applyTone(px, tone);
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 2.6, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.86, roughMax: 1.0, aoMin: 0.7 }),
   };
 }
 
@@ -8315,6 +8383,25 @@ ${snowCap ? `
   }
   yield* placeScenery();
 
+  // facades lane (round 5, 2026-10-07; wave 199: the khatas' "thatch that reads like carpet"): a kit's thatched roofs take
+  // the thatch print (makeThatch: courses, bundles, strands down the slope, in the straw print's own colour) in a mesh of
+  // their own. Its material is the straw's shader under the straw's program key, so it compiles nothing new: one draw
+  // more on a map with thatch. The bales, stooks and stacks keep the straw print.
+  {
+    const kitThatch = buckets.straw.filter((g) => g.userData.regional === true);
+    if (kitThatch.length) {
+      buckets.straw = buckets.straw.filter((g) => g.userData.regional !== true);
+      buckets.thatch = kitThatch;
+      const thatch = makeThatch(aniso, T.straw || null, (seed ^ 0x7a7c4) >>> 0);
+      const material = new THREE.MeshStandardMaterial({ map: thatch.albedo, normalMap: thatch.normal,
+        roughnessMap: thatch.surface, aoMap: thatch.surface, roughness: 1, metalness: 0 });
+      material.aoMapIntensity = 0.82;
+      engineCtx.setupShadowMaterial(material, grimeHook);
+      material.customProgramCacheKey = () => 'world-props-straw-v7' + (snowCap ? 's' : '');
+      mats.thatch = material;
+      retainedSurfaceMaterials.push(material);
+    }
+  }
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
     // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few

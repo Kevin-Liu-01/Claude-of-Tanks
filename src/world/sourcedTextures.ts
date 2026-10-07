@@ -101,7 +101,10 @@ const SETS = {
   // normal map with its rows of blocky losses taken out — a first-party derivative (docs/ATTRIBUTION.md): the trowel
   // undulation and the fine grain kept, the losses' relief replaced by the tile's own quiet grain, their long joint
   // lines and broad bumps flattened; the losses a wall shows are the kits' own (house.ts spallRender)
-  plaster: { ...acg(TB, 'Plaster007'), normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
+  // (facades lane: the normal map without the rows of blocky losses, 2026-10-06; the colour map with its broad blotching
+  // mostly out and its chroma pulled to the tile's mean, 2026-10-07, wave 199's "uniformly blotchy render": first-party
+  // derivatives, docs/ATTRIBUTION.md)
+  plaster: { ...acg(TB, 'Plaster007'), color: `${TB}/Plaster007_1K-JPG_Color-even.jpg`, normal: `${TB}/Plaster007_1K-JPG_NormalGL-smooth.jpg` },
   roof: acg(TB, 'RoofingTiles012A'),
   wood: acg(TB, 'Planks023A'),
   brick: acg(TB, 'Bricks097'),
