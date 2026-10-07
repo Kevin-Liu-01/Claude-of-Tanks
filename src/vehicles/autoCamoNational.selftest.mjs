@@ -5,7 +5,7 @@ import {
   AUTO_CAMO_BIOMES, AUTO_CAMO_ENVIRONMENTS, CAMO_CATALOG_PATTERN_IDS, CAMO_COUNTRY_TAG_IDS, CAMO_PATTERN_IDS,
   CAMO_PATTERN_LABEL, NATIONAL_AUTO_CAMO, SHARED_CAMO_PRESETS,
   autoCamoBiomeId, autoCamoPatternIdFor, camoNationTag, camoPatternTags, isBuiltInCamoId, nationalAutoCamoSchemes,
-  networkCamoId, sharedCamoPreset,
+  nationFieldsPixelCamo, networkCamoId, sharedCamoPreset,
 } from './camoPolicy.ts';
 import {
   hasCamoPaint, resolveCamoVisual, resolveMultiplayerCamoPattern, setCamoBiome, setCamoOverride,
@@ -91,19 +91,27 @@ assert.equal(new Set(desertLine).size, 4, `the desert line wears four national s
 for (const id of ['t90ms', 't90m_proryv', 't72b3m', 't14_x']) {
   assert.ok(['sig_t90ms', 'paint_t90ms'].includes(auto(id, 'desert')), `${id} on sand: a Russian desert coat`);
 }
-// a nation without a desert scheme keeps the shared pool, minus every other nation's own scheme
+// a nation without a desert scheme keeps the shared pool, minus every other nation's own scheme and (round 4,
+// 2026-10-07: "pixel digital only where a nation really fields it") minus the pixel desert unless the nation fields
+// pixel camouflage (China, Poland, South Korea, Ukraine)
 const neutralDesert = AUTO_CAMO_BIOMES.desert.pool.filter((patternId) => nationTags(patternId).length === 0);
 assert.deepEqual(neutralDesert, ['desert', 'digitaldesert']);
 for (const id of ['leo2a4', 'leo2a6', 'ariete_c1', 'type10', 'k2', 'strv122', 'pt91_twardy', 'ua_t64bv', 't80u']) {
   const pick = auto(id, 'desert');
-  assert.ok(neutralDesert.includes(pick), `${id} (${getSpec(id).nation}, no desert scheme) wears the shared pool: ${pick}`);
-  assert.equal(pick, legacyPick(neutralDesert, `${id}:desert`), `${id}: the camo r2 draw over the neutral pool`);
+  const pool = nationFieldsPixelCamo(camoNationTag(getSpec(id).nation)) ? neutralDesert
+    : neutralDesert.filter((patternId) => !camoPatternTags(patternId).includes('digital'));
+  assert.ok(pool.includes(pick), `${id} (${getSpec(id).nation}, no desert scheme) wears the shared pool: ${pick}`);
+  assert.equal(pick, legacyPick(pool, `${id}:desert`), `${id}: the camo r2 draw over the neutral pool`);
+}
+for (const id of ['leo2a4', 'leo2a6', 'ariete_c1', 'type10', 'strv122', 't80u']) {
+  assert.equal(auto(id, 'desert'), 'desert', `${id}: the shared desert three-tone, never the pixel desert`);
 }
 
-// --- the verdant-spawn scene: four nations, each in its own woodland coat
+// --- the verdant-spawn scene: four nations, each in its own woodland coat (round 4, 2026-10-07: the T-90M Proryv in
+// the Russian green, sand and black coat, not service digital; the Leopard 2A4 in the NATO three-tone only)
 const woodland = {
-  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['service_t90m'],
-  pt91_twardy: ['paint_pl_t80u_modern', 'service_pl01'], leo2a4: ['service_leo2a6m', 'paint_marder2'],
+  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['paint_ru_t80u_modern'],
+  pt91_twardy: ['paint_pl_t80u_modern', 'service_pl01'], leo2a4: ['paint_marder2'],
 };
 for (const [id, allowed] of Object.entries(woodland)) assert.ok(allowed.includes(auto(id, 'verdant')), `${id} on verdant: ${auto(id, 'verdant')}`);
 const spawn = Object.keys(woodland).map((id) => auto(id, 'verdant'));
@@ -116,11 +124,35 @@ const sceneVisual = (id, mapId) => {
 for (const [mapId, ids] of [['desert', ['challenger1', 'm60a1', 'type99a', 'merkava4_trophy']], ['verdant', Object.keys(woodland)]]) {
   assert.equal(new Set(ids.map((id) => sceneVisual(id, mapId))).size, 4, `${mapId} scene: four different painted palettes`);
 }
+// --- round 4 (2026-10-07; both critics after wave 240 found tanks in another army's scheme: the T-90M and T-72B3M in
+// pixel digital, the Leopard 2A6 in "a four-colour scheme with cream patches", the M1A2 SEPv3 "mixes desert blocks
+// with green rosettes"): each army's own scheme for the biome, pixel only where the nation fields it
+for (const tag of ['usa', 'de', 'ru', 'uk', 'fr', 'it', 'jp', 'se', 'il']) assert.equal(nationFieldsPixelCamo(tag), false, tag);
+for (const tag of ['cn', 'pl', 'kr', 'ua']) assert.equal(nationFieldsPixelCamo(tag), true, tag);
+for (const [id, verdant, desert] of [
+  ['t90m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['t90m_proryv', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']],
+  ['t72b3m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['leo2a6', 'paint_marder2', ['desert']],
+  ['leo2a4', 'paint_marder2', ['desert']], ['m1a2_sepv3', 'paint_m1a1', ['carc_tan']], ['m60a1', 'paint_m1a1', ['carc_tan']],
+]) {
+  assert.equal(auto(id, 'verdant'), verdant, `${id} on verdant: ${verdant}`);
+  assert.ok(desert.includes(auto(id, 'desert')), `${id} on sand: ${auto(id, 'desert')}`);
+}
+assert.equal(resolveCamoVisual(getSpec('leo2a6'), auto('leo2a6', 'verdant')).scheme, 'nato', 'the Leopard: NATO three-tone');
+assert.equal(resolveCamoVisual(getSpec('leo2a6'), auto('leo2a6', 'verdant')).patches.length, 2, 'green with brown and black');
+// the whole fleet: a nation that fields no pixel camouflage never draws a pixel scheme, on any biome
+for (const id of ALL_TANK_IDS) {
+  const spec = getSpec(id);
+  if (nationFieldsPixelCamo(camoNationTag(spec.nation))) continue;
+  for (const biomeId of Object.keys(AUTO_CAMO_BIOMES)) {
+    const pick = autoCamoPatternIdFor(spec, biomeId);
+    assert.ok(!camoPatternTags(pick).includes('digital'), `${id}@${biomeId}: ${pick} is not pixel camouflage`);
+  }
+}
 // era rows: the wartime and Cold War hulls wear their period's scheme
 assert.equal(auto('kv2', 'verdant'), 'service_soviet_ww2');
 assert.equal(auto('kv2', 'urban'), 'berlin45');
 assert.equal(auto('t80', 'verdant'), 'service_soviet_coldwar');
-assert.ok(['merdc', 'paint_m1a1'].includes(auto('m60a1', 'verdant')));
+assert.equal(auto('m60a1', 'verdant'), 'paint_m1a1', 'round 4: the NATO three-tone in woodland (MERDC left the row)');
 assert.equal(auto('m60a1', 'winter'), 'merdcwinter');
 assert.ok(AUTO_CAMO_BIOMES.winter.pool.includes(auto('m1a2_sepv3', 'winter')), 'no modern US winter scheme: the shared pool');
 assert.equal(auto('chieftain5', 'urban'), 'berlin', 'British hulls in a city: the Berlin Brigade blocks');

@@ -577,11 +577,20 @@ export function sharedCamoPreset(patternId: string | null | undefined): SharedCa
   return SHARED_CAMO_PRESET_BY_ID.get(patternId as CamoPatternId) || null;
 }
 
-/** Era-aware service fallback; named stock overrides take precedence. */
+/**
+ * Era-aware service fallback; named stock overrides take precedence.
+ * 2026-10-07 (tank-accessories round 4; blind critics after wave 240: the T-90M and T-72B3M "wear pixel digital", the
+ * Leopard 2A6 "a four-colour scheme with cream patches", the M1A2 SEPv3 "mixes desert blocks with green rosettes"):
+ * three Factory coats were not the paint the army fields. Russia paints its tanks overall green or the green, sand and
+ * black disruptive coat (Russian Woodland), never pixel digital; the Bundeswehr the NATO three-tone of green, brown and
+ * black (Bundeswehr Three-Tone Woodland); the US Army delivers its Abrams in plain CARC Tan. Each coat keeps its
+ * nation's environment (woodland, woodland, desert), so no Factory concealment verdict moves (materials.ts
+ * hasCamoPaint). The old service coats stay selectable in the catalog.
+ */
 export const FACTORY_CAMO_PATTERN_BY_NATION: Readonly<Record<string, CamoPatternId>> = Object.freeze({
-  USA: 'service_usa_desert',
-  Germany: 'service_leo2a6m',
-  Russia: 'service_t90m',
+  USA: 'carc_tan',
+  Germany: 'paint_marder2',
+  Russia: 'paint_ru_t80u_modern',
   UK: 'service_challenger_3',
   France: 'service_leclerc_xlr',
   China: 'service_type99a',
@@ -603,6 +612,9 @@ export function factoryCamoPatternIdFor(nation: string | undefined, era: string 
     if (era === 'ww2' || era === 'interwar') return 'service_soviet_ww2';
     if (era === 'cold-war') return 'service_soviet_coldwar';
   }
+  // Round 4 (2026-10-07): a wartime German hull wears the Hinterhalt ambush paint AUTO already gives it in woodland,
+  // not a Bundeswehr coat.
+  if (nationKey === 'Germany' && (era === 'ww2' || era === 'interwar')) return 'ambushdot';
   return FACTORY_CAMO_PATTERN_BY_NATION[nationKey as string] || null;
 }
 
@@ -757,12 +769,34 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m48: 'summer',
   m2a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
+  // Round 4 (2026-10-07; wave 240: the SEPv3 "mixes desert blocks with green rosettes"): the SEPv3 wears its
+  // owner-mandatory woodland ULCANS, so its stock is its own authored NATO three-tone, not the US desert Factory.
+  m1a2_sepv3: 'paint_m1a1',
+});
+
+/**
+ * Russian service hulls whose Signature is an exhibition pixel-digital finish (round 4, 2026-10-07; wave 240: the T-90M
+ * "wears pixel digital"): their Factory is the Russian service coat, and the digital stays selectable as their
+ * Signature. Export and demonstrator hulls (T-90SM, T-90MS Tagil, T-90A Burlak) keep their own finish as stock. Keyed
+ * by id, so a caller that passes no nation (materials.ts hasCamoPaint) still reads the same stock.
+ */
+const SERVICE_STOCK_OVER_SIGNATURE: Readonly<Record<string, CamoPatternId>> = Object.freeze({
+  t90m: 'paint_ru_t80u_modern',
+  t90m_proryv: 'paint_ru_t80u_modern',
+  t90a: 'paint_ru_t80u_modern',
+  t90a_vladimir: 'paint_ru_t80u_modern',
+  bmpt_t90: 'paint_ru_t80u_modern',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
 export function stockCamoPatternIdFor(specId: string, nation?: string, era?: string | null): CamoPatternId | null {
-  return signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId]
+  return SERVICE_STOCK_OVER_SIGNATURE[specId] || signatureCamoPatternId(specId) || DEFAULT_CAMO_PATTERN_BY_TANK_ID[specId]
     || factoryCamoPatternIdFor(nation, era);
+}
+
+/** Round 4 (2026-10-07): the hulls whose Factory is the national service coat rather than their own Signature. */
+export function factoryIsServiceCoatOverSignature(specId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(SERVICE_STOCK_OVER_SIGNATURE, specId);
 }
 
 /** Factory always restores the vehicle's stock appearance; saved selections still win. */
@@ -870,18 +904,21 @@ const SINAI_GREY = [row(['service_merkava2d'])];
  * every nation back in one paint.
  */
 export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoCamoTable>> = Object.freeze({
-  // MERDC until the mid-1980s, then the three-colour CARC coat the Abrams fleet is authored in; plain CARC Tan on
-  // sand (the Gulf War M60A1s and M1s alike).
+  // The NATO three-colour CARC coat in woodland (round 4, 2026-10-07, the coordinator after wave 240: "US: CARC tan in
+  // desert, NATO three-tone in woodland"; MERDC's four colours with sand patches left the woodland row), plain CARC
+  // Tan on sand (the Gulf War M60A1s and M1s alike).
   usa: nationTable({
-    woodland: [row(['merdc', 'paint_m1a1'], COLD_WAR_ERAS), row(['paint_m1a1'])],
+    woodland: [row(['paint_m1a1'])],
     desert: [row(['carc_tan'])],
     winter: [row(['merdcwinter'], COLD_WAR_ERAS)],
   }),
-  // Soviet 4BO field blotch, the Cold War amoeba, today's service digital; the T-90MS desert export coat and plain
-  // khaki-brown on sand; the Berlin '45 white band for the wartime hulls in a city.
+  // Soviet 4BO field blotch, the Cold War amoeba, today's green, sand and black disruptive coat (Russian Woodland;
+  // round 4, 2026-10-07: wave 240 found the T-90M and T-72B3M "in pixel digital", which Russia fields only on
+  // exhibition and export hulls); the T-90MS desert export coat and plain khaki-brown on sand; the Berlin '45 white
+  // band for the wartime hulls in a city.
   ru: nationTable({
     woodland: [row(['service_soviet_ww2'], WARTIME_ERAS), row(['service_soviet_coldwar'], COLD_WAR_ERAS),
-      row(['service_t90m'])],
+      row(['paint_ru_t80u_modern'])],
     desert: [row(['sig_t90ms', 'paint_t90ms'], CURRENT_ERAS)],
     urban: [row(['berlin45'], WARTIME_ERAS)],
   }),
@@ -892,8 +929,10 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
     desert: [row(['pinkdesert'], WARTIME_ERAS), row(['light_stone'])],
     urban: [row(['berlin'])],
   }),
-  // Hinterhalt ambush paint for the wartime hulls, the Bundeswehr three-colour coats after.
-  de: nationTable({ woodland: [row(['ambushdot'], WARTIME_ERAS), row(['service_leo2a6m', 'paint_marder2'])] }),
+  // Hinterhalt ambush paint for the wartime hulls, the Bundeswehr's NATO three-tone of green, brown and black after
+  // (round 4, 2026-10-07; wave 240: the Leopard 2A6 in "a four-colour scheme with cream patches", the banded
+  // service_leo2a6m, left the row).
+  de: nationTable({ woodland: [row(['ambushdot'], WARTIME_ERAS), row(['paint_marder2'])] }),
   // Plain vert armée until the mid-1980s, the French NATO three-colour after; plain khaki on sand.
   fr: nationTable({
     woodland: [row(['national_fr', 'service_leclerc_xlr'], COLD_WAR_ERAS), row(['service_leclerc_xlr'])],
@@ -927,14 +966,34 @@ export function nationalAutoCamoSchemes(
 
 const CAMO_COUNTRY_TAG_SET = new Set<string>(CAMO_COUNTRY_TAG_IDS);
 
-/** The biome pool minus other nations' own schemes (a Leopard never borrows US chocolate-chip or British pink).
- * A vehicle without a known nation keeps the whole pool. */
+/**
+ * Nations that field pixel camouflage: one of their own AUTO schemes, in any environment or era, is a digital pattern
+ * (China, Poland, South Korea and Ukraine today). Round 4 (2026-10-07; the coordinator after wave 240: "pixel digital
+ * only where a nation really fields it"): every other nation's shared fallback pool drops the pixel schemes, so a
+ * Leopard or a Cold War T-80 on sand wears the shared desert three-tone, never the pixel desert.
+ */
+const NATIONS_FIELDING_PIXEL: ReadonlySet<string> = new Set(Object.entries(NATIONAL_AUTO_CAMO)
+  .filter(([, table]) => Object.values(table).some((rows) => rows?.some((candidate) => candidate.schemes
+    .some((patternId) => camoPatternTags(patternId).includes('digital')))))
+  .map(([nation]) => nation));
+
+/** The biome pool minus other nations' own schemes (a Leopard never borrows US chocolate-chip or British pink) and,
+ * for a nation that fields no pixel camouflage, minus the pixel schemes. A vehicle without a known nation keeps the
+ * whole pool. */
 function sharedAutoCamoPool(biome: AutoCamoBiome, nation: string | null | undefined): readonly AutoCamoPatternId[] {
   const own = camoNationTag(nation ?? null);
   if (!own) return biome.pool;
-  const neutral = biome.pool.filter((patternId) => !camoPatternTags(patternId)
-    .some((tag) => CAMO_COUNTRY_TAG_SET.has(tag) && tag !== own));
+  const pixel = NATIONS_FIELDING_PIXEL.has(own);
+  const neutral = biome.pool.filter((patternId) => {
+    const tags = camoPatternTags(patternId);
+    return !tags.some((tag) => CAMO_COUNTRY_TAG_SET.has(tag) && tag !== own) && (pixel || !tags.includes('digital'));
+  });
   return neutral.length ? neutral : biome.pool;
+}
+
+/** Round 4 (2026-10-07): whether a nation (catalog country tag) fields pixel camouflage (its own AUTO schemes). */
+export function nationFieldsPixelCamo(nationTag: string): boolean {
+  return NATIONS_FIELDING_PIXEL.has(nationTag);
 }
 
 /** Camo r2: the deterministic per-(vehicle, biome) draw — the same tank always wears the same scheme on one map,
