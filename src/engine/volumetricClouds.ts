@@ -631,6 +631,8 @@ export class VolumetricCloudLayer {
   private bsmSlices = CLOUD_BSM_SLICES;
   /** The main lane's vertical optical depth (cloudDeckTau): the cover the ground's light passes. */
   private deckTau = 0;
+  /** The stack's weather warp (m): the cost lab's CLOUD_WARP scales it a frame. */
+  private warpM = 0;
   /** How far the main lane is a closing deck (CloudStack.closing): the share of the ground's light law it takes. */
   private deckClosing = 0;
   /** The band a cascade refreshes (reused: no allocation per frame). */
@@ -814,7 +816,7 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(2, 0.15, defs.sunSteps, 0.02) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -864,6 +866,7 @@ export class VolumetricCloudLayer {
         diffuse.set(stack.lanes[0]?.diffuse ?? 0, stack.lanes[1]?.diffuse ?? 0, stack.lanes[2]?.diffuse ?? 0, stack.lanes[3]?.diffuse ?? 0);
         this.bsmSlices = cloudBsmSlices(stack);
         this.deckTau = cloudDeckTau(stack);
+        this.warpM = stack.weatherWarpM;
         this.deckClosing = stack.closing;
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
@@ -1288,6 +1291,16 @@ export class VolumetricCloudLayer {
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
+    // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the shipped law) and the towers' warp, the
+    // detail's reach and the stride's growth as scales — the cost lab's knobs
+    (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', 2))), lightTune('CLOUD_LIGHT_T', 0.15),
+      lightTune('CLOUD_SUN_STEPS', CLOUD_TIERS[this.traceTier]?.sunSteps ?? 2), lightTune('CLOUD_T_EXIT', 0.02));
+    {
+      const defs = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;
+      t.uDetailRange.value = defs.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
+      t.uStepGrowth.value = defs.growth * lightTune('CLOUD_STEP_GROWTH', 1);
+      m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
+    }
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     // QA: a deck's light by its own column (0 / 0 the round-three law: the sun ray's depth, the map's ambient scale) and a
     // closing deck's ground return

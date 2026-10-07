@@ -479,6 +479,10 @@ uniform float uStepGrowth;
 uniform float uDetailRange;
 uniform float uPixelAngle;
 uniform float uOpaqueCut;
+// the march's light budget (QA knobs; the defaults are the shipped law): x the lighting cadence (every n-th lit step), y the
+// transmittance under which no new light is taken, z the secondary sun march's steps (at most CL2_SUN_STEPS), w the
+// transmittance at which the march stops
+uniform vec4 uLightBudget;
 // the forward lobe of the sun's light diffused through a deck (0 = isotropic)
 uniform float uDeckLobe;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
@@ -635,7 +639,7 @@ void main() {
 		int lit = 0;
 		float od = 0.0, run = 0.0;
 		for ( int i = 0; i < CL2_STEPS; i++ ) {
-			if ( T < 0.02 ) break;
+			if ( T < uLightBudget.w ) break;
 			if ( !inRun || t > r0.y ) {
 				if ( inRun ) { r0 = r1; r1 = r2; r2 = r3; r3 = vec2( 1e9 ); }
 				inRun = true;
@@ -705,11 +709,12 @@ void main() {
 			if ( sigma > 1e-5 ) {
 				if ( fine > 0 ) fine--;
 				vec4 wgt = sigma4 / sigma;
-				if ( lit == 0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) {
+				if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) ) {
 					// the optical depth to the sun: a short secondary march (the detail the map lacks), then the map
 					od = 0.0; run = 0.0;
 					float sStep = 80.0;
 					for ( int q = 0; q < CL2_SUN_STEPS; q++ ) {
+						if ( float( q ) >= uLightBudget.z ) break;
 						float r = run + sStep * ( 0.5 + 0.5 * jitter );
 						od += cl2Extinction( p + uSunDir * r, sLod ) * sStep;
 						run += sStep;
@@ -796,7 +801,8 @@ void main() {
 			}
 			t += ds;
 		}
-		if ( T < 0.03 && uOpaqueCut > 0.0 ) { L /= max( 1.0 - T, 0.5 ); T = 0.0; }
+		// (the cut over the march's exit: a march the budget ends earlier is opaque too)
+		if ( T < max( 0.03, uLightBudget.w * 1.5 ) && uOpaqueCut > 0.0 ) { L /= max( 1.0 - T, 0.5 ); T = 0.0; }
 		if ( wAcc > 1e-4 ) {
 			float dist = tAcc / wAcc;
 			float hAtt = exp( -max( dir.y * dist - 30.0, 0.0 ) / 150.0 );

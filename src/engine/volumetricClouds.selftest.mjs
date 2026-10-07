@@ -670,7 +670,7 @@ assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinus
 assert.match(shadersSource, /uniform sampler3D tShape;\s*uniform sampler3D tDetail;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * powderFade * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
   'cl2Band( uCamPos, dir, lo, uLayerTop[ i ] )', 'uLayerAnvil', 'cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) )', 'L += T * ( S - S * Tstep ) / sigma;',
-  'if ( lit == 0 || ( ( lit & 1 ) == 0 && T > 0.15 ) )']) {
+  'if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) )', 'if ( T < uLightBudget.w ) break;', 'if ( float( q ) >= uLightBudget.z ) break;']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
 for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);
@@ -694,6 +694,10 @@ assert.match(layerSource, /lightTune\('CLOUD_DECK_GROUND', 1\)\)\) \* this\.deck
 // flat to half, keeps its grey base); round 5's mottle dropped (no dead cost: it barely showed on the GPU)
 assert.ok(shadersSource.includes('* mix( 1.0, uDeckTune.z, smoothstep( 0.6, 1.0, flatK ) );'), 'the trace carries the closing deck\'s ground return');
 assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the medium or the trace');
+// (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the shipped law: light every other
+// lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.02
+assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(2, 0\.15, defs\.sunSteps, 0\.02\) \}/);
+assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', 2\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', 0\.02\)\);/, 'the defaults the shipped law');
 // round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
 // rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column
 assert.ok(layerSource.includes('amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );')
@@ -710,7 +714,7 @@ console.log('volumetricClouds.selftest: deterministic weather (four bakes), tili
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
 // the 3 % the cut left let the sun's disc (tens of thousands of times the sky) burn through a closed deck or a core.
-assert.match(shadersSource, /if \( T < 0\.02 \) break;[\s\S]*?if \( T < 0\.03 && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
+assert.match(shadersSource, /if \( T < uLightBudget\.w \) break;[\s\S]*?if \( T < max\( 0\.03, uLightBudget\.w \* 1\.5 \) && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
   'the cut ray opaque, before the haze reads its cover');
 assert.match(layerSource, /uOpaqueCut: \{ value: 1 \},/);
 assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT', 1\);/, 'on by default (QA knob)');
