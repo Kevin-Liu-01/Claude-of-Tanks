@@ -2556,6 +2556,13 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
 
 /** Trees round 5: the forest-grown near variants of a wood's species (0 and 1; the third stays open-grown). */
 const FOREST_NEAR_VARIANTS = 2;
+/**
+ * Trees lane (2026-10-07, the gauntlet's wave 223 on Ironworks: "cloned roadside tree rows"): a wood species' field
+ * trees draw among three open-grown crowns — its open variant (FOREST_NEAR_VARIANTS) and the open-grown alternates of
+ * its two forest-grown ones, near pools of their own after the three (assignTreeForms). Since round 5 every field tree
+ * of such a species drew the one open variant, so a shelterbelt or a boundary row repeated one crown down its line.
+ */
+const FIELD_OPEN_ALTERNATES = FOREST_NEAR_VARIANTS;
 /** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
 const GROWTH_SHRUB_STEM_VALUE = 1.15;
 /** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
@@ -5391,6 +5398,17 @@ function* vegetationBuildSteps(
           (treeGeoOpen[sp] ??= [])[k] = open;
         }
       }
+      // (trees lane, 2026-10-07: a wood species' field crowns — the open-grown alternates of its forest-grown variants,
+      // near variants NEAR_VARIANTS and up, which only field trees draw; the far tier draws them as the open variant's
+      // impostor row, writeTreeSlot)
+      if (forestSpecies.has(sp) && SPECIES[sp].nearOpen) {
+        for (let k = 0; k < FIELD_OPEN_ALTERNATES; k++) {
+          const open = SPECIES[sp].nearOpen!(k, palOf(sp));
+          prepareTreeBarkSurface(open.trunk, barkTex.meanReflectance, barkTex.width);
+          treeGeo[sp].push(open);
+          yield { stage: 'treePrep', fine: true };
+        }
+      }
       treeGeoFar[sp] = [];
       for (let k = 0; k < FAR_VARIANTS; k++) {
         const geometry = SPECIES[sp].far(
@@ -5413,7 +5431,7 @@ function* vegetationBuildSteps(
   // species and far variant. The atlas gutters flood with the leaf atlases' mean opaque tone, so the mips of a tile
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
-    rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
+    rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].slice(0, NEAR_VARIANTS).map((pair, variant) => ({
       species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
     }))),
     bark: barkTex.albedo,
@@ -6650,17 +6668,23 @@ function* vegetationBuildSteps(
   function assignTreeForms(): void {
     if (!forestSpecies.size) return;
     let forest = 0, open = 0;
+    const fieldCrowns = [0, 0, 0];
     for (const t of trees) {
       if (!forestSpecies.has(t.species)) continue;
       if (t.wood) {
         if (t.variant >= FOREST_NEAR_VARIANTS) t.variant = treePositionNoise(t.x, t.z, 97) < 0.5 ? 0 : 1;
         forest++;
       } else {
-        t.variant = FOREST_NEAR_VARIANTS;
+        // (trees lane, 2026-10-07: among the open variant and the open-grown alternates of the forest-grown two, where the
+        // species grows them; thirds by a position hash, so a row's neighbours differ and no draw moves)
+        const crowns = treeGeo[t.species].length - NEAR_VARIANTS;
+        const h = crowns > 0 ? treePositionNoise(t.x, t.z, 98) : 0;
+        t.variant = h < 1 / 3 ? FOREST_NEAR_VARIANTS : NEAR_VARIANTS + Math.min(crowns - 1, h < 2 / 3 ? 0 : 1);
+        fieldCrowns[t.variant - FOREST_NEAR_VARIANTS]++;
         open++;
       }
     }
-    group.userData.treeForms = { forest, open, species: [...forestSpecies] };
+    group.userData.treeForms = { forest, open, fieldCrowns: [...fieldCrowns], species: [...forestSpecies] };
   }
   /**
    * A grown tree's shadow proxy: its crown shadow hull, position-only, its crown masses' tags (each its own pattern and
@@ -7436,7 +7460,7 @@ function* vegetationBuildSteps(
   const farSlots = {} as Record<Species, TreeRecord[][]>;
   function createPartitionSlots(): void {
     for (const sp of speciesList) {
-      nearSlots[sp] = Array.from({ length: NEAR_VARIANTS }, () => []);
+      nearSlots[sp] = Array.from({ length: treeGeo[sp].length }, () => []);
       farSlots[sp] = Array.from({ length: FAR_VARIANTS }, () => []);
     }
   }
@@ -7455,6 +7479,11 @@ function* vegetationBuildSteps(
     if (lf) { lf.addUpdateRange(slot, 1); lf.needsUpdate = true; }
     const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b: the impostor row
     if (ir) { ir.addUpdateRange(slot, 1); ir.needsUpdate = true; }
+  }
+  /** A tree's impostor row in its species' atlas rows: its near variant; a field tree's open crown past the three near
+   * variants draws the open variant's row (trees lane, 2026-10-07: FIELD_OPEN_ALTERNATES). */
+  function impostorRowOf(t: TreeRecord): number {
+    return t.variant < NEAR_VARIANTS ? t.variant : FOREST_NEAR_VARIANTS;
   }
   /** Write tree t into `slot` of every mesh in the group. Far groups render
    * fade 0 (opaque): occlusion fade only ever applies inside camera range.
@@ -7475,7 +7504,7 @@ function* vegetationBuildSteps(
       const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lf) lf.array[slot] = lodF;
       const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
-      if (ir) ir.array[slot] = t.variant;
+      if (ir) ir.array[slot] = impostorRowOf(t);
       markSlotDirty(m, slot);
     }
   }
@@ -7629,7 +7658,7 @@ function* vegetationBuildSteps(
       const lodFade = mesh.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lodFade) lodFade.array[tree.fslot] = 0;
       const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
-      if (row) row.array[tree.fslot] = tree.variant;
+      if (row) row.array[tree.fslot] = impostorRowOf(tree);
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
@@ -7676,7 +7705,7 @@ function* vegetationBuildSteps(
   }
   function uploadPartition(): void {
     for (const species of speciesList) {
-      for (let variant = 0; variant < NEAR_VARIANTS; variant += 1) {
+      for (let variant = 0; variant < nearMeshes[species].length; variant += 1) {
         uploadNearPartition(species, variant);
       }
       for (let variant = 0; variant < FAR_VARIANTS; variant += 1) {
