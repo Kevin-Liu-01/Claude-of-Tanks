@@ -180,11 +180,11 @@
       "concealers": 606
     },
     "orchard": {
-      "bytes": 1530388,
-      "sha256": "6f80c3e62372a652afef305f714aa92345894e4ff6251219a96db79fb7a6f8c4",
-      "obstacles": 3716,
-      "colliders": 3661,
-      "concealers": 3917
+      "bytes": 1535357,
+      "sha256": "d769dff09e09f8d710d0f7c9dc8959393ac44d601ddb2e4bd803eb435f609c7d",
+      "obstacles": 3717,
+      "colliders": 3668,
+      "concealers": 3916
     },
     "longleaf": {
       "bytes": 1325815,

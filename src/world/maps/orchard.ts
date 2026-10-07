@@ -88,6 +88,16 @@ export default {
   props: {
     // (2026-10-06, the coordinator: the old identity's timber bathhouse dropped — the Chouf kit builds the hammam)
     sourcedPalette: 'orchard',
+    // The landmarks lane (round 2, 2026-10-06, the seat agreed with the map-revival lane): the square's Ottoman fountain
+    // on its setts, turned to the village grid, set into the finished village (it vetoes its ground, landmarks/types.ts
+    // `ground`: what the passes after it would stand there is left out, every other record stands where it stood). The
+    // silk khan planned beside it is withdrawn: the valley's long sight lines run through the village, and the layout
+    // brief's long-sight share (at least 0.03) stood at 0.0302 without it — a khan anywhere near the square cut 58 to 84
+    // of the 1 247 long rays where 30 could go (it measured 0.028).
+    landmarks: [
+      { kind: 'path', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: "the fountain's square", params: { length: 11, width: 11, surface: 'stone' } },
+      { kind: 'fountain', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: 'the Ottoman fountain', params: { style: 'ottoman', radius: 3 } },
+    ],
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
     // village's sandstone, every building where it stood
     architecture: 'chouf',
