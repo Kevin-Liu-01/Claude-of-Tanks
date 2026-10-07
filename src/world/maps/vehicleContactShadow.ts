@@ -120,7 +120,10 @@ export function buildVehicleContactShadows<R extends ContactRecord>(records: rea
 /** A sled's runner tracks in its placed frame (cartKit.ts fittedRunners). */
 interface RunnerTrackLayout { readonly xs: readonly number[]; readonly z0: number; readonly z1: number; readonly width: number }
 
-/** The pressed track's profile: a soft blue-grey groove across, the far end fading out behind the sled. */
+/**
+ * The pressed track's profile: a soft groove across, the far end fading out behind the sled. It only darkens (black
+ * under its alpha, as the contact patches do), so the snow's own light carries it by day and by night.
+ */
 function runnerTrackTexture(anisotropy: number): THREE.Texture {
   const w = 32, h = 128;
   const canvas = document.createElement('canvas');
@@ -133,9 +136,9 @@ function runnerTrackTexture(anisotropy: number): THREE.Texture {
       // the groove: dense in the middle, soft to its edges; v = 0 the far end behind (gone), v = 1 under the runner
       const across = Math.max(0, 1 - u * u * (3 - 2 * u)) ** 1.4;
       const along = Math.min(1, v / 0.55) ** 1.5;
-      const a = across * along * 0.62;
+      const a = across * along * 0.42;
       const k = (y * w + x) * 4;
-      image.data[k] = 74; image.data[k + 1] = 88; image.data[k + 2] = 108; image.data[k + 3] = Math.round(a * 255);
+      image.data[k] = 0; image.data[k + 1] = 0; image.data[k + 2] = 0; image.data[k + 3] = Math.round(a * 255);
     }
     ctx.putImageData(image, 0, 0);
   }
@@ -185,7 +188,7 @@ export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[]
   geometry.setIndex(idx);
   geometry.computeVertexNormals();
   const material = new THREE.MeshBasicMaterial({
-    map: runnerTrackTexture(anisotropy), transparent: true, depthWrite: false,
+    color: 0x000000, map: runnerTrackTexture(anisotropy), transparent: true, depthWrite: false,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
   const mesh = new THREE.Mesh(geometry, material);
