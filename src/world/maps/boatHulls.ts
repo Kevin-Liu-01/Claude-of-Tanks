@@ -14,7 +14,7 @@
 // its own (the kits spend their legacy draws and pass the few they use in `BoatVariation`).
 
 import * as THREE from 'three';
-import { VehicleMesh, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
+import { VehicleMesh, keepStreams, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
 
 type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
 
@@ -252,9 +252,11 @@ export function buildBoat(spec: BoatSpec, variation: BoatVariation, coarse = fal
     mesh.box(0, 0.06, 0, 0.13, 0.1, s.length * 0.42, material('canvas', linearHex(0xb8ad94), 0.95, 0, 0, 1), 0.03);
     mesh.pop();
   }
-  const g = mesh.build(vehicleWeathering({ wheels: [], dirt: 0.25, dirtTop: s.depth * waterline + 0.1, rust: 0.35, seed: 11 + variation.scheme, voxelAo: !coarse }));
-  // the baked bucket's streams: position, normal, uv, colour; marked as a boat for the dressing receipts
-  g.deleteAttribute('surf');
+  // the baked bucket's streams: position, normal, uv, colour (a fresh geometry: a moored hull is drawn on its own every
+  // frame, keepStreams); marked as a boat for the dressing receipts
+  const g = keepStreams(mesh.build(vehicleWeathering({ wheels: [], dirt: 0.25, dirtTop: s.depth * waterline + 0.1, rust: 0.35,
+    seed: 11 + variation.scheme, voxelAo: !coarse })), ['position', 'normal', 'uv', 'color']);
+  g.userData = { ...g.userData };
   delete g.userData.bodyBox;
   g.userData.boat = true;
   return g;

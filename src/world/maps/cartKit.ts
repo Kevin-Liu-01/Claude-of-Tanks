@@ -16,7 +16,7 @@
 // same stream and no record moves. A model larger than its role's legacy box is scaled down into it.
 
 import * as THREE from 'three';
-import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { VehicleMesh, keepStreams, linearHex, vehicleWeathering } from './vehicleMesh.ts';
 import { buildCart, cartWheels, type CartModel } from './cartBodies.ts';
 import { climateForMap, type VehicleClimate } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
@@ -260,8 +260,8 @@ function buildRole(e: CartEntry, role: CartRole, ctx: BuildContext, wrecked: boo
  * role's collision comes from on desktop and mobile alike, and the shadow passes' stand-in for the full cart (desktop).
  */
 function canonicalSolid(e: CartEntry, role: CartRole): THREE.BufferGeometry {
-  const geometry = cartMesh(e, role, true, false).build(vehicleWeathering({ seed: 1, voxelAo: false }));
-  for (const name of Object.keys(geometry.attributes)) if (name !== 'position') geometry.deleteAttribute(name);
+  // positions only, on a fresh geometry (keepStreams: never deleteAttribute on a geometry the renderer draws)
+  const geometry = keepStreams(cartMesh(e, role, true, false).build(vehicleWeathering({ seed: 1, voxelAo: false })), ['position']);
   // the dressing (lashings, twine, the hood's bows, rivets) neither collides nor casts
   const skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
   if (skip) {

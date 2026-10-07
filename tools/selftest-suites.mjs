@@ -1278,6 +1278,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/beachedBoat.selftest.mjs',
     'src/world/maps/boatHulls.selftest.mjs',
     'src/world/maps/cartKit.selftest.mjs',
+    'src/world/maps/drawnGeometryShape.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',

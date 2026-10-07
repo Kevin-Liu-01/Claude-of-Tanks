@@ -17,7 +17,7 @@
 // into it. Local +Z is the nose, the footprint is XZ-centred and the lowest tyre point is y = 0.
 
 import * as THREE from 'three';
-import { VehicleMesh, linearHex, vehicleWeathering } from './vehicleMesh.ts';
+import { VehicleMesh, keepStreams, linearHex, vehicleWeathering } from './vehicleMesh.ts';
 import { buildModel, modelWheels } from './vehicleBodies.ts';
 import {
   DEFAULT_FLEET, FLEETS, climateForMap, fleetForMap, type CivilianRole, type Fleet, type FleetEntry, type VehicleClimate,
@@ -109,8 +109,8 @@ function canonicalSolid(entry: FleetEntry, role: CivilianVehicleKind): THREE.Buf
   const mesh = new VehicleMesh();
   mesh.coarse = true;
   buildModel(mesh, entry.model, { coarse: true, burnt: false });
-  const geometry = mesh.build(vehicleWeathering({ wheels: modelWheels(entry.model), seed: 1, voxelAo: false }));
-  for (const name of Object.keys(geometry.attributes)) if (name !== 'position') geometry.deleteAttribute(name);
+  // positions only, on a fresh geometry (keepStreams: never deleteAttribute on a geometry the renderer draws)
+  const geometry = keepStreams(mesh.build(vehicleWeathering({ wheels: modelWheels(entry.model), seed: 1, voxelAo: false })), ['position']);
   // the mirrors and the surface dressing neither collide nor cast: their triangles leave the solid
   const skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
   if (skip) {

@@ -172,7 +172,12 @@ type FocusedDressingContext = Pick<
  * painted bucket (the map-vehicles lane, P2). */
 function pushBoat(buckets: DressingBuckets, hull: THREE.BufferGeometry, timber = false): 'baked' | 'wood' {
   if (buckets.baked && !timber) { buckets.baked.push(hull); return 'baked'; }
-  hull.deleteAttribute('color');
+  // the timber bucket's streams, on a fresh attributes object: a moored hull is drawn on its own every frame, and an
+  // attributes object that lost a key (deleteAttribute) drops to dictionary mode and slows three's per-frame update of
+  // every geometry (vehicleMesh.ts keepStreams); the geometry itself stays the one the callers hold
+  const kept: typeof hull.attributes = {};
+  for (const [name, attribute] of Object.entries(hull.attributes)) if (name !== 'color') kept[name] = attribute;
+  hull.attributes = kept;
   buckets.wood.push(hull);
   return 'wood';
 }
