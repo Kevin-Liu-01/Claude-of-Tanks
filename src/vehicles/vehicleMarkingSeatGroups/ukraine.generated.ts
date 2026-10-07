@@ -210,8 +210,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          1.738133,
-          1.5627299,
+          1.7354156,
+          1.6188899,
           -2.20516
         ],
         "quaternion": [
@@ -225,7 +225,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.2524269
+        "maximumSurfaceErrorM": 0.2377594
       },
       {
         "kind": "designation",

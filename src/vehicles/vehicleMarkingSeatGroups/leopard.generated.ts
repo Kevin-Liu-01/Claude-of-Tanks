@@ -156,22 +156,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          -1.7836375,
-          1.1912438,
-          -2.8381999
+          -1.78584,
+          0.6534714,
+          0.1486001
         ],
         "quaternion": [
-          -0.0055238,
-          -0.7070852,
-          -0.0055238,
-          0.7070852
+          -0.0042087,
+          -0.7070943,
+          -0.0042087,
+          0.7070943
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
       },
       {
         "kind": "designation",
@@ -179,7 +179,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.25,
         "pos": [
           -1.781,
-          0.78485,
+          1.1075,
           2.2708
         ],
         "quaternion": [
@@ -193,7 +193,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.034938
+        "maximumSurfaceErrorM": 0.0121255
       }
     ]
   },
@@ -737,24 +737,24 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.2,
         "pos": [
-          -0.426,
-          1.1136,
+          -0.5001751,
+          0.8912561,
           -0.6707
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          -0.1379497,
+          -0.6935199,
+          -0.1379497,
+          0.6935199
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "leo2a6_ua",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.3119488
+        "maximumSurfaceErrorM": null
       }
     ]
   }
