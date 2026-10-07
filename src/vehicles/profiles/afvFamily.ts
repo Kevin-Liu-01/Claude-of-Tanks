@@ -100,12 +100,13 @@ function roofMG(
   cls = 'mag',
   yaw = 0,
   scale = 0.82,
+  feed?: 'left' | 'right',
 ): void {
   P.add('turret', KIT.cylY(0.18, 0.20, 0.075, 16), x, y, z);
   P.add('turretDark', KIT.cylY(0.15, 0.17, 0.020, 16), x, y + 0.047, z);
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls, tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed, feed,
   }), x, y + 0.07, z, [0, yaw, 0]);
 }
 
@@ -1624,7 +1625,10 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
     }
   }
 
-  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76);
+  // 2026-10-07 (tank-accessories round 4): the NSVT's box takes the gun's left (the NSV feeds from either side). On its
+  // right it hung through the bustle's jerrycans (109 triangles inside the box region in the feed-side collision census,
+  // 107 before round 4); on the left the region is clear (0).
+  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76, 'left');
 
   // Rear equipment: backing plate buried into the base-skirt slope, deep
   // bustle rack seated on the slab top, cans left / spare links right.
