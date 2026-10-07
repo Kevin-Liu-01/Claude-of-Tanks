@@ -43,6 +43,7 @@ import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
+import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
 
 type Rng = () => number;
@@ -51,6 +52,9 @@ type GeometryBucketName = keyof GeometryBuckets & string;
 interface DressingBuckets extends GeometryBuckets {
   straw: THREE.BufferGeometry[];
   baked?: THREE.BufferGeometry[];
+  /** The ground lane (wave 234): the rail kit's bed and shoulders, on their crushed-stone material (railBallast.ts);
+   * a caller without it (the phones, the receipts' plain bucket sets) keeps them on the baked material. */
+  ballast?: THREE.BufferGeometry[];
 }
 
 interface DressingHeightField {
@@ -2164,8 +2168,11 @@ function layRailSpan(
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }
+  // (wave 234, the railyards' "smooth grey slab … no stone ballast, shoulder … or grime"): the bed and its shoulders
+  // draw crushed stone and the track's grime (railBallast.ts), each part's UV its place across the track; no draw
+  tagRailBallast(bal, lay.gauge, (x) => x, () => RAIL_BALLAST_BED);
   place(bal, 0, deep ? 0.15 - RAIL_SLAB_DEPTH_FULL_M / 2 : 0.07, 0);
-  (buckets.baked || buckets.stone).push(bal);
+  (buckets.ballast ?? buckets.baked ?? buckets.stone).push(bal);
   // the shoulders: a sloped plank each side from the bed's top edge (0.15 m) down into the ground 0.6 m out, its
   // foot darkened toward the soil it spills onto
   {
@@ -2179,9 +2186,12 @@ function layRailSpan(
         col[i * 3] = v; col[i * 3 + 1] = v * (0.97 - 0.03 * foot); col[i * 3 + 2] = v * (0.90 - 0.06 * foot);
       }
       shoulder.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const lx = sideSign * (lay.ballast / 2 + run / 2 - 0.02);
+      tagRailBallast(shoulder, lay.gauge, (x) => lx + x * Math.cos(slopeAng),
+        (x) => RAIL_BALLAST_SHOULDER + Math.min(1, Math.max(0, (x * sideSign + slopeLen / 2) / slopeLen)));
       shoulder.rotateZ(-sideSign * slopeAng);
-      place(shoulder, sideSign * (lay.ballast / 2 + run / 2 - 0.02), 0.15 - drop / 2 - 0.02, 0);
-      (buckets.baked || buckets.stone).push(shoulder);
+      place(shoulder, lx, 0.15 - drop / 2 - 0.02, 0);
+      (buckets.ballast ?? buckets.baked ?? buckets.stone).push(shoulder);
     }
   }
   // twin rails
