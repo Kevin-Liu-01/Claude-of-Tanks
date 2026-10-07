@@ -42,6 +42,20 @@ const V60_ROD = material('steel', [0.07, 0.065, 0.06], 0.45, 0.6, 0, 1);
 const GLASS = material('glass', [0.02, 0.024, 0.028], 0.06, 0, 0, 0.2);
 const WARN_YELLOW = material('paint', linearHex(0xd0a020), 0.6, 0, 0, 1);
 const COAL = material('cargo', [0.022, 0.021, 0.02], 0.62, 0, 0, 0.3);
+// (round 2, wave 152: "smooth black slabs") lump coal catches the light on its facets: a glossier, greyer face
+const COAL_FACE = material('cargo', [0.042, 0.041, 0.04], 0.38, 0, 0, 0.3);
+const COAL_DULL = material('cargo', [0.03, 0.029, 0.028], 0.55, 0, 0, 0.3);
+// (round 2, wave 152: "spotless", "no rust streaks, grime or chipped edges") the coalfield's weathering on the sides
+const RUST_BLEED = material('paint', linearHex(0x4a2614), 0.86, 0.05, 0, 0.5);
+const WATER_STAIN = material('paint', linearHex(0x2c2119), 0.9, 0, 0, 0.4);
+const COAL_GRIME = material('paint', linearHex(0x1e1914), 0.92, 0, 0, 0.3);
+const COAL_DUST = material('paint', linearHex(0x34271e), 0.9, 0, 0, 0.4);
+// (round 2, wave 152: tank wagons as "bare, spotless matte-black cylinders", "placeholder tubes") the tanks' fittings
+// in weathered grey steel, product spilled down the barrel from the dome, road dust on its lower flanks
+const RAIL_GREY = material('steel', linearHex(0x6a6862), 0.55, 0.35, 0, 0.8);
+const STRAP_GREY = material('steel', linearHex(0x48463f), 0.6, 0.3, 0, 0.8);
+const OIL_STAIN = material('paint', linearHex(0x241a12), 0.28, 0, 0, 0.3);
+const ROAD_DUST = material('paint', linearHex(0x3c352d), 0.92, 0, 0, 0.4);
 
 // ---------------------------------------------------------------------------------------------------- helpers
 
@@ -55,6 +69,133 @@ function face4(mesh: VehicleMesh, p: Vec3[], n: Vec3, m: Mat): void {
   const v = p.map((q) => mesh.vert(q[0], q[1], q[2], n[0], n[1], n[2], m));
   mesh.tri(v[0], v[1], v[2]);
   mesh.tri(v[0], v[2], v[3]);
+}
+
+/** Deterministic hash in [0, 1) of two integers. */
+function hash2(a: number, b: number): number {
+  let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * A side panel weathered (round 2, wave 152): streaks bleeding down from the top rail between the stakes, tapering as
+ * they run, and the coalfield's grime in a ragged dark band along the foot. Dressing on the panel's face a few
+ * millimetres proud (the grime first, the streaks over it).
+ */
+function weatherPanel(mesh: VehicleMesh, coarse: boolean, side: number, xFace: number, y0: number, y1: number, z0: number,
+  z1: number, seed: number, streak: Mat): void {
+  if (coarse) return;
+  mesh.dressing(() => {
+    const n: Vec3 = [side, 0, 0], xs = side * (xFace + 0.003);
+    // two bands, the paler dust higher and the grime under it, each edge a smooth wander (cosine-eased knots)
+    const m = Math.max(4, Math.round((z1 - z0) / 0.75)), sub = 2;
+    const edge = (t: number, base: number, amp: number, salt: number): number => {
+      const k = Math.floor(t), f = t - k, e = (1 - Math.cos(f * Math.PI)) / 2;
+      return base + amp * ((1 - e) * hash2(k, seed + salt) + e * hash2(k + 1, seed + salt));
+    };
+    for (const [layer, x, base, amp, salt, mat] of [
+      [0, side * xFace, 0.26, 0.2, 4, COAL_DUST], [1, side * (xFace + 0.0015), 0.1, 0.12, 6, COAL_GRIME],
+    ] as const) {
+      void layer;
+      for (let k = 0; k < m * sub; k++) {
+        const ta = k / sub, tb = (k + 1) / sub;
+        const za = z0 + (ta / m) * (z1 - z0), zb = z0 + (tb / m) * (z1 - z0);
+        const ha = y0 + edge(ta, base, amp, salt), hb = y0 + edge(tb, base, amp, salt);
+        face4(mesh, [[x, y0 + 0.02, za], [x, y0 + 0.02, zb], [x, hb, zb], [x, ha, za]], n, mat);
+      }
+    }
+    const count = Math.round((z1 - z0) / 0.5);
+    for (let k = 0; k < count; k++) {
+      if (hash2(k, seed) < 0.3) continue;
+      const z = z0 + (k + 0.15 + 0.7 * hash2(k, seed + 1)) * ((z1 - z0) / count);
+      const len = (0.2 + 0.6 * hash2(k, seed + 2)) * (y1 - y0), w = 0.03 + 0.07 * hash2(k, seed + 3);
+      const top = y1 - 0.05, bottom = Math.max(y0 + 0.1, top - len);
+      face4(mesh, [[xs, top, z - w / 2], [xs, top, z + w / 2], [xs, bottom, z + w * 0.1], [xs, bottom, z - w * 0.1]], n, streak);
+    }
+  });
+}
+
+/**
+ * A patch on a barrel lying along z (axis at (0, axisY), radius R): angles a0..a1 (from +x, counter-clockwise seen from
+ * +z, so pi/2 is the crown) between z0 and z1, `lift` proud, normals radial. Dressing.
+ */
+function barrelPatch(mesh: VehicleMesh, axisY: number, R: number, z0: number, z1: number, a0: number, a1: number, lift: number,
+  m: Mat, steps = 6): void {
+  mesh.dressing(() => {
+    const r = R + lift;
+    for (let k = 0; k < steps; k++) {
+      const aa = a0 + ((a1 - a0) * k) / steps, ab = a0 + ((a1 - a0) * (k + 1)) / steps, am = (aa + ab) / 2;
+      const p = (a: number, z: number): Vec3 => [Math.cos(a) * r, axisY + Math.sin(a) * r, z];
+      face4(mesh, [p(aa, z0), p(ab, z0), p(ab, z1), p(aa, z1)], [Math.cos(am), Math.sin(am), 0], m);
+    }
+  });
+}
+
+/** A tank's spills and dust: drips from the dome down both flanks, the lower flanks dusty, end to end. */
+function tankWeathering(mesh: VehicleMesh, coarse: boolean, axisY: number, R: number, half: number, domeR: number, seed: number): void {
+  if (coarse) return;
+  for (const side of [1, -1]) {
+    // the dust: a band along each lower flank (angles measured on the side's own half)
+    const lo = side > 0 ? -0.95 : Math.PI + 0.25, hi = side > 0 ? -0.25 : Math.PI + 0.95;
+    barrelPatch(mesh, axisY, R, -half, half, lo, hi, 0.003, ROAD_DUST, 4);
+    for (let k = 0; k < 4; k++) {
+      const z = (hash2(k, seed + (side > 0 ? 1 : 2)) - 0.5) * domeR * 2.2, w = 0.06 + 0.1 * hash2(k, seed + 3);
+      const run = 0.45 + 0.75 * hash2(k, seed + 4);
+      const a0 = side > 0 ? Math.PI / 2 - 0.12 : Math.PI / 2 + 0.12, a1 = side > 0 ? a0 - run : a0 + run;
+      barrelPatch(mesh, axisY, R, z - w / 2, z + w / 2, a0, a1, 0.005, OIL_STAIN, 4);
+    }
+  }
+}
+
+/** Handrails along a walkway from z0 to z1 at x (both sides of it), posts every metre or so. Dressing. */
+function walkwayRails(mesh: VehicleMesh, coarse: boolean, xs: readonly number[], y: number, z0: number, z1: number, height: number, m: Mat): void {
+  if (coarse) return;
+  mesh.dressing(() => {
+    for (const x of xs) {
+      mesh.tube([[x, y + height, z0], [x, y + height, z1]], 0.016, 5, m, { caps: true });
+      const posts = Math.max(2, Math.round((z1 - z0) / 1.1) + 1);
+      for (let k = 0; k < posts; k++) {
+        const z = z0 + ((z1 - z0) * k) / (posts - 1);
+        mesh.box(x, y + height / 2, z, 0.025, height, 0.025, m, 0);
+      }
+    }
+  });
+}
+
+/**
+ * A wagon's coal: heaped over the top rails with a ridge along the middle, its face broken into lumps at two scales (a
+ * hand-sized one too), facets catching the light in two shades; on desktop a scatter of loose lumps on top (round 2,
+ * wave 152: "smooth black slabs", "a black box insert, not a heap of coal").
+ */
+function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: number, W: number, sink: number, rise: number, seed: number): void {
+  const nu = coarse ? 6 : 22, nv = coarse ? 6 : 12;
+  const lenZ = frameHalf * 2 - 0.25, widX = W - 0.2;
+  const heightAt = (x: number, z: number): number => {
+    const u = z / lenZ + 0.5, v = x / widX + 0.5;
+    const ridge = Math.sin(Math.min(1, Math.max(0, v)) * Math.PI) * Math.pow(Math.sin(Math.min(1, Math.max(0, u)) * Math.PI), 0.4);
+    const broad = Math.sin(z * 2.2 + x * 3.2 + seed) * 0.04 + Math.sin(z * 5.5 - x * 4.2 + seed * 1.7) * 0.025;
+    const fine = coarse ? 0 : Math.sin(z * 11.3 + x * 7.9 + seed * 2.3) * 0.022 + Math.sin(z * 8.1 - x * 13.7 + seed * 0.7) * 0.018;
+    return top - sink + ridge * rise + (broad + fine) * ridge;
+  };
+  mesh.grid(nu, nv, (i, j, out) => {
+    const z = (i / nu - 0.5) * lenZ, x = (j / nv - 0.5) * widX;
+    out[0] = x; out[1] = heightAt(x, z); out[2] = z;
+  }, (i, j) => (coarse ? COAL : hash2(i + seed * 31, j) < 0.45 ? COAL_FACE : COAL_DULL), { flip: true });
+  if (coarse) return;
+  // loose lumps lying on the heap: rough blocks tumbled every way, a few the size of two fists
+  mesh.dressing(() => {
+    const n = 22;
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) / n, v = (k * 0.618034 + seed * 0.13) % 1;
+      const z = (u - 0.5) * lenZ * 0.86, x = (v - 0.5) * widX * 0.7;
+      const size = 0.07 + 0.11 * hash2(k, seed + 5);
+      mesh.push().translate(x, heightAt(x, z) + size * 0.22, z)
+        .rotateY(hash2(k, seed + 7) * Math.PI * 2).rotateX((hash2(k, seed + 9) - 0.5) * 1.4).rotateZ((hash2(k, seed + 11) - 0.5) * 1.4);
+      mesh.box(0, 0, 0, size, size * (0.6 + 0.3 * hash2(k, seed + 13)), size * (0.8 + 0.4 * hash2(k, seed + 15)), k % 3 ? COAL_FACE : COAL_DULL, 0);
+      mesh.pop();
+    }
+  });
 }
 
 /** A bar from a to b, `w` across and `d` deep (its depth toward `up`), open-ended when its ends are buried. */
@@ -193,6 +334,7 @@ function covered4(mesh: VehicleMesh, coarse: boolean): void {
   const hw = W / 2, h = eave - floorY, bodyL = frameHalf * 2;
   for (const side of [1, -1]) {
     mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.05, h, bodyL, SU_BROWN, 0);
+    weatherPanel(mesh, coarse, side, hw - 0.003, floorY, eave, -bodyL / 2 + 0.1, bodyL / 2 - 0.1, side > 0 ? 41 : 43, RUST_BLEED);
     // the steel frame's posts and braces outside the sheathing, the sliding door on its rails
     const posts = coarse ? 6 : 12;
     for (let k = 0; k <= posts; k++) {
@@ -202,6 +344,7 @@ function covered4(mesh: VehicleMesh, coarse: boolean): void {
     }
     mesh.box(side * (hw + 0.02), eave - 0.05, 0, 0.06, 0.1, bodyL, SU_BROWN, 0);
     mesh.box(side * (hw + 0.06), floorY + h / 2 - 0.05, 0, 0.05, h - 0.2, 2.0, SU_BROWN, coarse ? 0 : 0.01);
+    weatherPanel(mesh, coarse, side, hw + 0.088, floorY + 0.05, eave - 0.15, -0.98, 0.98, side > 0 ? 45 : 47, RUST_BLEED);
     mesh.box(side * (hw + 0.1), eave - 0.15, 0, 0.05, 0.06, 4.2, FRAME_BLACK, 0);
     // the hatch windows high on the side (the wagon's vents)
     if (!coarse) for (const z of [-4.5, 4.5]) mesh.box(side * (hw + 0.02), eave - 0.5, z, 0.02, 0.4, 0.6, FRAME_BLACK, 0);
@@ -234,6 +377,7 @@ function gondola4(mesh: VehicleMesh, coarse: boolean): void {
   for (const side of [1, -1]) {
     mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.03, h, frameHalf * 2, SU_BROWN, 0);
     mesh.box(side * (hw - 0.08), floorY + h / 2, 0, 0.01, h, frameHalf * 2 - 0.1, SU_BROWN, 0);
+    weatherPanel(mesh, coarse, side, hw - 0.013, floorY, top, -frameHalf + 0.1, frameHalf - 0.1, side > 0 ? 21 : 23, RUST_BLEED);
     const n = coarse ? 7 : 13;
     for (let k = 0; k < n; k++) {
       const z = -frameHalf + 0.2 + (k / (n - 1)) * (frameHalf * 2 - 0.4);
@@ -246,15 +390,8 @@ function gondola4(mesh: VehicleMesh, coarse: boolean): void {
     for (const x of [-1.0, 0, 1.0]) mesh.box(x, floorY + h / 2, end * (frameHalf + 0.03), 0.1, h, 0.06, SU_BROWN, coarse ? 0 : 0.01);
   }
   mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0);
-  // the load: grain under a tarpaulin's ridge? coal: the yard's coal, heaped
-  const nu = coarse ? 6 : 12, nv = coarse ? 6 : 10;
-  mesh.grid(nu, nv, (i, j, out) => {
-    const u = i / nu, v = j / nv;
-    const z = (u - 0.5) * (frameHalf * 2 - 0.25), x = (v - 0.5) * (W - 0.2);
-    const ridge = Math.sin(v * Math.PI) * Math.pow(Math.sin(u * Math.PI), 0.4);
-    const lump = Math.sin(z * 2.1 + x * 3.3) * 0.04 + Math.sin(z * 5.3 - x * 4.1) * 0.025;
-    out[0] = x; out[1] = top - 0.3 + ridge * 0.6 + lump * ridge; out[2] = z;
-  }, () => COAL, { flip: true });
+  // the load: the yard's coal, heaped
+  coalHeap(mesh, coarse, top, frameHalf, W, 0.3, 0.6, 3);
 }
 
 function tank4(mesh: VehicleMesh, coarse: boolean): void {
@@ -275,14 +412,22 @@ function tank4(mesh: VehicleMesh, coarse: boolean): void {
     if (!coarse) mesh.dressing(() => {
       const strap: Vec3[] = [];
       for (let k = 0; k <= 10; k++) { const a = Math.PI * (k / 10); strap.push([Math.cos(a) * (R + 0.012), axisY + Math.sin(a) * (R + 0.012), z]); }
-      mesh.tube(strap, 0.012, 4, FRAME_BLACK, { caps: true });
+      mesh.tube(strap, 0.012, 4, STRAP_GREY, { caps: true });
     });
   }
   mesh.push().translate(0, axisY + R - 0.05, 0);
   mesh.lathe([[0.45, 0], [0.45, 0.45], [0.38, 0.52], [0.0001, 0.55]], coarse ? 10 : 16, () => TANK_BLACK, { flip: true });
   mesh.pop();
-  mesh.box(0, axisY + R + 0.02, 1.6, 0.6, 0.04, 2.2, FRAME_BLACK, 0);
-  for (const side of [1, -1]) beam(mesh, [side * 0.26, axisY + R + 0.04, 0.6], [side * 0.26, axisY + R + 0.4, 0.6], 0.03, 0.03, FRAME_BLACK);
+  mesh.box(0, axisY + R + 0.02, 1.6, 0.6, 0.04, 2.2, RAIL_GREY, 0);
+  for (const side of [1, -1]) beam(mesh, [side * 0.26, axisY + R + 0.04, 0.6], [side * 0.26, axisY + R + 0.4, 0.6], 0.03, 0.03, RAIL_GREY);
+  walkwayRails(mesh, coarse, [-0.32, 0.32], axisY + R + 0.04, 0.5, 2.7, 0.45, RAIL_GREY);
+  // the ladder up the barrel's end from the end platform
+  for (const side of [1, -1]) beam(mesh, [side * 0.24, floorY + 0.25, half + 0.2], [side * 0.24, axisY + R, half - 0.3], 0.04, 0.03, RAIL_GREY);
+  for (let k = 1; k <= 6; k++) {
+    const t = k / 7;
+    mesh.box(0, floorY + 0.25 + t * (axisY + R - floorY - 0.25), half + 0.2 - t * 0.5, 0.48, 0.025, 0.03, RAIL_GREY, 0);
+  }
+  tankWeathering(mesh, coarse, axisY, R, half, 0.45, 7);
 }
 
 function tem1(mesh: VehicleMesh, coarse: boolean): void {
@@ -319,6 +464,16 @@ function tem1(mesh: VehicleMesh, coarse: boolean): void {
     const x = side * (W / 2 - 0.05);
     beam(mesh, [x, frameTop + 0.9, z0], [x, frameTop + 0.9, z1], 0.03, 0.03, SU_YELLOW);
     for (const z of [z0, z1]) beam(mesh, [x, frameTop + 0.06, z], [x, frameTop + 0.9, z], 0.025, 0.025, SU_YELLOW);
+    // (round 2) stanchions every metre and a half between the end posts, the rail no longer spanning bare
+    if (!coarse) mesh.dressing(() => {
+      const n = Math.round((z1 - z0) / 1.5);
+      for (let k = 1; k < n; k++) mesh.box(x, frameTop + 0.48, z0 + ((z1 - z0) * k) / n, 0.022, 0.84, 0.022, SU_YELLOW, 0);
+    });
+  }
+  // the working grime low on the hoods and streaks down from their roofs
+  for (const side of [1, -1]) {
+    weatherPanel(mesh, coarse, side, 2.3 / 2 + 0.009, frameTop + 0.06, frameTop + 2.45, -2.55, 7.35, side > 0 ? 61 : 63, linearMat(0x1f3a28));
+    weatherPanel(mesh, coarse, side, 2.3 / 2 + 0.009, frameTop + 0.06, frameTop + 2.1, -7.45, -5.45, side > 0 ? 65 : 67, linearMat(0x1f3a28));
   }
 }
 
@@ -334,6 +489,7 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
   for (const side of [1, -1]) {
     mesh.box(side * (hw - 0.02), floorY + h / 2, 0, 0.03, h, frameHalf * 2 - 0.04, DB_BROWN, 0);
     mesh.box(side * (hw - 0.07), floorY + h / 2, 0, 0.01, h, frameHalf * 2 - 0.12, DB_BROWN, 0);
+    weatherPanel(mesh, coarse, side, hw - 0.003, floorY, top, -frameHalf + 0.1, frameHalf - 0.1, side > 0 ? 11 : 13, RUST_BLEED);
     // the stakes: U-profiles outside every metre or so, the side doors' frame between the middle two
     const n = coarse ? 5 : 9;
     for (let k = 0; k < n; k++) {
@@ -356,14 +512,7 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
   }
   mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0);
   // the load: coal heaped over the top rails, a ridge along the middle
-  const nu = coarse ? 6 : 12, nv = coarse ? 6 : 10;
-  mesh.grid(nu, nv, (i, j, out) => {
-    const u = i / nu, v = j / nv;
-    const z = (u - 0.5) * (frameHalf * 2 - 0.25), x = (v - 0.5) * (W - 0.2);
-    const ridge = Math.sin(v * Math.PI) * Math.pow(Math.sin(u * Math.PI), 0.4);
-    const lump = Math.sin(z * 2.3 + x * 3.1) * 0.04 + Math.sin(z * 5.7 - x * 4.3) * 0.025;
-    out[0] = x; out[1] = top - 0.25 + ridge * 0.55 + lump * ridge; out[2] = z;
-  }, () => COAL, { flip: true });
+  coalHeap(mesh, coarse, top, frameHalf, W, 0.25, 0.55, 1);
 }
 
 function g10(mesh: VehicleMesh, coarse: boolean): void {
@@ -375,6 +524,7 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
   // the planked sides and ends: vertical boards on a steel frame, the frame's diagonals outside
   for (const side of [1, -1]) {
     mesh.box(side * (hw - 0.03), floorY + h / 2, 0, 0.05, h, bodyL, DB_BROWN_WOOD, 0);
+    weatherPanel(mesh, coarse, side, hw - 0.003, floorY, eave, -bodyL / 2 + 0.1, bodyL / 2 - 0.1, side > 0 ? 31 : 33, WATER_STAIN);
     if (!coarse) {
       mesh.dressing(() => {
         const boards = 24;
@@ -393,8 +543,9 @@ function g10(mesh: VehicleMesh, coarse: boolean): void {
       beam(mesh, [side * (hw + 0.03), floorY + 0.1, end * (bodyL / 2 - 0.1)], [side * (hw + 0.03), eave - 0.1, end * 1.15], 0.04, 0.08, FRAME_BLACK, false, [side, 0, 0]);
       beam(mesh, [side * (hw + 0.03), floorY + 0.1, end * 1.15], [side * (hw + 0.03), eave - 0.1, end * (bodyL / 2 - 0.1)], 0.04, 0.08, FRAME_BLACK, false, [side, 0, 0]);
     }
-    // the sliding door and its rails
+    // the sliding door and its rails, the door as weathered as the side it hangs on
     mesh.box(side * (hw + 0.06), floorY + h / 2 - 0.05, 0, 0.05, h - 0.2, 2.0, DB_BROWN_WOOD, coarse ? 0 : 0.01);
+    weatherPanel(mesh, coarse, side, hw + 0.088, floorY + 0.05, eave - 0.15, -0.98, 0.98, side > 0 ? 35 : 37, WATER_STAIN);
     mesh.box(side * (hw + 0.1), eave - 0.12, 0, 0.05, 0.06, 4.2, FRAME_BLACK, 0);
     mesh.box(side * (hw + 0.1), floorY + 0.12, 0, 0.05, 0.05, 4.2, FRAME_BLACK, 0);
   }
@@ -444,20 +595,23 @@ function tank(mesh: VehicleMesh, coarse: boolean): void {
     if (!coarse) mesh.dressing(() => {
       const strap: Vec3[] = [];
       for (let k = 0; k <= 10; k++) { const a = Math.PI * (k / 10); strap.push([Math.cos(a) * (R + 0.012), axisY + Math.sin(a) * (R + 0.012), z]); }
-      mesh.tube(strap, 0.012, 4, FRAME_BLACK, { caps: true });
+      mesh.tube(strap, 0.012, 4, STRAP_GREY, { caps: true });
     });
   }
-  // the dome and its manhole, the walkway along the top, a ladder up one side
+  // the dome and its manhole, the walkway along the top with its rails, a ladder up one side
   mesh.push().translate(0, axisY + R - 0.05, 0);
   mesh.lathe([[0.36, 0], [0.36, 0.38], [0.3, 0.44], [0.0001, 0.46]], coarse ? 10 : 16, () => TANK_BLACK, { flip: true });
   mesh.pop();
-  mesh.box(0, axisY + R + 0.02, 1.4, 0.5, 0.04, 2.0, FRAME_BLACK, 0);
-  for (const side of [1, -1]) beam(mesh, [side * 0.2, axisY + R + 0.04, 0.6], [side * 0.2, axisY + R + 0.4, 0.6], 0.03, 0.03, FRAME_BLACK);
-  for (const side of [1, -1]) beam(mesh, [side * 0.22, floorY + 0.25, half + 0.15], [side * 0.22, axisY + R, half - 0.25], 0.04, 0.03, FRAME_BLACK);
+  mesh.box(0, axisY + R + 0.02, 1.4, 0.5, 0.04, 2.0, RAIL_GREY, 0);
+  for (const side of [1, -1]) beam(mesh, [side * 0.2, axisY + R + 0.04, 0.6], [side * 0.2, axisY + R + 0.4, 0.6], 0.03, 0.03, RAIL_GREY);
+  // (the rails stay inside the wagon's loading-gauge record: a low guard rail round the dome platform)
+  walkwayRails(mesh, coarse, [-0.26, 0.26], axisY + R + 0.04, 0.45, 2.35, 0.42, RAIL_GREY);
+  for (const side of [1, -1]) beam(mesh, [side * 0.22, floorY + 0.25, half + 0.15], [side * 0.22, axisY + R, half - 0.25], 0.04, 0.03, RAIL_GREY);
   for (let k = 1; k <= 5; k++) {
     const t = k / 6;
-    mesh.box(0, floorY + 0.25 + t * (axisY + R - floorY - 0.25), half + 0.15 - t * 0.4, 0.44, 0.025, 0.03, FRAME_BLACK, 0);
+    mesh.box(0, floorY + 0.25 + t * (axisY + R - floorY - 0.25), half + 0.15 - t * 0.4, 0.44, 0.025, 0.03, RAIL_GREY, 0);
   }
+  tankWeathering(mesh, coarse, axisY, R, half, 0.36, 5);
 }
 
 function v60(mesh: VehicleMesh, coarse: boolean): void {
@@ -489,6 +643,20 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
         mesh.box(side * (w / 2 + 0.004), frameTop + h * 0.55, z0 + 0.35 + k * 0.7, 0.008, h * 0.5, 0.5, linearMat(0x5a1418), 0);
       }
     });
+    // (round 2, wave 152: "a toy", "no handrails… or grime") the grab rail along each side on its brackets, the
+    // working grime low on the hood and streaks down from its roof
+    for (const side of [1, -1]) {
+      weatherPanel(mesh, coarse, side, w / 2 + 0.009, frameTop + 0.05, frameTop + h, z0 + 0.05, z1 - 0.05, (side > 0 ? 51 : 53) + Math.round(z0), linearMat(0x4a1c18));
+      if (!coarse) mesh.dressing(() => {
+        const x = side * (w / 2 + 0.07), y = frameTop + h * 0.32;
+        mesh.tube([[x, y, z0 + 0.25], [x, y, z1 - 0.25]], 0.016, 5, RAIL_GREY, { caps: true });
+        const n = Math.max(2, Math.round((z1 - z0) / 1.2) + 1);
+        for (let k = 0; k < n; k++) {
+          const z = z0 + 0.25 + ((z1 - z0 - 0.5) * k) / (n - 1);
+          mesh.box(side * (w / 2 + 0.035), y, z, 0.07, 0.025, 0.025, RAIL_GREY, 0);
+        }
+      });
+    }
   };
   hood(0.55, 4.45, 2.0, 1.85);
   hood(-4.4, -2.0, 1.65, 1.85);

@@ -58,6 +58,15 @@ const DUCK = material('canvas', linearHex(0xcfc6ad), 0.92, 0, 0, 1);
 const MAT_WEAVE = material('canvas', linearHex(0x8a7448), 0.95, 0, 0, 1);
 const STRAW_BALE = material('cargo', linearHex(0xbcab78), 0.96, 0, 0, 0.6);
 const TWINE = material('cargo', linearHex(0x6a5a38), 0.9, 0, 0, 0.6);
+// round 2 (waves 152-153: crates as "untextured dark-grey boxes", sacks as "smooth cylinders", seaweed as "a primitive
+// blob", cans "merely placed, not loaded"): crate pine fresher than the carts' wood, the dark inside between its boards,
+// webbing straps, wet kelp
+const CRATE_PINE = material('wood', linearHex(0x9c7a4e), 0.86, 0, 0.3, 1);
+const CRATE_PINE_OLD = material('wood', linearHex(0x7a6044), 0.88, 0, 0.3, 1);
+const CRATE_INSIDE = material('wood', linearHex(0x2c241a), 0.9, 0, 0.3, 1);
+const STRAP = material('cargo', linearHex(0x2c2b27), 0.7, 0, 0, 0.6);
+const KELP_A = material('cargo', linearHex(0x3c3a1c), 0.32, 0, 0, 0.4);
+const KELP_B = material('cargo', linearHex(0x2e2a16), 0.28, 0, 0, 0.4);
 const BARK = material('wood', linearHex(0x5a4a3a), 0.95, 0, 0, 1);
 const LOG_END = material('wood', linearHex(0xb08a5e), 0.9, 0, 0, 1);
 const UHMW = material('trim', linearHex(0xdedbd2), 0.5, 0, 0, 0.6);
@@ -338,7 +347,17 @@ function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: numbe
 /** A filled sack lying on its side, its length along z: a slumped pillow. */
 function sack(c: Ctx, x: number, y: number, z: number, w: number, h: number, l: number, yaw: number, m: Mat): void {
   c.mesh.push().translate(x, y, z).rotateY(yaw);
-  loaf(c, 0, 0, 0, w / 2, l / 2, h, [m], { belly: 0.22, lump: 0.035, ends: 2.4, seed: Math.round((x * 13 + z * 7) * 10), low: true });
+  loaf(c, 0, 0, 0, w / 2, l / 2, h, [m], { belly: 0.22, lump: 0.06, ends: 2.4, seed: Math.round((x * 13 + z * 7) * 10), low: true });
+  // (round 2) its neck gathered and tied at one end, the cloth bunched into a tuft; the seam along its back
+  if (!c.coarse) c.mesh.dressing(() => {
+    c.mesh.push().translate(0, h * 0.4, l / 2 - 0.03).rotateX(Math.PI / 2);
+    c.mesh.lathe([[w * 0.2, 0], [w * 0.08, 0.05], [w * 0.1, 0.085], [w * 0.15, 0.115], [0.0001, 0.13]], 7, () => m);
+    c.mesh.pop();
+    c.mesh.push().translate(0, h * 0.4, l / 2 + 0.02).rotateX(Math.PI / 2);
+    c.mesh.lathe([[w * 0.09, -0.012], [w * 0.09, 0.012]], 7, () => TWINE);
+    c.mesh.pop();
+    c.mesh.box(0, h * 0.985, 0, 0.014, 0.012, l * 0.7, TWINE, 0);
+  });
   c.mesh.pop();
 }
 
@@ -376,8 +395,20 @@ function drum(c: Ctx, x: number, y: number, z: number, r: number, h: number, m: 
 /** A crate (a slatted box). */
 function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d: number, yaw: number): void {
   c.mesh.push().translate(x, y, z).rotateY(yaw);
-  board(c, 0, h / 2, 0, w, h, d, woodOf(c, 31));
-  if (!c.coarse) for (const sy of [0.2, 0.8]) for (const sz of [-1, 1]) board(c, 0, h * sy, sz * (d / 2 + 0.006), w * 1.01, 0.05, 0.012, woodOf(c, 33));
+  const m = hash01(Math.round((x * 13 + z * 7 + y * 5) * 10), c.seed + 41) < 0.5 ? CRATE_PINE : CRATE_PINE_OLD;
+  if (c.coarse) { board(c, 0, h / 2, 0, w, h, d, m); c.mesh.pop(); return; }
+  // (round 2) a slatted crate: three boards a side with gaps showing its dark inside, corner posts, a lid of three (square
+  // edges: the crates are many and small)
+  const box = (bx: number, by: number, bz: number, bw: number, bh: number, bd: number, bm: Mat) => c.mesh.box(bx, by, bz, bw, bh, bd, bm, 0);
+  box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE);
+  const rows = 3, sh = h / rows - 0.022;
+  for (let k = 0; k < rows; k++) {
+    const yy = (k + 0.5) * (h / rows);
+    for (const sz of [-1, 1]) box(0, yy, sz * (d / 2 - 0.006), w - 0.05, sh, 0.012, m);
+    for (const sx of [-1, 1]) box(sx * (w / 2 - 0.006), yy, 0, 0.012, sh, d - 0.05, m);
+  }
+  for (let k = 0; k < 3; k++) box(0, h - 0.006, -d / 2 + (k + 0.5) * (d / 3), w - 0.02, 0.012, d / 3 - 0.018, m);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m);
   c.mesh.pop();
 }
 
@@ -885,10 +916,12 @@ function trolley(c: Ctx, s: TrolleySpec): Assembly {
     // the end legs and the castor end
     for (const sx of [-1, 1]) {
       beam(c.mesh, [sx * (hw - 0.04), deckY - 0.06, hl - 0.06], [sx * (hw - 0.05), 0, hl - 0.08], 0.035, 0.035, frame);
-      beam(c.mesh, [sx * (hw - 0.04), deckY - 0.06, -hl + 0.06], [sx * (hw - 0.05), 0.09, -hl + 0.08], 0.035, 0.035, frame);
-      c.mesh.push().translate(sx * (hw - 0.05), 0.065, -hl + 0.08).scale(sx, 1, 1);
-      castWheel(c, 0.065, 0.035, 4);
+      // (round 2, wave 152: "only one wheel at the rear corner") a castor at each rear corner in its fork
+      beam(c.mesh, [sx * (hw - 0.04), deckY - 0.06, -hl + 0.06], [sx * (hw - 0.05), 0.2, -hl + 0.08], 0.035, 0.035, frame);
+      c.mesh.push().translate(sx * (hw - 0.05), 0.09, -hl + 0.08).scale(sx, 1, 1);
+      castWheel(c, 0.09, 0.04, 5);
       c.mesh.pop();
+      for (const fx of [-0.032, 0.032]) beam(c.mesh, [sx * (hw - 0.05) + fx, 0.2, -hl + 0.08], [sx * (hw - 0.05) + fx, 0.09, -hl + 0.08], 0.008, 0.04, frame);
     }
     // the handle frame: corner pillars, a rail, the bent handle
     for (const sx of [-1, 1]) {
@@ -1054,7 +1087,9 @@ function thela(c: Ctx, s: ThelaSpec): Assembly {
   const load = s.load === 'empty' ? undefined : () => {
     const y = deckY + 0.018;
     if (s.load === 'sacks') {
-      for (let k = 0; k < 5; k++) sack(c, (k % 2 ? 1 : -1) * hw * 0.42, y + (k === 4 ? 0.24 : 0), -hl * 0.6 + Math.floor(k / 2) * hl * 0.6, hw * 0.85, 0.24, 0.62, 0.05 * k,
+      // four in two rows, the fifth lying across them (round 2: it hung over bare deck)
+      for (let k = 0; k < 5; k++) sack(c, k === 4 ? 0 : (k % 2 ? 1 : -1) * hw * 0.42, y + (k === 4 ? 0.2 : 0),
+        k === 4 ? -hl * 0.3 : -hl * 0.6 + Math.floor(k / 2) * hl * 0.6, hw * 0.85, 0.24, 0.62, k === 4 ? Math.PI / 2 - 0.1 : 0.05 * k,
         k % 2 ? fixed(0xd8d2be, 0.95, 0, 'canvas') : BURLAP);
     } else {
       for (let k = 0; k < 4; k++) crate(c, 0, y + Math.floor(k / 2) * 0.3, -hl * 0.4 + (k % 2) * hl * 0.6, s.deckW * 0.8, 0.28, 0.5, 0.04 * k);
@@ -1170,6 +1205,15 @@ function cantrolley(c: Ctx, _s: CanTrolleySpec): Assembly {
   };
   const load = () => {
     for (let k = 0; k < 6; k++) canister(c, (k % 2 ? 1 : -1) * 0.11, deckY + 0.02, -0.28 + Math.floor(k / 2) * 0.28, (k % 3 - 1) * 0.08, colours[k]);
+    // (round 2, wave 152: "no straps... merely placed, not loaded") two webbing straps over the cans to the deck rails
+    if (!c.coarse) c.mesh.dressing(() => {
+      for (const z of [-0.24, 0.24]) {
+        const top = deckY + 0.375, lo = deckY + 0.004;
+        beam(c.mesh, [-hw - 0.005, lo, z], [-0.205, top, z], 0.04, 0.005, STRAP);
+        beam(c.mesh, [-0.205, top, z], [0.205, top, z], 0.04, 0.005, STRAP);
+        beam(c.mesh, [0.205, top, z], [hw + 0.005, lo, z], 0.04, 0.005, STRAP);
+      }
+    });
   };
   return { wheels, body, load, debris: { w: 0.05, l: 0.4 } };
 }
@@ -1209,18 +1253,19 @@ interface BottleCartSpec extends Common {
 }
 
 function bottlecart(c: Ctx, _s: BottleCartSpec): Assembly {
-  const R = 0.15, hl = 0.72, hw = 0.36, frameY = R + 0.12;
+  // (round 2, wave 152: "wheels far too small under the three heavy cylinders") 42 cm pneumatics under the cradles
+  const R = 0.21, hl = 0.72, hw = 0.36, frameY = R + 0.12;
   const wheels: WheelPlace[] = [];
-  for (const side of [1, -1] as const) for (const z of [-hl + 0.12, hl - 0.12]) {
-    wheels.push({ x: side * (hw + 0.04), y: R, z, side, r: R, halfWidth: 0.05, emit: () => tyreWheel(c, R, 0.08, 0.6) });
+  for (const side of [1, -1] as const) for (const z of [-hl + 0.16, hl - 0.16]) {
+    wheels.push({ x: side * (hw + 0.06), y: R, z, side, r: R, halfWidth: 0.06, emit: () => tyreWheel(c, R, 0.1, 0.55) });
   }
   const frame = PAINT_STEEL;
   const cyl = fixed(0x2f4f7a, 0.45, 0.3, 'paint');
   const body = () => {
-    for (const z of [-hl + 0.12, hl - 0.12]) rod(c, [-hw - 0.06, R, z], [hw + 0.06, R, z], 0.014, IRON, true);
+    for (const z of [-hl + 0.16, hl - 0.16]) rod(c, [-hw - 0.08, R, z], [hw + 0.08, R, z], 0.016, IRON, true);
     for (const sx of [-1, 1]) beam(c.mesh, [sx * hw, frameY, -hl], [sx * hw, frameY, hl], 0.05, 0.07, frame);
     for (const z of [-hl, -hl * 0.4, hl * 0.4, hl]) beam(c.mesh, [-hw, frameY, z], [hw, frameY, z], 0.04, 0.05, frame);
-    for (const sx of [-1, 1]) for (const z of [-hl + 0.12, hl - 0.12]) beam(c.mesh, [sx * hw, frameY - 0.03, z], [sx * (hw + 0.02), R, z], 0.03, 0.04, frame);
+    for (const sx of [-1, 1]) for (const z of [-hl + 0.16, hl - 0.16]) beam(c.mesh, [sx * hw, frameY - 0.03, z], [sx * (hw + 0.02), R, z], 0.03, 0.04, frame);
     // the cradles
     for (const z of [-hl * 0.55, hl * 0.55]) {
       for (const sx of [-1, 0, 1]) beam(c.mesh, [sx * 0.24, frameY + 0.04, z], [sx * 0.24, frameY + 0.13, z], 0.03, 0.03, frame);
@@ -1436,7 +1481,26 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
     if (s.load === 'hay' || s.load === 'seaweed') {
       const over = s.sides === 'ladder' ? 0.3 : 0.12;
       if (s.load === 'hay') hayLoad(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.75, [HAY_A, HAY_B, HAY_C], 0.16);
-      else loaf(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.35, [SEAWEED_A, SEAWEED_B], { belly: 0.05, lump: 0.12, ends: 3 });
+      else {
+        // (round 2, wave 153: "a single smooth untextured dark-grey ellipsoid") wrack heaped wet, its fronds over the sides
+        loaf(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.35, [SEAWEED_A, SEAWEED_B, KELP_A], { belly: 0.05, lump: 0.18, ends: 3 });
+        if (!c.coarse) c.mesh.dressing(() => {
+          const n = 22;
+          for (let k = 0; k < n; k++) {
+            const side = k % 2 ? 1 : -1, z = -hl + 0.15 + ((k >> 1) / Math.ceil(n / 2)) * (hl * 2 - 0.3) + (hash01(k, c.seed + 61) - 0.5) * 0.12;
+            const w = 0.05 + 0.06 * hash01(k, c.seed + 63), drop = 0.18 + 0.3 * hash01(k, c.seed + 65), m = k % 3 ? KELP_A : KELP_B;
+            // from the heap's flank out over its bulge and down the outside of the side boards
+            const rim = y + s.sideH;
+            const p: Vec3[] = [[side * (hw + over * 0.55), rim + 0.16, z], [side * (hw + over + 0.025), rim + 0.02, z + 0.02],
+              [side * (hw + over * 0.6 + 0.05), rim - drop * 0.55, z + 0.04], [side * (hw + 0.07), rim - drop, z + 0.05]];
+            for (let i = 0; i + 1 < p.length; i++) {
+              const a = p[i], b = p[i + 1], n0: Vec3 = [side, 0.6, 0];
+              face4(c.mesh, [[a[0], a[1], a[2] - w / 2], [a[0], a[1], a[2] + w / 2], [b[0], b[1], b[2] + w * 0.4], [b[0], b[1], b[2] - w * 0.4]], n0, m);
+              face4(c.mesh, [[a[0], a[1], a[2] - w / 2], [b[0], b[1], b[2] - w * 0.4], [b[0], b[1], b[2] + w * 0.4], [a[0], a[1], a[2] + w / 2]], [-n0[0], -n0[1], 0], m);
+            }
+          }
+        });
+      }
     } else if (s.load === 'sacks') {
       for (let k = 0; k < 6; k++) sack(c, (k % 2 ? 1 : -1) * hw * 0.48, y + (k > 3 ? 0.26 : 0), -hl * 0.55 + Math.floor((k % 4) / 2) * hl * 0.9 + (k > 3 ? hl * 0.2 : 0),
         hw * 0.86, 0.26, 0.66, 0.05 * k, k % 2 ? BURLAP : BURLAP_DARK);
@@ -1667,16 +1731,6 @@ function snowCover(c: Ctx, x: number, y: number, z: number, hw: number, hl: numb
   }
 }
 
-/** A rope over a load from side to side: a loop over its top, its ends down to the frame (dressing). */
-function lashing(c: Ctx, z: number, hw: number, y0: number, h: number): void {
-  if (c.coarse) return;
-  c.mesh.dressing(() => {
-    const loop: Vec3[] = [];
-    for (let k = 0; k <= 12; k++) { const a = (k / 12) * Math.PI; loop.push([Math.cos(a) * hw, y0 + Math.sin(a) * h, z]); }
-    bentRod(c, loop, 0.011, ROPE, false);
-  });
-}
-
 /** A hay sledge (Podhale, January): long curled runners, posts, a ladder rack under its hay, shafts on the snow. */
 interface SledgeSpec extends Common {
   readonly kind: 'sledge';
@@ -1759,19 +1813,28 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     const body = () => {
       for (const sx of [-1, 1]) {
         // the runner rises at the front into the horn the driver steers by
-        const front = bezier([sx * rw, 0.04, hl * 0.35], [sx * (rw - 0.04), 1.08, hl * 0.72], [sx * rw, 0.0, hl * 1.08], c.coarse ? 5 : 9);
+        // (wave 211: "no runners along the snow", "freestanding C-shaped horns") a deeper runner standing proud of the
+        // snow, sweeping up without a break into its horn
+        const front = bezier([sx * rw, 0.05, hl * 0.35], [sx * (rw - 0.04), 1.08, hl * 0.72], [sx * rw, 0.0, hl * 1.08], c.coarse ? 5 : 9);
         const horn = bezier(front[front.length - 1], [sx * (rw - 0.06), 1.16, hl * 0.48], [sx * (rw - 0.05), 1.22, hl * 0.66], c.coarse ? 2 : 3);
-        const path: Vec3[] = [[sx * rw, 0.04, -hl], ...front, ...horn.slice(1)];
-        squareSweep(c, path, 0.05, 0.065, woodOf(c, 1 + sx), [0, 0, 1]);
+        const path: Vec3[] = [[sx * rw, 0.05, -hl], ...front, ...horn.slice(1)];
+        squareSweep(c, path, 0.055, 0.1, woodOf(c, 1 + sx), [0, 0, 1]);
         if (!c.coarse) c.mesh.dressing(() => beam(c.mesh, [sx * rw, 0.006, -hl], [sx * rw, 0.006, hl * 0.4], 0.045, 0.008, IRON_WORN));
+        // (wave 211: "on table legs") stanchions raked in from the runner to the deck rail, a stringer along them
         for (let k = 0; k < 3; k++) {
           const z = -hl + 0.15 + k * hl * 0.55;
-          beam(c.mesh, [sx * rw, 0.06, z], [sx * (rw - 0.035), deckY - 0.03, z], 0.03, 0.036, woodOf(c, 3));
+          beam(c.mesh, [sx * (rw + 0.005), 0.09, z - 0.04], [sx * (rw - 0.04), deckY - 0.03, z + 0.03], 0.03, 0.036, woodOf(c, 3));
         }
+        beam(c.mesh, [sx * (rw - 0.012), 0.2, -hl + 0.1], [sx * (rw - 0.018), 0.2, -hl + 0.2 + 2 * hl * 0.55], 0.025, 0.03, woodOf(c, 5));
         beam(c.mesh, [sx * (rw - 0.035), deckY - 0.02, -hl + 0.04], [sx * (rw - 0.03), deckY - 0.02, hl * 0.49], 0.045, 0.045, woodOf(c, 4 + sx));
       }
-      // the cross bar between the horns, the slats
+      // the cross bars between the horns (low, and the handle across their tops), the stanchions' cross pieces, the slats
       rod(c, [-rw + 0.03, 0.62, hl * 0.82], [rw - 0.03, 0.62, hl * 0.82], 0.018, woodOf(c, 6), true);
+      rod(c, [-rw + 0.06, 1.17, hl * 0.6], [rw - 0.06, 1.17, hl * 0.6], 0.02, woodOf(c, 7), true);
+      for (let k = 0; k < 3; k++) {
+        const z = -hl + 0.15 + k * hl * 0.55 + 0.01;
+        rod(c, [-rw + 0.02, deckY - 0.12, z], [rw - 0.02, deckY - 0.12, z], 0.014, woodOf(c, 8), true);
+      }
       const n = Math.round(hl * 1.4 / 0.13);
       for (let k = 0; k <= n; k++) board(c, 0, deckY + 0.015, -hl + 0.07 + k * 0.13, s.width - 0.02, 0.022, 0.09, woodOf(c, 10 + k));
     };
@@ -1800,12 +1863,15 @@ function sled(c: Ctx, s: SledSpec): Assembly {
   const top = 0.19;
   const body = () => {
     for (const sx of [-1, 1]) {
-      const n = c.coarse ? 4 : 8;
-      const outline = (t: number): [number, number, number] => {
-        // z, bottom, top of the runner board at parameter t from the tail (0) to the nose (1)
-        const z = -hl + t * s.len;
-        const rise = Math.max(0, (t - 0.78) / 0.22);
-        return [z, 0.0 + 0.2 * rise * rise, top + 0.08 * rise];
+      const n = c.coarse ? 4 : 10;
+      // (wave 211: "block-like runner tips") the board's nose curls up and thins to a rounded tip, its stations closing
+      // up toward it
+      const outline = (u: number): [number, number, number] => {
+        // z, bottom, top of the runner board at parameter u from the tail (0) to the nose (1)
+        const t = 1 - Math.pow(1 - u, 1.5), z = -hl + t * s.len;
+        const rise = Math.max(0, (t - 0.72) / 0.28);
+        const b = 0.3 * rise * rise, tp = top + 0.14 * Math.pow(rise, 1.6);
+        return [z, b, Math.max(b + 0.035, tp)];
       };
       c.mesh.grid(n * 2, 1, (i, j, out) => {
         const [z, b, t] = outline(i / (n * 2));
@@ -1848,7 +1914,22 @@ function sled(c: Ctx, s: SledSpec): Assembly {
       });
       loaf(c, 0, top + 0.025, hl * 0.22, rw * 0.9, hl * 0.34, 0.32, [MUTED_CANVAS], { belly: 0.1, lump: 0.09, ends: 2.5 });
       canister(c, rw * 0.5, top + 0.025, hl * 0.62, 0.1, OLIVE_CAN);
-      for (const z of [-hl * 0.52, -hl * 0.28, hl * 0.1, hl * 0.34]) lashing(c, z, rw * 0.98, top + 0.02, z < 0 ? 0.4 : 0.36);
+      // (wave 211: "stiff hoops standing in for lashings") ropes pulled down tight over the box's corners and over the
+      // tarp's own curve, tied off at the slats' ends
+      if (!c.coarse) c.mesh.dressing(() => {
+        const bw = s.width * 0.4 + 0.012, bh = top + 0.38;
+        for (const z of [-hl * 0.55, -hl * 0.25]) bentRod(c, [[-rw, top + 0.02, z], [-bw, bh - 0.03, z], [-bw + 0.03, bh, z], [bw - 0.03, bh, z],
+          [bw, bh - 0.03, z], [rw, top + 0.02, z]], 0.011, ROPE, false);
+        for (const z of [hl * 0.08, hl * 0.36]) {
+          const arch: Vec3[] = [[-rw, top + 0.02, z]];
+          for (let k = 0; k <= 10; k++) {
+            const th = Math.PI - (k / 10) * Math.PI, ct = Math.cos(th), st = Math.sin(th);
+            arch.push([Math.sign(ct) * Math.pow(Math.abs(ct), 2 / 2.6) * rw * 0.93, top + 0.03 + Math.pow(st, 2 / 2.6) * 0.33, z]);
+          }
+          arch.push([rw, top + 0.02, z]);
+          bentRod(c, arch, 0.011, ROPE, false);
+        }
+      });
       snowCover(c, 0, top + 0.33, hl * 0.22, rw * 0.6, hl * 0.22, 0.05);
       snowCover(c, 0, top + 0.37, -hl * 0.4, s.width * 0.3, 0.2, 0.04);
     } else firewood(c, 0, top + 0.025, 0, s.width * 0.9, s.len * 0.7, 2);

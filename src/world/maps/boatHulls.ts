@@ -14,7 +14,7 @@
 // its own (the kits spend their legacy draws and pass the few they use in `BoatVariation`).
 
 import * as THREE from 'three';
-import { VehicleMesh, linearHex, material, vehicleWeathering, type VehicleMaterial } from './vehicleMesh.ts';
+import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
 import { keepStreams } from '../geometryStreams.ts';
 
 type BoatType = 'faering' | 'canot' | 'gajeta' | 'xuong' | 'lakeboat' | 'nouka';
@@ -233,14 +233,48 @@ export function buildBoat(spec: BoatSpec, variation: BoatVariation, coarse = fal
       mesh.tube(arch, 0.018, coarse ? 4 : 6, woodMat(0x7a6040), { caps: true });
     }
   }
-  // the painted eyes of the Mekong boats, either side of the bow
+  // the painted eyes of the Mekong boats (mắt ghe), either side of the bow: a red almond, its white, a round black
+  // pupil looking ahead, painted on the planking and following its curve (wave 153: flat boxes read as "a pin/flag
+  // icon", a UI waypoint)
   if (s.eyes) {
-    const u = 0.88, [x, y] = sectionPoint(s, u, 0.72);
-    const z = (u - 0.5) * s.length;
+    const u0 = 0.86, v0 = 0.66, H = sheerY(s, u0) - keelY(s, u0);
+    const at = (u: number, v: number, lift: number, side: number): Vec3 => {
+      const [x, y] = sectionPoint(s, u, v, -lift);
+      return [side * x, y, (u - 0.5) * s.length];
+    };
+    // a painted patch: a fan round (uc, vc) out to the edge `edge(t)` (half-extents in metres along and up the side),
+    // each vertex on the hull `lift` proud of the planking, its normal the hull's own
+    const patch = (side: number, uc: number, vc: number, lift: number, edge: (t: number) => [number, number], m: VehicleMaterial) => {
+      const n = coarse ? 10 : 20;
+      const normalAt = (u: number, v: number): Vec3 => {
+        const e = 0.004, a = at(u + e, v, 0, side), b = at(u - e, v, 0, side), c = at(u, v + e, 0, side), d = at(u, v - e, 0, side);
+        const du: Vec3 = [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dv: Vec3 = [c[0] - d[0], c[1] - d[1], c[2] - d[2]];
+        const nx = du[1] * dv[2] - du[2] * dv[1], ny = du[2] * dv[0] - du[0] * dv[2], nz = du[0] * dv[1] - du[1] * dv[0];
+        const flip = nx * side < 0 ? -1 : 1, l = Math.hypot(nx, ny, nz) || 1;
+        return [(flip * nx) / l, (flip * ny) / l, (flip * nz) / l];
+      };
+      const vert = (u: number, v: number): number => {
+        const p = at(u, v, lift, side), q = normalAt(u, v);
+        return mesh.vert(p[0], p[1], p[2], q[0], q[1], q[2], m);
+      };
+      const c = vert(uc, vc), ring: number[] = [];
+      for (let k = 0; k < n; k++) {
+        const [eu, ev] = edge((k / n) * Math.PI * 2);
+        ring.push(vert(uc + eu / s.length, vc + ev / H));
+      }
+      // the ring runs bow, up, aft, down: clockwise seen from the starboard side, so starboard winds it back
+      for (let k = 0; k < n; k++) side > 0 ? mesh.tri(c, ring[(k + 1) % n], ring[k]) : mesh.tri(c, ring[k], ring[(k + 1) % n]);
+    };
+    // the almond: pointed at both ends, fuller toward the bow
+    const almond = (a: number, b: number) => (t: number): [number, number] => {
+      const ct = Math.cos(t), st = Math.sin(t);
+      return [a * ct, b * Math.sign(st) * Math.pow(Math.abs(st), 0.8) * (0.82 + 0.18 * ct) * Math.pow(1 - 0.3 * ct * ct, 1)];
+    };
+    const round = (r: number) => (t: number): [number, number] => [r * Math.cos(t), r * Math.sin(t)];
     for (const side of [1, -1]) {
-      mesh.box(side * (x + 0.006), y, z, 0.006, 0.11, 0.2, paint(0xf2efe6, 0.6, 0.6));
-      mesh.box(side * (x + 0.01), y, z + 0.02, 0.006, 0.07, 0.08, paint(0x161616, 0.6, 0.6));
-      mesh.box(side * (x + 0.012), y + 0.075, z, 0.006, 0.03, 0.22, paint(0x9c2a22, 0.7, 0.6));
+      patch(side, u0, v0, 0.004, almond(0.15, 0.072), paint(0x9c2a22, 0.7, 0.6));
+      patch(side, u0, v0, 0.007, almond(0.125, 0.052), paint(0xf2efe6, 0.6, 0.6));
+      patch(side, u0 + 0.03 / s.length, v0 + 0.004 / H, 0.01, round(0.036), paint(0x161616, 0.6, 0.6));
     }
   }
   // a mast stepped through the forward thwart, its sail furled on the boom

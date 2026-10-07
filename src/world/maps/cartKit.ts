@@ -129,7 +129,8 @@ const BULLOCK_CART = (load: 'sacks' | 'empty') => entry({ kind: 'cart2', bedL: 2
   tyre: 'iron', shafts: 1.45, pole: true, canopy: 'chhai', load, painted: 'none', rest: 'shafts', wood: BAMBOO });
 const HAY_SLEDGE = entry({ kind: 'sledge', bedL: 2.6, bedW: 1.0, load: 'hay', wood: GREY_OAK });
 const HORN_SLED = (load: 'hay' | 'firewood' | 'empty', wood: readonly number[]) => entry({ kind: 'sled', style: 'horn', len: 2.0, width: 0.66, load, wood });
-const KOMATIK = entry({ kind: 'sled', style: 'komatik', len: 2.0, width: 0.8, load: 'gear', wood: PINE });
+// (wave 211: "flat, untextured, saturated-orange timber") the komatik's planks weathered grey by the Arctic
+const KOMATIK = entry({ kind: 'sled', style: 'komatik', len: 2.0, width: 0.8, load: 'gear', wood: GREY_OAK });
 
 const TYRE_CART = (load: 'crates' | 'sacks' | 'cans') => entry({ kind: 'tyrecart', deckL: 1.42, deckW: 0.86, wheelR: 0.27, painted: true, load,
   wood: SUN_BLEACHED }, [0x2f6f9a, 0x3a8a5a, 0xd8b030, 0xb83a2a, 0x2f4a7a]);
