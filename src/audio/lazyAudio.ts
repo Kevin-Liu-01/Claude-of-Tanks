@@ -13,7 +13,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
-import type { AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
+import type { AudioLandmark, AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
@@ -27,6 +27,7 @@ interface AudioMixerModule {
     getGameMode?: () => string | null;
     getObjectiveTeam?: () => string | null;
     getTerrain?: () => AudioTerrainProbe | null;
+    getLandmarks?: () => readonly AudioLandmark[] | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -38,6 +39,8 @@ interface LazyAudioOptions {
   getGameMode?(): string | null;
   getObjectiveTeam?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
+  /** The battlefield's buildings and set pieces (the bells ring from its churches, belfries and campanile). */
+  getLandmarks?(): readonly AudioLandmark[] | null;
   hasStickyActivation?(): boolean;
 }
 
@@ -75,6 +78,7 @@ export function createLazyAudio({
   getGameMode,
   getObjectiveTeam,
   getTerrain,
+  getLandmarks,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
@@ -162,7 +166,7 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getObjectiveTeam, getTerrain, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getObjectiveTeam, getTerrain, getLandmarks, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });

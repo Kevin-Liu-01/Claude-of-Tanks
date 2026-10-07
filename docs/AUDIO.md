@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 398 sound-effect assets, 649 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 18.6 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 418 sound-effect assets, 684 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 19.8 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 109 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -330,7 +330,8 @@ rides every battle set.
 optional water or machinery layer, weighted spot sounds placed 40–380 m away at
 random bearings (birds higher; mostly crows, hawks, gulls, wind, rubble and
 machinery, with songbirds, bees and a distant siren among them where they
-belong, and no bells, breaking glass or car alarms), a distant-war bed in
+belong, and no breaking glass or car alarms; bells ring only from a map's own
+towers, below), a distant-war bed in
 battle, the gun tail and a procedural reverb. The beds were regenerated on
 2026-10-02 without songbirds, bees, sirens or radio tones (those come as
 spots), selected for an
@@ -347,7 +348,48 @@ on change. An element can name its sound or opt out with `data-ui-sound`. In
 battle only menus and dialogs sound, and a control's own `ui:click` never
 doubles the delegated sound.
 Atmosphere events (artillery, flak, AA, flyovers) and destructible props
-(trees, fences, walls, cars, crates, rubble) have their own assets.
+have their own assets. A flyover sounds of its era (`scene.flyovers`): the
+Second World War maps fly piston fighters and twin-engine bombers
+(`flyover_piston`, `flyover_bomber`: Prokhorovka's Il-2s, Shanghai's G3Ms, the
+Saar's Thunderbolts and Marauders), the later ones jets; an event that names its
+`aircraft` type plays that type's sound (`FLYOVER_BY_AIRCRAFT`).
+
+**Props.** `propSounds.ts` names every kind the world builds (the inhabiting
+and scenery kits, the light buildings, the sandbag stacks, the telegraph poles,
+the front's AA guns, the trees) with the layers it plays at the prop, and
+`propSounds.selftest.mjs` fails on a world kind it does not name. A toppled
+telegraph pole cracks at the foot (`pole_snap`), its wires whip as it goes over
+(`pole_wires`, 0.3 s) and it lands (`pole_fall`) 0.8 s after the crush, when the
+props' hinge topple reaches the ground; lamp posts, road signs, wayside crosses
+and the wind pump land on the same beat. Carts splinter (`cart_break`), straw
+crunches (`straw_crush`), tents and stalls tear down (`tent_collapse`), clay jars
+shatter (`pottery_smash`), the red fuel drum explodes (`fuel_drum_blast`) and a
+loose drum, churn, bin, bucket, jerrycan or gas bottle a hull shoves clangs and
+rolls (`can_knock`, at most once per 0.3 s). Only a plastic traffic cone is
+silent, by name. The world reports these through the destructibles seam
+(`prop:destroyed`): the poles' topples as `utility_pole` and the loose dressing's
+knocks with `loose: true` (`props.ts` `crushProp`, `kickLooseRecord`). Until
+2026-10-06 a regex chose: a haycart crushed as a car ("cart" matched /car/),
+sedans, bales and tents broke as wooden crates, a steel guard post as a wooden
+fence, a wooden barrel as a steel drum, and the poles and the loose dressing made
+no sound at all.
+
+**Bells.** On the six maps whose towers ring (`scene.bells`: Verdant's Orthodox
+village church, Frontier's and Steinburg's churches, Glacier Pass's hospice and
+chapel, the Podhale's wooden churches and belfry, Saltwind's campanile) the
+ambience director tolls the nearest tower within 1.6 km every 110–240 s (the
+first after 25–75 s), only after the battle has rolled out (the countdown, and
+every probe that holds a battle in its pre-battle, never tolls) and only once
+the HDR window has stayed under 118 dB for 25 s: a cannon within a kilometre or
+two, an explosion or our own gun holds the bells. The towers come from the world's feature list (a planned building's plan
+id, `church`, `onionchurch`, `chapel`, or a set piece's `landmark`, `church`,
+`belfry`, `campanile`) through the `getLandmarks` option, read once per scene
+when the first toll falls due. A Western toll is one to three strokes of
+`bell_toll` 3.4–4.2 s apart; an Orthodox tower rings `bell_orthodox` once (the
+great bell's stroke, and in one take the small bells' rhythm over its hum). The
+size of the tower's bell sets its pitch (`BELL_TOWERS`): the campanile's great
+bell lowest (0.78), a church 0.93, a chapel or belfry higher. Bells ride the
+ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
@@ -706,6 +748,31 @@ crew-lines.json ─┐                    crew-voices.json
   of it) and scores it out for single-event sounds (calls, beds and stings may
   pause); rebuilt from the cached takes at no cost, the missile ships two
   clean launches and the repair kit lost a take whose clank came 1.65 s late.
+- **2026-10-06, the 2.0 revival.** PR #9 rebuilt many maps as real places and
+  added landmarks and props; the sound had not kept up. Twenty assets
+  (5,280 credits, including a first-take preview of every prompt and two prompt
+  revisions): the telegraph pole's snap, wires and landing, carts, straw, tents,
+  steel topples, clay jars, a loose drum's knock and the fuel drum's blast (props
+  above); calm-water beds for Nordhavn's fjord (`amb_fjord`) and Saltwind's
+  sheltered Dalmatian bay (`amb_adriatic`), which had played amb_coastal's
+  breaking surf; Suzhou Creek's water (`layer_creek`) and DYE-M's station drone
+  (`layer_station`); oystercatchers and moored boats (`spot_oystercatcher`,
+  `spot_boat_creak`); the bells (`bell_toll`, `bell_orthodox`); and the period
+  flyovers. Monument Valley lost the river layer it never had, and it and Wadi
+  Rum moved from amb_canyon (a steady distant river under the wind) to the
+  desert bed. Prompt lessons: cicadas asked for in a bed came back as one steady
+  6–8 kHz shrill holding 99 % of the take's energy over 4 kHz, twice, so they
+  stay spots; "one strike only" works for a bell, while the Orthodox rhythm of
+  small bells comes back as a separate burst after the great bell in half the
+  takes (the picks keep the one that rings over its hum). Five assets are pinned
+  in `sfx-picks.json`: the weight scoring preferred rumble over the wires' twang
+  and over a pole's audible thud, a straw take that thumped like footsteps, a
+  pole crack that rattled, and the Orthodox takes without the small bells.
+  Every new file is measured as it ships (`tools/audio/loudness-receipt.mjs`,
+  `tools/audio/sfx-loudness.json`) and held to its preset by
+  `sfxLoudness.selftest.mjs`. The battle set now pins every prop sound (17 more
+  assets, about 8 MB decoded on desktop and 3 MB on mobile), so no first crush
+  of a battle is silent while it decodes.
 
 ### Cost
 
@@ -718,6 +785,11 @@ rounds:
 | Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 11,688 | 20,717 |
 | Speech-to-text verification | 1,718 | 2,115 | 3,833 |
 | **All** | **37,372** | **49,112** | **86,484** |
+
+The 2.0 revival (2026-10-06) added 5,280 credits of sound generation on the
+owner's key (read from a file through `ELEVENLABS_API_KEY_FILE`): 1,639 of them
+previewed the first take of every prompt and of the revised ones, the rest
+bought the remaining takes.
 
 The feedback rounds' sound generation is the regenerated interface, stingers
 and foley, the distant armour hits (400), the aircraft and Infected sounds
@@ -769,6 +841,9 @@ Headless selftests (all in `npm test`):
 | `src/audio/voiceTriggers.selftest.mjs` | all 109 crew lines from their game moments through the real engine (shot results back to back, the reasoning exchange after a Chain of Thought, our systems, the drone, the gunship, supply drops, objectives, hits, mobility, the count, results), a second battle's smoke, and no sound or crew chained in for another |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine; the facade makes no sound of its own |
+| `src/audio/propSounds.selftest.mjs` | every world kind (the kits, the light buildings, the sandbags, the poles, the AA guns, the trees) has its own prop sound and every asset ships; the old regex's slips stay fixed; topples land with the hinge; `props.ts` reports the poles and the loose knocks through the seam |
+| `src/audio/audioRevival.selftest.mjs` | the engine on the shipped manifests: a pole's snap, wires and landing in time, a haycart, a knocked drum (and its rate), the fuel drum, a silent cone; the rebuilt maps' beds and layers; flyovers by era and by named type; bells from the nearest tower in earshot, rare, held by the fighting until 25 s of quiet, Orthodox and campanile bells, none where none ring or in the garage |
+| `src/audio/sfxLoudness.selftest.mjs` | each measured asset's files against `tools/audio/sfx-loudness.json` by SHA-256: duration, channels, WebM/Opus container, loudness and true peak on the mastering preset |
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes use the machine-wide GPU capture lock; set
@@ -803,3 +878,8 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
 - The first garage click loads the engine, so that click itself is silent.
 - The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
   mostly insect hiss; every take generated for them was like that.
+- Bells ring only from towers the world has placed: Verdant's church, Saltwind's
+  campanile and the Podhale belfry arrive with the landmarks lane, and a map
+  without a tower in earshot stays silent. The front's flyover event does not
+  name its aircraft yet, so a map with fighters and bombers picks between their
+  sounds at random until it does.

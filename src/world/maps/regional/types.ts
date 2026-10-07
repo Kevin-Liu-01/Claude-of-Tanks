@@ -67,7 +67,9 @@ export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sh
  */
 export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
   & { paint?: { kind: 'limewash'; seed: number } };
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
+/** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
+export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
@@ -77,6 +79,13 @@ export interface ArchitectureSurfaces {
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
+  /** a style that pours its plaster2 walls: that bucket's print is the concrete's (its formwork's boards, lift lines and
+   *  tie holes), toned by the plaster2 tone as the render was; absent = the render canvas */
+  concrete?: ConcreteSurfaceKind;
+  /** map revival lane 2 (2026-10-05): the walls' render finer and shallower than the shared tile (a limewash's skin, not a
+   * coarse stucco): the tile repeats `plasterUv` times as often over the plaster buckets, its normal map at `normal`
+   * strength and its cavities' occlusion at `ao`. Absent, the shared tile as it is (every other kit's surfaces unchanged). */
+  relief?: { plasterUv: number; normal: number; ao: number };
 }
 
 export interface ArchitectureStyle {

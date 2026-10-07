@@ -48,6 +48,7 @@ re-mastering cost nothing.
 | `tools/audio/master.mjs` | Mastering presets: mono fold, high-pass, onset-aware trim, fades, loudness or peak normalisation, true-peak ceiling, transient shaping, seamless loop repair with wrap padding, Opus encoding |
 | `tools/audio/pcm.mjs` | Measurements: band energy, transient anatomy, `lowToneGlide` (the boing detector), `splitGap` (a take split by silence) |
 | `tools/audio/sheet.mjs` | Spectrogram and waveform sheet for shipped files |
+| `tools/audio/loudness-receipt.mjs` | Measures shipped files as they ship (decoded WebM/Opus, the same R128 meter) into `tools/audio/sfx-loudness.json`: loudness, true peak, duration, channels and SHA-256 per variant; `--ids` records, `--check` re-measures every recorded asset |
 | `tools/audio/elevenlabs.mjs` | The API client: sound generation, text-to-speech, speech-to-text, Voice Library; a content-addressed cache and a credit ledger |
 | `tools/audio/crew-lines.json` | The crew script: 13 languages, one entry per line with role, delivery, context and the takes in every language |
 | `tools/audio/crew-voices.json` | The cast: a commander voice and a crew voice per language, with their audition measurements |
@@ -57,7 +58,10 @@ re-mastering cost nothing.
 The engine side of a new sound or line lives in `src/audio/`: the play site in
 `audioEngine.ts`, a cue override in `soundCues.ts` when the group default does
 not fit, a preload set when a moment depends on it, and for a crew line its
-priority, cooldown, group and staleness in `voiceLines.ts`.
+priority, cooldown, group and staleness in `voiceLines.ts`. A prop's sound is a
+recipe in `propSounds.ts` (every world kind is named there; its layers and their
+delays), a map's bed, layer, spots, bells and flyovers are its scene in
+`environmentScenes.ts`.
 
 ## Data formats
 
@@ -169,6 +173,8 @@ the cache is free; regenerating is not.
 2. `npm run audio:sfx:generate -- --ids <id> --dry`, then without `--dry`.
 3. `npm run audio:sfx:build -- --ids <id> --report <file>`; read the ranking in
    the report and look at a contact sheet (`node tools/audio/sfx-qa.mjs --ids <id> --sheets <dir>`).
+   Then `node tools/audio/loudness-receipt.mjs --ids <id>`: `sfxLoudness.selftest.mjs`
+   holds the shipped files to their preset by hash.
 4. Play it from the engine, add a cue override if needed, add it to the preload
    set of the moment that plays it, and give it a check in the engine or
    trigger selftest.

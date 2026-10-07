@@ -595,6 +595,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
+    'src/fx/combat/combatFx.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
@@ -771,7 +772,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainSplatFields.selftest.mjs',
     'src/world/textureUploadOrientation.selftest.mjs',
     'src/world/normalMapOrientation.selftest.mjs',
+    'src/world/roadPathStyles.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
+    'src/world/groundContrastStep2.selftest.mjs',
+    'src/world/snowRockSlope.selftest.mjs',
+    'src/world/roadPuddleGloss.selftest.mjs',
+    'src/world/snowFaces.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
@@ -827,6 +833,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
+    // clouds' drift veered from it (never opposed)
+    'src/world/sceneWind.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
     'src/engine/cloudShadeMap.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): the terrain's program counted as the GPU binds it — the expanded
@@ -867,10 +876,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/weaponAudio.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
+    'src/audio/sfxLoudness.selftest.mjs',
+    'src/audio/propSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
@@ -1237,6 +1249,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
     'src/world/fieldMudSurface.selftest.mjs',
+    // the scenery lane (b14, wave 97): the mud walls' crown, render losses and stains in world space
+    'src/world/mudWalls.selftest.mjs',
+    // the scenery lane (b14, wave 97): the dry-stone modules irregular and coped, settled and lichened by world place
+    'src/world/stoneWalls.selftest.mjs',
+    // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
+    'src/world/fieldWalls.selftest.mjs',
+    // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
+    'src/world/haystacks.selftest.mjs',
+    // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
+    'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
@@ -1284,6 +1306,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeCrownShading.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
+    'src/world/hedgeTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1302,6 +1325,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
+    // the map-revival lane (2026-10-06): Skybridge's Glen Canyon Dam — the canyon through the north ring and the arch
+    'src/world/horizonDam.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
@@ -1344,8 +1369,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
+    'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
+    'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
