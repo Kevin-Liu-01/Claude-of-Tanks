@@ -591,3 +591,29 @@ tool when using an external runtime. Captures go to `.qa-dev/battle-reports/`.
 A queue timeout is not a visual pass: the latest implementation has passed
 focused Node checks, type checking and the public build, but its first browser
 attempt timed out before acquiring the shared capture lease.
+
+
+### Compact Service Record statistics and medal layouts
+
+Win rate is a normal outcome statistic beside victories, defeats and draws,
+with a slightly larger value. The heading uses the shared amber accent without
+the commander-profile eyebrow. Career, reasoning, deployment and Battle Log
+statistics use semantic vector glyphs from the shared icon library.
+
+Overview medal columns follow the width of their card, not just the viewport.
+Artwork stays contained above wrapping labels; new-award badges reserve their
+own space. Phone outcomes and career metrics use two columns, and short
+landscape headers leave room for scrolling content and full-size controls.
+
+`tools/service-record-layout.browser.mjs` exercises empty and populated records
+across all four tabs at 1440×900, 320×568, 390×844, 667×375 and 568×256, plus
+Chinese at 390×844. It checks artwork/text/badge separation, horizontal overflow,
+stat icons, header/footer reachability, touch requirements and rotation. Run it
+through `tools/capture-command.mjs` at nice 19, as above; optional external
+Playwright module argument is supported. Screenshots and geometric receipts go
+to `.qa-dev/service-record-layout/`. A queued run is not a visual pass.
+
+Validation: record, localization and stylesheet selftests, TypeScript, the
+changed-module quality gate and the production build passed. The first layout
+run timed out after ten minutes waiting for the shared capture lease; no
+mobile screenshot or geometry pass is claimed for this refresh yet.
