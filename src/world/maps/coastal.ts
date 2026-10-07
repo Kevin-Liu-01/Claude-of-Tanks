@@ -265,6 +265,9 @@ export default {
       // market opposite it across the street, the two halves either side
       { structure: 'chapel', x: 136, z: 22, yawDeg: 90 }, { structure: 'market', x: 182, z: 22, yawDeg: -90 },
       ...BOURG_HALF, ...BOURG_HALF.map(mirrorSite),
+      // (step 4) the guardhouse (Meneham's corps de garde) among the strand's boulders, its door to the sea, and its
+      // reflection: the kit's small granite outbuilding
+      { structure: 'granary', x: 238, z: -114, yawDeg: 90 }, mirrorSite({ structure: 'granary', x: 238, z: -114, yawDeg: 90 }),
     ],
     // the bourg's terraces stand a metre apart (the roadside builder's 7 m pad was for lone houses)
     sideSkip: 0.12, spacingPad: 2,
@@ -327,6 +330,12 @@ export default {
       { form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' },
       { form: 'tor', geology: 'granite', x: 14, z: -152, radius: 5, height: 4.2, yawDeg: 70, name: 'the south downs tor' },
       { form: 'tor', geology: 'granite', x: 14, z: 196, radius: 5, height: 4.2, yawDeg: -70, name: 'the north downs tor' },
+      // (the map-revival lane, 2026-10-06, step 4: the strand of Kerlouan and Meneham) the great rounded granite boulders
+      // on the beach south of the harbour and their reflection north of the axis, the guardhouse wedged among them
+      ...[[262, -100, 5, 5.5, 30], [256, -128, 6, 6.5, -20], [264, -152, 4.5, 4.5, 60]].flatMap(([x, z, radius, height, yaw]) => [
+        { form: 'tor' as const, geology: 'granite' as const, x, z, radius, height, yawDeg: yaw, name: 'a strand boulder' },
+        { form: 'tor' as const, geology: 'granite' as const, x, z: 44 - z, radius, height, yawDeg: -yaw, name: 'a strand boulder' },
+      ]),
     ],
     // the granite showing through the thin soil of the downs' swells: whalebacks, small tors and their stone
     rockFields: [
@@ -338,6 +347,15 @@ export default {
       { kind: 'calvary', x: -78, z: 184, yawDeg: -15, name: 'the north crossroads calvary' },
       { kind: 'menhir', x: -70, z: -236, height: 4.6, name: 'the south downs standing stone' },
       { kind: 'menhir', x: -70, z: 280, height: 4.6, name: 'the north downs standing stone' },
+      // (step 4) the goémoniers' dunes behind the boulders: the long stone kelp kilns black with their burnings and the
+      // dried wrack in its stacks, each with its reflection across the axis
+      ...([
+        ['kelpkiln', 214, -132, 2], ['kelpkiln', 220, -146, -4],
+        ['weedstack', 230, -128, 15], ['weedstack', 206, -150, 75], ['weedstack', 233, -142, -10],
+      ] as const).flatMap(([kind, x, z, yaw]) => [
+        { kind, x, z, yawDeg: yaw, name: kind === 'kelpkiln' ? 'a kelp kiln' : 'a seaweed stack' },
+        { kind, x, z: 44 - z, yawDeg: 180 - yaw, name: kind === 'kelpkiln' ? 'a kelp kiln' : 'a seaweed stack' },
+      ]),
     ],
   },
 

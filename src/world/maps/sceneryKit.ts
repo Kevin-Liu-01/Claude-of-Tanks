@@ -314,6 +314,131 @@ function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts, false, true);
 }
 
+// ---------------------------------------------------------------------------------------------- the Léon's strand
+
+// (the map-revival lane, 2026-10-06, Saltmere Bay's step 4: the goémoniers of Kerlouan and Plouguerneau — the seaweed
+// they cut and gathered dried on the dunes in stacks and burned in long stone kilns for the soda the glass and iodine
+// works bought)
+const GRANITE: Palette = [0.10, 0.05, 0.52];
+const LICHEN: Palette = [0.10, 0.50, 0.50];
+const SOOT: Palette = [0.07, 0.16, 0.10];
+const WRACK: Palette = [0.11, 0.34, 0.15];
+const WRACK_DRY: Palette = [0.10, 0.26, 0.26];
+
+/**
+ * A kelp kiln (four à goémon): a trench a few metres long lined with granite slabs set on edge, its floor black with the
+ * burnings, a slab across it here and there. Its long axis down local z.
+ */
+function bKelpKiln(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = 5.6 + rng() * 1.4, inner = 0.5, t = 0.14;
+  for (const side of [-1, 1]) {
+    let z = -L / 2 + t;
+    while (z < L / 2 - t - 0.2) {
+      const len = Math.min(L / 2 - t - z, 1.0 + rng() * 0.6), h = 0.38 + rng() * 0.14;
+      const slab = paint(box(t, h + 0.15, len - 0.03), rng() < 0.25 ? LICHEN : GRANITE, 0.1, rng);
+      slab.rotateZ(side * (0.03 + rng() * 0.05)); slab.rotateY((rng() - 0.5) * 0.04);
+      parts.push(slab.translate(side * (inner / 2 + t / 2), (h + 0.15) / 2 - 0.15, z + len / 2));
+      z += len;
+    }
+  }
+  for (const end of [-1, 1]) {
+    const h = 0.4 + rng() * 0.12;
+    parts.push(paint(box(inner + 2 * t, h + 0.15, t), GRANITE, 0.1, rng).translate(0, (h + 0.15) / 2 - 0.15, end * (L / 2 - t / 2)));
+  }
+  // the cross slabs that part the trench into its burning sections
+  for (let k = 1; k <= 2; k++) {
+    const z = -L / 2 + (k / 3) * L + (rng() - 0.5) * 0.4;
+    parts.push(paint(box(inner, 0.32, 0.1), GRANITE, 0.1, rng).translate(0, 0.16 - 0.1, z));
+  }
+  // the floor, black with the burnings
+  parts.push(paint(box(inner, 0.05, L - 2 * t), SOOT, 0.05, rng).translate(0, 0.0, 0));
+  return merge(parts, true, false);
+}
+/** The kiln breached: its slabs knocked flat across the trench, a few still standing. */
+function bKelpKilnBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 7; k++) {
+    const slab = paint(box(0.14, 0.5, 0.9 + rng() * 0.5), GRANITE, 0.12, rng);
+    slab.rotateZ(Math.PI / 2 * (0.7 + rng() * 0.3) * (rng() < 0.5 ? -1 : 1)); slab.rotateY((rng() - 0.5) * 0.5);
+    parts.push(slab.translate((rng() - 0.5) * 0.9, 0.1, -2.8 + k * 0.9));
+  }
+  parts.push(paint(box(0.5, 0.05, 5.4), SOOT, 0.05, rng));
+  return merge(parts, true, false);
+}
+
+/**
+ * A seaweed stack (meule de goémon): the dried wrack piled in a long rounded heap on the dune, dark olive to black, the
+ * crest dried paler, a few stones along it holding down the net. Its long axis down local z.
+ */
+function bWeedStack(rng: Rng): THREE.BufferGeometry {
+  const L = 3.2 + rng() * 0.8, W = 2.2 + rng() * 0.4, H = 1.6 + rng() * 0.3;
+  const nL = 8, nS = 10, phase = rng() * 6.28;
+  const section = (u: number): [number, number] => {
+    const a = Math.PI * u, c = Math.cos(a), sn = Math.sin(a);
+    return [Math.sign(c) * Math.pow(Math.abs(c), 0.7) * (W / 2), Math.pow(sn, 0.6) * H];
+  };
+  const pos: number[] = [], idx: number[] = [], col: number[] = [];
+  const rings: Array<Array<[number, number, number]>> = [];
+  for (let i = 0; i <= nL; i++) {
+    const t = i / nL, z = (t - 0.5) * L;
+    const k = 0.3 + 0.7 * Math.sqrt(Math.min(1, Math.min(t * L, (1 - t) * L) / 1.1));
+    rings.push(Array.from({ length: nS + 1 }, (_, j) => {
+      const [x, y] = section(j / nS);
+      const lump = 1 + 0.07 * Math.sin(z * 1.7 + phase + y * 1.3) + 0.04 * Math.sin(z * 3.1 - y * 2.1 + phase * 2);
+      return [x * k * lump, y * (0.45 + 0.55 * k) * lump, z] as [number, number, number];
+    }));
+  }
+  for (let i = 0; i <= nL; i++) for (let j = 0; j <= nS; j++) {
+    const [x, y, z] = rings[i][j];
+    pos.push(x, y, z);
+    const pal = y > H * 0.8 ? WRACK_DRY : WRACK;
+    _c.setHSL(pal[0], pal[1], Math.max(0.03, pal[2] + (rng() - 0.5) * 0.06), THREE.SRGBColorSpace);
+    col.push(_c.r, _c.g, _c.b);
+  }
+  for (let i = 0; i < nL; i++) for (let j = 0; j < nS; j++) {
+    const a = i * (nS + 1) + j, b = a + 1, c = a + nS + 1, d = c + 1;
+    idx.push(a, b, c, b, d, c);
+  }
+  for (const [i, sign] of [[0, -1], [nL, 1]] as const) {
+    const base = pos.length / 3, mid = rings[i].reduce((m, p) => m + p[1], 0) / rings[i].length;
+    pos.push(0, mid * 0.6, rings[i][0][2] + sign * 0.12);
+    _c.setHSL(WRACK[0], WRACK[1], WRACK[2], THREE.SRGBColorSpace); col.push(_c.r, _c.g, _c.b);
+    for (let j = 0; j < nS; j++) {
+      const a = i * (nS + 1) + j, b = a + 1;
+      if (sign < 0) idx.push(base, b, a); else idx.push(base, a, b);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.translate(0, -0.1, 0);
+  const heap = g.toNonIndexed();
+  g.dispose();
+  heap.computeVertexNormals();
+  const parts = [heap];
+  // the stones on the net along the crest
+  for (let k = 0; k < 4; k++) {
+    const z = (k / 3 - 0.5) * L * 0.6, y = H * (0.45 + 0.55 * 0.95) - 0.12;
+    const stone = paint(new THREE.IcosahedronGeometry(0.16 + rng() * 0.06, 0), GRANITE, 0.12, rng);
+    parts.push(stone.translate((rng() - 0.5) * 0.3, y, z));
+  }
+  return merge(parts, true, false);
+}
+/** The stack scattered: low heaps of wrack where it stood. */
+function bWeedStackBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [ox, oz, rr] of [[-0.5, -0.9, 1.0], [0.6, 0.2, 1.1], [-0.2, 1.1, 0.8]] as const) {
+    const mound = new THREE.CylinderGeometry(rr * 0.45, rr, 0.45, 8, 1);
+    const p = mound.attributes.position;
+    for (let i = 0; i < p.count; i++) { const f = 1 + (rng() - 0.5) * 0.3; p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f); }
+    mound.computeVertexNormals();
+    parts.push(paint(mound, WRACK, 0.06, rng).translate(ox, 0.2, oz));
+  }
+  return merge(parts, true, false);
+}
+
 // ---------------------------------------------------------------------------------------------- the registry
 
 /**
@@ -328,6 +453,10 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   windpump: { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
   tomb: { cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, build: bTomb, broken: bTombBroken, collider: true, keep: 0.86, crushMin: 2.4 },
   strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken },
+  // (appended: every kind before it keeps its place in the props registry) the Léon's strand (Saltmere Bay, 2026-10-06):
+  // a kelp kiln a hull breaks at a crawl, a seaweed stack it ploughs through like hay
+  kelpkiln: { cls: 'break', mat: 'baked', contact: 'ob', r: 3.6, h: 0.6, hw: 0.4, hl: 3.1, build: bKelpKiln, broken: bKelpKilnBroken, collider: true, keep: 0.94, crushMin: 1.2 },
+  weedstack: { cls: 'break', mat: 'baked', contact: 'ob', r: 2.3, h: 2.0, hw: 1.1, hl: 1.8, build: bWeedStack, broken: bWeedStackBroken },
 } satisfies Record<string, DestructiblePropType>;
 
 
