@@ -44,7 +44,7 @@ export const DOCS_STAGES = {
 // The frames strip and the picker card come from the latest engine render a take has.
 export const ENGINE_LATEST = ['final', 'review2', 'review1'];
 export const CARD_FROM = ['final', 'review2', 'r4'];
-export const FRAME_TIMES = [0, 2.2, 4.37, 6.53];
+const FRAME_TIMES = [0, 2.2, 4.37, 6.53];
 // The cover (the manual index's card and the page's social image) is round four's still of take 13.
 export const FIGURES = [
   { name: 'previz-sheet', src: 'previz50/s05-barn-advance.jpg', width: 1920, q: 84 },
