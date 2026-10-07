@@ -1614,10 +1614,11 @@ function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null 
     if (!mesh.isMesh || !mesh.geometry || mesh.visible === false) return;
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     if (!materials.some((material) => material?.name === 'cot:armor-paint')) return;
-    for (let parent = mesh.parent; parent; parent = parent.parent) {
+    // outside the turret, visible, and on each LOD's finest level (the coarse levels repeat the same plates)
+    for (let child: THREE.Object3D = mesh, parent = mesh.parent; parent; child = parent, parent = parent.parent) {
       if (parent === turret || parent.visible === false) return;
       const lod = parent as THREE.LOD;
-      if (lod.isLOD && lod.levels.findIndex((level) => level.object === mesh) > 0) return;
+      if (lod.isLOD && lod.levels.findIndex((level) => level.object === child) > 0) return;
     }
     const position = mesh.geometry.getAttribute('position');
     if (!position) return;
