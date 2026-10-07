@@ -9,7 +9,7 @@ import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation, placedStructureClearances } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, placedStructureClearances, shrubClearances } from './vegetationClearance.ts';
 import { redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -33,7 +33,7 @@ const poolCode = section('  function makeTreeMesh(', "  yield { stage: 'treeRimA
 const capacityLine = 'const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));';
 assert.equal(poolCode.split(capacityLine).length, 2, 'one construction-only species capacity owner');
 const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
-  PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation,
+  PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation, shrubClearances,
   redistributeAuthoredTrees, relocateTidalMangroves, DESTRUCTIBLE_BUILDING_TYPES, applyLodShadowFadeDepth,
   markShadowOnly, treeRichness, setShadowCasterProfile, placedStructureClearances,
   // trees round 2 (2026-10-03): the grown crowns' dappled shadow proxies

@@ -19,7 +19,7 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance, shrubClearances,
   placedStructureClearances } from './vegetationClearance.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
@@ -6607,6 +6607,9 @@ function* vegetationBuildSteps(
   const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
   ), ...placedClearances];
+  // (the trees lane, 2026-10-07: the clearances a shrub keeps off — a trees-only ring, a mill's wind clearance, refuses the
+  // trees above and below and lets the bushes and the understorey stand)
+  const placedShrubClearances = shrubClearances(placedClearances), shrubStructureClearances = shrubClearances(structureClearances);
   group.userData.structureClearance = {
     sites: structureClearances.length,
     rejectedTrees: excludeStructureVegetation(
@@ -7210,7 +7213,8 @@ function* vegetationBuildSteps(
       _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35) * (0.80 + 0.30 * hy), sc * (0.72 + 0.28 * hz)));
       const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
-      if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
+      // (a trees-only clearance — a mill's wind ring — lets a bush stand: shrubClearances)
+      if (placedShrubClearances.length && overlapsStructureClearance(placedShrubClearances, x, z, 2.5 * sc + 0.3)) return;
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
       if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }
@@ -7377,7 +7381,7 @@ function* vegetationBuildSteps(
         if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) return false;
         if (!isClearOfSpawns(x, z, protectedSpawns, 20)) return false;
         if (x > v.x0 - 12 && x < v.x1 + 12 && z > v.z0 - 12 && z < v.z1 + 12) return false;
-        return !overlapsStructureClearance(structureClearances, x, z, 1.4 * sc);
+        return !overlapsStructureClearance(shrubStructureClearances, x, z, 1.4 * sc);
       };
       const seat = (x: number, z: number, sc: number, hy: number, yaw: number, tj: number, tr: number, tg: number, tb: number): void => {
         const y = heightField.getHeightAt(x, z);

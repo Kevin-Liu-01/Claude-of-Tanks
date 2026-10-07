@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, excludeVegetation,
+  createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, excludeVegetation, shrubClearances,
 } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
@@ -74,3 +74,23 @@ assert.equal(donorTrees[donorReceipts[0].treeIndices[1]], donorB);
 assert.equal(excludeVegetation(donorTrees, [], [], ()=>false, donorReceipts),0);
 assert.deepEqual(donorReceipts[0].sourceTreeIndices,[1,2,3]);
 assert.equal(donorReceipts[0].unsafe,1,'repeat filtering cannot count the same removed donor twice');
+
+// the trees lane (2026-10-07, with the landmarks lane: wave 248 on Tidegate Polders' mills): a trees-only clearance — a
+// mill's wind ring — refuses every tree (the exclusion reads every clearance) and lets a shrub stand (the bushes and the
+// understorey read shrubClearances); a map without one keeps every clearance for its shrubs too
+{
+  const ring = { x: 0, z: 0, halfWidth: 70, halfLength: 70, cos: 1, sin: 0, treesOnly: true };
+  const roof = { x: 200, z: 0, halfWidth: 5, halfLength: 5, cos: 1, sin: 0 };
+  const ringTrees = [{ x: 20, z: 30 }, { x: 150, z: 0 }], ringObstacles = [{ treeIdx: 0 }, { treeIdx: 1 }], ringConcealers = [{}, {}];
+  assert.equal(excludeStructureVegetation(ringTrees, ringObstacles, ringConcealers, [ring, roof], () => 3), 1, 'a ring refuses its trees');
+  assert.deepEqual(ringTrees, [{ x: 150, z: 0 }]);
+  assert.deepEqual(shrubClearances([ring, roof]), [roof], 'a shrub keeps off the roof, not the ring');
+  assert.ok(!overlapsStructureClearance(shrubClearances([ring, roof]), 20, 30, 1.4), 'a bush stands inside the ring');
+  const plain = [roof];
+  assert.deepEqual(shrubClearances(plain), plain, 'no ring: every clearance for the shrubs, as before');
+  // the vegetation's two shrub paths read the shrubs' clearances, the trees' exclusion all of them
+  assert.match(source, /overlapsStructureClearance\(placedShrubClearances, x, z, 2\.5 \* sc \+ 0\.3\)/, 'the bushes keep off the shrubs\' clearances');
+  assert.match(source, /overlapsStructureClearance\(shrubStructureClearances, x, z, 1\.4 \* sc\)/, 'the understorey keeps off the shrubs\' clearances');
+  assert.match(source, /rejectedTrees: excludeStructureVegetation\(\n\s+trees, treeObstacles, concealers, structureClearances,/, 'the trees keep off every clearance');
+  console.log('vegetationClearance.selftest: a trees-only ring refuses its trees and lets its shrubs stand PASS');
+}

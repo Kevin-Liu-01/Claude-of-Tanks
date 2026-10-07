@@ -12,6 +12,18 @@ export interface StructureClearance {
   halfLength: number;
   cos: number;
   sin: number;
+  /**
+   * The trees lane (2026-10-07, with the landmarks lane: the gauntlet's wave 248 on Tidegate Polders' mills): a clearance
+   * that refuses trees only — a working mill's wind ring, kept clear of anything taller than its sails' lowest point —
+   * so the shrubs, the hedges' undergrowth and the ground's growth stand inside it (shrubClearances). Unset, a clearance
+   * keeps every tree and shrub off, as before.
+   */
+  treesOnly?: boolean;
+}
+
+/** The clearances a shrub keeps off (the bushes, the understorey): every one but a trees-only ring. */
+export function shrubClearances(sites: readonly StructureClearance[]): StructureClearance[] {
+  return sites.some((site) => site.treesOnly) ? sites.filter((site) => !site.treesOnly) : [...sites];
 }
 
 interface StructureSite {
