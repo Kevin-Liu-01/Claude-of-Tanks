@@ -105,13 +105,13 @@ let smooth: THREE.BufferGeometry[] = [];
  * `decor` (the collision derivation welds it by its shared corners).
  */
 function loft(_sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: readonly Section[], n: number, paint: (s: number, a: number, y: number) => Rgb,
-  opts: EmitOptions & { capStart?: Rgb | null; capEnd?: Rgb | null; rng?: () => number; inside?: boolean; arc?: readonly [number, number] } = {}): void {
-  const { capStart = null, capEnd = null, inside = false } = opts;
+  opts: EmitOptions & { capStart?: Rgb | null; capEnd?: Rgb | null; rng?: () => number; inside?: boolean; arc?: readonly [number, number]; panels?: boolean } = {}): void {
+  const { capStart = null, capEnd = null, inside = false, panels = false } = opts;
   const a0 = opts.arc?.[0] ?? 0, a1 = opts.arc?.[1] ?? Math.PI * 2, closed = !opts.arc;
   const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [];
   const density = BUCKET_UV_DENSITY.structureMetal;
   const dir = (v: Vec3): Vec3 => [P.m[0] * v[0] + P.m[1] * v[1] + P.m[2] * v[2], P.m[3] * v[0] + P.m[4] * v[1] + P.m[5] * v[2], P.m[6] * v[0] + P.m[7] * v[1] + P.m[8] * v[2]];
-  type V = { p: Vec3; n: Vec3; u: number; v: number; c: Rgb };
+  type V = { p: Vec3; n: Vec3; u: number; v: number; c: Rgb; s: number; a: number; y: number };
   const sign = inside ? -1 : 1;
   const rings: V[][] = sections.map((sec) => Array.from({ length: n + 1 }, (_, i): V => {
     // (a broken edge's jitter is a function of the station and the angle, so a torn skin's inside, drawn as its own tube,
@@ -119,14 +119,21 @@ function loft(_sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: reado
     const a = a0 + (a1 - a0) * (closed ? (i % n) / n : i / n), j = sec.rag ? 1 - sec.rag * noise2(sec.s * 0.7 + 13.1, a * 3.3 + 0.5) : 1;
     const q = sectionPoint(sec, a, j);
     const p = at(P, [sec.s, sec.cy + q.y, (sec.cz ?? 0) + q.z]);
-    return { p, n: dir([0, q.ny * sign, q.nz * sign]), u: sec.s * density, v: a * (sec.hw + sec.hh) * 0.5 * density, c: paint(sec.s, a, sec.cy + q.y) };
+    return { p, n: dir([0, q.ny * sign, q.nz * sign]), u: sec.s * density, v: a * (sec.hw + sec.hh) * 0.5 * density, c: paint(sec.s, a, sec.cy + q.y),
+      s: sec.s, a, y: sec.cy + q.y };
   }));
   // the seam's closing vertex repeats the first ring point (the same corner: a jagged ring keeps its first jitter)
   if (closed) for (const ring of rings) { ring[n] = { ...ring[n], p: ring[0].p, n: ring[0].n, c: ring[0].c }; }
   const push = (v: V) => { pos.push(...v.p); nor.push(...v.n); uv.push(v.u, v.v); col.push(...v.c); };
   for (let k = 0; k + 1 < rings.length; k++) {
     for (let i = 0; i < n; i++) {
-      const a = rings[k][i], b = rings[k][i + 1], c = rings[k + 1][i + 1], d = rings[k + 1][i];
+      let a = rings[k][i], b = rings[k][i + 1], c = rings[k + 1][i + 1], d = rings[k + 1][i];
+      if (panels) {
+        // (`panels`: one paint to a skin panel, read at its middle — the burn, the soot and the bare metal change at the
+        // panel's edges, as a burnt hull's skin does, instead of shading across it in an airbrushed gradient)
+        const colour = paint((a.s + c.s) / 2, (a.a + b.a) / 2, (a.y + b.y + c.y + d.y) / 4);
+        a = { ...a, c: colour }; b = { ...b, c: colour }; c = { ...c, c: colour }; d = { ...d, c: colour };
+      }
       if (inside) { push(a); push(c); push(b); push(a); push(d); push(c); } else { push(a); push(b); push(c); push(a); push(c); push(d); }
     }
   }
@@ -134,7 +141,7 @@ function loft(_sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: reado
   const cap = (ring: V[], sec: Section, colour: Rgb, outerBack: boolean) => {
     const back = inside ? !outerBack : outerBack;
     const centre = at(P, [sec.s, sec.cy, sec.cz ?? 0]), axis = dir([back ? -1 : 1, 0, 0]);
-    const C: V = { p: centre, n: axis, u: 0, v: 0, c: colour };
+    const C: V = { p: centre, n: axis, u: 0, v: 0, c: colour, s: sec.s, a: 0, y: sec.cy };
     for (let i = 0; i < n; i++) {
       const a = { ...ring[i], n: axis, c: colour }, b = { ...ring[i + 1], n: axis, c: colour };
       if (back) { push(C); push(b); push(a); } else { push(C); push(a); push(b); }
@@ -288,7 +295,7 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     0.34 + 0.4 * Math.max(0, Math.cos(a)) * smoothstep(22, 6, s));
   const skin = (s: number, a: number, y: number) => burntSkin(livery(y, keel + H, H), s, a, burn(s, a));
   const base = (s: number, a: number, y: number) => burntSkin((y - keel - H) / H < -0.62 ? GREY_BELLY : WHITE, s, a, burn(s, a));
-  loft(sink, 'structureMetal', fuse, stations, 32, base, { capEnd: shade(BARE, 0.7), rng });
+  loft(sink, 'structureMetal', fuse, stations, 32, base, { capEnd: shade(BARE, 0.7), rng, panels: true });
   // the livery's blue and yellow bands, hard-edged strips just proud of the skin (a vertex-painted band zig-zagged across
   // the hull's triangles), burnt with it
   {
@@ -298,7 +305,7 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
       for (const [t0, t1, colour] of [[0.18, 0.42, BLUE], [0.42, 0.62, YELLOW]] as const) {
         const a0 = band(t0) * side, a1 = band(t1) * side;
         loft(sink, 'structureMetal', fuse, run, 3, (s, a) => burntSkin(colour, s, a, burn(s, a)),
-          { decor: true, arc: side > 0 ? [a0, a1] : [a1, a0] });
+          { decor: true, arc: side > 0 ? [a0, a1] : [a1, a0], panels: true });
       }
     }
   }
@@ -329,7 +336,7 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
   loft(sink, 'structureMetal', fuse, [
     { s: 3, cy: keel + 2 * H - 0.4, hw: 1.9, hh: 0.4 }, { s: 6, cy: keel + 2 * H - 0.1, hw: 2.1, hh: 0.62 },
     { s: 10.4, cy: keel + 2 * H - 0.35, hw: 1.9, hh: 0.62 }, { s: 12.2, cy: keel + 2 * H - 0.9, hw: 1.4, hh: 0.3 },
-  ], 12, (s, a) => burntSkin(WHITE, s, a, 0.55 + 0.4 * smoothstep(4, 11, s)), { capStart: SOOT });
+  ], 12, (s, a) => burntSkin(WHITE, s, a, 0.55 + 0.4 * smoothstep(4, 11, s)), { capStart: SOOT, panels: true });
   for (const side of [-1, 1]) {
     const q = (s: number, y: number, z: number) => at(fuse, [s, y, side * z]);
     const pts = side > 0 ? [q(10.5, keel + 2 * H - 0.55, 0.3), q(10.5, keel + 2 * H - 0.55, 1.5), q(11.6, keel + 2 * H - 1.05, 1.15), q(11.6, keel + 2 * H - 1.05, 0.3)]
@@ -386,7 +393,7 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     { s: 2.5, cy: 3.55, hw: 2.45, hh: 2.6, pw: 2.3 }, { s: 5, cy: 3.9, hw: 2.0, hh: 2.2, pw: 2.2 }, { s: 7, cy: 4.2, hw: 1.6, hh: 1.75 },
     { s: 9, cy: 4.5, hw: 1.15, hh: 1.25 }, { s: 11.5, cy: 4.9, hw: 0.45, hh: 0.5 },
   ];
-  loft(sink, 'structureMetal', tail, tailSections, 18, (s, a, y) => burntSkin(livery(y, 3.4, 2.9), s, a, Math.max(0, 0.85 - (s + 3.5) / 9)), { capEnd: WHITE, rng });
+  loft(sink, 'structureMetal', tail, tailSections, 18, (s, a, y) => burntSkin(livery(y, 3.4, 2.9), s, a, Math.max(0, 0.85 - (s + 3.5) / 9)), { capEnd: WHITE, rng, panels: true });
   loft(sink, 'structureMetal', tail, tailSections.slice(0, 3), 18, () => SOOT, { inside: true, decor: true, capEnd: SOOT });
   frameArc(sink, tail, { s: -4.3, cy: 3.06, hw: 3.0, hh: 3.0, pw: 2.4 }, -2.0, 1.4, 0.12, CHAR_STEEL);
   // the stabiliser, each half from the cone's top out to its fin; the fins at its tips with the flag
