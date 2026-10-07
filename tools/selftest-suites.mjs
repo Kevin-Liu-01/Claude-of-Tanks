@@ -836,6 +836,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-06 (Clouds 2.0): every map's preset as the layered medium's lanes and their packing
     'src/engine/cloudLayers.selftest.mjs',
     'src/engine/cloudBeerShadow.selftest.mjs',
+    'src/engine/cloudDeckCover.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',

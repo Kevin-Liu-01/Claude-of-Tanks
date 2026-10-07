@@ -163,7 +163,9 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
   {
     const { cloudShellCover } = await import('./cloudLayers.ts');
     for (const c of [0.97, 0.99, 1]) assert.ok(cloudShellCover(c, true) >= 1, `a closing deck admits every column (${c})`);
-    assert.ok(cloudShellCover(0.86, true) < 0.95, 'a broken deck keeps its breaks');
+    // (round 8, 2026-10-07: a broken deck's cover is calibrated so its dome's cover is its coverage — cloudDeckCover's
+    // receipt — and stays under 1 below the closing coverage, its cells' lanes open)
+    assert.ok(cloudShellCover(0.86, true) < 1, 'a broken deck keeps its breaks');
   }
   assert.match(sky, /deckOvercast = model\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast\)\) : 0;\s*const deckKnob = lightTune\('SKY_DECK_HORIZON', 1\);\s*\(u\.uDeckHorizon\.value as THREE\.Vector4\)\.set\(tint\.r, tint\.g, tint\.b, deckOvercast \* deckKnob\);/,
     'by the light model\'s overcast, on the grounded rig only');

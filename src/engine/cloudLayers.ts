@@ -88,6 +88,14 @@ const CLOUD_LOCAL_CELL_M = 1200;
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 /** A deck's shell density inside its footprint (before the shape carves it). */
 const DECK_CORE = 0.82;
+/**
+ * A broken deck's shell (round 8, 2026-10-07, calibrated on the coverage meter): its core, the ramp's share of the
+ * footprint and the shape's erosion — a closing deck mixes toward the closed deck's (DECK_CORE, 0.55, 0.7) — and its
+ * cover law over the coverage.
+ */
+const DECK_BROKEN = Object.freeze({ core: 0.8, filter: 0.45, shape: 0.85 });
+const DECK_COVER_SLOPE = 1.125;
+const DECK_COVER_OFFSET = 0.0175;
 
 /**
  * The coverage law: a map's coverage (the fraction of the sky its clouds cover, cloudscapes.ts) as the lane's cover, the
@@ -99,7 +107,14 @@ const DECK_CORE = 0.82;
 export function cloudShellCover(coverage: number, deck: boolean): number {
   // (a broken deck admits a little under its coverage: seen from under a 500 m slab its breaks close up with the angle —
   // the first GPU pairs drew Fjord's broken stratocumulus as a ceiling)
-  if (deck) return clamp(coverage * (1 - 0.08 * clamp((0.93 - coverage) / 0.2, 0, 1)) + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25, 0, 1.25);
+  // (round 8, 2026-10-07: the shape and the cells carve a broken deck's admitted share, so the share of the sky dome it
+  // covers — the coverage meter's (.qa-dev/deck-cover.mjs, a twin of the medium over the real bakes) — ran at about half
+  // its coverage: Frosthollow's 0.86 at 0.40, the fjord's 0.62 at 0.21, Railyard's 0.92 mostly open sky on the GPU. The
+  // cover is calibrated so the dome's cover is the coverage: Frosthollow 0.84, the fjord 0.60 — 1.25 c − 0.085)
+  if (deck) {
+    const old = coverage * (1 - 0.08 * clamp((0.93 - coverage) / 0.2, 0, 1)) + clamp((coverage - 0.93) / 0.07, 0, 1) * 0.25;
+    return clamp(Math.max(old, DECK_COVER_SLOPE * coverage - DECK_COVER_OFFSET), 0, 1.25);
+  }
   // (a sparse humilis sky keeps a few small puffs the carving would take: a lift of 0.03, none at no coverage)
   return clamp(coverage * 1.2 + 0.03 * clamp(coverage / 0.1, 0, 1), 0, 1);
 }
@@ -149,10 +164,14 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // (0.35 left a deck's thin borders a hair over the threshold: jittered rays read them as pinholes, a blue stipple; a
   // cumulus' ramp runs past its footprint's peak, so the shape volume carves the whole cloud into its billows, not just
   // its rim — at 1 every cumulus was a smooth loaf under a bubbly fringe)
-  const filter = isDeck ? mixK(1.1, 0.55, closing) : 1.35;
+  // (round 8: a broken deck's ramp a little under the closed deck's — 1.1 had kept its density at a fifth of its core and
+  // the shape carved away half of what the cover admitted)
+  const filter = isDeck ? mixK(DECK_BROKEN.filter, 0.55, closing) : 1.35;
   // (round 2's 0.62 under the shape at 0.85 left Frosthollow's cells smooth white pillows on the GPU: the carving has the
   // whole cell now, its lumps and holes the deck's structure)
-  const core = isDeck ? mixK(0.5, DECK_CORE, closing) : 0.46;
+  // (round 8: a broken deck's core near the closed deck's — at 0.5 under the full erosion only about half its admitted
+  // footprint survived as cloud, the critics' "pillow masses around a large blue gap")
+  const core = isDeck ? mixK(DECK_BROKEN.core, DECK_CORE, closing) : 0.46;
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,
@@ -170,7 +189,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
-    shape: isDeck ? mixK(1, 0.7, closing) : (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
+    shape: isDeck ? mixK(DECK_BROKEN.shape, 0.7, closing) : (1 - 0.4 * deck) * (1 - 0.45 * clamp(preset.towers, 0, 1)),
     // a deck's base wisps lightly (the whippy erosion at full strength punched pinholes through its thin borders)
     detail: isDeck ? mixK(0.85, 0.6, closing) : 1 - 0.55 * deck,
     // the profile's exponent 1 / bias: a cumulus dome over its flat base (2.7), relaxing toward a lens; a tower is a tall

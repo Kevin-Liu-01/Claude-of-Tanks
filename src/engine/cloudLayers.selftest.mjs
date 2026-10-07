@@ -26,7 +26,10 @@ await loadCloudscapeLayers();
   }
   assert.equal(cloudShellCover(0, false), 0);
   assert.ok(cloudShellCover(1, true) > 1, 'a closed deck admits every column, the thinnest too');
-  assert.ok(cloudShellCover(0.86, true) < 0.9, 'a deck under the closing coverage keeps its breaks');
+  // (round 8, 2026-10-07: calibrated on the dome's cover — cloudDeckCover.selftest — a broken deck admits a little over its
+  // coverage, since its shape and cells carve what it admits, and stays under 1 below the closing coverage)
+  assert.ok(cloudShellCover(0.86, true) < 1 && cloudShellCover(0.86, true) > 0.86, 'a deck under the closing coverage keeps its breaks');
+  assert.ok(Math.abs(cloudShellCover(0.62, true) - 0.68) < 0.01, 'a broken deck at 0.62 admits 0.68');
 }
 
 // ---- every shipped map's stack
