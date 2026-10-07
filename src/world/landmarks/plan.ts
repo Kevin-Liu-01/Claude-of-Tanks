@@ -224,7 +224,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the An-225 Mriya in the ruin of its hangar (Hostomel, February 2022): a plot `width` × `depth` whose open front (+z)
   // faces an apron, and a `strip` beyond it where burnt debris spills (dressing only); the piece's origin is the centre
   // of plot and strip together
-  aircraftWreck: { family: 'wreck', roadMargin: 0, defaults: { model: 'an225', width: 56, depth: 36, strip: 12 },
+  // (round 3: the An-225 at true scale, 84 m long and 88.4 m across, in its hangar at true size — the plot 105 × 95 m)
+  aircraftWreck: { family: 'wreck', roadMargin: 0, defaults: { model: 'an225', width: 105, depth: 95, strip: 0 },
     footprint: (p) => [num(p, 'width') / 2, (num(p, 'depth') + num(p, 'strip') + 2) / 2] },
   // a collective farm's grain store (zernosklad): a long single-storey store, its loading doors and ramps on the front
   granary: { family: 'civic', defaults: { length: 30, width: 11, walls: 'brick' },

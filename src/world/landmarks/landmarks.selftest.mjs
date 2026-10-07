@@ -90,7 +90,7 @@ const BUDGET = {
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, outfall: 900,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
-  aircraftWreck: 20000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
+  aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
   lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
