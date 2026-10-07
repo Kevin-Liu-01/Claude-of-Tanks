@@ -49,10 +49,27 @@ export interface TreeBiome {
    */
   upland?: true;
   /**
+   * The trees lane (2026-10-06, the map-revival lane's Skybridge round 4): a place whose one slot keeps to the water — it
+   * seats only within `reachM` of a lake's shore and no more than `riseM` over it, or in the low ground (the lowest
+   * `lowShare` of the square's heights); every other slot stands anywhere (vegetation.ts riparianZoneOk).
+   */
+  riparian?: Readonly<TreeBiomeRiparian>;
+  /**
    * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
    * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
    */
   shrubColour?: Readonly<TreeBiomeColour>;
+}
+
+/** The trees lane: a place's riparian slot (TreeBiome.riparian). */
+export interface TreeBiomeRiparian {
+  slot: TreeSpecies;
+  /** How far from a lake's shore the slot may stand (m). */
+  reachM: number;
+  /** How high over that shore it may stand (m; unset: any height) — a canyon's rim is near its water but far above it. */
+  riseM?: number;
+  /** The share of the square's heights, from the lowest, that counts as low ground (unset: a fifth). */
+  lowShare?: number;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -166,7 +183,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // seats): the plateau's Utah juniper (the cedar slot) and Colorado pinyon (the pine slot) in the Arizona uplands'
   // dusty greens, the Fremont cottonwoods and the town's planted poplars staying poplars, the scrub between them the
   // broom form's switches (blackbrush, Mormon tea)
-  skybridge: B('Glen Canyon and Page, Arizona', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
+  // (the trees lane, 2026-10-06, Skybridge round 4: the cottonwoods by the water — within 40 m of the lakes' shores and
+  // no more than 4 m over them, or in the low ground — the juniper and pinyon anywhere, the benches and rims included)
+  skybridge: Object.freeze({ ...B('Glen Canyon and Page, Arizona', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom',
+    SONORAN_FOLIAGE), riparian: Object.freeze({ slot: 'poplar', reachM: 40, riseM: 4 }) }),
   // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
   // benches, mesquite (the acacia slot's umbrella, the same bipinnate crown) in the low washes, creosote (the broom
   // form's switches) between them, in open groves
@@ -246,6 +266,11 @@ const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 
 export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
   if (treeBiomeOpen(mapId)) return 1;
   return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
+}
+
+/** The trees lane: a place's riparian slot and its reach (TreeBiome.riparian), or none. */
+export function treeBiomeRiparian(mapId: string | null | undefined): Readonly<TreeBiomeRiparian> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.riparian : null) ?? null;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

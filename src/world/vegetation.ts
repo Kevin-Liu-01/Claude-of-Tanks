@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERA
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5597,7 +5597,32 @@ function* vegetationBuildSteps(
     heights.sort((a, b) => a - b);
     return [heights[Math.floor(heights.length * 0.4)], heights[Math.floor(heights.length * 0.6)]] as const;
   })() : null;
+  // the trees lane (2026-10-06, the map-revival lane's Skybridge round 4: Glen Canyon's Fremont cottonwoods by the water):
+  // a place's riparian slot (treeBiomes.ts riparian) seats only within its reach of a lake's shore and no higher over the
+  // shore than its rise, or in the low ground (the lowest share of the square's heights, a fifth unless it names one);
+  // every other slot stands anywhere. A test on a seat, no draw (every placement's zone test, uplandZoneOk, reads it).
+  const riparian = treeBiomeRiparian(cfg?.id);
+  const riparianLow: number | null = riparian ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * (riparian.lowShare ?? 0.2)))];
+  })() : null;
+  function riparianZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparian || sp !== riparian.slot) return true;
+    const h = heightField.getHeightAt(x, z);
+    if (h <= riparianLow!) return true;
+    for (const lake of heightField._layout?.lakes ?? []) {
+      const d = Math.hypot(x - lake.x, z - lake.z);
+      if (d - lake.r > riparian.reachM) continue;
+      // the shore: the lake's edge on the line from its centre to the seat
+      const f = lake.r / Math.max(1e-3, d);
+      if (h - heightField.getHeightAt(lake.x + (x - lake.x) * f, lake.z + (z - lake.z) * f) <= (riparian.riseM ?? Infinity)) return true;
+    }
+    return false;
+  }
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparianZoneOk(x, z, sp)) return false;
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
     const h = heightField.getHeightAt(x, z);
