@@ -127,4 +127,25 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
+// 2026-10-06 (wave 177, Saltwind: "clay-court orange", "no exposed limestone anywhere"; wave 83 before it: "pastel pink,
+// mauve"): the terra rossa is a red-brown between the two — red 2.0–2.8 times its green, in the albedo the borders and the
+// tiers take and in the material's own red earth (its three karst uses) — and half the karst's walled ground is grazing,
+// where its pavement can break through
+{
+  const [r, g] = LAND_CROP_ALBEDO[LAND_CROP.terraRossa];
+  assert.ok(r / g >= 2.0 && r / g <= 2.8, `terra rossa red ${(r / g).toFixed(2)}× its green (2.0–2.8: neither wave 83's mauve nor wave 177's orange)`);
+  const { readFileSync } = await import('node:fs');
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.equal(terrain.split('soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.875, 1.159, 1.345)').length - 1, 3,
+    'the karst\'s red earth is one hue: the turned field, the vineyard\'s earth and the garrigue\'s bare ground');
+  let grazing = 0, total = 0;
+  const s0 = createLandFieldSample(), saltwind = resolveLandUseProfile('saltwind');
+  for (let z = -460; z <= 460; z += 6.7) for (let x = -460; x <= 460; x += 6.7) {
+    landUseAt(saltwind, x, z, s0);
+    if (!s0.active || s0.edgeM < s0.marginM) continue;
+    total++; if (s0.crop === LAND_CROP.pasture) grazing++;
+  }
+  assert.ok(grazing / total >= 0.38, `Saltwind's walled ground is ${(100 * grazing / total).toFixed(0)} % grazing (≥ 38 %)`);
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);

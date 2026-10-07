@@ -4950,6 +4950,16 @@ void splatCompute() {
       if (crop < 0.5) {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
+        // (wave 177, Saltwind: "a lush lawn-green carpet" — "dry yellow-grey grass rather than lawn green") a karst's
+        // grazing is garrigue, never mown: cured yellow-grey grass in tussocks over the thin red-brown soil, which shows
+        // between them (its share kept in the far mean)
+        if (bnd > 2.5) {
+          rows = 0.0;
+          float bareVis = tileVis(1.5);
+          float bareG = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
+          vec3 redSoil = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.875, 1.159, 1.345) * 0.095;
+          cropCol = mix(vec3(2.30, 2.10, 1.30) * baseL * bright, redSoil, bareG * 0.70 * bareVis + 0.20 * (1.0 - bareVis));
+        }
       } else if (crop < 1.5) {
         // albedo calibration (with the light lane): a ripe crop is cured straw, 0.20–0.25 against the sward's ~0.075
         cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.8 * bright; // ripe wheat
@@ -5099,12 +5109,22 @@ void splatCompute() {
         // pale one: its red to green ~2.1 and green to blue ~1.6 in albedo (~0.25 / 0.118 / 0.072, luminance ~0.14; the
         // lab's grade model puts it at ~150 / 85 / 60 sRGB in sun) — and never one flat tone: its dry crust paler and a
         // little grey on the crowns of the noise, the damp ground darker, limestone gravel near the camera
+        // (wave 177, the PR head's Saltwind: "clay-court orange … pillar-box-red soil blotches", and "mostly covered by pale
+        // limestone clasts and stony ground") the plough's limestone over about a third of the field near the camera —
+        // cobbles in drifts and the smaller stones between, pale cream-grey — and a fifth of its far mean, over the gravel
         cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.875, 1.159, 1.345) * 0.105 * bright;
         float crust = smoothstep(0.42, 0.78, n1h);
         cropCol = mix(cropCol * (0.88 + 0.10 * n2), mix(cropCol, vec3(reduxLuma(cropCol)), 0.30) * 1.16, crust);
-        float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
-        cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
-        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
+        vec3 clast = vec3(0.215, 0.205, 0.182) * bright;
+        float karstStone = 0.0;
+        if (uLandTier > 0.5) {
+          vec2 sq = nzq(uvW, 0.61, vec2(0.37, 0.71));
+          float drift = smoothstep(0.20, 0.60, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
+          karstStone = max(smoothstep(0.50, 0.66, sq.x) * (0.40 + 0.60 * drift), smoothstep(0.64, 0.74, sq.y) * 0.65);
+        }
+        float stoneVis = tileVis(0.8);
+        cropCol = mix(cropCol, clast, karstStone * 0.85 * stoneVis);
+        cropCol = mix(cropCol, clast, 0.18 * (1.0 - stoneVis)); // the clasts' share of the far mean
         // the gravel: limestone pebbles of 3–6 cm in a 0.12 m lattice, one cell in eight (an exact integer hash), pale
         // grey; faded to their share as a cell nears 4 px
         vec2 gC = floor(wp.xz / 0.12);
@@ -5371,6 +5391,16 @@ void splatCompute() {
       float soilD = clamp((nz(uvW, 0.0045, vec2(0.71, 0.19)).g + nz(pR, 0.00326, vec2(0.56, 0.90)).g - 1.0) * 0.72 + 0.5, 0.0, 1.0);
       float thin = soilD + 0.30 * max(convex, 0.5 * slopeK);
       kCover = smoothstep(0.56, 0.74, thin) * kGate;
+      // (wave 177: "stone-strewn fields", "grey-white outcrops breaking through the turf") the thin soil short of the
+      // pavement is stony ground: the limestone's clasts strewn over the garrigue, thicker as the soil thins toward the
+      // clints (the slabs lie over them where they stand; their share kept in the far mean)
+      float stony = smoothstep(0.30, 0.62, thin) * kGate;
+      if (stony > 0.003 && uLandTier > 0.5) {
+        vec2 cq = nzq(uvW, 0.61, vec2(0.83, 0.29));
+        float clastVis = tileVis(0.8);
+        float clastW = max(smoothstep(0.54, 0.68, cq.x), smoothstep(0.66, 0.76, cq.y) * 0.6) * 0.85 * clastVis + 0.25 * (1.0 - clastVis);
+        a.rgb = mix(a.rgb, vec3(0.215, 0.205, 0.182) * (0.90 + 0.20 * n1h), clastW * stony);
+      }
     }
     if (kCover > 0.003) {
       // the joints in the field grid's frame (metres), wandering a half metre or so over a 9–20 m field of the noise
