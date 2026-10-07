@@ -210,7 +210,8 @@ bins, cases, mounts and their hardware plates — through the camo buckets (`hul
 everything a crew does not spray takes its own bucket: `hullCloth`/`turretCloth` (OD canvas: tarps, packs,
 bedrolls, mantlet boots via `gunMountCanvasSkin`), `hullCanvasPale`/`turretCanvasPale` (sand-khaki desert / IDF
 kit), `hullFittingPaint`/`turretFittingPaint` (solid scheme paint for small painted steel such as jerry cans, which
-a hull-scale camouflage tile would splash), `hullRubber` (flaps, tires), `hullWood`, `hullGlass`/`turretGlass`
+a hull-scale camouflage tile would splash), `hullRubber` (flaps, tires), `hullWood`, `hullBark`/`turretBark` (round 4:
+unditching logs, `barkLog({ relief: 2, tinted: true })` in the vertex-coloured log wood), `hullGlass`/`turretGlass`
 (lenses, vision blocks), `hullDark`/`turretDark` (gunmetal: tow cables, coils, whip rods and antenna bases, MG
 bodies, exhaust pipes, tool heads). Parts authored inside an ERA cluster always take the camouflaged external-armor
 bucket (they collapse with the brick) — emit hardware that must stay dark after the cluster closes. Census with

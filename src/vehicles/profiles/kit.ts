@@ -1335,8 +1335,11 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     }
     // Camo slots (hull/barrel) sample vertexColors; a missing attribute reads
     // (0,0,0) in WebGL and renders BLACK — bake neutral white (ERA precedent).
-    merged.setAttribute('color', new THREE.BufferAttribute(
-      new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
+    // Round 4 (2026-10-07): the log wood ('bark') carries its own baked wood colours; keep them.
+    if (slot !== 'bark' || !merged.getAttribute('color')) {
+      merged.setAttribute('color', new THREE.BufferAttribute(
+        new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
+    }
     const mesh = new THREE.Mesh(merged, material);
     registerVehicleNightLensMesh(mesh, geos);
     mesh.name = `fitting_${type}_${slot}`;
@@ -2819,11 +2822,11 @@ function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
   // bark log (accessoryPrimitives.barkLog) with furrowed bark, knots and a cut branch stub, pale sawn ends in the fixed
   // pale canvas tone with darker growth rings and drying checks, and open steel bands with their buckles seated on the
   // bark; inside the old envelope, the strap draws unchanged.
-  const log = barkLog({ len, r, seed: opts.seed ?? 1 });
-  parts.add('wood', log.bark);
-  if (log.stub) parts.add('wood', log.stub);
-  for (const end of log.ends) parts.add('canvasPale', end);                                       // sawn end grain
-  for (const grain of log.grain) parts.add('wood', grain);                                        // rings and checks
+  // Round 4 (2026-10-07; wave 216 on the PT-91: "a smooth brown tub"): the deep-furrowed trunk with its own baked wood
+  // colours (barkLog `tinted`) in the vertex-coloured log wood: grey-brown bark, pale sapwood ends round a warmer
+  // heart, darker rings and checks, all one draw; the pale canvas stays the desert / IDF soft-kit role (FSP-06).
+  const log = barkLog({ len, r, seed: opts.seed ?? 1, relief: 2, tinted: true });
+  for (const part of [log.bark, ...(log.stub ? [log.stub] : []), ...log.ends, ...log.grain]) parts.add('bark', part);
   for (let i = 0; i < straps; i++) {
     const x = -len / 2 + (i + 1) * (len / (straps + 1)) + (rng() - 0.5) * 0.10;
     const band = log.radiusAt((x + len / 2) / len) * 1.09;
