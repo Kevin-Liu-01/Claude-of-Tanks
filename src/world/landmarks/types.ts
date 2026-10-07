@@ -17,7 +17,7 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden' | 'outfall'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
