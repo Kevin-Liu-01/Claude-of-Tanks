@@ -283,6 +283,8 @@ const SETTINGS_CSS = `
   background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.5));
   border:1px solid rgba(146,164,180,.16);}
 .cot-set-card .cot-set-group{margin:0 0 4px;}
+.cot-set-hud-editor:hover{border-color:#d9a24a;color:#ffe1a2}.cot-set-hud-editor:focus-visible{outline:2px solid #f0a030;outline-offset:2px}.cot-set-hud-editor:disabled{opacity:.5;cursor:wait}
+.cot-set-hud-editor{margin-left:auto;flex-shrink:0;min-height:44px;padding:8px 16px;border:1px solid #816333;background:linear-gradient(110deg,#322717,#171b1d);color:#f2c479;font:inherit;font-size:11px;font-weight:700;cursor:pointer;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;
   padding:7px 10px;border-bottom:1px solid rgba(146,164,180,.08);transition:background .12s;}
 .cot-set-row:hover{background:rgba(146,164,180,.06);}
@@ -1022,7 +1024,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
     const iface = groupCard(body, t('settings.interface.title'));
-    const editHud = el('button', 'cot-set-btn cot-set-hud-editor', iface);
+    const hudLayoutRow = el('div', 'cot-set-row', iface);
+    settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
+    const editHud = el('button', 'cot-set-hud-editor', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
       editHud.disabled = true;

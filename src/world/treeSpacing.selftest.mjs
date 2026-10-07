@@ -2,13 +2,16 @@
 // whatever the place", "lush green groves on Wadi Rum"): where the trees stand (vegetation.ts placeTreeClusters,
 // placeLoneTrees, palmSites; treeBiomes.ts arid). On the real seeded producers:
 // - Verdant (a temperate field map): the lone trees no longer scatter evenly over the open field; most stand at a
-//   woodlot's edge (just outside its outline) or along a road's verge;
+//   woodlot's edge (just outside its outline) or along a road's verge; round 3 (wave 31: "trees stand singly like
+//   savanna; real places have closed woods, groves, shelterbelts and hedgerow lines"): the woods' canopies close over
+//   most of their ground, and the field trees stand in groups and lines, hardly a single one alone;
 // - Redrock Divide (Wadi Rum): open groves seated in the low ground, few trees, and its palms at the springs only;
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
 //   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
 //   broadleaf ... on the foreground dune");
-// - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
-//   "evenly spaced, grid-like" stands).
+// - Aso (Obsidian Caldera, the map-revival lane's round 2; was Las Cañadas' few open groves): sugi in closed plantation
+//   blocks, the farmed floor open between them (wave 114: "low-poly shrubs spread evenly");
+// - Whiteout Station (an ice sheet, wave 28): no tree, no shrub.
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
@@ -17,7 +20,9 @@ import { createCanvas, ImageData } from '@napi-rs/canvas';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
-import { treeBiomeArid } from './treeBiomes.ts';
+import { createLandFieldSample } from './landUse.ts';
+import { treeBiomeArid, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -60,7 +65,41 @@ try {
       });
       assert.ok(birchTints.length >= 2, `Verdant grows leafy birch crowns (${birchTints.length} pools)`);
       for (const [r, g, b] of birchTints) assert.ok(g > r * 1.2 && g > b, `a leafy birch crown tints green (${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`);
-      report.verdant = { trees: trees.length, open: open.length, birchPools: birchTints.length };
+      // round 3: the woods' canopy closes (the crowns over 60 % of a wood's ground; 45 % in round 2b, a parkland)
+      let ground = 0, shaded = 0;
+      const cells = new Map(), cellOf = (x, z) => `${Math.floor(x / 10)},${Math.floor(z / 10)}`;
+      for (const t of world._trees) { const k = cellOf(t.x, t.z); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(t); }
+      clusters.forEach((c, i) => {
+        for (let x = c.x - c.r * 1.5; x <= c.x + c.r * 1.5; x += 2) for (let z = c.z - c.r * 1.5; z <= c.z + c.r * 1.5; z += 2) {
+          if (world._standOutline(i, x, z) > 1) continue;
+          ground++;
+          const gx = Math.floor(x / 10), gz = Math.floor(z / 10);
+          let under = false;
+          for (let dx = -1; dx <= 1 && !under; dx++) for (let dz = -1; dz <= 1 && !under; dz++) {
+            for (const t of cells.get(`${gx + dx},${gz + dz}`) ?? []) if (Math.hypot(t.x - x, t.z - z) < t.cr) { under = true; break; }
+          }
+          if (under) shaded++;
+        }
+      });
+      assert.ok(shaded / ground > 0.6, `the woods' canopy closes (${(shaded / ground * 100).toFixed(0)} % of their ground)`);
+      // round 3: hardly a field tree stands alone (no other tree within 12 m: 10 % of the open trees in round 2b)
+      const alone = open.filter((t) => {
+        const gx = Math.floor(t.x / 10), gz = Math.floor(t.z / 10);
+        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+          for (const o of cells.get(`${gx + dx},${gz + dz}`) ?? []) if (o !== t && Math.hypot(o.x - t.x, o.z - t.z) < 12) return false;
+        }
+        return true;
+      });
+      assert.ok(alone.length / open.length < 0.06, `the field trees stand in groups (${alone.length} of ${open.length} alone)`);
+      // round 3b: a closed wood's interior meets the far tier sooner (the wood's edge in front of it): its trees carry a
+      // near scale, none outside its heart
+      const interior = world._trees.filter((t) => t.nearScale !== undefined);
+      assert.ok(interior.length > trees.length * 0.25, `the woods' interiors take the far tier sooner (${interior.length} of ${trees.length})`);
+      for (const t of interior) {
+        assert.ok(t.nearScale > 0.4 && t.nearScale < 1, 'a share of the full-detail radius');
+        assert.ok(clusters.some((_, i) => world._standOutline(i, t.x, t.z) < 0.75), 'only a wood\'s interior');
+      }
+      report.verdant = { trees: trees.length, open: open.length, alone: alone.length, closure: +(shaded / ground).toFixed(2), birchPools: birchTints.length };
     } finally { world.dispose(); }
   }
   // Wadi Rum: few trees, open groves in the low ground, palms at the springs only
@@ -104,19 +143,72 @@ try {
       }
     } finally { world.dispose(); }
   }
-  // Las Cañadas: a few open groves, scattered pines, the broom carrying the floor
+  // Aso: a dozen or so sugi blocks, most of them closed woods (a wood's members over its ground no sparser than 120 m² a
+  // tree on its bounding radius — an open grove is past it), the farmed floor open between them
   {
     const { world } = produce('caldera');
     try {
       const trees = world._trees.filter(inside), groves = world._clusters;
-      assert.ok(trees.length < 250, `the caldera floor carries few trees (${trees.length})`);
-      assert.ok(groves.length <= 6, `a few groves (${groves.length})`);
-      // open: a grove's trees over twice a wood's ground each (the woodlots' 48-84 m² a tree)
+      assert.ok(groves.length >= 8 && groves.length <= 16, `a dozen or so sugi blocks (${groves.length})`);
+      // (batch 4, 2026-10-06: the map-revival lane's 13 sugi blocks (ae19fa97b) are filled by the trees lane's closed
+      // woods (through ba3fc82c8, round 5), so the bound counts only the floor between them: a floor tree stands beyond
+      // 1.6 of every grove's outline. Measured: 151 at the lane's tip, 176 merged; the total, 707 then 1056, keeps a
+      // loose backstop so a runaway producer still fails. mr3's ruling.)
+      const floor = trees.filter((t) => groves.every((_, i) => world._standOutline(i, t.x, t.z) > 1.6)).length;
+      assert.ok(floor < 220, `the farmed floor stays open between the groves (${floor} floor trees)`);
+      assert.ok(trees.length < 1400, `the square's trees stay bounded (${trees.length} trees)`);
+      let closed = 0;
       for (let i = 0; i < groves.length; i++) {
         const g = groves[i], members = trees.filter((t) => world._standOutline(i, t.x, t.z) <= 1).length;
-        assert.ok(members > 2 && (Math.PI * g.r * g.r) / members > 90, `grove ${i} is open (${members} trees on ${(Math.PI * g.r * g.r).toFixed(0)} m²)`);
+        if (members > 2 && (Math.PI * g.r * g.r) / members <= 120) closed++;
       }
-      report.caldera = { trees: trees.length, groves: groves.length };
+      assert.ok(closed >= groves.length * 0.75, `most blocks are closed woods (${closed} of ${groves.length})`);
+      report.caldera = { trees: trees.length, floor, groves: groves.length, closed };
+    } finally { world.dispose(); }
+  }
+  // (Copper Mesa's Arizona zoning test — juniper and pinyon on the high ground, mesquite in the washes — went with the
+  // trees lane's Arizona row: the map is Queenstown under Mount Lyell since the map-revival lane's merge in batch 4,
+  // 2026-10-06, and no map sets the upland hook)
+  // trees round 5 (the coordinator's ruling on the gauntlet's wave 100: "conifers standing inside the brown ploughed
+  // fields ... the Hessian farmland reads as savanna parkland"): on a field-system map no field tree stands in a field's
+  // interior (past its grass margin, clear of a road's verge, away from a wood's edge) and no conifer form stands in the
+  // open; the law moves the field trees it meets there (to a hedge, their own field's boundary, a wood's edge) and drops
+  // hardly any, so the field keeps its cover. A town map's park trees keep their belts.
+  for (const id of ['frontier', 'coastal', 'reservoir']) {
+    const { world, field } = produce(id);
+    try {
+      const law = world.group.userData.fieldTreeLaw, sample = createLandFieldSample();
+      assert.ok(law.moved >= 10 && law.dropped <= 2 && law.interior === 0 && law.coniferOpen === 0,
+        `${id}: the field law moves its field trees off the interiors (${JSON.stringify(law)})`);
+      let interior = 0, coniferOpen = 0, fieldTrees = 0;
+      for (const t of world._trees) {
+        if (!t.field || !inside(t)) continue;
+        fieldTrees++;
+        if (world._clusters.some((_, i) => world._standOutline(i, t.x, t.z) <= 1.2)) continue;
+        field._landUseAt(t.x, t.z, sample);
+        if (sample.active && sample.edgeM > sample.marginM + 3 && field._roadDist(t.x, t.z) > 18) interior++;
+        const form = treeBiomeSlot(id, t.species)?.form ?? t.species;
+        if (TREE_GROWTH_PROFILES[form]?.family === 'conifer') coniferOpen++;
+      }
+      assert.ok(fieldTrees > 30, `${id}: its field trees stand (${fieldTrees})`);
+      assert.equal(interior, 0, `${id}: no field tree in a field's interior`);
+      assert.equal(coniferOpen, 0, `${id}: no conifer form in the open`);
+      report[`${id}FieldLaw`] = { moved: law.moved, dropped: law.dropped, swapped: law.swapped, open: law.open };
+    } finally { world.dispose(); }
+  }
+  {
+    const { world } = produce('urban');
+    try {
+      assert.equal(world.group.userData.fieldTreeLaw.moved, 0, 'a town map keeps its park trees in their belts');
+    } finally { world.dispose(); }
+  }
+  // Whiteout Station: the ice sheet grows nothing
+  {
+    const { world } = produce('whiteout');
+    try {
+      assert.equal(world._trees.length, 0, 'no tree on the ice');
+      assert.equal(world.concealers.length, 0, 'no shrub on the ice (no foliage concealment at all)');
+      report.whiteout = { trees: 0 };
     } finally { world.dispose(); }
   }
   console.log(`treeSpacing.selftest: ${JSON.stringify(report)} PASS`);

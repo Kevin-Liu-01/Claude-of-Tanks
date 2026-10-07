@@ -1,3 +1,5 @@
+import { BattleKillLedger } from '../game/battleEventStats.ts';
+import { killPresentation, isDroneStrike } from './killPresentation.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
@@ -307,6 +309,7 @@ interface HudHitEvent extends HitEventPresentation {
 }
 
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
+  destroyed?: boolean;
   id?: string;
   killerId?: string;
   name?: string;
@@ -405,6 +408,8 @@ interface EarRow {
   root: HTMLDivElement;
   hp: HTMLElement;
   ic: HTMLElement;
+  kills: HTMLElement;
+  lastKills: number;
   ally: boolean;
   lastFrac: number;
   wasDead: boolean | null;
@@ -1063,16 +1068,6 @@ function ammunitionCountText(shell: HudShellCard | null | undefined): string {
 
 function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
-}
-
-function causeLabel(key: string): string {
-  if (key === 'fire') return t('hud.fire');
-  if (key === 'ammorack') return t('hud.ammorack');
-  if (key === 'ram') return t('hud.rammed');
-  // impact physics (2026-09-25): a crash into something hard, or a landing that broke the hull
-  if (key === 'impact') return t('hud.impact');
-  if (key === 'fall') return t('hud.fall');
-  return '';
 }
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
@@ -2005,6 +2000,8 @@ export function initHud(bus: EventBus): HudRuntime {
     list.addEventListener('keydown', event => { if (!document.pointerLockElement) event.stopPropagation(); });
     list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
   }
+  const killLedger = new BattleKillLedger();
+  const lethalDroneTargets = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
@@ -2094,6 +2091,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // All rendering/bookkeeping lives in src/ui/shotInfo.ts; the HUD only
   // mounts the layer and forwards player identity + lifecycle below.
   const shotInfo = createShotInfo(bus);
+  shotInfo.setTeamResolver((id) => teamById.get(id));
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
   // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
@@ -2758,6 +2756,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
   const rosterIds: string[] = [];
   const rosterPlayers: boolean[] = [];
+  const rosterTeams: Array<string | undefined> = [];
   const teamTally: TeamTally = {
     allyAlive: 0,
     allyTotal: 0,
@@ -2769,7 +2768,7 @@ export function initHud(bus: EventBus): HudRuntime {
     let validIndex = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer) {
+      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer || rosterTeams[validIndex] !== tank.team) {
         return true;
       }
       validIndex++;
@@ -2780,10 +2779,12 @@ export function initHud(bus: EventBus): HudRuntime {
   function rebuildRosterIdentity(tanks: HudTank[]): void {
     rosterIds.length = 0;
     rosterPlayers.length = 0;
+    rosterTeams.length = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
       rosterIds.push(tank.id);
       rosterPlayers.push(!!tank.isPlayer);
+      rosterTeams.push(tank.team);
     }
   }
 
@@ -2802,7 +2803,7 @@ export function initHud(bus: EventBus): HudRuntime {
     rootEl.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
       `<span class="n"><span class="nick"></span>` +
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
-      `<div class="hpm"><i></i></div>`;
+      `<span class="kills" hidden></span><div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
     const gunship=tank.aerial?.kind==='gunship';
     if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
@@ -2822,6 +2823,8 @@ export function initHud(bus: EventBus): HudRuntime {
       root: rootEl,
       hp: requireElement<HTMLElement>(rootEl, '.hpm i'),
       ic: iconEl,
+      kills: requireElement<HTMLElement>(rootEl, '.kills'),
+      lastKills: -1,
       ally,
       lastFrac: -1,
       wasDead: null,
@@ -2833,6 +2836,14 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function updateEarRow(tank: HudTank, ally: boolean, dead: boolean): void {
     const row = earRows.get(tank.id) || createEarRow(tank, ally);
+    const kills = killLedger.count(tank.id);
+    if (kills !== row.lastKills) {
+      row.lastKills = kills;
+      row.kills.textContent = String(kills);
+      row.kills.hidden = kills === 0;
+      row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
+      row.root.title = `${nickFor(tank)} · ${tank.aerial?.kind === 'gunship' ? 'AC-130' : tank.spec?.name} · ${t('hud.roster.kills', { count: kills })}`;
+    }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
       row.wasDead = dead;
@@ -5531,15 +5542,20 @@ export function initHud(bus: EventBus): HudRuntime {
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const item = el('div', 'cot-kf', lane);
-    const cause = causeLabel(payload.cause || '');
+    const presentation = killPresentation({ cause: payload.cause, drone: lethalDroneTargets.has(payload.id || ''),
+      killerId: payload.killerId, victimId: payload.id || '', playerId,
+      killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
+    item.dataset.killCause = presentation.cause;
+    if (presentation.relation) item.dataset.relation = presentation.relation;
+    item.title = [presentation.label, presentation.relationLabel].filter(Boolean).join(' · ');
     // side-profile silhouettes of the actual tanks flank the names
     const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
       (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
-      `<span class="d">${t('hud.shell.destroyed')}</span>` +
+      `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
-      (cause ? `<span class="c">${cause}</span>` : '');
+      (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
     if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', '#f28f8f');
     requireElement<HTMLElement>(item, '.k').textContent = killer;
@@ -5731,8 +5747,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   let playerRef: HudTank | null = null;
   on('tank:destroyed', (p) => {
-    if (p.id) spotById.delete(p.id);
+    if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
+    spotById.delete(p.id);
     pushKill(p);
+    lethalDroneTargets.delete(p.id);
     reviveCountdown.onDestroyed(p.id);
   });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
@@ -5945,6 +5963,7 @@ export function initHud(bus: EventBus): HudRuntime {
     });
   });
   on('mode:respawn', ({ id }) => {
+    if (id) { killLedger.respawn(id); lethalDroneTargets.delete(id); }
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
@@ -5987,6 +6006,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
+    if (hit.destroyed && hit.targetId && isDroneStrike(hit)) lethalDroneTargets.add(hit.targetId);
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // Zero-damage and pass-through outcomes use the steel confirmation;
@@ -6365,6 +6385,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
         resetCombatPresentation();
+        killLedger.clear(); lethalDroneTargets.clear();
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();
@@ -6378,6 +6399,7 @@ export function initHud(bus: EventBus): HudRuntime {
         earRows.clear();
         rosterIds.length = 0;
         rosterPlayers.length = 0;
+        rosterTeams.length = 0;
         for (const [, bar] of hpPool) bar.root.remove();
         hpPool.clear();
         lastScore = '';

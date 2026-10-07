@@ -66,6 +66,7 @@ that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 | A crew call is said twice ("HE. HE.") | `eleven_v4` doubles one- and two-word calls | Repeat detection holds such a take under the bar; pause trimming keeps a clean cut |
 | A correct take is flagged as wrong | Homophones and digits in the transcript | Reported for review, never auto-rejected |
 | An alarm pierces | A bright take (2.4 kHz) | Pinned a lower take; "muffled by the hull" |
+| A thud or a twang loses to rumble | The weight score (`4·low`) on the `impact` preset rewards a take whose body is low-band noise over one with the event (a telegraph wire's twang; a pole's thud 31 dB down that mastering would lift 30 dB) | Pinned (`pole_wires`, `pole_fall`, 2026-10-06); look at the sheet before trusting a weight-scored pick |
 
 When a player reports something "occasional", suspect one bad variant first:
 with two variants that never repeat, a defect plays on every other use.
@@ -92,6 +93,11 @@ with two variants that never repeat, a defect plays on every other use.
   `node src/audio/voiceTriggers.selftest.mjs`: the engine on the shipped
   manifests, every crew line driven by its game moment, no chained plays.
 - `node src/audio/crewRadio.selftest.mjs`: every pack carries every line.
+- `node tools/audio/loudness-receipt.mjs --ids <ids>` after the build, then
+  `node src/audio/sfxLoudness.selftest.mjs`: the files as they ship, by hash,
+  against their preset; `--check` re-measures every recorded asset.
+- `node src/audio/propSounds.selftest.mjs` when a prop sound or a world kind
+  changes: every kind has its own recipe and every recipe's asset ships.
 - Mix and loudness in a browser: `node tools/audio-mix-balance.mjs`, plus the
   probes in [`docs/AUDIO.md`](../AUDIO.md#verification). These take the
   machine-wide GPU capture lock.

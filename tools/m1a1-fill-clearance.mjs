@@ -58,10 +58,18 @@ function triangleVertices(t,origin) {
   return [[t.ax,t.ay,t.az],[t.bx,t.by,t.bz],[t.cx,t.cy,t.cz]].map(v=>sub(v,origin));
 }
 
-function namesBelow(root) {
-  const names=new Set();
-  root.traverse(o=>{if(o.isMesh)names.add(o.name||o.type);});
-  return names;
+/** The visible meshes in collectTriangles' own traversal order, so a triangle's mesh index names its object. Names
+ * cannot decide ownership: a LOW build calls the gun's static batch and the turret's left-side batch both
+ * mobileStaticBatch_0, and by name that fixed batch was swept about the trunnion as gun stock (2026-10-06: it cut
+ * m1a1's fill 2.6 m from the gun and opened 0.11 L at the turret's left flank). */
+function meshObjects(root) {
+  const objects=[];
+  root.traverseVisible(o=>{if(o.isMesh&&o.geometry?.getAttribute('position'))objects.push(o);});
+  return objects;
+}
+function below(object,node) {
+  for(let p=object;p;p=p.parent)if(p===node)return true;
+  return false;
 }
 
 function assemblyTriangles(root) {
@@ -75,14 +83,14 @@ function assemblyTriangles(root) {
   for(const [i,value] of [[0,1],[1,0],[2,0],[4,0],[5,1],[6,0],[8,0],[9,0],[10,1]])
     assert.ok(Math.abs(e[i]-value)<1e-7,'M1 fill clearance requires an unposed unit gun frame');
   const origin=gun.getWorldPosition(new Vector3()).toArray();
-  const movingNames=namesBelow(gun),recoilNames=namesBelow(recoil);
-  const all=collectTriangles(turret);
+  const all=collectTriangles(turret),objects=meshObjects(turret);
+  assert.deepEqual(objects.map(o=>o.name||o.type),all.meshes,'mesh order must follow collectTriangles');
   const moving=[],fixed=[];
   for(const t of all.tris) {
-    const name=all.meshes[t.mesh];
+    const name=all.meshes[t.mesh],object=objects[t.mesh];
     assert.ok(!/InteriorFill$/.test(name),'Clearance must be computed from authored stock, before loading fills');
-    const row={vertices:triangleVertices(t,origin),recoil:recoilNames.has(name)};
-    (movingNames.has(name)?moving:fixed).push(row);
+    const row={vertices:triangleVertices(t,origin),recoil:below(object,recoil)};
+    (below(object,gun)?moving:fixed).push(row);
   }
   assert.ok(moving.some(t=>t.recoil)&&fixed.length,'M1 fill clearance needs real barrel and fixed turret stock');
   return {origin,moving,fixed};
@@ -95,7 +103,7 @@ function cellBounds(grid,x,y,z) {
 
 /** Remove entire voxels, never only their centers. The hull (component 1)
  * cannot be selected by either caller; its original closure is unchanged. */
-function removeIntersecting(grid,components,component,solid) {
+function removeIntersecting(grid,components,component,solid,cut) {
   const dimensions=[grid.nx,grid.ny,grid.nz];
   const lo=solid.min.map((v,k)=>Math.max(0,Math.floor((v-grid.origin[k])/grid.voxel)));
   const hi=solid.max.map((v,k)=>Math.min(dimensions[k]-1,Math.floor((v-grid.origin[k])/grid.voxel)));
@@ -107,12 +115,12 @@ function removeIntersecting(grid,components,component,solid) {
     // Generation only claims empty cells. Clearing these leaves every
     // original authored shell voxel and every hull closure intact.
     assert.ok(grid.shell[i]===grid.groups.indexOf(`${component===2?'turret':'gun'}InteriorFill`)+1);
-    components[i]=0;grid.shell[i]=0;removed++;
+    components[i]=0;grid.shell[i]=0;removed++;cut?.push(i);
   }
   return removed;
 }
 
-function sweepStock(grid,components,component,rows,angles,origin) {
+function sweepStock(grid,components,component,rows,angles,origin,cut) {
   let removed=0;
   for(const angle of angles)for(const row of rows) {
     const stroke=row.recoil?RECOIL:0;
@@ -122,7 +130,7 @@ function sweepStock(grid,components,component,rows,angles,origin) {
     // of its nearest endpoint. Include the recoiled endpoint radius, too.
     const radius=Math.max(...row.vertices.flatMap(v=>[Math.hypot(v[1],v[2]),Math.hypot(v[1],v[2]-stroke)]));
     const padding=EPS+(angles.length>1?2*radius*Math.sin(STEP/4):0);
-    removed+=removeIntersecting(grid,components,component,sweptTriangleSolid(vertices,shift,padding));
+    removed+=removeIntersecting(grid,components,component,sweptTriangleSolid(vertices,shift,padding),cut);
   }
   return removed;
 }
@@ -132,7 +140,7 @@ function spanBounds(grid,box) {
     box.slice(3).map((v,k)=>grid.origin[k]+(v+1)*grid.voxel)];
 }
 
-function clearFillAgainstFill(grid,components,boxes,angles,origin) {
+function clearFillAgainstFill(grid,components,boxes,angles,origin,cut) {
   let removed=0;
   for(const box of boxes) {
     const [min,max]=spanBounds(grid,box);
@@ -140,7 +148,7 @@ function clearFillAgainstFill(grid,components,boxes,angles,origin) {
       Math.max(Math.abs(min[2]-origin[2]),Math.abs(max[2]-origin[2])));
     const padding=EPS+2*radius*Math.sin(STEP/4);
     for(const angle of angles)
-      removed+=removeIntersecting(grid,components,3,orientedBoxSolid(min,max,-angle,origin,padding));
+      removed+=removeIntersecting(grid,components,3,orientedBoxSolid(min,max,-angle,origin,padding),cut);
   }
   return removed;
 }
@@ -168,15 +176,19 @@ export function createM1A1FillClearance(id,root) {
   angles.push(max);
   return {
     apply(grid,components,turretBoxes) {
-      const {origin,moving,fixed}=assembly;
-      const turretRemoved=sweepStock(grid,components,2,moving,angles,origin);
-      const recoilRemoved=sweepStock(grid,components,3,moving.filter(t=>t.recoil),[0],origin);
-      const fixedStockRemoved=sweepStock(grid,components,3,fixed.map(t=>({...t,recoil:false})),angles.map(a=>-a),origin);
-      const otherFillRemoved=clearFillAgainstFill(grid,components,turretBoxes(),angles,origin);
-      return {id,method:'finite triangle recoil prisms and reciprocal pitch sweep; full voxel SAT with continuous chord bound',
+      const {origin,moving,fixed}=assembly,cut=[];
+      const turretRemoved=sweepStock(grid,components,2,moving,angles,origin,cut);
+      const recoilRemoved=sweepStock(grid,components,3,moving.filter(t=>t.recoil),[0],origin,cut);
+      const fixedStockRemoved=sweepStock(grid,components,3,fixed.map(t=>({...t,recoil:false})),angles.map(a=>-a),origin,cut);
+      const otherFillRemoved=clearFillAgainstFill(grid,components,turretBoxes(),angles,origin,cut);
+      const receipt={id,method:'finite triangle recoil prisms and reciprocal pitch sweep; full voxel SAT with continuous chord bound',
         pitchDegrees:[min*180/Math.PI,max*180/Math.PI],stepDegrees:STEP*180/Math.PI,recoilMeters:RECOIL,
         turretRemoved,recoilRemoved,fixedStockRemoved,otherFillRemoved,
         removedVoxels:turretRemoved+recoilRemoved+fixedStockRemoved+otherFillRemoved};
+      // The cut cells (grid indices) for the declared clearance record (tools/moving-clearance-air.mjs); kept off the
+      // printed receipt.
+      Object.defineProperty(receipt,'cutCells',{value:cut,enumerable:false});
+      return receipt;
     },
   };
 }

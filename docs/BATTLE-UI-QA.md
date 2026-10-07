@@ -425,8 +425,15 @@ fire and zoom. Drone instruments keep their existing layout.
 
 Settings → Gameplay → Interface → **Edit HUD layout** opens a still battlefield
 with draggable HUD panels. It uses a UI-free game capture rather than another
-running scene. Currently visible panels are inert snapshots; unavailable panels
-use labeled samples. The inspector can select hidden elements and restore them.
+running scene. The editor prepares an isolated, static instance of the production
+HUD at the selected viewport size, then preserves its actual frames, canvases and
+responsive positions. It does not instantiate a renderer or a second simulation.
+The 1920×1080 Verdant Fields capture replaces the low-resolution reel thumbnail.
+The inspector uses the shared game icons and can select hidden elements and
+restore them. Selecting aircraft, awards, incoming damage or battle alerts prepares
+that real component in its relevant battle state. Other absent panels are listed
+with an explanation;
+their visibility remains editable without inventing placeholder boxes.
 Drag, arrow keys (Shift for larger steps), or the directional buttons position
 panels. Zoom preview helps on small screens. Save applies the layout; Cancel
 discards it. Reset layout restores the selected profile's responsive defaults.
@@ -445,8 +452,10 @@ full HUD on touch screens. Aircraft retain sight, weapons and return controls.
 `node src/ui/hudPreferences.selftest.mjs` checks profile selection, persistence,
 invalid data, storage failure and full-panel viewport bounds.
 `node tools/hud-editor.browser.mjs` checks the actual Settings entry point,
-dragging, keyboard movement, hiding/restoring, saving, canceling, reset, reload
-persistence, Escape ownership and minimal HUD visibility. The DOM-only matrix
+production-default position parity, dragging, keyboard movement, hiding/restoring,
+saving, canceling, reset, reload persistence, profile changes, Escape ownership
+and minimal HUD visibility. Run it through `tools/capture-command.mjs` at nice 19
+to respect the shared browser capture queue. The DOM-only matrix
 uses production HUD components at 1440×900, 390×844, 667×375 and 568×256. It does
 not claim native-device touch or rendered ballistic-scene validation.
 
@@ -542,3 +551,69 @@ frames do not rewrite its DOM. `vehicleStatusPolicy.selftest.mjs` covers the
 state policy and real repair accumulation; `tools/vehicle-status.browser.mjs`
 covers repair changes, overflow, tooltip access, viewport clearance, lifecycle,
 Chinese labels and unchanged-frame mutations across desktop and small phones.
+
+HUD editor refresh (2026-10-06): typecheck, production build, preference, localization,
+layout, settings, stylesheet ownership and damage-panel marker checks passed. The
+updated browser matrix could not start before its shared capture-queue timeout;
+no new rendered/editor matrix pass is claimed.
+
+## Combat reports and Service Record
+
+Live rosters show a nonzero kill tally on their inner edge, mirrored for the
+opposing team and retained in icon-grid mode. The event ledger counts enemy
+destructions once per life; respawns preserve accumulated kills, while a new
+battle clears them. Friendly fire and self-destruction remain visible in the
+feed but do not earn enemy-kill credit. Feed glyphs identify projectile kills,
+drone strikes, ramming, fire, collisions, falls, player involvement and friendly
+fire. Ammo-rack kills carry an explicit label, a highlighted ammunition glyph,
+and a matching killcam heading and detonation banner.
+
+After-action reports use the battle's canonical map image, contained vehicle
+art, visible combat metrics, and allied/enemy comparisons for damage, kills and
+survivors. Medals keep their focus/touch tooltips. The Service Record's Battle
+Log uses map-backed deployment cards, vehicle art and expandable kill traces;
+older records without a recognized map retain a plain readable background.
+Accuracy counts distinct fired rounds that connected, not damage events. Splash
+contacts cannot push it beyond 100%; un-fired drone impacts, fire and ramming
+cannot manufacture successful rounds. Damage still sums all resolved contacts.
+
+Focused event, classification, report and record checks run in `npm test`.
+The additional browser regression uses the real production components at
+1440×900, 390×844, 667×375 and 568×256 and captures victory, defeat, draw,
+Battle Log and medals. Run it through the shared capture queue:
+
+```sh
+node --input-type=module -e "import {runCapturedCommand} from './tools/capture-command.mjs'; await runCapturedCommand('nice',['-n','19','node','tools/battle-reports.browser.mjs']);"
+```
+
+Pass `--playwright-module=/absolute/path/to/playwright/index.mjs` to the browser
+tool when using an external runtime. Captures go to `.qa-dev/battle-reports/`.
+A queue timeout is not a visual pass: the latest implementation has passed
+focused Node checks, type checking and the public build, but its first browser
+attempt timed out before acquiring the shared capture lease.
+
+
+### Compact Service Record statistics and medal layouts
+
+Win rate is a normal outcome statistic beside victories, defeats and draws,
+with a slightly larger value. The heading uses the shared amber accent without
+the commander-profile eyebrow. Career, reasoning, deployment and Battle Log
+statistics use semantic vector glyphs from the shared icon library.
+
+Overview medal columns follow the width of their card, not just the viewport.
+Artwork stays contained above wrapping labels; new-award badges reserve their
+own space. Phone outcomes and career metrics use two columns, and short
+landscape headers leave room for scrolling content and full-size controls.
+
+`tools/service-record-layout.browser.mjs` exercises empty and populated records
+across all four tabs at 1440×900, 320×568, 390×844, 667×375 and 568×256, plus
+Chinese at 390×844. It checks artwork/text/badge separation, horizontal overflow,
+stat icons, header/footer reachability, touch requirements and rotation. Run it
+through `tools/capture-command.mjs` at nice 19, as above; optional external
+Playwright module argument is supported. Screenshots and geometric receipts go
+to `.qa-dev/service-record-layout/`. A queued run is not a visual pass.
+
+Validation: record, localization and stylesheet selftests, TypeScript, the
+changed-module quality gate and the production build passed. The first layout
+run timed out after ten minutes waiting for the shared capture lease; no
+mobile screenshot or geometry pass is claimed for this refresh yet.

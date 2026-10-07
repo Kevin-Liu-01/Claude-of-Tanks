@@ -422,7 +422,11 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
   fills, measured exactly as `tools/tank-watertight-check.mjs` does (the body each tank's fills bound, track-lane,
   retained and declared-bore air reported apart). A profile's verified physical muzzle bore is open air by contract
   (2026-10-03, `tools/physical-bore-air.mjs`): the fill generator never fills it, so no generated box can cap the
-  recess the build verifies, and water in a bore column is never counted as a leak. The pass builds without the fill
+  recess the build verifies, and water in a bore column is never counted as a leak. Moving-part clearance air
+  (2026-10-06, `tools/moving-clearance-air.mjs`) is reported apart too: the pockets the generator leaves under the gun,
+  mount and mantlet (outside the turret's and the gun group's own column spans) and the cells a declared finite gun
+  clearance cut from the fills, which the generator records in `docs/geometry-gate/moving-clearance-air.json`; a record
+  whose lattice no longer matches the build fails the gate by name. The pass builds without the fill
   registry, so the audit attaches each tank's fills
   through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
   extra build. A stale fill record fails by name with its regeneration command.

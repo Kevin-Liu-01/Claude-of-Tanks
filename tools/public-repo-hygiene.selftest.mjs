@@ -38,6 +38,7 @@ assert.deepEqual(missingSelftests, [],
 const maintainedStandaloneTools = new Set([
   'tools/aerial-tracers.browser.mjs', // main's AC-130 tracer GPU regression (native capture, run by hand)
   'tools/drone-details.browser.mjs', // main's docked/flight drone airframe regression (native capture, run by hand)
+  'tools/base-shell-surface-audit.mjs', // main's base hull/turret mirror-and-planarity census (3d0c3c50e; CPU-only, docs/qa/base-shell-audit-20261005, run by hand)
   'tools/atgm-guidance-probe.mjs',
   'tools/bot-combat-probe.mjs',
   'tools/fleet-battle-views.mjs',

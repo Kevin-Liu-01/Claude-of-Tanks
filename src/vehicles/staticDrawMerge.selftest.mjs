@@ -29,6 +29,10 @@ const PINNED = {
   ua_m1a1_x: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
   leo2a7v_x: { saved: 2, owners: { rig_hull: 1, leo2a7v_xRoofMachineGun: 1 } },
   challenger_3x: { saved: 2, owners: { rig_turret: 1, auxiliaryWeaponPitch: 1 } },
+  // 2026-10-06 (main's M1A1 mantlet and throat rebuild, ce9f55959..030b3ff96): the m1a2 turretDark bucket is now created after
+  // turretCloth, so turret and turretDetail (one armor-paint material, 6,252 + 9,948 = 16,200 LOW vertices, under the
+  // 16,384 cap) form one contiguous layer run and merge; the layer-by-layer equivalence below covers the new draw.
+  // The round-3 machine gun's fitting-paint can and rounds fold one more run on the commander MAG (above).
   m1a2: { saved: 3, owners: { 'fitting_abramsM2HB_m1a2-split-loader': 1, fitting_browningDerived_mag: 1, rig_turret: 1 } },
   t90m: { saved: 1, owners: { t90mProryvRemoteKord: 1 } },
   // turret + a 77,472-vertex turretDetail would be one more draw saved for a 3.4 MB copy: the 16,384-vertex cap keeps both

@@ -1,3 +1,4 @@
+import { battleMapArt } from './battleReportMedia.ts';
 import { createModal } from './modal.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -9,7 +10,7 @@ import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type Reco
 const TAB_ICONS = { overview: 'battleRecord', medals: 'gold', achievements: 'stamp', history: 'clock' } as const;
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
-  const modal = createModal({ title:t('garage.record.heading'), eyebrow:t('garage.record.eyebrow'),
+  const modal = createModal({ title:t('garage.record.heading'),
     subtitle:t('garage.record.description'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
@@ -27,6 +28,8 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   function render(){
     tooltip.hide();
     const view={...getServiceRecord(),unseen}, totals=recordSummary(view);summary.innerHTML=totals.chips;
+    const art=battleMapArt(view.history[0]?.mapId);
+    modal.root.style.setProperty('--record-map',art?`url("${art}")`:'none');
     for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){
       const tab=button.dataset.recordTab as RecordTab, active=tab===selected;
       const prefix=tab==='medals'?'medal:':tab==='achievements'?'achievement:':null;
