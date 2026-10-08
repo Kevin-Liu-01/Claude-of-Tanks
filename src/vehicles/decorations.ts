@@ -3399,12 +3399,21 @@ function contactShade(list: DecorPartList): void {
 }
 
 /**
- * Hard loads with a lid a soft load can ride on (round 4 follow-up, 2026-10-07: stackLoad). Crates, chests, cases and
- * coolers; cans, drums and the extinguisher are round or carry handles on top.
+ * Hard loads a soft load can ride on (round 4 follow-up, 2026-10-07: stackLoad). Crates, chests, cases and coolers, and
+ * the racked can pairs (a bag thrown across the cans' handles and the rack's top bar sags onto them); the tool tube,
+ * drums and the extinguisher are round.
  */
 const STACK_CARRIERS: ReadonlySet<string> = new Set(['cargo:wood-ammo-crate', 'cargo:mechanics-tool-chest',
   'cargo:medical-case', 'cargo:spare-optics-case', 'cargo:insulated-chest-olive', 'cargo:cooler-red',
-  'cargo:beer-cooler-blue', 'cargo:ration-case', 'cargo:thermos-crate', 'cargo:fifty-cal-ammo-can', 'rations', 'bin']);
+  'cargo:beer-cooler-blue', 'cargo:ration-case', 'cargo:thermos-crate', 'cargo:fifty-cal-ammo-can', 'rations', 'bin',
+  'cargo:twin-can-cradle', 'cargo:nato-fuel-can', 'cargo:blue-water-can']);
+/** Flat-lidded cases a case of their own may stand on (round 4 follow-up: stackLoad, rigid on rigid). */
+const FLAT_LID_CARRIERS: ReadonlySet<string> = new Set(['cargo:wood-ammo-crate', 'cargo:mechanics-tool-chest',
+  'cargo:medical-case', 'cargo:spare-optics-case', 'cargo:insulated-chest-olive', 'cargo:ration-case',
+  'cargo:thermos-crate', 'rations', 'bin']);
+/** Rigid cases that stand square on a larger flat lid (round 4 follow-up: stackLoad). */
+const STACKABLE_CASES: ReadonlySet<string> = new Set(['cargo:wood-ammo-crate', 'cargo:mechanics-tool-chest',
+  'cargo:medical-case', 'cargo:spare-optics-case', 'cargo:ration-case', 'cargo:fifty-cal-ammo-can', 'cargo:thermos-crate']);
 /** A stack (carrier and load) stands at most this tall over its carrier's foot (m). */
 const STACK_MAX_H = 0.85;
 
@@ -4087,13 +4096,19 @@ export function* attachTankDecorationsSteps(
     }
     // Round 4 follow-up (2026-10-07): hard loads seated on a deck whose lid a soft load can ride (STACK_CARRIERS):
     // their frame, their ledger box and their placed near geometry (for the stacked load's seat and its tie).
-    const carriers: Array<{ frame: DecorFrame; box: THREE.Box3; footY: number; meshes: THREE.Mesh[]; used: boolean }> = [];
+    const carriers: Array<{ frame: DecorFrame; box: THREE.Box3; lid: THREE.Box3; footY: number; meshes: THREE.Mesh[];
+      used: boolean; flat: boolean }> = [];
     const carrierMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-    /** `footY`: the frame height of the carrier's own foot (its deck, or its rack's slats). */
-    function registerCarrier(name: string, frame: DecorFrame, parts: DecorPartList, ledger: THREE.Box3[], footY: number): void {
+    /**
+     * `footY`: the frame height of the carrier's own foot (its deck, or its rack's slats); `lid`: the load's own placed
+     * box (a rack's frame is not lid), defaulting to its ledger box.
+     */
+    function registerCarrier(name: string, frame: DecorFrame, parts: DecorPartList, ledger: THREE.Box3[], footY: number,
+      lid?: THREE.Box3): void {
       if (!STACK_CARRIERS.has(name) || !ledger.length) return;
       const meshes = parts.filter((p) => p.role !== 'pad').map((p) => new THREE.Mesh(p.geo, carrierMat));
-      carriers.push({ frame, box: ledger[ledger.length - 1], footY, meshes, used: false });
+      const box = ledger[ledger.length - 1];
+      carriers.push({ frame, box, lid: lid ?? box, footY, meshes, used: false, flat: FLAT_LID_CARRIERS.has(name) });
     }
     /**
      * Stack a soft load on a hard one (round 4 follow-up, 2026-10-07; the critics on the Challenger 1: "cluster and
@@ -4105,30 +4120,32 @@ export function* attachTankDecorationsSteps(
     function stackLoad(parts: DecorPartList, name: string): boolean {
       const bb = partsBBox(parts);
       const h = bb.max.y - Math.max(0, bb.min.y);
+      // a soft load sags onto any carrier; a case stands square on a flat lid at least its own size
+      const rigid = !sagsOnSupport(name);
       for (const c of carriers) {
-        if (c.used) continue;
-        const cw = c.box.max.x - c.box.min.x, cd = c.box.max.z - c.box.min.z;
-        const ccx = (c.box.min.x + c.box.max.x) / 2, ccz = (c.box.min.z + c.box.max.z) / 2;
+        if (c.used || (rigid && !c.flat)) continue;
+        const cw = c.lid.max.x - c.lid.min.x, cd = c.lid.max.z - c.lid.min.z;
+        const ccx = (c.lid.min.x + c.lid.max.x) / 2, ccz = (c.lid.min.z + c.lid.max.z) / 2;
         for (const turn of [0, Math.PI / 2]) {
           const yaw = turn + transitYaw(slotRng) * 0.3;
           const e = placedBox(parts, new THREE.Vector3(), new THREE.Euler(0, yaw, 0));
           const w = e.max.x - e.min.x, d = e.max.z - e.min.z;
-          // a soft load may overhang its carrier's box by a tenth each side and droop there
-          if (w > cw * 1.2 || d > cd * 1.2) continue;
+          // a soft load may overhang its carrier's lid by a quarter each side and droop there; its middle rides the lid
+          if (w > cw * (rigid ? 1.04 : 1.5) || d > cd * (rigid ? 1.04 : 1.5)) continue;
           const x = ccx - (e.min.x + e.max.x) / 2, z = ccz - (e.min.z + e.max.z) / 2;
           // the lid under the middle of the load's footprint: 3 x 3 rays onto the carrier (its ties included)
           const ray = new THREE.Raycaster();
           const ys: number[] = [];
           for (const fx of [-0.28, 0, 0.28]) for (const fz of [-0.28, 0, 0.28]) {
-            ray.set(new THREE.Vector3(ccx + fx * w, c.box.max.y + 0.3, ccz + fz * d), new THREE.Vector3(0, -1, 0));
+            ray.set(new THREE.Vector3(ccx + fx * Math.min(w, cw), c.box.max.y + 0.3, ccz + fz * Math.min(d, cd)), new THREE.Vector3(0, -1, 0));
             ray.far = 1;
             const hit = ray.intersectObjects(c.meshes, false)[0];
             if (hit) ys.push(hit.point.y);
           }
           if (ys.length < 9) continue;
           const hi = Math.max(...ys), residual = hi - Math.min(...ys);
-          if (residual > SOFT_SPREAD_M) continue;
-          const y = hi - Math.min(residual, SOFT_SAG_M) * 0.7;
+          if (residual > (rigid ? RIGID_SPREAD_M : SOFT_SPREAD_M)) continue;
+          const y = rigid ? hi : hi - Math.min(residual, SOFT_SAG_M) * 0.7;
           if (y + h - c.footY > STACK_MAX_H) continue;
           const pos = V(x, y - 0.004, z), rot = E(0, yaw, 0);
           const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
@@ -4142,8 +4159,8 @@ export function* attachTankDecorationsSteps(
           const footY = c.footY;
           const shift = new THREE.Matrix4().makeTranslation(0, -footY, 0);
           for (const mesh of meshes) mesh.geometry = mesh.geometry.clone().applyMatrix4(shift);
-          const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.box.min.z : c.box.min.x,
-            alongX ? c.box.max.z : c.box.max.x, y + h - footY);
+          const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.lid.min.z : c.lid.min.x,
+            alongX ? c.lid.max.z : c.lid.max.x, y + h - footY);
           for (const mesh of meshes) mesh.geometry.dispose();
           for (const mesh of placed) mesh.geometry.dispose();
           if (!path) continue;
@@ -4156,7 +4173,7 @@ export function* attachTankDecorationsSteps(
             for (let i = list.length - 1; i >= 0; i--) if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
           }
           candidate.push({ mat: 'cans', geo: bakeTint(tie, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
-          candidate.meta = { ...(candidate.meta ?? {}), stackedOn: [c.box.min.x, c.box.max.x, c.box.min.z, c.box.max.z, hi] };
+          candidate.meta = { ...(candidate.meta ?? {}), stackedOn: [c.lid.min.x, c.lid.max.x, c.lid.min.z, c.lid.max.z, hi] };
           const ledger = c.frame === 'hull' ? placedHull : placedTurret;
           const at = ledger.indexOf(c.box);
           if (at >= 0) ledger.splice(at, 1);
@@ -4458,8 +4475,8 @@ export function* attachTankDecorationsSteps(
             return true;
           }
         }
-        // round 4 follow-up: a soft load with no free deck rides a crate or case already seated (stackLoad)
-        if (sagsOnSupport(name) && stackLoad(parts, name)) return true;
+        // round 4 follow-up: a soft load or a case with no free deck rides a crate or case already seated (stackLoad)
+        if ((sagsOnSupport(name) || STACKABLE_CASES.has(name)) && stackLoad(parts, name)) return true;
         disposePartList(parts);
         return false;
       },
@@ -4744,8 +4761,8 @@ export function* attachTankDecorationsSteps(
         carry(parts, 1);
         if (parts.coarse) carry(parts.coarse, 0);
         if (!commit(name, parts, 'hull', V(px, y, pieceZ), E(), placedHull, { seatY: y, zExtra: 0.35 })) return false;
-        // round 4 follow-up: a case on the rack can carry a soft load too (stackLoad)
-        registerCarrier(name, 'hull', parts, placedHull, y);
+        // round 4 follow-up: a case on the rack can carry a soft load too (stackLoad); its lid is the load's own box
+        registerCarrier(name, 'hull', parts, placedHull, y, bb.clone().translate(new THREE.Vector3(px, y, pieceZ)));
         return true;
       },
       hullSide(args, parts, name) {
