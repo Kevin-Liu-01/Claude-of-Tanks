@@ -285,7 +285,7 @@ export default {
     // massifs fewer, with gaps of open plain between, each cap a cluster of beehive domes over a rounder shoulder, and their
     // walls more deeply varnished
     baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel', air: 0.8, fillLaw: 1,
-      jebelShare: 0.52, jebelRim: 0.66, jebelBossM: 190, jebelVarnish: 0.72 },
+      jebelShare: 0.52, jebelRim: 0.8, jebelBossM: 160, jebelVarnish: 0.72 },
     // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
     // triangles than before the mountains lane's relief work)
     outlandRocks: 0.95,
