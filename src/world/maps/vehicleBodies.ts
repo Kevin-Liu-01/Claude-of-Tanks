@@ -5,9 +5,10 @@
 // (KamAZ, TAM, Isuzu) — with their cargo bodies: wooden drop sides, a canvas tilt over hoops, a box van, a flatbed with
 // its load, a tanker, log bunks.
 
-import type { VehicleMesh, VehicleMaterial } from './vehicleMesh.ts';
+import { material, linearHex, type VehicleMesh, type VehicleMaterial, type Vec3 } from './vehicleMesh.ts';
 import {
   PAINT, GLASS, CHROME, BRIGHT, TRIM, UNDER, INTERIOR, LAMP, LAMP_RED, LAMP_AMBER, STEEL, RIM_STEEL, WOOD, CANVAS, RUBBER,
+  WOOD_GREY,
   carBody, carDetails, bumper, wheel, roundLamp, rectLamp, grille, plate, boxLoft, cabLoft, stations,
   clamp, lerp, type CarBodySpec, type CarDetailSpec, type WheelSpec, type BoxSection, type CabFace,
 } from './vehicleCoachwork.ts';
@@ -869,6 +870,145 @@ function truckCab(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coar
   }
 }
 
+// ---------------------------------------------------------------------------------------------------- box sides
+
+/** A shade of a material: its colour scaled by `f` (clamped), the rest kept, so a paint-masked shade still takes the
+ *  instance colour (one material object per shade, so a build's material table stays small). */
+const SHADES = new WeakMap<VehicleMaterial, Map<string, VehicleMaterial>>();
+function shade(m: VehicleMaterial, f: number, rough = m.rough): VehicleMaterial {
+  let byKey = SHADES.get(m);
+  if (!byKey) { byKey = new Map(); SHADES.set(m, byKey); }
+  const key = `${f}:${rough}`;
+  let out = byKey.get(key);
+  if (!out) {
+    const c = (v: number) => Math.min(1, v * f);
+    out = material(m.role, [c(m.rgb[0]), c(m.rgb[1]), c(m.rgb[2])], rough, m.metal, m.paint, m.weather);
+    byKey.set(key, out);
+  }
+  return out;
+}
+
+/** Paint worn through to a steel box's oxide, run down its side in streaks. */
+const RUST_RUN = material('steel', linearHex(0x5e3a24), 0.86, 0.12, 0, 1);
+
+/** A deterministic 0..1 from two integers. */
+function h01(k: number, salt: number): number {
+  const v = Math.sin(k * 127.1 + salt * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/** A flat convex polygon facing `n` whichever way its points run. */
+function flatFace(mesh: VehicleMesh, p: readonly Vec3[], n: Vec3, m: VehicleMaterial): void {
+  const ax = p[1][0] - p[0][0], ay = p[1][1] - p[0][1], az = p[1][2] - p[0][2];
+  const bx = p[2][0] - p[0][0], by = p[2][1] - p[0][1], bz = p[2][2] - p[0][2];
+  const d = (ay * bz - az * by) * n[0] + (az * bx - ax * bz) * n[1] + (ax * by - ay * bx) * n[2];
+  mesh.polygon(d < 0 ? [...p].reverse() : p, m);
+}
+
+/**
+ * Round 5 (2026-10-08, the media lane's blind critics on Verdant's GAZ-AA furgon: its box "untextured, a flat
+ * material"): a box body's sides told in shades, since the baked colours carry the detail (desktop tier, dressing).
+ * A wooden box: horizontal planks in two shades of its paint with dark grooves between them and butt joints staggered
+ * course by course, framing posts and a rail along the top and the floor a shade darker, and the paint worn back to grey
+ * wood along the floor and under the top rail, at the rear corner and the doors' meeting edge. A steel box: its pressed
+ * ribs catching the light with their shadow aft of them, a darker rail top and bottom, scuffs low down and rust run
+ * from the rails' ends and the ribs' feet.
+ */
+function boxSides(mesh: VehicleMesh, b: TruckBodySpec, top: number, boxMat: VehicleMaterial): void {
+  const y0 = b.floorY + 0.02, y1 = top, H = y1 - y0, len = b.zF - b.zB, zMid = (b.zF + b.zB) / 2;
+  const groove = shade(boxMat, 0.42, 0.8), plankB = shade(boxMat, 0.86), batten = shade(boxMat, 0.7);
+  const lift = shade(boxMat, 1.18, Math.max(0.2, boxMat.rough - 0.08)), scuff = shade(boxMat, 0.6, 0.8);
+  // the skins: the side's a few millimetres proud of the loft (+x), the back's behind it (-z, half: mirrored)
+  const XS = b.hw + 0.003, ZB = b.zB - 0.003;
+  const side = (ya: number, yb: number, za: number, zb: number, m: VehicleMaterial, out = 0) =>
+    flatFace(mesh, [[XS + out, ya, za], [XS + out, ya, zb], [XS + out, yb, zb], [XS + out, yb, za]], [1, 0, 0], m);
+  const back = (ya: number, yb: number, xa: number, xb: number, m: VehicleMaterial, out = 0) =>
+    flatFace(mesh, [[xa, ya, ZB - out], [xb, ya, ZB - out], [xb, yb, ZB - out], [xa, yb, ZB - out]], [0, 0, -1], m);
+  // a chip of worn paint: a jittered rectangle centred at (u, y) on the side (u = z) or the back (u = x)
+  const chip = (onBack: boolean, u: number, y: number, hu: number, hy: number, k: number, m: VehicleMaterial) => {
+    const j = (q: number) => 0.55 + 0.45 * h01(k, q);
+    const pts: Vec3[] = [[-hu * j(1), -hy * j(2)], [hu * j(3), -hy * j(4)], [hu * j(5), hy * j(6)], [-hu * j(7), hy * j(8)]]
+      .map(([du, dy]) => (onBack ? [u + du, y + dy, ZB - 0.006] : [XS + 0.006, y + dy, u + du]) as Vec3);
+    flatFace(mesh, pts, onBack ? [0, 0, -1] : [1, 0, 0], m);
+  };
+  const posts = Math.max(2, Math.round(len / 0.6));
+  mesh.dressing(() => mesh.mirrored(() => {
+    if (b.wood) {
+      const planks = Math.max(6, Math.round(H / 0.135)), ph = H / planks;
+      for (let k = 0; k < planks; k++) {
+        const ya = y0 + k * ph, yb = ya + ph;
+        if (k % 2 === 1) {
+          side(ya + 0.007, yb - 0.007, b.zF - 0.03, b.zB + 0.03, plankB);
+          back(ya + 0.007, yb - 0.007, 0.012, b.hw - 0.03, plankB);
+        }
+        if (k > 0) {
+          side(ya - 0.007, ya + 0.007, b.zF - 0.03, b.zB + 0.03, groove, 0.0015);
+          back(ya - 0.007, ya + 0.007, 0.012, b.hw - 0.03, groove, 0.0015);
+        }
+        // the boards come in lengths: a butt joint a course, staggered
+        const zj = lerp(b.zF, b.zB, 0.22 + 0.56 * h01(k, 11));
+        side(ya + 0.007, yb - 0.007, zj + 0.006, zj - 0.006, groove, 0.0015);
+      }
+      // the frame's posts (the corners among them) and its rails along the top and the floor
+      for (let k = 0; k <= posts; k++) mesh.box(b.hw + 0.01, (y0 + y1) / 2, lerp(b.zF - 0.035, b.zB + 0.035, k / posts), 0.016, H - 0.02, 0.06, batten);
+      for (const y of [y0 + 0.04, y1 - 0.05]) mesh.box(b.hw + 0.01, y, zMid, 0.016, 0.07, len - 0.03, batten);
+      // worn back to grey wood: along the floor (boots and loads), under the top rail (the weather), at the rear corner
+      // and the doors' meeting edge (hands)
+      for (let k = 0; k < 10; k++) {
+        const low = k < 4, z = lerp(b.zF - 0.15, b.zB + 0.15, h01(k, 21));
+        const y = low ? y0 + 0.1 + 0.12 * h01(k, 23) : k < 7 ? y1 - 0.12 - 0.08 * h01(k, 25) : lerp(y0 + 0.2, y1 - 0.2, h01(k, 27));
+        const zz = k >= 7 ? b.zB + 0.06 + 0.04 * h01(k, 29) : z;
+        chip(false, zz, y, 0.03 + 0.06 * h01(k, 31), 0.012 + 0.03 * h01(k, 33), k, WOOD_GREY);
+      }
+      for (let k = 0; k < 5; k++) {
+        const x = k < 3 ? 0.03 + 0.05 * h01(k, 41) : lerp(0.15, b.hw - 0.12, h01(k, 43));
+        const y = k < 3 ? lerp(y0 + 0.5, y0 + 1.1, h01(k, 45)) : y0 + 0.08 + 0.1 * h01(k, 47);
+        chip(true, x, y, 0.02 + 0.04 * h01(k, 49), 0.015 + 0.035 * h01(k, 51), k + 20, WOOD_GREY);
+      }
+    } else {
+      // the pressed ribs: a highlight on the rib, its shadow aft of it
+      for (let k = 1; k < posts; k++) {
+        const z = lerp(b.zF, b.zB, k / posts);
+        mesh.box(b.hw + 0.006, (y0 + y1) / 2, z, 0.012, H - 0.1, 0.03, lift);
+        side(y0 + 0.06, y1 - 0.06, z - 0.017, z - 0.045, groove, 0.0015);
+      }
+      for (const y of [y0 + 0.035, y1 - 0.04]) mesh.box(b.hw + 0.008, y, zMid, 0.014, 0.055, len - 0.03, batten);
+      // scuffs low down and by the doors, rust run down from the top rail's ends and two ribs' heads
+      for (let k = 0; k < 6; k++) {
+        const z = k < 4 ? lerp(b.zF - 0.2, b.zB + 0.2, h01(k, 61)) : b.zB + 0.08 + 0.05 * h01(k, 63);
+        chip(false, z, y0 + 0.12 + (k < 4 ? 0.15 : 0.6) * h01(k, 65), 0.04 + 0.07 * h01(k, 67), 0.01 + 0.025 * h01(k, 69), k + 40, scuff);
+      }
+      for (const [k, z] of [[0, b.zF - 0.06], [1, b.zB + 0.06], [2, lerp(b.zF, b.zB, 1 / posts) - 0.02], [3, lerp(b.zF, b.zB, (posts - 1) / posts) - 0.02]] as const) {
+        const w = 0.008 + 0.01 * h01(k, 71), drop = 0.15 + 0.3 * h01(k, 73), ya = y1 - 0.07;
+        flatFace(mesh, [[XS + 0.006, ya, z - w], [XS + 0.006, ya, z + w], [XS + 0.006, ya - drop, z + w * 0.4], [XS + 0.006, ya - drop, z - w * 0.4]], [1, 0, 0], RUST_RUN);
+      }
+    }
+  }));
+}
+
+/**
+ * Round 5 (2026-10-08, with the box sides): a drop-side bed's boards told apart — the middle board a shade darker
+ * than its neighbours on the sides and the tailgate, and the boards worn pale along the top edge where loads drag over
+ * it and at the corners (desktop tier, dressing).
+ */
+function boardFaces(mesh: VehicleMesh, b: TruckBodySpec, sh: number, boards: number, boardMat: VehicleMaterial): void {
+  const bh = sh / boards, mid = shade(boardMat, 0.8), worn = b.wood ? WOOD_GREY : shade(boardMat, 1.25, 0.8);
+  const XS = b.hw + 0.0015, ZB = b.zB - 0.0015;
+  mesh.dressing(() => mesh.mirrored(() => {
+    for (let k = 1; k < boards; k += 2) {
+      const ya = b.floorY + k * bh + 0.007, yb = b.floorY + (k + 1) * bh - 0.007;
+      flatFace(mesh, [[XS, ya, b.zF - 0.03], [XS, ya, b.zB + 0.03], [XS, yb, b.zB + 0.03], [XS, yb, b.zF - 0.03]], [1, 0, 0], mid);
+      flatFace(mesh, [[0.02, ya, ZB], [b.hw - 0.03, ya, ZB], [b.hw - 0.03, yb, ZB], [0.02, yb, ZB]], [0, 0, -1], mid);
+    }
+    const yTop = b.floorY + sh;
+    for (let k = 0; k < 6; k++) {
+      const z = k < 4 ? lerp(b.zF - 0.2, b.zB + 0.2, h01(k, 81)) : b.zB + 0.05 + 0.06 * h01(k, 83);
+      const w = 0.05 + 0.1 * h01(k, 85), d = 0.015 + 0.035 * h01(k, 87), x = XS + 0.0015;
+      flatFace(mesh, [[x, yTop - 0.004, z - w], [x, yTop - 0.004, z + w], [x, yTop - d, z + w * 0.6], [x, yTop - d * 0.7, z - w * 0.7]], [1, 0, 0], worn);
+    }
+  }));
+}
+
 /** The cargo body on the frame. */
 function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coarse: boolean, burnt: boolean): void {
   const b = m.body;
@@ -888,6 +1028,7 @@ function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coa
         for (let k = 0; k <= posts; k++) mesh.box(b.hw + 0.012, b.floorY + sh / 2, lerp(b.zF - 0.05, b.zB + 0.05, k / posts), 0.03, sh + 0.02, 0.05, STEEL);
       }
     });
+    if (!coarse && boards > 1) boardFaces(mesh, b, sh, boards, boardMat);
     // headboard and tailgate
     mesh.box(0, b.floorY + sh / 2 + (b.type === 'tilt' ? 0 : 0.06), b.zF - 0.025, b.hw * 2, sh + (b.type === 'tilt' ? 0 : 0.12), 0.05, boardMat, 0.008);
     mesh.box(0, b.floorY + sh / 2, b.zB + 0.025, b.hw * 2, sh, 0.05, boardMat, 0.008);
@@ -933,9 +1074,8 @@ function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coa
     const zs = [b.zF, ...(coarse ? [] : Array.from({ length: Math.round(len / 0.6) - 1 }, (_, k) => lerp(b.zF, b.zB, (k + 1) / Math.round(len / 0.6)))), b.zB];
     boxLoft(mesh, zs, () => ({ hw: b.hw, y0: b.floorY + 0.02, y1: top, r: 0.035, rb: 0.01 }), () => boxMat, { coarse });
     if (!coarse) {
+      boxSides(mesh, b, top, boxMat);
       mesh.mirrored(() => {
-        const ribs = Math.round(len / 0.6);
-        for (let k = 1; k < ribs; k++) mesh.box(b.hw + 0.006, (b.floorY + top) / 2, lerp(b.zF, b.zB, k / ribs), 0.012, top - b.floorY - 0.08, 0.03, boxMat);
         mesh.box(0.004, (b.floorY + top) / 2, b.zB - 0.004, 0.012, top - b.floorY - 0.1, 0.008, TRIM);
         mesh.box(0.08, b.floorY + 1.0, b.zB - 0.012, 0.04, 0.3, 0.02, STEEL);
         for (const y of [b.floorY + 0.4, top - 0.4]) mesh.box(b.hw - 0.06, y, b.zB - 0.01, 0.08, 0.06, 0.02, STEEL);
