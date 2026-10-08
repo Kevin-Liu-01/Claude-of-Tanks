@@ -40,6 +40,12 @@
 // The frozen bots stand wherever their routes put them at entry, and a build that changes a map's routes put a 62-draw
 // ally in its chase frame in every cycle: tank draws, not the map's cost. Default on for map holds (the default staging
 // --spec) and off for a vehicle hold (one that names its own --spec); =0 / =1 overrides. Each slot records the count.
+//
+// The terrain's LOD stream (2026-10-07, mr3; the whole-PR census): a staged map keeps building its fine terrain grids for
+// ~10 s or more (terrain.ts updateLOD: 9,801 height samples a chunk, up to ~2 ms a frame until every chunk is done), longer
+// on a map with costlier heights, so the pages of a hold sampled different loads. Every pose now settles the stream first
+// (world-residency-acquisition's settleResidencyTerrain: the lookahead built job by job until none is pending at the
+// camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
 
 import path from 'node:path';
 import os from 'node:os';
@@ -53,6 +59,7 @@ import {
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
 import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
+import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
@@ -393,6 +400,17 @@ function sceneCensus() {
   return out;
 }
 
+/** Geometries the terrain LOD stream built while a sample ran (null when either reading is missing). */
+export function streamedDuring(before, after) {
+  const a = before?.terrainStreamed, b = after?.terrainStreamed;
+  return Number.isFinite(a) && Number.isFinite(b) ? b - a : null;
+}
+
+/** Settle the terrain LOD stream at the current pose (a page without the API reports why instead of failing the slot). */
+async function settleTerrainStream(page) {
+  return page.evaluate(settleResidencyTerrain).catch((error) => ({ error: String(error?.message ?? error).slice(0, 200) }));
+}
+
 /** A summary's scene pass counts (the draws and triangles the agreement reads) and the frame's draws. */
 const sceneOf = (summary) => (summary ? { calls: summary.passes?.scene?.calls?.med ?? null, tris: summary.passes?.scene?.tris?.med ?? null,
   all: summary.calls?.med ?? null } : null);
@@ -483,6 +501,8 @@ function graphicsState() {
     perfTrim: D.post.perfTrim, postAa: c.dataset.postAa || null, lightFx: c.dataset.lightFx || null,
     shadowSizes: t ? t.cascades.map((x) => x.size) : null, shadowMaxFar: t?.maxFar ?? null,
     programs: D.renderer.info.programs?.length ?? null,
+    // the terrain LOD stream's running count of streamed geometries (the sample's streamedDuring is its after − before)
+    terrainStreamed: D.world?.group?.children?.find?.((c) => c.name === 'terrain')?.userData?.streamingStats?.streamedGeometryCount ?? null,
     // the static shadow-caster cache's running counts (null on a build without it): a sample's paths are the
     // difference of its graphics and graphicsAfter readings
     staticCache: t?.staticCache ? {
@@ -865,6 +885,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     await poseView(page, options.views[0].split('@')[0]);
     await sleep(1200);
     await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
+    await settleTerrainStream(page);
     const read = await page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
       { frames: 30, block: options.block, modes: ['whole'], flush: !options.noFlush, timeoutMs: 60000 });
     staged = { ...sceneOf(summarizePassFrames(read)), census: await page.evaluate(sceneCensus).catch(() => null) };
@@ -889,6 +910,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
       if (moving) pose.mover = await page.evaluate(installMover, Number(speedText));
       await sleep(1200);
       await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
+      const terrainSettle = moving ? null : await settleTerrainStream(page);
       if (options.governor === 'live') await sleep(Math.max(0, options.settleMs * 3)); // let the governor walk
       for (const scale of options.scales ?? [null]) {
         if (scale !== null) { await page.evaluate((v) => window.__DEBUG.post.pinDynScale(v), scale); await sleep(1200); }
@@ -904,7 +926,8 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
           writeFileSync(`${stem}.lum`, encodeLum(await page.evaluate(captureLuminance)));
         }
         const emulation = options.emulate ? await page.evaluate(() => ({ ...window.__FBP_EMULATOR?.state })) : null;
-        samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, ...measured });
+        samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, terrainSettle,
+          streamedDuring: streamedDuring(graphics, after), ...measured });
       }
       if (moving) await page.evaluate(() => window.__FBP_MOVER.uninstall());
       if (options.scales) await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));

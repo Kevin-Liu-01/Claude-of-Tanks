@@ -11,8 +11,9 @@ import {
 import * as THREE from 'three';
 import {
   acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, hideOtherVehicles, judgeScenes, parseFrameProbeArgs,
-  pinnedOpponents, profileSelfByChunk,
+  pinnedOpponents, profileSelfByChunk, streamedDuring,
 } from './frame-budget-probe.mjs';
+import { readFileSync } from 'node:fs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
 
 // ---------------------------------------------------------------------------------------------- fake page
@@ -437,4 +438,20 @@ assert.equal(stats([]).med, null);
   }
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots PASS');
+{
+  // the terrain LOD stream (2026-10-07, mr3): every still pose settles the stream before it samples, and each sample records
+  // the geometries streamed while it ran — 0 when the settle held, the count when a chunk was still building
+  assert.equal(streamedDuring({ terrainStreamed: 41 }, { terrainStreamed: 41 }), 0);
+  assert.equal(streamedDuring({ terrainStreamed: 41 }, { terrainStreamed: 44 }), 3);
+  assert.equal(streamedDuring({ terrainStreamed: null }, { terrainStreamed: 44 }), null, 'a build without the stream count reads null, not 0');
+  assert.equal(streamedDuring(null, { terrainStreamed: 1 }), null);
+  const tool = readFileSync(new URL('./frame-budget-probe.mjs', import.meta.url), 'utf8');
+  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('async function run('));
+  const settles = [...body.matchAll(/await settleTerrainStream\(page\)/g)].map((m) => m.index);
+  const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await sampleView\(page/g)].map((m) => m.index);
+  assert.equal(settles.length, 2, 'the gate\'s staging pose and every measured pose settle the stream');
+  assert.ok(settles[0] < samples[0] && settles[1] < samples[1], 'each settle precedes the sample it guards');
+  assert.ok(/streamedDuring: streamedDuring\(graphics, after\)/.test(body), 'every sample records what streamed while it ran');
+}
+
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots, the terrain stream settled before every sample PASS');
