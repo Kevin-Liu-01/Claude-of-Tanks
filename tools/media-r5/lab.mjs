@@ -157,10 +157,19 @@ let heldSince = 0, holding = false;
 const LOCK_WAIT = 3 * 60 * 60 * 1000;
 let server, browser;
 const results = [];
+// (2026-10-08, engine review r8: S38's page spun at 100 % CPU, its film capture timed out after 10 minutes, and the lab
+// went on feeding the wedged page while it held the shared lock for every lane.) A timeout marks the browser wedged and
+// the run ends there, exit code 3, the rest left for a fresh browser; a signal ends it the same way, through the finally
+// that releases the lock (Vite's own SIGTERM handler exited 143 before it, as cinema.mjs found on 2026-10-07).
+let wedged = false, stopping = false;
+const timedOut = (error) => /timed out/i.test(String(error?.message ?? error));
 try {
   server = await createServer({ root: ROOT, logLevel: 'error', cacheDir: resolve(args['cache-dir'] ?? join(out, '.vite-cache')),
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false, watch: { ignored: ['**/*'] } } });
   await server.listen();
+  for (const listener of process.listeners('SIGTERM')) process.off('SIGTERM', listener);
+  const stop = () => { if (stopping) return; stopping = true; console.error('[lab] stopped by a signal; closing'); browser?.process()?.kill('SIGKILL'); };
+  process.on('SIGTERM', stop); process.on('SIGINT', stop);
   browser = await puppeteer.launch({ headless: true, protocolTimeout: 600000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
@@ -196,6 +205,7 @@ try {
   const defaultLineup = ['abramsx', 'kf51b', 'leo2a7v', 'challenger_3', 'm1a2_sepv3', 'leclerc_xlr', 't14', 'k2', 'type10b', 't90m']
     .filter(id => tankIds.includes(id));
   for (const map of maps) {
+    if (wedged || stopping) break;
     if (PER_JOB || (PER_MAP && !holding)) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
     try {
     const t0 = Date.now();
@@ -251,6 +261,7 @@ try {
       for (const s of scouted) mapJobs.push({ map, name: s.name, scene: s.scene, variants: s.variants, site: s.site });
     }
     for (const job of mapJobs) {
+      if (wedged || stopping) break;
       if (PER_JOB) await take(LOCK_WAIT);
       // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
       if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
@@ -500,6 +511,7 @@ try {
       } catch (error) {
         console.error(`[lab] ${job.name} FAILED ${error.message}`);
         results.push({ map, name: job.name, error: String(error.message) });
+        if (timedOut(error)) { wedged = true; console.error('[lab] the browser stopped answering; the run ends here, the rest for a fresh browser'); }
       } finally {
         if (PER_JOB) lock.release();
         else if (BUDGET_MS && holding && Date.now() - heldSince >= BUDGET_MS) { lock.release(); holding = false; }
@@ -513,6 +525,8 @@ try {
   clearInterval(lease); lock.release();
 }
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));
+if (wedged) process.exitCode = 3;
+else if (stopping) process.exitCode = 143;
 
 // --- contact sheets: one per job (variants in a row-major grid) -----------------
 const byJob = new Map();
