@@ -104,7 +104,10 @@ export default {
       // (round 8, gauntlet wave 259, head-bird: "a dark rectangular decal patch") graded sand the wind drifts back over
       // in patches, as Redrock's yards (hardstandSurface.ts paint): paint only, every level, grade and road query the same
       { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
-      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 20, paint: { cover: 0.85, mottle: 0.65 } },
+      // (round 8: the apron bank law, hardstandBanks.selftest) round 6's meander brought the arm's rim within this apron's
+      // 20 m bank, which lifted a ledge below the rim into an 0.76 step at (-96, 9); a 17 m bank ends short of the rim (no
+      // walls, the steepest it steepens 0.53 at (-103, 69)) and still seats the zone disc (30 m, 7 m relief)
+      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 17, paint: { cover: 0.85, mottle: 0.65 } },
       { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
     ],
     village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
