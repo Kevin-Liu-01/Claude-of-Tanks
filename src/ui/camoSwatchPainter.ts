@@ -17,6 +17,7 @@ import {
   createMaterialPainter, type MaterialVisual, type PlateFeatures,
 } from '../vehicles/materialPainter.ts';
 import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from '../vehicles/materials.ts';
+import { autoCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { CAMO_TILE_SPAN_M } from '../vehicles/camoWorldScale.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 
@@ -176,6 +177,10 @@ export function paintCamoSwatch(
 // AUTO is a per-map policy, so its tile previews four real resolved pattern
 // families as a clean seasonal contact sheet. The caption below already
 // supplies the AUTO identity, so no badge obscures the paint.
+// Round 3 (2026-10-07): the four cells are what AUTO paints THIS vehicle on a
+// woodland, desert, winter and urban field — its nation's schemes where it has
+// them (an IDF hull previews Sinai grey four times), the shared pool otherwise.
+const AUTO_SWATCH_BIOMES = Object.freeze(['verdant', 'desert', 'winter', 'urban']);
 export function paintAutoCamoSwatch(
   canvas: HTMLCanvasElement,
   spec: FleetTankSpec,
@@ -186,7 +191,7 @@ export function paintAutoCamoSwatch(
   if (!c) return;
   c.fillStyle = '#11171c';
   c.fillRect(0, 0, W, H);
-  const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
+  const patterns = AUTO_SWATCH_BIOMES.map((biome) => autoCamoPatternIdFor(spec, biome));
   const cellW = W / 2;
   const cellH = H / 2;
   patterns.forEach((pattern, index) => {

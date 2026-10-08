@@ -1,7 +1,7 @@
 // Owner-directed T-84 concept rebuild: complete T-72B3M 2016 chassis,
 // with a separate Ukrainian angular welded turret and fitted gun opening.
 import {addVehicleGhillieSuit} from '../ghillieSuit.ts';
-import {KIT,muzzleBore} from './kit.ts';
+import {KIT,FITTINGS,muzzleBore} from './kit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {supportedSensor,strappedPack,attachedCage,eraCassette} from './modernizationFittings.ts';
@@ -54,13 +54,22 @@ export function buildOplotModern(P:TankBuilderPort):void {
   P.addCupola('turret',cylY(.27,.31,.13,24),.52,.78,-.73);
   P.addEquipment('turretDetail',cylY(.25,.27,.035,24),.52,.856,-.73);
   supportedSensor(P,[-.56,.96,-.30],.71);
-  // Large roof MG cradle, ammunition box and short independent optic.
-  P.addEquipment('turretDetail',cylY(.15,.19,.17,24),.52,.955,-.75);
-  P.addEquipment('turretDetail',box(.31,.20,.27),.52,1.08,-.73);
-  P.addEquipment('turretDark',box(.12,.13,.44),.52,1.20,-.61);
-  P.addEquipment('turretDark',cylZ(.024,.72,16),.52,1.21,-.06);
-  P.addEquipment('turretFittingPaint',box(.23,.22,.31),.76,1.11,-.68);
-  P.addModuleVisual('optics','turretGlass',box(.075,.055,.012),.37,1.15,-.562);
+  // 2026-10-08 (tank-accessories round 5; the coordinator: the hand-built roof gun of this rebuild, a drum, a box, a
+  // receiver block and a bare tube with a painted box beside it, is rebuilt from the shared kit, so it carries the
+  // fitting markers, the fleet's machine-gun detail and the decor census's mg count). The T-80UD/T-84's remotely laid
+  // 12.7 mm KT-12.7 (an NSVT derivative) stands on the commander's cupola ring: the shared NSVT construction's
+  // bearing, spindle and fork, the long low receiver with the electric trigger housing (no crew grips), the slender
+  // barrel with its conical flash hider and gas tube, and the box and belt on the outboard side. The mount's drive
+  // housing stands on the ring's inboard rim and carries the remote sight's window (the optics module).
+  const ringTopY=.8735;
+  const kt=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',tone:'dark',scale:1,ammo:true,shield:false,remoteWeapon:true,
+    feed:'left',datumBarrel:false,seed:8484});
+  kt.name='t84CommanderKt127';
+  kt.position.set(.52,ringTopY-.004,-.80);
+  P.turretG.add(kt);
+  P.addEquipment('turretDetail',box(.10,.30,.14),.37,ringTopY+.146,-.66);
+  P.addEquipment('turretDark',box(.11,.012,.15),.37,ringTopY+.296,-.66);
+  P.addModuleVisual('optics','turretGlass',box(.075,.055,.012),.37,1.10,-.586);
   for(const x of [-.68,0,.68]){
     P.addEquipment('turretDetail',box(.60,.06,.61),x,.708,-1.72);
     strappedPack(P,'turret',[x,.83,-1.74],[.53,.20,.52]);

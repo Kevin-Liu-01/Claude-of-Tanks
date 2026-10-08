@@ -1727,7 +1727,10 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     if (T.stowMG) {
       // §B3 census fitting: stowed spare MG tucked inside the casting
       // silhouette (the measured m2Station stays the gate-driven roof gun)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46 });
+      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the casting it is tucked against (feed-side collision census).
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel), not
+      // the crew guns' true-size floor, which grew it 12 % into the casting and the roof gun beside it.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right', sourceScale: true });
       mg.position.set(T.stowMG[0], yl(T.stowMG[1]), zl(T.stowMG[2]));
       P.turretG.add(mg);
     }
@@ -2480,8 +2483,14 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     // whole envelope tucked UNDER the measured M2/pedestal side band (tops
     // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47 });
-      mg.position.set(0.30, ly(2.96), zl(-0.62));
+      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
+      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring. It is stowed pointing aft on its
+      // pintle 16 cm further back, so its stock stops 5 cm short of the ring and its barrel lies over the dome's rear
+      // instead of alongside the M2 (was (0.30, ly 2.96, zl -0.62) facing forward).
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
+      mg.position.set(0.30, ly(2.96), zl(-0.78));
+      mg.rotation.y = Math.PI;
       P.turretG.add(mg);
     }
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
@@ -3344,10 +3353,8 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
   // closeup, near-invisible at distance. buildPershing is the family
   // source — m60a1/m60a3 (buildM60) keep their own certified fix.
   const buildPershingRunningGearStage1 = (): void => {
-    P.mats.glass.color.setHex(0x3d443c);
-    P.mats.glass.roughness = 0.48;
-    P.mats.glass.metalness = 0.38;
-    P.mats.glass.envMapIntensity = 0.3;
+    // round 5 (2026-10-08): the family's own smoked pane (0x3d443c, metalness 0.38, env 0.3) gave way to the fleet's
+    // matte smoked optic glass (materials.ts, round 4), which the M60 sight-window critique asked for fleet-wide
     if (cfg.gearTone) {
       // A1/A2 (m47 r4): the running gear rendered as a black-and-grey
       // mechanical diagram on an olive tank (view-left gear band [60..580]x
@@ -4489,10 +4496,13 @@ function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
 function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
+  // 2026-10-08 (round 5; wave 255 on the M60A1: "the thin ring around the cupola pedestal hangs with no visible
+  // support. Attach it or remove it"): the M2 stands on its pintle on the cupola roof without an AA ring (the M19
+  // cupola has none); the shared Browning construction draws it at true scale.
   const m2 = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
+    ammoSide: 1, shield: a3, ring: false,
     rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
   m2.position.set(-0.58, 1.34, 0.20);
@@ -4604,11 +4614,11 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
   // brightest pixel is no longer a glass pane and pane median sits below the
   // lit camo plates.
-  const buildM60AssemblyStage1 = (): void => {
-    P.mats.glass.color.setHex(0x46525b);
-    P.mats.glass.roughness = 0.52;
-    P.mats.glass.metalness = 0.50;
-  };
+  // round 5 (2026-10-08, wave 255 m60a1-hero: "the turret-front sight window is a saturated blue disc ... real sight
+  // glass is dark with a faint coated tint"): the family's blue-grey half-metal pane (0x46525b, metalness 0.50, env
+  // 0.3) still mirrored the sky on the gunner's sight. The M60 now wears the fleet's matte smoked optic glass
+  // (materials.ts, round 4: dark faintly green, rough 0.58, almost dielectric, a quarter of the sky).
+  const buildM60AssemblyStage1 = (): void => {};
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;
   const hull = curveHull(P, cfg.hull);

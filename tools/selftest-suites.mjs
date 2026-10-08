@@ -683,11 +683,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
+    // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
+    'src/vehicles/autoCamoNational.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
     'src/vehicles/camoPatternSeed.selftest.mjs',
     'src/vehicles/camoWorldScale.selftest.mjs',
+    // 2026-10-07 (tank-accessories round 4): bolted-on boxes, bins and sleeve sections as their own camouflage panels
+    'src/vehicles/camoPanels.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
@@ -1127,6 +1131,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    'src/vehicles/accessoryMaterials.selftest.mjs',
+    // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
+    'src/vehicles/decorDrawBudget.selftest.mjs',
+    // 2026-10-08 (tank-accessories round 5): every accessory piece touches the vehicle within 15 mm (a ratchet to zero)
+    'src/vehicles/accessoryContact.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
     'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',

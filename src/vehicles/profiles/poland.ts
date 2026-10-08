@@ -24,7 +24,7 @@ import * as THREE from 'three';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, mast,
-  ruGlacisKit, ruDeck, ruSkirtBand, rehookClone,
+  ruGlacisKit, ruDeck, ruSkirtBand,
 } from './russia.ts';
 import { mount } from './fittingMount.ts';
 
@@ -487,13 +487,16 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     0, 1.00 + k * 0.11, -3.40);
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.035, 0.30, 0.035),
     -0.90 + k * 0.45, 1.11, -3.40);
-  // §5.267 fix 2: round log read — end discs + risers keep it proud
+  // §5.267 fix 2: round log read — risers keep it proud. 2026-10-07 (tank-accessories round 3: "the unditching log is
+  // a smooth green pipe"): the clone's green-grey 0x4a4636 became a dark bark brown, and the scheme-painted end discs
+  // that capped the sawn ends in hull green gave way to the shared log's own pale end grain. Round 4 (wave 216: "a
+  // smooth brown tub"): the shared fitting log carries its own furrowed bark and baked wood colours in the log wood, so
+  // the dark wood clone goes.
   mount(P, 'hull', FITTINGS.unditchingLog({
-    mats: { ...P.mats, wood: rehookClone(P.mats.wood, 0x4a4636, 0x0a0906) },
+    mats: P.mats,
     len: 2.10, r: 0.115, straps: 3, seed: 9301,
   }), 0, 1.44, -3.30);
   for (const s of [-1, 1]) {
-    P.add('hullDetail', cylX(0.095, 0.02, 12), s * 1.06, 1.44, -3.30);
     P.add('hullDark', box(0.04, 0.09, 0.10), s * 0.80, 1.36, -3.30);
   }
 
@@ -596,10 +599,15 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // WKM-B 12.7 low-slung on the right dome shoulder (pt91m NSVT precedent —
   // receiver under the crown line; r1/r2 dims receipts: crown-top stations
   // read heightM 2.45-2.47). Pedestal ring seats it on the dome skin.
-  P.add('turretDark', cylY(0.10, 0.13, 0.09, 12), 1.00, 0.585, -0.30);
+  // 2026-10-07 (tank-accessories round 4, wave 216: "seen from above, no MG reads on the roof, only a thin rod"; "a
+  // pintle that is a bare cylinder, with no ring, box or belt"): the pedestal widens into a ring mount (a turned base
+  // with its machined ring on brackets, the gun's `ring`), and the WKM-B takes the NSVT's own construction with its
+  // box hung outboard (the NSV feeds from either side; inboard the box would sit in the dome) and the mount's
+  // collimator inboard, so the box, its belt and the long receiver read from the hero and turret-top cameras.
+  P.add('turretDark', cylY(0.16, 0.19, 0.09, 16), 1.00, 0.585, -0.30);
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.52, elev: 0.35,
-    ammo: true, seed: 9321,
+    mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
+    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 },
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 
   // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
@@ -1181,9 +1189,10 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofEquipmentY(1.352), -1.325);
     // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
     // whole envelope shares the tower's 3-column window)
+    // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the sensor tower beside the parked gun (feed-side collision census).
     const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
-      ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
+      ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020, feed: 'right',
     });
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);

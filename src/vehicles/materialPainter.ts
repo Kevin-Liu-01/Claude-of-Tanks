@@ -3160,13 +3160,27 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       }
     };
     paintChips();
-    // rust weeps from plan sources + below some bolts.
+    // rust weeps from plan sources + below some bolts. 2026-10-06 (wave 165, Challenger 1: "a bright vertical
+    // orange sliver splits the dark mantlet cheek like an unresolved texture seam"). The old weep was a 1.4-3 px
+    // orange stroke laid OVER the paint. On a black camo band it lit up as a one-texel line that repeated with
+    // the 2 m tile. A weep is a stain in the paint, so it now MULTIPLIES a warm rust-brown: it darkens and warms
+    // whatever it runs over, nearly vanishing on black and showing as a brown run on green or sand. Nested
+    // passes around a core of at least 2.5 mm fall off softly to each side and fade in from the source, so the
+    // weep never reads as a seam line or a hard-edged bar at close range.
     const weep = (x: number, y: number, len: number, w: number): void => {
-      const g = ctx.createLinearGradient(x, y, x, y + len);
-      g.addColorStop(0, 'rgba(122,64,28,0.42)');
-      g.addColorStop(1, 'rgba(122,64,28,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(x, y, Math.max(1.4, w), len);
+      const core = Math.max(S / 820, w * 1.6);
+      const prevOp = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'multiply';
+      for (const [spread, alpha] of [[3.0, 0.08], [2.2, 0.1], [1.5, 0.13], [1.0, 0.2]] as const) {
+        const width = core * spread;
+        const g = ctx.createLinearGradient(x, y, x, y + len);
+        g.addColorStop(0, `rgba(150,112,82,${alpha * 0.5})`);
+        g.addColorStop(0.12, `rgba(150,112,82,${alpha})`);
+        g.addColorStop(1, 'rgba(150,112,82,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - width / 2, y, width, len);
+      }
+      ctx.globalCompositeOperation = prevOp;
     };
     const paintRustWeeps = (): void => {
       for (const streak of feats.streaks) {

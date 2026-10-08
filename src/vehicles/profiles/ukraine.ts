@@ -27,6 +27,7 @@ import * as THREE from 'three';
 import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
+import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
@@ -47,6 +48,7 @@ import { mount as seat } from './fittingMount.ts';
 import { sampleArmorFace as sampleFace } from './armorFaceSampling.ts';
 import { oplotWing, oplotWingSeat, OPLOT_WING_ERA_SEATS } from './oplotWing.ts';
 import { symmetricSlab } from './facetedSlab.ts';
+import { markCamoPanel } from '../camoPanels.ts';
 
 type Vec3Tuple = [number, number, number];
 type ReadonlyVec3Tuple = readonly [number, number, number];
@@ -74,6 +76,8 @@ interface UkraineBuilderPort {
   };
   readonly spec: { id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
+  /** false on the low geometry tier (the factory's `geometryQuality: 'low'`). */
+  readonly q?: boolean;
   muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -1250,9 +1254,11 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // half of the fender. A segmented welded shelf now spans the remaining
   // channel to the Duplet side-skirt root, so the skirt is visibly carried
   // by the hull rather than floating outside the track run.
+  // 2026-10-07 (round 4, wave 214: "hull boxes" printed as one sticker with the armour): each bin is its own camouflage
+  // panel (camoPanels.ts), painted apart from the fender and from its neighbours.
   for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
     const z = 1.90 - i * 0.72;
-    P.add('hull', box(0.38, 0.11, 0.60), s * 1.27, 1.30, z);
+    P.add('hull', markCamoPanel(box(0.38, 0.11, 0.60)), s * 1.27, 1.30, z);
     P.add('hullDark', box(0.32, 0.026, 0.50), s * 1.27, 1.362, z);
   }
   {
@@ -1307,8 +1313,14 @@ function buildUAOplotM(P: TankBuilderPort): void {
   }
   KIT.towCable(P, [[-1.10, 1.43, 0.20], [-0.40, 1.455, -0.30], [0.42, 1.455, -0.32], [1.10, 1.43, 0.16]]);
   {
+    // Spare links on the right bow fender bridge (2026-10-06). The old deck seat (0.60, 1.432, -1.60) sat under
+    // the bustle: its 1.44 m underside cut 4 cm into the link course at 12 o'clock and swept through it in
+    // traverse. No seat on this engine deck clears the 1.44-1.47 m bustle and rack undersides inside the 2.29 m
+    // sweep. The bow bridge (top 1.34, x 1.245..1.885, z 2.285..3.025) is 2.87 m or more from the ring, below
+    // the gun's full-depression bore, inboard of the rolled seam and clear of the glacis cassettes and the first
+    // fender bin; the carrier feet recess 4 mm into the shelf.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.50, seed: 8401 });
-    links.position.set(0.60, 1.432, -1.60);
+    links.position.set(1.565, 1.3765, 2.62);
     P.hullG.add(links);
   }
 
@@ -1341,10 +1353,12 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // slab spanning x 1.70..1.8875 (0.19 m deep: its plan columns at
   // +-1.71..1.85 read the full hull length), full-run at the published
   // face; heavy Duplet cassette lids dress the forward half.
+  // 2026-10-07 (round 4, wave 214: "no tonal break at panel seams"): every skirt panel between the seam strips is its
+  // own camouflage panel.
   for (const s of [-1, 1]) for (let i = 0; i < 9; i++) {
     const z0 = -3.30 + i * (5.60 / 9);
     const z = z0 + (5.60 / 18);
-    P.add('hull', box(0.185, 0.72, (5.60 / 9) * 0.94), s * 1.7925, 0.94, z, 0, 0, -s * 0.006);
+    P.add('hull', markCamoPanel(box(0.185, 0.72, (5.60 / 9) * 0.94)), s * 1.7925, 0.94, z, 0, 0, -s * 0.006);
     P.add('hullDark', box(0.048, 0.64, 0.02), s * 1.795, 0.94, z0 + 5.60 / 9 - 0.02, 0, 0, -s * 0.006);
   }
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
@@ -1361,7 +1375,7 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // bow (the "mine-roller" read); the idler spinner itself is the smooth
   // dished idlerGeo, correctly toothless on the rear-drive T-84.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.185, 0.68, 0.74), s * 1.7925, 0.96, 2.655, 0, 0, -s * 0.006);
+    P.add('hull', markCamoPanel(box(0.185, 0.68, 0.74)), s * 1.7925, 0.96, 2.655, 0, 0, -s * 0.006);
     P.add('hullDark', box(0.048, 0.60, 0.02), s * 1.795, 0.96, 3.015, 0, 0, -s * 0.006);
     // raked tip wedge: inner face at 1.60 closes the head-on slit between
     // track band (1.553) and skirt plane (strict-audit receipt: the sweep
@@ -1458,7 +1472,14 @@ function buildUAOplotM(P: TankBuilderPort): void {
   P.add('turretDetail', box(1.22, 0.05, 0.18), 0, 0.42, -2.09);
   // anti-thermal roll ON the bustle rack behind the shell (its old -1.46
   // seat was inside the prism — zero rendered pixels)
-  P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  // 2026-10-07 (tank-accessories round 3: a 14-sided cylinder read as a pipe with visible facets): the rolled cover,
+  // pinched under its two bands, its rolled ends wound (the low geometry tier keeps the cylinder)
+  if (P.q === false) P.add('turretDetail', cylX(0.112, 1.70, 14), 0, 0.565, -1.66);
+  else {
+    const roll = fabricRollParts(1.70, 0.112, [-0.58, 0.58], 20, 1455);
+    P.add('turretDetail', roll.body, 0, 0.565, -1.66);
+    for (const end of roll.ends) P.add('turretDark', end, 0, 0.565, -1.66);
+  }
   P.add('turretDark', cylX(0.12, 0.05, 12), -0.58, 0.565, -1.66);
   P.add('turretDark', cylX(0.12, 0.05, 12), 0.58, 0.565, -1.66);
   P.add('turretDark', box(0.06, 0.14, 0.06), -0.88, 0.50, -1.66);
@@ -1482,6 +1503,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
   }
   P.add('turret', cylY(0.225, 0.24, 0.055, 16), -0.54, 0.81, -0.38);
   P.add('turretDark', cylY(0.195, 0.195, 0.02, 16), -0.54, 0.842, -0.38);
+  // 2026-10-08: the Oplot-M carries one 12.7 mm heavy machine gun, and main's field upgrade (5f8eefaa4,
+  // upgradeOplotFieldEquipment) fits it as a working remote station with its own ammunition; the accessories lane's
+  // decorative KT-12.7 on the commander's hatch ring (rounds 3-4) would have been a second one, so the ring is bare.
   {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
@@ -1512,10 +1536,15 @@ function buildUAOplotM(P: TankBuilderPort): void {
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, -0.16);
     mk(P.mats.dark, box(0.06, 0.055, 0.06), 0, -0.028, 0.12);
     FITTINGS.markExact(g, 'pintleMG');
-    // across the bustle rack, clear of the shell so the whole gun shape
-    // reads at top/side/rear (the old -1.24 seat was inside the prism)
-    g.position.set(0.30, 0.505, -1.85);
-    g.rotation.y = 1.35;
+    // Square across the bustle rack lid (top 0.445, z -2.18..-2.00) behind the anti-thermal roll, barrel to
+    // the left and can to the rear (2026-10-06). The old -1.85 / 1.35 rad seat ran the receiver and barrel
+    // through the roll, which the critics read as "a wedge-shaped part cuts through a barrel sleeve". Laid
+    // square, the gun needs 0.23 m of depth: the receiver rests on the rear box tread 5 mm behind the deck
+    // plate's rear edge, the can presses into the lid, and the gun stays 19 cm clear of the roll and its
+    // collars and inside the whip bases. It still reads from the top, the side and the rear. (The -1.24 seat
+    // before that was inside the prism.)
+    g.position.set(0.25, 0.452, -2.03);
+    g.rotation.y = -Math.PI / 2;
     P.turretG.add(g);
   }
   // §5.319 left finish: the gunner-sight ZONE at the print's own station
@@ -1557,8 +1586,14 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // §5.272 fix (5): roof furniture density on the 0.795 plate — lifting
   // eyes, GPS puck, junction box, spent-case port, tie-down cleats (tops
   // <=0.85 local, well under the 2.285 datum).
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), -0.95, 0.80, 0.06, Math.PI / 2, 0, 0);
-  P.add('turretDetail', KIT.torus(0.05, 0.013, 10), 0.95, 0.80, -0.86, Math.PI / 2, 0, 0);
+  // 2026-10-07 (tank-accessories round 4; wave 214, mg-1: "a polished-chrome lifting eye that hovers above the roof.
+  // Make it matte and seat it"): each eye is a welded pad on the roof plate (flat at 0.795 under both stations, ray
+  // probe; the pad's underside sunk 3 mm) carrying a round-bar arch whose feet sink 4 mm into the pad, in the
+  // scheme's solid matte fitting paint (FSP-06) instead of a camouflaged ring half-buried in the plate.
+  for (const [ex, ez] of [[-0.95, 0.06], [0.95, -0.86]] as const) {
+    P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, 0.795 + 0.011 - 0.003, ez);
+    P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, 0.814 - 0.004, ez);
+  }
   P.add('turretDetail', cylY(0.065, 0.07, 0.04, 12), 0.30, 0.815, -0.64);
   P.add('turretDark', box(0.15, 0.045, 0.11), -0.26, 0.818, 0.08);
   P.add('turretDark', cylY(0.088, 0.088, 0.028, 14), -0.06, 0.809, -0.70);
