@@ -165,9 +165,14 @@ export function vehicleFieldSoil(mapId: string | null | undefined): VehicleField
   return soil;
 }
 
-/** The Garage's light neutral film (no battlefield yet: the showroom shows the vehicle, not a map). */
+/**
+ * The Garage's light neutral film (no battlefield yet: the showroom shows the vehicle, not a map). Its packed coat is a
+ * dark dry grime, a little above the tyre rubber's value: the tracks and tyres (which wear the deep coat all round) stay
+ * dark under the showroom lights, the fleet lane's running-gear target (wave 269: tyres that lifted to light grey read
+ * as "flat tan wheel dishes"), while a light dust rises up the lower hull and settles on the decks.
+ */
 const GARAGE_SOIL: VehicleFieldSoil = Object.freeze({
-  deep: [0.15, 0.135, 0.115] as Rgb, wet: 0, splash: [0.22, 0.2, 0.17] as Rgb, spatter: 0.25,
+  deep: [0.042, 0.039, 0.035] as Rgb, wet: 0, splash: [0.2, 0.185, 0.16] as Rgb, spatter: 0.25,
   settle: [0.25, 0.23, 0.2] as Rgb, settleAmount: 0.6,
 });
 

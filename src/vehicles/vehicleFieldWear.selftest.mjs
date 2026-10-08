@@ -290,6 +290,11 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.deepEqual(u4(U.uVehWearSettle), s4(desert.settle, desert.settleAmount), 'setCamoBiome points battle builds at the map soil');
   bindVehicleFieldWear(true, mat('armorPaint'));
   assert.notDeepEqual(u4(U.uVehWearSettle), s4(desert.settle, desert.settleAmount), 'the Garage keeps its neutral film');
+  // the showroom's tyres stay dark: its packed coat (worn all round by the running gear) is a dark grime near the rubber
+  const garageTyre = runGlsl(core, { ...BASE, wearH: 0.3, wearRole: [0.9, 0.5, 4, 0.6], wearStrength: VEHICLE_FIELD_WEAR_GARAGE,
+    soilDeep: u4(U.uVehWearDeep), soilSplash: u4(U.uVehWearSplash), soilSettle: u4(U.uVehWearSettle),
+    wearAlbedo: [0.0116, 0.0123, 0.0116], wearNear: 1, wearSootIn: false }, fns, new Set());
+  assert.ok(luma(garageTyre.wearAlbedo) < 0.03, `the Garage film keeps the tyres dark (${luma(garageTyre.wearAlbedo).toFixed(4)})`);
   setCamoBiome('verdant');
   bindVehicleFieldWear(false, mat('gearShadow'));
   const farm = vehicleFieldSoil('verdant');
