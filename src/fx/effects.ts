@@ -3591,7 +3591,12 @@ function* createFxSteps(
     if (blast) {
       // destruction-fx lane: one big rolling smoke body about every 0.3 s (each tick draws its share), and the
       // additive flame licks on the deck
-      if (rng() < COLUMN_TICK_S / 0.16) mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk, birthOffset);
+      // a far column (the distance boost past ~90 m) feeds fewer, bigger bodies: the same silhouette for a fraction of
+      // the overdraw and the sort (six burning hulls would otherwise hold ~560 live puffs)
+      const lod = dk > 1.4 ? 0.5 : dk > 1.15 ? 0.72 : 1;
+      if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
+        mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
+      }
       if (rng() < 0.70 + 0.30 * stage) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
