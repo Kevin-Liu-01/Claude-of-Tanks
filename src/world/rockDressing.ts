@@ -18,11 +18,12 @@
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
+import { settledPaint, surfacePaintKey } from './surfacePaintPrefetch.ts';
 
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
 /** The rock a battlefield's boulders are made of: what their forms and their detail tile draw. */
-type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
+export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
 
 export interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
@@ -953,6 +954,26 @@ function cellular(u: number, v: number, n: number, salt: number, out: { d1: numb
 export function* makeRockDetail(
   noi: SimplexNoise, anisotropy: number, lithology: BoulderLithology = 'granite',
 ): Generator<RockDetailSlice, RockDetailTextures, void> {
+  // (the time-to-battle lane, 2026-10-08) the props build's tile, when the surface paint worker has it ready: the same
+  // painter, the same noise and lithology (surfacePaintPrefetch.ts settledPaint); otherwise painted here
+  const ahead = settledPaint(noi, (seed) => surfacePaintKey({ kind: 'rockDetail', lithology, noiseSeed: seed })) as RockDetailBuffers | null;
+  const { px, orm, hgt, lich } = ahead ?? (yield* paintRockDetailBuffers(noi, lithology));
+  const s = 256;
+  return {
+    albedo: textureFromRgbaPixels(px, s, { srgb: true, anisotropy }),
+    normal: normalTextureFromHeight(hgt, s, 0.5, anisotropy),
+    surface: textureFromRgbaPixels(orm, s, { anisotropy }),
+    lichen: textureFromRgbaPixels(lich, s, { anisotropy }),
+  };
+}
+
+/** The rock tile's texels (makeRockDetail's): the albedo, the ORM, the height and the lichen tile, 256 px. */
+interface RockDetailBuffers { px: Uint8ClampedArray; orm: Uint8ClampedArray; hgt: Float32Array; lich: Uint8ClampedArray }
+
+/** makeRockDetail's painter alone (no canvas: the surface paint worker runs it too). Sixteen rows a checkpoint. */
+export function* paintRockDetailBuffers(
+  noi: SimplexNoise, lithology: BoulderLithology = 'granite',
+): Generator<RockDetailSlice, RockDetailBuffers, void> {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), orm = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const lichenRank = new Float32Array(s * s), lichenId = new Float32Array(s * s);
   // (b14) the honeycomb's cells: one less a wall's nearness, each cell its own depth (the tafoni, ROCK_BEDS_GLSL)
@@ -1057,12 +1078,7 @@ export function* makeRockDetail(
   const lich = new Uint8ClampedArray(s * s * 4);
   for (let k = 0; k < order.length; k++) lich[order[k] * 4] = Math.round((1 - (order.length - k) / (s * s)) * 255);
   for (let i = 0; i < s * s; i++) { lich[i * 4 + 1] = Math.round(lichenId[i] * 255); lich[i * 4 + 2] = Math.round(cavity[i] * 255); lich[i * 4 + 3] = 255; }
-  return {
-    albedo: textureFromRgbaPixels(px, s, { srgb: true, anisotropy }),
-    normal: normalTextureFromHeight(hgt, s, 0.5, anisotropy),
-    surface: textureFromRgbaPixels(orm, s, { anisotropy }),
-    lichen: textureFromRgbaPixels(lich, s, { anisotropy }),
-  };
+  return { px, orm, hgt, lich };
 }
 
 // ---------------------------------------------------------------------------------------------- the shader hook

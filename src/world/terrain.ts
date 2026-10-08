@@ -226,19 +226,6 @@ interface LakeConfig {
   boats?: number;
 }
 
-/** A splat's two-formation bedrock (TerrainSplatConfig.formation). */
-interface TerrainFormation {
-  atFrac: number; wobbleM?: number; pale?: number; red?: number;
-  /** The Redrock lane (2026-10-07): the boundary's absolute height (m) in place of atFrac's share of the height span. */
-  atY?: number;
-  /** Each formation's colour: a tint on the rock's own luminance (rgb) and how far the rock takes it (w, 0..1) — by
-   * default the lower one paled by `pale` toward buff, the upper one reddened by `red`. */
-  lowerTint?: readonly [number, number, number, number];
-  upperTint?: readonly [number, number, number, number];
-  /** The boundary's half-width (m; default 1.2). */
-  edgeM?: number;
-}
-
 /** One terrace zone (TerrainSettings.terraces). */
 export interface TerraceZoneConfig {
   /** The zone's outline (x, z), metres: the steps come in over `feather` m inside it. */
@@ -252,6 +239,19 @@ export interface TerraceZoneConfig {
    * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
   minGrade?: number;
   fullGrade?: number;
+}
+
+/** A splat's two-formation bedrock (TerrainSplatConfig.formation). */
+interface TerrainFormation {
+  atFrac: number; wobbleM?: number; pale?: number; red?: number;
+  /** The Redrock lane (2026-10-07): the boundary's absolute height (m) in place of atFrac's share of the height span. */
+  atY?: number;
+  /** Each formation's colour: a tint on the rock's own luminance (rgb) and how far the rock takes it (w, 0..1) — by
+   * default the lower one paled by `pale` toward buff, the upper one reddened by `red`. */
+  lowerTint?: readonly [number, number, number, number];
+  upperTint?: readonly [number, number, number, number];
+  /** The boundary's half-width (m; default 1.2). */
+  edgeM?: number;
 }
 
 interface LandformConfig {
