@@ -7644,6 +7644,18 @@ function* vegetationBuildSteps(
   let nearCullCamera: THREE.Camera | null = null;
   /** The runs no longer follow the volume (a full partition rebuild): the next update re-culls. */
   let nearCullStale = true;
+  /**
+   * (diagnostic, 2026-10-08, the coordinator's cull-order arms) the first run's order: 'swap' (the cull's in-place swaps,
+   * the default), 'stable' (each pool's trees in the order the pool holds them without the cull — appended as they join,
+   * a leaver's place taken by the last — the run first, then the rest), 'sorted' (the run front to back from the culling
+   * camera). `?treeCullOrder=stable|sorted`. A pool reorders only on a pass that moved a tree in it.
+   */
+  const nearCullOrder: 'swap' | 'stable' | 'sorted' = (() => {
+    const m = typeof location !== 'undefined' ? /[?&]treeCullOrder=(stable|sorted)(&|$)/.exec(location.search ?? '') : null;
+    return m ? m[1] as 'stable' | 'sorted' : 'swap';
+  })();
+  const nearHome = {} as Record<Species, TreeRecord[][]>;
+  const nearHomeAt = new WeakMap<TreeRecord, number>();
   let nearCullPadM = 0, nearCullSinE = 1, nearCullReachM = 0;
   /** Slope allowance, metres: a shadow may land this far below its tree's base before it ends. */
   const NEAR_CULL_DROP_M = 8;
@@ -7773,6 +7785,7 @@ function* vegetationBuildSteps(
           }
         }
         vis[v] = n;
+        if (nearCullOrder !== 'swap' && hi >= 0) { reorderNearRun(sp, v); setNearCount(sp, v); continue; }
         if (dirty > NEAR_CULL_SLOT_CAP) markNearSpanDirty(meshes, lo, hi);
         else for (let k = 0; k < dirty; k++) markNearSpanDirty(meshes, _nearCullSlots[k], _nearCullSlots[k]);
         setNearCount(sp, v);
@@ -7780,11 +7793,36 @@ function* vegetationBuildSteps(
     }
     return moved;
   }
+  /** (diagnostic) A pool's slots rewritten in the order option's order after a pass that moved a tree in it. */
+  function reorderNearRun(sp: Species, v: number): void {
+    const slots = nearSlots[sp][v], n = nearVis[sp][v], meshes = nearMeshes[sp][v];
+    if (slots.length < 2) return;
+    let order: TreeRecord[];
+    if (nearCullOrder === 'stable') {
+      const run: TreeRecord[] = [], rest: TreeRecord[] = [];
+      for (const t of nearHome[sp][v]) (t.slot < n ? run : rest).push(t);
+      order = run.concat(rest);
+    } else {
+      const e = nearCullCamera ? nearCullCamera.matrixWorld.elements : null;
+      const d2 = (t: TreeRecord): number => {
+        const m = t.mat.elements;
+        return e ? (m[12] - e[12]) ** 2 + (m[13] - e[13]) ** 2 + (m[14] - e[14]) ** 2 : 0;
+      };
+      order = slots.slice(0, n).sort((a, b) => d2(a) - d2(b)).concat(slots.slice(n));
+    }
+    if (order.length !== slots.length) return; // (a home list out of step: leave the swaps' order)
+    for (let i = 0; i < order.length; i++) {
+      slots[i] = order[i]; order[i].slot = i;
+      writeNearSlotData(meshes, i, order[i]);
+    }
+    markNearSpanDirty(meshes, 0, order.length - 1);
+  }
   /** The runs and their per-camera counts: a pool's main-pass meshes draw the first run for the culling camera only. */
   function installNearViewCull(): void {
     for (const sp of speciesList) {
       nearVis[sp] = nearSlots[sp].map(() => 0);
       nearBounds[sp] = nearSlots[sp].map(() => null);
+      nearHome[sp] = nearSlots[sp].map((slots) => { slots.forEach((t, i) => nearHomeAt.set(t, i)); return slots.slice(); });
       nearSlots[sp].forEach((_slots, v) => {
         for (const m of nearMeshes[sp][v] ?? []) {
           // the shadow-only proxy draws in the cascade passes alone, at the frame's count (the main view's shadows)
@@ -7875,6 +7913,11 @@ function* vegetationBuildSteps(
    * last tree the slot left over. A near slot carries the tree's occlusion fade and its cross-fade share. */
   function removeFromNearPool(meshes: TreeMesh[], slots: TreeRecord[], t: TreeRecord): void {
     const vis = nearVis[t.species], v = t.variant;
+    if (nearCullOrder === 'stable') {
+      const home = nearHome[t.species][v], at = nearHomeAt.get(t), last = home.pop();
+      if (at !== undefined && last && last !== t) { home[at] = last; nearHomeAt.set(last, at); }
+      nearHomeAt.delete(t);
+    }
     let i = t.slot;
     if (i < vis[v]) {
       const j = --vis[v];
@@ -7899,6 +7942,7 @@ function* vegetationBuildSteps(
    * to the pool's end), else at the end. */
   function addToNearPool(meshes: TreeMesh[], slots: TreeRecord[], t: TreeRecord): void {
     const vis = nearVis[t.species], v = t.variant;
+    if (nearCullOrder === 'stable') { nearHomeAt.set(t, nearHome[t.species][v].length); nearHome[t.species][v].push(t); }
     let i = slots.length;
     slots.push(t);
     t.slot = i;
@@ -8039,6 +8083,12 @@ function* vegetationBuildSteps(
     // trees perf: a rebuilt pool is all one run until the next update re-culls it
     nearVis[species][variant] = nearSlots[species][variant].length;
     nearCullStale = true;
+    // (diagnostic: the rebuilt pool's order is its home order)
+    if (nearCullOrder === 'stable') {
+      const slots = nearSlots[species][variant];
+      slots.forEach((t, i) => nearHomeAt.set(t, i));
+      nearHome[species][variant] = slots.slice();
+    }
     for (const mesh of nearMeshes[species][variant]) {
       mesh.count = nearSlots[species][variant].length;
       mesh.instanceMatrix.clearUpdateRanges();
