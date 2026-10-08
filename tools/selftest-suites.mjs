@@ -1276,6 +1276,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWalls.selftest.mjs',
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/periodClutter.selftest.mjs',
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',

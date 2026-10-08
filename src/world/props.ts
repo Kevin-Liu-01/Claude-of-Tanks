@@ -67,6 +67,7 @@ import { liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } 
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
+import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -3678,6 +3679,9 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
+    // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts)
+    ...periodClutterTypes(mapId),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
