@@ -12,9 +12,9 @@ import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dust
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
-import { createCraterMarks, craterSoil } from './craterMarks.ts';
+import { createCraterMarks, craterSoil, markKindFor } from './craterMarks.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
-import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
+import { createStructureMask, COLLAPSE_S, MAX_HOLES, STRUCT_STRIDE, collapseFront, collapseFrontTime } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
 import { MUNITION_CLASSES } from '../sim/destructionEvents.ts';
 import { bakeBand, VOLUME_MEDIA, MEDIA_ORDER, ATLAS_COLUMNS, FLOW_SCALE } from '../../tools/fx-volume-bake.mjs';
@@ -393,13 +393,50 @@ function captureContext(seed) {
   const mud = run('collapsed', {}, adobe);
   assert.ok(mud.chunk.every((k) => k.shape === 'brick' && k.r > k.b), 'an adobe house falls as its own mud bricks');
   assert.ok(collapsed.flash === 0 && collapsed.fire === 0, 'a collapse is not an explosion');
-  // wave 266: the fall is seen (no dense dust above the base before the mass lands), the hole shows within seconds
-  const early = collapsed.media.filter((m) => m.birthOffset < 1.4);
-  assert.ok(early.every((m) => m.density <= 0.45 || (m.y <= 1 && m.size1 <= 4)),
-    'before the mass lands only a low skirt and thin puffs veil the falling walls');
-  assert.ok(collapsed.media.some((m) => m.birthOffset >= 1.4 && m.vy > 1), 'the dust column rises off the landed pile');
-  const pall = collapsed.media.filter((m) => m.birthOffset >= 2.7 && m.life >= 12);
-  assert.ok(pall.length > 0 && pall.every((m) => m.density <= 0.35), 'the pall it leaves is thin');
+  // round 7 (wave 277: "the building is never seen to come down... the dust rises afterwards instead of coming out of
+  // a falling structure", "cream rather than brick-tinged", "round balls and translucent blue-grey cards"): the walls
+  // come down along the crumble front (~3.5 s), their pieces leave it as it passes, the dust is born from the fall
+  const span = Math.max(base.hw, base.hd), H = base.topY - base.baseY;
+  assert.ok(collapsed.media.filter((m) => m.y > base.baseY + 1).every((m) => m.size1 <= 0.6 * span),
+    'nothing big above the base hides the falling walls (no ball, no column)');
+  assert.ok(!collapsed.media.some((m) => m.life >= 12), 'no pall');
+  // the pieces leave the front as it passes their height (a fall's weight: barely pushed, gravity does the rest)
+  // (the front comes down from the eaves: 0.8 of the height without the anatomy)
+  for (const k of collapsed.chunk) {
+    const h = k.y - base.baseY;
+    assert.ok(Math.abs(k.birthOffset - collapseFrontTime(h, 0.8 * H)) < 0.35, `a piece at ${h.toFixed(1)} m leaves with the front`);
+    assert.ok(Math.hypot(k.vx, k.vz) <= 2 && k.life >= 16, 'falls rather than flies, and lies');
+  }
+  assert.ok(Math.max(...collapsed.chunk.map((k) => k.birthOffset)) > 2.5, 'the walls come down over seconds');
+  assert.ok(Math.max(...collapsed.chunk.map((k) => k.y - base.baseY)) <= 0.8 * H + 1e-6, 'from the eaves down (the roof is the mask\'s)');
+  // the base bursts as each band's pieces land: their births follow the front down
+  const baseBursts = collapsed.media.filter((m) => m.y <= base.baseY + 0.5 && m.aspect >= 2);
+  const births = baseBursts.map((m) => m.birthOffset).sort((p, q) => p - q);
+  // (the top band's pieces need a second to fall the height: its burst is at ~2 s; the shed dust and the roof's are
+  // earlier)
+  assert.ok(births.length >= 8 && births[0] < 2.2 && births[births.length - 1] > 3,
+    `the dust bursts out of the base through the fall (${births[0]?.toFixed(2)}..${births[births.length - 1]?.toFixed(2)} s)`);
+  assert.ok(collapsed.media.some((m) => m.birthOffset >= 1 && (m.vy > 0.5 || m.rise > 0.3)), 'the pile\'s dust rises off it');
+  // in the building's own colour: a brick house's dust leans red-brown, never cream (luminance under a pale stone's)
+  const brick = { rubble: [{ material: 'brick', color: [0.26, 0.1, 0.06], share: 0.8 }, { material: 'plaster', color: [0.6, 0.57, 0.5], share: 0.2 }],
+    interior: [0.02, 0.02, 0.02] };
+  const brickFall = run('collapsed', {}, brick);
+  for (const m of brickFall.media) {
+    assert.ok(m.r1 > m.b1 * 1.25, 'brick-tinted dust');
+    assert.ok(0.2126 * m.r1 + 0.7152 * m.g1 + 0.0722 * m.b1 <= 0.341, 'never cream');
+  }
+  // after the P2 cascade (sections on) only the settling dust: a low burst round the base and a little off the pile
+  const cascade = run('collapsed', { sections: true });
+  assert.ok(cascade.media.length > 0 && cascade.media.length < collapsed.media.length / 3 && cascade.chunk.length === 0,
+    `the remains settle in their dust (${cascade.media.length} puffs)`);
+  assert.ok(cascade.media.every((m) => m.birthOffset < 0.6 && m.y <= base.baseY + 1), 'at once, low');
+  // a seamed building's pieces are the stages' own (in its buckets): the fx throws none of its own then
+  const seamed = captureContext(11);
+  structureStageFx(seamed.ctx, { ...base, stage: 'collapsed' }, null, true);
+  assert.equal(seamed.log.chunk.length, 0, 'the stages throw a seamed building\'s pieces');
+  // the front itself: from the top at FRONT_T0 down to the base, gravity-eased, and its inverse
+  assert.ok(collapseFront(0, 7) === 7 && collapseFront(10, 7) === 0 && collapseFront(2, 7) > collapseFront(3, 7));
+  for (const h of [0.5, 3, 6.5]) assert.ok(Math.abs(collapseFront(collapseFrontTime(h, 7), 7) - h) < 1e-9, 'the front time inverts the front');
   assert.ok(breached.media.every((m) => m.life <= 6 && m.density <= 0.5), "a breach's powder thins within seconds");
   // a shell bursting on a wall burns and smokes as a ground burst does; its dust thins within seconds; a kinetic strike
   // only chips
@@ -417,12 +454,18 @@ function captureContext(seed) {
     return c.log.media;
   };
   assert.ok(fallOf({}).length > 0 && fallOf({}).every((m) => m.heat === 0), 'a panel falls in its dust');
+  assert.ok(fallOf({}).every((m) => m.r1 > m.b1 * 1.2), "in the building's own colour (the fallback's brick), never cream");
   assert.ok(fallOf({ storeyDown: true, cx: 10, cz: 20, hw: 5, hd: 4 }).length > fallOf({}).length, 'a storey brings more down');
   assert.ok(fallOf({ sectionKind: 'roof', y0: 6, y1: 8.4 }).length > 0, 'the roof\'s dust goes up and out');
   assert.equal(fallOf({ sectionDown: false }).length + fallOf({ settled: true }).length, 0, 'a hole or a settled fall throws no dust');
   const shellOnWall = strike(true), shotOnWall = strike(false);
   assert.ok(shellOnWall.media.some((m) => m.heat > 1) && shellOnWall.media.some((m) => m.heat === 0 && m.medium === 'billow'),
-    'a shell on a wall throws its fireball and its residue smoke');
+    'a shell on a wall throws its fireball and its smoke');
+  // (round 7, wave 277: a grey ball hid the house as it came down) the strike's cloud fans along the face and up, in
+  // the wall's dust, thinner
+  assert.ok(shellOnWall.media.filter((m) => m.medium === 'burst').every((m) => m.density <= 0.6 && m.size1 <= 3.2 * 2.71),
+    'the strike\'s dust is thinner and smaller');
+  assert.ok(shellOnWall.media.filter((m) => m.medium === 'billow' && m.heat === 0).length === 1, 'one smoke puff, not a ball');
   assert.ok(shellOnWall.media.filter((m) => m.medium === 'burst').every((m) => m.life <= 6), "the wall's dust thins within seconds");
   assert.ok(shotOnWall.media.every((m) => m.heat === 0) && shotOnWall.flash === 0, 'a kinetic strike only chips');
   const fence = captureContext(12);
@@ -466,12 +509,30 @@ function captureContext(seed) {
   // (wave 273: near-black stamped ovals; a clean dark oval in snow) the surface weathers with age, its blanket is
   // pocked with clods and secondary craters, and snow's blanket is dirty snow sprayed with soil
   const fragSrc = craters.mesh.material.fragmentShader;
-  assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 240\.0, age \);/, 'soot weathers away with age');
-  assert.match(fragSrc, /float pock = blanket \* step\( 0\.82, cellH \)/, 'the blanket is pocked');
+  assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 300\.0, age \);/, 'soot weathers away and the soil dries with age');
+  assert.match(fragSrc, /float pock = apronT \* step\( 0\.8, cellH \)/, 'clods punched into the apron');
   assert.match(fragSrc, /vec3 dirty = vec3\( 0\.46, 0\.47, 0\.49 \);/, 'snow shows dirty snow and soil spray');
+  // round 7 (wave 276): no bullseye (every zone's radius warped by noise), an apron of thrown soil to ~2.2 R heavier where
+  // the core's rim stands higher (its break formula), torn turf, a scorch halo; a shaped charge's scar, not a bowl
+  assert.match(fragSrc, /float qw = q \* \( 1\.0 \+ 0\.3 \* \( fbm\( vDisc \* 3\.3/, 'the zones are no clean circles');
+  assert.match(fragSrc, /brk = 1\.0 \+ 0\.45 \* \( 0\.5 \* sin\( 2\.0 \* ang \+ vShape\.y \) \+ 0\.3 \* sin\( 4\.0 \* ang \+ vShape\.z \) \+ 0\.2 \* sin\( 6\.0 \* ang \+ vShape\.x \) \);/,
+    "the apron follows the core's rim break");
+  assert.match(fragSrc, /float apronQ = min\( 2\.25,/, 'the apron reaches ~2.2 R, inside the disc');
+  assert.match(fragSrc, /float turf = step\( 0\.74, th \)/, 'torn turf on a vegetated apron');
+  assert.match(fragSrc, /if \( scar \) \{[\s\S]*float star = fbm\( vec2\( ang \* 9\.0, 1\.3 \) \+ so \);/, "a shaped charge's star of soot");
+  assert.deepEqual(['atgm', 'heat', 'drone_fpv', 'hesh', 'he', 'howitzer'].map((m) => markKindFor(m, true)),
+    ['scar', 'scar', 'scar', 'hesh', 'he', 'he'], 'the mark is the munition\'s');
+  assert.equal(markKindFor('kinetic', false), 'gouge');
   assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
   assert.equal(craters.count, 96, 'the marks ring keeps the latest 96');
+  {
+    // the kind and the rim's metres reach every vertex of the slot (the next mark slot: 120 % 96)
+    craters.stamp(0, 0, 0.8, 'soil', 'scar', 0.3, 0, () => 0);
+    const gI = craters.mesh.geometry.getAttribute('aInfo').array, gS = craters.mesh.geometry.getAttribute('aSize').array;
+    const slotV = (160 + (120 % 96)) * (1 + 28 * 6);
+    assert.ok(gI[slotV * 4 + 2] === 2 && Math.abs(gS[slotV] - 0.8) < 1e-6, `a scar, 0.8 m (${gI[slotV * 4 + 2]}, ${gS[slotV]})`);
+  }
   assert.ok(craters.mesh.geometry.drawRange.count > 0, 'marks draw');
   // a deforming crater (crater-render-spec §D): kept apart from the marks, world-aligned (the shader's angle is the
   // simulation's atan2(dz, dx)), the simulation's wobble phases, draped on the deformed ground, the place's soil
@@ -483,11 +544,11 @@ function captureContext(seed) {
   const g = craters.mesh.geometry;
   const P = g.getAttribute('position').array, S = g.getAttribute('aShape').array, D = g.getAttribute('aDisc').array, O = g.getAttribute('aSoil').array;
   assert.deepEqual([S[0], S[1], S[2]].map((v) => +v.toFixed(5)), [p1, p2, p3].map((v) => +v.toFixed(5)), 'the wobble the bowl was dug with');
-  assert.ok(Math.abs(S[3] - 1 / 1.6) < 1e-6, 'the rim at 1/1.6 of the disc (the disc reaches 1.6 R)');
+  assert.ok(Math.abs(S[3] - 1 / 2.4) < 1e-6, 'the rim at 1/2.4 of the disc (round 7: its apron reaches ~2.2 R)');
   assert.ok(Math.abs(P[1] - (bowl(10, 20) + 0.05)) < 1e-5, 'the centre lies in the bowl');
-  // a vertex on the outer ring sits at disc (cos a, sin a) * 1.6 R, unrotated
+  // a vertex on the outer ring sits at disc (cos a, sin a) * 2.4 R, unrotated
   const v = 1 + 5 * 28 + 7, a = (7 / 28) * Math.PI * 2;
-  assert.ok(Math.abs(P[v * 3] - (10 + Math.cos(a) * 1.7 * 1.6)) < 1e-4 && Math.abs(P[v * 3 + 2] - (20 + Math.sin(a) * 1.7 * 1.6)) < 1e-4
+  assert.ok(Math.abs(P[v * 3] - (10 + Math.cos(a) * 1.7 * 2.4)) < 1e-4 && Math.abs(P[v * 3 + 2] - (20 + Math.sin(a) * 1.7 * 2.4)) < 1e-4
     && Math.abs(D[v * 2] - Math.cos(a)) < 1e-6, "world-aligned: the decal's angle is the simulation's");
   assert.ok(O[0] < 0.1 && O[1] < 0.1, 'dark soil through snow');
   // climates: an arid map's loam is lighter, an ash field black-grey
@@ -527,7 +588,7 @@ function captureContext(seed) {
 {
   const mask = createStructureMask(64);
   const data = mask.texture.image.data;
-  const T = 10 * 4; // ten texels per structure
+  const T = STRUCT_STRIDE * 4; // eleven texels per structure
   mask.setClock(10);
   mask.collapse(5, 10.5, 7, 3, 4, 100, 2, -50);
   const o = 5 * T;
@@ -577,8 +638,14 @@ function captureContext(seed) {
     'world space through the batching matrix, the displacement carried back');
   assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('float tag = floor'),
     'the patch reads batchingMatrix after three defines it');
-  assert.ok(/t >= 2\.40[\s\S]*transformed = \( inverse\( sw \) \* vec4\( SB\.xyz, 1\.0 \) \)\.xyz;/.test(shader.vertexShader),
+  assert.ok(new RegExp(`t >= ${COLLAPSE_S.toFixed(2).replace('.', '\\.')}[\\s\\S]*transformed = \\( inverse\\( sw \\) \\* vec4\\( SB\\.xyz, 1\\.0 \\) \\)\\.xyz;`).test(shader.vertexShader),
     'a fallen structure folds onto its pivot (no discard for it)');
+  // round 7 (wave 277): the roof drops and rides the crumble front; the desktop cuts the walls above the ragged front
+  // (the phone folds them onto it)
+  assert.ok(/float front = eave \* \( 1\.0 - pow\( u, 1\.5 \) \);/.test(shader.vertexShader)
+    && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.3 \);/.test(shader.vertexShader), 'the roof rides the front down');
+  assert.ok(/vStructFront < 1e8 && vStructRoof < 0\.5[\s\S]*vStructPos\.y > vStructFront \+ 1\.1 \* col \+ 0\.45 \* cell[\s\S]*discard/.test(shader.fragmentShader),
+    'the desktop cuts the wall above the ragged front');
   // the phone tier cuts no holes: its fragment shader is left alone (no discard: its early depth and HSR stay)
   const phoneMask = createStructureMask(16, { holes: false });
   const pm = new THREE.MeshStandardMaterial();
@@ -587,6 +654,7 @@ function captureContext(seed) {
     fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = vec4(1.0);\n}' };
   pm.onBeforeCompile(pshader, null);
   assert.ok(!/discard/.test(pshader.fragmentShader) && /inverse\( sw \)/.test(pshader.vertexShader), 'the phone falls, uncut');
+  assert.ok(/else if \( p\.y > front \) \{[\s\S]*p\.y = front;/.test(pshader.vertexShader), 'the phone folds its walls onto the front');
   assert.notEqual(pm.customProgramCacheKey(), material.customProgramCacheKey(), 'its own program');
   assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > hn\.w[\s\S]*discard/.test(shader.fragmentShader),
     'a fragment inside a hole\'s cylinder (outside..depth along the face normal) is discarded');

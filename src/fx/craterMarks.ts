@@ -4,12 +4,14 @@
  * Two kinds of mark in one draw:
  *
  *  - CRATERS: a deforming crater the core dug (terrain:crater). The ground lane moves the terrain into the bowl; this
- *    lays the crater's own surface over it — scorched, churned soil darkest in the bowl, broken soil on the rim, the
- *    ejecta blanket thinning to 1.6 R — draped on the deformed ground (base + the bound overlay, the same frame the
- *    mesh follows), with the edge ragged by the simulation's own wobble (craterWobblePhases: the decal's rim follows the
- *    bowl's). 160 slots, kept for the match (the simulation's own cap).
- *  - MARKS: a burst that dug nothing (small rounds, hard ground, past the caps, craters off): the same look at its
- *    size, flat on the ground, a seeded ragged outline. 96 slots, the oldest recycled first.
+ *    lays the crater's own surface over it — scorched, churned soil darkest in the bowl, broken soil on the rim, and the
+ *    apron of thrown soil, torn turf and clods out to ~2.2 R (heavier where the core's rim stands higher) — draped on
+ *    the deformed ground (base + the bound overlay, the same frame the mesh follows), with the edge ragged by the
+ *    simulation's own wobble (craterWobblePhases: the decal's rim follows the bowl's). 160 slots, kept for the match
+ *    (the simulation's own cap).
+ *  - MARKS: a burst that dug nothing: an HE round's at its size (the same look), a shaped charge's scar (round 7,
+ *    wave 276: a black star of soot out of a small pit, no bowl, no rim), HESH's shallow scorch, a kinetic gouge; flat
+ *    on the ground, a seeded ragged outline. 96 slots, the oldest recycled first.
  *
  * The look is procedural in the shader (no texture): the pit darker and wetter than the rim, the rim's lip lit as a
  * slope (catching the sun on the side facing it), ejecta clumps and rays thinning outward, soot for explosives, and
@@ -29,9 +31,20 @@ const RINGS = 6;
 const VERTS = 1 + SEG * RINGS;
 /** a centre fan plus (RINGS - 1) quad rings */
 const INDICES_PER_SLOT = SEG * 3 + (RINGS - 1) * SEG * 6;
-/** A mark's disc reaches 2.4 rim radii (its ejecta); a crater's 1.6 R (the simulation's reach). */
+/** A disc reaches 2.4 rim radii (round 7: a crater's apron reaches ~2.2 R; the deformed ground fades by 2 R). */
 const MARK_REACH = 2.4;
-const CRATER_REACH = 1.6;
+const CRATER_REACH = 2.4;
+
+/** What kind of mark a burst leaves (round 7, wave 276): a kinetic gouge, an HE round's crater or mark, a shaped
+ *  charge's scar (no bowl: the core never digs one), HESH's shallow scorch (never dug either). */
+export type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh';
+const KIND_INDEX: Readonly<Record<CraterMarkKind, number>> = Object.freeze({ gouge: 0, he: 1, scar: 2, hesh: 3 });
+/** The mark a munition leaves (sim/destructionEvents.ts MunitionClass). */
+export function markKindFor(munition: string, explosive: boolean): CraterMarkKind {
+  if (!explosive) return 'gouge';
+  if (munition === 'heat' || munition === 'atgm' || munition === 'drone_fpv') return 'scar';
+  return munition === 'hesh' ? 'hesh' : 'he';
+}
 
 /** Surface index the shader knows (2: snow — dark soil under white ejecta). */
 const SURFACE_INDEX: Readonly<Record<SurfaceKind, number>> = Object.freeze({
@@ -58,15 +71,17 @@ export function craterSoil(surface: SurfaceKind, climate: CraterClimate, out: [n
 }
 
 const VERT = /* glsl */ `
-attribute vec4 aInfo;   // birth, surface index, explosive (0/1), seed (0..1)
+attribute vec4 aInfo;   // birth, surface index, kind (0 gouge, 1 HE, 2 scar, 3 HESH), seed (0..1)
 attribute vec4 aShape;  // wobble phases p1, p2, p3 (a crater) and its rim's share of the disc (0: a mark)
 attribute vec4 aSoil;   // the turned soil (linear rgb), cover
 attribute vec2 aDisc;   // disc coordinates (-1..1, scaled to the disc's reach)
+attribute float aSize;  // the rim radius (m): the texture's metres
 uniform float uTime;
 varying vec2 vDisc;
 varying vec4 vInfo;
 varying vec4 vShape;
 varying vec4 vSoil;
+varying float vSize;
 #ifdef USE_FOG
   varying float vFogDepth;
 #endif
@@ -75,6 +90,7 @@ void main() {
   vInfo = aInfo;
   vShape = aShape;
   vSoil = aSoil;
+  vSize = aSize;
   vec4 mvPosition = viewMatrix * vec4( position, 1.0 );
   #ifdef USE_FOG
     vFogDepth = -mvPosition.z;
@@ -92,6 +108,7 @@ varying vec2 vDisc;
 varying vec4 vInfo;
 varying vec4 vShape;
 varying vec4 vSoil;
+varying float vSize;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   #ifdef FOG_EXP2
@@ -115,73 +132,110 @@ void main() {
   float r = length( vDisc );
   float ang = atan( vDisc.y, vDisc.x );
   bool crater = vShape.w > 0.0;
-  // q: the distance in rim radii (the rim at 1), ragged: a crater by the simulation's own wobble (the bowl's edge), a
-  // mark by a seeded noise
+  // the mark's kind: 0 a kinetic gouge, 1 an HE burst (a crater or its mark), 2 a shaped charge's scar, 3 HESH's mark
+  float kind = vInfo.z;
+  bool scar = kind > 1.5 && kind < 2.5;
+  bool hesh = kind > 2.5;
+  float explosive = kind > 0.5 ? 1.0 : 0.0;
   float rimShare = crater ? vShape.w : ${(1 / MARK_REACH).toFixed(5)};
-  float reachQ = 1.0 / rimShare;
   float q = r / rimShare;
+  // the rim's break round the crater (the core's craterProfile: its height x (1 + 0.45 (0.5 sin(2a+p2) + 0.3 sin(4a+p3)
+  // + 0.2 sin(6a+p1)))): the apron is thrown farther and heavier where the rim stands higher; a mark's by noise
+  float brk;
   if ( crater ) {
     float w = 1.0 + 0.08 * ( 0.5 * sin( 3.0 * ang + vShape.x ) + 0.3 * sin( 5.0 * ang + vShape.y ) + 0.2 * sin( 7.0 * ang + vShape.z ) );
     q /= w;
+    brk = 1.0 + 0.45 * ( 0.5 * sin( 2.0 * ang + vShape.y ) + 0.3 * sin( 4.0 * ang + vShape.z ) + 0.2 * sin( 6.0 * ang + vShape.x ) );
   } else {
     q *= 1.0 + 0.32 * ( fbm( vec2( ang * 2.2, 0.0 ) + so ) - 0.5 );
+    brk = 1.0 + 0.7 * ( fbm( vec2( ang * 1.7, 5.0 ) + so.yx ) - 0.5 );
   }
-  if ( q > reachQ ) discard;
-  float fine = fbm( vDisc * 9.0 + so );
-  float clumps = fbm( vDisc * 18.0 + so.yx );
-  float rays = fbm( vec2( ang * 5.0, q * 0.6 ) + so * 0.5 );
-  int kind = int( vInfo.y + 0.5 );
-  float explosive = vInfo.z;
-  // profile in rim radii: the pit's floor, the inner wall, the rim's crest, its outer flank, the ejecta blanket (to the
-  // disc's reach), the churned surface's ragged edge at 1.15
-  float pit = 1.0 - smoothstep( 0.42, 0.8, q );
-  float wall = smoothstep( 0.38, 0.8, q ) * ( 1.0 - smoothstep( 0.8, 1.05, q ) );
-  float crest = smoothstep( 0.8, 1.0, q ) * ( 1.0 - smoothstep( 1.0, 1.32, q ) );
-  float churn = 1.0 - smoothstep( 1.05, 1.15 + 0.12 * ( clumps - 0.5 ), q );
-  float blanket = 1.0 - smoothstep( 1.08, reachQ, q );
-  float ejecta = blanket * smoothstep( 0.42, 0.75, rays * 0.6 + clumps * 0.6 ) * ( 0.55 + 0.45 * smoothstep( 0.4, 0.7, fine ) );
-  // the rim lit as a slope: the inner wall faces the centre, the crest's outer flank faces out
-  vec2 out2 = r > 1e-4 ? vDisc / r : vec2( 0.0 );
-  vec3 nWall = normalize( vec3( -out2.x * 0.9, 1.0, -out2.y * 0.9 ) );
-  vec3 nFlank = normalize( vec3( out2.x * 0.6, 1.0, out2.y * 0.6 ) );
-  vec3 n = normalize( mix( vec3( 0.0, 1.0, 0.0 ), wall > crest ? nWall : nFlank, clamp( wall + crest, 0.0, 1.0 ) ) );
-  float ndl = clamp( dot( n, uSunDir ), 0.0, 1.0 );
-  // (wave 273: near-black ovals and slots stamped on the ground; a neat dark oval in clean snow) the place's turned soil,
-  // weathered with age: the pit a moist darker soil (not black), the raised rim broken soil catching the light, the
-  // ejecta blanket the soil itself thrown out in rays and clumps, pocked with clods and small secondary craters; soot
-  // only at the blast's heart and along a few rays, fading as the crater ages (a late joiner's craters are old)
+  // (wave 276: "concentric bullseye rings", "a stamped decal") no zone is a clean circle: the radius the zones read is
+  // warped by noise; the disc's own edge is reached by nothing
+  float qw = q * ( 1.0 + 0.3 * ( fbm( vDisc * 3.3 + so * 0.7 ) - 0.5 ) );
+  vec2 wp = vDisc * ( vSize / rimShare );
+  float fine = fbm( wp * 3.0 + so );
+  float lumps = fbm( wp * 1.6 + so.yx );
+  float rays = fbm( vec2( ang * 7.0, qw * 0.45 ) + so * 0.5 );
   float age = uTime - vInfo.x;
-  float fresh = 1.0 - smoothstep( 20.0, 240.0, age );
+  float fresh = 1.0 - smoothstep( 20.0, 300.0, age );
   vec3 soil = vSoil.rgb;
-  vec3 pitC = soil * ( 0.5 + 0.18 * fine ), rimC = soil * ( 0.9 + 0.2 * clumps ), ejC = soil * ( 0.82 + 0.3 * fine );
-  if ( kind == 2 ) {
-    // snow: dark soil in the bowl and on the rim; the blanket dirty snow, soil sprayed out along the rays
-    vec3 dirty = vec3( 0.46, 0.47, 0.49 );
-    ejC = mix( dirty, soil * 1.4, clamp( 0.25 + 0.55 * smoothstep( 0.45, 0.75, rays ) + 0.3 * smoothstep( 0.6, 0.85, clumps ), 0.0, 1.0 ) );
-    rimC = mix( soil, dirty, 0.18 );
+  int surf = int( vInfo.y + 0.5 );
+  vec3 col;
+  float a;
+  vec3 n = vec3( 0.0, 1.0, 0.0 );
+  if ( scar ) {
+    // a shaped charge's scar (wave 276: it left a bowl): a small black pit, a star of soot thrown out of it in streaks of
+    // different lengths, a scorched halo, a thin scatter of fine soil; no bowl, no rim
+    float star = fbm( vec2( ang * 9.0, 1.3 ) + so );
+    float streak = ( 1.0 - smoothstep( 0.25, 0.7 + 1.1 * star, qw ) ) * smoothstep( 0.42, 0.62, star );
+    float heart = 1.0 - smoothstep( 0.12, 0.38, qw );
+    float halo = 1.0 - smoothstep( 0.3, 1.0 + 0.3 * lumps, qw );
+    float spray = ( 1.0 - smoothstep( 0.6, min( 2.1, 1.7 * brk ), q ) ) * smoothstep( 0.55, 0.75, lumps * 0.6 + fine * 0.6 );
+    float soot = clamp( heart * 0.95 + streak * 0.8 + halo * 0.35, 0.0, 1.0 ) * ( 0.45 + 0.55 * fresh );
+    col = mix( soil * ( 0.9 + 0.3 * fine ), vec3( 0.014, 0.012, 0.011 ), soot );
+    if ( surf == 2 ) col = mix( col, vec3( 0.42, 0.43, 0.45 ), ( 1.0 - soot ) * 0.5 );
+    a = max( soot * 0.95, spray * 0.7 );
+  } else {
+    // a crater, or an HE round's mark: the pit's moist dark soil, the inner wall and the crest broken soil lit as slopes,
+    // and the apron: the soil thrown out in rays and lumps over the ground to ~2.2 R (farther and heavier where the rim
+    // stands higher), torn turf on it, clods punched in, a scorch halo round the pit for an explosive, all drying with
+    // age (wave 276: "no apron of thrown dark soil, clods or torn turf", "no scorch")
+    float pit = 1.0 - smoothstep( 0.45, 0.85, qw );
+    float wall = smoothstep( 0.4, 0.85, qw ) * ( 1.0 - smoothstep( 0.85, 1.1, qw ) );
+    float crest = smoothstep( 0.85, 1.0, qw ) * ( 1.0 - smoothstep( 1.0, 1.3, qw ) );
+    float apronQ = min( 2.25, ( hesh ? 1.7 : 2.2 ) * ( 0.75 + 0.3 * brk ) );
+    float apronT = 1.0 - smoothstep( 1.0, apronQ, q );
+    float apron = apronT * smoothstep( 0.32, 0.62, rays * 0.65 + lumps * 0.55 + apronT * 0.3 - 0.15 ) * clamp( brk, 0.6, 1.4 );
+    vec2 out2 = r > 1e-4 ? vDisc / r : vec2( 0.0 );
+    vec3 nWall = normalize( vec3( -out2.x * 0.9, 1.0, -out2.y * 0.9 ) );
+    vec3 nFlank = normalize( vec3( out2.x * 0.6, 1.0, out2.y * 0.6 ) );
+    n = normalize( mix( vec3( 0.0, 1.0, 0.0 ), wall > crest ? nWall : nFlank, clamp( wall + crest, 0.0, 1.0 ) * ( crater ? 1.0 : 0.5 ) ) );
+    // thrown soil: moist and dark when fresh, drying lighter (a late joiner's craters are old)
+    vec3 wet = soil * ( 0.85 + 0.3 * fine ), dry = soil * 1.35 + vec3( 0.012, 0.01, 0.006 );
+    vec3 thrown = mix( dry, wet, 0.35 + 0.65 * fresh );
+    vec3 pitC = soil * ( 0.55 + 0.2 * fine );
+    vec3 rimC = thrown * ( 0.95 + 0.25 * lumps );
+    if ( surf == 2 ) {
+      // snow: dark soil in the pit and on the rim; on the apron soil sprayed over dirty snow lumps (no pale ring)
+      vec3 dirty = vec3( 0.46, 0.47, 0.49 );
+      thrown = mix( dirty, soil * 1.4, clamp( 0.3 + 0.6 * smoothstep( 0.42, 0.7, rays ) + 0.3 * smoothstep( 0.55, 0.8, lumps ), 0.0, 1.0 ) );
+      rimC = mix( soil, dirty, 0.15 );
+    }
+    col = mix( thrown, rimC, clamp( crest + wall * 0.6, 0.0, 1.0 ) );
+    col = mix( col, pitC, pit );
+    // torn turf on a vegetated ground's apron: sod thrown upside down (soil, roots, a little grass)
+    if ( surf == 0 && explosive > 0.5 ) {
+      vec2 tc = wp / 0.65 + so;
+      vec2 ti = floor( tc ), tf = fract( tc ) - 0.5;
+      float th = h21( ti + 5.3 );
+      vec2 toff = vec2( h21( ti + 1.7 ), h21( ti + 9.2 ) ) - 0.5;
+      float td = length( ( tf - toff * 0.4 ) * vec2( 1.0, 1.6 ) );
+      float turf = step( 0.74, th ) * ( 1.0 - smoothstep( 0.18, 0.3, td ) ) * smoothstep( 1.05, 1.25, qw ) * ( 1.0 - smoothstep( 1.6, 2.0, q ) );
+      col = mix( col, mix( soil * 1.2, vec3( 0.045, 0.06, 0.022 ), 0.45 + 0.3 * fine ), turf );
+      apron = max( apron, turf * 0.95 );
+    }
+    // clods punched into the apron: dark dots
+    vec2 cellP = wp * 1.4 + so;
+    vec2 cellI = floor( cellP ), cellF = fract( cellP ) - 0.5;
+    float cellH = h21( cellI + 3.7 );
+    vec2 off = vec2( h21( cellI + 11.1 ), h21( cellI + 23.9 ) ) - 0.5;
+    float pock = apronT * step( 0.8, cellH ) * ( 1.0 - smoothstep( 0.08, 0.16, length( cellF - off * 0.5 ) ) );
+    col = mix( col, soil * 0.45, pock * 0.8 );
+    // the scorch: the blast's black heart and a halo of soot streaked out over the rim, weathering
+    float halo = ( 1.0 - smoothstep( 0.75, 1.45 + 0.25 * lumps, qw ) ) * smoothstep( 0.35, 0.62, fbm( vec2( ang * 5.0, 2.7 ) + so ) );
+    float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.6, qw ) ) * 0.7 + halo * ( hesh ? 0.75 : 0.55 ) )
+      * ( 0.75 + 0.25 * fine ) * ( 0.35 + 0.65 * fresh );
+    col = mix( col, vec3( 0.016, 0.014, 0.012 ), clamp( soot, 0.0, 0.85 ) );
+    a = max( max( pit, wall ), crest * 0.97 );
+    a = max( a, apron * ( 0.92 - 0.25 * ( 1.0 - fresh ) ) );
+    a = max( a, max( pock, soot ) * 0.9 );
+    // a faint stain over the whole apron ties its lumps together (broken by the grain: no clean edge)
+    a = max( a, apronT * 0.3 * smoothstep( 0.25, 0.6, fine ) );
   }
-  vec3 col = mix( ejC, rimC, clamp( crest + wall * 0.6 + churn * 0.35, 0.0, 1.0 ) );
-  col = mix( col, pitC, pit );
-  col *= 0.8 + 0.4 * fine;
-  // pocks on the blanket: thrown clods (dark) and the small craters they punched (a dark dot in a lighter ring)
-  vec2 cellP = vDisc * ( crater ? 16.0 : 11.0 ) + so;
-  vec2 cellI = floor( cellP ), cellF = fract( cellP ) - 0.5;
-  float cellH = h21( cellI + 3.7 );
-  vec2 off = vec2( h21( cellI + 11.1 ), h21( cellI + 23.9 ) ) - 0.5;
-  float d = length( cellF - off * 0.5 );
-  float pock = blanket * step( 0.82, cellH ) * ( 1.0 - smoothstep( 0.08, 0.16, d ) );
-  float pockRing = blanket * step( 0.93, cellH ) * smoothstep( 0.12, 0.18, d ) * ( 1.0 - smoothstep( 0.2, 0.3, d ) );
-  col = mix( col, soil * 0.45, pock * 0.8 );
-  col = mix( col, rimC * 1.1, pockRing * 0.6 );
-  // soot: the blast's black heart and a few streaks along the rays, weathering away
-  float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.55, q ) ) * 0.75 + wall * 0.22 + smoothstep( 0.62, 0.85, rays ) * blanket * 0.3 )
-    * ( 0.7 + 0.3 * fine ) * ( 0.3 + 0.7 * fresh );
-  col = mix( col, vec3( 0.012, 0.011, 0.01 ), clamp( soot, 0.0, 0.8 ) );
-  float a = max( max( pit, wall ), max( max( crest * 0.97, churn * 0.92 ), ejecta * 0.9 ) );
-  a = max( a, blanket * ( 0.3 + 0.25 * explosive ) * smoothstep( 0.25, 0.55, fine ) );
-  a = max( a, max( pock, pockRing ) * 0.9 );
   a *= vSoil.a * smoothstep( 0.0, 0.35, age );  // the ejecta lands over the first third of a second
   if ( a < 0.01 ) discard;
+  float ndl = clamp( dot( n, uSunDir ), 0.0, 1.0 );
   col *= uSunCol * ( 0.35 + 0.65 * ndl ) + uSkyCol;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
@@ -204,6 +258,8 @@ export interface CraterSurfaceInput {
   surface: SurfaceKind;
   climate: CraterClimate;
   explosive: boolean;
+  /** the mark's kind (default: HE when explosive, else a gouge) */
+  kind?: CraterMarkKind;
   /** 0..1 (the event's 16-bit seed / 65536) */
   seed: number;
   /** its birth on the fx clock (a settled crater: long past) */
@@ -214,8 +270,9 @@ export interface CraterMarks {
   readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   /** A deforming crater's surface, draped on `heightAt` (the deformed ground) over its 1.6 R reach. */
   crater(c: CraterSurfaceInput, heightAt: (x: number, z: number) => number): void;
-  /** A burst that dug nothing: rim radius (m), the surface and climate, explosive (soot), a seed 0..1, its birth. */
-  stamp(x: number, z: number, rimRadiusM: number, surface: SurfaceKind, explosive: boolean, seed: number, birth: number,
+  /** A burst that dug nothing: rim radius (m), the surface and climate, its kind (true: HE, false: a gouge), a seed
+   *  0..1, its birth. */
+  stamp(x: number, z: number, rimRadiusM: number, surface: SurfaceKind, kind: CraterMarkKind | boolean, seed: number, birth: number,
     groundY: (x: number, z: number) => number, climate?: CraterClimate): void;
   update(now: number, scene: THREE.Scene | null | undefined): void;
   shiftTime(delta: number): void;
@@ -241,6 +298,7 @@ export function createCraterMarks(): CraterMarks {
   const info = new Float32Array(SLOTS * VERTS * 4).fill(-1e9);
   const shapes = new Float32Array(SLOTS * VERTS * 4);
   const soils = new Float32Array(SLOTS * VERTS * 4);
+  const sizes = new Float32Array(SLOTS * VERTS);
   const index: number[] = [];
   for (let c = 0; c < SLOTS; c++) {
     const base = c * VERTS;
@@ -263,11 +321,14 @@ export function createCraterMarks(): CraterMarks {
   shp.setUsage(THREE.DynamicDrawUsage);
   const sol = new THREE.BufferAttribute(soils, 4);
   sol.setUsage(THREE.DynamicDrawUsage);
+  const siz = new THREE.BufferAttribute(sizes, 1);
+  siz.setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute('position', pos);
   geo.setAttribute('aDisc', new THREE.BufferAttribute(disc, 2));
   geo.setAttribute('aInfo', inf);
   geo.setAttribute('aShape', shp);
   geo.setAttribute('aSoil', sol);
+  geo.setAttribute('aSize', siz);
   geo.setIndex(index);
   geo.setDrawRange(0, 0);
   const uTime = { value: 0 };
@@ -295,7 +356,7 @@ export function createCraterMarks(): CraterMarks {
   // a whole upload (the first, a reset, a clock rebase) is never cut short by a stamp's range written before the
   // renderer gets to it (three uploads only the ranges when there are any): a reset's cleared slots would otherwise
   // keep the last match's craters on the GPU in the fixed crater region
-  const attrs = [pos, inf, shp, sol];
+  const attrs = [pos, inf, shp, sol, siz];
   let wholePending = true;
   pos.onUpload(() => { wholePending = false; });
   const whole = (): void => { wholePending = true; for (const a of attrs) { a.clearUpdateRanges(); a.needsUpdate = true; } };
@@ -305,8 +366,8 @@ export function createCraterMarks(): CraterMarks {
   const soil: [number, number, number, number] = [0, 0, 0, 0];
 
   function write(slot: number, x: number, z: number, radius: number, yaw: number, heightAt: (x: number, z: number) => number,
-    lift: number, birth: number, surfaceIndex: number, explosive: boolean, seed: number,
-    p1: number, p2: number, p3: number, rimShare: number): void {
+    lift: number, birth: number, surfaceIndex: number, kind: number, seed: number,
+    p1: number, p2: number, p3: number, rimShare: number, rimM: number): void {
     const base = slot * VERTS;
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     for (let v = 0; v < VERTS; v++) {
@@ -316,17 +377,19 @@ export function createCraterMarks(): CraterMarks {
       const o = (base + v) * 3;
       positions[o] = wx; positions[o + 1] = heightAt(wx, wz) + lift; positions[o + 2] = wz;
       const q = (base + v) * 4;
-      info[q] = birth; info[q + 1] = surfaceIndex; info[q + 2] = explosive ? 1 : 0; info[q + 3] = seed;
+      info[q] = birth; info[q + 1] = surfaceIndex; info[q + 2] = kind; info[q + 3] = seed;
       shapes[q] = p1; shapes[q + 1] = p2; shapes[q + 2] = p3; shapes[q + 3] = rimShare;
       soils[q] = soil[0]; soils[q + 1] = soil[1]; soils[q + 2] = soil[2]; soils[q + 3] = soil[3];
+      sizes[base + v] = rimM;
     }
     if (!wholePending) {
       pos.addUpdateRange(base * 3, VERTS * 3);
       inf.addUpdateRange(base * 4, VERTS * 4);
       shp.addUpdateRange(base * 4, VERTS * 4);
       sol.addUpdateRange(base * 4, VERTS * 4);
+      siz.addUpdateRange(base, VERTS);
     }
-    pos.needsUpdate = inf.needsUpdate = shp.needsUpdate = sol.needsUpdate = true;
+    pos.needsUpdate = inf.needsUpdate = shp.needsUpdate = sol.needsUpdate = siz.needsUpdate = true;
     if (slot > highest) highest = slot;
     geo.setDrawRange(0, (highest + 1) * INDICES_PER_SLOT);
     mesh.visible = true;
@@ -340,16 +403,18 @@ export function createCraterMarks(): CraterMarks {
       craterCount = Math.min(CRATER_SLOTS, craterCount + 1);
       craterSoil(c.surface, c.climate, soil);
       // world-aligned (no yaw): the shader's angle is the simulation's atan2(dz, dx)
-      write(slot, c.x, c.z, c.radiusM * CRATER_REACH, 0, heightAt, 0.05, c.birth, SURFACE_INDEX[c.surface], c.explosive, c.seed,
-        c.p1, c.p2, c.p3, 1 / CRATER_REACH);
+      const kind = c.kind ?? (c.explosive ? 'he' : 'gouge');
+      write(slot, c.x, c.z, c.radiusM * CRATER_REACH, 0, heightAt, 0.05, c.birth, SURFACE_INDEX[c.surface], KIND_INDEX[kind], c.seed,
+        c.p1, c.p2, c.p3, 1 / CRATER_REACH, c.radiusM);
     },
-    stamp(x, z, rimRadiusM, surface, explosive, seed, birth, groundY, climate = 'vegetated') {
+    stamp(x, z, rimRadiusM, surface, kind, seed, birth, groundY, climate = 'vegetated') {
       const slot = CRATER_SLOTS + markCursor;
       markCursor = (markCursor + 1) % MARK_SLOTS;
       markCount = Math.min(MARK_SLOTS, markCount + 1);
       craterSoil(surface, climate, soil);
-      write(slot, x, z, rimRadiusM * MARK_REACH, seed * Math.PI * 2, groundY, 0.04, birth, SURFACE_INDEX[surface], explosive, seed,
-        0, 0, 0, 0);
+      const k: CraterMarkKind = kind === true ? 'he' : kind === false ? 'gouge' : kind;
+      write(slot, x, z, rimRadiusM * MARK_REACH, seed * Math.PI * 2, groundY, 0.04, birth, SURFACE_INDEX[surface], KIND_INDEX[k], seed,
+        0, 0, 0, 0, rimRadiusM);
     },
     update(now, scene) {
       uTime.value = now;

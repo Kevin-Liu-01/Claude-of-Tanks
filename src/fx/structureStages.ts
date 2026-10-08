@@ -24,10 +24,13 @@
  */
 import * as THREE from 'three';
 import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
-import { damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters } from '../world/destructionKit.ts';
+import {
+  damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
+  type DebrisShape, type FractureMaterial, type FractureSlot,
+} from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -56,6 +59,8 @@ export interface StructureStagesOptions {
   materialFor?(bucket: string): THREE.Material | null;
   /** The phone tier's scars (its walls stand uncut: each cut is drawn on the face instead). */
   scars?: StructureScars | null;
+  /** The share of the collapse's crumble pieces this tier throws (1 desktop; the phone a few, its pools are small). */
+  crumble?: number;
 }
 
 /** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
@@ -324,8 +329,59 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // the whole structure (a collapse) is the mask's fall; a section's hide waits for sections on the spans (P2)
       if (hide.partClass === null || hide.section !== null) continue;
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
+      // (a building whose roof has its own bucket loses it above; one whose roof shares the walls' bucket loses its faces)
+      if (hide.partClass === 'roof' && !seam.spans.some((sp) => sp.partClass === 'roof')) changed = flattenRoofFaces(seam) || changed;
     }
     if (changed) seam.touchShadows();
+  }
+
+  /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
+   *  bucket) goes with the roof's hide (facades 2026-10-08): every upward triangle of the structure (normal y > 0.3)
+   *  standing over the eaves (or the top storey's top where there is no roof) and inside the footprint plus 1.5 m
+   *  collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged buckets). */
+  const _ta = new THREE.Vector3(), _tb = new THREE.Vector3(), _tc = new THREE.Vector3();
+  const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
+  function flattenRoofFaces(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    const top = a.storeys.length ? a.storeys[a.storeys.length - 1]!.y1 : 0;
+    const eave = a.roof ? a.roof.eaveY - 0.15 : top - 0.1;
+    const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const inBody = (v: THREE.Vector3): boolean => {
+      const wx = v.x - px, wz = v.z - pz;
+      return v.y - py >= eave && Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
+    };
+    let changed = false;
+    for (const span of seam.spans) {
+      if (span.count < 3 || span.partClass === 'roof' || flattenedSpans.has(span)) continue;
+      const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (!geo || geo.index) continue;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      let touched = false;
+      for (let i = start; i + 2 < span.first + span.count; i += 3) {
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+        const n = _e1.cross(_e2);
+        const len = n.length();
+        if (!(len > 1e-9) || Math.abs(n.y) / len <= 0.3) continue;
+        if (!inBody(_ta) || !inBody(_tb) || !inBody(_tc)) continue;
+        if (!touched) { keep(span); touched = true; }
+        for (let k = 1; k < 3; k++) {
+          arr[(i + k) * 3] = arr[i * 3]; arr[(i + k) * 3 + 1] = arr[i * 3 + 1]; arr[(i + k) * 3 + 2] = arr[i * 3 + 2];
+        }
+      }
+      if (touched) {
+        span.position.addUpdateRange(span.first * 3, span.count * 3);
+        span.position.needsUpdate = true;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   // a bucket no mesh of this world draws: a plain lit material over the writer's own vertex tints (made once per bucket)
@@ -344,8 +400,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // the room behind a breach (b5: the kits write it in the world's 'dark' bucket, whose glossy window material showed
   // the sky's reflection through the hole as a slate-blue disc): matte, in the builder's own interior tint, no
   // reflection, falling and folding with its building like every standing run
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true,
-    envMapIntensity: 0 });
+  // (wave 277: a breach read as "a black blot") the room behind a hole is dim, not black: daylight falls in through the
+  // hole and the windows and bounces off its floor and far wall — its interior tint lifted, a little light of its own
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(3.2, 3.2, 3.2), roughness: 1, metalness: 0,
+    vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
 
@@ -362,19 +420,97 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
     const depths = standing ? depthMaterials(seam) : null;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
-      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly }
-      : { meshes: !piecesOnly });
+      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly,
+        pieces: !noPieces }
+      : { meshes: !piecesOnly, pieces: !noPieces });
     let result: DamageStageResult | null = null;
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
     apply(seam, result);
+  }
+
+  // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
+  // weight"): the mask cuts the walls above a ragged front coming down from the top (structureMask collapseFront); as it
+  // passes each band of every face, that band's own pieces leave it — in the face's layers' buckets and tints, the core
+  // most, the skin less — barely pushed, so they drop with gravity's weight, land at its foot, tumble a little and lie
+  const CRUMBLE_BAND = 0.45;
+  const crumbleShare = Math.max(0, Math.min(1, o.crumble ?? 1));
+  const shapeOfMaterial = (m: FractureMaterial): DebrisShape => {
+    switch (m) {
+      case 'brick': case 'adobe': return 'block';
+      case 'stone': case 'rubble': return 'stone';
+      case 'concrete': case 'plaster': return 'plate';
+      case 'timber': return 'beam';
+      case 'plank': case 'infill': return 'plate';
+      case 'metal': case 'canvas': return 'sheet';
+      case 'glass': return 'shard';
+      case 'tile': return 'tile';
+      case 'slate': return 'slate';
+      case 'thatch': return 'straw';
+      default: return 'chunk';
+    }
+  };
+  function crumble(seam: StructureDamageSeam, e: StructureStageEvent): void {
+    if (!(crumbleShare > 0)) return;
+    const a = seam.anatomy;
+    // the walls up to the eaves (the roof is the mask's: it drops onto the front)
+    const H = collapseWallHeight(Math.max(1, e.topY - e.baseY), a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0);
+    const baseRel = e.baseY - a.placement.y;
+    const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
+    // the blow in the body frame: the struck side's pieces are pushed out harder
+    const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
+    const bdx = ((e.dirX || 0) * c - (e.dirZ || 0) * sn) / dl, bdz = ((e.dirX || 0) * sn + (e.dirZ || 0) * c) / dl;
+    const rng = damageRng(damageSeed(a.seed, 7, e.structureId));
+    const bands = Math.max(1, Math.ceil(H / CRUMBLE_BAND));
+    const spacing = 1.2;
+    for (let b = 0; b < bands; b++) {
+      const h1 = H - b * CRUMBLE_BAND, h0 = Math.max(0, h1 - CRUMBLE_BAND);
+      const y0 = baseRel + h0, y1 = baseRel + h1;
+      run(seam, collapseFrontTime(0.5 * (h0 + h1), H), false, (out) => {
+        for (const storey of a.storeys) {
+          for (const face of storey.faces) {
+            const fy0 = face.origin[1], fy1 = face.origin[1] + face.height;
+            if (fy1 <= y0 || fy0 >= y1 || !face.layers.length) continue;
+            const thick = face.layers.reduce((sum, l) => sum + l.thicknessM, 0) || 0.3;
+            const yaw = Math.atan2(face.out[0], face.out[2]);
+            const push = 0.35 + Math.max(0, -(face.out[0] * bdx + face.out[2] * bdz)) * 1.4;
+            const n = Math.max(1, Math.round(face.width / spacing));
+            for (let i = 0; i < n; i++) {
+              // (a tier with small pools throws its share of them)
+              if (crumbleShare < 1 && rng() > crumbleShare) continue;
+              const u = -face.width / 2 + (i + rng()) * (face.width / n);
+              const y = y0 + rng() * (Math.min(y1, fy1) - Math.max(y0, fy0)) + Math.max(0, fy0 - y0);
+              // nothing falls out of a window or a door
+              const fy = y - fy0;
+              if (face.openings.some((op) => Math.abs(u - op.u) < op.w / 2 && fy > op.y0 && fy < op.y0 + op.h)) continue;
+              const slot: FractureSlot = face.layers.length > 1 && rng() < 0.3 ? face.layers[0]! : face.layers[face.layers.length - 1]!;
+              const shape = shapeOfMaterial(slot.material);
+              const flat = shape === 'plate' || shape === 'sheet' || shape === 'tile' || shape === 'slate';
+              const size = (shape === 'beam' ? 1.4 : 0.75) * (0.75 + rng() * 0.5);
+              const inset = thick * 0.5;
+              const px = face.origin[0] + face.u[0] * u - face.out[0] * inset;
+              const pz = face.origin[2] + face.u[2] * u - face.out[2] * inset;
+              // aligned with the wall, a little askew
+              const qa = (yaw + (rng() - 0.5) * 0.6) * 0.5, qt = (rng() - 0.5) * 0.4;
+              const qy = Math.sin(qa), qw = Math.cos(qa), qx = Math.sin(qt) * 0.5, qz = Math.sin(qt) * 0.3;
+              const v = push * (0.6 + rng() * 0.8);
+              out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), px, y, pz, qx, qy, qz, qw,
+                size, size * (flat ? 0.14 : 0.62), Math.min(size * 0.8, Math.max(0.2, thick)),
+                slot.tint[0], slot.tint[1], slot.tint[2],
+                face.out[0] * v + (rng() - 0.5) * 0.6, -0.4 + rng() * 0.6, face.out[2] * v + (rng() - 0.5) * 0.6);
+            }
+          }
+        }
+        return { cuts: [], hides: [] };
+      }, false);
+    }
   }
 
   const falling: { seam: StructureDamageSeam; until: number }[] = [];
@@ -383,12 +519,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     stage(e, seam) {
       const settled = e.settled === true;
       if (e.stage === 'collapsed') {
-        // the building crumbles into its dust over COLLAPSE_S, then is gone (settled: gone at once)
-        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled);
+        // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
+        // (settled: gone at once); the mask needs its eaves and footprint for the roof
+        const a = seam?.anatomy;
+        const fall = a ? { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2,
+          yaw: a.placement.yaw } : { eaveM: 0, halfW: e.hw, halfD: e.hd, yaw: e.yaw };
+        // after the P2 cascade (sections on) every storey is down already: what stands folds quickly under the final dust
+        const cascaded = (e as StructureStageEvent & { sections?: boolean }).sections === true;
+        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled, fall,
+          cascaded ? 0.25 : undefined);
         o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
-          else falling.push({ seam, until: o.now() + COLLAPSE_S });
+          else falling.push({ seam, until: o.now() + ((e as StructureStageEvent & { sections?: boolean }).sections === true ? 0.3 : COLLAPSE_S) });
         }
       }
       if (!seam) return;
@@ -404,8 +547,18 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const spec = seam.holeAt(blow.x, blow.y, blow.z, blow.radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey });
       }
-      // a collapse's stubs and pile show under the dust, a little after the fall begins
-      if (e.stage === 'collapsed') run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
+      // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
+      if (e.stage === 'collapsed') {
+        // after the P2 cascade the storeys threw their own pieces as they dropped: the kit lays its pile, stubs and
+        // chimneys at once and throws none (its writer's capacity 0); otherwise the pile shows under the falling walls and
+        // the walls' own pieces leave the crumble front
+        if ((e as StructureStageEvent & { sections?: boolean }).sections === true) {
+          run(seam, 0, settled, (out) => seam.collapse(stageSeed(3), out), false, undefined, false, true);
+        } else {
+          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
+          if (!settled) crumble(seam, e);
+        }
+      }
     },
     breach(e, seam) {
       if (!seam) return;

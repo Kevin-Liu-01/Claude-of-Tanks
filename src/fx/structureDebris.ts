@@ -177,8 +177,10 @@ void main() {
   vec3 axis = normalize( vec3( aQ.y + 0.31, aQ.z - 0.17, aQ.x + 0.23 ) );
   float ang = aSS.w * ( landed > 0.5 ? min( age, 0.6 ) : age ) * moving;
   vec3 lp = position * aSS.xyz;
-  // shrink out over the last 8 % of life
-  lp *= 1.0 - smoothstep( 0.92, 1.0, age / life );
+  // (round 7) a landed piece lies most of its life, then settles into the ground over the last third; the last few
+  // percent shrink
+  c.y -= landed * halfH * 2.2 * smoothstep( 0.66, 1.0, age / life );
+  lp *= 1.0 - smoothstep( 0.95, 1.0, age / life );
   vec3 p = axisAngle( axis, ang ) * qrot( aQ, lp );
   vec3 n = axisAngle( axis, ang ) * qrot( aQ, normal );
   vNormalW = n;
@@ -223,9 +225,12 @@ void main() {
   vec2 uv = an.x > an.y && an.x > an.z ? vBox.zy : ( an.y > an.z ? vBox.xz : vBox.xy );
   vec3 albedo = vTint;
   if ( uHasMap > 0.5 ) albedo *= texture2D( uMap, uv * uMapScale + 0.5 ).rgb;
-  float ndl = max( dot( n, uSunDir ), 0.0 );
-  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 );
-  vec3 col = albedo * ( uSunCol * ndl + amb );
+  // (round 7, wave 276/277: pieces read as "flat unlit black squares") faces from the sun still take the sky and the
+  // ground's bounce, and a little sun wraps round the broken edges
+  float nl = dot( n, uSunDir );
+  float diff = max( nl, 0.0 ) * 0.8 + 0.2 * ( nl * 0.5 + 0.5 );
+  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 ) * 1.25;
+  vec3 col = albedo * ( uSunCol * diff + amb );
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -264,12 +269,20 @@ export interface StageRunOptions {
   /** false: the builder lays no static runs (the mesh writer's begin() refuses them), only throws its pieces — a wall
    *  panel falling with its storey, whose own fall lays what is left standing. */
   meshes?: boolean;
+  /** false: the builder throws no pieces (the pieces writer's capacity is 0), only lays its runs — a collapse after the
+   *  P2 cascade, whose storeys threw theirs as they dropped. */
+  pieces?: boolean;
 }
 
 export interface StructureDebrisOptions {
   now: () => number;
   scene?: THREE.Scene | null;
+  /** The ground a thrown piece comes to rest on (as drawn: the battle's craters and rubble mounds in it). */
   groundY: (x: number, z: number) => number;
+  /** The undeformed ground (no overlay): a collapse's pile and stubs (untagged rubble and remnant runs, written over the
+   *  placement's height) are seated on it per vertex, so a sloped plot's uphill side does not bury them (facades
+   *  2026-10-08: the kit's heights stand over the sim's mound already). Absent: the placement's height. */
+  baseGroundY?: (x: number, z: number) => number;
   /** Pieces per pool (a pool is a bucket map and a shape). */
   poolCapacity?: number;
   /** Mesh-run vertices per stage (the stage's cap; DESTRUCTION.md §16.3). */
@@ -385,6 +398,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageTag = 0;
   let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
   let stageMeshes = true;
+  let stagePiecesOn = true;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
@@ -439,7 +453,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   const pieceWriter: DamagePieceWriter = {
     push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx, vy, vz): boolean {
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls
-      if (stageSettled || stagePieces >= pieceCap) return false;
+      if (stageSettled || !stagePiecesOn || stagePieces >= pieceCap) return false;
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
       const map = mat && 'map' in mat ? (mat.map ?? null) : null;
       const pool = poolFor(map, shape, variant);
@@ -454,7 +468,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       // velocity rotates with the body
       A.aVL[j] = vx * cosY + vz * sinY; A.aVL[j + 1] = vy; A.aVL[j + 2] = -vx * sinY + vz * cosY;
       const moving = vx * vx + vy * vy + vz * vz > 1e-4;
-      A.aVL[j + 3] = moving ? 9 + (i % 7) * 0.5 : 60;
+      // a thrown piece lies where it lands (round 7: they vanished at ~10 s): ~24 s, then settles in
+      A.aVL[j + 3] = moving ? 22 + (i % 7) * 0.6 : 60;
       // orientation: body yaw, then the piece's own
       _qy.setFromAxisAngle(_up, place.yaw);
       _q.set(qx, qy, qz, qw).normalize().premultiply(_qy);
@@ -469,7 +484,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       return true;
     },
     get count() { return stagePieces; },
-    get capacity() { return pieceCap; },
+    get capacity() { return stagePiecesOn ? pieceCap : 0; },
   };
   const writers: DamageWriters = { mesh: meshWriter, pieces: pieceWriter };
 
@@ -483,6 +498,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       stageTag = options.tag && options.tag > 0 ? options.tag : 0;
       stageDepth = options.depthFor ?? null;
       stageMeshes = options.meshes !== false;
+      stagePiecesOn = options.pieces !== false;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;
@@ -497,6 +513,11 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       const made: THREE.Mesh[] = [];
       for (const run of runs) {
         if (!run.idx.length) continue;
+        if (!stageTag && o.baseGroundY && (run.role === 'rubble' || run.role === 'remnant')) {
+          // seated per vertex on the ground under it: body y over the undeformed ground instead of over placement.y
+          const P = run.pos;
+          for (let i = 0; i < P.length; i += 3) P[i + 1] = o.baseGroundY(P[i], P[i + 2]) + (P[i + 1] - place.y);
+        }
         const material = resolveMaterial(run.bucket, run.role);
         if (!material) continue;
         const geo = new THREE.BufferGeometry();

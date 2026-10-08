@@ -44,7 +44,7 @@ import {
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
-import { createCraterMarks, type CraterClimate, type CraterMarks } from './craterMarks.ts';
+import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, type StructureStages } from './structureStages.ts';
@@ -999,16 +999,20 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
-  // an explosive mark clears the cover it blew away (0.9 R: the pit and the inner wall; the blanket keeps its stubble),
-  // through the world's presentation-only seam, when the world has one
+  // a mark that dug nothing clears the cover it blew away, through the world's presentation-only seam (a dug crater's
+  // cover is the overlay's own law, on every peer: the core, 2026-10-08)
   const clearCover = (x: number, z: number, radiusM: number): void => {
     const w = world ? world() : null;
-    w?.clearCoverAt?.(x, z, 0.9 * radiusM);
+    w?.clearCoverAt?.(x, z, radiusM);
   };
   const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
   const structDebris: StructureDebris | null = createStructureDebris({
-    now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z),
-    poolCapacity: mediaTier ? 96 : 24, pieceCap: mediaTier ? 1024 : 160,
+    now: () => particles.getTime(), scene: engineCtx.scene ?? null,
+    // (round 7) pieces lie on the ground as drawn (a rubble mound, a crater's rim); a pile is seated on the ground under
+    // it, per vertex (its heights stand over the sim's mound already)
+    groundY: (x, z) => deformedGroundY(x, z),
+    baseGroundY: (x, z) => (heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z)),
+    poolCapacity: mediaTier ? 256 : 24, pieceCap: mediaTier ? 1024 : 160,
   });
   group.add(structDebris.group);
   // ---- the world's structure seam (DESTRUCTION.md §16.4): each stage's builder through the writers, its cuts into the
@@ -1038,7 +1042,7 @@ function* createFxSteps(
   if (scars) group.add(scars.mesh);
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15 })
     : null;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
@@ -1960,9 +1964,12 @@ function* createFxSteps(
       if (!water && craters && !dug) {
         craterFor(info.chargeKg, info.munition, 1, _crater);
         if (_crater.radiusM > 0.25) {
-          craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, deformedGroundY,
+          // (round 7, wave 276: a shaped charge left a bowl) the mark is the munition's: a shaped charge's scar, HESH's
+          // shallow scorch, an HE round's crater look at its size
+          const kind = markKindFor(info.munition, true);
+          craters.stamp(pos.x, pos.z, _crater.radiusM, surface, kind, rng(), particles.getTime() + birthOffset, deformedGroundY,
             groundClimate());
-          clearCover(pos.x, pos.z, _crater.radiusM);
+          clearCover(pos.x, pos.z, _crater.radiusM * (kind === 'scar' ? 0.55 : 0.9));
         }
       }
     } else {
@@ -5196,9 +5203,12 @@ function* createFxSteps(
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
-        stages?.stage(e, seamOf(e.structureId));
+        const stageSeam = seamOf(e.structureId);
+        stages?.stage(e, stageSeam);
         if (e.settled) return;
-        if (blast) structureStageFx(blast, e, lookOf(e.structureId));
+        const anat = stageSeam?.anatomy;
+        const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
+        if (blast) structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM);
         else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
@@ -5228,9 +5238,11 @@ function* createFxSteps(
         const surface = classifyTerrain(heightField, e.x, e.z);
         const settled = e.settled === true;
         const now = particles.getTime();
+        // settled: weathered by its own age when the event carries it (the Studio's settled fields), else old
+        const ageS = (e as TerrainCraterEvent & { ageS?: number }).ageS;
         craters.crater({ x: e.x, z: e.z, radiusM: e.radiusM, p1, p2, p3, surface, climate: groundClimate(), explosive: true,
-          seed: (e.seed % 65536) / 65536, birth: settled ? now - 600 : now }, deformedGroundY);  // settled: an old, weathered crater
-        clearCover(e.x, e.z, e.radiusM);
+          kind: markKindFor(e.munition, true), seed: (e.seed % 65536) / 65536,
+          birth: settled ? now - (Number.isFinite(ageS) ? (ageS as number) : 600) : now }, deformedGroundY);
         if (!settled && blast) craterEjecta(blast, e.x, e.z, e.radiusM, surface, deformedGroundY, 0);
       });
       onFxEvent(bus, 'shell:fired', (e) => {
