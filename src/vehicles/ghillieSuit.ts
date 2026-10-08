@@ -1496,7 +1496,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
     const lo = surface.sample((u0 + u1) / 2, 0.06), hi = surface.sample((u0 + u1) / 2, 0.97);
     area = Math.abs(u1 - u0) * (lo && hi ? Math.max(0.2, Math.hypot(hi.p[0] - lo.p[0], hi.p[1] - lo.p[1], hi.p[2] - lo.p[2])) : 0.6);
   }
-  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1);
+  // a fitted cover carries a few tufts of its own cut flaps; a draped net its bunches and boughs
+  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1) * (cfg.style === 'leafy' ? 1 : 0.55);
   // drapes take more of their bunches high, under the top cord, and along the hem
   const bias = top ? undefined : (r: () => number): [number, number] => {
     const k = r();
@@ -1537,7 +1538,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       const base = (cfg.leafScale ?? 1) * (bough ? 0.56 : fitted ? 0.24 : 0.34);
       let length = base * lenK;
       const width = length * (bough ? 0.6 : 0.62);
-      const tint: [number, number, number] = fitted ? [value * 0.95, value * 0.95, value * 0.95]
+      // a fitted cover's flaps take its mid-tones (their atlas is painted dark: "dark clover decals", wave 253)
+      const tint: [number, number, number] = fitted ? [value * 1.32, value * 1.3, value * 1.22]
         : bough ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
           : stripTint(tone, value);
       const su = clump.u + Math.cos(ja) * jr, sv = clump.v + (top ? Math.sin(ja) * jr : Math.sin(ja) * jr * 0.4);
@@ -2298,8 +2300,9 @@ function addGhillieOwner(
     });
   }
   const netMesh = addMerged(P, parent, surfaces.map((s) => s.geometry), makeNet(P, cfg, theatre, cover), `${cfg.id}_ghillie_${owner}_net`);
-  // the roof and deck carriers lead the merged net (and their garnish the cards): the decor draws them over its loads
-  if (netMesh) netMesh.userData[GHILLIE_TOP_VERTICES] = tops.reduce((n, t) => n + t.geometry.attributes.position.count, 0);
+  // the roof and deck carriers lead the merged net (and their garnish the cards): the decor draws a draped net over its
+  // loads; a fitted cover is cut to the hull and its stowage is strapped on top of it
+  if (netMesh && leafy) netMesh.userData[GHILLIE_TOP_VERTICES] = tops.reduce((n, t) => n + t.geometry.attributes.position.count, 0);
   const leaves = foliage.toGeometry();
   if (leaves) {
     const atlas = leafy ? ghillieGarnishAtlas(garnishSpecies(cfg))
@@ -2312,7 +2315,7 @@ function addGhillieOwner(
     // alpha-cut sprays enclose air between their leaves, like the net that carries them
     mesh.userData.combatHitboxRole = 'nonArmor';
     mesh.userData.continuityRole = 'open-lattice';
-    mesh.userData[GHILLIE_TOP_CARDS] = [topCards, P.q !== false ? 24 : 12];
+    if (leafy) mesh.userData[GHILLIE_TOP_CARDS] = [topCards, P.q !== false ? 24 : 12];
     parent.add(mesh);
     // the atlas is shared fleet-wide (vehicleFoliage.ts) and never joins a visual's disposables
     P.disposables.push(leaves, mat);
