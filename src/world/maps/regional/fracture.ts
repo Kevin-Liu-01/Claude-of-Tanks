@@ -1302,12 +1302,15 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
             beamBetween(mesh, mid, tip, 0.05, 0.07, nrm, [Math.min(1, rafterTint[0] * 1.6 + 0.1), Math.min(1, rafterTint[1] * 1.5 + 0.08), Math.min(1, rafterTint[2] * 1.4 + 0.06)]);
             throwPieceAt(out.pieces, rng, timber.bucket, 'beam', mid, [0.9 + rng(), 0.12, 0.12], rafterTint, 2.5);
           } else {
-            // hanging from the wall plate into the house
+            // hanging from the wall plate into the house (the plate: where the rafter crosses the wall's top, inside the
+            // eave's overhang, so it never swings down outside the wall)
             const len = Math.hypot(headIn[0] - footIn[0], headIn[1] - footIn[1], headIn[2] - footIn[2]) * (0.4 + rng() * 0.3);
             const inward = norm3([-nrm[0], 0, -nrm[2]]);
+            const tp = Math.max(0, Math.min(0.5, (roof.eaveY - footIn[1]) / Math.max(1e-3, headIn[1] - footIn[1])));
+            const plate: Vec3 = [footIn[0] + (headIn[0] - footIn[0]) * tp, footIn[1] + (headIn[1] - footIn[1]) * tp, footIn[2] + (headIn[2] - footIn[2]) * tp];
             // its end comes to rest on the floor at the worst
-            const dropTo: Vec3 = [footIn[0] + inward[0] * len * 0.45, Math.max(0.15 + rng() * 0.3, footIn[1] - len * 0.85), footIn[2] + inward[2] * len * 0.45];
-            beamBetween(mesh, footIn, dropTo, 0.1, 0.14, along, rafterTint);
+            const dropTo: Vec3 = [plate[0] + inward[0] * len * 0.45, Math.max(0.15 + rng() * 0.3, plate[1] - len * 0.85), plate[2] + inward[2] * len * 0.45];
+            beamBetween(mesh, plate, dropTo, 0.1, 0.14, along, rafterTint);
           }
         }
         // two or three battens across the rafters just above the band, the odd one broken short
@@ -1325,6 +1328,55 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
       const shape: DebrisShape = thatch ? 'straw' : cover.material === 'slate' ? 'slate' : cover.material === 'metal' ? 'sheet' : cover.material === 'plank' ? 'splinter' : 'tile';
       for (let k = 0; k < 40; k++) {
         const p = at(rng(), 0.4 + rng() * 0.55);
+        if (!throwPieceAt(out.pieces, rng, cover.bucket, shape, p, shape === 'straw' ? [0.08, 0.9, 0.08] : [0.2, 0.015, 0.34], cover.tint, 2)) break;
+      }
+    }
+    // the hip ends (house.ts lays a hip or half-hip's ends as triangles: their eave corners and the ridge's end): a band
+    // of covering along the eave like the slopes', the two hip rafters from the corners up to the ridge's end — whole,
+    // or snapped with the end splintered — and the common rafter up the middle
+    for (const slab of roof.slabs.slice(2)) {
+      const [a, b, apex] = slab.corners;
+      const eaveLen = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      if (eaveLen < 0.5) continue;
+      const nrm0 = norm3(cross3([b[0] - a[0], b[1] - a[1], b[2] - a[2]], [apex[0] - a[0], apex[1] - a[1], apex[2] - a[2]]));
+      const nrm: Vec3 = nrm0[1] < 0 ? [-nrm0[0], -nrm0[1], -nrm0[2]] : nrm0;
+      const at = (s: number, t: number): Vec3 => {
+        const e: Vec3 = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+        const sag = thatch ? Math.sin(Math.PI * t) * 0.18 : 0;
+        return [e[0] + (apex[0] - e[0]) * t - nrm[0] * sag, e[1] + (apex[1] - e[1]) * t - nrm[1] * sag, e[2] + (apex[2] - e[2]) * t - nrm[2] * sag];
+      };
+      const segs = Math.max(3, Math.round(eaveLen / 0.6));
+      const frac = Array.from({ length: segs + 1 }, () => (thatch ? 0.12 : 0.18) + rng() * (thatch ? 0.22 : 0.32));
+      if (mesh.begin(cover.bucket, 'remnant')) {
+        const dn: Vec3 = [-nrm[0] * roof.thicknessM, -nrm[1] * roof.thicknessM, -nrm[2] * roof.thicknessM];
+        const edgeN = norm3([apex[0] - (a[0] + b[0]) / 2, apex[1] - (a[1] + b[1]) / 2, apex[2] - (a[2] + b[2]) / 2]);
+        for (let i = 0; i < segs; i++) {
+          const s0 = i / segs, s1 = (i + 1) / segs;
+          // the band narrows to nothing at the corners, where the hips meet the eave
+          const f0 = frac[i] * Math.min(1, 4 * s0 * (1 - s0) + 0.15), f1 = frac[i + 1] * Math.min(1, 4 * s1 * (1 - s1) + 0.15);
+          const q = [at(s0, 0), at(s1, 0), at(s1, f1), at(s0, f0)];
+          mesh.quadUvAlong(q[0], q[1], q[2], q[3], nrm, eaveLen, coverTint);
+          mesh.quadUvAlong(q[2], q[3], [q[3][0] + dn[0], q[3][1] + dn[1], q[3][2] + dn[2]], [q[2][0] + dn[0], q[2][1] + dn[1], q[2][2] + dn[2]], edgeN, eaveLen,
+            [coverTint[0] * 0.7, coverTint[1] * 0.7, coverTint[2] * 0.7]);
+        }
+      }
+      if (mesh.begin(timber.bucket, 'remnant')) {
+        const lift = -roof.thicknessM - 0.08;
+        const sink = (p: Vec3): Vec3 => [p[0] + nrm[0] * lift, p[1] + nrm[1] * lift, p[2] + nrm[2] * lift];
+        for (const foot of [a, b, at(0.5, 0)]) {
+          const f = sink(foot), h = sink(apex);
+          if (rng() < 0.5) { beamBetween(mesh, f, h, 0.12, 0.16, nrm, rafterTint); continue; }
+          const t = 0.3 + rng() * 0.4;
+          const mid: Vec3 = [f[0] + (h[0] - f[0]) * t, f[1] + (h[1] - f[1]) * t, f[2] + (h[2] - f[2]) * t];
+          beamBetween(mesh, f, mid, 0.12, 0.16, nrm, rafterTint);
+          const tip: Vec3 = [mid[0] + (h[0] - f[0]) * 0.05, mid[1] + (h[1] - f[1]) * 0.05 - 0.03, mid[2] + (h[2] - f[2]) * 0.05];
+          beamBetween(mesh, mid, tip, 0.06, 0.08, nrm, [Math.min(1, rafterTint[0] * 1.6 + 0.1), Math.min(1, rafterTint[1] * 1.5 + 0.08), Math.min(1, rafterTint[2] * 1.4 + 0.06)]);
+          throwPieceAt(out.pieces, rng, timber.bucket, 'beam', mid, [0.9 + rng(), 0.12, 0.12], rafterTint, 2.5);
+        }
+      }
+      const shape: DebrisShape = thatch ? 'straw' : cover.material === 'slate' ? 'slate' : cover.material === 'metal' ? 'sheet' : cover.material === 'plank' ? 'splinter' : 'tile';
+      for (let k = 0; k < 16; k++) {
+        const p = at(0.2 + rng() * 0.6, 0.35 + rng() * 0.5);
         if (!throwPieceAt(out.pieces, rng, cover.bucket, shape, p, shape === 'straw' ? [0.08, 0.9, 0.08] : [0.2, 0.015, 0.34], cover.tint, 2)) break;
       }
     }

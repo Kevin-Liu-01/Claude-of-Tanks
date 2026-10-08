@@ -274,10 +274,15 @@ function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput):
         bucket: roofCover.bucket });
     }
     if (rh < D - 1e-3) {
-      // the hip (or half-hip) ends: their eave corners and the ridge's end (a triangle as a quad with its apex twice)
+      // the hip (or half-hip) ends: their eave corners and the ridge's end (a triangle as a quad with its apex twice); a
+      // half-hip's end starts where its gable wall stops (house.ts: the gable polygon's top edge), not at the side eaves
+      const top = R.kind === 'halfhip' && rg.gable && rg.gable.length === 4 ? rg.gable[2] : null;
       for (const end of [1, -1]) {
         const apex = at(0, ridge, end * rh);
-        slabs.push({ corners: [at(-end * (rg.s + e), lo, end * D), at(end * (rg.s + e), lo, end * D), apex, apex], bucket: roofCover.bucket });
+        const corners: [Vec3, Vec3, Vec3, Vec3] = top
+          ? [at(-end * top[0], top[1] + R.thickness / cosP, end * rg.halfD), at(end * top[0], top[1] + R.thickness / cosP, end * rg.halfD), apex, apex]
+          : [at(-end * (rg.s + e), lo, end * D), at(end * (rg.s + e), lo, end * D), apex, apex];
+        slabs.push({ corners, bucket: roofCover.bucket });
       }
     }
   }
