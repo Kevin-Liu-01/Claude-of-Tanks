@@ -10,7 +10,7 @@ import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, placedStructureClearances, excludeVegetation } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
@@ -33,6 +33,8 @@ assert.ok(start > 0 && end > start && noiseEnd > noiseStart);
 const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
   DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances,
+  // the trees lane (2026-10-07): the hedge trees the authored rows came too close to are dropped after the rows
+  excludeVegetation,
   // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
