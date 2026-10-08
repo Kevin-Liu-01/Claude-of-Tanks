@@ -162,7 +162,8 @@ function coverAbove(grid, rule) {
     ? [[0, 0], [-q, -q], [q, -q], [-q, q], [q, q]]
     : [[0, 0], [-h, -h], [0, -h], [h, -h], [-h, 0], [h, 0], [-h, h], [0, h], [h, h]];
   const reach = []; for (let d = q; d <= COVER_SLOT_M + 1e-9; d += q) reach.push(d);
-  const cache = new Map();
+  // per-column samples do not depend on height or on the fills placed so far: kept on the grid across rounds
+  const cache = (grid.coverColumns ??= {})[rule] ??= new Map();
   const column = (x, z) => {
     const k = z * nx + x; let c = cache.get(k); if (c) return c;
     const px = origin[0] + (x + 0.5) * V, pz = origin[2] + (z + 0.5) * V;
