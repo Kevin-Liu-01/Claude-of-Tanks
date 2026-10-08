@@ -45,21 +45,26 @@ function canyonContract(sample) {
     assert.ok(Math.abs(sample(center - 160, z) - floor) < 6 && Math.abs(sample(center + 160, z) - floor) < 6,
       'wide connected floor, not the crown of a ridge or several random mesas');
     for (const side of [-1, 1]) {
-      let steepest = 0, benchRun = 0, longestBench = 0;
-      for (let distance = 211; distance < 400; distance++) {
+      // 2026-10-07 (the Redrock lane, owner: "redrock is really rough"; the walls read as smooth clay ramps with a 20 m
+      // bench between two 45-65 degree steps): every wall is a Wadi Rum jebel's section — a talus apron, the pale Disi's
+      // rounded base up to its bench ~9 m over the floor, then the Umm Ishrin's sheer face to the top, within ~90 m of the toe
+      let steepest = 0, benchRun = 0, longestBench = 0, toe = -1, top = -1;
+      const full = sample(center + side * 420, z) - floor;
+      for (let distance = 200; distance < 400; distance++) {
         const height = sample(center + side * distance, z) - floor;
         const slope = Math.abs(sample(center + side * (distance + 1), z)
           - sample(center + side * distance, z));
-        // Measure the bench across one 4m terrain-support cell. One-metre
-        // soil ripples must not split an otherwise continuous rock terrace.
-        const benchSlope = Math.abs(sample(center + side * (distance + 2), z)
-          - sample(center + side * (distance - 2), z)) / 4;
+        const benchSlope = Math.abs(sample(center + side * (distance + 1), z)
+          - sample(center + side * (distance - 1), z)) / 2;
         steepest = Math.max(steepest, slope);
-        benchRun = height > 15 && height < 40 && benchSlope < .2 ? benchRun + 1 : 0;
+        if (toe < 0 && height > 0.5) toe = distance;
+        if (top < 0 && height > full * 0.85) top = distance;
+        benchRun = height > 5 && height < 24 && benchSlope < .4 ? benchRun + 1 : 0;
         longestBench = Math.max(longestBench, benchRun);
       }
-      assert.ok(steepest > 2.2, 'central walls contain steep rock faces, not smooth hillside ramps');
-      assert.ok(longestBench >= 20, `at least twenty metres of continuous rock bench separate steep faces: z=${z}, side=${side}, length=${longestBench}, steepest=${steepest}`);
+      assert.ok(steepest > 4, `central walls stand sheer (a face past 76 degrees), not hillside ramps: z=${z}, side=${side}, steepest=${steepest}`);
+      assert.ok(longestBench >= 2, `the Disi's bench stands between the base and the face: z=${z}, side=${side}, length=${longestBench}`);
+      assert.ok(toe > 0 && top > 0 && top - toe < 95, `the wall rises from its toe to its top within 95 m: z=${z}, side=${side}, toe=${toe}, top=${top}`);
     }
   }
 }
