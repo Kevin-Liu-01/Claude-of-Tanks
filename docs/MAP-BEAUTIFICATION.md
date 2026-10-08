@@ -6673,6 +6673,36 @@ the water with no wet band.
 
 Frosthollow's own spruce (`overSnow` and its treeline in `winter.ts`) waits for its map round to land; Whiteout stays bare.
 
+**Round 4 (the same day; the gauntlet's list after rounds 1-3b passed): woods past the edge, not a wall.** "A uniform,
+even-height treeline runs across the whole horizon and closes the view" (Verdant's and Steinburg's south-west corners);
+"a straight palisade of identical bare trunks under a flat canopy line, no shrub mantle" (Saltmere).
+- *The corners keep the border's woods.* The hand-over from the border's woods to the ranges' own stands is measured on
+  the square's metric (`horizonStandReach`, max |x|, |z|) in the bake, the parcels, the hedges, the lone trees and the ring
+  forest: a corner holds the border's open fields and copses 208-368 m past its edges as a side's middle does. On the
+  radius the hand-over fell inside the square's corners (724 m), and the ranges' 400 m stand masses stood from the corner.
+- *Copses, not one wood.* Glades 40-90 m across break the near band's free-form woods (`borderLandform.ts` `glades`),
+  most near the edge, none within 25 m of it or past 470 m; farmland's whole-field woods keep their parcels.
+- *A wood's edge.* Each band or range tree in the border's woods probes toward the square for its depth inside the edge
+  (`horizonVista.ts` `shapeWoodsEdges`): 0.58 of a tree at the edge rising to all of it 27 m in (a tenth stand full: old
+  trees by the field), each wood its own stature, one interior tree in fourteen an emergent. The edge trees chain into a
+  mantle of bushes 3-6 m high and twice a hedge's girth, drawn in the hedges' mesh.
+- *The crests, the floor, the hills.* Face trees on a crest are wind-shorn (Nordhavn's "fringe", Monsoon's "comb
+  teeth"); under the border's woods the ring's ground is a wood's dark floor (Monsoon's "open lawn between bare trunks");
+  the fields climb the hills (Amberford's "bald smooth green dome") and the crops fade over 20-40 degrees of slope.
+- *Saltmere's far country* is the upland panorama without its plinth and far rise, 110 m: no massif behind the bocage.
+- *Measured* (the real ring in node, six farmland maps by six eye views, against batch 6's tree): the near treeline as the
+  skyline 32 → 28 % of the columns, its longest unbroken run 15 → 9.5 % of the frame (Saltmere's south-west corner
+  55 → 28 %, Verdant's 40 → 20 %, Frontier's north-east 57 → 22 %); Verdant's mantle 2.1 km, its hedges and mantle
+  17.2k → 27.3k triangles, the ring forest 16.3k → 15.3k instances. Receipt `borderWoodsEdge`.
+- *Elsewhere:* Nordhavn's ring rock and headlands are its map round's (bare gneiss on the ring); Saltmere's grey strand
+  is the square's strand law, which the ring's follows; Frontier's fields past the edge are its land-use grid's.
+
+**Redrock's enclosing walls** crest as a chain of jebels (`horizonJebelSkyline.ts`, past 140 m of the edge and over the
+plateau's shoulder): beehive heads — a sheer, joint-cut flank under a dome of the top two fifths, 14-46 m over the plateau
+— and saddles of at most a fifth of the wall. The basin stays enclosed. The crest's local relief 11.9 → 15.6 m and its
+level share 36 → 20 % (on Redrock r10's walls: 44 → 25.5 %); the far massifs each their kind (beehives, bossed jebels,
+mesas, chains cut by siqs, knolls) in the panorama. Its wave runs on Redrock r10's base.
+
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
 **Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
