@@ -270,6 +270,13 @@ export function createCraterMarks(): CraterMarks {
   mesh.matrixAutoUpdate = false;
   mesh.renderOrder = 2.5; // after the terrain and the wreck scorch, before every particle
   mesh.visible = false;   // out of the render list until the first mark
+  // a whole upload (the first, a reset, a clock rebase) is never cut short by a stamp's range written before the
+  // renderer gets to it (three uploads only the ranges when there are any): a reset's cleared slots would otherwise
+  // keep the last match's craters on the GPU in the fixed crater region
+  const attrs = [pos, inf, shp, sol];
+  let wholePending = true;
+  pos.onUpload(() => { wholePending = false; });
+  const whole = (): void => { wholePending = true; for (const a of attrs) { a.clearUpdateRanges(); a.needsUpdate = true; } };
   let craterCursor = 0, craterCount = 0;
   let markCursor = 0, markCount = 0;
   let highest = -1;
@@ -291,10 +298,12 @@ export function createCraterMarks(): CraterMarks {
       shapes[q] = p1; shapes[q + 1] = p2; shapes[q + 2] = p3; shapes[q + 3] = rimShare;
       soils[q] = soil[0]; soils[q + 1] = soil[1]; soils[q + 2] = soil[2]; soils[q + 3] = soil[3];
     }
-    pos.addUpdateRange(base * 3, VERTS * 3);
-    inf.addUpdateRange(base * 4, VERTS * 4);
-    shp.addUpdateRange(base * 4, VERTS * 4);
-    sol.addUpdateRange(base * 4, VERTS * 4);
+    if (!wholePending) {
+      pos.addUpdateRange(base * 3, VERTS * 3);
+      inf.addUpdateRange(base * 4, VERTS * 4);
+      shp.addUpdateRange(base * 4, VERTS * 4);
+      sol.addUpdateRange(base * 4, VERTS * 4);
+    }
     pos.needsUpdate = inf.needsUpdate = shp.needsUpdate = sol.needsUpdate = true;
     if (slot > highest) highest = slot;
     geo.setDrawRange(0, (highest + 1) * INDICES_PER_SLOT);
@@ -339,15 +348,12 @@ export function createCraterMarks(): CraterMarks {
     },
     shiftTime(delta) {
       for (let i = 0; i < info.length; i += 4) if (info[i] > -1e8) info[i] += delta;
-      inf.clearUpdateRanges();
-      inf.addUpdateRange(0, info.length);
-      inf.needsUpdate = true;
+      whole();
     },
     reset() {
       info.fill(-1e9);
       positions.fill(0);
-      inf.clearUpdateRanges(); inf.needsUpdate = true;
-      pos.clearUpdateRanges(); pos.needsUpdate = true;
+      whole();
       craterCursor = craterCount = markCursor = markCount = 0;
       highest = -1;
       geo.setDrawRange(0, 0);
