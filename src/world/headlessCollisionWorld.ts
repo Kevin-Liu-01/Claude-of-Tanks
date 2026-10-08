@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { createObstacleGrid, rayCollisionRecord } from './collision.ts';
+import { convexOutlineInPlace, createObstacleGrid, rayCollisionRecord } from './collision.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
@@ -87,7 +87,8 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
     };
     const ranged = value[0] === 'w';
     const extent = ranged ? { y0: value[1] as number, y1: value[2] as number } : {};
-    const points = value.slice(ranged ? 3 : 1) as number[];
+    // (the hitbox lane, 2026-10-08) a part's quantised corners convex in fact, as every builder's are (collision.ts)
+    const points = convexOutlineInPlace(value.slice(ranged ? 3 : 1) as number[]);
     let cx = 0;
     let cz = 0;
     for (let index = 0; index < points.length; index += 2) {
