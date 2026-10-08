@@ -84,6 +84,11 @@ const canals = polders.terrain.canals ?? [];
 assert.ok(canals.length >= 3, 'Polders lays its vaart and two weteringen');
 const field = createHeightField(1337, polders);
 const lakes = polders.terrain.lakes;
+// (step 6, the oxbow arm: its ends silted into reed beds) a stretch under a marsh is the marsh's shallow water, not the
+// canal's level sheet
+const marshes = polders.terrain.marshes ?? [];
+const silted = (x, z) => marshes.some((m) => Math.hypot(x - m.x, z - m.z) < m.r);
+let siltedSamples = 0;
 for (const c of canals) {
   // its water at its level along its length, off the roads' culverts: the sheet lies on the bed one water depth under it
   let wetSamples = 0;
@@ -92,6 +97,7 @@ for (const c of canals) {
     for (let s = 2; s < len - 2; s += 3) {
       const x = x0 + (x1 - x0) * s / len, z = z0 + (z1 - z0) * s / len;
       if (field._roadDist(x, z) < 11) continue;
+      if (silted(x, z)) { siltedSamples++; continue; }
       const wet = field.getWaterMaskAt(x, z);
       assert.ok(wet > 0.99, `${c.name}: wet at ${x.toFixed(1)},${z.toFixed(1)} (${wet.toFixed(2)})`);
       const surface = field.getHeightAt(x, z) + field.getWaterDepthAt(x, z);
@@ -106,4 +112,5 @@ for (const c of canals) {
     if (touches) assert.ok(Math.abs((lake.level ?? NaN) - c.level) < 1e-9, `${c.name}: meets the basin at ${lake.x},${lake.z} at its level`);
   }
 }
-console.log(`canals.selftest: the profile; ${unset.length} maps without canals identical to the terrain before the primitive; Polders' ${canals.length} canals at their levels PASS`);
+assert.ok(siltedSamples < 12, `only the silted ends lie under a marsh (${siltedSamples} samples)`);
+console.log(`canals.selftest: the profile; ${unset.length} maps without canals identical to the terrain before the primitive; Polders' ${canals.length} canals at their levels (${siltedSamples} samples in the silted ends' reed beds) PASS`);
