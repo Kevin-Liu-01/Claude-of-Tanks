@@ -40,7 +40,6 @@ export const SET_PIECE_SIZE: Readonly<Record<SetPieceKind, { hw: number; hl: num
 const ALU = material('chrome', [0.5, 0.51, 0.52], 0.32, 0.9, 0, 0.3);
 const ALU_DULL = material('steel', [0.36, 0.37, 0.38], 0.5, 0.7, 0, 0.4);
 const WIRE_MESH = material('steel', [0.28, 0.285, 0.29], 0.55, 0.75, 0, 0.5);
-const TITANIUM = material('chrome', [0.42, 0.42, 0.41], 0.35, 0.85, 0, 0.4);
 const FENDER = material('paint', linearHex(0xd8d4c8), 0.55, 0, 0, 0.6);
 const SEAT_WEB = material('canvas', linearHex(0xb8b8b2), 0.85, 0, 0, 0.5);
 const GOLD = material('chrome', [0.55, 0.36, 0.08], 0.28, 0.9, 0, 0.2);
@@ -53,8 +52,10 @@ const RUSTY = material('steel', [0.09, 0.06, 0.04], 0.75, 0.25, 0, 1);
 // wheel discs, with no wire-mesh wheels, gold foil, hand controller or dust coating"; the painted bucket reads colours
 // alone, so the materials tell it in shades): the zinc-coated piano wire bright, the weave's gaps dark; the titanium
 // chevrons brighter still; the Kapton foil in two golds as it crinkles; the umbrella dish's silvered mesh pale
-const WIRE_BRIGHT = material('steel', [0.52, 0.525, 0.53], 0.5, 0.8, 0, 0.5);
-const WIRE_GAP = material('trim', [0.24, 0.24, 0.245], 0.8, 0, 0, 0.6);
+// (round 5, wave 278: "chunky checkerboard drums for wheels") the weave's check finer and close in shade: a mesh's grain,
+// not a chessboard
+const WIRE_BRIGHT = material('steel', [0.5, 0.505, 0.51], 0.5, 0.8, 0, 0.5);
+const WIRE_GAP = material('trim', [0.38, 0.38, 0.385], 0.8, 0, 0, 0.6);
 const TITANIUM_BRIGHT = material('chrome', [0.62, 0.62, 0.6], 0.3, 0.9, 0, 0.4);
 const GOLD_DIM = material('chrome', [0.36, 0.22, 0.045], 0.35, 0.9, 0, 0.2);
 const DISH_MESH = material('paint', linearHex(0xd8d8d2), 0.5, 0.2, 0, 0.5);
@@ -171,7 +172,7 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
     // mobile); the hub a small spun disc inside it
     const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
       [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
-    const tyreSegs = coarse ? 14 : 44;
+    const tyreSegs = coarse ? 14 : 64;
     mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
       const a = (j / tyreSegs) * Math.PI * 2;
       out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
@@ -244,7 +245,9 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
   for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
   mesh.push().rotateZ(Math.PI / 2);
   mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
-  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => ALU_DULL, { flip: true });
+  // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
+  // silvered mesh, and the shadowed underside read brown
+  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
   if (!coarse) mesh.dressing(() => {
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
