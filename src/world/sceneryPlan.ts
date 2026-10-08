@@ -7,12 +7,14 @@
 // world/scenery.selftest.mjs holds them equal.
 import type { StructureClearance } from './vegetationClearance.ts';
 
-export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate';
+/** 'breccia': the impact-shattered rock of an airless or a dusty world (the Moon's ejecta, Mars's fields of basalt), no
+ * lichen and no rust, dust banked at its foot (the hitbox lane, round 2, 2026-10-08). */
+export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate' | 'breccia';
 /**
  * The rock forms: what made the rock decides its shape. The last three are rock that people shaped — a standing stone,
  * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock.
  */
-export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary';
+export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'blocks';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {
@@ -150,6 +152,7 @@ export const FIELD_FORMS: Readonly<Record<RockGeology, ReadonlyArray<readonly [R
   sandstone: [['outcrop', 0.65], ['scree', 0.2], ['pavement', 0.15]],
   limestone: [['pavement', 0.55], ['outcrop', 0.35], ['scree', 0.1]],
   slate: [['crag', 0.55], ['scree', 0.45]],
+  breccia: [['blocks', 0.7], ['scree', 0.3]],
 });
 
 /** The map-level contract: a top-level `scenery` block beside terrain / vegetation / props. */
