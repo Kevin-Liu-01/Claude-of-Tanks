@@ -714,6 +714,64 @@ export function windowRhythm(face: FaceName, storey: number, width: number, opts
 }
 
 /**
+ * A house body as its kit built it, kept for the destruction seam (docs/DESTRUCTION.md §16; damage.ts describe reads it
+ * back): its spec and frame, the placement it was built under, its uv offset and the Fachwerk members its dialect drew.
+ */
+export interface HousePlan {
+  spec: HouseSpec;
+  frame: HouseFrame;
+  /** the placement (PartSink.placed) the body was built under, in the building's frame; null in that frame itself */
+  place: { yaw: number; x: number; y: number; z: number } | null;
+  /** the sink's uv offset: every world and member UV of the body shifts by it (a broken block keeps its texture) */
+  uvOffset: readonly [number, number];
+  /** the frame's members by storey (the gable: storeys.length) and face, in face coordinates from that storey's floor */
+  members: HouseMember[];
+  /** the frame's timber colour (the first member's), or null for an unframed house */
+  timber: Rgb | null;
+}
+
+interface HouseMember {
+  storey: number;
+  face: FaceName;
+  role: 'post' | 'rail' | 'brace' | 'sill' | 'plate';
+  u0: number;
+  y0: number;
+  u1: number;
+  y1: number;
+  widthM: number;
+  depthM: number;
+}
+
+let planSink: HousePlan[] | null = null;
+let memberTarget: { plan: HousePlan; storey: number; face: FaceName; y0: number; y1: number } | null = null;
+
+/** Run a kit build keeping every house body it builds (the destruction seam's plan; builders are synchronous). */
+export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
+  const prior = planSink, plans: HousePlan[] = [];
+  planSink = plans;
+  try { return [build(), plans]; } finally { planSink = prior; }
+}
+
+/** Dress one face with the member capture pointed at it (a no-op outside withHousePlans). */
+function capturingMembers(plan: HousePlan | null, storey: number, face: FaceName, y0: number, y1: number, dress: () => void): void {
+  if (!plan) { dress(); return; }
+  const prior = memberTarget;
+  memberTarget = { plan, storey, face, y0, y1 };
+  try { dress(); } finally { memberTarget = prior; }
+}
+
+/** A framing member H drew (the capture's target face, or nothing outside a capture). */
+function captureMember(kind: 'post' | 'rail' | 'brace', u0: number, y0: number, u1: number, y1: number, width: number, out: number,
+  opts: EmitOptions): void {
+  const t = memberTarget;
+  if (!t) return;
+  // a rail at the storey's foot is its sill beam, at its head its plate
+  const role = kind !== 'rail' ? kind : y0 - t.y0 < 0.2 ? 'sill' : t.y1 - y0 < 0.2 ? 'plate' : 'rail';
+  t.plan.members.push({ storey: t.storey, face: t.face, role, u0, y0: y0 - t.y0, u1, y1: y1 - t.y0, widthM: width, depthM: Math.max(0.02, out) });
+  if (!t.plan.timber && opts.colour) t.plan.timber = opts.colour;
+}
+
+/**
  * Build one house body into the sink. Returns the frame the dialect dressed (roof geometry, floors, faces) so a
  * style can add its own signature parts (stairs, balconies, dormers, porches) afterwards.
  */
@@ -749,6 +807,8 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   };
   const faces = frameFaces(bodies[0]);
   const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
+  const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null } : null;
+  if (plan) planSink!.push(plan);
   if (facadeOn()) groundSkirt(sink, spec, faces);
   const roofPatch = wearHouse(spec, rg);
   // the rain shadow under the eaves (facade craft, desktop): the top storey's eaves faces darken toward the soffit, by
@@ -805,7 +865,9 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         // a gable hung with roof slate or tile courses its tiles downward (roof UVs run v down the slope)
         wallPolygon(sink, gableBucket, face, poly, 0.32, gableBucket === 'roof'
           ? { uv: { kind: 'plane', origin: facePoint(face, 0, 0, 0), u: face.u, v: [0, -1, 0] } } : {});
-        if (spec.gableFramed && dialect.dressGable) dialect.dressGable(sink, face, poly, frame);
+        if (spec.gableFramed && dialect.dressGable) {
+          capturingMembers(plan, spec.storeys.length, name, eaveY, rg.ridgeTopY, () => dialect.dressGable!(sink, face, poly, frame));
+        }
       }
       if (spec.verge) {
         for (const end of [1, -1]) for (const side of [1, -1]) {
@@ -831,7 +893,8 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       const face = sf[name];
       const own = spec.openings.filter((o) => o.face === name && o.storey === i);
       if (storey.framed && dialect.dressWall) {
-        dialect.dressWall(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame);
+        capturingMembers(plan, i, name, bodies[i].y0, bodies[i].y1,
+          () => dialect.dressWall!(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame));
       } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own);
       // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall
       sink.recess = reveal;
@@ -1075,15 +1138,18 @@ export const H = {
   /** a vertical post on a face from y0 to y1 at u, protruding `out` */
   post(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     if (y1 - y0 < 0.02) return;
+    captureMember('post', u, y0, u, y1, width, out, opts);
     sink.member(bucket, facePoint(face, u, y0), facePoint(face, u, y1), width, out, face.out, opts);
   },
   /** a horizontal rail on a face from u0 to u1 at y */
   rail(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number, height: number, out: number, opts: EmitOptions & { ends?: boolean }): void {
     if (u1 - u0 < 0.02) return;
+    captureMember('rail', u0, y, u1, y, height, out, opts);
     sink.member(bucket, facePoint(face, u0, y), facePoint(face, u1, y), height, out, face.out, opts);
   },
   /** a diagonal brace between two face points */
   brace(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, y0: number, u1: number, y1: number, width: number, out: number, opts: EmitOptions): void {
+    captureMember('brace', u0, y0, u1, y1, width, out, opts);
     sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, opts);
   },
   /**
@@ -1097,6 +1163,7 @@ export const H = {
     keep: readonly FaceHalfPlane[], opts: EmitOptions, embed = 0.02): void {
     const du = u1 - u0, dy = y1 - y0, len = Math.hypot(du, dy);
     if (len < 1e-3) return;
+    captureMember('brace', u0, y0, u1, y1, width, out, opts);
     const au = du / len, ay = dy / len, nu = -ay, ny = au, hw = width / 2, ext = width + 0.05;
     const s0u = u0 - au * ext, s0y = y0 - ay * ext, s1u = u1 + au * ext, s1y = y1 + ay * ext;
     let poly: Array<[number, number]> = [[s0u - nu * hw, s0y - ny * hw], [s1u - nu * hw, s1y - ny * hw], [s1u + nu * hw, s1y + ny * hw],

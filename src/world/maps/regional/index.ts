@@ -13,8 +13,9 @@
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
-import { withWear } from './house.ts';
+import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
+import { withHousePlans, withWear, type HousePlan } from './house.ts';
+import { registerHouseDamageKits } from './damage.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
@@ -76,6 +77,8 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
 /** Every registered kit (receipts iterate it). */
 export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(Object.values(STYLES));
+// the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan
+registerHouseDamageKits(ARCHITECTURE_STYLES);
 
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
@@ -107,6 +110,26 @@ function measure(buckets: Buckets): BaseBounds {
 }
 
 /**
+ * A regional build's plan, handed back beside its parts for the destruction seam (docs/DESTRUCTION.md §16.2
+ * StructureDescribeInput.kitPlan; damage.ts describe reads it): the style and builder, every house body the builder
+ * built (house.ts HousePlan: its spec, frame, placement, uv offset and Fachwerk members), the building's weather tints
+ * and its plan footprint. A builder that builds no house body hands back an empty `houses` (the default kit reads it).
+ */
+export interface RegionalKitPlan {
+  kind: 'regional-house';
+  style: string;
+  builder: string;
+  houses: HousePlan[];
+  tints: WeatherTints;
+  info: { w: number; d: number; h: number };
+}
+const KIT_PLANS = new WeakMap<object, RegionalKitPlan>();
+/** The plan a regional build (buildRegionalParts, rebuildRegionalStructure) handed back beside these parts. */
+export function regionalKitPlanOf(parts: object): RegionalKitPlan | undefined {
+  return KIT_PLANS.get(parts);
+}
+
+/**
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
@@ -127,8 +150,9 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
-  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints,
-    { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun });
+  const [built, houses] = withHousePlans(() => withWear(wear, () => builder(ctx)));
+  const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun });
+  KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;
@@ -190,5 +214,7 @@ export function rebuildRegionalStructure(
   for (const list of Object.values(base)) if (Array.isArray(list)) for (const geometry of list) geometry.dispose();
   const out = {} as PropsLikeBuckets;
   for (const name of REGIONAL_BUCKETS) out[name] = parts[name] ?? [];
+  const plan = KIT_PLANS.get(parts);
+  if (plan) KIT_PLANS.set(out, plan);
   return out;
 }

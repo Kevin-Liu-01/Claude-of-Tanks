@@ -71,6 +71,15 @@ const DAMP_BREAKS = [0.35, 1.0, 1.8] as const;
 /** The wall-foot darkening at each height (before the damp strength): piecewise linear between the rows. */
 const DAMP_TABLE: ReadonlyArray<readonly [number, number]> = [[-0.6, 0.6], [0, 0.66], [0.35, 0.8], [1.0, 0.93], [1.8, 1]];
 
+/**
+ * A vertical wall's weathering at height `y` (building frame, the placed ground at 0) for a palette's damp strength:
+ * the factor this pass multiplies into the building's tint there (the destruction seam's rims redraw a wall seamlessly
+ * with it; damage fracture.ts).
+ */
+export function wallWeather(y: number, damp: number): number {
+  return 1 - (1 - dampK(y)) * Math.min(1, Math.max(0, damp));
+}
+
 function dampK(y: number): number {
   if (y <= DAMP_TABLE[0][0]) return DAMP_TABLE[0][1];
   for (let i = 1; i < DAMP_TABLE.length; i++) {

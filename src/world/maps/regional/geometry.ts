@@ -153,6 +153,12 @@ export class PartSink {
     try { body(); } finally { this.place = prior; }
   }
 
+  /** The placement `placed` has open (its yaw and offset in the building's frame), or null in the building's own frame. */
+  placement(): { yaw: number; x: number; y: number; z: number } | null {
+    const pl = this.place;
+    return pl ? { yaw: Math.atan2(pl.sin, pl.cos), x: pl.x, y: pl.y, z: pl.z } : null;
+  }
+
   /** A point of the emitting frame in the building's frame (through the placements `placed` has open). */
   framePoint(p: Vec3): Vec3 {
     const pl = this.place;
