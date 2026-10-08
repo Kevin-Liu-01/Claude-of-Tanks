@@ -47,7 +47,8 @@ for (let seed = 1; seed <= 24; seed++) {
     const g = build(mulberry32(seed));
     for (const name of ['position', 'normal', 'uv', 'color']) assert.ok(g.getAttribute(name), `${label}: ${name} (the vehicle finish needs its uv and its livery)`);
     const e = extent(g);
-    assert.ok(e.minY > -0.002, `${label} seed ${seed}: nothing under the ground (${e.minY.toFixed(3)})`);
+    assert.ok(e.minY > -0.012, `${label} seed ${seed}: nothing deeper than a bedded skid (${e.minY.toFixed(3)})`);
+    if (label === 'intact') assert.ok(e.minY < -0.005, `the stack's foot bedded in the ground, no daylight under it (${e.minY.toFixed(3)})`);
     assert.ok(e.maxY <= maxH, `${label} seed ${seed}: within the height (${e.maxY.toFixed(3)} m of ${maxH.toFixed(3)})`);
     assert.ok(e.reach <= maxR, `${label} seed ${seed}: within the reach (${e.reach.toFixed(3)} m of ${maxR.toFixed(3)})`);
     g.dispose();
@@ -58,10 +59,10 @@ for (let seed = 1; seed <= 24; seed++) {
   // the upper crate's skids on the lower lids: its foot at the crates' height, and nothing between 4 and 26 cm over
   // the seam where the two lower crates meet (a crate resting on them, not sunk into them)
   let atLid = 0;
-  for (let i = 0; i < p.count; i++) if (Math.abs(p.getY(i) - 0.27) < 1e-4) atLid++;
-  assert.ok(atLid >= 16, `the upper crate's skids sit at the lower lids' height (${atLid} vertices at 0.27 m)`);
+  for (let i = 0; i < p.count; i++) if (Math.abs(p.getY(i) - 0.262) < 1e-4) atLid++;
+  assert.ok(atLid >= 16, `the upper crate's skids sit at the lower lids' height (${atLid} vertices at 0.262 m)`);
   // the detail it is made of: far more than six boxes (the retired build's 144 vertices)
-  assert.ok(p.count > 2000 && p.count < 9000, `a crate's boards, cleats, beckets, hasps and markings (${p.count} vertices)`);
+  assert.ok(p.count > 2000 && p.count < 14000, `a crate's boards, cleats, beckets, hasps, lettering and wear (${p.count} vertices)`);
   // the markings and the wear: the livery holds a pale yellow, a worn wood tone and the olive
   const col = g.getAttribute('color'), hsl = { h: 0, s: 0, l: 0 }, c = new THREE.Color();
   let yellow = 0, olive = 0, worn = 0, steel = 0;
@@ -72,7 +73,7 @@ for (let seed = 1; seed <= 24; seed++) {
     else if (hsl.h > 0.06 && hsl.h < 0.15 && hsl.l > 0.25 && hsl.l < 0.42) worn++;
     else if (hsl.s < 0.12 && hsl.l < 0.3) steel++;
   }
-  assert.ok(yellow >= 40 && olive >= 150 && worn >= 150 && steel >= 60,
+  assert.ok(yellow >= 400 && olive >= 150 && worn >= 150 && steel >= 60,
     `the livery: stencilled markings (${yellow}), the olive (${olive}), the paint worn to the wood (${worn}), the hardware (${steel})`);
   g.dispose();
 }

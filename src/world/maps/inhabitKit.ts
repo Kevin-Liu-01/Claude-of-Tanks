@@ -1505,14 +1505,53 @@ function bAmmoboxBrokenLegacy(rng: Rng): THREE.BufferGeometry {
 // seam resting on their lids, a steel ammunition can beside them for scale. On the props' vehicle finish (props.ts
 // mats.vehicle: orange-peel, chips, panel grime under a vertex-colour livery), so it reads as painted wood and steel.
 // The wood smash and the 'ammo' blast stay the kind's (propSounds.ts, effects.ts); the record, footprint and draws do too.
-const CRATE_PAINT: Palette = [0.20, 0.22, 0.15];
-const CRATE_LID: Palette = [0.20, 0.21, 0.17];
-const CRATE_WORN: Palette = [0.11, 0.17, 0.33];
+// (b45 round 2; wave 281 on the stack: "no stencilled markings, wear, dust or ground contact shadow", and at chase range
+// "a small grey block that does not read as an ammunition crate") the olive a step lighter so the cleats, the lettering
+// and the wear read in the sun; the worn wood paler against it
+const CRATE_PAINT: Palette = [0.20, 0.22, 0.19];
+const CRATE_LID: Palette = [0.20, 0.21, 0.21];
+const CRATE_WORN: Palette = [0.10, 0.18, 0.41];
+const CRATE_SCUFF: Palette = [0.10, 0.14, 0.52];
+const CRATE_GRIME: Palette = [0.09, 0.16, 0.10];
 const CRATE_SEAM: Palette = [0.20, 0.18, 0.07];
 const HEMP: Palette = [0.11, 0.28, 0.50];
-const STENCIL_YELLOW: Palette = [0.14, 0.48, 0.56];
+const STENCIL_YELLOW: Palette = [0.14, 0.50, 0.62];
 const HARDWARE: Palette = [0.58, 0.05, 0.19];
-const DUST_TINT: Palette = [0.09, 0.18, 0.50];
+const DUST_TINT: Palette = [0.09, 0.18, 0.54];
+/**
+ * A stencil face for the crates' lettering: each glyph 3 cells wide and 5 tall, rows read top to bottom, a cell painted
+ * where its bit is set (the stencil's bridges leave the cells apart). The digits and the few letters an ammunition
+ * crate's markings use.
+ */
+const STENCIL_GLYPHS: Readonly<Record<string, readonly number[]>> = Object.freeze({
+  '0': [7, 5, 5, 5, 7], '1': [2, 6, 2, 2, 7], '2': [7, 1, 7, 4, 7], '3': [7, 1, 3, 1, 7], '4': [5, 5, 7, 1, 1],
+  '5': [7, 4, 7, 1, 7], '6': [7, 4, 7, 5, 7], '7': [7, 1, 2, 2, 2], '8': [7, 5, 7, 5, 7], '9': [7, 5, 7, 1, 7],
+  A: [7, 5, 7, 5, 5], C: [7, 4, 4, 4, 7], D: [6, 5, 5, 5, 6], E: [7, 4, 6, 4, 7], G: [7, 4, 5, 5, 7], H: [5, 5, 7, 5, 5],
+  L: [4, 4, 4, 4, 7], M: [5, 7, 7, 5, 5], N: [5, 7, 7, 7, 5], O: [7, 5, 5, 5, 7], P: [7, 5, 7, 4, 4], R: [7, 5, 6, 5, 5],
+  S: [7, 4, 7, 1, 7], T: [7, 2, 2, 2, 2], X: [5, 5, 2, 5, 5], '-': [0, 0, 7, 0, 0], '.': [0, 0, 0, 0, 2], '/': [1, 1, 2, 4, 4],
+});
+/** A stencilled line of text on a face toward +z, its left end at (x, y), each cell `cell` metres: one quad a run of cells. */
+function stencilLine(text: string, x: number, y: number, cell: number, o: Rng): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  let cx = x;
+  for (const ch of text) {
+    const rows = STENCIL_GLYPHS[ch];
+    if (rows) {
+      rows.forEach((bits, r) => {
+        for (let c = 0; c < 3; c++) {
+          if (!(bits & (4 >> c))) continue;
+          let run = 1;
+          while (c + run < 3 && bits & (4 >> (c + run))) run++;
+          out.push(P(facePlane(run * cell * 0.86, cell * 0.86), STENCIL_YELLOW, 0.05, o)
+            .translate(cx + (c + run / 2) * cell, y - (r + 0.5) * cell, 0));
+          c += run - 1;
+        }
+      });
+    }
+    cx += cell * 4;
+  }
+  return out;
+}
 /** A crate's length, width and height (its lid on, its skids under it), metres. */
 const AMMO_CRATE = Object.freeze({ L: 0.78, W: 0.30, H: 0.27 });
 
@@ -1528,10 +1567,10 @@ function dustAndContact(geo: THREE.BufferGeometry, rng: Rng): THREE.BufferGeomet
   const dr = _c.r, dg = _c.g, db = _c.b;
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
-    const foot = 1 - Math.min(1, Math.max(0, y / 0.11));
+    const foot = 1 - Math.min(1, Math.max(0, y / 0.15));
     const top = Math.max(0, nrm.getY(i) - 0.8) * 5;
-    const t = 0.42 * foot * foot + 0.14 * top;
-    const shade = y < 0.012 ? 0.72 : 1;
+    const t = 0.6 * foot * foot + 0.26 * top;
+    const shade = y < 0.012 ? 0.7 : 1;
     col.setXYZ(i, (col.getX(i) + (dr - col.getX(i)) * t) * shade,
       (col.getY(i) + (dg - col.getY(i)) * t) * shade, (col.getZ(i) + (db - col.getZ(i)) * t) * shade);
   }
@@ -1570,15 +1609,24 @@ function ammoCrate(o: Rng): THREE.BufferGeometry {
     parts.push(P(box(0.014, 0.014, 0.012), HARDWARE, 0.05, o).translate(sx * L * 0.28, top - 0.04, W / 2 + 0.006));
     parts.push(P(box(0.05, 0.03, 0.005), HARDWARE, 0.05, o).translate(sx * L * 0.3, top - 0.004, -W / 2 - 0.003));
   }
-  // the markings: a stencilled block and a code line on the front, a coloured band at one end, a line on the lid
+  // the markings, stencilled in faded yellow: the round and its count in letters a hand high on the front, the lot below,
+  // a coloured band at one end, the lot again on the lid
   const front = W / 2 + 0.0016;
-  for (const [w, x, yr] of [[0.22, -0.14, 0.72], [0.22, -0.14, 0.56], [0.15, -0.175, 0.40], [0.12, 0.16, 0.72]] as const) {
-    parts.push(P(facePlane(w, 0.012), STENCIL_YELLOW, 0.04, o).translate(x, skid + body * yr, front));
+  const LINES = [['105MM HE', 'LOT 44-12'], ['CTG 7.62', 'LOT 12-08'], ['105MM AP', 'LOT 38-07']] as const;
+  const [line1, line2] = LINES[Math.floor(o() * LINES.length) % LINES.length];
+  for (const g of stencilLine(line1, -L / 2 + 0.06, skid + body * 0.8, 0.0115, o)) parts.push(g.translate(0, 0, front));
+  for (const g of stencilLine(line2, -L / 2 + 0.06, skid + body * 0.42, 0.0085, o)) parts.push(g.translate(0, 0, front));
+  parts.push(P(facePlane(0.05, body * 0.62), STENCIL_YELLOW, 0.04, o).translate(L * 0.37, skid + body * 0.52, front));
+  for (const g of stencilLine(line2, -0.2, 0, 0.0095, o)) {
+    g.rotateX(-Math.PI / 2);
+    parts.push(g.translate(0, top + lidT + 0.0016, 0.06));
   }
-  parts.push(P(facePlane(0.045, body * 0.5), STENCIL_YELLOW, 0.04, o).translate(L * 0.36, skid + body * 0.52, front));
-  const lidMark = P(facePlane(0.2, 0.014), STENCIL_YELLOW, 0.04, o);
-  lidMark.rotateX(-Math.PI / 2);
-  parts.push(lidMark.translate(-0.12, top + lidT + 0.0016, 0.02));
+  // the wear: the paint scuffed through at the lid's front corners and along the foot, grime run down from the hasps
+  for (const sx of [-1, 1]) {
+    parts.push(P(facePlane(0.05 + o() * 0.04, 0.012 + o() * 0.01), CRATE_SCUFF, 0.08, o).translate(sx * (L / 2 - 0.05), top - 0.01, front + 0.0004));
+    parts.push(P(facePlane(0.006, 0.05 + o() * 0.04), CRATE_GRIME, 0.06, o).translate(sx * L * 0.28, top - 0.07, front + 0.0004));
+  }
+  parts.push(P(facePlane(L * (0.3 + o() * 0.3), 0.01), CRATE_SCUFF, 0.1, o).translate((o() - 0.5) * L * 0.3, skid + 0.008, front + 0.0004));
   return dustAndContact(merge(parts), o);
 }
 
@@ -1590,10 +1638,12 @@ function ammoCan(o: Rng): THREE.BufferGeometry {
   parts.push(P(box(0.012, 0.06, 0.04), HARDWARE, 0.05, o).translate(0.141, 0.15, 0));
   for (const sx of [-1, 1]) parts.push(P(box(0.012, 0.02, 0.012), HARDWARE, 0.05, o).translate(sx * 0.05, 0.197, 0));
   parts.push(P(box(0.11, 0.012, 0.014), HARDWARE, 0.05, o).translate(0, 0.21, 0));
-  parts.push(P(facePlane(0.15, 0.01), STENCIL_YELLOW, 0.04, o).translate(-0.02, 0.11, 0.0716));
+  for (const g of stencilLine('7.62', -0.11, 0.135, 0.009, o)) parts.push(g.translate(0, 0, 0.0716));
   return dustAndContact(merge(parts), o);
 }
 
+/** (b45 round 2) how far the stack sits into the ground: its skids bedded in the sand or soil, no daylight under it. */
+const AMMO_BED_M = 0.008;
 function bAmmobox(rng: Rng): THREE.BufferGeometry {
   const o = spentDraws(bAmmoboxLegacy, rng, 0xa770);
   const { W, H } = AMMO_CRATE;
@@ -1601,15 +1651,15 @@ function bAmmobox(rng: Rng): THREE.BufferGeometry {
   for (const sz of [-1, 1]) {
     const crate = ammoCrate(o);
     crate.rotateY((o() - 0.5) * 0.04); // (within the 24 mm between their lids at the ends)
-    parts.push(crate.translate((o() - 0.5) * 0.06, 0, sz * (W / 2 + 0.012)));
+    parts.push(crate.translate((o() - 0.5) * 0.06, -AMMO_BED_M, sz * (W / 2 + 0.012)));
   }
   // the third across their seam, resting on their lids
   const upper = ammoCrate(o);
   upper.rotateY((o() - 0.5) * 0.3);
-  parts.push(upper.translate((o() - 0.5) * 0.12, H, (o() - 0.5) * 0.06));
+  parts.push(upper.translate((o() - 0.5) * 0.12, H - AMMO_BED_M, (o() - 0.5) * 0.06));
   const can = ammoCan(o);
   can.rotateY(0.4 + o() * 0.8);
-  parts.push(can.translate(0.62, 0, 0.16 + (o() - 0.5) * 0.1));
+  parts.push(can.translate(0.62, -AMMO_BED_M, 0.16 + (o() - 0.5) * 0.1));
   return merge(parts);
 }
 /** (b45) the retired builds, for the receipt: the new ones spend exactly their draws. */
