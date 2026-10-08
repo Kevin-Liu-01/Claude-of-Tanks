@@ -7922,6 +7922,13 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   (`.qa-dev/warp-margin.mjs`), so a conservative margin would admit nearly every tap. P1: Monsoon medium −0.73 / +0.05 /
   +0.15 ms GPU, CPU +0.13 / −0.08 / +0.13 (4 cycles, load under 150).
 
+- *P2 (round 10 against 72584099e, Monsoon high, 1080p, load 106–131).* chase +0.34 ± 0.28, establishing +1.13 ± 0.13,
+  sky-w +1.51 ± 0.26 ms of the GPU, the CPU −0.15 / −0.10 / −0.01 ms: inside the storm exception's caps at 4 cycles. The
+  cloud layer's own GPU timer at the same views: the old layer 1.62 ms a frame, round 10 3.26 / 3.40 ms; round 10's exact
+  detail skip cost 0.18 ms on the establishing view (its per-sample test against a cached 32³ fetch) and was dropped
+  (384119d26). The finals run on the PR head 7fa8749ca merged (af8ac770e): 8 cycles each of Monsoon high and medium,
+  Whiteout high, Verdant high and low.
+
 **Lessons (the cost work).**
 - A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
   knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
