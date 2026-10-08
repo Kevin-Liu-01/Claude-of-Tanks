@@ -79,6 +79,11 @@ export interface TrackMarks {
    * ([x0, z0, x1, z1, ...] each) at `speedMps`, stamped at 60 Hz, past the camera gate. Returns the stamps made.
    */
   layPaths(paths: readonly (readonly number[])[], speedMps?: number): number;
+  /**
+   * True while hulls are laying marks (a stamp at speed within the last two seconds) — the FX layer's own dry prints
+   * stand down only then, so a scene that drives its hulls past the presentation (the Studio's rigs) keeps them.
+   */
+  active(): boolean;
   /** Advance the marks' clock and set the camera they fade from. */
   update(dt: number, camera: { x: number; y: number; z: number }): void;
   /** A clean ground (a new battle). */
@@ -237,6 +242,7 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
   let followed = 0;
   let cursor = 0, written = 0, time = 0;
   let camX = 0, camZ = 0, camKnown = false, gated = true;
+  let lastLaidMs = Number.NEGATIVE_INFINITY;
   const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => field.getHeightAt(px, pz), x, z);
 
   function groundAt(x: number, z: number): number {
@@ -299,6 +305,7 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
 
   function stamp(key: object, x: number, z: number, fx: number, fz: number, speed: number, halfGaugeM: number, trackWidthM: number): void {
     if (!(speed >= TRACK_MARKS.minSpeedMps)) return;
+    lastLaidMs = performance.now();
     if (gated && camKnown && Math.hypot(x - camX, z - camZ) > TRACK_MARKS.gateM) return;
     let hull = hulls.get(key);
     if (!hull) { hull = { tracks: [newTrack(), newTrack()] }; hulls.set(key, hull); followed++; }
@@ -315,6 +322,7 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
   return {
     mesh,
     stamp,
+    active: () => performance.now() - lastLaidMs < 2000,
     layPaths(paths, speedMps = 8) {
       const step = speedMps / 60;
       let n = 0;
@@ -351,7 +359,7 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
       births.fill(Number.NEGATIVE_INFINITY);
       mark.clearUpdateRanges();
       mark.needsUpdate = true; // one whole upload: the battle's start
-      cursor = 0; written = 0; time = 0; followed = 0;
+      cursor = 0; written = 0; time = 0; followed = 0; lastLaidMs = Number.NEGATIVE_INFINITY;
       // every followed track forgets its strip: the hull's next frame starts a new one
       hulls = new WeakMap();
     },

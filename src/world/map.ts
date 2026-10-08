@@ -486,13 +486,13 @@ function assembleWorld(
   // ground lane (2026-10-08): the tufts lie down in the same press the hulls stamp for the tall grass
   vegetation.bindGroundPressure?.(tallGrass.pressure);
   // ground lane (2026-10-08): the tanks' track marks — a ring of strips that modulate the drawn ground, laid by the
-  // presented hulls (stampTrackMarks) and cleared with the destructibles at every battle's start; while they are laid the
-  // FX layer's own short-lived dry prints stand down (heightField.trackMarksActive)
+  // presented hulls (stampTrackMarks) and cleared with the destructibles at every battle's start; while hulls are laying
+  // them the FX layer's own short-lived dry prints stand down (heightField.trackMarksActive; a Studio rig keeps its prints)
   const trackMarks = createTrackMarks(heightField, {
     segments: getDeviceTier() === 'mobile' ? TRACK_MARKS.segmentsMobile : TRACK_MARKS.segments,
   });
   group.add(trackMarks.mesh);
-  heightField.trackMarksActive = () => true;
+  heightField.trackMarksActive = () => trackMarks.active();
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;

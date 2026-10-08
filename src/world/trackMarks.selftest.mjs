@@ -85,6 +85,18 @@ for (let s = 0; s < st.written; s++) {
   assert.ok(mk.getZ(s * 4) > 0 && mk.getZ(s * 4) <= 151 / 60 + 1e-6, 'born on the marks\' clock');
 }
 
+// 2b. Active only while hulls lay marks: the FX layer's dry prints stand down then and only then (a Studio rig that
+//     drives its hulls past the presentation keeps its prints).
+{
+  const m = createTrackMarks(field, { segments: 64 });
+  assert.equal(m.active(), false, 'idle before any hull drives');
+  m.update(0, { x: 0, y: 5, z: 0 });
+  m.stamp({}, 0, 0, 0, 1, 8, halfGauge, trackW);
+  assert.equal(m.active(), true, 'active once a hull lays');
+  m.reset();
+  assert.equal(m.active(), false, 'idle again after a battle\'s reset');
+}
+
 // 3. What lays nothing: a standing hull, a hull past the fade, the water; a jump breaks the strip.
 {
   const m = createTrackMarks(field, { segments: 64 });
@@ -163,7 +175,7 @@ for (let s = 0; s < st.written; s++) {
   const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
   assert.ok(map.includes('trackMarks.reset(); // ground lane: every battle starts on clean ground'), 'the world clears them with the destructibles');
   assert.ok(map.includes('trackMarks.update(dt, cameraPos);'), 'their clock and fade ride the world\'s update');
-  assert.ok(map.includes('heightField.trackMarksActive = () => true;'), 'the FX layer is told');
+  assert.ok(map.includes('heightField.trackMarksActive = () => trackMarks.active();'), 'the FX layer is told while hulls lay marks');
   assert.ok(map.includes('vegetation.bindGroundPressure?.(tallGrass.pressure);'), 'the tufts lie down in the hulls\' press');
   assert.ok(map.includes('stampTrackMarks(key, x, z, fx, fz, speed, halfGaugeM, trackWidthM) { trackMarks.stamp('), 'the world takes the stamps');
   const pres = readFileSync(new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8');
