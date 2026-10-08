@@ -1,6 +1,8 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    // main's c6b60311c pins its provenance receipt first, ahead of the four whole-fleet scans (selftest-suites.selftest).
+    'tools/asset-provenance.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
     // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
@@ -9,8 +11,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
-    // 2026-10-06: main's provenance receipt (cd0caad68) sits after the four whole-fleet CPU scans the receipt pins first (runner admission).
-    'tools/asset-provenance.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
@@ -22,6 +22,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
+    'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
     'src/app/garageModePreviewRuntime.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
@@ -43,6 +44,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
     'src/vehicles/nationalModernization.selftest.mjs',
+    'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
+    'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/fx/auxiliaryPresentation.selftest.mjs',
@@ -302,6 +305,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/vickersGlacisSeating.selftest.mjs',
     'src/vehicles/profiles/ukScaleWeapons.selftest.mjs',
     'src/vehicles/profiles/kf51bTurretCenter.selftest.mjs',
+    'src/vehicles/profiles/leopardStructuralRepairs.selftest.mjs',
     'src/vehicles/profiles/kf51FrontFinish.selftest.mjs',
     'src/vehicles/profiles/pumaS1.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
@@ -309,6 +313,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
+    'src/vehicles/profiles/ifvMantletAndBow.selftest.mjs',
+    'src/vehicles/profiles/modern3PrimaryStock.selftest.mjs',
     'src/vehicles/profiles/type100.selftest.mjs',
     'src/vehicles/profiles/type100RunningGear.selftest.mjs',
     'src/vehicles/profiles/ztz100X.selftest.mjs',
@@ -329,9 +335,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sectionSolid.selftest.mjs',
     'tools/base-shell-audit-math.selftest.mjs',
+    'src/vehicles/profiles/abramsCheekSurfaces.selftest.mjs',
+    'src/vehicles/profiles/abramsReturnCourses.selftest.mjs',
+    'src/game/missionAttachmentMechanical.selftest.mjs',
+    'src/vehicles/missionAttachmentReceiver.selftest.mjs',
+    'tools/mission-attachment-support.selftest.mjs',
+    'tools/mission-attachment-seat-trials.selftest.mjs',
+    'src/vehicles/profiles/weldedShellSurfaces.selftest.mjs',
+    'src/vehicles/profiles/baseShellResidualRepairs.selftest.mjs',
+    'tools/base-shell-integrity.selftest.mjs',
+    'tools/base-shell-live-stock.selftest.mjs',
     'src/vehicles/profiles/abramsPlanarCheek.selftest.mjs',
     'src/vehicles/profiles/facetedSlab.selftest.mjs',
     'src/vehicles/profiles/nationalBaseShell.selftest.mjs',
+    'src/vehicles/profiles/nationalRussiaChevrons.selftest.mjs',
+    'src/vehicles/profiles/chineseFuelDrum.selftest.mjs',
     'src/vehicles/profiles/oplotWing.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
     'src/vehicles/profiles/t14XReturnRollers.selftest.mjs',
@@ -716,6 +734,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/woodyRootOrientation.selftest.mjs',
     'src/world/battlefieldBounds.selftest.mjs',
     'tools/coplanar-surface-overlap.selftest.mjs',
+    'tools/circular-cap-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',

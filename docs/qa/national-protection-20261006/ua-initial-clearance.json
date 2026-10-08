@@ -1,0 +1,721 @@
+{
+  "createdAt": "2026-10-07T05:59:43.412Z",
+  "before": {
+    "src/vehicles/profiles/nationalUkraine.ts": "793f6c1d029657f8ec73c76ab5797304e166086202c6ab612963a825f1fefedf",
+    "src/vehicles/profiles/nationalPoland.ts": "8c0834fc4d4e4529e29a52a3d5ce4fd96d418b4fb76f14015223de75e1767d6d",
+    "src/vehicles/profiles/hetmanII.ts": "c212df10367320898c086f11ed3daad50ff0d243b1c25ca91104e5c57461308d",
+    "src/vehicles/profiles/zubrII.ts": "fd6d2158cc6d88dc9f26f19237db4c05f5882a77744209480b65735e4860112e",
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "277a6fc814b6ebd09d272ce1f3930a26a9138483767da13abf7bdd90893a659d",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "80610ec5c463ee2e1d022ae176e5a8562df293dddc5cefa58847ddd542782531",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "aec4f1f539a5655055b2fdc60cf4a829cdc3730df261ac800f20d3681625b8cf",
+    "src/vehicles/ghillieSuit.ts": "3ea2c3bfc78bc01b0fa037b4efb514501619d21cb9cd7766bc6f4b1f450055dc"
+  },
+  "after": {
+    "src/vehicles/profiles/nationalUkraine.ts": "793f6c1d029657f8ec73c76ab5797304e166086202c6ab612963a825f1fefedf",
+    "src/vehicles/profiles/nationalPoland.ts": "8c0834fc4d4e4529e29a52a3d5ce4fd96d418b4fb76f14015223de75e1767d6d",
+    "src/vehicles/profiles/hetmanII.ts": "c212df10367320898c086f11ed3daad50ff0d243b1c25ca91104e5c57461308d",
+    "src/vehicles/profiles/zubrII.ts": "fd6d2158cc6d88dc9f26f19237db4c05f5882a77744209480b65735e4860112e",
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "277a6fc814b6ebd09d272ce1f3930a26a9138483767da13abf7bdd90893a659d",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "80610ec5c463ee2e1d022ae176e5a8562df293dddc5cefa58847ddd542782531",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "aec4f1f539a5655055b2fdc60cf4a829cdc3730df261ac800f20d3681625b8cf",
+    "src/vehicles/ghillieSuit.ts": "3ea2c3bfc78bc01b0fa037b4efb514501619d21cb9cd7766bc6f4b1f450055dc"
+  },
+  "sourceStable": true,
+  "limitations": "Native finite-triangle sample grid is not a continuum proof. New stock is independently subtracted from pre-upgrade native meshes; unchanged stock and existing generated fill excluded from gun collision comparison. Drone uses actual native full stock, generated fill freshness remains pending regeneration.",
+  "reports": [
+    {
+      "id": "ua_t80u_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.9799999856948851,
+          "y": 0.7278513343088112,
+          "z": -0.060000057220458425,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "payloadOffset": [
+            -0.24,
+            0
+          ],
+          "supportY": [
+            0.6285683651341039,
+            0.6285683796382955,
+            0.6828513289787743,
+            0.6828513343088112
+          ],
+          "signature": "3162628e",
+          "geometryHash": "8bc3e61cc002ba7dfd74a97ffc65f2cdccd0abd5ea8678f87a803d7fe4d6816b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 15838,
+        "turret": 7244
+      },
+      "mainGun": {
+        "poses": 3024,
+        "pitches": [
+          -6,
+          0,
+          14,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.8300000143051145,
+          "y": 0.7537500098347697,
+          "z": 0.5400000572204596,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6839604613455812,
+            0.6582873598480035,
+            0.7087500098347697,
+            0.6862500098347688
+          ],
+          "signature": "1541006a",
+          "geometryHash": "bf61634c898d44f2424e741b2d91f731761b28f4e350cde08b992f0897c169c4"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 17754,
+        "turret": 7646
+      },
+      "mainGun": {
+        "poses": 3024,
+        "pitches": [
+          -6,
+          0,
+          14,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": []
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -0.792,
+          "y": 0.7075369626889217,
+          "z": 0.5897042253521125,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6435619030699584,
+            0.6180603821701247,
+            0.6625369626889217,
+            0.6400369626889244
+          ],
+          "signature": "45ed2a90",
+          "geometryHash": "49c5a3e5573b9987f309c379f9c031e9d1aecce57b80ebbf70c4047d85ec3063"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 16798,
+        "turret": 6538
+      },
+      "mainGun": {
+        "poses": 3024,
+        "pitches": [
+          -6,
+          0,
+          14,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": [
+          {
+            "yaw": 45,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 4640,
+            "point": [
+              2.3737624923321503,
+              1.4445585016277596,
+              2.4171028483200674
+            ]
+          },
+          {
+            "yaw": 45,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 4640,
+            "point": [
+              2.3712457226044323,
+              1.4435160081753204,
+              2.428836722604432
+            ]
+          },
+          {
+            "yaw": 50,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 4645,
+            "point": [
+              2.384233025993619,
+              1.4666800617887539,
+              2.0594872557025177
+            ]
+          },
+          {
+            "yaw": 50,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 4645,
+            "point": [
+              2.3839058502984045,
+              1.4674699048041724,
+              2.0592127226973327
+            ]
+          },
+          {
+            "yaw": 130,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2692,
+            "point": [
+              2.384233025993619,
+              1.4666800617887539,
+              -1.9283052557025178
+            ]
+          },
+          {
+            "yaw": 130,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2693,
+            "point": [
+              2.383905850298404,
+              1.4674699048041724,
+              -1.9280307226973328
+            ]
+          },
+          {
+            "yaw": 135,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2688,
+            "point": [
+              2.3701492947659486,
+              1.4430618471012648,
+              -2.3109139529681424
+            ]
+          },
+          {
+            "yaw": 135,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2688,
+            "point": [
+              2.3712457226044323,
+              1.4435160081753207,
+              -2.2976547226044315
+            ]
+          },
+          {
+            "yaw": 140,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 159,
+            "mesh": "hullOpenLattice",
+            "triangle": 2693,
+            "point": [
+              2.3857205774626644,
+              1.4630889266430593,
+              -2.62386254475126
+            ]
+          },
+          {
+            "yaw": 140,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 159,
+            "mesh": "hullOpenLattice",
+            "triangle": 2693,
+            "point": [
+              2.3855453000345497,
+              1.463512068258962,
+              -2.624560687888316
+            ]
+          },
+          {
+            "yaw": 140,
+            "pitch": -5,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 410,
+            "mesh": "hullOpenLattice",
+            "triangle": 2695,
+            "point": [
+              2.372025244756869,
+              1.4761610762281443,
+              -2.6500000953674316
+            ]
+          },
+          {
+            "yaw": 140,
+            "pitch": -5,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 410,
+            "mesh": "hullOpenLattice",
+            "triangle": 2695,
+            "point": [
+              2.372025244756869,
+              1.4761610762281443,
+              -2.6500000953674316
+            ]
+          },
+          {
+            "yaw": 220,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 117,
+            "mesh": "hullOpenLattice",
+            "triangle": 194,
+            "point": [
+              -2.363678660707824,
+              1.4429079873709256,
+              -2.6459474036551285
+            ]
+          },
+          {
+            "yaw": 220,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 117,
+            "mesh": "hullOpenLattice",
+            "triangle": 194,
+            "point": [
+              -2.3634783542082234,
+              1.443467987429247,
+              -2.646430988546869
+            ]
+          },
+          {
+            "yaw": 225,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "ua_t72b3_modern_ghillie_hull_net",
+            "triangle": 53,
+            "point": [
+              -2.3961053623749486,
+              1.4370159650380665,
+              -2.3385143623749487
+            ]
+          },
+          {
+            "yaw": 225,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 160,
+            "point": [
+              -2.3673044046266325,
+              1.444116500138693,
+              -2.294438555396902
+            ]
+          },
+          {
+            "yaw": 230,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 165,
+            "point": [
+              -2.356403788913182,
+              1.4682173895336885,
+              -1.918379347231216
+            ]
+          },
+          {
+            "yaw": 230,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 165,
+            "point": [
+              -2.3566975382438557,
+              1.4689265371278104,
+              -1.9186258321862428
+            ]
+          },
+          {
+            "yaw": 310,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2117,
+            "point": [
+              -2.356403788913182,
+              1.4682173895336885,
+              2.049561347231214
+            ]
+          },
+          {
+            "yaw": 310,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2117,
+            "point": [
+              -2.3566975382438566,
+              1.4689265371278104,
+              2.0498078321862407
+            ]
+          },
+          {
+            "yaw": 315,
+            "pitch": -6,
+            "recoil": 0,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2406,
+            "point": [
+              -2.367118751508379,
+              1.4412370862210577,
+              2.455193445795448
+            ]
+          },
+          {
+            "yaw": 315,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gun",
+            "movingTriangle": 112,
+            "mesh": "hullOpenLattice",
+            "triangle": 2406,
+            "point": [
+              -2.3664586036683466,
+              1.4420863794214382,
+              2.4554668982514816
+            ]
+          }
+        ]
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "quality": "high",
+      "dock": {
+        "authoredHint": false,
+        "seat": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "supported": {
+          "frame": "turret",
+          "x": -1.1899999618530273,
+          "y": 0.7776666813525904,
+          "z": -1.0800000476837144,
+          "width": 0.34,
+          "depth": 0.32,
+          "footX": 0.108,
+          "footZ": 0.09,
+          "supportY": [
+            0.6570673057842527,
+            0.6604675388684242,
+            0.7326666813525904,
+            0.7326666813525904
+          ],
+          "signature": "ed6d90af",
+          "geometryHash": "4491da0b1382630ce0fbca147caf0facc7fbdb9e8d2afa110e9b5e706759db1b"
+        },
+        "parked": null,
+        "launch": null
+      },
+      "newNativeTriangles": {
+        "hull": 15358,
+        "turret": 8352
+      },
+      "mainGun": {
+        "poses": 3024,
+        "pitches": [
+          -6,
+          0,
+          14,
+          -5,
+          -4,
+          -3,
+          -2,
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "yawStep": 5,
+        "contacts": [
+          {
+            "yaw": 140,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gunDark",
+            "movingTriangle": 273,
+            "mesh": "hullOpenLattice",
+            "triangle": 2693,
+            "point": [
+              2.443078050632813,
+              1.4694686318779038,
+              -2.6480211961424662
+            ]
+          },
+          {
+            "yaw": 220,
+            "pitch": -6,
+            "recoil": 0.13541666666666666,
+            "owner": "hull",
+            "moving": "gunDark",
+            "movingTriangle": 229,
+            "mesh": "hullOpenLattice",
+            "triangle": 165,
+            "point": [
+              -2.4148302158067922,
+              1.4644183615252744,
+              -2.647918266070562
+            ]
+          }
+        ]
+      },
+      "roofGun": {
+        "poses": 1512,
+        "contacts": []
+      }
+    }
+  ]
+}

@@ -1331,15 +1331,17 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // angles (sweep under-fr [1.017, 2.201, 0.994], 0.242 x 0.077). Plug
       // follows the chamfer underside line 5 mm below the sheet (armor module
       // face, §5.326 closure class); interior to plan/side silhouettes.
+      // The closure floor is 10 mm below its 0.295 m outboard roof; the old
+      // 0.300 m floor inverted the final strip beside the chamfer edge.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.97], [s * 1.40, 0.30, 0.93], [s * 1.40, 0.30, 0.86], [s * 1.00, 0.30, 0.90],
+        [s * 1.00, 0.285, 0.97], [s * 1.40, 0.285, 0.93], [s * 1.40, 0.285, 0.86], [s * 1.00, 0.285, 0.90],
         [s * 1.00, 0.555, 0.97], [s * 1.40, 0.295, 0.93], [s * 1.40, 0.295, 0.86], [s * 1.00, 0.555, 0.90]));
       // Watertight pass 2026-09-13: the same wedge void ran under the whole
       // chamfer sheet (z 0.02..0.90, 53 / 49 L per side), open at its front
       // mouth. The bulkhead's profile now fills the full length beneath the
       // sheet, 5 mm below it, over the cheek core.
       P.add('turret', slab(
-        [s * 1.00, 0.30, 0.90], [s * 1.40, 0.30, 0.86], [s * 1.40, 0.30, 0.04], [s * 1.00, 0.30, 0.08],
+        [s * 1.00, 0.285, 0.90], [s * 1.40, 0.285, 0.86], [s * 1.40, 0.285, 0.04], [s * 1.00, 0.285, 0.08],
         [s * 1.00, 0.555, 0.90], [s * 1.40, 0.295, 0.86], [s * 1.40, 0.295, 0.04], [s * 1.00, 0.555, 0.08]));
     }
     // Watertight pass 2026-09-13 ("pour water into the turret and it must not

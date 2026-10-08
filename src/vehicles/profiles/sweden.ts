@@ -6,7 +6,7 @@
 // course, then adds supported Swedish armor, equipment and gun-station cues.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 import { buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
@@ -426,7 +426,7 @@ function loftRows(
   for (let i = 0; i < rows.length - 1; i++) {
     const a = rows[i], c = rows[i + 1];
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
-    P.add(bucket, orientedSlab(
+    P.add(bucket, convexSlab(
       [-a.w, a.b, a.z], [a.w, a.b, a.z], [c.w, c.b, c.z], [-c.w, c.b, c.z],
       [-awt, a.t, a.z], [awt, a.t, a.z], [cwt, c.t, c.z], [-cwt, c.t, c.z]));
   }
@@ -480,7 +480,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
   // Central gun spine is sunk into the wedge and closes the roof around the
   // fixed trunnion.  Its tapered upper facets form a real armored trough,
   // avoiding the detached barrel-on-a-flat-roof appearance of the old model.
-  P.add('hull', orientedSlab(
+  P.add('hull', convexSlab(
     [-0.24, 1.17, 2.78], [0.24, 1.17, 2.78], [0.30, 1.43, 0.62], [-0.30, 1.43, 0.62],
     [-0.14, 1.37, 2.78], [0.14, 1.37, 2.78], [0.20, 1.58, 0.62], [-0.20, 1.58, 0.62]));
   for (const side of [-1, 1]) {
