@@ -173,12 +173,13 @@ varying float vT;
 varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
+varying vec2 vDetail;
 ${FOG_PARS_V}
 void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
-    vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 );
+    vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
     vFeather = 1.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
@@ -225,6 +226,8 @@ void main() {
   vTiles = vec4( tileA / vec2( cols, rows ), tileB / vec2( cols, rows ) );
   vUvA = ( tileA + local ) / vec2( cols, rows );
   vUvB = ( tileB + local ) / vec2( cols, rows );
+  // the fine tear riding the card: its own place in the tiling noise (from its birth), drifting up through it
+  vDetail = local * 1.7 + fract( vec2( aPB.w * 0.6180339, aPB.w * 0.4142136 ) ) * 9.0 + vec2( 0.0, -0.06 * age );
   // --- six-way weights: the sun in the card's (rotated, mirrored) frame
   vec3 rightC = camRight * ca + camUp * sa;
   vec3 upC = -camRight * sa + camUp * ca;
@@ -263,6 +266,9 @@ uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
 uniform float uCameraNear;
 uniform float uCameraFar;
+uniform sampler2D uDetail;
+uniform float uDetailK;
+varying vec2 vDetail;
 varying vec2 vUvA;
 varying vec2 vUvB;
 varying vec4 vTiles;
@@ -307,6 +313,11 @@ void main() {
   // erode from the thin edges inward as the puff dies (vFade 0 -> 1)
   float k = vFade;
   float covE = clamp( ( cov - 0.8 * k ) / max( 1.0 - 0.8 * k, 0.05 ), 0.0, 1.0 );
+  // the thin rim tears into fine wisps at every distance (a tiling noise finer than the flipbook's texels); the dense
+  // body keeps its shape
+  float dn = texture2D( uDetail, vDetail ).r * 0.62 + texture2D( uDetail, vDetail * 2.31 + 0.37 ).r * 0.38;
+  float er = uDetailK * ( 1.0 - smoothstep( 0.2, 0.9, cov ) ) * dn;
+  covE = clamp( ( covE - er ) / max( 1.0 - er, 0.05 ), 0.0, 1.0 );
   float a = covE * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
@@ -319,7 +330,8 @@ void main() {
   float tau = -log( max( 1.0 - cov * 0.995, 1e-3 ) );
   float front = 1.0 - 0.5 * cov;
   float back = clamp( tau * ( 1.0 - cov ) / max( cov, 1e-3 ), 0.0, 1.0 );
-  float sunL = vW.x * R + vW.y * L + vW.z * U + vW.w * D + vWfb.x * front + vWfb.y * back * uGrade.z;
+  float sunL = ( vW.x * R + vW.y * L + vW.z * U + vW.w * D + vWfb.x * front + vWfb.y * back * uGrade.z )
+    * ( 0.88 + 0.24 * dn );
   float skyL = 0.5 * U + 0.15 * ( R + L ) + 0.2 * front;
   // multiple scattering: bright media (dust, powder, spray) lift their shaded side; soot stays dark
   float albedoL = dot( vColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -375,13 +387,62 @@ function groundWindFromAloft(speedAloft: number): number {
 }
 
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
-const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.35, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55 });
+const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.22, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55 });
 
 interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
   now: () => number;
   scene?: THREE.Scene | null;
   capacity?: number;
+}
+
+/** How far the detail tear eats into a puff's thin rim (0 off). */
+const DETAIL_K = 0.55;
+
+/** A tileable 128 x 128 fractal value noise (seeded; built once): the fine tear of the media's thin rims. */
+function detailNoiseTexture(seed: number): THREE.DataTexture {
+  const S = 128;
+  const out = new Float32Array(S * S);
+  let a = seed | 0;
+  const rand = (): number => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  let amp = 1, norm = 0;
+  for (const period of [8, 16, 32, 64]) {
+    const lat = new Float32Array(period * period);
+    for (let i = 0; i < lat.length; i++) lat[i] = rand();
+    const cell = S / period;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const gx = x / cell, gy = y / cell;
+      const x0 = Math.floor(gx), y0 = Math.floor(gy);
+      let fx = gx - x0, fy = gy - y0;
+      fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+      const x1 = (x0 + 1) % period, y1 = (y0 + 1) % period;
+      const v00 = lat[y0 * period + x0], v10 = lat[y0 * period + x1], v01 = lat[y1 * period + x0], v11 = lat[y1 * period + x1];
+      out[y * S + x] += amp * (v00 + (v10 - v00) * fx + (v01 - v00) * fy + (v00 - v10 - v01 + v11) * fx * fy);
+    }
+    norm += amp;
+    amp *= 0.55;
+  }
+  const data = new Uint8Array(S * S * 4);
+  for (let i = 0; i < S * S; i++) {
+    // stretch the sum's narrow middle toward 0..1
+    const v = Math.min(1, Math.max(0, (out[i] / norm - 0.5) * 2.2 + 0.5));
+    const b = Math.round(v * 255);
+    data[i * 4] = b; data[i * 4 + 1] = b; data[i * 4 + 2] = b; data[i * 4 + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, S, S);
+  t.name = 'fx-volume-detail';
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.colorSpace = THREE.NoColorSpace;
+  t.needsUpdate = true;
+  return t;
 }
 
 export interface VolumeMedia {
@@ -402,7 +463,8 @@ export interface VolumeMedia {
 }
 
 export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
-  const capacity = Math.max(16, o.capacity ?? 640);
+  // (round 3: longer-lived column puffs; 1024 records hold six burning hulls and a barrage)
+  const capacity = Math.max(16, o.capacity ?? 1024);
   const group = new THREE.Group();
   group.name = 'fx-volume-media';
   group.matrixAutoUpdate = false;
@@ -456,6 +518,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     for (let v = 0; v < m.variants; v++) bandWarp[m.firstBand + v].x = 1 / m.gamma;
   }
   const tune = { ...DEFAULT_TUNE };
+  const detail = detailNoiseTexture(0x5eedde7);
+  const uDetailK = { value: DETAIL_K };
   group.userData.volumeTune = tune;
 
   const material = new THREE.ShaderMaterial({
@@ -468,6 +532,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
       uBandWarp: { value: bandWarp },
       uNearFade: { value: new THREE.Vector2(0.8, 3.4) },
+      uDetail: { value: detail }, uDetailK,
       uSceneDepth: o.soft.uSceneDepth,
       uSoftViewport: o.soft.uSoftViewport,
       uCameraNear: o.soft.uCameraNear,
@@ -597,6 +662,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uGroundCol.value.set(gr, gg, gb);
     }
     uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
+    uDetailK.value = tune.detail;
     const surfaceWind = ud?.surfaceWind;
     const preset = ud?.volumetricClouds?.currentPreset;
     if (surfaceWind && Number.isFinite(surfaceWind.x) && Number.isFinite(surfaceWind.z)) {

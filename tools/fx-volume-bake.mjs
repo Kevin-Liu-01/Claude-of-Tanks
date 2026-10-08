@@ -58,10 +58,11 @@ export const VOLUME_MEDIA = Object.freeze({
   // Dust, soil, powder and spray: a lumpy burst thrown out over the ground that slows, breaks up and hangs, its
   // edges tearing into wisps as it thins.
   burst: Object.freeze({
+    // (round 3: plain fractal noise and no boiling lobes — round 2's dust read as pebbled cauliflower up close)
     id: 'burst', seed: 0x5eed02, variants: 1, frames: 64, tile: 128, gamma: 1.8, sigma: 28,
-    centre: [0.5, 0.47, 0.5], primary: 6, secondary: 7, tertiary: 2, primaryR: [0.13, 0.2], spread: [0.4, 0.85],
-    secR: 0.6, upBias: 0.3, flatBottom: 0.55, roll: 0.9, outward: 0.12, grow: 0.25, boil: 1.1,
-    detail: { freq: 13, amp: 0.95, soft: 0.42, warp: 0.6, octaves: 4 }, thin: 0.55, haze: 0.4, emission: false,
+    centre: [0.5, 0.47, 0.5], primary: 6, secondary: 5, tertiary: 0, primaryR: [0.13, 0.2], spread: [0.4, 0.85],
+    secR: 0.7, upBias: 0.3, flatBottom: 0.55, roll: 0.9, outward: 0.12, grow: 0.25, boil: 1.1,
+    detail: { kind: 'fbm', freq: 8, amp: 1.25, soft: 0.42, warp: 1.0, octaves: 5 }, thin: 0.55, haze: 0.3, emission: false,
     heatR: 0, heatFall: 1.35, ms: [0.5, 0.35],
   }),
 });
@@ -134,6 +135,25 @@ function makeBillowNoise(rand, octaves) {
       f *= 2.07; a *= 0.52;
     }
     return sum / norm;
+  };
+}
+
+/** Plain fractal noise 0..1 (each octave rotated): the fine grain of a dust cloud. */
+function makeFbm(rand, octaves) {
+  const noise = makePerlin(rand);
+  const rots = [];
+  for (let o = 0; o < octaves; o++) rots.push(randomRotation(rand));
+  let norm = 0;
+  for (let o = 0; o < octaves; o++) norm += 0.5 ** o;
+  return (x, y, z) => {
+    let sum = 0, f = 1, a = 1;
+    for (let o = 0; o < octaves; o++) {
+      const r = rots[o];
+      sum += noise((r[0] * x + r[1] * y + r[2] * z) * f + r[9], (r[3] * x + r[4] * y + r[5] * z) * f + r[10],
+        (r[6] * x + r[7] * y + r[8] * z) * f + r[11]) * a;
+      f *= 2.03; a *= 0.5;
+    }
+    return Math.min(1, Math.max(0, 0.5 + 0.75 * sum / norm));
   };
 }
 
@@ -560,7 +580,7 @@ export function bakeBand(spec, variant, { res = 96, frames = spec.frames, tile =
   const nc = N * N * N;
   const rand = mulberry32((spec.seed + variant * 0x9e3779b1) | 0);
   const prim = seedBillows(spec, rand);
-  const noise = makeBillowNoise(mulberry32((spec.seed * 31 + variant * 977) | 0), spec.detail.octaves);
+  const noise = (spec.detail.kind === 'fbm' ? makeFbm : makeBillowNoise)(mulberry32((spec.seed * 31 + variant * 977) | 0), spec.detail.octaves);
   const heatNoise = makeBillowNoise(mulberry32((spec.seed * 17 + variant * 131) | 0), 2);
   const nrot = (rand() - 0.5) * 1.2;
   const raw = new Float32Array(nc), vx = new Float32Array(nc), vy = new Float32Array(nc), w = new Float32Array(nc);

@@ -658,13 +658,15 @@ export function columnPuff(C: BlastContext, x: number, y: number, z: number, sta
   const m = C.m;
   const a = R() * TAU, r = R() * 0.45 * scale;
   place(m, x + Math.cos(a) * r, y + 1.0 + R() * 0.5, z + Math.sin(a) * r, bo);
-  move(m, Math.cos(a) * 0.5, 1.8 + R() * 0.6, Math.sin(a) * 0.5, 0.6, 1.9 + 1.0 * stage + R() * 0.3, 0.8 + R() * 0.3, 0);
-  const size1 = (8.5 + R() * 3) * scale;
-  shape(m, 8 + R() * 2.5, Math.max(1.8 * scale, size1 * 0.28), size1, 1.6, R);
+  move(m, Math.cos(a) * 0.5, 1.8 + R() * 0.6, Math.sin(a) * 0.5, 0.6, 2.2 + 1.2 * stage + R() * 0.3, 0.8 + R() * 0.3, 0);
+  // (round 3: round 2's column stood 15 m tall and stopped like a sausage: each puff now lives longer, keeps swelling
+  // as it climbs and thins from the middle of its life, so the column widens, greys and fades into the sky)
+  const size1 = (10 + R() * 4) * scale;
+  shape(m, 13 + R() * 4, Math.max(1.8 * scale, size1 * 0.22), size1, 1.3, R);
   // fresh smoke is black; it greys as it rises, cools and thins (and the whole column greys as the fire burns out)
-  const crown = mix3(SOOT, SMOKE_AGED, 0.45 + 0.4 * (1 - stage));
-  look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown, 0.7 + 0.25 * stage, 0.2, 0.55);
-  book(m, 'billow', R, 8.5 + R() * 2);
+  const crown = mix3(SOOT, SMOKE_AGED, 0.55 + 0.35 * (1 - stage));
+  look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown, 0.62 + 0.25 * stage, 0.2, 0.4);
+  book(m, 'billow', R, 12 + R() * 3);
   heat(m, 0.55 * stage, 2.4);
   C.media(m);
 }
