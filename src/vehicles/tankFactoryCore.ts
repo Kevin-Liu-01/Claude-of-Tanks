@@ -1,4 +1,5 @@
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
+import { casemateGunYaw } from './casemateGunPose.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
@@ -9383,6 +9384,10 @@ function* createTankOwnedSteps(
         }
       };
       syncFromStateAssemblyStage8();
+      // The stabilized sight direction may exceed a fixed casemate's bearing
+      // under cosmetic roll/flinch. Keep its actual trunnion inside the same
+      // mechanical traverse window used by movement; never change state aim.
+      if (!destroyed && spec.armor.turretless) turretG.rotation.y = casemateGunYaw(spec, turretG.rotation.y);
     },
 
     /**

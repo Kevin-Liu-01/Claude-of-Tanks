@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "seeds": [
+    4000,
+    4242,
+    8191
+  ],
+  "qualities": [
+    "high",
+    "low"
+  ],
+  "mode": "dry-run",
+  "rows": [
+    {
+      "id": "ua_t80u_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -0.9799999856948851,
+        "y": 0.7278513343088112,
+        "z": -0.060000057220458425,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "payloadOffset": [
+          -0.24,
+          0
+        ],
+        "supportY": [
+          0.6285683651341039,
+          0.6285683796382955,
+          0.6828513289787743,
+          0.6828513343088112
+        ],
+        "signature": "3162628e",
+        "geometryHash": "564ec2106eafdd7547aed99909d72ed21320c3f2cf0e47810fe54690887be8de"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "564ec2106eafdd7547aed99909d72ed21320c3f2cf0e47810fe54690887be8de",
+          "high:4242": "564ec2106eafdd7547aed99909d72ed21320c3f2cf0e47810fe54690887be8de",
+          "high:8191": "564ec2106eafdd7547aed99909d72ed21320c3f2cf0e47810fe54690887be8de",
+          "low:4000": "0a24feace554c4cade871f7280fae5a17edc03683a416cca903058e2dcef7445",
+          "low:4242": "0a24feace554c4cade871f7280fae5a17edc03683a416cca903058e2dcef7445",
+          "low:8191": "0a24feace554c4cade871f7280fae5a17edc03683a416cca903058e2dcef7445"
+        }
+      }
+    },
+    {
+      "id": "ua_t72b3m_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -0.8300000143051145,
+        "y": 0.7537500098347697,
+        "z": 0.5400000572204596,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "supportY": [
+          0.6839604613455812,
+          0.6582873598480035,
+          0.7087500098347697,
+          0.6862500098347688
+        ],
+        "signature": "1541006a",
+        "geometryHash": "fe040e90b826bdb4dc7e7c7c5d344ca168ccd450b7e9e674e3014b135226ff35"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "fe040e90b826bdb4dc7e7c7c5d344ca168ccd450b7e9e674e3014b135226ff35",
+          "high:4242": "fe040e90b826bdb4dc7e7c7c5d344ca168ccd450b7e9e674e3014b135226ff35",
+          "high:8191": "fe040e90b826bdb4dc7e7c7c5d344ca168ccd450b7e9e674e3014b135226ff35",
+          "low:4000": "ad532fbe253b297f335833406c3ddb2650576677970cf07c441bf04a3158bd34",
+          "low:4242": "ad532fbe253b297f335833406c3ddb2650576677970cf07c441bf04a3158bd34",
+          "low:8191": "ad532fbe253b297f335833406c3ddb2650576677970cf07c441bf04a3158bd34"
+        }
+      }
+    },
+    {
+      "id": "ua_t72b3_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -0.792,
+        "y": 0.7075369626889217,
+        "z": 0.5897042253521125,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "supportY": [
+          0.6435619030699584,
+          0.6180603821701247,
+          0.6625369626889217,
+          0.6400369626889244
+        ],
+        "signature": "45ed2a90",
+        "geometryHash": "0414b8417b6052338046d5f363b459548c4a5c37f082f84d42d2d61ed195f671"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "0414b8417b6052338046d5f363b459548c4a5c37f082f84d42d2d61ed195f671",
+          "high:4242": "0414b8417b6052338046d5f363b459548c4a5c37f082f84d42d2d61ed195f671",
+          "high:8191": "0414b8417b6052338046d5f363b459548c4a5c37f082f84d42d2d61ed195f671",
+          "low:4000": "cb84b96368013d2193e5cc8d800425b4ce5f9455e62ba2b023ad19c4cb490cba",
+          "low:4242": "cb84b96368013d2193e5cc8d800425b4ce5f9455e62ba2b023ad19c4cb490cba",
+          "low:8191": "cb84b96368013d2193e5cc8d800425b4ce5f9455e62ba2b023ad19c4cb490cba"
+        }
+      }
+    },
+    {
+      "id": "ua_t72b3m_hetman_ii",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -1.1899999618530273,
+        "y": 0.7776666813525904,
+        "z": -1.0800000476837144,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "supportY": [
+          0.6570673057842527,
+          0.6604675388684242,
+          0.7326666813525904,
+          0.7326666813525904
+        ],
+        "signature": "ed6d90af",
+        "geometryHash": "be332f28c255c878b37e7128e9737ac65077a841a914236956684683baf351f3"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "be332f28c255c878b37e7128e9737ac65077a841a914236956684683baf351f3",
+          "high:4242": "be332f28c255c878b37e7128e9737ac65077a841a914236956684683baf351f3",
+          "high:8191": "be332f28c255c878b37e7128e9737ac65077a841a914236956684683baf351f3",
+          "low:4000": "a34ff4adc642ffc83cde73c5f4acb341f6188d089dbc54410433b873883d003f",
+          "low:4242": "a34ff4adc642ffc83cde73c5f4acb341f6188d089dbc54410433b873883d003f",
+          "low:8191": "a34ff4adc642ffc83cde73c5f4acb341f6188d089dbc54410433b873883d003f"
+        }
+      }
+    },
+    {
+      "id": "pl_t80u_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -0.9699999952316283,
+        "y": 0.857761991499217,
+        "z": 0.19000005245208795,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "payloadOffset": [
+          -0.48,
+          0
+        ],
+        "supportY": [
+          0.6816662397883348,
+          0.6684172061773381,
+          0.732761991499217,
+          0.7231816602059951
+        ],
+        "signature": "6d6385ce",
+        "geometryHash": "01e5e1d244b3c83af4433ed7704735d4e7bdf1bb1beff98b83c0be3aa6416643"
+      },
+      "checked": 2645,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "01e5e1d244b3c83af4433ed7704735d4e7bdf1bb1beff98b83c0be3aa6416643",
+          "high:4242": "01e5e1d244b3c83af4433ed7704735d4e7bdf1bb1beff98b83c0be3aa6416643",
+          "high:8191": "01e5e1d244b3c83af4433ed7704735d4e7bdf1bb1beff98b83c0be3aa6416643",
+          "low:4000": "3b4bef2c79672c7c5ffd53d8844ef8914b47889b503ce8d342cec9391735cc1f",
+          "low:4242": "3b4bef2c79672c7c5ffd53d8844ef8914b47889b503ce8d342cec9391735cc1f",
+          "low:8191": "3b4bef2c79672c7c5ffd53d8844ef8914b47889b503ce8d342cec9391735cc1f"
+        }
+      }
+    },
+    {
+      "id": "pl_t72b3m_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -1.51,
+        "z": -0.02,
+        "y": 0.8650000095367432,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "payloadOffset": [
+          0,
+          0
+        ],
+        "supportY": [
+          0.7400000095367396,
+          0.7400000095367396,
+          0.7400000095367432,
+          0.7400000095367432
+        ],
+        "signature": "ee7f3be7",
+        "geometryHash": "426bcbde6b68009a09ca5bb4b0051ca7745afc172a3780cd7871107b3e5713ea"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "426bcbde6b68009a09ca5bb4b0051ca7745afc172a3780cd7871107b3e5713ea",
+          "high:4242": "426bcbde6b68009a09ca5bb4b0051ca7745afc172a3780cd7871107b3e5713ea",
+          "high:8191": "426bcbde6b68009a09ca5bb4b0051ca7745afc172a3780cd7871107b3e5713ea",
+          "low:4000": "bf923369fe28587ab03596883799758145ea31a3e0bb9cceab4974d7492b6302",
+          "low:4242": "bf923369fe28587ab03596883799758145ea31a3e0bb9cceab4974d7492b6302",
+          "low:8191": "bf923369fe28587ab03596883799758145ea31a3e0bb9cceab4974d7492b6302"
+        }
+      }
+    },
+    {
+      "id": "pl_t72b3_modern",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -0.786,
+        "y": 0.6824757987565474,
+        "z": 0.6301936619718309,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "supportY": [
+          0.625754331471569,
+          0.6024193141405974,
+          0.6374757987565474,
+          0.6149757990844087
+        ],
+        "signature": "c9c55ff0",
+        "geometryHash": "d9c6120e05bac4d0d12b68aaa618e580d7ab4d409328f7948f400534513c9229"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "d9c6120e05bac4d0d12b68aaa618e580d7ab4d409328f7948f400534513c9229",
+          "high:4242": "d9c6120e05bac4d0d12b68aaa618e580d7ab4d409328f7948f400534513c9229",
+          "high:8191": "d9c6120e05bac4d0d12b68aaa618e580d7ab4d409328f7948f400534513c9229",
+          "low:4000": "6ca51cb19944545592f0b41414fdca0b9395757726569a5fb52cfc2c4489e01e",
+          "low:4242": "6ca51cb19944545592f0b41414fdca0b9395757726569a5fb52cfc2c4489e01e",
+          "low:8191": "6ca51cb19944545592f0b41414fdca0b9395757726569a5fb52cfc2c4489e01e"
+        }
+      }
+    },
+    {
+      "id": "pl_t72b3_zubr_ii",
+      "pass": true,
+      "seat": {
+        "frame": "turret",
+        "x": -1.264,
+        "y": 0.8733095273714416,
+        "z": -1.4336661971830984,
+        "width": 0.34,
+        "depth": 0.32,
+        "footX": 0.108,
+        "footZ": 0.09,
+        "supportY": [
+          0.7793115909446016,
+          0.8189544285740418,
+          0.8154523845143018,
+          0.8283095273714416
+        ],
+        "signature": "22427fa5",
+        "geometryHash": "99d0362bbec0f4a64d470a17ef60493c3de0f92e32b81963b177216173981f48"
+      },
+      "checked": 1,
+      "validation": {
+        "failures": [],
+        "hashes": {
+          "high:4000": "99d0362bbec0f4a64d470a17ef60493c3de0f92e32b81963b177216173981f48",
+          "high:4242": "99d0362bbec0f4a64d470a17ef60493c3de0f92e32b81963b177216173981f48",
+          "high:8191": "99d0362bbec0f4a64d470a17ef60493c3de0f92e32b81963b177216173981f48",
+          "low:4000": "a37dd92591309254a6e01657cc0577f3c8fa71f15cabb667aee4c4e47888e2c7",
+          "low:4242": "a37dd92591309254a6e01657cc0577f3c8fa71f15cabb667aee4c4e47888e2c7",
+          "low:8191": "a37dd92591309254a6e01657cc0577f3c8fa71f15cabb667aee4c4e47888e2c7"
+        }
+      }
+    }
+  ],
+  "pass": true
+}

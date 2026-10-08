@@ -4,7 +4,7 @@ import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
 // remain external visual and metric oracles; all playable geometry is the
 // first-party procedural work in profiles/poland.ts.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
@@ -51,6 +51,7 @@ interface PolishVariantOptions {
   gunPivot?: Vec3Tuple;
   gunBarrel?: Partial<ArmorEnvelope['gunBarrel']>;
   armorFactor?: number;
+  armor?: ArmorEnvelope;
 }
 
 function variant(
@@ -70,6 +71,7 @@ function variant(
   if (options.autoloader) spec.gun.autoloader = { ...options.autoloader };
   if (options.shellName && spec.gun.shells[0]) spec.gun.shells[0].name = options.shellName;
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
+  if (options.armor) spec.armor = structuredClone(options.armor);
   // Ground-up builds own their rigs: measured turret ring / gun trunnion
   // seats and published-overall muzzle lengths also size shadow proxies.
   if (options.turretPivot) spec.armor.turretPivot = [...options.turretPivot];
@@ -109,6 +111,13 @@ const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
   reloadS: 6.7, shellName: 'Pronit APFSDS', armorFactor: 1.06,
 });
 
+// Pendekar's owner-selected T-72BU rebuild must not transplant its spatial
+// armor into the independently authored Twardy. Preserve Twardy's original
+// t72b3 -> former Pendekar dimension fit before applying its own rig/rating.
+const twardyDonor = donorSpec(registries.tankSpecs, 't72b3');
+const twardyArmor = structuredClone(twardyDonor.armor);
+fitArmorToDims(twardyArmor, twardyDonor.dims,
+  { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 });
 const pt91Twardy = variant('pt91_twardy', 'pt91m', {
   name: 'PT-91A Twardy', number: 'PT-91', scheme: 'stripes',
   base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'],
@@ -121,7 +130,9 @@ const pt91Twardy = variant('pt91_twardy', 'pt91m', {
   stats: { hp: 2250, enginePowerHp: 1000, weightTons: 47.5, topSpeedKmh: 60,
     reverseSpeedKmh: 20, turretTraverseDegS: 36, gunPitchDegS: 29 },
   reloadS: 6.4, shellName: 'Pronit 125 APFSDS', armorFactor: 1.08,
+  armor: twardyArmor,
 });
+pt91Twardy.visual.trackWidthM = .50;
 
 const pl01 = variant('pl01', 'k2', {
   name: 'PL-01', number: 'PL-01', scheme: 'digital',
