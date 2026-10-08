@@ -276,6 +276,8 @@ interface DecorSlotArgs {
   low?: boolean;
   onBasket?: boolean;
   routes?: Array<[string, DecorSlotArgs]>;
+  /** turretRoofPair: the bank's yaw off the bow, mirrored per side (radians) */
+  yaw?: number;
 }
 
 interface DecorManifestRow {
@@ -3001,6 +3003,15 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // seating changes drop it).
   if (spec.id === 'griffin_viper') {
     for (const row of base) if (row.kit === 'cable') { row.slot = ['hullSideCable', { side: 1 }]; row.p = 1; row.early = true; }
+  }
+  // 2026-10-08 (coordinator ruling, "a visual refactor must not change a gameplay count incidentally"): the Type 89
+  // Light Tiger's decor bank pair is curated on its roof front. Its cheek stations read their height off pivotTopY(),
+  // and the old compact roof RWS raised that probe to 1.12 m, so the third station met a roof box and the pair stood
+  // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
+  // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
+  // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
+  if (spec.id === 'type89_light_tiger') {
+    for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }
   // Round 4 (2026-10-07): no loadout carries a cable spool or a camp chair. Wave 215 on the M60A1 and Type 99A: "a
   // wooden cable spool ... with no bracket or lashing ... decor cargo rather than crew kit" (both critics: strapping it
@@ -5876,6 +5887,22 @@ export function* attachTankDecorationsSteps(
         }
         disposePartList(parts);
         return false;
+      },
+      // A bank pair seated on the turret roof plate at (+-x, z), yaw +-yaw (2026-10-08; a curated seat, see the
+      // type89_light_tiger override in decorManifestFor): the bracket stands on the solid roof under it (decor,
+      // suits and fittings are not support), 4 mm into the plate; a side without roof there keeps no bank.
+      turretRoofPair(args, parts, name) {
+        const x = args.x ?? 0.7, z = args.z ?? 0.3, yaw = args.yaw ?? 0.55;
+        let ok = false;
+        const solid = solidTurretProber();
+        for (const s of [-1, 1]) {
+          const cl = clonePartList(parts);
+          const seat = seatProbe(solid, s * x, z, 0.3, 0.1, 3.5, 0.03);
+          if (seat && commit(name, cl, 'turret', V(s * x, seat.y - 0.004, z), E(0, s * yaw, 0), placedTurret)) ok = true;
+          else disposePartList(cl);
+        }
+        disposePartList(parts);
+        return ok;
       },
       turretCheekPair(_args, parts, name) {
         let ok = false;
