@@ -8123,7 +8123,7 @@ ${snowCap ? `
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
-    obstacles, colliders, animated: animatedDressing,
+    obstacles, colliders, animated: animatedDressing, buildings: buildingFeatures,
   });
   yield { fine: true, stage: 'map-extras' };
 

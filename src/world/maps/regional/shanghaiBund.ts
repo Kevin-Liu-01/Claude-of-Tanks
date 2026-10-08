@@ -124,8 +124,9 @@ function heldToDepth(builder: RegionalBuilder): RegionalBuilder {
   };
 }
 
-/** Shanghai North Station in Zhabei: the skyline kit's terminus, its head building to the street, burnt out. */
-const northStation = heldToDepth(stationHall({ damage: 2 }));
+/** Shanghai North Station in Zhabei: the skyline kit's terminus, its head building to the street, burnt out, its name
+ *  board over the arch (its forecourt and tracks: shanghaiStreets.ts dressNorthStation). */
+const northStation = heldToDepth(stationHall({ damage: 2, nameBoard: true }));
 
 // ------------------------------------------------------------------------------------------------ the Bank of China
 

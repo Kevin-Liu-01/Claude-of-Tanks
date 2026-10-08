@@ -154,6 +154,9 @@ interface DressingContext {
   colliders?: CollisionRecord[];
   /** Round 67: the renderer's sink for dressing it poses every frame (the moored hulls); omitted, the kit is static. */
   animated?: AnimatedDressing[];
+  /** the buildings placed so far (props.ts buildingFeatures: the plan's with their structure kind), for a kit that dresses
+   *  a landmark's ground (Suzhou's North Station) */
+  buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
 
 type FocusedDressingContext = Pick<
@@ -1110,7 +1113,7 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated,
+  obstacles, colliders, animated, buildings,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
@@ -1131,7 +1134,7 @@ export function dressMapExtras({
   if (kits.includes('shanghai')) {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
     // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
-    dressShanghai(focused, mapId);
+    dressShanghai({ ...focused, buildings }, mapId);
   }
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own

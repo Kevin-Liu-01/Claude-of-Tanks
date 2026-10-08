@@ -8,7 +8,10 @@
 //   - the bridgeheads: the sandbagged posts the Settlement's garrison and the Chinese army built at both ends of every
 //     bridge, a horseshoe of bags either side of the road, the wire coiled along the bank;
 //   - the creek's sampans: moored in rafts of two and three along both banks, their arched mat roofs over the middle,
-//     the scull at the stern, clear of the bridges.
+//     the scull at the stern, clear of the bridges;
+//   - North Station's ground (Suzhou round 3, wave 209: "the station sits on bare dirt"): its forecourt paved before the
+//     head building, its lamps, the tracks out of the train shed's open end on their sleepers and ballast, the island
+//     platforms under the shed and the buffer stops at the concourse.
 // The bed, rails, poles, wires, sandbags, wire and boats are dressing (no collision: a hull drives over the bed, through
 // the bags and wades past the boats); the burnt trams block like any wreck, each a convex footprint in both collision
 // sinks, clear of every road's core and of the objective ground. Everything draws from streams of its own (never the
@@ -16,8 +19,10 @@
 import type * as THREE from 'three';
 import { PartSink, hashSeed, normalize3, rgb, shade, streamFrom, type Rgb, type Vec3 } from './regional/geometry.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
-import { cloneCollisionRecord, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { cloneCollisionRecord, collisionFootprintContainsPoint, setConvexShape, type CollisionRecord } from '../collision.ts';
 import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
+import { bankOf } from './regional/shanghaiParts.ts';
+import type { RegionalBuildContext } from './regional/types.ts';
 
 interface BridgeDeck { x: number; z: number; ux: number; uz: number; halfLength: number; halfWidth: number; approachM?: number; waterY?: number }
 
@@ -38,6 +43,8 @@ interface StreetContext {
   buckets: Record<string, THREE.BufferGeometry[] | undefined>;
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
+  /** the buildings placed (props.ts buildingFeatures, the plan's with their structure kind): the station's seat */
+  buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
 
 /** The track bed's half width, the track centres off the road's line, the rails off each track centre (standard gauge). */
@@ -476,4 +483,129 @@ export function dressShanghai(ctx: StreetContext, mapId = 'blackglass'): void {
   dressBridgeheads(ctx);
   dressCreekQuays(ctx);
   dressSampans(ctx);
+  dressNorthStation(ctx);
+}
+
+const BALLAST = rgb(0x4a463f), SLEEPER = rgb(0x3b2f25), BUFFER_RED = rgb(0x7a2a22), LAMP_IRON = rgb(0x22272a);
+
+/**
+ * Shanghai North Station's ground: every civic hall the kit builds as the station (shanghaiBund.ts: the Zhabei bank's)
+ * gets its forecourt and its tracks, laid in the station's own frame (its seat's yaw; skyline.ts stationHall: the head
+ * building to +z, the train shed's open end to -z, held to the plot's depth). All dressing, no collision record: a hull
+ * drives over the setts, the rails and the platforms' ends as over the tram bed. Every piece stands only where it clears
+ * the records already placed and the roads' cores, so the street's own surface and the neighbours keep theirs.
+ */
+function dressNorthStation(ctx: StreetContext): void {
+  const hf = ctx.heightField, roads = ctx.L.roads ?? [];
+  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  for (const b of ctx.buildings ?? []) {
+    if (b.kind !== 'civichall' || bankOf({ x: b.x, z: b.z } as RegionalBuildContext) !== 'zhabei') continue;
+    const c = Math.cos(b.rot), s = Math.sin(b.rot);
+    const world = (lx: number, lz: number): [number, number] => [b.x + lx * c + lz * s, b.z - lx * s + lz * c];
+    const ground = (lx: number, lz: number, lift: number): Vec3 => { const [x, z] = world(lx, lz); return [x, hf.getHeightAt(x, z) + lift, z]; };
+    // the station's plot as stationHall fits it, held to the seat's depth
+    const W = Math.max(20, b.w - 0.8), halfD = Math.min(13, (b.d - 0.8) / 2);
+    const shedX0 = -W / 2 + 0.5, width = W - 1, spans = width > 26 ? 2 : 1, half = width / spans / 2;
+    const tz = s, tx = c; // the station's local +z, +x in the world
+    const look = streamFrom(hashSeed('shanghai-station', Math.round(b.x), Math.round(b.z)));
+    const sink = new PartSink([0, 0]);
+    // the records round the station, not its own (a record whose middle stands inside the station's plot is the station's:
+    // its pavilion and steps reach a little past the plot's front, where the forecourt meets them)
+    const others = records.filter((q) => {
+      const mx = (q.min[0] + q.max[0]) / 2 - b.x, mz = (q.min[2] + q.max[2]) / 2 - b.z;
+      const lx = mx * c - mz * s, lz = mx * s + mz * c;
+      return !(Math.abs(lx) < W / 2 + 0.5 && Math.abs(lz) < halfD + 1.0);
+    });
+    const freeCell = (lx: number, lz: number, r: number) => {
+      const [x, z] = world(lx, lz);
+      // (a record's own footprint, not its box: a turned building's box reaches far past its walls)
+      return clearOfRoads(roads, x, z, r, r, tz, -tx) && !others.some((q) => !q.dead && collisionFootprintContainsPoint(q, x, z, r));
+    };
+    // the forecourt: granite setts before the head building, one rectangle as deep and as wide as stays clear of the
+    // roads' cores and the neighbours' footprints (its edges straight, never stepped round a cell grid), kerbed along its
+    // three open sides; laid in 2 m strips that follow the ground
+    const clearRect = (x0: number, x1: number, z0: number, z1: number) => {
+      for (let lz = z0; lz <= z1 + 1e-6; lz += 1) for (let lx = x0; lx <= x1 + 1e-6; lx += 1) if (!freeCell(lx, lz, 0.4)) return false;
+      return true;
+    };
+    let fw = W / 2 - 1, fz1 = halfD + 0.4 + 14;
+    while (fz1 > halfD + 4 && !clearRect(-fw, fw, halfD + 0.4, fz1)) fz1 -= 1;
+    while (fw > 6 && !clearRect(-fw, fw, halfD + 0.4, fz1)) fw -= 1;
+    const fz0 = halfD + 0.4;
+    if (clearRect(-fw, fw, fz0, fz1)) {
+      const CELL = 2;
+      for (let lz = fz0; lz < fz1 - 1e-6; lz += CELL) {
+        const lzb = Math.min(fz1, lz + CELL);
+        for (let lx = -fw; lx < fw - 1e-6; lx += CELL) {
+          const lxb = Math.min(fw, lx + CELL);
+          sink.quad('stone', ground(lx, lzb, 0.035), ground(lxb, lzb, 0.035), ground(lxb, lz, 0.035), ground(lx, lz, 0.035), { decor: true, uv: { kind: 'world' } });
+        }
+      }
+      // the kerb along the open sides: a granite band, its top a little proud of the setts
+      const kerb = (ax: number, az: number, bx: number, bz: number) => {
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 2));
+        for (let k = 0; k < n; k++) {
+          const t0 = k / n, t1 = (k + 1) / n;
+          sink.member('stone', ground(ax + (bx - ax) * t0, az + (bz - az) * t0, 0.02), ground(ax + (bx - ax) * t1, az + (bz - az) * t1, 0.02), 0.3, 0.16,
+            [0, 1, 0], { decor: true }, 0.08);
+        }
+      };
+      kerb(-fw, fz1, fw, fz1); kerb(-fw, fz0, -fw, fz1); kerb(fw, fz0, fw, fz1);
+    }
+    // the forecourt's two cast-iron lamps at its outer corners, where they stand clear
+    for (const side of [-1, 1]) {
+      const lx = side * (fw - 1.5), lz = fz1 - 1.5;
+      if (!freeCell(lx, lz, 0.6)) continue;
+      const foot = ground(lx, lz, -0.1);
+      sink.cylinder('structureMetal', foot, 'y', 4.6, 0.09, 6, { decor: true, colour: LAMP_IRON }, 0.06);
+      sink.span('structureMetal', foot[0] - 0.2, foot[1] + 4.4, foot[2] - 0.2, foot[0] + 0.2, foot[1] + 4.85, foot[2] + 0.2, { decor: true, colour: LAMP_IRON });
+    }
+    // the tracks: two to a span, the island platform between them under the shed, the buffer stops at the concourse,
+    // the rails out of the open end on their sleepers and ballast until a road's core or a record stops them
+    const SHED_END = -halfD, CONCOURSE = halfD - 8.6, OUT = 46;
+    for (let sp = 0; sp < spans; sp++) {
+      const cx = shedX0 + half * (2 * sp + 1);
+      // the island platform: a low stone slab under the shed, its coping a lighter course
+      const p0 = ground(cx, SHED_END + 1.5, 0), p1 = ground(cx, CONCOURSE - 0.6, 0);
+      const foot = Math.min(p0[1], p1[1]) - 0.3, py = Math.max(p0[1], p1[1]) + 0.9;
+      // (corners counter-clockwise seen from above)
+      const corners = [[-1.25, CONCOURSE - 0.6], [1.25, CONCOURSE - 0.6], [1.25, SHED_END + 1.5], [-1.25, SHED_END + 1.5]] as const;
+      sink.prism('stone', corners.map(([dx, lz]): Vec3 => { const [x, z] = world(cx + dx, lz); return [x, foot, z]; }), [0, 1, 0], py - foot, { decor: true });
+      for (const t of [-1, 1]) {
+        const lx = cx + t * 2.6;
+        // the buffer stop at the concourse: two posts, the beam and its red face
+        const bf = ground(lx, CONCOURSE, 0);
+        sink.member('structureMetal', ground(lx - 0.8, CONCOURSE, -0.1), ground(lx - 0.8, CONCOURSE, 1.1), 0.18, 0.18, [tz, 0, tx], { decor: true, colour: LAMP_IRON, exposed: true }, 0);
+        sink.member('structureMetal', ground(lx + 0.8, CONCOURSE, -0.1), ground(lx + 0.8, CONCOURSE, 1.1), 0.18, 0.18, [tz, 0, tx], { decor: true, colour: LAMP_IRON, exposed: true }, 0);
+        sink.member('structureMetal', [bf[0] - tx * 1.0, bf[1] + 0.95, bf[2] + s * 1.0], [bf[0] + tx * 1.0, bf[1] + 0.95, bf[2] - s * 1.0], 0.3, 0.22,
+          [-tz, 0, -tx], { decor: true, colour: BUFFER_RED, exposed: true }, 0);
+        // the track from the concourse out of the shed: 2 m stations, stopped by the first blocked one past the shed
+        for (let lz = CONCOURSE; lz > SHED_END - OUT; lz -= 2) {
+          const lz1 = lz - 2;
+          const [mx, mz] = world(lx, lz1 - 1);
+          // past the shed: a road's core takes the rails flush (a level crossing), a record stops the track
+          if (lz1 < SHED_END && others.some((q) => !q.dead && collisionFootprintContainsPoint(q, mx, mz, 1.6))) break;
+          if (lz1 < SHED_END && !clearOfRoads(roads, mx, mz, 1.0, 1.0, tz, -tx)) {
+            for (const g of [-0.7175, 0.7175]) {
+              sink.member('structureMetal', ground(lx + g, lz, 0.025), ground(lx + g, lz1, 0.025), 0.07, 0.03, [0, 1, 0], { decor: true, colour: RAIL }, 0.02);
+            }
+            continue;
+          }
+          const bedA = [ground(lx - 1.4, lz, 0.03), ground(lx + 1.4, lz, 0.03)], bedE = [ground(lx - 1.4, lz1, 0.03), ground(lx + 1.4, lz1, 0.03)];
+          // (the ballast's quad counter-clockwise seen from above)
+          sink.quad('structureMetal', bedA[1], bedE[1], bedE[0], bedA[0], { decor: true, colour: shade(BALLAST, 0.9 + look() * 0.2) });
+          for (const k of [0, 0.66, 1.33]) {
+            if (look() < 0.06) continue; // a sleeper burnt out or taken for the fires
+            const sl = ground(lx, lz - k, 0.06);
+            sink.member('structureWood', [sl[0] - tx * 1.3, sl[1], sl[2] + s * 1.3], [sl[0] + tx * 1.3, sl[1], sl[2] - s * 1.3], 0.24, 0.12, [0, 1, 0],
+              { decor: true, colour: SLEEPER }, 0.04);
+          }
+          for (const g of [-0.7175, 0.7175]) {
+            sink.member('structureMetal', ground(lx + g, lz, 0.13), ground(lx + g, lz1, 0.13), 0.07, 0.12, [0, 1, 0], { decor: true, colour: RAIL }, 0.04);
+          }
+        }
+      }
+    }
+    push(ctx, sink);
+  }
 }
