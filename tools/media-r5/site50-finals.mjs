@@ -5,7 +5,7 @@
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
-//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45]
+//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -14,15 +14,17 @@
 // other sessions' captures get the GPU between them. A chunk runs take by take, each film with its stills (one map load).
 // --keep-place (the coordinator's alternating finals, 2026-10-07): every lease joins the capture queue at the run's first
 // stamp (renders/ticket-stamp, kept across relaunches; --keep-place=<ms> sets it, e.g. the lane's earlier place in the
-// line), so after each lease the finals follow whichever lane took the GPU, and a lease ends before a take that would
-// carry it past --lease-min (45): the rest of the chunk takes the next lease.
+// line), and a lease ends before a take that would carry it past --lease-min (45): the rest of the chunk takes the next
+// lease. Between leases --yield-holds (2) other holds take and release the lock first (the coordinator's revised share,
+// about 55 % of the GPU while some forty lane tickets wait).
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/;
 // --tag=<round> writes renders-<round>/ and deliver-<round>/ instead, so every round's renders stay (owner 2026-10-03).
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
+import { CAPTURE_LOCK_DIR, createCaptureLock } from '../capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
@@ -61,8 +63,26 @@ const givenStamp = /^\d+$/.test(flags['keep-place'] ?? '') ? Number(flags['keep-
 const stamp = keepPlace ? givenStamp ?? (existsSync(stampFile) ? Number(readFileSync(stampFile, 'utf8')) : Date.now()) : null;
 if (keepPlace) { writeFileSync(stampFile, String(stamp)); console.log(`[finals] every lease joins the queue at ${stamp}, ${leaseMin} min at most`); }
 const lease = keepPlace ? [`--ticket-stamp=${stamp}`, `--lease-min=${leaseMin}`] : [];
-// between leases the lane at the head of the queue takes the GPU (it polls every 300 ms)
-const yieldGpu = () => new Promise(resolve => setTimeout(resolve, 5000));
+// Between leases, --yield-holds other holds take the lock first. A hold is one lock directory (its inode and birth time).
+// The next lease starts once the last yielded hold has begun, so its ticket, back at the stamp, is first in line when
+// that hold ends. With nobody waiting and the lock free for a minute (five at most), the finals go on.
+const yieldHolds = Math.max(0, Number(flags['yield-holds'] ?? 2));
+const queue = createCaptureLock();
+const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
+async function yieldGpu() {
+  const seen = new Set();
+  let freeSince = Date.now();
+  for (;;) {
+    if (stopping) return;
+    const id = holdId();
+    if (id) { seen.add(id); freeSince = Date.now(); }
+    if (seen.size >= yieldHolds) break;
+    const free = id ? 0 : Date.now() - freeSince;
+    if ((free > 60000 && queue.waiting() === 0) || free > 300000) break;
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  console.log(`[finals] yielded to ${seen.size} hold${seen.size === 1 ? '' : 's'}; rejoining the queue at ${stamp}`);
+}
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const minFreeGb = Number(flags['min-free-gb'] ?? 6);

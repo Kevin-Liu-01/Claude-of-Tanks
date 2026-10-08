@@ -113,10 +113,10 @@ never stitched from two runs). The shared capture lock serializes GPU work. A ba
 one lease runs as several: `--lease-min=<minutes>` ends the lease before a film that would carry
 it past the budget (the estimate is the longest take so far, a film with the stills after it) and
 exits 75, and a `--resume=true` re-run renders the rest; `--ticket-stamp=<ms>` joins the capture
-queue at that place, so every lease of the batch rejoins at its first ticket's place and follows
-whichever lane took the GPU in between (`tools/media-r5/site50-finals.mjs --keep-place`, the
-coordinator's alternating finals of 2026-10-07). The synchronous encodes renew the lock before
-each step.
+queue at that place, so every lease of the batch rejoins at its first ticket's place, behind the
+holds it yielded to (`tools/media-r5/site50-finals.mjs --keep-place --yield-holds=2`: after each
+lease two other holds take and release the lock first, the coordinator's share for the finals of
+2026-10-07). The synchronous encodes renew the lock before each step.
 
 Throughput, measured 2026-10-01 on the lane machine (Apple silicon GPU through headless Chrome and
 ANGLE/Metal) with the two-tank desert duel (fast rail moves, firing, a kill), in seconds per output

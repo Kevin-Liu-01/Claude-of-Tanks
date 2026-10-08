@@ -17,6 +17,8 @@ const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 /** The machine-wide queue directory (read-only use: who is waiting). */
 export const CAPTURE_QUEUE_DIR = DEFAULT_QUEUE_DIR;
+/** The machine-wide lock directory (read-only use: whose hold is on, one directory per hold). */
+export const CAPTURE_LOCK_DIR = DEFAULT_LOCK_DIR;
 const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
 
