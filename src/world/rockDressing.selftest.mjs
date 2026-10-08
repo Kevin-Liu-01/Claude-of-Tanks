@@ -13,12 +13,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { convexHull2 } from './collision.ts';
 import { MAP_IDS } from './maps/index.ts';
 import { acquireTerrainChunkIndex, terrainNearMeshHeightAt, terrainNearMeshNormalAt, terrainShoreByte } from './terrain.ts';
-import { GROUND_FILLET_FORM_SHARE } from './maps/fieldWallDressing.ts';
+import { GROUND_FILLET_FORM_SHARE, buildWallTurf } from './maps/fieldWallDressing.ts';
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
   boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
@@ -636,6 +636,8 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const sharesSrc = /const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
   const contactShare = new Function(`const CONTACT_PATCH_RINGS = ${ringsSrc}, ROCK_PATCH_SHARES = ${sharesSrc};\n${stripTypeScriptTypes(source.slice(shareAt, source.indexOf('\n  }\n', shareAt) + 4))}\nreturn contactShare;`)();
   const SPOT_R = 2.6;
+  // (b37) the beds' cells (512 m, one geometry a cell with the wall turf), declared beside the builder
+  const cellSrc = stripTypeScriptTypes(/  const BED_CELL_M = \d+;\n  const bedCellKey = [^\n]*\n/.exec(source)[0]);
   const build = (dust, snowCap, crushable, foldAt = undefined, heightAt = () => 0, shoreAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
@@ -648,7 +650,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const groundShoreByte = (x, z) => (shoreAt ? terrainShoreByte(shoreAt(x, z)) : 0);
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'terrainNearMeshNormalAt', 'groundShoreByte', 'groundNormalCache', 'GROUND_FILLET_FORM_SHARE', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, terrainNearMeshNormalAt, groundShoreByte, new Map(), GROUND_FILLET_FORM_SHARE, { getHeightAt: heightAt, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, terrainNearMeshNormalAt, groundShoreByte, new Map(), GROUND_FILLET_FORM_SHARE, { getHeightAt: heightAt, ...(foldAt ? { _foldAt: foldAt } : {}) },
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();
@@ -767,6 +769,20 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
       assert.ok(c1.distanceTo(c2) < 1e-12, 'the cached grid normals are the uncached ones');
     }
     assert.ok(cache.size > 0 && cache.size < 200 * 3, `each grid vertex read once (${cache.size} for 600 reads)`);
+    // (b37 + b44) a cell's bed and its walls' turf merge into one geometry (the world's one ground-material draw a cell):
+    // the same attributes, the same layouts — a mismatch would leave them as separate draws
+    {
+      const bed = build(0, false, false, undefined, slopeAt, shoreM).beds[0];
+      const turf = buildWallTurf((x, z) => terrainNearMeshHeightAt(slopeAt, x, z), null, 4, 30, 4, 39, 0.23, 77,
+        { normalAt: (x, z, out) => terrainNearMeshNormalAt(slopeAt, x, z, out), shoreByte: (x, z) => terrainShoreByte(shoreM(x, z)) });
+      assert.deepEqual(Object.keys(bed.attributes).sort(), Object.keys(turf.attributes).sort(), 'the bed and the turf carry the same attributes');
+      for (const name of Object.keys(bed.attributes)) {
+        const a = bed.getAttribute(name), b = turf.getAttribute(name);
+        assert.ok(a.itemSize === b.itemSize && a.normalized === b.normalized && a.array.constructor === b.array.constructor, `${name}: the same layout`);
+      }
+      const merged = mergeGeometries([bed, turf], false);
+      assert.ok(merged && merged.getAttribute('position').count === bed.getAttribute('position').count + turf.getAttribute('position').count, 'one geometry for the cell');
+    }
   }
   assert.match(source, /const groundShoreByte = \(x: number, z: number\): number => \(groundShoreAt \? terrainShoreByte\(groundShoreAt\(x, z\)\) : 0\);/, 'the chunks\' shore byte, from the terrain\'s own sampler');
   assert.match(source, /surface: \{ normalAt: \(x, z, out\) => terrainNearMeshNormalAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z, out, groundNormalCache\), shoreByte: groundShoreByte \}/, 'the walls\' turf carries the same');
