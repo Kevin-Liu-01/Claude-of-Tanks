@@ -69,7 +69,10 @@ import {
 } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { HAY_PRINT_SEED, paintHayBuffers as paintHayBuffersInline } from './hayPrint.ts';
-import { surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest } from './surfacePaintPrefetch.ts';
+import {
+  registerPaintNoise, settledPaint, surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest,
+} from './surfacePaintPrefetch.ts';
+import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
@@ -1131,20 +1134,29 @@ function* paintedAhead<T>(key: string, paint: () => Generator<unknown, T, void>)
   return (yield* paint() as Generator<PropsBuildSlice, T, void>);
 }
 function* paintHayBuffers(size = 512, seed = HAY_PRINT_SEED): Generator<PropsBuildSlice, { px: Uint8ClampedArray; hgt: Float32Array }, void> {
-  return yield* paintedAhead(surfacePaintKey('hay', size, seed), () => paintHayBuffersInline(size, seed));
+  return yield* paintedAhead(surfacePaintKey({ kind: 'hay', size, seed }), () => paintHayBuffersInline(size, seed));
 }
 function* paintFieldStoneBuffers(size = 512, seed = FIELD_STONE_PRINT_SEED, lithology: FieldStoneLithology = 'fieldstone'):
   Generator<PropsBuildSlice, FieldStoneBuffers, void> {
-  return yield* paintedAhead(surfacePaintKey('fieldStone', size, seed, lithology), () => paintFieldStoneBuffersInline(size, seed, lithology));
+  return yield* paintedAhead(surfacePaintKey({ kind: 'fieldStone', size, seed, lithology }), () => paintFieldStoneBuffersInline(size, seed, lithology));
 }
 
 /** The fixed-input prints a map's props build will paint (the surface paint prefetch starts them with the terrain). */
-export function plannedSurfacePaints(cfg: PropsMapConfig | null): SurfacePaintRequest[] {
+export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 2002): SurfacePaintRequest[] {
   const mobile = getDeviceTier() === 'mobile';
   const size = mobile ? 256 : 512;
   const mapId = cfg ? cfg.id : 'verdant';
   const wallStyle = (cfg?.props as { wallStyle?: string } | undefined)?.wallStyle;
-  const requests: SurfacePaintRequest[] = [{ kind: 'hay', size, seed: HAY_PRINT_SEED }];
+  // (2026-10-08) and the tiles it paints from its noise (seed + 7) — all in the order the build reaches them: the straw,
+  // the building kit's three detail tiles, the rock tile, the dry-stone print
+  const noiseSeed = propsSeed + 7;
+  const requests: SurfacePaintRequest[] = [
+    { kind: 'hay', size, seed: HAY_PRINT_SEED },
+    { kind: 'structureDetail', detail: 'wood', noiseSeed },
+    { kind: 'structureDetail', detail: 'canvas', noiseSeed },
+    { kind: 'structureDetail', detail: 'steel', noiseSeed },
+    { kind: 'rockDetail', lithology: rockLithologyFor(mapId), noiseSeed },
+  ];
   if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
     requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
   }
@@ -1260,68 +1272,15 @@ function* makeFieldMud(
   };
 }
 
-// Neutral detail atlases for the vertex-colored destructible building kit.
-// Their RGB stays close to white so the kit palette remains authoritative;
-// the texture contributes grain/weave/corrugation and its normal map adds the
-// readable material response that flat vertex colors could not provide.
-function sampleStructureDetail(
-  noi: SimplexNoise,
-  kind: 'wood' | 'canvas' | 'steel',
-  x: number,
-  y: number,
-  sample: Float32Array,
-): void {
-  const grain = noi.noise(x * 0.17 + (kind === 'steel' ? 70 : 11), y * 0.06 - 31)
-    * 0.5 + 0.5;
-  if (kind === 'wood') {
-    const plank = (x % 28) / 28;
-    const seam = plank < 0.07 ? 1 : 0;
-    const rings = Math.sin(y * 0.11 + noi.noise(x * 0.08, y * 0.018) * 4) * 0.5 + 0.5;
-    sample[0] = seam ? 0.08 : 0.46 + rings * 0.38;
-    sample[1] = (0.86 + grain * 0.13) * (seam ? 0.68 : 1);
-  } else if (kind === 'canvas') {
-    const warp = Math.sin(x * Math.PI * 0.52) * 0.5 + 0.5;
-    const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
-    sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
-    sample[1] = 0.88 + sample[0] * 0.10;
-  } else {
-    // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
-    // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
-    // a rivet line under each seam, scratches, and a rust mask in sample[2] along the seams and the bottom lap.
-    const p = ((x / 27) % 1 + 1) % 1;
-    const corrugation = p < 0.34 ? 1 : p < 0.5 ? 1 - (p - 0.34) / 0.16 : p < 0.84 ? 0 : (p - 0.84) / 0.16;
-    // a three-texel seam ramp: the surface receipt keeps every normal within 32 degrees of the wall plane
-    const seamStep = x % 128;
-    const seam = seamStep < 3 ? 1 - seamStep / 3 : 0;
-    const rivet = !seam && seamStep >= 4 && seamStep < 8 && ((y + 6) % 24) < 5 ? 1 : 0;
-    const scratch = smoothstep(0.72, 0.94,
-      noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
-    const lap = ((y % 128) < 3) ? 1 : 0;
-    const rust = smoothstep(0.55, 0.9, noi.noise(x * 0.05 + 3, y * 0.05 - 41) * 0.5 + 0.5) * (seam || lap ? 0.9 : 0.25)
-      + ((noi.noise(x * 0.4 + 17, y * 0.4 + 9) * 0.5 + 0.5) > 0.86 ? 0.7 : 0);
-    sample[0] = corrugation * 0.72 + grain * 0.10 + 0.12 - seam * 0.30 - lap * 0.22 - rivet * 0.12;
-    sample[1] = 0.92 + corrugation * 0.06 - scratch * 0.08 - seam * 0.25 - lap * 0.12 + rivet * 0.05;
-    sample[2] = clamp(rust, 0, 1);
-  }
-}
-
 export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
 ): GeneratedSurfaceTextures {
-  const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const rust = kind === 'steel' ? new Float32Array(s * s) : null;
-  const sample = new Float32Array(3);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    sample[2] = 0;
-    sampleStructureDetail(noi, kind, x, y, sample);
-    const v = clamp(sample[1], 0.55, 1) * 255;
-    px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
-    hgt[i] = sample[0];
-    if (rust) rust[i] = sample[2];
-  }
+  // (the time-to-battle lane, 2026-10-08) the tile the surface paint worker painted ahead for this build's noise and kind
+  // (surfacePaintPrefetch.ts settledPaint: the same painter, structureDetailTile.ts), or painted here
+  const ahead = settledPaint(noi, (seed) => surfacePaintKey({ kind: 'structureDetail', detail: kind, noiseSeed: seed })) as StructureDetailBuffers | null;
+  const { size: s, px, hgt, rust } = ahead ?? paintStructureDetailBuffers(noi, kind);
   // the rust mask rides the ORM blue channel the weathering hook reads (steel atlas convention, round 75)
   const surface = rust
     ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
@@ -3269,6 +3228,7 @@ function* propsBuildSteps(
   const L = heightField._layout;
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
+  registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
