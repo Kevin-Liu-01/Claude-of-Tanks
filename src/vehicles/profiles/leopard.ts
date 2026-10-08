@@ -6700,7 +6700,11 @@ export function buildLeo2A4(builder: object) {
       // Supported top cap over the outboard post/lip junction.  This closes
       // the enclosed plan pocket at the front corner while staying outboard
       // of the terminal shoes and above their upper orbit.
-      P.add('hull', box(0.19, 0.030, 0.38), s * 1.680, 1.49, 3.80);
+      // round 5 (2026-10-07, wave 253 leo2a4-rear: "small pale slivers hang in mid-air ... off the right-hand hull corner"):
+      // the cap reached 19 cm inboard over the idler, 21 cm above its post and 30 cm ahead of the fore-fender's end, with
+      // only a 1.5 cm lap on the skirt's top edge, so from behind it read as a loose plate. It now rides the skirt and
+      // post as their top flange (|x| 1.70..1.85, 6 cm inboard of the skirt face, clear of the 1.69 m track band).
+      P.add('hull', box(0.15, 0.030, 0.38), s * 1.775, 1.49, 3.80);
       // wing band FULLY past the shoe-orbit far edge (idler orbit r 0.425 ->
       // z 3.905; a first cut at z 3.84..3.92 ate 126 shoe voxels x -1.54..
       // +1.54 y 1.06..1.12 — the exact-audit box). Widened to the post so
