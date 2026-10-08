@@ -859,7 +859,12 @@ export function createGarageStage(
     // volumetric cone from every orbit angle.
     const coneMat = track(new THREE.ShaderMaterial({
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-      side: THREE.DoubleSide,
+      // Fleet lane round 2 (2026-10-08; the veil probe: hiding the Garage's transparents turned a washed, evenly lit hero
+      // into a crisp one; waves 264-269 "washed out", "no contact shadow"): the cone's NEAR wall stood between the lens
+      // and the tank on every orbit and added its haze over the whole vehicle (the darks of the tracks, tyres and wheel
+      // holes lifted to mid grey). Only the far wall draws now: the beam glows behind and around the tank, and the tank
+      // occludes it.
+      side: THREE.BackSide,
       uniforms: { uColor: { value: new THREE.Color(1.0, 0.925, 0.784) } },
       // Fleet lane 2026-10-08 (the fleet audit: every close, high Garage view of a vehicle sat INSIDE this cone, whose
       // walls then faced the lens all round and laid a pale wash over the whole tank): the beam is a volume seen from
