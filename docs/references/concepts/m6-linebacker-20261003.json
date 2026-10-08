@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-03",
+    "request": "Upgraded M6 Linebacker concept",
+    "scope": "Separate M6 with a new turret and Bradley chassis carrying extensive layered armor, cages and equipment. Owner subsequently requested a new M3A3 turret base as well. Owner requested a substantially wider, heavily equipped M2A3-style turret so the quad launcher no longer dominates; that revision’s structural width was 2.68 m (previous 2.20 m). On 2026-10-04 the owner requested the complete turret assembly 10% smaller about the unchanged bearing, including its gun, pod and fittings; hull unchanged."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "m6_linebacker": {
+      "id": "m6_linebacker",
+      "test": "src/vehicles/profiles/m6Linebacker.selftest.mjs",
+      "ring": [
+        0.04,
+        1.895,
+        -0.36
+      ],
+      "gunLocal": [
+        0,
+        0.432,
+        0.81
+      ],
+      "barrelLengthM": 2.124,
+      "barrelRadiusM": 0.0351,
+      "pitchDeg": [
+        -9,
+        45
+      ],
+      "mainCaliberMm": 25,
+      "roofMachineGuns": 1,
+      "cells": 4,
+      "guidedAmmoTotal": 12,
+      "hullLengthM": 6.71,
+      "hullWidthM": 4.12,
+      "widthM": 4.178,
+      "overallLengthM": 6.59,
+      "tallestM": 3.5645,
+      "specDimensions": {
+        "hullLengthM": 6.71,
+        "overallLengthM": 6.71,
+        "widthM": 4.12,
+        "heightM": 3.5645
+      },
+      "silhouette": "Original upgraded M6 on the native Bradley chassis. Broad 2.412 m welded turret (90% of the previous complete assembly), full sloping cheek masses around a true elevation bay, layered flank cassettes, large shoulder cabinets, shielded hatch, panoramic and gunner optics, paired lamps, peripheral cameras, M2 remote station, filled full-width bustle rack and shoulder cages. Compact left quad Stinger pod is 30 percent smaller in each dimension and sits on a close-fitting articulating cradle. Clipped layered hull skirts and rear slat cages. Historical M6 establishes the weapon layout only."
+    }
+  }
+}

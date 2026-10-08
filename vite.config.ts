@@ -324,6 +324,7 @@ export default defineConfig({
         main: resolve(process.cwd(), 'index.html'),
         notFound: resolve(process.cwd(), '404.html'),
         home: resolve(process.cwd(), 'site/home.html'),
+        hudPreview: resolve(process.cwd(), 'site/hud-preview.html'),
         docs: resolve(process.cwd(), 'site/docs.html'),
         docsTopic: resolve(process.cwd(), 'site/docs-topic.html'),
         docsBuild: resolve(process.cwd(), 'site/docs-build.html'),

@@ -31,6 +31,10 @@ classic controller takes through `setOrder()` and drops on expiry — the
 shared local controller owns mission driving, coordinated flanks, fall safety and ability reflexes even without orders (docs/BOT-TACTICS.md); `jevProtocol.ts` is the shared
 wire schema the proxy validates and builds the questions from;
 `input.ts` normalizes devices; `profile.ts` persists real local match history;
+`serviceRecord.ts` tracks medals through each battle from bus events (main.ts
+supplies the player/team/clock context) and keeps the medal case, achievement
+tiers and last 25 battles in `cot.service.v1`, emitting `service:medal` live
+and `service:battleAwards` at the end; medals never unlock anything;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
 `equipment.ts` owns the strict catalog, persistence, legal-loadout, multiplier,

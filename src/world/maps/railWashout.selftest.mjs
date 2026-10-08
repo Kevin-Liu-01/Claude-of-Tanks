@@ -4,6 +4,14 @@ import { dressMapExtras, railSegmentIsDry } from './mapKits.ts';
 import skybridge from './skybridge.ts';
 import { geometryHash as hashGeometry } from '../../../tools/receipt-kit.test-support.mjs';
 
+// The fixture: Skybridge's floor under its broad round-1 lakes (PR #9's head), the field the yard's lines were laid
+// across and washed out of. The map-revival lane's round 2 pulled the lakes into a sheer-walled trough (r 58, a sharp
+// bank) and round 3 took the railway off Skybridge (Page never had one), so the field is the washout policy's fixture
+// rather than the map as it stands: the trough knoll goes and the old lakes come back.
+const wetYard = { ...skybridge, terrain: { ...skybridge.terrain,
+  lakes: [{ x: -34, z: 62, r: 92, depth: 2.2 }, { x: 36, z: 146, r: 88, depth: 2.2 }],
+  landforms: skybridge.terrain.landforms.filter((landform) => !(landform.kind === 'knoll' && landform.height < 0)) } };
+
 const bucketNames = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
 const lines = [[40, -235, 235], [49, -235, 235], [58, -205, 210],
@@ -37,7 +45,7 @@ function isRail(geometry) {
 
 let removed = 0;
 for (const seed of [1337, 2049, 7719]) {
-  const heightField = createHeightField(seed, skybridge);
+  const heightField = createHeightField(seed, wetYard);
   const original = build({ ...heightField, getWaterMaskAt: () => 0 }, seed);
   const washed = build(heightField, seed);
   const legacy = seed === 1337 ? build(heightField, seed, 'railyard') : null;

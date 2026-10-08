@@ -6,7 +6,7 @@
  * game/state.ts seats the battle from the same plan.
  */
 import { normalizeGameMode } from '../sim/matchModes.ts';
-import { isWaveMode, matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
+import { isWaveMode, matchRulesetFor, rulesetAllyCap, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
 import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
 
@@ -21,15 +21,16 @@ export function battleRosterPlan(
   ruleset: MatchRuleset,
   campaignOperationId: string | null | undefined,
   randomBattle: boolean,
-): { nations: readonly string[]; slots: number | null; formationLead: number | null } {
+): { nations: readonly string[]; slots: number | null; formationLead: number | null; alliedSlots: number | null } {
   const nations = battleEnemyNations(ruleset, campaignOperationId);
+  const alliedSlots = randomBattle && ruleset.alliedNation === 'player' ? rulesetAllyCap(ruleset, 6) : null;
   // team arrangement (2026-09-15): the co-op modes size their own field — allied bots plus the enemy pool
   // sides (2026-09-18): the symmetric modes field both sides at once and the tier-balanced split seats
   // them; only the wave modes keep exactly `enemies` seats for the named nation
   if (randomBattle && ruleset.allies != null && ruleset.enemies != null) {
-    return { nations, slots: ruleset.allies + ruleset.enemies, formationLead: isWaveMode(ruleset.mode) ? ruleset.enemies : null };
+    return { nations, alliedSlots, slots: ruleset.allies + ruleset.enemies, formationLead: isWaveMode(ruleset.mode) ? ruleset.enemies : null };
   }
-  return { nations, slots: null, formationLead: null };
+  return { nations, alliedSlots, slots: null, formationLead: null };
 }
 
 /** The loading plan's view of a sortie (main.ts planRoster / planCamoOverrides), from the stored arrangement. */

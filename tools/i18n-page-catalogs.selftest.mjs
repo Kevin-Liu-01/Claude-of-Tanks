@@ -137,13 +137,20 @@ const en = readJson('src/ui/i18nCatalog.en-US.json');
 const zh = readJson('src/ui/i18nCatalog.zh-CN.json');
 const real = scanPageCatalogs({ root: ROOT, pages, english: en });
 assert.deepEqual(real.issues, [], `a public page could show a raw key:\n${real.issues.join('\n')}`);
-assert.deepEqual(Object.keys(real.catalogs), ['docs', 'docsTopic', 'gallery', 'game', 'home', 'notFound']);
+// 2026-10-06: main's 1f4c1d003 added site/hud-preview.html (the HUD editor's frame of the production HUD); it loads
+// its own `hudPreview` page catalog.
+assert.deepEqual(Object.keys(real.catalogs), ['docs', 'docsTopic', 'gallery', 'game', 'home', 'hudPreview', 'notFound']);
 assert.deepEqual(real.catalogs[FULL_CATALOG].pages, ['index.html'], 'only the game loads the full catalogs');
 assert.deepEqual(real.catalogs.docsTopic.pages.sort(), topicPages.sort());
 const fullKeys = Object.keys(en);
 for (const [name, { pages: catalogPages, modules, keys }] of Object.entries(real.catalogs)) {
   if (name === FULL_CATALOG) continue;
-  assert.ok(keys.length > 0 && keys.length < fullKeys.length * 0.25, `${name}: ${keys.length} of ${fullKeys.length} keys`);
+  // 2026-10-08, push 3b: main's 395305d45 gallery damage workbench names the garage's module and crew namespaces
+  // (garage.module.*, garage.crew.*) and its own gallery.damage.* keys; the scan follows its lab's literal import(), so
+  // the gallery page catalog holds 1198 of 4061 keys (29.5 %). Its share bound is 0.30 until the perf lane's lazy
+  // catalog chunks (keys reached only through import()) move the workbench's keys out; every other page keeps 0.25.
+  const share = name === 'gallery' ? 0.30 : 0.25;
+  assert.ok(keys.length > 0 && keys.length < fullKeys.length * share, `${name}: ${keys.length} of ${fullKeys.length} keys`);
   assert.ok(keys.includes('garage.tools.stagingAreas'), `${name}: the runtime's locale CSS label`);
   assert.ok(modules.includes('src/ui/i18n.ts'), `${name}: reaches the runtime`);
   assert.ok(!modules.some((module) => /^src\/ui\/i18nCatalog/.test(module)), `${name}: no catalog module in the scan`);

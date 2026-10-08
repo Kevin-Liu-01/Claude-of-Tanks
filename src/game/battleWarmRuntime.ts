@@ -1104,6 +1104,7 @@ export interface CombatWarmRuntimeContext {
   scratch3: Vector3;
   anisotropy: number;
   ensureStagedVisuals(count: number): boolean;
+  prepareModeVisuals?(): void;
   prebakeBurntSteps(specId: string, anisotropy: number): Iterable<void>;
   warmWreckTextures(renderer: WebGLRenderer): void;
   createIsolatedForwardWarmBatches(
@@ -1371,6 +1372,8 @@ export function* createCombatOpeningWarmSteps(
   while (!context.ensureStagedVisuals(1)) yield;
   yield;
   markWarmStage('visuals');
+  // Attach mode equipment and aura materials before opening-frame shader warm.
+  context.prepareModeVisuals?.();
   for (const entity of game.tanks) entity.visual?.prewarmBurn?.();
   markWarmStage('rosterHooks');
 

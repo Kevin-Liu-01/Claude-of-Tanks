@@ -1,4 +1,5 @@
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
+import { casemateGunYaw } from './casemateGunPose.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
@@ -14,6 +15,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
@@ -575,7 +577,6 @@ interface TrackCourse {
   textureRepeatM: number;
   frontEnd: GearEndpoint;
   rearEnd: GearEndpoint;
-  contact: TrackContactSpan;
 }
 
 interface GearContactGeometry {
@@ -759,6 +760,7 @@ interface RunningGearUnit {
     pitch?: number,
     roll?: number,
     dt?: number,
+    modeScale?: number,
   ): boolean;
   setBroken?(module: 'trackL' | 'trackR', broken: boolean): void;
   addRoadWheelLayer(
@@ -1036,6 +1038,12 @@ interface TankFactoryOptions {
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
+  /** Seat the insignia and designation with the live surface solver (finalizeVehicleMarkingSeats) instead of the
+   * generated seats (vehicleMarkingSeats.generated.ts). Only tools/gen-vehicle-marking-seats.mjs passes it (update and
+   * --check, the seats' drift guard); every other build, receipt builds included, applies the generated seats as the
+   * game does (2026-10-05: leo2a6_ua's receipt builds ran the solver for 167-325 s). A vehicle without generated seats
+   * falls back to the solver either way. */
+  solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
   batchStatic?: boolean;
@@ -2905,6 +2913,11 @@ function runningGearArmGeometry(
     0,0,0,0,0,0,[width,height,1]);
 }
 
+/**
+ * The span trackLoopPoints lays a generated loop's ground run over where an end has no road-wheel wrap (the profiles'
+ * contactZF/ZR, else half a road wheel's radius past the outer axles). It shapes the band and publishes nothing: the
+ * published contact is read off the drawn band (bandGroundContact).
+ */
 function runningGearContactPatch(
   wheelZs: readonly number[],
   wheelR: number,
@@ -2921,6 +2934,124 @@ function runningGearContactPatch(
   // around the last wheel before it climbs toward the final drive.
   if (cfg.containRearRoadWheel) zR = Math.min(zR, rearRoadZ - wheelR * 0.5);
   return { zF, zR };
+}
+
+/** The lowest height (y) of a closed band loop's centreline where it crosses `z`: its lower run, not its return run. */
+function trackBandLowestY(pts: readonly TrackPoint[], z: number): number {
+  let best = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    if ((a[0] - z) * (b[0] - z) > 0) continue; // segment doesn't cross z
+    const dz = b[0] - a[0];
+    const y = Math.abs(dz) < 1e-6
+      ? Math.min(a[1], b[1])
+      : a[1] + (b[1] - a[1]) * ((z - a[0]) / dz);
+    if (y < best) best = y;
+  }
+  return best;
+}
+
+/**
+ * The band's ground contact (physics lane round 8; the coordinator's ruling of 2026-10-04 on the track contact): the
+ * published flat run ends where the drawn band leaves the ground, front and rear, read off the band's own loop. The loop
+ * is its centreline, the same on every render tier; its lowest line is the ground run, and each end of the contact is
+ * where the band past that run has risen BAND_GROUND_CONTACT_TOL_M above it (the loop's lower run, interpolated). The
+ * tolerance is the depth a loaded track presses into firm ground, and where the fleet's default span always ended: half
+ * an end road wheel's radius past its axle, the band 3.6-4.8 cm up the wheel there. The profiles' pinned contactZF/ZR
+ * defined the published run whatever the band became after its rebuilds: the T-90M's ran 0.75 m past its drawn ground
+ * contact at the front (the band 0.38 m up there) and 0.45 m at the rear, so the movement solve carried the hull on track
+ * that was not drawn; 27 tanks' runs reached more than 15 cm past theirs and 6 fell more than 15 cm short.
+ */
+const BAND_GROUND_CONTACT_TOL_M = 0.04;
+/** The step the band is read out along from its ground run before the crossing is bisected (m). */
+const BAND_GROUND_CONTACT_SCAN_M = 0.005;
+function bandGroundContact(pts: readonly TrackPoint[]): TrackContactSpan & { groundY: number } {
+  let groundY = Infinity, lowZ = Infinity, highZ = -Infinity;
+  for (const [z, y] of pts) {
+    if (y < groundY) groundY = y;
+    if (z < lowZ) lowZ = z;
+    if (z > highZ) highZ = z;
+  }
+  let runF = -Infinity, runR = Infinity;
+  for (const [z, y] of pts) {
+    if (y > groundY + 1e-6) continue;
+    if (z > runF) runF = z;
+    if (z < runR) runR = z;
+  }
+  const leaveHeight = groundY + BAND_GROUND_CONTACT_TOL_M;
+  // from the ground run's end out toward the loop's end: the first height past the tolerance, bisected
+  const leave = (from: number, to: number): number => {
+    const dir = to > from ? 1 : -1;
+    let inside = from;
+    while ((to - inside) * dir > 0) {
+      const next = (to - inside) * dir > BAND_GROUND_CONTACT_SCAN_M ? inside + dir * BAND_GROUND_CONTACT_SCAN_M : to;
+      if (trackBandLowestY(pts, next) >= leaveHeight) {
+        let outside = next;
+        for (let step = 0; step < 24; step++) {
+          const mid = 0.5 * (inside + outside);
+          if (trackBandLowestY(pts, mid) >= leaveHeight) outside = mid;
+          else inside = mid;
+        }
+        return 0.5 * (inside + outside);
+      }
+      inside = next;
+    }
+    return to;
+  };
+  return { zF: leave(runF, highZ), zR: leave(runR, lowZ), groundY };
+}
+
+/** The highest end rise the contact publishes, over the end-rise run it is read at (dzM): 0.35 m at the fleet's 0.4. */
+const BAND_END_RISE_MAX_PER_M = 0.35 / 0.4;
+const BAND_END_RISE_MIN_M = 0.02;
+/**
+ * The published track contact read off the bands as the finished build draws them (round 8): each running-gear band's
+ * ground contact (bandGroundContact on its course), moved with the side-station bake that re-lays that side's band about
+ * its own outer road wheels (their offsets from the course's stations, front and rear), then carried into the tank's
+ * frame through the band's own transform and every one above it. So a profile that moves, scales or replaces its running
+ * gear after building it publishes the contact it draws: the MBT-70 shifts its bands 0.14 m and shortens them 6 % after
+ * the build, the Namer scales them 2.4 % shorter, and the T-90M rebuilds its hull and gear with the replaced unit left in
+ * the gear's union, the old pinned span with it. The bands of both sides and of several units take their union, as
+ * registerGearUnit's contact does. The end rise is read off the bands at the gear's end-rise run past each end (dzM,
+ * scaled with the hull where a profile scales it).
+ */
+function drawnBandContact(
+  root: THREE.Object3D, endRiseRunM: number,
+): { halfLenM: number; zCenterM: number; endRise: { dzM: number; frontM: number; rearM: number } } | null {
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4();
+  const rootInverse = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const point = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  let front = -Infinity, rear = Infinity, groundY = Infinity;
+  let riseFront = Infinity, riseRear = Infinity, bands = 0;
+  root.traverse((object) => {
+    const pts = object.userData?.trackLoopPoints as readonly TrackPoint[] | undefined;
+    if (!Array.isArray(pts) || pts.length < 4) return;
+    toRoot.multiplyMatrices(rootInverse, object.matrixWorld);
+    scale.setFromMatrixScale(toRoot);
+    const offsets = object.userData.trackLoopEndOffsetsM as { front?: number; rear?: number } | undefined;
+    const contact = bandGroundContact(pts);
+    const runLocal = endRiseRunM / (scale.z || 1);
+    const riseAt = (z: number): number => (trackBandLowestY(pts, z) - contact.groundY) * scale.y;
+    riseFront = Math.min(riseFront, riseAt(contact.zF + runLocal));
+    riseRear = Math.min(riseRear, riseAt(contact.zR - runLocal));
+    point.set(0, contact.groundY, contact.zF + (offsets?.front ?? 0)).applyMatrix4(toRoot);
+    front = Math.max(front, point.z);
+    groundY = Math.min(groundY, point.y);
+    point.set(0, contact.groundY, contact.zR + (offsets?.rear ?? 0)).applyMatrix4(toRoot);
+    rear = Math.min(rear, point.z);
+    bands++;
+  });
+  if (!bands) return null;
+  const clampRise = (rise: number): number => (Number.isFinite(rise)
+    ? Math.min(BAND_END_RISE_MAX_PER_M * endRiseRunM, Math.max(BAND_END_RISE_MIN_M, rise))
+    : BAND_END_RISE_MAX_PER_M * endRiseRunM);
+  return {
+    halfLenM: (front - rear) / 2,
+    zCenterM: (front + rear) / 2,
+    endRise: { dzM: endRiseRunM, frontM: clampRise(riseFront), rearM: clampRise(riseRear) },
+  };
 }
 
 function trackCourseSupports(
@@ -3144,7 +3275,7 @@ function buildTrackCourse({
   return {
     pts, segments, loopLengthM, shoeCount, shoePitchM,
     textureRepeatM: shoePitchM * TRACK_TEXTURE_LINKS_PER_REPEAT,
-    frontEnd, rearEnd, contact,
+    frontEnd, rearEnd,
   };
 }
 
@@ -3473,7 +3604,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const {
     pts, segments: segsT, loopLengthM: loopLen, shoeCount: nLinks,
     shoePitchM: lp, textureRepeatM: trackTextureRepeatM,
-    frontEnd, rearEnd, contact,
+    frontEnd, rearEnd,
   } = course;
   if (Math.abs(shoeOuterReach - runningGearShoeOuterReach(trackPattern, cfg, grouserPeakScale, shoeRadialScale)) > 1e-12) {
     throw new Error('Running gear shoe reach drifted between the seat and the shoe build');
@@ -4387,6 +4518,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     disposables.push(material);
     return material;
   };
+  const bandLoopPoints: readonly TrackPoint[] = Object.freeze(pts.map((point): TrackPoint => [point[0], point[1]]));
   const tl = new THREE.Mesh(tgL, trackBandMaterial(mats.trackL));
   const buildRunningGearReceiptStage8 = (): void => {
     tl.name = 'gearTrackBandL';
@@ -4395,6 +4527,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     tl.userData.runningGearSide = -1;
     tl.userData.trackTextureRepeatM = trackTextureRepeatM;
     tl.userData.appearanceRole = 'trackBand';
+    // the band's own course: the published track contact is read off it where the finished build draws it
+    tl.userData.trackLoopPoints = bandLoopPoints;
     tl.position.x = -xcLeft;
   };
   const buildRunningGearRunningGearStage25 = (): void => {
@@ -4409,6 +4543,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     tr.userData.runningGearSide = 1;
     tr.userData.trackTextureRepeatM = trackTextureRepeatM;
     tr.userData.appearanceRole = 'trackBand';
+    tr.userData.trackLoopPoints = bandLoopPoints;
     tr.position.x = xcRight;
     tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
     hullG.add(tl, tr);
@@ -4749,9 +4884,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // analytic `y - (r + bandOuterR)` used the visual rim radius plus the wrap allowance and put a phantom
   // contact plane 4 cm below the soles of every measured Abrams (the hull floated by that much).
   const gearEndBotY = pts.reduce((low, point) => Math.min(low, point[1]), Infinity) - trackTh / 2;
+  const bandContact = bandGroundContact(pts);
   const gearContactGeom: GearContactGeometry = {
-    halfLenM: (contact.zF - contact.zR) / 2,
-    zCenterM: (contact.zF + contact.zR) / 2,
+    halfLenM: (bandContact.zF - bandContact.zR) / 2,
+    zCenterM: (bandContact.zF + bandContact.zR) / 2,
     halfWidM: Math.max(xcLeft, xcRight) + trackW / 2,
     bottomYM: Math.min(gearBandBotY, gearPadBotY, gearWheelBotY, gearEndBotY),
     endRise: { dzM: 0.4, frontM: 0.35, rearM: 0.35 },
@@ -4768,29 +4904,18 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // Interpolate the band centerline exactly at the guard z (loop points are
       // sparse — a whole approach tangent is two endpoints, and window-min
       // sampling caught upper-arc points on short overhangs). Min over all
-      // loop crossings picks the bottom run/ramp, not the return run.
-      const bandYAtZ = (zq: number): number => {
-        let best = Infinity;
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[i], b = pts[(i + 1) % pts.length];
-          if ((a[0] - zq) * (b[0] - zq) > 0) continue; // segment doesn't cross zq
-          const dz2 = b[0] - a[0];
-          const y = Math.abs(dz2) < 1e-6
-            ? Math.min(a[1], b[1])
-            : a[1] + (b[1] - a[1]) * ((zq - a[0]) / dz2);
-          if (y < best) best = y;
-        }
-        return best;
-      };
-      const yF = bandYAtZ(contact.zF + 0.4);
-      const yR = bandYAtZ(contact.zR - 0.4);
+      // loop crossings picks the bottom run/ramp, not the return run. The
+      // rise is read from the band's own ground run (round 8: past the ends
+      // bandGroundContact reads off the band, not the pinned span).
+      const yF = trackBandLowestY(pts, bandContact.zF + 0.4);
+      const yR = trackBandLowestY(pts, bandContact.zR - 0.4);
       // Clamped to the physical approach-rise band; no crossing (overhang past
       // the whole loop) keeps the guard near-inert at the max rise.
       const clampRise = (y: number): number => Math.min(0.35, Math.max(0.02, y));
       gearContactGeom.endRise = {
         dzM: 0.4,
-        frontM: Number.isFinite(yF) ? clampRise(yF - botY) : 0.35,
-        rearM: Number.isFinite(yR) ? clampRise(yR - botY) : 0.35,
+        frontM: Number.isFinite(yF) ? clampRise(yF - bandContact.groundY) : 0.35,
+        rearM: Number.isFinite(yR) ? clampRise(yR - bandContact.groundY) : 0.35,
       };
     }
   };
@@ -4805,6 +4930,30 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
   // train by that same deviation at rest.
   const conformPlaneY = gearContactGeom.bottomYM;
+  // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
+  const conformWheels: WheelEntry[] = [];
+  const conformDevs: number[] = [];
+  /**
+   * The travel the track band gives wheel `k` between the nearest wheels fore and aft on its side that reach their
+   * ground (their travels, clamped as conform() clamps them, interpolated along the hull), or -Infinity without one on
+   * each side.
+   */
+  const supportedTrackLine = (k: number, count: number): number => {
+    const e = conformWheels[k];
+    const side = e.x < 0;
+    let fore = -1, aft = -1;
+    for (let j = 0; j < count; j++) {
+      if (j === k) continue;
+      const o = conformWheels[j];
+      if ((o.x < 0) !== side || !(conformDevs[j] >= -suspensionDroopM)) continue;
+      if (o.z > e.z && (fore < 0 || o.z < conformWheels[fore].z)) fore = j;
+      else if (o.z < e.z && (aft < 0 || o.z > conformWheels[aft].z)) aft = j;
+    }
+    if (fore < 0 || aft < 0) return -Infinity;
+    const travel = (dev: number): number => (dev > suspensionCompressionM ? suspensionCompressionM : dev);
+    const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
+    return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
+  };
   // Reused on every conformance update. Keeping this frame outside the hot
   // method avoids allocating a transform object per render cadence.
   const wheelConformFrame: WheelConformFrame = {
@@ -5167,7 +5316,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // a station within 5 mm of the course station is the same station (authoring noise, e.g. the Leclerc Classic X
       // right side at 0.3–2.3 mm): its rest band stays byte-identical and the end-wrap check reads it within tolerance
       if (!wheel || Math.abs(offset) <= SIDE_STATION_BAKE_MIN_M) return;
-      if (layRelay(relay, arr, bandBasePos, wheel.z, relay.wheelRestY)) baked = true;
+      if (layRelay(relay, arr, bandBasePos, wheel.z, relay.wheelRestY)) {
+        baked = true;
+        // the band's ground contact moves with its end wheel (drawnBandContact)
+        const band = side < 0 ? tl : tr;
+        const offsets = (band.userData.trackLoopEndOffsetsM ??= { front: 0, rear: 0 }) as { front: number; rear: number };
+        offsets[relay.side] = offset;
+      }
     });
     if (!baked) continue;
     if (cfg.fitStaggeredGroundRun && sideStations[side]) {
@@ -5322,7 +5477,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
      * @param {number} [pitchEff] effective RENDERED pitch (see below)
      * @param {number} [rollEff] effective RENDERED roll (see below)
      */
-    conform(state, sampler, pitchEff, rollEff, dt = 1 / 60) {
+    conform(state, sampler, pitchEff, rollEff, dt = 1 / 60, modeScale = 1) {
       // gameplay_feel r5: conform at the RENDERED attitude. syncFromState
       // draws the hull at -(visualPitch + suspP·VIS) + flinchP (and roll +
       // suspR·VIS + sway); computing the wheel's hull-plane point with the
@@ -5348,16 +5503,35 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // Wheel records remain in hullG-local space, so fold that persistent
       // transform into both the sampled station and its physical footprint.
       // The solved offset stays hullG-local and therefore divides by scaleY.
-      frame.hsx = hullG.scale.x;
-      frame.hsy = hullG.scale.y;
-      frame.hsz = hullG.scale.z;
-      frame.hpx = hullG.position.x;
-      frame.hpy = hullG.position.y;
-      frame.hpz = hullG.position.z;
+      // Juggernaut is a uniform presentation scale; sample its actual larger
+      // footprint and convert world-space displacement back into local travel.
+      frame.hsx = hullG.scale.x * modeScale;
+      frame.hsy = hullG.scale.y * modeScale;
+      frame.hsz = hullG.scale.z * modeScale;
+      frame.hpx = hullG.position.x * modeScale;
+      frame.hpy = hullG.position.y * modeScale;
+      frame.hpz = hullG.position.z * modeScale;
       frame.invHsy = 1 / Math.max(Math.abs(frame.hsy), 1e-6);
       let settling = false;
       const initializeContact = cfg.continuousShoeFloorYM !== undefined && !groundConformanceInitialized;
       const alpha = shoeConformanceAlpha(dt, initializeContact);
+      // Every canonical road wheel's ground first (physics lane round 8, ruling 2 of 2026-10-04): a wheel whose ground
+      // lies past its droop (a trench, a ditch, an edge under it) is carried by the track band between the wheels on
+      // either side of it that reach their ground, not dropped to its full droop. The band runs taut between those
+      // supported wheels and the wheel rides on it, so it follows the line between their travels. Without a supported
+      // wheel on one side it keeps the droop, as before. Flat ground supports every wheel, so nothing at rest changes.
+      let conformed = 0;
+      for (const { list } of made) {
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!e.road || e.suspensionSource) continue;
+          if (conformed >= conformWheels.length) { conformWheels.push(e); conformDevs.push(0); }
+          conformWheels[conformed] = e;
+          conformDevs[conformed] = sampleWheelGroundDeviation(e, sampler, frame);
+          conformed++;
+        }
+      }
+      let wheel = 0;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -5366,6 +5540,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // their shifted copies here preserves the established damping
           // cadence while preventing concentric layers from drifting apart.
           if (e.suspensionSource) continue;
+          const k = wheel++;
           // world position of the CONTACT-plane point under this wheel (YXZ;
           // hull-local y = conformPlaneY — see the contact-metadata note)
           // gameplay_feel r5 (terrain-contact hard gate): the wheel is a DISC,
@@ -5375,7 +5550,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // hollows. Rest the wheel on the HIGHEST ground under its footprint:
           // rim edges across the width (±0.5 w along the axle, in hull-local
           // X) and half-radius fore/aft along the roll direction.
-          const dev = sampleWheelGroundDeviation(e, sampler, frame);
+          const dev = conformDevs[k];
           // Real suspension travel: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep.
           // Hydraulic siege vehicles opt into their larger physical envelope
@@ -5393,9 +5568,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // +10 cm crest moved the wheel/belt +13.5 cm and left daylight;
           // hollows overshot in the other direction. One-to-one displacement
           // is both physically correct and keeps the rendered contact honest.
-          const target = dev < -suspensionDroopM
+          let target = dev < -suspensionDroopM
             ? -suspensionDroopM
             : (dev > suspensionCompressionM ? suspensionCompressionM : dev);
+          if (dev < -suspensionDroopM) {
+            const line = supportedTrackLine(k, conformed);
+            if (line > target) target = line;
+          }
           // Frame-rate independent damping. Distant gear updates at 15/30 Hz,
           // so the caller accumulates skipped dt and lands the same response
           // as a near tank without doing extra terrain work.
@@ -5514,10 +5693,10 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
     updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
     resetPose() { for (const u of units) u.resetPose?.(); },
-    conform(state, sampler, pitchEff, rollEff, dt) {
+    conform(state, sampler, pitchEff, rollEff, dt, modeScale) {
       let settling = false;
       for (const u of units) {
-        if (u.conform(state, sampler, pitchEff, rollEff, dt)) settling = true;
+        if (u.conform(state, sampler, pitchEff, rollEff, dt, modeScale)) settling = true;
       }
       return settling;
     },
@@ -6707,6 +6886,7 @@ interface TankPresentationSetup {
   staticPreview: boolean;
   restScan: RestContactReceipt | null;
   gearCG: GearContactGeometry | null;
+  drawnCG: ReturnType<typeof drawnBandContact>;
   assetPresentationAnchor: Readonly<PresentationAnchor>;
   presentationAnchor: Readonly<PresentationAnchor>;
   presentationTrackFloorYM: number | null;
@@ -6729,15 +6909,19 @@ function resolveTankPresentationSetup(
   const staticPreview = opts.staticPreview === true || geometryOnly;
   const restScan = staticPreview ? null : measureRestContact(root);
   const gearCG = gear?.contactGeom ?? null;
+  // the track contact as the bands are drawn (round 8): the movement contact and the load-bearing midpoint the live
+  // presentation seats on
+  const drawnCG = gearCG ? drawnBandContact(root, gearCG.endRise?.dzM ?? 0.4) : null;
   const renderedAnchor = presentationAnchorFor(specId);
   const renderedAnchorX = finitePresentationMetric(renderedAnchor?.xM, 0) ?? 0;
   const renderedAnchorZ = finitePresentationMetric(renderedAnchor?.zM, null);
-  const gearAnchorZ = finitePresentationMetric(gearCG?.zCenterM, null);
+  const gearAnchorZ = finitePresentationMetric(drawnCG?.zCenterM ?? gearCG?.zCenterM, null);
   const scanAnchorZ = finitePresentationMetric(restScan?.zCenterM, 0) ?? 0;
   return {
     staticPreview,
     restScan,
     gearCG,
+    drawnCG,
     assetPresentationAnchor: Object.freeze({
       xM: renderedAnchorX,
       zM: renderedAnchorZ ?? gearAnchorZ ?? scanAnchorZ,
@@ -6836,6 +7020,7 @@ function* createTankOwnedSteps(
     materialMode = 'rendered',
     proceduralOnly = false,
     geometryReceipt = false,
+    solveMarkingSeats = false,
     eraVisualBindingReceipt = true,
     batchStatic = false,
     deferStaticBatch = false,
@@ -6862,6 +7047,7 @@ function* createTankOwnedSteps(
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
   root.name = `tank_${specId}`;
+  root.userData.provenance = vehicleProvenance(specId);
   root.userData.textureQuality = quality;
   root.userData.geometryQuality = geometryQuality;
   root.userData.materialMode = usesSharedMaterialTextures ? 'rendered' : 'geometry-only';
@@ -7824,7 +8010,7 @@ function* createTankOwnedSteps(
   // the final armor position. A per-ID surface profile supplies any missing
   // national insignia/designation; historical builder decals are retained
   // only when they can be re-seated on their selected articulation owner.
-  const verifiedMarkingSeats = geometryReceipt ? null : vehicleMarkingSeats(spec.id);
+  const verifiedMarkingSeats = solveMarkingSeats ? null : vehicleMarkingSeats(spec.id);
   if (verifiedMarkingSeats) {
     const checkedSeats: VerifiedMarkingSeat[] = [];
     for (const seat of verifiedMarkingSeats) {
@@ -8382,6 +8568,7 @@ function* createTankOwnedSteps(
     staticPreview,
     restScan,
     gearCG,
+    drawnCG,
     assetPresentationAnchor,
     presentationAnchor,
     presentationTrackFloorYM,
@@ -8394,9 +8581,9 @@ function* createTankOwnedSteps(
   continuousRootFloor();
   const composeContactGeom = (scan: RestContactReceipt | null): TankContactGeometry | null => {
     if (!gearCG && !scan) return null;
-    const halfLenM = gearCG?.halfLenM ?? scan?.halfLenM ?? null;
+    const halfLenM = drawnCG?.halfLenM ?? gearCG?.halfLenM ?? scan?.halfLenM ?? null;
     const halfWidM = gearCG?.halfWidM ?? scan?.halfWidM ?? null;
-    const zCenterM = gearCG?.zCenterM ?? scan?.zCenterM ?? null;
+    const zCenterM = drawnCG?.zCenterM ?? gearCG?.zCenterM ?? scan?.zCenterM ?? null;
     if (halfLenM == null || halfWidM == null || zCenterM == null) return null;
     // Floor selection: the gear's analytic flat-run underside is the
     // load-bearing surface and the anchor. The scan's ABSOLUTE min only
@@ -8425,8 +8612,8 @@ function* createTankOwnedSteps(
       bottomYM,
       // measured hull-pan floor (belly-guard line — see measureRestContact)
       panYM: scan ? scan.panYM : null,
-      // wrap approach-rise for the line-end guard samples (see buildRunningGear)
-      endRise: gearCG ? gearCG.endRise : null,
+      // wrap approach-rise for the line-end guard samples, off the drawn bands (see drawnBandContact)
+      endRise: drawnCG?.endRise ?? (gearCG ? gearCG.endRise : null),
       // gear-only floor, for diagnostics: bottomYM < gearBottomYM means a
       // non-gear surface (hull keel/pan) renders below the tracks — a
       // rest-geometry fidelity defect the runtime can only split, not fix.
@@ -8776,7 +8963,7 @@ function* createTankOwnedSteps(
         this.presentationFloorYM = presentationFloorYM;
         presentationFloorMeasured = true;
       }
-      root.position.y = floorYM - continuousShoeFloor(this.presentationFloorYM, continuousRootFloor());
+      root.position.y = floorYM - continuousShoeFloor(this.presentationFloorYM, continuousRootFloor()) * root.scale.y;
       return root.position.y;
     },
 
@@ -8786,7 +8973,7 @@ function* createTankOwnedSteps(
       if (typeof trackFloorYM !== 'number' || !Number.isFinite(trackFloorYM)) {
         return this.seatOnFloor(floorYM);
       }
-      root.position.y = floorYM - trackFloorYM;
+      root.position.y = floorYM - trackFloorYM * root.scale.y;
       return root.position.y;
     },
 
@@ -9097,7 +9284,7 @@ function* createTankOwnedSteps(
           // gameplay_feel r5: conform at the EXACT rendered attitude (see the
           // conform() jsdoc) — root.rotation was just set from these terms.
             gearSettling = !!P.gear.conform(
-              renderState, groundSampler, gearPitch, gearRoll, gearStepDt,
+              renderState, groundSampler, gearPitch, gearRoll, gearStepDt, root.scale.x,
             );
           }
           P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
@@ -9197,6 +9384,10 @@ function* createTankOwnedSteps(
         }
       };
       syncFromStateAssemblyStage8();
+      // The stabilized sight direction may exceed a fixed casemate's bearing
+      // under cosmetic roll/flinch. Keep its actual trunnion inside the same
+      // mechanical traverse window used by movement; never change state aim.
+      if (!destroyed && spec.armor.turretless) turretG.rotation.y = casemateGunYaw(spec, turretG.rotation.y);
     },
 
     /**
