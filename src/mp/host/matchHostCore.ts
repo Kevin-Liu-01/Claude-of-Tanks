@@ -31,6 +31,7 @@ import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
+import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 
 type TimerHandle = unknown;
 
@@ -83,7 +84,9 @@ const rosterSpecIds = (config: HostBootConfig): string[] => [
 
 export function createMatchHostCore({
   port,
-  buildWorld = async (config) => (config.manifestBase ? loadCollisionWorld(config.mapId, config.manifestBase) : 'terrain'),
+  // the mode's battlefield variant (Frontline's carved trenches) is the world the authority plays: its own manifest
+  buildWorld = async (config) => (config.manifestBase
+    ? loadCollisionWorld(config.mapId, config.manifestBase, { variant: terrainVariantFor(config.mode) }) : 'terrain'),
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
   schedule,

@@ -26,6 +26,7 @@ import {
 } from './munitionBlast.ts';
 import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
+import type { StructureMaterial } from './structureMaterial.ts';
 
 
 export interface DestructionMatchOptions {
@@ -41,6 +42,8 @@ export interface DestructionMatchOptions {
   onBlast?(x: number, y: number, z: number, chargeKg: number): void;
   /** The ground's drive type at a point (terrain.ts getGroundType): no crater on 'hard' ground (roads, decks, ice). */
   groundTypeAt?(x: number, z: number): string;
+  /** The map's house walls (structureMaterial.ts): the ram's scuff energy per structure (§4.4). */
+  wallMaterial?: StructureMaterial;
 }
 
 /** Deforming craters a fixed step may dig (§8.5): the rest of the tick's ground bursts are marks. */
@@ -93,6 +96,21 @@ export function craterSeed(x: number, z: number): number {
   return (hash >>> 0) & 0xffff;
 }
 
+/** A dug crater as the log and the wire carry it (mp/wire/destructionLog.ts): centre to the millimetre, radius to the
+ * centimetre, depth and rim to the millimetre, and the quantized centre's seed. */
+export interface QuantizedCrater { x: number; z: number; radiusM: number; depthM: number; rimM: number; seed: number }
+
+/** Quantize a crater as every peer stamps it (the match's dig and the Studio's alike). */
+export function quantizeCrater(x: number, z: number, shape: CraterShape, out: QuantizedCrater): QuantizedCrater {
+  out.x = Math.round(x * 1000) / 1000;
+  out.z = Math.round(z * 1000) / 1000;
+  out.radiusM = Math.min(655.35, Math.round(shape.radiusM * 100) / 100);
+  out.depthM = Math.min(65.535, Math.round(shape.depthM * 1000) / 1000);
+  out.rimM = Math.min(65.535, Math.round(shape.rimM * 1000) / 1000);
+  out.seed = craterSeed(out.x, out.z);
+  return out;
+}
+
 /** Reset every structure record's flags (a world reused for a new battle; the props reset their own). */
 export function resetStructureRecords(obstacles: readonly CollisionRecord[], colliders: readonly CollisionRecord[]): void {
   for (const record of obstacles) if (record.structureIdx !== undefined) record.crushed = false;
@@ -112,6 +130,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const structures = enabled
     ? createStructureDamage(options.obstacles, options.colliders, {
       damageScale: rules!.structureDamageScale,
+      wallMaterial: options.wallMaterial ?? 'masonry',
       // the heap over its footprint first (a hull on it rides the mound from this tick), then the caller's refresh
       onCollapse: (structure) => {
         ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
@@ -125,6 +144,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const outbox: StructureStageEvent[] = [];
   const craterOutbox: TerrainCraterEvent[] = [];
   const shape: CraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const quantized: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
   const cratering = !!rules?.craters && !!ground && (rules.maxCraters ?? 0) > 0;
   let craterCount = 0;
   let cratersThisTick = 0;
@@ -135,11 +155,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     craterFor(chargeKg, munition, rules!.craterScale, shape);
     if (shape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
     if (options.groundTypeAt?.(x, z) === 'hard') return null;
-    const qx = Math.round(x * 1000) / 1000, qz = Math.round(z * 1000) / 1000;
-    const radiusM = Math.min(655.35, Math.round(shape.radiusM * 100) / 100);
-    const depthM = Math.min(65.535, Math.round(shape.depthM * 1000) / 1000);
-    const rimM = Math.min(65.535, Math.round(shape.rimM * 1000) / 1000);
-    const seed = craterSeed(qx, qz);
+    const { x: qx, z: qz, radiusM, depthM, rimM, seed } = quantizeCrater(x, z, shape, quantized);
     if (!ground!.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null; // its ground buckets are full: a mark
     const craterId = craterCount++;
     cratersThisTick++;

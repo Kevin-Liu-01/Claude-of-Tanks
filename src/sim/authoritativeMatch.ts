@@ -133,6 +133,7 @@ import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import type { DestructionLogEntry, StructureStageEvent, TerrainCraterEvent } from './destructionEvents.ts';
 import { shellHitsWater } from './shellSurface.ts';
+import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
 import { fellConcealersAt } from './spotting.ts';
@@ -824,6 +825,8 @@ export function createAuthoritativeMatch({
     onBlast: (x, y, z, chargeKg) => { pendingBlasts.push(x, y, z, chargeKg); },
     // P3: no crater on hard ground (roads, bridge decks, ice), as the solo step reads it
     groundTypeAt: (x, z) => (heightField as { getGroundType?(x: number, z: number): string }).getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4: timber and mudbrick give sooner than masonry and concrete)
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(String(mapId || 'verdant')))),
   });
   /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
   const pendingBlasts: number[] = [];

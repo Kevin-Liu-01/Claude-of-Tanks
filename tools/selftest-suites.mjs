@@ -927,6 +927,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
+    'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
@@ -1033,6 +1035,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionCraters.selftest.mjs',
+    // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
+    'src/world/terrainCraterMesh.selftest.mjs',
+    'src/world/groundCoverCraters.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',

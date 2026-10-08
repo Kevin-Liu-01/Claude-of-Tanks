@@ -45,6 +45,10 @@ Before publishing:
    regenerate every shard on the merged tree in Node — `nice -n 15 node tools/capture-world-collision-manifests.mjs
    --node` (all maps, about an hour on a loaded machine; `--maps a,b` for some) — and confirm with `--check`; record
    order and counts do not change, only bytes and the index digests.
+   Since 2026-10-08 Frontline Assault's authority plays the map's trench variant from its own shard
+   (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
+   that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
+   (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
