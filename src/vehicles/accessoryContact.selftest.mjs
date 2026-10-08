@@ -39,12 +39,16 @@ const IDS = Object.freeze([
 // the trunnions through the cradle shroud, the ammunition-box lid seated on the box; a station is a fitting, so this
 // receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
 // cheek, its bracket set into the armour like every other bank's.
+// 2026-10-08 (round 5, the guns helper over the lane head 5729f2d5b): the gun and weapon-station pieces are seated
+// (699f6c176, 8c6fca407, cb11de6ba): floating abramsx 8 -> 0, bmp3m_dragun125_x 2 -> 0; clipping abramsx 8 -> 1,
+// bmp3m_dragun125_x 2 -> 1, t62mv1_x 2 -> 0, t90m_proryv 1 -> 0, t72b3m 7 -> 6 (the station's Kord replaces the 0.8 m
+// bar). What remains is decor, tow cables, racks, jerrycans, light guards and the Oplot-M's own roof station.
 const KNOWN_FLOATING = Object.freeze({
-  type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
+  type99a: 1, fv510_milan: 1,
 });
 const KNOWN_CLIPPING = Object.freeze({
-  leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 8, challenger1: 2, m60a1: 1, leclerc: 1, merkava4_trophy: 2, t72b3m: 7,
-  m1a2_tusk: 1, leo2a6: 2, abramsx: 8, cv90_x: 2, fv510_milan: 2, m46_patton: 8, bmp3m_dragun125_x: 2, t62mv1_x: 2,
+  leo2a4: 2, ua_t84_oplot_m: 8, challenger1: 2, m60a1: 1, leclerc: 1, merkava4_trophy: 2, t72b3m: 6,
+  m1a2_tusk: 1, leo2a6: 2, abramsx: 1, cv90_x: 2, fv510_milan: 2, m46_patton: 8, bmp3m_dragun125_x: 1,
   griffin_viper: 2,
 });
 
