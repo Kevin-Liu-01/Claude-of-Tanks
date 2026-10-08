@@ -43,6 +43,7 @@ import {
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
@@ -73,9 +74,16 @@ interface FxHeightField {
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
 
+/** The world seam the collapse look patches (the core lane's world.patchStructureMaterials, DESTRUCTION.md §16). */
+export interface FxWorldSeam {
+  patchStructureMaterials?(patch: (material: THREE.Material) => void): number;
+}
+
 interface FxOptions {
   /** destruction-fx lane: a structure's look (its rubble materials and colours) when the world publishes its anatomy */
   structureLook?(structureId: number): StructureLook | null;
+  /** destruction-fx lane: the current world, whose structure bucket materials take the collapse patch */
+  world?(): FxWorldSeam | null;
   auxiliaryEntities?(): Iterable<AuxiliaryVisualEntity>;
   auxiliaryTime?(): number;
   auxiliaryVisible?(entity:AuxiliaryVisualEntity):boolean;
@@ -911,7 +919,8 @@ export async function createFxChunked(
 function* createFxSteps(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
-  { seed = 5000, resolveEntity, auxiliaryEntities, auxiliaryTime, auxiliaryReport, auxiliaryVisible, structureLook }: FxOptions = {},
+  { seed = 5000, resolveEntity, auxiliaryEntities, auxiliaryTime, auxiliaryReport, auxiliaryVisible, structureLook,
+    world }: FxOptions = {},
 ): Generator<void, FxRuntime, void> {
   // Atlas RNG is independent. Prepare it before particles/clock providers so
   // no consumer can observe a half-created runtime across a painted frame.
@@ -967,6 +976,17 @@ function* createFxSteps(
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
   const craters: CraterMarks | null = mediaTier ? createCraterMarks() : null;
+  // buildings coming down in the world's own geometry: the world hands its structure bucket materials to the mask's
+  // patch once per world (before the warm, so the programs compile once)
+  const structMask: StructureMask | null = mediaTier ? createStructureMask() : null;
+  let patchedWorld: FxWorldSeam | null = null;
+  function attachWorld(): void {
+    if (!structMask || !world) return;
+    const w = world();
+    if (!w || w === patchedWorld || typeof w.patchStructureMaterials !== 'function') return;
+    patchedWorld = w;
+    w.patchStructureMaterials((material) => structMask.patch(material));
+  }
   if (vol) group.add(vol.group);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
@@ -4357,6 +4377,7 @@ function* createFxSteps(
     vol?.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
+    structMask?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -4878,6 +4899,7 @@ function* createFxSteps(
       normal: THREE.Vector3,
       caliberMm = 120,
     ): void {
+      attachWorld();
       fx.muzzleFlash(pos, dir, caliberMm);
       spawnSabotPetals(pos, dir);
       fx.impact('pen', pos, normal, caliberMm);
@@ -4915,8 +4937,10 @@ function* createFxSteps(
       camera: THREE.Camera,
       resolveSubject: ((id: string) => FxEntity | null) | null = null,
     ): void {
+      attachWorld();
       resolvePendingHe();
       particles.update(dt);
+      structMask?.setClock(particles.getTime());
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
@@ -4947,6 +4971,11 @@ function* createFxSteps(
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
+        if (e.stage === 'collapsed' && structMask) {
+          // the building sinks into its dust over COLLAPSE_S, then is gone (settled: gone at once)
+          structMask.collapse(e.structureId, particles.getTime(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ,
+            e.cx, e.baseY, e.cz, e.settled === true);
+        }
         if (!blast || e.settled) return;
         structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
       });
@@ -5788,6 +5817,7 @@ function* createFxSteps(
       vol?.reset();
       chunks?.reset();
       craters?.reset();
+      structMask?.reset();
       craterEventsSeen = false;
       pendingHeCount = 0;
       burstDrawn.clear();

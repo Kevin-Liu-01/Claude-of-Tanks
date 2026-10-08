@@ -41,6 +41,7 @@ import type {
   WorldActivationOptions,
 } from './world/worldActivationRuntime.ts';
 import type { PlayerBattleActions } from './game/playerBattleActions.ts';
+import type { FxWorldSeam } from './fx/effects.ts';
 import type { BattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import type {
   MainEntity,
@@ -693,6 +694,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
+      // destruction-fx: the world whose structure materials take the collapse patch (world.patchStructureMaterials)
+      world: () => (currentWorld() as unknown as FxWorldSeam | null) ?? null,
     }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph

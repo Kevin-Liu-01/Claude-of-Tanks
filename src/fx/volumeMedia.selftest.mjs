@@ -12,6 +12,7 @@ import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, line
 import { mulberry32 } from './particles.ts';
 import { structureStageFx } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
+import { createStructureMask, COLLAPSE_S } from './structureMask.ts';
 import { MUNITION_CLASSES } from '../sim/destructionEvents.ts';
 import { bakeBand, VOLUME_MEDIA, MEDIA_ORDER, ATLAS_COLUMNS, FLOW_SCALE } from '../../tools/fx-volume-bake.mjs';
 
@@ -269,4 +270,41 @@ function captureContext(seed) {
   assert.equal(craters.mesh.geometry.drawRange.count, 0, 'reset clears the marks');
 }
 
-console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters — ok');
+// ---- 8. buildings coming down in their own geometry (the mask the world's bucket materials read) ---------------
+{
+  const mask = createStructureMask(64);
+  const data = mask.texture.image.data;
+  mask.setClock(10);
+  mask.collapse(5, 10.5, 7, 3, 4, 100, 2, -50);
+  const o = 5 * 8;
+  assert.equal(data[o], 10.5, 'the collapse starts on the fx clock');
+  assert.equal(data[o + 1], 7, 'the height it sinks');
+  assert.ok(Math.abs(data[o + 2] - 0.6) < 1e-6 && Math.abs(data[o + 3] - 0.8) < 1e-6, 'the blow direction, unit');
+  assert.deepEqual([data[o + 4], data[o + 5], data[o + 6]], [100, 2, -50], 'the base pivot');
+  mask.collapse(6, 10, 7, 0, 0, 0, 0, 0, true);
+  assert.ok(data[6 * 8] > 0 && 10 - data[6 * 8] > COLLAPSE_S, 'a settled collapse is over already');
+  mask.collapse(9999, 10, 7, 1, 0, 0, 0, 0);
+  mask.shiftTime(100);
+  assert.equal(data[o], 110.5, 'the clock rebase moves the start');
+  assert.equal(data[7 * 8], 0, 'a standing structure stays 0 through a rebase');
+  // the patch chains the material's own hook and injects the read of aDamage (= structure index + 1)
+  const material = new THREE.MeshStandardMaterial();
+  let priorRan = false;
+  material.onBeforeCompile = () => { priorRan = true; };
+  mask.patch(material);
+  mask.patch(material);
+  const shader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = vec4(1.0);\n}' };
+  material.onBeforeCompile(shader, null);
+  assert.ok(priorRan, 'the world\'s own onBeforeCompile still runs');
+  assert.ok(shader.uniforms.uStructMask && shader.uniforms.uStructClock, 'the mask uniforms join the program');
+  assert.ok(/attribute float aDamage;/.test(shader.vertexShader) && /aDamage \+ 0\.5 \) \) - 1/.test(shader.vertexShader),
+    'the vertex reads aDamage as structure index + 1 (0 untouched)');
+  assert.equal(shader.vertexShader.match(/vStructCut = 0\.0;/g).length, 1, 'patched once');
+  assert.ok(/if \( vStructCut > 0\.5 \) discard;/.test(shader.fragmentShader), 'a fallen structure is discarded');
+  assert.ok(/fx-structure-mask/.test(material.customProgramCacheKey()), 'its own program cache key');
+  mask.reset();
+  assert.equal(data[o], 0, 'reset stands every structure up');
+}
+
+console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters, structure mask — ok');
