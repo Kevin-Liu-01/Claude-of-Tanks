@@ -44,6 +44,8 @@ import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
+import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
+import { damageSeed, type DamageWriters } from '../world/destructionKit.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
@@ -74,9 +76,18 @@ interface FxHeightField {
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
 
-/** The world seam the collapse look patches (the core lane's world.patchStructureMaterials, DESTRUCTION.md §16). */
+/** One structure's damage seam as the presentation reads it (the core lane's world.structureDamage, §16). */
+interface FxStructureSeam {
+  anatomy: { seed: number; placement: { x: number; y: number; z: number; yaw: number } };
+  spans: readonly { mesh: THREE.Object3D; bucket: string }[];
+  damaged?(seed: number, out: DamageWriters): unknown;
+  collapse?(seed: number, out: DamageWriters): unknown;
+}
+
+/** The world seam the collapse look reads (the core lane's world.patchStructureMaterials / structureDamage, §16). */
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material) => void): number;
+  structureDamage?(structureIdx: number): FxStructureSeam | null;
 }
 
 interface FxOptions {
@@ -979,6 +990,30 @@ function* createFxSteps(
   // buildings coming down in the world's own geometry: the world hands its structure bucket materials to the mask's
   // patch once per world (before the warm, so the programs compile once)
   const structMask: StructureMask | null = mediaTier ? createStructureMask() : null;
+  // what the building's stage builders write (rims, rooms, remnants, the pile; falling pieces), in its own materials
+  const structDebris: StructureDebris | null = mediaTier
+    ? createStructureDebris({ now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z) })
+    : null;
+  if (structDebris) group.add(structDebris.group);
+  /** Run one stage builder of a structure through the debris writers (event time). */
+  function buildStage(structureId: number, stage: 'damaged' | 'collapsed', settled: boolean): void {
+    if (!structDebris || !world) return;
+    const seam = world()?.structureDamage?.(structureId);
+    if (!seam) return;
+    const build = stage === 'collapsed' ? seam.collapse : seam.damaged;
+    if (typeof build !== 'function') return;
+    const byBucket = new Map<string, THREE.Material>();
+    for (const span of seam.spans) {
+      const m = (span.mesh as THREE.Mesh).material;
+      const material = Array.isArray(m) ? m[0] : m;
+      if (material && !byBucket.has(span.bucket)) byBucket.set(span.bucket, material);
+    }
+    // a collapse's pile and stubs show under the dust, a little after the fall begins
+    const out = structDebris.begin(seam.anatomy.placement, (bucket) => byBucket.get(bucket) ?? null,
+      stage === 'collapsed' ? 0.7 : 0, settled);
+    build.call(seam, damageSeed(seam.anatomy.seed, stage === 'collapsed' ? 3 : 1), out);
+    structDebris.commit();
+  }
   let patchedWorld: FxWorldSeam | null = null;
   function attachWorld(): void {
     if (!structMask || !world) return;
@@ -4378,6 +4413,7 @@ function* createFxSteps(
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
     structMask?.shiftTime(delta);
+    structDebris?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -4941,6 +4977,7 @@ function* createFxSteps(
       resolvePendingHe();
       particles.update(dt);
       structMask?.setClock(particles.getTime());
+      structDebris?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
@@ -4976,6 +5013,7 @@ function* createFxSteps(
           structMask.collapse(e.structureId, particles.getTime(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ,
             e.cx, e.baseY, e.cz, e.settled === true);
         }
+        if (e.stage === 'collapsed' || e.stage === 'damaged') buildStage(e.structureId, e.stage, e.settled === true);
         if (!blast || e.settled) return;
         structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
       });
@@ -5818,6 +5856,7 @@ function* createFxSteps(
       chunks?.reset();
       craters?.reset();
       structMask?.reset();
+      structDebris?.reset();
       craterEventsSeen = false;
       pendingHeCount = 0;
       burstDrawn.clear();

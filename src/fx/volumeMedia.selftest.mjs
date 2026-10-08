@@ -13,6 +13,7 @@ import { mulberry32 } from './particles.ts';
 import { structureStageFx } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
 import { createStructureMask, COLLAPSE_S } from './structureMask.ts';
+import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
 import { MUNITION_CLASSES } from '../sim/destructionEvents.ts';
 import { bakeBand, VOLUME_MEDIA, MEDIA_ORDER, ATLAS_COLUMNS, FLOW_SCALE } from '../../tools/fx-volume-bake.mjs';
 
@@ -307,4 +308,53 @@ function captureContext(seed) {
   assert.equal(data[o], 0, 'reset stands every structure up');
 }
 
-console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters, structure mask — ok');
+// ---- 9. what a building's stage builders write, drawn in its own materials -----------------------------------
+{
+  for (const shape of DEBRIS_SHAPES) {
+    const g = paletteGeometry(shape, 2);
+    g.computeBoundingBox();
+    const size = new THREE.Vector3();
+    g.boundingBox.getSize(size);
+    assert.ok(Math.max(size.x, size.y, size.z) > 0.3 && Math.max(size.x, size.y, size.z) < 1.6, `${shape}: about a metre`);
+    assert.ok(g.getAttribute('normal'), `${shape}: lit`);
+  }
+  const a = paletteGeometry('brick', 1).getAttribute('position').array;
+  const b = paletteGeometry('brick', 1).getAttribute('position').array;
+  assert.deepEqual(Array.from(a), Array.from(b), 'the palette is seeded');
+  let now = 0;
+  const debris = createStructureDebris({ now: () => now, groundY: () => 0 });
+  const brick = new THREE.MeshStandardMaterial({ name: 'bucket-brick' });
+  const write = (settled) => {
+    const out = debris.begin({ x: 100, y: 2, z: 50, yaw: Math.PI / 2 }, (bucket) => (bucket === 'stone' ? brick : null), 0.7, settled);
+    assert.ok(out.mesh.begin('stone', 'rubble'));
+    const v0 = out.mesh.vertex(1, 0, 0, 1, 0, 0, 0, 0, 0.5, 0.4, 0.3);
+    const v1 = out.mesh.vertex(0, 1, 0, 0, 1, 0, 1, 0, 0.5, 0.4, 0.3);
+    const v2 = out.mesh.vertex(0, 0, 1, 0, 0, 1, 0, 1, 0.5, 0.4, 0.3);
+    out.mesh.triangle(v0, v1, v2);
+    out.mesh.end();
+    for (let i = 0; i < 5; i++) out.pieces.push('stone', 'brick', i, 0, 3, 0, 0, 0, 0, 1, 0.24, 0.07, 0.11, 0.6, 0.3, 0.2, 2, 4, 0);
+    debris.commit();
+    return out;
+  };
+  const out = write(false);
+  assert.equal(out.pieces.count, 5, 'pieces are written');
+  const st = debris.stats();
+  assert.equal(st.meshes, 1, 'one run, one mesh');
+  const mesh = debris.group.children.find((c) => c.isMesh && c.material === brick);
+  assert.ok(mesh, "the run draws with the bucket's own material");
+  assert.equal(mesh.visible, false, 'a collapse pile waits under the dust');
+  const p = mesh.geometry.getAttribute('position');
+  // body (1, 0, 0) at yaw 90 degrees: x' = x cos + z sin = 0, z' = -x sin + z cos = -1 -> world (100, 2, 49)
+  assert.ok(Math.abs(p.getX(0) - 100) < 1e-5 && Math.abs(p.getY(0) - 2) < 1e-5 && Math.abs(p.getZ(0) - 49) < 1e-5,
+    'body frame to world: rotateY(yaw) then the placement');
+  now = 1;
+  debris.update();
+  assert.equal(mesh.visible, true, 'the pile shows once the fall has begun');
+  assert.ok(debris.group.children.some((c) => c.name.startsWith('fx-structure-pieces') && c.visible), 'falling pieces draw');
+  const settled = write(true);
+  assert.equal(settled.pieces.count, 0, 'a settled stage drops no pieces');
+  debris.reset();
+  assert.equal(debris.stats().meshes, 0, 'reset removes the runs');
+}
+
+console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters, structure mask, structure debris — ok');
