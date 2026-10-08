@@ -4358,6 +4358,34 @@ void splatCompute() {
   float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));
   float apronK = smoothstep(0.50, 0.90, mk.r) * padK;
   float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;
+  // (2026-10-07, wave 235's Monsoon chase: "a flat, uniform brown dirt plane … cut by a ruler-straight edge against a flat
+  // green strip"; Whiteout's "no … tracks") a pad's edge is broken into the turf in tongues within its feather (the
+  // stamp's own spill already wanders 0–4 m out), and the pad is worked ground: the tracks of the vehicles that formed up
+  // on it — pairs of ruts 0.6 m wide, 2.9 m apart, along two families of gently curving lines that come and go across it.
+  // Its ruts are the road's ruts: darkened as a road's wheel lanes are, puddled on a wet map, slush on a snow map
+  float apronN = nz(uv, 0.21, vec2(0.13, 0.71)).r * 0.6 + n1h * 0.4;
+  apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK; // (into the stamp's spill: its tongues)
+  float padRut = 0.0;
+  vec2 padRutN = vec2(0.0);
+  if (apronK > 0.003) {
+    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
+    for (int k = 0; k < 2; k++) {
+      float t = th + float(k) * 1.15;
+      vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
+      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
+      float f = fract(q / per) * per;
+      float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
+      float pres = smoothstep(0.34, 0.58, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
+      float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
+      padRut = max(padRut, (e1 + e2) * pres);
+      padRutN += dP * (r1 * e1 + r2 * e2) * pres;
+    }
+    padRut *= apronK;
+    padRutN *= apronK;
+    rut = max(rut, padRut * rutAmp * 1.2);
+  }
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
@@ -5937,10 +5965,15 @@ void splatCompute() {
       // wheel tracks and spattered between them
       if (uReduxD.y > 1.5) {
         vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
-        float slush = clamp(lane * rutAmp * 1.25 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
+        float slush = clamp(lane * rutAmp * 1.25 + padRut * 1.10 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
       }
       a.rgb = mix(a.rgb, roadCol, dW);
+      // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
+      // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
+      a.rgb *= 1.0 - padRut * 0.36;
+      // (and the ground the tracks churned: darker, damper patches along them)
+      a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the
       // alternating chain of black ovals visible in Verdant. Use a strongly
@@ -6125,6 +6158,8 @@ void splatCompute() {
       a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
     }
   }
+  // (a pad's ruts: two grooves across each line, their walls turned to the light)
+  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
