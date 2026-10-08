@@ -48,8 +48,9 @@ export function munitionFromType(shellType: string | undefined, caliberMm: numbe
 
 const STAGE_SOUNDS: Readonly<Record<StructureStage, readonly DestructionSoundLayer[]>> = Object.freeze({
   intact: Object.freeze([]),
-  damaged: Object.freeze([layer('wall_brick', 0, -6, 0.04)]),
-  breached: Object.freeze([layer('wall_brick', 0, -2), layer('rubble_crunch', 0.25, -4, 0.1)]),
+  // a damaged building loses its glass (the seam's damaged stage hides it): the windows go with the wall's crack
+  damaged: Object.freeze([layer('wall_brick', 0, -6, 0.04), layer('glass_shatter', 0.06, -9, 0.05)]),
+  breached: Object.freeze([layer('wall_brick', 0, -2), layer('rubble_crunch', 0.25, -4, 0.1), layer('glass_shatter', 0.1, -13, 0.08)]),
   collapsed: Object.freeze([
     layer('building_collapse', 0, 0),
     layer('rubble_crunch', 0.7, -3, 0.2),
