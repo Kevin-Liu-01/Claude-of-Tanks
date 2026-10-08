@@ -173,7 +173,7 @@ function checkSourceContract(text) {
     'uFormation',
     // the Redrock lane (2026-10-07): the formations' own colours, the square's caprock band and the cliffs' weathering
     // (two vec4, two vec2, no sampler)
-    'uFormationLow', 'uFormationUp', 'uCaprockY', 'uWallWeather',
+    'uFormationLow', 'uFormationUp', 'uCaprockY', 'uWallWeather', 'uJebelFace',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
     'uPavedRock',
     // maps lane B (2026-10-03): a sor's salt crust — on, polygon cell, damp margin (vec4, no sampler)

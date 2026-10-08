@@ -407,6 +407,12 @@ interface SplatConfig {
   /** The Redrock lane (2026-10-07: a sheer face lit head-on went flat salmon): the joint blocks' tone step and the
    * varnish streaks' darkening on the bedded cliffs (default [0.26, 0.50]). */
   wallWeather?: readonly [number, number];
+  /** The Redrock lane, round 9 (2026-10-08, the gauntlet's wave 261: the faces "smooth salmon plaster with painted
+   * horizontal bands", "contour lines like a topographic map"; owner: the bedding as relief, not paint): Wadi Rum's jebel
+   * faces — [flutes, tafoni, varnish], each 0..1. With it the painted beds, partings and far ledge ladder drop to under a
+   * third, the caprock is bare rock whatever its hollows, and the face carries vertical flutes of three widths in its
+   * normal, honeycomb pits low on the near faces and desert-varnish streaks of every width down it. Absent = off. */
+  jebelFace?: readonly [number, number, number];
   /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
    * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
    * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
@@ -3801,6 +3807,7 @@ uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminan
 uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
+uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
@@ -4125,6 +4132,14 @@ vec2 wallCragTilt(vec2 q, float ph) {
   float h0 = wallCragField(q, ph);
   return -vec2(wallCragField(q + vec2(0.5, 0.0), ph) - h0, wallCragField(q + vec2(0.0, 0.5), ph) - h0) * 1.1;
 }
+// The Redrock lane, round 9: a jebel face's vertical flutes as the along-wall tilt of their grooves — three widths (2.3,
+// 4.3 and 7.9 m) meandering a metre or two down the face, stronger and weaker by stretches (q.x along the wall, q.y
+// minus the world height, both metres; ph the cliff's slow phase)
+float jebelFluteTilt(vec2 q, float ph) {
+  float s = q.x + sin(q.y * 0.045 + ph * 7.0) * 1.3 + sin(q.y * 0.11 + ph * 3.0) * 0.5;
+  float d = 0.26 * cos(s * 2.73 + ph * 13.0) + 0.34 * cos(s * 1.46 + ph * 5.0) + 0.30 * cos(s * 0.80 + ph * 9.0);
+  return -d * (0.55 + 0.45 * sin(q.y * 0.07 + ph * 4.0) * sin(q.x * 0.031 + ph * 2.0));
+}
 // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): the horizon ring's
 // faces inside a sea opening (edgeWater.ts) render with this material as the square's own open water — the same
 // mask-driven path, deep tint, fresnel and whitecaps — so the sea does not change shader one metre past the edge.
@@ -4445,8 +4460,9 @@ void splatCompute() {
   // the Redrock lane: the square's own caprock (splat.caprockY) — the jebels' and domes' tops are bare rock, not sand
   // (past the square too: the canyon's heads and plateau are the same massifs — their ring rows took sand on every
   // facet flatter than the rock band, a patchwork of triangles on the north head)
+  // (round 9, the gauntlet: "sand caked on their tops like icing": with the jebel faces on, bare rock in the hollows too)
   if (uCaprockY.x < 1e8) fR = max(fR, smoothstep(uCaprockY.x, uCaprockY.y, wp.y) * rockGate * (1.0 - roadCore)
-    * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
+    * mix(0.72 + 0.28 * smoothstep(0.30, 0.70, n1h), 1.0, uJebelFace.x));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -5580,6 +5596,16 @@ void splatCompute() {
     n.xyz += dnR * rockRelW; // relief pass 2: 0.24 -> 0.6 (1049e4e ran 0.9), craggy rock at range
     }
   }
+  // The Redrock lane, round 9 (uJebelFace.y): a jebel face's vertical flutes in its normal at every range to ~400 m —
+  // near too, where the crag above stands down (the gauntlet's wave 261: "a flat face with painted bands and no relief")
+  if (uJebelFace.y > 0.0 && steepW > 0.0) {
+    float fl = steepW * fR * uJebelFace.y * (1.0 - smoothstep(260.0, 520.0, camDist)) * (1.0 - gSnowRock);
+    if (fl > 0.002) {
+      float fpx = nz(gWallUVx, 0.0031, vec2(0.63, 0.21)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.63, 0.21)).r;
+      float tx = jebelFluteTilt(gWallUVx, fpx), tz = jebelFluteTilt(gWallUVz, fpz);
+      n.xyz += vec3(-gWallSigns.y * tz * gWallW, gWallSigns.x * tx * (1.0 - gWallW), 0.0) * fl * 0.25;
+    }
+  }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
   // — moderate DUNE flanks fell inside the old band and carried the sin-bed
@@ -5607,7 +5633,8 @@ void splatCompute() {
       // nearly massive rock.
       float bedF = 0.76 + gCliffJ * 0.60;
       // (ground lane: the beds weather away on the sheerest faces — the clefts and the joints' walls run massive)
-      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope));
+      float bedAmp = uStrata * steep * (0.65 + gCliffJ * 0.7) * (1.0 - 0.6 * smoothstep(0.80, 0.97, slope))
+        * (1.0 - 0.72 * uJebelFace.x); // (round 9: a jebel face's bedding is its relief, the paint under a third)
       // (2026-10-06, Titan's zigzag strata: bedF multiplied the absolute height as the wall basis's stretch did — the beds
       // tilted by y · ∇bedF, ~0.85 at 250 m) the per-cliff frequency as a bed-set stretch on the same 48 m band of the height,
       // the beds' phases at the mean frequency: a cliff's sets still thicken and thin by its own ±28 %, the shear bounded
@@ -5634,7 +5661,7 @@ void splatCompute() {
       pale = smoothstep(0.55, 0.90, bedB) * (1.0 - rust);
       float parting = smoothstep(0.84, 0.97, -bedA) * (1.0 - smoothstep(300.0, 700.0, effDist));
       a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.68, 0.62), rust * min(bedAmp * 2.6, 0.7));
-      a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40);
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), pale * steep * 0.40 * (1.0 - 0.72 * uJebelFace.x));
       a.rgb *= 1.0 - parting * min(bedAmp * 1.6, 0.35);
     }
     // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
@@ -5668,6 +5695,31 @@ void splatCompute() {
                            textureLod(uNoise, gWallUVz * vec2(0.010, 0.0006) + vec2(0.61, 0.29), lodS).g, gWallW);
         streak = smoothstep(0.50, 0.80, streak) * (0.5 + 0.5 * pale);
         a.rgb = mix(a.rgb, a.rgb * vec3(0.66, 0.64, 0.66), streak * uWallWeather.y * jointAmp);
+      }
+      // The Redrock lane, round 9 (uJebelFace): desert varnish of every width — narrow streaks 0.4-1.5 m and broad ones
+      // 2-8 m, each 10-100 m long down the fall line — dark brown-black and darkest high on the face where the run-off
+      // leaves the lip, thinning toward the toe; a few rain-washed paler stripes between; and low on the near faces the
+      // honeycomb's pits (tafoni), dark hollows half a metre to two across
+      if (uJebelFace.w > 0.0) {
+        float lodV1 = max(0.0, gNoiseLog + log2(0.040)), lodV2 = max(0.0, gNoiseLog + log2(0.011));
+        float v1 = mix(textureLod(uNoise, gWallUVx * vec2(0.040, 0.0016) + vec2(0.17, 0.41), lodV1).r,
+                       textureLod(uNoise, gWallUVz * vec2(0.040, 0.0016) + vec2(0.17, 0.41), lodV1).r, gWallW);
+        float v2 = mix(textureLod(uNoise, gWallUVx * vec2(0.011, 0.00055) + vec2(0.53, 0.07), lodV2).g,
+                       textureLod(uNoise, gWallUVz * vec2(0.011, 0.00055) + vec2(0.53, 0.07), lodV2).g, gWallW);
+        float down = 0.55 + 0.45 * smoothstep(8.0, 46.0, wp.y);
+        float varn = max(smoothstep(0.56, 0.80, v1) * 0.75, smoothstep(0.50, 0.76, v2)) * down;
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.50, 0.45, 0.44), varn * uJebelFace.w * steep * 0.80);
+        float wash = smoothstep(0.24, 0.10, v2) * (1.0 - varn);
+        a.rgb = mix(a.rgb, a.rgb * vec3(1.12, 1.07, 1.02), wash * uJebelFace.w * steep * 0.30);
+      }
+      if (uJebelFace.z > 0.0) {
+        float tw = steep * uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(24.0, 40.0, wp.y));
+        if (tw > 0.002) {
+          float lodT = max(0.0, gNoiseLog + log2(0.10));
+          float c1 = mix(textureLod(uNoise, gWallUVx * vec2(0.10, 0.13) + vec2(0.37, 0.61), lodT).r,
+                         textureLod(uNoise, gWallUVz * vec2(0.10, 0.13) + vec2(0.37, 0.61), lodT).r, gWallW);
+          a.rgb *= 1.0 - smoothstep(0.62, 0.76, c1) * 0.45 * tw;
+        }
       }
       // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
       // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
@@ -5720,6 +5772,7 @@ void splatCompute() {
         // (skies lane, 2026-10-06: a snow map's exposed rock keeps its beds at full strength — the snow ledges above lie on
         // these shelves, the seams between them stay dark rock)
         if (uReduxD.y > 1.5) ledgeAmp = wallFar;
+        ledgeAmp *= 1.0 - 0.75 * uJebelFace.x; // (round 9: the jebel faces' far ladder too)
         a.rgb *= 1.0 + (smoothstep(0.35, 0.9, ledge) * 0.10 - smoothstep(0.35, 0.9, -ledge) * 0.16) * ledgeAmp;
       }
       vec3 rn = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
@@ -6873,6 +6926,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
+    // the Redrock lane, round 9: Wadi Rum's jebel faces (splat.jebelFace; absent = off)
+    shader.uniforms.uJebelFace = { value: S.jebelFace ? new THREE.Vector4(1, ...S.jebelFace) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;

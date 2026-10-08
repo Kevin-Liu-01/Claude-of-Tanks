@@ -50,8 +50,12 @@ export interface LandformGeology {
    * edge) and the wall drops from there to the apron within the rest of the width, near-vertical over most of the
    * height (inselbergSection). Without it the crown rounds down into the wall as before. */
   rim?: number;
-  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres. */
-  bosses?: { count: number; heightM: number };
+  /** inselberg with a rim: the cap's fall from its centre to its edge, as a share of the height (default 0.08; the
+   * Redrock lane's round 9: a higher crown over the sheer wall, so the jebel's top is a dome and not a drum's lid). */
+  capDrop?: number;
+  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres, and (optional) the least
+   * radius as a share of the cap (default 0.3; each boss takes up to 0.16 more). */
+  bosses?: { count: number; heightM: number; radius?: number };
   /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
    * as a share of the wall's width (default 0.5). */
   flutes?: { count: number; depth?: number };
@@ -267,14 +271,15 @@ const JEBEL_CAP_DROP = 0.08;
  *   steepest 1.5 x (1 - 0.08 - apron) / ((1 - rim) x foot), near-vertical over most of the height;
  * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
  */
-export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0): number {
+export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0,
+  capDrop = JEBEL_CAP_DROP): number {
   if (q >= 1) return 0;
   if (rim > 0) {
     const top = foot * rim;
-    if (q <= top) return 1 - JEBEL_CAP_DROP * (q / top) ** 2;
+    if (q <= top) return 1 - capDrop * (q / top) ** 2;
     if (q <= foot) {
       const t = (q - top) / (foot - top);
-      return apron + (1 - JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+      return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
   } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
   const t = (1 - q) / (1 - foot);
@@ -312,7 +317,7 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
   let best = 0;
   for (let k = 0; k < Math.round(bosses.count); k++) {
     const a = hash2(k, 1, salt + 41) * TAU, r = Math.sqrt(hash2(k, 2, salt + 41)) * top * 0.62;
-    const radius = top * (0.3 + 0.16 * hash2(k, 3, salt + 41));
+    const radius = top * (Math.max(0.15, Math.min(0.6, bosses.radius ?? 0.3)) + 0.16 * hash2(k, 3, salt + 41));
     const d = Math.hypot(nx - Math.cos(a) * r, nz - Math.sin(a) * r) / radius;
     if (d >= 1) continue;
     const dome = (1 - d * d) ** 2 * (0.6 + 0.4 * hash2(k, 4, salt + 41));
@@ -324,7 +329,10 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
 function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
   foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
-  if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
+  if (profile === 'inselberg' && foot) {
+    return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology),
+      Math.max(0, Math.min(0.4, geology.capDrop ?? JEBEL_CAP_DROP)));
+  }
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);

@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
+import { DESERT_SANGAR } from './desertSangar.ts';
 
 type Rng = () => number;
 
@@ -178,5 +179,6 @@ export const KSAR_GATE_POST = Object.freeze({
   broken: (rng: Rng) => { HUT.broken(rng).dispose(); return buildKsarGatePostBroken(mulberry32(0x6a7e6)); },
 });
 
-/** The structure variants a map may name in place of a generic kind (props structureVariants). */
-export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST });
+/** The structure variants a map may name in place of a generic kind (props structureVariants; the Redrock lane's round 9:
+ * the desert post's sangar for the field works' pillbox, desertSangar.ts). */
+export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, sangar: DESERT_SANGAR });

@@ -82,7 +82,8 @@ const steelStore: RegionalBuilder = (ctx) => {
 
 /**
  * The Desert Patrol fort (Qasr al-Badia at Rum; the Redrock lane, 2026-10-07, the owner's "redrock is really rough": the
- * fort was a blank box in a harsh cork print). Sandstone laid in courses (the kit's stone), sand-scoured at the foot;
+ * fort was a blank box in a harsh cork print). Rendered stone (round 9), the render fallen away in patches to the coursed
+ * sandstone under it, a stone footing at the foot, sand drifted against the walls, sand-scoured at the foot;
  * a parapet of merlons on a coping over the wall walk; corner towers with arrow slits; a gate tower with an arched
  * gateway, its doors set back in the arch, the flag over it; an inner court ringed by the post's rooms, their doors and
  * windows on the court, and a cistern head in it. The footprint is the old fort's (walls inset from the plot by a metre,
@@ -92,13 +93,38 @@ const fort: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(12, Math.min(22, ctx.info.w - 2.0)), D = Math.max(11, Math.min(20, ctx.info.d - 2.0));
-  const t = 0.9, h = 5.0, wall: RegionalBucket = 'stone';
+  // (round 9, the gauntlet's wave 261: "clean, perfectly regular brick tile with crisp European crenellations and no
+  // weathering, base staining or footing ... a new toy castle"): the walls rendered over their stone, the render fallen
+  // away in patches to the coursed stone under it, a stone footing proud at the foot, sand drifted against the walls
+  const t = 0.9, h = 5.0, wall: RegionalBucket = 'plaster';
   // the foot sand-scoured and darker, the courses paling a little up the wall (a per-corner occlusion the weathering
   // pass folds in), each wall a slightly different lot of stone
   const scour = (p: Vec3) => (p[1] < 0.2 ? 0.78 : p[1] < 1.1 ? 0.88 : 1.0);
   const lot = (): Rgb => { const k = 0.94 + rng() * 0.12; return [k * 1.02, k, k * 0.97]; };
-  const span = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) =>
+  const span = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) => {
     sink.span(wall, x0, y0, z0, x1, y1, z1, { shadeAt: scour, tint: lot() });
+    // the footing: the stone the render stops above, a hand proud of the wall and knee-high
+    sink.span('stone', x0 - 0.07, -0.3, z0 - 0.07, x1 + 0.07, 0.55 + rng() * 0.25, z1 + 0.07, { shadeAt: scour, tint: lot() });
+  };
+  // where the render has fallen away: the coursed stone under it, in patches low on the walls and at the corners
+  const spalls = (face: Face, count: number) => {
+    for (let k = 0; k < count; k++) {
+      const w = 0.6 + rng() * 1.5, hh = 0.4 + rng() * 0.9;
+      const u = (rng() - 0.5) * Math.max(0, face.width - w - 0.4), y = 0.9 + rng() * rng() * (h - 1.6);
+      faceBox(sink, 'stone', face, u, y, 0.01, w, hh, 0.02, { decor: true, tint: lot() });
+    }
+  };
+  // sand drifted against a wall's foot: a wedge 0.5-1.1 m high and three times as wide, a few metres long, a few to a side
+  const drifts = (face: Face, count: number) => {
+    for (let k = 0; k < count; k++) {
+      const len = 2.5 + rng() * 4.5, rise = 0.5 + rng() * 0.6, reach = rise * (2.6 + rng() * 1.0);
+      const u0 = (rng() - 0.5) * Math.max(0, face.width - len);
+      const o = face.origin, a = face.u, n = face.out;
+      const at = (along: number, out: number, y: number): Vec3 => [o[0] + a[0] * along + n[0] * out, y, o[2] + a[2] * along + n[2] * out];
+      sink.prism('plaster3', [at(u0 - len / 2, 0, -0.3), at(u0 - len / 2, 0, rise), at(u0 - len / 2, reach, -0.3)], [a[0], 0, a[2]], len,
+        { decor: true, tint: [1.08, 0.94, 0.78] });
+    }
+  };
   const gateW = 3.2, gateH = 3.9, gateTowerW = 6.0, proud = 0.7;
   // the curtain walls: the back, the two sides, the front either side of the gate tower
   span(-W / 2, -0.3, -D / 2, W / 2, h, -D / 2 + t);
@@ -114,8 +140,22 @@ const fort: RegionalBuilder = (ctx) => {
   cope(W / 2 - t, -D / 2 + t, W / 2 + 0.08, D / 2 - t);
   cope(-W / 2 - 0.08, D / 2 - t, -gateTowerW / 2, D / 2 + 0.08);
   cope(gateTowerW / 2, D / 2 - t, W / 2 + 0.08, D / 2 + 0.08);
-  const merlon = (x0: number, z0: number, x1: number, z1: number, y = h + 0.18) =>
-    sink.span(wall, x0, y, z0, x1, y + 0.85, z1, { decor: true, tint: lot() });
+  {
+    const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+    const west: Face = { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
+    const east: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const fw = W / 2 - gateTowerW / 2;
+    const frontL: Face = { origin: [-(gateTowerW / 2 + fw / 2), 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: fw };
+    const frontR: Face = { origin: [gateTowerW / 2 + fw / 2, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: fw };
+    for (const f of [back, west, east]) { spalls(f, 3 + Math.floor(rng() * 3)); drifts(f, 1 + Math.floor(rng() * 3)); }
+    for (const f of [frontL, frontR]) { spalls(f, 1 + Math.floor(rng() * 2)); drifts(f, Math.floor(rng() * 2)); }
+  }
+  // (the merlons each a little different, worn at their tops, one in nine fallen)
+  const merlon = (x0: number, z0: number, x1: number, z1: number, y = h + 0.18) => {
+    if (rng() < 0.11) return;
+    const inset = rng() * 0.06;
+    sink.span(wall, x0 + inset, y, z0 + inset, x1 - inset, y + 0.7 + rng() * 0.25, z1 - inset, { decor: true, tint: lot() });
+  };
   for (let x = -W / 2 + 0.3; x < W / 2 - 0.9; x += 1.5) {
     merlon(x, -D / 2 - 0.08, x + 0.8, -D / 2 + 0.42);
     if (x + 0.8 < -gateTowerW / 2 || x > gateTowerW / 2) merlon(x, D / 2 - 0.42, x + 0.8, D / 2 + 0.08);
@@ -310,7 +350,12 @@ const minaret: RegionalBuilder = (ctx) => {
   sink.cylinder('plaster', [0, bal, 0], 'y', 0.3, 1.35, 8, {}, 1.35, true, Math.PI / 8);
   sink.cylinder('plaster', [0, bal + 0.3, 0], 'y', 0.55, 1.3, 8, { decor: true }, 1.3, true, Math.PI / 8);
   sink.cylinder('plaster', [0, bal + 0.3, 0], 'y', H * 0.2, 0.7, 8, {}, 0.7, true, Math.PI / 8);
-  sink.cylinder('structureMetal', [0, bal + 0.3 + H * 0.2, 0], 'y', H * 0.16, 0.78, 8, { colour: rgb(0x3f6a5a) }, 0.05, true, Math.PI / 8);
+  // (round 9, the gauntlet's wave 261: "a green-capped minaret that looks like a game token") the cap rendered as the shaft
+  // under a brass finial and its crescent, as the village mosques' are
+  const capY = bal + 0.3 + H * 0.2;
+  sink.cylinder('plaster', [0, capY, 0], 'y', H * 0.16, 0.78, 8, {}, 0.08, true, Math.PI / 8);
+  sink.cylinder('structureMetal', [0, capY + H * 0.16, 0], 'y', 0.95, 0.05, 6, { colour: rgb(0xa08a52) }, 0.03);
+  sink.span('structureMetal', -0.2, capY + H * 0.16 + 0.95, -0.03, 0.2, capY + H * 0.16 + 1.05, 0.03, { colour: rgb(0xa08a52), decor: true });
   return sink.finish();
 };
 
