@@ -266,3 +266,52 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
   }
 }
 
+/** The prop families effects.ts breaks (propBreakFamily) that this module dresses in their own materials. */
+export type PropFamily = 'woodbuilding' | 'canvasbuilding' | 'metalbuilding' | 'masonry' | 'sandbag' | 'wood' | 'hay';
+
+const CANVAS_LOOK = look(0x14120f, ['canvas', 0x8f8467, 0.7], ['timber', 0x6a5238, 0.3]);
+const HAY_LOOK = look(0x161208, ['thatch', 0xb59a5c, 0.85], ['earth', 0x6e5c45, 0.15]);
+
+/**
+ * A prop breaking under a blow or a hull (props.ts breakRecord via effects.ts propBreak): its own pieces thrown along
+ * the blow (planks splinter, sheets fold, stones and mud bricks tumble, bags burst into earth, bales into straw) and
+ * the dust of its material, low and rolling. `push` is the blow's direction scaled by its strength (1 = a shell).
+ */
+export function propBreakFx(C: BlastContext, family: PropFamily, kind: string, x: number, z: number, gy: number,
+  pushX: number, pushZ: number, heightM: number): void {
+  const R = C.rand;
+  const L = family === 'metalbuilding' ? METAL_LOOK
+    : family === 'canvasbuilding' ? CANVAS_LOOK
+      : family === 'masonry' ? (/adobe/.test(kind) ? ADOBE_LOOK : STONE_LOOK)
+        : family === 'sandbag' ? EARTH_LOOK
+          : family === 'hay' ? HAY_LOOK
+            : WOOD_LOOK;
+  const dust = dustOf(L, _dust);
+  const big = family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding';
+  const strength = Math.min(2.5, Math.max(0.4, Math.hypot(pushX, pushZ)));
+  const dl = Math.hypot(pushX, pushZ) || 1;
+  const dx = pushX / dl, dz = pushZ / dl;
+  const span = big ? 2.6 : 1.2;
+  const h = Math.max(0.6, Math.min(big ? 3 : 1.4, heightM));
+  const dk = C.distBoost(x, gy + h * 0.5, z);
+  // the dust of the material: a few overlapping puffs low over the footprint, pushed along the blow
+  const n = big ? 4 : family === 'hay' || family === 'sandbag' ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU;
+    const r = R() * span * 0.5;
+    const sp = (1.5 + R() * 2) * strength;
+    puff(C, x + Math.cos(a) * r, gy + 0.5 + R() * h * 0.4, z + Math.sin(a) * r,
+      dx * sp + Math.cos(a) * 1.2, 0.6 + R() * 0.8, dz * sp + Math.sin(a) * 1.2, 2.0, 0.2, 0.9, 3.8 + R() * 2,
+      0.5 * span * dk, (1.4 + R() * 0.5) * span * dk, dust, dust, family === 'hay' ? 0.55 : 0.75, 4, 2, R() * 0.05);
+  }
+  // the pieces of the prop's own materials
+  const pieces = big ? 22 : family === 'masonry' ? 14 : family === 'hay' ? 12 : 10;
+  for (let i = 0; i < pieces; i++) {
+    const v = (2 + R() * 4) * strength;
+    const a = R() * TAU;
+    piece(C, L, x + (R() - 0.5) * span, gy + 0.3 + R() * h * 0.6, z + (R() - 0.5) * span,
+      dx * v + Math.cos(a) * (1 + R() * 2.5), 1.5 + R() * 3.5, dz * v + Math.sin(a) * (1 + R() * 2.5),
+      (big ? 0.12 : 0.08) + R() * (big ? 0.3 : 0.18), 3 + R() * 2.5, R() * 0.04);
+  }
+}
+

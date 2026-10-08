@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
 import { createStructureMask, COLLAPSE_S } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
@@ -258,6 +258,17 @@ function captureContext(seed) {
   const mud = run('collapsed', {}, adobe);
   assert.ok(mud.chunk.every((k) => k.shape === 'brick' && k.r > k.b), 'an adobe house falls as its own mud bricks');
   assert.ok(collapsed.flash === 0 && collapsed.fire === 0, 'a collapse is not an explosion');
+  const fence = captureContext(12);
+  propBreakFx(fence.ctx, 'wood', 'fenceplank', 0, 0, 0, 1, 0, 1.2);
+  assert.ok(fence.log.chunk.length > 0 && fence.log.chunk.every((k) => k.shape === 'splinter'), 'a fence splinters');
+  const adobeWall = captureContext(12);
+  propBreakFx(adobeWall.ctx, 'masonry', 'walladobe', 0, 0, 0, 1, 0, 1.2);
+  assert.ok(adobeWall.log.chunk.some((k) => k.shape === 'brick') && adobeWall.log.chunk.every((k) => k.r > k.b),
+    'a mud wall falls as tan mud bricks');
+  const shed = captureContext(12);
+  propBreakFx(shed.ctx, 'metalbuilding', 'quonsethut', 0, 0, 0, 1, 0, 3);
+  assert.ok(shed.log.chunk.some((k) => k.shape === 'sheet'), 'a steel shed folds into sheet');
+  assert.equal(lookForStruckKind('structure'), null, 'a building keeps the masonry fallback until its anatomy');
 }
 {
   const craters = createCraterMarks();

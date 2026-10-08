@@ -42,7 +42,7 @@ import {
 } from './blastRecipes.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { lookForStruckKind, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { damageSeed, type DamageWriters } from '../world/destructionKit.ts';
@@ -5778,6 +5778,17 @@ function* createFxSteps(
       // a ramming hull scales it with its overrun speed (props.ts breakRecord)
       // so every throw velocity below inherits the tank's momentum.
       const family = propBreakFamily(kind);
+      // destruction-fx lane: on the media tiers a prop breaks into its own material's pieces and dust (main threw the
+      // charred-metal wreck chunks for a wooden hut and a fieldstone wall alike)
+      if (blast && (family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding'
+        || family === 'masonry' || family === 'sandbag' || family === 'wood' || family === 'hay')) {
+        propBreakFx(blast, family, kind, pos.x, pos.z, gy, dir.x, dir.z, heightM);
+        if (family === 'metalbuilding') {
+          _v3.set(pos.x, gy + Math.min(1.8, heightM * 0.42), pos.z);
+          sparkFan(_v3, _UP, 12, 9, 1.3, 0xffc980, 0.5, 0.035, 0.045, 0, 0.14);
+        }
+        return;
+      }
       if (family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding') {
         emitBuildingBreak(family, pos, dir, heightM, gy);
         return;
