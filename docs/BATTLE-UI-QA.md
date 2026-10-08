@@ -617,3 +617,31 @@ Validation: record, localization and stylesheet selftests, TypeScript, the
 changed-module quality gate and the production build passed. The first layout
 run timed out after ten minutes waiting for the shared capture lease; no
 mobile screenshot or geometry pass is claimed for this refresh yet.
+
+## Weapon-specific impact readouts
+
+Machine-gun impacts (calibres below 20 mm) use a compact sequential burst summary
+with hits, penetrations, blocks, and accumulated damage. A target or weapon change,
+a main-gun impact, or a pause over 1.2 seconds starts a new burst. This feedback
+never replaces the cannon/missile card and never pushes entries out of its six-shot
+history. Up to three MG burst summaries are retained separately. Raw resolved hits
+still feed complete damage and battle statistics. Primary IFV autocannons remain
+normal cannon readouts.
+
+Guided-hit identity travels with the shared simulation event, including multiplayer.
+Missiles have an impact heading, range, and separate blast totals. Splash-only
+contacts omit misleading plate-angle/armor/penetration rows. Splash from the same
+missile updates its blast summary without replacing a direct-hit card. Secondary
+summaries consume part of the existing diagram height budget, preserving the dock
+above the minimap. Touch retains its existing compact impact feedback.
+
+Steel Wall excludes machine-gun hits; its localized requirement now says so.
+`serviceRecord.selftest.mjs`, `shotReadoutPolicy.selftest.mjs`, and the combat suite
+cover weapon identity, MG exclusion, adjacent burst grouping, bounded blast receipts,
+and direct-hit priority. `tools/weapon-readout.browser.mjs` exercises the production
+HUD and diagram containment; run it under the shared capture lease.
+
+October 7 verification: focused medal/readout/layout/locale tests, 543 combat
+assertions, authoritative-match tests, type checking, and the production build
+passed. The rendered weapon-readout test timed out waiting for the shared browser
+lease; its desktop/mobile visual checks are still unverified.
