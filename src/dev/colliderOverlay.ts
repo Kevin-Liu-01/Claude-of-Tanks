@@ -5,10 +5,11 @@
 // stands for, and one behind a bank or a tree never reads as hanging on its face (the hitbox lane, 2026-10-08: a fit
 // wave read the faint prisms of three stones behind a terrain bank as colliders floating on the bank).
 // Debug-only: reached through window.__DEBUG.colliderOverlay (debugSurface.ts), never from a player's boot.
+// Plain one-pixel THREE.LineSegments, the hidden stretch a LineDashedMaterial (batch 5 integration, 2026-10-08): three's
+// fat lines (LineSegments2, LineSegmentsGeometry, LineMaterial) drew wider strokes but pulled WireframeGeometry and
+// InstancedInterleavedBuffer into the shared three.core chunk every page preloads, though only this lazy overlay used
+// them (the gallery 1,461 B over its budget). The classes used here are already in that chunk (the gallery's overlays).
 import * as THREE from 'three';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
 
 interface OverlayWorld {
@@ -26,8 +27,6 @@ export interface ColliderOverlayOptions {
   lists?: 'movement' | 'shells' | 'both';
   /** Leave out the trees (thousands on a forest map). */
   trees?: boolean;
-  /** Line width in pixels (default 2.5). */
-  width?: number;
 }
 
 export interface ColliderOverlayHandle {
@@ -87,34 +86,30 @@ export function recordSegments(record: CollisionRecord, groundAt: ((x: number, z
   }
 }
 
-function linesOf(positions: number[], color: number, width: number, resolution: THREE.Vector2, hidden: boolean): LineSegments2 {
-  const geometry = new LineSegmentsGeometry();
-  geometry.setPositions(positions);
-  const material = new LineMaterial({
-    color, linewidth: hidden ? width * 0.6 : width, transparent: true, opacity: hidden ? 0.28 : 1,
-    depthTest: !hidden, depthWrite: false,
-    // (dashes of 15 cm every 40 cm, in world metres: the hidden stretch)
-    dashed: hidden, dashSize: 0.15, gapSize: 0.25,
-  });
-  material.resolution.copy(resolution);
-  const lines = new LineSegments2(geometry, material);
+function linesOf(positions: number[], color: number, hidden: boolean): THREE.LineSegments {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const material = hidden
+    // (dashes of 15 cm every 40 cm, in world metres: the hidden stretch, drawn through whatever hides it)
+    ? new THREE.LineDashedMaterial({ color, transparent: true, opacity: 0.28, depthTest: false, depthWrite: false, dashSize: 0.15, gapSize: 0.25 })
+    : new THREE.LineBasicMaterial({ color, transparent: true, opacity: 1, depthTest: true, depthWrite: false });
+  const lines = new THREE.LineSegments(geometry, material);
   if (hidden) lines.computeLineDistances();
   lines.renderOrder = hidden ? 9998 : 9999;
   lines.frustumCulled = false;
   return lines;
 }
 
-/** Draw the records within `radius` of (x, z) into the scene; the handle removes them. */
+/** Draw the records within `radius` of (x, z) into the scene; the handle removes them. (The renderer is no longer read:
+ * one-pixel lines need no drawing-buffer resolution; the parameter stays for debugSurface's call.) */
 export function showColliderOverlay(
-  scene: THREE.Scene, world: OverlayWorld, renderer: THREE.WebGLRenderer | null, options: ColliderOverlayOptions,
+  scene: THREE.Scene, world: OverlayWorld, _renderer: THREE.WebGLRenderer | null, options: ColliderOverlayOptions,
 ): ColliderOverlayHandle {
-  const radius = options.radius ?? 30, lists = options.lists ?? 'both', width = options.width ?? 2.5;
+  const radius = options.radius ?? 30, lists = options.lists ?? 'both';
   const groundAt = world.heightField ? (x: number, z: number) => world.heightField!.getHeightAt(x, z) : null;
   const near = (record: CollisionRecord) => !record.dead && (options.trees || record.treeIdx == null)
     && record.max[0] >= options.x - radius && record.min[0] <= options.x + radius
     && record.max[2] >= options.z - radius && record.min[2] <= options.z + radius;
-  const resolution = new THREE.Vector2(1600, 900);
-  if (renderer) renderer.getDrawingBufferSize(resolution);
   const group = new THREE.Group();
   group.name = 'debug-collider-overlay';
   const records = { movement: 0, shells: 0 };
@@ -126,7 +121,7 @@ export function showColliderOverlay(
       records[key]++;
     }
     if (!positions.length) return;
-    group.add(linesOf(positions, color, width, resolution, true), linesOf(positions, color, width, resolution, false));
+    group.add(linesOf(positions, color, true), linesOf(positions, color, false));
   };
   if (lists !== 'shells') add(world.getObstacles?.() ?? [], MOVEMENT_COLOR, 'movement');
   if (lists !== 'movement') add(world.getColliders?.() ?? [], SHELL_COLOR, 'shells');
@@ -137,7 +132,7 @@ export function showColliderOverlay(
     remove() {
       scene.remove(group);
       group.traverse((object) => {
-        const lines = object as LineSegments2;
+        const lines = object as THREE.LineSegments;
         lines.geometry?.dispose?.();
         (lines.material as THREE.Material | undefined)?.dispose?.();
       });
