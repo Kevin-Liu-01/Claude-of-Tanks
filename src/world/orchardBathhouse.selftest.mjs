@@ -340,8 +340,12 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
   rebuildRegionalStructure, resolveRegionalArchitecture,
 };
+// The map-revival lane (2026-10-05): Orchard Valley adopts the Chouf kit (maps/regional/chouf.ts), which rebuilds the
+// placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry
+// envelope with them). This receipt holds the variant's own contract on the base pipeline, so the fixture places it with
+// the kit off; the kit's rebuild — placements, stream and contacts on today's Orchard — is regionalArchitecture's.
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
-  const P = { maxSpread: 1.7, ...config.props, plan: ['bathhouse'] };
+  const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'] };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
   const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);
@@ -368,11 +372,14 @@ function placed(config, field, seed) {
   return step.value;
 }
 
-assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).props.bathhouseStyle), ['orchard'],
-  'only the explicit Orchard config selects this variant');
-const orchard = getMapConfig('orchard');
-assert.equal(orchard.props.plan[0], 'bathhouse', 'no new catalog ID or additional building slot');
-const previous = { ...orchard, props: { ...orchard.props, bathhouseStyle: undefined } };
+// 2026-10-06 (the map-revival lane, the coordinator's ruling): Orchard Valley is the Chouf now and its kit builds the
+// bathhouse as the hammam, so the old identity's timber variant left its config; no map selects it, and the receipt
+// holds the variant's contract on an Orchard fixture that does (the placement with the kit off, above)
+assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).props.bathhouseStyle), [],
+  'no map selects the timber variant');
+const previous = getMapConfig('orchard');
+assert.equal(previous.props.plan[0], 'bathhouse', 'no new catalog ID or additional building slot');
+const orchard = { ...previous, props: { ...previous.props, bathhouseStyle: 'timber' } };
 assertExplicitFrontageOwner();
 let savings;
 for (const seed of [1337, 2025, 7719]) {

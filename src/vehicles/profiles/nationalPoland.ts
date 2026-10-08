@@ -8,6 +8,7 @@ import {castModernizedTurret} from './nationalDonorCore.ts';
 import {sectionSolid, type SectionPoint} from './sectionSolid.ts';
 import {eraCassette, glacisEraCassette, strappedPack} from './modernizationFittings.ts';
 import {mount} from './fittingMount.ts';
+import {addPolishProtection} from './nationalPolandProtection.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {NATIONAL_POLAND_DESIGNS} from '../nationalPolandDesign.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
@@ -52,7 +53,7 @@ function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig): void
   const zs = m === 0 ? [2.00, 2.28, 2.56, 2.83] : m === 1 ? [2.12, 2.45, 2.78, 3.09] : [2.15, 2.41, 2.67, 2.91];
   const xs = m === 1 ? [.23, .65, .99] : [.23, .56, .86];
   for (const side of [-1, 1]) for (const z of zs) for (const x of xs)
-    glacisEraCassette(P, `glacis_era_${side < 0 ? 'L' : 'R'}`, side * x, z, [m === 1 ? .29 : .235, .044, m === 1 ? .27 : .215]);
+    glacisEraCassette(P, `glacis_era_${side < 0 ? 'L' : 'R'}`, side * x, z, [m === 1 ? .32 : .265, .082, m === 1 ? .29 : .23]);
   const hatchZ = m === 0 ? 1.66 : m === 1 ? 1.68 : 1.59, hatchY = topOn(P, 'hull', 0, hatchZ);
   P.addHatch('hull', cylY(.29, .29, .033, 24), 0, hatchY + .013, hatchZ);
   for (const x of [-.16, 0, .16]) {
@@ -115,12 +116,12 @@ function skirts(P: TankBuilderPort, model: number): void {
         {z: z + half, ring: mirrored(bevel(inner + .018, outer - .021, low + .023, high - .016), side)},
       ]));
       P.addEquipment('hullDetail', box(.060, .15, pitch + .024), side * (inner + .035), high - .060, z);
-      const rows = model === 2 ? 1 : 2, columns = model === 1 ? 2 : 3;
+      const rows = model === 2 ? 2 : 3, columns = 3;
       const tileHeight = (h - .105) / rows, tileDepth = (pitch - .15) / columns;
       for (let row = 0; row < rows; row++) for (let j = 0; j < columns; j++)
         eraCassette(P, 'hull', `skirt_era_${side < 0 ? 'L' : 'R'}`,
-          [side * (outer + .024), low + .055 + tileHeight * (row + .5), z + (j - (columns - 1) / 2) * tileDepth],
-          [.055, tileHeight - .020, tileDepth - .022]);
+          [side * (outer + .041), low + .055 + tileHeight * (row + .5), z + (j - (columns - 1) / 2) * tileDepth],
+          [.092, tileHeight - .015, tileDepth - .019]);
       for (const dz of [-pitch * .30, pitch * .30])
         P.addEquipment('hullDark', cylZ(.024, .029, 8).rotateY(Math.PI / 2), side * (outer + .008), high - .032, z + dz);
     }
@@ -230,9 +231,10 @@ function turretArmor(P: TankBuilderPort, model: number): void {
       : model === 0 ? (i < 2 ? [.285] : aft ? [.405,.555] : [.30,.51])
       : (i < 2 ? [.29] : aft ? [.36,.485] : [.285,.455]);
     for (const y of ys) housingEra(P, stocks, [side*x,y,z], model === 2 ? .145 : model === 1 ? .155 : .17,
-      model === 1 ? .061 : .045, side);
+      model === 1 ? .10 : .085, side);
   }
   turretLoadout(P, model, stocks);
+  addPolishProtection(P, model, stocks);
   for (const g of stocks) g.dispose();
 }
 
