@@ -42,7 +42,7 @@ import {
 } from './blastRecipes.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
@@ -5131,6 +5131,8 @@ function* createFxSteps(
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
         stages?.breach(e, seamOf(e.structureId));
+        // a section's fall (P2): its dust in the building's own colour
+        if (e.sectionDown && !e.settled && blast) sectionFallFx(blast, e, lookOf(e.structureId));
       });
       // the detonation's own record, raised before the shell event it belongs to: a burst on a structure names it, so
       // the wall strike that follows throws that building's own materials

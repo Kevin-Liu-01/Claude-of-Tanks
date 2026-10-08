@@ -16,7 +16,7 @@
  * Draws only through the blast context (volume media, thrown chunks, additive light): seeded, pooled, no allocation.
  * A settled event (a late joiner, a reconnect) draws nothing: its stage is laid down by the world, silently.
  */
-import type { StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
 import { BLAST_RESIDUE, linearHex } from './surfaceLooks.ts';
@@ -335,6 +335,64 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const life = 12 + R() * 5;
     puff(C, e.cx + Math.cos(a) * r, e.baseY + 1 + R() * height * 0.3, e.cz + Math.sin(a) * r, 0, 0.3, 0, 1, 0.2, 1.2,
       life, 0.8 * span * dk, (1.2 + R() * 0.5) * span * dk, dust, dust, 0.3, life, 10, LAND + 1 + R() * 2);
+  }
+}
+
+/**
+ * A section of a structure fell (P2, DESTRUCTION.md §3.4: a wall panel above its stub, the roof, an upper storey once
+ * its faces are down; the stages module drops its intact parts and the kit throws its pieces): the dust of its fall in
+ * the building's own colour — a sheet sliding down the face and bursting out low along its foot, the roof's dust
+ * thrown up and out round the eaves, a storey's skirt rolling out all round. Live events only.
+ */
+/** The breach event as P2 fills it (sim/destructionEvents.ts on the sections branch: a fall carries the structure's identity). */
+type SectionFallEvent = StructureBreachEvent & {
+  storeyDown?: boolean; baseY?: number; cx?: number; cz?: number; hw?: number; hd?: number;
+};
+export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: StructureLook | null): void {
+  if (e.settled || !e.sectionDown) return;
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  const dust = dustOf(L, _dust);
+  const dark: Rgb = [dust[0] * 0.6, dust[1] * 0.6, dust[2] * 0.6];
+  const dk = C.distBoost(e.x, e.y, e.z);
+  const band = Math.max(1, e.y1 - e.y0);
+  if (e.sectionKind === 'roof') {
+    // the covering and its dust go up off the ridge and pour out over the eaves
+    const n = 5;
+    for (let i = 0; i < n; i++) {
+      const a = R() * TAU;
+      const life = 5 + R() * 2;
+      puff(C, e.x + Math.cos(a) * 2, e.y0 + band * (0.3 + 0.4 * R()), e.z + Math.sin(a) * 2, Math.cos(a) * 2.5, 1.2 + R(), Math.sin(a) * 2.5,
+        1.6, 0.25, 0.9, life, 1.5 * dk, (4 + R() * 2) * dk, dark, dust, 0.6, life, 2, 0.1 + R() * 0.3);
+    }
+  } else {
+    // the panel's dust: a sheet sliding down its face as it goes, then bursting out low along its foot
+    const nx = e.nx || 0, nz = e.nz || 0;
+    const tx = -nz, tz = nx;
+    const n = 4;
+    for (let i = 0; i < n; i++) {
+      const u = (i / (n - 1) - 0.5) * 6;
+      const life = 4 + R() * 1.5;
+      puff(C, e.x + tx * u + nx * 0.6, e.y0 + band * (0.4 + 0.4 * R()), e.z + tz * u + nz * 0.6, nx * 1.5, -1.2 - R(), nz * 1.5,
+        1.8, 0.1, 0.9, life, 1.2 * dk, (3 + R() * 1.2) * dk, dust, dust, 0.45, life, 1, R() * 0.2, 0.8);
+    }
+    for (let i = 0; i < n + 2; i++) {
+      const u = (i / (n + 1) - 0.5) * 7;
+      const v = 3 + R() * 3;
+      const life = 5 + R() * 2;
+      puff(C, e.x + tx * u + nx * 0.8, Math.max(e.y0, e.baseY ?? e.y0) + 0.6, e.z + tz * u + nz * 0.8, nx * v + tx * (R() - 0.5) * 2, 0.4 + R() * 0.4,
+        nz * v + tz * (R() - 0.5) * 2, 1.9, 0.12, 0.9, life, 1.2 * dk, (3.2 + R() * 1.4) * dk, dark, dust, 0.65, life, 1, 0.35 + R() * 0.3, 1.6);
+    }
+  }
+  if (e.storeyDown) {
+    // the storey comes down on the one below: a skirt rolling out all round at its floor line, a little dust rising
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU + (R() - 0.5) * 0.5;
+      const life = 6 + R() * 3;
+      const r = Math.max(e.hw ?? 4, e.hd ?? 4);
+      puff(C, (e.cx ?? e.x) + Math.cos(a) * r, e.y0 + 0.4, (e.cz ?? e.z) + Math.sin(a) * r, Math.cos(a) * (5 + R() * 3), 0.5 + R() * 0.5,
+        Math.sin(a) * (5 + R() * 3), 1.9, 0.18, 0.9, life, 1.5 * dk, (4 + R() * 2) * dk, dark, dust, 0.7, life, 1, 0.1 + R() * 0.3, 1.6);
+    }
   }
 }
 

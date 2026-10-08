@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
@@ -319,6 +319,18 @@ function captureContext(seed) {
     wallStrike(c.ctx, 12, 3, 20, -1, 0, 0, explosive, explosive ? 2.71 : 1, null);
     return c.log;
   };
+  // P2: a section's fall throws its dust (a panel's sheet and its foot, the roof's up and out, a storey's skirt); a hole
+  // or a settled fall throws none
+  const fallOf = (extra) => {
+    const c = captureContext(17);
+    sectionFallFx(c.ctx, { structureId: 3, section: 0, sectionKind: 'wall', y0: 0, y1: 3, hole: 255, x: 12, y: 1.5, z: 20,
+      nx: 1, ny: 0, nz: 0, radiusM: 0, munition: 'he', sectionDown: true, ...extra }, null);
+    return c.log.media;
+  };
+  assert.ok(fallOf({}).length > 0 && fallOf({}).every((m) => m.heat === 0), 'a panel falls in its dust');
+  assert.ok(fallOf({ storeyDown: true, cx: 10, cz: 20, hw: 5, hd: 4 }).length > fallOf({}).length, 'a storey brings more down');
+  assert.ok(fallOf({ sectionKind: 'roof', y0: 6, y1: 8.4 }).length > 0, 'the roof\'s dust goes up and out');
+  assert.equal(fallOf({ sectionDown: false }).length + fallOf({ settled: true }).length, 0, 'a hole or a settled fall throws no dust');
   const shellOnWall = strike(true), shotOnWall = strike(false);
   assert.ok(shellOnWall.media.some((m) => m.heat > 1) && shellOnWall.media.some((m) => m.heat === 0 && m.medium === 'billow'),
     'a shell on a wall throws its fireball and its residue smoke');
