@@ -539,6 +539,9 @@ export interface HeightField {
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
    * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
+  /** Ground lane (2026-10-08, wave 274): the sward follows its ground (groundRedux.ts swardSlope) — the map's sun in world
+   * xz (unit) and the law's strength; present only on a map whose profile has it. */
+  _swardSlope?: readonly [number, number, number];
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
@@ -2772,6 +2775,12 @@ function* heightFieldBuildSteps(
     fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
+    // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
+    // ground profile asks it; `?ground=legacy` keeps the even carpet
+    ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
+      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;
+      return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);
+    })() } : {}),
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
       railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),
@@ -3876,6 +3885,8 @@ uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles 
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
 uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
+// ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
+uniform float uThatch;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4901,6 +4912,23 @@ void splatCompute() {
     * mix(vec3(1.0), uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG)
     * mix(0.93 + meadowC * 0.14, 1.0, projW);
   a.rgb *= gMeadowTint;
+  // ground lane (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge's foot: "a smooth, flat, saturated lawn-green surface
+  // with no soil, litter or dry thatch" between the tufts): under a thick sward the ground is last season's thatch — dead
+  // blades lying flat, a dull straw-brown — and the dark soil between the tussocks, not lawn. Where the sward stands thick
+  // (the tall grass's own density field: n1), in patches of ~0.5–1.5 m; at a distance the blades' tops carry the
+  // hillside's green and the ground between them shows less, so it eases to under half by 120 m (never to nothing: a
+  // ring of brown round the camera would follow it)
+  if (uThatch > 0.001 && meadowG > 0.002) {
+    vec2 thQ = nzq(uv, 0.55, vec2(0.21, 0.67));
+    float thW = uThatch * meadowG * mix(1.0, 0.45, smoothstep(30.0, 120.0, camDist)) * (0.35 + 0.65 * smoothstep(0.30, 0.75, n1))
+      * (1.0 - fR) * (1.0 - roadCore);
+    if (thW > 0.002) {
+      vec3 thatchCol = vec3(0.118, 0.098, 0.052) * (0.85 + 0.30 * thQ.y);
+      vec3 soilCol = uMeanD.rgb * uSoilTint * 0.80;
+      vec3 under = mix(thatchCol, soilCol, smoothstep(0.58, 0.82, thQ.x));
+      a.rgb = mix(a.rgb, under, thW * (0.50 + 0.35 * smoothstep(0.30, 0.70, thQ.x)));
+    }
+  }
   // ground lane: the earthworks' bank — patchy dug soil between the turf the bank keeps (bankSoil, above), in the
   // ground plane on a gentle bank and the walls' projection on a steep one, so its texels never stretch downslope
   if (bankSoil > 0.003) {
@@ -6864,8 +6892,11 @@ function* createSplatMaterialSteps(
   // strength on a map without a row)
   const landUseProfile = resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
+  // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
+  let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
+    thatchV = 0;
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
@@ -6952,6 +6983,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
       (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
+    shader.uniforms.uThatch = { value: thatchV };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12

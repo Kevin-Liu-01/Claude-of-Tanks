@@ -183,6 +183,9 @@ function checkSourceContract(text) {
     // the map-revival lane (2026-10-05): the terrace zones' rects and riser band — the risers take the rock layer
     // (vec4[4] and vec4, no sampler)
     'uTerraceRect', 'uTerraceParam',
+    // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch;
+    // scalar, no sampler)
+    'uThatch',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

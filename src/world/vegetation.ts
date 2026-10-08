@@ -4077,6 +4077,19 @@ function* vegetationBuildSteps(
   const batterSeedAt = heightField._batterSeedAt ?? null;
   const batterAdmits = (x: number, z: number): boolean =>
     batterSeedAt !== null && railCuttingSeedAdmits(batterSeedAt(x, z), x, z);
+  // ground lane (2026-10-08, wave 274: "hard density edges"): a clumpy draw in [0, 1] (a 1.1 m value noise, inline — the
+  // grass harnesses compile this section without the module's helpers) the field gate and the margin line are read
+  // against, so the field's law and the wild sward's meet across the gate's band (tallGrass.ts admit: the same law)
+  const fieldDrawAt = (x: number, z: number): number => {
+    const fx = x / 1.1, fz = z / 1.1, ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz;
+    const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+    const h = (a: number, b: number): number => { const v = Math.sin(a * 127.1 + b * 311.7 + 74.7) * 43758.5453; return v - Math.floor(v); };
+    const a0 = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx, a1 = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+    return a0 + (a1 - a0) * sz;
+  };
+  // ground lane (2026-10-08, wave 274): the sward follows its ground on a map that asks it (the height field's hook,
+  // groundRedux.ts swardSlope: the sun in world xz and the strength) — absent on every other map
+  const swardSlopeK = heightField._swardSlope ?? null;
   const steepSeedOk = (normalY: number, x: number, z: number): boolean =>
     normalY >= 0.78 || (batterSeedAt !== null && normalY >= RAIL_CUTTING_SEED_NORMAL_Y && batterAdmits(x, z));
   function terrainDryness(
@@ -4206,7 +4219,8 @@ function* vegetationBuildSteps(
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)) * (1 - f.urban))
           * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
-        if (fieldW > 0.5) {
+        // (wave 274: the field's law across the gate's band, a clumpy draw — tallGrass.ts admit: the same law)
+        if (fieldW > 0.15 + 0.70 * fieldDrawAt(x, z)) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
           if (f.track > 0.5) {
             // (wave 79: no grass in a farm track's wheel lanes — tallGrass.ts admit: the same law) a ditch's water and a
@@ -4218,7 +4232,7 @@ function* vegetationBuildSteps(
             if (laneQ < 0 ? clJ < 0.45 : clJ < 0.5) return null;
             if (laneQ < 0) sy *= 0.6;
           }
-          else if (f.edgeM < f.marginM) {
+          else if (f.edgeM < f.marginM + (fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) - 0.5) * 0.9) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
@@ -4240,6 +4254,17 @@ function* vegetationBuildSteps(
       }
     }
     if (!steepSeedOk(normalY, x, z)) return null;
+    // (wave 274: thinner and shorter up a steep slope, drier on one turned to the sun — tallGrass.ts admit: the same law)
+    if (swardSlopeK !== null && normalY < 0.999) {
+      const steepK = smoothstepJs(0.04, 0.20, 1 - normalY) * swardSlopeK[2];
+      if (clJ < 0.55 * steepK) return null;
+      sy *= 1 - 0.30 * steepK;
+      const nn = heightField.getNormalAt(x, z), tilt = Math.hypot(nn.x, nn.z);
+      if (tilt > 1e-4) {
+        dry = Math.max(dry, Math.max(0, (nn.x * swardSlopeK[0] + nn.z * swardSlopeK[1]) / tilt)
+          * smoothstepJs(0.03, 0.16, 1 - normalY) * 0.55 * swardSlopeK[2]);
+      }
+    }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
     const tuftHeight = sy * syMul * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1);

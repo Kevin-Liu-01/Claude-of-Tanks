@@ -88,6 +88,15 @@ export interface GroundReduxProfile {
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
   volcanic?: number;
+  /** Ground lane (2026-10-08, the gauntlet's wave 274 on Monsoon Ridge: "one uniform carpet of identical-height grass with
+   * no thinning on the steeper upper slope … no dry stems"): the sward follows its ground — thinner and shorter up a
+   * steep slope, drier and paler on a slope turned to the sun (the hollows' lusher sward is the fold law's already). The
+   * height field publishes it with the map's sun (`_swardSlope`); the tall grass and the tufts read it. 0 = off. */
+  swardSlope?: number;
+  /** Ground lane (2026-10-08, wave 274's Monsoon foot: "a smooth, flat, saturated lawn-green surface with no soil, litter
+   * or dry thatch" under the sward): the ground under a thick sward near the camera is last season's thatch and the soil
+   * between the tussocks, not lawn (the material's uThatch). 0 = off. */
+  thatch?: number;
   /** The tall-grass biome, or null for a map with no sward (arid, Mars). */
   grass: TallGrassBiome | null;
 }
@@ -212,7 +221,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
   badlands: { ...ARID, grass: null },
-  monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
+  // (2026-10-08, wave 274: the sward follows its slopes and stands on thatch and soil)
+  monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS, swardSlope: 1, thatch: 1,
     grass: meadow(0.9, 1.0, { base: [0.042, 0.090, 0.022], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
   // (the map-revival lane, Caldera round 2: Aso's floor is farmed and its slopes grazed grassland on black volcanic soil —
