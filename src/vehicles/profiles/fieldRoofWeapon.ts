@@ -29,5 +29,7 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
  g.add('turretDetail',box(.15,.23,.23),x+.285,y+.15,z+.035);
  g.add('turretDetail',box(.13,.035,.17),x+.22,y+.075,z+.035);
  for(const dy of[-.047,.052])g.add('turretGlass',cylZ(dy<0?.036:.047,.013,20),x+.285,y+.15+dy,z+.156);
- g.finish();
+ // Field kit, not reconstructed source: audits that witness a hull's source
+ // surfaces skip it (src/vehicles/fieldKitSurface.test-support.mjs).
+ g.finish().userData.fieldKitStation=true;
 }

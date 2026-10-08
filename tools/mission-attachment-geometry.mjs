@@ -30,6 +30,20 @@ function weldedSupportRegion(output,mesh,tri){
  return null;
 }
 function withinSupportRegion(region,x,z,padding=0){return !region||(x-padding>=region.minX&&x+padding<=region.maxX&&z-padding>=region.minZ&&z+padding<=region.maxZ);}
+/** Dock centres for a hull's authored turret supports: a receiver's own centre, then every `step` centre that can put
+ * a foot column or row on its welded patch. Both are narrow (a patch leaves a 2-4 cm window for a padded foot), so the
+ * seat generator's .06 m native grid can step over them; 2026-10-08 it found no seat on either Russian patch hull. */
+export function authoredSupportCandidates(specId,{footX,footZ},step=.01){
+ const result=[],receiver=MISSION_RECEIVER_SEATS[specId],patch=WELDED_SUPPORT_PATCHES[specId];
+ if(receiver)result.push({frame:'turret',x:receiver.x,y:receiver.topY+.045,z:receiver.z});
+ if(patch){
+  const r=patch.region;
+  for(let z=r.minZ-footZ;z<=r.maxZ+footZ+1e-9;z+=step)for(let x=r.minX-footX;x<=r.maxX+footX+1e-9;x+=step){
+   result.push({frame:'turret',x:+x.toFixed(4),y:patch.plane({x,y:0,z})+.045,z:+z.toFixed(4)});
+  }
+ }
+ return result;
+}
 function visibleStock(mesh,root){
  if(!mesh.isMesh||/^procShadow|^contact|^shadow/i.test(mesh.name)||mesh.material?.colorWrite===false)return false;
  for(let p=mesh;p&&p!==root;p=p.parent){
