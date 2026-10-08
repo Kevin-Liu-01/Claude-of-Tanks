@@ -1,0 +1,26 @@
+{
+  "base": "1156f3cdd3183e00f0e3e8fe9eea1ceecaaedff8",
+  "status": "authored-native-checks-pass-rendered-release-pending",
+  "ids": [
+    "ua_t80u_modern",
+    "ua_t72b3m_modern",
+    "ua_t72b3_modern",
+    "ua_t72b3m_hetman_ii",
+    "pl_t80u_modern",
+    "pl_t72b3m_modern",
+    "pl_t72b3_modern",
+    "pl_t72b3_zubr_ii"
+  ],
+  "files": {
+    "src/vehicles/profiles/nationalUkraine.ts": "793f6c1d029657f8ec73c76ab5797304e166086202c6ab612963a825f1fefedf",
+    "src/vehicles/profiles/hetmanII.ts": "c212df10367320898c086f11ed3daad50ff0d243b1c25ca91104e5c57461308d",
+    "src/vehicles/profiles/nationalUkraineProtection.ts": "ae1e70d58245d5040c4bb58b6386e5551d26fe4c7c3b9a734e7d7ecda001a0a3",
+    "src/vehicles/profiles/nationalPoland.ts": "8c0834fc4d4e4529e29a52a3d5ce4fd96d418b4fb76f14015223de75e1767d6d",
+    "src/vehicles/profiles/zubrII.ts": "fd6d2158cc6d88dc9f26f19237db4c05f5882a77744209480b65735e4860112e",
+    "src/vehicles/profiles/nationalPolandProtection.ts": "2f320f874ac808aeb823c904e7de04fa1e3aff560e60a18a38358b58909d4c0b",
+    "src/vehicles/nationalPolandProtectionConfig.ts": "9680e45ef3d36a7c002e0b3439a8f3999f13d8609c42c9d5abb392f3dbe3c56a",
+    "src/vehicles/nationalProtectionDimensions.ts": "f459af80a5c1f14317f6ca8d1fb4a9a03686e9768daa3476441543b90a0c9b89",
+    "src/vehicles/nationalModernizationSpecs.ts": "69d1d0daaaaf327be82dbfcea7d54addb135b960aff8db99216ad39a067c2ed9",
+    "src/vehicles/nationalLegacySpecs.ts": "3ee801583194b8b539e4cc3321e6d7a3743868e14141395e3b945c1842c83714"
+  }
+}

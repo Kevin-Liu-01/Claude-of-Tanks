@@ -1,0 +1,57 @@
+/* Workshop chrome shares the game's steel plates, amber selection and typography.
+   Battle frames inside the preview come directly from their production owners. */
+.cot-modal-root.cot-hud-editor{padding:16px;place-items:center}
+.cot-hud-editor .cot-modal{width:100%;max-width:1720px;height:calc(100dvh - 32px);max-height:calc(100dvh - 32px);border-top:2px solid #dca246}
+.cot-hud-editor .cot-modal__header{padding:18px 22px}
+.cot-hud-editor .cot-modal__title{font-size:24px;text-transform:uppercase;letter-spacing:.08em}
+.cot-hud-editor .cot-modal__eyebrow{color:#d9a251}
+.cot-hud-editor .cot-modal__subtitle{font-size:12px;color:#9dadb8}
+body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction:column;gap:12px;overflow:hidden;min-height:0;flex:1;padding:14px}
+.cot-hud-editor button:not(.hud-edit-part){font:inherit;font-size:12px;font-weight:700;color:#bac8d1;border:1px solid #46535d;background:linear-gradient(180deg,#1b252c,#10181e);min-height:44px;padding:9px 14px;cursor:pointer;box-shadow:inset 0 1px #ffffff09}
+.cot-hud-editor button:not(.hud-edit-part):hover,.cot-hud-editor button:not(.hud-edit-part)[aria-pressed=true]{border-color:#d7a24c;color:#ffd083;background:linear-gradient(110deg,#47331c,#261e14)}
+.cot-hud-editor button:focus-visible{outline:2px solid #ffd184;outline-offset:3px}
+.cot-hud-editor button:disabled{opacity:.4;cursor:default}
+.hud-edit-toolbar,.hud-edit-profiles{display:flex;gap:6px;align-items:center}.hud-edit-toolbar{flex-wrap:wrap}.hud-edit-toolbar>button:last-child{margin-left:auto}
+.hud-edit-profiles{padding-right:12px;border-right:1px solid #ffffff16}
+.hud-edit-content{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:12px;flex:1;min-height:0}
+.hud-edit-preview{position:relative;min-height:0;min-width:0;display:grid;place-items:center;overflow:hidden;background:#03070a;border:1px solid #46535b;box-shadow:inset 0 0 40px #0008}
+.hud-edit-viewport{position:relative;overflow:hidden}.hud-edit-stage{position:absolute;left:0;top:0;transform-origin:0 0;background-size:cover;background-position:center}
+.hud-edit-scene{position:absolute;inset:0;border:0;pointer-events:none;opacity:0}
+.hud-edit-scene[data-ready]{opacity:1}
+.hud-edit-loading{position:absolute;inset:0;margin:0;display:grid;place-items:center;background:#0b1219e8;color:#dcb16e;font-size:12px;z-index:4;text-align:center;padding:24px}
+.hud-edit-loading[hidden]{display:none}
+.cot-hud-editor button.hud-edit-part{position:absolute;transform:translate(-50%,-50%);padding:0;min-height:0;border:1px solid transparent;touch-action:none;background:transparent;text-align:center;cursor:grab;overflow:visible;box-sizing:border-box}
+.cot-hud-editor .hud-edit-part[hidden]{display:none}.cot-hud-editor .hud-edit-part:active{cursor:grabbing}
+.hud-edit-part>*{pointer-events:none}.cot-hud-editor .hud-edit-part:hover{border-color:#d9b77899;background:#e2b35e08}
+.cot-hud-editor .hud-edit-part[aria-pressed=true]{border-color:#f3bd62;outline:1px solid #05090c99;outline-offset:1px;z-index:3;background:#f0b04a08}
+.hud-edit-tag{position:absolute;left:0;top:0;background:#0b121aee;font-size:11px;font-weight:700;padding:4px 7px;color:#ffcf77;opacity:0;transform:translateY(-100%);white-space:nowrap}
+.hud-edit-part:hover .hud-edit-tag,.hud-edit-part:focus .hud-edit-tag,.hud-edit-part[aria-pressed=true] .hud-edit-tag{opacity:1}
+.hud-edit-inspector{min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:9px;background:linear-gradient(120deg,#121b22,#0a1016);border:1px solid #3d4a54}
+.hud-edit-inspector h3{font-size:16px;margin:0 0 4px;color:#ebf0f3}.hud-edit-inspector p{font-size:11px;line-height:1.6;color:#8fa1ae;margin:2px 0 10px}
+.hud-edit-list{display:grid;gap:1px;border-top:1px solid #53616b;padding-top:10px}
+.cot-hud-editor .hud-edit-list button{display:flex;gap:10px;align-items:center;text-align:left;font-size:11px;border:0;border-left:2px solid transparent;background:transparent;box-shadow:none;padding:8px}
+.hud-edit-list-icon{display:flex;color:#9daeb9}.hud-edit-list-state{margin-left:auto;color:#8ac592;font-size:15px}.hud-edit-list button[data-hidden=true]{opacity:.55}.hud-edit-list button[data-hidden=true] .hud-edit-list-state{color:#b6bec4}
+.hud-edit-status{margin:0 auto 0 0;font-size:11px;line-height:1.5;color:#93a4af;max-width:55%}.cot-hud-editor button.hud-edit-save{background:linear-gradient(120deg,#724917,#493014);border-color:#dd9e3c;color:#ffe1ac;padding-inline:24px}
+.hud-edit-nudge{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.cot-hud-editor .hud-edit-nudge button{min-width:0;padding:4px;font-size:18px}
+.hud-edit-preview.zoomed{display:block;overflow:auto}.hud-edit-preview.zoomed .hud-edit-viewport{margin:auto}
+@media(max-width:800px){
+ .cot-modal-root.cot-hud-editor{padding:6px}.cot-hud-editor .cot-modal{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)}
+ .hud-edit-content{grid-template-columns:minmax(0,1fr) 162px;gap:6px}
+ body .cot-modal-root.cot-hud-editor .cot-modal__body{padding:6px;gap:6px}
+ .cot-hud-editor button:not(.hud-edit-part){padding:6px 8px;font-size:10px}.hud-edit-inspector{padding:8px}.hud-edit-inspector h3{font-size:13px}
+ .hud-edit-profiles{padding-right:0;border:0}.hud-edit-status{max-width:45%;font-size:10px}
+}
+@media(orientation:portrait) and (max-width:700px){
+ .cot-hud-editor .cot-modal__header{padding:12px}.cot-hud-editor .cot-modal__title{font-size:19px}.cot-hud-editor .cot-modal__subtitle{font-size:11px}
+ .hud-edit-content{grid-template-columns:1fr;grid-template-rows:minmax(140px,1fr) 180px}.hud-edit-inspector{display:grid;grid-template-columns:1fr 1fr;align-content:start}
+ .hud-edit-inspector h3{grid-column:1/-1}.hud-edit-inspector p{display:none}.hud-edit-list{grid-column:1/-1;grid-template-columns:1fr 1fr}.hud-edit-nudge{grid-column:1/-1}
+}
+@media(max-height:450px){
+ body .cot-modal-root.cot-hud-editor .cot-modal__header{padding:5px 10px;gap:4px;align-items:center}
+ .cot-hud-editor .cot-modal__eyebrow,.cot-hud-editor .cot-modal__subtitle{display:none}.cot-hud-editor .cot-modal__title{font-size:15px}
+ .cot-hud-editor .cot-modal__close{width:36px;height:36px;min-height:36px}
+ body .cot-modal-root.cot-hud-editor .cot-modal__footer{padding:4px 6px;flex-wrap:nowrap}
+ .cot-hud-editor .cot-modal__footer button{min-height:36px}.hud-edit-toolbar{flex-wrap:nowrap;gap:4px}
+ .hud-edit-profiles{gap:3px;flex-wrap:nowrap}.hud-edit-toolbar button:not(.hud-edit-part){min-height:36px;font-size:9px;padding:4px 6px}
+ .hud-edit-status{font-size:9px}.hud-edit-inspector p{display:none}
+}

@@ -113,6 +113,7 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
 /** Append-only: base catalog, then the national colours, then every distinct authored paint (generated). */
 export const CAMO_PATTERN_IDS = Object.freeze([
   ...BASE_CAMO_PATTERN_IDS, ...NATIONAL_CAMO_PATTERN_IDS, ...AUTHORED_PAINT_IDS,
+  'gt', // Append after existing IDs to preserve serialized catalog indices.
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -241,6 +242,7 @@ const NATIONAL_CAMO_PATTERN_LABEL: Readonly<Record<NationalCamoPatternId, string
 });
 
 export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Object.freeze({
+  gt: 'GT · General Translation',
   ...BASE_CAMO_PATTERN_LABEL,
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
@@ -621,6 +623,7 @@ const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTag
   openai: ['geometric', 'special'],
   xai: ['stripes', 'special'],
   gemini: ['geometric', 'special'],
+  gt: ['geometric', 'special'],
   ducky: ['organic', 'special'],
   suits: ['geometric', 'special'],
   flames: ['stripes', 'special'],

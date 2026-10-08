@@ -240,9 +240,17 @@ function mainGun(P:TankBuilderPort):void{
     P.add('gun',box(.01074,.03919,d),0,y-GUN[1],z-GUN[2]);
   P.muzzleZ=muzzle-GUN[2];
 }
-export function buildT72BUX(P:TankBuilderPort):void{
+function buildT72BURecipe(P:TankBuilderPort,withOriginalKit:boolean):void{
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);P.topY=T72BU_X_DATUMS.highestFittingM-YAW[1];
-  hull(P);runningGear(P);reactiveHull(P);deck(P);rear(P);turret(P);cheeks(P);roofArmor(P);cases(P);roofFittings(P);smoke(P);machineGun(P);mainGun(P);
+  // Keep the original emission order exact. A requested first-party derivative
+  // replaces only this kit; its core is emitted once, not covered by a new shell.
+  hull(P);runningGear(P);if(withOriginalKit)reactiveHull(P);deck(P);rear(P);turret(P);
+  if(withOriginalKit){cheeks(P);roofArmor(P);cases(P);roofFittings(P);smoke(P);machineGun(P);}
+  mainGun(P);
 }
+export function buildT72BUX(P:TankBuilderPort):void{buildT72BURecipe(P,true);}
+/** Owner-selected donor for Pendekar: exact tub, crown fenders, complete
+ * running gear, deck/rear furniture, cast turret and articulated main gun. */
+export function buildT72BUXCore(P:TankBuilderPort):void{buildT72BURecipe(P,false);}
 export const T72BU_X_PROFILES={t72bu_x:{build:buildT72BUX}} as const;

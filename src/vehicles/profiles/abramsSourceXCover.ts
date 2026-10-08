@@ -55,6 +55,44 @@ function splitPolygon(points: readonly Point[], mask: readonly PlanPoint[],
   return { inside, outside };
 }
 
+/** A finite native bevel can be thinner than the requested hidden layer.
+ * Only convex stock has global supporting planes. Retain its thin perimeter
+ * as permanent armor instead of lowering a cover through the original belly.
+ * The plane margin leaves at least 1 mm of vertical stock below every cover;
+ * no exterior vertex or face plane is moved. Cast/reentrant stock is untouched. */
+function backingLimits(input: THREE.BufferGeometry, depth: number): Array<(p: Point) => number> {
+  const p=input.getAttribute('position'),ix=input.getIndex();
+  const vertices:Point[]=[];
+  for(let i=0;i<p.count;i++)vertices.push([p.getX(i),p.getY(i),p.getZ(i)]);
+  const planes:THREE.Plane[]=[];
+  for(let i=0;i<(ix?.count??p.count);i+=3){
+    const [a,b,c]=[0,1,2].map(j=>new THREE.Vector3(...vertices[ix?ix.getX(i+j):i+j]));
+    const normal=new THREE.Vector3().crossVectors(b.clone().sub(a),c.clone().sub(a));
+    if(normal.lengthSq()<1e-20)continue;
+    const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal.normalize(),a);
+    if(vertices.some(v=>plane.normal.x*v[0]+plane.normal.y*v[1]+plane.normal.z*v[2]+plane.constant>1e-6))return [];
+    if(normal.y>=-1e-6||planes.some(q=>q.normal.distanceToSquared(normal)<1e-12&&Math.abs(q.constant-plane.constant)<1e-6))continue;
+    planes.push(plane);
+  }
+  return planes.map(plane=>(v:Point)=>-(plane.normal.x*v[0]+plane.normal.y*(v[1]-depth-.001)+plane.normal.z*v[2]+plane.constant));
+}
+
+function halfSpace(points: readonly Point[], distanceToPlane: (p: Point) => number, sign: number,
+  cuts: ReturnType<typeof createCoverCuts>): Point[] {
+  const result:Point[]=[];
+  for(let i=0;i<points.length;i++){
+    const p=points[i],q=points[(i+1)%points.length],dp=sign*distanceToPlane(p),dq=sign*distanceToPlane(q);
+    if(dp>=-EPS)result.push(p);
+    if((dp>EPS&&dq<-EPS)||(dp<-EPS&&dq>EPS)){
+      const [a,b]=comparePoint(p,q)<=0?[p,q]:[q,p];
+      const da=distanceToPlane(a),db=distanceToPlane(b),t=da/(da-db);
+      const cut:Point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+      cuts.record(p,q,cut);result.push(cut);
+    }
+  }
+  return result;
+}
+
 function appendPolygon(output: number[], polygon: readonly Point[], reverse = false): void {
   for (const triangle of triangulateCoverPolygon(polygon))
     output.push(...(reverse ? [triangle[0], triangle[2], triangle[1]] : triangle).flat());
@@ -83,6 +121,7 @@ export function partitionEraCover(input: THREE.BufferGeometry, mask: readonly Pl
   const footprint = mask.map(([x, z]): PlanPoint => [Math.fround(x), Math.fround(z)]);
   validateFootprint(footprint, depth);
   const p = input.getAttribute('position'), ix = input.getIndex();
+  const limits = backingLimits(input, depth);
   const backing: number[] = [], cover: number[] = [];
   const cuts = createCoverCuts(), permanent: Point[][] = [], skins: Point[][] = [];
   const originals = new Set<readonly Point[]>();
@@ -104,8 +143,15 @@ export function partitionEraCover(input: THREE.BufferGeometry, mask: readonly Pl
     if (normalY <= EPS) { permanent.push(triangle); originals.add(triangle); continue; }
     const split = splitPolygon(triangle, footprint, cuts);
     permanent.push(...split.outside);
-    if (split.inside.length < 3) continue;
-    skins.push(split.inside);
+    let inside=split.inside;
+    for(const limit of limits){
+      if(inside.length<3)break;
+      const outside=halfSpace(inside,limit,-1,cuts);
+      if(outside.length>=3)permanent.push(outside);
+      inside=halfSpace(inside,limit,1,cuts);
+    }
+    if (inside.length < 3) continue;
+    skins.push(inside);
   }
   for (const polygon of permanent) {
     const expanded = cuts.expand(polygon);
@@ -150,4 +196,3 @@ export function bindPartitionedEraCover(P: TankBuilderPort, owner: 'hull' | 'tur
     for (const cover of covers) P.addExternalArmor(owner, cover);
   });
 }
-

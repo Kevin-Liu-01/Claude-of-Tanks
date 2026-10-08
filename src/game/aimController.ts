@@ -182,7 +182,6 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   let lastPenRatio: number | null = null;
   let lastGunTargetId: string | null = null;
   let lastPenUntilMs = -Infinity;
-  let blockedSinceMs = -1;
 
   function findClosestRayHit(
     origin: THREE.Vector3,
@@ -329,17 +328,10 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
   }
 
-  function updateBlockedAimFrame(frame: AimFrame, player: AimTank, rig: AimRig): void {
+  function updateBlockedAimFrame(frame: AimFrame): void {
     frame.blockedDistM = muzzlePathBlockDist(muzzle, gunTarget, frame.dispersionRadM);
-    if (frame.blockedDistM == null) {
-      blockedSinceMs = -1;
-      frame.blockedLabel = false;
-      return;
-    }
-    if (blockedSinceMs < 0) blockedSinceMs = now();
-    const dwellOk = now() - blockedSinceMs >= 500;
-    const speedKmh = Math.abs(player.state!.speed) * 3.6;
-    frame.blockedLabel = dwellOk && (speedKmh <= 10 || rig.aimDist >= 120);
+    // Keep obstruction telemetry/reticle tint, but never show a muzzle-block label.
+    frame.blockedLabel = false;
   }
 
   function findBestArmorTarget(game: AimGame, player: AimTank): void {
@@ -408,7 +400,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.gunDistM = gunCenterRay(player, frame.point, muzzle, bore, gunTarget);
     frame.gunTargetId = null;
     frame.gunMarker.copy(gunTarget);
-    updateBlockedAimFrame(frame, player, rig);
+    updateBlockedAimFrame(frame);
     frame.penRatio = null;
     const shellSpec = player.spec.gun.shells[player.combat.shellSlot];
     findBestArmorTarget(game, player);

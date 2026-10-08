@@ -1,0 +1,31 @@
+{
+  "baseline": "3d0c3c50e004cb34c48a24cfcca20528785e07ed",
+  "rows": [
+    {
+      "id": "m3a3_bradley",
+      "quality": "high",
+      "scope": "hull-gear",
+      "sha256": "d4bdefcb5aa40703294f8567d55e2024d16fd28be1165a6a03d3fa144470757e"
+    },
+    {
+      "id": "m3a3_bradley",
+      "quality": "low",
+      "scope": "hull-gear",
+      "sha256": "82dfd81d0d3c7250b366e7782dd0046903563bc3a4899f53eb7c90fcbd6083da"
+    },
+    {
+      "id": "ua_m2a3_bradley",
+      "quality": "high",
+      "scope": "all",
+      "sha256": "fbbbcee9289b42e7992df2e65d4857ae8018d5a0d39cb2cc373ac0572a90b5b6"
+    },
+    {
+      "id": "ua_m2a3_bradley",
+      "quality": "low",
+      "scope": "all",
+      "sha256": "a0dcfbcf6bf3d8108701ad2bd8568fd56027ead4b0b5c71b7a1b299f5f6399c5"
+    }
+  ],
+  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering.",
+  "markingSeats": "2026-10-06 integration: receipt builds read the generated vehicle marking seats (visual/receipt-seats, dcaa99ae3), stored at 7 digits. The two ua_m2a3_bradley 'all' rows re-pinned: every chassis, turret and gear mesh and both decal geometries are byte-identical to 3d0c3c50e; only vehicleMarking_insignia/designation transforms (HIGH) and their quads in the LOW hull static batch (LOW) differ, by at most 1.2e-7 m."
+}

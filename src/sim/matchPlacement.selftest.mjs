@@ -248,13 +248,17 @@ for (const mapId of MAP_IDS) {
   const worldOptions = { mapId, heightField: world.heightField, obstacles: world.getObstacles(),
     queryObstacles: world.queryObstacles, anchors: matchPlacementAnchors(authored) };
   const field = world.heightField;
+  // (2026-10-05, the map-revival lane: Suzhou Creek's four bridges are the first water bridge decks on a placement map)
+  // both fields carry the world's decks, as every production caller's full height field does: the dry-route proof
+  // crosses water on them (PlacementTerrain.bridgeDecks), and without them a creek splits the map in two
   const independentNavigation = createBotNavigationGrid({ heightField: {
     navigationWaterPolicy: 'avoid-liquid', getHeightAt: (x, z) => field.getHeightAt(x, z),
     getGroundType: (x, z) => field.getGroundType(x, z), getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z),
+    bridgeDecks: field.bridgeDecks,
   }, queryObstacles: world.queryObstacles, getObstacles: world.getObstacles });
   for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault', 'mars']) {
     let heightReads = 0, normalReads = 0, obstacleQueries = 0;
-    const measuredField = { size: field.size, navigationWaterPolicy: field.navigationWaterPolicy,
+    const measuredField = { size: field.size, navigationWaterPolicy: field.navigationWaterPolicy, bridgeDecks: field.bridgeDecks,
       getHeightAt(x, z) { heightReads++; return field.getHeightAt(x, z); },
       getNormalAt(x, z) { normalReads++; return field.getNormalAt(x, z); },
       getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z), getGroundType: (x, z) => field.getGroundType(x, z) };

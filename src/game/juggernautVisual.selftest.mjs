@@ -33,6 +33,7 @@ tracks.visible=false;update();assert.equal(tracks.visible,false,'hidden/destroye
 const hits=shader.uniforms.juggernautHits.value;
 const hitWorld=new T.Vector3(.3,.4,.2);turret.localToWorld(hitWorld);
 assert.equal(pulseJuggernautImpact(root,hitWorld.toArray(),'turret'),true);
+assert.equal(shader.uniforms.juggernautActiveHits.value,1,'one impact bounds the shader loop to one slot');
 assert.equal(hits[0].w,0);assert.ok(hits.slice(1).every(h=>h.w<0),'one hit lights only one contact');
 const originalHit=hits[0].clone();turret.rotation.y+=.6;root.position.set(17,0,29);root.rotation.y=.9;update(80);
 const expected=root.worldToLocal(turret.localToWorld(new T.Vector3(.3,.4,.2)));
@@ -43,6 +44,8 @@ assert.equal(pulseJuggernautImpact(root,[NaN,0,0]),false);assert.equal(pulseJugg
 for(let i=0;i<20;i++)pulseJuggernautImpact(root,[i,1,0]);
 assert.equal(hits.length,6,'rapid hits use a bounded reusable pool');assert.ok(hits.every(h=>h.w===0));
 update(80,1.12,1.3);assert.ok(hits.every(h=>h.w===-1),'all rings expire');
+assert.equal(shader.uniforms.juggernautActiveHits.value,0,'idle shader skips the entire hit loop');
+assert.doesNotMatch(shader.fragmentShader,/exp\(-pow|exp\(-d \* d/,'impact falloffs avoid expensive Gaussian powers');
 update(60);assert.ok(hits.every(h=>h.w===-1),'HP loss without a contact never creates a fake whole-tank pulse');
 assert.match(shader.vertexShader,/batchingMatrix \* shieldPoint/);assert.match(shader.vertexShader,/instanceMatrix \* shieldPoint/);
 assert.match(shader.fragmentShader,/shieldSurface - juggernautHits/);assert.match(shader.fragmentShader,/rippleWarp/);assert.match(shader.fragmentShader,/juggernautTime \* 2.8/);
@@ -58,5 +61,20 @@ update();pulseJuggernautImpact(root,[0,1,0]);clearJuggernautVisual(root);clearJu
 assert.equal(hull.material,source);assert.equal(root.scale.x,2);assert.equal(pulseJuggernautImpact(root,[0,1,0]),false,'garage cleanup removes all live ripple state');
 update();const freshShader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};hull.material.onBeforeCompile(freshShader,{});
 assert.ok(freshShader.uniforms.juggernautHits.value.every(h=>h.w<0),'next match starts without old ripples');clearJuggernautVisual(root);
+// Stable models do not incur periodic whole-tree traversal. Material repair
+// and streamed attachment groups still join the existing effect.
+scene.add(root);let scans=0;const walk=root.traverse.bind(root);
+root.traverse=visit=>{scans++;walk(visit);};
+update();const initialScans=scans;
+for(let i=0;i<120;i++)update(100,1.12,1/60);
+assert.equal(scans,initialScans,'stationary topology requires no repeat full-model scans');
+hull.material=source;update(100,1.12,.3);
+assert.notEqual(hull.material,source,'material-only repair is discovered by the flat binding audit');
+const detailGroup=new T.Group();detailGroup.add(new T.Mesh(geometry,source));turret.add(detailGroup);
+update(100,1.12,.3);
+assert.equal(detailGroup.children[0].material,hull.material,'streamed subtrees acquire energy');
+clearJuggernautVisual(root);
+assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierarchy observers');
+
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
 console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed');
