@@ -940,6 +940,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/battlePresentation.selftest.mjs',
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
+    // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
+    // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
+    'src/mp/presentation/craterSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
