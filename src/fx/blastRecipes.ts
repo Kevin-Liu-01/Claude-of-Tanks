@@ -734,7 +734,8 @@ export function columnPuff(C: BlastContext, x: number, y: number, z: number, sta
   const life = 10 + R() * 9;
   shape(m, life, Math.max(1.6 * scale, size1 * 0.16), size1, 1.5, R);
   // fresh smoke is black; it greys as it rises, cools and thins (and the whole column greys as the fire burns out)
-  const crown = mix3(SOOT, SMOKE_AGED, 0.55 + 0.35 * (1 - stage));
+  // (b5: at 12-18 s the column's crown had aged to a sunlit tan-brown) it stays a dark grey well up the column
+  const crown = mix3(SOOT, SMOKE_AGED, 0.3 + 0.35 * (1 - stage));
   look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown,
     Math.min(0.95, (0.5 + 0.3 * stage) * (gulp ? 1.2 : 0.85 + R() * 0.3)), 0.2, 0.35 + R() * 0.3);
   book(m, 'billow', R, life * (0.85 + R() * 0.3));
