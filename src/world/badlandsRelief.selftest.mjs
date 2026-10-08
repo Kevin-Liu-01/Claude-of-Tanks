@@ -47,7 +47,7 @@ function canyonContract(sample) {
     for (const side of [-1, 1]) {
       // 2026-10-07 (the Redrock lane, owner: "redrock is really rough"; the walls read as smooth clay ramps with a 20 m
       // bench between two 45-65 degree steps): every wall is a Wadi Rum jebel's section — a talus apron, the pale Disi's
-      // rounded base up to its bench ~16 m over the floor, then the Umm Ishrin's sheer face to the top, within ~90 m of the toe
+      // rounded base up to its bench ~9 m over the floor, then the Umm Ishrin's sheer face to the top, within ~90 m of the toe
       let steepest = 0, benchRun = 0, longestBench = 0, toe = -1, top = -1;
       const full = sample(center + side * 420, z) - floor;
       for (let distance = 200; distance < 400; distance++) {
@@ -59,7 +59,7 @@ function canyonContract(sample) {
         steepest = Math.max(steepest, slope);
         if (toe < 0 && height > 0.5) toe = distance;
         if (top < 0 && height > full * 0.85) top = distance;
-        benchRun = height > 10 && height < 26 && benchSlope < .4 ? benchRun + 1 : 0;
+        benchRun = height > 5 && height < 24 && benchSlope < .4 ? benchRun + 1 : 0;
         longestBench = Math.max(longestBench, benchRun);
       }
       assert.ok(steepest > 4, `central walls stand sheer (a face past 76 degrees), not hillside ramps: z=${z}, side=${side}, steepest=${steepest}`);

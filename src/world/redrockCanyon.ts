@@ -8,9 +8,12 @@ const REDROCK_CANYON = Object.freeze({
   closureStart: 740,
   // The Redrock lane (2026-10-07, owner: "redrock is really rough rn"; the walls read as smooth clay ramps). Every wall
   // is a Wadi Rum jebel's section: a talus apron, the pale Disi sandstone's rounded and runnelled base up to this height
-  // over the floor (splat.formation draws its boundary here), a narrow bench, then the Umm Ishrin's sheer red cliff with
+  // over the floor (splat.formation draws its boundary just above it), a narrow bench, then the Umm Ishrin's sheer red cliff with
   // buttress masses, flutes, chimneys and bedding ledges, under a skyline of beehive domes.
-  disiTopM: 16,
+  disiTopM: 9,
+  // The heads close each mouth with the tallest massifs (their height over the side walls'): the views past both
+  // mouths end on jebels, not on a low sand rise.
+  headLiftM: 70,
   // The ravines: their flat sand beds' half-width before the side walls' talus starts.
   ravineBedHalfWidth: 20,
 });
@@ -48,10 +51,12 @@ function chimney(s: number, salt: number): number {
   let back = 0;
   for (let c = cell - 1; c <= cell + 1; c++) {
     if (hash(c, salt + 21) < 0.45) continue;
-    const at = (c + 0.2 + 0.6 * hash(c, salt + 22)) * 70, half = 1.6 + 2.2 * hash(c, salt + 23);
+    // (half-width 2.8-5.4 m: the playable terrain's 1.33 m grid draws the cleft's walls, where a 1.6 m slot aliased into
+    // flat facets the material painted as sand — pale "flames" up the face)
+    const at = (c + 0.2 + 0.6 * hash(c, salt + 22)) * 70, half = 2.8 + 2.6 * hash(c, salt + 23);
     const q = (s - at) / half;
     if (q * q >= 1) continue;
-    back = Math.max(back, (8 + 14 * hash(c, salt + 24)) * (1 - q * q) ** 1.5);
+    back = Math.max(back, (7 + 10 * hash(c, salt + 24)) * (1 - q * q) ** 1.5);
   }
   return back;
 }
@@ -76,8 +81,9 @@ function domeField(d: number, s: number, H: number, cell: number, r0: number, rv
 
 /** The jebels' tops `back` metres behind the nearest lip, at world-plan (u, v): beehive domes crowding the rim, broad
  * domes on the massif behind. One field for every wall, so two walls' tops never meet in a step. */
-function domes(u: number, v: number, back: number, H: number): number {
-  const rim = 1 - ramp(28, 52, back), massif = ramp(12, 40, back);
+function domes(u: number, v: number, back: number, H: number, detail: number): number {
+  // (the coarse ring past the square keeps the broad domes, which its 10-20 m rows resolve, and drops the beehives)
+  const rim = detail * (1 - ramp(28, 52, back)), massif = ramp(12, 40, back);
   return Math.max(rim > 0 ? rim * domeField(u, v, H, 23, 8, 8, 0.05, 0.13, 401) : 0,
     massif > 0 ? massif * domeField(u, v, H, 68, 24, 18, 0.05, 0.11, 406) : 0);
 }
@@ -110,21 +116,27 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
     const runnel = flute(s * 0.55 + 40, salt + 5) * 2.4 * detail * Math.sin(Math.PI * u);
     return talusH + (disiTop - talusH) * (1 - (1 - u) ** 2.2) - runnel;
   }
-  // the bench on the Disi's top, then the Umm Ishrin's face: set back by its buttress masses, flutes and chimneys
+  // the bench on the Disi's top, set back by the buttress masses; then the Umm Ishrin's face, its flutes and chimneys
+  // cut back into it. (A cleft's floor climbs steeply from the bench to the set-back face — scree in the cleft at 58
+  // degrees — where the bench running on flat into every groove laid a sand floor in each: pale flames up the face.)
   const benchW = 2 + 9 * w3;
-  const back = 8 * wander(s / 52 + 1.9, salt + 3) + detail * (3.5 * flute(s, salt) + chimney(s, salt));
-  const foot = disiEnd + benchW + back;
+  const bench = disiEnd + benchW + 8 * wander(s / 52 + 1.9, salt + 3);
+  const foot = bench + detail * (3.5 * flute(s, salt) + chimney(s, salt));
   // near vertical over most of its height: a 78-82 degree face rounding at its foot and its lip
   const rise = H - disiTop - 0.8, run = Math.max(4, rise * (0.19 + 0.55 * soft));
   sectionLip = foot + run;
-  if (d <= foot) return disiTop + 0.8 * (d - disiEnd) / (foot - disiEnd);
+  if (d <= bench) return disiTop + 0.8 * (d - disiEnd) / (bench - disiEnd);
+  const cleft = disiTop + 0.8 + 1.6 * (d - bench);
+  if (d <= foot) return Math.min(H, cleft);
   if (d >= sectionLip) return H;
   const t = (d - foot) / run;
   let y = t < 0.12 ? (t * t) / 0.24 : t > 0.88 ? 1 - ((1 - t) * (1 - t)) / 0.24 : (t - 0.06) / 0.88;
+  // where the ring draws it, a rounded massif: steep at its foot, its shoulder rounding over (no sharp lip for the rows)
+  if (soft > 0) { const e = t * t * (3 - 2 * t); y += soft * (e * (2 - e) - y); }
   // bedding ledges every ~9-13 m: the face eases back for a moment at each bed
   const bed = 9 + 4 * w1, phase = 6.2832 * (y * rise + 7 * w2) / bed;
   y += detail * 0.5 * (bed / rise) * Math.sin(phase) / 6.2832 * (1 - (2 * y - 1) ** 8);
-  return disiTop + 0.8 + rise * y;
+  return Math.min(H, Math.max(cleft, disiTop + 0.8 + rise * y));
 }
 
 /** Slightly oblique north/south axis; the mouth does not become a radial bowl. */
@@ -143,7 +155,7 @@ function southRavineZ(across: number): number { return -207 + across * 0.035; }
 function northRavineZ(across: number): number { return 110 + Math.abs(across) * 0.24; }
 
 function canyonWall(across: number, along: number, z: number, toeDistance: number, detail: number,
-  ravines: boolean): number {
+  ravines: boolean, lift = 0): number {
   const west = across < 0;
   // Unequal buttresses, talus shelves and side washes continue through the
   // whole region. Fading this sculpture out at |z|=300 made the boundary
@@ -161,7 +173,7 @@ function canyonWall(across: number, along: number, z: number, toeDistance: numbe
     ? REDROCK_CANYON.westHeight + 6 * ramp(-380, -40, z) - 12 * ramp(170, 360, z)
     : REDROCK_CANYON.eastHeight - 2 * ramp(-280, -40, z) + 6 * ramp(100, 380, z);
   const bedding = 1 + sculpt * (0.035 * Math.sin(z * 0.031) + 0.018 * Math.sin(z * 0.067));
-  const H = height * bedding, salt = west ? 101 : 211;
+  const H = height * bedding + lift, salt = west ? 101 : 211;
   let h = jebelSection(depth, along, H, detail, apron, salt), lip = depth - sectionLip;
   if (ravines) {
     // The side ravines are sand-floored siqs cut through the wall: their own jebel walls rise from each bed's edge (the
@@ -177,8 +189,8 @@ function canyonWall(across: number, along: number, z: number, toeDistance: numbe
     }
   }
   // the beehive domes behind the nearest lip, on one world-plan field
-  const crown = detail * ramp(-3, 4, lip);
-  return crown > 0 ? h + crown * domes(across, z, lip, H) : h;
+  const crown = (detail + 0.8 * (1 - detail)) * ramp(-3, 4, lip);
+  return crown > 0 ? h + crown * domes(across, z, lip, H, detail) : h;
 }
 
 /** Absolute regional datum and unequal eroded flanks; no noise library, allocation, or mutable cache. */
@@ -207,7 +219,8 @@ export function sampleRedrockCanyon(x: number, z: number): number {
   const headToe = Math.abs(z) - REDROCK_CANYON.closureStart + meander;
   if (headToe <= 0) return open + upland;
   const blend = ramp(-halfWidth, halfWidth, across);
-  const head = floor + canyonWall(-1, x, z, headToe, detail, false) * (1 - blend)
-    + canyonWall(1, x, z, headToe, detail, false) * blend;
+  const lift = REDROCK_CANYON.headLiftM;
+  const head = floor + canyonWall(-1, x, z, headToe, detail, false, lift) * (1 - blend)
+    + canyonWall(1, x, z, headToe, detail, false, lift) * blend;
   return Math.max(open, head) + upland;
 }

@@ -110,7 +110,7 @@ export default {
     // Broad weathered beds, not high-contrast repeated marker stripes.
     // (the Redrock lane, 2026-10-07, owner: "redrock is really rough"; the walls, domes and far jebels read mauve, the
     // sandstone tile desaturated to a fifth) Wadi Rum's sandstone is red-orange: the tile keeps its saturation and more
-    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.042, clamp01(s * 1.2), clamp01(0.40 + (l - 0.45) * 0.45)],
+    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.036, clamp01(s * 1.35), clamp01(0.31 + (l - 0.45) * 0.42)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     // (ground lane, wave 62: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
     // sandstone" — the squiggles were the tile's marker beds and partings, repeating every 6.45 m up each wall) the
@@ -120,15 +120,23 @@ export default {
     // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show; Titan
     // and Skybridge run 0.22 and 0.18)
     roadTint: [0.78, 0.61, 0.51], strata: 0.16, sandstoneMarkers: 0, sandMacro: 0.9,
-    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi. (The Redrock lane,
-    // 2026-10-07: the boundary at the walls' Disi bench, 16 m over the floor — y 20.5 of the field's 0.19-109 m — the Disi
-    // a pale buff, the Umm Ishrin a deeper red)
-    formation: { atFrac: 0.187, wobbleM: 2.5, pale: 0.30, red: 0.20 },
-    // (the Redrock lane: the domes' caps and the jebels' tops are bare rock — the floor, the ramps and the dunes lie below
-    // 15 m, the walls' Disi bench at 20 m, the domes' caps at 26-38 m)
-    caprockY: [17, 21],
-    // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
-    rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
+    // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
+    // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
+    // (The Redrock lane, 2026-10-07: the contact at y 80 — the east wall's domes and the canyon heads' upper storeys pale,
+    // the lower west wall and the floor's inselbergs red throughout; the ground lane's first pass had the order inverted,
+    // a pale band at every foot that read as concrete)
+    formation: { atFrac: 0.73, atY: 80, wobbleM: 4, lowerTint: [1.42, 0.97, 0.74, 0.12], upperTint: [1.85, 1.62, 1.22, 0.85],
+      edgeM: 3 },
+    // (the Redrock lane: the domes' caps, the walls' benches and the jebels' tops are bare rock — the floor, the dunes and
+    // the ramps lie below 13 m, the Disi bench at 10-16 m, the domes' caps at 20-38 m)
+    caprockY: [13, 16],
+    // (the Redrock lane: the faces keep their joints and varnish under the map's own sun, a head-on light included)
+    wallWeather: [0.45, 0.95],
+    // An alluvial wash has faint wind-scoured patches, not floor-wide dunes. (The Redrock lane, 2026-10-07, owner: "redrock
+    // is really rough"; the floor's mid-ground read as leopard spots: the mid-relief dapple's 59 m octave lays 1-5 m bump
+    // spots that a 30-degree sun turns into a dark blotch field — uMidRelief 0 cleared it in the PR's own renderer,
+    // uSandMacro 0 changed nothing. A trace of its broad roll stays; the wind's ripples carry the sand's grain.)
+    rippleAmp: 0.22, midRelief: 0.12, midReliefFar: 780,
   },
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],
@@ -148,8 +156,13 @@ export default {
     // are cured straw, as Sirocco's are. Trees round 4 (2026-10-04, the gauntlet's wave 50: "olive reed tufts", "flat,
     // uniformly saturated billboards"): Wadi Rum's tussocks are sun-bleached — a pale buff, a third of the straw's
     // saturation left in the card and half in the tint, lighter
-    grassTexTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.18), clamp01(l * 0.85 + 0.2)],
-    tuftTone: (h: number, s: number, l: number) => [0.11, 0.12, clamp01(l * 0.55 + 0.3)],
+    // (the Redrock lane, 2026-10-07: those read as white plastic spikes on the orange sand — the tussocks are a dry buff
+    // straw, darker than the sand they stand in)
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.42), clamp01(l * 0.62 + 0.14)],
+    tuftTone: (h: number, s: number, l: number) => [0.095, 0.30, clamp01(l * 0.45 + 0.22)],
+    // (the Redrock lane: the floor's stones were an even strew of round dark lentils under every view — the wadi's sand is
+    // clean between its gravel patches, so a third of the strew; the stones keep the sandstone's own red)
+    litter: { density: 0.4, clods: 0.25, splinters: 0, stoneTint: [0.20, 0.115, 0.075] },
   },
   props: {
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
@@ -191,6 +204,8 @@ export default {
     // hanging on its face" in all four of its Redrock frames; 278 of the map's 931 boulders hung on a wall, a ledge's lip
     // or a narrow bench. The law is every map's default since 2026-10-04: rockTalusDeg names another angle)
     hedgehogs: 22, sandbagLines: 24,
+    // (the Redrock lane, 2026-10-07: a pillbox stood in the west spring's palms, three trunks through its roof)
+    pillboxClearOfTrees: true,
     tankWrecks: { era: 'modern', count: 7, debris: true,
       ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
     inhabit: {
@@ -232,7 +247,9 @@ export default {
     // the mountains lane (2026-10-03, gauntlet waves 15 and 24): Wadi Rum's far country — sheer jebels standing alone on
     // the sand plain, each maps lane A's inselberg section with a rim (a bossed cap, a fluted wall over most of the height,
     // a short talus apron), where the regional 'jebel' of mesa tables read as "low rounded swells"
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel', air: 0.4, fillLaw: 1 },
+    // (the Redrock lane, 2026-10-07, the coordinator: the far jebels read as "cardboard cutouts in a row" — the bake's air
+    // at 0.8 of the law's σ, so the massifs at 3-8 km recede by their distances instead of standing equally crisp)
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel', air: 0.8, fillLaw: 1 },
     // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
     // triangles than before the mountains lane's relief work)
     outlandRocks: 0.95,
