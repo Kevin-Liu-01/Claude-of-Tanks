@@ -129,6 +129,12 @@ for(const mapId of MAP_IDS) {
     // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
+    // the map-revival lane (2026-10-05): Suzhou Creek's street kit (shanghaiStreets.ts) and Ruinspires' (sarajevoStreets.ts)
+    // block with their burnt trams (Ruinspires' container screens too), a convex footprint in both sinks like the heaps
+    const street=record=>record.kind==='tram-wreck'||record.kind==='container-screen';
+    const screens=candidate.obstacles.filter(street);
+    assert.equal(screens.length>0,mapId==='blackglass'||mapId==='ruinspires',`${mapId}: only Suzhou Creek's and Ruinspires' street kits stand trams`);
+    assert.equal(candidate.colliders.filter(street).length,screens.length);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
     // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
     // two parapets above it; every other kit stays soft dressing. Round 63 (2026-09-24): the record's parts follow the
@@ -138,8 +144,9 @@ for(const mapId of MAP_IDS) {
     // stone builder dresses. A tall bridge's parts exceed the 64-part server wire limit and split into consecutive
     // records of at most 64 parts, so the footprint contract below holds for each deck's records read in order.
     const bridges=candidate.obstacles.filter(record=>record.kind==='bridge'), decks=field.bridgeDecks??[];
-    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge',
-      `${mapId}: only Amberford's river kit and Cliffbridge's viaduct span a bridge`);
+    // 2026-10-05 (the map-revival lane): Suzhou Creek's four bridges are the arched stone builder's third map
+    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='blackglass',
+      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct and Suzhou Creek's bridges span a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
     const deckRecords=decks.map(()=>[]);
     for(const bridge of bridges){
@@ -173,11 +180,11 @@ for(const mapId of MAP_IDS) {
     const dams=candidate.obstacles.filter(record=>record.kind==='dam-parapet');
     assert.equal(dams.length,mapId==='skybridge'?1:0,`${mapId}: only Skybridge's dressing stands a dam`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='dam-parapet').length,dams.length);
-    const solids=coal.length+mills.length+bridges.length+dams.length;
+    const solids=coal.length+mills.length+bridges.length+screens.length+dams.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='dam-parapet';
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='dam-parapet'&&!street(record);
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));

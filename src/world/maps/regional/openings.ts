@@ -2,6 +2,7 @@
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { faceBox, facePanel, type Face, type PartSink, type RegionalBucket, type Rgb, UV_MEMBER } from './geometry.ts';
+import { facadeOn, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -14,8 +15,21 @@ export interface WindowStyle {
   surround: { bucket: RegionalBucket; width: number; out: number; lintel?: number; colour?: Rgb } | null;
   /** the sill */
   sill: { bucket: RegionalBucket; out: number; colour?: Rgb } | null;
-  /** shutters: colour and kind, or null */
-  shutters: { colour: Rgb; kind: 'louvred' | 'plank' | 'panel'; closed?: number } | null;
+  /**
+   * shutters: colour and kind, or null; `paint` (facade.ts, desktop builds) paints a border round each leaf and a motif
+   * on it in a second colour (the painted shutters of a Russian or Ukrainian village)
+   */
+  shutters: { colour: Rgb; kind: 'louvred' | 'plank' | 'panel'; closed?: number; paint?: { border: Rgb; motif: 'diamond' | 'heart' | null } } | null;
+  /**
+   * a carved surround (facade.ts, desktop builds): the surround's plain lintel becomes a cornice ledge and a crest
+   * board, its jambs run down past the sill to an apron cut to a drop (the Russian nalichnik)
+   */
+  carved?: { crest: CrestStyle; apronDrop: number } | null;
+  /**
+   * a dressed head over the opening (facade.ts, desktop builds): a segmental arch, a hood, a pediment or a lintel. With
+   * a surround it takes the place of the surround's flat lintel and spans the surround; without one it spans the opening
+   */
+  head?: HeadStyle | null;
 }
 
 /** Choose the pane bucket: about `litShare` of windows show a lit curtain at night. */
@@ -52,13 +66,26 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   if (style.bars === 'six') {
     for (const t of [1 / 3, 2 / 3]) faceBox(sink, 'structureWood', face, u, y + h * t, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
   }
-  if (style.surround) {
+  const carved = style.surround && style.carved && facadeOn() ? style.carved : null;
+  if (style.surround && carved) {
+    // the carved surround: jambs from the apron to the head board, the crest over it, the apron under the sill
+    const s = style.surround, sw = s.width, so = s.out, outer = w + 2 * sw;
+    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
+    const foot = y - 0.09 - carved.apronDrop * 0.55, head = y + h;
+    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    nalichnikCrest(sink, face, u, head, outer, carved.crest);
+    nalichnikApron(sink, face, u, y - 0.09, outer, carved.apronDrop, carved.crest.colour, carved.crest.field);
+  } else if (style.surround) {
     const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
     // a dressed surround reads by its face at range: its sides and soffits are fine joinery (EmitOptions.fineSides)
     const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
     faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, y + h / 2, so / 2, sw, h, so, sc);
     faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, y + h / 2, so / 2, sw, h, so, sc);
-    faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
+    if (style.head && facadeOn()) windowHead(sink, face, u, y + h, w + 2 * sw, style.head);
+    else faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
+  } else if (style.head && facadeOn()) {
+    windowHead(sink, face, u, y + h, w, style.head);
   }
   if (style.sill) {
     // the sill runs through the reveal from the frame to its nose past the face
@@ -83,6 +110,7 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
         // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
         const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
         faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, { ...sc, fineSides: true });
+        if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
           for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true });
@@ -92,6 +120,35 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
       }
     }
   }
+}
+
+/**
+ * A shutter leaf's paint (facade craft): a border a hand wide round its face and a motif cut or painted at its middle
+ * (a diamond, a heart), in a second colour, 6 mm on its face (fine: drawn near the camera only).
+ */
+function paintedLeaf(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, o: number,
+  paint: { border: Rgb; motif: 'diamond' | 'heart' | null }): void {
+  const b = Math.min(0.06, w * 0.12), c = { colour: paint.border, decor: true, fine: true };
+  const z = o + 0.006;
+  facePanel(sink, 'structureWood', face, u, y + h / 2 - b / 2, z, w, b, c);
+  facePanel(sink, 'structureWood', face, u, y - h / 2 + b / 2, z, w, b, c);
+  facePanel(sink, 'structureWood', face, u - w / 2 + b / 2, y, z, b, h - 2 * b, c);
+  facePanel(sink, 'structureWood', face, u + w / 2 - b / 2, y, z, b, h - 2 * b, c);
+  if (paint.motif) {
+    const s = Math.min(w, h) * 0.22;
+    const P = (du: number, dy: number) => facePointOf(face, u + du, y + dy, z);
+    if (paint.motif === 'diamond') sink.polygon('structureWood', [P(0, -s), P(s * 0.7, 0), P(0, s), P(-s * 0.7, 0)], c);
+    else {
+      // a heart: two lobes over a point
+      sink.polygon('structureWood', [P(0, -s), P(s * 0.75, s * 0.25), P(s * 0.4, s * 0.7), P(0, s * 0.35)], c);
+      sink.polygon('structureWood', [P(0, -s), P(0, s * 0.35), P(-s * 0.4, s * 0.7), P(-s * 0.75, s * 0.25)], c);
+    }
+  }
+}
+
+/** A point on a face (u along it, y up, o out of it). */
+function facePointOf(face: Face, u: number, y: number, o: number): [number, number, number] {
+  return [face.origin[0] + face.u[0] * u + face.out[0] * o, y, face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
 
 export interface DoorStyle {

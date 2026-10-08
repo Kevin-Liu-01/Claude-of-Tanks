@@ -16,7 +16,8 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
   weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
-  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows, shrubStemSites,
+  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows, shrubStemSites, forestGrownProfile, GROWTH_FOREST_FORM,
+  GROWTH_DEADWOOD_TINT,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -222,6 +223,16 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
   assert.ok(shape.longleafPine.crownBase > 0.55 && shape.longleafPine.crownBase > shape.pine.crownBase,
     `the longleaf stands on the longest clear bole (${JSON.stringify(shape.longleafPine)})`);
   assert.equal(TREE_GROWTH_PROFILES.longleafPine.habit, 'tuft', 'and carries its needles in tufts');
+  // (trees lane, 2026-10-05, wave 124: "broccoli-crowned blobs"): at the placed trees' mean scale (1.325) a 16-20 m
+  // tree, its crown from about 70 % of its height and narrow against it — a small crown high on a tall clear bole
+  for (let variant = 0; variant < 3; variant++) {
+    const { skeleton } = grow('longleafPine', variant);
+    const lowest = Math.min(...skeleton.leaves.map((l) => l.y)), width = 2 * Math.max(...skeleton.leaves.map((l) => Math.hypot(l.x, l.z)));
+    const height = skeleton.height * 1.325;
+    if (variant === 1) assert.ok(height >= 16 && height <= 20, `longleafPine: ${height.toFixed(1)} m tall at the mean scale`);
+    assert.ok(lowest / skeleton.height >= 0.62, `longleafPine/${variant}: the crown from ${(lowest / skeleton.height).toFixed(2)} of its height`);
+    assert.ok(width / skeleton.height < 0.42, `longleafPine/${variant}: a small crown (${width.toFixed(1)} m across a ${skeleton.height.toFixed(1)} m tree)`);
+  }
   assert.ok(shape.lebanonCedar.aspect > 1.2 && shape.lebanonCedar.aspect > shape.cedar.aspect * 1.5,
     `the cedar of Lebanon spreads broad (${shape.lebanonCedar.aspect} against the cedar's ${shape.cedar.aspect})`);
   for (let variant = 0; variant < 3; variant++) {
@@ -433,6 +444,77 @@ const shrubRows = [];
   // the shrub value calibrates the bush species only, near one
   for (const [species, value] of Object.entries(GROWTH_SHRUB_VALUE)) {
     assert.ok(bushSpecies.includes(species) && value > 0.75 && value < 1.35, `${species}: a shrub value near one (${value})`);
+  }
+}
+
+// trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
+// near-identical forked grey trunks", the savanna read): a tree grown inside a closed wood is forest-grown — its crown's
+// lowest sprays (the tenth of its seats lowest on the tree, against its height) never lower than the same tree's grown in
+// the open, and higher for a forking broadleaf (by over a fourteenth of its height) and a conifer whose open crown comes
+// down to its foot (a tenth); its crown no wider (its sprays' reach from the stem, a twentieth's play for the ragged whorls), the tree taller,
+// its stem slimmer for its height; deterministic and within the budgets; a palm, a snag and a grass-stage seedling keep
+// their own profile
+{
+  const quantile = (values, q) => { const v = [...values].sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(q * v.length))]; };
+  const measure = (skeleton) => {
+    const seats = skeleton.leaves.map((l) => l.y / skeleton.height);
+    const reach = quantile(skeleton.leaves.map((l) => Math.hypot(l.x + l.ax * l.length, l.z + l.az * l.length)), 0.9);
+    const stem = skeleton.branches[0].nodes;
+    return { base: quantile(seats, 0.1), reach, height: skeleton.height, girth: stem[Math.min(1, stem.length - 1)].r / skeleton.height };
+  };
+  const rows = [];
+  for (const species of ['oak', 'beech', 'chestnut', 'holmOak', 'birch', 'aspen', 'poplar', 'spruce', 'pine', 'fir', 'larch', 'eucalyptus']) {
+    const profile = TREE_GROWTH_PROFILES[species];
+    for (const variant of [0, 1]) {
+      const open = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop' });
+      const forest = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true });
+      assert.deepEqual(forest, growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true }), `${species}: the forest form is deterministic`);
+      const a = measure(open), b = measure(forest);
+      const lift = profile.form === 'decurrent' ? 0.07 : profile.family === 'conifer' && a.base < 0.25 ? 0.1 : -0.02;
+      assert.ok(b.base >= a.base + lift, `${species} v${variant}: a forest tree's crown stands higher (its lowest sprays at ${b.base.toFixed(2)} of its height against ${a.base.toFixed(2)})`);
+      assert.ok(b.reach <= a.reach * 1.06, `${species} v${variant}: and no wider (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
+      assert.ok(b.height > a.height, `${species} v${variant}: taller (${b.height.toFixed(2)} against ${a.height.toFixed(2)})`);
+      assert.ok(b.girth < a.girth, `${species} v${variant}: its stem slimmer for its height`);
+      assert.ok(forest.leaves.length <= GROWTH_LEAF_BUDGET.desktop, `${species} v${variant}: within the spray budget`);
+      rows.push([species, variant, +a.base.toFixed(2), +b.base.toFixed(2), +a.reach.toFixed(2), +b.reach.toFixed(2)]);
+    }
+  }
+  for (const species of ['palm', 'snag', 'longleafSeedling']) {
+    assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES[species]), TREE_GROWTH_PROFILES[species], `${species}: no forest form`);
+  }
+  assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES.oak), forestGrownProfile(TREE_GROWTH_PROFILES.oak), 'one forest profile a species');
+  assert.ok(GROWTH_FOREST_FORM.forkMax <= 0.6, 'a forest decurrent never forks past three fifths of its height');
+  console.log('forest form (species, variant, open base, forest base, open reach, forest reach):', JSON.stringify(rows));
+}
+
+// trees round 5 (the arid and volcanic lane's Monument Valley juniper: "multi-stemmed ... gnarled, twisted trunks ...
+// often partly dead with silver deadwood"): a crown with deadwood stands a share of its scaffolds dead — at least one,
+// each carrying no spray on it or anything it bears, its wood weathered silver-grey, its limb snapped; the juniper's
+// stems gnarled; a crown without deadwood keeps every limb
+{
+  for (const variant of [0, 1, 2]) {
+    const { skeleton, wood } = grow('juniper', variant);
+    const dead = skeleton.branches.filter((b) => b.dead);
+    assert.ok(dead.length >= 1 && dead.some((b) => b.order === 1 && b.broken), `juniper v${variant}: a dead scaffold, snapped (${dead.length} dead branches)`);
+    const deadIndex = new Set(skeleton.branches.map((b, i) => (b.dead ? i : -1)).filter((i) => i >= 0));
+    assert.ok(skeleton.leaves.every((l) => !deadIndex.has(l.branch)), `juniper v${variant}: no spray on dead wood`);
+    assert.ok(wood.getAttribute('position').count > 0 && TREE_GROWTH_PROFILES.juniper.gnarl > 0.5 && TREE_GROWTH_PROFILES.juniper.deadwood > 0,
+      'the juniper gnarled, with deadwood');
+  }
+  // dead wood's tint: a live and a dead limb side by side, open to the sky — the dead one pale and grey against the bark
+  {
+    const limb = (z, dead) => ({ order: 1, parent: -1, mesh: true, broken: false, dead,
+      nodes: [{ x: 0, y: 2, z, r: 0.05, flex: 0 }, { x: 1, y: 2.2, z, r: 0.04, flex: 0 }] });
+    const skeleton = { species: 'juniper', height: 4, branches: [limb(0, false), limb(3, true)], leaves: [], crown: { x: 0, y: 3, z: 0, r: 2 } };
+    const tint = TREE_GROWTH_PROFILES.juniper.barkTint;
+    const colour = emitBranchGeometry(skeleton, { tint, topTint: null, barkStyle: 4, rng: mulberry32(3), tier: 'desktop' }).getAttribute('color');
+    const half = colour.count / 2, mean = (from, k) => { let sum = 0; for (let i = from; i < from + half; i++) sum += colour.array[i * 3 + k]; return sum / half; };
+    const live = [0, 1, 2].map((k) => mean(0, k)), dead = [0, 1, 2].map((k) => mean(half, k));
+    assert.ok(dead[0] > 1.4 * live[0] && dead[2] / dead[0] > live[2] / live[0], `dead wood weathers pale and grey (${dead.map((v) => v.toFixed(2))} against ${live.map((v) => v.toFixed(2))})`);
+  }
+  assert.ok(GROWTH_DEADWOOD_TINT.every((c) => c > 0.7), 'dead wood weathers pale');
+  for (const species of ['oak', 'beech', 'olive', 'holmOak']) {
+    assert.ok(grow(species, 1).skeleton.branches.every((b) => !b.dead), `${species}: no deadwood without the profile's share`);
   }
 }
 

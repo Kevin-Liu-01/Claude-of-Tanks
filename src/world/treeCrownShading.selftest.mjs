@@ -8,8 +8,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import {
-  crownLobes, emitCrownShadowHull, emitLeafCards, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES, growTreeSkeleton,
-  TREE_GROWTH_PROFILES, tuftLobes,
+  crownLobes, emitCrownShadowHull, emitLeafCards, forestGrownProfile, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES,
+  growTreeSkeleton, TREE_GROWTH_PROFILES, tuftLobes,
 } from './treeGrowth.ts';
 import {
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, CROWN_DAPPLE_LAW, CROWN_DAPPLE_PROGRAM_KEY, crownDappleTags, crownDappleThreshold,
@@ -18,8 +18,8 @@ import {
 import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
-import { grownTintLaw } from './vegetation.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeIsOpen, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, uplandBandOf, uplandZoneAllows } from './treeBiomes.ts';
+import { BARE_SPRAY_KINDS, bareFormPalette, grownFormSprayKind, grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 
@@ -308,8 +308,9 @@ for (const [mapId, biome] of Object.entries(TREE_BIOMES)) {
   }
   if (biome.shrub) assert.ok(TREE_GROWTH_PROFILES[biome.shrub], `${mapId}: its shrub form exists`);
 }
+// (2026-10-05, the map-revival lane: Caldera is the Aso caldera — sugi, Japanese red pine, the grassland's low scrub)
 assert.equal(treeBiomeShrub('caldera'), 'broom');
-assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'canaryPine');
+assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'sugi');
 assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alone grows as itself');
 {
   // the palette a form grows with (wave 6: Cinder Junction's sooty-gold twig tint painted its leafy birches orange-brown)
@@ -352,20 +353,29 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.ok(kept.cardHue === 0.3 && kept.cardSat === 0.4 && kept.texTone === named.texTone, 'a named colour wins');
   assert.equal(treeBiomeColour('verdant'), null, 'a temperate place keeps the green defaults');
   assert.equal(treeBiomeShrub('badlands'), 'broom', 'Wadi Rum\'s scrub is white broom');
-  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'canaryPine', 'no umbrella acacia on Teide');
-  // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
-  assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
-    'open groves on the caldera and the arid places only');
-  // the Arizona uplands (wave 28): juniper and pinyon for the cedar and pine slots, the mesquite in the acacia slot's own
-  // form, creosote as the broom's switches, zoned by height in open groves under a dusty place colour
-  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'juniper');
-  assert.equal(treeBiomeSlot('copper_mesa', 'pine')?.form, 'pinyon');
-  assert.equal(treeBiomeSlot('copper_mesa', 'acacia'), null, 'the mesquite grows in the acacia slot\'s own bipinnate form');
-  assert.ok(treeBiomeUpland('copper_mesa') && treeBiomeOpen('copper_mesa') && !treeBiomeUpland('caldera'), 'Copper Mesa zoned by height');
-  assert.equal(treeBiomeShrub('copper_mesa'), 'broom');
-  const sonoran = treeBiomeColour('copper_mesa');
-  assert.ok(sonoran && sonoran.cardSat < 0.12 && sonoran.texTone(0.36, 0.2, 0.2)[0] === 0.36, 'a dusty colour that keeps each form\'s hue');
+  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'redPine', 'no umbrella acacia in Aso: the red pine');
+  // (Caldera round 2: Aso's sugi stand in closed plantation blocks — Las Cañadas' open groves are gone)
+  assert.ok(!treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
+    'open groves on the arid places only');
+  // Copper Mesa is Queenstown under Mount Lyell (the map-revival lane, merged in batch 4, 2026-10-06; the trees lane's
+  // Arizona uplands row of wave 28 went with the old identity): eucalypt regrowth in the acacia and cedar slots, the
+  // tea-tree scrub in the holm oak's leaf, no zoning by height; the juniper and pinyon forms stay grown conifers
+  assert.equal(treeBiomeSlot('copper_mesa', 'acacia')?.form, 'eucalyptus');
+  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'eucalyptus');
+  assert.equal(treeBiomeShrub('copper_mesa'), 'holmOak');
+  assert.ok(!treeBiomeUpland('copper_mesa') && !treeBiomeUpland('caldera'), 'Queenstown and Aso are not zoned by height');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeUpland(id)), [], 'no map sets the upland hook');
   for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
+  // the hooks no map sets now, on synthetic fixtures: the upland zones (the square's height quantiles at two and three
+  // fifths; conifer forms high, broadleaf forms low, nothing between) and the open-grove flag
+  const band = uplandBandOf([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(band, [4, 6], 'the upland band: the quantiles at two and three fifths');
+  assert.ok(uplandZoneAllows(band, true, 6) && !uplandZoneAllows(band, true, 5.9), 'a conifer form on the high ground only');
+  assert.ok(uplandZoneAllows(band, false, 4) && !uplandZoneAllows(band, false, 4.1), 'a broadleaf form in the low ground only');
+  assert.ok(!uplandZoneAllows(band, true, 5) && !uplandZoneAllows(band, false, 5), 'nothing on the slopes between');
+  assert.ok(uplandZoneAllows(null, true, -50) && uplandZoneAllows(null, false, 50), 'no band: a form stands anywhere');
+  assert.ok(treeBiomeIsOpen({ open: true }) && treeBiomeIsOpen({ arid: true }) && !treeBiomeIsOpen({}) && !treeBiomeIsOpen(null),
+    'open groves: a place\'s own flag or an arid place');
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
@@ -385,22 +395,46 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 {
   const broom = growShrubSkeleton('broom', 'bush', mulberry32(9));
   assert.ok(broom.leaves.length >= 32 && broom.leaves.every((l) => l.y >= -0.0601), `a broom mound of ${broom.leaves.length} sprays on the ground`);
+  // trees round 5 (the cities lane's Ironworks): the buddleia, a shrub form too — a mound of long, narrow, arching sprays
+  // on the ground, deterministic, its tile purple-flowered (a share of its painted texels violet: the panicles)
+  assert.ok(!GROWTH_SPECIES.includes('buddleia'), 'the buddleia is a shrub form, never a tree slot');
+  const buddleia = growShrubSkeleton('buddleia', 'bush', mulberry32(9));
+  assert.deepEqual(buddleia, growShrubSkeleton('buddleia', 'bush', mulberry32(9)), 'the buddleia grows deterministically');
+  assert.ok(buddleia.leaves.length >= 32 && buddleia.leaves.every((l) => l.y >= -0.0601), `a buddleia mound of ${buddleia.leaves.length} sprays on the ground`);
+  assert.ok(TREE_GROWTH_PROFILES.buddleia.cardBend >= 0.3 && TREE_GROWTH_PROFILES.buddleia.aspect < 0.7, 'its sprays long, narrow and arching');
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const image = makeSprayAtlas('buddleia', mulberry32(7), 256, null, 0).image;
+    const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+    let opaque = 0, violet = 0;
+    const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      opaque++;
+      c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+      if (hsl.h > 0.7 && hsl.h < 0.85 && hsl.s > 0.3) violet++;
+    }
+    assert.ok(violet > 0.05 * opaque && violet < 0.5 * opaque, `the buddleia's tile carries its purple panicles (${violet} of ${opaque} texels)`);
+  } finally { globalThis.document = savedDocument; globalThis.ImageData = savedImageData; }
 }
 
 // trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
-// the Las Cañadas broom takes the place's shrub colour over the bush slot's palette — an ash-dulled grey-green, its
-// sprays' saturation cut to three tenths, the hue turned to olive, a little paler — and no other place has one
+// a place's shrub colour (TreeBiome.shrubColour) wins over the bush slot's palette. Las Cañadas named the only one, the
+// Teide broom's ash-dulled grey-green; Caldera is now the Aso caldera (the map-revival lane, merged in batch 4,
+// 2026-10-06), whose grassland scrub keeps the slot's green, so no place names one and the precedence is pinned on the
+// receipt's own copy of that colour (its sprays' saturation cut to three tenths, the hue turned to olive, a little paler)
 {
-  const ash = treeBiomeShrubColour('caldera');
-  assert.ok(ash && ash.texTone && ash.cardSat <= 0.06, 'Las Cañadas has its own shrub colour');
-  const [h, sat, l] = ash.texTone(0.36, 0.6, 0.45);
-  assert.ok(h >= 0.18 && h <= 0.26 && sat <= 0.2 && l >= 0.45, `the broom's tone ash-dulled olive (${h}, ${sat}, ${l})`);
+  const ash = Object.freeze({
+    cardHue: 0.23, cardSat: 0.05, texTone: (_h, s, l) => [0.22, Math.min(1, s * 0.3), Math.min(1, l * 1.07)],
+  });
   const slot = { cardHue: 0.3, cardSat: 0.4, texTone: (hh, ss, ll) => [hh, ss, ll] };
   const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
-  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
-  report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
+  assert.equal(treeBiomeShrubColour('caldera'), null, 'Aso\'s grassland scrub keeps the slot\'s green');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), [], 'no place names a shrub colour');
 }
 
 // trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
@@ -468,6 +502,133 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
       assert.ok(seat > 0, `${kind}: the stems stand on the card's seat`);
       report.shrubAtlas[kind] = { steps: +shrubSteps.toFixed(3), crownSteps: +crownSteps.toFixed(3), stems: +(stem.area / (T * T)).toFixed(3) };
     }
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
+}
+
+// Trees lane (2026-10-05, the cities lane's Ironworks in March 1945): a bare map (VegetationConfig `bare`) stands its
+// deciduous broadleaves leafless — each form's winter twigs in its own habit, the twigs' grey-brown, the twigs' open
+// shadow — while the conifers and the evergreen broadleaves keep their leaves, and a map in leaf is unchanged.
+{
+  for (const form of ['birch', 'aspen', 'willow', 'beech', 'oak', 'chestnut', 'poplar', 'buddleia']) {
+    assert.ok(BARE_SPRAY_KINDS[form], `${form}: a deciduous form has its winter twigs`);
+    assert.equal(grownFormSprayKind(form, { bare: true }), BARE_SPRAY_KINDS[form]);
+  }
+  assert.equal(grownFormSprayKind('birch', { bare: true, birchLeaves: true }), 'birch-bare', 'bare wins over a slot\'s leaves');
+  for (const form of ['olive', 'holmOak', 'eucalyptus', 'mangrove', 'acacia', 'pine', 'spruce', 'fir', 'cedar', 'larch', 'broom']) {
+    assert.equal(BARE_SPRAY_KINDS[form], undefined, `${form}: keeps its leaves or needles`);
+    assert.equal(grownFormSprayKind(form, { bare: true }), grownFormSprayKind(form, {}));
+  }
+  assert.equal(grownFormSprayKind('oak', {}), 'oak', 'a map in leaf keeps its leaves');
+  assert.equal(grownFormSprayKind('birch', { birchLeaves: true }), 'birch');
+  const leafPal = { cardHue: 0.24, cardSat: 0.3, texTone: null, birchLeaves: true, snow: 0 };
+  assert.deepEqual(bareFormPalette(leafPal, 'oak', false), leafPal, 'unset: the palette as it was');
+  assert.equal(bareFormPalette(leafPal, 'olive', true), leafPal, 'an evergreen form keeps its palette');
+  const barePal = bareFormPalette(leafPal, 'oak', true);
+  assert.ok(barePal.bare === true && barePal.birchLeaves === false && barePal.cardHue === undefined && barePal.cardSat === undefined,
+    'a bare form drops the leaf colours its map tuned');
+  for (const family of ['broadleaf', 'birch']) {
+    assert.deepEqual(grownTintLaw(family, true, true), grownTintLaw('birch', false), `${family}: bare twigs take the twig law`);
+  }
+  assert.deepEqual(grownTintLaw('broadleaf', false, false), grownTintLaw('broadleaf'), 'a crown in leaf keeps its law');
+  // the painted winter tiles: no green leaf, the twigs grey-brown; the poplar's shoots climb narrower than the oak's
+  // spreading twigs; the buddleia's winter canes carry last summer's dry, rust-brown panicles, no violet
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const stats = {};
+    for (const kind of ['oak-bare', 'poplar-bare', 'buddleia-bare']) {
+      const image = makeSprayAtlas(kind, mulberry32(7), 256, null, 0).image;
+      const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+      const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+      let opaque = 0, green = 0, rust = 0, violet = 0, sx = 0, sxx = 0;
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { // the first tile
+        const i = (y * 256 + x) * 4;
+        if (data[i + 3] < 200) continue;
+        opaque++; sx += x; sxx += x * x;
+        c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+        if (hsl.h > 0.17 && hsl.h < 0.45 && hsl.s > 0.25) green++;
+        if (hsl.h > 0.02 && hsl.h < 0.12 && hsl.s > 0.2) rust++;
+        if (hsl.h > 0.7 && hsl.h < 0.85 && hsl.s > 0.3) violet++;
+      }
+      stats[kind] = { opaque, green: green / opaque, rust: rust / opaque, violet: violet / opaque, spread: Math.sqrt(sxx / opaque - (sx / opaque) ** 2) };
+      assert.ok(opaque > 200 && green / opaque < 0.02, `${kind}: no green leaf (${JSON.stringify(stats[kind])})`);
+    }
+    assert.ok(stats['poplar-bare'].spread < stats['oak-bare'].spread, `the poplar's shoots climb narrower than the oak's twigs spread (${stats['poplar-bare'].spread.toFixed(1)} < ${stats['oak-bare'].spread.toFixed(1)} px)`);
+    assert.ok(stats['buddleia-bare'].rust > 0.2 && stats['buddleia-bare'].violet < 0.005, `the buddleia's winter panicles dry and rust-brown, no flowers (${JSON.stringify(stats['buddleia-bare'])})`);
+    report.bare = stats;
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
+}
+
+// Trees lane (2026-10-05, the farmland lane's Streuobst for Frontier Basin): the meadow orchard's fruit tree — at the
+// placed trees' mean scale a short trunk of 1.2-1.8 m to its scaffolds, a broad, open, rounded crown about as wide as
+// it is tall; its variants the plum (young, small), the apple (in its middle years) and the pear (old, tall, upright),
+// each on its own atlas tiles with its summer fruit; never forest-grown; bare in winter as the oak's crooked twigs.
+{
+  const SCALE = 1.325; // the placed trees' mean (vegetation.ts addTree: 0.95-1.7)
+  const apple = TREE_GROWTH_PROFILES.apple;
+  assert.ok(GROWTH_SPECIES.includes('apple') && apple.orchard === true, 'the fruit tree is a tree form, an orchard one');
+  assert.equal(forestGrownProfile(apple), apple, 'an orchard tree never grows forest-grown');
+  const shape = (variant, seed, forest = false) => {
+    const sk = growTreeSkeleton('apple', mulberry32(seed), { variant, tier: 'desktop', forest });
+    const stem = sk.branches[0], fork = stem.nodes[stem.nodes.length - 1].y;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, len = 0;
+    for (const l of sk.leaves) { minX = Math.min(minX, l.x); maxX = Math.max(maxX, l.x); minZ = Math.min(minZ, l.z); maxZ = Math.max(maxZ, l.z); len += l.length; }
+    const width = ((maxX - minX) + (maxZ - minZ)) / 2 + len / sk.leaves.length;
+    return { sk, fork: fork * SCALE, height: sk.height * SCALE, width: width * SCALE, sprays: sk.leaves.length };
+  };
+  const mean = (variant, key) => [0, 1, 2, 3].reduce((a, k) => a + shape(variant, 5101 + variant * 13 + k * 101)[key], 0) / 4;
+  for (const variant of [0, 1, 2]) {
+    const fork = mean(variant, 'fork');
+    assert.ok(fork >= 1.2 && fork <= 1.85, `variant ${variant}: a short trunk to the scaffolds (${fork.toFixed(2)} m)`);
+    assert.deepEqual(shape(variant, 77).sk, shape(variant, 77).sk, 'the fruit tree grows deterministically');
+    assert.deepEqual(shape(variant, 77, true).sk, shape(variant, 77).sk, 'in a wood too it grows open');
+  }
+  const [plum, appleTree, pear] = [0, 1, 2].map((v) => ({ height: mean(v, 'height'), width: mean(v, 'width'), sprays: mean(v, 'sprays') }));
+  assert.ok(appleTree.width / appleTree.height > 0.8 && appleTree.width / appleTree.height < 1.15,
+    `the apple's crown about as wide as the tree is tall (${appleTree.width.toFixed(1)} m by ${appleTree.height.toFixed(1)} m)`);
+  assert.ok(appleTree.height > 5 && appleTree.height < 7, `the apple 5-7 m tall (${appleTree.height.toFixed(1)})`);
+  assert.ok(plum.height < appleTree.height && appleTree.height < pear.height, 'the plum smallest, the pear tallest');
+  assert.ok(pear.width / pear.height < appleTree.width / appleTree.height, 'the pear more upright than the apple');
+  const oakSprays = [0, 1, 2, 3].reduce((a, k) => a + growTreeSkeleton('oak', mulberry32(5114 + k * 101), { variant: 1, tier: 'desktop' }).leaves.length, 0) / 4;
+  assert.ok(appleTree.sprays < oakSprays * 0.8, `an open crown, its sky showing through (${appleTree.sprays.toFixed(0)} sprays against the oak's ${oakSprays.toFixed(0)})`);
+  const tilesOf = (variant) => new Set(shape(variant, 91).sk.leaves.map((l) => l.tile));
+  assert.deepEqual([...tilesOf(0)], [3], 'the plum on the plum tile');
+  assert.deepEqual([...tilesOf(1)].sort(), [0, 1], 'the apple on the apple tiles');
+  assert.deepEqual([...tilesOf(2)], [2], 'the pear on the pear tile');
+  assert.equal(BARE_SPRAY_KINDS.apple, 'oak-bare', 'bare in winter, the oak\'s crooked twigs');
+  // the atlas: apples with a red cheek on tiles 0 and 1, yellow-green pears on tile 2, dark plums on tile 3
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const image = makeSprayAtlas('apple', mulberry32(7), 256, null, 0).image;
+    const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+    const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 }, tiles = [];
+    for (let t = 0; t < 4; t++) {
+      const ox = (t % 2) * 128, oy = Math.floor(t / 2) * 128;
+      let red = 0, yellow = 0, violet = 0, opaque = 0;
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+        const i = ((oy + y) * 256 + ox + x) * 4;
+        if (data[i + 3] < 200) continue;
+        opaque++;
+        c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+        if (hsl.h < 0.085 && hsl.s > 0.25) red++;
+        if (hsl.h > 0.13 && hsl.h < 0.19 && hsl.s > 0.3) yellow++;
+        if (hsl.h > 0.68 && hsl.h < 0.85 && hsl.s > 0.15) violet++;
+      }
+      tiles.push({ red, yellow, violet, opaque });
+    }
+    assert.ok(tiles[0].red + tiles[1].red > 60 && tiles[2].red + tiles[3].red < 5, `the apples' red cheeks on the apple tiles (${JSON.stringify(tiles)})`);
+    assert.ok(tiles[2].yellow > 20 && tiles[2].violet < 3, `the pears yellow-green on theirs (${JSON.stringify(tiles[2])})`);
+    assert.ok(tiles[3].violet > 10 && tiles[0].violet + tiles[1].violet + tiles[2].violet < 5, `the plums dark violet on theirs (${JSON.stringify(tiles[3])})`);
+    report.orchard = { plum, apple: appleTree, pear, oakSprays, tiles };
   } finally {
     globalThis.document = savedDocument;
     globalThis.ImageData = savedImageData;

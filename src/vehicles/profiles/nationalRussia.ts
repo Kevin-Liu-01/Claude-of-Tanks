@@ -9,6 +9,7 @@ import {castModernizedTurret} from './nationalDonorCore.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {NATIONAL_RUSSIA_DESIGNS} from '../nationalRussiaDesign.ts';
+import {addRussianChevronEra,type RussianArmorRow} from './nationalRussiaChevrons.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylY,cylZ}=KIT;
@@ -27,7 +28,7 @@ function armorHousing(P:TankBuilderPort,owner:'hull'|'turret',side:number,rows:r
   return {z,ring:side>0?points:points.map(([x,y])=>[-x,y] as const).reverse()};
  })));
 }
-function turretProtection(P:TankBuilderPort,c:NationalModernizationConfig):void {
+function turretProtection(P:TankBuilderPort,c:NationalModernizationConfig):readonly RussianArmorRow[] {
  const m=c.model;
  const rows:readonly ArmorRow[]=m===0?[
   [-2.03,0,.86,.34,.59],[-1.77,.49,1.45,.23,.67],[-1.02,1.01,1.61,.18,.71],
@@ -48,6 +49,7 @@ function turretProtection(P:TankBuilderPort,c:NationalModernizationConfig):void 
   const yaw=Math.atan(side*(b[2]-a[2])/(b[0]-a[0]));
   P.addEquipment('turretDetail',box(.025,.34,.050),side*(outer+.006),.44,z,0,yaw);
  }
+ return rows;
 }
 function housingEra(P:TankBuilderPort,housing:readonly THREE.BufferGeometry[],sector:string,seed:readonly[number,number,number],size:readonly[number,number,number]):void {
  const dir=new THREE.Vector3(seed[0],0,seed[2]).normalize(),origin=dir.clone().multiplyScalar(4);origin.y=seed[1];
@@ -133,16 +135,13 @@ function hullKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
 function turretKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
  const m=c.model,d=NATIONAL_RUSSIA_DESIGNS[m],top=d.roofY;
  castModernizedTurret(P,{halfWidth:[1.43,1.42,1.36][m],roofY:top,rearZ:[-1.47,-1.54,-1.40][m],frontZ:[1.59,1.64,1.55][m],crownHalf:.74,shoulderY:.31});
- turretProtection(P,c);
+ const protectionRows=turretProtection(P,c);
  // Freeze permanent receiving surfaces before destructible cassettes exist.
  // Otherwise the upper row can accidentally attach to the lower row's lid.
  const housing:THREE.BufferGeometry[]=[];
  P.forEachBucketPart(['turretExternalArmor'],g=>housing.push(g));
+ addRussianChevronEra(P,m,protectionRows,housing);
  for(const s of [-1,1]){
-  const front=m===1?[[.54,1.36],[.86,1.06],[1.10,.72],[1.24,.33]]:
-   m===0?[[.58,1.30],[.91,.98],[1.15,.58]]:[[.64,1.24],[.95,.84],[1.17,.41]];
-  for(const [x,z] of front)housingEra(P,housing,`turret_era_${s<0?'L':'R'}`,[s*x,.35,z],[m===1?.38:.34,m===1?.15:.12,.32]);
-  if(m!==2)for(const [x,z] of front.slice(1))housingEra(P,housing,`turret_era_${s<0?'L':'R'}`,[s*x,.56,z],[.30,.085,.23]);
   for(const z of [-.20,-.58,-.89])housingEra(P,housing,`turret_era_${s<0?'L':'R'}`,[s*1.25,.36,z],[.30,.11,.28]);
   // Smoke bank sits on the new outer housing on a positive steel saddle.
   const x=s*(s>0?[1.57,1.66,1.48][m]:[1.48,1.57,1.40][m]),z=s>0?[.32,.08,.38][m]:-.20,base=seat(P,'turret',x,z);

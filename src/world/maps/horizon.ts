@@ -34,7 +34,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
-import { resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
+import { OVERCAST_DIRECT_CUT_SHARED, resolveDeckClosure, resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
@@ -2688,6 +2688,14 @@ interface HorizonLighting {
   hemi: number;
   /** 0..1 cloud cover: the cloudscape's coverage, else the baked deck's opacity. */
   cover: number;
+  /**
+   * 2026-10-05 (the skies lane; the gauntlet's wave 93 on Titan Gorge's far rock under its closed deck: "banded, graphic
+   * mountain-face shading ... inconsistent with the implied shadowless overcast light"): the share of the clear sun the
+   * deck lets through as a beam (the light model's: 1 − OVERCAST_DIRECT_CUT × overcast), and the sun's elevation sine —
+   * the beam the deck cuts comes down as sky light (absent: 1 and 0, an open sky).
+   */
+  direct?: number;
+  sinEl?: number;
 }
 
 /** The references the vista's constants were tuned against: the engine's default sun and effective hemisphere. */
@@ -2699,9 +2707,14 @@ const HORIZON_REF_HEMI = 0.51;
 export function resolveHorizonLightingGains(lighting: HorizonLighting): { ambient: number; sunGain: number; shadow: number } {
   const hemiRatio = clamp(lighting.hemi / HORIZON_REF_HEMI, 0.6, 2.0);
   const sunRatio = clamp(lighting.sun / HORIZON_REF_SUN, 0.3, 1.6);
+  // (2026-10-05) under a deck the sun term keeps the beam's share and the rest returns as sky light: a level face keeps
+  // its light (the vista's sun term 1.05 · N·L, its sky term the ambient on a level face), the faces turned to and from
+  // the sun lose the difference the beam made
+  const sun = 1.30 * Math.pow(sunRatio, 0.7);
+  const direct = clamp(lighting.direct ?? 1, 0, 1);
   return {
-    ambient: 0.50 * Math.pow(hemiRatio, 0.8),
-    sunGain: 1.30 * Math.pow(sunRatio, 0.7),
+    ambient: 0.50 * Math.pow(hemiRatio, 0.8) + sun * (1 - direct) * 1.05 * Math.max(0, lighting.sinEl ?? 0),
+    sunGain: sun * direct,
     shadow: 0.85 * (1 - 0.7 * clamp(lighting.cover, 0, 1)),
   };
 }
@@ -3654,11 +3667,21 @@ export function* buildHorizonRingSteps(
   // floor, the deck's cover from the cloudscape or the baked deck's opacity)
   const skyCfg = cfg?.sky;
   const cloudsCfg = (cfg as { clouds?: { coverage?: number } } | null | undefined)?.clouds;
+  // (2026-10-05: the beam the deck lets through — the light model's overcast cut; the ring, which samples the cloud shade
+  // map where the layer draws, takes the cut a deck with gaps leaves to the map's pattern (resolveDeckClosure); the far
+  // range and the panorama, beyond any pattern, take the whole average cut)
+  // (coupled: OVERCAST_DIRECT_CUT_SHARED is lightModel.ts OVERCAST_DIRECT_CUT, pinned equal by lightModel.selftest — a change
+  // to the near beam moves the far land's sun term with it; 0.96 → 0.98 on 2026-10-05 took a closed deck's from 4 % to 2 %)
+  const deckPreset = { ...((skyCfg ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null };
+  const deckOvercast = resolveOvercast(deckPreset);
   const lighting: HorizonLighting = {
     sun: skyCfg?.sunIntensity ?? HORIZON_REF_SUN,
     hemi: (skyCfg?.hemiIntensity ?? 0.36) + 0.15,
     cover: clamp(cloudsCfg?.coverage ?? skyCfg?.cloudOpacity ?? 0.3, 0, 1),
+    direct: 1 - OVERCAST_DIRECT_CUT_SHARED * deckOvercast * resolveDeckClosure(deckPreset, getDeviceTier() !== 'mobile'),
+    sinEl: Math.max(0, ly),
   };
+  const farLighting: HorizonLighting = { ...lighting, direct: 1 - OVERCAST_DIRECT_CUT_SHARED * deckOvercast };
   // Round 72: the surface atlas over the finished ring (desktop tier, where the vista program reads it) — the fine
   // relief's gradient, the occlusion and the sun's visibility across the ranges, in slices like the terrain build
   const vista = getDeviceTier() !== 'mobile';
@@ -3785,7 +3808,7 @@ export function* buildHorizonRingSteps(
       ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
-      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(lighting),
+      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(farLighting),
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
@@ -3800,9 +3823,11 @@ export function* buildHorizonRingSteps(
     if (H.panorama !== false) {
       const panorama = createHorizonPanorama({
         seed: ((seed ^ 0x9A70) ^ idHash(mapId)) >>> 0, character: reliefCharacter,
+        // (Part 1, 2026-10-05: the far country takes the clouds' shadows where the tier has a shade map)
+        cloudShade: getDeviceTier() !== 'mobile',
         overrides: typeof H.panorama === 'object' ? H.panorama : undefined,
         palette: { base, rock: rockC, snow: snowC, forest: forestC, fog: fogC },
-        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(lighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
+        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(farLighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
         seaWeightAt: (angle) => {
           const opening = dominantSeaOpening(angle, seaOpenings);
           return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };

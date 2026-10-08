@@ -45,6 +45,7 @@ const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 
 const WEATHERED_SOURCES = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof'];
 /** Representative base footprints (info) of the plan ids, measured from the base builders. */
 const INFO = {
+  alpine: [8.7, 10.5, 6.7], logcabin: [6.2, 7.0, 4.0], onionchurch: [7.5, 10.0, 12.2], yardshed: [3.6, 3.0, 3.2],
   cottage: [6.0, 8.4, 5.0], farmhouse: [13.4, 9.9, 6.0], tavern: [9.7, 14.9, 8.4], schoolhouse: [9.1, 16.1, 11],
   cornershop: [9.0, 9.0, 7.3], barn: [8.4, 12.3, 6.2], granary: [4.2, 6.4, 4.7], woodshed: [4.3, 5.4, 3.1],
   depot: [11, 20, 6], ruin: [6.8, 9.0, 3.0], church: [9.6, 23.1, 20.4], chapel: [5.8, 8.6, 8.0], mill: [6.6, 6.6, 9.9],
@@ -54,6 +55,9 @@ const INFO = {
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
   firestation: [11.8, 15.4, 14.1],
+  // the megacity landmarks the city kits (Sarajevo, Shanghai) rebuild (structureKit.ts footprints)
+  megatower: [23.7, 24.7, 64.8], needletower: [19, 21, 64.9], arcology: [31, 23.2, 49.7], terracetower: [25.4, 22.4, 56.3],
+  civichall: [33.2, 22.8, 14.7], parkingdeck: [27.4, 22.4, 13.7], broadcasttower: [24.2, 20.2, 60.1],
 };
 // triangles per building, the three-storey tavern included (its forty windows cut into the wall with reveals, sills,
 // frames, bars and shutters, its window boxes, bench, woodpile, roof ladder and aerial, and a stripped roof patch when

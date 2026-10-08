@@ -57,8 +57,9 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
       : id === 'skybridge' ? (terrain.lakes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.lakes ?? [];
   // 2026-10-03 (maps lane B, gauntlet wave 28): Amberford's river cells became authored circles (radii 0.96) so its bank
   // reads smooth; like the migrated bays, the plain-disc formula comparisons keep running on its cells as plain discs
+  // 2026-10-05 (the map-revival lane): Suzhou Creek's cells (blackglass) are authored the same way
   const marshes = id === 'coastal' ? originalCoastalMarshes
-    : id === 'autumn' ? (terrain.marshes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.marshes ?? [];
+    : id === 'autumn' || id === 'blackglass' ? (terrain.marshes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.marshes ?? [];
   for (const disc of [...lakes, ...marshes]) {
     assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
     assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);

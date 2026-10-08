@@ -42,6 +42,18 @@ function pnoise(x: number, y: number, size: number, cells: number, seed: number)
   return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
 }
 
+/** Anisotropic periodic value noise in [0, 1]: `cx` lattice cells across the tile in x, `cy` in y (period the tile). */
+function pnoise2(x: number, y: number, size: number, cx: number, cy: number, seed: number): number {
+  const fx = x / size * cx, fy = y / size * cy;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const wx = (v: number) => ((v % cx) + cx) % cx, wy = (v: number) => ((v % cy) + cy) % cy;
+  const a = hash2(wx(x0), wy(y0), seed), b = hash2(wx(x0 + 1), wy(y0), seed);
+  const c = hash2(wx(x0), wy(y0 + 1), seed), d = hash2(wx(x0 + 1), wy(y0 + 1), seed);
+  return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
+}
+
 /**
  * A precomputed periodic fractal field sampled bilinearly: low-frequency noise (weathering, lichen, bedding) costs
  * a few reads per pixel instead of a dozen lattice hashes.
@@ -91,6 +103,58 @@ function finish(px: Uint8ClampedArray, hgt: Float32Array, rough: Float32Array, s
 /** sRGB 0..1 channel write with a multiplier tint. */
 function put(px: Uint8ClampedArray, j: number, r: number, g: number, b: number): void {
   px[j] = clamp(r) * 255; px[j + 1] = clamp(g) * 255; px[j + 2] = clamp(b) * 255; px[j + 3] = 255;
+}
+
+// ------------------------------------------------------------------------------------------------ render
+
+const _lime = new THREE.Color();
+
+/**
+ * Lime-wash over mud plaster (the facades lane, 2026-10-05; gauntlet wave 116 on Verdant: the khatas and the church
+ * carried "a grey stone-chip texture instead of lime-wash"): coats of lime brushed on in long strokes and a cross coat,
+ * soft and matt, thinner where the brush ran dry so the warm mud under it shows faintly; the wall beneath hand-plastered
+ * and gently wavy, never chipped or pebbled. Seamless (periodic noise). In the props plaster convention (props.ts
+ * makePlaster): a warm, low-saturation mid-grey that the kit's tone turns to its white or blue, and the height its
+ * normal and surface maps are drawn from.
+ */
+export function paintLimewash(s: number, seed: number): { px: Uint8ClampedArray; hgt: Float32Array } {
+  const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const lum = new Float32Array(s * s), ridge = new Float32Array(s * s);
+  // the brush: short dabs laid in two coats — a first of near-level strokes, a cross coat of near-upright ones — each
+  // dab its own load of lime (a shade lighter or darker), fading where the brush lifted, striated by its bristles;
+  // drawn with wrap-around so the tile stays seamless
+  let n = 0;
+  const rnd = () => hash2(n++, 7, seed + 31);
+  const dabs = Math.round(220 * (s / 256) * (s / 256));
+  for (let d = 0; d < dabs; d++) {
+    const cross = d >= dabs * 0.62;
+    const ang = (cross ? Math.PI / 2 : 0) + (rnd() - 0.5) * 1.1;
+    const len = (36 + rnd() * 60) * s / 256, wid = (9 + rnd() * 10) * s / 256;
+    const cx = rnd() * s, cy = rnd() * s, load = (rnd() - 0.5) * 0.06, phase = rnd() * 6.283, freq = 0.9 + rnd() * 0.8;
+    const ca = Math.cos(ang), sa = Math.sin(ang), r = Math.ceil(len / 2 + wid);
+    for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
+      const a = (ox * ca + oy * sa) / (len / 2), b = (-ox * sa + oy * ca) / (wid / 2);
+      if (a * a + b * b > 1) continue;
+      const w = (1 - a * a) * (1 - Math.abs(b)) * (cross ? 0.7 : 1);
+      const stri = Math.sin(b * wid * freq * 1.1 + phase);
+      const x = ((Math.floor(cx) + ox) % s + s) % s, y = ((Math.floor(cy) + oy) % s + s) % s, i = y * s + x;
+      lum[i] += w * (load + stri * 0.006);
+      ridge[i] += w * (0.25 + stri * 0.07);
+    }
+  }
+  const body = field(s, 64, 3, 3, seed + 3);
+  const thinF = field(s, 128, 5, 3, seed + 7);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const i = y * s + x, j = i * 4;
+    const b = body(x, y), grain = pnoise(x, y, s, 96, seed + 29);
+    // thin coats where the brush ran dry, the warm mud faintly through them
+    const thin = smooth(0.62, 0.86, thinF(x, y)) * clamp(1 - ridge[i] * 0.8);
+    const l = 0.5 + (b - 0.5) * 0.03 + clamp(lum[i], -0.06, 0.06) + (grain - 0.5) * 0.012 - thin * 0.07;
+    _lime.setHSL(0.085 - thin * 0.02, 0.1 + thin * 0.14, l);
+    px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
+    hgt[i] = clamp(0.5 + (b - 0.5) * 0.6 + clamp(ridge[i], 0, 0.6) * 0.25 - thin * 0.05);
+  }
+  return { px, hgt };
 }
 
 // ------------------------------------------------------------------------------------------------ roofs
@@ -332,6 +396,8 @@ interface MasonryRecipe {
   bedding?: number;
   /** the cloudy tone variation inside one stone (default 0.3; dressed stone is even) */
   mottle?: number;
+  /** soiling: rain runs washing grime down the face from every ledge (0 none) */
+  streaks?: number;
 }
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
@@ -353,13 +419,28 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
     tint: [1, 1, 1], spread: 0.2, hue: 0.04, relief: 0.7, pillow: 0.5, speckle: 0.2, lichen: 0.3, grime: 0.35, rubble: 0.5 },
   rubble: { courseMin: 36, courseMax: 90, blockMin: 50, blockMax: 160, mortar: 4.2, mortarTint: [0.66, 0.62, 0.55],
     tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.75, pillow: 0.7, speckle: 0.1, lichen: 0.2, grime: 0.3, rubble: 0.7 },
+  // (the map-revival lane, 2026-10-06, Titan round 3: the rubble kind's pale lime joints between brick-sized stones read
+  // as "a red-brick schoolhouse") field stone laid up in mud: big irregular blocks, 0.25-0.5 m courses split within,
+  // 0.4-1 m long, in a mortar of the same red earth a shade darker, so the joints carry no grid
+  fieldstone: { courseMin: 64, courseMax: 128, blockMin: 96, blockMax: 250, mortar: 3.2, mortarTint: [0.52, 0.38, 0.3],
+    tint: [1, 1, 1], spread: 0.22, hue: 0.07, relief: 0.8, pillow: 0.6, speckle: 0.04, lichen: 0.04, grime: 0.32, rubble: 0.6,
+    bedding: 0.07, mottle: 0.4 },
   // concrete masonry units (0.4 x 0.2 m hollow blocks in running bond): plinths, godowns, desert houses
   block: { courseMin: 51, courseMax: 52, blockMin: 102, blockMax: 103, mortar: 1.5, mortarTint: [0.7, 0.69, 0.66],
     tint: [1, 1, 1], spread: 0.08, hue: 0.02, relief: 0.25, pillow: 0.05, speckle: 0.35, lichen: 0.05, grime: 0.45, rubble: 0 },
 });
 
-function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
-  const R = MASONRY[kind];
+/**
+ * A town's dressed stone over a kind's recipe (the facades lane, 2026-10-05; gauntlet wave 116 on Steinburg: "oversized
+ * clean ashlar"): courses of 15-26 cm and blocks of 27-62 cm, soiled — rain runs down the face from every course, grime
+ * in the joints. A style asks for it with `stone.dressed`.
+ */
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 38, courseMax: 66, blockMin: 70, blockMax: 160, mortar: 1.7,
+  mortarTint: [0.55, 0.51, 0.47] as Tint, spread: 0.15, hue: 0.07, relief: 0.4, pillow: 0.22, speckle: 0.04, lichen: 0.22, grime: 0.7,
+  rubble: 0.1, mottle: 0.36, streaks: 0.55 });
+
+function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const colsE: number[][] = [];
@@ -401,7 +482,8 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): 
       const tex = texF(x, y) * 0.8 + hash2(x, y, seed + 3) * 0.2;
       const big = bigF(x, y);
       const lichen = R.lichen * smooth(0.7, 0.88, lichenF(x, y)) * smooth(0.45, 0.85, k2);
-      const grime = R.grime * smooth(0.5, 0.95, big) * 0.5;
+      const runs = R.streaks ? R.streaks * smooth(0.55, 0.9, pnoise2(x, y, s, 22, 3, seed + 53)) * 0.36 : 0;
+      const grime = R.grime * smooth(0.5, 0.95, big) * 0.5 + runs;
       const speck = R.speckle > 0 ? (hash2(x, y, seed + 17) > 0.93 ? 1 : hash2(x, y, seed + 19) > 0.95 ? -1 : 0) * R.speckle : 0;
       let rr: number, gg: number, bb: number;
       if (joint) {
@@ -532,10 +614,10 @@ export function* makeRegionalRoof(kind: RoofSurfaceKind, tint: Tint, anisotropy:
 }
 
 /** The stone bucket's texture set for a style (512 px). */
-export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7):
+export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false):
   Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
-  const [px, hgt, rough] = yield* cached(`stone:${kind}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed));
+  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
   const relief = kind === 'brick' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
   return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
@@ -565,5 +647,12 @@ export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concret
     return { size: 256, px, hgt, rough };
   }
   const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed);
+  return { size: 512, px, hgt, rough };
+}
+
+/** Paint-only access for receipts (no canvas): a town's dressed stone (`stone.dressed`) over a kind's recipe. */
+export function* paintDressedStoneBuffers(kind: StoneSurfaceKind, tint: Tint, seed: number):
+  Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+  const [px, hgt, rough] = yield* masonry(512, kind, tint, seed, true);
   return { size: 512, px, hgt, rough };
 }

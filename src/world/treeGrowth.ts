@@ -25,15 +25,17 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine of the Gulf coastal plain (Longleaf Crossing),
   // the cedar of Lebanon (the Chouf, Orchard Valley), the Aso caldera's sugi and Japanese red pine (Obsidian Caldera)
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
+  // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
+  | 'apple'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
-  | 'broom' | 'longleafSeedling';
+  | 'broom' | 'longleafSeedling' | 'buddleia';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -136,9 +138,35 @@ interface GrowthProfile {
    * falling short, not every tier ending on one cone.
    */
   ragged?: number;
+  /**
+   * Trees round 5 (the arid and volcanic lane's Monument Valley juniper: "often partly dead with silver deadwood"): the
+   * share of a decurrent crown's scaffolds that stand dead, 0..1 (unset 0) — a dead limb and everything it carries bear no
+   * sprays, its wood weathered silver-grey (GROWTH_DEADWOOD_TINT), the limb snapped short at its tip.
+   */
+  deadwood?: number;
+  /**
+   * Trees lane (2026-10-05): an orchard tree — open-grown wherever it stands (no forest-grown form in a wood: its slot
+   * is never a forest species, forestGrownProfile keeps it), its variants their own shapes (variantShape) and tiles.
+   */
+  orchard?: boolean;
+  /**
+   * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
+   * variant's age as every profile is; unset, the variants are the profile at three ages.
+   */
+  variantShape?: readonly [Partial<GrowthProfile>, Partial<GrowthProfile>, Partial<GrowthProfile>];
+  /** Trees lane: the atlas tiles each near variant's sprays take (the Streuobst atlas paints a species a tile). */
+  variantTiles?: readonly [readonly number[], readonly number[], readonly number[]];
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
+const variantProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>[]>();
+/** A profile's variant shape (variantShape) over it, or the profile itself. */
+function variantProfile(p: Readonly<GrowthProfile>, variant: number): Readonly<GrowthProfile> {
+  if (!p.variantShape) return p;
+  let list = variantProfiles.get(p);
+  if (!list) { list = p.variantShape.map((shape) => P({ ...p, ...shape })); variantProfiles.set(p, list); }
+  return list[variant];
+}
 
 /**
  * The species profiles at the battlefield's scale (the archetypes' heights and crown radii, treeSpecies.ts): a stand
@@ -349,6 +377,17 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
     foliageValue: 1.18,
   }),
+  // trees round 5 (the cities lane's Ironworks, the Saar works): the buddleia of waste ground, slag heaps and rail sidings
+  // — a ruderal shrub of arching canes, long narrow grey-green leaves and nodding purple flower spikes, only ever grown as
+  // a shrub (growShrubSkeleton reads the aspect, the bend and the family: long, narrow, arching sprays)
+  buddleia: P({
+    family: 'broadleaf', height: 3.0, heightSpread: 0.16, trunkR: 0.06, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.1, crownR: 1.4,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.7, angleHigh: 0.35,
+    droop: 0.3, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.4, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.75, 1.1], aspect: 0.62, habit: 'spray', tipSprays: 1,
+    cardBend: 0.42, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+  }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
   // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
   broom: P({
@@ -371,15 +410,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     foliageValue: 1.3,
   }),
   // the one-seed and Utah junipers of the Arizona uplands: a short shaggy grey bole forking near the ground into a few
-  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall
+  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall. Trees
+  // round 5 (the arid and volcanic lane's Monument Valley, where the olive stand-in read as "lush broadleaf groves"): its
+  // stems gnarled and twisting, a quarter of its scaffolds dead silver wood, its crown open (the sprays two thirds as
+  // close), the twisted wood showing through it
   juniper: P({
     family: 'conifer', height: 4.4, heightSpread: 0.16, trunkR: 0.24, form: 'decurrent',
     forkAt: [0.1, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.0], crownBase: 0.12, crownR: 2.1,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.4, angleLow: 1.2, angleHigh: 0.65,
     droop: 0.22, upturn: 0.35, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.55, sideDroop: 0.2, twigPerM: 1.4,
-    leafOrder: 1, leafPerM: 5.2, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 3.4, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
     cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
-    foliageValue: 1.2,
+    foliageValue: 1.2, gnarl: 0.7, deadwood: 0.25,
   }),
   // the pinyon (Pinus edulis): a short pine, its crown low, round and dense, its needles short and stiff in tufts at
   // the shoot ends; a grey, furrowed bole
@@ -397,14 +439,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // plates, self-pruned to three fifths of its height, under a small, open, irregular crown of a few stout upturned
   // limbs, each ending in great tufts of very long bright-green needles — the fox-tails the species is named for, bare
   // wood between them
+  // (trees lane, 2026-10-05, the gauntlet's wave 124 on Longleaf Crossing: "broccoli-crowned blobs rather than tall,
+  // sparse-crowned longleaf"; the coordinator: a 17-19 m clear bole, the crown from about 70 %, a small ragged tufted
+  // crown): the tallest tree of the fleet, about 18 m at the placed trees' mean scale, its crown a few ragged whorls of
+  // upturned limbs high on the bole, each limb's needles in tufts at its end
   longleafPine: P({
-    family: 'conifer', height: 9.6, heightSpread: 0.12, trunkR: 0.27, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.6, crownR: 2.5,
-    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.85, angleLow: 1.4, angleHigh: 0.85,
-    droop: 0.32, upturn: 0.6, sidePerM: 0.9, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
-    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.6, spray: [1.0, 1.4], aspect: 0.95, habit: 'tuft', tipSprays: 5,
-    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.33, 0.25], barkTopTint: [0.60, 0.42, 0.30],
-    foliageValue: 1.18,
+    family: 'conifer', height: 13.6, heightSpread: 0.12, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.7, crownR: 2.0,
+    envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 1.05, angleLow: 1.32, angleHigh: 0.8,
+    droop: 0.28, upturn: 0.7, sidePerM: 0.7, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 1.3, leafFrom: 0.65, spray: [1.05, 1.45], aspect: 0.95, habit: 'tuft', tipSprays: 5,
+    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.4, gnarl: 0.2, bark: 1, barkTint: [0.50, 0.33, 0.25],
+    barkTopTint: [0.60, 0.42, 0.30], foliageValue: 1.18,
   }),
   // the cedar of Lebanon (Cedrus libani, the Chouf): a massive bole under a broad, flat-topped crown of great horizontal
   // shelves — level limbs a tier apart carrying dense flat plates of needle rosettes, open sky between the tiers; dark
@@ -445,6 +491,30 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.55, bark: 1, barkTint: [0.48, 0.34, 0.28],
     barkTopTint: [0.88, 0.48, 0.30], foliageValue: 1.1,
   }),
+  // the trees lane (2026-10-05, the farmland lane's Streuobst behind Frontier Basin's farm courtyards): the old meadow
+  // orchard's fruit tree, open-grown in rows over the grass — a short trunk of 1.2-1.8 m (at the placed trees' mean scale)
+  // to three to five spreading scaffolds, a broad, open, rounded crown about as wide as it is tall, crooked with age, the
+  // sky showing through. Its variants are the three trees of a Hessian Streuobstwiese: the plum, smaller and finer; the
+  // apple, round and spreading; the pear, taller and upright — each on its own atlas tiles (treeSprayAtlas.ts
+  // paintOrchardTile: its leaves and its summer fruit)
+  apple: P({
+    family: 'broadleaf', height: 4.6, heightSpread: 0.14, trunkR: 0.13, form: 'decurrent',
+    forkAt: [0.22, 0.29], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.1], crownBase: 0.26, crownR: 2.35,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.45, angleLow: 1.2, angleHigh: 0.7,
+    droop: 0.5, upturn: 0.3, sidePerM: 2.0, sideAngle: 0.85, sideRatio: 0.55, sideDroop: 0.45, twigPerM: 1.2,
+    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.2, spray: [0.45, 0.68], aspect: 0.82, habit: 'spray', tipSprays: 1,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, bark: 1, barkTint: [0.42, 0.39, 0.35], barkTopTint: null,
+    foliageValue: 1.2, orchard: true,
+    variantShape: [
+      // the plum
+      { height: 4.4, crownR: 2.1, scaffoldAngle: [0.45, 1.0], spray: [0.4, 0.6] },
+      // the apple
+      {},
+      // the pear
+      { height: 4.8, crownR: 1.85, scaffoldAngle: [0.3, 0.75], forkAt: [0.19, 0.25] },
+    ],
+    variantTiles: [[3], [0, 1], [2]],
+  }),
   // the longleaf's grass stage (shrub-only, Longleaf Crossing's cutover): a seedling of its first years is no stem at
   // all, a dense fountain of long needles from the ground like a bunchgrass, a few to a clump; the tree fields mirror the
   // longleaf's (growShrubSkeleton reads the fountain, the aspect and the bend)
@@ -470,6 +540,8 @@ interface GrowthBranch {
   broken: boolean;
   /** Emitted as a straight supporting twig whatever its order (supportSprays: it carries sprays the tube budget left). */
   support?: boolean;
+  /** Trees round 5: dead wood in a living crown (the profile's `deadwood`): no sprays, silver-grey, its limb snapped. */
+  dead?: boolean;
 }
 interface LeafSite {
   /** Seat of the spray on its branch (tree space). */
@@ -523,6 +595,44 @@ interface GrowthOptions {
   variant?: number;
   /** Detail tier: 'desktop' or 'mobile' (fewer sprays and side shoots, same silhouette). */
   tier?: 'desktop' | 'mobile';
+  /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
+  forest?: boolean;
+}
+
+/**
+ * Trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
+ * near-identical forked grey trunks", the woods' savanna read): how a tree grown inside a closed wood differs from one
+ * grown in the open. Drawn up toward the light among its neighbours it self-prunes its lower limbs into a tall clear bole
+ * under a high crown, a little narrower, its stem slimmer for its height and its scaffolds more upright: a decurrent
+ * broadleaf forks at about one and a half times its open height (never past 56 % of its height), an excurrent
+ * broadleaf carries its crown from near half its height and a conifer from over a third, and a gnarled form grows
+ * straighter. The field trees keep the open-grown form.
+ */
+/** Trees round 5: dead wood's weathered silver-grey (emitBranchGeometry, the profile's deadwood). */
+export const GROWTH_DEADWOOD_TINT: readonly [number, number, number] = Object.freeze([0.82, 0.8, 0.76]) as unknown as readonly [number, number, number];
+export const GROWTH_FOREST_FORM = Object.freeze({
+  height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
+  scaffoldAngle: 0.72, gnarl: 0.5,
+});
+const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag or a grass-stage seedling keeps its own. */
+export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+  if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard) return p;
+  const cached = forestProfiles.get(p);
+  if (cached) return cached;
+  const f = GROWTH_FOREST_FORM;
+  const forest = P({
+    ...p,
+    height: p.height * f.height,
+    crownR: p.crownR * f.crownR,
+    trunkR: p.trunkR * f.trunkR,
+    forkAt: p.form === 'decurrent' ? [Math.min(f.forkMax, p.forkAt[0] * f.fork), Math.min(f.forkMax, p.forkAt[1] * f.fork)] : p.forkAt,
+    scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, p.scaffoldAngle[1] * f.scaffoldAngle],
+    crownBase: p.form === 'excurrent' ? Math.max(p.crownBase, p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
+    ...(p.gnarl !== undefined ? { gnarl: p.gnarl * f.gnarl } : {}),
+  });
+  forestProfiles.set(p, forest);
+  return forest;
 }
 
 // ------------------------------------------------------------------------------------------------ vector helpers
@@ -764,7 +874,13 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
   const phase = rng() * Math.PI * 2;
   /** Trees round 4: a parasol crown's limbs and where their side shoots may start, grown once every limb has its reach. */
   const parasol: Array<[number, number]> = [];
+  // trees round 5: a crown with deadwood loses its share of the scaffolds (one at the least), from its own draws (none
+  // for a crown without)
+  const deadShare = profile.deadwood ?? 0;
+  const deadCount = deadShare > 0 ? Math.max(1, Math.round(n * deadShare)) : 0, deadFrom = deadShare > 0 ? (rng() * n) | 0 : 0;
   for (let s = 0; s < n; s++) {
+    const firstBranch = ctx.branches.length;
+    const dead = deadCount > 0 && ((s - deadFrom + n) % n) < deadCount;
     const az = phase + (s / n) * Math.PI * 2 + (rng() - 0.5) * 0.7;
     const a = range(rng, profile.scaffoldAngle) * (variant === 1 ? 0.92 : variant === 2 ? 1.08 : 1);
     const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
@@ -773,9 +889,11 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     const rise = ctx.crownTopY - fork.y;
     const len = Math.min(Math.hypot(reach, rise * 0.85), reach / Math.max(0.35, Math.sin(a)) * 1.05);
     const r0 = fork.r * (0.62 + rng() * 0.12) * (n > 3 ? 0.9 : 1);
-    const nodes = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
+    const grown = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
       profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, true);
-    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: false });
+    // (trees round 5: a dead limb snapped a third short, before anything grows on it — its tip a splintered stub)
+    const nodes = dead ? grown.slice(0, Math.max(2, Math.ceil(grown.length * 0.7))) : grown;
+    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: dead });
     const limb = ctx.branches.length - 1;
     // a continuing leader on some scaffolds: a second split two thirds up gives the dome its lobes
     if (rng() < 0.45) {
@@ -790,6 +908,8 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     }
     if (profile.foliageBand) parasol.push([limb, 0.18]);
     else growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
+    // the dead limb and all it carries: bare and silver
+    if (dead) for (let b = firstBranch; b < ctx.branches.length; b++) ctx.branches[b].dead = true;
   }
   // trees round 4: a parasol crown's layer lies over its limbs' highest reach (a young tree's limbs may fall short of
   // the profile's height), and the limbs' side shoots crowd into it
@@ -917,7 +1037,7 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   }
   for (let branchIndex = 0; branchIndex < ctx.branches.length; branchIndex++) {
     const branch = ctx.branches[branchIndex];
-    if (branch.broken) continue;
+    if (branch.broken || branch.dead) continue;
     // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them); trees round 4:
     // and a parasol's limb tips their sprays (a bare limb end stood over the acacia's flat layer)
     const tipOnly = branch.order < profile.leafOrder;
@@ -1403,8 +1523,11 @@ function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey',
  * 1, 2) sets the age class — a younger, narrower tree, the typical one, an older broader one.
  */
 export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: GrowthOptions = {}): TreeSkeleton {
-  const profile = TREE_GROWTH_PROFILES[species];
   const variant = ((options.variant ?? 1) % 3 + 3) % 3;
+  // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
+  // form's plum young and small, its apple in its middle years, its pear old and tall)
+  const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
+  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
@@ -1499,6 +1622,10 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   let r = 0;
   if (leaves.length) for (const l of leaves) r = Math.max(r, Math.hypot(l.x - cx, (l.y - cy) * 0.8, l.z - cz) + l.length * 0.5);
   else r = ctx.crownR;
+  // (trees lane: a profile's variant tiles — each Streuobst variant's sprays on its own species' tiles, from the tile each
+  // spray drew, so no draw moves)
+  const variantTiles = base.variantTiles?.[variant];
+  if (variantTiles) for (const l of leaves) l.tile = variantTiles[l.tile % variantTiles.length];
   const skeleton: TreeSkeleton = { species, height, branches: ctx.branches, leaves, crown: { x: cx, y: cy, z: cz, r: Math.max(0.8, r) } };
   // the living crowns' masses (a palm's head is fronds round one point, a snag's few dead twigs shade nothing)
   if (leaves.length >= 8 && profile.family !== 'palm' && profile.family !== 'dead') skeleton.lobes = crownLobes(skeleton, crownLobeCount(profile, leaves.length));
@@ -1792,6 +1919,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       frames.push({ t, n, b: norm(cross(t, n)) });
     }
     const branchTint = 0.9 + rng() * 0.16;
+    // trees round 5: dead wood weathers silver-grey, whatever the bark (the profile's deadwood)
+    const deadTint = branch.dead ? GROWTH_DEADWOOD_TINT : null;
     const circumference = Math.max(0.22, 2 * Math.PI * nodes[0].r);
     let along = rng() * 3;
     const ring: Array<Array<[number, number, number, number, number, number, number]>> = [];
@@ -1802,7 +1931,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const ground = 0.78 + 0.22 * clamp01(node.y / 1.4);
       const heightT = clamp01(node.y / Math.max(1, skeleton.height));
       const topMix = branch.order > 0 ? 0.65 : clamp01((heightT - 0.45) / 0.4);
-      const tr = lerp(options.tint[0], top[0], topMix), tg = lerp(options.tint[1], top[1], topMix), tb = lerp(options.tint[2], top[2], topMix);
+      const tr = deadTint ? deadTint[0] : lerp(options.tint[0], top[0], topMix), tg = deadTint ? deadTint[1] : lerp(options.tint[1], top[1], topMix);
+      const tb = deadTint ? deadTint[2] : lerp(options.tint[2], top[2], topMix);
       // the wood inside the crown stands in the leaves' shade (the near trunks receive no cascade shadow — their
       // stability rule — so the canopy's occlusion is baked: the deeper in the crown, the darker the limb)
       const cdx = node.x - skeleton.crown.x, cdy = (node.y - skeleton.crown.y) * 1.2, cdz = node.z - skeleton.crown.z;
