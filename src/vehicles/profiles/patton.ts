@@ -4612,14 +4612,10 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
   // brightest pixel is no longer a glass pane and pane median sits below the
   // lit camo plates.
-  // Fleet lane round 1 (2026-10-08; accessories wave 255: "the turret-front sight window (left of the gun) is a
-  // saturated blue disc"): the half-metal blue-grey mirrored the sky into the round rangefinder windows. Neutral smoked
-  // glass with a dielectric sheen keeps the r4 calm-down's dark read without the blue.
   const buildM60AssemblyStage1 = (): void => {
-    P.mats.glass.color.setHex(0x323834);
-    P.mats.glass.roughness = 0.42;
-    P.mats.glass.metalness = 0.12;
-    P.mats.glass.envMapIntensity = 0.35;
+    P.mats.glass.color.setHex(0x46525b);
+    P.mats.glass.roughness = 0.52;
+    P.mats.glass.metalness = 0.50;
   };
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;
