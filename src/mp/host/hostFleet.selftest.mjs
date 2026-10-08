@@ -41,16 +41,23 @@ function staticClosure(entry) {
 const closure = staticClosure('src/mp/host/matchHostWorker.ts');
 const FLEET_PAYLOAD = /^src\/vehicles\/(?:tankFactory|tankFactoryCore|fleetFactory|profiledProcedurals|modern[123]|france|combatAnatomyCalibrations|vehicleMarkingSeats\.generated|interiorFills|profiles\/kit)\.ts$|^src\/vehicles\/(?:combatAnatomyGroups|interiorFillGroups|vehicleMarkingSeatGroups)\//;
 assert.deepEqual(closure.filter((file) => FLEET_PAYLOAD.test(file)), [], 'no fleet builder, kit, calibration literal, fill or seat in the host Worker');
+// The Worker builds its world from the verified collision manifest and createHeightField (worldCollision.ts); the
+// visual horizon, its border farmsteads and the regional building kits are not authority inputs. terrain.ts reaches the
+// horizon only through horizonRingHook.ts (2026-10-08: terrain.ts → maps/horizon.ts → borderFarmsteads.ts →
+// maps/regional/index.ts had put every regional kit, 1.9 MB of 7.07 MB, into the Worker).
+const VISUAL_WORLD = /^src\/world\/(?:maps\/horizon|borderFarmsteads|horizonPanorama|horizonVista)\.ts$|^src\/world\/maps\/regional\//;
+assert.deepEqual(closure.filter((file) => VISUAL_WORLD.test(file)), [], 'no visual horizon, farmstead or regional building kit in the host Worker');
 for (const file of ['server/match/matchActor.ts', 'src/vehicles/authorityFleet.ts', 'src/vehicles/fleetRegistration.ts']) {
   assert.ok(closure.includes(file), `the host Worker registers the fleet through ${file}`);
 }
 const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, file)).size, 0);
 // The bound guards against eager fleet imports: the fleet alone is 18.9 MB of static source plus every calibration group,
 // so one stray import of a builder, a kit or a calibration literal fails it by a wide margin. What the Worker does carry
-// grows with the maps: the simulation, the world's height field, the wire, the server actor, three's math, the i18n
-// catalogs, and the regional architecture kits (the Worker derives each map's world collision from its kit geometry, so
-// the kits belong in its closure). 4.45 MB on 2026-10-01; 5.81 MB at PR head 5d2461283; 6.06 MB with the five map revival
-// lane 2 kits combined (2026-10-05).
+// grows with the maps: the simulation, the world's height field, the wire, the server actor, three's math and the i18n
+// catalogs. Its world collision comes from the captured manifests, not from kit geometry, so the regional building kits
+// stay out (above). 4.45 MB on 2026-10-01; 5.81 MB at PR head 5d2461283; 6.06 MB with the five map revival lane 2 kits
+// combined (2026-10-05); 7.07 MB at e65122a84 through the horizon chain, 5.13 MB once terrain.ts stopped importing the
+// horizon (2026-10-08).
 assert.ok(sourceBytes < 7e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
