@@ -11,11 +11,11 @@
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
+import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import { KIT, FITTINGS, MUDGUARDS, orientedSlab, muzzleBore } from './kit.ts';
 import {
-  chevronSurfacePanel,
+  chineseArrowCassette,
   closedIntegratedChevron,
-  interpolateChevronStation,
   type ChevronStation,
 } from './chineseChevron.ts';
 import {
@@ -25,7 +25,8 @@ import {
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import type { BufferGeometry } from 'three';
+import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -438,7 +439,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
     { height: 0.02, inset: 1.0 },
     { height: 0.30, inset: 1.0 },
     { height: crown85, inset: inset85, centerHeight: 0.80 },
-  ]));
+  ], { convexSideQuads: true }));
   crownRimTrim(P, plan85, inset85, crown85);
   // ring skirt seats the shell on the deck at every yaw (§B2)
   P.add('turret', cylY(1.02, 1.08, 0.10, seg), 0, -0.03, -0.05);
@@ -654,8 +655,7 @@ function crownRimTrim(
 // DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
-  const seg = P.q ? 20 : 14;
+  const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
 
   // ---- six large-wheel stations, rear drive, covered return run.
   // owner 2026-09-22 ("vt 4a1, ztz 99a2 and ztz 99a2 proto … wheels too big … overlap each other"):
@@ -716,10 +716,16 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       : shoulderPlanRight.map(([x, z]) => [-x, z] as Vec2Tuple).reverse();
     const shoulderLower = s > 0 ? shoulderLowerRight : [...shoulderLowerRight].reverse();
     const shoulderUpper = s > 0 ? shoulderUpperRight : [...shoulderUpperRight].reverse();
-    P.add('hull', KIT.polyMultiLoft(shoulderPlan, [
-      { height: shoulderLower, inset: 1 },
-      { height: shoulderUpper, inset: 1 },
+    // Finite welded support faces replace the concave center fan. The twelve
+    // authored perimeter corners still define the shoulder, including its
+    // fender/guard contacts; no invented center vertex dents either skin.
+    const shoulder = new ConvexGeometry(shoulderPlan.flatMap(([x,z],i) => [
+      new Vector3(x,shoulderLower[i],z),new Vector3(x,shoulderUpper[i],z),
     ]));
+    const positions=shoulder.getAttribute('position'),uv:number[]=[];
+    for(let i=0;i<positions.count;i++)uv.push(positions.getX(i),positions.getZ(i));
+    shoulder.setAttribute('uv',new Float32BufferAttribute(uv,2));
+    P.add('hull', shoulder);
   });
 
   // ---- glacis chevron armor: three raked panel courses with real seam
@@ -810,13 +816,13 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
     P.add('hullDetail', box(0.035, 0.44, 0.042), -1.00 + i * 0.286, 1.12, -4.07);
   });
   ([-1, 1] as const).forEach((s) => {
-    // drum + dark end caps + straps + twin angle brackets into the transom
+    // Single-ended drum stock with hollow end hoops, straps and twin angle
+    // brackets into the transom. Closed cap overlays previously duplicated
+    // the body's x=centre±.40 planes and visibly fought over those pixels.
     // (print band: y 1.5..2.1 hanging aft — the isolated aft-stretch A/B
     // measured +0.4 on the whole gate; the short-whip change in the same
     // batch was the regression and is reverted separately)
-    P.add('hullDetail', cylX(0.32, 0.80, seg), s * 0.76, 1.79, -4.56);
-    P.add('hullDark', cylX(0.325, 0.03, seg), s * (0.76 + 0.385), 1.79, -4.56);
-    P.add('hullDark', cylX(0.325, 0.03, seg), s * (0.76 - 0.385), 1.79, -4.56);
+    addChineseFuelDrum(P,s*.76,1.79,-4.56,.32,.80);
     for (const dx of [-0.24, 0.24]) {
       P.add('hullDark', box(0.05, 0.68, 0.05), s * (0.76 + dx), 1.77, -4.56);
       P.add('hullDark', box(0.05, 0.10, 0.46), s * (0.76 + dx), 1.52, -4.28, 0.22, 0, 0);
@@ -893,18 +899,20 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   }
   // deep add-on cheek cassettes following the wedge rake (the A2 tell):
   // two courses per side, seam battens between, gun channel kept open.
-  P.visualEraCluster('ztz99a2-cheek-era', 'turret', () => {
-  for (const s of [-1, 1]) {
-    addChineseThroatStock(P, orientedSlab(
-      [s * 0.34, 0.06, 1.52], [s * 0.94, 0.06, 0.90], [s * 0.80, 0.06, 0.62], [s * 0.30, 0.06, 1.18],
-      [s * 0.26, 0.62, 0.94], [s * 0.68, 0.60, 0.56], [s * 0.60, 0.56, 0.36], [s * 0.24, 0.58, 0.70]));
-    P.add('turret', orientedSlab(
-      [s * 0.94, 0.06, 0.90], [s * 1.55, 0.08, 0.16], [s * 1.36, 0.08, -0.06], [s * 0.80, 0.06, 0.62],
-      [s * 0.68, 0.60, 0.56], [s * 1.14, 0.62, 0.10], [s * 1.04, 0.58, -0.10], [s * 0.60, 0.56, 0.36]));
-    P.add('turretDark', box(0.035, 0.44, 0.035), s * 0.84, 0.32, 0.78, -0.42, s * 0.72, 0);
-    P.add('turretDark', box(1.06, 0.026, 0.045), s * 0.80, 0.625, 0.48, 0, s * 0.62, 0);
+  // Permanent shaped backing survives ERA loss; the new wide, shallow
+  // arrow cassettes wrap both rakes rather than becoming a second turret.
+  const prototypeChevron:readonly ChevronStation[]=[
+    {x:.34,upperX:.26,ridgeX:.34,lowerX:.34,upperY:.62,upperZ:.94,ridgeY:.29,ridgeZ:1.68,lowerY:.06,lowerZ:1.52},
+    {x:.94,upperX:.68,ridgeX:.94,lowerX:.94,upperY:.60,upperZ:.56,ridgeY:.29,ridgeZ:1.07,lowerY:.06,lowerZ:.90},
+    {x:1.55,upperX:1.14,ridgeX:1.55,lowerX:1.55,upperY:.62,upperZ:.10,ridgeY:.30,ridgeZ:.31,lowerY:.08,lowerZ:.16},
+  ];
+  for(const side of [-1,1] as const){
+    addChineseThroatStock(P,closedIntegratedChevron(prototypeChevron,side));
+    P.visualEraCluster('ztz99a2-cheek-era','turret',()=>{
+      for(const [a,b] of [[.44,.69],[.72,.99],[1.02,1.26],[1.29,1.47]])
+        addChineseThroatStock(P,chineseArrowCassette(prototypeChevron,side,a,b),'turretExternalArmor');
+    });
   }
-  });
   // nose beak walls flanking the OPEN gun channel: the print's wedge line
   // keeps falling 2.5 -> 2.06 out to +1.7 world — two raked prisms continue
   // the cheek slope past the crown lip; the channel stays clear through the
@@ -1103,11 +1111,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
         const endX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * endT;
-        addChineseThroatStock(P, chevronSurfacePanel(
-          interpolateChevronStation(chevronStations, startX),
-          interpolateChevronStation(chevronStations, endX),
-          s,
-        ), 'turretExternalArmor');
+        addChineseThroatStock(P, chineseArrowCassette(chevronStations,s,startX,endX), 'turretExternalArmor');
       }
     }
   });

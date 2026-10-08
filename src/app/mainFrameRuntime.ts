@@ -44,6 +44,7 @@ interface MainFrameRuntimeOptions {
   scene: Scene;
   camera: PerspectiveCamera;
   game: MainGameState;
+  thermalVehicles?: ReturnType<typeof createThermalVehicles>;
   scheduleFrame(): void;
   isGraphicsContextLost(): boolean;
   syncViewportPixelRatio(): boolean;
@@ -98,6 +99,7 @@ export function createMainFrameRuntime({
   scene,
   camera,
   game,
+  thermalVehicles = createThermalVehicles(),
   scheduleFrame,
   isGraphicsContextLost,
   syncViewportPixelRatio,
@@ -160,7 +162,6 @@ export function createMainFrameRuntime({
   }
 
   const forward = new Vector3();
-  const thermalVehicles = createThermalVehicles();
   const garageFrameRequest: GarageFrameRequest = { animate: false };
   let lastMs = -1;
   let lastFov = camera.fov;
