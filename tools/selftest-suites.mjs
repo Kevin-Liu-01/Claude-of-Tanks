@@ -849,6 +849,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleReadability.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
+    // 2026-10-08 (tank-accessories round 5): the field wear's soils follow the terrain; its shader text runs in the subset
+    'src/vehicles/vehicleFieldWear.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',

@@ -35,6 +35,10 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
+import {
+  FIELD_WEAR_FRAGMENT, FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_VERTEX, FIELD_WEAR_VERTEX_PARS, VEHICLE_FIELD_WEAR_UNIFORMS,
+  bindVehicleFieldWear, setVehicleFieldSoil,
+} from './vehicleFieldWear.ts';
 import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
 
 export {
@@ -1264,6 +1268,10 @@ export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); }
 /** Point 'auto' selections at a battlefield biome (call before a battle). */
 export function setCamoBiome(mapId: string): void {
   activeBiome = autoCamoBiomeId(mapId);
+  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): battle builds wear this battlefield's soil. Every battle start
+  // (solo, shot-mode staging, multiplayer activation, the Studio) and the Garage's map picker already route their map
+  // through here, so the coat follows the map with no new wiring.
+  setVehicleFieldSoil(mapId);
 }
 
 /** The tank's effective selection: a battle override first, else the saved pick. */
@@ -2321,14 +2329,25 @@ const VEHICLE_GROUND = Object.freeze({
   uVehGround: { value: new THREE.Vector4(0, VEHICLE_GROUND_IDLE_Y, 0, 0) },
   uVehUp: { value: new THREE.Vector3(0, 1, 0) },
 });
-/** Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis). */
-export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
+/**
+ * Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis).
+ * 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the reference's w carries the root's field-wear strength
+ * (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on the Garage showroom
+ * build with its neutral film; a root without it wears 1), and the drawn material (the per-draw hook passes it) selects
+ * how much coat and film its surface takes.
+ */
+export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null): void {
   const e = root.matrixWorld.elements;
-  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], 1);
+  const wear = root.userData.fieldWear;
+  const strength = typeof wear === 'number' ? wear : 1;
+  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], strength);
   const n = Math.hypot(e[4], e[5], e[6]) || 1;
   VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
+  const f = Math.hypot(e[8], e[9], e[10]) || 1;
+  VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd.value.set(e[8] / f, e[9] / f, e[10] / f);
+  bindVehicleFieldWear(strength < 1, material);
 }
-/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening). */
+/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and wears no field wear. */
 export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehGround.value.set(0, VEHICLE_GROUND_IDLE_Y, 0, 0);
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
@@ -2345,7 +2364,19 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
+  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the coat, the film and the spatter of the battlefield's soil,
+  // graded up from the ground contact. Uniforms only (shared objects: the soil per battle, the role per draw), so the
+  // program keys and variants are unchanged; the paint takes the wear before any light reads it.
+  shader.uniforms.uVehWearRole = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearRole;
+  shader.uniforms.uVehWearFwd = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd;
+  shader.uniforms.uVehWearDeep = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearDeep;
+  shader.uniforms.uVehWearSplash = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSplash;
+  shader.uniforms.uVehWearSettle = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSettle;
+  shader.vertexShader = `${FIELD_WEAR_VERTEX_PARS}${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', `#include <begin_vertex>${FIELD_WEAR_VERTEX}`);
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${FIELD_WEAR_FRAGMENT_PARS}${shader.fragmentShader}`;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <normal_fragment_maps>', `#include <normal_fragment_maps>${FIELD_WEAR_FRAGMENT}`);
   // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
   // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
   // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
@@ -2683,8 +2714,11 @@ export function createTankMaterials(
   // way. Rubber is the darkest neutral on the vehicle with a soft satin sheen: rougher than paint's grazing film would
   // allow it to mirror (0.86, was 0.96 under the full-strength sky, envMapIntensity 1, which laid a grey wash over every
   // tyre and flap in shade); the sun now draws a soft highlight along a tyre's curve and the sky stays out of it.
+  // 2026-10-08 (round 5 with the fleet lane's running-gear rebuild; wave 269, a third time: "flat tan wheel dishes ...
+  // pale-plank tracks"): the tyres darker still (0x1b1c1b, was 0x292a28) and a touch wetter (0.8): the readability floor
+  // and the soft sheen keep the tyre rings modelled, and the field wear's earth on them reads lighter than the rubber.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.3,
+    color: 0x1b1c1b, roughness: 0.8, metalness: 0.0, envMapIntensity: 0.28,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -2758,11 +2792,12 @@ export function createTankMaterials(
   // elsewhere on the same vehicle"): 0x46423a link pads bounced to pale sand
   // under direct sun while the band texture stayed near-black — one run read
   // as two materials. Pads pulled down into the band's own tonal family.
-  // Round 5 per-material surfaces (2026-10-08): worn iron rather than painted plastic, a quarter metallic and a step
-  // smoother (0.84 x the map; was 0.95 / 0.08), so links, ribs and sprocket teeth take a dull steel sheen where the
-  // sun rakes them; the sky response stays cut (0.1) for the r10 / tank_models r1 blue-tint reasons above.
+  // Round 5 per-material surfaces (2026-10-08): worn iron rather than painted plastic, a fifth metallic and a step
+  // smoother (0.88 x the map; was 0.95 / 0.08), so links, ribs, shoes (the pad clone follows it now) and sprocket teeth
+  // take a dull steel sheen where the sun rakes them without lifting the crests (wave 269: "pale-plank tracks"); the sky
+  // response stays cut (0.1) for the r10 / tank_models r1 blue-tint reasons above.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    color: 0x353634, roughness: 0.88, metalness: 0.2, roughnessMap: roughTex,
     envMapIntensity: 0.1,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
@@ -2772,9 +2807,9 @@ export function createTankMaterials(
     // r3: roughness floor raised / metalness cut — with the multiplying
     // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
     // recess faces (the T-90M "navy sparkle" read under the closeup key).
-    // Round 5 (2026-10-08): the same worn iron as the live links (0.84 / 0.22 / 0.1, was 0.94 / 0.08 / 0.06), still
-    // well above the 0.85 base whose map dips sparkled.
-    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    // Round 5 (2026-10-08): the same worn iron as the live links (0.88 / 0.2 / 0.1, was 0.94 / 0.08 / 0.06), above
+    // the 0.85 base whose map dips sparkled.
+    color: 0x353634, roughness: 0.88, metalness: 0.2, roughnessMap: roughTex,
     envMapIntensity: 0.1,
   })));
   // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
