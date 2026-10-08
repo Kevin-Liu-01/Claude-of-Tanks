@@ -767,6 +767,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
     'src/game/studioOrphanEffect.selftest.mjs',
+    // 2026-10-08 (destruction core lane): a Studio strike round breaks the light cover in its path and flies on
+    'src/game/studioStrikeCover.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',

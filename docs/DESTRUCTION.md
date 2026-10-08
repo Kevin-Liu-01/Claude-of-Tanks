@@ -646,7 +646,10 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
   sections says so on every `StructureStageEvent` (`sections: true`): a `breached` stage then cuts no hole of its own.
 - **The Studio** films the sim's own: `game/studioDestruction.ts` runs one destruction match (sections on) over the
   Studio world's records — a wall strike opens the sim's hole and raises `structure:breach` as the solo step does, a
-  round traced through the world afterwards passes it — and `reset` stands everything up for a scene load.
+  round traced through the world afterwards passes it — and `reset` stands everything up for a scene load. A strike
+  round meeting light cover (a hut, a fence, a tree, crates: `shellPassesThroughCollisionRecord`) breaks it with the
+  world's own crush and flies on to the first solid record, as a battle round does (`studio.ts traceStrikeRound`); a
+  scene starts from an intact world (the Studio's reset restores the world's broken props and felled trees).
 
 ## 12. Balance
 
@@ -673,6 +676,7 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/destructionSections.selftest.mjs` | P2 in the authority for real: an M1A2's HE round holes a wall, its APFSDS round passes the hole and strikes the far wall from inside (sections off: it stops on the near wall), bit-for-bit replay; spotting sees through holes in both walls, not one; one narrow phase in both worlds |
 | `sim/collapseCascade.selftest.mjs` | P2: a collapse comes down top first — the roof, the storeys a storey's fall apart (49 ticks at 3.2 m) each with one `storeyDown`, the swap and `collapsed` once the ground storey has landed (a fall and 12 ticks); shells meet what stands; a ramming hull drives through; sections off it is P1's single event; a restore mid-fall ends it once |
 | `game/studioDestruction.selftest.mjs` | P2: the Studio films the sim's own holes (a strike, a round through the hole, reset) |
+| `game/studioStrikeCover.selftest.mjs` | a Studio strike round breaks the light cover in its path and flies on to the wall behind; dense cover stops it; the Studio's pass-through law is `collision.ts`'s |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments; P2's breaches judged as stages are (§8.6) |

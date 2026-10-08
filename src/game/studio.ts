@@ -1948,6 +1948,50 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   const _strikePrev = new THREE.Vector3();
   const _strikeDir = new THREE.Vector3();
+  const _strikeFrom = new THREE.Vector3();
+  /** Light cover one strike round may break in a step before the rest of its path is left for the next. */
+  const STRIKE_PASS_THROUGH_MAX = 8;
+  /**
+   * A battle round passes light cover (world/collision.ts shellPassesThroughCollisionRecord, restated here: the Studio
+   * reaches the world through what it is handed, never a new static import; studioStrikeCover.selftest.mjs holds the
+   * two to one law): a crushable record that is not dense masonry, adobe or sandbag cover.
+   */
+  function strikePassesRecord(record: { crushable?: boolean; kind?: string } | null | undefined): boolean {
+    if (record?.crushable !== true) return false;
+    const kind = record.kind;
+    return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall');
+  }
+  /**
+   * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
+   * breaks and lets it on, as a battle round's does (state.ts crushWorldPropFromShell: the world's own crush, the
+   * destructible's broken state); the first solid record (a building's wall, dense cover) stops it there and takes the
+   * strike. True when it stopped.
+   */
+  function traceStrikeRound(sh: StudioShell, world: Pick<WorldRuntime, 'raycast'> & { crushObstacle?: WorldRuntime['crushObstacle'] },
+    from: THREE.Vector3, to: THREE.Vector3): boolean {
+    _strikeDir.subVectors(to, from);
+    let left = _strikeDir.length();
+    if (left <= 1e-6) return false;
+    _strikeDir.multiplyScalar(1 / left);
+    _strikeFrom.copy(from);
+    for (let pass = 0; pass < STRIKE_PASS_THROUGH_MAX; pass++) {
+      const hit = world.raycast(_strikeFrom, _strikeDir, left);
+      if (!hit || hit.kind === 'terrain') return false;
+      if (strikePassesRecord(hit.record) && world.crushObstacle) {
+        world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
+        const step = hit.dist + 0.01;
+        _strikeFrom.addScaledVector(_strikeDir, step);
+        left -= step;
+        if (left <= 1e-6) return false;
+        continue;
+      }
+      sh.dead = true;
+      sh.pos.copy(hit.point);
+      strikeWorld(sh, hit, _strikeDir);
+      return true;
+    }
+    return false;
+  }
   /**
    * A round flying through the Studio's world as a battle round does: from the effect point along dirDeg (pitchDeg up)
    * at speedMps, traced against the world each step — whose raycast reads the sim's openings, so a round finds a hole
@@ -2184,18 +2228,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         if (sh.dead) continue;
         if (sh._studioWorld) _strikePrev.copy(sh.pos);
         stepShell(sh, dt);
-        // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings
-        if (sh._studioWorld && traceWorld) {
-          _strikeDir.subVectors(sh.pos, _strikePrev);
-          const length = _strikeDir.length();
-          const hit = length > 1e-6 ? traceWorld.raycast(_strikePrev, _strikeDir.multiplyScalar(1 / length), length) : null;
-          if (hit && hit.kind !== 'terrain') {
-            sh.dead = true;
-            sh.pos.copy(hit.point);
-            strikeWorld(sh, hit, _strikeDir);
-            continue;
-          }
-        }
+        // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings;
+        // light cover on the way breaks and lets it on (traceStrikeRound)
+        if (sh._studioWorld && traceWorld && traceStrikeRound(sh, traceWorld, _strikePrev, sh.pos)) continue;
         const gy = hfProxy.getHeightAt(sh.pos.x, sh.pos.z);
         if (sh.pos.y <= gy) {
           sh.pos.y = gy + 0.05;
@@ -2339,7 +2374,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     clockMs = 0;
     activeEffectIds.clear();
     const w = getWorld();
-    if (w) { w.resetWater(); w.setWindTime(0.35); }
+    // a scene starts from an intact world, as a battle does: the props its rounds broke and the trees they felled stand
+    // again (the Studio's strike rounds break light cover)
+    if (w) { w.resetWater(); w.setWindTime(0.35); w.resetDestructibles(); }
   }
 
   function restoreAuthoredActor(a: StudioActor): void {
