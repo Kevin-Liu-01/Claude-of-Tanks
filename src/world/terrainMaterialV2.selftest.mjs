@@ -238,7 +238,12 @@ assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[ch
 const dryStone = (source) => {
   const frag = shaderOf(source);
   assert.ok(/float gRiserW = 0\.0;/.test(frag), 'the riser weight is a module-level zero (no terrace zone, no pass)');
-  const riser = blockAfter(frag, 'uTerraceParam.x > 0.5', 'the terrace riser band');
+  // (two blocks open on the terrace gate: the dry ground's, then the riser band's)
+  const terraceBlocks = [];
+  for (let at = frag.indexOf('if (uTerraceParam.x > 0.5) {'); at >= 0; at = frag.indexOf('if (uTerraceParam.x > 0.5) {', at + 1)) {
+    terraceBlocks.push(blockAfter(frag.slice(at), 'uTerraceParam.x > 0.5', 'a terrace block'));
+  }
+  const riser = terraceBlocks.find((b) => b.includes('gRiserW = ')) ?? '';
   assert.ok(riser.includes('gRiserW = terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope);'),
     'the riser weight is the T2 band: the zone, off the carriageways, the riser slope band');
   assert.ok(riser.includes('fR = max(fR, gRiserW);'), 'the risers take the rock layer');
@@ -249,6 +254,11 @@ const dryStone = (source) => {
   assert.ok(pass.includes('float stoneVis = tileVis(0.45);') && pass.includes('* stoneVis;'),
     'the coursing and its joints fade by the footprint before a 0.45 m block can alias');
   assert.ok(pass.includes('a.rgb = mix(a.rgb, dry, gRiserW);'), 'the wall replaces the rock print by the riser weight');
+  // (wave 251) a terrace map's dry ground: patches of its own dry stony soil on the treads and the steeper slopes, gated
+  // on the terrace zones' count (no other map enters it)
+  const dryGround = terraceBlocks.find((b) => b.includes('float treadW = ')) ?? '';
+  assert.ok(dryGround.includes('float treadW = terraceZoneW(wp.xz) * (1.0 - smoothstep(uTerraceParam.z, uTerraceParam.w, slope)) * (1.0 - roadCore);')
+    && dryGround.includes('fD = max(fD,'), 'the treads (the zone below the riser band) and the steeper slopes take the dry soil');
 };
 dryStone(terrain);
 for (const [from, to, label] of [

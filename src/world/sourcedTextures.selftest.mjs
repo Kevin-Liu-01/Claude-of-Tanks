@@ -221,7 +221,8 @@ const newMapPalettes = {
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
   whiteout: ['winter', 'winter'],
-  orchard: ['verdant', 'orchard'],
+  // (2026-10-07, ground lane, wave 251: Orchard's own dry stony soil under its worn ground, Verdant's grass and rock)
+  orchard: ['orchard', 'orchard'],
   longleaf: ['verdant', 'frontier'],
   mangrove: ['monsoon', 'delta'],
   saltwind: ['coastal', 'coastal'],

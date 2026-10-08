@@ -4296,6 +4296,16 @@ void splatCompute() {
   float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
   float grazeT = worn - wornCore;
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // ground lane (2026-10-07, wave 251's Orchard bird: "the Chouf in summer isn't uniformly green") a terrace map's dry
+  // ground: on the terraces' treads, between the olives, the soil lies bare and stony in patches, and on the valley's
+  // steeper slopes (~15-35 deg) the turf thins to dry, stony ground in places — the D layer, the map's own dry stony soil
+  // (its palette row); every map without terrace zones as it was
+  if (uTerraceParam.x > 0.5) {
+    float dryN = nzq(uvW, 0.045, vec2(0.71, 0.33)).x * 0.7 + n1h * 0.3; // ~22 m patches, ragged at the ~5 m scale
+    float treadW = terraceZoneW(wp.xz) * (1.0 - smoothstep(uTerraceParam.z, uTerraceParam.w, slope)) * (1.0 - roadCore);
+    float steepDry = smoothstep(0.06, 0.18, slope) * (1.0 - smoothstep(0.30, 0.42, slope)) * (1.0 - roadCore);
+    fD = max(fD, max(treadW * smoothstep(0.50, 0.72, dryN) * 0.80, steepDry * smoothstep(0.44, 0.70, dryN) * 0.70));
+  }
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
