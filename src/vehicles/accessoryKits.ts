@@ -666,8 +666,11 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     break;
   }
   case 'camo-net-bag': {
-    const spec: FabricSpec = { len: 0.52, hw: 0.17, hh: 0.15, exponent: 2.2, endScale: 0.28, endLength: 0.22,
-      flatten: 0.3, wrinkle: 0.08, seg: 12, stations: 6, cinch: [0.17], cinchDepth: 0.18, seed: 53 };
+    // Round 5 (2026-10-08; wave 269 on the M1A2 SEPv3: "two smooth green blobs that look like balloons rather than
+    // strapped bags"): a stuffed net sack is lumpy, squared off by its load and pinched by two straps: a boxier section,
+    // blunt ends, twice the folds over nine stations, slumped onto its seat and cinched hard at two stations
+    const spec: FabricSpec = { len: 0.52, hw: 0.17, hh: 0.14, exponent: 2.9, endScale: 0.5, endLength: 0.16,
+      flatten: 0.42, wrinkle: 0.17, seg: 12, stations: 9, cinch: [-0.13, 0.15], cinchDepth: 0.24, seed: 53 };
     // round 5: a net's sack stays in the greens (a tan or coyote turn of the rotation takes the faded olive)
     const family = fabricFamily(P, 0, 53 + Math.floor(r[1] * 997));
     bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.3, 0.52, family[0] > 2.2 ? FABRIC_FAMILIES[2] : family);

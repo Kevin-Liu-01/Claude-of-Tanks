@@ -3906,6 +3906,34 @@ function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: b
   return out;
 }
 
+/**
+ * The bodies of the frame's roof guns (round 5, 2026-10-08; the lane lead after helper B's crew-scale machine-gun floor:
+ * "decor loads now touch the grown guns on udes03, type90, type90a, carro45t, leo2a6m, pl01_105 and m46_patton"): every
+ * connected piece of a pintle gun, M2 or remote-station fitting (receiver, barrel, cradle, ammunition box, shield), its
+ * own box `group`-local and a centimetre proud, which a decor piece's placed box may not enter. The foot disc (collectKeepOut)
+ * keeps the mount's base clear; these keep the gun itself out of the stowage, a barrel above a load leaving it be.
+ */
+const GUN_BODY_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws']);
+/**
+ * Decor kept off the guns' bodies: every piece (an M46's roof light stood through its M2's receiver) but the smoke banks,
+ * whose sockets are pinned and seated first, and the decor roof gun, whose dedupe against an authored gun is the lane
+ * lead's.
+ */
+const GUN_BODY_EXEMPT: ReadonlySet<string> = new Set(['smoke', 'aamg']);
+function collectGunBodies(group: THREE.Group): THREE.Box3[] {
+  const out: THREE.Box3[] = [];
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  group.traverse((o) => {
+    if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || !o.geometry?.getAttribute('position')) return;
+    if (o.visible === false || (o.name || '').startsWith('rig_decor')) return;
+    if (typeof o.userData.fitting !== 'string' || !GUN_BODY_FITTINGS.has(o.userData.fitting)) return;
+    const toFrame = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for (const b of connectedPieceBoxes(o, toFrame)) out.push(b.expandByScalar(0.01));
+  });
+  return out;
+}
+
 /** The first keep-out disc the frame-local box's deck footprint reaches into, or null. */
 function keepOutDisc(bb: THREE.Box3, discs: readonly DecorKeepOut[]): DecorKeepOut | null {
   for (const disc of discs) {
@@ -3980,8 +4008,10 @@ function skewTubes(list: DecorPartList, angle: number): void {
 }
 /** A smoke bank's cheek faces at most this far off the bow (rad; round 5): its row lies flush along it. */
 const CHEEK_MAX_ALPHA = 0.85;
-/** A side wall facing further round than this (rad, just past square out) takes a bank only as the last resort. */
-const SIDE_MAX_ALPHA = 1.6;
+/** A side wall facing further round than this (rad, 16 degrees aft of square out) takes a bank only as the last resort. */
+const SIDE_MAX_ALPHA = 1.85;
+/** A bank's row turns at most this far from the bow (rad): on a wall facing further aft it stands off the wall more. */
+const SIDE_ALONG_MAX = 1.47;
 /** A bank laid along a side wall turns this far off it toward the bow (rad; round 5)... */
 const SIDE_TOE = 0.1;
 /** ...and its tubes point at most this far off the bow (rad), canted forward on the bracket where the wall faces
@@ -4643,6 +4673,8 @@ export function* attachTankDecorationsSteps(
     const fieldEquipment: Record<DecorFrame, THREE.Box3[]> = {
       hull: collectFieldEquipment(hullG, 'hull', screens), turret: collectFieldEquipment(turretG, 'turret', screens),
     };
+    // round 5: the roof guns' own bodies (collectGunBodies), out of every decor piece's placed box (GUN_BODY_EXEMPT aside)
+    const gunBodies: Record<DecorFrame, THREE.Box3[]> = { hull: collectGunBodies(hullG), turret: collectGunBodies(turretG) };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -4990,6 +5022,7 @@ export function* attachTankDecorationsSteps(
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
+      if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
       }
@@ -5838,6 +5871,14 @@ export function* attachTankDecorationsSteps(
         // three more forward along the cheek; then a side facing square out; a wall facing aft, or a roof or an
         // overhang, takes the old fan only where nothing else does, so no bank is dropped (the smoke counts are pinned).
         const forward = [[0.45, 0.5], [0.6, 0.48], [0.75, 0.46]];
+        // a cheek or a side is looked for higher up the wall as well (a T-72's stations meet the underside of its side
+        // boxes), the old fan only at the stations themselves
+        const candidates = (pass: 0 | 1 | 2): number[][] => {
+          const base = pass === 0 ? [...stations, ...forward] : stations;
+          if (pass === 2) return base;
+          const lifts = pass === 0 ? [0, 0.14, 0.28] : [0, 0.14];
+          return lifts.flatMap((dy) => base.map(([z, yf]) => [z, Math.min(0.9, yf + dy)]));
+        };
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
           let done = false;
@@ -5856,7 +5897,8 @@ export function* attachTankDecorationsSteps(
             if (pass === 2) { skewTo(0); return { pos: V(h.p.x + s * 0.03, y, z), rot: E(0, s * 0.55, 0) }; }
             if (Math.abs(h.n.y) > 0.7) return null;
             if (pass === 0 ? alpha > CHEEK_MAX_ALPHA : alpha <= CHEEK_MAX_ALPHA || alpha > SIDE_MAX_ALPHA) return null;
-            const toe = pass === 0 ? 0 : SIDE_TOE, along = alpha - toe;
+            // a side facing aft of square out turns the row further off it, so the cant still brings the tubes forward
+            const toe = pass === 0 ? 0 : Math.max(SIDE_TOE, alpha - SIDE_ALONG_MAX), along = alpha - toe;
             skewTo(s * Math.max(-SIDE_CANT_MAX, Math.min(0, SIDE_AIM - along)));
             const k = cl.findIndex((p) => p.bracket);
             const bb = k >= 0 ? (cl[k].geo.computeBoundingBox(), cl[k].geo.boundingBox!) : null;
@@ -5866,7 +5908,7 @@ export function* attachTankDecorationsSteps(
             return { pos: V(h.p.x + nh.x * off, y, h.p.z + nh.z * off), rot: E(0, s * along, 0) };
           };
           for (const pass of [0, 1, 2] as const) {
-            for (const [z, yf] of pass === 0 ? [...stations, ...forward] : stations) {
+            for (const [z, yf] of candidates(pass)) {
               const y = Math.max(0.24, pivotTopY() * yf);
               const h = turP.side(y, z, s, W / 2 + 1);
               if (!h) continue;
@@ -5886,7 +5928,7 @@ export function* attachTankDecorationsSteps(
           if (!done) {
             const solid = solidTurretProber();
             for (const pass of [0, 1, 2] as const) {
-              for (const [z, yf] of pass === 0 ? [...stations, ...forward] : stations) {
+              for (const [z, yf] of candidates(pass)) {
                 const y = Math.max(0.24, pivotTopY() * yf);
                 const h = solid.side(y, z, s, W / 2 + 1);
                 if (!h) continue;
