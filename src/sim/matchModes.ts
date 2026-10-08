@@ -1324,8 +1324,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
     const length = Math.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;
     if (enemyFlag.carrierId) {
-      if (rank < 2) return { x: enemyFlag.x + nx * 24 + nz * side * 22,
-        z: enemyFlag.z + nz * 24 - nx * side * 22, mission: 'escort' };
+      // one escort leads the carrier home, the other covers its back, where the flag's own team comes from to recover it
+      const ahead = rank === 0 ? 24 : -24;
+      if (rank < 2) return { x: enemyFlag.x + nx * ahead + nz * side * 22,
+        z: enemyFlag.z + nz * ahead - nx * side * 22, mission: 'escort' };
       // Remaining teammates protect the return area, rather than chasing their
       // carrier and trapping it in a pile of friendly hulls.
       return { x: home.x - nx * 35 + nz * side * (18 + rank * 5),

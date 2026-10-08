@@ -10,6 +10,7 @@ import {
   type DeploymentPoint, type DeploymentSlot, type DeploymentSpawns, type DeploymentTeam,
 } from './deployment.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
+import { ballSolidAt } from './ballSolids.ts';
 import type { GameModeId } from './matchModes.ts';
 
 export interface PlacementPoint { x: number; z: number }
@@ -39,6 +40,8 @@ interface PlacementOptions extends PlacementWorld { anchors: PlacementAnchors; m
 interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number }
 const SPAWN_NORMAL_Y = .90;
 const OBJECTIVE_NORMAL_Y = .94;
+// Turbo Ball's kickoff keeps every ball-stopping record this far from its centre (the ball's 2.2 m radius and a margin)
+const KICKOFF_BALL_CLEAR_M = 5;
 const SEARCH_RADII = [8, 16, 24, 32, 48, 64, 80, 104, 128, 160, 200, 248, 304, 368];
 
 /** Uses ALL authored pads, never the selected roster or relocated vehicles. */
@@ -373,6 +376,9 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
 
   const centers = { alpha: { ...anchors.alpha }, bravo: { ...anchors.bravo } };
+  const kickoffScratch: CollisionRecord[] = [];
+  const kickoffObstacles = (minX: number, minZ: number, maxX: number, maxZ: number): readonly CollisionRecord[] =>
+    options.queryObstacles ? options.queryObstacles(minX, minZ, maxX, maxZ, kickoffScratch) : options.obstacles;
   const baseRules = mode === 'capture_the_flag' || mode === 'turbo_ball' ? matchRulesetFor(mode as GameModeId).bases : null;
   if (baseRules) {
     // Capture the Flag's flags and Turbo Ball's goals (modes lane, 2026-10-08): on the deployments' axis, half the
@@ -400,11 +406,14 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   // Turbo Ball's kickoff on the goals' perpendicular bisector, nearest the pivot: equidistant from both goals
   function placeKickoff(): PlacementPoint {
     const footprint: Footprint = { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M };
+    // the ball rests here at the start and after every goal: no record that stops the ball stands within reach of it
+    const ballClear = (point: PlacementPoint): boolean => !ballSolidAt(kickoffObstacles, point.x,
+      options.heightField.getHeightAt(point.x, point.z) + KICKOFF_BALL_CLEAR_M, point.z, KICKOFF_BALL_CLEAR_M);
     const mid = { x: (centers.alpha.x + centers.bravo.x) * 0.5, z: (centers.alpha.z + centers.bravo.z) * 0.5 };
     const gx = centers.bravo.x - centers.alpha.x, gz = centers.bravo.z - centers.alpha.z, gl = Math.hypot(gx, gz) || 1;
     for (let t = 0; t <= 200; t += 4) for (const side of t ? [1, -1] : [1]) {
       const point = { x: mid.x + (gz / gl) * t * side, z: mid.z - (gx / gl) * t * side };
-      if (acceptable(point, footprint, 'kickoff', 0, [])) { reservations.push({ ...point, radius: footprint.radius, key: 'kickoff' }); return point; }
+      if (acceptable(point, footprint, 'kickoff', 0, []) && ballClear(point)) { reservations.push({ ...point, radius: footprint.radius, key: 'kickoff' }); return point; }
     }
     return reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, footprint, 'kickoff');
   }
