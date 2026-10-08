@@ -41,12 +41,14 @@ const IDS = Object.freeze([
 // the trunnions through the cradle shroud, the ammunition-box lid seated on the box; a station is a fitting, so this
 // receipt reads it) and the second decor smoke bank, which main's screens and cage-wing legs moved forward along the
 // cheek, its bracket set into the armour like every other bank's (round 5's seat lays it flush there too).
+// 2026-10-08, round 5's batch 2a over 3b (side loads clear the turret, banks seated to their wall): floating 12,
+// clipping 22. The Oplot-M keeps main's three station overlaps; its, the Leclerc's and the Griffin's decor clipping is gone.
 const KNOWN_FLOATING = Object.freeze({
   type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
 });
 const KNOWN_CLIPPING = Object.freeze({
-  t90m_proryv: 1, ua_t84_oplot_m: 8, m60a1: 1, leclerc: 1, t72b3m: 2, m1a2_tusk: 1, abramsx: 7, m46_patton: 4,
-  bmp3m_dragun125_x: 1, t62mv1_x: 2, griffin_viper: 2,
+  t90m_proryv: 1, ua_t84_oplot_m: 3, m60a1: 1, t72b3m: 2, m1a2_tusk: 1, abramsx: 7, m46_patton: 4, bmp3m_dragun125_x: 1,
+  t62mv1_x: 2,
 });
 
 function accessoryKind(object) {
