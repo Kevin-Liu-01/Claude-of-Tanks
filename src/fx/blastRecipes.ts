@@ -219,6 +219,20 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     C.jet(j);
   }
   if (I.munition === 'drone_fpv') sparkSpray(C, I.x, by + 0.4, I.z, 0, 1, 0, 22, 24, 1.3, 0.35, 0.022, bo);
+  if (shaped) {
+    // a shaped charge's own birth: the burnt liner and explosive's dark grey-black smoke, low and dense
+    for (let i = 0; i < 2; i++) {
+      const a = R() * TAU;
+      place(m, I.x + Math.cos(a) * 0.3, by + 0.6, I.z + Math.sin(a) * 0.3, bo);
+      move(m, Math.cos(a) * 1.5, 1.4 + R(), Math.sin(a) * 1.5, 1.8, 0.4, 0.8, 0);
+      const life = 3.5 + R() * 1.5;
+      shape(m, life, 1.0 * s * dk, (3.2 + R()) * s * dk, 3.0, R);
+      look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.4), 0.85, 0.0, 0.45);
+      book(m, 'billow', R, life);
+      heat(m, 0.6, 3.0);
+      C.media(m);
+    }
+  }
 
   // 1. flash and fireball: one flash, and a compact core of fire that bursts up through the soil (round 2's fire puffs
   // flew apart sideways and read as a row of white bulbs in the first frame)
@@ -238,21 +252,26 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * 0.2 * s, by + (0.6 + R() * 0.6) * s, I.z + Math.sin(a) * 0.2 * s, bo - 0.02);
     move(m, Math.cos(a) * (thermobaric ? 3 : 2.5) * s, (3 + R() * 3) * s, Math.sin(a) * (thermobaric ? 3 : 2.5) * s, 2.2,
       thermobaric ? 2.2 : 1.2, 0.5, 0);
-    shape(m, (thermobaric ? 3.2 : 1.6) + R() * 0.6, 1.4 * s * dk, (thermobaric ? 5.5 : 4.2 + R()) * s * dk, 2.6, R);
-    look(m, thermobaric ? SOOT : BLAST_RESIDUE, BLAST_RESIDUE, 0.92, 0.0, 0.45);
+    // (wave 273: births small rather than dense and violent) it starts big and swells fast
+    shape(m, (thermobaric ? 3.2 : 1.6) + R() * 0.6, 2.0 * s * dk, (thermobaric ? 5.5 : 4.6 + R()) * s * dk, 4.0, R);
+    look(m, thermobaric ? SOOT : BLAST_RESIDUE, BLAST_RESIDUE, 0.95, 0.0, 0.45);
     book(m, 'billow', R, thermobaric ? 3.4 : 2.2 + R() * 0.6);
     // orange, not white: an HE shell's fireball is brief and mostly hidden in its own soil
     heat(m, thermobaric ? 1.45 : 1.05, thermobaric ? 1.3 : 5.5);
     C.media(m);
   }
-  C.lightPulse(I.x, by + 2.2 * s, I.z, Math.min(1.6, 0.45 + 0.35 * s), 0);
+  // (wave 273: a flat orange disc, on snow an orange-white lava pool for a second) the burst lights the ground round it
+  // briefly and from higher up; a bright ground (snow, sand, concrete) takes far less of it
+  const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : I.surface === 'concrete' || I.surface === 'rock' ? 0.6 : 1;
+  C.lightPulse(I.x, by + 3.4 * s, I.z, Math.min(0.9, 0.22 + 0.2 * s) * albedoK, 0);
 
   // 2. the soil column (wave 266: at 60-120 m the critics saw a small brown puff, no vertical jet): dense dark soil and
   // smoke driven up a narrow cone fast, standing as a dark column well above the burst (its top ~3 m for a 30 mm round,
   // ~12 m for 125 mm HE, ~28 m for the gunship's 152 mm), then stalling and falling back as it thins into the cloud.
   // (b5: the gunship's jets all reached one height and hung there as a cluster of brown drops) three tiers of launch
   // speed fill the column from the ground to its top: the slow soil stays low and dense, the fast thins out above it
-  const ejN = Math.round((4 + 4 * s) * Math.min(1.2, L.chunkK + 0.4) * (heavy ? 1.4 : 1));
+  // (wave 273: the drone and the ATGM played the tank round's template) a shaped charge digs little: a few jets
+  const ejN = Math.round((4 + 4 * s) * Math.min(1.2, L.chunkK + 0.4) * (heavy ? 1.4 : 1) * (shaped ? 0.25 : 1));
   const vTop = 20 * Math.pow(s, 0.75) * L.heightK * (heavy ? 1.35 : 1);
   for (let i = 0; i < ejN; i++) {
     const a = (i / ejN) * TAU + (R() - 0.5) * 0.9;
@@ -267,7 +286,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, life, size1 * 0.4, size1, 1.8, R);
     const soil = I.surface === 'snow' && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta;
-    look(m, c0, mix3(c0, L.dust, 0.35), 1.0 - 0.15 * tier, 0.0, 0.5);
+    // (wave 273: the jets rose and dissolved instead of falling back) they stay dense on the way down
+    look(m, c0, mix3(c0, L.dust, 0.35), 1.0 - 0.15 * tier, 0.0, 0.72);
     book(m, 'burst', R, life, 2);
     // a jet of soil stands far taller than it is wide
     card(m, 0.38 + R() * 0.14, R, 0.1);
@@ -278,9 +298,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const colTop = 0.36 * vTop;
   const pillarN = heavy ? 3 : s > 0.8 ? 2 : 1;
   for (let i = 0; i < pillarN; i++) {
-    const h = (0.2 + 0.55 * (i + R() * 0.5) / pillarN) * colTop;
+    // (b6 he-20: the pillar's bodies floated up as two lobes over the skirt) born low in the column, barely rising
+    const h = (0.12 + 0.3 * (i + R() * 0.5) / pillarN) * colTop;
     place(m, I.x + (R() - 0.5) * 0.6 * s, by + h, I.z + (R() - 0.5) * 0.6 * s, bo + 0.15 + R() * 0.15);
-    move(m, (R() - 0.5) * 0.6, 1.2 + R(), (R() - 0.5) * 0.6, 1.2, 0.35, 0.9, 0);
+    move(m, (R() - 0.5) * 0.6, 0.6 + R() * 0.6, (R() - 0.5) * 0.6, 1.4, 0.12, 0.9, 0);
     const life = (5 + R() * 2) * L.hang;
     const size1 = (2.4 + R()) * s * dk * (heavy ? 1.3 : 1);
     shape(m, life, size1 * 0.5, size1, 2.2, R);
@@ -317,7 +338,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
     // (wave 266: a static tan mound or beehive) the cloud keeps moving: it spreads, climbs and drifts for its whole
     // life, and its flipbook plays the whole life instead of holding its last frame
-    move(m, Math.cos(a) * 2.4 * sq, (1.6 + h * 1.0) * sq, Math.sin(a) * 2.4 * sq, 1.4, 0.35 + R() * 0.3, 1.0, 0);
+    // (wave 273: the cloud lifted off as detached sky puffs) it spreads and drifts with the wind, rising only a little
+    move(m, Math.cos(a) * 2.4 * sq, (1.0 + h * 0.6) * sq, Math.sin(a) * 2.4 * sq, 1.4, 0.1 + R() * 0.15, 1.0, 0);
     const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
     const life = (7 + R() * 3) * Math.min(1.6, sq) * L.hang;
     shape(m, life, size1 * 0.42, size1, 2.2, R);
@@ -754,4 +776,58 @@ export function smolderPuff(C: BlastContext, x: number, y: number, z: number, k:
   book(m, 'billow', R, 8, 12);
   heat(m, 0, 1);
   C.media(m);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// A crater's own ejecta (crater-render-spec §D: live events only)
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The clods a dug crater throws out of its bowl, landing on its rim and blanket between R and 1.6 R (each one aimed
+ * so it comes to rest on the deformed ground where it lands: `heightAt` is base + the overlay), and a short ring of dust
+ * rolling off the rim. The burst itself (its flash, its cloud, its surge) is the munition's own, drawn from the same
+ * tick's blast; this is the ground's part. Never for a settled crater.
+ */
+export function craterEjecta(C: BlastContext, x: number, z: number, radiusM: number, surface: SurfaceKind,
+  heightAt: (x: number, z: number) => number, bo: number): void {
+  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const R = C.rand;
+  const k = C.k;
+  const y0 = heightAt(x, z) + 0.2;
+  const n = Math.round((10 + 6 * radiusM) * Math.max(0.4, L.chunkK));
+  const shapeId: ChunkShape = surface === 'rock' || surface === 'concrete' ? 'stone' : 'clod';
+  const drag = 0.25;
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU;
+    const d = radiusM * (1 + 0.6 * Math.sqrt(R()));
+    const lx = x + Math.cos(a) * d, lz = z + Math.sin(a) * d;
+    const land = heightAt(lx, lz);
+    const T = 0.55 + R() * 0.55 + 0.08 * radiusM;
+    const s = (1 - Math.exp(-drag * T)) / drag;
+    const soil = surface === 'snow' && i % 3 === 0;
+    k.shape = shapeId; k.x = x + Math.cos(a) * 0.3 * radiusM; k.y = y0; k.z = z + Math.sin(a) * 0.3 * radiusM; k.birthOffset = bo + R() * 0.05;
+    k.vx = (lx - k.x) / s; k.vz = (lz - k.z) / s; k.vy = (land - y0 + 4.9 * T * T) / s; k.life = T + 2.5 + R() * 2;
+    k.ax = R() - 0.5; k.ay = R() - 0.5; k.az = R() - 0.5; k.spin = 5 + R() * 10;
+    k.scale = (0.08 + Math.pow(R(), 2) * 0.28) * Math.sqrt(radiusM / 1.6) * L.chunkScale; k.groundY = land; k.drag = drag;
+    const col = soil ? UNDER_SNOW_SOIL : L.chunk;
+    const tint = 0.8 + R() * 0.4;
+    k.r = col[0] * tint; k.g = col[1] * tint; k.b = col[2] * tint; k.heat = 0; k.seed = R();
+    C.chunk(k);
+  }
+  // the dust rolling off the rim as the clods land: a thin ring of flat cards
+  const m = C.m;
+  const dk = C.distBoost(x, y0, z);
+  const ring = Math.round(8 + 2 * radiusM);
+  for (let i = 0; i < ring; i++) {
+    const a = (i / ring) * TAU + (R() - 0.5) * 0.5;
+    const px = x + Math.cos(a) * radiusM, pz = z + Math.sin(a) * radiusM;
+    place(m, px, heightAt(px, pz) + 0.3, pz, bo + 0.35 + R() * 0.25);
+    move(m, Math.cos(a) * (1.2 + R() * 1.5), 0.2 + R() * 0.2, Math.sin(a) * (1.2 + R() * 1.5), 1.6, 0.05, 0.9, 0);
+    shape(m, (2.4 + R() * 1.2) * L.hang, 0.6, (1.4 + R() * 0.8) * Math.sqrt(radiusM / 1.6) * dk, 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, Math.min(0.5, 0.25 + 0.2 * L.dustK), 0.08, 0.4);
+    book(m, 'burst', R, 3, 3);
+    card(m, 2.2 + R() * 0.6, R, 0.06);
+    heat(m, 0, 1);
+    C.media(m);
+  }
 }

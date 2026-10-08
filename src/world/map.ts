@@ -48,7 +48,9 @@ import {
   createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
-import { rubbleHeightFor } from '../sim/terrainDeformation.ts';
+import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
+import { createGroundCoverCraters } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -205,6 +207,14 @@ export interface WorldRuntime {
   patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
   touchStructureShadows(structureIdx: number): void;
+  /**
+   * The battle's ground overlay (sim/terrainDeformation.ts: craters, rubble heaps) this world draws and drapes on —
+   * the solo battle's own ground, or a network round's mirror (crater-render-spec §B). Bound per battle, null between;
+   * the terrain's userData carries it too (`groundOverlay`) for the drawn ground to follow.
+   */
+  bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
+  groundOverlay(): TerrainDeformation | null;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -613,7 +623,12 @@ function assembleWorld(
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
-  const unregisterDestructibles = props.registerDestructibles();
+  // destruction (§7): the battle's ground overlay, bound per battle (crater-render-spec §B)
+  let boundGroundOverlay: TerrainDeformation | null = null;
+  // ground lane (crater-render-spec §B): the drawn terrain follows that overlay, polled from its own updateLOD pass
+  installTerrainCraterMesh(terrain);
+  // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
+  const groundCoverCraters = createGroundCoverCraters();
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
@@ -633,6 +648,7 @@ function assembleWorld(
     structureSeams.set(structureIdx, seam);
     return seam;
   };
+  const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
@@ -672,6 +688,8 @@ function assembleWorld(
     structureDamage: getStructureDamage,
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
+    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
       props.crushProp(i, dx, dz, speedMps)
@@ -763,6 +781,11 @@ function assembleWorld(
       focusPos: THREE.Vector3 | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
+      // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
+      groundCoverCraters.sync(boundGroundOverlay);
+      vegetation.followCraters?.(groundCoverCraters);
+      tallGrass.followCraters?.(groundCoverCraters);
+      litter.followCraters?.(groundCoverCraters);
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);

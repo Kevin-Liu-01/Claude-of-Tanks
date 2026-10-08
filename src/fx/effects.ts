@@ -36,12 +36,14 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  blastScale, columnPuff as mediaColumnPuff, dustSurge, fragmentStrike, groundBurst, isExplosive, kineticStrike,
-  killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, waterBurst,
+  blastScale, columnPuff as mediaColumnPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
+  kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
+import { craterWobblePhases } from '../sim/terrainDeformation.ts';
+import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
-import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
+import { createCraterMarks, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, type StructureStages } from './structureStages.ts';
@@ -68,6 +70,8 @@ interface FxEngineContext {
 
 interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
+  /** The contact surface on the 1.333 m lattice the drawn LOD0 shares (terrainContactSurface.ts). */
+  getContactHeightAt?(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -82,6 +86,12 @@ interface FxHeightField {
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
+  /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
+  /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
+   *  match; presentation only (the sim's overlay never carries marks), called once per mark at event time */
+  clearCoverAt?(x: number, z: number, radiusM: number): void;
+  readonly mapId?: string;
 }
 
 interface FxOptions {
@@ -985,6 +995,12 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
+  // an explosive mark clears the cover it blew away (0.9 R: the pit and the inner wall; the blanket keeps its stubble),
+  // through the world's presentation-only seam, when the world has one
+  const clearCover = (x: number, z: number, radiusM: number): void => {
+    const w = world ? world() : null;
+    w?.clearCoverAt?.(x, z, 0.9 * radiusM);
+  };
   const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
   const structDebris: StructureDebris | null = createStructureDebris({
     now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundY: (x, z) => groundY(x, z),
@@ -1751,6 +1767,23 @@ function* createFxSteps(
   function groundY(x: number, z: number): number {
     return heightField && heightField.getHeightAt ? heightField.getHeightAt(x, z) : 0;
   }
+  /**
+   * The ground as the battle has dug it, as it is drawn: the base contact surface plus the bound overlay (craters,
+   * rubble heaps) on the same 1.333 m lattice and triangle split the drawn LOD0 follows (world/terrainCraterMesh.ts), so
+   * a crater's surface lies on the mesh rather than on the analytic bowl between its vertices.
+   */
+  function deformedGroundY(x: number, z: number): number {
+    const overlay = world?.()?.groundOverlay?.() ?? null;
+    const base = heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z);
+    if (!overlay) return base;
+    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z) : overlay.offsetAt(x, z));
+  }
+  /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
+  function groundClimate(): CraterClimate {
+    const mapId = world?.()?.mapId ?? null;
+    if (mapId === 'caldera') return 'ash';
+    return resolveGroundReduxProfile(mapId).climate;
+  }
 
   function calScale(caliberMm: number): number {
     return THREE.MathUtils.clamp(caliberMm / 100, 0.5, 1.7);
@@ -1911,7 +1944,9 @@ function* createFxSteps(
       if (!water && craters && !dug) {
         craterFor(info.chargeKg, info.munition, 1, _crater);
         if (_crater.radiusM > 0.25) {
-          craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, groundY);
+          craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, deformedGroundY,
+            groundClimate());
+          clearCover(pos.x, pos.z, _crater.radiusM);
         }
       }
     } else {
@@ -1920,7 +1955,7 @@ function* createFxSteps(
       // a rod or an AP shot leaves a gouge, a bullet nothing worth a mark
       if (!water && craters && info.munition !== 'small_arms' && info.caliberMm >= 20) {
         craters.stamp(pos.x, pos.z, 0.16 + 0.22 * Math.min(1.4, info.caliberMm / 120), surface, false, rng(),
-          particles.getTime() + birthOffset, groundY);
+          particles.getTime() + birthOffset, deformedGroundY, groundClimate());
       }
     }
     if (water) {
@@ -2837,7 +2872,8 @@ function* createFxSteps(
       _puffO.life = 0.1 + rng() * 0.1;
       _puffO.size0 = (1.4 + rng()) * dk; _puffO.size1 = (3.2 + rng() * 1.2) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xffffff, _puffO.col0); col3(0xffb040, _puffO.col1);
+      // (b6: a white bulb on a kill's first frame) a hot yellow flash, not white
+      col3(0xffe2a8, _puffO.col0); col3(0xffa040, _puffO.col1);
       _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('flash', _puffO);
     }
@@ -5144,12 +5180,21 @@ function* createFxSteps(
         lastGroundBlast.x = b.x; lastGroundBlast.z = b.z;
         lastGroundBlast.craterId = typeof b.craterId === 'number' ? b.craterId : -1;
       });
+      // a deforming crater (crater-render-spec §D): its own surface draped on the deformed ground (the terrain follows
+      // the overlay in its LOD pass, before this update reads it), its edge ragged by the simulation's wobble; a live one
+      // throws its clods onto the rim and a thin ring of dust (the burst itself is the same tick's blast); a settled one
+      // lays its surface alone, at its final state
       bus.on(DESTRUCTION_BUS_EVENTS.crater, (payload) => {
         const e = payload as TerrainCraterEvent;
-        if (!craters) return;
-        if (!(e.radiusM > 0.2)) return;
-        craters.stamp(e.x, e.z, e.radiusM, classifyTerrain(heightField, e.x, e.z), true, (e.seed % 65536) / 65536,
-          e.settled ? particles.getTime() - 10 : particles.getTime(), groundY);
+        if (!craters || !(e.radiusM > 0.2)) return;
+        const [p1, p2, p3] = craterWobblePhases(e.seed);
+        const surface = classifyTerrain(heightField, e.x, e.z);
+        const settled = e.settled === true;
+        const now = particles.getTime();
+        craters.crater({ x: e.x, z: e.z, radiusM: e.radiusM, p1, p2, p3, surface, climate: groundClimate(), explosive: true,
+          seed: (e.seed % 65536) / 65536, birth: settled ? now - 600 : now }, deformedGroundY);  // settled: an old, weathered crater
+        clearCover(e.x, e.z, e.radiusM);
+        if (!settled && blast) craterEjecta(blast, e.x, e.z, e.radiusM, surface, deformedGroundY, 0);
       });
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);

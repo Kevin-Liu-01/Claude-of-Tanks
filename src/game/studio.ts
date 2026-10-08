@@ -7,7 +7,12 @@ import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolic
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
+  type TerrainCraterEvent,
 } from '../sim/destructionEvents.ts';
+import { CRATER_DEFORM_MIN_RADIUS_M, craterFor } from '../sim/munitionBlast.ts';
+import { quantizeCrater, type QuantizedCrater } from '../sim/destructionMatch.ts';
+import { createTerrainDeformation, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -260,6 +265,8 @@ interface StudioEffectParams {
   stage?: string;
   /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
   wall?: boolean;
+  /** explosion with a munition: only its crater, laid down settled (a late joiner's view: no blast) */
+  settled?: boolean;
   hitH?: number;
   chargeKg?: number;
   cause?: string;
@@ -1553,6 +1560,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         });
         return true;
       }
+      // params.settled: the crater as a late joiner lays it down (crater-render-spec §D/§F): dug, drawn at its final
+      // state, no blast, no burst, no ejecta
+      if (params.settled) {
+        const dug = studioDig(munition, chargeKg, position.x, position.z);
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true });
+        return true;
+      }
+      // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
+      const crater = studioDig(munition, chargeKg, position.x, position.z);
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: position.x, y: position.y, z: position.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+        ...(crater ? { craterId: crater.craterId } : {}),
+      });
       fxBus.emit('shell:expired', {
         shellId: -1,
         hitTerrain: true,
@@ -1561,6 +1581,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         chargeKg,
         caliberMm: params.caliberMm || 120,
       });
+      if (crater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
       return true;
     }
     if (size === 'small') {
@@ -1573,6 +1594,39 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
     }
     return true;
+  }
+
+  /**
+   * Craters in the Studio (destruction core lane, 2026-10-08; crater-render-spec §F's strips): a burst of a munition
+   * class digs what the battle would dig at that point — the simulation's law, quantization and seed
+   * (sim/destructionMatch.ts dig and quantizeCrater: radius at least CRATER_DEFORM_MIN_RADIUS_M, never on hard ground,
+   * the ruleset's crater switch and scale) — on a ground overlay of the Studio's own, bound to the world while the Studio digs, so the
+   * drawn terrain, the ground cover and the crater's surface follow it as they do in battle. A scene reload levels it;
+   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls keep the undug ground.
+   */
+  let studioGround: TerrainDeformation | null = null;
+  let studioCraters = 0;
+  const studioCraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const studioCraterDug: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
+  function studioDig(munition: MunitionClass, chargeKg: number, x: number, z: number): TerrainCraterEvent | null {
+    const rules = matchRulesetFor('standard').destruction;
+    const w = getWorld();
+    if (!rules.craters || !w || !(chargeKg > 0) || studioCraters >= rules.maxCraters) return null;
+    craterFor(chargeKg, munition, rules.craterScale, studioCraterShape);
+    if (studioCraterShape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
+    if (w.heightField?.getGroundType?.(x, z) === 'hard') return null;
+    if (!studioGround) studioGround = createTerrainDeformation();
+    if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+    const { x: qx, z: qz, radiusM, depthM, rimM, seed } = quantizeCrater(x, z, studioCraterShape, studioCraterDug);
+    if (!studioGround.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null;
+    return { craterId: studioCraters++, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true };
+  }
+  function resetStudioGround(unbind: boolean): void {
+    studioCraters = 0;
+    if (!studioGround) return;
+    studioGround.reset();
+    const w = getWorld();
+    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
   }
 
   /**
@@ -2070,6 +2124,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.length = 0;
     fx.resetAll();
     studioStages.clear();
+    resetStudioGround(false);
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
@@ -3451,6 +3506,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     activeEffectIds.clear();
     fx.resetAll();
     studioStages.clear();
+    resetStudioGround(true);
     fx.setFrozen(false);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras

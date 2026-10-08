@@ -7,11 +7,12 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
-import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
+import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
-import { createCraterMarks } from './craterMarks.ts';
+import { createCraterMarks, craterSoil } from './craterMarks.ts';
+import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
 import { MUNITION_CLASSES } from '../sim/destructionEvents.ts';
@@ -137,7 +138,7 @@ function captureContext(seed) {
       chunk: (k) => log.chunk.push({ ...k }),
       flash: () => { log.flash++; }, fire: () => { log.fire++; }, sparks: () => { log.sparks++; },
       jet: () => { log.jets = (log.jets || 0) + 1; }, shockRing: () => { log.rings = (log.rings || 0) + 1; },
-      lightPulse: () => { log.pulses++; }, distBoost: () => 1, tier: 1,
+      lightPulse: (x, y, z, k) => { log.pulses++; log.pulseK = k; }, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: makeChunkPiece(),
       lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1], col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
       ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 },
@@ -191,6 +192,15 @@ function captureContext(seed) {
   assert.ok(jetTop(big) > 18, `the gunship's stands past 18 m (${jetTop(big).toFixed(1)})`);
   const ac = he(5, 'autocannon_he', 0.05, 'soil');
   assert.ok(jetTop(ac) < 4, `a 30 mm round's stays low (${jetTop(ac).toFixed(1)})`);
+  // (wave 273) a burst's light on the ground is brief and weak, far weaker on snow; its cloud spreads without lifting off;
+  // a shaped charge throws few soil jets and is born in its own dark smoke
+  const snowGlow = he(5, 'he', 3.5, 'snow');
+  assert.ok(a.pulseK <= 0.6 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground glow: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
+  assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
+    .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
+  const atgmJets = jets(atgm.log);
+  assert.ok(atgmJets.length <= 3 && atgm.log.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1),
+    'a shaped charge: few jets, its own dark smoke');
   // and its cloud keeps moving: no dust or residue flipbook holds its last frame for the rest of its life
   for (const m of [...a.media, ...big.media]) {
     if (m.heat === 0 && m.life > 3) assert.ok(m.playSeconds >= m.life * 0.8, 'a flipbook plays its whole life');
@@ -374,13 +384,61 @@ function captureContext(seed) {
 {
   const craters = createCraterMarks();
   assert.equal(craters.count, 0);
+  // (wave 273: near-black stamped ovals; a clean dark oval in snow) the surface weathers with age, its blanket is
+  // pocked with clods and secondary craters, and snow's blanket is dirty snow sprayed with soil
+  const fragSrc = craters.mesh.material.fragmentShader;
+  assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 240\.0, age \);/, 'soot weathers away with age');
+  assert.match(fragSrc, /float pock = blanket \* step\( 0\.82, cellH \)/, 'the blanket is pocked');
+  assert.match(fragSrc, /vec3 dirty = vec3\( 0\.46, 0\.47, 0\.49 \);/, 'snow shows dirty snow and soil spray');
   assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
-  assert.equal(craters.count, 96, 'the crater ring keeps the latest 96');
-  assert.ok(craters.mesh.geometry.drawRange.count > 0, 'craters draw');
+  assert.equal(craters.count, 96, 'the marks ring keeps the latest 96');
+  assert.ok(craters.mesh.geometry.drawRange.count > 0, 'marks draw');
+  // a deforming crater (crater-render-spec §D): kept apart from the marks, world-aligned (the shader's angle is the
+  // simulation's atan2(dz, dx)), the simulation's wobble phases, draped on the deformed ground, the place's soil
+  const [p1, p2, p3] = craterWobblePhases(51234);
+  const bowl = (x, z) => -0.6 * Math.max(0, 1 - ((x - 10) ** 2 + (z - 20) ** 2) / (1.7 * 1.7));
+  craters.crater({ x: 10, z: 20, radiusM: 1.7, p1, p2, p3, surface: 'snow', climate: 'snow', explosive: true, seed: 0.78, birth: 0 }, bowl);
+  assert.equal(craters.craters, 1);
+  assert.equal(craters.count, 97, 'a crater never evicts a mark (nor a mark a crater)');
+  const g = craters.mesh.geometry;
+  const P = g.getAttribute('position').array, S = g.getAttribute('aShape').array, D = g.getAttribute('aDisc').array, O = g.getAttribute('aSoil').array;
+  assert.deepEqual([S[0], S[1], S[2]].map((v) => +v.toFixed(5)), [p1, p2, p3].map((v) => +v.toFixed(5)), 'the wobble the bowl was dug with');
+  assert.ok(Math.abs(S[3] - 1 / 1.6) < 1e-6, 'the rim at 1/1.6 of the disc (the disc reaches 1.6 R)');
+  assert.ok(Math.abs(P[1] - (bowl(10, 20) + 0.05)) < 1e-5, 'the centre lies in the bowl');
+  // a vertex on the outer ring sits at disc (cos a, sin a) * 1.6 R, unrotated
+  const v = 1 + 5 * 28 + 7, a = (7 / 28) * Math.PI * 2;
+  assert.ok(Math.abs(P[v * 3] - (10 + Math.cos(a) * 1.7 * 1.6)) < 1e-4 && Math.abs(P[v * 3 + 2] - (20 + Math.sin(a) * 1.7 * 1.6)) < 1e-4
+    && Math.abs(D[v * 2] - Math.cos(a)) < 1e-6, "world-aligned: the decal's angle is the simulation's");
+  assert.ok(O[0] < 0.1 && O[1] < 0.1, 'dark soil through snow');
+  // climates: an arid map's loam is lighter, an ash field black-grey
+  assert.ok(craterSoil('soil', 'arid', [0, 0, 0, 0])[0] > craterSoil('soil', 'vegetated', [0, 0, 0, 0])[0]);
+  assert.ok(craterSoil('soil', 'ash', [0, 0, 0, 0])[0] < 0.04 && craterSoil('sand', 'ash', [0, 0, 0, 0])[0] > 0.2, 'ash on soil, not on a sand road');
+  for (let i = 0; i < 200; i++) craters.crater({ x: i, z: 0, radiusM: 2, p1, p2, p3, surface: 'soil', climate: 'vegetated', explosive: true, seed: 0.1, birth: 0 }, () => 0);
+  assert.equal(craters.craters, 160, "the simulation's cap: 160 craters a match");
   craters.reset();
   assert.equal(craters.count, 0);
   assert.equal(craters.mesh.geometry.drawRange.count, 0, 'reset clears the marks');
+  // a live crater's clods land on its rim and blanket (between R and 1.6 R), at rest on the deformed ground
+  const ej = captureContext(9);
+  const dug = (x, z) => 1 + bowl(x + 10, z + 20);
+  craterEjecta(ej.ctx, 0, 0, 1.7, 'soil', dug, 0);
+  assert.ok(ej.log.chunk.length >= 15, 'clods');
+  for (const k of ej.log.chunk) {
+    const s = (1 - Math.exp(-k.drag * 0.55)) / k.drag; // the shortest flight
+    const T = (() => { // solve the flight time back from the aimed landing (y(T) = groundY)
+      let lo = 0.3, hi = 3;
+      for (let i = 0; i < 60; i++) { const t = (lo + hi) / 2; const ss = (1 - Math.exp(-k.drag * t)) / k.drag; if (k.y + k.vy * ss - 4.9 * t * t > k.groundY) lo = t; else hi = t; }
+      return lo;
+    })();
+    const ss = (1 - Math.exp(-k.drag * T)) / k.drag;
+    const lx = k.x + k.vx * ss, lz = k.z + k.vz * ss;
+    const d = Math.hypot(lx, lz);
+    assert.ok(d > 1.7 * 0.98 && d < 1.7 * 1.6 * 1.02, `a clod lands on the rim or the blanket (${d.toFixed(2)} m)`);
+    assert.ok(Math.abs(k.groundY - dug(lx, lz)) < 1e-6, 'and rests on the ground where it lands');
+    void s;
+  }
+  assert.ok(ej.log.media.length >= 8 && ej.log.media.every((m) => m.aspect > 1.5), 'a thin ring of dust rolls off the rim');
 }
 
 // ---- 8. buildings coming down in their own geometry (the mask the world's bucket materials read) ---------------

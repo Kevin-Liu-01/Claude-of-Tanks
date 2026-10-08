@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries,
+  assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries, readCollisionManifestVariants,
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
@@ -113,7 +113,43 @@ function publish(mapId, data) {
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
 }
 
-if (options.node) {
+if (options.node && options.variant) {
+  // 2026-10-08 (destruction core lane): a mode's battlefield variant, built from the variant's config into
+  // `<map>@<variant>.json`; the base shards and the index's maps stay as they are
+  const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
+  const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
+  const { encodeCollisionManifest, decodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
+  const index = JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8'));
+  const variants = readCollisionManifestVariants();
+  const entries = { ...(variants[options.variant] ?? {}) };
+  let drifted = 0;
+  for (const mapId of options.mapIds) {
+    const data = await buildWorldCollisionData(mapId, { variant: options.variant });
+    const label = `${mapId}@${options.variant}`;
+    if (!options.check) {
+      entries[mapId] = writeCollisionManifestShard(mapId, data, collisionManifestDirectory, options.variant);
+      console.log(`${label}: ${data.obstacles.length} obstacles, ${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+      continue;
+    }
+    const encoded = encodeCollisionManifest(readCollisionManifest(data));
+    const text = JSON.stringify(encoded);
+    const sha256 = createHash('sha256').update(text).digest('hex');
+    const committed = index.variants?.[options.variant]?.[mapId];
+    if (committed?.sha256 === sha256 && committed?.bytes === Buffer.byteLength(text)) { console.log(`${label}: current`); continue; }
+    if (!committed) { drifted++; console.log(`${label}: MISSING`); continue; }
+    const committedShard = JSON.parse(readFileSync(new URL(`${label}.json`, collisionManifestDirectory), 'utf8'));
+    const { difference, rounded } = compareDecoded(decodeCollisionManifest(committedShard), decodeCollisionManifest(encoded));
+    if (difference) { drifted++; console.log(`${label}: DRIFTED (${difference})`); }
+    else console.log(`${label}: current (${rounded} packed numbers differ in the last digit)`);
+  }
+  if (options.check) {
+    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} ${options.variant} shards match the tree`);
+    process.exit(drifted ? 1 : 0);
+  }
+  writeCollisionManifestIndex(index.maps, collisionManifestDirectory, { ...variants, [options.variant]: entries });
+  console.log(`captured ${options.mapIds.length} ${options.variant} shards; published the index with ${Object.keys(entries).length} of them`);
+  process.exit(0);
+} else if (options.node) {
   const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
   const { readCollisionManifest } = await import('../server/collisionManifestFormat.ts');
   const { encodeCollisionManifest } = await import('../server/collisionManifestCodec.ts');
