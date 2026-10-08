@@ -1245,6 +1245,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    // the map-revival lane (Sirocco Wadi round 1, wave 235): the erg's seif draa and star dunes; the gour's caprock cliffs
+    'src/world/duneForms.selftest.mjs',
+    'src/world/gourSkin.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads

@@ -31,6 +31,15 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // Buntsandstein red the geology defaults to.
 const DAHAR_ROCK = [0.058, 0.24, 0.55] as const;
 
+// The map-revival lane (2026-10-07, round 1; gauntlet wave 235: "a bleached cream-beige of soft, low, banded mesas and
+// pale sand", the dunes "soft cream mounds"): the Erg's draa are seifs — linear dunes along the wind with a sharp crest
+// wandering across their line, a slip face on the side it bows to and a long back on the other (duneForms.ts); the two
+// star dunes peaks with sharp-crested arms on a broad sand base. Same places, lengths, widths and heights. The slip face
+// runs half the half-width (about 12° at the brink, the back about 9°): at a third of it (19°) the sharp crests left the
+// layout brief's long views short (sightLongShare 0.028 of the 0.03 floor; tools/map-layout-metrics.mjs), at a half
+// with the caprock a fifth of the wall they hold 0.031.
+const SEIF = { kind: 'seif', slip: 0.5 } as const;
+
 // The wadi centreline, symmetric through the ford: (x, z) and (-x, -z) are both on it.
 const WADI = [
   [-512, 140], [-420, 132], [-330, 120], [-250, 100], [-180, 66], [-115, 34], [-55, 16], [0, 0],
@@ -94,6 +103,11 @@ export default {
       amp: 36, thr0: 0.80, thr1: 0.855,
       wallWidth: 2.2, tierWidth: 0.16, tierScale: 0.22,
       corridorFloor: 1,
+      // (the map-revival lane, 2026-10-07, round 1; gauntlet wave 235: "soft, low, banded mesas") the Dahar's gour: a
+      // caprock of hard dolomite standing as a cliff at the cap's edge, the soft marls and sandstones below it a steep
+      // slope over the talus — the wall's top fifth a near-vertical step over a twenty-fifth of its run (three tenths
+      // shortened the layout brief's long views with the seifs' crests: SEIF above)
+      capCliff: { share: 0.2, from: 0.88, to: 0.92 },
     },
     marshes: takyrCrusts(),
     clearMarshVeg: true,
@@ -148,23 +162,23 @@ export default {
       // The Erg Dune: a steep star dune north-east of the ksar, the Gara's counterpart across the ford. A tall
       // knoll whose sand flanks (rock stays gated to the mesa weight on this map) a hull cannot climb, with two
       // lower arms reaching south-west and north-east.
-      { kind: 'knoll', x: 128, z: 148, rx: 96, rz: 82, height: 27, yawDeg: 34 },
-      { kind: 'ridge', x: 70, z: 96, length: 150, width: 64, height: 7.5, yawDeg: 34 },
-      { kind: 'ridge', x: 196, z: 214, length: 160, width: 66, height: 8.0, yawDeg: 38 },
+      { kind: 'knoll', x: 128, z: 148, rx: 96, rz: 82, height: 27, yawDeg: 34, dune: { kind: 'star', arms: 4 } },
+      { kind: 'ridge', x: 70, z: 96, length: 150, width: 64, height: 7.5, yawDeg: 34, dune: SEIF },
+      { kind: 'ridge', x: 196, z: 214, length: 160, width: 66, height: 8.0, yawDeg: 38, dune: SEIF },
       // The Gara Dune: the south-east star dune, the North Mesa's counterpart.
-      { kind: 'knoll', x: 300, z: -356, rx: 100, rz: 78, height: 24, yawDeg: 30 },
+      { kind: 'knoll', x: 300, z: -356, rx: 100, rz: 78, height: 24, yawDeg: 30, dune: { kind: 'star', arms: 5 } },
       // Draa ridges across the open basin, aligned with the wind (the dune field's rippleDir 0.8 / 0.6, about 37°):
       // hull-down crests and sight breaks, each with its rotated twin.
-      { kind: 'ridge', x: 150, z: 22, length: 170, width: 62, height: 5.5, yawDeg: 37 },
-      { kind: 'ridge', x: -150, z: -22, length: 170, width: 62, height: 5.5, yawDeg: 37 },
-      { kind: 'ridge', x: 330, z: 300, length: 200, width: 70, height: 6.0, yawDeg: 37 },
-      { kind: 'ridge', x: -330, z: -300, length: 200, width: 70, height: 6.0, yawDeg: 37 },
-      { kind: 'ridge', x: 140, z: -230, length: 180, width: 64, height: 5.5, yawDeg: 37 },
-      { kind: 'ridge', x: -140, z: 230, length: 180, width: 64, height: 5.5, yawDeg: 37 },
-      { kind: 'ridge', x: 372, z: -46, length: 160, width: 58, height: 5.0, yawDeg: 37 },
-      { kind: 'ridge', x: -372, z: 46, length: 160, width: 58, height: 5.0, yawDeg: 37 },
-      { kind: 'ridge', x: 318, z: -196, length: 150, width: 56, height: 4.5, yawDeg: 37 },
-      { kind: 'ridge', x: -318, z: 196, length: 150, width: 56, height: 4.5, yawDeg: 37 },
+      { kind: 'ridge', x: 150, z: 22, length: 170, width: 62, height: 5.5, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: -150, z: -22, length: 170, width: 62, height: 5.5, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: 330, z: 300, length: 200, width: 70, height: 6.0, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: -330, z: -300, length: 200, width: 70, height: 6.0, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: 140, z: -230, length: 180, width: 64, height: 5.5, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: -140, z: 230, length: 180, width: 64, height: 5.5, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: 372, z: -46, length: 160, width: 58, height: 5.0, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: -372, z: 46, length: 160, width: 58, height: 5.0, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: 318, z: -196, length: 150, width: 56, height: 4.5, yawDeg: 37, dune: SEIF },
+      { kind: 'ridge', x: -318, z: 196, length: 150, width: 56, height: 4.5, yawDeg: 37, dune: SEIF },
     ],
   },
 
@@ -185,7 +199,9 @@ export default {
     // hottest sun in the game tonemapped the whole midfield to one blown
     // cream void). 0.20+0.86l tops out ~0.82: still clearly sun-hammered,
     // but dune-face shading and the macro tints below survive to screen.
-    grassTone: (h: number, s: number, l: number) => [0.096, 0.40, clamp01(0.20 + l * 0.86)],
+    // (round 1: the procedural fallback follows the sourced sand to golden ochre: hue 0.096 -> 0.092, saturation 0.40 ->
+    // 0.52, a step darker)
+    grassTone: (h: number, s: number, l: number) => [0.092, 0.52, clamp01(0.18 + l * 0.80)],
     // r4 (content_breadth): the `worn` dirt-patch bands were the critique's
     // "smeared dirt/grime streaks" across the midfield dune faces — the dirt
     // layer's clod/crack texture (painted L 0.08-0.31) rode l*1.12+0.04, so
@@ -233,7 +249,10 @@ export default {
     // frequency shader bands stacked on the desaturated beds read over-striped
     // r1 (content_breadth): 0.15 -> 0.10 — pairs with the compressed bed
     // contrast above; the shader bands only whisper at range now
-    strata: 0.10,
+    // (the map-revival lane, 2026-10-07, round 1; gauntlet wave 235: "the smooth, contour-striped rock slope", "soft,
+    // low, banded mesas"): 0.10 -> 0 — the world-Y bands followed the contours of every steep sand face and of the mesas'
+    // soft walls. The beds stand only on the rock faces now, where they are real: the outliers' skins carry them.
+    strata: 0,
     microAmp: 0.38,         // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     // r7: 0.26 -> 0.34 — with the darker sand albedo the dune-face ripple
@@ -258,6 +277,12 @@ export default {
     // but never ENABLED for this map — the mid-map stayed "hundreds of meters
     // of featureless smooth sand" (critique). Full strength.
     sandMacro: 1.0,
+    // (round 1, wave 235: "a bleached cream-beige of ... pale sand") the Grand Erg Oriental's sand is golden ochre to
+    // orange-buff, not cream: the sourced sand (Ground093C, sRGB mean 203/184/147) under the plan's tint rendered
+    // 192/171/131 (hue 39°, saturation 0.32); this multiplier takes the open sand to about 205/158/98 (hue 34°, 0.52) and
+    // the worn variant to 190/142/86, a step under the old luminance (the map's sun and exposure were set against a
+    // blown-out cream; no change there)
+    sourcedTint: { G: [1.155, 0.86, 0.55], D: [1.07, 0.756, 0.48] },
   },
 
   vegetation: {
@@ -481,6 +506,14 @@ export default {
   // cairn that marks a desert track, stands beside the caravan road and the wadi track where each enters the basin.
   // Turned through 180 degrees about the ford like the rest of the map.
   scenery: {
+    // (the map-revival lane, 2026-10-07, round 1; gauntlet wave 235: "soft, low, banded mesas", "a stretched,
+    // vertically streaked texture on the steep slope") the two outliers' walls in relief (gourSkin.ts): the dolomite
+    // caprock in jointed blocks over the terrain's cliff (mesas capCliff), a dark notch under it, the marl slope's red,
+    // ochre, green-grey and gypsum beds cut by rills, the fallen caprock on the talus
+    gours: [
+      { x0: -470, x1: -110, z0: 230, z1: 470, name: 'the North Mesa' },
+      { x0: -250, x1: 10, z0: -300, z1: -10, name: 'the Gara' },
+    ],
     rockFields: [
       { geology: 'sandstone', x: -330, z: 120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -330,120' },
       { geology: 'sandstone', x: -250, z: 100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], tone: DAHAR_ROCK, name: 'the wadi banks at -250,100' },

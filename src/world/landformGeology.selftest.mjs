@@ -40,7 +40,8 @@ function smoothRidge(form, x, z) {
 let smoothForms = 0;
 for (const mapId of MAP_IDS) {
   for (const raw of getMapConfig(mapId).terrain?.landforms ?? []) {
-    if (raw.geology || raw.relief || raw.kind === 'gorge') continue;
+    // (a sand landform's `dune` takes its own section: duneForms.ts, its receipt duneForms.selftest)
+    if (raw.geology || raw.relief || raw.dune || raw.kind === 'gorge') continue;
     const form = frame(raw);
     for (let i = 0; i < 64; i++) {
       const x = form.x + Math.cos(i * 2.39996) * (i * 1.9), z = form.z + Math.sin(i * 2.39996) * (i * 1.9);

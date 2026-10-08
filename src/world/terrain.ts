@@ -50,6 +50,7 @@ import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
+import { duneHeight, type DuneForm } from './duneForms.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
@@ -248,6 +249,9 @@ interface LandformConfig {
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
+  /** A sand landform's own form (duneForms.ts; the map-revival lane, Sirocco Wadi round 1): a seif's wandering sharp
+   * crest on a ridge, a star dune's peak and arms on a knoll. Takes the place of the smooth section and of `geology`. */
+  dune?: DuneForm;
   /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
    * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
    * a narrow band is a sheer wall. Absent = the trough exactly as before. */
@@ -270,6 +274,12 @@ interface MesaConfig {
   tierWidth?: number;
   tierScale?: number;
   corridorFloor?: number;
+  /** The map-revival lane (2026-10-07, Sirocco Wadi round 1): the wall as the Dahar's — a talus and a marl slope under
+   * a caprock cliff. `share` of the wall's height (default 0.3) stands as a near-vertical step at the cap's edge, over
+   * the band [from, to] of the wall's own run (default 0.84-0.92); the rest rises on the slope below it. The wall's
+   * footprint is unchanged (its run over the mesa noise is the authored one; the cap begins at `to`). Absent = the
+   * smooth wall exactly as before. */
+  capCliff?: { share?: number; from?: number; to?: number };
 }
 
 interface TerrainSettings {
@@ -964,6 +974,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const half = Math.max(1, (form.length || 100) * 0.5);
     const width = Math.max(1, form.width || 45);
     const along = 1 - smoothstep(half * 0.72, half, Math.abs(lx));
+    if (form.dune) return duneHeight(form, lx, lz, along) ?? 0;
     if (form.geology) return ridgeGeologyHeight(form, lx, lz, along) ?? 0;
     const across = 1 - smoothstep(width * 0.22, width, Math.abs(lz));
     // A wide crown plus a softer shoulder reads as a natural fold and keeps
@@ -971,6 +982,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const shoulder = across * across * (3 - 2 * across);
     return height * along * shoulder;
   }
+  if (form.dune) return duneHeight(form, lx, lz, 1) ?? 0;
   if (form.geology) return knollGeologyHeight(form, lx, lz) ?? 0;
   const rx = Math.max(1, form.rx || form.r || 70);
   const rz = Math.max(1, form.rz || form.r || rx);
@@ -1447,7 +1459,13 @@ function* heightFieldBuildSteps(
       const band = T.mesas.thr1 - T.mesas.thr0;
       const wallWidth = T.mesas.wallWidth ?? 0.42;
       const tierWidth = T.mesas.tierWidth ?? 0.045;
-      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      let wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      if (T.mesas.capCliff) {
+        // (Sirocco Wadi round 1) the slope below, then the caprock's step at the cap's edge
+        const cc = T.mesas.capCliff, share = cc.share ?? 0.3, c0 = cc.from ?? 0.84, c1 = cc.to ?? 0.92;
+        const t = clamp((mn - T.mesas.thr0) / (band * wallWidth), 0, 1);
+        wall = (1 - share) * smoothstep(0, c0, t) + share * smoothstep(c0, c1, t);
+      }
       const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.04 + tierWidth, mn);
       const tierScale = T.mesas.tierScale ?? 0.45;
       const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);

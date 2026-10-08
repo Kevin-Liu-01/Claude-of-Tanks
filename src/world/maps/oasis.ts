@@ -59,7 +59,9 @@ export default {
     // inappropriate here. Keep its subdued lightness with a small lift.
     // (round 2, wave 125: "water pale mineral") Siwa's spring water is a pale, milky mineral turquoise over white sand
     mudTone: (_h: number, _s: number, l: number) => [0.47, 0.28, Math.min(0.56, l * 1.5 + 0.17)],
-    seaLake: true, seaFoam: 0.04, seaRamp: [0.08, 0.40], iceDrift: 0.02, marshGloss: 0.88, iceSky: [0.32, 0.54, 0.52], midRelief: 0.52, rippleDir: [0.4, 0.92] },
+    seaLake: true, seaFoam: 0.04, seaRamp: [0.08, 0.40], iceDrift: 0.02, marshGloss: 0.88, iceSky: [0.32, 0.54, 0.52], midRelief: 0.52, rippleDir: [0.4, 0.92],
+    // (Sirocco Wadi round 1 took its own sand golden and its world-Y strata to 0; the Siwa sand and its strata stay)
+    strata: 0.10, sourcedTint: undefined },
   vegetation: {
     grassTexTone: desert.vegetation.grassTexTone, tuftTone: desert.vegetation.tuftTone,
     species: ['palm', 'acacia', 'eucalyptus'], clusterMix: [['palm', 0.65], ['acacia', 0.3], ['eucalyptus', 0.05]],
