@@ -354,9 +354,10 @@ function pocketBoulders(ARM: ReturnType<typeof armTerrain>) {
     const radius = 1.4 + h(i, 2) * 0.9;
     r += radius * 0.8 + h(i, 1) * 1.2;
     const px = x + dx * r, pz = z + dz * r;
-    // (past the pocket's start the ray runs out under the road and the dam: no lip there)
+    // (by the pocket's start the road's downstream parapet guards the lip, and past it the ray runs out under the road and
+    // the dam: no block within 8 m of the start, where the scenery pass would find the dam's walls)
     const back = (px - POCKET_START[0]) * DOWN[0] + (pz - POCKET_START[1]) * DOWN[1];
-    if (back > 2 && ARM.pocketDepthAt(px, pz) >= -0.05 && ARM.depthAt(px, pz) >= -0.05) {
+    if (back > 8 && ARM.pocketDepthAt(px, pz) >= -0.05 && ARM.depthAt(px, pz) >= -0.05) {
       rocks.push({ form: 'outcrop', geology: 'sandstone', x: Math.round(px * 10) / 10, z: Math.round(pz * 10) / 10,
         radius: Math.round(radius * 100) / 100, height: Math.round((1.1 + h(i, 3) * 0.8) * 100) / 100,
         yawDeg: Math.round(h(i, 4) * 180), shed: 0.4, name: "the tailwater's brow, a fallen block" });
