@@ -242,6 +242,15 @@ export interface TerraceZoneConfig {
   /** (the map-revival lane, 2026-10-07, Orchard round 5: the village stacked on its terraced hill) the share of the steps
    * kept inside the settlement (0..1). Absent: 0 — a settlement lies on its own levelled ground, as before. */
   settlement?: number;
+  /**
+   * (the map-revival lane, 2026-10-07, Orchard round 5: the village's mule track — the coordinator's "a ramped mule track
+   * from the cross road up to the church square … no road grading needed") ramped tracks through the zone, each a
+   * polyline whose nodes carry the track's height ([x, z, y], metres): within `halfWidth` m of the line (default 1.6) the
+   * stepped ground is cut and filled level across to the track's height there (interpolated along each leg), easing back
+   * to the steps over `feather` m more (default 2). Where two legs' bands meet (a switchback) the ground takes their
+   * weighted mean. The zone's own edge weight fades a track, and nothing outside its bands moves.
+   */
+  ramps?: readonly { nodes: readonly (readonly [number, number, number])[]; halfWidth?: number; feather?: number }[];
 }
 
 interface LandformConfig {
@@ -666,6 +675,13 @@ interface TerraceZone {
   xs: Float64Array; zs: Float64Array;
   minX: number; maxX: number; minZ: number; maxZ: number;
   feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number; settlement: number;
+  ramps: TerraceRamp[];
+}
+/** A prepared ramped track (TerraceZoneConfig.ramps): its nodes, its band and the bounds the band reaches. */
+interface TerraceRamp {
+  nodes: readonly (readonly [number, number, number])[];
+  halfWidth: number; feather: number;
+  minX: number; maxX: number; minZ: number; maxZ: number;
 }
 interface TerraceZoneHit { zone: TerraceZone; weight: number }
 
@@ -677,8 +693,39 @@ function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): T
       feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
       minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
       settlement: clamp(z.settlement ?? 0, 0, 1),
+      ramps: (z.ramps ?? []).filter((r) => r.nodes.length >= 2).map((r) => {
+        const halfWidth = Math.max(0.5, r.halfWidth ?? 1.6), feather = Math.max(0.5, r.feather ?? 2), reach = halfWidth + feather;
+        const nx = r.nodes.map((n) => n[0]), nz = r.nodes.map((n) => n[1]);
+        return { nodes: r.nodes, halfWidth, feather, minX: Math.min(...nx) - reach, maxX: Math.max(...nx) + reach,
+          minZ: Math.min(...nz) - reach, maxZ: Math.max(...nz) + reach };
+      }),
     };
   });
+}
+
+/**
+ * A terrace zone's ramped tracks over its stepped ground (TerraceZoneConfig.ramps): inside a track's band the ground lies
+ * level across at the track's height there (its legs' heights interpolated along them; where two legs' bands meet, their
+ * weighted mean), easing back to the steps over the feather; `weight` (the zone's own edge weight) fades it.
+ */
+function rampTerraceGround(ramps: readonly TerraceRamp[], weight: number, x: number, z: number, h: number): number {
+  let out = h;
+  for (const ramp of ramps) {
+    if (x < ramp.minX || x > ramp.maxX || z < ramp.minZ || z > ramp.maxZ) continue;
+    const { nodes, halfWidth, feather } = ramp;
+    let wsum = 0, ysum = 0, kmax = 0;
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      const ax = nodes[i][0], az = nodes[i][1], ay = nodes[i][2];
+      const dx = nodes[i + 1][0] - ax, dz = nodes[i + 1][1] - az, len2 = dx * dx + dz * dz;
+      const t = len2 > 0 ? clamp(((x - ax) * dx + (z - az) * dz) / len2, 0, 1) : 0;
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (d >= halfWidth + feather) continue;
+      const k = 1 - smoothstep(halfWidth, halfWidth + feather, d);
+      wsum += k; ysum += k * (ay + (nodes[i + 1][2] - ay) * t); kmax = Math.max(kmax, k);
+    }
+    if (kmax > 0) out += (ysum / wsum - out) * kmax * weight;
+  }
+  return out;
 }
 
 /** The material's terrace uniforms (T2): each zone's bounding rect (up to four) and the riser band — a face whose slope
@@ -2102,6 +2149,11 @@ function* heightFieldBuildSteps(
    * settlement, the marshes.
    */
   function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
+    const stepped = stepTerraces(tz, x, z, h, cw, vm, marshW);
+    // (the map-revival lane, 2026-10-07) the zone's ramped tracks, cut and filled level across over its steps
+    return tz.zone.ramps.length ? rampTerraceGround(tz.zone.ramps, tz.weight, x, z, stepped) : stepped;
+  }
+  function stepTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
     const zone = tz.zone;
     const protect = (1 - cw * 0.85) * (1 - vm * (1 - zone.settlement)) * (1 - marshW);
     if (protect <= 0.001) return h;
