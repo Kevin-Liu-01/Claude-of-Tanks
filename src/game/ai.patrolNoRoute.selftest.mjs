@@ -10,7 +10,7 @@
 // cell as solid: the Type 96 is held there on the lower wall's 36-degree toe, and nothing plans from it.
 // Re-seated 2026-10-07 (map revival lane 2, Aegis round 5): the Tajo's waist draws the walls in to the bridge, and the
 // floor's 25 m cells reach every toe beside the viaduct, so every pocket there plans. The north wall of the west reach
-// keeps them: the Type 96 is held on its lower face, 4.6 m over the floor at (-190, 70), where the grid reads the cliff's
+// keeps them: the Type 96 is held on its lower face, 8 m over the floor at (-190, 71.5), where the grid reads the cliff's
 // cell as solid; the enemy waits on the east reach's floor (the turbo-ball kickoff), so the direct leg runs east along the
 // gorge and crosses the viaduct's span, as the first one did.
 import { Vector3 } from 'three';
@@ -32,8 +32,9 @@ console.log('[1] Aegis Crossing: the Type 96 at rest in the gorge pocket, on its
   await ensureAuthorityFleet(['m1a2', 'type96_72m_lei']);
   // the pose the plane-attitude run left it in (4549734b3, 102 s on), held there tick by tick — re-seated on the new
   // gorge (2026-10-06): the north wall's toe by the viaduct (ground -37.6 m), the same heading; (2026-10-07, Aegis round
-  // 5) the west reach's north wall (ground -49.5 m), the hull turned east along it
-  const POSE = { x: -190, y: -48.9, z: 70, yaw: 100 * Math.PI / 180 };
+  // 5) the west reach's north wall (ground -45.6 m, 8 m over the floor: at 4.6 m the levees beside it, round 5's cover, put
+  // a planned cell in reach), the hull turned east along it
+  const POSE = { x: -190, y: -45.0, z: 71.5, yaw: 100 * Math.PI / 180 };
   const match = createAuthoritativeMatch({
     players: [
       { id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha', bot: false, spawn: { x: 130, z: 0, yaw: 0 } },
