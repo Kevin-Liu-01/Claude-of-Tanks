@@ -2334,9 +2334,10 @@ const VEHICLE_GROUND = Object.freeze({
  * 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the reference's w carries the root's field-wear strength
  * (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on the Garage showroom
  * build with its neutral film; a root without it wears 1), and the drawn material (the per-draw hook passes it) selects
- * how much coat and film its surface takes.
+ * how much coat, film and use-wear its surface takes and which soot source it reads (the render's frame counter places
+ * the sources once per frame; -1 places them every call).
  */
-export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null): void {
+export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1): void {
   const e = root.matrixWorld.elements;
   const wear = root.userData.fieldWear;
   const strength = typeof wear === 'number' ? wear : 1;
@@ -2345,7 +2346,7 @@ export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.
   VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
   const f = Math.hypot(e[8], e[9], e[10]) || 1;
   VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd.value.set(e[8] / f, e[9] / f, e[10] / f);
-  bindVehicleFieldWear(strength < 1, material);
+  bindVehicleFieldWear(strength < 1, material, root, frame);
 }
 /** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and wears no field wear. */
 export function resetVehicleGround(): void {
@@ -2369,6 +2370,9 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // program keys and variants are unchanged; the paint takes the wear before any light reads it.
   shader.uniforms.uVehWearRole = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearRole;
   shader.uniforms.uVehWearFwd = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd;
+  shader.uniforms.uVehWearHull = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearHull;
+  shader.uniforms.uVehWearSoot = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSoot;
+  shader.uniforms.uVehWearSootAxis = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSootAxis;
   shader.uniforms.uVehWearDeep = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearDeep;
   shader.uniforms.uVehWearSplash = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSplash;
   shader.uniforms.uVehWearSettle = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSettle;

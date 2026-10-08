@@ -40,7 +40,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
-import { VEHICLE_FIELD_WEAR_GARAGE } from './vehicleFieldWear.ts';
+import { VEHICLE_FIELD_WEAR_GARAGE, installVehicleFieldWear } from './vehicleFieldWear.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -1542,8 +1542,9 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
     if (!(object as THREE.Mesh).isMesh) return;
     const before = object.onBeforeRender, after = object.onAfterRender;
     object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
-      // (round 5 field wear, 2026-10-08: the drawn material picks its coat and film, materials.ts)
-      setVehicleGroundFromRoot(root, args[4]);
+      // (round 5 field wear, 2026-10-08: the drawn material picks its coat, film, use-wear and soot source, and the render's
+      // frame counter places the soot sources once per frame, materials.ts)
+      setVehicleGroundFromRoot(root, args[4], args[0]?.info?.render?.frame ?? -1);
       before.apply(this, args);
     };
     object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
@@ -9871,6 +9872,9 @@ function* createTankOwnedSteps(
     // Align complete banks before static batching can flatten their socket owners.
     alignSmokeBanks(root);
     retainCombatLods(root);
+    // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the hull frame (stern, bow, deck, half width), the exhaust and
+    // the muzzle the use-wear reads, measured from the unbatched plates
+    installVehicleFieldWear(root, specId);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];

@@ -406,7 +406,13 @@ battle, `VEHICLE_FIELD_WEAR_GARAGE` with the Garage's neutral film, 0 none: tool
 and its material's role (`vehicleFieldWearRole`: the appearance role or decor family; alpha-cut cards take none; opt a
 material out with `userData.cotWearRole = 'none'`). The pattern rides each mesh's own frame with a per-instance offset
 (identical panels never repeat one pattern), the vehicle frame (height, up, stern) comes from the vertex stage, and
-every octave settles to its mean before it can sparkle.
+every octave settles to its mean before it can sparkle. Use-wear reads what `installVehicleFieldWear` publishes at
+build end (before static batching): the hull frame measured from the unbatched plates, the exhaust (rear deck and plate,
+or the left flank for the T-54/55/62, T-64/72/90, PT-91, M-84 and BMPT lineage) and `rig_muzzle`; each draw binds one
+soot source (the gun's paint and bare steel the muzzle, the rest the exhaust), placed once per rendered frame. The role's
+z picks the use-wear class (1 painted metal: chips along the normal-map relief, rubbed walkways at the bow and the stern,
+column streaks; 2 track iron: polished up-facing faces; 3 bare steel: polished contact spots), its w the soot it takes.
+Every mark darkens or multiplies; the fine marks resolve only up close.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
