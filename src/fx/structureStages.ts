@@ -30,7 +30,7 @@ import {
 } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -320,7 +320,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   };
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
-  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined): void {
+  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number): void {
     if (!result) return;
     let changed = false;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
@@ -329,7 +329,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // world = R(yaw) body + placement (world/structureDamageSeam.ts holeOnAnatomy's frame)
       const wx = px + cut.x * c + cut.z * s, wz = pz - cut.x * s + cut.z * c;
       const wnx = cut.nx * c + cut.nz * s, wnz = -cut.nx * s + cut.nz * c;
-      mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3);
+      // a breach's cuts follow the outline the kit's rim does (its own seed's phase)
+      mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3,
+        holeSeed !== undefined ? holeOutlinePhase01(holeSeed) : undefined);
       // a hole goes through the wall's layers; a spall or the render ring only through its render
       o.scars?.add(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM >= 0.2,
         (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
@@ -430,7 +432,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
@@ -443,7 +445,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result);
+    apply(seam, result, holeSeed);
   }
 
   // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
@@ -555,7 +557,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'breached' && !sections) {
         const blow = breachBlowFor(e);
         const spec = seam.holeAt(blow.x, blow.y, blow.z, blow.radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey });
+        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
       }
       // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
       if (e.stage === 'collapsed') {
@@ -578,7 +580,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (!(e.radiusM > 0)) return;
         realHoles.add(e.structureId);
         const spec = seam.holeAt(e.x, e.y, e.z, e.radiusM, 0, 0, e.munition, cause, e.hole);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey });
+        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
         return;
       }
       // a section fell (hole 255, radius 0, standing at the section's centre on its face): the kit's section there

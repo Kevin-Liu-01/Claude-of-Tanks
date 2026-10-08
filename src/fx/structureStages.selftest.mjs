@@ -106,7 +106,11 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // hole itself, newest; with the two spalls the ring of four is full
   assert.equal(data[o + 7], 4, 'the spalls, the render ring and the hole');
   const R = o + 8 + 2 * 8, H = o + 8 + 3 * 8;
-  assert.ok(Math.abs(data[R + 7] - 0.01) < 1e-4 && data[R + 6] < 0.2 && data[R + 3] > data[H + 3],
+  // (the texel's w packs the outline's phase index over the outside distance: the kit's rim and the cut share the
+  // breach seed's phase; the ring and the hole of one breach carry the same one)
+  const frac = (v) => v - Math.floor(v);
+  assert.ok(Math.floor(data[R + 7]) > 0 && Math.floor(data[R + 7]) === Math.floor(data[H + 7]), 'one breach, one outline phase');
+  assert.ok(Math.abs(frac(data[R + 7]) - 0.01) < 1e-4 && data[R + 6] < 0.2 && data[R + 3] > data[H + 3],
     'the ring: wider than the hole, through the render only');
   const hx = data[H], hy = data[H + 1], hz = data[H + 2], hr = data[H + 3];
   const nx = data[H + 4], nz = data[H + 5];
@@ -117,7 +121,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // on the front plane: the centre's body z is the face's (4)
   const bz = (hx - placement.x) * s + (hz - placement.z) * c;
   assert.ok(Math.abs(bz - 4) < 0.35, `on the front wall (body z ${bz.toFixed(3)})`);
-  assert.ok(data[H + 6] > 0.1 && Math.abs(data[H + 7] - 0.3) < 1e-4, 'it cuts through the wall (0.3 m outside)');
+  assert.ok(data[H + 6] > 0.1 && Math.abs(frac(data[H + 7]) - 0.3) < 1e-4, 'it cuts through the wall (0.3 m outside)');
   // its rim and room belong to the standing building: they carry its run tag, so they fall with it
   const rims = debris.group.children.filter((m) => m.isMesh && /^fx-structure-(rim|room)/.test(m.name));
   assert.ok(rims.length > 0 && rims.every((m) => m.geometry.getAttribute('aDamage')?.array[0] === 32768 + 8),

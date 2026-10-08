@@ -259,7 +259,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   }
   // the light: on the ground for ~0.2 s (a bright ground takes far less of it), and inside the burst's own medium
   const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : hard ? 0.6 : 1;
-  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(1.0, 0.35 + 0.18 * s) * albedoK, 0, heavy ? 0.32 : shaped ? 0.16 : 0.22);
+  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.75, 0.25 + 0.14 * s) * albedoK, 0, heavy ? 0.32 : shaped ? 0.16 : 0.22);
   C.glow(I.x, by + 0.4 * D, I.z, 1.3 * D, heavy ? 1.1 : shaped ? 0.7 : 0.9, heavy ? 0.42 : shaped ? 0.22 : 0.3, bo);
 
   // 2a. a shaped charge's spike: the jet flashes out of the hole it drilled (back along the round's line; straight up when
@@ -288,21 +288,23 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     if (ux * ux + uz * uz < 1e-4) { ux = 1; uz = 0; }
     const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
     const wx = ay * uz - az * uy, wy = az * ux - ax * uz, wz = ax * uy - ay * ux;
-    const spikeN = fpv ? 8 : 12;
+    // (b8: a chain of separate grey balls) bigger puffs, launched closer in speed, overlap from the ground to the top
+    const spikeN = fpv ? 9 : 13;
     const vMax = (fpv ? 22 : 30) * sq * L.heightK;
     for (let i = 0; i < spikeN; i++) {
       const u = (i + R()) / spikeN;
-      const tilt = R() * 0.09, az2 = R() * TAU, st = Math.sin(tilt), ct = Math.cos(tilt);
+      const tilt = R() * 0.07, az2 = R() * TAU, st = Math.sin(tilt), ct = Math.cos(tilt);
       const dxs = ax * ct + (ux * Math.cos(az2) + wx * Math.sin(az2)) * st;
       const dys = ay * ct + (uy * Math.cos(az2) + wy * Math.sin(az2)) * st;
       const dzs = az * ct + (uz * Math.cos(az2) + wz * Math.sin(az2)) * st;
-      const v = vMax * (0.25 + 0.75 * u);
+      const v = vMax * (0.45 + 0.55 * u);
       place(m, I.x + (R() - 0.5) * 0.3, by + 0.25, I.z + (R() - 0.5) * 0.3, bo + R() * 0.03);
       move(m, dxs * v, dys * v, dzs * v, 2.8, 0.25, 0.6, -2.5);
-      const life = 2.2 + R() * 1.2;
-      const size1 = (0.9 + 0.7 * u + R() * 0.4) * s * dk;
-      shape(m, life, size1 * 0.3, size1, 2.4, R);
-      look(m, mix3b(SOOT, L.ejecta, 0.35 + 0.3 * R()), mix3(SOOT, SMOKE_AGED, 0.5), 0.9, 0.0, 0.55);
+      const life = 2.4 + R() * 1.0;
+      const size1 = (1.3 + 0.9 * u + R() * 0.4) * s * dk;
+      shape(m, life, size1 * 0.45, size1, 3.0, R);
+      // dense enough that no sky shows through (b8: thin puffs read blue-grey)
+      look(m, mix3b(SOOT, L.ejecta, 0.3 + 0.3 * R()), mix3(SOOT, SMOKE_AGED, 0.45), 1.0, 0.0, 0.55);
       book(m, 'burst', R, life, 1);
       heat(m, i < 2 ? 0.5 : 0, 6);
       C.media(m);
@@ -328,18 +330,37 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // back into the cloud within about two seconds
   const vTop = 20 * Math.pow(s, 0.6) * L.heightK * (heavy ? 1.35 : 1);
   if (!shaped) {
-    const jetN = Math.round((14 + 8 * s) * (heavy ? 1.5 : 1) * Math.min(1.2, 0.5 + 0.5 * L.chunkK + 0.3 * (L.dustK - 1)));
-    const cone = heavy ? 0.42 : 0.34;
-    for (let i = 0; i < jetN; i++) {
-      const u = (i + R()) / jetN;
-      const a = R() * TAU, tilt = cone * Math.sqrt(R());
-      const v = vTop * (0.3 + 0.7 * u) * (0.9 + R() * 0.2);
+    // (b8: still a spray of separate brown balls) the core: a dense dark jet of big puffs driven up a tight cone (~10°)
+    // together, swelling fast, so their union is one column from the ground to its top; the spray round it: smaller
+    // puffs thrown wider (to ~25°) that arc over and fall back
+    const kEarth = Math.min(1.2, 0.5 + 0.5 * L.chunkK + 0.3 * (L.dustK - 1));
+    const coreN = Math.round((10 + 6 * s) * (heavy ? 1.4 : 1) * kEarth);
+    for (let i = 0; i < coreN; i++) {
+      const u = (i + R()) / coreN;
+      const a = R() * TAU, tilt = 0.17 * Math.sqrt(R());
+      const v = vTop * (0.35 + 0.65 * u);
       const st = Math.sin(tilt), ct = Math.cos(tilt);
-      place(m, I.x + (R() - 0.5) * 0.4 * s, by + 0.3, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.03);
+      place(m, I.x + (R() - 0.5) * 0.4 * s, by + 0.4, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.02);
+      move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.6, 0, 0.35, -9.8);
+      const life = 1.7 + R() * 0.7 + (heavy ? 0.4 : 0);
+      const size1 = (1.9 + 1.2 * u + R() * 0.6) * Math.pow(s, 0.85) * dk * (heavy ? 1.2 : 1);
+      shape(m, life, size1 * 0.45, size1, 3.2, R);
+      const c0 = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
+      look(m, c0, mix3(c0, L.dust, 0.5), 1.0, 0.0, 0.6);
+      book(m, 'burst', R, life, 1);
+      heat(m, 0, 1);
+      C.media(m);
+    }
+    const sprayN = Math.round((8 + 5 * s) * (heavy ? 1.4 : 1) * kEarth);
+    for (let i = 0; i < sprayN; i++) {
+      const a = R() * TAU, tilt = 0.2 + 0.25 * Math.sqrt(R());
+      const v = vTop * (0.3 + 0.5 * R());
+      const st = Math.sin(tilt), ct = Math.cos(tilt);
+      place(m, I.x + (R() - 0.5) * 0.4 * s, by + 0.35, I.z + (R() - 0.5) * 0.4 * s, bo + R() * 0.03);
       move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.5, 0, 0.35, -9.8);
-      const life = 1.5 + R() * 0.8 + (heavy ? 0.4 : 0);
-      const size1 = (1.0 + R() * 0.9) * s * dk * (heavy ? 1.15 : 1);
-      shape(m, life, size1 * 0.35, size1, 2.2, R);
+      const life = 1.3 + R() * 0.6;
+      const size1 = (0.9 + R() * 0.6) * s * dk;
+      shape(m, life, size1 * 0.4, size1, 2.6, R);
       const c0 = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
       look(m, c0, mix3(c0, L.dust, 0.45), 1.0, 0.0, 0.6);
       book(m, 'burst', R, life, 1);
@@ -368,7 +389,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   if (L.chunkK > 0) {
     const shapeId: ChunkShape = I.surface === 'rock' || I.surface === 'concrete' ? 'stone' : 'clod';
     const n = Math.round((shaped ? (fpv ? 26 : 40) : (70 + 45 * s) * (heavy ? 1.5 : 1)) * L.chunkK);
-    const vC = (shaped ? 18 : 15) * Math.pow(s, 0.4) * L.heightK;
+    const vC = 15 * Math.pow(s, 0.4) * L.heightK;
     const coneC = shaped ? 0.25 : heavy ? 0.6 : 0.55;
     for (let i = 0; i < n; i++) {
       const a = R() * TAU, tilt = coneC * Math.pow(R(), 0.7);
@@ -817,7 +838,48 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
     heat(m, 0.5, 3.0);
     C.media(m);
   }
+  // 3. the hull's own pieces thrown out of the fire (round 7b, wave m2: "no debris"): hot fragments of plate and fittings,
+  // glowing as they fly, cooling as they fall, lying round the wreck
+  const fragN = rack ? 22 : 14;
+  for (let i = 0; i < fragN; i++) {
+    const a = R() * TAU, up = 0.35 + R() * 0.6, v = (6 + R() * 12) * S;
+    chunk(C, i % 3 === 0 ? 'sheet' : 'stone', x + (R() - 0.5) * 1.2, y + 0.8 + R(), z + (R() - 0.5) * 1.2,
+      Math.cos(a) * (1 - up) * v, up * v + 2, Math.sin(a) * (1 - up) * v,
+      0.12 + Math.pow(R(), 2) * 0.35, STEEL, 16 + R() * 8, 0.85 + R() * 0.15, bo + R() * 0.05);
+  }
 }
+
+const EXHAUST_DIESEL: Rgb = [0.044, 0.04, 0.036];
+const EXHAUST_DIESEL_AGED: Rgb = [0.16, 0.155, 0.148];
+const EXHAUST_TURBINE: Rgb = [0.26, 0.255, 0.24];
+
+/**
+ * An engine's exhaust (round 7b, wave m2: "engine smoke rising as straight chimney columns"): a puff born at the stack
+ * with the hull's own motion plus the gas's exit (back off the deck and up), which drag hands over to the wind as it
+ * rises; under way the plume streams back off the deck and bends with the wind, at rest it leans downwind, and it swells,
+ * thins and tears apart within a few seconds (the media's shear, eddies and torn rims). A diesel's is grey-brown and
+ * denser, a turbine's a pale thin haze. `vx/vz` the hull's velocity, `fx/fz` its forward (unit).
+ */
+export function exhaustPuff(C: BlastContext, x: number, y: number, z: number, vx: number, vz: number, fx: number, fz: number,
+  intensity: number, sooty: boolean, bo: number): void {
+  const R = C.rand;
+  const m = C.m;
+  const dk = C.distBoost(x, y, z);
+  const exit = 1.2 + R() * 0.8 + intensity * 0.8;
+  place(m, x + (R() - 0.5) * 0.2, y + 0.15, z + (R() - 0.5) * 0.2, bo - R() * 0.03);
+  move(m, vx * 0.85 - fx * exit + (R() - 0.5) * 0.4, 0.9 + R() * 0.6 + intensity * 0.8, vz * 0.85 - fz * exit + (R() - 0.5) * 0.4,
+    1.5, 0.45 + R() * 0.35, 1.15, 0);
+  const life = sooty ? 2.6 + R() * 1.4 : 1.6 + R() * 0.9;
+  const size1 = (sooty ? 2.2 + R() * 1.2 : 1.6 + R() * 0.8) * (0.7 + 0.5 * intensity) * dk;
+  shape(m, life, 0.35 * dk, size1, 1.7, R);
+  if (sooty) look(m, EXHAUST_DIESEL, EXHAUST_DIESEL_AGED, Math.min(0.62, 0.3 + 0.28 * intensity), 0.05, 0.6);
+  else look(m, EXHAUST_TURBINE, EXHAUST_TURBINE, 0.1 + 0.12 * intensity, 0.08, 0.6);
+  book(m, 'billow', R, life);
+  heat(m, 0, 1);
+  C.media(m);
+}
+
+const STEEL: Rgb = [0.055, 0.053, 0.05];
 
 /** One tick of a burning hull's column (stage 1 fresh .. 0 burnt out; scale = the column's own x distance boost). */
 export function columnPuff(C: BlastContext, x: number, y: number, z: number, stage: number, scale: number, bo: number): void {

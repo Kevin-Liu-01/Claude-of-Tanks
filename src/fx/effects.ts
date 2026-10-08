@@ -36,7 +36,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  blastScale, columnPuff as mediaColumnPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
+  blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
   kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
   waterBurst,
   type BlastContext,
@@ -453,7 +453,7 @@ export interface FxRuntime {
     wreckOf?: string | null,
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
-  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean): void;
+  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null): void;
   loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
@@ -5846,7 +5846,19 @@ function* createFxSteps(
      * @param {number} intensity 0..1 engine load
      * @param {boolean} [sooty=false] dark diesel puffs instead of thin haze
      */
-    exhaust(pos: THREE.Vector3, intensity: number, sooty = false): void {
+    exhaust(pos: THREE.Vector3, intensity: number, sooty = false, vel: THREE.Vector3 | null = null,
+      fwd: THREE.Vector3 | null = null): void {
+      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: a puff at an engine's own
+      // rate (a diesel's 3-7 a second with load, a turbine's 2-4) with the hull's motion, which the wind bends and the
+      // media's shear and eddies break up; the cold start coughs a short stream
+      if (blast) {
+        const coldStartM = battleFreshS < 2.2;
+        const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
+        if (rng() > rate / 60) return;
+        exhaustPuff(blast, pos.x, pos.y, pos.z, vel ? vel.x : 0, vel ? vel.z : 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+          coldStartM ? Math.max(0.9, intensity) : intensity, sooty, 0);
+        return;
+      }
       // r1 "not a single exhaust puff anywhere": the old profile (alpha
       // 0.06-0.29, sub-meter cards, <1.2 s lives) was invisible from any
       // gameplay camera. Diesel puffs are now a clearly readable grey-brown

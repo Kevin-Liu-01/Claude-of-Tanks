@@ -134,7 +134,7 @@ interface StudioFxRuntime {
   muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
   destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
-  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean): void;
+  exhaust(position: THREE.Vector3, intensity: number, sooty: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null): void;
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
   composeExplosionMoment(options: Readonly<Record<string, RuntimeValue>>): void;
@@ -2120,6 +2120,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
   }
 
+  // destruction-fx (round 7b, wave m2: "engine smoke rising as straight chimney columns"): every running hull's engine
+  // breathes as a battle hull's does (battlePresentationRuntime emitExhaust's law: its load from its speed), with the
+  // hull's motion, so the Studio films the plume bending with the drive and the wind and breaking up
+  const _exPos = new THREE.Vector3(), _exFwd = new THREE.Vector3(), _exVel = new THREE.Vector3();
+  function emitStudioExhaust(dt: number): void {
+    if (!(dt > 0)) return;
+    for (const a of actors) {
+      if (a.stateName !== 'intact' && a.stateName !== 'engine-smoking') continue;
+      const st = a.state;
+      const speed = st.speed ?? 0;
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const load = Math.max(0.1, Math.min(1, 0.15 + Math.abs(speed) / topSpeedMps * 0.85));
+      _exFwd.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+      _exVel.copy(_exFwd).multiplyScalar(speed);
+      _exPos.copy(st.pos).addScaledVector(_exFwd, -a.spec.dims.hullLengthM * 0.42);
+      _exPos.y += a.spec.dims.heightM * 0.72;
+      fx.exhaust(_exPos, load, true, _exVel, _exFwd);
+    }
+  }
+
   // destruction-fx: a driven actor kicks up its tracks' dust as a battle hull does (battlePresentationRuntime emitDust's
   // law: one call per side every 0.45-0.7 m of travel, from the rear of each track), so the Studio films the dust
   // skirt; on the fixed timeline, through the fx's own seeded stream
@@ -2154,6 +2174,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
       emitStudioTrackDust(dt);
+      emitStudioExhaust(dt);
       stepFx(dt);
       advanceWater(dt);
       for (const a of actors) a.visual.syncFromState(a.state, dt);

@@ -42,6 +42,11 @@ export const STRUCT_STRIDE = 11;
 const STRIDE = STRUCT_STRIDE;
 /** The fall's footprint texel (after the holes). */
 const F_TEXEL = 10;
+/** A breach outline's phase as a share of a turn (destructionKit holeOutlinePhase / 2π, from the hole's own seed: the
+ *  BreachSpec's damageSeed(anatomy.seed, section, hole)); the kit's rim and the mask's cut share it. */
+export function holeOutlinePhase01(seed: number): number {
+  return (Math.imul(seed >>> 0, 0x9e3779b1) >>> 0) / 4294967296;
+}
 /** Holes a structure keeps (a ring: a fifth replaces the first). */
 export const MAX_HOLES = 4;
 /** Seconds a collapse takes from the blow to the fold (round 7: slow enough to watch it come down, ~3.5 s). */
@@ -173,6 +178,7 @@ if ( vStructFront < 1e8 && vStructRoof < 0.5 ) {
   float cell = fxStructHash3( floor( vStructPos * 1.7 ) ).y - 0.5;
   if ( vStructPos.y > vStructFront + 1.1 * col + 0.45 * cell ) discard;
 }
+float fxCrack = 0.0;
 if ( vStructHoles > 0.5 ) {
   int hb = int( vStructSid + 0.5 ) * ${STRIDE} + 2;
   // brick-sized cells of the wall break out at different radii: a blocky, ragged hole
@@ -183,19 +189,42 @@ if ( vStructHoles > 0.5 ) {
     vec4 hc = texelFetch( uStructMask, ivec2( at % ${TEX_W}, at / ${TEX_W} ), 0 );
     vec4 hn = texelFetch( uStructMask, ivec2( ( at + 1 ) % ${TEX_W}, ( at + 1 ) / ${TEX_W} ), 0 );
     vec3 dd = vStructPos - hc.xyz;
-    // the cut is a cylinder along the face's outward normal: from hn.w outside the face to hn.z into the wall
+    // the cut is a cylinder along the face's outward normal: from its outside distance outside the face to hn.z into the wall (the
+    // texel's w packs the hole's outline phase over the outside distance: phase index + outside)
+    float outside = fract( hn.w );
+    float pk = floor( hn.w );
     float along = dot( dd.xz, hn.xy );
-    if ( along < -hn.z || along > hn.w ) continue;
+    if ( along < -hn.z || along > outside ) continue;
     vec3 lateral = dd - vec3( hn.x, 0.0, hn.y ) * along;
-    // (b5: from 28 m a breach read as a clean O) the outline lobes round the hole, two harmonics phased by the hole's
-    // place: an irregular breach, its blocky cells on top
-    float th = atan( lateral.y, dot( lateral.xz, vec2( -hn.y, hn.x ) ) );
-    float ph = fxStructHash3( floor( hc.xyz * 3.1 ) ).y * 6.2832;
+    // the outline the kit's rim follows (destructionKit holeOutlineK: 0.8 + 0.2 sin(3θ + φ) + 0.12 sin(5θ + 2φ), θ from
+    // the face's u = (n.z, -n.x), φ the hole's own phase), its blocky cells on top
+    float th = atan( lateral.y, dot( lateral.xz, vec2( hn.y, -hn.x ) ) );
+    float ph = pk > 0.5 ? ( pk - 1.0 ) / 255.0 * 6.2832 : fxStructHash3( floor( hc.xyz * 3.1 ) ).y * 6.2832;
     float lobe = 0.8 + 0.2 * sin( 3.0 * th + ph ) + 0.12 * sin( 5.0 * th + 2.0 * ph );
-    float r = hc.w * rk * lobe;
-    if ( dot( lateral, lateral ) < r * r ) discard;
+    float rl = length( lateral );
+    if ( rl < hc.w * rk * lobe ) discard;
+    // cracks (the core asked them of the mask): thin dark runs 1-2 m along the face out of the three lobes' tips,
+    // jagged, tapering, on the face only
+    if ( along > -0.06 && hn.z > 0.15 ) {
+      for ( int k = 0; k < 3; k++ ) {
+        float tk = ( 1.5708 - ph + 6.2832 * float( k ) ) / 3.0;
+        float r0 = hc.w * ( 1.0 + 0.12 * sin( 5.0 * tk + 2.0 * ph ) );
+        float len = 1.0 + fract( sin( ( ph + float( k ) ) * 43.1 ) * 977.0 );
+        float dr = rl - r0;
+        if ( dr < -0.05 || dr > len ) continue;
+        float dth = atan( sin( th - tk ), cos( th - tk ) );
+        float off = rl * dth + 0.07 * sin( dr * 9.0 + ph * 3.0 ) + 0.035 * sin( dr * 23.0 + float( k ) );
+        float w = mix( 0.035, 0.008, clamp( dr / len, 0.0, 1.0 ) );
+        fxCrack = max( fxCrack, 1.0 - smoothstep( w * 0.5, w, abs( off ) ) );
+      }
+    }
   }
 }
+`;
+// the cracks darken the face's own colour at the end of the surface program (a depth program has no colour: none there)
+const FRAG_TAIL = /* glsl */ `
+gl_FragColor.rgb *= 1.0 - 0.8 * fxCrack;
+#include <dithering_fragment>
 `;
 
 export interface StructureMask {
@@ -214,7 +243,7 @@ export interface StructureMask {
    * Returns the slot, or -1.
    */
   addHole(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
-    depthM: number, outsideM?: number): number;
+    depthM: number, outsideM?: number, phase01?: number): number;
   /** A storey dropped (world y): the holes centred in its band [y0, y1] go with it, those above come down by `dropM`
    *  with the walls they were cut in. */
   moveHoles(structureId: number, y0: number, y1: number, dropM: number): void;
@@ -271,7 +300,8 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
         .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERT_BODY}`);
       if (holes) {
         shader.fragmentShader = injectAfter(shader.fragmentShader, '#include <common>', FRAG_PARS)
-          .replace(/void\s+main\s*\(\s*\)\s*\{/, (m) => `${m}\n${FRAG_BODY}`);
+          .replace(/void\s+main\s*\(\s*\)\s*\{/, (m) => `${m}\n${FRAG_BODY}`)
+          .replace('#include <dithering_fragment>', FRAG_TAIL);
       }
     };
     const priorKey = material.customProgramCacheKey?.bind(material);
@@ -303,7 +333,7 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       data[f + 3] = fall ? fall.yaw : 0;
       touch(t + F_TEXEL, 1);
     },
-    addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3) {
+    addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3, phase01) {
       if (!inRange(id) || !(radiusM > 0)) return -1;
       const s = holeNext[id];
       holeNext[id] = (s + 1) % MAX_HOLES;
@@ -311,7 +341,9 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       const nl = Math.hypot(nx, nz);
       data[o] = x; data[o + 1] = y; data[o + 2] = z; data[o + 3] = radiusM;
       data[o + 4] = nl > 1e-6 ? nx / nl : 0; data[o + 5] = nl > 1e-6 ? nz / nl : 0;
-      data[o + 6] = Math.max(0.05, depthM); data[o + 7] = Math.max(0, outsideM);
+      // w: the outline's phase index (1..256; 0: none, the shader hashes the hole's place) over the outside distance (< 1)
+      const ph = phase01 !== undefined && Number.isFinite(phase01) ? Math.floor((((phase01 % 1) + 1) % 1) * 255) + 1 : 0;
+      data[o + 6] = Math.max(0.05, depthM); data[o + 7] = ph + Math.min(0.999, Math.max(0, outsideM));
       touch(t, 2);
       const n = Math.max(holeCount[id], s + 1);
       if (n !== holeCount[id]) {

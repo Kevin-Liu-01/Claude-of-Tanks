@@ -113,6 +113,11 @@ const ATTRS = ['aPB', 'aVL', 'aDY', 'aSZ', 'aCA', 'aCB', 'aFB', 'aHT'] as const;
  *   target = wind * windK + up * rise
  *   x(t) = x0 + target t + (v0 - target)(1 - e^-kt)/k + up * grav t^2 / 2
  */
+/** Wind shear (1/m): the wind a puff takes grows with its height over its birth (a column leans over as it climbs). */
+export const VOLUME_SHEAR_K = 0.03;
+/** Eddies: a puff wanders by this share of its size per second of age (up to 4 s), on slow seeded cycles. */
+export const VOLUME_TURB_K = 0.05;
+
 export function volumePositionAt(rec: ArrayLike<number>, o: number, windX: number, windZ: number, age: number,
   out: Float32Array | number[]): void {
   const k = Math.max(rec[o + 8], 1e-3);
@@ -121,6 +126,10 @@ export function volumePositionAt(rec: ArrayLike<number>, o: number, windX: numbe
   out[0] = rec[o] + tx * age + (rec[o + 4] - tx) * s;
   out[1] = rec[o + 1] + ty * age + (rec[o + 5] - ty) * s + 0.5 * rec[o + 11] * age * age;
   out[2] = rec[o + 2] + tz * age + (rec[o + 6] - tz) * s;
+  // the shear (the eddies, under a metre for most puffs, are left to the shader: the sort does not need them)
+  const up = Math.max(0, out[1] - rec[o + 1]) * VOLUME_SHEAR_K * age * rec[o + 10];
+  out[0] += windX * up;
+  out[2] += windZ * up;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -201,9 +210,16 @@ void main() {
   vec3 target = uWind * aDY.z + vec3( 0.0, aDY.y, 0.0 );
   vec3 center = aPB.xyz + target * age + ( aVL.xyz - target ) * ( ( 1.0 - exp( -k * age ) ) / k )
     + vec3( 0.0, 0.5 * aDY.w * age * age, 0.0 );
+  // (round 7b, wave m2: "chimney columns") the wind grows with height over the puff's birth: a column leans over
+  // downwind as it climbs
+  center.xz += uWind.xz * ( max( 0.0, center.y - aPB.y ) * ${VOLUME_SHEAR_K.toFixed(3)} * age * aDY.z );
   // --- size and the card
   float grow = 1.0 - pow( 1.0 - t, max( aSZ.z, 0.3 ) );
   float size = mix( aSZ.x, aSZ.y, grow );
+  // eddies: slow seeded cycles push each puff about, more as it ages and the bigger it is (no two neighbours move alike)
+  float ph1 = fract( aPB.w * 0.7548777 + aPB.x * 0.013 ) * 6.2832, ph2 = fract( aPB.w * 0.5698403 + aPB.z * 0.017 ) * 6.2832;
+  center += vec3( sin( age * 0.83 + ph1 ), 0.4 * sin( age * 1.13 + ph2 ), cos( age * 0.71 + ph2 ) )
+    * ( ${VOLUME_TURB_K.toFixed(3)} * size * min( age, 4.0 ) );
   float ang = aSZ.w + aHT.w * age;
   float ca = cos( ang ), sa = sin( ang );
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
@@ -287,6 +303,7 @@ uniform float uCameraNear;
 uniform float uCameraFar;
 uniform sampler2D uDetail;
 uniform float uDetailK;
+uniform float uWarpK;
 varying vec2 vDetail;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -325,8 +342,12 @@ void main() {
   vec2 fl = ( texture2D( uMapB, vUvA ).ba * 2.0 - 1.0 ) * uFlowScale;
   fl.x *= vMirror;
   fl *= tileSize;
-  vec2 uvA = clampTile( vUvA - fl * vBlend, vTiles.xy, tileSize );
-  vec2 uvB = clampTile( vUvB + fl * ( 1.0 - vBlend ), vTiles.zw, tileSize );
+  // (round 7b, wave m2: "cotton-ball puffs") the card's lookup warped by a slow turbulent field: no silhouette is a clean
+  // round ball, and the warp grows as the puff ages and spreads
+  vec2 wn = vec2( texture2D( uDetail, vDetail * 0.37 + vec2( 0.11, 0.29 ) ).r, texture2D( uDetail, vDetail * 0.37 + vec2( 0.53, 0.71 ) ).r ) - 0.5;
+  vec2 warp = wn * tileSize * uWarpK * ( 0.5 + 0.8 * vT );
+  vec2 uvA = clampTile( vUvA - fl * vBlend + warp, vTiles.xy, tileSize );
+  vec2 uvB = clampTile( vUvB + fl * ( 1.0 - vBlend ) + warp, vTiles.zw, tileSize );
   vec4 A = mix( texture2D( uMapA, uvA ), texture2D( uMapA, uvB ), vBlend );
   vec4 B = mix( texture2D( uMapB, uvA ), texture2D( uMapB, uvB ), vBlend );
   float cov = A.a;
@@ -364,10 +385,15 @@ void main() {
   vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
   vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 ) );
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
-  float h = clamp( B.g * B.g * vHeat, 0.0, 1.6 );
+  float tb = B.g * B.g;
+  float h = clamp( tb * vHeat, 0.0, 1.6 );
   if ( h > 0.002 ) {
-    vec3 glow = blackbody( min( h, 1.0 ) ) * ( 6.5 * h * h ) * uGrade.y;
-    col = col * ( 1.0 - 0.85 * smoothstep( 0.1, 0.55, h ) ) + glow;
+    // (round 7b, wave m2: "flat orange fireballs with no core") a white-yellow heart (the bake's hottest) inside a darker,
+    // sooty shell: the heat rises at the core and falls at the rim, and the rim's own colour is the soot's
+    float core = smoothstep( 0.3, 0.85, tb );
+    float hc = h * ( 0.5 + 0.85 * core );
+    vec3 glow = blackbody( min( hc, 1.0 ) ) * ( 6.5 * hc * hc ) * uGrade.y;
+    col = col * ( 1.0 - 0.85 * smoothstep( 0.1, 0.55, hc ) ) * mix( 0.5, 1.0, core ) + glow;
   }
   // lit from inside by a burst: the thick body more than its thin rim, in the medium's own colour warmed by the fire
   if ( vGlow > 0.002 ) col += ( vColor.rgb * 0.6 + vec3( 0.55, 0.2, 0.05 ) ) * vGlow * ( 0.35 + 0.65 * cov ) * uGrade.y;
@@ -414,7 +440,8 @@ function groundWindFromAloft(speedAloft: number): number {
 
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
 // skySat 0.22 -> 0.12 (wave 273: thinning dust turned bluish)
-const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.12, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55 });
+const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.12, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55,
+  warp: 0.16 });
 
 interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
@@ -552,6 +579,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   let glowNext = 0;
   const detail = detailNoiseTexture(0x5eedde7);
   const uDetailK = { value: DETAIL_K };
+  const uWarpK = { value: DEFAULT_TUNE.warp };
   group.userData.volumeTune = tune;
 
   const material = new THREE.ShaderMaterial({
@@ -565,7 +593,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uBandWarp: { value: bandWarp },
       uGlowP: { value: glowP }, uGlowK: { value: glowK },
       uNearFade: { value: new THREE.Vector2(0.8, 3.4) },
-      uDetail: { value: detail }, uDetailK,
+      uDetail: { value: detail }, uDetailK, uWarpK,
       uSceneDepth: o.soft.uSceneDepth,
       uSoftViewport: o.soft.uSoftViewport,
       uCameraNear: o.soft.uCameraNear,
@@ -696,6 +724,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     }
     uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
     uDetailK.value = tune.detail;
+    uWarpK.value = tune.warp;
     const surfaceWind = ud?.surfaceWind;
     const preset = ud?.volumetricClouds?.currentPreset;
     if (surfaceWind && Number.isFinite(surfaceWind.x) && Number.isFinite(surfaceWind.z)) {
