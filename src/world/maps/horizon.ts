@@ -49,7 +49,7 @@ import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanor
 import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
-import { continuedGroundAt } from '../horizonSurface.ts';
+import { continuedGroundAt, continuedGroundSampler } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
@@ -1125,6 +1125,9 @@ function refineCoastRows(ring: HorizonRingGeometry, openings: readonly HorizonSe
  * into the exterior without a step. Redrock uses one regional canyon field. */
 function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround | undefined, canyon: boolean): void {
   if (!ground?.getOutlandHeightAt) return;
+  // (the time-to-battle lane, 2026-10-08) the continued ground with its residuals kept by point: every vertex past a
+  // corner clamps to the corner (horizonSurface.ts continuedGroundSampler; the same heights)
+  const continued = continuedGroundSampler(ground);
   // A closing anchor only ten metres below its own point can still bridge
   // above a deep valley between it and the square corner. Keep the entire
   // hidden row below the landscape, so its long triangles cannot protrude
@@ -1145,7 +1148,7 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
     // gallery the authored ridge closed over is retired)
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
     if (weight <= 0) continue;
-    let height = continuedGroundAt(ground, x, z);
+    let height = continued(x, z);
     // The square-clamped residual can sample the cutting's side bank. Its
     // supported approach follows the radial bed, including between rows.
     if (seat > 0 && edgeOut > 0) height += (ground.getOutlandHeightAt(x, z) - height) * seat;
@@ -2585,13 +2588,15 @@ function matchHorizonGroundNormals(geometry: THREE.BufferGeometry, ground?: Cany
   if (!ground?.getOutlandHeightAt) return;
   const positions = geometry.getAttribute('position'), normals = geometry.getAttribute('normal');
   const e = 128 / 96, stride = HORIZON_SEGMENTS + 1;
+  // (the time-to-battle lane, 2026-10-08) residuals kept by point: a vertex's two samples along the edge share one
+  const continued = continuedGroundSampler(ground);
   for (let i = stride; i < positions.count; i++) {
     const x = positions.getX(i), z = positions.getZ(i);
     const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
     const weight = 1 - smoothstep(40, 140, edgeOut);
     if (weight <= 0) continue;
-    const nx = continuedGroundAt(ground, x - e, z) - continuedGroundAt(ground, x + e, z);
-    const nz = continuedGroundAt(ground, x, z - e) - continuedGroundAt(ground, x, z + e);
+    const nx = continued(x - e, z) - continued(x + e, z);
+    const nz = continued(x, z - e) - continued(x, z + e);
     const il = 1 / Math.hypot(nx, 2 * e, nz);
     const bx = normals.getX(i) * (1 - weight) + nx * il * weight;
     const by = normals.getY(i) * (1 - weight) + 2 * e * il * weight;
