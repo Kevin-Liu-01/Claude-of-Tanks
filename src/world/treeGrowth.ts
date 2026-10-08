@@ -27,6 +27,9 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
   // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
   | 'apple'
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the Ca Mau coast's grey mangrove and the
+  // stemless nipa palm of its tidal creeks
+  | 'avicennia' | 'nipa'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
   | 'broom' | 'longleafSeedling' | 'buddleia';
@@ -35,7 +38,7 @@ type Rng = () => number;
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple', 'avicennia', 'nipa',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -131,6 +134,12 @@ interface GrowthProfile {
    * needles, a few seedlings to a clump (growShrubSkeleton), where a shrub's mound of sprays stands on a shell.
    */
   fountain?: boolean;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach: "no mangrove, nipa palm or shrimp-pond
+   * dykes"): a palm without a stem above the ground (the nipa's creeping rhizome stays in the mud) — its fronds rise
+   * from a stub at the ground, steep and only a little arched, the old ones lying out over the mud (growPalm).
+   */
+  stemless?: boolean;
   /**
    * Trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone with no needle-cluster
    * silhouette or branching"): how ragged a whorled crown's tiers grow, 0..1 (unset 0) — each whorl reaching its own
@@ -290,6 +299,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.5, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.46, 0.41, 0.35], barkTopTint: [0.40, 0.35, 0.29],
     foliageValue: 0.45,
   }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the nipa palm (Nypa fruticans, dừa nước) of
+  // the Ca Mau creeks — no stem above the mud: a clump of long pinnate fronds (spray: their length) rising steeply from
+  // a stub at the ground, a little arched, the old ones lying out over the mud (growPalm `stemless`)
+  nipa: P({
+    family: 'palm', height: 0.45, heightSpread: 0.1, trunkR: 0.22, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.5, crownR: 3.4,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 1, angleLow: 1, angleHigh: 1,
+    droop: 0, upturn: 0, sidePerM: 0, sideAngle: 0, sideRatio: 0, sideDroop: 0, twigPerM: 0,
+    leafOrder: 0, leafPerM: 0, leafFrom: 0, spray: [5.0, 6.6], aspect: 0.3, habit: 'upright', tipSprays: 0,
+    cardBend: 0.2, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.36, 0.32, 0.24], barkTopTint: null,
+    foliageValue: 0.55, stemless: true,
+  }),
   snag: P({
     family: 'dead', height: 5.6, heightSpread: 0.22, trunkR: 0.27, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.38, crownR: 2.0,
@@ -300,15 +321,32 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   }),
   // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
   // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
-  // the builder's (vegetation.ts buildGrownTree, the reviewed bent-cone arches)
+  // the builder's (vegetation.ts buildGrownTree, the reviewed bent-cone arches). The trees lane (2026-10-08, the
+  // gauntlet's wave 278 on the Ca Mau coast: the bank "a treeline of generic temperate broadleaf trees ... no
+  // mangrove"): Rhizophora's — the crown down close over its stilts (the fork at a quarter, was a third), a fifth
+  // wider and a fifth denser so a bank's crowns close into one dark wall, its glossy leaves darker (foliage value 1.35
+  // read as a meadow tree's fresh green)
   mangrove: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.12, trunkR: 0.26, form: 'decurrent',
-    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.1], crownBase: 0.34, crownR: 3.35,
+    forkAt: [0.22, 0.29], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.1], crownBase: 0.27, crownR: 4.0,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.66, sideDroop: 0.3, twigPerM: 1.6,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 4.4, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.82, habit: 'spray', tipSprays: 3,
     cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.42, 0.39, 0.34], barkTopTint: null,
-    foliageValue: 1.35,
+    foliageValue: 1.0,
+  }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the grey mangrove of the Ca Mau coast
+  // (Avicennia, mấm) — a low tree forking near the mud into a few leaning stems under a broad, irregular, open crown of
+  // small leathery grey-green leaves (the tidal mangrove's leaf atlas in its own grey; vegetation.ts
+  // grownFormSprayKind), its pale grey bark smooth; its pencil roots stay under the mud's surface (no stilts)
+  avicennia: P({
+    family: 'broadleaf', height: 5.4, heightSpread: 0.14, trunkR: 0.2, form: 'decurrent',
+    forkAt: [0.12, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.7, 1.05], crownBase: 0.3, crownR: 3.0,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.15, angleHigh: 0.7,
+    droop: 0.25, upturn: 0.35, sidePerM: 2.2, sideAngle: 0.8, sideRatio: 0.62, sideDroop: 0.25, twigPerM: 1.6,
+    leafOrder: 1, leafPerM: 3.4, leafFrom: 0.3, spray: [0.5, 0.74], aspect: 0.8, habit: 'spray', tipSprays: 2,
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.52, 0.50, 0.46], barkTopTint: null,
+    foliageValue: 1.15,
   }),
   // ---- trees round 2 (2026-10-03): the regional forms (treeBiomes.ts routes a map's species slots to them) ----
   // the European beech (Fulda, the Eifel): a tall smooth silver-grey bole forking high into steep limbs, a dense oval
@@ -1171,7 +1209,7 @@ function growSnag(ctx: GrowContext): void {
  */
 function growPalm(ctx: GrowContext, leaves: LeafSite[], variant: number): void {
   const { rng, profile } = ctx;
-  const leanA = rng() * Math.PI * 2, lean = 0.35 + rng() * 0.5 + variant * 0.15;
+  const leanA = rng() * Math.PI * 2, lean = profile.stemless ? 0 : 0.35 + rng() * 0.5 + variant * 0.15;
   const segments = 9;
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
@@ -1187,7 +1225,9 @@ function growPalm(ctx: GrowContext, leaves: LeafSite[], variant: number): void {
   const golden = Math.PI * (3 - Math.sqrt(5)), az0 = rng() * Math.PI * 2;
   for (let k = 0; k < count; k++) {
     const age = k / (count - 1), dead = k >= count - 2;
-    const elev = age < 0.2 ? 1.0 - age * 1.6 : age < 0.75 ? 0.45 - (age - 0.2) * 0.8 : -0.05 - (age - 0.75) * 2.6;
+    // (a stemless palm's fronds rise steeply from the mud, 75° to 30°, its dead ones lying out over it)
+    const elev = profile.stemless ? (dead ? 0.12 + (count - 1 - k) * 0.1 : 1.3 - age * 0.8)
+      : age < 0.2 ? 1.0 - age * 1.6 : age < 0.75 ? 0.45 - (age - 0.2) * 0.8 : -0.05 - (age - 0.75) * 2.6;
     const az = az0 + k * golden + (rng() - 0.5) * 0.25;
     const ce = Math.cos(elev), se = Math.sin(elev);
     const axis = norm(v3(Math.cos(az) * ce, se, Math.sin(az) * ce));

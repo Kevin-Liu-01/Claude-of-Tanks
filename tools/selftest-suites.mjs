@@ -1336,6 +1336,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
     'src/world/treeGrowth.selftest.mjs',
     'src/world/treeCrownShading.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): the Ca Mau coast's Rhizophora, grey mangrove and stemless nipa
+    'src/world/mangroveForms.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',

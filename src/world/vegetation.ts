@@ -2487,6 +2487,9 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // the trees lane (2026-10-08, wave 278): the grey mangrove paints the tidal mangrove's leathery leaves (its own grey
+  // from its biome colour, treeBiomes.ts)
+  if (growth === 'avicennia') return 'mangrove';
   return growth as SprayKind;
 }
 
@@ -5354,13 +5357,25 @@ function* vegetationBuildSteps(
   function mangroveDefinition(legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add('willow');
+    // (the trees lane, 2026-10-08, the gauntlet's wave 278: the place's foliage colour where the map palette names none —
+    // the Ca Mau coast's Rhizophora a dark glossy green; a place without one keeps the palette as it was)
+    const placePal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, null, false, treeBiomeColour(cfg?.id));
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
-      tex: (r, pal) => makeSprayAtlas('mangrove', r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
-      near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, pal),
+      tex: (r, pal) => {
+        const p = placePal(pal);
+        return makeSprayAtlas('mangrove', r, texSize(512), (p.snow ?? 0) > 0.05 ? null : p.texTone || null, p.snow ?? 0);
+      },
+      near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, placePal(pal)),
       far: legacy.far,
     };
   }
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach: "no mangrove, nipa palm"): a place's own palm
+  // form (treeBiomes.ts — the Ca Mau creeks' stemless nipa) grows on the desktop tiers in its slot colour; every other
+  // map's palm grows as it did
+  const palmForm = grownTrees ? formOf('palm') : null;
+  const palmPal = (pal: VegetationPalette): VegetationPalette => (palmForm
+    ? treeBiomePalette(pal, palmForm, false, treeBiomeColour(cfg?.id)) : pal);
   const SPECIES: Record<Species, SpeciesDefinition> = {
     pine: grownDefinition('pine', coniferDefinition(52, 61, 71, TREE_GEOMETRY_SCALE.pine)),
     spruce: grownDefinition('spruce', coniferDefinition(55, 91, 111, TREE_GEOMETRY_SCALE.spruce)),
@@ -5378,10 +5393,11 @@ function* vegetationBuildSteps(
       texSeed: 53, nearSeed: 81, farSeed: 75, grown: grownTrees,
       // p2 trees lane: the desktop palms keep their reviewed geometry and take a pinnate frond (the round-8 painter's
       // solid blade read as a banana leaf); the phones keep the round-8 frond
-      tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), pal.texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
+      tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), palmPal(pal).texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
       // p2 trees lane: the desktop palms grow (treeGrowth.ts growPalm: an arching stem and a fan of pinnate fronds);
       // the phones keep the round-8 palm
-      near: (k, pal) => (grownTrees ? buildGrownTree('palm', seed + 81 + k * 7, k, pal) : buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3])),
+      near: (k, pal) => (grownTrees ? buildGrownTree(palmForm?.form ?? 'palm', seed + 81 + k * 7, k, palmPal(pal))
+        : buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3])),
       far: (r, pal, k) => buildPalmFarGeometry(r, pal, k),
     },
     birch: grownDefinition('birch', {
@@ -7046,6 +7062,7 @@ function* vegetationBuildSteps(
         foliage.castShadow = false;
         foliage.receiveShadow = canopyShadowReceive; // round 77: received once per cluster, never per fragment
         foliage.userData.treeLod = 'near';
+        foliage.userData.treeSpecies = sp; // (trees lane, 2026-10-08: the pool's slot, for the receipts and probes)
         const pool: TreeMesh[] = [trunk, foliage];
         const open = treeGeoOpen[sp]?.[variant];
         if (open) { trunk.userData.formAlt = formAlternate(open.trunk, trunk.geometry); foliage.userData.formAlt = formAlternate(open.cards, foliage.geometry); }

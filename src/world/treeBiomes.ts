@@ -98,6 +98,25 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
 });
 
+/**
+ * The trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach: "the far bank is a treeline of generic temperate
+ * broadleaf trees ... no mangrove, nipa palm"): the Ca Mau coast's greens — Rhizophora's dark glossy leaf (the place's
+ * colour: the tidal mangrove's and every slot's that names none), the grey mangrove's silvery grey-green, the nipa's
+ * fresh yellow-green fronds.
+ */
+const RHIZOPHORA_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.255, cardSat: 0.15,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h + 0.01, Math.min(1, s * 0.9), l * 0.82],
+});
+const AVICENNIA_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.21, cardSat: 0.07,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h - 0.01, s * 0.5, Math.min(1, l * 1.12)],
+});
+const NIPA_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.22, cardSat: 0.22,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 1.05), Math.min(1, l * 1.05)],
+});
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -155,6 +174,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   foundry: B('a Central European steelworks', { birch: { form: 'birch', leaves: true } }),
   airfield: B('a northern European airfield', { birch: { form: 'birch', leaves: true } }),
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
+  // the Ca Mau peninsula, the Mekong delta's tidal coast (the trees lane, 2026-10-08, the gauntlet's wave 278): the
+  // Rhizophora walls on the banks (the willow slot's tidal mangrove, the map's own form, in the place's dark glossy
+  // green), the grey mangrove Avicennia where the map plants its eucalyptus, the stemless nipa palm where it plants its
+  // palms
+  mangrove: B('the Ca Mau peninsula, the Mekong delta', { eucalyptus: { form: 'avicennia', colour: AVICENNIA_FOLIAGE },
+    palm: { form: 'nipa', colour: NIPA_FOLIAGE } }, undefined, RHIZOPHORA_FOLIAGE),
   // the Alps: spruce and larch
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
