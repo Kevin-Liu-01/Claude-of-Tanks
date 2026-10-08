@@ -1046,6 +1046,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchPlacement.selftest.mjs',
     // 2026-10-08 (modes lane): Capture the Flag's flags and Turbo Ball's goals forward, rotations of each other.
     'src/sim/objectiveBases.selftest.mjs',
+    // modes lane (2026-10-08): Turbo Ball's ball meets what stops a shell
+    'src/sim/ballSolids.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
