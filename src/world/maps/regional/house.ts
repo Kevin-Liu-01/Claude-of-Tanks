@@ -4,10 +4,14 @@
 // window/door rhythm of each face. A style supplies a dialect: how a window, a door and (for half-timbered regions) a
 // framed wall are dressed. Every body is centred on the origin with its base at y = 0, like the props builders.
 import {
-  PartSink, bodyFaces, facePoint, faceBox, normalize3,
+  LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import { carvedVerge, facadeGround, facadeOn, sillStreaks, thatchCourses, withFacade, type FacadeContext } from './facade.ts';
+import { withSillShadow } from './openings.ts';
+
+/** The walls whose occlusion the weathering pass paints (geometry.ts SHADED): a sill's shadow lies on them. */
+const SILL_SHADOWED: ReadonlySet<RegionalBucket> = new Set(['plaster', 'plaster2', 'plaster3', 'stone']);
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -822,14 +826,16 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       if (storey.framed && dialect.dressWall) {
         dialect.dressWall(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame);
       } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own);
-      // the units stand in the cut openings, set back by the reveal
+      // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall
       sink.recess = reveal;
       try {
-        for (const o of own) {
-          if (o.state) damagedOpening(sink, face, o, bodies[i].y0, reveal);
-          else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
-          else dialect.window(sink, face, o, bodies[i].y0, frame);
-        }
+        withSillShadow(!storey.framed && SILL_SHADOWED.has(storey.wall) ? storey.wall : null, () => {
+          for (const o of own) {
+            if (o.state) damagedOpening(sink, face, o, bodies[i].y0, reveal);
+            else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
+            else dialect.window(sink, face, o, bodies[i].y0, frame);
+          }
+        });
       } finally { sink.recess = 0; }
       // the dirt run off the sills down a rendered or masonry wall (facade craft): it stops at the opening below
       if (facadeOn() && !storey.framed && (RENDERS.has(storey.wall) || storey.wall === 'stone')) {
@@ -1037,6 +1043,24 @@ function downpipeFittings(sink: PartSink, x: number, z: number, side: number, ba
   sink.span('structureMetal', Math.min(x, x + side * 0.16) - 0.045, baseY, z - 0.045, Math.max(x, x + side * 0.16) + 0.045, baseY + 0.09, z + 0.045, fine);
 }
 
+/** A half-plane of a face's (u, y): the side where a·u + b·y ≤ c. */
+type FaceHalfPlane = readonly [number, number, number];
+
+/** A convex polygon of face points clipped to a half-plane (Sutherland–Hodgman). */
+function clipFace(poly: Array<[number, number]>, [a, b, c]: FaceHalfPlane): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const dp = a * p[0] + b * p[1] - c, dq = a * q[0] + b * q[1] - c;
+    if (dp <= 0) out.push(p);
+    if ((dp < 0 && dq > 0) || (dp > 0 && dq < 0)) {
+      const t = dp / (dp - dq);
+      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+  }
+  return out;
+}
+
 /** Small helpers shared by the dialects. */
 export const H = {
   faceBox,
@@ -1054,5 +1078,51 @@ export const H = {
   /** a diagonal brace between two face points */
   brace(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, y0: number, u1: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, opts);
+  },
+  /**
+   * A brace cut to its panel (the facade craft's round 6; wave 241: "the lower diagonal brace lapping across the post
+   * instead of being jointed into it"): the strip `width` wide along (u0, y0) → (u1, y1), clipped by `keep` — the faces
+   * of the posts, rails and braces it is tenoned into — so its ends are cut to their angle and sit flush against those
+   * faces, as a jointed brace does. Its face and its two long sides are drawn (the sides fine joinery, as a member's);
+   * the cut ends abut their neighbours and never show. `out` and `embed` as `member`'s: flush with a post of that `out`.
+   */
+  strut(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, y0: number, u1: number, y1: number, width: number, out: number,
+    keep: readonly FaceHalfPlane[], opts: EmitOptions, embed = 0.02): void {
+    const du = u1 - u0, dy = y1 - y0, len = Math.hypot(du, dy);
+    if (len < 1e-3) return;
+    const au = du / len, ay = dy / len, nu = -ay, ny = au, hw = width / 2, ext = width + 0.05;
+    const s0u = u0 - au * ext, s0y = y0 - ay * ext, s1u = u1 + au * ext, s1y = y1 + ay * ext;
+    let poly: Array<[number, number]> = [[s0u - nu * hw, s0y - ny * hw], [s1u - nu * hw, s1y - ny * hw], [s1u + nu * hw, s1y + ny * hw],
+      [s0u + nu * hw, s0y + ny * hw]];
+    for (const h of keep) {
+      poly = clipFace(poly, h);
+      if (poly.length < 3) return;
+    }
+    // the member frame (member UVs: the grain along the brace)
+    const axis = normalize3([face.u[0] * au, ay, face.u[2] * au]);
+    const across = normalize3([axis[1] * face.out[2] - axis[2] * face.out[1], axis[2] * face.out[0] - axis[0] * face.out[2],
+      axis[0] * face.out[1] - axis[1] * face.out[0]]);
+    const frame = new LocalFrame(across, axis, face.out, facePoint(face, (u0 + u1) / 2, (y0 + y1) / 2, out / 2 - embed));
+    const front = out - embed, back = -embed;
+    const o: EmitOptions = { ...opts, uv: UV_MEMBER };
+    sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, front)), o, frame);
+    const sides: EmitOptions = opts.decor && !opts.shadow ? { ...o, fine: opts.fineSides === 'near' || opts.fine === 'near' ? 'near' : true } : o;
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length];
+      // a long side lies on one of the strip's edges, hw off its axis; every other edge is a cut end
+      const op = (p[0] - u0) * nu + (p[1] - y0) * ny, oq = (q[0] - u0) * nu + (q[1] - y0) * ny;
+      if (Math.abs(Math.abs(op) - hw) > 1e-6 || Math.abs(op - oq) > 1e-6) continue;
+      sink.quad(bucket, facePoint(face, p[0], p[1], back), facePoint(face, q[0], q[1], back), facePoint(face, q[0], q[1], front),
+        facePoint(face, p[0], p[1], front), sides, frame);
+    }
+  },
+  /** The half-planes either side of a strut's strip (left of it, right of it): a brace halved across it keeps to one. */
+  beside(u0: number, y0: number, u1: number, y1: number, width: number): [FaceHalfPlane, FaceHalfPlane] {
+    const len = Math.hypot(u1 - u0, y1 - y0) || 1, nu = -(y1 - y0) / len, ny = (u1 - u0) / len, c = nu * u0 + ny * y0, hw = width / 2;
+    return [[-nu, -ny, -(c + hw)], [nu, ny, c - hw]];
+  },
+  /** A panel's half-planes: between the post faces u0 and u1 and the rail faces y0 and y1. */
+  panel(u0: number, u1: number, y0: number, y1: number): FaceHalfPlane[] {
+    return [[-1, 0, -u0], [1, 0, u1], [0, -1, -y0], [0, 1, y1]];
   },
 };

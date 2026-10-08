@@ -15,8 +15,10 @@ import {
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
-  // Franconian framing runs to oxblood and deep brown, the doors to green and red
-  timbers: [0x7c3527, 0x6a2c22, 0x5c4434, 0x8c4c32].map(rgb),
+  // Franconian framing runs to oxblood and deep brown, the doors to green and red (the facades lane, round 6; wave 241 on
+  // Steinburg: "the saturated vermilion-orange timber ... oxblood or dark brown is the period colour") — the reds a
+  // fifth darker and less orange, the oxide-and-blood paint dulled by its years
+  timbers: [0x66302a, 0x582a24, 0x5a4334, 0x6c3f32].map(rgb),
   frame: rgb(0xcfcabd),
   doors: [0x426b49, 0x7a3024, 0x6a4b33, 0x4f6274].map(rgb),
   shutters: [0x4a7451, 0x7a3a2a, 0x667a86].map(rgb),

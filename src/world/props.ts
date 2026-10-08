@@ -17,7 +17,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
+import { paintLimewash, paintTimberGrain } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster), the timber grain (the facades lane)
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
@@ -1293,13 +1293,8 @@ function sampleStructureDetail(
 ): void {
   const grain = noi.noise(x * 0.17 + (kind === 'steel' ? 70 : 11), y * 0.06 - 31)
     * 0.5 + 0.5;
-  if (kind === 'wood') {
-    const plank = (x % 28) / 28;
-    const seam = plank < 0.07 ? 1 : 0;
-    const rings = Math.sin(y * 0.11 + noi.noise(x * 0.08, y * 0.018) * 4) * 0.5 + 0.5;
-    sample[0] = seam ? 0.08 : 0.46 + rings * 0.38;
-    sample[1] = (0.86 + grain * 0.13) * (seam ? 0.68 : 1);
-  } else if (kind === 'canvas') {
+  // (the wood is painted by regionalSurfaces.ts paintTimberGrain since round 6: makeStructureDetail)
+  if (kind === 'canvas') {
     const warp = Math.sin(x * Math.PI * 0.52) * 0.5 + 0.5;
     const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
     sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
@@ -1330,11 +1325,20 @@ export function makeStructureDetail(
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
 ): GeneratedSurfaceTextures {
-  const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  // (the facades lane, round 6; wave 241: "smeared-grain planks") the wood is hewn oak at 256 px, twice the texels over
+  // the same 1.82 m tile, its grain painted seamless (regionalSurfaces.ts paintTimberGrain); the canvas keeps 128 px
+  const s = kind === 'canvas' ? 128 : 256, px = new Uint8ClampedArray(s * s * 4);
   const rust = kind === 'steel' ? new Float32Array(s * s) : null;
+  const grain = kind === 'wood' ? paintTimberGrain(s, 0x0a4) : null;
+  const hgt = grain ? grain.hgt : new Float32Array(s * s);
   const sample = new Float32Array(3);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
+    if (grain) {
+      const v = clamp(grain.lum[i], 0.55, 1) * 255;
+      px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
+      continue;
+    }
     sample[2] = 0;
     sampleStructureDetail(noi, kind, x, y, sample);
     const v = clamp(sample[1], 0.55, 1) * 255;

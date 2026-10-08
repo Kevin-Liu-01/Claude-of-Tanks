@@ -6,7 +6,7 @@
 // the village church has a rendered nave and a west tower with a slate-hung belfry and a needle spire; the mills on
 // the river are timber-framed water mills with an overshot wheel.
 import {
-  PartSink, faceBox, hashSeed, pick, rgb, shade, UV_MEMBER,
+  PartSink, faceBox, facePanel, hashSeed, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -116,6 +116,26 @@ function panelWash(sink: PartSink, face: Face, st: HessianState, a: number, b: n
   sink.quad(st.infill, P(a + 0.01, ya + 0.01), P(b - 0.01, ya + 0.01), P(b - 0.01, yb - 0.01), P(a + 0.01, yb - 0.01), { decor: true, shade: shadeK });
 }
 
+/**
+ * The joinery of a framed face (the facade craft's round 6; wave 241: "timbers overlap without joints", "no sill plate or
+ * pegs"): on a desktop build with the craft each timber takes a shade of its own from the facade stream (hewn, replaced
+ * and weathered at its own time), and the oak pegs that lock the rails' and braces' tenons show as dark end-grain heads
+ * on the timber they are driven through — near the camera only (EmitOptions.fine 'near'), and only below PEG_TOP, where
+ * an eye at the street resolves a 3 cm peg (the kit's triangle budget pays for the street storeys' pegs, not a third
+ * storey's). Without the craft every timber keeps the house's colour and no peg is drawn.
+ */
+const PEG_TOP = 4.2;
+function joinery(sink: PartSink, face: Face, timber: Rgb): { tone: () => { colour: Rgb; decor: true }; peg: (u: number, y: number, o?: number) => void } {
+  const fr = facadeOn() ? facadeRng() : null;
+  const base = { colour: timber, decor: true as const };
+  const peg = { colour: shade(timber, 0.55), decor: true, fine: 'near' as const };
+  return {
+    tone: () => (fr ? { colour: shade(timber, 0.9 + fr() * 0.16), decor: true as const } : base),
+    // a peg's head 3 mm proud of the face of the timber it is driven through (a member `o` deep stands o - 0.02 proud)
+    peg: (u, y, o = OUT) => { if (fr && y < PEG_TOP) facePanel(sink, SW, face, u, y, o - 0.017, 0.028, 0.028, peg); },
+  };
+}
+
 /** The framed wall: sill beam, plate, corner and opening posts, rails, braces and the parapet crosses. */
 function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], st: HessianState): void {
   const { u0, u1, y0, y1 } = rect;
@@ -129,6 +149,7 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
     return;
   }
   const yA = y0 + 0.18, yB = y1 - 0.16;
+  const j = joinery(sink, face, st.timber);
   // a burnt opening's soot climbs the panels round it: a panel wash would paint over it
   const sooty = openings.some((o) => o.state === 'burnt');
   const posts: number[] = [u0 + 0.1, u1 - 0.1];
@@ -153,41 +174,56 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
       for (let k = 1; k < n; k++) all.push(merged[i] + gap * k / n);
     }
   }
+  // (round 6) the corner posts are the stouter: every rail and brace stops at the face of the post it is tenoned into
+  const width = (i: number) => (i === 0 || i === all.length - 1 ? 0.21 : POST);
   for (let i = 0; i < all.length; i++) {
-    const corner = i === 0 || i === all.length - 1;
-    H.post(sink, SW, face, all[i], yA, yB, corner ? 0.21 : POST, OUT, tc);
+    H.post(sink, SW, face, all[i], yA, yB, width(i), OUT, j.tone());
   }
   const brust = y0 + Math.min(0.92, (y1 - y0) * 0.36), sturz = y0 + Math.min(2.05, (y1 - y0) * 0.8);
   for (let i = 0; i + 1 < all.length; i++) {
-    const a = all[i] + POST / 2, b = all[i + 1] - POST / 2;
+    const a = all[i] + width(i) / 2, b = all[i + 1] - width(i + 1) / 2;
     if (b - a < 0.12) continue;
+    // a rail tenoned into the posts either side, a peg through each post's face beside it
+    const rail = (y: number) => {
+      H.rail(sink, SW, face, a, b, y, 0.14, OUT, j.tone());
+      j.peg(a - 0.045, y);
+      j.peg(b + 0.045, y);
+    };
     const op = inOpening(all[i], all[i + 1]);
     if (op && (op.kind === 'window' || op.kind === 'loft')) {
       const sill = y0 + op.y0, head = sill + op.h;
-      H.rail(sink, SW, face, a, b, sill - 0.16, 0.14, OUT, tc);
-      if (head + 0.15 < yB) H.rail(sink, SW, face, a, b, head + 0.08, 0.14, OUT, tc);
+      rail(sill - 0.16);
+      if (head + 0.15 < yB) rail(head + 0.08);
       if (st.crosses && sill - 0.23 - yA > 0.42) {
-        // the Andreaskreuz in the parapet panel under the window
-        H.brace(sink, SW, face, a + 0.04, yA + 0.04, b - 0.04, sill - 0.27, 0.13, OUT + 0.004, tc);
-        H.brace(sink, SW, face, a + 0.04, sill - 0.27, b - 0.04, yA + 0.04, 0.13, OUT + 0.008, tc);
+        // the Andreaskreuz in the parapet panel under the window: one brace whole, the other halved into it, both cut
+        // to the panel between the posts, the sill beam and the window's rail
+        const top = sill - 0.23, panel = H.panel(a, b, yA, top), [left, right] = H.beside(a, yA, b, top, 0.13);
+        H.strut(sink, SW, face, a, yA, b, top, 0.13, OUT, panel, j.tone());
+        const half = j.tone();
+        H.strut(sink, SW, face, a, top, b, yA, 0.13, OUT, [...panel, left], half);
+        H.strut(sink, SW, face, a, top, b, yA, 0.13, OUT, [...panel, right], half);
+        for (const u of [a + 0.1, b - 0.1]) { j.peg(u, yA - 0.06, OUT + 0.01); j.peg(u, top + 0.06); }
       }
       continue;
     }
     if (op) {
       const head = y0 + op.y0 + op.h;
-      if (head + 0.15 < yB) H.rail(sink, SW, face, a, b, head + 0.08, 0.14, OUT, tc);
+      if (head + 0.15 < yB) rail(head + 0.08);
       if (!sooty && head + 0.36 < yB) panelWash(sink, face, st, a, b, head + 0.15, yB);
       continue;
     }
     const cornerBay = i === 0 || i === all.length - 2;
     if (cornerBay && b - a > 0.55) {
-      // the corner brace (Strebe) runs from the sill at the corner post to the plate at the next post
-      if (i === 0) H.brace(sink, SW, face, a + 0.02, yA + 0.02, b - 0.02, yB - 0.02, 0.16, OUT + 0.006, tc);
-      else H.brace(sink, SW, face, b - 0.02, yA + 0.02, a + 0.02, yB - 0.02, 0.16, OUT + 0.006, tc);
+      // the corner brace (Strebe) runs from the sill at the corner post to the plate at the next post, its foot and its
+      // head cut into the corners of the bay and pegged through the sill and the plate
+      const panel = H.panel(a, b, yA, yB), foot = i === 0 ? a : b, head = i === 0 ? b : a, k = i === 0 ? 1 : -1;
+      H.strut(sink, SW, face, foot, yA, head, yB, 0.16, OUT, panel, j.tone());
+      j.peg(foot + k * 0.12, yA - 0.06, OUT + 0.01);
+      j.peg(head - k * 0.12, yB + 0.06, OUT + 0.01);
       continue;
     }
-    H.rail(sink, SW, face, a, b, brust, 0.14, OUT, tc);
-    if (sturz + 0.15 < yB) H.rail(sink, SW, face, a, b, sturz, 0.14, OUT, tc);
+    rail(brust);
+    if (sturz + 0.15 < yB) rail(sturz);
     if (!sooty) {
       panelWash(sink, face, st, a, b, yA, brust - 0.07);
       if (sturz + 0.15 < yB) {
@@ -198,7 +234,12 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
   }
 }
 
-/** The framed gable: king post, collar, side posts and two braces, cut under the roof line. */
+/**
+ * The framed gable: king post, collar, side posts and braces, cut under the roof line. (Round 6, wave 241: "timbers
+ * overlap without joints") on a desktop build every member stops at the faces of the members it meets: the posts stand
+ * on a gable sill and rise to the collar, the collar is tenoned into the posts, and the braces stand in their own
+ * panels — beside the gable windows, never across them.
+ */
 function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>, st: HessianState): void {
   const tc = { colour: st.timber, decor: true };
   const base = poly[0][1], s = Math.abs(poly[1][0]);
@@ -208,20 +249,76 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
   // the half-width of the gable at height y (triangle or trapezoid under the same slopes)
   const apexY = poly.length === 3 ? poly[2][1] : base + (top - base) * s / Math.max(0.01, s - Math.abs(poly[2][0]));
   const halfAt = (y: number) => s * Math.max(0, 1 - (y - base) / Math.max(0.01, apexY - base));
-  H.post(sink, SW, face, 0, base + 0.06, top - 0.12, POST, OUT, tc);
   const collar = base + h * 0.5;
-  H.rail(sink, SW, face, -halfAt(collar) + 0.16, halfAt(collar) - 0.16, collar, 0.14, OUT, tc);
-  if (st.mobile) return;
+  if (st.mobile) {
+    H.post(sink, SW, face, 0, base + 0.06, top - 0.12, POST, OUT, tc);
+    H.rail(sink, SW, face, -halfAt(collar) + 0.16, halfAt(collar) - 0.16, collar, 0.14, OUT, tc);
+    return;
+  }
+  const j = joinery(sink, face, st.timber);
+  // the gable's sill on the storey's plate, a centimetre proud of the posts that stand on it
+  const sillTop = base + 0.14;
+  H.rail(sink, SW, face, -s + 0.05, s - 0.05, base + 0.07, 0.14, OUT + 0.01, j.tone());
+  H.post(sink, SW, face, 0, sillTop, top - 0.12, POST, OUT, j.tone());
+  j.peg(0, base + 0.07, OUT + 0.01);
+  // the roof line, kept clear by the verge's margin: a member under it is cut along it
+  const margin = 0.16, rise = (apexY - base) / s;
+  const roofLine = (side: number): readonly [number, number, number] => [side * rise, 1, apexY - margin * Math.hypot(1, rise)];
+  const cBot = collar - 0.07, cHalf = halfAt(collar) - margin;
+  const windows = h > 2.4;
+  // the sides whose post stands under the collar: a gable window there is framed between it and the king post
+  const framedSide = new Set<number>();
   for (const side of [-1, 1]) {
     const u = side * s * 0.5;
-    const yTop = base + (apexY - base) * (1 - Math.abs(u) / s) - 0.22;
-    if (yTop > base + 0.5) H.post(sink, SW, face, u, base + 0.06, yTop, POST, OUT, tc);
-    H.brace(sink, SW, face, side * s * 0.82, base + 0.08, side * 0.12, collar - 0.08, 0.14, OUT + 0.006, tc);
+    // the side post rises from the sill to the collar when the collar reaches over it, else to the roof line
+    const underCollar = Math.abs(u) + POST / 2 < cHalf;
+    const yTop = underCollar ? cBot : base + (apexY - base) * (1 - Math.abs(u) / s) - 0.22;
+    const post = yTop > sillTop + 0.36;
+    if (post && underCollar) framedSide.add(side);
+    if (post) {
+      H.post(sink, SW, face, u, sillTop, yTop, POST, OUT, j.tone());
+      j.peg(u, base + 0.07, OUT + 0.01);
+    }
+    // the collar tenoned into the king post's side and running out to the roof line, the side post pegged up into it
+    const inner = POST / 2, outer = cHalf;
+    if (outer - inner > 0.12) {
+      H.rail(sink, SW, face, side > 0 ? inner : -outer, side > 0 ? outer : -inner, collar, 0.14, OUT, j.tone());
+      j.peg(side * (inner - 0.045), collar);
+      if (post && underCollar) j.peg(u, collar + 0.035);
+    }
+    // the braces: under the collar in the panel between the side post and the king post, or, where the gable windows
+    // stand there, in the outer panel between the side post and the roof line
+    if (post && underCollar && !windows) {
+      const lo = Math.abs(u) - POST / 2, panel = side > 0 ? H.panel(inner, lo, sillTop, cBot) : H.panel(-lo, -inner, sillTop, cBot);
+      H.strut(sink, SW, face, side * lo, sillTop, side * inner, cBot, 0.14, OUT, panel, j.tone());
+      j.peg(side * (lo - 0.1), base + 0.07, OUT + 0.01);
+    } else if (post) {
+      const lo = Math.abs(u) + POST / 2;
+      const keep = [...(side > 0 ? H.panel(lo, s, sillTop, underCollar ? cBot : apexY) : H.panel(-s, -lo, sillTop, underCollar ? cBot : apexY)), roofLine(side)];
+      const footU = Math.min(s - 0.3, lo + (s - lo) * 0.78), headY = Math.min(underCollar ? cBot : yTop, sillTop + (footU - lo) * 1.4);
+      if (footU - lo > 0.35) {
+        H.strut(sink, SW, face, side * footU, sillTop, side * lo, headY, 0.14, OUT, keep, j.tone());
+        j.peg(side * (lo + 0.045), headY - 0.1);
+      }
+    } else if (!windows) {
+      // no side post: the brace from the gable's foot to the king post under the collar, cut along the roof line
+      const keep = [...(side > 0 ? H.panel(inner, s, sillTop, cBot) : H.panel(-s, -inner, sillTop, cBot)), roofLine(side)];
+      H.strut(sink, SW, face, side * s * 0.82, sillTop, side * inner, cBot, 0.14, OUT, keep, j.tone());
+    }
   }
-  if (h > 2.4) {
+  if (windows) {
     for (const side of [-1, 1]) {
       const u = side * s * 0.25, wy = base + 0.55;
       windowUnit(sink, face, u, wy, 0.5, 0.62, { ...st.window, shutters: null, bars: 'cross' }, st.rng, st.litShare * 0.6);
+      // (round 6) the window's breast and head rails between the king post and the side post, as the wall's windows
+      const lo = s * 0.5 - POST / 2;
+      if (framedSide.has(side) && wy + 0.77 < cBot) {
+        for (const y of [wy - 0.16, wy + 0.7]) {
+          H.rail(sink, SW, face, side > 0 ? POST / 2 : -lo, side > 0 ? lo : -POST / 2, y, 0.14, OUT, j.tone());
+          j.peg(side * (POST / 2 - 0.045), y);
+          j.peg(side * (lo + 0.045), y);
+        }
+      }
     }
   }
 }
@@ -232,9 +329,12 @@ const SHOP_PAINT: readonly Rgb[] = [0x3d5c45, 0x6e2a22, 0x2c3a52, 0x5a4030, 0xd6
 export function hessianDialect(st: HessianState): HouseDialect {
   return {
     window: (sink, face, o, y0, frame) => {
+      // (the facade craft's round 6; wave 241: "flat panes") a town's two-light upper casements take their transom on a
+      // desktop build: the cross of an old Kreuzstock window (the transom is fine joinery, near the camera only)
+      const upper = palette.upperBars === 'two' && facadeOn() ? 'cross' : palette.upperBars;
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
         o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' }
-          : o.storey > 0 && palette.upperBars ? { ...st.window, bars: palette.upperBars } : st.window,
+          : o.storey > 0 && upper ? { ...st.window, bars: upper } : st.window,
         st.rng, o.kind === 'loft' ? 0 : st.litShare);
       // a sandstone storey's windows carry a dressed lintel over the reveal (facade craft)
       if (facadeOn() && !st.window.surround && frame.spec.storeys[o.storey]?.wall === 'stone') {
