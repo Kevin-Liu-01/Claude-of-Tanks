@@ -111,7 +111,12 @@ export default {
   // ground lane (2026-10-03, maps lane A's census: "lush green where Dalmatian karst should be dry scrub", and "blue-grey
   // slope-rock smears on the terrace risers read as puddles"): on the coast's photo layers, the sward pulled toward a
   // garrigue's dusty grey-olive and the rock lifted to the weathered limestone's pale warm grey (the boulders' tone)
-  splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
+  splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68,
+    // ground lane (wave 79: "… red terra rossa among limestone (Dalmatia)"): the coast's dirt layer is its beach sand
+    // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks — it takes the
+    // karst's terra rossa; the strand and the white gravel roads keep the sand. (wave 83: "pastel pink, mauve and beige
+    // rather than rust-red terra rossa" — the dull brick ~0.16 / 0.10 / 0.075 read mauve) a red-brown, ~0.20 / 0.088 / 0.048
+    soilTint: [0.37, 0.21, 0.22] },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
@@ -125,6 +130,21 @@ export default {
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
     architecture: 'dalmatian',
+    // The landmarks lane (2026-10-05; src/world/landmarks/towers.ts campanile): the village's free-standing Venetian
+    // campanile, as Rab's, Hvar's and Korcula's stand apart from their churches — on the bay's axis between the village
+    // square and the market crossroads (the map's mirror line, so it stands for both halves), its door toward the square:
+    // the limestone shaft in string-coursed stages, its openings multiplying as it rises (slits, a monofora, a bifora),
+    // the open bell stage with a bifora on each face, the stone pyramid inside its balustrade and its cross, 34 m over
+    // the village.
+    landmarks: [
+      // round 2 (2026-10-06; gauntlet wave 158: "stands alone in an open red-earth field with no church, piazza, paving or
+      // houses at its foot"): the piazza's flagstones round its foot (authored first: a dressing piece, it refuses
+      // nothing; it lies in the zone's disc, which a dressing piece may), the campanile on its broad step, its stone
+      // streaked from each string course. The piazza is laid into the finished map (ground 'veto', an open surface): it
+      // reserves no ground, so every record the map placed round the campanile stands where it stood.
+      { kind: 'path', x: -81, z: 10, yawDeg: -90, ground: 'veto', name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
+      { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
+    ],
     sourcedPalette: 'coastal',
     extraKits: ['river'],
     // Two low timber landings face the village and its northern coastal exit.
@@ -167,8 +187,10 @@ export default {
   // the map (the rock fields draw their own ground on each side).
   scenery: {
     // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
-    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
-    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.52] },
+    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision). (b13, wave 87: the walls are laid
+    // as rubble on their own face print, whose stones are near white; the tone multiplies it, so the stones come out at
+    // the outcrops' limestone, sRGB lightness about 0.6, the joints dark between them)
+    fieldWorks: { walls: true, wallTone: [0.11, 0.06, 0.8] },
     // the masonry is the same limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73), weathered
     // grey: the stone print (mean sRGB lightness 0.36) lifted to lightness 0.52 at the limestone's hue (0.6 read as
     // whitewash in the targeted pairs)

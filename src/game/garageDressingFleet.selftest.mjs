@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { ABRAMS_WELDING_BAY_PLACEMENT, getGarageWorkshopBayPoses } from './garageWorkshopLayout.ts';
 
 const dressing = await readFile(new URL('./garageDressing.ts', import.meta.url), 'utf8');
 const access = await readFile(new URL('./garageDressingAccess.ts', import.meta.url), 'utf8');
@@ -111,26 +112,43 @@ assert.match(workshopLayout, /cameraAdvanceM: 4\.38/,
   'the Burlak foreground correction must remain large enough to clear the scaffold silhouette');
 assert.match(dressing, /tank\.position\.set\(16\.9, 0, 17\.7\)/,
   'Abrams welding bay retains its original transform');
+// 2026-10-05 (gauntlet wave 89, "a sand-coloured turret rises right behind the T-90's turret or gun"): the Abrams
+// welding bay moved out of the hero's sight line. It stood beside the east FLAMMABLE canisters (a half-turn, offset
+// (-0.8, 7.7), pose (-17.7, -10.0)), 7.5-8.4k px of it inside the hero's dilated silhouette from the default camera
+// and 13-14k from the close one; it now keeps its authored orientation between the Burlak gantry and the K2 square
+// (offset (-0.4, -14.5), pose (16.5, 3.2, -2.03)): 0 px with the m1a2, t90m and leo2a7v heroes in both views.
 assert.match(workshopLayout,
-  /id: 'abrams_welding', role: 'welding', x: -17\.7, z: -10\.0/,
-  'all-environment structures must follow the Abrams service owner beside the canisters');
+  /id: 'abrams_welding', role: 'welding', x: 16\.5, z: 3\.2, yaw: -2\.03/,
+  'all-environment structures must follow the Abrams service owner beside the Garage camera');
 assert.match(workshopLayout,
-  /ABRAMS_FLAMMABLE_BAY_OFFSET = Object\.freeze\(\{[\s\S]*x: -0\.8,[\s\S]*z: 7\.7,[\s\S]*canisterCenterSeparationM: 3\.83/,
-  'the complete Abrams bay must advance beside the east FLAMMABLE canisters');
+  /ABRAMS_WELDING_BAY_PLACEMENT = Object\.freeze\(\{[\s\S]*x: -0\.4,[\s\S]*z: -14\.5,[\s\S]*rotationRad: 0,[\s\S]*heroSilhouettePx: 0/,
+  'the complete Abrams bay stands out of the hero\'s sight line (gauntlet wave 89)');
+{
+  // the published pose is the authored tank transform (16.9, 17.7, yaw -2.03) carried by the placement
+  const { x, z, rotationRad } = ABRAMS_WELDING_BAY_PLACEMENT;
+  const abrams = getGarageWorkshopBayPoses({ layout: 0 }).find((bay) => bay.id === 'abrams_welding');
+  const cos = Math.cos(rotationRad), sin = Math.sin(rotationRad);
+  assert.ok(Math.abs(abrams.x - (x + 16.9 * cos + 17.7 * sin)) < 1e-9
+    && Math.abs(abrams.z - (z - 16.9 * sin + 17.7 * cos)) < 1e-9
+    && Math.abs(abrams.yaw - (-2.03 + rotationRad)) < 1e-9,
+  'the Abrams bay pose and the placement that carries the authored tank agree');
+  assert.ok(Math.hypot(abrams.x, abrams.z) > 14,
+    'the Abrams exhibit stands in the dressing band, well outside the painted KEEP-CLEAR ring');
+}
 assert.match(dressing, /tank\.position\.set\(-6\.6, 0, 20\.5\)/,
   'T-90M component bay retains its original transform');
 assert.match(dressing, /tank\.position\.set\(-16\.25, 0, -16\.85\)/,
   'K2 teardown retains its authored transform inside the swapped bay owner');
 assert.match(dressing,
-  /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
-  'the complete Abrams service section must move into the former K2 quadrant');
+  /placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  'the complete Abrams service section must move as one owner');
 assert.match(dressing,
-  /halfTurnAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
-  'the complete K2 teardown section must move into the former Abrams quadrant');
+  /placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
+  'the complete K2 teardown section must move into the Abrams\'s authored quadrant');
 assert.match(dressing,
-  /const offset = bayId === 'abrams_welding'[\s\S]*ABRAMS_FLAMMABLE_BAY_OFFSET : \{ x: -0\.35, z: -0\.35 \}/,
-  'each swapped service owner must use its own explicit two-axis placement');
-assert.match(dressing, /serviceLandmark = 'east-flammable-canisters'/,
+  /const rotation = abrams \? ABRAMS_WELDING_BAY_PLACEMENT\.rotationRad : Math\.PI;[\s\S]*const offset = abrams \? ABRAMS_WELDING_BAY_PLACEMENT : \{ x: -0\.35, z: -0\.35 \}/,
+  'each moved service owner must use its own explicit placement');
+assert.match(dressing, /serviceLandmark = 'west-center-hoist'/,
   'the moved Abrams owner must receipt its intended workshop landmark');
 assert.match(dressing,
   /garage_abrams_welding_service_floor[\s\S]*floorAssetsMoveWithBay = true/,
@@ -138,10 +156,10 @@ assert.match(dressing,
 assert.doesNotMatch(dressing, /group\.add\(abramsServiceFloorRoot\)/,
   'the Abrams floor must remain off-scene until its final bay transform is ready');
 assert.match(dressing,
-  /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*halfTurnAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
-  'the complete Abrams floor station must enter the same half-turn owner as the vehicle');
+  /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
+  'the complete Abrams floor station must enter the same owner as the vehicle');
 assert.match(dressing,
-  /15\.9 - ABRAMS_FLAMMABLE_BAY_OFFSET\.x,[\s\S]*16\.6 - ABRAMS_FLAMMABLE_BAY_OFFSET\.z/,
+  /const \{ x, z, rotationRad \} = ABRAMS_WELDING_BAY_PLACEMENT;[\s\S]*workLamp\(-\(x \+ 15\.9 \* cos \+ 16\.6 \* sin\), -\(z - 15\.9 \* sin \+ 16\.6 \* cos\), 0, 7\.4, verdantInteriorRoot\)/,
   'the indoor Abrams work lamp must follow the moved floor station');
 assert.match(dressing,
   /addServiceRoadWheelDolly\([\s\S]*'m1a2',[\s\S]*12\.7, 17\.7, -2\.03 \+ Math\.PI \/ 2/,
@@ -150,8 +168,9 @@ assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');
 assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
   'the rolled K2 hull must identify its connected load-bearing support');
-assert.match(dressing, /swappedServiceBayIds = \['abrams_welding', 'rolled_k2'\]/,
-  'Garage diagnostics must receipt the requested bay swap');
+// 2026-10-05: only the K2 keeps the half-turn swap; the Abrams has its own placement (above).
+assert.match(dressing, /swappedServiceBayIds = \['rolled_k2'\]/,
+  'Garage diagnostics must receipt the K2 bay swap (the Abrams has its own placement since wave 89)');
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 for (const signature of [
@@ -304,7 +323,8 @@ assert.match(dressing, /workshopExhibitCount = 5/,
   'all Garage variants must expose the added teardown vehicle');
 assert.match(dressing, /verdantOriginalExhibitCount = 5/,
   'Verdant diagnostics must include the added teardown vehicle');
-for (const quadrant of ['north-east', 'south-east', 'south-west', 'north-west']) {
+// 2026-10-05: the Abrams bay's quadrant label follows it to the north floor (the bays' own compass: +x north)
+for (const quadrant of ['north-east', 'north', 'south-west', 'north-west']) {
   assert.match(dressing, new RegExp(quadrant));
 }
 assert.match(dressing, /getGarageWorkshopLayoutPose\(currentVariant\)/,

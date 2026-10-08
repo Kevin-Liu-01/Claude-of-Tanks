@@ -8,7 +8,7 @@
  *
  * The model, in the engine's light units (a directional light of intensity 1 gives irradiance 1):
  *
- *   sun        E0 · T(sun) · (1 − 0.9 · overcast)    T = the atmosphere's transmittance toward the sun (the same medium
+ *   sun        E0 · T(sun) · (1 − 0.98 · overcast)   T = the atmosphere's transmittance toward the sun (the same medium
  *                                                    and march as the transmittance LUT, integrated here on the CPU), E0
  *                                                    LIGHT_SOLAR_IRRADIANCE: the solar constant in light units, fixed so
  *                                                    Verdant's 32° sun keeps the key every material was authored under;
@@ -97,12 +97,48 @@ export const SKY_DIFFUSE_GAIN = 1.45;
  * neutral (× 1 − the overcast: Whiteout's frames unchanged).
  */
 export const SKY_DIFFUSE_CHROMA = 0.5;
-/** Share of the direct sun an overcast deck removes at overcast 1. */
-export const OVERCAST_DIRECT_CUT = 0.9;
+/**
+ * Share of the direct sun an overcast deck removes at overcast 1.
+ *
+ * 2026-10-04 (the skies lane; the gauntlet's waves 80 and 82: under Titan Gorge's closed deck "the terrain beneath stays
+ * implausibly saturated and contrasty", "crisp, hard-edged shadows" under a discless glow): 0.9 → 0.96. A closed deck
+ * passes almost none of the beam — thick stratus leaves a few per cent, very soft — and the 0.9 cut left a tenth: on
+ * Titan's sand 13 % of the horizontal light came from a point sun, a sun-facing wall took 0.42 over the 0.95 the deck
+ * gave every wall (lit and shaded faces 1.4 apart), and the cascades cast it hard-edged. What the deck cuts past
+ * OVERCAST_DIFFUSED_FROM it sends down diffused, in its glow, so the horizontal light — the exposure — holds.
+ * 2026-10-05 (with OVERCAST_THICK_CUT): 0.96 → 0.98. The thick deck's glow fell to 0.45 of itself, and the 4 % of the beam
+ * a closed deck passed rose from 6 % of Titan Gorge's sun-and-deck light to 11 % (Whiteout 3 → 5 %) — the hard shadows of
+ * waves 80 and 82 coming back; 2 % holds the sun's share where it was (5 %, 3 %). A deck with gaps keeps its clear sun in
+ * the gaps (resolveDeckClosure): there the change only moves 2 % of the average beam into the glow.
+ */
+export const OVERCAST_DIRECT_CUT = 0.98;
+/** The beam cut the deck's glow (OVERCAST_TRANSMISSION) was calibrated against (2026-10-01): a deck's cut past it comes
+ * down diffused, added to the glow. */
+export const OVERCAST_DIFFUSED_FROM = 0.9;
 /** Share of the clear sky's light an overcast deck replaces at overcast 1. */
 export const OVERCAST_SKY_CUT = 0.85;
 /** Diffuse transmission of the deck: the share of the clear-sky horizontal light it passes on as its own glow. */
 export const OVERCAST_TRANSMISSION = 0.42;
+/**
+ * 2026-10-05 (the gauntlet's wave 118, both critics: "sand and lawn are bright and saturated under grey overcast"):
+ * under a deck a ground sits near its own albedo against the sky — the overcast photographs' ground/sky 0.13–0.16 — and
+ * the game's sat at twice that (Railyard 0.31, Titan Gorge's sand 0.48–0.57): the hemisphere carried 42 % of the clear
+ * light while the trace draws the deck's transmitted sun at a third of its physical share. A thick deck passes less than
+ * a thin one: the glow's transmission falls by OVERCAST_THICK_CUT over the overcast's last stretch (smoothstep from
+ * OVERCAST_THICK_FROM to 1). With the camera adapting 60 % to the horizontal light, ground/sky on screen follows the light
+ * itself: the ground darker, the deck brighter (QA knobs of the same names). Measured (in-page, Railyard 0.95 / Titan
+ * Gorge 1.0 / Frosthollow 0.79, establishing and sunward): the transmission halved took ground/sky 0.31 → 0.24, 0.57 →
+ * 0.42 and 1.26 → 1.05, and with the sun off Railyard's ambient alone sat at 0.23 — so a little past half at a full deck:
+ * 0.55 from overcast 0.5 (0.42 → 0.19 at a closed deck, 0.20 at Railyard, 0.28 at Frosthollow; a clear sky untouched).
+ */
+export const OVERCAST_THICK_CUT = 0.55;
+export const OVERCAST_THICK_FROM = 0.5;
+/**
+ * 2026-10-05 (the same wave): the grade's linear saturation under a deck, × (1 − this × overcast) (QA:
+ * OVERCAST_SATURATION_CUT): the 1.4 a sunlit frame takes to 1.15 under a closed deck (Titan Gorge's sand C* 34 → 26,
+ * Railyard 17 → 13 in the lab; the overcast photographs 8.5–24); a clear sky untouched.
+ */
+export const OVERCAST_SATURATION_CUT = 0.18;
 /** The deck's light: a neutral grey, a touch cool (linear, luminance ≈ 1; overcast daylight ≈ 6500–7000 K). */
 export const OVERCAST_LIGHT_COLOR: Rgb = Object.freeze([0.96, 1.0, 1.04]) as Rgb;
 /**
@@ -272,15 +308,25 @@ function resolveGrounded(
   sun: { intensity: number; colorHex: number } | null,
   overcast: number,
   night: number,
+  closure = 1,
 ): LightModel {
   const L = preset.lighting ?? {};
+  // (2026-10-05, the skies lane: a deck with gaps) the sun the cascades carry takes the overcast's cut only by the deck's
+  // closure (lightModelCore.ts resolveDeckClosure) — in a gap it is the clear sun, and the cloud shade map's pattern
+  // shades the cells — while the light the camera meters, the ground's radiance and the deck's return take the average
+  // cut (`derived`), so the exposure and the open ground's mean level hold
   const derived = deriveSun(params, overcast);
+  const close = clamp(closure, 0, 1);
+  const beam = close < 1 ? deriveSun(params, overcast * close) : derived;
   // the night: the dome dimmed to a moonlit sky. The direct light is the authored moon there, the derived sun by day,
   // blended by the night amount (the presets sit at its ends: day and sunset 0, the night preset 1)
   const moon = sun ? { intensity: sun.intensity, color: hexToLinear(sun.colorHex) } : { intensity: derived.intensity, color: derived.color };
-  const sunIntensity = derived.intensity + (moon.intensity - derived.intensity) * night;
-  const sunColor: Rgb = [0, 1, 2].map((c) => derived.color[c] + (moon.color[c] - derived.color[c]) * night) as unknown as Rgb;
-  const sunIrradiance = sunIntensity * luminance(sunColor);
+  const sunIntensity = beam.intensity + (moon.intensity - beam.intensity) * night;
+  const sunColor: Rgb = [0, 1, 2].map((c) => beam.color[c] + (moon.color[c] - beam.color[c]) * night) as unknown as Rgb;
+  // the average direct (the meter's, the ground's, the deck's return): the overcast's whole cut
+  const avgIntensity = derived.intensity + (moon.intensity - derived.intensity) * night;
+  const avgColor: Rgb = [0, 1, 2].map((c) => derived.color[c] + (moon.color[c] - derived.color[c]) * night) as unknown as Rgb;
+  const sunIrradiance = avgIntensity * luminance(avgColor);
   const sinEl = Math.max(0, params.sunDir[1]);
   // the clear sky (the env bake's dome, in its own units, × skyIntensity already) and its light
   const irr = sky.irradianceRaw;
@@ -290,10 +336,19 @@ function resolveGrounded(
   const skyLightH = Math.PI * luminance(irr) * envIntensity * envDiffuseGain;
   // the deck's glow: the clear-sky horizontal light it transmits (sun + sky as if the deck were absent)
   // (by night the moon the deck would pass: the authored key is the moonlight as seen, never cut)
-  const clearSun = derived.intensity * luminance(derived.color) / Math.max(1 - OVERCAST_DIRECT_CUT * overcast, 1e-3);
+  // (2026-10-04: the clear sun from the clear sun itself — dividing the cut one back out failed at a cut of 1)
+  const clear = deriveSun(params, 0);
+  const clearSun = clear.intensity * luminance(clear.color);
   const clearSunH = (clearSun + (moon.intensity * luminance(moon.color) - clearSun) * night) * sinEl;
   const clearSkyH = Math.PI * luminance(irr) * envDiffuseGain;
-  const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
+  // (2026-10-04) the beam a deck cuts past the glow's calibration comes down diffused (OVERCAST_DIRECT_CUT): by day the
+  // horizontal light it took from the sun returns in the glow, so the exposure and the open ground's level hold while
+  // the faces and cast shadows the point sun modelled lose it (QA: OVERCAST_BEAM_DIFFUSE 0 drops it)
+  const beamDiffused = Math.max(0, lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) - OVERCAST_DIFFUSED_FROM) * clamp(overcast, 0, 1)
+    * clearSun * sinEl * (1 - night) * lightTune('OVERCAST_BEAM_DIFFUSE', 1);
+  // (2026-10-05: a thick deck passes less — OVERCAST_THICK_CUT over the overcast's last stretch)
+  const thick = 1 - lightTune('OVERCAST_THICK_CUT', OVERCAST_THICK_CUT) * smoothstep(lightTune('OVERCAST_THICK_FROM', OVERCAST_THICK_FROM), 1, overcast);
+  const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * thick * (clearSunH + clearSkyH) + beamDiffused;
   // at night the hemisphere also carries the night sky's own glow (NIGHT_SKY_GLOW), blended into its colour by share
   const nightGlow = night * lightTune('NIGHT_SKY_GLOW', NIGHT_SKY_GLOW);
   const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
@@ -329,12 +384,13 @@ function resolveGrounded(
     fillIntensity: 0,
     groundAlbedo: ground,
     groundRadiance: [0, 1, 2].map((c) => ground[c] * (irr[c] + lightTune('GROUND_SUNLIT_SHARE', GROUND_SUNLIT_SHARE)
-      * sunIntensity * sunColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
+      * avgIntensity * avgColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
     overcast,
+    deckClosure: close,
     illuminance,
     exposure,
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),
-    saturation: L.saturation ?? 1,
+    saturation: (L.saturation ?? 1) * (1 - lightTune('OVERCAST_SATURATION_CUT', OVERCAST_SATURATION_CUT) * clamp(overcast, 0, 1)),
     contrast: L.contrast ?? 1,
     night,
     vehicleReadability,

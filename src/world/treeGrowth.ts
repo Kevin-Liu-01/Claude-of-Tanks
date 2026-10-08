@@ -20,17 +20,26 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms a battlefield's species slots grow as (treeBiomes.ts)
   | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch'
-  // a shrub-only form (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland — never a tree slot
-  | 'broom';
+  // the Arizona uplands' juniper and pinyon (Copper Mesa: the Sonoran/Chihuahuan upland cover, gauntlet wave 28)
+  | 'juniper' | 'pinyon'
+  // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine of the Gulf coastal plain (Longleaf Crossing),
+  // the cedar of Lebanon (the Chouf, Orchard Valley), the Aso caldera's sugi and Japanese red pine (Obsidian Caldera)
+  | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
+  // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
+  | 'apple'
+  // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
+  // grass-stage seedlings on a cutover — never a tree slot
+  | 'broom' | 'longleafSeedling' | 'buddleia';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
-  'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch',
+  'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
-type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'flame' | 'tiered' | 'tuft';
+type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'flame' | 'tiered' | 'tuft' | 'shelf';
 
 /** The card a leaf site takes: a spray seated on a branch, a hanging curtain, a flat tier spray, an upright frond. */
 type SprayHabit = 'spray' | 'hanging' | 'flat' | 'upright' | 'tuft';
@@ -87,7 +96,22 @@ interface GrowthProfile {
    * fir's and a cedar's lie flat. Also the droop of the spray axis below its limb (radians). */
   flatRoll: number;
   flatDroop: number;
-  /** Bark style column of the bark atlas (vegetation.ts): 0 furrowed, 1 plated, 2 smooth/banded, 3 papery. */
+  /**
+   * Trees round 4: the foliage's band under the crown's top (m at the profile's height; scales with the tree): a
+   * parasol crown's sprays sit only this far below its top (the acacia's flat layer over bare limbs). 0 or unset: the
+   * whole crown.
+   */
+  foliageBand?: number;
+  /**
+   * Trees round 4: how gnarled the wood grows, 0..1 (unset 0): its limbs meander in a wandering plane with more
+   * segments and its bole crooks further (the olive's twisting limbs, where straight cylinders fanned from one fork).
+   */
+  gnarl?: number;
+  /**
+   * Bark style column of the bark atlas (vegetation.ts): 0 furrowed (the legacy sheet), 1 plated, 2 smooth/banded,
+   * 3 papery, 4 the grown trees' furrowed bark (trees round 4: meandering ridges and furrows, where style 0's parallel
+   * zigzag fissures read as a tyre tread).
+   */
   bark: number;
   /** Bark tint (linear-ish multiplier around the neutral sheet) and its upper-stem shift (pine's orange top). */
   barkTint: readonly [number, number, number];
@@ -102,9 +126,47 @@ interface GrowthProfile {
    * step, the rest within ±10 % or too few samples), applied part way. 1 when unset.
    */
   foliageValue?: number;
+  /**
+   * Trees round 5: a grass-stage seedling (shrub-only): its sprays fan from one seat at the ground, a fountain of long
+   * needles, a few seedlings to a clump (growShrubSkeleton), where a shrub's mound of sprays stands on a shell.
+   */
+  fountain?: boolean;
+  /**
+   * Trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone with no needle-cluster
+   * silhouette or branching"): how ragged a whorled crown's tiers grow, 0..1 (unset 0) — each whorl reaching its own
+   * share of the cone and each limb in it its own share again, so the outline is serrated by limbs standing out and
+   * falling short, not every tier ending on one cone.
+   */
+  ragged?: number;
+  /**
+   * Trees round 5 (the arid and volcanic lane's Monument Valley juniper: "often partly dead with silver deadwood"): the
+   * share of a decurrent crown's scaffolds that stand dead, 0..1 (unset 0) — a dead limb and everything it carries bear no
+   * sprays, its wood weathered silver-grey (GROWTH_DEADWOOD_TINT), the limb snapped short at its tip.
+   */
+  deadwood?: number;
+  /**
+   * Trees lane (2026-10-05): an orchard tree — open-grown wherever it stands (no forest-grown form in a wood: its slot
+   * is never a forest species, forestGrownProfile keeps it), its variants their own shapes (variantShape) and tiles.
+   */
+  orchard?: boolean;
+  /**
+   * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
+   * variant's age as every profile is; unset, the variants are the profile at three ages.
+   */
+  variantShape?: readonly [Partial<GrowthProfile>, Partial<GrowthProfile>, Partial<GrowthProfile>];
+  /** Trees lane: the atlas tiles each near variant's sprays take (the Streuobst atlas paints a species a tile). */
+  variantTiles?: readonly [readonly number[], readonly number[], readonly number[]];
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
+const variantProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>[]>();
+/** A profile's variant shape (variantShape) over it, or the profile itself. */
+function variantProfile(p: Readonly<GrowthProfile>, variant: number): Readonly<GrowthProfile> {
+  if (!p.variantShape) return p;
+  let list = variantProfiles.get(p);
+  if (!list) { list = p.variantShape.map((shape) => P({ ...p, ...shape })); variantProfiles.set(p, list); }
+  return list[variant];
+}
 
 /**
  * The species profiles at the battlefield's scale (the archetypes' heights and crown radii, treeSpecies.ts): a stand
@@ -117,11 +179,11 @@ const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
 export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<GrowthProfile>>> = Object.freeze({
   oak: P({
     family: 'broadleaf', height: 7.0, heightSpread: 0.12, trunkR: 0.30, form: 'decurrent',
-    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.55, 1.08], crownBase: 0.34, crownR: 2.75,
+    forkAt: [0.26, 0.33], scaffolds: [4, 6], scaffoldAngle: [0.28, 1.02], crownBase: 0.34, crownR: 2.75,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
-    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
+    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.15, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
+    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
     foliageValue: 1.25,
   }),
   poplar: P({
@@ -130,7 +192,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'column', whorled: false, perWhorl: [1, 1], spacing: 0.42, angleLow: 0.42, angleHigh: 0.22,
     droop: 0.05, upturn: 0.30, sidePerM: 2.2, sideAngle: 0.45, sideRatio: 0.55, sideDroop: 0.05, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.8, leafFrom: 0.15, spray: [0.55, 0.82], aspect: 0.78, habit: 'upright', tipSprays: 2,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.56, 0.54, 0.50], barkTopTint: [0.66, 0.64, 0.60],
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.56, 0.54, 0.50], barkTopTint: [0.66, 0.64, 0.60],
   }),
   willow: P({
     family: 'broadleaf', height: 6.4, heightSpread: 0.10, trunkR: 0.38, form: 'decurrent',
@@ -138,15 +200,15 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.22, upturn: 0.0, sidePerM: 2.8, sideAngle: 1.15, sideRatio: 0.95, sideDroop: 2.4, twigPerM: 0,
     leafOrder: 2, leafPerM: 4.6, leafFrom: 0.25, spray: [1.05, 1.6], aspect: 0.46, habit: 'hanging', tipSprays: 1,
-    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
   }),
   acacia: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.10, trunkR: 0.28, form: 'decurrent',
-    forkAt: [0.26, 0.36], scaffolds: [3, 5], scaffoldAngle: [0.70, 1.05], crownBase: 0.6, crownR: 3.2,
+    forkAt: [0.26, 0.36], scaffolds: [3, 5], scaffoldAngle: [0.45, 0.75], crownBase: 0.6, crownR: 3.2,
     envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.6, angleLow: 1.3, angleHigh: 1.1,
-    droop: 0.12, upturn: 0.55, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
+    droop: 0.12, upturn: 0.2, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
     leafOrder: 2, leafPerM: 4.4, leafFrom: 0.3, spray: [0.7, 1.05], aspect: 0.95, habit: 'flat', tipSprays: 2,
-    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, foliageBand: 1.2, bark: 4, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
     foliageValue: 1.55,
   }),
   eucalyptus: P({
@@ -171,15 +233,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.07, crownR: 1.3,
     envelope: 'cone', whorled: true, perWhorl: [3, 5], spacing: 0.55, angleLow: 1.95, angleHigh: 1.05,
     droop: 0.30, upturn: 0.50, sidePerM: 2.4, sideAngle: 0.95, sideRatio: 0.42, sideDroop: 0.55, twigPerM: 0,
-    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.6, 0.9], aspect: 0.72, habit: 'flat', tipSprays: 1,
+    // trees round 3: the sprays a little longer, so the open herringbone tiles still close the spire round the leader
+    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.74, 1.06], aspect: 0.72, habit: 'flat', tipSprays: 1,
     cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.24,
+    // trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone"): its tiers ragged
+    ragged: 1,
   }),
   fir: P({
     family: 'conifer', height: 7.3, heightSpread: 0.10, trunkR: 0.27, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.10, crownR: 1.45,
     envelope: 'tiered', whorled: true, perWhorl: [3, 5], spacing: 0.6, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.12, upturn: 0.30, sidePerM: 2.4, sideAngle: 1.05, sideRatio: 0.45, sideDroop: 0.05, twigPerM: 0,
-    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.64, 0.94], aspect: 0.76, habit: 'flat', tipSprays: 1,
+    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.76, 1.08], aspect: 0.76, habit: 'flat', tipSprays: 1,
     cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.42, 0.40, 0.38], barkTopTint: null, foliageValue: 1.11,
   }),
   cedar: P({
@@ -188,7 +253,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'tiered', whorled: true, perWhorl: [4, 5], spacing: 0.8, angleLow: 1.62, angleHigh: 1.15,
     droop: 0.0, upturn: 0.08, sidePerM: 2.8, sideAngle: 1.1, sideRatio: 0.5, sideDroop: 0.0, twigPerM: 0,
     leafOrder: 1, leafPerM: 4.4, leafFrom: 0.1, spray: [0.7, 1.05], aspect: 0.9, habit: 'flat', tipSprays: 1,
-    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.27,
+    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.27,
   }),
   cypress: P({
     family: 'conifer', height: 7.8, heightSpread: 0.10, trunkR: 0.14, form: 'excurrent',
@@ -196,12 +261,12 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: false, perWhorl: [1, 1], spacing: 0.22, angleLow: 0.38, angleHigh: 0.2,
     droop: 0.0, upturn: 0.2, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
     leafOrder: 1, leafPerM: 5.4, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.6, habit: 'upright', tipSprays: 1,
-    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
+    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
   }),
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.45,
-    envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 0.95, angleHigh: 0.48,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 1.35, angleHigh: 0.5,
     droop: 0.40, upturn: 0.0, sidePerM: 2.4, sideAngle: 0.65, sideRatio: 0.7, sideDroop: 1.5, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.2, spray: [0.62, 0.94], aspect: 0.68, habit: 'spray', tipSprays: 2,
     cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.92, 0.91, 0.88], barkTopTint: null,
@@ -230,8 +295,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.38, crownR: 2.0,
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.9, angleLow: 1.1, angleHigh: 0.65,
     droop: 0.15, upturn: 0.15, sidePerM: 0.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
-    leafOrder: 1, leafPerM: 0.9, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 1,
-    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.22, 0.20, 0.19],
+    leafOrder: 1, leafPerM: 0, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 0,
+    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 4, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.20, 0.18, 0.17],
   }),
   // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
   // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
@@ -265,7 +330,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.38, upturn: 0.35, sidePerM: 2.1, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.3, twigPerM: 0.9,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.68, 1.0], aspect: 0.86, habit: 'spray', tipSprays: 2,
-    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.38, 0.32], barkTopTint: null,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.44, 0.38, 0.32], barkTopTint: null,
     foliageValue: 1.2,
   }),
   // the holm oak (Dalmatia): a short dark bole and a dense, rounded, evergreen dome of small dark leathery leaves
@@ -275,7 +340,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.6, sideDroop: 0.25, twigPerM: 1.1,
     leafOrder: 1, leafPerM: 5.0, leafFrom: 0.15, spray: [0.66, 0.96], aspect: 0.92, habit: 'spray', tipSprays: 2,
-    cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.32, 0.30, 0.28], barkTopTint: null,
+    cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.32, 0.30, 0.28], barkTopTint: null,
     foliageValue: 1.12,
   }),
   // the olive (Dalmatia): a short, gnarled, leaning bole forking low into a few twisting limbs under a wide, open,
@@ -286,15 +351,17 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.4, upturn: 0.25, sidePerM: 2.6, sideAngle: 0.85, sideRatio: 0.6, sideDroop: 0.35, twigPerM: 2.0,
     leafOrder: 1, leafPerM: 4.0, leafFrom: 0.2, spray: [0.66, 0.98], aspect: 0.8, habit: 'spray', tipSprays: 2,
-    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
+    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.85, bark: 4, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
     foliageValue: 1.25,
   }),
   // the Canary Island pine (Las Cañadas): a straight, thick, plated, red-brown bole and an open, irregular, layered
-  // crown of drooping limbs that end in long pendulous needle tufts
+  // crown of drooping limbs that end in long pendulous needle tufts. Trees round 4 (the gauntlet's wave 39: Caldera's
+  // midground pines "still round broadleaf crowns"): the crown a spire from lower down — narrower, its lower limbs
+  // nearer level — where the ellipsoid stood as a broadleaf's dome on a bole
   canaryPine: P({
     family: 'conifer', height: 8.6, heightSpread: 0.12, trunkR: 0.30, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.36, crownR: 2.5,
-    envelope: 'ellipsoid', whorled: true, perWhorl: [3, 4], spacing: 0.78, angleLow: 1.6, angleHigh: 1.05,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.3, crownR: 2.0,
+    envelope: 'flame', whorled: true, perWhorl: [3, 4], spacing: 0.78, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.42, upturn: 0.3, sidePerM: 1.5, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.35, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.6, leafFrom: 0.45, spray: [0.8, 1.15], aspect: 0.95, habit: 'tuft', tipSprays: 3,
     cardBend: 0.22, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.32, 0.24], barkTopTint: [0.60, 0.40, 0.28],
@@ -307,8 +374,19 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.7, angleLow: 1.35, angleHigh: 0.8,
     droop: 0.22, upturn: 0.5, sidePerM: 1.4, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
     foliageValue: 1.18,
+  }),
+  // trees round 5 (the cities lane's Ironworks, the Saar works): the buddleia of waste ground, slag heaps and rail sidings
+  // — a ruderal shrub of arching canes, long narrow grey-green leaves and nodding purple flower spikes, only ever grown as
+  // a shrub (growShrubSkeleton reads the aspect, the bend and the family: long, narrow, arching sprays)
+  buddleia: P({
+    family: 'broadleaf', height: 3.0, heightSpread: 0.16, trunkR: 0.06, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.1, crownR: 1.4,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.7, angleHigh: 0.35,
+    droop: 0.3, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.4, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.75, 1.1], aspect: 0.62, habit: 'spray', tipSprays: 1,
+    cardBend: 0.42, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
   }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
   // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
@@ -331,6 +409,124 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.32, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.46, 0.34, 0.28], barkTopTint: null,
     foliageValue: 1.3,
   }),
+  // the one-seed and Utah junipers of the Arizona uplands: a short shaggy grey bole forking near the ground into a few
+  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall. Trees
+  // round 5 (the arid and volcanic lane's Monument Valley, where the olive stand-in read as "lush broadleaf groves"): its
+  // stems gnarled and twisting, a quarter of its scaffolds dead silver wood, its crown open (the sprays two thirds as
+  // close), the twisted wood showing through it
+  juniper: P({
+    family: 'conifer', height: 4.4, heightSpread: 0.16, trunkR: 0.24, form: 'decurrent',
+    forkAt: [0.1, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.0], crownBase: 0.12, crownR: 2.1,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.4, angleLow: 1.2, angleHigh: 0.65,
+    droop: 0.22, upturn: 0.35, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.55, sideDroop: 0.2, twigPerM: 1.4,
+    leafOrder: 1, leafPerM: 3.4, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
+    foliageValue: 1.2, gnarl: 0.7, deadwood: 0.25,
+  }),
+  // the pinyon (Pinus edulis): a short pine, its crown low, round and dense, its needles short and stiff in tufts at
+  // the shoot ends; a grey, furrowed bole
+  pinyon: P({
+    family: 'conifer', height: 5.6, heightSpread: 0.14, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.22, crownR: 2.2,
+    envelope: 'dome', whorled: true, perWhorl: [3, 4], spacing: 0.55, angleLow: 1.4, angleHigh: 0.85,
+    droop: 0.18, upturn: 0.45, sidePerM: 1.8, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
+    leafOrder: 1, leafPerM: 3.0, leafFrom: 0.35, spray: [0.62, 0.88], aspect: 0.92, habit: 'tuft', tipSprays: 3,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.42, 0.38, 0.34], barkTopTint: null,
+    foliageValue: 1.15,
+  }),
+  // ---- trees round 5 (2026-10-05): the map-revival lanes' species ----
+  // the longleaf pine (Pinus palustris, Longleaf Crossing's whole forest): a tall, straight, clear bole of orange-brown
+  // plates, self-pruned to three fifths of its height, under a small, open, irregular crown of a few stout upturned
+  // limbs, each ending in great tufts of very long bright-green needles — the fox-tails the species is named for, bare
+  // wood between them
+  // (trees lane, 2026-10-05, the gauntlet's wave 124 on Longleaf Crossing: "broccoli-crowned blobs rather than tall,
+  // sparse-crowned longleaf"; the coordinator: a 17-19 m clear bole, the crown from about 70 %, a small ragged tufted
+  // crown): the tallest tree of the fleet, about 18 m at the placed trees' mean scale, its crown a few ragged whorls of
+  // upturned limbs high on the bole, each limb's needles in tufts at its end
+  longleafPine: P({
+    family: 'conifer', height: 13.6, heightSpread: 0.12, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.7, crownR: 2.0,
+    envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 1.05, angleLow: 1.32, angleHigh: 0.8,
+    droop: 0.28, upturn: 0.7, sidePerM: 0.7, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 1.3, leafFrom: 0.65, spray: [1.05, 1.45], aspect: 0.95, habit: 'tuft', tipSprays: 5,
+    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.4, gnarl: 0.2, bark: 1, barkTint: [0.50, 0.33, 0.25],
+    barkTopTint: [0.60, 0.42, 0.30], foliageValue: 1.18,
+  }),
+  // the cedar of Lebanon (Cedrus libani, the Chouf): a massive bole under a broad, flat-topped crown of great horizontal
+  // shelves — level limbs a tier apart carrying dense flat plates of needle rosettes, open sky between the tiers; dark
+  // grey furrowed bark
+  lebanonCedar: P({
+    family: 'conifer', height: 7.6, heightSpread: 0.12, trunkR: 0.42, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.22, crownR: 3.8,
+    envelope: 'shelf', whorled: true, perWhorl: [3, 5], spacing: 1.3, angleLow: 1.6, angleHigh: 1.48,
+    droop: 0.02, upturn: 0.0, sidePerM: 2.2, sideAngle: 1.15, sideRatio: 0.55, sideDroop: 0.0, twigPerM: 0,
+    // a shelf's sprays long and narrow along its limbs, so each faces the viewer as a level strip and a tier reads as
+    // one plate from the side (the card turn shows every spray's face)
+    leafOrder: 1, leafPerM: 6.0, leafFrom: 0.2, spray: [0.8, 1.15], aspect: 0.66, habit: 'flat', tipSprays: 3,
+    cardBend: 0.02, flatRoll: 0.16, flatDroop: 0.0, bark: 4, barkTint: [0.36, 0.33, 0.31], barkTopTint: null,
+    foliageValue: 1.22,
+  }),
+  // sugi (Cryptomeria japonica, the Aso caldera's plantations): a tall, straight, red-brown bole of long fibrous strips
+  // under a narrow, dense, conical crown; its branches spiral up the stem, droop and turn up at their ends, clothed in
+  // rope-like shoots of short awl-shaped needles
+  sugi: P({
+    family: 'conifer', height: 10.0, heightSpread: 0.10, trunkR: 0.25, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.28, crownR: 1.5,
+    envelope: 'cone', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 1.45, angleHigh: 0.85,
+    droop: 0.32, upturn: 0.42, sidePerM: 2.4, sideAngle: 0.75, sideRatio: 0.45, sideDroop: 0.35, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4.6, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.72, habit: 'flat', tipSprays: 2,
+    cardBend: 0.24, flatRoll: 1.1, flatDroop: 0.25, bark: 4, barkTint: [0.52, 0.33, 0.25], barkTopTint: [0.56, 0.36, 0.27],
+    foliageValue: 1.15,
+  }),
+  // the Japanese red pine (Pinus densiflora, the Aso caldera's grassland edges): a leaning bole, grey and plated below
+  // and orange-red and flaking up into the crown, under an irregular, flat-topped crown of a few long limbs ending in
+  // tufts of slender bright-green needles
+  redPine: P({
+    family: 'conifer', height: 7.6, heightSpread: 0.14, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.55, crownR: 2.9,
+    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.72, angleLow: 1.42, angleHigh: 0.9,
+    droop: 0.3, upturn: 0.5, sidePerM: 1.3, sideAngle: 0.75, sideRatio: 0.48, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.75, 1.05], aspect: 0.92, habit: 'tuft', tipSprays: 3,
+    // (the merge with shape2: its gnarl crooks the red pine's bole and limbs)
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.55, bark: 1, barkTint: [0.48, 0.34, 0.28],
+    barkTopTint: [0.88, 0.48, 0.30], foliageValue: 1.1,
+  }),
+  // the trees lane (2026-10-05, the farmland lane's Streuobst behind Frontier Basin's farm courtyards): the old meadow
+  // orchard's fruit tree, open-grown in rows over the grass — a short trunk of 1.2-1.8 m (at the placed trees' mean scale)
+  // to three to five spreading scaffolds, a broad, open, rounded crown about as wide as it is tall, crooked with age, the
+  // sky showing through. Its variants are the three trees of a Hessian Streuobstwiese: the plum, smaller and finer; the
+  // apple, round and spreading; the pear, taller and upright — each on its own atlas tiles (treeSprayAtlas.ts
+  // paintOrchardTile: its leaves and its summer fruit)
+  apple: P({
+    family: 'broadleaf', height: 4.6, heightSpread: 0.14, trunkR: 0.13, form: 'decurrent',
+    forkAt: [0.22, 0.29], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.1], crownBase: 0.26, crownR: 2.35,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.45, angleLow: 1.2, angleHigh: 0.7,
+    droop: 0.5, upturn: 0.3, sidePerM: 2.0, sideAngle: 0.85, sideRatio: 0.55, sideDroop: 0.45, twigPerM: 1.2,
+    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.2, spray: [0.45, 0.68], aspect: 0.82, habit: 'spray', tipSprays: 1,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, bark: 1, barkTint: [0.42, 0.39, 0.35], barkTopTint: null,
+    foliageValue: 1.2, orchard: true,
+    variantShape: [
+      // the plum
+      { height: 4.4, crownR: 2.1, scaffoldAngle: [0.45, 1.0], spray: [0.4, 0.6] },
+      // the apple
+      {},
+      // the pear
+      { height: 4.8, crownR: 1.85, scaffoldAngle: [0.3, 0.75], forkAt: [0.19, 0.25] },
+    ],
+    variantTiles: [[3], [0, 1], [2]],
+  }),
+  // the longleaf's grass stage (shrub-only, Longleaf Crossing's cutover): a seedling of its first years is no stem at
+  // all, a dense fountain of long needles from the ground like a bunchgrass, a few to a clump; the tree fields mirror the
+  // longleaf's (growShrubSkeleton reads the fountain, the aspect and the bend)
+  longleafSeedling: P({
+    family: 'conifer', height: 1.0, heightSpread: 0.16, trunkR: 0.05, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.0, crownR: 0.7,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.05, upturn: 0.3, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.6, 0.9], aspect: 0.95, habit: 'tuft', tipSprays: 1,
+    cardBend: 0.32, flatRoll: 0.6, flatDroop: 0, bark: 1, barkTint: [0.50, 0.33, 0.25], barkTopTint: null,
+    fountain: true, foliageValue: 1.1,
+  }),
 });
 
 interface GrowthNode { x: number; y: number; z: number; r: number; flex: number }
@@ -344,6 +540,8 @@ interface GrowthBranch {
   broken: boolean;
   /** Emitted as a straight supporting twig whatever its order (supportSprays: it carries sprays the tube budget left). */
   support?: boolean;
+  /** Trees round 5: dead wood in a living crown (the profile's `deadwood`): no sprays, silver-grey, its limb snapped. */
+  dead?: boolean;
 }
 interface LeafSite {
   /** Seat of the spray on its branch (tree space). */
@@ -360,6 +558,8 @@ interface LeafSite {
   bend: number;
   /** The branch (index into the skeleton's branches) the spray is seated on. */
   branch: number;
+  /** Trees round 5: a shrub's stem card (shrubStemSites), not a spray: its tile is the stems', its tint the bark's. */
+  stem?: boolean;
 }
 /**
  * Trees round 2 (2026-10-03): one mass of a crown — an axis-aligned ellipsoid fitted to a cluster of spray centres
@@ -376,13 +576,63 @@ interface TreeSkeleton {
   crown: { x: number; y: number; z: number; r: number };
   /** Trees round 2: the crown's masses (growTreeSkeleton; absent on a shrub or a crown without sprays). */
   lobes?: CrownLobe[];
+  /**
+   * Trees round 4: a tufted pine's needle tufts, each its own small mass (tuftLobes) — the cards' normals and depth
+   * shade read them instead of the crown's few masses, so every tuft lights as itself (absent on other crowns).
+   */
+  tufts?: CrownLobe[];
+  /**
+   * Trees round 5: a shrub's clumps (growShrubSkeleton), the heart first — each its centre on the ground, its radius,
+   * the height its envelope's wall gives way to its dome and its top; the stems grow from them (shrubStemSites).
+   */
+  stools?: ShrubStool[];
 }
+/** Trees round 5: one clump of a grown shrub (TreeSkeleton.stools). */
+interface ShrubStool { x: number; z: number; r: number; c0: number; top: number }
 
 interface GrowthOptions {
   /** 0, 1, 2: the near variants (smaller/younger, typical, larger/older); shapes the height and crown. */
   variant?: number;
   /** Detail tier: 'desktop' or 'mobile' (fewer sprays and side shoots, same silhouette). */
   tier?: 'desktop' | 'mobile';
+  /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
+  forest?: boolean;
+}
+
+/**
+ * Trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
+ * near-identical forked grey trunks", the woods' savanna read): how a tree grown inside a closed wood differs from one
+ * grown in the open. Drawn up toward the light among its neighbours it self-prunes its lower limbs into a tall clear bole
+ * under a high crown, a little narrower, its stem slimmer for its height and its scaffolds more upright: a decurrent
+ * broadleaf forks at about one and a half times its open height (never past 56 % of its height), an excurrent
+ * broadleaf carries its crown from near half its height and a conifer from over a third, and a gnarled form grows
+ * straighter. The field trees keep the open-grown form.
+ */
+/** Trees round 5: dead wood's weathered silver-grey (emitBranchGeometry, the profile's deadwood). */
+export const GROWTH_DEADWOOD_TINT: readonly [number, number, number] = Object.freeze([0.82, 0.8, 0.76]) as unknown as readonly [number, number, number];
+export const GROWTH_FOREST_FORM = Object.freeze({
+  height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
+  scaffoldAngle: 0.72, gnarl: 0.5,
+});
+const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag or a grass-stage seedling keeps its own. */
+export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+  if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard) return p;
+  const cached = forestProfiles.get(p);
+  if (cached) return cached;
+  const f = GROWTH_FOREST_FORM;
+  const forest = P({
+    ...p,
+    height: p.height * f.height,
+    crownR: p.crownR * f.crownR,
+    trunkR: p.trunkR * f.trunkR,
+    forkAt: p.form === 'decurrent' ? [Math.min(f.forkMax, p.forkAt[0] * f.fork), Math.min(f.forkMax, p.forkAt[1] * f.fork)] : p.forkAt,
+    scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, p.scaffoldAngle[1] * f.scaffoldAngle],
+    crownBase: p.form === 'excurrent' ? Math.max(p.crownBase, p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
+    ...(p.gnarl !== undefined ? { gnarl: p.gnarl * f.gnarl } : {}),
+  });
+  forestProfiles.set(p, forest);
+  return forest;
 }
 
 // ------------------------------------------------------------------------------------------------ vector helpers
@@ -419,9 +669,13 @@ export function envelopeFraction(shape: EnvelopeShape, t: number): number {
     case 'ellipsoid': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
     case 'dome': return Math.sqrt(Math.max(0, 1 - ((u - 0.38) / 0.62) ** 2));
     case 'column': return Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.88)) ** 0.45;
-    case 'umbrella': return u < 0.55 ? 0.35 + u * 1.1 : Math.sqrt(Math.max(0, 1 - ((u - 0.55) / 0.45) ** 2)) * 0.95 + 0.05;
+    // trees round 4: the acacia's parasol — widest over its top third, the top flat to a quick rounded shoulder
+    case 'umbrella': return u < 0.7 ? 0.3 + u : 1 - ((u - 0.7) / 0.3) ** 4 * 0.95;
     case 'flame': return Math.sin(Math.PI * Math.min(1, 0.08 + u * 0.92)) ** 0.7 * (1 - u * 0.35);
     case 'tuft': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
+    // trees round 5: the cedar of Lebanon's shelves — broad from its lowest tier, widest through its middle, the top
+    // tier flat to a quick shoulder (an old tree is wider than it is tall)
+    case 'shelf': return u < 0.82 ? 0.8 + 0.2 * Math.sin(Math.PI * Math.min(1, u / 0.5) * 0.5) : 1 - ((u - 0.82) / 0.18) ** 3 * 0.85;
     default: return 1;
   }
 }
@@ -437,6 +691,8 @@ interface GrowContext {
   crownR: number;
   branches: GrowthBranch[];
   mobile: boolean;
+  /** Trees round 4: a parasol crown's top — its limbs' highest reach (growScaffolds); the foliage band hangs from it. */
+  bandTop?: number;
 }
 
 /** The envelope radius at a world height y (0 outside the crown band below the base). */
@@ -473,8 +729,17 @@ function growPolyline(
   let d = norm(dir);
   let p = v3(start.x, start.y, start.z);
   const step = length / segments;
+  // trees round 4: a gnarled profile's limb meanders — each step bends it in a plane that wanders about it, and
+  // leans it back toward its heading (it twists on its way out, never wanders off it)
+  const gnarl = ctx.profile.gnarl ?? 0, heading = d;
+  let plane = gnarl > 0 ? ctx.rng() * Math.PI * 2 : 0;
   for (let i = 1; i <= segments; i++) {
     const t = i / segments;
+    if (gnarl > 0) {
+      plane += (ctx.rng() - 0.5) * 1.8;
+      d = norm(rotate(d, norm(rotate(perpendicular(d), d, plane)), gnarl * 0.3 * (0.55 + 0.9 * ctx.rng())));
+      d = norm(v3(d.x + (heading.x - d.x) * 0.35, d.y + (heading.y - d.y) * 0.35, d.z + (heading.z - d.z) * 0.35));
+    }
     // gravity: rotate toward -Y about the horizontal axis perpendicular to d, by the share of the run that is level
     const horiz = Math.hypot(d.x, d.z);
     if (horiz > 1e-3 && droop !== 0) {
@@ -545,7 +810,8 @@ function polylineLength(nodes: GrowthNode[]): number {
 /** The leader / bole: from the ground to its top (or the fork), gently crooked. */
 function growStem(ctx: GrowContext, topY: number, r0: number, r1: number, segments: number): number {
   const { rng } = ctx;
-  const crookA = rng() * Math.PI * 2, crook = 0.04 + rng() * 0.05;
+  // trees round 4: a gnarled bole crooks further
+  const crookA = rng() * Math.PI * 2, crook = (0.04 + rng() * 0.05) * (1 + 2.5 * (ctx.profile.gnarl ?? 0));
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -582,7 +848,10 @@ function growSides(
     const side = rotate(perpendicular(at.d), at.d, roll);
     let dir = norm(rotate(at.d, norm(cross(at.d, side)), angle * (0.8 + rng() * 0.4)));
     // flat-habit conifers keep their side shoots near the horizontal plane of the limb
-    if (profile.habit === 'flat' && order === 2) dir = norm(v3(dir.x, dir.y * 0.3, dir.z));
+    // (trees round 5: a shelved crown's level — its plates are flat)
+    if (profile.habit === 'flat' && order === 2) {
+      dir = norm(v3(dir.x, profile.envelope === 'shelf' ? (rng() - 0.5) * 0.12 : dir.y * 0.3, dir.z));
+    }
     const parentRemain = length * (1 - t);
     const len = Math.max(0.22, Math.min(parentRemain * 1.05 + 0.2, length * ratio * (0.65 + rng() * 0.5) * (1.15 - t * 0.5)));
     const segments = mesh ? Math.max(2, Math.min(4, Math.round(len / 0.45))) : 2;
@@ -603,7 +872,15 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
   const fork = stem.nodes[stem.nodes.length - 1];
   const n = Math.round(range(rng, profile.scaffolds));
   const phase = rng() * Math.PI * 2;
+  /** Trees round 4: a parasol crown's limbs and where their side shoots may start, grown once every limb has its reach. */
+  const parasol: Array<[number, number]> = [];
+  // trees round 5: a crown with deadwood loses its share of the scaffolds (one at the least), from its own draws (none
+  // for a crown without)
+  const deadShare = profile.deadwood ?? 0;
+  const deadCount = deadShare > 0 ? Math.max(1, Math.round(n * deadShare)) : 0, deadFrom = deadShare > 0 ? (rng() * n) | 0 : 0;
   for (let s = 0; s < n; s++) {
+    const firstBranch = ctx.branches.length;
+    const dead = deadCount > 0 && ((s - deadFrom + n) % n) < deadCount;
     const az = phase + (s / n) * Math.PI * 2 + (rng() - 0.5) * 0.7;
     const a = range(rng, profile.scaffoldAngle) * (variant === 1 ? 0.92 : variant === 2 ? 1.08 : 1);
     const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
@@ -612,35 +889,85 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     const rise = ctx.crownTopY - fork.y;
     const len = Math.min(Math.hypot(reach, rise * 0.85), reach / Math.max(0.35, Math.sin(a)) * 1.05);
     const r0 = fork.r * (0.62 + rng() * 0.12) * (n > 3 ? 0.9 : 1);
-    const nodes = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4, r0, 0.025,
+    const grown = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
       profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, true);
-    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: false });
+    // (trees round 5: a dead limb snapped a third short, before anything grows on it — its tip a splintered stub)
+    const nodes = dead ? grown.slice(0, Math.max(2, Math.ceil(grown.length * 0.7))) : grown;
+    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: dead });
     const limb = ctx.branches.length - 1;
     // a continuing leader on some scaffolds: a second split two thirds up gives the dome its lobes
     if (rng() < 0.45) {
       const at = sampleAlong(nodes, 0.55 + rng() * 0.15);
       const side = rotate(perpendicular(at.d), at.d, rng() * Math.PI * 2);
       const d2 = norm(rotate(at.d, norm(cross(at.d, side)), 0.45 + rng() * 0.25));
-      const n2 = growPolyline(ctx, at.p, d2, len * (0.45 + rng() * 0.2), 3, at.r * 0.7, 0.018,
+      const n2 = growPolyline(ctx, at.p, d2, len * (0.45 + rng() * 0.2), 3 + Math.round(2 * (profile.gnarl ?? 0)), at.r * 0.7, 0.018,
         profile.droop * 0.6, profile.upturn, 0.2, at.flex, at.flex + 0.2, true);
       ctx.branches.push({ order: 1, parent: limb, nodes: n2, mesh: true, broken: false });
-      growSides(ctx, ctx.branches.length - 1, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.15, true);
+      if (profile.foliageBand) parasol.push([ctx.branches.length - 1, 0.15]);
+      else growSides(ctx, ctx.branches.length - 1, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.15, true);
     }
-    growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
+    if (profile.foliageBand) parasol.push([limb, 0.18]);
+    else growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
+    // the dead limb and all it carries: bare and silver
+    if (dead) for (let b = firstBranch; b < ctx.branches.length; b++) ctx.branches[b].dead = true;
   }
+  // trees round 4: a parasol crown's layer lies over its limbs' highest reach (a young tree's limbs may fall short of
+  // the profile's height), and the limbs' side shoots crowd into it
+  if (parasol.length) {
+    let top = -Infinity;
+    for (const [b] of parasol) for (const node of ctx.branches[b].nodes) top = Math.max(top, node.y);
+    ctx.bandTop = Math.min(ctx.crownTopY, top);
+    for (const [b, from0] of parasol) {
+      const [perM, from] = parasolSides(ctx, ctx.branches[b].nodes, from0);
+      growSides(ctx, b, 2, perM, profile.sideAngle, profile.sideRatio, profile.sideDroop, from, true);
+    }
+    // the layer's top is the shoots' own (a shoot may climb a little over its limb's tip): the band hangs from it
+    let shootTop = top;
+    for (const branch of ctx.branches) for (const node of branch.nodes) shootTop = Math.max(shootTop, node.y);
+    ctx.bandTop = Math.min(ctx.crownTopY + 0.15, shootTop);
+  }
+}
+
+/**
+ * Trees round 4: where a scaffold of a parasol crown (the profile's foliageBand) carries its side shoots — only where
+ * it has climbed into the band, crowded there (the acacia's flat layer of twigs over bare limbs); elsewhere `from` at
+ * the profile's own density.
+ */
+function parasolSides(ctx: GrowContext, nodes: GrowthNode[], from: number): [number, number] {
+  const { profile } = ctx;
+  if (!profile.foliageBand) return [profile.sidePerM, from];
+  const floor = (ctx.bandTop ?? ctx.crownTopY) - profile.foliageBand * ctx.height / profile.height * 1.15;
+  const total = polylineLength(nodes);
+  let along = 0;
+  for (let i = 1; i < nodes.length; i++) {
+    const l = Math.hypot(nodes[i].x - nodes[i - 1].x, nodes[i].y - nodes[i - 1].y, nodes[i].z - nodes[i - 1].z);
+    if (nodes[i].y >= floor) {
+      const f = nodes[i].y > nodes[i - 1].y ? clamp01((floor - nodes[i - 1].y) / (nodes[i].y - nodes[i - 1].y)) : 0;
+      along += l * f;
+      break;
+    }
+    along += l;
+  }
+  const t = Math.max(from, Math.min(0.9, along / Math.max(1e-3, total)));
+  // the shoots the whole limb would carry, crowded onto its part in the band
+  return [profile.sidePerM / Math.max(0.25, 1 - t) * (1 - from), t];
 }
 
 /** Primaries along an excurrent leader: whorls (conifers) or a spiral (poplar, birch, eucalyptus, cypress). */
 function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): void {
   const { rng, profile } = ctx;
   const stem = ctx.branches[stemIndex];
-  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.whorled ? 0.32 : 0.45);
+  // (trees round 5: a shelved crown's top tier is its top — no leader stands over it)
+  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.envelope === 'shelf' ? 0.08 : profile.whorled ? 0.32 : 0.45);
   let y = y0 + rng() * profile.spacing * 0.5;
   let az = rng() * Math.PI * 2;
   const spacing = profile.spacing * (ctx.mobile ? 1.18 : 1);
+  const ragged = profile.ragged ?? 0;
   while (y < y1) {
     const t = (y - y0) / Math.max(0.3, ctx.crownTopY - y0);
     const count = profile.whorled ? Math.round(range(rng, profile.perWhorl)) : 1;
+    // trees round 5: a ragged crown's whorl reaches its own share of the cone (no draw for any other crown)
+    const whorlReach = ragged > 0 ? 1 + (rng() - 0.45) * 0.36 * ragged : 1;
     const at = sampleAlong(stem.nodes, y / ctx.height);
     for (let k = 0; k < count; k++) {
       const a = lerp(profile.angleLow, profile.angleHigh, t) + (rng() - 0.5) * 0.18;
@@ -648,7 +975,8 @@ function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): vo
       const dir = v3(Math.sin(a) * Math.cos(azK), Math.cos(a), Math.sin(a) * Math.sin(azK));
       const env = envelopeAt(ctx, y);
       // the branch reaches the envelope at its height (a hanging limb a little beyond: its droop pulls it back in)
-      const reach = Math.max(profile.family === 'conifer' ? 0.36 : 0.25, env * (0.82 + rng() * 0.3));
+      const reach = Math.max(profile.family === 'conifer' ? 0.36 : 0.25,
+        env * (0.82 - 0.22 * ragged + rng() * (0.3 + 0.5 * ragged)) * whorlReach);
       const len = Math.min(reach / Math.max(0.25, Math.sin(Math.min(a, Math.PI - 0.25))) * 1.05, ctx.crownR * 1.9);
       if (len < 0.25) continue;
       const r0 = Math.max(0.012, at.r * (profile.family === 'conifer' ? 0.30 : 0.5) * (0.85 + rng() * 0.3) * (1 - t * 0.5));
@@ -678,33 +1006,42 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   const crownMid = (ctx.crownBaseY + ctx.crownTopY) * 0.5;
   const crownSpan = Math.max(0.5, ctx.crownTopY - ctx.crownBaseY);
   const perM = profile.leafPerM * (ctx.mobile ? 0.62 : 1);
+  // trees round 4: a parasol crown's foliage band (the acacia's flat layer), scaled with the tree
+  const band = (profile.foliageBand ?? 0) * ctx.height / profile.height;
   if (profile.family === 'conifer' && profile.form === 'excurrent' && ctx.branches.length) {
     const stem = ctx.branches[0];
     const tip = stem.nodes[stem.nodes.length - 1];
     // Trees round 2 (2026-10-03): the apex is a spire of shoots round the leader, the youngest upright at the top and the
     // older ones leaning out below it, so no bare whip stands over the crown (the gauntlet's "pole with a tuft" read).
     // Each shoot's tip stays within a hand's breadth of the leader's top.
-    const leaders = ctx.mobile ? 1 : 6;
+    const leaders = ctx.mobile ? 1 : 6, shelf = profile.envelope === 'shelf';
     const spin0 = rng() * Math.PI * 2;
     for (let k = 0; k < leaders; k++) {
       const t = 0.985 - k * 0.032;
       const at = sampleAlong(stem.nodes, t);
       const spin = spin0 + k * 2.399 + (rng() - 0.5) * 0.4;
       const lean = k === 0 ? 0.04 : 0.16 + 0.07 * k;
-      const axis = norm(v3(Math.cos(spin) * lean, 1, Math.sin(spin) * lean));
-      const face = norm(rotate(perpendicular(axis), axis, spin));
+      // trees round 5: a shelved crown (the cedar of Lebanon) is flat-topped — its apex sprays lie level round the
+      // leader's top, a last plate, no spire
+      const axis = shelf ? norm(v3(Math.cos(spin), -0.03, Math.sin(spin))) : norm(v3(Math.cos(spin) * lean, 1, Math.sin(spin) * lean));
+      let face = norm(rotate(perpendicular(axis), axis, spin));
+      if (shelf) {
+        face = norm(cross(norm(cross(axis, v3(0, 1, 0))), axis));
+        if (face.y < 0) face = v3(-face.x, -face.y, -face.z);
+      }
       const size = range(rng, profile.spray) * (0.95 - k * 0.05);
       leaves.push({ x: at.p.x, y: at.p.y - 0.05, z: at.p.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
-        length: Math.min(size, Math.max(0.3, (tip.y + 0.12 - at.p.y) / Math.max(0.5, axis.y))), width: size * profile.aspect * 0.8, shade: 1,
+        length: shelf ? size : Math.min(size, Math.max(0.3, (tip.y + 0.12 - at.p.y) / Math.max(0.5, axis.y))), width: size * profile.aspect * 0.8, shade: 1,
         flex: Math.min(1, at.flex + 0.3), tile: (rng() * 4) | 0, bend: 0, branch: 0 });
     }
   }
   for (let branchIndex = 0; branchIndex < ctx.branches.length; branchIndex++) {
     const branch = ctx.branches[branchIndex];
-    if (branch.broken) continue;
-    // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them)
+    if (branch.broken || branch.dead) continue;
+    // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them); trees round 4:
+    // and a parasol's limb tips their sprays (a bare limb end stood over the acacia's flat layer)
     const tipOnly = branch.order < profile.leafOrder;
-    if (tipOnly && !(profile.habit === 'hanging' && branch.order === 1)) continue;
+    if (tipOnly && !((profile.habit === 'hanging' || profile.foliageBand) && branch.order === 1)) continue;
     const length = polylineLength(branch.nodes);
     if (length < 0.15) continue;
     const count = tipOnly ? 0 : Math.max(1, Math.round(length * (1 - profile.leafFrom) * perM));
@@ -715,6 +1052,7 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
     for (let k = 0; k < tips; k++) seats.push(0.97 + rng() * 0.03);
     for (const t of seats) {
       const at = sampleAlong(branch.nodes, Math.min(1, t));
+      if (band > 0 && at.p.y < (ctx.bandTop ?? ctx.crownTopY) - band) continue;
       const outward = norm(v3(at.p.x + 1e-4, 0, at.p.z));
       const tipSeat = t >= 0.97;
       let axis: V3, face: V3;
@@ -733,6 +1071,8 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
           // tier sprays: along the branch, drooping a little below it, faces to the sky, rolled about the axis by the
           // species' roll (a spruce's sprays every way, a fir's and a cedar's flat)
           axis = norm(v3(at.d.x + roll * 0.5, at.d.y * 0.35 - 0.08 - profile.flatDroop * (0.5 + rng()), at.d.z - roll * 0.5));
+          // trees round 5: a shelf's sprays lie level along its plate, so the card turned to the viewer is a level strip
+          if (profile.envelope === 'shelf') axis = norm(v3(axis.x, -0.03, axis.z));
           const right = norm(cross(axis, v3(0, 1, 0)));
           face = norm(rotate(norm(cross(right, axis)), axis, (rng() - 0.5) * 2 * profile.flatRoll));
           if (face.y < 0) face = v3(-face.x, -face.y, -face.z);
@@ -783,27 +1123,43 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   }
 }
 
-/** A shell-killed snag: a broken stem, a few dead limbs (some snapped), no foliage. */
+/**
+ * A shell-killed snag: a shattered trunk — a stem snapped off, its top a crown of splintered shards, a few dead limb
+ * stubs and no foliage. Trees round 3 (2026-10-03, the gauntlet's wave 31: "a dark, drooping, spiky tree ... reads as
+ * dead or diseased foliage" on Kursk, Fulda and Dalmatia): the snag kept a few long dead limbs with side twigs and a
+ * handful of drooping twig sprays, which read as a living species gone sick; it is wood only now, and fewer of them
+ * stand (vegetation.ts battleSnagShare).
+ */
 function growSnag(ctx: GrowContext): void {
   const { rng } = ctx;
   const top = ctx.height;
-  const stem = growStem(ctx, top, ctx.profile.trunkR * 1.02, ctx.profile.trunkR * (0.32 + rng() * 0.18), 6);
+  const rTop = ctx.profile.trunkR * (0.42 + rng() * 0.16);
+  const stem = growStem(ctx, top, ctx.profile.trunkR * 1.02, rTop, 6);
   ctx.branches[stem].broken = true;
-  const limbs = 3 + ((rng() * 4) | 0);
-  for (let k = 0; k < limbs; k++) {
-    const t = 0.38 + rng() * 0.55;
-    const at = sampleAlong(ctx.branches[stem].nodes, t);
-    const az = rng() * Math.PI * 2, a = 0.7 + rng() * 0.8;
+  // the break: three to five shards of the stem's wood standing up out of the snapped top, pointed and leaning out
+  const head = ctx.branches[stem].nodes[ctx.branches[stem].nodes.length - 1];
+  const shards = 3 + ((rng() * 3) | 0), az0 = rng() * Math.PI * 2;
+  for (let k = 0; k < shards; k++) {
+    const az = az0 + (k / shards) * Math.PI * 2 + (rng() - 0.5) * 0.6, a = 0.08 + rng() * 0.32;
     const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
-    const snapped = rng() < 0.55;
-    const len = (snapped ? 0.35 + rng() * 0.6 : 1.1 + rng() * 1.6) * (1 - t * 0.35);
+    const at = v3(head.x + Math.cos(az) * head.r * 0.55, head.y - 0.05, head.z + Math.sin(az) * head.r * 0.55);
+    const nodes = growPolyline(ctx, at, dir, 0.25 + rng() * 0.3, 2, head.r * (0.28 + rng() * 0.12), 0.006,
+      0, 0, 0.05, 0, 0, false);
+    ctx.branches.push({ order: 1, parent: stem, nodes, mesh: true, broken: true });
+  }
+  // the limbs: one to three, most of them snapped to stubs
+  const limbs = 1 + ((rng() * 3) | 0);
+  for (let k = 0; k < limbs; k++) {
+    const t = 0.38 + rng() * 0.5;
+    const at = sampleAlong(ctx.branches[stem].nodes, t);
+    const az = rng() * Math.PI * 2, a = 0.8 + rng() * 0.7;
+    const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
+    const snapped = rng() < 0.8;
+    const len = (snapped ? 0.3 + rng() * 0.5 : 0.9 + rng() * 1.0) * (1 - t * 0.35);
     const r0 = Math.max(0.03, at.r * (0.35 + rng() * 0.15));
     const nodes = growPolyline(ctx, at.p, dir, len, snapped ? 2 : 3, r0, snapped ? r0 * 0.7 : 0.012,
       0.2, 0.2, 0.3, 0.02, 0.12, false);
     ctx.branches.push({ order: 1, parent: stem, nodes, mesh: true, broken: snapped });
-    if (!snapped && rng() < 0.6) {
-      growSides(ctx, ctx.branches.length - 1, 2, 1.2, 0.8, 0.5, 0.1, 0.3, true);
-    }
   }
 }
 
@@ -924,11 +1280,16 @@ function supportSprays(ctx: GrowContext, leaves: LeafSite[]): boolean[] {
 }
 
 /**
- * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2) — the
- * round-8 cards' triangle budget (the bush's 64, the understorey's 40) at a spray per card. A species of narrow sprays
- * (aspect under 0.8: birch, willow) carries more of them, up to a third more.
+ * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2). Round
+ * 2 kept the round-8 cards' triangle budget (32 and 20 sprays: the bush's 64 triangles, the understorey's 40); trees
+ * round 4 (the gauntlet's wave 46: the shrubs read as "lettuce heads", "topiary", "a sphere with a leaf texture") grows
+ * them from more sprays at 0.72 of the length (GROWTH_SHRUB_SPRAY_SCALE): a shrub's leaves at a shrub's size, a finer,
+ * lumpier mound — a bush's 48 (the merge's cost trim from 60), the understorey's 36. A species of narrow sprays (aspect
+ * under 0.8: birch, willow) carries up to a third more.
  */
-export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 32, understorey: 20 });
+export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 48, understorey: 36 });
+/** Trees round 4: a shrub's spray length against round 2's (the shrub's leaves at a shrub's size, not a crown's). */
+const GROWTH_SHRUB_SPRAY_SCALE = 0.72;
 
 /**
  * The grown shrub's value in light per bush species, on top of the crown's foliageValue: the round-8 bush cards carried
@@ -955,6 +1316,7 @@ export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>
  */
 export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
   const profile = TREE_GROWTH_PROFILES[species];
+  if (profile.fountain) return growFountainShrub(species, kind, rng);
   const under = kind === 'understorey';
   const conifer = profile.family === 'conifer';
   // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
@@ -974,10 +1336,12 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   interface Clump { x: number; z: number; R: number; c0: number; Hc: number; lobe1: number; lobe2: number; az0: number; n: number }
   const clumps: Clump[] = [{ x: 0, z: 0, R: R * (under ? 1 : 0.86), c0, Hc, lobe1: rng() * Math.PI * 2, lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 }];
   if (!under) {
-    const stools = 2 + (rng() < 0.5 ? 1 : 0), a0 = rng() * Math.PI * 2;
+    // trees round 4 (the gauntlet's wave 46: "lettuce heads", "topiary"): three to five stools of their own sizes and
+    // heights, further out — a lumpier, lopsided thicket
+    const stools = 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
     for (let i = 0; i < stools; i++) {
       const a = a0 + i * (Math.PI * 2 / stools) + (rng() - 0.5) * 1.1;
-      const d = R * (0.46 + rng() * 0.2), r = R * (0.5 + rng() * 0.16), h = H * (0.52 + rng() * 0.3);
+      const d = R * (0.46 + rng() * 0.36), r = R * (0.36 + rng() * 0.3), h = H * (0.42 + rng() * 0.5);
       const cc0 = conifer ? h * 0.22 : h * 0.32;
       clumps.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, R: r, c0: cc0, Hc: h - cc0, lobe1: rng() * Math.PI * 2,
         lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 });
@@ -1044,7 +1408,7 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
         tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
       if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
       axis = norm(axis);
-      const length = (under ? 0.55 : 0.72) * (0.85 + rng() * 0.3) * (elev > 1.1 ? 0.86 : 1);
+      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1);
       const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
         P.z - axis.z * length * 0.42 - nOut.z * 0.04);
       let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));
@@ -1068,7 +1432,90 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
       });
     }
   }
-  return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R } };
+  return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R },
+    stools: clumps.map((q) => ({ x: q.x, z: q.z, r: q.R, c0: q.c0, top: q.c0 + q.Hc })) };
+}
+
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "a cluster of flat, stemless leaf cards with
+ * no visible branch structure connecting them to the ground, so it reads as floating leaf confetti"): a shrub's stems —
+ * a card for each stool (two for the heart) on the shrub atlas' stem tile (`tile`), standing on the ground and reaching
+ * a third of the way up its clump, where the sprays clothe its forks. A stool's foot stands near the heart's (a stool
+ * leans out of the one root plate), the heart's two a little apart. Each card turns about its own stem to face the
+ * viewer as the sprays do (vegetation.ts COT_LEAF_BILLBOARD), so it reads as stems from every side; it barely sways.
+ * Its seat is a few centimetres under the ground (the tile's foot fades there); deep in the shrub's shade. None for a
+ * shrub without stools (the grass stage's fountain). Deterministic in `rng`.
+ */
+export function shrubStemSites(skeleton: TreeSkeleton, tile: number, rng: Rng): LeafSite[] {
+  const out: LeafSite[] = [];
+  (skeleton.stools ?? []).forEach((q, i) => {
+    const heart = i === 0;
+    for (let k = 0; k < (heart ? 2 : 1); k++) {
+      const a = rng() * Math.PI * 2, rr = q.r * (heart ? 0.16 : 0.08) * (0.5 + 0.5 * rng());
+      const bx = (heart ? q.x : q.x * 0.35) + Math.cos(a) * rr, bz = (heart ? q.z : q.z * 0.35) + Math.sin(a) * rr;
+      const top = v3(q.x + (rng() - 0.5) * q.r * 0.3, q.c0 + (q.top - q.c0) * (0.3 + 0.15 * rng()), q.z + (rng() - 0.5) * q.r * 0.3);
+      const seat = v3(bx, -0.05, bz);
+      const span = v3(top.x - seat.x, top.y - seat.y, top.z - seat.z);
+      const reach = Math.hypot(span.x, span.y, span.z), axis = norm(span), face = perpendicular(axis);
+      // the card's top row stands at 0.94 of its length over its seat (emitLeafCards)
+      const length = reach / 0.94;
+      out.push({
+        x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+        length, width: length * 0.45, shade: 0.3, flex: 0.04, tile, bend: 0, branch: -1, stem: true,
+      });
+    }
+  });
+  return out;
+}
+
+/**
+ * Trees round 5 (2026-10-05, Longleaf Crossing's cutover): a clump of grass-stage seedlings (a fountain profile) — each
+ * seedling a burst of long needle sprays from one seat on the ground, steep at its heart and arching out and over at its
+ * rim, as a bunchgrass stands; a field bush's clump three to five seedlings over its ground, the understorey's one or
+ * two. The spray budget, the crown sample and the cover disc stay a shrub's.
+ */
+function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
+  const profile = TREE_GROWTH_PROFILES[species];
+  const under = kind === 'understorey';
+  const count = GROWTH_SHRUB_SPRAYS[kind];
+  const R = under ? 0.6 : 0.85;
+  const seedlings = under ? 1 + ((rng() * 2) | 0) : 3 + ((rng() * 3) | 0);
+  const seats: Array<{ x: number; z: number; size: number }> = [];
+  const a0 = rng() * Math.PI * 2;
+  for (let i = 0; i < seedlings; i++) {
+    const a = a0 + i * 2.399 + (rng() - 0.5) * 0.6, d = i === 0 ? 0 : R * (0.32 + rng() * 0.4);
+    seats.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, size: i === 0 ? 1 : 0.7 + rng() * 0.3 });
+  }
+  const leaves: LeafSite[] = [];
+  let top = 0;
+  for (let j = 0; j < count; j++) {
+    const q = seats[j % seedlings];
+    const az = rng() * Math.PI * 2;
+    // the elevation: a fountain's heart stands steep, its rim leans out (26° to 80°)
+    const elev = 0.45 + rng() * 0.95, ce = Math.cos(elev), se = Math.sin(elev);
+    const axis = norm(v3(Math.cos(az) * ce, se, Math.sin(az) * ce));
+    const length = (under ? 0.36 : 0.45) * q.size * (0.75 + rng() * 0.5);
+    // the card's face square to its axis, turned out of the fan's plane by a little (the billboard turns it anyway)
+    let face = norm(cross(norm(v3(-Math.sin(az), 0, Math.cos(az))), axis));
+    face = norm(rotate(face, axis, (rng() - 0.5) * 1.2));
+    const width = length * profile.aspect * (0.9 + rng() * 0.2);
+    // the leaning needles arch over further than the upright heart's
+    const bend = profile.cardBend * (0.6 + rng() * 0.8) * (1.3 - se * 0.6);
+    const seat = v3(q.x, 0.03, q.z);
+    // the card stands on the ground: its lowest corner (the stem row's half width, the tip's sag) at most a few
+    // centimetres under the base
+    const rightY = norm(cross(axis, face)).y * width * 0.5;
+    const low = Math.min(seat.y - 0.06 * length * axis.y - Math.abs(rightY) * 0.92,
+      seat.y + 0.94 * length * axis.y - bend * length - Math.abs(rightY));
+    if (low < -0.05) seat.y += -0.05 - low;
+    leaves.push({
+      x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+      length, width, shade: clamp01(0.4 + 0.5 * se + (rng() - 0.5) * 0.15), flex: clamp01(0.3 + 0.15 * rng()),
+      tile: (rng() * 4) | 0, bend, branch: -1,
+    });
+    top = Math.max(top, seat.y + axis.y * length);
+  }
+  return { species, height: Math.max(0.3, top), branches: [], leaves, crown: { x: 0, y: top * 0.4, z: 0, r: R } };
 }
 
 /**
@@ -1076,15 +1523,24 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
  * 1, 2) sets the age class — a younger, narrower tree, the typical one, an older broader one.
  */
 export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: GrowthOptions = {}): TreeSkeleton {
-  const profile = TREE_GROWTH_PROFILES[species];
   const variant = ((options.variant ?? 1) % 3 + 3) % 3;
+  // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
+  // form's plum young and small, its apple in its middle years, its pear old and tall)
+  const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
+  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
   const height = profile.height * ageH * (1 + (rng() - 0.5) * 2 * profile.heightSpread * 0.5);
+  // trees round 4 (the gauntlet's waves 49 and 51 on Verdant's treeline: "one tree asset repeated at even spacing, with a
+  // hard dark band at the canopy base"): a broadleaf's or a birch's crown base moves with its age — a young leader's
+  // crown comes further down its stem, an old tree's stands higher (a fork never drops: the stem's collision band keeps
+  // no limb) — so a wood's crown bases stand at three heights instead of one
+  const leafy = profile.family === 'broadleaf' || profile.family === 'birch';
+  const baseShift = !leafy ? 1 : variant === 2 ? GROWTH_CROWN_BASE_AGE[1] : variant === 0 && profile.form === 'excurrent' ? GROWTH_CROWN_BASE_AGE[0] : 1;
   const ctx: GrowContext = {
     profile, rng, height, branches: [], mobile,
-    crownBaseY: height * (profile.form === 'decurrent' ? range(rng, profile.forkAt) : profile.crownBase),
+    crownBaseY: height * (profile.form === 'decurrent' ? range(rng, profile.forkAt) : profile.crownBase) * baseShift,
     crownTopY: height,
     crownR: profile.crownR * ageW * (0.94 + rng() * 0.12),
   };
@@ -1166,14 +1622,35 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   let r = 0;
   if (leaves.length) for (const l of leaves) r = Math.max(r, Math.hypot(l.x - cx, (l.y - cy) * 0.8, l.z - cz) + l.length * 0.5);
   else r = ctx.crownR;
+  // (trees lane: a profile's variant tiles — each Streuobst variant's sprays on its own species' tiles, from the tile each
+  // spray drew, so no draw moves)
+  const variantTiles = base.variantTiles?.[variant];
+  if (variantTiles) for (const l of leaves) l.tile = variantTiles[l.tile % variantTiles.length];
   const skeleton: TreeSkeleton = { species, height, branches: ctx.branches, leaves, crown: { x: cx, y: cy, z: cz, r: Math.max(0.8, r) } };
   // the living crowns' masses (a palm's head is fronds round one point, a snag's few dead twigs shade nothing)
   if (leaves.length >= 8 && profile.family !== 'palm' && profile.family !== 'dead') skeleton.lobes = crownLobes(skeleton, crownLobeCount(profile, leaves.length));
+  if (skeleton.lobes && profile.habit === 'tuft') skeleton.tufts = tuftLobes(skeleton);
   return skeleton;
+}
+
+/** Trees round 4: the sprays a tufted pine's tuft gathers (tuftLobes' k: about this many sprays a tuft). */
+const GROWTH_TUFT_SPRAYS = 4;
+
+/**
+ * Trees round 4 (2026-10-04, the gauntlet's wave 39: Caldera's midground Canary pines "still round broadleaf crowns";
+ * the lab's portraits: the crown's few lobes shade each pine as four to ten lit round masses): a tufted pine's tufts as
+ * masses of their own — k-means over its spray centres at about GROWTH_TUFT_SPRAYS sprays a tuft (crownLobes' fit, a
+ * tighter margin: a tuft is a fist of needles, not a limb's worth of crown).
+ */
+export function tuftLobes(skeleton: Pick<TreeSkeleton, 'leaves'>): CrownLobe[] {
+  const count = Math.max(2, Math.round(skeleton.leaves.length / GROWTH_TUFT_SPRAYS));
+  return crownLobes(skeleton, count, 0.12, 0.2);
 }
 
 /** Trees round 2: how many masses a crown is read as — a broadleaf dome's lobes, a conifer's tiers. */
 function crownLobeCount(profile: Readonly<GrowthProfile>, sprays: number): number {
+  // (trees round 5: a shelved crown's level plates spread wide and thin — the most masses a crown takes)
+  if (profile.envelope === 'shelf') return 10;
   if (profile.family === 'conifer') return Math.max(4, Math.min(10, Math.round(sprays / 20)));
   if (profile.family === 'dead') return Math.max(2, Math.min(4, Math.round(sprays / 8)));
   return Math.max(4, Math.min(9, Math.round(sprays / 26)));
@@ -1221,7 +1698,10 @@ function thinEvenly(leaves: LeafSite[], budget: number, scale: readonly number[]
  * Trees round 2 (2026-10-03): the crown's masses — k-means over the spray card centres (seeded by the farthest-point
  * spread, four refinements), each mass an axis-aligned ellipsoid reaching a little past its members' card centres.
  */
-export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number): CrownLobe[] {
+export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'> & { species?: GrowthSpecies }, count: number,
+  // trees round 5: a shelved crown's masses reach further past their members — its level plates are wide and thin, an
+  // ellipsoid through its members' box leaves the plates' corners out
+  margin = skeleton.species && TREE_GROWTH_PROFILES[skeleton.species]?.envelope === 'shelf' ? 0.6 : 0.3, least = 0.45): CrownLobe[] {
   const sites = skeleton.leaves.map(sprayCentre);
   if (!sites.length) return [];
   const k = Math.max(1, Math.min(count, sites.length));
@@ -1262,7 +1742,8 @@ export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number
       ez = Math.max(ez, Math.abs(sites[j].z - centres[i].z));
     }
     if (!n) continue;
-    lobes.push({ x: centres[i].x, y: centres[i].y, z: centres[i].z, rx: Math.max(0.45, ex + 0.3), ry: Math.max(0.4, ey + 0.25), rz: Math.max(0.45, ez + 0.3) });
+    lobes.push({ x: centres[i].x, y: centres[i].y, z: centres[i].z, rx: Math.max(least, ex + margin),
+      ry: Math.max(least - 0.05, ey + margin - 0.05), rz: Math.max(least, ez + margin) });
   }
   return lobes;
 }
@@ -1312,6 +1793,16 @@ const GROWTH_RESEAT_M = 0.6;
 /** Below this height a primary limb carries its sprays but is not emitted as wood (it is hidden in them, and the
  * lower stem's girth stays the stem's for the collision fit). */
 export const GROWTH_LOWEST_WOOD_M = 1.7;
+/**
+ * Trees round 4: a broadleaf's or a birch's crown base by its age (growTreeSkeleton): the young variant's (an excurrent
+ * leader's only) and the old variant's, over the profile's.
+ */
+const GROWTH_CROWN_BASE_AGE = Object.freeze([0.84, 1.14] as const);
+/**
+ * Trees round 4: a birch's dark foot (emitBranchGeometry, bark style 3): the stem's rings darken by up to `depth` at the
+ * ground, the black fading out between `fromM` and `toM` (m up the stem), each face round it streaked to its own depth.
+ */
+export const GROWTH_BIRCH_FOOT = Object.freeze({ depth: 0.72, fromM: 0.2, toM: 2.2 });
 /**
  * Spray cards per near tree. Trees round 2 (2026-10-03): 230 smaller leaf clusters on two-row cards (460 card triangles
  * from 920 vertices) where a broadleaf drew 150 sprays on three-row cards (600 from 900) — the same vertex work (each
@@ -1397,6 +1888,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
   const pos: number[] = [], nrm: number[] = [], uv: number[] = [], col: number[] = [], flex: number[] = [];
   const top = options.topTint ?? options.tint;
   const { rng } = options;
+  const birch = options.barkStyle === 3;
   const branchRanges: Array<readonly [number, number] | undefined> = [];
   for (let branchIndex = 0; branchIndex < skeleton.branches.length; branchIndex++) {
     const branch = skeleton.branches[branchIndex];
@@ -1427,6 +1919,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       frames.push({ t, n, b: norm(cross(t, n)) });
     }
     const branchTint = 0.9 + rng() * 0.16;
+    // trees round 5: dead wood weathers silver-grey, whatever the bark (the profile's deadwood)
+    const deadTint = branch.dead ? GROWTH_DEADWOOD_TINT : null;
     const circumference = Math.max(0.22, 2 * Math.PI * nodes[0].r);
     let along = rng() * 3;
     const ring: Array<Array<[number, number, number, number, number, number, number]>> = [];
@@ -1437,7 +1931,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const ground = 0.78 + 0.22 * clamp01(node.y / 1.4);
       const heightT = clamp01(node.y / Math.max(1, skeleton.height));
       const topMix = branch.order > 0 ? 0.65 : clamp01((heightT - 0.45) / 0.4);
-      const tr = lerp(options.tint[0], top[0], topMix), tg = lerp(options.tint[1], top[1], topMix), tb = lerp(options.tint[2], top[2], topMix);
+      const tr = deadTint ? deadTint[0] : lerp(options.tint[0], top[0], topMix), tg = deadTint ? deadTint[1] : lerp(options.tint[1], top[1], topMix);
+      const tb = deadTint ? deadTint[2] : lerp(options.tint[2], top[2], topMix);
       // the wood inside the crown stands in the leaves' shade (the near trunks receive no cascade shadow — their
       // stability rule — so the canopy's occlusion is baked: the deeper in the crown, the darker the limb)
       const cdx = node.x - skeleton.crown.x, cdy = (node.y - skeleton.crown.y) * 1.2, cdz = node.z - skeleton.crown.z;
@@ -1446,6 +1941,10 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const canopy = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, node.x, node.y, node.z);
       const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1)
         * Math.min(1 - 0.5 * inner * inner * (3 - 2 * inner), canopy);
+      // trees round 4 (the gauntlet's wave 51: the white birch trunks "cardboard-like"): a birch's stem is rough and dark
+      // at its foot — black fissured bark up to a metre or two, breaking into the white (birchFoot, streaked round the
+      // stem below); the papery white above
+      const foot = birch && branch.order === 0 ? GROWTH_BIRCH_FOOT.depth * (1 - smooth01((node.y - GROWTH_BIRCH_FOOT.fromM) / (GROWTH_BIRCH_FOOT.toM - GROWTH_BIRCH_FOOT.fromM))) : 0;
       const row: Array<[number, number, number, number, number, number, number]> = [];
       for (let j = 0; j <= s; j++) {
         const phi = (j / s) * Math.PI * 2;
@@ -1456,7 +1955,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
         row.push([node.x + dx * rr, node.y + dy * rr, node.z + dz * rr, dx, dy, dz, j / s]);
       }
       ring.push(row);
-      (row as unknown as { meta: number[] }).meta = [along, tr * shade, tg * shade, tb * shade, node.flex];
+      (row as unknown as { meta: number[] }).meta = [along, tr * shade, tg * shade, tb * shade, node.flex, foot];
     }
     for (let i = 0; i < ring.length - 1; i++) {
       const A = ring[i], B = ring[i + 1];
@@ -1469,7 +1968,10 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
           // u ≥ 2 marks a styled bark face (vegetation.ts prepareTreeBarkSurface: 2 + 2 × style + the fraction round
           // the stem); the legacy builders' [0, 1] and the snow's -1 keep their meaning
           uv.push(2 + options.barkStyle * 2 + v[6] * 0.999, m[0]);
-          col.push(m[1], m[2], m[3]);
+          // the foot's fissures: each face round the stem its own depth of black (a fixed hash of the side, so the streaks
+          // run down the stem continuously)
+          const dark = m[5] > 0 ? 1 - m[5] * (0.55 + 0.45 * ((((Math.round(v[6] * s) % s) * 2654435761) >>> 0) % 997) / 996) : 1;
+          col.push(m[1] * dark, m[2] * dark, m[3] * dark);
           flex.push(m[4]);
         }
       }
@@ -1570,7 +2072,12 @@ interface CardEmitOptions {
  * underside, which sees the ground instead of the sky.
  */
 export const GROWTH_CROWN_SHADING = Object.freeze({
-  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.18,
+  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.12,
+  /**
+   * Trees round 4 (the waves' "hard dark band at the canopy base"): the lowest a crown card's normal turns toward the
+   * ground before it is normalised — the underside still faces down, but sees some sky round it, as an open crown's does
+   */
+  undersideFloor: -0.2,
   /**
    * The grown crowns' tint gain over that shade (vegetation.ts buildGrownTree). The shade alone took a portrait's
    * visible crown albedo at 22 m (.qa-dev trees2-portrait) from oak 0.122 to 0.083, pine 0.089 to 0.072, poplar 0.101 to
@@ -1581,6 +2088,10 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
   crownGain: 1.1,
   /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
   shrubDepthShade: 0.3, shrubGain: 1.04,
+  /** Trees round 4: a tufted pine's tuft by its stem darkens by up to this share (its depth in the crown's ellipsoid). */
+  tuftCrownDepth: 0.35,
+  /** Trees round 4: a crown card's value from its stem row to its tip row (the cluster's own shade toward its twig). */
+  cardRamp: Object.freeze([0.75, 1.13]) as readonly [number, number],
 });
 
 /**
@@ -1596,7 +2107,10 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
  */
 export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions): THREE.BufferGeometry {
   const tiles = Math.max(1, options.tiles | 0);
-  const lobes = skeleton.lobes && skeleton.lobes.length ? skeleton.lobes : null;
+  // trees round 4: a tufted pine's cards shade by its tufts (each tuft its own lit mass), and by the tuft's depth in
+  // the crown besides (a tuft by the stem in the crown's shade, one at a limb's end in the light)
+  const tufted = !!(skeleton.tufts && skeleton.tufts.length && skeleton.lobes && skeleton.lobes.length);
+  const lobes = tufted ? skeleton.tufts! : skeleton.lobes && skeleton.lobes.length ? skeleton.lobes : null;
   const lobeShare = lobes ? (options.lobeShare ?? GROWTH_CROWN_SHADING.lobeShare) : 0;
   const volume = options.volume ?? (lobes ? GROWTH_CROWN_SHADING.volume : 0.62);
   const upBias = options.upBias ?? (lobes ? GROWTH_CROWN_SHADING.upBias : 0.32);
@@ -1649,6 +2163,11 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
         const depth = smooth01((field[3] - 0.42) / 0.63);
         const under = smooth01((-(has ? field[1] : sy / sl) - 0.1) / 0.8);
         shade = (1 - depthShade * depth) * (1 - GROWTH_CROWN_SHADING.underside * under);
+        if (tufted) shade *= 1 - GROWTH_CROWN_SHADING.tuftCrownDepth * smooth01(1 - sl / Math.max(0.5, crown.r * 0.8));
+        ny = Math.max(ny, GROWTH_CROWN_SHADING.undersideFloor);
+        // trees round 4: a cluster in its own shade toward its seat — the stem end of a card sits in the leaves round
+        // its twig, its tip out in the light (the card reads as leaves in depth, not a flat sticker)
+        shade *= GROWTH_CROWN_SHADING.cardRamp[0] + (GROWTH_CROWN_SHADING.cardRamp[1] - GROWTH_CROWN_SHADING.cardRamp[0]) * v;
       }
       const nl = Math.hypot(nx, ny, nz) || 1;
       nx /= nl; ny /= nl; nz /= nl;

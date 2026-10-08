@@ -98,6 +98,17 @@ export default {
       [[-150, 0], [-150, 50], [-150, 100], [-150, 150], [-150, 175]],
       [[-200, 0], [-200, -50], [-200, -100], [-200, -150], [-200, -175]],
       [[200, 0], [200, 50], [200, 100], [200, 150], [200, 175]],
+    ],
+    // the map-revival lane (2026-10-05): each street's own surface, kerb to kerb (props.ts sets the kerbs 5.05 m off
+    // every line): the boulevard's asphalt (the tram bed down its middle is the street kit's), the trunk roads' asphalt
+    // patched over the shell holes, the terrace and cross streets' setts in courses. (2026-10-06: back under cost v3 —
+    // the ground lane's three-page staging of these styles, holds 61 and 63, 16 cycles at load 129-243: establishing
+    // GPU p25 +0.54 ± 0.70 ms, chase −0.44 ± 0.51 ms, CPU flat; the +2.6 ms of the first gate was the urban land use)
+    pathStyles: [
+      { surface: 'asphalt', widthM: 10 },
+      { surface: 'patched', widthM: 9.8 }, { surface: 'patched', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
     ] },
     landforms: [
       // The two hill flanks and their wooded ridges, each the other's rotation about the square.
@@ -134,14 +145,27 @@ export default {
     roadTint: [0.39, 0.40, 0.41], roadTexMix: 0.92, townWear: 2.2, midRelief: 0.72,
   },
   vegetation: {
-    species: ['cypress', 'poplar', 'oak'], clusterMix: [['cypress', 0.46], ['poplar', 0.34], ['oak', 0.20]],
-    loneMix: [['cypress', 0.42], ['poplar', 0.38], ['oak', 0.20]], rimMix: [['cypress', 0.50], ['poplar', 0.30], ['oak', 0.20]],
+    // the map-revival lane (2026-10-05): Sarajevo's trees, not the Mediterranean's — broadleaves (the stand-in for the
+    // planes, limes and chestnuts of its parks and avenues), poplars along the streets, birch in the parks, the black
+    // pine and spruce of the ridges (Trebević, Igman) on the rim
+    species: ['oak', 'poplar', 'pine', 'birch', 'spruce'],
+    clusterMix: [['oak', 0.36], ['pine', 0.26], ['poplar', 0.16], ['birch', 0.12], ['spruce', 0.10]],
+    loneMix: [['oak', 0.44], ['poplar', 0.28], ['birch', 0.16], ['pine', 0.12]],
+    rimMix: [['pine', 0.42], ['spruce', 0.24], ['oak', 0.34]],
     clusterCount: 10, loneCount: 24, rimCount: 54, grassDensity: 0.25,
     bushCount: 0.30, bushSpecies: 'oak',
     // the parks on the flanks above the terrace streets and the cemetery slopes below the ridges (rotation pairs)
     parks: [{ x: -200, z: 230, r: 52 }, { x: 200, z: -230, r: 52 }, { x: 170, z: 250, r: 46 }, { x: -170, z: -250, r: 46 }],
   },
   props: {
+    // the map-revival lane (2026-10-05): the city's own architecture (maps/regional/sarajevo.ts) — the boulevard's
+    // Austro-Hungarian blocks and Yugoslav towers, the slopes' mahala houses, the mosques and churches, the siege on
+    // every one — in place of the megacity kit; the render takes Steinburg's lime-render photo tint, warm enough for
+    // the kit's ochre, cream, green and pink washes
+    architecture: 'sarajevo', sourcedPalette: 'urban',
+    // the boulevard's tram line, catenary, burnt trams and the container screens at its crossings, the white stones of the
+    // cemeteries on the slopes below the ridges (maps/sarajevoStreets.ts)
+    extraKits: ['sarajevo'],
     plan: [],
     plannedSites: [...SOUTH_LANDMARKS, ...SOUTH_LANDMARKS.map(rotateSite)],
     destructibleBuildings: [
@@ -171,9 +195,14 @@ export default {
     // and a bot hunting a hull on the far ridge pressed at its gaps until a pacing match timed out.
     streetRowKeepouts: [{ x: -225, z: 0, r: 31 }, { x: 0, z: 0, r: 31 }, { x: 225, z: 0, r: 31 },
       { x0: -215, z0: -192, x1: 215, z1: -182 }, { x0: -215, z0: 182, x1: 215, z1: 192 }],
-    tones: makeRealisticCityBuildingTones({
-      value: 0.80, saturation: 0.86, soot: 0.045, roofValue: 0.78, coolAccent: 0.01,
-    }),
+    // the city's palette (the realistic city tones) with the Sarajevo kit's two renders carried over it: a map's tones
+    // override its kit's (props.ts), so the Austro-Hungarian ochre and the Yugoslav concrete of maps/regional/sarajevo.ts
+    // surfaces.tones stand here as they stand there
+    tones: {
+      ...makeRealisticCityBuildingTones({ value: 0.80, saturation: 0.86, soot: 0.045, roofValue: 0.78, coolAccent: 0.01 }),
+      plaster2: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.4 + 0.34), clamp01(l * 0.82 + 0.06)],
+      plaster3: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.12 + 0.03), clamp01(l * 0.78 + 0.04)],
+    },
     wallStyle: 'brick', wallStoneChance: 0.74, buildingLat: [21, 4],
     sideSkip: 0.04, spacingPad: 4.5, maxSpread: 4.2,
     // Park walls on the flanks and the barricades across the boulevard's ends (rotation pairs).

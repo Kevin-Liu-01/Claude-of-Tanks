@@ -24,27 +24,31 @@ export const BURLAK_SCAFFOLD_CLEARANCE_OFFSET = Object.freeze({
   scaffoldCenterSeparationM: 8.41,
 });
 
-// Move the complete Abrams welding story beside Verdant's east FLAMMABLE
-// canister station. This is deliberately a two-axis correction: the previous
-// diagonal scalar advanced the bay toward the opening but left it roughly
-// 9.8 m from the drums. Dressing and outdoor facility scenery consume this
-// same offset so the tank, removed skirts, tools and shelter cannot separate.
-export const ABRAMS_FLAMMABLE_BAY_OFFSET = Object.freeze({
-  x: -0.8,
-  z: 7.7,
-  canisterCenterSeparationM: 3.83,
+// The complete Abrams welding story stands in its authored orientation (no half-turn) on the floor between the Burlak
+// gantry and the K2 square, its gun under the west_center hoist's load. 2026-10-05, gauntlet wave 89 ("a sand-coloured
+// turret rises right behind the T-90's turret or gun"): beside the east FLAMMABLE canisters the tank stood behind the
+// hero from the default and close Garage cameras, 7.5–8.4k px of it inside the hero's dilated silhouette with the m1a2,
+// t90m and leo2a7v heroes (13–14k px close). No shift within its square, turret-off teardown or lowering cleared it,
+// and every other exhibit swapped in fell into the same sight line; here it stands beside the camera, outside both
+// views. One placement carries the tank, removed skirts, tools, floor station and lamp together.
+export const ABRAMS_WELDING_BAY_PLACEMENT = Object.freeze({
+  x: -0.4,
+  z: -14.5,
+  rotationRad: 0,
+  /** Exhibit pixels inside the dilated hero silhouette, default and close cameras, three heroes (measured). */
+  heroSilhouettePx: 0,
 });
 
 // The Leopard occupies the neighboring mobility square, not the Abrams
 // welding owner. Preserve its established world-space pose when the Abrams
-// service story moves independently toward the canisters.
+// service story moves independently.
 export const LEOPARD_MOBILITY_BAY_OFFSET = Object.freeze({
   x: 1.65,
   z: 1.65,
 });
 
-// These are the final world-space poses after the Burlak clearance translation
-// and two legacy half-turn bay owners are applied. Facility scenery consumes
+// These are the final world-space poses after the Burlak clearance translation,
+// the K2 half-turn bay owner and the Abrams placement are applied. Facility scenery consumes
 // the same contract as the real fleet dressing, so a canopy, crane or service
 // pit cannot drift away from the tank/component it is meant to support.
 const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
@@ -52,8 +56,7 @@ const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
     id: 'burlak_gantry', role: 'heavy-lift', x: 18.8, z: -10.3, yaw: -0.55,
   }),
   Object.freeze({
-    id: 'abrams_welding', role: 'welding', x: -17.7, z: -10.0,
-    yaw: -2.03 + Math.PI,
+    id: 'abrams_welding', role: 'welding', x: 16.5, z: 3.2, yaw: -2.03,
   }),
   Object.freeze({
     id: 't90m_relikt', role: 'component-rebuild', x: -6.6, z: 20.5, yaw: 2.4,

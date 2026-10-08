@@ -106,7 +106,12 @@ export default {
     // Broad weathered beds, not high-contrast repeated marker stripes.
     sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
-    roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // (ground lane, wave 62: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
+    // sandstone" — the squiggles were the tile's marker beds and partings, repeating every 6.45 m up each wall) the
+    // bedding is the material's, at the wall's scale: a few thick beds of unequal tone, rust beds 2–5 m thick, joint
+    // blocks stepping their weathering along the face and varnish under the ledges (strata 0.12: six tenths of the
+    // joints, as Copper Mesa's), and the tile keeps its grain and broad beds without the stamped lines
+    roadTint: [0.78, 0.61, 0.51], strata: 0.12, sandstoneMarkers: 0, sandMacro: 0.9,
     // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
     formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
@@ -124,9 +129,11 @@ export default {
     // outpost); a palm drawn anywhere else grows as an acacia
     palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
-    // are cured straw, as Sirocco's are
-    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
-    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
+    // are cured straw, as Sirocco's are. Trees round 4 (2026-10-04, the gauntlet's wave 50: "olive reed tufts", "flat,
+    // uniformly saturated billboards"): Wadi Rum's tussocks are sun-bleached — a pale buff, a third of the straw's
+    // saturation left in the card and half in the tint, lighter
+    grassTexTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.18), clamp01(l * 0.85 + 0.2)],
+    tuftTone: (h: number, s: number, l: number) => [0.11, 0.12, clamp01(l * 0.55 + 0.3)],
   },
   props: {
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
@@ -136,6 +143,9 @@ export default {
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',
       'compound', 'watertower', 'warehouse', 'gantry'],
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
+    // (the scenery lane, b16; gauntlet wave 121 on the steel checkpoint hut, "a jarring modern blue shed") the fuel points'
+    // and the scattered checkpoints are desert posts of plastered mud brick (maps/regional/ksarGate.ts), same footprint
+    structureVariants: { checkpointhut: 'ksargate' },
     // Three strongpoint pairs, each the other's rotation about the outpost: a cistern yard in each flank lane, a
     // lookout in front of the outpost on each side, and a fuel point by each deployment's flank track.
     tacticalBeats: [
@@ -204,9 +214,10 @@ export default {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
     // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green
     // before the absolute tints, dark brown after). Redrock's outland is sand and rock; no ring forest.
-    // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the far jebels are rebuilt on
-    // maps lane A's inselberg section — the regional 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's walls"
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: false,
+    // the mountains lane (2026-10-03, gauntlet waves 15 and 24): Wadi Rum's far country — sheer jebels standing alone on
+    // the sand plain, each maps lane A's inselberg section with a rim (a bossed cap, a fluted wall over most of the height,
+    // a short talus apron), where the regional 'jebel' of mesa tables read as "low rounded swells"
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel', air: 0.4, fillLaw: 1 },
     // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
     // triangles than before the mountains lane's relief work)
     outlandRocks: 0.95,

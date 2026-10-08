@@ -81,7 +81,10 @@ const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 assert.equal(terrain.split('px[j + 1] = Math.max(0, 1 - d / 12) * 255;').length, 2, 'unique distance-field painter');
 assert.equal(terrain.split('float dRoad = (1.0 - mk.g) * 12.0;').length, 2, 'unique distance-field decode');
 assert.match(terrain, /if \(d >= 13\) return;/, 'the painter still stops at the historical 13 m apron');
-assert.match(terrain, /const core = roadCoreMask\(d, wob, wid, 1 \/ T\);/, 'the R core raster is unchanged');
+// (2026-10-05, the road styles: a styled path's carriageway moves the core's edge by its half-width less the 3.85 m
+// gauge — roadPathStyles pins the move and that nothing else of the mask does; every unstyled road is the raster it was)
+assert.match(terrain, /const core = roadCoreMask\(d, wob, wid \+ \(styleHalf > 0 \? styleHalf - 3\.85 : 0\), 1 \/ T\);/,
+  'the R core raster is the gauge\'s own');
 assert.doesNotMatch(terrain, /roadRutMask|roadRutInverseWidth|rutInverseWidth/, 'no Gaussian lane raster remains');
 assert.doesNotMatch(readFileSync(new URL('./roadMaskProfile.ts', import.meta.url), 'utf8'), /roadRutMask|roadRutInverseWidth/,
   'the rut raster helpers are retired with their consumer');

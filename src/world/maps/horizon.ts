@@ -34,7 +34,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
-import { resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
+import { OVERCAST_DIRECT_CUT_SHARED, resolveDeckClosure, resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
@@ -52,6 +52,8 @@ import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
+import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
+import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -112,6 +114,12 @@ interface HorizonConfig {
    * runs into a massif right behind the edge, the pass is a trench as deep as the massif is high, and its end a wall
    * (gauntlet wave 6, Frosthollow's edge-n: "a smooth near-vertical curtain"). */
   roadPasses?: boolean;
+  /** The map-revival lane (2026-10-06): a dam across a canyon cut through the ring (horizonDam.ts) — Skybridge's Glen
+   * Canyon Dam, the gorge's axis run on through the north ring to an arch under the plateau's rim. */
+  dam?: HorizonDamSettings;
+  /** The map-revival lane (2026-10-06): the tableland ring's outer ranges capped into flat-topped mesas past a radius
+   * (horizonTablelands.ts) — the mesa stack's saddle, summits and shoulder otherwise stand as domes and spires. */
+  summitCap?: HorizonSummitCapSettings;
   /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
    * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
    * peaks (no far plateaus). */
@@ -823,6 +831,11 @@ function* makeDetailNoiseTextureSteps(
   }
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
+  // ground lane (2026-10-05, the terrain noise's z-mirror, the same here): a canvas uploads flipped (its top row at
+  // v = 1), so the fragment read the field at (u, 1 − v) while the JS twin — the ring forest's stands (horizonVista.ts)
+  // and its rock field (horizonRockfield.ts) — read it at (u, v): the stands stood off the painted woods. Row y at
+  // v = (y + 0.5) / S, as written and as the twin reads it.
+  t.flipY = false;
   t.wrapS = THREE.RepeatWrapping;
   t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 2; // grazing walls mip to a soft blend, never fiber streaks
@@ -2190,6 +2203,8 @@ export function sampleHorizonGeometry(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
+  if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
+  if (horizon.dam) carveHorizonDamCanyon(ring, horizon.dam, HORIZON_SEGMENTS);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -2524,6 +2539,43 @@ function applyAnalyticHorizonNormals(
   geometry.setAttribute('normal', normals);
 }
 
+/**
+ * The ring's cliffs (the light lane, 2026-10-04: on Redrock's sunward view its faces turned away from the sun read at 74-82 %
+ * of the sunlit sand, where a face in its own shade sits near 15-30 %). The analytic normals come from heights smoothed
+ * over the neighbouring columns and rows, which tipped a cliff's normal up by a median 43 degrees on Redrock's ring and
+ * left half of its faces turned from the sun lit by it; within the seam band the playable ground's normals, sampled at a
+ * cliff's top or foot, did the same to the coarse ring triangles spanning it. On steep ground a vertex takes the geometry's
+ * own normal (its faces' area-weighted), blended in between 50 and 65 degrees of slope; gentler ground keeps its normal,
+ * and the first 20-60 m past the square's edge keep the playable ground's, so the seam still meets the battlefield.
+ */
+function sharpenHorizonCliffNormals(geometry: THREE.BufferGeometry): void {
+  const faces = new THREE.BufferGeometry();
+  faces.setAttribute('position', geometry.getAttribute('position'));
+  faces.setIndex(geometry.getIndex());
+  faces.computeVertexNormals();
+  const geometric = faces.getAttribute('normal'), normal = geometry.getAttribute('normal');
+  const positions = geometry.getAttribute('position');
+  const stride = HORIZON_SEGMENTS + 1;
+  for (let i = 0; i < normal.count; i++) {
+    // (the ring is wound facing down for computeVertexNormals: its geometric normal is the negation; the closing column
+    // repeats the first, so the two are averaged and the seam does not show)
+    const column = i % stride;
+    const twin = column === 0 ? i + HORIZON_SEGMENTS : column === HORIZON_SEGMENTS ? i - HORIZON_SEGMENTS : -1;
+    let gx = -geometric.getX(i), gy = -geometric.getY(i), gz = -geometric.getZ(i);
+    if (twin >= 0) { gx -= geometric.getX(twin); gy -= geometric.getY(twin); gz -= geometric.getZ(twin); }
+    const gl = Math.hypot(gx, gy, gz);
+    if (gl < 1e-6) continue;
+    gx /= gl; gy /= gl; gz /= gl;
+    const edgeOut = Math.max(Math.abs(positions.getX(i)), Math.abs(positions.getZ(i))) - 512;
+    const w = smoothstep(0.64, 0.42, gy) * smoothstep(20, 60, edgeOut);
+    if (w <= 0) continue;
+    const bx = normal.getX(i) * (1 - w) + gx * w, by = normal.getY(i) * (1 - w) + gy * w, bz = normal.getZ(i) * (1 - w) + gz * w;
+    const bl = Math.hypot(bx, by, bz) || 1;
+    normal.setXYZ(i, bx / bl, by / bl, bz / bl);
+  }
+  faces.dispose();
+}
+
 /** The playable mesh takes its normals from 1.33 m central differences.
  * Continue that same shading across the seam; heavily smoothed ring gradients
  * otherwise turn a single cliff into two visibly different materials. */
@@ -2641,6 +2693,14 @@ interface HorizonLighting {
   hemi: number;
   /** 0..1 cloud cover: the cloudscape's coverage, else the baked deck's opacity. */
   cover: number;
+  /**
+   * 2026-10-05 (the skies lane; the gauntlet's wave 93 on Titan Gorge's far rock under its closed deck: "banded, graphic
+   * mountain-face shading ... inconsistent with the implied shadowless overcast light"): the share of the clear sun the
+   * deck lets through as a beam (the light model's: 1 − OVERCAST_DIRECT_CUT × overcast), and the sun's elevation sine —
+   * the beam the deck cuts comes down as sky light (absent: 1 and 0, an open sky).
+   */
+  direct?: number;
+  sinEl?: number;
 }
 
 /** The references the vista's constants were tuned against: the engine's default sun and effective hemisphere. */
@@ -2652,9 +2712,14 @@ const HORIZON_REF_HEMI = 0.51;
 export function resolveHorizonLightingGains(lighting: HorizonLighting): { ambient: number; sunGain: number; shadow: number } {
   const hemiRatio = clamp(lighting.hemi / HORIZON_REF_HEMI, 0.6, 2.0);
   const sunRatio = clamp(lighting.sun / HORIZON_REF_SUN, 0.3, 1.6);
+  // (2026-10-05) under a deck the sun term keeps the beam's share and the rest returns as sky light: a level face keeps
+  // its light (the vista's sun term 1.05 · N·L, its sky term the ambient on a level face), the faces turned to and from
+  // the sun lose the difference the beam made
+  const sun = 1.30 * Math.pow(sunRatio, 0.7);
+  const direct = clamp(lighting.direct ?? 1, 0, 1);
   return {
-    ambient: 0.50 * Math.pow(hemiRatio, 0.8),
-    sunGain: 1.30 * Math.pow(sunRatio, 0.7),
+    ambient: 0.50 * Math.pow(hemiRatio, 0.8) + sun * (1 - direct) * 1.05 * Math.max(0, lighting.sinEl ?? 0),
+    sunGain: sun * direct,
     shadow: 0.85 * (1 - 0.7 * clamp(lighting.cover, 0, 1)),
   };
 }
@@ -3576,7 +3641,12 @@ export function* buildHorizonRingSteps(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
+  // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
+  // and its reservoir as the ring's water (horizonDam.ts)
+  if (H.summitCap) capHorizonSummits(ring, H.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
+  if (H.dam) carveHorizonDamCanyon(ring, H.dam, HORIZON_SEGMENTS);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
+  if (H.dam) floodHorizonDamReservoir(ring, sea, H.dam);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   // the map-borders lane: the road exits as they lie on the finished ring (terrain.ts roadExitOnRing) — each runs out at
   // the foot of the ranges unless they opened a pass for it; the farms, villages, avenues and the carriageway attribute
@@ -3605,11 +3675,21 @@ export function* buildHorizonRingSteps(
   // floor, the deck's cover from the cloudscape or the baked deck's opacity)
   const skyCfg = cfg?.sky;
   const cloudsCfg = (cfg as { clouds?: { coverage?: number } } | null | undefined)?.clouds;
+  // (2026-10-05: the beam the deck lets through — the light model's overcast cut; the ring, which samples the cloud shade
+  // map where the layer draws, takes the cut a deck with gaps leaves to the map's pattern (resolveDeckClosure); the far
+  // range and the panorama, beyond any pattern, take the whole average cut)
+  // (coupled: OVERCAST_DIRECT_CUT_SHARED is lightModel.ts OVERCAST_DIRECT_CUT, pinned equal by lightModel.selftest — a change
+  // to the near beam moves the far land's sun term with it; 0.96 → 0.98 on 2026-10-05 took a closed deck's from 4 % to 2 %)
+  const deckPreset = { ...((skyCfg ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null };
+  const deckOvercast = resolveOvercast(deckPreset);
   const lighting: HorizonLighting = {
     sun: skyCfg?.sunIntensity ?? HORIZON_REF_SUN,
     hemi: (skyCfg?.hemiIntensity ?? 0.36) + 0.15,
     cover: clamp(cloudsCfg?.coverage ?? skyCfg?.cloudOpacity ?? 0.3, 0, 1),
+    direct: 1 - OVERCAST_DIRECT_CUT_SHARED * deckOvercast * resolveDeckClosure(deckPreset, getDeviceTier() !== 'mobile'),
+    sinEl: Math.max(0, ly),
   };
+  const farLighting: HorizonLighting = { ...lighting, direct: 1 - OVERCAST_DIRECT_CUT_SHARED * deckOvercast };
   // Round 72: the surface atlas over the finished ring (desktop tier, where the vista program reads it) — the fine
   // relief's gradient, the occlusion and the sun's visibility across the ranges, in slices like the terrain build
   const vista = getDeviceTier() !== 'mobile';
@@ -3661,6 +3741,7 @@ export function* buildHorizonRingSteps(
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
   const geo = buildHorizonGeometry(ring, col, uvA, gradients);
   matchHorizonGroundNormals(geo, ground);
+  sharpenHorizonCliffNormals(geo);
   yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
@@ -3735,7 +3816,7 @@ export function* buildHorizonRingSteps(
       ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
-      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(lighting),
+      deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(farLighting),
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
@@ -3750,9 +3831,11 @@ export function* buildHorizonRingSteps(
     if (H.panorama !== false) {
       const panorama = createHorizonPanorama({
         seed: ((seed ^ 0x9A70) ^ idHash(mapId)) >>> 0, character: reliefCharacter,
+        // (Part 1, 2026-10-05: the far country takes the clouds' shadows where the tier has a shade map)
+        cloudShade: getDeviceTier() !== 'mobile',
         overrides: typeof H.panorama === 'object' ? H.panorama : undefined,
         palette: { base, rock: rockC, snow: snowC, forest: forestC, fog: fogC },
-        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(lighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
+        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(farLighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
         seaWeightAt: (angle) => {
           const opening = dominantSeaOpening(angle, seaOpenings);
           return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };
@@ -3768,6 +3851,8 @@ export function* buildHorizonRingSteps(
         // read the light model the battlefield still published from the last map, overcast 0 under Whiteout's closed
         // deck, and hazed its far ice sheet toward the clear sky's warm horizon — a beige band)
         overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
+        // the aerial pass's haze datum, the ground under the camera (post.ts setGroundHeightSource takes the same field)
+        groundAt: ground ? (x: number, z: number) => ground.getHeightAt(x, z) : null,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
@@ -3900,6 +3985,17 @@ export function* buildHorizonRingSteps(
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
       if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
       mesh.add(farms);
+    }
+  }
+  // The map-revival lane (2026-10-06, Skybridge's Glen Canyon Dam): the arch across the canyon cut above, seated on the
+  // finished ring (horizonDam.ts) — lit and joined to the cascades like the farmsteads, its shadow in the far cascade.
+  // It stands on the seated ring's fine rows: the receipts' bare backdrop (no ground) keeps the canyon and no dam
+  if (H.dam && ground) {
+    const dam = buildHorizonDam(H.dam, ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs));
+    if (dam) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, dam.material as THREE.Material, null);
+      mesh.add(dam);
     }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map

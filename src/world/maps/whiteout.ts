@@ -75,7 +75,9 @@ export default {
     // increasing the deliberately sparse station's tree placement budget.
     species: ['spruce', 'birch', 'fir'], clusterMix: [['spruce', 0.55], ['birch', 0.35], ['fir', 0.10]],
     loneMix: [['birch', 0.65], ['spruce', 0.30], ['fir', 0.05]], rimMix: [['spruce', 0.65], ['birch', 0.25], ['fir', 0.10]],
-    clusterCount: 8, loneCount: 12, rimCount: 20, grassDensity: 0.20, bushCount: 0.22, bushSpecies: 'birch',
+    // Trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no tree, no shrub and no
+    // grass grows on the ice (its rock is the bare nunataks'). Was 8 / 12 / 20 trees, grass 0.20, scrub 0.22.
+    clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, bushSpecies: 'birch',
     palettes: winter.vegetation.palettes,
   },
   props: {
@@ -124,7 +126,13 @@ export default {
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'low-stratus', baseM: 300, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0 },
+  // 2026-10-04 (the skies lane; the gauntlet's waves 66–70: "a single flat grey-white gradient with zero cloud structure";
+  // and "the ice plain clearly darker than the white sky"): the stratus lit as a deck — what its columns transmit
+  // (deckLight 1: one lighting path; a share under 1 pays both) — with soft cells, base lumps and the detail's erosion, and
+  // the snow under it lifting its base (ambientScale, the deck path's ground bounce: a quarter-albedo ground at 1). The
+  // deck's structure lands in the overcast photos' band, and its level comes down toward the snow's it lights
+  clouds: { regime: 'low-stratus', baseM: 300, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
+    deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
     postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */ },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },

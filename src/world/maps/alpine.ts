@@ -19,6 +19,14 @@
 // western pass redoubt, the rescue station on the east shore, the three rock spurs and the moraines. At the square's
 // edge the spurs run into the north-west, north-east and south-east corners, the west moraine runs along the west edge
 // and the five roads cross the north and south edges: the borders lane carries them outward.
+//
+// The buildings (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the Savoyard kit
+// (maps/regional/savoyard.ts) builds every one in place as the high Maurienne's and the pass's own — the grey rubble
+// houses of Bessans and Lanslevillard under broad lauze roofs, their openings banded in whitewash, the hayloft gables
+// boarded in larch, the larch galleries; the granges, mazots on their stone mushrooms and woodsheds; the chapels with
+// their bell turrets and porches; the parish church with its tin bulb; the Hospice under its hipped roof and bell; the
+// Italian frontier guard's ochre barracks (the plateau was Italian until 1947); the Vallo Alpino's concrete blockhouse in
+// the village and its casemate at the western pass redoubt; the houses shelled in April 1945, roofless.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -91,7 +99,9 @@ export default {
     dirtTone: (h: number, s: number, l: number) => [0.075, 0.09, clamp01(l * 0.78 + 0.12)],
     rockTone: (h: number, s: number, l: number) => [0.59, 0.045, clamp01(l * 0.95 + 0.24)],
     mudTone: (h: number, s: number, l: number) => [0.55, 0.17, clamp01(0.54 + l * 0.32)],
-    iceLake: true, iceDrift: 0.16, marshGloss: 1.0, mudRough: 0.18,
+    // map revival lane 2, round 2 (gauntlet wave 109b: "a treeless saddle around a large snow-covered lake"): the lake
+    // under April's snow, drifted over its ice (was 0.16, a swept rink)
+    iceLake: true, iceDrift: 0.7, marshGloss: 1.0, mudRough: 0.18,
     iceSky: [0.72, 0.82, 0.94],
     tintA: [1.02, 1.08, 1.16], tintB: [0.74, 0.84, 0.96], tintC: [1.12, 1.14, 1.18],
     roadTint: [1.30, 1.46, 1.70], shoulderDirt: 0.30, midRelief: 0.58, // map pass 2026-09-12: packed-snow pass roads, not black mud slashes
@@ -99,17 +109,49 @@ export default {
   vegetation: {
     species: ['spruce', 'fir', 'pine'], clusterMix: [['spruce', 0.62], ['fir', 0.28], ['pine', 0.10]],
     loneMix: [['spruce', 0.52], ['fir', 0.30], ['pine', 0.18]], rimMix: [['spruce', 0.70], ['fir', 0.25], ['pine', 0.05]],
-    clusterCount: 92, loneCount: 146, rimCount: 152, grassDensity: 0.36,
-    bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
+    // round 2 (wave 109b: "the plateau is a uniform white sheet salted evenly with identical conifers; the saddle should
+    // be nearly treeless above the treeline"): the col stands at 2,080 m, above the larches; a few stands on the floor,
+    // the forest on the slopes round it (the rim's ring)
+    clusterCount: 12, loneCount: 10, rimCount: 30, grassDensity: 0.36,
+    // map pass 2026-09-12: exposed stone/scrub on the snowfields (0.62)
+    // (round 3, gauntlet wave 127: "a saturated summer-green broadleaf bush ... cannot grow on a 2,000 m col in April"):
+    // no shrub layer above the larches
+    bushCount: 0, bushSpecies: 'spruce',
   },
   props: {
-    plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',
-      'logcabin', 'woodshed', 'alpine', 'ruin', 'depot', 'granary', 'alpine', 'tower',
-      'logcabin', 'alpine', 'woodshed', 'chapel', 'depot', 'logcabin', 'alpine', 'ruin',
-      'granary', 'logcabin', 'alpine', 'woodshed'],
+    // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
+    architecture: 'savoyard',
+    plan: [],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb
-    plannedSites: [{ structure: 'tavern', x: 66, z: 132, yawDeg: 0 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 }],
+    plannedSites: [{ structure: 'tavern', x: 66, z: 132, yawDeg: 0 }, { structure: 'chapel', x: -112, z: -216, yawDeg: 0 },
+      { structure: 'rangerlodge', x: -139.14, z: -174.29, yawDeg: -93.4, terrace: true },
+      { structure: 'alpine', x: -142.98, z: -160.61, yawDeg: -97.3, terrace: true },
+      { structure: 'chapel', x: -145.29, z: -151.13, yawDeg: -97.3, terrace: true },
+      { structure: 'alpine', x: -145.25, z: -141.19, yawDeg: -97.3, terrace: true },
+      { structure: 'alpine', x: -165.19, z: -177.46, yawDeg: 86.6, terrace: true },
+      { structure: 'onionchurch', x: -165.87, z: -165.06, yawDeg: 82.7, terrace: true },
+      { structure: 'logcabin', x: -165.17, z: -156.19, yawDeg: 82.7, terrace: true },
+      { structure: 'alpine', x: -171.42, z: -120.84, yawDeg: 82.7, terrace: true },
+      { structure: 'logcabin', x: -130.64, z: -162.01, yawDeg: -97.3, terrace: true },
+      { structure: 'granary', x: -133.05, z: -155.01, yawDeg: -97.3, terrace: true },
+      { structure: 'woodshed', x: -133.77, z: -149.39, yawDeg: -97.3, terrace: true },
+      { structure: 'woodshed', x: -134.55, z: -144.13, yawDeg: -97.3, terrace: true },
+      { structure: 'tower', x: -149.65, z: 29.94, yawDeg: -78.7, terrace: true },
+      { structure: 'depot', x: -185.95, z: -37.73, yawDeg: 82.7, terrace: true },
+      { structure: 'alpine', x: -131.08, z: 115.16, yawDeg: -78.7, terrace: true },
+      { structure: 'chapel', x: -130.59, z: 125.48, yawDeg: -78.7, terrace: true },
+      { structure: 'logcabin', x: -124.9, z: 152.41, yawDeg: -73.4, terrace: true },
+      { structure: 'ruin', x: -120.12, z: 161.7, yawDeg: -73.4, terrace: true },
+      { structure: 'logcabin', x: -152.57, z: 117.49, yawDeg: 101.3, terrace: true },
+      { structure: 'alpine', x: -152.44, z: 127.31, yawDeg: 101.3, terrace: true },
+      { structure: 'granary', x: -148.19, z: 135.11, yawDeg: 101.3, terrace: true },
+      { structure: 'logcabin', x: -143.11, z: 158.69, yawDeg: 106.6, terrace: true },
+      { structure: 'ruin', x: -141.96, z: 168.27, yawDeg: 106.6, terrace: true },
+      { structure: 'depot', x: -170.74, z: 127.6, yawDeg: 101.3, terrace: true },
+      { structure: 'woodshed', x: -162, z: 135.56, yawDeg: 101.3, terrace: true },
+      { structure: 'depot', x: -183.88, z: -169.74, yawDeg: 82.7, terrace: true },
+    ],
     tacticalBeats: [
       { id: 'western-pass-redoubt', role: 'brawl', x: -283, z: 145, yawDeg: 8,
         structure: 'alpinerefuge', redoubt: true, outcrop: { count: 8, radius: 12 }, wreck: true, wreckOffsetZ: -16 },
@@ -132,14 +174,22 @@ export default {
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: {
-      stalls: 2, benches: 3, coreClutter: 20, sleds: 14,
-      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,
+      // (round 3, gauntlet waves 127 and 129: "traffic cones", "a modern candy-striped stall"): April 1945 at the
+      // frontier — no market stalls, the cable reels and direction signs of the army's line works, no cones, Jersey
+      // barriers or pad transformers
+      stalls: 0, benches: 2, coreClutter: 20, sleds: 14,
+      trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: { cablespool: 10, roadsign: 8 },
       // Populate the pass with recoverable tools/cans/roadside hardware.
       // Existing instanced loose-prop families absorb these extra sleepers,
       // so the lived-in threshold rises without another draw/material family.
       looseClutter: 26,
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // (round 2, wave 109b: "white picket fences") the yards fenced in split larch boards, as the kit's own yards
+      roadFence: 'fencerail', yardFence: 'fenceplank',
     },
+  },
+  // map revival lane 2 (2026-10-05): the Grande Croix at the foot of the southern climb, beside its chapel
+  scenery: {
+    landmarks: [{ kind: 'waysidecross', x: -96, z: -224, yawDeg: 0, scale: 1.15, name: 'the Grande Croix' }],
   },
   horizon: {
     baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,

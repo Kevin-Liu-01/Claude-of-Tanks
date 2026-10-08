@@ -51,6 +51,8 @@ assert.deepEqual(importers, [], 'asset-file naming (which includes the marking s
 assert.ok(existsSync(resolve(ROOT, 'public/icons/tank-assets.json')), 'tools read public/icons/tank-assets.json');
 const strip = readFileSync(resolve(ROOT, 'tools/strip-nc-assets.mjs'), 'utf8');
 assert.match(strip, /toolOnlyPublicFiles\(DIST\)/, 'npm run build drops the tool-only files from dist/');
-assert.match(readFileSync(resolve(ROOT, 'package.json'), 'utf8'), /"build": "[^"]*node tools\/strip-nc-assets\.mjs"/);
+// 2026-10-06: main's provenance receipt (cd0caad68) appends `node tools/asset-provenance.mjs --write=dist/…` after the
+// strip, so the provenance it writes describes the stripped dist; the strip only has to run inside the build.
+assert.match(readFileSync(resolve(ROOT, 'package.json'), 'utf8'), /"build": "[^"]*node tools\/strip-nc-assets\.mjs(?: && [^"]*)?"/);
 
 console.log(`tool-only-public-files.selftest: ${runtimeFiles.length} runtime files name no tool-only file; the build drops them`);

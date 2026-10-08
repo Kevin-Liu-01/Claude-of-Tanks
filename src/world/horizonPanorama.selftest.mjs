@@ -7,12 +7,14 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_REGIONAL, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
+  horizonJebelSection, HORIZON_JEBEL_CAP_DROP,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import saltwind from './maps/saltwind.ts';
 import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
+import { inselbergSection } from './landformGeology.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 import { hazeSigma } from '../engine/hazeLaw.ts';
 
@@ -66,8 +68,69 @@ const ringEdge = (() => {
     assert.ok(Math.abs(u - uWrapped) < 1e-4 || Math.abs(u + 1 - uWrapped) < 1e-4 || (k === 0 && Math.abs(u - 1) < 1e-4) || (k === n && Math.abs(u) < 1e-4),
       `a wall vertex's azimuth is its u (${u.toFixed(5)} vs ${uWrapped.toFixed(5)})`);
     assert.ok(Math.abs(v - 1) < 1e-6, 'the wall\'s top row is the strip\'s top');
+    // the ground rows (the edge and the apron) carry v = 1, the wall's 0: the apron is ground and never reads sky
+    for (let row = 0; row < rows; row++) {
+      assert.equal(uv.getY(row * stride + k), row <= P.apronM.length ? 1 : 0, `row ${row}: ${row <= P.apronM.length ? 'ground' : 'wall'}`);
+    }
   }
   geometry.dispose();
+}
+// --- over its column's skyline the shell is ground for a camera where the land goes on (the mountains lane, 2026-10-04):
+// the apron (the ring's outer edge stands above the bake eye's horizon, +0.76 to +2.54 degrees, where a low far country's
+// atlas is sky; discarded, it let the sky dome through between the ring and the shell, Whiteout's bird view) and the far
+// earth (gauntlet waves 53-54's bird views, "the world simply ends ... a ruler-straight hard top edge": the sky dome under
+// the camera's own horizontal). Both take the column's skyline (a bake pass: its highest opaque texel), the far earth
+// hazed by the map's law toward its target; a hole under the skyline stays open, and so does the wall's sky for any
+// camera whose ray to it points above its own horizontal (the ground and tank-height views)
+{
+  const handle = createHorizonPanorama({ ringEdge, sun: [0.3, 0.6, 0.2], gains: { ambient: 0.8, sunGain: 1.4 }, fogDensity: 0.0003 });
+  const material = handle.mesh.material;
+  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+  material.onBeforeCompile(shader);
+  const frag = shader.fragmentShader;
+  assert.ok(shader.vertexShader.includes('vPanoApron = uv.y;'), 'the vertex passes the ground rows on');
+  for (const name of ['uPanoSkyline', 'uPanoHaze', 'uPanoHazeAnti', 'uPanoHazeToward', 'uPanoSunH', 'uPanoHazeChroma']) {
+    assert.ok(name in shader.uniforms && new RegExp(`uniform [^;]*\\b${name}\\b`).test(frag), `the shell declares and binds ${name}`);
+  }
+  assert.ok(frag.includes('if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;'), 'a hole under the skyline, or a column with no land, stays open');
+  assert.ok(frag.includes('bool apron = vPanoApron > 0.5 && e > 0.0;') && frag.includes('if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;'),
+    'only a ray under the camera\'s own horizontal takes ground (the apron over the eye\'s horizon, else the far earth under the law); a camera looking up at the shell\'s sky sees it open');
+  assert.ok(frag.includes('vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);')
+    && frag.includes('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
+    && frag.includes('ground = ground * T + inScatter * (1.0 - T);'),
+    'the far earth takes the map\'s law over its reach, into the colour the aerial pass turns into the screen\'s own horizon');
+  // the screen's horizon: the dome as sky.ts draws it (its own lookup, greyed by the deck — the dome's greying on the
+  // dome's uniforms, horizonPanoramaDeck.selftest.mjs — the knee, the intensity), toward the aerial pass's target as the
+  // deck closes; the aerial pass's target and transmittance as post.ts lays them
+  assert.ok(frag.includes('vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));')
+    && frag.includes('vec3 domeSky = atmoKnee(panoDeckGrey(atmoSky(hdir), hdir)) * uAtmoIntensity;')
+    && frag.includes('vec3 screen = mix(domeSky, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));')
+    && frag.includes('if (inFrame > 0.0) screen = mix(screen, panoCloudOver(domeSky, vec2(clamp(cuv.x, 0.0, 1.0), cuv.y), hdir), inFrame);'),
+    'the screen\'s horizon is the dome\'s own lookup under the cloud layer\'s composite (horizonPanoramaClouds.selftest.mjs), the aerial pass\'s own target where no cloud layer is read');
+  for (const name of ['tAtmoSky', 'uAtmoSun', 'uAtmoViewH', 'uAtmoKnee', 'uAtmoIntensity', 'uPanoTint', 'uPanoTerms', 'uPanoDatum', 'uPanoSkyOn', 'uPanoSigmaPost',
+    'uDeckHorizon', 'uDeckClosed', 'tClouds', 'uHistorySize', 'uKnee', 'uSkyIntensity', 'uFlash', 'uFlashTint', 'uSunDir', 'uInside', 'uPanoCloudOn', 'uPanoViewProj']) {
+    assert.ok(name in shader.uniforms, `the shell binds ${name}`);
+  }
+  // per draw, read-only from the published atmosphere: no live sky (the receipts, the labs without one, the mobile tier's
+  // Preetham dome) leaves the far earth on the bake's law target
+  const air = handle.mesh.userData.panoAir;
+  handle.mesh.onBeforeRender(null, { userData: {} }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoSkyOn.value, 0, 'no published sky: the bake\'s own target');
+  const skyline = HORIZON_PANORAMA_SHADERS.skyline;
+  assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
+    'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
+  assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }')
+    && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('float stride = vUv.y < 0.5 ? 1.0 : 16.0;'),
+    'its colour averaged among the columns with land, over 2.8 degrees either side and over 45 degrees, so no column stands as a bar');
+  assert.ok(frag.includes('ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));'),
+    'the far earth\'s land is the wide average half a degree over the skyline, so no column\'s colour stands as a bar up to the horizon');
+  const src = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes('air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);'), 'the bake hands the shell the far path\'s σ (the map\'s air share), the layer and the datum');
+  assert.ok(src.includes('air.uPanoHaze.value.set(0, 0, 0, 0);'), 'no law (its own air): no far earth');
+  assert.ok(src.includes('air.uPanoSigmaPost.value = haze.sigma;') && src.includes('air.uAtmoKnee.value.copy(atmosphere.knee!);')
+    && src.includes('air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;'),
+    'the shell takes the aerial pass\'s σ, the dome\'s lookup each draw, and the ground under the camera as the datum');
+  handle.dispose();
 }
 
 // --- a sea opening (the ring's marine faces out to 4.35 km over 40 columns, Saltwind's channel): the shell's edge row
@@ -161,6 +224,87 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
     && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
 }
+// the jebel section (maps lane A's inselbergSection with a rim, ported): the JS mirror is continuous at the cap's rim
+// and the wall's foot, falls monotonically from the crown to the plain, and its GLSL twin carries the same constants
+{
+  const foot = 0.66, rim = 0.86, apron = 0.18, top = foot * rim;
+  assert.equal(horizonJebelSection(0, foot, apron, rim), 1, 'the crown stands at the full height');
+  assert.ok(Math.abs(horizonJebelSection(top - 1e-6, foot, apron, rim) - horizonJebelSection(top + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the cap\'s rim');
+  assert.ok(Math.abs(horizonJebelSection(foot - 1e-6, foot, apron, rim) - horizonJebelSection(foot + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the wall\'s foot');
+  assert.ok(Math.abs(horizonJebelSection(foot, foot, apron, rim) - apron) < 1e-9 && horizonJebelSection(1, foot, apron, rim) === 0, 'the apron at the foot, the plain at the toe');
+  let last = 2;
+  for (let i = 0; i <= 100; i++) { const v = horizonJebelSection(i / 100, foot, apron, rim); assert.ok(v <= last + 1e-12, 'it never rises toward the plain'); last = v; }
+  // a sheer wall: most of the height falls within the wall's band (from the rim to the foot)
+  assert.ok(horizonJebelSection(top, foot, apron, rim) - horizonJebelSection(foot, foot, apron, rim) > 0.6, 'the wall carries most of the height');
+  const glsl = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(glsl.includes(`1.0 - ${HORIZON_JEBEL_CAP_DROP.toFixed(4)} * (q / top) * (q / top)`) && glsl.includes(`(${(1 - HORIZON_JEBEL_CAP_DROP).toFixed(4)} - apron)`),
+    'the bake\'s section is the mirror\'s law');
+  assert.ok(/if \(uJebel\.x > 0\.0\) rockW = max\(rockW, smoothstep\(0\.3, 0\.7, texture2D\(uHeight, g\)\.a\)\);/.test(HORIZON_PANORAMA_SHADERS.strip),
+    'the strip bares a jebel\'s whole footprint');
+  // the far jebels' section is maps lane A's inselbergSection with a rim (landformGeology.ts), so near and far rock keep one
+  // form: sampled at fixed radii across the walls' spread of feet, aprons and rims on Redrock's bearings (the main
+  // massifs' rim 0.86, the lobes' 0.84, the foot wandering 12-14 % and the flutes setting the wall back), within 1e-9
+  let worst = 0;
+  for (const [f, a, r] of [[0.66, 0.18, 0.86], [0.66 * 0.86, 0.12, 0.86], [0.66 * 1.14, 0.24, 0.86], [0.6, 0.16, 0.84], [0.5, 0.05, 0.84], [0.74, 0.27, 0.88]]) {
+    for (let i = 0; i <= 400; i++) worst = Math.max(worst, Math.abs(horizonJebelSection(i / 400, f, a, r) - inselbergSection(i / 400, f, a, 4, r)));
+  }
+  assert.ok(worst <= 1e-9, `the far jebel's section is the battlefield's inselberg section (worst ${worst})`);
+  // desert varnish down the walls (the edge-e pair of e8350e7bb: one smooth pale slab where the PR head's far range had
+  // streaked mesas): streaks in the tree-cover channel of a treeless jebel country, darkening the rock, never painting forest
+  const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(heightPass.includes('gTree = max(gTree, gVarnish);') && heightPass.includes('gVarnish = gJebelVarnish * uJebel3.z;'), 'the jebels write their varnish after the tree cover');
+  assert.ok(strip.includes('uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b') && strip.includes('if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;'),
+    'a jebel country darkens its rock by the channel and paints no forest from it');
+  for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+    if (name !== 'jebel') assert.equal(c.jebelVarnish, 0, `${name}: no varnish`);
+  }
+  const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jv.jebelVarnish > 0 && jv.jebelBossM >= 60 && jv.jebelRadiusM <= 800, 'jebel: several bossed, varnished massifs rather than one wide slab');
+}
+// the far jebels v3 (gauntlet wave 50: "flat-coloured, pale-pink, near-rectangular blocks with dead-flat tops", the walls
+// "one even pale tone with no lit or shaded faces"): the strip takes a wall's normal from the massif's own law at 4 m (the
+// grid's rows lie ~35 m apart at 5 km and smoothed a sheer wall into a slope the sun lit from every side), paints Wadi
+// Rum's sandstone on it (dark walls under pale domes, bedded, split by vertical joints), and no massif stands in the near
+// band, whose forms are pressed under the ring's skyline (the dead-flat tops)
+{
+  const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(strip.includes('float jebelField(vec2 p)') && heightPass.includes('float jebelField(vec2 p)'), 'one jebel law in the height pass and the strip');
+  assert.ok(strip.includes('jebelField(wp.xz + vec2(e4, 0.0))') && strip.includes('jebelField(wp.xz + vec2(0.0, e4))')
+    && /n = normalize\(mix\(n, normalize\(vec3\(-\(hx - h0\) \/ e4, 1\.0, -\(hz - h0\) \/ e4\)\), gJebelW\)\);/.test(strip),
+    'the strip takes a jebel wall\'s normal from its law at 4 m');
+  assert.ok(strip.includes('vec3 stone = mix(lower, upper, contact)') && strip.includes('float cleft = ') && strip.includes('float plane = '),
+    'Wadi Rum\'s sandstone: the dark walls under the pale domes, the bedding planes, the joints\' clefts');
+  // (v3b, the pair of 8248ca70b: the massifs kept past 5 km stood as small pale boxes and the PR head's nearer far country
+  // went with them) — no massif's near edge inside its class's limit, and the massifs join the field after the near band's
+  // press, so a massif from 3 km keeps its bossed top
+  assert.ok(heightPass.includes('if (length(centre) - rad * el < uJebel3.w) continue;'), 'no massif\'s near edge nearer than its class\'s limit');
+  const pressAt = heightPass.indexOf('if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);'), joinAt = heightPass.indexOf('h += hJebel;');
+  assert.ok(pressAt > 0 && joinAt > pressAt, 'the massifs stand whole: their heights join after the near band\'s press');
+  for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+    if (name !== 'jebel') assert.equal(c.jebelNearM, 0, `${name}: no near limit`);
+  }
+  const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jv.jebelNearM >= HORIZON_PANORAMA.shellM && jv.jebelNearM <= 3500 && jv.jebelM >= 600,
+    'jebel: the massifs from about 3 km, past the shell, tall enough to stand over the ring');
+  const redrock = readFileSync(new URL('./maps/badlands.ts', import.meta.url), 'utf8');
+  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1 \}/.test(redrock),
+    'Redrock\'s far air thinner than the law\'s σ (desert air is clear), the band under the massifs the plain\'s own sand');
+  // v3b: Wadi Rum's tones from the plain's own sand (the pair of 8248ca70b: "pale grey-white castles", the domes brighter
+  // than the sky above them) — the varnished walls about a third of the sand's albedo, redder-brown; the pale Disi only
+  // on the domes and the rim, buff, near the sand; the walls never painted over with the fill a high camera sees
+  const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const sand = [0.4225, 0.1854, 0.0648]; // Redrock's battlefield ground mean (setGroundTone; the pair's census)
+  const lower = /vec3 lower = uBase \* vec3\(([\d.]+), ([\d.]+), ([\d.]+)\);/.exec(strip);
+  assert.ok(lower, 'the walls are the plain\'s sand, varnished');
+  const wallShare = lum(sand.map((v, i) => v * Number(lower[i + 1]))) / lum(sand);
+  assert.ok(wallShare >= 0.25 && wallShare <= 0.35, `the varnished walls ${(wallShare * 100).toFixed(0)} % of the sand's albedo`);
+  const cap = /vec3 upper = mix\(uBase, vec3\(dot\(uBase, vec3\(0\.2126, 0\.7152, 0\.0722\)\)\), ([\d.]+)\) \* ([\d.]+);/.exec(strip);
+  assert.ok(cap && Number(cap[2]) >= 1 && Number(cap[2]) <= 1.25 && Number(cap[1]) <= 0.4, 'the Disi cap buff: near the sand, a touch paler and less saturated');
+  const contact = /float contact = smoothstep\(([\d.]+), ([\d.]+), rel/.exec(strip);
+  assert.ok(contact && Number(contact[1]) >= 0.75, 'the contact high on the massif: the pale cap only on the domes and the rim');
+  assert.ok(strip.includes('col = mix(col, fill, hiddenW * 0.95 * (1.0 - gJebelW));'), 'the fill a high camera sees never paints over a massif\'s wall');
+  assert.ok(strip.includes('float wooded = uTrees.z > 0.0 || uChar3.y >= 0.35 ? 1.0 : 0.0;'), 'a bare country\'s fill is its own ground, no woods');
+}
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map
 {
@@ -220,7 +364,8 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0
   assert.ok(upland.ampM <= 300 && upland.snowline > 1 && upland.layers < 1, 'upland: rounded hills under 300 m, no snow, a half layer');
   assert.ok(resolveHorizonPanoramaCharacter('rolling', { regional: 'erg' }).trees === 0, 'erg: no trees');
   const jebel = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
-  assert.ok(jebel.tables && jebel.mesaTalusM < 300 && jebel.mesaCliffM > 80, 'jebel: a short apron and a sheer wall');
+  assert.ok(!jebel.tables && jebel.jebelShare > 0 && jebel.jebelRim >= 0.8 && jebel.jebelApron <= 0.25 && jebel.jebelFlutes >= 8,
+    'jebel: sheer fluted massifs alone on a sand plain (gauntlet wave 24: the tables read as "low rounded swells")');
   assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).peakShare > 0, 'iceSheet: nunataks through the ice');
   assert.ok(resolveHorizonPanoramaCharacter('volcanic', { regional: 'volcanicField' }).ampM < 600, 'volcanicField: no 1300 m spikes');
   assert.equal(resolveHorizonPanoramaCharacter('rolling', { regional: 'plain', ampM: 50 }).ampM, 50, 'a map overrides its class\'s knobs');
@@ -338,13 +483,14 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.ensureBaked(renderer), true, 'a capable renderer bakes');
   assert.equal(handle.setGroundTone(new THREE.Color(0.5, 0.5, 0.5), null), false, 'a tone after the bake is not taken (a re-bake would hitch a frame)');
   const renders = renderer.calls.filter((c) => c[0] === 'render');
-  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`], 'three passes: the heights, their light, the strip');
+  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x1`, `${P.width}x2`],
+    'five passes: the heights, their light, the strip, its skyline per column and that skyline\'s colour averaged round the compass (near and wide)');
   assert.deepEqual(renderer.state(), before, 'the renderer\'s target, clear colour and alpha and auto-clear are restored');
   assert.equal(handle.mesh.visible, true, 'the shell shows once baked');
   assert.equal(fallback.visible, false, 'and takes the round-72 far range\'s place: one far draw');
   assert.ok(handle.mesh.material.map?.isTexture, 'the atlas is the shell\'s map (resource tracking sees it)');
   assert.equal(handle.ensureBaked(renderer), true, 'baked: a no-op');
-  assert.equal(renderer.calls.filter((c) => c[0] === 'render').length, 3, 'no second bake while the atlas lives');
+  assert.equal(renderer.calls.filter((c) => c[0] === 'render').length, 5, 'no second bake while the atlas lives');
   // a GPU suspension disposes the atlas texture: the fallback comes back and the next request bakes again
   handle.mesh.material.map.dispose();
   assert.equal(handle.baked, false, 'a disposed atlas is not baked');
@@ -355,4 +501,78 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   handle.dispose();
 }
 
-console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes and the bake contract PASS');
+// --- 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows) --------------------------------------------
+// the aux pass: the strip's own march run twice (the sun's term on and off), at a quarter of the strip, on the tier with a
+// shade map only; the shell rebuilds each far point and dims only the sun's share under the shared shade map
+{
+  const aux = HORIZON_PANORAMA_SHADERS.stripAux;
+  assert.ok(aux && aux.length > 1000, 'the aux shader derives from the strip\'s (its rewritten lines all found)');
+  assert.equal(aux.split('void main()').length - 1, 1, 'one main');
+  assert.ok(/gSunScale = 1\.0;\s*vec4 full = stripTexel\(\);\s*float rr = gRR;\s*gSunScale = 0\.0;\s*vec4 dark = stripTexel\(\);/.test(aux), 'the march twice: the sun on, then off');
+  assert.ok(aux.includes('vec3 sunC = uGains.y * 1.05 * ndl * light.r * vec3(1.06, 0.98, 0.86) * gSunScale;'), 'the surface\'s sun term scaled');
+  assert.ok(aux.includes('vec3(1.06, 0.98, 0.86) * gSunScale + uGains.x * 0.82 * skyTint'), 'and the hidden fill\'s');
+  assert.ok(aux.includes('float share = la > 1e-5 ? clamp(1.0 - lb / la, 0.0, 1.0) : 0.0;'), 'the share: 1 - L(no sun) / L(full), bounded');
+  assert.ok(aux.includes('gl_FragColor = vec4(vec3(rr / 10000.0, share, 1.0) * full.a, 1.0);'), 'premultiplied by the coverage, like the atlas');
+  // the share's bounds, on the GLSL's own expression: 0..1, 0 where the sun's term is 0 (the two marches agree)
+  const share = (la, lb) => (la > 1e-5 ? Math.min(1, Math.max(0, 1 - lb / la)) : 0);
+  for (const [la, lb] of [[0.5, 0.2], [0.3, 0.3], [0.4, 0], [1e-7, 0], [0.2, 0.25]]) {
+    const v = share(la, lb);
+    assert.ok(v >= 0 && v <= 1, `the share in [0, 1] (${la}, ${lb})`);
+  }
+  assert.equal(share(0.3, 0.3), 0, 'no sun term (a face turned from the sun, a ridge\'s shadow): no share, no cloud shade');
+  assert.equal(share(0.4, 0), 1, 'all of it the sun\'s: the whole texel dims under a core');
+  // the shell's lookup: the far point as the bake placed it (azimuth u x 2 pi; the eye's height + tan(e) x distance)
+  const shell = (() => {
+    const h = createHorizonPanorama({ ringEdge, sun: [0.3, 0.6, 0.2], gains: { ambient: 0.8, sunGain: 1.4 } });
+    const sh = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+    h.mesh.material.onBeforeCompile(sh);
+    h.dispose();
+    for (const name of ['uPanoAux', 'uPanoShadeOn', 'tCotCloudShade', 'uCotCloudShade', 'uCotCloudSun']) assert.ok(name in sh.uniforms, `the shell binds ${name}`);
+    return sh;
+  })();
+  assert.ok(shell.fragmentShader.includes('vec3 fp = vec3(cos(az) * rr, uPanoEye.y + tan(e) * rr, sin(az) * rr);'), 'the far point rebuilt');
+  assert.ok(shell.fragmentShader.includes('land *= 1.0 - share * (1.0 - cotCloudSun(fp));'), 'only the sun\'s share dims');
+  assert.ok(shell.fragmentShader.includes('float cotCloudSun( vec3 wp )'), 'through the shared lookup (cloudShadeMap.ts: the square, its edge fade, a grazing sun)');
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);'), 'the bake\'s own placement of the point');
+  // the fade at the shade map's square (its CPU twin, the lookup the shell calls): a far point at 3 km keeps the core's
+  // shade, at 5.5 km it fades, at 6.5 km (past the 12 km square's half side) it takes none
+  const { cloudSunShareAt } = await import('../engine/cloudShadeMap.ts');
+  const rect = { x: 0, y: 0, z: 12000 }, sunUp = { x: 0, y: 1, z: 0 };
+  const core = () => 0.9;
+  const at = (x) => cloudSunShareAt({ x, y: 0, z: 0 }, rect, 1400, sunUp, core);
+  assert.ok(Math.abs(at(3000) - 0.1) < 1e-9, 'inside the square: the core\'s 0.1 of the sun kept');
+  assert.ok(at(5500) > 0.1 && at(5500) < 1, `faded toward the square's edge (${at(5500).toFixed(3)})`);
+  assert.equal(at(6500), 1, 'outside the 12 km square: no shade (the panorama runs to 9 km)');
+  // the bake: six passes with the aux, the aux a quarter of the strip; the suspension frees it with the atlas; the knob
+  // and the phone tier bake none
+  const fallback = new THREE.Object3D();
+  const handle = createHorizonPanorama({ ...options, cloudShade: true }, fallback);
+  const renderer = recordingRenderer();
+  assert.equal(handle.ensureBaked(renderer), true);
+  const renders = renderer.calls.filter((c) => c[0] === 'render').map((c) => c[1]);
+  assert.deepEqual(renders.slice(-1), [`${P.width >> 2}x${P.height >> 2}`], 'the aux pass last, a quarter of the strip');
+  assert.equal(renders.length, 6, 'six passes with the cloud shade');
+  assert.equal(handle.stats.aux, true, 'recorded for the probes');
+  const air = handle.mesh.userData.panoAir;
+  assert.ok(air.uPanoAux.value?.isTexture, 'the shell reads it');
+  handle.mesh.onBeforeRender(null, { userData: {} }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 0, 'no published shade map: off');
+  const shared = { tCotCloudShade: { value: new THREE.Texture() }, uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 1) }, uCotCloudSun: { value: new THREE.Vector4(0, 1, 0, 1400) } };
+  handle.mesh.onBeforeRender(null, { userData: { cloudShadeUniforms: shared } }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 1, 'a published map: on');
+  assert.strictEqual(air.uCotCloudShade.value, shared.uCotCloudShade.value, 'by reference (the layer refreshes it in place)');
+  globalThis.__LIGHT_TUNE = { PANO_CLOUD_SHADE: 0 };
+  handle.mesh.onBeforeRender(null, { userData: { cloudShadeUniforms: shared } }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoShadeOn.value, 0, 'QA: PANO_CLOUD_SHADE 0 turns it off');
+  delete globalThis.__LIGHT_TUNE;
+  handle.mesh.material.map.dispose();
+  assert.equal(air.uPanoAux.value, null, 'a GPU suspension frees the aux with the atlas (the next bake makes both)');
+  handle.dispose();
+  const phone = createHorizonPanorama({ ...options, cloudShade: false }, new THREE.Object3D());
+  const r2 = recordingRenderer();
+  assert.equal(phone.ensureBaked(r2), true);
+  assert.equal(r2.calls.filter((c) => c[0] === 'render').length, 5, 'the phone tier: no aux pass');
+  phone.dispose();
+}
+
+console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes, the bake contract and the far country\'s cloud shade (the aux pass, the share, the square) PASS');

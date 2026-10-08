@@ -240,7 +240,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     'return vec2(f.x + 0.5 / uOceanGrid.x, (f.y * uOceanGrid.x + 0.5 + c * uOceanGrid.y) / (uOceanGrid.y * uOceanGrid.z));'])
     assert.ok(probe.fragmentShader.includes(line), `fragment: ${line}`);
   assert.equal((probe.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 3, 'the normal-map wave keeps its three fetches beside the cascades');
-  assert.equal(sheet.mesh.material.customProgramCacheKey(), 'shallow-water-v21-land');
+  assert.equal(sheet.mesh.material.customProgramCacheKey(), 'shallow-water-v23-land'); // v22: 2026-10-04, the sea's shelf and swell; v23: 2026-10-05, the second round
   sheet.update(1 / 60);
   assert.equal(field.frames, 1, 'the sheet\'s update runs the transform');
   sheet.setTime(2);
@@ -264,8 +264,9 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     'group.userData.disposeWater = () => { disposeRipples?.(); disposeOcean(); };',
     'ocean?: OceanConfig;']) assert.ok(terrain.includes(line), `terrain: ${line}`);
   const seaMaps = MAP_IDS.filter((id) => { const c = getMapConfig(id); return c.splat?.seaLake && !c.terrain?.frozenMarshes; });
-  assert.deepEqual(seaMaps.sort(), ['autumn', 'coastal', 'delta', 'fjord', 'mangrove', 'monsoon', 'oasis', 'polders', 'reservoir', 'saltwind', 'skybridge'],
-    'the eleven maps with a water sheet');
+  // 2026-10-05 (the map-revival lane): Suzhou Creek (blackglass) carries a water sheet
+  assert.deepEqual(seaMaps.sort(), ['autumn', 'blackglass', 'coastal', 'delta', 'fjord', 'mangrove', 'monsoon', 'oasis', 'polders', 'reservoir', 'saltwind', 'skybridge'],
+    'the twelve maps with a water sheet');
   const rows = [];
   for (const id of seaMaps) {
     const cfg = getMapConfig(id);
@@ -283,4 +284,4 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
   console.log('oceanFft.selftest: Hs (32² spectra) ' + rows.join(' '));
 }
 console.log('oceanFft.selftest: Stockham butterfly against the DFT, 8×8 field against the double sum, spectrum symmetry and bands, '
-  + 'pass GLSL, gates, pass sequence, presets, sheet handshake, terrain wiring and eleven authored sea states pinned');
+  + 'pass GLSL, gates, pass sequence, presets, sheet handshake, terrain wiring and twelve authored sea states pinned');

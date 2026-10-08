@@ -21,3 +21,15 @@ export const FIRST_PARTY_VEHICLE_AUTHORSHIP: Readonly<FirstPartyVehicleAuthorshi
   geometry: 'first-party-procedural',
   runtimeExternalGeometry: false,
 });
+
+/** Inspectable model credit. No geometry, shaders, hidden instructions or tracking. */
+export function vehicleProvenance(vehicleId: string) {
+  return {
+    ...FIRST_PARTY_VEHICLE_AUTHORSHIP,
+    schema: 'cot-vehicle-provenance-v1',
+    assetId: `urn:claude-of-tanks:vehicle:${encodeURIComponent(vehicleId)}`,
+    policy: 'LICENSE-POLICY.md',
+    attribution: 'docs/ATTRIBUTION.md',
+    receipt: 'asset-provenance.json',
+  };
+}

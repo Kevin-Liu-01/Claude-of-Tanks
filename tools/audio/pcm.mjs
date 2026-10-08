@@ -284,6 +284,37 @@ export function lowToneGlide(samples, sampleRate) {
   return { ms: best.length * 10, ratio: best.length ? Math.max(...best) / Math.min(...best) : 1 };
 }
 
+/**
+ * A take split by silence (2026-10-04): sound, then a quiet run more than 25 dB under the take's peak, then sound
+ * within 10 dB of the peak again. Heard as a lone pop or blip with the real sound arriving late (the AC-130
+ * missile's take 0: an ignition pop, 1.5 s of nothing, then the motor). 10 ms frames; returns the first such gap
+ * ({ gapMs, resumeS }) or { gapMs: 0 }.
+ */
+export function splitGap(samples, sampleRate) {
+  const win = Math.max(1, Math.round(0.01 * sampleRate));
+  const env = [];
+  for (let s = 0; s + win <= samples.length; s += win) {
+    let e = 0;
+    for (let i = s; i < s + win; i++) e += samples[i] * samples[i];
+    env.push(10 * Math.log10(e / win + 1e-12));
+  }
+  if (!env.length) return { gapMs: 0 };
+  const peak = Math.max(...env);
+  let lastLoud = -1;
+  for (let i = env.length - 1; i >= 0; i--) if (env[i] >= peak - 10) { lastLoud = i; break; }
+  let sawSound = false;
+  let run = 0;
+  for (let i = 0; i <= lastLoud; i++) {
+    if (env[i] < peak - 25) { if (sawSound) run++; continue; }
+    if (run >= 25) {
+      for (let j = i; j <= lastLoud; j++) if (env[j] >= peak - 10) return { gapMs: run * 10, resumeS: +(i * win / sampleRate).toFixed(2) };
+    }
+    run = 0;
+    if (env[i] >= peak - 30) sawSound = true;
+  }
+  return { gapMs: 0 };
+}
+
 export function transientAnatomy(samples, sampleRate) {
   const w1 = Math.max(1, Math.round(0.001 * sampleRate));
   const windows = Math.floor(samples.length / w1);

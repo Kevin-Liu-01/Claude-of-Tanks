@@ -91,12 +91,13 @@ function checkFractional(sample) {
   }
 }
 // ground lane (2026-10-03): the land use owns its share of the meadow's detail as the layers do — a turned field
-// (gSoilW) draws no near blades and keeps 15 % of the far turf, a sown crop (gCropW) keeps 40 % of the near grass
-// detail and 15 % of the far turf; with neither (every map without a field system) the response above is unchanged
+// (gSoilW) draws no near blades and none of the far turf (farmland: its relief is its furrows and clods), a sown crop
+// (gCropW) keeps 40 % of the near grass detail and 15 % of the far turf; with neither (every map without a field system)
+// the response above is unchanged
 function checkLandCover(sample) {
   const base = sample(ports()), soil = sample(ports({ gSoilW: 1 })), crop = sample(ports({ gCropW: 1 }));
   assert.equal(soil.nearG, 0, 'a turned field draws no near blades');
-  close(soil.farG, base.farG * 0.15, 'a turned field keeps 15 % of the far turf');
+  close(soil.farG, 0, 'a turned field keeps none of the far turf');
   close(crop.nearG, base.nearG * 0.4, 'a sown field keeps 40 % of the near grass detail');
   close(crop.farG, base.farG * 0.15, 'a sown field keeps 15 % of the far turf');
   for (const key of ['gCropW', 'gSoilW']) for (let v = 0; v < 1; v += 0.125) {
@@ -109,9 +110,14 @@ function checkSourceContract(text) {
   // map pass 2026-09-12: the bare road shoulder gained its own authored scale
   // (uShoulderDirt, default 1) so snow passes keep white verges; the max()
   // competition between ambient wear, shoulder and town wear is unchanged.
+  // (wave 71, the ground lane: a meadow's worn patch is grazed turf with its soil at the trodden core — wornCore; the
+  // arid maps' sand and the snow maps' scoured crests keep the whole patch)
   assert.equal(compact(scalar(text, 'fD')),
-    'clamp(max(worn*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
+    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
+  assert.equal(compact(scalar(text, 'wornCore')),
+    '(uSandMacro>0.001||uReduxD.y>1.5)?worn:smoothstep(0.78,1.0,n2w+(n1w-0.5)*0.45)',
+    'a meadow\'s worn patch soils only at its core; the arid and snow maps keep the whole patch');
   assertTerrainFetchExpressionCensus(text);
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
   const declarations = (text.includes('${LAND_USE_GLSL}') ? text + landUseGlsl : text)
@@ -121,15 +127,20 @@ function checkSourceContract(text) {
     .map((m) => [m[0], m[1].replace(/\[\d+\]$/, '')])
     .flatMap(match => match[1].split(',').map(name => name.trim())).sort();
   const expected = ['uAlbG','uAlbD','uAlbR','uAlbM','uNrmG','uNrmD','uNrmR','uNrmM','uMask','uNoise',
-    'uTintA','uTintB','uTintC','uRoadTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
+    'uTintA','uTintB','uTintC','uRoadTint','uSoilTint','uPloughLift','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+    'uRoadPuddle', // ground lane (2026-10-05): the map's share of the ruts' puddles and their mud (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
     'uSunDirW', 'uWallSkyLift',
+    // ground lane (wave 65): the ring's caprock band, metres over the field's highest ground (vec2, no sampler)
+    'uRingCap',
+    // map revival lane 2 (2026-10-05, Aegis Crossing): a map's paved town rect (SplatConfig townPaving; vec4, no sampler)
+    'uTownPave',
     'uSlopeGrassHold', // round 45 (2026-09-23): tropical hills hold turf to steeper slopes (scalar, no sampler)
     'uRingRock', // round 49 (2026-09-23): per-map slope band over which a ring face past the square becomes landform rock (vec2, no sampler)
     'uBeddedR', // round 55 (2026-09-24): 1 on the maps whose R layer is the procedural bedded sandstone tile — their wall crag is analytic (scalar, no sampler)
@@ -166,6 +177,12 @@ function checkSourceContract(text) {
     'uSaltCrust',
     // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
     'uPaveSlab',
+    // ground lane (2026-10-05, the road styles): the road layer's size and first row in the mask stack, on when a styled
+    // net bakes one (vec4, no sampler — the layer rides in uMask's unit, fetched exactly)
+    'uRoadClass',
+    // the map-revival lane (2026-10-05): the terrace zones' rects and riser band — the risers take the rock layer
+    // (vec4[4] and vec4, no sampler)
+    'uTerraceRect', 'uTerraceParam',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -193,9 +210,10 @@ function checkSourceContract(text) {
   assert.ok(text.includes('shader.uniforms.uNrmM = ringReliefUniforms.uNrmM;'), 'the M normal uniform object is the one the ring swaps');
 }
 // ground lane (2026-10-04, the GPU cut and the coordinator's tier gate): the land-use block's reads go out by tier — Low
-// reads the bake alone, Medium adds the field's wet and dry and the crop's own grain (the karst's stones, the brownfield's
-// bare ground), High everything — Low draws none of the boundary features, rows or tramlines, and the field interior's
-// skip of the margin's reads is exact by the block's own constants
+// reads the bake alone, Medium adds the crop's own grain (the karst's stones, the brownfield's bare ground; a field's wet
+// and dry is its fold and its own draw since wave 69's field layout, no read), High everything — Low draws none of the
+// boundary features, rows or tramlines, and the field interior's skip of the margin's reads is exact by the block's own
+// constants
 function checkLandUseCut(text) {
   const start = text.indexOf('    if (landW > 0.003) {');
   assert.ok(start > 0, 'the land-use block');
@@ -206,14 +224,27 @@ function checkLandUseCut(text) {
   }
   const block = text.slice(start, end).replace(/\/\/[^\n]*/g, '');
   const reads = [...block.matchAll(/\b(nzq|nz|groundSamp|splatSamp|texture2D|textureLod|texelFetch)\(/g)].map((m) => m[1]).sort();
-  assert.deepEqual(reads, ['groundSamp', ...Array(8).fill('nzq')], 'the block reads eight noise fields and the soil (the bake is lu_field\'s)');
+  // (farmland: the rows' bend is one coarse level of the noise — a textureLod, where it was a two-read nzq)
+  // (wave 69's field layout: a field's wet and dry follow its fold and its own draw — the round 43 m noise is gone)
+  // (wave 83: a standing crop's canopy between the grass tier's blades — two reads of the noise at its own level, near
+  // the camera only, Medium and High: the crop's own grain)
+  // (2026-10-05, Ruinspires' hardstanding: its grain and stains, Medium and High; its cracks, High; Ironworks' slag,
+  // ballast and gravel: their stones' grain, one read, High, near, on a works' ground)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(7).fill('nzq'), 'textureLod'],
+    'the block reads six noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
-    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'nzq(uvW, 0.013, vec2(0.47, 0.13))'],
-    ['vec2 fieldN = uLandTier > 0.5 ? ', 'nzq(uvW, 0.023, vec2(0.61, 0.17))'],
+    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
+    ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
+      'nz(uv, 1.7, vec2(0.31, 0.77))'],
+    ['float hGrain = uLandTier > 0.5 ? ', 'nz(uv, 1.9, vec2(0.31, 0.57))'],
+    ['float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(', 'nz(uv, 0.9, vec2(0.71, 0.29))'],
+    ['float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, ', 'nzq(uv, 0.17, vec2(0.37, 0.83))'],
+    ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
@@ -227,7 +258,9 @@ function checkLandUseCut(text) {
   const [m0, m1] = num(/float marginM = uLandB\.y \* \(([\d.]+) \+ ([\d.]+) \* n1h\);/, 'the margin');
   const [n1hAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the edge breaker');
   const [, wanderAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the wander');
-  const [fade] = num(/smoothstep\(marginM, marginM \+ ([\d.]+), edgeW\)/, 'the crop\'s fade into the margin');
+  // (farmland: the fade narrows with the footprint, never past the near field's width — the proof takes that cap)
+  assert.ok(/smoothstep\(marginM, marginM \+ fadeM, edgeW\)/.test(block), 'the crop fades into the margin over fadeM');
+  const [fade] = num(/float fadeM = min\(([\d.]+), /, 'the crop\'s fade into the margin, at its widest');
   const [h0, h1] = num(/float headW = ([\d.]+) \+ ([\d.]+) \* nEdge\.y;/, 'the headland');
   for (let margin = 0.5; margin <= 4; margin += 0.125) {
     const edgeW = t0 + t1 * margin - n1hAmp / 2 - wanderAmp / 2, marginM = margin * (m0 + m1);

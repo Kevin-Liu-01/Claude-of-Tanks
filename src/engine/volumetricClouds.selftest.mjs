@@ -260,7 +260,7 @@ for (const id of MAP_IDS) {
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
-  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the cloud's dense core`);
+  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the visible cloud's (2026-10-05: no core band)`);
   assert.ok(p.tint.every((c) => c > 0 && c <= 1), `${id} tint in (0, 1]`);
   assert.ok(p.typeRange[0] <= p.typeRange[1] && p.typeRange[0] >= 0 && p.typeRange[1] <= 1, `${id} type range`);
   assert.ok(p.cirrusAltM > p.baseM + p.thicknessM, `${id}: the cirrus sheet sits above the slab`);
@@ -288,10 +288,12 @@ assert.deepEqual(table, {
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-04: a dense overcast is closed — Titan Gorge's deck opened a blue hole at 0.96 under a light model at overcast 1)
-  titan_gorge: { regime: 'dense-overcast', coverage: 1, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
+  // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley under fair-weather cumulus, the deck opened)
+  titan_gorge: { regime: 'fair-weather-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
   polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, contrails: 3, rain: 0.2, virga: 0.2, fogBank: 0.35 },
-  copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
+  // (2026-10-05, the map-revival lane: Copper Mesa is Queenstown under the west coast's broken stratocumulus)
+  copper_mesa: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.2, fogBank: 0 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 6, rain: 0, virga: 0, fogBank: 0 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   whiteout: { regime: 'low-stratus', coverage: 1, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -341,7 +343,14 @@ assert.deepEqual(table, {
   // (2026-10-03, the gauntlet's wave 27: kilometre-scale relief — fp14's dk3, broad cells and strong rolls, on Frosthollow
   // and Railyard exactly as shot)
   assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale, winter.undulatus], [1, 1, 2400, 2, 0.7], 'winter: a cellular deck lit through, broad cells and rolls');
-  assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.undulatus, whiteout.interior], [0, 0, 0, 0], 'whiteout: untouched by the deck pass');
+  // (2026-10-04, the skies lane's deck structure: Whiteout's stratus lit as a deck — one lighting path — with soft cells,
+  // base lumps and the detail's erosion, its base lifted by the snow; Titan's lumps)
+  assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.lumps, whiteout.deckDetail, whiteout.ambientScale, whiteout.undulatus, whiteout.interior],
+    [0.5, 1, 0.6, 0.5, 3, 0, 0], 'whiteout: a structured deck on the deck path alone');
+  const titan = deriveCloudLayerPreset(skyOf('titan_gorge'));
+  // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley's sky is the fair-weather cumulus regime — no deck,
+  // so no base lumps and no cells)
+  assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0, 0, 0], 'titan: fair-weather cumulus, no deck structure');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
@@ -499,7 +508,8 @@ assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), clo
     assert.equal(cloudDeckMarch(preset), cells || (preset.stratiform >= 0.5 && preset.baseM < CLOUD_LOW_DECK_BASE_M) ? 1 : 0, id);
     if (cloudDeckMarch(preset) && !cells) deckMarchMaps.push(id);
   }
-  assert.deepEqual(deckMarchMaps, ['whiteout'], 'the low-deck law reaches exactly whiteout among the shipped maps (every other deck under 400 m is already cellular)');
+  // (2026-10-04: whiteout's deck is cellular now too — the law still marches it on the deck cap, through its cells)
+  assert.deepEqual(deckMarchMaps, [], 'every deck under 400 m is cellular (whiteout since 2026-10-04): the low-deck law is the backstop');
 }
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
@@ -511,7 +521,8 @@ assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.in
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
-assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+// (2026-10-05: the band's half-width a QA knob, 0.04 by default — CLOUD_SHADOW_SOFT — over the visible outline)
+assert.match(layerSource,/smoothstep\( uThreshold \+ uShadeLook\.y - uShadeLook\.z, uThreshold \+ uShadeLook\.y \+ uShadeLook\.z, cloudField/,'cloud edges have a continuous opacity band');
 
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
