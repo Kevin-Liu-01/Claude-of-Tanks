@@ -16,10 +16,10 @@ type Rng = () => number;
 type Palette = readonly [number, number, number];
 
 /**
- * A map's setting year, where its identity gives one (REGIONAL-MAP-IDENTITIES, MAP-BEAUTIFICATION, MAP-LAYOUT-BRIEF's
- * regional kits, its own config, the period its audio scene flies over it); a map without one is set in the present.
- * (Saltmere Bay is present day: the coordinator's ruling of 2026-10-08 — its references are present-day photographs of
- * L'Aber Wrac'h and the Pays de Léon coast.)
+ * Every map's setting year: the one table the props' period forms and the map-vehicles lane's fleets and hulk casts
+ * both key off (agreed 2026-10-08; the coordinator ruled Saltmere Bay present day). From each map's identity
+ * (REGIONAL-MAP-IDENTITIES, MAP-BEAUTIFICATION, MAP-LAYOUT-BRIEF's regional kits, its config, its audio scene's period)
+ * and the vehicles its fleet is built from. Olympus Basin (mars) is the future: after 2022, its hulls next-generation.
  */
 export const MAP_SETTING_YEAR: Readonly<Record<string, number>> = Object.freeze({
   blackglass: 1937, // Suzhou Creek, Shanghai, autumn 1937
@@ -28,15 +28,33 @@ export const MAP_SETTING_YEAR: Readonly<Record<string, number>> = Object.freeze(
   verdant: 1943, // Prokhorovka, 1943
   autumn: 1944, // a Norman river-ford market town under the piston fighters and bombers
   monsoon: 1944, // Kohima, 1944
-  polders: 1944, // Zeeland, 1944
+  polders: 1944, // the Scheldt polders, autumn 1944
   reservoir: 1944, // the Rur dams, 1944-45
   alpine: 1945, // the Col du Mont-Cenis, April 1945
   foundry: 1945, // the Völklingen ironworks, March 1945
   winter: 1945, // the Podhale, January 1945
+  steppe: 1958, // the Virgin Lands (the fleet's Moskvitch-423 and UAZ-450)
+  railyard: 1962, // DB V60, VW T1, DKW Munga, Mercedes L319
+  skybridge: 1965, // Glen Canyon Dam and Page, the Bureau of Reclamation's works (1957-66)
+  titan_gorge: 1965, // Monument Valley, the Oljato chapter
+  cliffbridge: 1972, // Ronda and the Tajo
   moon: 1972,
+  copper_mesa: 1976, // Queenstown's mine (Holden HQ, Centurion, Leopard AS1)
+  orchard: 1982, // the Chouf
+  urban: 1984, // Steinburg
+  frontier: 1984, // the Fulda Gap
+  desert: 1985, // Sirocco Wadi
+  whiteout: 1985, // DYE-M at Cape Dyer
   ruinspires: 1992, // Sarajevo under siege, 1992-96
-  copper_mesa: 1994,
-  airfield: 2022,
+  saltwind: 1992, // the Dalmatian bay
+  badlands: 2008, // Wadi Rum
+  oasis: 2010, // Siwa
+  delta: 2010, // the Jamuna's chars
+  mangrove: 2012, // Cà Mau
+  caldera: 2015, // the Aso caldera
+  airfield: 2022, // Hostomel
+  coastal: 2024, // Saltmere Bay: present day (L'Aber Wrac'h and the Pays de Léon)
+  mars: 2100, // Olympus Basin: the future
 });
 
 /**

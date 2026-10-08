@@ -12,6 +12,10 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 const MODERN = Object.keys(MODERN_KIND_INTRODUCED);
 assert.deepEqual(MODERN.sort(), ['barrier', 'cablespool', 'cone', 'roadsign', 'transformer'], 'the props\' modern roadside vocabulary');
 
+// 0. one setting year for every map (the table the map-vehicles lane's fleets key off too)
+assert.deepEqual(Object.keys(MAP_SETTING_YEAR).sort(), [...MAP_IDS].sort(), 'every map has its setting year, and only the maps');
+assert.ok(Object.values(MAP_SETTING_YEAR).every((y) => Number.isInteger(y) && y >= 1900 && y <= 2200), 'every year a year');
+
 // 1. every map: the kinds it can place, and the forms they resolve to
 let periodMaps = 0, swapped = 0;
 for (const mapId of MAP_IDS) {
@@ -30,7 +34,7 @@ for (const mapId of MAP_IDS) {
     swapped++;
   }
 }
-assert.ok(periodMaps >= 12 && swapped >= 20, `the period maps (${periodMaps}) and their swapped kinds (${swapped})`);
+assert.ok(periodMaps === MAP_IDS.length && swapped >= 20, `the dated maps (${periodMaps}) and their swapped kinds (${swapped})`);
 
 // 2. the period forms: the modern records, the modern draws, the cover held
 const forms = periodClutterTypes('winter');
@@ -67,4 +71,4 @@ for (const kind of MODERN) {
   assert.ok(p.x <= meta.hw * 2 * 1.15 && p.z <= meta.hl * 2 * 1.15 + 0.05, `the crate stack on the cabinet's footprint (${p.x.toFixed(2)} x ${p.z.toFixed(2)})`);
   assert.ok(p.y >= 1.2, `the crate stack stands as cover (${p.y.toFixed(2)} m)`);
 }
-console.log(`periodClutter.selftest: ${periodMaps} maps with a period, ${swapped} anachronistic kinds swapped for their period forms at the same seats; the modern records, draws and cover kept`);
+console.log(`periodClutter.selftest: ${periodMaps} maps dated, ${swapped} anachronistic kinds swapped for their period forms at the same seats; the modern records, draws and cover kept`);
