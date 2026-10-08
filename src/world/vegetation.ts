@@ -3703,7 +3703,10 @@ export function buildGrassTuftGeometry(
 // than the authored per-map counts, restoring the density the road, structure and spawn
 // clearances trimmed since 1049e4e (verdant 899 -> 812 trees at the spawn pose). Mobile keeps
 // the authored counts. Read at build time, after the device tier is resolved.
-export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
+// Layout identity (destruction core lane, 2026-10-08, the coordinator's ruling): every tier places what the desktop
+// places — a phone's trees are records (trunks block movement and shells, crowns hide), and the authority's indices are
+// the desktop's — so the phones' saving is in how a tree draws, never in which trees stand.
+export function treeRichness(): number { return 1.1; }
 
 /**
  * Trees round 2 (2026-10-03; Glacier Pass's census, gauntlet wave 4's "lone needle-like grass stalks" on Frosthollow):
@@ -7217,7 +7220,8 @@ function* vegetationBuildSteps(
     // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
     // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,
     // after the device tier is resolved. Per-map veg.bushCount still gates what survives.
-    const bushRichness = getDeviceTier() === 'mobile' ? 1 : 1.3;
+    // (every tier since 2026-10-08: a bush is a concealer, a record the phones must stand where the desktop's does)
+    const bushRichness = 1.3;
     function placeBushFringes(): void {
       // fringe bushes around each tree cluster. r3 terrain_environment: maps
       // can raise veg.clusterScrub (desert oases) — extra shrubs land INSIDE

@@ -423,6 +423,22 @@ for the network session: `terrainVariantFor`), so client, browser host and dedic
 `/mp-collision/<map>@assault-trenches.<sha>.json` with the base shards' immutable routes; a host fetches one.
 Receipt: `src/mp/host/frontlineVariant.selftest.mjs`.
 
+**A phone places what the desktop places (2026-10-08, the coordinator's ruling).** A phone built every map with fewer
+trees, bushes and clutter and one hulk fewer, and every draw after the first difference shifted the shared streams. A
+phone shared 5.7 % of the desktop's indices across the 33 maps, so its views read the destroyed list through identities.
+Now every tier places at the desktop's richness: `treeRichness`, the bushes, `environmentRichness` and the wreck count. A
+phone's saving is in how a record draws, never in which records stand.
+
+- Every desktop layout is unchanged, byte for byte, on all 33 maps.
+- At the phone tier, 22 of 33 maps equal the desktop's shards index for index, and every concealer matches on every map.
+- The other 11 wait on two kits that still lay records out by tier:
+  - the scenery lane's rock formations, which draw fewer stones on a phone and so other masses (Badlands, Coastal,
+    Desert, Frontier, Monsoon, Orchard, Reservoir, Saltwind, Steinburg, Verdant);
+  - the regional rowhouses, whose phone builds move their bands (Franconian on Steinburg, Sarajevan on Ruinspires).
+- The check: `node tools/capture-world-collision-manifests.mjs --tier=mobile`. Receipt (three clean maps):
+  `src/world/phoneLayoutIdentity.selftest.mjs`.
+- `authorityObstacles` keeps a phone on identities until all 33 match.
+
 ### 8.5 Budget
 
 The wire sends one EVENT message per viewer per tick and drops the whole batch above 64 events
