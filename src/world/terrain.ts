@@ -5718,7 +5718,8 @@ void splatCompute() {
   if (uJebelFace.y > 0.0 && steepW > 0.0) {
     float fl = steepW * fR * uJebelFace.y * (1.0 - smoothstep(260.0, 520.0, camDist)) * (1.0 - gSnowRock);
     if (fl > 0.002) {
-      float fpx = nz(gWallUVx, 0.0031, vec2(0.63, 0.21)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.63, 0.21)).r;
+      // (its own slow phase field, not the crag's read: a cliff's flutes and its buttresses wander independently)
+      float fpx = nz(gWallUVx, 0.0031, vec2(0.29, 0.83)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.29, 0.83)).r;
       float tx = jebelFluteTilt(gWallUVx, fpx), tz = jebelFluteTilt(gWallUVz, fpz);
       n.xyz += vec3(-gWallSigns.y * tz * gWallW, gWallSigns.x * tx * (1.0 - gWallW), 0.0) * fl * 0.25;
     }
