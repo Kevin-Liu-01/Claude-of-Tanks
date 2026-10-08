@@ -3,7 +3,10 @@
 // colliders in cyan — each part from its own bottom to its own top. Lines in front of the scene draw solid; the stretch
 // a mesh hides draws faint and dashed, so a collider standing in empty air reads at once against the stone or wall it
 // stands for, and one behind a bank or a tree never reads as hanging on its face (the hitbox lane, 2026-10-08: a fit
-// wave read the faint prisms of three stones behind a terrain bank as colliders floating on the bank).
+// wave read the faint prisms of three stones behind a terrain bank as colliders floating on the bank). A stone's
+// movement tiers are columns from its floor, each inside the one under it (rockCollision.ts movementTiers): each is drawn
+// from the top of the column it stands in, so the stack reads as the steps the hull meets. A legend names the colours
+// and says what the movement record leaves to the shells (round 2).
 // Debug-only: reached through window.__DEBUG.colliderOverlay (debugSurface.ts), never from a player's boot.
 // Plain one-pixel THREE.LineSegments, the hidden stretch a LineDashedMaterial (batch 5 integration, 2026-10-08): three's
 // fat lines (LineSegments2, LineSegmentsGeometry, LineMaterial) drew wider strokes but pulled WireframeGeometry and
@@ -27,6 +30,8 @@ export interface ColliderOverlayOptions {
   lists?: 'movement' | 'shells' | 'both';
   /** Leave out the trees (thousands on a forest map). */
   trees?: boolean;
+  /** The legend in the frame's corner (default true). */
+  legend?: boolean;
 }
 
 export interface ColliderOverlayHandle {
@@ -61,17 +66,46 @@ export function partOutline(part: SimpleCollisionShape | null, record: Collision
   return out;
 }
 
+/** Is every corner of `inner` inside the convex `outer` (either winding), within two centimetres? */
+function outlineInside(inner: readonly number[], outer: readonly number[]): boolean {
+  let wind = 0;
+  for (let i = 0; i < outer.length; i += 2) {
+    const j = (i + 2) % outer.length;
+    wind += outer[i] * outer[j + 1] - outer[j] * outer[i + 1];
+  }
+  const sign = wind >= 0 ? 1 : -1;
+  for (let k = 0; k < inner.length; k += 2) {
+    for (let i = 0; i < outer.length; i += 2) {
+      const j = (i + 2) % outer.length, ex = outer[j] - outer[i], ez = outer[j + 1] - outer[i + 1], len = Math.hypot(ex, ez);
+      if (len < 1e-9) continue;
+      if (sign * (ex * (inner[k + 1] - outer[i + 1]) - ez * (inner[k] - outer[i])) / len < -0.02) return false;
+    }
+  }
+  return true;
+}
+
 /** Line-segment positions (x y z pairs) of every part's prism: the bottom and top loops and the corner posts. */
 export function recordSegments(record: CollisionRecord, groundAt: ((x: number, z: number) => number) | null, out: number[]): void {
   const shape = record.shape2;
   const parts: Array<SimpleCollisionShape | null> = !shape ? [null] : shape.kind === 'compound' ? shape.parts : [shape];
-  for (const part of parts) {
-    const outline = partOutline(part, record);
+  const outlines = parts.map((part) => partOutline(part, record));
+  for (let p = 0; p < parts.length; p++) {
+    const part = parts[p];
+    const outline = outlines[p];
     const n = outline.length / 2;
     let y0 = part?.y0 ?? record.min[1];
     const y1 = part?.y1 ?? record.max[1];
+    // a column standing in another (a stone's tier inside the one under it, from the same floor): drawn from that one's
+    // top, where it shows (under it the two are one volume)
+    let stands = -Infinity;
+    for (let q = 0; q < parts.length; q++) {
+      const other = parts[q], top = other?.y1 ?? record.max[1];
+      if (q === p || !(top < y1 - 1e-6) || !(top > stands) || (other?.y0 ?? record.min[1]) > y0 + 1e-3) continue;
+      if (outlineInside(outline, outlines[q])) stands = top;
+    }
+    if (stands > y0) { y0 = stands; }
     // a part's bottom under the ground draws at the ground, where it can be seen (its posts start there)
-    if (groundAt) {
+    else if (groundAt) {
       let lowest = Infinity;
       for (let i = 0; i < n; i++) lowest = Math.min(lowest, groundAt(outline[i * 2], outline[i * 2 + 1]));
       if (Number.isFinite(lowest)) y0 = Math.max(y0, Math.min(lowest, y1));
@@ -100,6 +134,23 @@ function linesOf(positions: number[], color: number, hidden: boolean): THREE.Lin
   return lines;
 }
 
+/** The legend in the frame's lower left corner (a page without a document draws none). */
+function showLegend(): { remove(): void } | null {
+  if (typeof document === 'undefined' || !document.body) return null;
+  const hex = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
+  const box = document.createElement('div');
+  box.dataset.debugColliderLegend = '1';
+  box.style.cssText = 'position:fixed;left:12px;bottom:12px;max-width:540px;z-index:2147483000;pointer-events:none;'
+    + 'font:13px/1.4 system-ui,-apple-system,sans-serif;color:#f2f4f6;background:rgba(10,12,16,0.74);'
+    + 'padding:8px 11px;border-radius:6px';
+  const chip = (c: number): string => `<span style="display:inline-block;width:10px;height:10px;margin:0 5px 0 0;background:${hex(c)}"></span>`;
+  box.innerHTML = `<b>Colliders</b><br>${chip(MOVEMENT_COLOR)}movement: what stops a hull &nbsp; ${chip(SHELL_COLOR)}shells and sight `
+    + '&nbsp; dashed: behind a surface<br>Movement stands to a hull\'s roof (3 m over the ground): an overhang above it, such as a '
+    + 'hoodoo\'s cap, stops shells only, by design.';
+  document.body.appendChild(box);
+  return { remove: () => box.remove() };
+}
+
 /** Draw the records within `radius` of (x, z) into the scene; the handle removes them. (The renderer is no longer read:
  * one-pixel lines need no drawing-buffer resolution; the parameter stays for debugSurface's call.) */
 export function showColliderOverlay(
@@ -126,10 +177,12 @@ export function showColliderOverlay(
   if (lists !== 'shells') add(world.getObstacles?.() ?? [], MOVEMENT_COLOR, 'movement');
   if (lists !== 'movement') add(world.getColliders?.() ?? [], SHELL_COLOR, 'shells');
   scene.add(group);
+  const legend = options.legend === false ? null : showLegend();
   return {
     object: group,
     records,
     remove() {
+      legend?.remove();
       scene.remove(group);
       group.traverse((object) => {
         const lines = object as THREE.LineSegments;
