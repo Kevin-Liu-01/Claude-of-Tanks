@@ -307,11 +307,13 @@ export function sampleRedrockCanyon(x: number, z: number): number {
   // wall, with no gaps or long views"): two wadis leave through each head, sand floors winding out between its massifs
   // (the head's toe set back along them, widening outward), so the views down the mouths run on to the far country.
   // The north head's are the south's turned about the outpost; the axis and the outer flanks stay closed.
-  const gapSide = z < 0 ? 1 : -1, reach = Math.max(0, Math.abs(z) - 560);
+  // (each wadi runs ~250 m back into its head and ends on the head's inner wall short of 950 m, so the mouth stays closed:
+  // the view down it is a layer of jebels behind a gap, and the headwall's contract holds past it)
+  const gapSide = z < 0 ? 1 : -1, reach = Math.max(0, Math.abs(z) - 560), inner = 1 - ramp(840, 945, Math.abs(z));
   let gap = 0;
   for (const at of REDROCK_CANYON.headWadis) {
     const w = 105 + 0.1 * reach, u = (across - gapSide * at - 18 * Math.sin(z * 0.006 + at)) / w;
-    if (u * u < 1) gap = Math.max(gap, (1 - u * u) ** 2);
+    if (u * u < 1) gap = Math.max(gap, (1 - u * u) ** 2 * inner);
   }
   const headToe = Math.abs(z) - REDROCK_CANYON.closureStart + meander - 640 * gap;
   if (headToe <= 0) return open + upland;
