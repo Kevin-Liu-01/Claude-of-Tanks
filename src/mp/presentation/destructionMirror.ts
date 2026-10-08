@@ -12,7 +12,10 @@
  * mass class); a stage for a structure this world does not have changes nothing here. Every applied stage is emitted on
  * the bus as `structure:stage` with this world's structure id, for the presentation's collapse and its sound.
  */
-import { DESTRUCTION_BUS_EVENTS, type DestructionLogEntry, type StructureStage, type StructureStageEvent } from '../../sim/destructionEvents.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, MUNITION_CLASSES, type DestructionLogEntry, type MunitionClass, type StructureStage, type StructureStageEvent,
+  type TerrainCraterEvent,
+} from '../../sim/destructionEvents.ts';
 import { resetStructureRecords } from '../../sim/destructionMatch.ts';
 import { createStructureDamage, STAGE_ORDER, type StructureDamage, type StructureState } from '../../sim/structureDamage.ts';
 import {
@@ -41,7 +44,10 @@ export interface DestructionMirror {
   /** A live `structure_stage` (the event's payload): applied and emitted unless this world already stands at it. */
   applyStageEvent(payload: Record<string, unknown>): StructureState | null;
   /** The snapshot's log: every stage not yet applied here and not owed to an event, laid down settled. */
-  applyLog(entries: readonly DestructionLogEntry[], pending: ((structureId: number) => boolean) | null): void;
+  applyLog(entries: readonly DestructionLogEntry[], pending: ((structureId: number) => boolean) | null,
+    craterPending?: ((craterId: number) => boolean) | null): void;
+  /** A live `terrain_crater` (P3): stamped on this world's ground once (the log never stamps it again); emits terrain:crater. */
+  applyCraterEvent(payload: Record<string, unknown>): boolean;
   /** This world's structure for an authority id, when known (the same id where the layouts agree), else null. */
   localId(authorityId: number): number | null;
 }
@@ -65,6 +71,19 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
     ? createDeformedHeightField(world.heightField, ground) : null;
   /** Authority id → this world's structure, learned from events when the ids disagree. */
   const learned = new Map<number, StructureState>();
+  /** Crater ids stamped on this world's ground (an event and the log name the same crater). */
+  const cratered = new Set<number>();
+  /** Stamp a crater once, as the authority did (its values arrive quantized as it stamped them), and emit it. */
+  function crater(entry: { craterId: number; x: number; z: number; radiusM: number; depthM: number; rimM: number; seed: number },
+    munition: MunitionClass, settled: boolean): boolean {
+    if (!Number.isSafeInteger(entry.craterId) || cratered.has(entry.craterId)) return false;
+    cratered.add(entry.craterId);
+    const deforms = ground.addCrater(entry.x, entry.z, entry.radiusM, entry.depthM, entry.rimM, entry.seed);
+    const event: TerrainCraterEvent = { craterId: entry.craterId, x: entry.x, z: entry.z, radiusM: entry.radiusM,
+      depthM: entry.depthM, rimM: entry.rimM, seed: entry.seed, munition, deforms, ...(settled ? { settled: true } : {}) };
+    bus?.emit(DESTRUCTION_BUS_EVENTS.crater, event);
+    return true;
+  }
   let idsShared = true;
   let settledUpTo = 0;
 
@@ -156,19 +175,28 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       if (learnedStructure) return learnedStructure.id;
       return idsShared ? structures.byId(authorityId)?.id ?? null : null;
     },
-    applyLog(entries, pending) {
-      if (!structures || settledUpTo >= entries.length) return;
+    applyLog(entries, pending, craterPending = null) {
+      if (settledUpTo >= entries.length) return;
       let stuck = false;
       for (let i = settledUpTo; i < entries.length; i++) {
         const entry = entries[i]!;
-        if (entry.kind === 'stage') {
+        if (entry.kind === 'stage' && structures) {
           // its event is still on its way: the stage belongs to it (it animates then)
           if (pending && pending(entry.structureId)) { stuck = true; continue; }
           const structure = resolveLogged(entry);
           if (structure) apply(structure, entry.stage, true, null);
+        } else if (entry.kind === 'crater') {
+          if (craterPending && craterPending(entry.craterId)) { stuck = true; continue; }
+          crater(entry, 'he', true);
         }
         if (!stuck) settledUpTo = i + 1;
       }
+    },
+    applyCraterEvent(payload) {
+      const munition = typeof payload.munition === 'string' && (MUNITION_CLASSES as readonly string[]).includes(payload.munition)
+        ? payload.munition as MunitionClass : 'he';
+      return crater({ craterId: Number(payload.craterId), x: finite(payload.x), z: finite(payload.z), radiusM: finite(payload.radiusM),
+        depthM: finite(payload.depthM), rimM: finite(payload.rimM), seed: finite(payload.seed) }, munition, false);
     },
   };
 }

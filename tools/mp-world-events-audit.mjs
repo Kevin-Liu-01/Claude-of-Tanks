@@ -388,6 +388,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         bots[2].state.pos.set(x, groundAt(x, z) + 0.05, z);
         bots[2].state.yaw = scriptedSites.ram.yaw;
         bots[2].state.speed = 14;
+        // its AI off and its throttle held open: a bot's own plan braked or turned it away from the wall in about one
+        // run in three under load (2026-10-08), and the ram is what this case judges
+        bots[2].aiCtl = null;
+        Object.assign(bots[2].input, { throttle: 1, steer: 0, brake: false });
         report.steps.scripted.ram = { botId: bots[2].id, structureId: scriptedSites.ram.structureId };
       }
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);

@@ -68,6 +68,8 @@ export class ReliableEventQueue {
   /** Structure ids of the `structure_stage` events still owed to the presentation (destruction, 2026-10-07): the
    * snapshot's destruction log names a stage before its event is presented, and the stage belongs to the event. */
   private readonly pendingStructures = new Map<number, number>();
+  /** Crater ids of the `terrain_crater` events still owed to the presentation (P3): a crater belongs to its event too. */
+  private readonly pendingCraters = new Map<number, number>();
 
   constructor({
     maxEventsPerFlush = DEFAULT_MAX_EVENTS_PER_FLUSH,
@@ -110,11 +112,18 @@ export class ReliableEventQueue {
     return this.pendingStructures.has(structureId);
   }
 
+  /** Whether a `terrain_crater` with this crater id is still owed to the presentation. */
+  isCraterPending(craterId: number): boolean {
+    return this.pendingCraters.has(craterId);
+  }
+
   private notePending(event: WireEvent, delta: number): void {
     const counted = event.kind === 'world_prop_destroyed' ? this.pendingObstacles
-      : event.kind === 'structure_stage' ? this.pendingStructures : null;
+      : event.kind === 'structure_stage' ? this.pendingStructures
+        : event.kind === 'terrain_crater' ? this.pendingCraters : null;
     if (!counted) return;
-    const index = Number(event.kind === 'world_prop_destroyed' ? event.payload.obstacleIndex : event.payload.structureId);
+    const index = Number(event.kind === 'world_prop_destroyed' ? event.payload.obstacleIndex
+      : event.kind === 'terrain_crater' ? event.payload.craterId : event.payload.structureId);
     if (!Number.isSafeInteger(index) || index < 0) return;
     const next = (counted.get(index) ?? 0) + delta;
     if (next > 0) counted.set(index, next);
@@ -179,6 +188,7 @@ export class ReliableEventQueue {
     this.stagedHead = 0;
     this.pendingObstacles.clear();
     this.pendingStructures.clear();
+    this.pendingCraters.clear();
   }
 
   stats(): ReliableEventQueueStats {

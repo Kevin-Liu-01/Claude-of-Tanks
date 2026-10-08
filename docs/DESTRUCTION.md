@@ -294,6 +294,21 @@ no stamp leaks into the next battle or another match in the same process.
 **Bounds.** At most 160 craters per match deform the ground (`rules.maxCraters`); the rest, and any crater whose bucket
 is full, are marks. Rubble mounds are one per collapsed structure. The overlay never shrinks within a match.
 
+**Digging (P3, landed 2026-10-08; off in every mode until the render follows).** `destructionMatch.shellWorldHit` takes
+`groundBurst`: true when the round burst on the terrain itself (no record struck) and not on water (`shellHitsWater`,
+the same test in both simulations). The crater law (§4.5) sizes it; under `CRATER_DEFORM_MIN_RADIUS_M` (1.6 m: a
+125 mm HE round digs 1.6–1.7 m, a 105 mm one does not) it is a mark, and so is any burst on hard ground (roads, bridge
+decks, ice: `getGroundType`), the fifth and later deforming craters of a tick (`CRATERS_PER_TICK` 4) and those past
+`maxCraters`. A crater is quantized as the wire carries it (millimetre centre, centimetre radius, millimetre depth and
+rim, a 16-bit seed from its centre) before it is stamped, logged (`kind: 'crater'`) and handed back
+(`drainCraters` → solo `terrain:crater`, the authority's `terrain_crater`, public like a stage). A restored log stamps
+the same ground; a peer stamps each crater once, from its event or, settled, from the log (an owed event keeps the log
+from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
+sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
+
+Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
+simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
+
 **Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
 nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
 hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
@@ -384,6 +399,9 @@ readonly destruction: {
 };
 ```
 
+Craters are off in every mode for now (§7: until the drawn terrain follows the overlay); the column says what each mode
+takes once they ship.
+
 | Mode | structures | craters | scales | Why |
 |---|---|---|---|---|
 | standard, realistic, capture the flag, zone control, gun game, juggernaut, infected, drone | on | on | 1 / 1 | the default |
@@ -469,6 +487,7 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/terrainDeformation.selftest.mjs` | stamp determinism (same stamps → same bits), the lattice-consistent contact surface, bounds and clamps, wrapper isolation from the base |
 | `sim/destructionCollision.selftest.mjs` | collapse swaps movement, shells and sight lines on the real verdant and urban shards; rubble climbable |
 | `sim/destructionNavigation.selftest.mjs` | the route grid opens a collapsed block's cells, identically solo and authority |
+| `sim/destructionCraters.selftest.mjs` | the dig law, marks, hard ground, the tick and match caps, the quantized log and its restore, both sims alike, a real HE round's crater stamped once on a peer and replayed bit for bit |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |

@@ -1030,6 +1030,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
+    'src/sim/destructionCraters.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',

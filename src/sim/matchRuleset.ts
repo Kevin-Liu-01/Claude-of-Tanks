@@ -306,8 +306,10 @@ const ENDING_HOLD_S = 8;
  * "esp from like the ac 130"): on in every mode but Turbo Ball, whose pitch an unlimited HE ladder would crater under
  * the ball; the AC-130 digs its craters a quarter wider (docs/DESTRUCTION.md §9).
  */
+// craters (P3) stay off until the rendered terrain follows the ground overlay (docs/DESTRUCTION.md §7, §14): a crater
+// the simulation digs under a flat drawn ground would sink hulls into it
 const DESTRUCTION_ON: DestructionRules = Object.freeze({
-  structures: true, craters: true, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+  structures: true, craters: false, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
 });
 const DESTRUCTION_OFF: DestructionRules = Object.freeze({
   structures: false, craters: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
