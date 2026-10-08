@@ -124,6 +124,8 @@ uniform float uTurbulence;
 uniform float uWeatherWarp;
 // QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
 uniform float uFragMin;
+// round 10 (2026-10-07): the detail's fetch skipped where its remap cannot change the result (1 = on, the law; 0 = off)
+uniform float uDetailSkip;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -222,7 +224,13 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec4 lo = vec4( 1.0 - shape ) * uLayerShape;
 	vec4 d = clamp( ( shell - lo ) / max( 1.0 - lo, vec4( 1e-3 ) ), 0.0, 1.0 );
 	if ( uFragMin > 0.0 ) d *= smoothstep( vec4( uFragMin ), vec4( uFragMin * 2.0 ), shell );
-	if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
+	// round 10 (exact): the detail's remap (2d − m/2) / (1 − m/2) with any modifier m in [0, 1] saturates every lane at
+	// d >= 0.5 (2d − m/2 >= 1 − m/2) and keeps d = 0 at 0 — so where no lane lies strictly between, the result is the step
+	// itself and the fetch is skipped: a solid tower's interior samples never read the detail volume
+	vec4 edge = step( vec4( 1e-6 ), d ) * ( 1.0 - step( vec4( 0.5 ), d ) );
+	if ( detail > 0.0 && dot( d, d ) > 0.0 && uDetailSkip > 0.5 && dot( edge, edge ) <= 0.0 ) {
+		d = step( vec4( 0.5 ), d );
+	} else if ( detail > 0.0 && dot( d, d ) > 0.0 ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
 		vec4 topErode = mix( vec4( 1.0 - dn ), vec4( dn ), uLayerWisp );
@@ -261,6 +269,9 @@ uniform vec4 uBsmWindow1;
 // the plane's altitude (m), the top of the shadow lanes (m)
 uniform vec2 uBsmPlane;
 uniform vec3 uBsmSun;
+// QA (round 10 candidate): the far cascade read by one hardware-bilinear fetch, its depth filtered (0 = the four texels'
+// transmittance blend, the law)
+uniform float uBsmFarBilinear;
 // [ported] the optical depth one texel gives a point past offset metres along its sun ray: the mean extinction over
 // the run into the cloud from its front, capped by the column's whole depth with its tail
 float cl2BsmTexel( vec4 s, float toTop, float offset ) {
@@ -299,7 +310,8 @@ float cl2BsmDepth( vec3 p, float offset ) {
 	// (2026-10-07, the cost rule: the far cascade is read only where it counts — off the near window, or in the near
 	// window's outer tenth where the two blend; inside it the blend was the near map's alone and its four reads wasted)
 	if ( in0 && ( !in1 || e0 <= 0.8 ) ) return cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset );
-	float far = cl2BsmRead( tBsm1, uBsmWindow1, xz, toTop, offset );
+	float far = uBsmFarBilinear > 0.5 ? cl2BsmTexel( textureLod( tBsm1, fract( xz / uBsmWindow1.z ), 0.0 ), toTop, offset )
+		: cl2BsmRead( tBsm1, uBsmWindow1, xz, toTop, offset );
 	if ( !in0 ) return far;
 	return mix( cl2BsmRead( tBsm0, uBsmWindow0, xz, toTop, offset ), far, smoothstep( 0.8, 0.98, e0 ) );
 }
@@ -486,6 +498,10 @@ uniform float uOpaqueCut;
 // transmittance under which no new light is taken, z the secondary sun march's steps (at most CL2_SUN_STEPS), w the
 // transmittance at which the march stops
 uniform vec4 uLightBudget;
+// QA (round 10 candidates): the march's step cap (CL2_STEPS, the law), and the entry refinement — x its samples (4), y
+// their stride (0.25 of the step)
+uniform float uStepCap;
+uniform vec2 uFine;
 // the forward lobe of the sun's light diffused through a deck (0 = isotropic)
 uniform float uDeckLobe;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
@@ -642,7 +658,7 @@ void main() {
 		int lit = 0;
 		float od = 0.0, run = 0.0;
 		for ( int i = 0; i < CL2_STEPS; i++ ) {
-			if ( T < uLightBudget.w ) break;
+			if ( T < uLightBudget.w || float( i ) >= uStepCap ) break;
 			if ( !inRun || t > r0.y ) {
 				if ( inRun ) { r0 = r1; r1 = r2; r2 = r3; r3 = vec2( 1e9 ); }
 				inRun = true;
@@ -673,7 +689,7 @@ void main() {
 			}
 			// the stride grows with the distance (the pixel's footprint) and never falls under the floor
 			float ds = max( uStepMin, t * uStepGrowth );
-			if ( fine > 0 ) ds *= 0.25;
+			if ( fine > 0 ) ds *= uFine.y;
 			vec3 p = uCamPos + dir * t;
 			float h = cl2Height( p );
 			float foot = t * uPixelAngle;
@@ -703,7 +719,7 @@ void main() {
 			if ( sigma > 1e-5 && prevSigma <= 1e-5 && fine == 0 ) {
 				// entering: back up half a stride and refine
 				t -= ds * 0.5;
-				fine = 4;
+				fine = int( uFine.x );
 				lit = 0;
 				prevSigma = 0.0;
 				continue;

@@ -618,7 +618,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uDetailSkip: { value: 1 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
@@ -647,6 +647,8 @@ export class VolumetricCloudLayer {
   private bsmSlices = CLOUD_BSM_SLICES;
   /** The main lane's vertical optical depth (cloudDeckTau): the cover the ground's light passes. */
   private deckTau = 0;
+  /** The packed streets' share per lane (the cost lab's CLOUD_STREETS scales it a frame). */
+  private readonly streetsBase = new THREE.Vector4();
   /** The stack's weather warp (m): the cost lab's CLOUD_WARP scales it a frame. */
   private warpM = 0;
   /** How far the main lane is a closing deck (CloudStack.closing): the share of the ground's light law it takes. */
@@ -758,7 +760,7 @@ export class VolumetricCloudLayer {
     });
     const bsmLookup = () => ({
       tBsm0: { value: null }, tBsm1: { value: null }, uBsmWindow0: { value: new THREE.Vector4() }, uBsmWindow1: { value: new THREE.Vector4() },
-      uBsmPlane: { value: new THREE.Vector2() }, uBsmSun: { value: new THREE.Vector3(0, 1, 0) },
+      uBsmPlane: { value: new THREE.Vector2() }, uBsmSun: { value: new THREE.Vector3(0, 1, 0) }, uBsmFarBilinear: { value: 0 },
     });
     const lookup = bsmLookup();
     // the trace and the shade read the same lookup uniforms (by reference)
@@ -832,7 +834,8 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(CLOUD_LIGHT_EVERY, 0.15, defs.sunSteps, CLOUD_MARCH_EXIT_T) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(CLOUD_LIGHT_EVERY, 0.15, defs.sunSteps, CLOUD_MARCH_EXIT_T) },
+        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(4, 0.25) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -882,6 +885,7 @@ export class VolumetricCloudLayer {
         diffuse.set(stack.lanes[0]?.diffuse ?? 0, stack.lanes[1]?.diffuse ?? 0, stack.lanes[2]?.diffuse ?? 0, stack.lanes[3]?.diffuse ?? 0);
         this.bsmSlices = cloudBsmSlices(stack);
         this.deckTau = cloudDeckTau(stack);
+        this.streetsBase.copy(this.medium.uLayerStreets.value as THREE.Vector4);
         this.warpM = stack.weatherWarpM;
         this.deckClosing = stack.closing;
         // QA: the turbulence's displacement scaled (0 draws the medium without it)
@@ -1313,6 +1317,16 @@ export class VolumetricCloudLayer {
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
+    // QA (round 10): the cost lab's knobs — the detail skip (the law, exact), the step cap, the entry refinement, the far
+    // cascade's bilinear read, the streets' share
+    m.uDetailSkip.value = lightTune('CLOUD_DETAIL_SKIP', 1);
+    t.uStepCap.value = lightTune('CLOUD_STEP_CAP', CLOUD_TIERS[this.traceTier]?.steps ?? 128);
+    (t.uFine.value as THREE.Vector2).set(lightTune('CLOUD_FINE_N', 4), lightTune('CLOUD_FINE_STRIDE', 0.25));
+    t.uBsmFarBilinear.value = lightTune('CLOUD_BSM_FAR_BILINEAR', 0);
+    {
+      const k = lightTune('CLOUD_STREETS', 1), base = this.streetsBase;
+      (m.uLayerStreets.value as THREE.Vector4).set(base.x * k, base.y * k, base.z * k, base.w * k);
+    }
     m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the shipped law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs

@@ -670,7 +670,7 @@ assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinus
 assert.match(shadersSource, /uniform sampler3D tShape;\s*uniform sampler3D tDetail;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.0625 )', 'exp( -od * vec4( 1.0, 0.5, 0.25, 0.125 ) )', 'uPhase.w * powderFade * exp( -sigma * uPowderExp )', 'texelFetch( tBlue', 'cl2BsmDepth( p, run )',
   'cl2Band( uCamPos, dir, lo, uLayerTop[ i ] )', 'uLayerAnvil', 'cl2SunTransmittance( cl2Height( uCamPos + dir * ( 0.5 * ( r0.x + r0.y ) ) ) )', 'L += T * ( S - S * Tstep ) / sigma;',
-  'if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) )', 'if ( T < uLightBudget.w ) break;', 'if ( float( q ) >= uLightBudget.z ) break;']) {
+  'if ( lit == 0 || ( ( lit % int( uLightBudget.x ) ) == 0 && T > uLightBudget.y ) )', 'if ( T < uLightBudget.w || float( i ) >= uStepCap ) break;', 'if ( float( q ) >= uLightBudget.z ) break;']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
 }
 for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDepth(']) assert.ok(layerSource.includes(term), `the sky beyond the medium carries ${term}`);
@@ -697,6 +697,20 @@ assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the
 // (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the law: (round 9, priced on Monsoon's
 // towers) light every third lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.05
 assert.match(layerSource, /const CLOUD_LIGHT_EVERY = 3;/);
+// round 10 (2026-10-07): the detail's fetch skipped where its remap saturates — exact. The twin: for every modifier m in
+// [0, 1] the remap of d >= 0.5 is 1 and of d = 0 is 0, so the step stands in for it whenever no lane lies strictly between
+{
+  const remap = (d, m) => Math.min(1, Math.max(0, (d * 2 - m * 0.5) / Math.max(1 - m * 0.5, 1e-3)));
+  for (let m = 0; m <= 1.0001; m += 0.05) {
+    for (let d = 0.5; d <= 1.0001; d += 0.01) assert.ok(remap(d, m) >= 1 - 1e-6, `the remap saturates d ${d.toFixed(2)} at m ${m.toFixed(2)}`);
+    assert.equal(remap(0, m), 0);
+  }
+  assert.ok(shadersSource.includes('vec4 edge = step( vec4( 1e-6 ), d ) * ( 1.0 - step( vec4( 0.5 ), d ) );')
+    && shadersSource.includes('if ( detail > 0.0 && dot( d, d ) > 0.0 && uDetailSkip > 0.5 && dot( edge, edge ) <= 0.0 ) {\n\t\td = step( vec4( 0.5 ), d );'),
+    'the skip only where no lane lies strictly between 0 and 0.5, and the step in its place');
+  assert.ok(shadersSource.includes('d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );'), 'the remap the twin mirrors');
+  assert.match(layerSource, /uDetailSkip: \{ value: 1 \}/, 'on by default');
+}
 assert.match(layerSource, /const CLOUD_MARCH_EXIT_T = 0\.05;/);
 assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(CLOUD_LIGHT_EVERY, 0\.15, defs\.sunSteps, CLOUD_MARCH_EXIT_T\) \}/);
 assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T\)\);/, 'the defaults the law');
@@ -716,7 +730,7 @@ console.log('volumetricClouds.selftest: deterministic weather (four bakes), tili
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
 // the 3 % the cut left let the sun's disc (tens of thousands of times the sky) burn through a closed deck or a core.
-assert.match(shadersSource, /if \( T < uLightBudget\.w \) break;[\s\S]*?if \( T < max\( 0\.03, uLightBudget\.w \* 1\.5 \) && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
+assert.match(shadersSource, /if \( T < uLightBudget\.w \|\| float\( i \) >= uStepCap \) break;[\s\S]*?if \( T < max\( 0\.03, uLightBudget\.w \* 1\.5 \) && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
   'the cut ray opaque, before the haze reads its cover');
 assert.match(layerSource, /uOpaqueCut: \{ value: 1 \},/);
 assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT', 1\);/, 'on by default (QA knob)');
