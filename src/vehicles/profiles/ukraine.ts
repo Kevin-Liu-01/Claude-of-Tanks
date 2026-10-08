@@ -194,9 +194,26 @@ function seatedCassette(
     // face overlaps the body while both layers share one vehicle-space camo.
     lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
       - lidDims[axis] * 0.5 + lidClearance);
-    P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
+    P.add(dark, KIT.xform(bevelledLid(lidDims, axis, outward),
       lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
   });
+}
+
+// Fleet lane round 1 (2026-10-08; accessories wave 254 on the Oplot-M: "rows of identical reactive-armour bricks ... the
+// armour reads as a flat mosaic"): a cassette's lid is a pressed plate whose outer face stands inset from its base by a
+// small bevel (a fifth of its thickness, at most 6 mm), so the lid edge catches the light and every brick reads as a
+// layered module; the lid keeps its box (the combat anatomy and the ERA clusters are unchanged).
+function bevelledLid(dims: Record<Axis, number>, axis: Axis, outward: number): THREE.BufferGeometry {
+  const bevel = Math.min(0.006, dims[axis] * 0.2);
+  const [ua, va] = (['x', 'y', 'z'] as const).filter((k) => k !== axis);
+  const corner = (u: number, v: number, n: number, inset: number): number[] => {
+    const p: Record<Axis, number> = { x: 0, y: 0, z: 0 };
+    p[ua] = u * (dims[ua] / 2 - inset); p[va] = v * (dims[va] / 2 - inset); p[axis] = n * dims[axis] / 2;
+    return [p.x, p.y, p.z];
+  };
+  const face = (n: number, inset: number): number[][] => [corner(-1, -1, n, inset), corner(1, -1, n, inset),
+    corner(1, 1, n, inset), corner(-1, 1, n, inset)];
+  return orientedSlab(...face(-outward, 0), ...face(outward, bevel));
 }
 
 // Seat a cassette from the carrier face itself instead of approximating its
