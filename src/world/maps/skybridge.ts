@@ -101,9 +101,11 @@ export default {
     // to its ground)
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): each sited by tools/hardstand-site.mjs on its ground
-      { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16 },
-      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 20 },
-      { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16 },
+      // (round 8, gauntlet wave 259, head-bird: "a dark rectangular decal patch") graded sand the wind drifts back over
+      // in patches, as Redrock's yards (hardstandSurface.ts paint): paint only, every level, grade and road query the same
+      { x: -300, z: 62, width: 56, length: 56, yawDeg: 0, level: -2.9, grade: 0, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
+      { x: -139, z: 49, width: 56, length: 56, yawDeg: -100, level: 0, grade: 0.08, bankM: 20, paint: { cover: 0.85, mottle: 0.65 } },
+      { x: 310, z: 42, width: 56, length: 56, yawDeg: -170, level: -1.2, grade: 0.074, bankM: 16, paint: { cover: 0.85, mottle: 0.65 } },
     ],
     village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
     // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one
@@ -181,7 +183,12 @@ export default {
     // as "wood grain" and "sawtooth stripes" wrapped round a stump in wave 134; the walls' bedding comes from the rock's
     // wider tonal range above)
     roadTint: [0.61, 0.53, 0.47], strata: 0.18, sandMacro: 0.62,
-    rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,
+    // (round 8, gauntlet wave 259, head-bird: "a dead-flat plain of noisy shag-carpet texture"): the floor's dark blotches
+    // were the mid-relief dapple — its 59 m octave lays 1-5 m bump spots that the canyon's low sun turns into a field of
+    // dark spots (the Redrock lane's finding on its own floor, 2026-10-07: uMidRelief 0 cleared it, uSandMacro 0 did
+    // not). A trace of its broad roll stays (Redrock's 0.12); the sand's ripples, the macro sheets and the slickrock
+    // domes carry the floor's character.
+    rippleAmp: 0.14, midRelief: 0.12, midReliefFar: 840,
   },
   vegetation: {
     // (round 3, gauntlet wave 133: "uniform orange dune sand dotted with lush green trees": Glen Canyon's trees are the
