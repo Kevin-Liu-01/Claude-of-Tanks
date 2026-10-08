@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   barkLog, block, fabricBody, fabricSleeve, fabricStrap, hash01, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube,
-  type AccessoryDetail, type FabricSpec,
+  withBoxUV, type AccessoryDetail, type FabricSpec, type XY,
 } from './accessoryPrimitives.ts';
 import { FoliageCardBuffer, foliageCardPoints, type FoliageCard } from './vehicleFoliage.ts';
 
@@ -21,6 +21,11 @@ export type RGB = readonly [number, number, number];
 export interface AccessoryPainter {
   readonly detail: AccessoryDetail;
   readonly rng: () => number;
+  /**
+   * The piece's place in its tank's rotation of soft-goods fabrics (round 5, 2026-10-08; fabricFamily), when the
+   * placement assigns one; a bag outside any rotation draws its family from its own seed.
+   */
+  readonly fabric?: number;
   /** Authored-colour hardware (the decor 'cans' family): muted, grime-textured, per-piece tint. */
   paint(geometry: THREE.BufferGeometry, rgb: RGB, ao?: number): void;
   /** Canvas family; `rgb` tints the fabric base colour (1,1,1 = the nation's issue canvas). */
@@ -30,6 +35,12 @@ export interface AccessoryPainter {
    * painted-hardware ('cans') family so a strap never adds a canvas draw to a frame that carries no soft goods.
    */
   strap(geometry: THREE.BufferGeometry, tone?: number): void;
+  /**
+   * A bag's own cinch strap (round 5): webbing like `strap`, at a station where a lashing to the deck may take its place
+   * (decorations.ts lashLoad). `at` is the point on the bag's axis under the strap and `across` the strap's horizontal
+   * crossing direction (unit), both in the piece frame as (x, z).
+   */
+  cinch(geometry: THREE.BufferGeometry, at: readonly [number, number], across: readonly [number, number], tone?: number): void;
   burlap(geometry: THREE.BufferGeometry, tone?: number): void;
   steel(geometry: THREE.BufferGeometry, tone?: number): void;
   /** Wood family (grained): crates, beams, logs; `rgb` tints the wood (bark is greyer, sawn end grain paler). */
@@ -88,8 +99,9 @@ export function hardCase(P: AccessoryPainter, c: CaseSpec): void {
   P.paint(place(moldedBox(c.w, bodyH, c.d, r, seg, r * 0.55), 0, bodyH / 2, 0), c.body, 0.32);
   P.paint(place(moldedBox(c.w * 1.018, lidH, c.d * 1.024, r * 1.1, seg, r * 0.7), 0, bodyH + lidH / 2, 0), c.lid, 0.22);
   if (!near(P)) return;
-  // the parting line: a dark gasket band under the lid's overhang
-  P.paint(place(moldedBox(c.w * 1.008, 0.009, c.d * 1.012, 0, 0, 0.002), 0, bodyH - 0.002, 0), BLACK_PLASTIC, 0);
+  // the parting line: a dark gasket band under the lid's overhang; round 5: it follows the case's rounded corners (its
+  // square corners stood 1.7 cm off them), same triangles (no bevel rows)
+  P.paint(place(moldedBox(c.w * 1.008, 0.009, c.d * 1.012, r, 1, 0), 0, bodyH - 0.002, 0), BLACK_PLASTIC, 0);
   if ((c.ribs ?? 0) > 0) {
     const n = c.ribs ?? 0;
     for (let i = 0; i < n; i++) {
@@ -290,24 +302,32 @@ const CAN_RACK_TONE = 1.0;
  * tops stand at `h`, on y = 0 (round 4 follow-up). It draws nothing from the piece's stream. 56-72 triangles, so a can
  * pair stays inside the 700-triangle piece budget (decorationsEquipment).
  */
-export function canRack(P: AccessoryPainter, style: CanRackStyle, w: number, d: number, h: number, cans = 2): void {
+export function canRack(P: AccessoryPainter, style: CanRackStyle, w: number, d: number, h: number, cans = 2,
+  canHalfX = w / 2 - 0.03, canHalfZ = d / 2 - 0.018): void {
   const st = (geo: THREE.BufferGeometry, tone = CAN_RACK_TONE): void => P.steel(geo, tone);
+  // Round 5 (2026-10-08; wave 255 on the M60A1: "the jerrycan's retainer is a featureless flat black slab with no
+  // thickness ... on a single small foot. Make it a welded bracket with a strap and buckle"; wave 257 on the T-72B3M:
+  // "held by a bare bar frame with no strap or buckle"): a rack holds its cans with a webbing strap round their fronts at
+  // two thirds of their height, cinched by a cam buckle (canStrap); the Chinese frame keeps its clamp bars instead.
+  // Every style stays within the round-4 rack's triangles (a can pair's 700-triangle piece budget).
+  if (style !== 'chinese') canStrap(P, canHalfX, canHalfZ, d, h);
   // the welded Soviet frame stands on the deck itself; the others carry the cans on a floor tray
   if (style !== 'soviet') st(place(block(w, 0.02, d), 0, 0.01, 0));
   if (style === 'soviet') {
-    // welded angle frame: four corner posts, closed at the top by a rail along each long side
+    // welded angle frame: four corner posts, closed at the top by a rail along the back (the strap holds the front)
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       st(place(block(0.022, h * 0.72, 0.022), sx * (w / 2 - 0.011), 0.02 + h * 0.36, sz * (d / 2 - 0.011)));
     }
-    for (const sz of [-1, 1]) st(place(block(w, 0.022, 0.022), 0, 0.02 + h * 0.72, sz * (d / 2 - 0.011)));
+    st(place(block(w, 0.022, 0.022), 0, 0.02 + h * 0.72, -(d / 2 - 0.011)));
     return;
   }
   if (style === 'nato') {
-    // sheet holder: a back plate behind the cans, a flat upright at each end carrying a hinged latch bar across the
-    // cans' handles
-    st(place(block(w, h * 0.8, 0.01), 0, 0.02 + h * 0.4, -d / 2 - 0.005));
-    for (const sx of [-1, 1]) st(place(block(0.012, h + 0.03, 0.03), sx * (w / 2 + 0.006), 0.02 + (h + 0.03) / 2, -d * 0.2));
-    st(roundBar([-w / 2 - 0.012, h + 0.04, -d * 0.2], [w / 2 + 0.012, h + 0.04, -d * 0.2], 0.009, near(P) ? 6 : 4), 0.9);
+    // round 5: an open welded cradle in place of the sheet holder's back plate (which hid half the cans and read as "a
+    // flat black slab"): an angle upright at each back corner on the floor tray, joined by a top rail, the strap round
+    // the cans' fronts
+    const a = 0.024;
+    for (const sx of [-1, 1]) st(place(block(a, h * 0.92, a), sx * (w / 2 + a / 2), 0.02 + h * 0.46, -d / 2 + a / 2));
+    st(place(block(w + 2 * a, a, a), 0, 0.02 + h * 0.92 - a / 2, -d / 2 + a / 2));
     return;
   }
   if (style === 'israeli') {
@@ -327,13 +347,39 @@ export function canRack(P: AccessoryPainter, style: CanRackStyle, w: number, d: 
   }
 }
 
+/** Coyote webbing for a can rack's strap (round 5), on the painted-hardware draw. */
+const CAN_STRAP: RGB = [0.5, 0.41, 0.27];
+
+/**
+ * A can rack's strap (round 5): webbing round the row's front at two thirds of the cans' height, from the frame behind
+ * one end can, along its outer broad face, across the cans' fronts and back along the far end can, a few millimetres
+ * off them; a cam buckle on the front, at the near level. Its outward face, two triangles a span.
+ */
+function canStrap(P: AccessoryPainter, canHalfX: number, canHalfZ: number, d: number, h: number): void {
+  const y = h * 0.64, band = 0.034, off = 0.004;
+  const x = canHalfX + off, zb = -d / 2 + 0.03, zf = canHalfZ + off, w = x * 2;
+  const path: Array<[number, number]> = [[-x, zb], [-x, zf], [x, zf], [x, zb]];
+  const positions: number[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const [ax, az] = path[i], [bx, bz] = path[i + 1];
+    const a0 = [ax, y - band / 2, az], a1 = [ax, y + band / 2, az], b0 = [bx, y - band / 2, bz], b1 = [bx, y + band / 2, bz];
+    // the outward face only (the cans close the strap's inside from every view)
+    positions.push(...a0, ...b0, ...b1, ...a0, ...b1, ...a1);
+  }
+  const strap = new THREE.BufferGeometry();
+  strap.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  strap.computeVertexNormals();
+  P.paint(withBoxUV(strap), CAN_STRAP, 0.25);
+  if (near(P)) P.steel(place(block(0.05, 0.04, 0.012), -w * 0.22, y, zf + 0.006), 0.55);
+}
+
 function canPair(P: AccessoryPainter, a: RGB, b: RGB, scale: number, cradle: boolean, style: CanRackStyle = 'nato'): void {
   // two cans in their nation's rack (round 4 follow-up: canRack; the round-3 cradle was one welded box for every nation)
   const gap = 0.215 * scale;
   jerrycan(P, -gap / 2, a, scale, -1);
   jerrycan(P, gap / 2, b, scale, 1);
   if (!cradle) return;
-  canRack(P, style, 0.43 * scale, 0.37 * scale, 0.44 * scale);
+  canRack(P, style, 0.43 * scale, 0.37 * scale, 0.44 * scale, 2, 0.19 * scale, 0.1725 * scale);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -354,9 +400,11 @@ function bag(P: AccessoryPainter, spec: FabricSpec, at: readonly [number, number
   const box = body.boundingBox!.clone();
   const lift = -box.min.y;
   P.cloth(place(body, at[0], at[1] + lift, at[2], 0, yaw, 0), tone, rgb);
+  // round 5: each strap is a cinch station a deck lashing may replace; the body's axis runs along the yawed +X
+  const c = Math.cos(yaw), sn = Math.sin(yaw);
   for (const z of s.cinch ?? []) {
     const strap = place(place(fabricStrap(s, z), 0, 0, 0, 0, Math.PI / 2, roll), at[0], at[1] + lift, at[2], 0, yaw, 0);
-    webbing(P, strap, strapTone);
+    P.cinch(strap, [at[0] + z * c, at[2] - z * sn], [sn, c], strapTone);
   }
   return { lift, top: at[1] + lift + box.max.y };
 }
@@ -365,10 +413,28 @@ function bag(P: AccessoryPainter, spec: FabricSpec, at: readonly [number, number
 // visibly, a sixth to a fifth of its section at the band (duffels, packs, the folded tarp pack and the helmet bag).
 
 /**
- * Issue fabric families a crew's bags come in (multipliers on the nation's canvas): issue olive, a greener drab, a
- * sun-faded khaki and a darker, newer bag. 2026-10-07 (round 4).
+ * Soft-goods fabric families (round 5, 2026-10-08; the critics on the Type 99A: "the dark olive load on dark olive pixel
+ * camo merges at hero distance. Vary the load's value and hue (canvas tan, faded olive, black rubber) so the silhouette
+ * of the kit reads"; wave 262: "plain-sand and olive loads sit on same-value paint"). Multipliers on the nation's issue
+ * canvas (x its weave), ordered so neighbours in a tank's rotation alternate light and dark: canvas tan, the issue
+ * canvas, sun-faded olive, black rubberised (a poncho or waterproof sack), coyote, dark green. On the American canvas at
+ * a bag's usual tone they come out near sRGB (124, 109, 72), (66, 60, 42), (96, 91, 58), (38, 37, 36), (113, 94, 56)
+ * and (53, 52, 31); every nation's own canvas shifts them (Soviet tan reads green-khaki). Matte, desaturated.
+ * Round 4's five tints spanned a sixth of this range, so every bag read as one olive.
  */
-const BAG_TINTS: readonly RGB[] = [[1, 1, 1], [0.9, 1.02, 0.84], [1.12, 1.04, 0.84], [0.86, 0.9, 0.82], [1.05, 1.03, 0.94]];
+export const FABRIC_FAMILIES: readonly RGB[] = Object.freeze([
+  [3.6, 3.3, 2.9], [1, 1, 1], [2.1, 2.25, 1.85], [0.33, 0.39, 0.78], [3.0, 2.45, 1.8], [0.66, 0.76, 0.62],
+] as RGB[]);
+
+/**
+ * A bag's fabric family: the placement's rotation (P.fabric) stepped by `offset` for the second bag of a pair or the
+ * n-th of a cluster, or, outside any rotation, its own seed's pick.
+ */
+export function fabricFamily(P: AccessoryPainter, offset: number, seed: number): RGB {
+  const n = FABRIC_FAMILIES.length;
+  const k = P.fabric !== undefined ? P.fabric + offset : Math.floor(hash01(seed, 0xfab) * n);
+  return FABRIC_FAMILIES[((k % n) + n) % n];
+}
 
 /** A bag's own seeded values in [0, 1) (no draw from the piece's stream, so placement streams never move). */
 const bagNoise = (seed: number, salt: number) => (k: number): number => hash01(seed, salt, k);
@@ -402,7 +468,7 @@ export function duffel(P: AccessoryPainter, len: number, radius: number, at: rea
   const spec: FabricSpec = { len: L, hw: R * (0.98 + 0.16 * h(6)), hh: R * (0.9 + 0.12 * h(7)), exponent: 2.2 + 1.3 * h(8),
     endScale: 0.5 + 0.22 * h(9), endLength: 0.1 + 0.06 * h(10), flatten: 0.24 + 0.18 * h(11), wrinkle: 0.04 + 0.04 * h(12),
     seg: 10, stations: 6, cinch, cinchDepth: 0.13 + 0.08 * h(13), seed };
-  const tint = rgb ?? BAG_TINTS[Math.floor(h(14) * BAG_TINTS.length) % BAG_TINTS.length];
+  const tint = rgb ?? fabricFamily(P, 0, seed);
   const { top } = bag(P, spec, at, yaw, tone * (0.86 + 0.26 * h(15)), tint, 0.48 + 0.14 * h(16), (h(17) - 0.5) * 0.4);
   // the carry handle lies on the full section between its first two straps, a flat loop sewn on (near level only, so
   // it stays low: the coarse level's envelope keeps four fifths of the near's height)
@@ -447,10 +513,11 @@ export function bedroll(P: AccessoryPainter, len: number, radius: number, at: re
     cinch: [-L * (0.26 + 0.07 * h(3)), L * (0.26 + 0.07 * h(4))], cinchDepth: 0.2 + 0.08 * h(5), bulge: 0.04 + 0.03 * h(6),
     ...ROLL_PINCH, seed };
   const shade = rgb ? 1 : 0.9 + 0.2 * h(7);
-  const { lift } = bag(P, spec, at, yaw, tone * shade, rgb, 0.5);
+  const fabric = rgb ?? fabricFamily(P, 0, seed);
+  const { lift } = bag(P, spec, at, yaw, tone * shade, fabric, 0.5);
   if (!near(P)) return;
   // the rolled layers wound at each end
-  rollEnds(P, L, R * 0.9, at, lift, yaw, tone * shade * 0.62, rgb, 14, h(8) * Math.PI * 2);
+  rollEnds(P, L, R * 0.9, at, lift, yaw, tone * shade * 0.62, fabric, 14, h(8) * Math.PI * 2);
 }
 
 /** A frame or ALICE-pattern rucksack lying on its back panel: main bag, lid flap, side pockets and compression straps. */
@@ -460,7 +527,7 @@ export function rucksack(P: AccessoryPainter, w0: number, len0: number, h0: numb
   const n = bagNoise(seed, 0x5ac);
   const w = w0 * (0.9 + 0.18 * n(0)), len = len0 * (0.9 + 0.18 * n(1)), h = h0 * (0.86 + 0.24 * n(2));
   const tone = tone0 * (0.88 + 0.22 * n(3));
-  const rgb = rgb0 ?? BAG_TINTS[Math.floor(n(4) * BAG_TINTS.length) % BAG_TINTS.length];
+  const rgb = rgb0 ?? fabricFamily(P, 0, seed);
   const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 3.4 + 1.2 * n(5), endScale: 0.76, endLength: 0.13,
     flatten: 0.36 + 0.12 * n(6), wrinkle: 0.035 + 0.025 * n(7), seg: 10, stations: 5,
     cinch: [-len * (0.12 + 0.08 * n(8)), len * (0.16 + 0.08 * n(9))], cinchDepth: 0.1 + 0.05 * n(10), seed };
@@ -491,12 +558,68 @@ export function rucksack(P: AccessoryPainter, w0: number, len0: number, h0: numb
 
 // 2026-10-06 (round 2): the critics read the blue cooler, the red cooler and the red tool chest as toy-coloured
 // civilian boxes. Crews carry them, but in issue colours: olive drab, coyote and dark green, lids a shade lighter.
+// Round 5 (2026-10-08; wave 257, the coordinator: "military kit only, in service colours"): the two coolers are military
+// insulated containers: the olive one keeps its moulding but loses the civilian cues (drain plug, raised lid panel,
+// rubber latches), and the red-brown one is a sand container (the critics read it as "a red toolbox").
 const BLUE_COOLER: RGB = [0.22, 0.26, 0.15];
 const COOLER_LID: RGB = [0.27, 0.30, 0.19];
+const SAND_CASE: RGB = [0.44, 0.39, 0.27];
+const SAND_LID: RGB = [0.48, 0.43, 0.3];
 /** The extinguisher bottle in olive drab (round 3); the palette's `extinguisher` red is only its band. */
 const EXTINGUISHER_BODY: RGB = [0.29, 0.33, 0.2];
-/** The helmets' issue olive. */
-const HELMET_OLIVE: RGB = [0.27, 0.33, 0.18];
+/**
+ * A combat helmet in its cloth cover (round 5, 2026-10-08; wave 254 on the Oplot-M: "the helmet at the top ... is a
+ * smooth, flat-coloured dome balanced on the bag with no strap, liner, dents or paint wear, so it looks like a green
+ * ball"; "a smooth untextured green dome with no brim, cover or chinstrap"): a modern shell whose skirt flares to a
+ * rolled brim, cut high over the brow and low over the ears and nape, in a fabric cover (the canvas draw, in the given
+ * fabric family) creased over the crown and dented where it was knocked about, an elastic band round the crown, and the
+ * chinstrap hanging from both ears down over whatever it lies on. `at` is where the rim's centre sits and `rot` the
+ * Euler turn, in the piece frame. Deterministic in `seed`, no random draws.
+ */
+function combatHelmet(P: AccessoryPainter, at: readonly [number, number, number], rot: readonly [number, number, number],
+  cover: RGB, seed: number): void {
+  const seg = near(P) ? 12 : 8;
+  const n = bagNoise(seed, 0x4e1);
+  const profile: XY[] = near(P)
+    ? [[0.158, -0.004], [0.164, 0.004], [0.157, 0.013], [0.149, 0.04], [0.137, 0.075], [0.112, 0.108], [0.074, 0.132], [0.0005, 0.146]]
+    : [[0.162, 0], [0.149, 0.04], [0.124, 0.095], [0.074, 0.132], [0.0005, 0.146]];
+  const shell = latheY(profile, seg);
+  const p = shell.getAttribute('position');
+  // dimples where it was knocked, at seeded bearings on the crown and side
+  const dents = [0, 1].map((k) => ({ a: n(k) * Math.PI * 2, y: 0.07 + 0.05 * n(k + 2), depth: 0.006 + 0.004 * n(k + 4) }));
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const a = Math.atan2(x, z);                               // 0 at the brow (+z), PI at the nape
+    // the skirt: high over the brow, low over the ears and the nape
+    if (y < 0.05) {
+      const drop = (0.032 * Math.max(0, -Math.cos(a)) ** 1.3 + 0.02 * Math.abs(Math.sin(a))) * (1 - Math.max(0, y) / 0.05);
+      y -= drop;
+    }
+    // the cover's creases and the dents (radial, off the axis)
+    const rr = Math.hypot(x, z);
+    if (rr > 0.002) {
+      let k = 1 + 0.018 * Math.sin(a * 4 + n(6) * 6) * Math.sin(y * 70 + n(7) * 6);
+      for (const d of dents) {
+        const da = Math.atan2(Math.sin(a - d.a), Math.cos(a - d.a));
+        k -= (d.depth / 0.15) * Math.exp(-((da / 0.35) ** 2) - (((y - d.y) / 0.025) ** 2));
+      }
+      x *= k; z *= k;
+    }
+    p.setXYZ(i, x, y, z);
+  }
+  shell.computeVertexNormals();
+  const put = (g: THREE.BufferGeometry): THREE.BufferGeometry => place(g, at[0], at[1], at[2], rot[0], rot[1], rot[2]);
+  P.cloth(put(shell), 0.62, cover);
+  if (!near(P)) return;
+  // the cover's elastic band round the crown, its edges sunk into the cloth
+  const bandY = 0.07, rb = 0.139;
+  webbing(P, put(latheY([[rb - 0.003, bandY - 0.009], [rb + 0.004, bandY], [rb - 0.003, bandY + 0.009]], seg)), 0.42);
+  // the chinstrap hanging from both ears, down over the bag below
+  for (const sx of [-1, 1]) {
+    webbing(P, put(sweptTube([[sx * 0.145, -0.012, 0.0], [sx * 0.168, -0.05, 0.02], [sx * 0.17, -0.1, 0.035],
+      [sx * 0.15, -0.14, 0.03]], 0.006, 3, 4)), 0.5);
+  }
+}
 
 export function buildCargoVariant(variant: string, P: AccessoryPainter, colours: EquipmentColours, flat?: boolean,
   rackStyle: CanRackStyle = 'nato'): void {
@@ -504,17 +627,14 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
   const r = [P.rng(), P.rng(), P.rng(), P.rng()];
   switch (variant) {
   case 'beer-cooler-blue':
+    // round 5: an olive insulated container with steel latches and pressed ribs (no drain plug, no raised lid panel)
     hardCase(P, { w: 0.54, h: 0.34, d: 0.36, body: BLUE_COOLER, lid: COOLER_LID, lidShare: 0.24, radius: 0.04,
-      latches: 'rubber', handles: 'ends', ribs: 0 });
-    if (near(P)) {
-      // molded drain plug and the lid's raised panel
-      P.paint(place(latheY([[0.016, 0], [0.016, 0.014], [0.001, 0.016]], 8), -0.17, 0.05, 0.181, Math.PI / 2, 0, 0), COOLER_LID, 0.3);
-      P.paint(place(moldedBox(0.38, 0.012, 0.24, 0.03, 1, 0.004), 0, 0.344, 0), [0.30, 0.33, 0.21], 0.2);
-    }
+      latches: 'steel', handles: 'ends', ribs: 2 });
     break;
   case 'cooler-red':
-    hardCase(P, { w: 0.46, h: 0.3, d: 0.32, body: [0.40, 0.33, 0.21], lid: [0.46, 0.38, 0.25], lidShare: 0.26, radius: 0.035,
-      latches: 'none', handles: 'top' });
+    // round 5: a sand container with steel latches (it read as "a red toolbox")
+    hardCase(P, { w: 0.46, h: 0.3, d: 0.32, body: SAND_CASE, lid: SAND_LID, lidShare: 0.26, radius: 0.035,
+      latches: 'steel', handles: 'top' });
     break;
   case 'insulated-chest-olive':
     // Mermite-style insulated food container: a welded sheet-steel chest with clamp latches and end grips (round 4,
@@ -532,21 +652,25 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
   case 'bedroll-pair': {
     // 2026-10-07 (round 3, Strv 103A: "the two rolled bags overlap each other with no shadow or gap"): a hand's gap
     // between the rolls, so the deck shows between them (round 4: measured off each roll's pinched girth)
+    // round 5: the two rolls in neighbouring fabric families (a tan roll beside an olive one), lashed as one load
     const ra = 0.082, rb = 0.085, gap = 0.04;
-    bedroll(P, 0.6, ra, [0, 0, -(pinchedRadius(ra, 0.08) + gap / 2)], (r[0] - 0.5) * 0.06, 0.66, 31 + Math.floor(r[2] * 9973), [0.94, 0.98, 0.86]);
-    bedroll(P, 0.58, rb, [0.01, 0, pinchedRadius(rb, 0.08) + gap / 2], (r[1] - 0.5) * 0.06, 0.8, 37 + Math.floor(r[3] * 9973), [1.04, 1.0, 0.9]);
+    const sa = 31 + Math.floor(r[2] * 9973), sb = 37 + Math.floor(r[3] * 9973);
+    bedroll(P, 0.6, ra, [0, 0, -(pinchedRadius(ra, 0.08) + gap / 2)], (r[0] - 0.5) * 0.06, 0.66, sa, fabricFamily(P, 0, sa));
+    bedroll(P, 0.58, rb, [0.01, 0, pinchedRadius(rb, 0.08) + gap / 2], (r[1] - 0.5) * 0.06, 0.8, sb, fabricFamily(P, 1, sb));
     break;
   }
   case 'folded-tarp-pack': {
     const spec: FabricSpec = { len: 0.5, hw: 0.17, hh: 0.075, exponent: 6, endScale: 0.86, endLength: 0.07,
       flatten: 0.55, wrinkle: 0.03, seg: 12, stations: 5, cinch: [-0.14, 0.14], cinchDepth: 0.13, seed: 41 };
-    bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.08, 0.7, [0.95, 0.97, 0.9]);
+    bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.08, 0.7, fabricFamily(P, 0, 41 + Math.floor(r[1] * 997)));
     break;
   }
   case 'camo-net-bag': {
     const spec: FabricSpec = { len: 0.52, hw: 0.17, hh: 0.15, exponent: 2.2, endScale: 0.28, endLength: 0.22,
       flatten: 0.3, wrinkle: 0.08, seg: 12, stations: 6, cinch: [0.17], cinchDepth: 0.18, seed: 53 };
-    bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.3, 0.52, [0.9, 1.0, 0.82]);
+    // round 5: a net's sack stays in the greens (a tan or coyote turn of the rotation takes the faded olive)
+    const family = fabricFamily(P, 0, 53 + Math.floor(r[1] * 997));
+    bag(P, spec, [0, 0, 0], (r[0] - 0.5) * 0.3, 0.52, family[0] > 2.2 ? FABRIC_FAMILIES[2] : family);
     if (near(P)) {
       // the net's garnish spilling from the drawstring end: two lumpy lobes in the bag's own (canvas) draw
       for (let i = 0; i < 2; i++) {
@@ -635,8 +759,9 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
       [0.03, len], [0.0005, len + 0.004]], seg);
     const upright = flat === false;
     const lay = (g: THREE.BufferGeometry): THREE.BufferGeometry => (upright ? g : place(g, -len / 2, rad + 0.03, 0, 0, 0, -Math.PI / 2));
-    // 2026-10-07 (round 3: the red bottle read as a toy-red box on the deck): an olive-drab bottle, its contents named by a
-    // narrow issue-red band under the valve
+    // 2026-10-07 (round 3: the red bottle read as a toy-red box on the deck): an olive-drab bottle with a narrow band under
+    // the valve; round 5 (2026-10-08, wave 257: "a red cylinder"; the coordinator: service colours only): the band is a
+    // dark field grey (the palette's `extinguisher`), no red
     P.paint(lay(shell), EXTINGUISHER_BODY, 0.3);
     if (near(P)) {
       P.paint(lay(latheY([[rad + 0.002, len - 0.115], [rad + 0.002, len - 0.08]], seg)), colours.extinguisher, 0.3);
@@ -667,20 +792,13 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
     // in a sewn kit bag cinched by two straps, one helmet clipped on top of it by its chin strap
     const spec: FabricSpec = { len: 0.5, hw: 0.16, hh: 0.12, exponent: 2.7, endScale: 0.55, endLength: 0.2, flatten: 0.34,
       wrinkle: 0.07, seg: near(P) ? 12 : 10, stations: 6, cinch: [-0.15, 0.15], cinchDepth: 0.15, seed: 75 };
-    const { top } = bag(P, spec, [0, 0, 0], (r[2] - 0.5) * 0.2, 0.6, [0.9, 1.0, 0.84]);
-    const seg = near(P) ? 12 : 8;
-    const helmet = latheY([[0.146, 0], [0.152, 0.008], [0.143, 0.02], [0.122, 0.07], [0.08, 0.118], [0.0005, 0.138]], seg);
-    const hx = 0.03, hy = top - 0.035;
-    P.paint(place(helmet, hx, hy, 0.01, 0.12, r[2] * 0.6, -0.16), HELMET_OLIVE, 0.35);
-    if (near(P)) {
-      // the chin strap from the helmet's rim down over the bag to its buckle
-      webbing(P, sweptTube([[hx + 0.12, hy + 0.01, 0.08], [hx + 0.17, hy - 0.04, 0.1], [hx + 0.19, hy - 0.11, 0.11],
-        [hx + 0.17, hy - 0.16, 0.12]], 0.008, 4, 6), 0.5);
-    }
+    const seed = 75 + Math.floor(r[1] * 997);
+    const { top } = bag(P, spec, [0, 0, 0], (r[2] - 0.5) * 0.2, 0.6, fabricFamily(P, 0, seed));
+    combatHelmet(P, [0.03, top - 0.035, 0.01], [0.12, r[2] * 0.6, -0.16], fabricFamily(P, 1, seed + 1), seed);
     break;
   }
   case 'crew-backpack':
-    rucksack(P, 0.32, 0.42, 0.2, [0, 0, 0], (r[0] - 0.5) * 0.2, 0.6, 61 + Math.floor(r[1] * 9973), [0.98, 1.0, 0.92]);
+    rucksack(P, 0.32, 0.42, 0.2, [0, 0, 0], (r[0] - 0.5) * 0.2, 0.6, 61 + Math.floor(r[1] * 9973));
     break;
   case 'folding-chair': {
     // camp chair: aluminium X-frame, sling seat and back
@@ -704,12 +822,16 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
       latches: 'rubber', handles: 'top', ribs: 0 });
     break;
   case 'thermos-crate': {
-    const w = 0.5, h = 0.22, d = 0.34;
-    P.wood(place(moldedBox(w, h, d, 0.006, 1, 0.005), 0, h / 2, 0), 0.74);
+    // round 5 (2026-10-08; the contact receipt: the flasks stood through the closed crate's lid): an open-topped carrier
+    // of nailed boards, its two insulated flasks standing on its floor and rising a third of their height above it
+    const w = 0.5, h = 0.22, d = 0.34, t = 0.018, floor = 0.02;
+    P.wood(place(block(w - 2 * t, floor, d - 2 * t), 0, floor / 2, 0), 0.62);                          // floor
+    for (const sz of [-1, 1]) P.wood(place(block(w, h, t), 0, h / 2, sz * (d / 2 - t / 2)), 0.74);      // front and back
+    for (const sx of [-1, 1]) P.wood(place(block(t, h, d - 2 * t), sx * (w / 2 - t / 2), h / 2, 0), 0.7); // ends
     const seg = near(P) ? 8 : 6;
     for (const x of [-0.12, 0.12]) {
-      P.paint(place(latheY([[0.0005, 0], [0.058, 0], [0.062, 0.02], [0.062, 0.24], [0.05, 0.27], [0.0005, 0.27]], seg), x, h - 0.06, 0), [0.28, 0.31, 0.2], 0.3);
-      P.paint(place(latheY([[0.0005, 0], [0.052, 0], [0.052, 0.05], [0.0005, 0.052]], seg), x, h + 0.21, 0), [0.18, 0.2, 0.17], 0.3);
+      P.paint(place(latheY([[0.0005, 0], [0.058, 0], [0.062, 0.02], [0.062, 0.24], [0.05, 0.27], [0.0005, 0.27]], seg), x, floor, 0), [0.28, 0.31, 0.2], 0.3);
+      P.paint(place(latheY([[0.0005, 0], [0.052, 0], [0.052, 0.05], [0.0005, 0.052]], seg), x, floor + 0.268, 0), [0.18, 0.2, 0.17], 0.3);
     }
     if (near(P)) for (const x of [-w / 2 + 0.02, w / 2 - 0.02]) P.wood(place(block(0.035, h + 0.01, d + 0.014), x, h / 2, 0), 0.56);
     break;
@@ -735,14 +857,16 @@ export function buildPackCluster(P: AccessoryPainter, n: number): number {
     const at = x;
     // round 4 (2026-10-07): each bag's seed carries its own tone draw, so a pack of four is four different bags
     const own = Math.floor(toneR * 7919);
+    // round 5: each bag of a cluster a step along its tank's fabric rotation (a tan pack beside an olive one)
+    const fabric = (seed: number): RGB => fabricFamily(P, i, seed);
     if (kind < 0.4) {
-      pieces.push(() => rucksack(P, 0.3, 0.38, 0.2, [at + 0.15, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 100 + i + own));
+      pieces.push(() => rucksack(P, 0.3, 0.38, 0.2, [at + 0.15, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 100 + i + own, fabric(100 + i + own)));
       x += 0.34;
     } else if (kind < 0.75) {
-      pieces.push(() => bedroll(P, 0.5, 0.08, [at + 0.09, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.3, tone, 200 + i + own));
+      pieces.push(() => bedroll(P, 0.5, 0.08, [at + 0.09, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.3, tone, 200 + i + own, fabric(200 + i + own)));
       x += 0.19;
     } else {
-      pieces.push(() => duffel(P, 0.46, 0.11, [at + 0.12, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 300 + i + own));
+      pieces.push(() => duffel(P, 0.46, 0.11, [at + 0.12, 0, 0], Math.PI / 2 + (yawR - 0.5) * 0.4, tone, 300 + i + own, fabric(300 + i + own)));
       x += 0.26;
     }
   }
@@ -760,9 +884,11 @@ export function buildTarpRoll(P: AccessoryPainter, len: number, radius: number, 
     flatten: 0.16, wrinkle: 0.03, seg: near(P) ? 14 : ROLL_SEG_COARSE, stations: 2,
     cinch: [-len * (0.27 + 0.06 * h(0)), len * (0.27 + 0.06 * h(1))], cinchDepth: 0.22 + 0.06 * h(2), bulge: 0.05 + 0.03 * h(3),
     ...ROLL_PINCH, seed };
-  const { lift } = bag(P, spec, [0, 0, 0], 0, tone);
+  // round 5: a tarp in its tank's fabric rotation (tan canvas, a black rubberised groundsheet, the issue olive)
+  const fabric = fabricFamily(P, 0, seed);
+  const { lift } = bag(P, spec, [0, 0, 0], 0, tone, fabric);
   if (!near(P)) return;
-  rollEnds(P, len, radius * 0.92, [0, 0, 0], lift, 0, tone * 0.6, undefined, 16, h(4) * Math.PI * 2);
+  rollEnds(P, len, radius * 0.92, [0, 0, 0], lift, 0, tone * 0.6, fabric, 16, h(4) * Math.PI * 2);
 }
 
 /**
@@ -863,31 +989,57 @@ export function sandbag(P: AccessoryPainter, len: number, w: number, h: number, 
 /** Pioneer tools on clamps, laid along +Z, fanned across X. */
 export function buildTools(P: AccessoryPainter, set: readonly string[]): void {
   const tones = set.map(() => [P.rng(), P.rng(), P.rng()]);
+  // round 5 (2026-10-08; the contact receipt: the handles ran through solid clamp blocks, and the shovel's D-grip hung
+  // 2 cm off its shaft): each tool rests in low saddle clamps (lift: the handles sit 1.2 cm higher) under a steel strap
+  // that wraps the handle, and the D-grip's legs close on the shaft's end
+  const lift = 0.012;
   set.forEach((tool, idx) => {
     const lane = (idx - (set.length - 1) / 2) * 0.115;
     const [toneR, jitter] = tones[idx];
     const tone = 0.62 + toneR * 0.16;
     const dz = (jitter - 0.5) * 0.1;
     const seg = near(P) ? 6 : 4;
+    let hy = 0.03 + lift, hr = 0.017;
     if (tool === 'shovel') {
-      P.trim(roundBar([lane, 0.03, -0.42 + dz], [lane, 0.03, 0.34 + dz], 0.017, seg), tone);
-      // D-grip
-      if (near(P)) P.trim(sweptTube([[lane - 0.05, 0.03, -0.42 + dz], [lane - 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.5 + dz], [lane + 0.05, 0.03, -0.42 + dz]], 0.012, 4, 6), tone * 0.9);
+      P.trim(roundBar([lane, hy, -0.42 + dz], [lane, hy, 0.34 + dz], 0.017, seg), tone);
+      // D-grip, its legs closing on the shaft's end
+      if (near(P)) P.trim(sweptTube([[lane - 0.012, hy, -0.41 + dz], [lane - 0.045, hy, -0.452 + dz], [lane - 0.04, hy, -0.5 + dz],
+        [lane + 0.04, hy, -0.5 + dz], [lane + 0.045, hy, -0.452 + dz], [lane + 0.012, hy, -0.41 + dz]], 0.011, 4, 8), tone * 0.9);
       // dished blade: a shallow bent plate tapering to a point
       const blade = latheY([[0.0005, 0], [0.075, 0.02], [0.08, 0.17], [0.05, 0.25], [0.0005, 0.27]], near(P) ? 8 : 5);
       blade.scale(1, 1, 0.12);
-      P.steel(place(blade, lane, 0.036, 0.33 + dz, Math.PI / 2, 0, 0), 0.55);
+      P.steel(place(blade, lane, 0.036 + lift, 0.33 + dz, Math.PI / 2, 0, 0), 0.55);
     } else if (tool === 'axe') {
-      P.trim(roundBar([lane, 0.03, -0.3 + dz], [lane, 0.03, 0.32 + dz], 0.016, seg), tone);
-      P.steel(place(moldedBox(0.04, 0.05, 0.17, 0.008, 1, 0.006), lane, 0.032, 0.3 + dz), 0.55);
-      P.steel(place(block(0.012, 0.05, 0.11), lane + 0.03, 0.032, 0.33 + dz, 0, -0.25, 0), 0.62);
+      hr = 0.016;
+      P.trim(roundBar([lane, hy, -0.3 + dz], [lane, hy, 0.32 + dz], 0.016, seg), tone);
+      P.steel(place(moldedBox(0.04, 0.05, 0.17, 0.008, 1, 0.006), lane, 0.032 + lift, 0.3 + dz), 0.55);
+      P.steel(place(block(0.012, 0.05, 0.11), lane + 0.03, 0.032 + lift, 0.33 + dz, 0, -0.25, 0), 0.62);
     } else if (tool === 'sledge') {
-      P.trim(roundBar([lane, 0.035, -0.35 + dz], [lane, 0.035, 0.32 + dz], 0.017, seg), tone);
-      P.steel(place(moldedBox(0.075, 0.075, 0.15, 0.01, 1, 0.008), lane, 0.038, 0.33 + dz), 0.48);
+      hy = 0.035 + lift;
+      P.trim(roundBar([lane, hy, -0.35 + dz], [lane, hy, 0.255 + dz], 0.017, seg), tone);   // into the head's face
+      P.steel(place(moldedBox(0.075, 0.075, 0.15, 0.01, 1, 0.008), lane, 0.038 + lift, 0.33 + dz), 0.48);
     } else {
-      P.steel(sweptTube([[lane, 0.026, -0.38 + dz], [lane, 0.026, 0.3 + dz], [lane, 0.04, 0.36 + dz], [lane, 0.07, 0.38 + dz]], 0.012, 5, 6), 0.5);
+      hy = 0.026 + lift; hr = 0.012;
+      P.steel(sweptTube([[lane, hy, -0.38 + dz], [lane, hy, 0.3 + dz], [lane, hy + 0.014, 0.36 + dz], [lane, hy + 0.044, 0.38 + dz]], 0.012, 5, 6), 0.5);
     }
-    for (const cz of [-0.2, 0.22]) P.kit(place(block(0.05, 0.05, 0.035), lane, 0.026, cz), 0.88);
+    for (const cz of [-0.2, 0.22]) {
+      const base = hy - hr;                                         // the saddle's top meets the handle's underside
+      P.kit(place(block(0.05, base, 0.035), lane, base / 2, cz), 0.88);
+      // the strap over the handle: a steel band from saddle to saddle round its top
+      const pts: number[] = [];
+      const arc = [Math.PI, Math.PI * 0.75, Math.PI * 0.5, Math.PI * 0.25, 0];
+      for (let k = 0; k < arc.length - 1; k++) {
+        const a0 = arc[k], a1 = arc[k + 1], R = hr + 0.006;
+        const p0 = [lane + Math.cos(a0) * R, hy + Math.sin(a0) * R], p1 = [lane + Math.cos(a1) * R, hy + Math.sin(a1) * R];
+        const z0 = cz - 0.012, z1 = cz + 0.012;
+        // outward faces only (wound away from the handle)
+        pts.push(p0[0], p0[1], z0, p1[0], p1[1], z1, p1[0], p1[1], z0, p0[0], p0[1], z0, p0[0], p0[1], z1, p1[0], p1[1], z1);
+      }
+      const strap = new THREE.BufferGeometry();
+      strap.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      strap.computeVertexNormals();
+      P.steel(withBoxUV(strap), 0.5);
+    }
   });
 }
 
@@ -913,22 +1065,64 @@ export function buildLog(P: AccessoryPainter, len: number, R: number, tone: numb
   }
 }
 
-/** A 200 L steel drum along `transverse` X or Z: rolled chimes, two rolling hoops, bung caps. Centre on the origin. */
-export function drum200(P: AccessoryPainter, cx: number, transverse: boolean, tone: number): void {
+/**
+ * A 200 L steel drum along `transverse` X or Z: rolled chimes, two rolling hoops, bung caps. Centre on the origin.
+ * Round 5 (2026-10-08; wave 255: "identical smooth tubes. Give them rims and ribs, rust at the straps, spill streaks and
+ * some variation"): given an issue colour, the drum is painted in it rather than the scheme's kit paint, its hoops swaged
+ * a full 1.5 cm proud, rust baked into the paint along the hoops where the straps chafe and a fuel stain run down its
+ * crown from the bung end, each drum to its own seed.
+ */
+export function drum200(P: AccessoryPainter, cx: number, transverse: boolean, tone: number, rgb?: RGB, seed = 0): void {
   const R = 0.28, L = 0.85;
   const seg = near(P) ? 14 : 9;
-  const hoop = (y: number): Array<readonly [number, number]> => [[R, y - 0.016], [R + 0.012, y], [R, y + 0.016]];
+  const rise = rgb ? 0.015 : 0.012;
+  const hoop = (y: number): Array<readonly [number, number]> => [[R, y - 0.018], [R + rise, y], [R, y + 0.018]];
   const profile: Array<readonly [number, number]> = [[0.0005, 0.01], [R - 0.012, 0.012], [R + 0.004, 0], [R, 0.02],
     ...(near(P) ? hoop(L * 0.29) : []), ...(near(P) ? hoop(L * 0.71) : []), [R, L - 0.02], [R + 0.004, L], [R - 0.012, L - 0.012], [0.0005, L - 0.01]];
   const body = latheY(profile, seg);
   if (transverse) place(body, cx - L / 2, 0, 0, 0, 0, -Math.PI / 2);
   else place(body, cx, 0, -L / 2, Math.PI / 2, 0, 0);
-  P.kit(body, tone);
+  if (!rgb) P.kit(body, tone);
+  else {
+    P.paint(body, scaleRgb(rgb, tone), 0.28);
+    weatherDrum(body, cx, transverse, L, seed);
+  }
   if (near(P)) {
     const cap = latheY([[0.0005, 0], [0.03, 0], [0.03, 0.016], [0.0005, 0.018]], 8);
     if (transverse) P.steel(place(cap, cx + L / 2, R * 0.55, 0, 0, 0, -Math.PI / 2), 0.5);
     else P.steel(place(cap, cx, R * 0.55, L / 2, Math.PI / 2, 0, 0), 0.5);
   }
+}
+
+/**
+ * Weather a painted drum's baked colours in place (round 5): rust along each rolling hoop where the straps ride (warm,
+ * darker, uneven round the drum), and a fuel stain run down the crown from the bung end. `body` is the placed drum (axis
+ * along X when `transverse`, else Z, centred on `cx` / the origin); its colour attribute is the paint drum200 baked.
+ */
+function weatherDrum(body: THREE.BufferGeometry, cx: number, transverse: boolean, L: number, seed: number): void {
+  const pos = body.getAttribute('position'), col = body.getAttribute('color');
+  if (!col) return;
+  const n = bagNoise(seed, 0xd2);
+  const stainAt = Math.PI / 2 + (n(1) - 0.5) * 0.8;   // near the top, off centre
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const along = transverse ? x - cx + L / 2 : z + L / 2;           // 0 .. L from one head
+    const a = transverse ? Math.atan2(y, z) : Math.atan2(y, x - cx);  // round the axis, PI/2 on top
+    const u = along / L;
+    let k0 = 1, k1 = 1, k2 = 1;
+    // rust at the hoops (0.29 and 0.71 of the length), patchy round the drum
+    const g0 = ((u - 0.29) * L) / 0.03, g1 = ((u - 0.71) * L) / 0.03;
+    const hoopNear = Math.max(Math.exp(-(g0 * g0)), Math.exp(-(g1 * g1)));
+    const patch = 0.5 + 0.5 * Math.sin(a * 3 + n(2) * 6) * Math.sin(a * 5 + n(3) * 6);
+    const rust = hoopNear * (0.35 + 0.65 * patch);
+    k0 *= 1 + rust * 0.45; k1 *= 1 - rust * 0.18; k2 *= 1 - rust * 0.5;
+    // a fuel stain from the bung end down the crown, fading along the drum
+    const da = Math.atan2(Math.sin(a - stainAt), Math.cos(a - stainAt));
+    const stain = Math.exp(-((da / 0.32) ** 2)) * Math.max(0, 1 - u / (0.45 + 0.3 * n(4)));
+    const dark = 1 - stain * 0.38;
+    col.setXYZ(i, col.getX(i) * k0 * dark, col.getY(i) * k1 * dark, col.getZ(i) * k2 * dark * 0.96);
+  }
+  col.needsUpdate = true;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

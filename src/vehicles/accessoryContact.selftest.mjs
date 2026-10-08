@@ -32,15 +32,16 @@ const IDS = Object.freeze([
   'leclerc', 'merkava4_trophy', 't72b3m', 'm1a2_tusk', 'leo2a6',
   'abramsx', 'cv90_x', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125_x', 't62mv1_x', 'griffin_viper',
 ]);
-// the ratchets (2026-10-08, round 4's census at fcc68d78b, cell borders searched, edges sampled): floating and clipping
-// accessory pieces per tank; any other tank is held to 0
+// the ratchets: floating and clipping accessory pieces per tank; any other tank is held to 0. Round 4's census at
+// fcc68d78b (cell borders searched, edges sampled) found 13 and 49; round 5's stowage pass (2026-10-08) took them to 12
+// and 22: smoke brackets laid on the cheek, hung loads' wall feet under their arms, cans racks' straps clear of the
+// cans, tool and cable clamps under straps, the bucket's ears on its wall, the crate's flasks under its lid
 const KNOWN_FLOATING = Object.freeze({
-  ua_t84_oplot_m: 1, type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
+  type99a: 1, abramsx: 8, fv510_milan: 1, bmp3m_dragun125_x: 2,
 });
 const KNOWN_CLIPPING = Object.freeze({
-  leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 4, challenger1: 2, m60a1: 1, leclerc: 1, merkava4_trophy: 2, t72b3m: 7,
-  m1a2_tusk: 1, leo2a6: 2, abramsx: 8, cv90_x: 2, fv510_milan: 2, m46_patton: 8, bmp3m_dragun125_x: 2, t62mv1_x: 2,
-  griffin_viper: 2,
+  t90m_proryv: 1, m60a1: 1, leclerc: 1, t72b3m: 2, m1a2_tusk: 1, abramsx: 7, m46_patton: 4, bmp3m_dragun125_x: 1,
+  t62mv1_x: 2, griffin_viper: 2,
 });
 
 function accessoryKind(object) {
