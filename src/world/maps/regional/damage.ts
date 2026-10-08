@@ -23,7 +23,8 @@ import { storeyFaces, type HousePlan } from './house.ts';
 import type { RegionalKitPlan } from './index.ts';
 import type { ArchitectureStyle } from './types.ts';
 import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
-import { breachHouse, damagedHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
+import { breachHouse, collapseHouse, damagedHouse, sectionDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
+import { debrisPiece } from './debris.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
 const WHITE: Rgb = [1, 1, 1];
@@ -422,6 +423,9 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       describe: (input) => describeHouse(style, input),
       breach: (anatomy, hole, out) => breachHouse(anatomy, hole, out),
       damaged: (anatomy, seed, out) => damagedHouse(anatomy, seed, out),
+      piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
+      collapse: (anatomy, seed, out) => collapseHouse(anatomy, seed, out),
+      sectionDown: (anatomy, section, seed, out) => sectionDownHouse(anatomy, section, seed, out),
     };
     registerStructureDamageKit(kit);
   }

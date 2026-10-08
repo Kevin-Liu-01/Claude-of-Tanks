@@ -164,3 +164,77 @@ for (const [styleId, id, wall] of SAMPLE) {
   }
 }
 console.log(`house damage: ${stages} damaged stages deterministic and within their caps (${spalls} spalls, ${(dpcs / stages).toFixed(1)} pieces a stage), the glass hidden`);
+
+// 4. collapse: deterministic, within a house's caps (16,000 vertices, 240 pieces), the whole structure hidden, the
+// remnant within the footprint and below the storey, the heap within the mound's footprint and seated on its surface
+import { domeMound } from './fracture.ts';
+let falls = 0, fv = 0;
+for (const [styleId, id, wall] of SAMPLE) {
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
+  if (!style?.builders[id]) continue;
+  const { parts, w, d, h } = build(style, id, 17, wall);
+  const describe = kitOf(id, styleId, 'describe'), collapse = kitOf(id, styleId, 'collapse');
+  const a = describe({ structureIdx: 4, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
+    massClass: 'house', seed: 12, kitPlan: regionalKitPlanOf(parts) });
+  assert.ok(a && collapse, `${styleId}/${id}: a collapse builder`);
+  const mound = domeMound(a), rx = a.w / 2 + 1.05, rz = a.d / 2 + 1.05;
+  const one = writers(16000, 240), two = writers(16000, 240);
+  const res = collapse(a, 77, one), again = collapse(a, 77, two);
+  assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id}: a collapse writes the same bytes twice`);
+  assert.deepEqual(JSON.stringify(two.list), JSON.stringify(one.list));
+  assert.deepEqual(again, res);
+  assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${styleId}/${id}: a collapse hides the structure`);
+  for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
+    const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+    if (run.role === 'rubble') {
+      assert.ok((x / (rx + 0.6)) ** 2 + (z / (rz + 0.6)) ** 2 <= 1.0001, `${styleId}/${id}: rubble inside the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
+      assert.ok(y >= mound(x, z) - 1.2 && y <= mound(x, z) + 1.6, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${mound(x, z).toFixed(2)})`);
+    } else if (run.role === 'remnant') {
+      assert.ok(Math.abs(x) <= a.w / 2 + 1 && Math.abs(z) <= a.d / 2 + 1, `${styleId}/${id}: the remnant inside the footprint`);
+      assert.ok(y <= Math.max(a.storeys[0].y1 + 0.5, ...a.chimneys.map((c) => c.y1)) + 0.05, `${styleId}/${id}: the remnant no taller than its storey or a stack`);
+    }
+  }
+  falls++; fv += one.mesh.vertices;
+}
+console.log(`house damage: ${falls} collapses deterministic, within a house's caps (mean ${(fv / falls).toFixed(0)} vertices), the structure hidden, remnants in the footprint, heaps on the mound`);
+
+// 5. the debris pieces: every shape and variant a small closed mesh inside the unit cube, the same twice
+import { damageRng } from '../../destructionKit.ts';
+const SHAPES = ['chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard', 'clod', 'straw', 'rebar'];
+const piece = kitOf('cottage', 'hessian', 'piece');
+let meshes = 0;
+for (const shape of SHAPES) for (let variant = 0; variant < 4; variant++) {
+  const g = piece('regionalStone', shape, variant, damageRng(9 + variant)), g2 = piece('regionalStone', shape, variant, damageRng(9 + variant));
+  const p = g.getAttribute('position');
+  assert.ok(p && p.count >= 9 && p.count % 3 === 0, `${shape}/${variant}: a mesh of triangles`);
+  assert.deepEqual(Array.from(p.array), Array.from(g2.getAttribute('position').array), `${shape}/${variant}: deterministic`);
+  for (const v of p.array) assert.ok(Number.isFinite(v) && Math.abs(v) <= 0.85, `${shape}/${variant}: inside the unit cube (${v})`);
+  assert.ok(g.getAttribute('normal') && g.getAttribute('uv') && g.getAttribute('color'), `${shape}/${variant}: normals, uvs and a colour`);
+  g.dispose(); g2.dispose(); meshes++;
+}
+console.log(`house damage: ${meshes} debris pieces (${SHAPES.length} shapes x 4 variants), small meshes inside the unit cube, deterministic`);
+
+// 6. the roof falls (sectionDown on the roof's section): deterministic, within its caps (6,000 vertices, 160 pieces),
+// the roof's covering hidden, what is left inside the house's footprint and under its ridge
+let roofs = 0;
+for (const [styleId, id, wall] of SAMPLE) {
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
+  if (!style?.builders[id]) continue;
+  const { parts, w, d, h } = build(style, id, 19, wall);
+  const describe = kitOf(id, styleId, 'describe'), sectionDown = kitOf(id, styleId, 'sectionDown');
+  const a = describe({ structureIdx: 5, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
+    massClass: 'house', seed: 14, kitPlan: regionalKitPlanOf(parts) });
+  if (!a?.roof) continue;
+  const one = writers(6000, 160), two = writers(6000, 160);
+  const res = sectionDown(a, a.roof.section, 31, one), again = sectionDown(a, a.roof.section, 31, two);
+  assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id}: the roof falls the same way twice`);
+  assert.deepEqual(again, res);
+  assert.ok(res.hides.some((x) => x.section === a.roof.section && x.partClass === 'roof'), `${styleId}/${id}: the fallen roof's covering hidden`);
+  for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
+    const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+    assert.ok(Math.abs(x) <= a.w / 2 + 1.5 && Math.abs(z) <= a.d / 2 + 1.5, `${styleId}/${id}: the fallen roof inside the footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
+    assert.ok(y <= a.roof.ridgeY + 0.3 && y >= -0.1, `${styleId}/${id}: under the ridge (${y.toFixed(2)} of ${a.roof.ridgeY.toFixed(2)})`);
+  }
+  roofs++;
+}
+console.log(`house damage: ${roofs} roofs fall deterministically within their caps, their coverings hidden, what is left under the ridge`);
