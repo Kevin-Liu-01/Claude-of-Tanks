@@ -17,7 +17,7 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden' | 'piazza'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
@@ -29,7 +29,7 @@ export type LandmarkKind =
   // temples
   | 'bengalTemple'
   // village works
-  | 'lavoir' | 'khan'
+  | 'lavoir' | 'khan' | 'houseRow'
   // harbour works
   | 'lighthouse' | 'mole' | 'quay' | 'slipway'
   // wrecks

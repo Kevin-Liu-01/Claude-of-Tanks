@@ -266,6 +266,45 @@ export const path: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 
+// ---------------------------------------------------------------------------------------------------------- piazza
+
+/**
+ * A town's paved square (the landmarks lane, 2026-10-07, Saltwind round 4: the campanile's piazza was "a thin raised
+ * sheet… ends in a straight hard edge on bare dirt"; it needs "a kerb, thickness and contact"): the map's masonry flags
+ * draped a step over the ground inside a kerb of dressed blocks round its edge — each block its own length and tone,
+ * a hand proud of the flags, its outer face carried down past the ground's lowest point under it, so the square is set
+ * into the field rather than laid on it. The frame: `width` across x, `depth` along z, the kerb's outside the outline.
+ * Dressing: a hull drives over it as over the ground.
+ */
+export const piazza: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(4, Number(ctx.params.width)), D = Math.max(4, Number(ctx.params.depth)), K = Math.max(0.2, Number(ctx.params.kerb) || 0.38);
+  const ground = ctx.ground ?? ((): number => 0);
+  const FLAGS = 0.12, KERB_TOP = 0.17, FOOT = 0.35, JOINT = 0.012, look = ctx.variant;
+  // the flags, a step over the ground inside the kerb (their skirts behind it)
+  drapedRect(sink, 'stone', ctx.ground, { cx: 0, cz: 0, hw: W / 2 - K, hd: D / 2 - K }, { lift: FLAGS, cell: 1.5, skirt: 0.25 });
+  /** One kerb block over the rectangle [x0, x1] × [z0, z1]: from under its lowest ground to a hand over its highest. */
+  const block = (x0: number, x1: number, z0: number, z1: number) => {
+    const gs = [ground(x0, z0), ground(x1, z0), ground(x1, z1), ground(x0, z1)];
+    const tone = 0.9 + look() * 0.16;
+    sink.span('stone', x0, Math.min(...gs) - FOOT, z0, x1, Math.max(...gs) + KERB_TOP, z1, { decor: true, tint: [tone, tone * 0.99, tone * 0.96] });
+  };
+  /** A run of blocks from a to b along one axis (0.9 to 1.5 m each, a joint between). */
+  const run = (a: number, b: number, at: (t0: number, t1: number) => void) => {
+    for (let t = a; t < b - 0.05;) {
+      const t1 = Math.min(b, t + 0.9 + look() * 0.6);
+      at(t, b - t1 < 0.4 ? b : t1);
+      t = (b - t1 < 0.4 ? b : t1) + JOINT;
+    }
+  };
+  // the long runs on the front and back carry the corners; the sides run between them
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, D / 2 - K, D / 2));
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, -D / 2, -D / 2 + K));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(W / 2 - K, W / 2, t0, t1));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(-W / 2, -W / 2 + K, t0, t1));
+  return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
+};
+
 // ---------------------------------------------------------------------------------------------------------- churchyard
 
 const GREEN_IRON = rgb(0x4f7d5a);

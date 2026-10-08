@@ -191,7 +191,7 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
 }
 
 /** The kinds whose ground is paved: no grass grows up through them (their footprint becomes ground-cover holes). */
-const GROUND_HOLE_KINDS: ReadonlySet<string> = new Set(['path', 'quay', 'slipway']);
+const GROUND_HOLE_KINDS: ReadonlySet<string> = new Set(['path', 'quay', 'slipway', 'piazza']);
 
 /** The admission of one piece: null when it may stand, else the reason it may not. */
 function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [number, number, number]>, placement: LandmarkPlacement,

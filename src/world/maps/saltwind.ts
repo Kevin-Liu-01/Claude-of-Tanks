@@ -142,8 +142,15 @@ export default {
       // nothing; it lies in the zone's disc, which a dressing piece may), the campanile on its broad step, its stone
       // streaked from each string course. The piazza is laid into the finished map (ground 'veto', an open surface): it
       // reserves no ground, so every record the map placed round the campanile stands where it stood.
-      { kind: 'path', x: -81, z: 10, yawDeg: -90, ground: 'veto', name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
+      // round 4 (2026-10-07; gauntlet wave 244: the piazza "a thin raised sheet… ends in a straight hard edge on bare dirt";
+      // "it needs a kerb, thickness and contact, and house fronts enclosing it"): the square paved a step over the field
+      // inside its kerb of dressed blocks, run north and south to the fronts of two rows of village houses that close it
+      // on those sides (the kit's dwellings, kept clear of the two zones' discs either side; the north row 2 m west for
+      // the eastern disc), its east and west open toward the market crossroads and the village square.
+      { kind: 'piazza', x: -81, z: 10, yawDeg: 0, ground: 'veto', name: "the campanile's piazza", params: { width: 18, depth: 29.0 } },
       { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
+      { kind: 'houseRow', x: -83, z: 28.75, yawDeg: 180, ground: 'veto', name: "the piazza's north houses", params: { kit: 'dalmatian', count: 3, width: 6.4, depth: 8.6 } },
+      { kind: 'houseRow', x: -81, z: -8.75, yawDeg: 0, ground: 'veto', name: "the piazza's south houses", params: { kit: 'dalmatian', count: 3, width: 6.4, depth: 8.6 } },
     ],
     sourcedPalette: 'coastal',
     extraKits: ['river'],
