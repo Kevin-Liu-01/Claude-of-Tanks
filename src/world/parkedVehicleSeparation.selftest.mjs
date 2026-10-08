@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, parkedFootprintsOverlap, polygonGap, seatCartsClear, separateParkedVehicles,
-  shapePolygons,
+  shapePolygons, VEHICLE_SLIDE_MAX_M,
 } from './parkedVehicleSeparation.ts';
 import { createCollisionManifestLoader } from '../../server/collisionManifestLoader.ts';
 import { MAP_IDS } from './maps/index.ts';
@@ -110,6 +110,15 @@ assert.equal(parkedFootprintsOverlap(car(0, 0), box, diagonal, box), parkedFootp
   const clear = { kind: 'handcart', x: 0, z: 5, yaw: 0, sc: 1 };
   assert.equal(run(clear, { move: () => assert.fail('a clear cart stays') }).blocked, 0);
   assert.equal(CART_SLIDE_MAX_M, 3, 'the ruling\'s reach');
+  // 2026-10-08: a vehicle may go further (its own reach, `maxSlide`)
+  const lorry = { kind: 'truck', x: 0, z: 0.2, yaw: Math.PI / 2, sc: 1 };
+  const long = (x, z) => box(x, z, 1.1, 4.2);
+  const r2 = seatCartsClear([lorry], { blocked: (c, x, z) => polygonGap(long(x, z), fence).gap < 0.05,
+    away: (c) => { const q = polygonGap(long(c.x, c.z), fence); return [q.nx, q.nz]; },
+    seatOk: (c, x, z) => z > 3, move: (c, x, z) => { c.x = x; c.z = z; }, drop: (c) => { c.dropped = true; },
+    maxSlide: () => VEHICLE_SLIDE_MAX_M });
+  assert.equal(r2.slid.length, 1, 'a vehicle slides past the cart\'s 3 m when its seat needs it');
+  assert.ok(lorry.z > 3 && r2.slid[0].by <= VEHICLE_SLIDE_MAX_M, `within its own reach (${r2.slid[0].by} m)`);
 }
 
 // every map's committed collision shard: no two vehicles' ground footprints (the convex hull of their contact band)
@@ -175,6 +184,24 @@ function decodeShape(s) {
   if (s[0] === 'c') return { kind: 'circle', cx: s[1], cz: s[2], r: s[3] };
   return { kind: 'convex', cx: 0, cz: 0, points: s[0] === 'w' ? s.slice(3) : s.slice(1) };
 }
+// 2026-10-08 (the map-vehicles lane's placement audit over the merge): the parked vehicles too stand clear of every
+// other obstacle — the seating pass takes them after the lampposts, the sandbags, the hulks, the rubble and the kerbs
+let parkedClear = 0;
+for (const mapId of MAP_IDS) {
+  const obstacles = loader.get(mapId).obstacles;
+  for (const cart of obstacles.filter((r) => VEHICLES.has(r.k) && !CARTS.has(r.k))) {
+    parkedClear++;
+    const own = shardPolys(cart);
+    for (const other of obstacles) {
+      if (other === cart || VEHICLES.has(other.k)) continue;
+      if (Math.abs(other.b[0] - cart.b[0]) > 18 || Math.abs(other.b[2] - cart.b[2]) > 18) continue;
+      for (const a of own) for (const b of shardPolys(other)) {
+        const g = polygonGap(a, b).gap;
+        assert.ok(g >= -0.02, `${mapId}: a ${cart.k} at (${cart.b[0].toFixed(1)}, ${cart.b[2].toFixed(1)}) stands ${(-g).toFixed(2)} m into a ${other.k ?? 'solid'}`);
+      }
+    }
+  }
+}
 for (const mapId of MAP_IDS) {
   const obstacles = loader.get(mapId).obstacles;
   for (const cart of obstacles.filter((r) => CARTS.has(r.k))) {
@@ -197,13 +224,15 @@ for (const mapId of MAP_IDS) {
 {
   const obstacles = loader.get('longleaf').obstacles;
   const haycart = obstacles.filter((r) => r.k === 'haycart')
-    .sort((a, b) => Math.hypot(a.b[0] + 292.5, a.b[2] + 217.32) - Math.hypot(b.b[0] + 292.5, b.b[2] + 217.32))[0];
-  assert.ok(haycart && Math.hypot(haycart.b[0] + 292.5, haycart.b[2] + 217.32) <= 0.5, 'Longleaf\'s haycart stands across the road from its steep station');
+    .sort((a, b) => Math.hypot(a.b[0] + 291.71, a.b[2] + 217.18) - Math.hypot(b.b[0] + 291.71, b.b[2] + 217.18))[0];
+  // (2026-10-08: 0.8 m further along the road than the 10-07 shards had it — the seating pass now keeps a cart off a
+  // destructible's refitted band as well as its box, and the fence modules' bands outreach their boxes)
+  assert.ok(haycart && Math.hypot(haycart.b[0] + 291.71, haycart.b[2] + 217.18) <= 0.5, 'Longleaf\'s haycart stands across the road from its steep station');
   assert.ok(!obstacles.some((r) => (r.k === 'haycart' || r.k === 'handcart') && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) <= CART_SLIDE_MAX_M),
     'no cart is left on the bank by the fence line');
   const fences = obstacles.filter((r) => r.k === 'fenceplank' && Math.hypot(r.b[0] + 275.5, r.b[2] + 204.3) < 8);
   assert.ok(fences.length > 0, 'the fence line is there');
 }
 console.log(`parkedVehicleSeparation.selftest: the pass's footprint, order, seat and drop rules; ${vehicles} parked vehicles `
-  + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m; ${carts} carts, `
-  + 'none inside an obstacle; Longleaf\'s haycart across the road from its steep station');
+  + `on ${MAP_IDS.length} maps' shards, ${pairs} neighbouring pairs, none within ${PARKED_VEHICLE_CLEARANCE} m, ${parkedClear} clear of every `
+  + `other obstacle; ${carts} carts, none inside an obstacle; Longleaf's haycart across the road from its steep station`);

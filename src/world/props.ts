@@ -93,11 +93,15 @@ import {
 } from './maps/inhabitKit.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
+import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
-import { boatMudHoles, buildBoatMud, buildRunnerTracks, buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
 import {
-  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
+  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildVehicleContactShadows,
+  vehicleShadowCaster,
+} from './maps/vehicleContactShadow.ts';
+import {
+  CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons, VEHICLE_SLIDE_MAX_M,
   type FootprintPolygon,
 } from './parkedVehicleSeparation.ts';
 import {
@@ -2627,6 +2631,13 @@ function resolveDestructibleMeta(
 }
 
 const CART_KINDS: ReadonlySet<string> = new Set(Object.keys(CART_RECEIPTS));
+/**
+ * The records seated on the ground under their footprint, tilted to it (cartGroundPose): the carts, and since
+ * 2026-10-08 the parked vehicles (the map-vehicles lane's placement audit over the merge: seated level at the lowest
+ * ground under them, 382 vehicles over 33 maps stood with a corner 0.2-1.9 m inside the slope uphill, their wheels cut
+ * by it). A vehicle with an authored tilt keeps it.
+ */
+const GROUND_POSED_KINDS: ReadonlySet<string> = new Set([...CART_KINDS, ...Object.keys(CIVILIAN_VEHICLE_RECEIPTS)]);
 
 interface CartGroundPose { y: number; tiltX: number; tiltZ: number; min: number; max: number; steep: boolean }
 
@@ -2649,6 +2660,14 @@ function cartGroundPose(heightField: Pick<HeightField, 'getHeightAt'>, x: number
     min: Math.min(fl, fr, bl, br), max: Math.max(fl, fr, bl, br),
     steep: Math.atan(Math.hypot(Math.tan(pitch), Math.tan(roll))) > max,
   };
+}
+
+/**
+ * How far a cart sits into the ground under it: 3 cm, and a sled on snow (its runners recorded: cartKit.ts) the runners'
+ * own sink deeper (round 4, wave 260: "no runner sink"; cartBodies.ts runnerLips presses the snow up round them).
+ */
+function cartSink(meta: { runners?: unknown }): number {
+  return 0.03 + (meta.runners ? RUNNER_SNOW_SINK_M : 0);
 }
 
 function groundDestructiblePlacement(
@@ -2835,11 +2854,11 @@ function addDestructibleRecord(
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
   let placement: GroundedDestructiblePlacement;
-  if (CART_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
-    // a cart sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
+  if (GROUND_POSED_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
+    // a cart or a parked vehicle sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
     const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
     tiltX = pose.tiltX; tiltZ = pose.tiltZ;
-    placement = { y: pose.y - 0.03, support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+    placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
   } else {
     placement = groundDestructiblePlacement(context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ);
   }
@@ -2919,10 +2938,10 @@ function relocateParkedVehicleRecord(context: DestructibleBuildContext, record: 
   }
   const meta = resolveDestructibleMeta(context, record.kind);
   let placement: GroundedDestructiblePlacement;
-  if (CART_KINDS.has(record.kind)) {
-    // a cart slid to a clear seat takes that seat's ground pose (cartGroundPose), as it took its first one
+  if (GROUND_POSED_KINDS.has(record.kind)) {
+    // a cart or a vehicle slid to a clear seat takes that seat's ground pose (cartGroundPose), as it took its first one
     const pose = cartGroundPose(context.heightField, x, z, record.yaw, (meta.hw ?? meta.r) * record.sc, (meta.hl ?? meta.r) * record.sc);
-    placement = { y: pose.y - 0.03, support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
+    placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
     context.euler.set(pose.tiltX, record.yaw, pose.tiltZ, 'YXZ');
     context.quaternion.setFromEuler(context.euler);
     matrix.compose(_posv.set(x, placement.y, z), context.quaternion, _scalev.set(record.sc, record.sc, record.sc));
@@ -7570,6 +7589,13 @@ ${snowCap ? `
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
         if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
+        // the map-vehicles lane (2026-10-08, the placement audit over the merge): a hulk never stands inside a building,
+        // a hut, a garage, a wall, a fence, a barrier or a boulder placed before it (Orchard's Merkava stood in a
+        // checkpoint hut, Airfield's hulks in a quonset hut and a motor pool, Urban's T-72 2 m through a plank fence):
+        // its footprint against every solid over half a metre tall, a hand's breadth of slack, nor with a tree through
+        // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
+        // against the low things, a kerb, a log, a crate on its side)
+        if (hulkMeetsTallSolid(x, z, baked.hx, baked.hz, yaw)) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -7634,6 +7660,19 @@ ${snowCap ? `
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
         return true;
+      }
+      function hulkMeetsTallSolid(x: number, z: number, hx: number, hz: number, yaw: number): boolean {
+        const s = Math.sin(yaw), c = Math.cos(yaw), r = Math.hypot(hx, hz);
+        const hull: FootprintPolygon = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+          [x + u * hx * c + v * hz * s, z - u * hx * s + v * hz * c] as const);
+        for (const list of [obstacles, sceneryTrees] as const) {
+          for (const ob of list) {
+            if (ob.kind === 'tank-wreck' || ob.max[1] - ob.min[1] < 0.5) continue;
+            if (ob.max[0] < x - r || ob.min[0] > x + r || ob.max[2] < z - r || ob.min[2] > z + r) continue;
+            for (const poly of shapePolygons(ob)) if (polygonGap(hull, poly).gap < -0.1) return true;
+          }
+        }
+        return false;
       }
       let placedW = 0;
       function* placeAuthoredWrecks(): Generator<PropsBuildSlice, void, void> {
@@ -7941,6 +7980,12 @@ ${snowCap ? `
       const pr = 1.6 + rrng() * 1.3;
       const seat = shiftClearOfRoadCore(heightField, x, z, (px, pz) => discClearOfRoadCore(heightField, px, pz, pr))
         ?? [x, z];
+      // the map-vehicles lane (2026-10-08, the placement audit over the merge): a pile keeps half a metre off a tank
+      // hulk placed before it (Skybridge's Sheridan lay 2.7 m deep in one); a refused pile skips its own draws, so the
+      // later candidates' seats move, on the maps where a pile met a hulk only
+      if (tankWreckSpots.some((w) => Math.hypot(Math.max(0, Math.abs(seat[0] - w.x) - w.hx), Math.max(0, Math.abs(seat[1] - w.z) - w.hz)) < pr + 0.5)) {
+        return false;
+      }
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
@@ -8857,6 +8902,7 @@ ${snowCap ? `
   const mooredHulls: { mesh: THREE.Mesh; y: number; phase: number }[] = [];
   const waterContacts: WaterDisturbance[] = [];
   function detachAnimatedDressing(): void {
+    const rings: Array<{ x: number; z: number; yaw: number; halfLength: number; halfWidth: number; surfaceY: number }> = [];
     for (const record of animatedDressing) {
       const bucket = buckets[record.bucket];
       for (const g of record.geometries) {
@@ -8881,8 +8927,14 @@ ${snowCap ? `
       // its yaw), lapping the water round it as a standing tank's does
       waterContacts.push({ x: record.x, z: record.z, strength: 0.55, dirX: Math.cos(record.yaw), dirZ: -Math.sin(record.yaw),
         speed: 0, halfLength: record.halfLength, halfWidth: record.halfWidth });
+      // round 4 (wave 260): its foam, contact and ripples on the surface it floats in (desktop: a transparent decal)
+      const surfaceY = heightField.getWaterSurfaceHeightAt?.(record.x, record.z)
+        ?? heightField.getHeightAt(record.x, record.z) + (heightField.getWaterDepthAt?.(record.x, record.z) ?? 0);
+      rings.push({ x: record.x, z: record.z, yaw: record.yaw, halfLength: record.halfLength, halfWidth: record.halfWidth, surfaceY });
     }
     animatedDressing.length = 0;
+    const ringMesh = mobileProps ? null : buildHullWaterRings(rings, aniso);
+    if (ringMesh) group.add(ringMesh);
   }
   detachAnimatedDressing();
 
@@ -8933,9 +8985,15 @@ ${snowCap ? `
   // a building, rubble, a rock), a tree, a vehicle or a cart seated before it slides the smallest way that clears it,
   // within 3 m and on its own lot (its way out crosses nothing it did not already stand in), or is dropped
   // (parkedVehicleSeparation.ts seatCartsClear). Longleaf's haycart stood in a fence line. No stream draws.
+  // 2026-10-08 (the map-vehicles lane's placement audit over the merge): the parked vehicles too, within 6 m. The
+  // lampposts, the sandbag emplacements, the hulks, the street rubble and the kerbs are placed after the roadside
+  // traffic and never looked for it (a lamp post through a Ruinspires box truck, a flatbed 3 m into rubble, a Verdant
+  // truck 0.9 m into sandbags); this pass runs after all of them.
   function seatCartRecords(): void {
     const cartKinds = new Set(Object.keys(CART_RECEIPTS));
-    const carts = destructibles.filter((record) => cartKinds.has(record.kind) && record.state === 0 && !record.dropped);
+    const vehicleKinds = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
+    const carts = destructibles.filter((record) => (cartKinds.has(record.kind) || vehicleKinds.has(record.kind)) && record.state === 0
+      && !record.dropped);
     if (!carts.length) return;
     const parked = new Map<CollisionRecord, DestructibleRecord>();
     for (const record of destructibles) {
@@ -8944,7 +9002,8 @@ ${snowCap ? `
       }
     }
     const trees = sceneryTrees, pads = [L.spawns.player, ...L.spawns.enemies];
-    const reach = CART_SLIDE_MAX_M + 6, CART_CLEARANCE = 0.05;
+    const slideOf = (record: DestructibleRecord) => (vehicleKinds.has(record.kind) ? VEHICLE_SLIDE_MAX_M : CART_SLIDE_MAX_M);
+    const CART_CLEARANCE = 0.05;
     // a destructible building still wears its placement box here; the finalization refits it to its ground-bearing
     // solids, which can stand up to ~0.8 m past that box (Skybridge's quonset hut, a porch, a step), so a cart keeps a
     // metre more off a building's box than off a solid that is final already
@@ -8977,16 +9036,31 @@ ${snowCap ? `
       }
       return out;
     };
+    // (2026-10-08) a destructible's placed box is refitted at finalization to the solids its geometry bears on the ground,
+    // which can outreach the box (a bunker's band 5.3 m from its centre, its box 4.0 m: Cinder Junction's estate car
+    // stood 0.88 m inside one once its pillbox was refitted): any other destructible meets a seat by its box and by its
+    // band's extent at its pose (destructibleFootprint, measured once per kind outside every stream)
+    const owners = new Map<CollisionRecord, DestructibleRecord>();
+    for (const record of destructibles) if (record.ob && !parked.has(record.ob) && !buildings.has(record.ob)) owners.set(record.ob, record);
+    const bandPolys = (ob: CollisionRecord, record: DestructibleRecord): FootprintPolygon[] => {
+      const [ax, al] = destructibleFootprint(record.kind);
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw), hw = ax * record.sc, hl = al * record.sc;
+      const band: FootprintPolygon = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+        [record.x + u * hw * c + v * hl * s, record.z - u * hw * s + v * hl * c] as const);
+      return [...shapePolygons(ob), band];
+    };
     type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null };
     const nearOf = new Map<DestructibleRecord, Near[]>();
     for (const cart of carts) {
       const near: Near[] = [];
+      const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 2;
       const x0 = cart.x - reach, x1 = cart.x + reach, z0 = cart.z - reach, z1 = cart.z + reach;
       for (const list of [obstacles, trees] as const) {
         for (const ob of list) {
           if (ob === cart.ob || ob === cart.col || ob.max[0] < x0 || ob.min[0] > x1 || ob.max[2] < z0 || ob.min[2] > z1) continue;
           const owner = parked.get(ob) ?? null;
-          near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : shapePolygons(ob), parked: owner });
+          const prop = owners.get(ob);
+          near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
         }
       }
       nearOf.set(cart, near);
@@ -9009,8 +9083,25 @@ ${snowCap ? `
       }
       return met;
     };
+    // a vehicle's seat is ground it can stand on (2026-10-08): within the 12-degree tilt cap, and neither twisted nor
+    // humped under it — a corner, its middle or the middle of a side 15-20 cm off the plane through its four corners
+    // (an Orchard truck on a broken bank stood with one wheel 0.44 m in the air and another in the slope)
+    const groundBad = (record: DestructibleRecord, x: number, z: number): boolean => {
+      if (!vehicleKinds.has(record.kind)) return false;
+      const type = LOCAL_TYPES[record.kind], hw = (type.hw ?? type.r) * record.sc, hl = (type.hl ?? type.r) * record.sc;
+      if (cartGroundPose(heightField, x, z, record.yaw, hw, hl).steep) return true;
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
+      const at = (lx: number, lz: number) => heightField.getHeightAt(x + lx * c + lz * s, z - lx * s + lz * c);
+      const fl = at(-hw, hl), fr = at(hw, hl), bl = at(-hw, -hl), br = at(hw, -hl);
+      if (Math.abs(fl - fr - bl + br) / 4 > 0.15) return true;
+      const mean = (fl + fr + bl + br) / 4, sx = (fr + br - fl - bl) / (4 * hw), sz = (fl + fr - bl - br) / (4 * hl);
+      for (const [lx, lz] of [[0, 0], [0, hl], [0, -hl], [hw, 0], [-hw, 0]] as const) {
+        if (Math.abs(at(lx, lz) - (mean + lx * sx + lz * sz)) > 0.2) return true;
+      }
+      return false;
+    };
     group.userData.cartSeats = seatCartsClear(carts, {
-      blocked: (cart, x, z) => meets(cart, x, z),
+      blocked: (cart, x, z) => meets(cart, x, z) || groundBad(cart, x, z),
       away: (cart) => {
         let ax = 0, az = 0;
         meets(cart, cart.x, cart.z, (nx, nz, depth) => { ax += nx * depth; az += nz * depth; });
@@ -9038,6 +9129,7 @@ ${snowCap ? `
       },
       move: (cart, x, z) => relocateParkedVehicleRecord(destructibleContext, cart, x, z),
       drop: (cart) => dropParkedVehicleRecord(destructibleContext, cart),
+      maxSlide: slideOf,
     });
   }
   seatCartRecords();
@@ -9568,6 +9660,12 @@ ${snowCap ? `
       // no blade grows up through the mud or the hull lying in it (map.ts holds these with the scenery's holes): discs
       // along each boat, the patch's run toward the water included
       group.userData.boatMudHoles = boatMudHoles(hauled, heightField);
+      // round 4 (wave 260): the mud each hull pushed up round itself as it settled
+      const rims = buildBoatMudRims(hauled, heightField);
+      if (rims) {
+        engineCtx.setupShadowMaterial(rims.material as THREE.MeshStandardMaterial);
+        group.add(rims);
+      }
     }
   }
 

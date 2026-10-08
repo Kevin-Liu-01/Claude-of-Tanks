@@ -160,6 +160,12 @@ export function shapePolygons(record: CollisionRecord): FootprintPolygon[] {
 
 /** How far a cart may slide off its seat before it is dropped instead. */
 export const CART_SLIDE_MAX_M = 3;
+/**
+ * How far a parked vehicle may slide off its seat (2026-10-08, the map-vehicles lane's placement audit over the merge:
+ * the cart ruling extended to the vehicles — a lamp post stood through a box truck at Ruinspires, a flatbed 3 m into
+ * rubble, a truck 0.9 m into a sandbag emplacement at Verdant): a vehicle is longer than a cart, so it may go further.
+ */
+export const VEHICLE_SLIDE_MAX_M = 6;
 const CART_SLIDE_STEP_M = 0.25;
 const CART_SLIDE_HEADINGS = 16;
 
@@ -174,6 +180,8 @@ export interface CartSeatOptions<T extends ParkedVehicle> {
   move(cart: T, x: number, z: number): void;
   /** Remove the cart (no seat within reach). */
   drop(cart: T): void;
+  /** How far this one may slide (CART_SLIDE_MAX_M unless given: a vehicle's VEHICLE_SLIDE_MAX_M). */
+  maxSlide?(cart: T): number;
 }
 
 export interface CartSeatReceipt {
@@ -199,7 +207,8 @@ export function seatCartsClear<T extends ParkedVehicle>(carts: readonly T[], o: 
     const headings: number[] = [];
     for (let k = 0; k < CART_SLIDE_HEADINGS; k++) headings.push(base + Math.ceil(k / 2) * (k % 2 ? 1 : -1) * step);
     let seat: [number, number] | null = null, by = 0;
-    for (let ring = 1; !seat && ring * CART_SLIDE_STEP_M <= CART_SLIDE_MAX_M + 1e-9; ring++) {
+    const reach = o.maxSlide?.(cart) ?? CART_SLIDE_MAX_M;
+    for (let ring = 1; !seat && ring * CART_SLIDE_STEP_M <= reach + 1e-9; ring++) {
       const r = ring * CART_SLIDE_STEP_M;
       for (const h of headings) {
         const x = cart.x + Math.sin(h) * r, z = cart.z + Math.cos(h) * r;
