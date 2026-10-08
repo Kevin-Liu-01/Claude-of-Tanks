@@ -5,16 +5,51 @@ import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts'
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { sampleArmorRay } from './armorFaceSampling.ts';
 import { kf41LynxWheelStock } from './kf41LynxWheelStock.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { armorLoft, turretEquipment, openTube, optic, antenna, deckGrille, mirrorX, chassisLoft } from './europeSourcePrimitives.ts';
 const { box, cylY, cylZ, cylX } = KIT;
 
+/** Split the aperture plate at its authored roof break before bending it.
+ * A cap triangle spanning both slopes invents a diagonal dent across the
+ * optical opening. The hole and all contour datums remain unchanged. */
+function foldLynxAperture(plate: THREE.ExtrudeGeometry, py: number, pz: number): void {
+  const source=plate.index?plate.toNonIndexed():plate;
+  const pos=source.getAttribute('position'),uv=source.getAttribute('uv');
+  const positions:number[]=[],texcoords:number[]=[],foldY=2.76;
+  type Vertex={p:number[];uv:number[]};
+  const clip=(poly:Vertex[],sign:number):Vertex[]=>{
+    const out:Vertex[]=[];
+    for(let i=0;i<poly.length;i++){
+      const a=poly[i],b=poly[(i+1)%poly.length],da=sign*(a.p[1]-foldY),db=sign*(b.p[1]-foldY);
+      if(da>=0)out.push(a);
+      if((da<0&&db>0)||(da>0&&db<0)){
+        const t=da/(da-db);out.push({p:a.p.map((v,k)=>v+(b.p[k]-v)*t),uv:a.uv.map((v,k)=>v+(b.uv[k]-v)*t)});
+      }
+    }
+    return out;
+  };
+  for(let i=0;i<pos.count;i+=3){
+    const triangle=Array.from({length:3},(_,j)=>({p:[pos.getX(i+j),pos.getY(i+j),pos.getZ(i+j)],uv:[uv.getX(i+j),uv.getY(i+j)]}));
+    const ys=triangle.map(v=>v.p[1]);
+    const pieces=Math.min(...ys)<foldY&&Math.max(...ys)>foldY?[clip(triangle,-1),clip(triangle,1)]:[triangle];
+    for(const poly of pieces)for(let j=1;j+1<poly.length;j++)for(const vertex of [poly[0],poly[j],poly[j+1]]){
+      const [x,y,z]=vertex.p,front=y<=foldY?1.63+.525*(y-2.64):1.693-1.75*(y-foldY);
+      positions.push(x,y-py,z+front-.21-pz);texcoords.push(...vertex.uv);
+    }
+  }
+  if(source!==plate)source.dispose();
+  plate.setIndex(null);plate.clearGroups();plate.deleteAttribute('normal');
+  plate.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  plate.setAttribute('uv',new THREE.Float32BufferAttribute(texcoords,2));plate.computeVertexNormals();
+}
+
 function addLynxTurretCheek(P: TankBuilderPort, side: number, py: number, pz: number): void {
     const cheek=sectionSolid([
       {z:.48-pz,ring:[[.34,2.319-py],[1.36,2.319-py],[1.50,2.46-py],[1.26,3.013-py],[.34,3.013-py]]},
       {z:1.43-pz,ring:[[.35,2.372-py],[.99,2.372-py],[1.25,2.61-py],[1.05,2.916-py],[.35,2.916-py]]},
-    ]);
+    ],{sideQuadDiagonal:'convex'});
     if(side<0) mirrorX(cheek);
     P.add('turret',cheek);
     // The sloping front armor surrounds a real equipment pocket. Its rear wall
@@ -27,12 +62,7 @@ function addLynxTurretCheek(P: TankBuilderPort, side: number, py: number, pz: nu
     pocket.moveTo(left,2.52);pocket.lineTo(left,2.79);pocket.lineTo(right,2.79);
     pocket.lineTo(right,2.52);pocket.closePath();outer.holes.push(pocket);
     const plate=new THREE.ExtrudeGeometry(outer,{depth:.21,bevelEnabled:false,steps:1});
-    const pos=plate.attributes.position;
-    for(let j=0;j<pos.count;j++) {
-      const y=pos.getY(j);
-      const front=y<=2.76?1.63+.525*(y-2.64):1.693-1.75*(y-2.76);
-      pos.setXYZ(j,pos.getX(j),y-py,pos.getZ(j)+front-.21-pz);
-    }
+    foldLynxAperture(plate,py,pz);
     if(side<0)mirrorX(plate);else plate.computeVertexNormals();
     P.add('turret',plate);
     if(side>0) {
@@ -74,7 +104,7 @@ function buildLynxHull(P: TankBuilderPort): void {
     [1.90, .76, 1.617, 1.59, .48, 1.45, 2.115],
     [3.34, .86, 1.617, 1.59, .83, 1.45, 1.696],
     [3.83, .90, 1.53, 1.48, 1.34, 1.45, 1.57],
-  ], .965));
+  ], .965,{sideQuadDiagonal:'convex'}));
   // Broad continuous side cells, with real tapered lower return at each end.
   for (const side of [-1, 1]) {
     const cell = sectionSolid([
@@ -96,7 +126,7 @@ function buildLynxHull(P: TankBuilderPort): void {
     const wing = sectionSolid([
       {z:-3.828,ring:[[.57,1.22],[1.61,1.22],[1.61,2.283],[.57,2.283]]},
       {z:-3.34,ring:[[.57,.70],[1.61,1.04],[1.61,2.283],[.57,2.283]]},
-    ]);
+    ],{sideQuadDiagonal:'convex'});
     P.add('hull',side < 0 ? mirrorX(wing) : wing);
     // Horizontal louver blades sit on a dark recessed receiver at each side.
     P.addEquipment('hullDark',box(.58,.48,.016),side*1.45,1.53,-3.84);
@@ -146,22 +176,30 @@ function buildLynxRunningGear(P: TankBuilderPort): void {
 
 function buildLynxTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
   P.add('turret',cylY(1.06,1.06,.040,P.q?48:24),0,2.301-py,0);
-  P.add('turret',armorLoft([
+  const body=armorLoft([
     [-1.85,.94,1.10,.95,2.57,2.70,2.87],[-1.45,1.10,1.27,1.11,2.40,2.63,3.013],
     [-.85,1.27,1.43,1.30,2.30,2.44,3.013],[.48,1.36,1.50,1.26,2.30,2.46,3.013],
     [.70,1.24,1.46,1.21,2.31,2.46,3.013],
-  ],py,pz));
+  ],py,pz,{sideQuadDiagonal:'convex'});
+  P.add('turret',body);
   for(const side of [-1,1]) {
     addLynxTurretCheek(P,side,py,pz);
     addLynxCrewCover(P,side,py,pz);
     // Eight measured diagonal fasteners on the steep cheek, not roof dots.
     for(let i=0;i<8;i++) {
       const y=2.638+.050*i,z=.409-.072*i;
-      const station=(z+.85)/1.33,shoulder=1.43+.07*station,roof=1.30-.04*station;
-      const knee=2.44+.02*station;
-      const x=side*(shoulder+(roof-shoulder)*(y-knee)/(3.013-knee));
-      turretEquipment(P,'turretDark',cylY(.032,.032,.008,8),x,y,z,0,0,-side*1.17);
-      turretEquipment(P,'turretDetail',cylY(.019,.019,.014,6),x+side*.008,y+.004,z,0,0,-side*1.17);
+      const sample=sampleArmorRay(body,new THREE.Vector3(side*3,y-py,z-pz),new THREE.Vector3(-side,0,0));
+      if(!sample)throw new Error('Lynx cheek fastener has no native armor seat');
+      const {point:seat,normal}=sample;
+      const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),normal);
+      for(const [bucket,radius,height,offset,role] of [
+        ['turretDark',.032,.008,.003,'washer'],['turretDetail',.019,.014,.012,'head'],
+      ] as const){
+        const geometry=cylY(radius,radius,height,role==='washer'?8:6);
+        geometry.applyQuaternion(rotation);geometry.userData.nativeShellFixtureRole=`lynx-cheek-fastener-${role}`;
+        const center=seat.clone().addScaledVector(normal,offset);
+        P.addEquipment(bucket,geometry,center.x,center.y,center.z);
+      }
     }
     antenna(P,side*.855,3.02,6.4346,-1.43);
   }
