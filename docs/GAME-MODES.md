@@ -374,6 +374,34 @@ Ram damage keeps its kinetic law (closing speed squared × reduced mass) multipl
 12 m/s ≈ 1 200, 16 m/s ≈ 3 300, 20 m/s and up the cap (owner 2026-09-17: "the speed system for ram
 damage needs to scale a lot more").
 
+### Forward bases and the ball (modes lane, 2026-10-08)
+
+Owner decision: Capture the Flag and Turbo Ball were "too big to score" — the flags stood on the spawns 840-870 m
+apart, the goals 774-844 m. The ruleset now carries each mode's bases (`MatchRuleset.bases`: the separation and the
+footprint). The two bases stand that far apart on the deployments' axis, each the 180-degree rotation of the other about
+the deployments' pivot, the pair moved together onto ground the footprint holds — across the axis first, so the
+separation stays (`sim/deployment.ts` `resolveObjectivePair`, then the joint rings, then a side alone, which no map
+needs). Flags: 470 m on the objective footprint (relief 5 m, normal 0.94); goals: 500 m on spawn-steep ground (relief
+7 m, normal 0.90, inside the ball's arena), since the flags' stricter ground seated no mirrored goal pair near 500 m on
+Saltwind. On the 33 maps the flags stand 414-521 m apart, the goals 404-588 m, every pair an exact rotation
+(`sim/objectiveBases.selftest.mjs`). Turbo Ball's kickoff stands on the goals' perpendicular bisector nearest the
+pivot, equidistant from both, and clear of every record that stops the ball. Both sides keep their deployments behind
+the bases, and the minimap marks the spawns beside them.
+
+Turbo Ball's ball lives in the ruleset too (`MatchRuleset.ball`): a ram keeps 0.42 of the ball's velocity and adds the
+hull's drive (1.1) and a contact push (5.5 m/s + 0.47 per m/s of closing) — 1.35 times the first values, so a head-on
+ram at the mode's top speed carries it about 70 m, like a shell's hit (34 m/s). The hull carries the ball only by its
+motion into it: a hull passing beside the ball or pulling away from it pushes it off along the contact, never drags it
+along. What stops a shell stops the ball (`sim/ballSolids.ts`): a building, rock or dense wall turns it back (0.55 of
+its speed kept), a roof holds it, light cover a shell passes lets it through; before this a ball could roll into a
+house and stay there out of every hull's reach (Urban: 236 of 300 s inside a structure).
+
+The bots play the ball as the mode allows: the striker comes round beside the ball when it stands on the goal side of
+it, lines up behind it, holds its gun on the ball from behind (`AiObjective.aim`) and shoots it when it is lined up
+inside the cone the goal subtends from the ball (never narrower than 8°, 10-90 m back, the ball near rest) — a shot
+drives the ball along the shell's flight — then follows through (`game/ai.missionAim.selftest.mjs`). Capture the
+Flag's escorts: one leads the carrier home, the other covers its back, where the flag's team comes from to recover it.
+
 Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
 every entity by the mode controller: **F** launches an upright hull 13 m/s upward — a rocket that boosts
 again after 0.35 s of flight (round 30, owner 2026-09-20) — (the key
