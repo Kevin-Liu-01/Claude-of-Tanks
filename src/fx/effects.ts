@@ -5206,7 +5206,9 @@ function* createFxSteps(
         const stageSeam = seamOf(e.structureId);
         stages?.stage(e, stageSeam);
         if (e.settled) return;
-        if (blast) structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam);
+        const anat = stageSeam?.anatomy;
+        const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
+        if (blast) structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM);
         else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {

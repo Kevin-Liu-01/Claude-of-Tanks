@@ -20,7 +20,7 @@ import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructi
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
 import { linearHex } from './surfaceLooks.ts';
-import { collapseFront, collapseFrontTime } from './structureMask.ts';
+import { collapseFront, collapseFrontTime, collapseWallHeight } from './structureMask.ts';
 
 type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
@@ -235,7 +235,8 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
  * A structure crossed into a stage (live events only). `look` is the building's anatomy reduced to its rubble shares,
  * or null for the masonry fallback.
  */
-export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: StructureLook | null, crumbled = false): void {
+export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: StructureLook | null, crumbled = false,
+  eaveM: number | null = null): void {
   if (e.settled) return;
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
@@ -313,11 +314,13 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   }
   // 2. and 3. band by band as the front comes down: dust shed off the crumbling line, and a fall's time later a low
   // burst out of the base on every side where that band's pieces land
+  // the walls come down from the eaves (the roof drops onto them as the blow lands)
+  const wallH = collapseWallHeight(height, eaveM);
   const BAND = 0.9;
-  const bands = Math.max(1, Math.ceil(height / BAND));
+  const bands = Math.max(1, Math.ceil(wallH / BAND));
   for (let b = 0; b < bands; b++) {
-    const h = Math.max(0.2, height - (b + 0.5) * BAND);
-    const tb = collapseFrontTime(h, height);
+    const h = Math.max(0.2, wallH - (b + 0.5) * BAND);
+    const tb = collapseFrontTime(h, wallH);
     const land = tb + Math.sqrt((2 * h) / 9.8);
     const shedN = Math.max(2, Math.round(perim / 12));
     for (let i = 0; i < shedN; i++) {
@@ -339,8 +342,8 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   // stages throw a seamed building's own, in its buckets — `crumbled`)
   if (!crumbled) {
     for (let b = 0; b < bands; b++) {
-      const h = Math.max(0.2, height - (b + 0.5) * BAND);
-      const tb = collapseFrontTime(h, height);
+      const h = Math.max(0.2, wallH - (b + 0.5) * BAND);
+      const tb = collapseFrontTime(h, wallH);
       const n = Math.max(2, Math.round(perim / 3));
       for (let i = 0; i < n; i++) {
         footprintEdge(e, cosY, sinY, perim, (i + R()) / n, p);
@@ -358,7 +361,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
     const at = 1.0 + (i / massN) * 2.8 + R() * 0.3;
     const life = 8 + R() * 3;
-    puff(C, wx, e.baseY + Math.max(0.6, collapseFront(at, height) * 0.6), wz, (R() - 0.5) * 1.2, 0.6 + R() * 0.6, (R() - 0.5) * 1.2,
+    puff(C, wx, e.baseY + Math.max(0.6, collapseFront(at, wallH) * 0.6), wz, (R() - 0.5) * 1.2, 0.6 + R() * 0.6, (R() - 0.5) * 1.2,
       1.3, 0.35 + R() * 0.3, 0.9, life, 0.22 * span * dk, (0.42 + R() * 0.14) * span * dk, tintDark, tinted, 0.6, life, 2, at);
   }
 }

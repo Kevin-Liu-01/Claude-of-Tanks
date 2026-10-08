@@ -401,12 +401,14 @@ function captureContext(seed) {
     'nothing big above the base hides the falling walls (no ball, no column)');
   assert.ok(!collapsed.media.some((m) => m.life >= 12), 'no pall');
   // the pieces leave the front as it passes their height (a fall's weight: barely pushed, gravity does the rest)
+  // (the front comes down from the eaves: 0.8 of the height without the anatomy)
   for (const k of collapsed.chunk) {
     const h = k.y - base.baseY;
-    assert.ok(Math.abs(k.birthOffset - collapseFrontTime(h, H)) < 0.35, `a piece at ${h.toFixed(1)} m leaves with the front`);
+    assert.ok(Math.abs(k.birthOffset - collapseFrontTime(h, 0.8 * H)) < 0.35, `a piece at ${h.toFixed(1)} m leaves with the front`);
     assert.ok(Math.hypot(k.vx, k.vz) <= 2 && k.life >= 16, 'falls rather than flies, and lies');
   }
   assert.ok(Math.max(...collapsed.chunk.map((k) => k.birthOffset)) > 2.5, 'the walls come down over seconds');
+  assert.ok(Math.max(...collapsed.chunk.map((k) => k.y - base.baseY)) <= 0.8 * H + 1e-6, 'from the eaves down (the roof is the mask\'s)');
   // the base bursts as each band's pieces land: their births follow the front down
   const baseBursts = collapsed.media.filter((m) => m.y <= base.baseY + 0.5 && m.aspect >= 2);
   const births = baseBursts.map((m) => m.birthOffset).sort((p, q) => p - q);
@@ -640,7 +642,7 @@ function captureContext(seed) {
     'a fallen structure folds onto its pivot (no discard for it)');
   // round 7 (wave 277): the roof drops and rides the crumble front; the desktop cuts the walls above the ragged front
   // (the phone folds them onto it)
-  assert.ok(/float front = H \* \( 1\.0 - pow\( u, 1\.5 \) \);/.test(shader.vertexShader)
+  assert.ok(/float front = eave \* \( 1\.0 - pow\( u, 1\.5 \) \);/.test(shader.vertexShader)
     && /p\.y = max\( p\.y - drop, front \+ \( p\.y - eave \) \* 0\.3 \);/.test(shader.vertexShader), 'the roof rides the front down');
   assert.ok(/vStructFront < 1e8 && vStructRoof < 0\.5[\s\S]*vStructPos\.y > vStructFront \+ 1\.1 \* col \+ 0\.45 \* cell[\s\S]*discard/.test(shader.fragmentShader),
     'the desktop cuts the wall above the ragged front');

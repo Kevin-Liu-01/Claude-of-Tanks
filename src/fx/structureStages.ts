@@ -30,7 +30,7 @@ import {
 } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -460,7 +460,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function crumble(seam: StructureDamageSeam, e: StructureStageEvent): void {
     if (!(crumbleShare > 0)) return;
     const a = seam.anatomy;
-    const H = Math.max(1, e.topY - e.baseY);
+    // the walls up to the eaves (the roof is the mask's: it drops onto the front)
+    const H = collapseWallHeight(Math.max(1, e.topY - e.baseY), a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0);
     const baseRel = e.baseY - a.placement.y;
     const c = Math.cos(a.placement.yaw), sn = Math.sin(a.placement.yaw);
     // the blow in the body frame: the struck side's pieces are pushed out harder

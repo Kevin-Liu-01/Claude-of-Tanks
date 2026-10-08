@@ -49,12 +49,15 @@ export const COLLAPSE_S = 4.2;
 /** The crumble front leaves the top at FRONT_T0 and reaches the base FRONT_T later, gravity-eased (h = H (1 - u^1.5)). */
 export const FRONT_T0 = 0.3;
 export const FRONT_T = 3.4;
-/** Where the front stands (m over the base) `t` s into a collapse of a building `heightM` tall. */
+/** Where the front stands (m over the base) `t` s into a collapse whose walls stand `heightM` (its eaves). */
 export function collapseFront(t: number, heightM: number): number {
   const u = Math.min(1, Math.max(0, (t - FRONT_T0) / FRONT_T));
   return heightM * (1 - Math.pow(u, 1.5));
 }
-/** When the front passes `h` m over the base (the inverse of collapseFront). */
+/** When the front passes `h` m over the base (the inverse of collapseFront; `heightM` the eaves). */
+export function collapseWallHeight(heightM: number, eaveM: number | null | undefined): number {
+  return eaveM && eaveM > 0 ? Math.min(eaveM, Math.max(0.5, heightM)) : 0.8 * Math.max(0.5, heightM);
+}
 export function collapseFrontTime(h: number, heightM: number): number {
   const k = Math.min(1, Math.max(0, 1 - h / Math.max(0.5, heightM)));
   return FRONT_T0 + FRONT_T * Math.pow(k, 1 / 1.5);
@@ -123,9 +126,10 @@ vStructRoof = 0.0;` : ''}
         vec3 piv = SB.xyz;
         vec3 p = wp - piv;
         float eave = SF.x > 0.0 ? SF.x : 0.8 * H;
-        // the crumble front (m over the base): it leaves the top at FRONT_T0, gravity-eased down to the base
+        // the crumble front (m over the base): it leaves the eaves (the walls' top) at FRONT_T0, gravity-eased down to
+        // the base; the roof drops onto it at once
         float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)}, 0.0, 1.0 );
-        float front = H * ( 1.0 - pow( u, 1.5 ) );
+        float front = eave * ( 1.0 - pow( u, 1.5 ) );
         float roof = step( eave - 0.05, p.y );
         if ( roof > 0.5 ) {
           // the roof drops into the building as the blow lands, its middle first (the farther from the eaves line, the
