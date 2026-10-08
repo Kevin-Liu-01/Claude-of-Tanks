@@ -3277,6 +3277,25 @@ const KEEP_OUT_FITTINGS: Readonly<Record<string, { foot: number; clear: number; 
   americanRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
   openYokeRws: { foot: 0.22, clear: 0.05, maxR: 0.3 },
 };
+/**
+ * Whether the vehicle already carries a crew or remote roof gun of its own (2026-10-08, the machine-gun helper's sweep:
+ * "bmp3_rok: the decor aamg stands right over the authored MAG, two guns stacked"; the coordinator's rule after main's
+ * field upgrades: one owner per mount point). The decor kit's generic roof AA gun ('aamg') is for vehicles that have
+ * none; an authored pintle gun, roof RWS or remote station owns the roof gun.
+ */
+const ROOF_GUN_FITTINGS: ReadonlySet<string> = new Set(['pintleMG', 'americanM2', 'americanRws', 'openYokeRws', 'weaponStationMount']);
+function carriesRoofGun(...groups: THREE.Object3D[]): boolean {
+  let found = false;
+  for (const group of groups) {
+    group.traverse((o) => {
+      if (found || (o.name || '').startsWith('rig_decor')) return;
+      const fitting = o.userData?.fitting;
+      if ((o.userData?.fittingRoot && typeof fitting === 'string' && ROOF_GUN_FITTINGS.has(fitting))
+        || (o.userData?.remoteControlled && o.userData?.auxiliaryPivot)) found = true;
+    });
+  }
+  return found;
+}
 /** Structural hatches and cupolas (P.addHatch / P.addCupola buckets) and their disc's share of the patch's half-diagonal. */
 const KEEP_OUT_STRUCTURE_RE = /(?:Hatch|Cupola)$/;
 const KEEP_OUT_STRUCTURE_SHARE = 0.8;
@@ -5327,6 +5346,7 @@ export function* attachTankDecorationsSteps(
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
+      const roofGunCarried = manifest.some((row) => row.kit === 'aamg') && carriesRoofGun(turretG, hullG);
       const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
@@ -5335,12 +5355,15 @@ export function* attachTankDecorationsSteps(
         if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
       };
       manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
+        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !(row.kit === 'aamg' && roofGunCarried)
+          && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
       });
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
         if (row.early) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
+        // the decor roof gun yields to a roof gun the vehicle carries (carriesRoofGun); its draws stay consumed above
+        if (row.kit === 'aamg' && roofGunCarried) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
         if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
