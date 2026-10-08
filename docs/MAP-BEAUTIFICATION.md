@@ -7929,6 +7929,10 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   (384119d26). The finals run on the PR head 7fa8749ca merged (af8ac770e): 8 cycles each of Monsoon high and medium,
   Whiteout high, Verdant high and low.
 
+- *F1, the final Monsoon high* (384119d26 against the PR head 7fa8749ca, 8 cycles, 1080p, load 67–90): chase +0.84 ± 0.27,
+  establishing +0.55 ± 0.39, sky-w +1.32 ± 0.53 ms of the GPU, the CPU −0.01 / +0.09 / +0.05 ms — the storm exception's
+  caps (+1.0 / +2.0 / +2.0) held, the CPU under the normal line: ACCEPT.
+
 **Lessons (the cost work).**
 - A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
   knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
