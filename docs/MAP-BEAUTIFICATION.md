@@ -6612,6 +6612,67 @@ east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on 
   +0.16 / −0.21 / +0.38 and the shadow passes −0.02 / +0.02 / 0.00. The near class casts 55k more triangles than the
   PR head's (231k against 176k: the rows' 210 trees and 144 more stands) at no measurable cost, so it keeps them.
 
+### 2026-10-08 — the land past the border: forest belts up the ranges, one woods field, hedges, grass and strand across the edge (the borders lane)
+
+Owner: "i literally just see a treeline and then nothing transitioning and going into mountains"; "stuff in background
+should never be flat"; "a map square boundary area carved into a broader map"; the 09-12 handoff (R023): "distant
+treelines across the full height of mountain faces in several irregular forest belts from lower to mid slopes". The
+acceptance view is a tank's: 2.5 m up, 60–100 m inside the edge, looking out along each side and across each corner, and
+60 m up over the north-east corner.
+
+**The census** (`visual-census --set=border2` on the PR head 7fa8749ca, 24 maps, ranked worst first with an R023 column).
+No map's ranges carried belts: the relief bake laid its stands as canopy shading only, and past the ring forest's 880 m
+the faces read as bald green or white shells (Nordhavn, Monsoon, Glacier Pass, Verdant's downs, Steinburg's hills). The
+farmland borders had black slab hedges (Verdant: (40, 55, 57) against a shaded crown's (51, 73, 57)), lime tubes on the
+gold steppe (Tarkhan), and parcels sown under the bake's canopy past 720 m. The grass stopped 4 m past the playable edge
+(a line at 474 m); Saltmere's authored sea opening met its banks at a right angle; Nordhavn's ring headland ran green into
+the water with no wet band.
+
+**What changed** (`horizonRelief.ts`, `horizonVista.ts`, `maps/horizon.ts`, `borderHedgerows.ts`, `borderLandform.ts`,
+`horizonSurface.ts`, `tallGrass.ts`, `vegetation.ts`, `edgeWater.ts`, `terrain.ts`):
+
+- **Face forests.** The ranges' faces carry the bake's stands as trees from 840 m to the bake's edge (1.56 km), in their
+  own pool (`horizon-forest-*-face`, at most 12,000 a ring; the impostors redraw them in the species' existing draws). The
+  stands are irregular belts: denser in the hollows and gullies, holding on the lee faces against the map's prevailing
+  wind (`resolveTreeWind`), thinning on the windward shoulders, under a ragged treeline (±10 % of its altitude by the
+  hollows, ±6 % by the lee, fingers and islands from the 160 m and 45 m fields), never under the snow unless a map's
+  cover says `overSnow`. The face loop runs while any column of a row is in reach (a sea opening at column 0 stretches
+  its rows to 4.3 km: Nordhavn's loop had stopped at its lowest belts), and the candidates' density follows the budget,
+  so every belt, low and high, keeps its trees and the budget trims only the stands' margins.
+- **One woods field past the hand-over.** The bake keeps its stand weight itself (`bake.canopy`) and the ring carries it
+  (`userData.horizonRing.standAt`): past 720 m the farmsteads' yards, the hedges, the ring forest's woods, the face trees
+  and the parcels (`_borderParcelAt(…, woods)`) all keep to it — no crop under a stand the canopy darkens. A lone ring tree
+  keeps out of a crop's interior. A sparse map's far stands follow its own woods share (Tarkhan's 7 % steppe had taken the
+  rolling character's 42 % a kilometre out; 9 % now).
+- **Hedges as bushes.** A bush line is a string of round crowns 4.5–9 m apart over the hedge's body, on stations every
+  2 m within 260 m of the edge (4 m beyond), a closed rounded section with crown normals; each crown its own tint, a third
+  of them evergreen undergrowth (olive whatever the season), each vertex a breath of light and tilt; 0.8–0.92 of the ring
+  forest's crown tones (at the crowns' own tones they read as light moss mounds). One draw in the farmsteads' program;
+  karst walls unchanged byte for byte.
+- **The sward across the red line.** The midfield tufts grow to the square's edge and the tall grass on over the ring's
+  near band for 120 m, thinning over its last 60, on the drawn ring's own surface (`ringMeshSurfaceSampler` →
+  `_ringSurfaceAt`), off its water, exits and hedges, the border's crops tinting it.
+- **The coast.** An authored sea opening takes measured mouth banks (Saltmere's right angle). The ring's own headlands and
+  bays carry the strand — wet band, foam, wrack, pebbles — from the ring's waterline, where its marine weight crosses 0.4
+  (`ringWaterlineMetres`; measured under the sea's surface instead, a shelf took the whole wet band as a grey staircase).
+
+**Measured:**
+- *the look* (frozen clouds, `fifo2` capture service; the PR head e65122a84 against the branch at 638de8ae7, 9 maps, 72
+  views a side; `$SP/borders/census/{headF,b2F}`): 8–30 % of the pixels moved on the border views, under 1 % on the views
+  the rounds do not reach (Glacier Pass at eye level, Saltmere's open sea, Nordhavn's bird view) — the freeze holds.
+  Nordhavn's faces carry belts to their crests up the gullies, the cliffs bare; Glacier Pass's snowy ring slopes and
+  Monsoon's karst ranges are forested; the farmland outlands read as woods, hedged fields and farms to the downs.
+- *the lab* (node, the real ring): Verdant's face trees in crops 56 % → 0 %; on all 24 maps with face trees their share
+  above half the treeline tracks the stands' (Nordhavn 0 % → 22 % against 27 % of the stands, Glacier Pass 21 % against
+  29 %); hedges Verdant 4.3k → 17.2k triangles, Polders 6.3k → 32.1k, one draw; the 33 rings build in 482 s against the
+  head's 474 s (node, under load).
+- *receipts*: `borderHedgerows`, `horizonSurface`, `horizonFaceForest` (fails on the first face builder: 0 % above half the
+  treeline), `borderFarmsteads` (the one woods field on Ironworks), `tallGrass` (the sward across the edge), `edgeWater`
+  (the banks), `horizonRelief` (the face law), and the forest, impostor and vegetation receipts unchanged.
+- *cost*: rule v3 (ABCCBA, sky-w, bird, a long chase and the rim view; Verdant and Monsoon) — pending at this writing.
+
+Frosthollow's own spruce (`overSnow` and its treeline in `winter.ts`) waits for its map round to land; Whiteout stays bare.
+
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
 **Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
