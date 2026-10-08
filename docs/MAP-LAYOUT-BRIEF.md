@@ -651,6 +651,18 @@ Round six (wave 241, October 7: the facade items an eye at the street reads on S
   - the ridge and hip caps, bedded in mortar, are darker and lichened;
   - the plain tiles carry the odd replaced or sooted tile, lichen rosettes and moss under the tails.
 
+Round seven (the media critics' 4K wave m1 on Steinburg, October 7: "coarse lumpy 'cork' bump noise", "coarse noisy
+stucco", "an aliasing roof-tile pattern"):
+- The cork was the render, not the brick: the PR head still shipped Plaster 007's own normal map (its rows of blocky
+  losses and trowel lumps at full strength) and its blotchy colour map. Rounds three and five replaced both
+  (`NormalGL-smooth`, `Color-even`). The Franconian render is now also a smooth lime coat, with the trowel lumps at half
+  their relief and shallower cavities (`surfaces.relief`: normal 0.5, occlusion 0.6, the tile's scale and every UV
+  unchanged).
+- A kit's tile sheet samples its maps half a mip level softer (`props.ts applyTileLodBias`, `ROOF_TILE_LOD_BIAS`). The
+  same sheet serves the base roofs on a kit's map. Close by, where the sheet is magnified, nothing changes. Further out,
+  where it is minified, the course lines are softer, so a 19-texel course at 40–80 m no longer crawls along the
+  screen's Nyquist. Desktop anisotropy is 8 already.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with

@@ -1386,6 +1386,26 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   return out;
 }
 
+/**
+ * (facades lane, round 7, 2026-10-07; the media critics on Steinburg: "an aliasing roof-tile pattern", "a flat checker
+ * of tiles") A kit's tile sheet is fine and high in contrast — a course every ~19 texels, its shadow line near black —
+ * so at 40–80 m its courses sit near the screen's Nyquist and crawl as the camera moves, anisotropy (8 on a desktop) or
+ * not. The roof samples its maps half a mip level softer: no change where the sheet is magnified (a roof close by), a
+ * softer course line wherever it is minified. One chunk each, as three writes it, with the bias added.
+ */
+const ROOF_TILE_LOD_BIAS = 0.5;
+function applyTileLodBias(shader: MaterialShader, bias: number): void {
+  const b = bias.toFixed(2);
+  const chunk = (name: 'map_fragment' | 'normal_fragment_maps' | 'roughnessmap_fragment' | 'aomap_fragment', sampler: string, uv: string) => {
+    const biased = THREE.ShaderChunk[name].split(`texture2D( ${sampler}, ${uv} )`).join(`texture2D( ${sampler}, ${uv}, ${b} )`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, `#include <${name}>`, biased);
+  };
+  chunk('map_fragment', 'map', 'vMapUv');
+  chunk('normal_fragment_maps', 'normalMap', 'vNormalMapUv');
+  chunk('roughnessmap_fragment', 'roughnessMap', 'vRoughnessMapUv');
+  chunk('aomap_fragment', 'aoMap', 'vAoMapUv');
+}
+
 function cropAttributeNormal(shader: MaterialShader): void {
   // Crop cards carry authored up normals on both faces, with no normal/bump
   // map. Keep Three's transformed normal path, minus its backface inversion.
@@ -3627,18 +3647,24 @@ ${snowCap ? `
   // shadow pass runs the same crown (its depth material).
   const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
   const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
+  // (round 7) a kit's tile sheet — the regional roofs' and, on a kit's map, the base roofs' (the same sheet) — half a mip
+  // softer (applyTileLodBias)
+  const tileBiased = (kind: string) => kind === 'regionalRoof' || (kind === 'roof' && !!regionalArchitecture);
+  const roofHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyTileLodBias(shader, ROOF_TILE_LOD_BIAS); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+            : materialKind === 'fieldMud' ? mudHook : tileBiased(materialKind) ? roofHook : grimeHook);
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
       const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
+      // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
+      const biasKey = tileBiased(materialKind) ? '-lodb' : '';
       material.customProgramCacheKey = () =>
-        'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
+        'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();

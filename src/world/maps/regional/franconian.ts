@@ -210,6 +210,10 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
     stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
     sourced: { plaster: true, wood: true },
+    // (round 7, the media critics on Steinburg: "coarse lumpy 'cork' bump noise", "coarse noisy stucco") a smooth lime
+    // render: the photographed plaster's trowel lumps at half their relief, its cavities shallower; the tile's scale
+    // and every UV as they were
+    relief: { plasterUv: 1, normal: 0.5, ao: 0.6 },
   },
   builders: FRANCONIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
