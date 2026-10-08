@@ -977,6 +977,8 @@ const pedestal = createGaragePedestalRuntime({
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
   prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
+  // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
+  releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
