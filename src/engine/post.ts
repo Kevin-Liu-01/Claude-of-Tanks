@@ -1,3 +1,4 @@
+import { createVisionWarmSteps } from './visionWarm.ts';
 /**
  * post.ts — the full post-processing chain.
  *
@@ -2784,9 +2785,20 @@ export function createPost(
             await yieldBeforePass(label);
           }
           const startedAt = performance.now();
-          pass.enabled = true;
-          composer.render(1 / 60);
-          pass.enabled = false;
+          if (pass === grade) {
+            const visionSteps = createVisionWarmSteps(grade.uniforms.uThermal, () => {
+              pass.enabled = true;
+              try { composer.render(1 / 60); }
+              finally { pass.enabled = false; }
+            });
+            for (const mode of visionSteps) {
+              if (yieldBeforePass) await yieldBeforePass(`vision-${mode}`);
+            }
+          } else {
+            pass.enabled = true;
+            composer.render(1 / 60);
+            pass.enabled = false;
+          }
           timings.push({
             label: pass.constructor?.name || `post-pass-${index + 1}`,
             ms: Math.round(performance.now() - startedAt),

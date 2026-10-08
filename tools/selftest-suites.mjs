@@ -26,6 +26,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/garageModePreviewRuntime.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
     'src/engine/thermalVehicles.selftest.mjs',
+    'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
     'src/fx/aerialTracers.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
