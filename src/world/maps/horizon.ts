@@ -146,6 +146,8 @@ export interface MapSkyConfig extends Partial<SkyPreset> {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
+  /** 2026-10-07: a galaxy sky lit as a night takes this share of the night's ground treatment (lightModelCore.ts). */
+  nightGrade?: number;
 }
 
 export interface HorizonMapConfig {

@@ -16,6 +16,7 @@ import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { createBattleAtmosphereRuntime } from './battleAtmosphereRuntime.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { resolveLightModel } from './lightModelCore.ts';
 
 await loadCloudscapeLayers();
 const tune = (t) => { globalThis.__LIGHT_TUNE = t; };
@@ -60,6 +61,26 @@ const near = (a, b, what) => assert.ok(Math.abs(a - b) < 1e-9, `${what}: ${a} ag
   tune({ NIGHT_CLOUD_KEY: 0.01 });
   assert.equal(deriveCloudLayerPreset(presets.day).sunGain, day.sunGain, 'a day sky never reads the knob');
   tune(undefined);
+}
+
+// ---- 1b. Olympus Basin (the owner's decision in the PR body; wave 65's critics: "physically impossible daytime Mars"): the
+// galaxy dome stays, the basin is lit by the planet in it — a dim, cool key — and takes the night's ground treatment
+{
+  const was = { sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36 };
+  const M = MARS_SKY_PRESET;
+  assert.ok(M.nightSky === 1 && M.galaxy === 1.9 && M.skyIntensity === 0.06 && M.planetDeg === 3.4, 'the galaxy dome as the owner asked');
+  assert.ok(M.sunIntensity <= was.sunIntensity * 0.4, `a dim key (${M.sunIntensity} against ${was.sunIntensity})`);
+  assert.ok(M.hemiIntensity < was.hemiIntensity && M.fillIntensity < was.fillIntensity, 'the sky and the fill dimmed with it');
+  const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  const [r0, , b0] = rgb(was.sunColorHex), [r1, , b1] = rgb(M.sunColorHex);
+  assert.ok(b1 / r1 > b0 / r0 * 1.05, `a cooler key (B/R ${(b0 / r0).toFixed(2)} -> ${(b1 / r1).toFixed(2)})`);
+  const mars = resolveLightModel({ ...DEFAULT_SKY_PRESET, ...M }, null, null);
+  assert.equal(mars.mode, 'legacy');
+  assert.equal(mars.night, 1, 'the basin takes the night grade (the light model\'s night drives post.ts\'s scotopic shift)');
+  assert.equal(mars.sunIntensity, M.sunIntensity);
+  // Earthrise Basin's galaxy sky keeps its daylight key
+  const moon = resolveLightModel({ ...DEFAULT_SKY_PRESET, ...getMapConfig('moon').sky }, null, null);
+  assert.equal(moon.night, 0, 'Earthrise Basin keeps its daylight key');
 }
 
 // ---- 2. the starfield: the law in the shader, its wiring, and its statistics against round 22's
@@ -170,4 +191,4 @@ assert.equal(sky.split('applyStarLawTune(sky.material.uniforms);').length, 3, 't
   // the day never enters it
   assert.deepEqual(shift(0x304a2a, 0), rgb(0x304a2a), 'the day is untouched');
 }
-console.log('nightKey.selftest: the clouds\' night key (moon 0.3, sky 0.8, by the night amount; day, sunset, Mars and the galaxy domes untouched; the knobs), the starfield ranked by magnitude (a star in fewer cells, an eighth or fewer showing, a few bright, the galaxy domes on round 22\'s field) and the grade\'s scotopic shift through the moonlit midtones (blue-grey, a little darker, warm lights kept, the day untouched) PASS; no GPU/art claim');
+console.log('nightKey.selftest: the clouds\' night key (moon 0.3, sky 0.8, by the night amount; day, sunset, Mars and the galaxy domes untouched; the knobs), Olympus Basin planet-lit (the galaxy dome kept, a dim cool key, the night grade; Earthrise Basin unchanged), the starfield ranked by magnitude (a star in fewer cells, an eighth or fewer showing, a few bright, the galaxy domes on round 22\'s field) and the grade\'s scotopic shift through the moonlit midtones (blue-grey, a little darker, warm lights kept, the day untouched) PASS; no GPU/art claim');

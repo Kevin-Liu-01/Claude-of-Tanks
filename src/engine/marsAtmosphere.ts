@@ -13,7 +13,11 @@ export const MARS_SKY_PRESET = Object.freeze({
   fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34,
   cloudOpacity: 0.3, cloudOpacity2: 0.15, cloudTintHex: 0x2c1c1e,
   cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
-  sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
+  // 2026-10-07 (the skies lane; the owner's decision recorded in the PR body, wave 65's critics: "physically impossible
+  // daytime Mars" — a black galaxy sky over a sunlit basin): the galaxy dome stays as the owner asked, and the basin is lit
+  // by the planet in it (the disc at the key light's direction) — a dim, cool key (was 3.2 at 0xe4ebff, the sky's light
+  // 0.56 and the fill 0.36) — and takes the night's ground treatment, the grade's scotopic shift (nightGrade 1)
+  sunIntensity: 1.2, sunColorHex: 0xc3d0ee, hemiIntensity: 0.46, fillIntensity: 0.28, nightGrade: 1,
   postExposure: 1.04,
   // round 65 (2026-09-24): Olympus Basin keeps its thin CO2 atmosphere under the physically based sky —
   // Rayleigh at 3 % of Earth's (0.6 % of the pressure, CO2's 2.5× cross-section, the taller scale height),

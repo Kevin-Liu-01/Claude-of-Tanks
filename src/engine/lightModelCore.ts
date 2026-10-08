@@ -39,6 +39,12 @@ export interface LightModelPreset {
   turbidity?: number;
   /** A forced night sky (sky.ts): with a daylight key it is a galaxy dome — the space maps — not the night. */
   nightSky?: number | null;
+  /**
+   * 2026-10-07 (the skies lane; the owner's decision for Olympus Basin): a galaxy sky lit as a night — a dim planet-lit key —
+   * takes this share of the night's ground treatment (post.ts's scotopic shift, the light model's `night`); 0 / absent:
+   * a daylight key, as before (Earthrise Basin).
+   */
+  nightGrade?: number | null;
   /** The legacy rig's authored values (the mobile tier, a galaxy sky, the night's moon). */
   sunIntensity?: number;
   sunColorHex?: number;
@@ -208,9 +214,9 @@ export function isGalaxySky(preset: LightModelPreset): boolean {
   return (preset.nightSky ?? 0) > 0.5;
 }
 
-/** The night amount of a preset: the dome's, never a galaxy sky's (its key is daylight). */
+/** The night amount of a preset: the dome's; a galaxy sky's its authored night grade (0: its key is daylight). */
 function nightOf(preset: LightModelPreset): number {
-  return isGalaxySky(preset) ? 0 : nightFor(preset.skyIntensity ?? 1);
+  return isGalaxySky(preset) ? clamp(preset.nightGrade ?? 0, 0, 1) : nightFor(preset.skyIntensity ?? 1);
 }
 
 function legacyModel(preset: LightModelPreset): LightModel {
