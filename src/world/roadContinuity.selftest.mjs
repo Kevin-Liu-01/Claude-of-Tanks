@@ -183,9 +183,14 @@ function assertInteriorExclusion(mapId, config, roads, field) {
       config.terrain.rimH, () => 0);
     physicalCheck(Object.is(excluded, 10000), mapId, 'interiorExclusion', excluded, '===10000',
       `${mapId}: full helper proves interior exclusion is conservative`, p);
-    const inner = [...p], outer = [...p], crossAxis = axis ? 0 : 1;
+    const inner = [...p], outer = [...p], deeper = [...p], crossAxis = axis ? 0 : 1;
     outer[crossAxis] += sign * .002;
-    const jump = Math.abs(field.getHeightAt(...inner) - field.getHeightAt(...outer));
+    deeper[crossAxis] -= sign * .002;
+    // the step across the line beyond the ground's own slope there (the same 2 mm step taken just inside it): a landform
+    // wall the line happens to cross (Titan Gorge round 6's level-capped buttes stand near-vertical over a metre) falls
+    // as far on either side of the line; a seam the threshold left would show on the crossing alone
+    const hi = field.getHeightAt(...inner);
+    const jump = Math.abs((hi - field.getHeightAt(...outer)) - (field.getHeightAt(...deeper) - hi));
     physicalCheck(jump < .03, mapId, 'interiorSeam', jump, '<.03',
       `${mapId}: scalar exclusion threshold is continuous`, p);
   }
