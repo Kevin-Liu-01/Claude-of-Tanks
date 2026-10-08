@@ -14,9 +14,8 @@ import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening
 import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import { KIT, FITTINGS, MUDGUARDS, orientedSlab, muzzleBore } from './kit.ts';
 import {
-  chevronSurfacePanel,
+  chineseArrowCassette,
   closedIntegratedChevron,
-  interpolateChevronStation,
   type ChevronStation,
 } from './chineseChevron.ts';
 import {
@@ -907,18 +906,20 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   }
   // deep add-on cheek cassettes following the wedge rake (the A2 tell):
   // two courses per side, seam battens between, gun channel kept open.
-  P.visualEraCluster('ztz99a2-cheek-era', 'turret', () => {
-  for (const s of [-1, 1]) {
-    addChineseThroatStock(P, orientedSlab(
-      [s * 0.34, 0.06, 1.52], [s * 0.94, 0.06, 0.90], [s * 0.80, 0.06, 0.62], [s * 0.30, 0.06, 1.18],
-      [s * 0.26, 0.62, 0.94], [s * 0.68, 0.60, 0.56], [s * 0.60, 0.56, 0.36], [s * 0.24, 0.58, 0.70]));
-    P.add('turret', orientedSlab(
-      [s * 0.94, 0.06, 0.90], [s * 1.55, 0.08, 0.16], [s * 1.36, 0.08, -0.06], [s * 0.80, 0.06, 0.62],
-      [s * 0.68, 0.60, 0.56], [s * 1.14, 0.62, 0.10], [s * 1.04, 0.58, -0.10], [s * 0.60, 0.56, 0.36]));
-    P.add('turretDark', box(0.035, 0.44, 0.035), s * 0.84, 0.32, 0.78, -0.42, s * 0.72, 0);
-    P.add('turretDark', box(1.06, 0.026, 0.045), s * 0.80, 0.625, 0.48, 0, s * 0.62, 0);
+  // Permanent shaped backing survives ERA loss; the new wide, shallow
+  // arrow cassettes wrap both rakes rather than becoming a second turret.
+  const prototypeChevron:readonly ChevronStation[]=[
+    {x:.34,upperX:.26,ridgeX:.34,lowerX:.34,upperY:.62,upperZ:.94,ridgeY:.29,ridgeZ:1.68,lowerY:.06,lowerZ:1.52},
+    {x:.94,upperX:.68,ridgeX:.94,lowerX:.94,upperY:.60,upperZ:.56,ridgeY:.29,ridgeZ:1.07,lowerY:.06,lowerZ:.90},
+    {x:1.55,upperX:1.14,ridgeX:1.55,lowerX:1.55,upperY:.62,upperZ:.10,ridgeY:.30,ridgeZ:.31,lowerY:.08,lowerZ:.16},
+  ];
+  for(const side of [-1,1] as const){
+    addChineseThroatStock(P,closedIntegratedChevron(prototypeChevron,side));
+    P.visualEraCluster('ztz99a2-cheek-era','turret',()=>{
+      for(const [a,b] of [[.44,.69],[.72,.99],[1.02,1.26],[1.29,1.47]])
+        addChineseThroatStock(P,chineseArrowCassette(prototypeChevron,side,a,b),'turretExternalArmor');
+    });
   }
-  });
   // nose beak walls flanking the OPEN gun channel: the print's wedge line
   // keeps falling 2.5 -> 2.06 out to +1.7 world — two raked prisms continue
   // the cheek slope past the crown lip; the channel stays clear through the
@@ -1117,11 +1118,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
         const endX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * endT;
-        addChineseThroatStock(P, chevronSurfacePanel(
-          interpolateChevronStation(chevronStations, startX),
-          interpolateChevronStation(chevronStations, endX),
-          s,
-        ), 'turretExternalArmor');
+        addChineseThroatStock(P, chineseArrowCassette(chevronStations,s,startX,endX), 'turretExternalArmor');
       }
     }
   });

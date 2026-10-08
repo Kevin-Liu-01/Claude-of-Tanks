@@ -1,3 +1,4 @@
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
 // builder, source loader, external topology, or texture is used here.
@@ -1240,6 +1241,7 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.75,1.50);
   hullDeckEdges(P,d);
   mainGun(P,d,.079,false);
+  addFieldRoofWeapon(P,[-.65,.762144,.5],30,'Leopard 2A5M remote 30 mm cannon');
 }
 
 // A5: separately laid out basic armor tub and arrowhead modules, restrained
@@ -1315,6 +1317,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
+  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.24);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({
