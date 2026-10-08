@@ -1337,6 +1337,8 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
   const coverTint = thatch ? charred(cover.tint, 0.42) : cover.tint;
   const rafterTint = thatch ? charred(timber.tint, 0.35) : timber.tint;
   const pitched = roof.kind !== 'flat' && roof.slabs.length >= 2;
+  // the floor a fallen rafter can reach: the top storey's (a house of three storeys keeps the two floors under it)
+  const topFloor = anatomy.storeys.length ? anatomy.storeys[anatomy.storeys.length - 1].y0 : 0;
   if (pitched) {
     const slopes = roof.slabs.slice(0, 2);
     for (const slab of slopes) {
@@ -1394,8 +1396,8 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
             const inward = norm3([-nrm[0], 0, -nrm[2]]);
             const tp = Math.max(0, Math.min(0.5, (roof.eaveY - footIn[1]) / Math.max(1e-3, headIn[1] - footIn[1])));
             const plate: Vec3 = [footIn[0] + (headIn[0] - footIn[0]) * tp, footIn[1] + (headIn[1] - footIn[1]) * tp, footIn[2] + (headIn[2] - footIn[2]) * tp];
-            // its end comes to rest on the floor at the worst
-            const dropTo: Vec3 = [plate[0] + inward[0] * len * 0.45, Math.max(0.15 + rng() * 0.3, plate[1] - len * 0.85), plate[2] + inward[2] * len * 0.45];
+            // its end comes to rest on the top storey's floor at the worst (the floors below it still stand)
+            const dropTo: Vec3 = [plate[0] + inward[0] * len * 0.45, Math.max(topFloor + 0.15 + rng() * 0.3, plate[1] - len * 0.85), plate[2] + inward[2] * len * 0.45];
             beamBetween(mesh, plate, dropTo, 0.1, 0.14, along, rafterTint);
           }
         }
@@ -1529,14 +1531,18 @@ export function storeyDownHouse(anatomy: StructureDamageAnatomy, storeyIndex: nu
   if (!st || !below || storeyIndex === 0) return { cuts: [], hides: [] };
   const rng = damageRng(seed);
   const mesh = new Mesh(out.mesh);
-  // the floor the storey falls onto: the top of the storey below, between its faces (body frame)
-  const fb = below.faces;
-  const front = fb.find((f) => f.name === 'front'), back = fb.find((f) => f.name === 'back');
-  const left = fb.find((f) => f.name === 'left'), right = fb.find((f) => f.name === 'right');
-  if (!front || !back || !left || !right) return { cuts: [], hides: [] };
-  const x0 = Math.min(left.origin[0], right.origin[0]) + 0.08, x1 = Math.max(left.origin[0], right.origin[0]) - 0.08;
-  const z0 = Math.min(back.origin[2], front.origin[2]) + 0.08, z1 = Math.max(back.origin[2], front.origin[2]) - 0.08;
-  if (x1 - x0 < 1 || z1 - z0 < 1) return { cuts: [], hides: [] };
+  // the floor the storey falls onto: the top of the storey below, between its faces' outer planes (body frame). A face's
+  // name says nothing of its axis (a Franconian row house fronts its street on +x, its "left" and "right" are its
+  // ends), so the faces are sorted by the way they look out.
+  let x0 = -Infinity, x1 = Infinity, z0 = -Infinity, z1 = Infinity;
+  for (const f of below.faces) {
+    if (Math.abs(f.out[0]) > 0.7) {
+      if (f.out[0] > 0) x1 = Math.min(x1, f.origin[0] - 0.08); else x0 = Math.max(x0, f.origin[0] + 0.08);
+    } else if (Math.abs(f.out[2]) > 0.7) {
+      if (f.out[2] > 0) z1 = Math.min(z1, f.origin[2] - 0.08); else z0 = Math.max(z0, f.origin[2] + 0.08);
+    }
+  }
+  if (!Number.isFinite(x0 + x1 + z0 + z1) || x1 - x0 < 1 || z1 - z0 < 1) return { cuts: [], hides: [] };
   const floorY = st.y0, storeyH = st.y1 - st.y0;
   // what the storey was built of: its faces' layers, and the timbers of a framed storey or of its floor
   const slots = new Map<string, FractureSlot>();
@@ -1544,8 +1550,9 @@ export function storeyDownHouse(anatomy: StructureDamageAnatomy, storeyIndex: nu
   const list = [...slots.values()];
   const timber: FractureSlot = list.find((l) => l.material === 'timber') ?? st.floor?.structure
     ?? { material: 'timber', bucket: 'structureWood', tint: [0.36, 0.27, 0.19], thicknessM: 0.2, share: 1 };
-  // the skin in the walls' main material (a framed storey's daub: the infill's bucket in the clay under its wash)
-  const main = list.find((l) => l.material !== 'timber' && l.material !== 'plank') ?? list[0] ?? timber;
+  // the skin in the walls' main material, as a wall's fall banks it (a rendered wall's core under its render, which
+  // comes down as plates among the chunks; a framed storey's daub: the infill's bucket in the clay under its wash)
+  const main = list.find((l) => l.material !== 'timber' && l.material !== 'plank' && l.material !== 'plaster') ?? list[list.length - 1] ?? timber;
   const skinSlot: FractureSlot = main.material === 'infill' ? { ...main, tint: DAUB } : main;
   // the heap's height over the floor: highest along the walls (a third of the storey's height, at most 1.1 m), a third
   // of that in the middle, lumpy

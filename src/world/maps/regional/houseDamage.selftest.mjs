@@ -246,7 +246,7 @@ console.log(`house damage: ${meshes} debris pieces (${SHAPES.length} shapes x 4 
 
 // 6. the roof falls (sectionDown on the roof's section): deterministic, within its caps (6,000 vertices, 160 pieces),
 // the roof's covering hidden, what is left inside the house's footprint and under its ridge
-let roofs = 0;
+let roofs = 0, tall = 0;
 for (const [styleId, id, wall] of SAMPLE) {
   const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
   if (!style?.builders[id]) continue;
@@ -266,10 +266,14 @@ for (const [styleId, id, wall] of SAMPLE) {
     const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     assert.ok(Math.abs(x) <= a.w / 2 + 1.5 && Math.abs(z) <= a.d / 2 + 1.5, `${styleId}/${id}: the fallen roof inside the footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
     assert.ok(y <= a.roof.ridgeY + 0.3 && y >= -0.1, `${styleId}/${id}: under the ridge (${y.toFixed(2)} of ${a.roof.ridgeY.toFixed(2)})`);
+    // a rafter hangs into the top storey and no further: the floors under it still stand
+    assert.ok(y >= a.storeys[a.storeys.length - 1].y0 - 0.05, `${styleId}/${id}: the fallen roof over the top storey's floor (${y.toFixed(2)} under ${a.storeys[a.storeys.length - 1].y0.toFixed(2)})`);
   }
+  if (a.storeys.length > 1) tall++;
   roofs++;
 }
-console.log(`house damage: ${roofs} roofs fall deterministically within their caps, their coverings hidden, what is left under the ridge`);
+assert.ok(tall >= 2, `roofs fall on houses of more than one storey (${tall})`);
+console.log(`house damage: ${roofs} roofs fall deterministically within their caps, their coverings hidden, what is left under the ridge and over the top storey's floor`);
 
 // 6b. a wall falls (sectionDown on a wall's section): deterministic, within its caps, the section hidden, a stub, the open
 // storey behind it and its heap outside, all inside the house's reach, every triangle facing its normal
@@ -308,12 +312,14 @@ for (const [styleId, id, wall] of SAMPLE) {
 console.log(`house damage: ${walls} wall sections fall deterministically within their caps (worst ${wv} vertices), each hidden, a stub on the clamp line, the storey open behind it, a heap outside, every triangle facing its normal`);
 
 // 6c. a storey drops (P2 storeyDown): deterministic, within the section caps, its faces' sections hidden, the storey
-// heaped on its floor line (the storey below's top) inside the storey below's walls, every triangle facing its normal
-let drops = 0;
-for (const [styleId, id, wall] of SAMPLE) {
+// heaped on its floor line (the storey below's top) inside the storey below's walls, every triangle facing its normal.
+// Two builds each: a face's name says nothing of its axis (a Franconian row house fronts its street on +x in one of
+// them, as Steinburg's strip house g54 does), and the heap must find the floor either way.
+let drops = 0, offAxis = 0;
+for (const [styleId, id, wall] of SAMPLE) for (const seed of [25, 7]) {
   const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
   if (!style?.builders[id]) continue;
-  const { parts, w, d, h } = build(style, id, 25, wall);
+  const { parts, w, d, h } = build(style, id, seed, wall);
   const describe = kitOf(id, styleId, 'describe'), storeyDown = kitOf(id, styleId, 'storeyDown');
   const a = describe({ structureIdx: 7, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
     massClass: 'house', seed: 16, kitPlan: regionalKitPlanOf(parts) });
@@ -335,10 +341,18 @@ for (const [styleId, id, wall] of SAMPLE) {
     assert.ok(y >= top.y0 - 0.12 && y <= top.y0 + 1.7, `${styleId}/${id}: the heap on the floor line (${y.toFixed(2)} over ${top.y0.toFixed(2)})`);
   }
   assert.equal(storeyDown(a, 0, 51, writers(6000, 160)).hides.length, 0, `${styleId}/${id}: the ground storey never drops`);
+  // every storey above the ground drops onto its own floor, not just the top one
+  for (const st of a.storeys.slice(1)) {
+    const mid = writers(6000, 160);
+    assert.ok(storeyDown(a, st.index, 52, mid).hides.length === st.faces.length && mid.runs.some((r) => r.role === 'rubble' && r.pos.length),
+      `${styleId}/${id} (seed ${seed}): storey ${st.index} drops onto its floor`);
+  }
+  if (Math.abs(below.faces.find((f) => f.name === 'front')?.out[0] ?? 0) > 0.7) offAxis++;
   drops++;
 }
-assert.ok(drops >= 4, `storeys drop on the multi-storey sample (${drops})`);
-console.log(`house damage: ${drops} top storeys drop deterministically within their caps, their faces hidden, each heaped on its floor line inside the walls below, every triangle facing its normal`);
+assert.ok(drops >= 8, `storeys drop on the multi-storey sample (${drops})`);
+assert.ok(offAxis >= 1, `a house fronting on x drops its storey too (${offAxis})`);
+console.log(`house damage: ${drops} top storeys drop deterministically within their caps (${offAxis} of them fronting on x), their faces hidden, each heaped on its floor line inside the walls below, every storey above the ground onto its own floor, every triangle facing its normal`);
 
 // 7. the seam (DESTRUCTION.md §16.3): the kits' plan reader is registered (the world's describe call sites read the plan
 // through kitPlanFor, importing no kit); a collapse seats its heap on the sim's own mound (bodyMoundHeightAt) when the
