@@ -24,8 +24,8 @@ export const RAIL_BALLAST_BED = 0;
 /** A shoulder (v 1 at the bed's edge to 2 at its foot). */
 export const RAIL_BALLAST_SHOULDER = 1;
 /** The stones' size on the bed and on the shoulders (m): track ballast is 30–60 mm stone, the shoulders' a little coarser. */
-export const RAIL_BALLAST_STONE_M = 0.052;
-export const RAIL_BALLAST_SHOULDER_STONE_M = 0.068;
+export const RAIL_BALLAST_STONE_M = 0.046;
+export const RAIL_BALLAST_SHOULDER_STONE_M = 0.056;
 
 /**
  * Tag a bed or shoulder part, in place, before the kit places it: every vertex's UV becomes its place across the track
@@ -106,13 +106,16 @@ vec2 cotBallastHash(vec2 c) {
     float fw = length(fwidth(vGrimeW.xz)) / sz;
     float sv = 1.0 - smoothstep(0.32, 0.85, fw);
     float edge = sqrt(d2) - sqrt(d1);
-    float voidW = 1.0 - smoothstep(0.05, 0.20 + fw * 0.5, edge);
+    // (the lab's first frames: a dark ring round every stone read as cobbles) a void is a gap of its own width between two
+    // stones, wide on one side and closed on another — angular crushed stone, not river pebbles
+    float voidW = 1.0 - smoothstep(0.02, 0.08 + 0.16 * h1.y + fw * 0.5, edge);
     float tone = 0.76 + 0.48 * h1.x;
-    // (normalised to its mean — tone 1.0 over the voids' ~24 % of the area at 0.62 — so the far bed keeps its tone)
-    balStone = mix(1.0, tone * (1.0 - 0.62 * voidW) / 0.85, sv);
+    // (normalised to its mean — tone 1.0 over the voids' ~15 % of the area at 0.55 — so the far bed keeps its tone)
+    balStone = mix(1.0, tone * (1.0 - 0.55 * voidW) / 0.92, sv);
     balHue = mix(vec3(1.0), h1.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), abs(h1.y - 0.5) * 1.6 * sv);
     // each stone's face: tilted by its own draw and rounded off toward its edge (the normal stage below applies it)
-    cotBallastTilt = ((h1 - 0.5) * 0.55 - r1 * 0.85) * sv * (1.0 - voidW * 0.6);
+    // (flat facets, each at its own tilt, barely rounded: crushed stone breaks into planes)
+    cotBallastTilt = ((h1 - 0.5) * 0.95 - r1 * 0.22) * sv * (1.0 - voidW * 0.6);
   }
   #endif
   // the work on the bed, by its place across the track (rails' centres at |u| 1): the four-foot oily and black with

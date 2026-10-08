@@ -109,7 +109,7 @@ const hash = /vec2 cotBallastHash\(vec2 c\) \{([\s\S]*?)\n\}/.exec(full.fragment
 assert.ok(hash && hash[1].includes('uvec2') && !hash[1].includes('sin('), 'the stones\' cells hash by integers (exact at any distance)');
 assert.ok(full.fragmentShader.includes('#define COT_BALLAST_STONES') && !cheap.fragmentShader.includes('#define COT_BALLAST_STONES'), 'the cheap variant draws no stones');
 assert.ok(full.fragmentShader.includes(`mix(${RAIL_BALLAST_STONE_M.toFixed(3)}, ${RAIL_BALLAST_SHOULDER_STONE_M.toFixed(3)}, balShoulder)`), 'the bed\'s and the shoulders\' stone sizes');
-assert.ok(/float sv = 1\.0 - smoothstep\(0\.32, 0\.85, fw\);/.test(full.fragmentShader) && full.fragmentShader.includes('balStone = mix(1.0, tone * (1.0 - 0.62 * voidW) / 0.85, sv);'),
+assert.ok(/float sv = 1\.0 - smoothstep\(0\.32, 0\.85, fw\);/.test(full.fragmentShader) && full.fragmentShader.includes('balStone = mix(1.0, tone * (1.0 - 0.55 * voidW) / 0.92, sv);'),
   'the stones fade to the pattern\'s mean by the footprint');
 assert.ok(full.fragmentShader.includes('float fourFoot = (1.0 - smoothstep(0.78, 0.94, balU)) * (1.0 - balShoulder);'), 'the four-foot lies between the rails, on the bed');
 assert.ok(full.fragmentShader.includes('roughnessFactor *= 1.0 - 0.28 * cotBallastGloss;'), 'the oil is a little glossier');
