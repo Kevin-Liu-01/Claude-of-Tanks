@@ -7176,6 +7176,8 @@ function* createTankOwnedSteps(
   gunG.add(recoilG);
 
   const buckets: Record<string, THREE.BufferGeometry[]> = {};
+  // Discharger tubes add() sends to the owner's fitting paint once the profile is done (SMOKE_TUBE_PAINT_BUCKET).
+  const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
   const eraClusters = new Map<string, EraClusterRange>();
@@ -7241,13 +7243,15 @@ function* createTankOwnedSteps(
       // 2026-10-07 (tank-accessories round 4; wave 217 on the Merkava 4: "the smoke-grenade tubes render as bright
       // polished chrome pipes"): a discharger tube authored into a camouflaged paint-only bucket takes the scheme's
       // solid matte fitting paint (the camo bucket's clearcoat and 1.3 normal scale on a 4 cm tube read as chrome);
-      // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged).
+      // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
+      // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
+      // a rebuild that clears, offsets or scales that bucket by name must still find it there.
       const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
-      const targetBucket = eraOwner
-        ? `${eraOwner}ExternalArmor`
-        : smokeTube && SMOKE_TUBE_PAINT_BUCKET[bucket] ? SMOKE_TUBE_PAINT_BUCKET[bucket] : bucket;
+      const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
-      partCensus?.(targetBucket, part, 'add');
+      const paintBucket = smokeTube ? SMOKE_TUBE_PAINT_BUCKET[bucket] : undefined;
+      if (paintBucket) smokeTubesForFittingPaint.add(part);
+      partCensus?.(paintBucket ?? targetBucket, part, 'add');
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
         const destructibleOwner = bucket.startsWith('turret') ? 'turret' : 'hull';
@@ -7529,6 +7533,20 @@ function* createTankOwnedSteps(
     resizeAuthoredVehicle(P, sizeFactor);
   } else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
+  // Round 4 (2026-10-07): the discharger tubes add() marked for the matte fitting paint move now, once the profile
+  // is done. Moved at add() time they escaped every later bucket operation: the Chieftain Mk 5 and Mk 10 rebuild
+  // clears turretDetail before its upper turret and squashes the turret's height by bucket, so the donor bank
+  // survived beside the new one (24 launch sockets, not 12) and the new bank escaped the squash.
+  if (smokeTubesForFittingPaint.size) {
+    for (const [source, target] of Object.entries(SMOKE_TUBE_PAINT_BUCKET)) {
+      const list = buckets[source];
+      if (!list?.some((part) => smokeTubesForFittingPaint.has(part))) continue;
+      const tubes = list.filter((part) => smokeTubesForFittingPaint.has(part));
+      buckets[source] = list.filter((part) => !smokeTubesForFittingPaint.has(part));
+      (buckets[target] || (buckets[target] = [])).push(...tubes);
+    }
+    smokeTubesForFittingPaint.clear();
+  }
   const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
