@@ -1676,7 +1676,7 @@
       "view": 425,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3335,7 +3335,7 @@
       "view": 440,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
