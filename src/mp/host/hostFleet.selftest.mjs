@@ -50,8 +50,10 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // grows with the maps: the simulation, the world's height field, the wire, the server actor, three's math, the i18n
 // catalogs, and the regional architecture kits (the Worker derives each map's world collision from its kit geometry, so
 // the kits belong in its closure). 4.45 MB on 2026-10-01; 5.81 MB at PR head 5d2461283; 6.06 MB with the five map revival
-// lane 2 kits combined (2026-10-05).
-assert.ok(sourceBytes < 7e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// lane 2 kits combined (2026-10-05); 7.07 MB at the push-3 stage 43e91f222 (the height field and the auxiliary inventory
+// grew), 7.20 MB with the destruction simulation (2026-10-08: structures, craters, the ground overlay and the destruction
+// log, 0.09 MB). A stray fleet import still fails the 8 MB bound by more than twice its margin.
+assert.ok(sourceBytes < 8e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
