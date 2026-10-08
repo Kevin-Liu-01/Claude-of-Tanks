@@ -89,9 +89,20 @@ function launchers(P: TankBuilderPort): void {
       for(const dx of [-.155,.155])turretEquipment(P,'turretDetail',box(.035,.33,1.19),x+dx,2.43,-1.055);
       for(const dy of [-.17,.17])turretEquipment(P,'turretDetail',box(.345,.032,1.19),x,2.43+dy,-1.055);
       turretEquipment(P,'turretDetail',box(.34,.35,.035),x,2.43,-1.667);
-      const tube=new THREE.CylinderGeometry(.126,.126,1.16,P.q?24:12,1,true).rotateX(Math.PI/2);
-      turretEquipment(P,'turretDark',tube,x,2.43,-1.055);
+      // The canister runs from the end plate to the mouth ring: its front
+      // edge used to stop 15 mm short of the ring, a slot into the bore.
+      const tube=new THREE.CylinderGeometry(.126,.126,1.175,P.q?24:12,1,true).rotateX(Math.PI/2);
+      turretEquipment(P,'turretDark',tube,x,2.43,-1.0475);
       turretEquipment(P,'turretDetail',new THREE.RingGeometry(.107,.129,P.q?24:12),x,2.43,-.46);
+      // The mouth is a recess seen from inside: a bore liner with reversed
+      // winding (as openTube's) walls the ring to the recessed cap. Without it
+      // an oblique view met the culled inside of the tube; the voxel fills
+      // that used to stand in the recess left with the 2026-09-30 refill.
+      const liner=new THREE.CylinderGeometry(.107,.107,.22,P.q?24:12,1,true).rotateX(Math.PI/2);
+      const index=liner.index!;
+      for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}
+      liner.computeVertexNormals();
+      turretEquipment(P,'turretDark',liner,x,2.43,-.57);
       turretEquipment(P,'turretDark',new THREE.CircleGeometry(.107,P.q?24:12),x,2.43,-.68);
     }
   });

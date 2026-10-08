@@ -7,8 +7,8 @@ import {MISSION_RECEIVER_SEATS} from './missionAttachmentReceiver.ts';
 import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesClear} from '../sim/missionAttachment.ts';
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
-const ids=['pt91_twardy','leo2a6_ua','ua_m1a1'];
-const counts={pt91_twardy:6,leo2a6_ua:4,ua_m1a1:8};
+const ids=['pt91_twardy','leo2a6_ua','ua_m1a1','ua_t80u_modern'];
+const counts={pt91_twardy:6,leo2a6_ua:4,ua_m1a1:8,ua_t80u_modern:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
@@ -19,10 +19,12 @@ function nativeParts(mesh,turret){
   const box=new Box3();for(let v=i*36;v<(i+1)*36;v++)box.expandByPoint(new Vector3().fromBufferAttribute(p,v).applyMatrix4(transform));return box;
  });
 }
-function anchorIndexes(id){return id==='pt91_twardy'?[0,1,2,3]:id==='leo2a6_ua'?[0,1]:[0,4];}
+function anchorIndexes(id){return id==='pt91_twardy'?[0,1,2,3]:id==='leo2a6_ua'||id==='ua_t80u_modern'?[0,1]:[0,4];}
 function anchorStock(id,row){
  if(row.solidBox)return false;
  if(id==='pt91_twardy')return row.name==='turret';
+ // Zoria's bearers rest on the top lattice of the left roof-cage wing (rails, ties and cross rows at y 1.04).
+ if(id==='ua_t80u_modern')return row.name==='turretOpenLattice'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-1.645&&v.x<=-.955&&v.y>=1.015&&v.y<=1.065&&v.z>=-1.235&&v.z<=.345);
  if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+1.55)<.0161&&v.y>=.8939&&v.y<=.9261&&v.z>=-2.901&&v.z<=.801);
  return row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161);
 }
