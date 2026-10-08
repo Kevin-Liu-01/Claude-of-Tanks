@@ -54,6 +54,38 @@ interface AssaultRules {
   readonly holdS: number;
 }
 
+/**
+ * Capture the Flag and Turbo Ball bases (modes lane, 2026-10-08; owner decision: "too big to score" — the flags stood on
+ * the spawns 840-870 m apart, the goals 774-844 m): the two bases stand this far apart on the deployments' axis, each
+ * the 180-degree rotation of the other about the deployments' pivot (sim/deployment.ts), moved together onto ground a
+ * tank can stand on (sim/matchPlacement.ts).
+ */
+interface ObjectiveBaseRules {
+  readonly separationM: number;
+}
+
+/**
+ * Turbo Ball's ball (modes lane, 2026-10-08): what a ram's touch and a shell give it, its drag and its goal. A touch
+ * keeps `keep` of the ball's own velocity and adds `drive` of the hull's, plus a push along the contact normal of
+ * `push` m/s and `closingPush` per m/s the hull closes at, and a lift of `lift` + `closingLift` per m/s of closing.
+ */
+interface TurboBallRules {
+  readonly keep: number;
+  readonly drive: number;
+  readonly push: number;
+  readonly closingPush: number;
+  readonly lift: number;
+  readonly closingLift: number;
+  /** Horizontal velocity kept per 60 Hz step (rolling and air drag together). */
+  readonly drag: number;
+  /** A shell sends the ball along its flight at this speed, lifted by shotLift + shotPitchLift x its sine of climb. */
+  readonly shotSpeedMps: number;
+  readonly shotLift: number;
+  readonly shotPitchLift: number;
+  /** The ball scores inside this radius of a goal's centre. */
+  readonly goalRadiusM: number;
+}
+
 /** Endless Horde wave law (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time"). */
 interface HordeRules {
   /** Hostiles fielded on the first wave. */
@@ -287,6 +319,10 @@ export interface MatchRuleset {
   readonly assault: AssaultRules | null;
   /** Endless Horde wave law. */
   readonly horde: HordeRules | null;
+  /** Capture the Flag / Turbo Ball base placement (null: the mode has no bases). */
+  readonly bases: ObjectiveBaseRules | null;
+  /** Turbo Ball's ball (null: no ball). */
+  readonly ball: TurboBallRules | null;
   /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
   readonly enemyNation: string | null;
   readonly alliedNation?: 'player' | null;
@@ -309,13 +345,14 @@ const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
-  allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
+  allies: null, enemies: null, assault: null, horde: null, bases: null, ball: null, enemyNation: null,
 });
 
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
   standard: STANDARD,
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
-  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6 }),
+  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
+    bases: Object.freeze({ separationM: 470 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -325,6 +362,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    bases: Object.freeze({ separationM: 500 }),
+    ball: Object.freeze({ keep: 0.42, drive: 0.82, push: 4, closingPush: 0.35, lift: 2.5, closingLift: 0.12, drag: 0.992,
+      shotSpeedMps: 34, shotLift: 7, shotPitchLift: 20, goalRadiusM: 18 }),
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,

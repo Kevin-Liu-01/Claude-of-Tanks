@@ -46,6 +46,7 @@ import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
   collisionFootprintContainsPoint,
   rayCollisionFootprintEntry2,
+  shellPassesThroughCollisionRecord,
   type CollisionRecord,
   type CollisionShape,
 } from '../world/collision.ts';
@@ -166,6 +167,8 @@ interface AiObjective {
   x: number;
   z: number;
   radiusM: number;
+  /** The mission's own point for the gun (Turbo Ball's striker on the ball): held laid on it; fired at when `fire`. */
+  aim?: { x: number; y: number; z: number; radiusM: number; fire: boolean };
 }
 
 /** What the integration knows about a hit that reached this bot's team. */
@@ -306,7 +309,7 @@ interface AiDependencies {
     origin: { x: number; y: number; z: number },
     direction: { x: number; y: number; z: number },
     maxDistance: number,
-  ): { dist: number } | null | undefined;
+  ): { dist: number; record?: CollisionRecord | null } | null | undefined;
   getEnemies(): AiEntity[];
   getAllies?(): AiEntity[];
   getObstacles(): AiObstacle[];
@@ -772,6 +775,8 @@ const _vA = new Vector3();
 const _vB = new Vector3();
 const _vC = new Vector3();
 const _vD = new Vector3();
+/** Light cover a mission shot's sight passes through before it counts as blocked (a shell passes the same). */
+const SHOT_SIGHT_PASSES = 6;
 const _vE = new Vector3();
 const _vF = new Vector3();
 const _vG = new Vector3();
@@ -4198,7 +4203,55 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return hitChance < conserveThreshold() + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
   }
 
+  /**
+   * The mission's own aim (AiObjective.aim): the gun lays on that point and, when the mission says fire, fires once
+   * laid within the point's radius, loaded, in sight of it and with no friend in the lane. True while the mission
+   * holds the gun (the enemy pick waits).
+   */
+  function aimAndFireMission(input: AiInput, dt: number, timeS: number): boolean {
+    const aim = getObjective?.()?.aim;
+    if (!aim) return false;
+    const shell = selectedShell(entity.combat);
+    if (!shell) return false;
+    const st = entity.state;
+    _vD.set(aim.x, aim.y, aim.z);
+    const distance = Math.hypot(aim.x - st.pos.x, aim.z - st.pos.z);
+    applyBallisticGunLay(shell);
+    setShotInput(input);
+    calculateGunAlignment(input, distance);
+    const tolerance = Math.max(0.002, Math.atan2(aim.radiusM * 0.5, Math.max(1, distance)));
+    const combat = entity.combat;
+    const round = spec.gun.shells[chosenSlot];
+    const gunDisabled = combat && round ? selectedWeaponModuleState(combat, spec.gun, round) === 'red' : false;
+    const loaded = !combat || (!!combat.reload && slotReloadS(chosenSlot) <= 1e-3 && !combat.destroyed && !gunDisabled);
+    const laid = fireGate.yawError < tolerance && fireGate.pitchError < tolerance * 1.5;
+    const seen = aim.fire && loaded && laid && shotSightClear(st.pos.x, st.pos.y + selfGunM, st.pos.z, aim.x, aim.y, aim.z);
+    updateFriendlyFireGate(input, shell, dt, seen);
+    if (input.fire) lastFiredAtS = timeS;
+    return true;
+  }
+
+  /** A shell's sight to a point: the world ray to it, through what a shell passes (crushable light cover). */
+  function shotSightClear(ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean {
+    _vA.set(ax, ay, az);
+    _vB.set(bx - ax, by - ay, bz - az);
+    const dist = _vB.length();
+    if (dist < 1e-3) return true;
+    _vB.multiplyScalar(1 / dist);
+    let travelled = 0;
+    for (let pass = 0; pass < SHOT_SIGHT_PASSES; pass++) {
+      const hit = deps.raycast(_vA, _vB, dist - travelled);
+      if (!hit || travelled + hit.dist > dist - 2) return true;
+      if (!shellPassesThroughCollisionRecord(hit.record)) return false;
+      const advance = Math.max(0.05, hit.dist + 0.05);
+      travelled += advance;
+      _vA.addScaledVector(_vB, advance);
+    }
+    return false;
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
+    if (aimAndFireMission(input, dt, timeS)) return;
     if (!target || !enemyAlive(target)) {
       setIdleScan(input, timeS);
       conserving = false;

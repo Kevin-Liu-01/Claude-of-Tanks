@@ -6,9 +6,11 @@ import { createObjectiveAccess } from './matchPlacementAccess.ts';
 import type { BotNavigationGrid } from './botRoutePlanner.ts';
 import {
   createDeployment, deploymentFrame, DEPLOYMENT_CLEARED_SLOTS, DEPLOYMENT_LATTICE_M, DEPLOYMENT_SLOT_RADIUS_M,
-  DEPLOYMENT_SLOT_SPACING_M, type Deployment, type DeploymentCheck, type DeploymentFrame, type DeploymentPoint,
-  type DeploymentSlot, type DeploymentSpawns, type DeploymentTeam,
+  DEPLOYMENT_SLOT_SPACING_M, resolveObjectivePair, resolveSlotPair, type Deployment, type DeploymentCheck, type DeploymentFrame,
+  type DeploymentPoint, type DeploymentSlot, type DeploymentSpawns, type DeploymentTeam,
 } from './deployment.ts';
+import { matchRulesetFor } from './matchRuleset.ts';
+import type { GameModeId } from './matchModes.ts';
 
 export interface PlacementPoint { x: number; z: number }
 interface PlacementSpawn extends PlacementPoint { yaw: number }
@@ -371,15 +373,42 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
 
   const centers = { alpha: { ...anchors.alpha }, bravo: { ...anchors.bravo } };
-  if (mode === 'capture_the_flag' || mode === 'turbo_ball') {
+  const baseRules = mode === 'capture_the_flag' || mode === 'turbo_ball' ? matchRulesetFor(mode as GameModeId).bases : null;
+  if (baseRules) {
+    // Capture the Flag's flags and Turbo Ball's goals (modes lane, 2026-10-08): on the deployments' axis, half the
+    // ruleset's separation either side of the pivot, each the other's rotation about it (sim/deployment.ts), moved
+    // together onto ground the base footprint holds; a side the joint search cannot seat searches alone (reported by
+    // the bases receipt), and the bounded search fails closed as before.
     const radius = mode === 'turbo_ball' ? 18 : 12;
     const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
-    for (const [team, half] of [['alpha', -1], ['bravo', 1]] as const) {
-      Object.assign(centers[team], reserve(anchors[team], { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent }, `base-${team}`, half));
+    const footprint: Footprint = { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent };
+    const reach = Math.min(baseRules.separationM, axisLength) * 0.5;
+    const target = (side: number) => ({ x: originalMiddle.x + ux * reach * side, z: originalMiddle.z + uz * reach * side, yaw: 0 });
+    const sideOf = { alpha: -1, bravo: 1 } as const;
+    const holds = (team: DeploymentTeam, point: PlacementPoint) => acceptable(point, footprint, `base-${team}`, sideOf[team], []);
+    // across the axis first (the separation kept), then the rings round the targets
+    const pair = resolveObjectivePair(target(-1), target(1), { x: -ux, z: -uz }, holds)
+      ?? resolveSlotPair(target(-1), target(1), holds, { alpha: [], bravo: [] });
+    for (const team of ['alpha', 'bravo'] as const) {
+      const seat = acceptable(pair[team], footprint, `base-${team}`, sideOf[team], [])
+        ? { x: pair[team].x, z: pair[team].z } : find(pair[team], footprint, `base-${team}`, sideOf[team]);
+      if (!seat) throw new Error(`No safe base-${team} placement within the bounded map search`);
+      reservations.push({ ...seat, radius, key: `base-${team}` });
+      Object.assign(centers[team], seat);
     }
   }
-  const middle = mode === 'turbo_ball'
-    ? reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M }, 'kickoff')
+  // Turbo Ball's kickoff on the goals' perpendicular bisector, nearest the pivot: equidistant from both goals
+  function placeKickoff(): PlacementPoint {
+    const footprint: Footprint = { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M };
+    const mid = { x: (centers.alpha.x + centers.bravo.x) * 0.5, z: (centers.alpha.z + centers.bravo.z) * 0.5 };
+    const gx = centers.bravo.x - centers.alpha.x, gz = centers.bravo.z - centers.alpha.z, gl = Math.hypot(gx, gz) || 1;
+    for (let t = 0; t <= 200; t += 4) for (const side of t ? [1, -1] : [1]) {
+      const point = { x: mid.x + (gz / gl) * t * side, z: mid.z - (gx / gl) * t * side };
+      if (acceptable(point, footprint, 'kickoff', 0, [])) { reservations.push({ ...point, radius: footprint.radius, key: 'kickoff' }); return point; }
+    }
+    return reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, footprint, 'kickoff');
+  }
+  const middle = mode === 'turbo_ball' ? placeKickoff()
     : mode === 'ac130' ? reserve(originalMiddle, {radius:30,relief:7,normalY:OBJECTIVE_NORMAL_Y,solidOnly:true}, 'extraction') : originalMiddle;
   function placeZones(): PlacementPoint[] {
     const targets = MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.zones

@@ -182,6 +182,37 @@ export function resolveSlotPair(alpha: DeploymentSlot, bravo: DeploymentSlot, ch
   return { alpha: a.slot, bravo: b.slot, moveM: Math.max(a.radius, b.radius), symmetric: false };
 }
 
+/** The joint displacements an objective pair tries, cheapest first (built once per lattice; see resolveObjectivePair). */
+const OBJECTIVE_MOVES: ReadonlyArray<readonly [number, number]> = (() => {
+  const out: [number, number][] = [];
+  for (let along = -48; along <= 48; along += DEPLOYMENT_LATTICE_M * 2) {
+    for (let across = -240; across <= 240; across += DEPLOYMENT_LATTICE_M * 2) out.push([along, across]);
+  }
+  // across the axis costs its metres, along it twice: a base keeps its separation wherever the ground allows
+  const cost = ([along, across]: readonly [number, number]) => Math.abs(across) + 2 * Math.abs(along);
+  return out.sort((p, q) => cost(p) - cost(q) || Math.abs(p[0]) - Math.abs(q[0]) || q[1] - p[1] || q[0] - p[0]);
+})();
+
+/**
+ * Two objectives on the deployments' axis (Capture the Flag's flags, Turbo Ball's goals; modes lane 2026-10-08): the
+ * cheapest joint displacement both sides accept — alpha's objective moved by d, bravo's by -d, so they stay rotations of
+ * each other about the pivot — where moving across the axis costs its metres and moving along it twice, and along-axis
+ * moves stop at 48 m, so the pair keeps the ruleset's separation wherever the ground allows. `forward` is the unit from
+ * bravo's anchor toward alpha's (DeploymentFrame.forward). Null when no such displacement exists (the caller then falls
+ * back to resolveSlotPair's rings).
+ */
+export function resolveObjectivePair(alpha: DeploymentSlot, bravo: DeploymentSlot, forward: DeploymentPoint,
+  check: (team: DeploymentTeam, point: DeploymentPoint) => boolean): { alpha: DeploymentSlot; bravo: DeploymentSlot; along: number; across: number } | null {
+  const ax = -forward.x, az = -forward.z; // alpha toward bravo: positive `along` draws the pair together
+  const wx = az, wz = -ax;
+  for (const [along, across] of OBJECTIVE_MOVES) {
+    const dx = ax * along + wx * across, dz = az * along + wz * across;
+    const a = { x: alpha.x + dx, z: alpha.z + dz, yaw: alpha.yaw }, b = { x: bravo.x - dx, z: bravo.z - dz, yaw: bravo.yaw };
+    if (check('alpha', a) && check('bravo', b)) return { alpha: a, bravo: b, along, across };
+  }
+  return null;
+}
+
 /** One side's resolved slots, extended lazily in slot order (slot k depends only on the slots before it). */
 export interface Deployment {
   readonly frame: DeploymentFrame;

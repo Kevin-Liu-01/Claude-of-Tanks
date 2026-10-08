@@ -70,8 +70,12 @@ function perspectiveOf(state: ObjectiveStateView): ObjectiveTeamId {
   return state.perspectiveTeam === 'bravo' ? 'bravo' : 'alpha';
 }
 
-/** Modes whose objective markers already stand on the team spawns (no separate spawn glyph). */
-const SPAWN_MARKED_BY_OBJECTIVE = new Set(['capture_the_flag', 'turbo_ball']);
+/**
+ * Modes whose objective markers already stand on the team spawns (no separate spawn glyph). None since the forward bases
+ * (modes lane, 2026-10-08): Capture the Flag's flags and Turbo Ball's goals stand on the deployments' axis between the
+ * spawns, so both modes mark their spawns (where a side revives) beside their bases.
+ */
+const SPAWN_MARKED_BY_OBJECTIVE = new Set<string>();
 /** Modes whose enemy side spawns at the edges / on its own sectors (only the own spawn is a place). */
 const OWN_SPAWN_ONLY = new Set(['endless_horde', 'frontline_assault']);
 

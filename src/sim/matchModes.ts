@@ -128,6 +128,17 @@ const ZONE_CONTEST_REPEAT_S = 20;
 const ZONE_POINTS_PER_SECOND = 2;
 export const ZONE_DESTRUCTION_POINTS = 25;
 const BALL_RADIUS_M = 2.2;
+// Turbo Ball striker (modes lane 2026-10-08): ahead of the ball by more than this, it comes round beside the ball
+// (this far out) before lining up behind it. Behind the ball within STRIKER_LAY_M it holds its gun on the ball;
+// 10-90 m behind it, inside the cone the goal subtends from the ball (never narrower than 8 degrees either side)
+// and the ball near rest, it shoots.
+const STRIKER_BESIDE_M = 6;
+const STRIKER_ROUND_M = 24;
+const STRIKER_LAY_M = 150;
+const STRIKER_SHOT_MIN_M = 10;
+const STRIKER_SHOT_MAX_M = 90;
+const STRIKER_SHOT_CONE_RAD = 0.14;
+const STRIKER_SHOT_BALL_MPS = 6;
 // Frontline regroup (bots lane, 2026-10-03; Redrock Divide and Desert, 24 seeds each): the last sector decides the
 // frontline. Its counter-attack wave (five defenders at 1.32x hp) met the four survivors of the second sector, while the
 // bots revived at the spawn arrived 40-80 s behind them and died alone. When the attack takes the second-to-last
@@ -137,9 +148,9 @@ const BALL_RADIUS_M = 2.2;
 const ASSAULT_REGROUP_MAX_S = 60;
 const ASSAULT_REGROUP_RADIUS_M = 80;
 const ASSAULT_REGROUP_HUMAN_M = 250;
-const BALL_GOAL_RADIUS_M = 18;
-const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
+// what the ball keeps of its speed off a wall (modes lane 2026-10-08; the ground bounce keeps 0.58 of its fall)
+const BALL_WALL_RESTITUTION = 0.55;
 const HORDE_INTERMISSION_S = 6;
 const PICKUP_RADIUS_M = 7;
 // Mars mode boost caches: the first drop and the interval between drops (seconds).
@@ -190,6 +201,8 @@ interface MatchModeHooks<Entity extends MatchModeEntity> {
   setWeaponStage?(entity: Entity, stage: number): void;
   terrainHeight?(x: number, z: number): number;
   ballFloorHeight?(x: number, z: number, previousBottomY: number): number;
+  /** A standing solid overlaps a ball of `radius` centred here (sim/ballSolids.ts ballSolidAt on the host's world). */
+  ballBlocked?(x: number, y: number, z: number, radius: number): boolean;
   emit?(type: string, payload: MatchModeEventPayload): void;
 }
 
@@ -204,7 +217,11 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
 }
 
 export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault';
-interface BotDestination { x: number; z: number; mission?: BotMission }
+/** A point a mission wants the bot's gun laid on (Turbo Ball's striker on the ball); `fire` when a laid,
+ * loaded gun should shoot it now. */
+export interface BotAim { x: number; y: number; z: number; radiusM: number; fire: boolean }
+
+interface BotDestination { x: number; z: number; mission?: BotMission; aim?: BotAim }
 
 interface TeamScore { alpha: number; bravo: number }
 
@@ -330,7 +347,7 @@ export interface MatchModeController<
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
   /** The objective the bot's targets are ranked against: the same point with its capture reach. */
-  botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null;
+  botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission; aim?: BotAim } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
@@ -389,7 +406,7 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 /** Create one fixed-step objective controller without changing standard combat. */
 export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
-  terrainHeight = () => 0, ballFloorHeight = terrainHeight, emit = () => {},
+  terrainHeight = () => 0, ballFloorHeight = terrainHeight, ballBlocked, emit = () => {},
   placement, setWeaponStage = () => {},
   ruleset: rulesetOption,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
@@ -731,6 +748,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const liveLine = (): ZoneState | null => zones[Math.min(lineIndex, zones.length - 1)] ?? null;
 
   const assaultRules = ruleset.assault ?? matchRulesetFor('frontline_assault').assault!;
+  // Turbo Ball's ball (the ruleset's: the touch, the shot, the drag, the goal; modes lane 2026-10-08)
+  const ballRules = ruleset.ball ?? matchRulesetFor('turbo_ball').ball!;
   const startAssaultWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length,
       assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
@@ -1014,9 +1033,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const driveX = Math.sin(entity.state.yaw) * entity.state.speed;
     const driveZ = Math.cos(entity.state.yaw) * entity.state.speed;
     const closing = Math.max(0, driveX * nx + driveZ * nz);
-    ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * (4 + closing * 0.35);
-    ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * (4 + closing * 0.35);
-    ball.vy = Math.max(ball.vy, 2.5 + closing * 0.12);
+    const push = ballRules.push + closing * ballRules.closingPush;
+    // The hull carries the ball by its motion into it: in full head-on, not at all from beside it or pulling away
+    // (modes lane 2026-10-08: the whole drive velocity used to carry the ball whichever way the hull moved, so a hull
+    // circling behind the ball or backing off dragged it toward its own goal).
+    const hullSpeed = Math.abs(entity.state.speed);
+    const carry = hullSpeed > 0.01 ? ballRules.drive * closing / hullSpeed : 0;
+    ball.vx = ball.vx * ballRules.keep + driveX * carry + nx * push;
+    ball.vz = ball.vz * ballRules.keep + driveZ * carry + nz * push;
+    ball.vy = Math.max(ball.vy, ballRules.lift + closing * ballRules.closingLift);
     ball.lastTouchId = entity.id;
     lastBallTouchS = timeS;
     emit('mode_ball_hit', { by: entity.id, team: teamOf(entity), kind: 'ram' });
@@ -1027,11 +1052,22 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!ball) return;
     previousBallBottom = ball.y - BALL_RADIUS_M;
     ball.vy -= BALL_GRAVITY_MPS2 * ruleset.gravityScale * dt;
-    ball.x += ball.vx * dt;
-    ball.y += ball.vy * dt;
-    ball.z += ball.vz * dt;
-    ball.vx *= BALL_LINEAR_DRAG;
-    ball.vz *= BALL_LINEAR_DRAG;
+    // The world's solids turn the ball (sim/ballSolids.ts): each axis moves alone, and an axis that would carry a
+    // ball standing clear into a solid reverses at the wall restitution instead. A ball already inside one (a wall
+    // that rose round it) moves freely until it is out.
+    const solids = ballBlocked && !ballBlocked(ball.x, ball.y, ball.z, BALL_RADIUS_M) ? ballBlocked : null;
+    const nextX = ball.x + ball.vx * dt;
+    if (solids && ball.vx !== 0 && solids(nextX, ball.y, ball.z, BALL_RADIUS_M)) ball.vx *= -BALL_WALL_RESTITUTION;
+    else ball.x = nextX;
+    const nextZ = ball.z + ball.vz * dt;
+    if (solids && ball.vz !== 0 && solids(ball.x, ball.y, nextZ, BALL_RADIUS_M)) ball.vz *= -BALL_WALL_RESTITUTION;
+    else ball.z = nextZ;
+    const nextY = ball.y + ball.vy * dt;
+    // a roof or a rock top the ball comes down on holds it like the ground (a bounce, then rest)
+    if (solids && ball.vy < 0 && solids(ball.x, nextY, ball.z, BALL_RADIUS_M)) ball.vy = ball.vy < -1 ? ball.vy * -0.58 : 0;
+    else ball.y = nextY;
+    ball.vx *= ballRules.drag;
+    ball.vz *= ballRules.drag;
   };
 
   const bounceBallFromTerrain = (): void => {
@@ -1057,10 +1093,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const ballScoringTeam = (): ObjectiveTeam | null => {
     if (!ball) return null;
     const atAlphaGoal = (ball.x - centers.alpha.x) ** 2 + (ball.z - centers.alpha.z) ** 2
-      <= BALL_GOAL_RADIUS_M ** 2;
+      <= ballRules.goalRadiusM ** 2;
     if (atAlphaGoal) return 'bravo';
     const atBravoGoal = (ball.x - centers.bravo.x) ** 2 + (ball.z - centers.bravo.z) ** 2
-      <= BALL_GOAL_RADIUS_M ** 2;
+      <= ballRules.goalRadiusM ** 2;
     return atBravoGoal ? 'alpha' : null;
   };
 
@@ -1383,11 +1419,28 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // as the destination when the ball itself needs a physical ram.
     if (along > -7 || Math.abs(lateral) > 7) {
       const side = lateral >= 0 ? 1 : -1;
+      // On the goal side of the ball the way round goes beside it first: a hull driving straight for the point
+      // behind it ran through the ball and sent it back toward its own goal (modes lane 2026-10-08: half of one
+      // side's touches in a traced Verdant match drove the ball backwards).
+      if (along > STRIKER_BESIDE_M) {
+        return { x: ball.x + nz * side * STRIKER_ROUND_M, z: ball.z - nx * side * STRIKER_ROUND_M, mission: 'striker' };
+      }
       const offset = along > -7 ? side * 16 : 0;
       return { x: ball.x - nx * 20 + nz * offset,
-        z: ball.z - nz * 20 - nx * offset, mission: 'striker' };
+        z: ball.z - nz * 20 - nx * offset, mission: 'striker', aim: strikerAim(along, lateral, length) };
     }
-    return { x: ball.x + nx * 18, z: ball.z + nz * 18, mission: 'striker' };
+    // Lined up behind the ball on its line to the goal: the gun sends it too (a shell that strikes the ball drives
+    // it along the shell's flight at the ruleset's shot speed), the hull following through. Bots never shot the
+    // ball on purpose before (modes lane 2026-10-08), the mode's own "drive or shoot".
+    return { x: ball.x + nx * 18, z: ball.z + nz * 18, mission: 'striker', aim: strikerAim(along, lateral, length) };
+  };
+  // The striker's gun: held on the ball from behind it, fired from inside the goal's cone (see STRIKER_LAY_M)
+  const strikerAim = (along: number, lateral: number, goalDistance: number): BotAim | undefined => {
+    if (!ball || along > 0 || Math.hypot(along, lateral) > STRIKER_LAY_M) return undefined;
+    const cone = Math.max(STRIKER_SHOT_CONE_RAD, Math.atan2(ballRules.goalRadiusM * 0.8, goalDistance));
+    const fire = -along >= STRIKER_SHOT_MIN_M && -along <= STRIKER_SHOT_MAX_M
+      && Math.abs(lateral) <= -along * Math.tan(cone) && Math.hypot(ball.vx, ball.vz) <= STRIKER_SHOT_BALL_MPS;
+    return { x: ball.x, y: ball.y, z: ball.z, radiusM: BALL_RADIUS_M, fire };
   };
 
   const hordeBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
@@ -1406,7 +1459,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   // bot philosophy r1 (owner 2026-09-17): enemies standing on the objective rank first for the bots
-  const botObjective = (entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null => {
+  const botObjective = (entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission; aim?: BotAim } | null => {
     const point = botTarget(entity);
     if (!point) return null;
     const radiusM = point.mission === 'recover' ? 3 : objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
@@ -1491,9 +1544,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (!ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)
           > (BALL_RADIUS_M + 0.35) ** 2) return false;
       const magnitude = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || 1;
-      ball.vx = shell.vel.x / magnitude * 34;
-      ball.vy = Math.max(5, shell.vel.y / magnitude * 20 + 7);
-      ball.vz = shell.vel.z / magnitude * 34;
+      ball.vx = shell.vel.x / magnitude * ballRules.shotSpeedMps;
+      ball.vy = Math.max(5, shell.vel.y / magnitude * ballRules.shotPitchLift + ballRules.shotLift);
+      ball.vz = shell.vel.z / magnitude * ballRules.shotSpeedMps;
       ball.lastTouchId = shell.shooterId || null;
       shell.dead = true;
       emit('mode_ball_hit', { by: shell.shooterId || null, kind: 'shot' });

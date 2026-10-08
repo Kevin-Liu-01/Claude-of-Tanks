@@ -2,6 +2,7 @@ import { initializeAerial, stepAerial, isGunship, type AerialView } from '../sim
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
+import { ballSolidAt } from '../sim/ballSolids.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
@@ -1331,6 +1332,10 @@ export function setupBattle(
     allyIndex: 0,
   };
   spawnBattleEntities(spawnContext);
+  // Turbo Ball's ball meets the shells' solids (sim/ballSolids.ts) through its own scratch
+  const ballObstacleScratch: SoloObstacle[] = [];
+  const ballObstacles = (minX: number, minZ: number, maxX: number, maxZ: number): readonly SoloObstacle[] =>
+    world.queryObstacles ? world.queryObstacles(minX, minZ, maxX, maxZ, ballObstacleScratch) : world.getObstacles();
   game.matchModeController = createMatchModeController<SoloEntity>({
     mode: game.gameMode,
     ruleset: game.ruleset,
@@ -1340,6 +1345,7 @@ export function setupBattle(
     placement,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(world.heightField, x, z, previousBottomY),
+    ballBlocked: (x, y, z, radius) => ballSolidAt(ballObstacles, x, y, z, radius),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     setActive(modeEntity, active) {
       modeEntity.modeActive = active;

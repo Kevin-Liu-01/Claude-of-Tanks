@@ -59,15 +59,17 @@ assert.match(sideFill('neutral'), /^rgba\(/);
   assert.equal(markersStandOnSpawns(legacy), false);
 }
 
-// Capture the Flag: bases stay put, flags travel; the flag bases stand on the spawns
+// Capture the Flag: bases stay put, flags travel; the forward bases (modes lane 2026-10-08) stand between the spawns,
+// so the spawns (the revive points) are marked beside them
 {
   const flags = [
     { team: 'alpha', baseX: -300, baseZ: -300, x: -300, z: -300, status: 'home', carrierId: null },
     { team: 'bravo', baseX: 300, baseZ: 300, x: 40, z: -20, status: 'carried', carrierId: 'p1' },
   ];
   const markers = objectiveMarkers({ ...base, id: 'capture_the_flag', flags });
-  assert.deepEqual(kinds(markers), ['flagBase', 'flagBase', 'flag', 'flag']);
-  assert.deepEqual(markers.slice(0, 2).map((m) => [m.side, m.status, m.x]), [['own', 'home', -300], ['enemy', 'away', 300]]);
+  assert.deepEqual(kinds(markers), ['spawn', 'spawn', 'flagBase', 'flagBase', 'flag', 'flag']);
+  assert.deepEqual(markers.slice(0, 2).map((m) => m.status), ['respawn', 'respawn'], 'a flag battle revives at its spawn');
+  assert.deepEqual(markers.slice(2, 4).map((m) => [m.side, m.status, m.x]), [['own', 'home', -300], ['enemy', 'away', 300]]);
   const carried = markers.find((m) => m.kind === 'flag' && m.side === 'enemy');
   assert.deepEqual([carried.x, carried.z, carried.status, carried.pulse], [40, -20, 'carried', true]);
   const home = markers.find((m) => m.kind === 'flag' && m.side === 'own');
@@ -100,13 +102,13 @@ assert.match(sideFill('neutral'), /^rgba\(/);
   assert.deepEqual(holding.slice(1, 3).map((m) => m.status), ['taken', 'taken']);
 }
 
-// Turbo Ball: goals on the spawns, the ball on top; Endless Horde: caches, own spawn only
+// Turbo Ball: the forward goals and the ball beside the spawns; Endless Horde: caches, own spawn only
 {
   const turbo = objectiveMarkers({ ...base, id: 'turbo_ball',
-    goals: [{ team: 'alpha', x: -300, z: -300 }, { team: 'bravo', x: 300, z: 300 }], ball: { x: 3, z: -4 } });
-  assert.deepEqual(kinds(turbo), ['goal', 'goal', 'ball']);
-  assert.deepEqual(turbo.map((m) => m.side), ['own', 'enemy', 'neutral']);
-  assert.equal(turbo[2].pulse, true);
+    goals: [{ team: 'alpha', x: -250, z: -250 }, { team: 'bravo', x: 250, z: 250 }], ball: { x: 3, z: -4 } });
+  assert.deepEqual(kinds(turbo), ['spawn', 'spawn', 'goal', 'goal', 'ball']);
+  assert.deepEqual(turbo.map((m) => m.side), ['own', 'enemy', 'own', 'enemy', 'neutral']);
+  assert.equal(turbo[4].pulse, true);
   const horde = objectiveMarkers({ ...base, id: 'endless_horde', respawns: false,
     pickups: [{ kind: 'heal', x: 1, z: 2, active: true }, { kind: 'ammo', x: 3, z: 4, active: true }, { kind: 'ammo', x: 5, z: 6, active: false }] });
   assert.deepEqual(kinds(horde), ['spawn', 'pickup', 'pickup'], 'inactive caches are not marked');

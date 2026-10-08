@@ -4,6 +4,7 @@ import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
+import { ballSolidAt } from './ballSolids.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
@@ -763,6 +764,10 @@ export function createAuthoritativeMatch({
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
   });
   const nearbyObstacles: AuthoritativeObstacle[] = [];
+  // Turbo Ball's ball meets the shells' solids (sim/ballSolids.ts) through its own scratch
+  const ballObstacleScratch: AuthoritativeObstacle[] = [];
+  const ballObstacles = (minX: number, minZ: number, maxX: number, maxZ: number): readonly AuthoritativeObstacle[] =>
+    worldCollision?.queryObstacles ? worldCollision.queryObstacles(minX, minZ, maxX, maxZ, ballObstacleScratch) : staticObstacles;
   const obstacleIndex = new Map<AuthoritativeObstacle, number>(
     staticObstacles.map((obstacle, index) => [obstacle, index]),
   );
@@ -994,6 +999,7 @@ export function createAuthoritativeMatch({
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
+    ballBlocked: (x, y, z, radius) => ballSolidAt(ballObstacles, x, y, z, radius),
     emit,
   });
   for (const entity of entities) {

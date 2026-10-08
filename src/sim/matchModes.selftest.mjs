@@ -477,12 +477,48 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const {match}=controller('turbo_ball',[striker,enemy]);
   const ball=match.state.ball, goal=match.state.goals.find(g=>g.team==='bravo');
   const dz=Math.sign(goal.z-ball.z);
+  // on the goal side of the ball the way round goes beside it (24 m out), never through it, and holds its fire
   striker.state.pos.x=ball.x;striker.state.pos.z=ball.z+dz*20;
+  const round=match.botTarget(striker);
+  assert.ok(Math.abs(round.x-ball.x)>=20&&Math.abs(round.z-ball.z)<1,'a striker on the goal side comes round beside the ball');
+  assert.equal(round.aim,undefined,'no gun on the ball from its goal side');
+  striker.state.pos.x=ball.x+24;striker.state.pos.z=ball.z;
   const approach=match.botTarget(striker);
-  assert.ok((approach.z-ball.z)*dz<0,'a striker on the wrong side circles behind the ball');
-  striker.state.pos.z=ball.z-dz*25;
+  assert.ok((approach.z-ball.z)*dz<0,'beside the ball the striker circles behind it');
+  // lined up behind the ball: drives through it and shoots it along the line to the goal
+  striker.state.pos.x=ball.x;striker.state.pos.z=ball.z-dz*25;
   const push=match.botTarget(striker);
   assert.ok((push.z-ball.z)*dz>0,'an aligned striker drives through the ball toward the enemy goal');
+  assert.deepEqual([push.aim.x,push.aim.z,push.aim.fire],[ball.x,ball.z,true],'and shoots the ball at the goal');
+  // 25 m behind but 5.8 m off the line (13 degrees, outside the goal's 8.2 degree cone): laid, holding
+  striker.state.pos.x=ball.x+5.8;
+  const wide=match.botTarget(striker);
+  assert.ok((wide.z-ball.z)*dz>0&&wide.aim&&wide.aim.fire===false,'off the cone the gun is laid on the ball but holds');
+  // a ball already rolling is not shot at
+  striker.state.pos.x=ball.x;ball.vx=9;
+  assert.equal(match.botTarget(striker).aim.fire,false,'a rolling ball is not shot at');
+  ball.vx=0;
+  // too close for a shot (the hull's touch reaches it first)
+  striker.state.pos.z=ball.z-dz*8;
+  assert.equal(match.botTarget(striker).aim.fire,false,'eight metres behind the ball is a push, not a shot');
+}
+{
+  // the touch carries the ball by the hull's motion INTO it: head-on in full, nothing pulling away from it
+  const ram=entity('ram','alpha',0,-6,{bot:true});
+  const {match}=controller('turbo_ball',[ram,entity('far','bravo',0,300)]);
+  const ball=match.state.ball, rules=matchRulesetFor('turbo_ball').ball;
+  const bz=ball.z; // the kickoff, far from both goals
+  ram.state.pos.x=ball.x;ram.state.pos.z=bz-6;ram.state.yaw=0;ram.state.speed=10; // driving +z straight at the ball 6 m ahead
+  match.step(1/60,1);
+  const expected=10*rules.drive+rules.push+10*rules.closingPush;
+  assert.ok(Math.abs(ball.vz-expected*rules.drag)<0.05,`a head-on touch keeps the full carry (${ball.vz.toFixed(2)} vs ${(expected*rules.drag).toFixed(2)})`);
+  const away=entity('away','alpha',0,-6,{bot:true});
+  const second=controller('turbo_ball',[away,entity('far2','bravo',0,300)]);
+  const ball2=second.match.state.ball;
+  away.state.pos.x=ball2.x;away.state.pos.z=ball2.z+6;away.state.yaw=0;away.state.speed=10; // driving +z, the ball 6 m BEHIND it
+  second.match.step(1/60,1);
+  assert.ok(ball2.vz<0,`a hull pulling away pushes the ball off, never drags it along (${ball2.vz.toFixed(2)})`);
+  assert.ok(Math.abs(ball2.vz+rules.push*rules.drag)<0.05,'only the contact push remains');
 }
 
 {
