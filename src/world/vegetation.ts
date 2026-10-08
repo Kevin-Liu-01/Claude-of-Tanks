@@ -6570,7 +6570,7 @@ function* vegetationBuildSteps(
       }
       return true;
     };
-    const census = { lines: 0, km: 0, seats: 0, planted: 0, gates: 0, refused: { site: 0, spacing: 0 }, species: {} as Record<string, number> };
+    const census = { lines: 0, km: 0, seats: 0, planted: 0, gates: 0, refused: { site: 0, spacing: 0, authored: 0 }, species: {} as Record<string, number> };
     const gateHalf = (ht.gateM ?? 4) / 2;
     for (const key of [...lines.keys()].sort((a, b) => a - b)) {
       const raw = lines.get(key)!, n = raw.length / 4;
@@ -6678,6 +6678,18 @@ function* vegetationBuildSteps(
     group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
       authoredTreeDonors, veg.authoredTrees, heightField, standSite, standClearances, cfg?.props?.wallRuns ?? []);
     for (const t of trees) { const key = seatKey(t); if (key !== seatOf.get(t)) t.wood = seatWood.get(key) ?? false; }
+    // (the trees lane, 2026-10-07: the redistribution reads the map without its hedge — authoredTreePlacement.ts
+    // stationOccupant — so a hedge tree keeps a field tree's spacing from every tree the rows moved, onto a station or
+    // onto a donor's old ground, as it kept it from the trees standing when it was planted; the hedge trees come last,
+    // so every tree before them stands where the map without a hedge puts it)
+    const hedgeCensus = group.userData.hedgeTrees as { refused: { authored: number } } | undefined;
+    if (hedgeCensus) {
+      const moved = trees.filter((t) => !t.hedgeRow && seatKey(t) !== seatOf.get(t));
+      if (moved.length) {
+        hedgeCensus.refused.authored = excludeVegetation(trees, treeObstacles, concealers, (t) => t.hedgeRow === true
+          && moved.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < FIELD_TREE_SPACING_M));
+      }
+    }
   }
 
   // ground lane: where the trees stand before the tidal map moves its willows (the field bushes' knot sites)

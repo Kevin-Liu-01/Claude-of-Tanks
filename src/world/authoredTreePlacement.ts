@@ -23,6 +23,8 @@ export interface AuthoredTreeRecord {
   cr: number;
   dr: number;
   fallH?: number;
+  /** Trees lane (2026-10-07): one of a map's hedge trees — never a station's occupant (vegetation.ts plantHedgeTrees). */
+  hedgeRow?: boolean;
 }
 
 interface PlacementTerrain {
@@ -133,10 +135,17 @@ function targetClear(tree: AuthoredTreeRecord, x: number, z: number,
   return true;
 }
 
-/** Canopies may overlap, but a station must not stack existing trunks. */
+/**
+ * Canopies may overlap, but a station must not stack existing trunks. A hedge tree is no occupant (the trees lane,
+ * 2026-10-07, mr4's Polders steps 6 and 7): the hedge rows are planted before the redistribution, and a hedge tree on a
+ * station made it a squatter to displace — or, with a second trunk, an unsafe station — so the rows' donor choices, and
+ * with them the trees before the hedge, moved whenever a reshuffle put a hedge tree by a station. The redistribution
+ * reads the map as it stands without its hedge; the caller then drops the hedge trees the rows came too close to.
+ */
 function stationOccupant(trees: readonly AuthoredTreeRecord[], x: number, z: number): number {
   let occupied = -1;
   for (let index = 0; index < trees.length; index++) {
+    if (trees[index].hedgeRow) continue;
     if (Math.hypot(x - trees[index].x, z - trees[index].z) >= 2.5) continue;
     if (occupied >= 0) return -2;
     occupied = index;
