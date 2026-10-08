@@ -15,6 +15,13 @@ Render combat feedback from authoritative events without modifying simulation.
 `effects.ts` composes event reactions, `particles.ts` owns typed pools, `clock.ts`
 owns presentation time, `effectAttachments.ts` owns continuous emitter anchor
 contracts, and `impactDecals.ts` owns bounded surface marks.
+Destruction presentation: `volumeMedia.ts` draws baked 3D smoke, fire and dust
+(`tools/fx-volume-bake.mjs`; ledgered atlases, loaded at battle warm, desktop
+tiers), `blastRecipes.ts` builds each munition x surface burst through it
+(`surfaceLooks.ts`, `debrisChunks.ts`), `craterMarks.ts` keeps the ground's marks,
+and `structureMask.ts` / `structureStages.ts` / `structureDebris.ts` lay a
+building's stages into the world's own geometry through the core's seam
+(docs/DESTRUCTION.md §16.4) on every tier.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -31,3 +38,6 @@ behavior.
 <!-- agent-docs:fill:gotchas -->
 Worlds and tank visuals are reused across matches; decals and emitters must not
 survive reset. Network event IDs will be needed for deduplication.
+The structure mask patches every props bucket material (its depth materials too)
+at world activation: keep its only fragment discard the desktop hole cut (early
+depth), and touch the seam's shadows on every frame the GPU moves a building.
