@@ -48,11 +48,11 @@ function collapsedVertices(mesh) {
 // CylinderGeometry's first radius becomes the +Z/front cap after cylZ's
 // rotation. Each modern Chinese gun-root frustum must therefore be narrower
 // at its forward plane and broader where it enters the turret.
+// VT-4A1 and both ZTZ-99A2s now use the fitted faceted assembly: their
+// receiver contact, closure and full pitch channel are checked by
+// chineseMantletFit.selftest.mjs, not the retired round-frustum dimensions.
 for (const audit of [
-  { id: 'vt4a1', rearZ: 0.13, rearR: 0.235, frontZ: 0.81, frontR: 0.14 },
   { id: 'type99a', rearZ: 0.13, rearR: 0.2444, frontZ: 0.81, frontR: 0.1456 },
-  { id: 'ztz99a2_prototype', rearZ: 0.38, rearR: 0.20, frontZ: 0.72, frontR: 0.165 },
-  { id: 'ztz99a2', rearZ: 0.38, rearR: 0.19, frontZ: 0.70, frontR: 0.16 },
   { id: 'ztz85_iii', rearZ: 0.13, rearR: 0.23, frontZ: 0.51, frontR: 0.17 },
 ]) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
@@ -75,7 +75,7 @@ for (const audit of [
 for (const audit of [
   {
     id: 'vt4a1', receipt: 'vtFamilyTurretReceipt',
-    permanentPoints: [[-0.22, 0.7424, 0.46], [0.22, 0.1028, 0.78]],
+    permanentPoints: [[-0.62, 0.608 * (0.82 / 0.75) + 0.07, 0.14], [0.62, 0.608 * (0.82 / 0.75) + 0.07, 0.14]],
   },
   {
     id: 'type99a', receipt: 'vtFamilyTurretReceipt',
@@ -83,7 +83,7 @@ for (const audit of [
   },
   {
     id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt',
-    permanentPoints: [[-0.22, 0.83, 0.58], [0.22, -0.04, 0.86]],
+    permanentPoints: [[-0.62, 0.81, 0.18], [0.62, 0.81, 0.18]],
   },
 ]) {
   const tank = createTank(audit.id, null, { proceduralOnly: true, geometryReceipt: true });
