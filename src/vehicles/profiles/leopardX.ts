@@ -1018,11 +1018,11 @@ function a4RemoteMount(P:TankBuilderPort,d:Datum): void {
   // cheeks and from the outboard receiver/ammunition body.
   equip(P,d,'turretDetail',box(.55891,.12256,.40355),.73998,2.7160,-.9222);
   for(const x of [.634,.854]) equip(P,d,'turretDetail',box(.024,.185,.266),x,2.868,-.929);
-  // 2026-10-07 (tank-accessories round 4): the same round-3 butt growth (4.2 cm local, 7.2 cm under the 1.713 stretch)
-  // put the RWS receiver's rear station at -1.276 (source -1.214). The gun moves 4.4 cm forward, onto the source
-  // pedestal's own centre (-0.926), and the stretch drops to 1.609: rear -1.214, barrel -0.087 again.
-  // 2026-10-08 (owner, 6763d7cc0): the original 7.62 mm station is activated (automatic), its support captured
-  mg(P,d,.766,2.79,-.925,false,1.609,.74,true);
+  // 2026-10-08 (owner, 6763d7cc0): the original 7.62 mm station is activated (automatic), its support captured. A remote
+  // station's gun has no crew butt, so the owner's own seat and stretch put its receiver back on the source stations
+  // (push 5's leopardX receipt: rear -1.214, barrel -0.087). The lane's round-4 forward shift (-0.925, stretch 1.609)
+  // corrected a crew gun's butt growth and does not apply to the activated station.
+  mg(P,d,.766,2.79,-.969,false,1.713,.74,true);
   a4OutboardReceiver(P,d);
   equip(P,d,'turretDetail',box(.257,.184,.306),.381,3.005,-1.055);
   equip(P,d,'turretDark',box(.204,.138,.014),.381,3.005,-.897);
