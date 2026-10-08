@@ -150,10 +150,34 @@ const lowMoves = (kind) => [1, -1].flatMap((s) => [
     { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 74, radius: 28, lift: 9, fov: 28, lookHero: [0, 1, 1.1] }]]] : []),
 ]);
 
+/** Route leads (2026-10-08: in Steinburg's narrow streets every low orbit and every lens offset along the hull's heading
+ * met a wall where the street bends): the lens rides the hull's own route 10-16 m ahead of it, a metre or two to the
+ * side and 2-3.4 m up, looking back at it, so it follows the street's curve on ground the route keeps clear. The zoom
+ * variant falls back along the route from 9 to 24 m ahead while the lens closes from 40° to 22°. */
+const ROUTE_LEADS = [1, -1].flatMap((s) => [
+  [`routeLead${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 16, side: 0.8 * s, along: 0, lift: 2, fov: 38, lookHero: [0, 0, 1.6] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 13, side: 1.2 * s, along: 0, lift: 2.6, fov: 38, lookHero: [0, 0, 1.6] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 10, side: 1.6 * s, along: 0, lift: 3.4, fov: 40, lookHero: [0, 0, 1.5] }]],
+  [`routeLeadZoom${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 9, side: 0.8 * s, along: 0, lift: 1.8, fov: 40, lookHero: [0, 0, 1.6] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 15, side: 1 * s, along: 0, lift: 2.4, fov: 30, lookHero: [0, 0, 1.5] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 24, side: 1.2 * s, along: 0, lift: 3, fov: 22, lookHero: [0, 0, 1.4] }]],
+  // a high view down the street done with a long lens (the titles' church tower and roof tiles): from tower height
+  // (11-12 m) 38-46 m ahead on the route, or roof height (7-8 m) 22-30 m ahead, the lens at 19-28° keeps the look-down
+  // near 15° and the hull large, where the old street cranes looked down from 27-34 m
+  [`towerTele${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 46, side: 1.5 * s, along: 0, lift: 12, fov: 19, lookHero: [0, 0, 1.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 38, side: 1.5 * s, along: 0, lift: 11, fov: 21, lookHero: [0, 0, 1.2] }]],
+  [`roofLead${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 30, side: 1.2 * s, along: 0, lift: 8, fov: 24, lookHero: [0, 0, 1.3] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 22, side: 1.2 * s, along: 0, lift: 7, fov: 28, lookHero: [0, 0, 1.3] }]],
+]);
+
 /** Lens moves by kind: [name, keys]. */
 function lensMoves(kind, town = false) {
-  if (town && kind !== 'scene') return [...STREET_MOVES, ...STREET_LOW, ...lowMoves(kind)];
-  if (town) return [...STREET_MOVES, ...STREET_LOW, ...lensMoves(kind)];
+  if (town && kind !== 'scene') return [...STREET_MOVES, ...STREET_LOW, ...ROUTE_LEADS, ...lowMoves(kind)];
+  if (town) return [...STREET_MOVES, ...STREET_LOW, ...ROUTE_LEADS, ...lensMoves(kind)];
   if (kind === 'tank') return [...lowMoves(kind), ...[1, -1].flatMap((s) => [
     [`swoop${s > 0 ? 'R' : 'L'}`, swoop(DUR, { side: s, high: [34, 66], low: [2.1, 7.5], out: [11, 30] })],
     [`leadReveal${s > 0 ? 'R' : 'L'}`, leadReveal(DUR, { side: s, near: [1.5, 9], far: [26, 50], swing: 38 })],
@@ -207,11 +231,17 @@ function metrics(scene) {
 
 const plan = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {};
 const usage = new Map();
+// takes sharing a set (2026-10-08: S01, S19 and S41 all stand on steinburg-day-main, and the route leads gave all three
+// the same road, start and move): a route another take on the set already drives costs 1, the same route with the same
+// move costs 3, and the same move on any route 1.5, so a set's takes differ in what they show
+const setUse = new Map();
+const setKeys = (n, family, lens) => { const set = SHOTS.find((x) => x[0] === Number(n))?.[4]?.id; return [`${set}|${family}`, `${set}|${family}|${lens?.replace(/[LR]$/, '')}`, `${set}|move|${lens?.replace(/[LR]$/, '')}`]; };
 for (const [n, entry] of Object.entries(plan)) {
   if (!IDS.length || IDS.includes(Number(n))) continue;
   const [family, rest = ''] = (entry.note ?? '').split(' at ');
   const lens = rest.split('; ')[1]?.split(/[ (;]/)[0];
   for (const k of [lens?.replace(/[LR]$/, ''), family?.split(/[[+-]/)[0]]) if (k) usage.set(k, (usage.get(k) ?? 0) + 1);
+  for (const k of setKeys(n, family, lens)) setUse.set(k, (setUse.get(k) ?? 0) + 1);
 }
 for (const [n, id, kind, title, set, film, still] of SHOTS) {
   if (IDS.length && !IDS.includes(n)) continue;
@@ -290,7 +320,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
     const wrapD = (d) => ((d % 360) + 540) % 360 - 180;
     const traverse = Math.max(0, ...probe.storyboard.actorTracks.filter((t) => !t.actor.startsWith('foe')).map((t) => Math.max(0, ...t.keys.slice(1).map((k, i) => Math.abs(wrapD(k.turretDeg - t.keys[i].turretDeg)) / ((k.tMs - t.keys[i].tMs) / 1000)))));
     if (traverse > 65) { reject('turret traverse over 65°/s'); continue; }
-      for (const [lens, cam] of [...lensMoves(kind, town), ...(town ? lensMoves(kind) : [])]) {
+      // EXCLUDE_LENS (a regex over move names) keeps a take off moves another take on its set already shows
+      const excluded = process.env.EXCLUDE_LENS ? new RegExp(process.env.EXCLUDE_LENS) : null;
+      for (const [lens, cam] of [...lensMoves(kind, town), ...(town ? lensMoves(kind) : [])].filter(([name]) => !excluded?.test(name))) {
         let scene;
         try { scene = siteScene([n, id, kind, title, set, { ...base, ...MOTION, routes, ...(aim ? { aim } : {}), cam }, still]); } catch { reject('build'); continue; }
         const footprintBlocked = blockedFraction(scene), inFrame = heroInFrameFraction(scene);
@@ -314,6 +346,7 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         // and climb rewards (which drove the lens up into the look-down) are capped low
         const score = 4 * fr.sweet - 3 * fr.bad + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
           + 0.3 * inFrame - 2 * blocked - USAGE_W * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
+          - 1 * (setUse.get(setKeys(n, family, lens)[0]) ?? 0) - 3 * (setUse.get(setKeys(n, family, lens)[1]) ?? 0) - 1.5 * (setUse.get(setKeys(n, family, lens)[2]) ?? 0)
           + 0.6 * flankSwing;
         results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null, fr });
       }
@@ -326,8 +359,10 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
   const { results, why } = found;
   const best = results[0], secs = ((Date.now() - t0) / 1000).toFixed(0);
   if (process.env.WHY || !best) console.log(`   rejected: ${[...why].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ×${v}`).join('; ')}`);
+  if (process.env.TOP) for (const r of results.slice(0, Number(process.env.TOP))) console.log(`   ${r.score.toFixed(2)} ${r.family} ${r.lens} sweet ${r.fr.sweet.toFixed(2)} bad ${r.fr.bad.toFixed(2)}`);
   if (!best) { console.log(`s${String(n).padStart(2, '0')} ${id}: no candidate clears every check — keeps its own motion (${secs} s)`); delete plan[n]; continue; }
   for (const k of [best.lens.replace(/[LR]$/, ''), best.family.split(/[[+-]/)[0]]) usage.set(k, (usage.get(k) ?? 0) + 1);
+  for (const k of setKeys(n, best.family, best.lens)) setUse.set(k, (setUse.get(k) ?? 0) + 1);
   plan[n] = { note: `${best.family} at ${best.m.speed.toFixed(0)} m/s; ${best.lens}${best.fix ? ` (lens ${best.fix})` : ''}${found.count ? `; ${found.count} tanks` : ''}`, ...MOTION,
     ...(found.count ? { count: found.count } : {}),
     routes: best.routes, ...(best.aim ? { aim: best.aim } : {}), cam: best.cam ?? [...lensMoves(kind, town), ...lensMoves(kind)].find(([l]) => l === best.lens)[1],

@@ -211,7 +211,9 @@ function sampleKeys(keys, t, ease) {
  * (`frame:'world'` = tripod: pan / whip / pass-by) while `lookFrame:'hero'` (or
  * `lookActor`) keeps the lens on a moving tank. They are resampled densely on the
  * same grid as the tanks so the lens stays locked. Fields: side, along, lift, fov,
- * roll, lookHero [ls, la, ll]; `orbit` (deg around the hero) + `radius` replace side/along.
+ * roll, lookHero [ls, la, ll]; `orbit` (deg around the hero) + `radius` replace side/along; `aheadM` rides the lens on
+ * its actor's own path that many metres ahead of it (on past the take's end along its last heading) while the look
+ * stays on the actor: a lead shot that follows the road's curve, on ground the route keeps clear.
  * Shot: { durMs, speed, curveDegS, foeSpeed, stepMs, ease, keepWidth, pinMs, turretSweep,
  *   turretKeys: [[tMs, deg]], turrets: { [actor]: deg | [[tMs, deg]] }, guns: { [actor]: deg | [[tMs, deg]] },
  *   routes: { [actor]: { pts, speed, v0, accel, startMs } }, aim: { [actor]: actor }, rail,
@@ -303,10 +305,24 @@ export function buildShot(s, m) {
     return Math.atan2(sx, sz) * 180 / Math.PI;
   };
   const poseFrame = (mode, name, q, t) => frame(q.p, mode === 'travel' ? travelHeading(name, t) : q.h);
+  // the point `dist` metres along an actor's path ahead of time t, continued along its last heading past the take's end
+  // (a stopped hull keeps its lens that far ahead instead of meeting it)
+  const aheadOn = (name, t, dist) => {
+    let prev = paths.get(name)(t), left = dist;
+    for (let tt = t + 100; tt <= dur; tt += 100) {
+      const q = paths.get(name)(tt), d = Math.hypot(q.p[0] - prev.p[0], q.p[1] - prev.p[1]);
+      if (d >= left) { const u = left / d; return { p: [prev.p[0] + (q.p[0] - prev.p[0]) * u, prev.p[1] + (q.p[1] - prev.p[1]) * u], h: q.h }; }
+      left -= d; prev = q;
+    }
+    const h = rad(prev.h);
+    return { p: [prev.p[0] + Math.sin(h) * left, prev.p[1] + Math.cos(h) * left], h: prev.h };
+  };
   const evalKey = (c, t) => { // world pose [x, y, z, lx, ly, lz, fov, roll] of a key at time t
-    const own = paths.get(c.actor ?? 'hero')(t), pinned = paths.get(c.actor ?? 'hero')(m.pinMs ?? 0);
+    const now = paths.get(c.actor ?? 'hero')(t), pinned = paths.get(c.actor ?? 'hero')(m.pinMs ?? 0);
+    // (composition re-plan, 2026-10-08: Steinburg's streets had no clear low lens; one on the hull's own path is clear)
+    const own = c.aheadM ? aheadOn(c.actor ?? 'hero', t, c.aheadM) : now;
     const fr = frameMode(c) === 'world' ? frame(pinned.p, pinned.h) : poseFrame(frameMode(c), c.actor ?? 'hero', own, t);
-    const lookP = c.lookActor ? paths.get(c.lookActor)(t) : lookMode(c) === 'world' ? pinned : own;
+    const lookP = c.lookActor ? paths.get(c.lookActor)(t) : lookMode(c) === 'world' ? pinned : now;
     const lf = poseFrame(lookMode(c), c.lookActor ?? c.actor ?? 'hero', lookP, t);
     let side = c.side ?? 0, along = c.along ?? 0;
     if (c.orbit != null) { side = (c.radius ?? 12) * Math.sin(rad(c.orbit)); along = (c.radius ?? 12) * Math.cos(rad(c.orbit)); }
