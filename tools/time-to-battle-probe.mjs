@@ -90,7 +90,7 @@ async function enterBattle({ specId, mapId, opponents }) {
     const list = R.info.programs;
     if (Array.isArray(list) && !list.__ttbWatched) {
       list.__ttbWatched = true;
-      for (const p of list) watch(p);
+      for (const p of list) { watch(p); churn.push([+performance.now().toFixed(1), '=', p?.id, p?.name, keyOf(p)]); }
       const push = list.push;
       list.push = function (...ps) {
         try { for (const p of ps) { churn.push([+performance.now().toFixed(1), '+', p?.id, p?.name, keyOf(p)]); watch(p); } } catch { /* diagnostics only */ }
@@ -116,7 +116,33 @@ async function enterBattle({ specId, mapId, opponents }) {
       for (let i = 0; i < Math.max(a.length, b.length) && fields.length < 12; i++) if (a[i] !== b[i]) fields.push(`${i}: ${String(a[i]).slice(0, 60)} -> ${String(b[i]).slice(0, 60)}`);
       diffs.push({ name: r[3], releasedAt: r[0], acquiredAt: later[0], lengths: [a.length, b.length], fields });
     }
-    programChurn = { events: ev.slice(0, 600), released: released.length, acquired: acquired.length, diffs };
+    // the opening window (the opening frame's stage and 300 ms before it): each program acquired there against its nearest
+    // earlier key of the same shader (built-in id, or custom vertex and fragment ids) — the fields that make it new
+    const openRel = performance.now() - t0, winMs = (window.__BATTLE_COUNTDOWN_WARM?.stages?.openingFrame ?? 0) + 300;
+    const known = churn.filter(([, op]) => op === '=' || op === '+').map(([at, , , name, key]) => [at - t0, name, key]);
+    const late = [];
+    for (const e of acquired) {
+      if (e[0] < openRel - winMs || late.length >= 80) continue;
+      const A = (keys.get(e[4]) ?? '').split(',');
+      let best = null;
+      const seen = new Set();
+      for (const [at, , key] of known) {
+        if (at >= e[0] || key === e[4] || seen.has(key)) continue;
+        seen.add(key);
+        const B = (keys.get(key) ?? '').split(',');
+        if (B[0] !== A[0] || (A[0] !== '' && /^\d+$/.test(A[0]) && B[1] !== A[1])) continue;
+        let n = 0;
+        for (let i = 0; i < Math.max(A.length, B.length); i++) if (A[i] !== B[i]) n++;
+        if (!best || n < best.n) best = { n, key, at };
+      }
+      const fields = [];
+      if (best) {
+        const B = (keys.get(best.key) ?? '').split(',');
+        for (let i = 0; i < Math.max(A.length, B.length) && fields.length < 10; i++) if (A[i] !== B[i]) fields.push(`${i}: ${String(B[i]).slice(0, 48)} -> ${String(A[i]).slice(0, 48)}`);
+      }
+      late.push({ at: e[0], name: e[3], shader: A.slice(0, 2).join(','), nearestAt: best ? +best.at.toFixed(1) : null, nDiff: best?.n ?? null, fields });
+    }
+    programChurn = { events: ev.slice(0, 600), released: released.length, acquired: acquired.length, diffs, openWindowMs: winMs, late };
   } catch (error) { programChurn = { error: String(error).slice(0, 200) }; }
   const gl1 = window.__TTB.snapshot();
   const diff = (a, b) => Object.fromEntries(Object.keys(b).map((k) => [k, { n: b[k].n - a[k].n, ms: +(b[k].ms - a[k].ms).toFixed(1) }]));
