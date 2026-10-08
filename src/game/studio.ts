@@ -49,6 +49,10 @@ import {
 } from '../sim/movement.ts';
 import { createShell, stepShell } from '../sim/ballistics.ts';
 import { conformStudioActor, resetStudioActorSupport, studioSupportBelly } from './studioActorSupport.ts';
+import {
+  FILM_SUPPORT_ON_GRID, captureFilmSupport, createFilmSupport, filmSupportAlpha, presentFilmSupport, resetFilmSupport,
+  type FilmSupport,
+} from './studioFilmSupport.ts';
 import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
@@ -99,7 +103,7 @@ import { SMOKE_WIND_X, SMOKE_WIND_Z } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
-import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
+import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
 import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
 import type { FilmFilter, FilmSettings, FilmSettingsInput } from './studioFilmPlan.ts';
 import type { FilmExportProgress, FilmExportResult } from './studioFilmExport.ts';
@@ -294,6 +298,9 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   /** Film renders: track travel since the last fixed support step (presentation only). */
   filmScrollL?: number;
   filmScrollR?: number;
+  /** Film renders: the support steps around the sample and its blend between them (studioFilmSupport.ts). */
+  filmSupport?: FilmSupport;
+  filmSupportAlpha?: number;
   timelineTrack: ActorTrack | null;
   /** The battle hull's ride surface (terrain + standable primitive tops), per actor and world. */
   support: StructureSupportField | null;
@@ -2361,6 +2368,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function syncActorVisual(a: StudioActor, dt: number): void {
     const l = filming ? a.filmScrollL ?? 0 : 0, r = filming ? a.filmScrollR ?? 0 : 0;
+    // a film sample between support steps draws the support pose between them (studioFilmSupport.ts)
+    const alpha = filming && a.filmSupport ? a.filmSupportAlpha ?? -1 : -1;
+    if (alpha >= 0) {
+      a.visual.syncFromState(a.state, dt, undefined, presentFilmSupport(a.filmSupport!, a.state, alpha, l, r));
+      return;
+    }
     if (l === 0 && r === 0) { a.visual.syncFromState(a.state, dt); return; }
     const scroll = a.state.trackScroll, baseL = scroll.l, baseR = scroll.r;
     scroll.l = baseL + l; scroll.r = baseR + r;
@@ -2733,6 +2746,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         a.supportStep = 0;
         applyStoryboardActorSample(a, 0, 0, true);
         a.visual.syncFromState(a.state, 0);
+        if (a.filmSupport) resetFilmSupport(a.filmSupport);
+        if (filming) captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, 0);
       } else if (dt > 0) {
         // Support is anchored to the timeline, independent of display cadence
         // and the partial intervals surrounding authored FX cues.
@@ -2740,9 +2755,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         while (a.supportStep < finalStep) {
           a.supportStep++;
           applyStoryboardActorSample(a, a.supportStep * stepMs, SIM_DT, true);
+          if (filming) captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, a.supportStep);
+        }
+        // A film sample between two grid lines solves the step after it, to draw the support pose between the two
+        // (one frame's exposure straddles a grid line; holding the earlier step printed the hull twice).
+        if (filming && a.supportStep === finalStep && timeMs / stepMs - finalStep > FILM_SUPPORT_ON_GRID) {
+          a.supportStep++;
+          applyStoryboardActorSample(a, a.supportStep * stepMs, SIM_DT, true);
+          captureFilmSupport(a.filmSupport ??= createFilmSupport(), a.state, a.supportStep);
         }
       }
       applyStoryboardActorSample(a, timeMs, 0, false);
+      a.filmSupportAlpha = filming && a.filmSupport ? filmSupportAlpha(a.filmSupport, timeMs, stepMs) : -1;
     }
   }
 
@@ -3583,6 +3607,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let _motionLength = new Float64Array(64), _motionPrev = new Float64Array(128);
   const _motionV = new THREE.Vector3(), _motionF = new THREE.Vector3();
   const _motionR = new THREE.Vector3(), _motionU = new THREE.Vector3();
+  const _motionNear: THREE.Vector3[] = [];
 
   /** Same pose math as applyStoryboardCamera, into the probe camera. */
   function poseMotionCamera(timeMs: number, aspect: number): void {
@@ -3642,7 +3667,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return MOTION_FAR_M;
   }
 
-  function filmMotionPathPx(times: Float64Array, count: number, width: number, height: number): number {
+  function filmMotionPathPx(times: Float64Array, count: number, width: number, height: number, near?: FilmNearSurfaces | null): number {
     const open = times[0], close = times[count - 1];
     if (!(close > open)) return 0;
     const aspect = width / height;
@@ -3660,7 +3685,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (storyboard.shots.length && sampleCameraRail(storyboard.shots, (open + close) / 2, _motionRail)) {
       _motionAnchors[n++].set(_motionRail.lookX, _motionRail.lookY, _motionRail.lookZ);
     }
-    const points = n + actors.length;
+    // the surfaces nearest the lens in the last frame (a bush, a pole, a hull), which outrun the terrain behind them
+    const nearCount = near?.count ?? 0;
+    for (let k = 0; k < nearCount; k++) {
+      (_motionNear[k] ??= new THREE.Vector3()).set(near!.points[k * 3], near!.points[k * 3 + 1], near!.points[k * 3 + 2]);
+    }
+    const points = n + nearCount + actors.length;
     if (_motionLength.length < points) { _motionLength = new Float64Array(points); _motionPrev = new Float64Array(points * 2); }
     _motionLength.fill(0, 0, points);
     const valid: boolean[] = new Array(points).fill(false);
@@ -3668,9 +3698,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const t = open + (close - open) * j / (MOTION_PROBES - 1);
       poseMotionCamera(t, aspect);
       for (let i = 0; i < points; i++) {
-        let point = _motionAnchors[i];
-        if (i >= n) {
-          const actor = actors[i - n];
+        let point = i < n ? _motionAnchors[i] : _motionNear[i - n];
+        if (i >= n + nearCount) {
+          const actor = actors[i - n - nearCount];
           const track = actorTrackFor(actor);
           if (track && sampleActorTrack(track.keys, t, _motionActor)) {
             _motionU.set(_motionActor.x, hfProxy.getHeightAt(_motionActor.x, _motionActor.z) + actor.spec.dims.heightM * 0.6, _motionActor.z);

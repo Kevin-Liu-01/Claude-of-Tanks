@@ -251,6 +251,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioSceneLink.selftest.mjs',
     'src/ui/studioPlanView.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
+    'src/game/studioFilmSupport.selftest.mjs',
+    'src/engine/filmDepthProbe.selftest.mjs',
     'src/game/studioFilmMux.selftest.mjs',
     'src/game/studioFilmAudio.selftest.mjs',
     'src/game/studioPicture.selftest.mjs',

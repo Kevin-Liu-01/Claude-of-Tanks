@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import { FilmAccumulatePass } from '../engine/filmAccumulation.ts';
+import { FilmDepthProbe } from '../engine/filmDepthProbe.ts';
 import type { PostRuntime } from '../engine/post.ts';
 import {
   adaptiveSampleCount,
@@ -40,6 +41,12 @@ interface FilmClouds {
   setCaptureTime?(timeS: number, restart?: boolean): void;
 }
 
+/** World points (x, y, z) of the surfaces nearest the lens in the last rendered frame. */
+export interface FilmNearSurfaces {
+  readonly points: Float32Array;
+  readonly count: number;
+}
+
 /** Studio internals the film renderer drives (src/game/studio.ts wires them). */
 export interface StudioFilmPorts {
   readonly renderer: THREE.WebGLRenderer;
@@ -61,10 +68,11 @@ export interface StudioFilmPorts {
   cutTimes(): number[];
   /**
    * Longest screen-space path (output pixels) any probe point (world depths
-   * across the view, every actor) travels between the first and last of
-   * `count` sample instants: drives motion-adaptive sample counts.
+   * across the view, every actor, and `near`: the nearest rendered surfaces
+   * of the last frame, filmDepthProbe.ts) travels between the first and last
+   * of `count` sample instants: drives motion-adaptive sample counts.
    */
-  motionPathPx(times: Float64Array, count: number, width: number, height: number): number;
+  motionPathPx(times: Float64Array, count: number, width: number, height: number, near?: FilmNearSurfaces | null): number;
   /** Studio-side film state: guides hidden, live tick suspended, exact sampling. */
   setFilmMode(active: boolean): void;
 }
@@ -172,6 +180,14 @@ export function createStudioFilm(ports: StudioFilmPorts) {
   let lastFov = camera.fov;
   let previousCloseMs = -Infinity;
   const tailEnabled: boolean[] = [];
+  let depthProbe: FilmDepthProbe | null = null;
+
+  /** The surfaces nearest the lens in the frame just rendered, for the next motion probe (filmDepthProbe.ts). */
+  function readNearSurfaces(): void {
+    const depth = post.sceneAA.sceneTarget.depthTexture;
+    depthProbe ??= new FilmDepthProbe();
+    if (!depth || !depthProbe.read(renderer, depth, camera)) depthProbe.clear();
+  }
 
   function clouds(): FilmClouds | null {
     const candidate = scene.userData.volumetricClouds as FilmClouds | undefined;
@@ -250,6 +266,8 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       pass.dispose();
       pass = null;
     }
+    depthProbe?.dispose();
+    depthProbe = null;
     const state = saved;
     saved = null;
     plan = null;
@@ -404,6 +422,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         post.lensFlare.fixedDt = 10;
         post.render(0);
         settleClouds();
+        readNearSurfaces();
         info = {
           width,
           height,
@@ -435,8 +454,10 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       // Motion-adaptive count: probe the image travel over the base shutter,
       // then sample densely enough that no copy steps more than ~1.5 px.
       plan.sampleTimes(frame, times, settings.samples);
+      // the last frame's nearest surfaces belong to the shot before a cut
+      for (const cut of ports.cutTimes()) if (cut > previousCloseMs && cut <= times[settings.samples - 1]) depthProbe?.clear();
       const motionPx = settings.samples > 1
-        ? ports.motionPathPx(times, settings.samples, info.width, info.height) : 0;
+        ? ports.motionPathPx(times, settings.samples, info.width, info.height, depthProbe) : 0;
       const samples = adaptiveSampleCount(motionPx, settings);
       plan.sampleTimes(frame, times, samples);
       useJitter(samples, settings.filter);
@@ -450,6 +471,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         stageSample(index === 0);
         if (index === 0) settleClouds();
       });
+      readNearSurfaces();
       return {
         frame,
         frames: plan.frames,
@@ -496,9 +518,13 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         if (moving) {
           // Film mode is on, so the probe sees the same cue attack and shake scale as the render.
           ensureBuffers(maxSamples);
+          // the frame at the playhead first: its depth shows the surfaces nearest the lens (filmDepthProbe.ts)
+          stageSample(true);
+          post.render(0);
+          readNearSurfaces();
           const cuts = ports.cutTimes(), durationMs = options.durationMs ?? Infinity;
           exposureSampleTimes(centerMs, exposureMs, samples, cuts, durationMs, times);
-          const motionPx = ports.motionPathPx(times, samples, options.width, options.height);
+          const motionPx = ports.motionPathPx(times, samples, options.width, options.height, depthProbe);
           count = adaptiveSampleCount(motionPx, { samples, maxSamples });
           exposureSampleTimes(centerMs, exposureMs, count, cuts, durationMs, times);
           ports.seek(Math.floor(times[0]));
