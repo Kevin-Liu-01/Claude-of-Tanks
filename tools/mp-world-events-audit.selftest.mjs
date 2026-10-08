@@ -18,7 +18,10 @@
 //   - (ghost-crunch lane, 2026-10-02) every crunch names the obstacle it fells, and a scripted bot driven into a hedgehog
 //     whose crossed beams share one box centre fells it with exactly one event — the three "ghost" crunches of 2026-10-02
 //     were that crunch read back from its position as the sibling beam; a scripted bot falling to its death beside a
-//     crushable tree is presented where its hull died (within 1 cm) on every view — not mid-air, 0.3–0.8 m off.
+//     crushable tree is presented where its hull died (within 1 cm) on every view — not mid-air, 0.3–0.8 m off;
+//   - (destruction, 2026-10-07) a scripted bot rammed at 14 m/s into a verdant house brings it down; every structure_stage
+//     a seat received is presented once at the authority's point, a stage older than a view lands settled, nothing stages
+//     that the host never sent, and the new host after the migration never re-sends a stage the old host sent.
 // Shorter windows than the tool's defaults (8 s of play, 4 s after each scenario; ≈ 45 s wall).
 import assert from 'node:assert/strict';
 import { formatMatrix, runWorldEventsAudit } from './mp-world-events-audit.mjs';
@@ -54,6 +57,9 @@ for (const row of report.matrix) {
   }
 }
 for (const [view, row] of Object.entries(report.perPeer)) {
+  // destruction (2026-10-07): a stage that predates the view lands settled; nothing stages that the host never sent
+  check(row.stagesOlderAnimated === 0, `${view}: ${row.stagesOlderAnimated} structure stages that predate this view were animated`);
+  check(row.ghostStages === 0, `${view}: ${row.ghostStages} structure stages the host never sent`);
   check(row.ghostFx === 0, `${view}: ${row.ghostFx} prop:crushed effects for nothing this view received`);
   check(row.unattributedFx === 0, `${view}: ${row.unattributedFx} prop:crushed effects name no obstacle`);
   check(row.replaysAnimated === 0, `${view}: ${row.replaysAnimated} falls that predate this view were animated (settled expected)`);
@@ -61,6 +67,8 @@ for (const [view, row] of Object.entries(report.perPeer)) {
 const { rejoin, migration, return: returned, scripted } = report.steps;
 check(scripted?.hedgehog && scripted.hedgehog.events === 1, `scripted hedgehog: ${scripted?.hedgehog?.events ?? 'no'} events for one ${scripted?.hedgehog?.kind ?? 'shared-centre'} prop (one expected: its records fall together)`);
 check(scripted?.fall?.died === true, `scripted fall: the bot dropped on one hit point beside a tree did not die (${JSON.stringify(scripted?.fall ?? null)})`);
+check(scripted?.ram?.collapsed === true, `scripted ram: the bot driven at 14 m/s into house ${scripted?.ram?.structureId ?? '?'} did not bring it down (${JSON.stringify(scripted?.ram ?? null)})`);
+check(migration.restagedEvents === 0, `migration: ${migration.restagedEvents} structure stages the old host had sent were sent again by the new host`);
 const fallViews = Object.entries(scripted?.fall?.presentedErrM ?? {});
 check(fallViews.length > 0 && fallViews.every(([, err]) => err <= 0.01), `scripted fall: presented ${JSON.stringify(scripted?.fall?.presentedErrM ?? {})} m from the hull at its death (≤ 0.01 m on every view)`);
 check(rejoin.replayedAnimated === 0 && rejoin.replayedSettled === rejoin.replayedOnJoin, `rejoin: ${rejoin.replayedAnimated} of ${rejoin.replayedOnJoin} earlier falls animated on the fresh presentation`);
@@ -86,4 +94,5 @@ if (failures.length) {
   assert.fail(`world events audit: ${failures.length} finding(s)\n  ${failures.join('\n  ')}`);
 }
 const crushRows = report.matrix.filter((row) => row.kind === 'world_prop_destroyed' && row.sent > 0);
-console.log(`mp world events audit: scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);
+const stageRows = report.matrix.filter((row) => row.kind === 'structure_stage' && row.sent > 0);
+console.log(`mp world events audit: scripted ram brought house ${scripted.ram.structureId} down (${scripted.ram.stages.join(' > ')}; stages presented on ${stageRows.length} views, ${stageRows.reduce((sum, row) => sum + row.applied, 0)}/${stageRows.reduce((sum, row) => sum + row.sent, 0)}, the new host re-sent ${migration.restagedEvents}); scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);

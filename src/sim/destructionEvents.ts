@@ -284,7 +284,8 @@ export interface DestructionRules {
  * joiner lays every entry down settled. `revision` is the log's length.
  */
 export type DestructionLogEntry =
-  | { readonly kind: 'stage'; readonly structureId: number; readonly stage: StructureStage }
+  /** A stage, and the structure's footprint centre (its identity in a world laid out otherwise; absent from old logs). */
+  | { readonly kind: 'stage'; readonly structureId: number; readonly stage: StructureStage; readonly cx?: number; readonly cz?: number }
   | { readonly kind: 'breach'; readonly structureId: number; readonly section: number; readonly hole: number;
       readonly x: number; readonly y: number; readonly z: number; readonly radiusM: number; readonly sectionDown: boolean }
   | { readonly kind: 'crater'; readonly craterId: number; readonly x: number; readonly z: number;

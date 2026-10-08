@@ -158,6 +158,16 @@ export function structureBlastPoints(chargeKg: number, munition: MunitionClass, 
   return BLAST_POINTS_PER_KG * chargeKg * factor * blastFalloff(distance / Math.cbrt(chargeKg));
 }
 
+/** Light props a blast fells (§6): trees, fences, crates and huts within 1.2 · W^⅓ of a burst of 2 kg or more. */
+export const PROP_FELL_MIN_CHARGE_KG = 2;
+/** At most this many props fall to one blast, and to all of a tick's blasts together (the wire's event budget, §8.5:
+ * one EVENT message per viewer per tick, dropped whole above 64 events). */
+export const PROP_FELL_PER_BLAST = 6;
+export const PROP_FELL_PER_TICK = 12;
+export function propFellRadiusM(chargeKg: number): number {
+  return chargeKg >= PROP_FELL_MIN_CHARGE_KG ? 1.2 * Math.cbrt(chargeKg) : 0;
+}
+
 // ---- Penetrators (§4.3) ----------------------------------------------------------------------------------------
 
 /** Structure points a penetrator's strike deals (kinetic rods, AP shot, shaped-charge jets): 0.004 · pen · cal/100. */

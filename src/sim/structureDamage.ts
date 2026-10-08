@@ -31,11 +31,14 @@ const LANDMARK_FLOOR = 0.05;
 const SHED_MAX_M3 = 200;
 const HOUSE_MAX_M3 = 2500;
 const LARGE_MAX_M3 = 20000;
-const HP_PER_ROOT_M3 = 5;
-const HP_FLOOR = 25;
+/** Tuning (2026-10-07, coordinator's feel targets; §5): a 600 m³ house falls to about six 125 mm HE rounds or one
+ * gunship howitzer shell and a little, a shed to two HE rounds or a medium hull at 6 m/s. */
+const HP_SCALE = 0.72;
+const HP_EXPONENT = 0.72;
+const HP_FLOOR = 10;
 /** Ram pricing (§4.4): energy under this does nothing; above it, one structure point per this many kJ. */
-const RAM_THRESHOLD_KJ = 120;
-const RAM_KJ_PER_POINT = 40;
+const RAM_THRESHOLD_KJ = 40;
+const RAM_KJ_PER_POINT = 48;
 /** Collision swaps per fixed step (§5): a third collapse waits a tick. */
 export const COLLAPSES_PER_TICK = 2;
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
@@ -240,12 +243,12 @@ export function structureMassClass(volumeM3: number, role: StructureState['role'
   return 'large';
 }
 
-/** Hit points from the built volume: 5 · √V, at least 25. */
+/** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
 export function structureHitPoints(volumeM3: number): number {
-  return Math.max(HP_FLOOR, HP_PER_ROOT_M3 * Math.sqrt(Math.max(0, volumeM3)));
+  return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
 }
 
-/** Structure points of a ram (§4.4): (½·m·v² − 120 kJ) / 40, 0 below the threshold. */
+/** Structure points of a ram (§4.4): (½·m·v² − 40 kJ) / 48, 0 below the threshold. */
 export function ramStructurePoints(massTons: number, closingMps: number): number {
   return Math.max(0, impactEnergyKj(massTons, closingMps) - RAM_THRESHOLD_KJ) / RAM_KJ_PER_POINT;
 }

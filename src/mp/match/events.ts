@@ -23,6 +23,8 @@ const DEFAULT_MAX_LATE_TICKS = 4;
 /** Events that allocate large audio, particle, light or debris graphs end a flush. */
 export const HEAVY_EVENT_KINDS: ReadonlySet<string> = new Set([
   'shell_fired', 'shell_hit', 'shell_impact', 'tank_destroyed', 'world_prop_destroyed',
+  // destruction (2026-10-07): a stage change brings dust, debris and a collapse; a crater its ejecta
+  'structure_stage', 'structure_breach', 'terrain_crater',
 ]);
 
 interface QueuedEvent {
@@ -63,6 +65,9 @@ export class ReliableEventQueue {
    * and a prop whose fall is still on its way here must not be laid down by that list first.
    */
   private readonly pendingObstacles = new Map<number, number>();
+  /** Structure ids of the `structure_stage` events still owed to the presentation (destruction, 2026-10-07): the
+   * snapshot's destruction log names a stage before its event is presented, and the stage belongs to the event. */
+  private readonly pendingStructures = new Map<number, number>();
 
   constructor({
     maxEventsPerFlush = DEFAULT_MAX_EVENTS_PER_FLUSH,
@@ -100,13 +105,20 @@ export class ReliableEventQueue {
     return this.pendingObstacles.has(index);
   }
 
+  /** Whether a `structure_stage` for this structure is still owed to the presentation. */
+  isStructurePending(structureId: number): boolean {
+    return this.pendingStructures.has(structureId);
+  }
+
   private notePending(event: WireEvent, delta: number): void {
-    if (event.kind !== 'world_prop_destroyed') return;
-    const index = Number(event.payload.obstacleIndex);
+    const counted = event.kind === 'world_prop_destroyed' ? this.pendingObstacles
+      : event.kind === 'structure_stage' ? this.pendingStructures : null;
+    if (!counted) return;
+    const index = Number(event.kind === 'world_prop_destroyed' ? event.payload.obstacleIndex : event.payload.structureId);
     if (!Number.isSafeInteger(index) || index < 0) return;
-    const next = (this.pendingObstacles.get(index) ?? 0) + delta;
-    if (next > 0) this.pendingObstacles.set(index, next);
-    else this.pendingObstacles.delete(index);
+    const next = (counted.get(index) ?? 0) + delta;
+    if (next > 0) counted.set(index, next);
+    else counted.delete(index);
   }
 
   /**
@@ -166,6 +178,7 @@ export class ReliableEventQueue {
     this.staged.length = 0;
     this.stagedHead = 0;
     this.pendingObstacles.clear();
+    this.pendingStructures.clear();
   }
 
   stats(): ReliableEventQueueStats {

@@ -127,6 +127,11 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent } from '../sim/destructionEvents.ts';
+import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim/munitionBlast.ts';
+import {
+  createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
+} from '../sim/terrainDeformation.ts';
+import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
@@ -332,6 +337,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   _destructionEvents?: StructureStageEvent[];
+  /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
+  _destructionBlasts?: number[];
 }
 
 interface SpawnPoint {
@@ -1211,8 +1218,21 @@ export function setupBattle(
   // placement's route grid skips crushed records), then this battle's structures from the same records
   const worldColliders = world.getColliders ? world.getColliders() : [];
   resetStructureRecords(world.getObstacles(), worldColliders);
+  const ground = groundFor(world);
+  ground.overlay.reset();
+  restoreConcealers(world.getConcealment ? world.getConcealment() : null);
+  const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
     rules: game.ruleset.destruction, obstacles: world.getObstacles(), colliders: worldColliders,
+    ground: ground.overlay,
+    // the bots' grid re-reads the ground round the heap, as the authority's does
+    onCollapse: (structure) => {
+      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
+    },
+    onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
   });
   game._destructionEvents = [];
 
@@ -1262,7 +1282,7 @@ export function setupBattle(
   game.spotting = createBattleSpotting(game, world);
 
   const aiDeps = {
-    heightField: world.heightField,
+    heightField: ground.field,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
     queryObstacles: world.queryObstacles || null,
@@ -2130,6 +2150,7 @@ function crushWorldPropFromShell(
     'shell',
   );
   if (!crushed || record.treeIdx == null) return;
+  if (record.shape2 && world.getConcealment) fellConcealersAt(world.getConcealment(), record.shape2.cx, record.shape2.cz);
   bus.emit('prop:crushed', {
     shooterId: shell.shooterId,
     cause: 'shell',
@@ -2506,11 +2527,26 @@ function resolveTankImpacts(
 
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
 
+interface SoloGround { overlay: TerrainDeformation; field: SoloHeightField }
+const groundByWorld = new WeakMap<SoloWorld, SoloGround>();
+
+/** Destruction (docs/DESTRUCTION.md §7): the ground this world's battles deform — its field plus an overlay each battle
+ * resets (rubble mounds, craters); the world's own field is never touched. */
+function groundFor(world: SoloWorld): SoloGround {
+  let ground = groundByWorld.get(world);
+  if (!ground) {
+    const overlay = createTerrainDeformation();
+    ground = { overlay, field: createDeformedHeightField(world.heightField, overlay) };
+    groundByWorld.set(world, ground);
+  }
+  return ground;
+}
+
 /** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on. */
 function structureSupportFor(world: SoloWorld): StructureSupportField {
   let field = structureSupportByWorld.get(world);
   if (!field) {
-    field = createStructureSupportField(world.heightField, world);
+    field = createStructureSupportField(groundFor(world).field, world);
     structureSupportByWorld.set(world, field);
   }
   return field;
@@ -2565,6 +2601,10 @@ function resolveCrushContacts(
     const overrunMps = Math.abs(entity.state.speed);
     world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps);
     entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
+    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
+    if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+      fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
+    }
     bus.emit('prop:crushed', {
       id: entity.id,
       specId: entity.specId,
@@ -2987,14 +3027,66 @@ export function simStep(
   stepShells(game, bus, world);
   stepFireDamage(game, bus);
   tickRepairs(game, bus, SIM_DT);
-  stepDestruction(game, bus);
+  stepDestruction(game, bus, world);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
 }
 
+/**
+ * Destruction: the light props within the reach of the blasts the match reported fall (the authority's
+ * fellPropsByBlast: nearest first, at most PROP_FELL_PER_BLAST a blast, a tree's canopy stops concealing).
+ */
+const _blastCandidates: SoloObstacle[] = [];
+const _blastFelled: SoloObstacle[] = [];
+function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | null): void {
+  const blasts = game._destructionBlasts;
+  if (!blasts?.length) return;
+  if (!world?.queryObstacles || !world.crushObstacle) { blasts.length = 0; return; }
+  const obstacles = world.getObstacles();
+  let budget = PROP_FELL_PER_TICK;
+  for (let b = 0; b < blasts.length && budget > 0; b += 4) {
+    const x = blasts[b], y = blasts[b + 1], z = blasts[b + 2], radius = propFellRadiusM(blasts[b + 3]);
+    if (!(radius > 0)) continue;
+    world.queryObstacles(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
+    _blastFelled.length = 0;
+    for (const obstacle of _blastCandidates) {
+      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+      const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
+      if (Math.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
+    }
+    _blastFelled.sort((a, c) => {
+      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const dc = Math.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
+      return da - dc || obstacles.indexOf(a) - obstacles.indexOf(c);
+    });
+    const fell = Math.min(_blastFelled.length, PROP_FELL_PER_BLAST, budget);
+    budget -= fell;
+    for (let i = 0; i < fell; i++) {
+      const obstacle = _blastFelled[i];
+      const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
+      const length = Math.hypot(dx, dz) || 1;
+      obstacle.crushed = true;
+      world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
+      if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+        fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
+      }
+      bus.emit('prop:crushed', {
+        cause: 'blast', speedMps: 6, kind: obstacle.kind || 'prop', h: obstacle.max[1] - obstacle.min[1],
+        pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
+        dir: [dx / length, 0, dz / length],
+      });
+    }
+  }
+  blasts.length = 0;
+  _blastCandidates.length = 0;
+  _blastFelled.length = 0;
+}
+
 /** Destruction's end of step (the authority's advanceDestruction): queued collapses swap, stage events go out. */
-function stepDestruction(game: SoloGameState, bus: EventBus): void {
+function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
   const destruction = game._destruction;
   if (!destruction?.enabled) return;
+  // the tick's blasts fell their light props here, in report order (the authority's advanceDestruction alike)
+  fellBlastProps(game, bus, world);
   destruction.step();
   const events = game._destructionEvents ??= [];
   events.length = 0;

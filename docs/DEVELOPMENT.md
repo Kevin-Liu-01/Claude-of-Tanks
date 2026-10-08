@@ -39,6 +39,12 @@ Before publishing:
    lane's stale shard passes silently (round 48, 2026-09-24: Amberford's
    round-1 village haunted the dedicated bots on the new terrain and
    `server/battlePacing.selftest` went red).
+   Since 2026-10-07 (destruction, `docs/DESTRUCTION.md` §3.1) every structure record also packs its structure
+   group (`g`, and `gr` for a landmark set piece): a shard captured by a tree without that packer carries no groups,
+   and the host then plays every building on that map as indestructible. After merging lanes that touched maps,
+   regenerate every shard on the merged tree in Node — `nice -n 15 node tools/capture-world-collision-manifests.mjs
+   --node` (all maps, about an hour on a loaded machine; `--maps a,b` for some) — and confirm with `--check`; record
+   order and counts do not change, only bytes and the index digests.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their
