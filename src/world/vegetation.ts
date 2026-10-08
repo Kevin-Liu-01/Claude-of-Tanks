@@ -5868,7 +5868,7 @@ function* vegetationBuildSteps(
   // (the trees lane: VegetationConfig `woodsOffArable` — a field's cropped ground, read through the land use's CPU twin)
   const arableLandAt = veg.woodsOffArable ? heightField._landUseAt ?? null : null;
   const _arableLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0,
-    hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   const arableCensus = { centres: 0, trees: 0, saplings: 0 };
   function onArable(x: number, z: number): boolean {
     if (arableLandAt === null) return false;
