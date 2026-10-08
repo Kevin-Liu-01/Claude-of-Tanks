@@ -126,8 +126,16 @@ function fachwerkWall(sink: PartSink, face: Face, rect: WallRect, openings: Open
   if (st.mobile) {
     H.post(sink, SW, face, u0 + 0.1, y0 + 0.18, y1 - 0.16, 0.2, OUT, tc);
     H.post(sink, SW, face, u1 - 0.1, y0 + 0.18, y1 - 0.16, 0.2, OUT, tc);
-    return;
   }
+  // a phone keeps its two corner posts; the framing (its panel washes draw the look stream) it draws as the desktop
+  // does and keeps none of it (PartSink.dressing)
+  sink.dressing(st.mobile, () => framing(sink, face, rect, openings, st));
+}
+
+/** The framed wall's members and panel washes between its sill beam and plate (fachwerkWall on a desktop). */
+function framing(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], st: HessianState): void {
+  const { u0, u1, y0, y1 } = rect;
+  const tc = { colour: st.timber, decor: true };
   const yA = y0 + 0.18, yB = y1 - 0.16;
   // a burnt opening's soot climbs the panels round it: a panel wash would paint over it
   const sooty = openings.some((o) => o.state === 'burnt');
@@ -211,19 +219,22 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
   H.post(sink, SW, face, 0, base + 0.06, top - 0.12, POST, OUT, tc);
   const collar = base + h * 0.5;
   H.rail(sink, SW, face, -halfAt(collar) + 0.16, halfAt(collar) - 0.16, collar, 0.14, OUT, tc);
-  if (st.mobile) return;
-  for (const side of [-1, 1]) {
-    const u = side * s * 0.5;
-    const yTop = base + (apexY - base) * (1 - Math.abs(u) / s) - 0.22;
-    if (yTop > base + 0.5) H.post(sink, SW, face, u, base + 0.06, yTop, POST, OUT, tc);
-    H.brace(sink, SW, face, side * s * 0.82, base + 0.08, side * 0.12, collar - 0.08, 0.14, OUT + 0.006, tc);
-  }
-  if (h > 2.4) {
+  // a phone leaves the side posts, the braces and the gable's windows out, but draws them as the desktop does: the
+  // windows take the build stream, and the house's next solids (a hoist dormer, a wing) draw from it after them
+  sink.dressing(st.mobile, () => {
     for (const side of [-1, 1]) {
-      const u = side * s * 0.25, wy = base + 0.55;
-      windowUnit(sink, face, u, wy, 0.5, 0.62, { ...st.window, shutters: null, bars: 'cross' }, st.rng, st.litShare * 0.6);
+      const u = side * s * 0.5;
+      const yTop = base + (apexY - base) * (1 - Math.abs(u) / s) - 0.22;
+      if (yTop > base + 0.5) H.post(sink, SW, face, u, base + 0.06, yTop, POST, OUT, tc);
+      H.brace(sink, SW, face, side * s * 0.82, base + 0.08, side * 0.12, collar - 0.08, 0.14, OUT + 0.006, tc);
     }
-  }
+    if (h > 2.4) {
+      for (const side of [-1, 1]) {
+        const u = side * s * 0.25, wy = base + 0.55;
+        windowUnit(sink, face, u, wy, 0.5, 0.62, { ...st.window, shutters: null, bars: 'cross' }, st.rng, st.litShare * 0.6);
+      }
+    }
+  });
 }
 
 /** the shop paints (facade craft): bottle green, oxblood, navy, umber, cream (sRGB, as the kit's door paints) */
@@ -387,7 +398,20 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
   const aerial = rng() < (opts.aerial ?? 0.45), aerialZ = (rng() - 0.5) * frame.roof.halfD;
   const ladder = rng() < 0.4, pile = rng() < 0.45, seat = rng() < 0.6, lantern = rng() < 0.5;
   const picks = frame.spec.openings.map(() => rng());
-  if (st.mobile) return;
+  // the dressing draws the build stream (flower boxes, the woodpile, the aerial): a phone draws it as the desktop does
+  // and keeps none of it (PartSink.dressing)
+  sink.dressing(st.mobile, () => houseDressing(sink, frame, st, rng, { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks }));
+}
+
+/**
+ * The house's lived-in dressing (dressHessianHouse on a desktop): the door canopy, the flower boxes, the bench, the
+ * lantern, the woodpile, the roof ladder and the aerial.
+ */
+function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng: () => number, c: {
+  boxes: boolean; bloom: Rgb; boxColour: Rgb; aerial: boolean; aerialZ: number; ladder: boolean; pile: boolean; seat: boolean;
+  lantern: boolean; picks: number[];
+}): void {
+  const { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks } = c;
   const spec = frame.spec;
   // the canopy over the front door (facade craft: its own stream, the build stream draws as before)
   if (facadeOn()) {

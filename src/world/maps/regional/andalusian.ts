@@ -133,12 +133,12 @@ function balcony(sink: PartSink, face: Face, u: number, floorY: number, w: numbe
   for (let k = 1; k < n; k++) faceBox(sink, 'structureMetal', face, u - w / 2 + w * k / n, floorY + 0.55, d, 0.018, 0.84, 0.018, fine, 'caps');
   const m = Math.max(2, Math.round(d / 0.13));
   for (const s of [-1, 1]) for (let k = 1; k < m; k++) faceBox(sink, 'structureMetal', face, u + s * (w / 2 - 0.02), floorY + 0.55, d * k / m, 0.018, 0.84, 0.018, fine, 'caps');
-  if (!mobile && look() < 0.7) {
+  if (look() < 0.7) sink.dressing(mobile, () => {
     for (const s of [-1, 1]) {
       if (look() < 0.35) continue;
       potOn(sink, facePoint(face, u + s * (w / 2 - 0.22), floorY, d - 0.14), 0.26, look);
     }
-  }
+  });
 }
 
 /** A clay pot with a geranium on a ledge (p: the pot's base). */
@@ -401,16 +401,17 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
     const frame = buildHouse(sink, spec, dialect(st, look));
     alero(sink, frame);
     if (dado && st.band) zocalo(sink, frame, st.band, 0.75);
-    if (st.mobile) return;
-    const f = frame.faces.right;
-    if (bench) {
-      const u = du + (du > 0 ? -1 : 1) * (dw / 2 + 0.95);
-      if (Math.abs(u) + 0.75 < W / 2) faceBox(sink, 'plaster', f, u, 0.22, 0.21, 1.3, 0.44, 0.42, { decor: true, shadow: true });
-    }
-    const spans = openings.filter((o) => o.face === 'right').map((o) => [o.u - o.w / 2 - 0.2, o.u + o.w / 2 + 0.2] as const);
-    if (pots) wallPots(sink, f, -W / 2 + 0.5, W / 2 - 0.5, two ? frame.floors[1] - 0.35 : 2.45, look, two ? [] : spans);
-    const lu = du + (dw / 2 + 0.45) * (du > 0 ? -1 : 1);
-    if (lantern && !spans.some(([a, b]) => lu > a - 0.15 && lu < b + 0.15)) wallLantern(sink, f, lu, 2.55);
+    sink.dressing(st.mobile, () => {
+      const f = frame.faces.right;
+      if (bench) {
+        const u = du + (du > 0 ? -1 : 1) * (dw / 2 + 0.95);
+        if (Math.abs(u) + 0.75 < W / 2) faceBox(sink, 'plaster', f, u, 0.22, 0.21, 1.3, 0.44, 0.42, { decor: true, shadow: true });
+      }
+      const spans = openings.filter((o) => o.face === 'right').map((o) => [o.u - o.w / 2 - 0.2, o.u + o.w / 2 + 0.2] as const);
+      if (pots) wallPots(sink, f, -W / 2 + 0.5, W / 2 - 0.5, two ? frame.floors[1] - 0.35 : 2.45, look, two ? [] : spans);
+      const lu = du + (dw / 2 + 0.45) * (du > 0 ? -1 : 1);
+      if (lantern && !spans.some(([a, b]) => lu > a - 0.15 && lu < b + 0.15)) wallLantern(sink, f, lu, 2.55);
+    });
   }));
   return sink.finish();
 }
@@ -480,12 +481,13 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
     faceBox(sink, 'stone', f, door.u, frame.floors[0] + top + 0.12, 0.09, door.w + 0.44 + 2 * pw + 0.2, 0.24, 0.18, { decor: true, shadow: true });
     if (cierroBay >= 0) cierro(sink, f, bayU(cierroBay), frame.floors[1] + 0.55, 1.1, 1.7, 0.55, st.joinery);
     else if (long) balcony(sink, f, bayU(1), frame.floors[1], span, 0.55, look, st.mobile);
-    if (st.mobile) return;
-    if (pots) {
-      const spans = openings.filter((o) => o.face === 'right' && o.storey === 0).map((o) => [o.u - o.w / 2 - 0.35, o.u + o.w / 2 + 0.35] as const);
-      wallPots(sink, f, -W / 2 + 0.45, W / 2 - 0.45, frame.floors[1] - 0.6, look, [...spans, [door.u - door.w / 2 - 0.9, door.u + door.w / 2 + 0.9]]);
-    }
-    if (lantern) wallLantern(sink, f, door.u + (door.w / 2 + 0.8) * (door.u > 0 ? -1 : 1), 3.0);
+    sink.dressing(st.mobile, () => {
+      if (pots) {
+        const spans = openings.filter((o) => o.face === 'right' && o.storey === 0).map((o) => [o.u - o.w / 2 - 0.35, o.u + o.w / 2 + 0.35] as const);
+        wallPots(sink, f, -W / 2 + 0.45, W / 2 - 0.45, frame.floors[1] - 0.6, look, [...spans, [door.u - door.w / 2 - 0.9, door.u + door.w / 2 + 0.9]]);
+      }
+      if (lantern) wallLantern(sink, f, door.u + (door.w / 2 + 0.8) * (door.u > 0 ? -1 : 1), 3.0);
+    });
   }));
   return sink.finish();
 }
@@ -561,7 +563,7 @@ const posada: RegionalBuilder = (ctx) => {
     // the board over the tavern door
     faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.04, 1.3, 0.42, 0.05, { colour: rgb(0x3a2a1e), decor: true });
     faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.07, 1.1, 0.26, 0.01, { colour: rgb(0xc8a050), decor: true });
-    if (!st.mobile) {
+    sink.dressing(st.mobile, () => {
       // the vine over the tavern door: a trellis of poles on two posts and the leaves in loose clumps
       const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
@@ -572,7 +574,7 @@ const posada: RegionalBuilder = (ctx) => {
       }
       faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, frame.floors[0] + 0.3, 0.45, 1.5, 0.55, 0.6, { decor: true, shadow: true });
       wallLantern(sink, f, du + 0.9 * gateSide, 2.6);
-    }
+    });
   });
   return sink.finish();
 };
@@ -1025,7 +1027,7 @@ const cortijo: RegionalBuilder = (ctx) => {
     }, dialect({ ...st, reja: st.reja ?? 'box' }, look));
     alero(sink, frame);
     if (st.band) zocalo(sink, frame, st.band, 0.8);
-    if (!st.mobile && look() < 0.6) wallPots(sink, frame.faces.left, -D / 2 + 0.6, D / 2 - 0.6, 2.35, look);
+    if (look() < 0.6) sink.dressing(st.mobile, () => wallPots(sink, frame.faces.left, -D / 2 + 0.6, D / 2 - 0.6, 2.35, look));
   });
   // the stable wing along the far side, under a lean-to falling outward: its walls a prism under the slope
   const sw = clamp((x1 - x0) * 0.24, 2.8, 3.6), sx0 = x1 - sw;
@@ -1058,14 +1060,14 @@ const cortijo: RegionalBuilder = (ctx) => {
   // the patio's well: a whitewashed curb, an iron arch and its pulley
   const wx = gc, wz = -D * 0.1;
   sink.cylinder('plaster', [wx, -0.2, wz], 'y', 1.05, 0.62, 10, {}, 0.62);
-  if (!st.mobile) {
+  sink.dressing(st.mobile, () => {
     for (const s of [-1, 1]) sink.span('structureMetal', wx + s * 0.55 - 0.02, 0.85, wz - 0.02, wx + s * 0.55 + 0.02, 2.0, wz + 0.02, { colour: IRON, decor: true });
     sink.span('structureMetal', wx - 0.57, 1.98, wz - 0.02, wx + 0.57, 2.02, wz + 0.02, { colour: IRON, decor: true });
     sink.cylinder('structureMetal', [wx, 1.85, wz - 0.03], 'z', 0.06, 0.12, 8, { colour: IRON, decor: true });
     // prickly pear against the outer walls
     if (look() < 0.8) chumbera(sink, x0 + 1.2, -hd - 0.4, 1.05 + look() * 0.3, look);
     if (look() < 0.6) chumbera(sink, x1 - 0.8, -hd - 0.3, 0.9 + look() * 0.3, look);
-  }
+  });
   });
   return sink.finish();
 };
@@ -1106,7 +1108,7 @@ const pajar: RegionalBuilder = (ctx) => {
       const x = cx * W / 2, z = cz * D / 2;
       sink.span('plaster', x - (cx > 0 ? 0.02 : 0.3), -0.3, z - (cz > 0 ? 0.02 : 0.45), x + (cx > 0 ? 0.3 : 0.02), 2.4, z + (cz > 0 ? 0.45 : 0.02));
     }
-    if (!st.mobile && look() < 0.55) chumbera(sink, -W / 2 - 0.2, -D / 2 - 0.9, 1.0 + look() * 0.3, look);
+    if (look() < 0.55) sink.dressing(st.mobile, () => chumbera(sink, -W / 2 - 0.2, -D / 2 - 0.9, 1.0 + look() * 0.3, look));
   });
   return sink.finish();
 };
@@ -1153,7 +1155,7 @@ const palomar: RegionalBuilder = (ctx) => {
     const sf: Face = { origin: [0, 0, s1], u: [1, 0, 0], out: [0, 0, 1], width: S - 0.2 };
     doorUnit(sink, sf, 0, 0, 0.95, 1.85, { leaf: st.door, frame: { bucket: 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank' });
   }
-  if (!st.mobile && look() < 0.5) chumbera(sink, half + 0.6, tz, 0.9, look);
+  if (look() < 0.5) sink.dressing(st.mobile, () => chumbera(sink, half + 0.6, tz, 0.9, look));
   });
   return sink.finish();
 };
@@ -1192,11 +1194,11 @@ const horno: RegionalBuilder = (ctx) => {
     if (rz > h + 0.1) for (const s of [-1, 1]) sink.span('wood', x0, 0, cz + s * rz - 0.05, x0 + 0.1, 1.2 + sw * Math.tan(14 * Math.PI / 180), cz + s * rz + 0.05);
     const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.1, thickness: 0.08, bucket: 'roof' };
     sink.placed(0, (x0 + x1) / 2, 0, cz, () => emitRoof(sink, roofGeometry(sw, 2 * rz, 1.2, lean), lean));
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       // the stack against the oven's side only (it has no back where the rack runs on past the oven)
       const side: Face = { origin: [x0, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: 2 * rz };
       woodpile(sink, side, -(h - 0.06) + 0.1, h - 0.06 - 0.1, 0.9 + look() * 0.2, look);
-    }
+    });
   }
   return sink.finish();
 };
