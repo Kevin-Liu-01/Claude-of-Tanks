@@ -5,7 +5,7 @@
 // site-loops.mjs for every format (it drops each ProRes film master once its formats are written; the disk is tight).
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
-//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2]
+//     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--film-proxy=false]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -17,6 +17,9 @@
 // line), and a lease ends before a take that would carry it past --lease-min (45): the rest of the chunk takes the next
 // lease. Between leases --yield-holds (2) other holds take and release the lock first (the coordinator's revised share,
 // about 55 % of the GPU while some forty lane tickets wait).
+// --film-proxy=false renders no 2160p H.264 proxy: its encode (~5 min a take) ran inside the GPU lease, and site-loops
+// encodes from the ProRes master (keep it with --keep-film-masters, so the full take stays at 4K). A take that started
+// keeps the settings its receipt records, so its resume holds; a chunk renders only its pending jobs.
 // <resolvedDir> is a lab run over shots/media-r5/site50/scenes (its *.resolved.json); the source scenes supply the
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/;
 // --tag=<round> writes renders-<round>/ and deliver-<round>/ instead, so every round's renders stay (owner 2026-10-03).
@@ -88,11 +91,24 @@ const chunk = Math.max(1, Number(flags.chunk ?? 10));
 const minFreeGb = Number(flags['min-free-gb'] ?? 6);
 const freeGb = () => { const s = statfsSync(renders); return (s.bavail * s.bsize) / 1e9; };
 const filmJobs = join(renders, 'jobs-films.json'), stillJobs = join(renders, 'jobs-stills.json');
-if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, `--master=${flags['film-master'] ?? 'prores'}`, ...only]);
+if (!('skip-films' in flags)) run('film jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmJobs, `--resolution=${flags['film-resolution'] ?? 2160}`, `--master=${flags['film-master'] ?? 'prores'}`, ...(flags['film-proxy'] === 'false' ? ['--proxy=false'] : []), ...only]);
 if (!('skip-stills' in flags)) run('still jobs', 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillJobs, '--resolution=2160', `--supersample=${flags['still-supersample'] ?? 1.5}`, ...only]);
 const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'utf8'));
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
 const idOf = job => job.out.split('/').pop();
+const receiptOf = job => { const file = join(job.out, 'cinema-receipt.json'); return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null; };
+// a started film keeps the master and proxy its receipt records (cinema refuses a resume with other settings)
+for (const job of films) { const r = receiptOf(job); if (r) { job.master = r.config.master; job.proxy = String(r.config.proxy); } }
+// a job is done when its receipt finished clean with every film and still it asks for
+const formatsOf = job => String(job.formats ?? 'landscape').split(',').length;
+const done = job => {
+  const r = receiptOf(job);
+  if (!r?.finished || r.errors?.length) return false;
+  const films = job.film === 'false' ? 0 : formatsOf(job), stillCount = job.stills ? String(job.stills).split(',').length * formatsOf(job) : 0;
+  return r.films.filter(row => row.complete).length >= films && r.stills.filter(row => row.complete).length >= stillCount;
+};
+// an earlier lease of this run (also before a relaunch): yield before the next one
+const leaseMark = join(renders, 'last-lease');
 const ids = [...new Set([...films, ...stills].map(idOf))].sort();
 // one lease per chunk: its films and stills together; its formats encode on the CPU while the next chunk renders. The
 // encodes run one chunk at a time and niced (other sessions time frames on this machine), and a chunk renders only once
@@ -118,13 +134,17 @@ for (let i = 0; i < ids.length; i += chunk) {
   }
   const part = new Set(ids.slice(i, i + chunk));
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
-  const jobs = [...part].flatMap(id => [...films.filter(j => idOf(j) === id), ...stills.filter(j => idOf(j) === id)]).map(j => ({ ...j, resume: 'true' }));
+  const all = [...part].flatMap(id => [...films.filter(j => idOf(j) === id), ...stills.filter(j => idOf(j) === id)]);
   const file = join(renders, `jobs-chunk-${String(i / chunk).padStart(2, '0')}.json`);
-  writeFileSync(file, JSON.stringify(jobs, null, 1));
   for (let leaseNo = 1; ; leaseNo++) {
-    if (keepPlace && (k > 0 || leaseNo > 1)) await yieldGpu();
+    // each lease takes the chunk's pending jobs only (an early end or an earlier run rendered the rest)
+    const jobs = all.filter(j => !done(j)).map(j => ({ ...j, resume: 'true' }));
+    if (!jobs.length) { if (leaseNo === 1) console.log(`[finals] chunk ${k + 1} (${[...part][0]}…): rendered in an earlier run`); break; }
+    writeFileSync(file, JSON.stringify(jobs, null, 1));
+    if (keepPlace && existsSync(leaseMark)) await yieldGpu();
     const code = await cinema(`chunk ${k + 1} (${[...part][0]}…, ${jobs.length} jobs)${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
       ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
+    writeFileSync(leaseMark, new Date().toISOString());
     if (stopping) throw new Error(`stopped by a signal in chunk ${k + 1}`);
     if (code === 75 && keepPlace) continue; // lease over: the chunk's remaining takes rejoin the queue at the stamp
     if (code !== 0) throw new Error(`chunk ${k + 1} failed (${code})`);

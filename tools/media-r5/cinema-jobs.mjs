@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build tools/media-production/cinema.mjs job lists from lab-resolved scenes.
 //   node tools/media-r5/cinema-jobs.mjs stills <resolvedDir> <outRoot> <jobs.json> [--variants=a,b] [--formats=landscape,portrait,square]
-//   node tools/media-r5/cinema-jobs.mjs films  <resolvedDir> <outRoot> <jobs.json> [--resolution=1440] [--formats=landscape]
+//   node tools/media-r5/cinema-jobs.mjs films  <resolvedDir> <outRoot> <jobs.json> [--resolution=1440] [--formats=landscape] [--proxy=false]
 //   node tools/media-r5/cinema-jobs.mjs blur   <resolvedDir> <outRoot> <jobs.json> [--resolution=2160]   (fifty frames; --still-exposure-ms)
 // Still scenes carry cameraVariants (from the campaign); each chosen variant becomes its own resolved scene file.
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
@@ -45,7 +45,8 @@ for (const f of files) {
     writeFileSync(file, JSON.stringify(scene, null, 1));
     jobs.push({ scene: file, formats: opt.formats ?? 'landscape', resolution: Number(opt.resolution ?? 1440),
       fps: Number(scene.film?.fps ?? 30), samples: Number(scene.film?.samples ?? 8), 'max-samples': Number(scene.film?.maxSamples ?? 48),
-      shutter: Number(scene.film?.shutterDeg ?? 180), master: opt.master ?? 'prores', proxy: 'true', out: resolve(outRoot, name) });
+      shutter: Number(scene.film?.shutterDeg ?? 180), master: opt.master ?? 'prores', proxy: opt.proxy === 'false' ? 'false' : 'true',
+      out: resolve(outRoot, name) });
   } else if (mode === 'blur') {
     // the fifty frames: a motion-blurred still per scene at its timed moment and its close portrait (stillsExtra), through
     // the film shutter
