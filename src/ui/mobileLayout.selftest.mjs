@@ -281,8 +281,9 @@ assert.match(shotInfo,
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
   'touch battles must remove desktop ballistic analysis surfaces from the battlefield');
+// (main's 395305d45 folds the log view's early return into the same guard: `if (isTouchBattleLayout() || logOpen) return;`)
 assert.match(shotInfo,
-  /if \(isTouchBattleLayout\(\)\) return;[\s\S]*const card = buildCard/,
+  /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
   /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
