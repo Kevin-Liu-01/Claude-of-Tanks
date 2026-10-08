@@ -671,6 +671,13 @@ const RAM_MAX_CLOSING_MPS = 14;
 const RAM_SELF_BUDGET_FRAC = 0.8;          // the rams a kill needs may cost at most this share of own hull
 const RAM_RUN_UP_M = 45;                   // a stalled ram backs off to this range before the next run
 const EMPTY_RETIRE_M = 240;                // an empty bot that cannot ram keeps at least this far from its enemies
+// The last run (bots lane, 2026-10-07; Tidegate Polders pacing tail seed 41000 on the scenery lane's stone-free tree):
+// the last bravo bot, an AFT-10 at 8 % of its hull, spent its eight HJ-10s (the K2 killed, one hit on the idle host),
+// the ram law refused every run, and the retirement parked it 248 m from the host, the host in sight and its gun silent,
+// from 330 s to the 900 s cap. The retirement leaves the finish to the team. With no teammate left that can fire there
+// is no finish to leave, and a passive target (PASSIVE_TARGET_*_S) never comes to it, so the run is taken whatever the
+// ram law says: judged, and driven, at full speed. It ends the match one way or the other. A teammate with rounds
+// aboard, or a target that moves or fires, keeps the retirement (see lastRunDue).
 // The finishing run (bots lane, 2026-10-02; Ruinspires pacing seed 37001 on the maps lane's tree): the last bravo M1A2
 // emptied its rack with the idle host at 320 hp and retired for the last 325 s, to the 900 s cap. The ram law splits a
 // run's pool by mass and discounts the rammer, so what the rammer pays per point it deals is fixed, and a full-speed
@@ -1293,6 +1300,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const enemyScratch: AiEntity[] = [];
   let ramming = false;
   let ramRuns = 0;                           // probe-visible count of ram runs begun
+  let lastRun = false;                       // the run under way is the last run (see EMPTY_RETIRE_M)…
+  let lastRuns = 0;                          // …and the probe-visible count of them
   let ramCommitUntilS = -1;
   let ramBackoffUntilS = -1;                 // a stalled run backs off for the next run-up
   let ramCapMps = Infinity;                  // the run's closing-speed cap (see RAM_FINISH_MARGIN)
@@ -4901,17 +4910,44 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     rackSpentVerdicts++;
   }
 
+  /** A living teammate with a round aboard: the retirement leaves the finish to it (wrecks and empty racks cannot). */
+  function teammateCanFire(): boolean {
+    if (!getAllies) return false;
+    const friends = getAllies();
+    for (let i = 0; i < friends.length; i++) {
+      const friend = friends[i];
+      if (!friend || friend === entity || friend.modeActive === false || friend.combat?.destroyed) continue;
+      const ammo = friend.combat?.ammo;
+      if (!Array.isArray(ammo)) return true; // no rack ledger: an armed hull
+      for (let slot = 0; slot < ammo.length; slot++) if ((ammo[slot] || 0) > 0) return true;
+    }
+    return false;
+  }
+
+  /** The last run (see EMPTY_RETIRE_M): nobody left to finish the target, and it will not come to this hull. */
+  function lastRunDue(timeS: number): boolean {
+    return targetPassive(timeS) && !teammateCanFire();
+  }
+
   function updateEmptyRack(dt: number, timeS: number): void {
     updateSpentRack(dt, timeS);
     emptyRack = firstAvailableSlot() < 0 || (!!target && target.id === rackSpentId);
     if (!emptyRack) {
       ramming = false;
+      lastRun = false;
       ramCapMps = Infinity;
       return;
     }
     if (ramming && timeS < ramCommitUntilS && target && enemyAlive(target)) return; // a run is committed
     const wasRamming = ramming;
-    ramming = !!target && enemyAlive(target) && losClear && ramWorthAgainst(target);
+    const canRun = !!target && enemyAlive(target) && losClear;
+    ramming = canRun && ramWorthAgainst(target!);
+    // ramWorthAgainst left the cap at Infinity on a refusal: the last run is driven at full speed
+    lastRun = canRun && !ramming && lastRunDue(timeS);
+    if (lastRun) {
+      ramming = true;
+      if (!wasRamming) lastRuns++;
+    }
     if (ramming) {
       if (!wasRamming) ramRuns++;
       ramCommitUntilS = timeS + 4; // re-judge the exchange every few seconds, not every tick
@@ -6157,6 +6193,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
+      lastRun, lastRuns,
       missStreak, missVerdicts, pressUnreached, deadLegs,
       arcScoot: arcScoot && nowS < scootUntilS,
       pressReachInS: passivePressing && Number.isFinite(pressReachByS) ? +(pressReachByS - nowS).toFixed(1) : null,

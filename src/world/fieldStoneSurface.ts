@@ -238,7 +238,10 @@ function paintChalkTexel(
  * Paint the print (`size` px square; 512 on desktop, 256 on phones: the same stones at half the texels). Deterministic
  * for a seed; sixteen rows per slice. The chalk's print (b18) is painted by its own law over the same bands.
  */
-export function* paintFieldStoneBuffers(size = 512, seed = 0xf1e1d, lithology: FieldStoneLithology = 'fieldstone'):
+/** The dry-stone print's seed (the props build and the surface paint worker ask with it alike). */
+export const FIELD_STONE_PRINT_SEED = 0xf1e1d;
+
+export function* paintFieldStoneBuffers(size = 512, seed = FIELD_STONE_PRINT_SEED, lithology: FieldStoneLithology = 'fieldstone'):
   Generator<FieldStoneSlice, FieldStoneBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), joint = new Uint8Array(size * size);
   // the tone fields: a stone's tone, the odd greyer stone of another kind, the odd iron-stained one, lichen's patches
