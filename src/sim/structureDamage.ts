@@ -72,18 +72,19 @@ export const COLLAPSES_PER_TICK = 1;
  * second later behind its dust). With sections on, a structure whose whole crosses collapse comes down top first before
  * its swap: the roof if it still stands, then each storey from the top every COLLAPSE_STOREY_TICKS, its standing faces
  * falling with it (the last one's breach carries storeyDown: the kit's heap on that floor line), the ground storey to
- * its metre-high stubs, each storey the time its height takes to fall (collapseStoreyTicks: sqrt(2h/g), 3.2 m storeys
- * 48 ticks — with weight, not a stutter). COLLAPSE_SETTLE_TICKS after the last drop its collision swaps, its heap rises
- * and its 'collapsed' stage releases. A three-storey house: the roof at once, the storeys 0.81, 1.62 and 2.43 s later,
- * the swap at 2.93 s. A hull that rammed it keeps driving through while it falls (yieldTo, as P1's one-tick wait did);
+ * its metre-high stubs, each storey the time its height takes to fall (collapseStoreyTicks: sqrt(2h/g) rounded up, 3.2 m
+ * storeys 49 ticks — with weight, not a stutter; the presentation animates each drop over that time). Once the ground
+ * storey has landed (its own fall's ticks) and COLLAPSE_SETTLE_TICKS more, its collision swaps, its heap rises and its
+ * 'collapsed' stage releases. A three-storey house: the roof at once, the storeys 0.82, 1.63 and 2.45 s later, the swap
+ * at 3.47 s. A hull that rammed it keeps driving through while it falls (yieldTo, as P1's one-tick wait did);
  * shells and sight lines meet what still stands (the openings' cap falls with each storey). Sections off: one event and
  * the next tick's swap, as in P1.
  */
-export const COLLAPSE_SETTLE_TICKS = 30;
-/** The ticks a storey of `storeyHeightM` takes to fall its height (sqrt(2h/g) at 60 Hz, at least 18): the cascade's
- * spacing between one storey's drop and the next's. */
+export const COLLAPSE_SETTLE_TICKS = 12;
+/** The ticks a storey of `storeyHeightM` takes to fall its height (sqrt(2h/g) at 60 Hz rounded up, at least 18): the
+ * cascade's spacing between one storey's drop and the next's, and the ground storey's landing before the swap. */
 export function collapseStoreyTicks(storeyHeightM: number): number {
-  return Math.max(18, Math.round(60 * Math.sqrt((2 * Math.max(0, storeyHeightM)) / 9.81)));
+  return Math.max(18, Math.ceil(60 * Math.sqrt((2 * Math.max(0, storeyHeightM)) / 9.81)));
 }
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
 export const STAGE_EVENTS_PER_TICK = 4;
@@ -651,7 +652,7 @@ export function createStructureDamage(
         if (!cascade.settling) {
           if (fellNext(cascade)) attachOpenings(cascade.sections);
           if (standing(cascade.sections)) cascade.at = tick + collapseStoreyTicks(cascade.sections.storeyH);
-          else { cascade.settling = true; cascade.at = tick + COLLAPSE_SETTLE_TICKS; }
+          else { cascade.settling = true; cascade.at = tick + collapseStoreyTicks(cascade.sections.storeyH) + COLLAPSE_SETTLE_TICKS; }
           i++;
           continue;
         }
