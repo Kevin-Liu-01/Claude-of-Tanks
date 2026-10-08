@@ -782,6 +782,8 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
 
   const finishStation = ['t90','t90m_proryv'].includes(P.spec.id)
     ? captureAuxiliaryStock(P,weaponName) : null;
+  // The open bay's deck top, where its cheek plates stand (round 5).
+  let deckTopY: number | null = null;
   if (openWeaponBay) {
     // 2026-10-07 (tank-accessories round 3): the critics read the T-90M station as "a stack of plain boxes around a
     // bare tube": the Kord's receiver, feed and can sat inside the 0.34 m head box and only the barrel showed. The head
@@ -790,7 +792,10 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     const pedestalTopY = weaponFootY + 0.012;
     P.addEquipment('turret', box(fit(0.36), pedestalTopY - (foundationTopY - fitY(0.02)), fit(0.34)),
       x, (pedestalTopY + foundationTopY - fitY(0.02)) * 0.5, z + fit(0.04), 0, yaw, 0);
-    P.add('turretDark', box(fit(0.40), 0.018, fit(0.38)), x, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
+    // 2026-10-08 (tank-accessories round 5, the contact receipt: the cheek plates hung beside the deck, their
+    // corners touching nothing within 15 mm): the deck spans the cheeks, and the cheeks stand on it.
+    P.add('turretDark', box(fit(0.58), 0.018, fit(0.38)), x, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
+    deckTopY = pedestalTopY + 0.013;
   } else {
     P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
       x, headCenterY, z + fit(0.04), 0, yaw, 0);
@@ -798,9 +803,14 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
       x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
   }
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(fit(0.070), fitY(0.27), fit(0.28)),
-      x + side * fit(0.23), headCenterY + fitY(0.06), z + fit(0.10),
-      0, yaw, side * fit(0.08));
+    // On the open bay the plate's lowest (inboard) corner sits 3 mm into the deck: half its rotated height below
+    // its centre is h/2 cos(a) + w/2 sin(a).
+    const lean = side * fit(0.08), plateH = fitY(0.27);
+    const cheekY = deckTopY === null ? headCenterY + fitY(0.06)
+      : deckTopY - 0.003 + plateH / 2 * Math.cos(lean) + fit(0.035) * Math.abs(Math.sin(lean));
+    P.addEquipment('turret', box(fit(0.070), plateH, fit(0.28)),
+      x + side * fit(0.23), cheekY, z + fit(0.10),
+      0, yaw, lean);
   }
   P.addEquipment('turret', box(fit(0.19), fitY(0.21), fit(0.22)),
     x + fit(0.27), headCenterY - fitY(0.02), z + fit(0.21), 0, yaw, 0);

@@ -2191,8 +2191,10 @@ function addOpenYokeSepv3Armor(context: OpenYokeBuildContext): void {
   const {box}=KIT;
   const {body,parts,s,yokeCenterY}=context;
   parts.add(body,box(0.70 * s,0.035 * s,0.35 * s),0,yokeCenterY + 0.175 * s,0.035 * s);
+  // 2026-10-08 (round 5, the contact receipt: the brow touched nothing within 15 mm, its corners standing 3.8 cm past
+  // the cheeks' ends): the cheeks run the brow's full depth, so it rests on them.
   for (const side of [-1,1]) {
-    parts.add(body,box(0.035 * s,0.24 * s,0.29 * s),
+    parts.add(body,box(0.035 * s,0.24 * s,0.35 * s),
       side * 0.355 * s,yokeCenterY + 0.035 * s,0.035 * s,0,0,side * 0.07);
   }
 }

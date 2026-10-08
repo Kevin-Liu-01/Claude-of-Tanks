@@ -1280,7 +1280,9 @@ function modernSmRws(P: TankBuilderPort): void {
   weapon.add('turretDetail',box(.12,.30,.16),.711,2.827,-1.31);
   station.mark('yaw');
   weapon.add('turretDark',box(.105,.166,.286),.581,2.987,-1.405);
-  weapon.add('turretDark',box(.125,.075,.800),.582,3.0505,-1.322);
+  // round 5 (2026-10-08, the contact receipt): the long receiver rests on its cradle at mid-length, so it carries
+  // stations along its length (a plain box's corners all stand past the cradle's ends)
+  weapon.add('turretDark',new THREE.BoxGeometry(.125,.075,.800,1,1,4),.582,3.0505,-1.322);
   weapon.add('turretDark',cylZ(.022,.603,16),.584,3.035,-.8345);
   station.attachPitch(weapon.finish());
 }

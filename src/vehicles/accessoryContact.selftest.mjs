@@ -23,10 +23,12 @@ const IDS = Object.freeze([
   'abramsx', 'cv90_x', 'bmp2', 'leo2_revolution', 'fv510_milan', 'm46_patton', 'bmp3m_dragun125_x', 't62mv1_x', 'griffin_viper',
 ]);
 // the ratchet (2026-10-08, round 4's census at 31247cc05, cell borders searched): floating accessory pieces per tank; any other tank is held to 0
+// 2026-10-08 (round 5, guns helper): the gun and weapon-station pieces are seated (m1a2_sepv3 1 -> 0, t90m_proryv 1 -> 0,
+// abramsx 17 -> 1, t72b3m 7 -> 6, bmp3m_dragun125_x 4 -> 1, t62mv1_x 2 -> 0); the rest are decor and props.
 const KNOWN_FLOATING = Object.freeze({
-  m1a2_sepv3: 1, leo2a4: 2, t90m_proryv: 1, ua_t84_oplot_m: 5, challenger1: 2, m60a1: 1, type99a: 1, leclerc: 1,
-  merkava4_trophy: 2, t72b3m: 7, m1a2_tusk: 1, leo2a6: 2, abramsx: 17, cv90_x: 2, fv510_milan: 3, m46_patton: 8,
-  bmp3m_dragun125_x: 4, t62mv1_x: 2, griffin_viper: 2,
+  leo2a4: 2, ua_t84_oplot_m: 5, challenger1: 2, m60a1: 1, type99a: 1, leclerc: 1,
+  merkava4_trophy: 2, t72b3m: 6, m1a2_tusk: 1, leo2a6: 2, abramsx: 1, cv90_x: 2, fv510_milan: 3, m46_patton: 8,
+  bmp3m_dragun125_x: 1, griffin_viper: 2,
 });
 
 function accessoryKind(object) {
