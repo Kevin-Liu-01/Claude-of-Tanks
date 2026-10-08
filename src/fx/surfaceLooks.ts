@@ -76,7 +76,7 @@ export const UNDER_SNOW_SOIL: Rgb = linearHex(0x2e241a);
 /** Explosive residue smoke: grey-brown (TNT and RDX smoke is lighter than burning-fuel soot). */
 export const BLAST_RESIDUE: Rgb = linearHex(0x56504a);
 /** Burning fuel and hull soot. */
-export const SOOT: Rgb = linearHex(0x161412);
+export const SOOT: Rgb = linearHex(0x2c2824);
 /** Propellant smoke (the gun's charge): pale warm grey. */
 export const PROPELLANT: Rgb = linearHex(0x9d988e);
 
