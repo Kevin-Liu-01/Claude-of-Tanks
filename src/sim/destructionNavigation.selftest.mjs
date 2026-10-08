@@ -48,11 +48,14 @@ const digest = (grid) => [grid.heights, grid.blocked, grid.groundTypes, grid.hul
       grid.refreshArea(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
   });
-  // the two houses either side of x = 0 (a grid cell's centre both their margins cover) come down in one tick
+  // the two houses either side of x = 0 (a grid cell's centre both their margins cover) fall to one blow, one swap a
+  // tick (COLLAPSES_PER_TICK)
   for (const id of [2, 3]) {
     const house = damage.byId(id);
     damage.applyPoints(house, 1e6, { cause: 'blast', munition: 'howitzer', x: house.cx, y: 2, z: house.cz, dirX: 0, dirZ: 1 });
   }
+  damage.step();
+  assert.equal(obstacles[2].crushed && !obstacles[3].crushed, true, 'the first swaps this tick, the second waits');
   damage.step();
   assert.equal(obstacles[2].crushed && obstacles[3].crushed, true);
   // the reference: the same world built from scratch after the collapse

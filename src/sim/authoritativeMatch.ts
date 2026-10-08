@@ -131,7 +131,8 @@ import type {
 } from './matchModes.ts';
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
-import type { DestructionLogEntry, StructureStageEvent } from './destructionEvents.ts';
+import type { DestructionLogEntry, StructureStageEvent, TerrainCraterEvent } from './destructionEvents.ts';
+import { shellHitsWater } from './shellSurface.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
 import { fellConcealersAt } from './spotting.ts';
@@ -821,10 +822,13 @@ export function createAuthoritativeMatch({
       botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
     onBlast: (x, y, z, chargeKg) => { pendingBlasts.push(x, y, z, chargeKg); },
+    // P3: no crater on hard ground (roads, bridge decks, ice), as the solo step reads it
+    groundTypeAt: (x, z) => (heightField as { getGroundType?(x: number, z: number): string }).getGroundType?.(x, z) ?? 'medium',
   });
   /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
   const pendingBlasts: number[] = [];
   const destructionEvents: StructureStageEvent[] = [];
+  const craterEvents: TerrainCraterEvent[] = [];
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
@@ -1965,9 +1969,12 @@ export function createAuthoritativeMatch({
     if (isHeClass(shell.spec.type)) resolveHeImpact(shell, shell.pos, null, null);
     else shell.dead = true;
     destroyShellObstacle(shell, worldHit);
-    // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4)
+    // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4); a burst on
+    // the ground (not on water) may dig a crater (§7, P3)
+    const groundBurst = worldHit.kind === 'terrain' && !worldHit.record
+      && !shellHitsWater({ heightField }, { kind: 'terrain', point: shell.pos });
     destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
-      shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z);
+      shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z, groundBurst);
     emitWorldShellImpact(shell, worldHit);
   }
 
@@ -2387,17 +2394,21 @@ export function createAuthoritativeMatch({
 
   /** Destruction's end of step: queued collapses swap their collision, stage events go out (every viewer). */
   function advanceDestruction(): void {
-    if (!destruction.enabled) return;
-    // the tick's blasts fell their light props, in report order (the solo step's stepDestruction alike)
-    let budget = PROP_FELL_PER_TICK;
-    for (let b = 0; b < pendingBlasts.length && budget > 0; b += 4) {
-      budget -= fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3], budget);
+    if (destruction.enabled) {
+      // the tick's blasts fell their light props, in report order (the solo step's stepDestruction alike)
+      let budget = PROP_FELL_PER_TICK;
+      for (let b = 0; b < pendingBlasts.length && budget > 0; b += 4) {
+        budget -= fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3], budget);
+      }
+      pendingBlasts.length = 0;
     }
-    pendingBlasts.length = 0;
     destruction.step();
     destructionEvents.length = 0;
     destruction.drainEvents(destructionEvents);
     for (const event of destructionEvents) emit('structure_stage', { ...event });
+    craterEvents.length = 0;
+    destruction.drainCraters(craterEvents);
+    for (const event of craterEvents) emit('terrain_crater', { ...event });
   }
 
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {

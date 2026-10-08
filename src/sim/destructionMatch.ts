@@ -9,12 +9,20 @@
  *
  * Pure and Node-runnable. Inert (no table, nothing priced) when the ruleset turns structures off or the world's
  * records carry no structure groups (a shard captured before 2026-10-07).
+ *
+ * Craters (P3, §7): a round that bursts on the ground digs one when the ruleset allows craters and the crater law gives
+ * at least CRATER_DEFORM_MIN_RADIUS_M — never on hard ground (roads, bridge decks, ice), at most CRATERS_PER_TICK a tick
+ * and `maxCraters` a match — stamped on the match's ground overlay quantized as the wire carries it (so every peer and a
+ * restored host stamp the same bits), logged, and handed back as a TerrainCraterEvent. Smaller bursts are marks: the
+ * presentation draws them from `munition:blast`.
  */
 import type { CollisionRecord } from '../world/collision.ts';
-import type { DestructionLogEntry, DestructionRules, StructureStage, StructureStageEvent } from './destructionEvents.ts';
+import type {
+  DestructionLogEntry, DestructionRules, MunitionClass, StructureStage, StructureStageEvent, TerrainCraterEvent,
+} from './destructionEvents.ts';
 import {
-  cookOffChargeKg, FUEL_CHARGE_KG, kineticStructurePoints, munitionChargeKg, munitionClassForShell,
-  type MunitionShellLike,
+  CRATER_DEFORM_MIN_RADIUS_M, cookOffChargeKg, craterFor, FUEL_CHARGE_KG, kineticStructurePoints, munitionChargeKg,
+  munitionClassForShell, type CraterShape, type MunitionShellLike,
 } from './munitionBlast.ts';
 import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
@@ -31,7 +39,12 @@ export interface DestructionMatchOptions {
   onCollapse?(structure: StructureState): void;
   /** A blast of `chargeKg` burst at (x, y, z): the caller fells the light props within `propFellRadiusM` of it. */
   onBlast?(x: number, y: number, z: number, chargeKg: number): void;
+  /** The ground's drive type at a point (terrain.ts getGroundType): no crater on 'hard' ground (roads, decks, ice). */
+  groundTypeAt?(x: number, z: number): string;
 }
+
+/** Deforming craters a fixed step may dig (§8.5): the rest of the tick's ground bursts are marks. */
+export const CRATERS_PER_TICK = 4;
 
 export interface DestructionMatch {
   readonly enabled: boolean;
@@ -44,7 +57,7 @@ export interface DestructionMatch {
    * struck structure).
    */
   shellWorldHit(spec: MunitionShellLike, record: CollisionRecord | null | undefined,
-    x: number, y: number, z: number, dirX: number, dirZ: number): void;
+    x: number, y: number, z: number, dirX: number, dirZ: number, groundBurst?: boolean): void;
   /** A round burst on a hull (HE splash, a shaped-charge strike): its charge as a blast on the structures near. */
   shellBurst(spec: MunitionShellLike, x: number, y: number, z: number, dirX: number, dirZ: number): void;
   /** A hull's crash into `record` priced by the impact law this tick (closing speed over the crash's prior). */
@@ -61,9 +74,23 @@ export interface DestructionMatch {
   /** End of the fixed step: queued collapses, the log, this tick's events (drain them with `drainEvents`). */
   step(): void;
   drainEvents(out: StructureStageEvent[]): number;
+  /** This tick's craters (P3), in log order. */
+  drainCraters(out: TerrainCraterEvent[]): number;
+  /** Deforming craters dug so far this match (and restored). */
+  readonly craters: number;
   /** Lay a previous authority's log down without events (a resumed host): kept verbatim, its stages and collapses
    * applied at once; returns the entries this world applied. */
   restore(entries: readonly DestructionLogEntry[]): number;
+}
+
+/** A crater's shape seed (0..65535) from its quantized centre: the same on every peer. */
+export function craterSeed(x: number, z: number): number {
+  let hash = 0x811c9dc5;
+  for (const value of [Math.round(x * 1000), Math.round(z * 1000)]) {
+    hash ^= value & 0xffff; hash = Math.imul(hash, 0x01000193);
+    hash ^= (value >>> 16) & 0xffff; hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) & 0xffff;
 }
 
 /** Reset every structure record's flags (a world reused for a new battle; the props reset their own). */
@@ -96,6 +123,28 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const log: DestructionLogEntry[] = [];
   const stepEvents: StructureStageEvent[] = [];
   const outbox: StructureStageEvent[] = [];
+  const craterOutbox: TerrainCraterEvent[] = [];
+  const shape: CraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const cratering = !!rules?.craters && !!ground && (rules.maxCraters ?? 0) > 0;
+  let craterCount = 0;
+  let cratersThisTick = 0;
+  /** A ground burst's crater, when it deforms (the wire's quantization: mm positions, cm radius, mm depth and rim). */
+  function dig(munition: MunitionClass, chargeKg: number, x: number, z: number): void {
+    if (!cratering || craterCount >= rules!.maxCraters || cratersThisTick >= CRATERS_PER_TICK) return;
+    craterFor(chargeKg, munition, rules!.craterScale, shape);
+    if (shape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return;
+    if (options.groundTypeAt?.(x, z) === 'hard') return;
+    const qx = Math.round(x * 1000) / 1000, qz = Math.round(z * 1000) / 1000;
+    const radiusM = Math.min(655.35, Math.round(shape.radiusM * 100) / 100);
+    const depthM = Math.min(65.535, Math.round(shape.depthM * 1000) / 1000);
+    const rimM = Math.min(65.535, Math.round(shape.rimM * 1000) / 1000);
+    const seed = craterSeed(qx, qz);
+    if (!ground!.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return; // its ground buckets are full: a mark
+    const craterId = craterCount++;
+    cratersThisTick++;
+    log.push({ kind: 'crater', craterId, x: qx, z: qz, radiusM, depthM, rimM, seed });
+    craterOutbox.push({ craterId, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true });
+  }
   const blow = { cause: 'blast' as StructureStageEvent['cause'], munition: null as StructureStageEvent['munition'],
     x: 0, y: 0, z: 0, dirX: 0, dirZ: 1 };
   const setBlow = (cause: StructureStageEvent['cause'], munition: StructureStageEvent['munition'],
@@ -112,13 +161,14 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     enabled,
     structures,
     log,
-    shellWorldHit(spec, record, x, y, z, dirX, dirZ) {
-      if (!structures) return;
+    shellWorldHit(spec, record, x, y, z, dirX, dirZ, groundBurst = false) {
       const munition = munitionClassForShell(spec);
+      const charge = munitionChargeKg(spec, munition);
+      if (groundBurst && !record && charge > 0) dig(munition, charge, x, z);
+      if (!structures) return;
       const struck = structures.structureOf(record);
       const kinetic = struck ? kineticStructurePoints(spec, munition) : 0;
       if (struck && kinetic > 0) structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ));
-      const charge = munitionChargeKg(spec, munition);
       if (charge > 0) {
         structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ), struck);
         options.onBlast?.(x, y, z, charge);
@@ -155,7 +205,9 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
         structures.applyBlast(FUEL_CHARGE_KG, 'fuel', setBlow('blast', 'fuel', x, y, z, 0, 0));
       }
     },
+    get craters() { return craterCount; },
     step() {
+      cratersThisTick = 0;
       if (!structures) return;
       structures.step();
       stepEvents.length = 0;
@@ -172,12 +224,24 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       outbox.length = 0;
       return count;
     },
+    drainCraters(out) {
+      if (!craterOutbox.length) return 0;
+      const count = craterOutbox.length;
+      for (const event of craterOutbox) out.push(event);
+      craterOutbox.length = 0;
+      return count;
+    },
     restore(entries) {
       // the previous authority's log is kept verbatim (its revision continues); what this world can apply, it applies
       let applied = 0;
       for (const entry of entries) {
         log.push({ ...entry });
         if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
+        if (entry.kind === 'crater') {
+          // the previous authority's crater, as it stamped it (its id continues the count; a full bucket stays a mark)
+          if (ground?.addCrater(entry.x, entry.z, entry.radiusM, entry.depthM, entry.rimM, entry.seed)) applied++;
+          craterCount = Math.max(craterCount, entry.craterId + 1);
+        }
       }
       return applied;
     },

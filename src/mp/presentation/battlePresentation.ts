@@ -766,7 +766,8 @@ export function createBattlePresentation({
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     // the destruction log is settled state, as the destroyed list is: what this seat did not see happen lands at its end
-    destruction.applyLog(frame.destruction ?? [], typeof frame.destructionPending === 'function' ? frame.destructionPending : null);
+    destruction.applyLog(frame.destruction ?? [], typeof frame.destructionPending === 'function' ? frame.destructionPending : null,
+      typeof frame.craterPending === 'function' ? frame.craterPending : null);
     const predicted = frame.viewer.predictedShot;
     if (predicted && predicted.fireSeq !== lastPredictedFireSeq && own) {
       lastPredictedFireSeq = predicted.fireSeq;
@@ -890,6 +891,10 @@ export function createBattlePresentation({
       case 'structure_stage':
         // the authority's stage on this world's own structure (destructionMirror.ts), animated: it emits structure:stage
         destruction.applyStageEvent(payload as Record<string, unknown>);
+        return;
+      case 'terrain_crater':
+        // the authority's crater on this world's ground (P3): the prediction rides it; it emits terrain:crater
+        destruction.applyCraterEvent(payload as Record<string, unknown>);
         return;
       case 'shell_impact':
         // the detonation first (destruction §11), as the solo step raises it before the round expires; open water by this

@@ -111,6 +111,8 @@ export interface MatchFrame {
    * the presentation (its stage belongs to the event, not to the log). */
   destruction: readonly DestructionLogEntry[];
   destructionPending: (structureId: number) => boolean;
+  /** Whether a crater's `terrain_crater` event is still owed to the presentation (P3: the crater belongs to it). */
+  craterPending: (craterId: number) => boolean;
   viewer: ViewerFrame;
   /** This frame's budgeted reliable events (array reused between frames). */
   events: WireEvent[];
@@ -337,6 +339,7 @@ export class MatchClient {
       destroyedPending: (index) => this.events.isObstaclePending(index),
       destruction: [],
       destructionPending: (structureId) => this.events.isStructurePending(structureId),
+      craterPending: (craterId) => this.events.isCraterPending(craterId),
       viewer: {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,

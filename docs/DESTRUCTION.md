@@ -241,9 +241,10 @@ down), to be settled by the pacing and fairness runs (§12):
 | large (7,200 m³) | 431 | 302 | 151 | yes | seven gunship howitzer shells; a TOS-1A salvo on target |
 | landmark (50,000 m³) | 1,742 | 1,219 | 610 | **no** (floor 5 %) | — |
 
-Collapses are queued: at most two structures change collision per tick (FIFO in authority order); a third waits for
-the next tick. HP and the stage transition are decided at the blow's tick; only the collision swap and its event can
-lag by a tick.
+Collapses are queued: at most one structure changes collision per tick (FIFO in authority order); a second waits for
+the next tick (16.7 ms: a howitzer round that brings down three sheds swaps them over three ticks). HP and the stage
+transition are decided at the blow's tick; only the collision swap and its event can lag. One a tick because a
+collapse's work is 1–4 ms of CPU (§10), most of it the route grid's refresh round the footprint.
 
 ## 6. Collision, line of sight and navigation
 
@@ -292,6 +293,21 @@ no stamp leaks into the next battle or another match in the same process.
 
 **Bounds.** At most 160 craters per match deform the ground (`rules.maxCraters`); the rest, and any crater whose bucket
 is full, are marks. Rubble mounds are one per collapsed structure. The overlay never shrinks within a match.
+
+**Digging (P3, landed 2026-10-08; off in every mode until the render follows).** `destructionMatch.shellWorldHit` takes
+`groundBurst`: true when the round burst on the terrain itself (no record struck) and not on water (`shellHitsWater`,
+the same test in both simulations). The crater law (§4.5) sizes it; under `CRATER_DEFORM_MIN_RADIUS_M` (1.6 m: a
+125 mm HE round digs 1.6–1.7 m, a 105 mm one does not) it is a mark, and so is any burst on hard ground (roads, bridge
+decks, ice: `getGroundType`), the fifth and later deforming craters of a tick (`CRATERS_PER_TICK` 4) and those past
+`maxCraters`. A crater is quantized as the wire carries it (millimetre centre, centimetre radius, millimetre depth and
+rim, a 16-bit seed from its centre) before it is stamped, logged (`kind: 'crater'`) and handed back
+(`drainCraters` → solo `terrain:crater`, the authority's `terrain_crater`, public like a stage). A restored log stamps
+the same ground; a peer stamps each crater once, from its event or, settled, from the log (an owed event keeps the log
+from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
+sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
+
+Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
+simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
 
 **Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
 nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
@@ -354,7 +370,7 @@ in any layout.
 ### 8.5 Budget
 
 The wire sends one EVENT message per viewer per tick and drops the whole batch above 64 events
-(`MAX_EVENTS_PER_MESSAGE`). Destruction adds at most: 2 collapses + 4 other stage changes + 4 craters per tick (the
+(`MAX_EVENTS_PER_MESSAGE`). Destruction adds at most: 1 collapse + 4 other stage changes + 4 craters per tick (the
 overflow of stage changes waits a tick in the authority's FIFO; craters past four in a tick become marks). The
 reliable queue treats `structure_stage` (collapsed) and `terrain_crater` as heavy beats. Bandwidth: a full late-game
 log (300 stage entries, 160 craters) is 3.3 KB in a keyframe.
@@ -383,6 +399,9 @@ readonly destruction: {
 };
 ```
 
+Craters are off in every mode for now (§7: until the drawn terrain follows the overlay); the column says what each mode
+takes once they ship.
+
 | Mode | structures | craters | scales | Why |
 |---|---|---|---|---|
 | standard, realistic, capture the flag, zone control, gun game, juggernaut, infected, drone | on | on | 1 / 1 | the default |
@@ -398,13 +417,27 @@ readonly destruction: {
 |---|---|---|
 | Structure table at match start | ≤ 392 structures (ruinspires), O(records) | < 5 ms once |
 | A blast's structure query | 16 m buckets, footprints within `6·W^(1/3)` | < 0.02 ms |
-| A collapse (flags, mound stamp, nav refresh) | ≤ 2 per tick | < 0.5 ms each, measured worst frame |
-| Height query overhead | one bucket read | < 0.02 ms per frame at 4 k queries |
+| A collapse (flags, mound stamp, nav refresh) | ≤ 1 per tick | measured 1–4 ms CPU each (below) |
+| Height query overhead | one bucket read | measured 2.3 % of a 7 v 7 tick (below) |
 | Crater mesh update (P3) | lattice vertices in `1.6 R` on each LOD | < 0.3 ms per crater, no allocation |
 | Memory | 160 craters + 400 mounds × 48 B; 8 KB buckets | — |
 
 Measured with cost rule v3 (bots hidden, ABCCBA, nice 0, GPU < 0.6 ms and CPU < 0.38 ms means over 8 cycles) and a
 collapse-spike probe: the worst frame of a scripted collapse, against the same frame without it.
+
+**The simulation's side, measured in Node (2026-10-08, P1 head 0b866cff5, process CPU time; the machine at load
+120–160, so absolute numbers run high).** A 7 v 7 all-bot authority on Steinburg, Ruinspires and Verdant:
+
+- *The tick.* The destruction code proper (the match, the structure table: blasts, rams, the step) is 0.2 % of a tick's
+  CPU (a sampled minute on Steinburg: 0.21 % on, 0 off). The ground overlay's wrapper (§7: every height read adds the
+  overlay's bucket read) is 2.3 % on and off alike: it exists whatever the rules. Over the same 3,600 ticks the match
+  with destruction on used 7.64 s of CPU and the one with it off 7.79 s (the battles diverge: shells fell props).
+- *A collapse.* `restoreDestruction` applies a collapse as a live one does (records swapped, the heap stamped, the route
+  grid refreshed round the footprint): median 1.8 ms on Steinburg (12 structures, 1.0–5.8 ms), 1.8 ms on Ruinspires
+  (1.1–3.6), 2.4 ms on Verdant (1.0–10.9, its largest a loaded-machine outlier). A profile of 60 collapses: about 55 % the
+  route grid's refresh (`hullComponentLabels` alone a quarter: the whole grid's components relabelled), 20 % its obstacle
+  queries, 20 % its height samples, under 2 % the structure table and the heap. Hence one collapse a tick (§5); the
+  browser's worst frame is the collapse-spike probe's to measure.
 
 ## 11. The presentation contract
 
@@ -454,6 +487,7 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/terrainDeformation.selftest.mjs` | stamp determinism (same stamps → same bits), the lattice-consistent contact surface, bounds and clamps, wrapper isolation from the base |
 | `sim/destructionCollision.selftest.mjs` | collapse swaps movement, shells and sight lines on the real verdant and urban shards; rubble climbable |
 | `sim/destructionNavigation.selftest.mjs` | the route grid opens a collapsed block's cells, identically solo and authority |
+| `sim/destructionCraters.selftest.mjs` | the dig law, marks, hard ground, the tick and match caps, the quantized log and its restore, both sims alike, a real HE round's crater stamped once on a peer and replayed bit for bit |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |
