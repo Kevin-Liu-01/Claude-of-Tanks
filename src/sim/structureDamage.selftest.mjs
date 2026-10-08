@@ -34,19 +34,34 @@ function world(...parts) {
 const blowAt = (x, y, z, cause = 'blast', munition = 'he') => ({ cause, munition, x, y, z, dirX: 1, dirZ: 0 });
 
 // ---- laws
-near(structureHitPoints(60), 38.73, 0.01, 'a 60 m³ shed');
-near(structureHitPoints(560), 118.32, 0.01, 'a 560 m³ house');
-near(structureHitPoints(7200), 424.26, 0.01, 'a 7,200 m³ warehouse');
-assert.equal(structureHitPoints(1), 25, 'the floor');
+near(structureHitPoints(60), 13.73, 0.01, 'a 60 m³ shed');
+near(structureHitPoints(560), 68.55, 0.01, 'a 560 m³ house');
+near(structureHitPoints(7200), 431.13, 0.01, 'a 7,200 m³ warehouse');
+assert.equal(structureHitPoints(1), 10, 'the floor');
 assert.equal(structureMassClass(150, 'building'), 'shed');
 assert.equal(structureMassClass(1500, 'building'), 'house');
 assert.equal(structureMassClass(9000, 'building'), 'large');
 assert.equal(structureMassClass(30000, 'building'), 'landmark');
 assert.equal(structureMassClass(150, 'setpiece'), 'landmark', 'a set piece is a landmark whatever its size');
 assert.deepEqual([1, 0.71, 0.7, 0.36, 0.35, 0.01, 0, -1].map(stageForIntegrity), [0, 0, 1, 1, 2, 2, 3, 3]);
-near(ramStructurePoints(60, 10), 72, 1e-9, '60 t at 10 m/s');
-near(ramStructurePoints(45, 15), 123.5625, 1e-9, '45 t at 15 m/s');
-assert.equal(ramStructurePoints(60, 2), 0, 'a nudge at 2 m/s');
+near(ramStructurePoints(60, 10), 61.6667, 1e-4, '60 t at 10 m/s');
+near(ramStructurePoints(60, 9), 49.7917, 1e-4, '60 t at 9 m/s');
+near(ramStructurePoints(40, 6), 14.1667, 1e-4, 'a 40 t medium at 6 m/s');
+assert.equal(ramStructurePoints(60, 1), 0, 'a nudge at 1 m/s');
+// the feel targets (coordinator 2026-10-07): a 600 m³ house, a 60 m³ shed, a 125 mm HE contact round
+{
+  const house = structureHitPoints(600), shed = structureHitPoints(60), he = structureBlastPoints(3.52, 'he', 0);
+  assert.equal(Math.ceil(house * 0.30 / he), 2, 'a house is damaged by the second HE round');
+  assert.equal(Math.ceil(house * 0.65 / he), 4, 'breached by the fourth');
+  assert.equal(Math.ceil(house / he), 6, 'down by the sixth');
+  assert.ok(structureBlastPoints(20.04, 'howitzer', 0) < house && structureBlastPoints(20.04, 'howitzer', 0) + he > house,
+    'one gunship howitzer shell and a little');
+  assert.equal(Math.ceil(shed / he), 2, 'a shed falls to two HE rounds');
+  assert.ok(ramStructurePoints(40, 6) >= shed * 0.9, 'or nearly to a medium hull at 6 m/s');
+  assert.ok(ramStructurePoints(60, 9) >= house * 0.65 - 1e-9 && ramStructurePoints(60, 9) < house, 'a heavy hull at 9 m/s breaches a house');
+  assert.ok(ramStructurePoints(60, 12) >= house, 'at 12 m/s it brings it down');
+  assert.ok(ramStructurePoints(37.5, 8) >= house * 0.30 && ramStructurePoints(37.5, 8) < house * 0.65, 'a medium at 8 m/s damages it');
+}
 
 // ---- footprints: the minimum-area rectangle, canonical (forward along the longer side, yaw in [0, π))
 for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
@@ -73,7 +88,7 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   assert.deepEqual(damage.structures.map((s) => s.id), [0, 1, 2, 3, 4]);
   assert.deepEqual(damage.structures.map((s) => s.massClass), ['shed', 'house', 'large', 'landmark', 'large']);
   near(damage.byId(1).volumeM3, 560, 1e-6, 'volume = band area × height');
-  near(damage.byId(1).maxHp, 118.32, 0.01, 'house hit points');
+  near(damage.byId(1).maxHp, 68.55, 0.01, 'house hit points');
   assert.equal(damage.byId(3).collapsible, false, 'a landmark never collapses');
   assert.equal(damage.byId(4).destructible, false, 'a fixed group takes nothing');
   assert.equal(damage.structureOf(obstacles[1]), damage.byId(1));
@@ -132,19 +147,19 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
 
 // ---- blasts: contact, falloff, reach, bucket edges, ascending order
 {
-  // three sheds in a row across a 16 m bucket edge (x = 0 is a bucket edge: −512 + 32 · 16)
-  const { obstacles, colliders } = world(building(0, -2, 0, 3, 3, 3), building(1, 2.5, 0, 3, 3, 3), building(2, 30, 0, 3, 3, 3));
+  // three 6 × 6 m sheds (108 m³, 20.9 HP) in a row across a 16 m bucket edge (x = 0 is a bucket edge: −512 + 32 · 16)
+  const { obstacles, colliders } = world(building(0, -3.5, 0, 6, 6, 3), building(1, 3.5, 0, 6, 6, 3), building(2, 40, 0, 6, 6, 3));
   const damage = createStructureDamage(obstacles, colliders);
   const [a, b, c] = damage.structures;
   const before = [a.hp, b.hp, c.hp];
-  damage.applyBlast(3.5, 'he', blowAt(-2, 1, 1.5 + 0.01), a);
+  damage.applyBlast(3.5, 'he', blowAt(-3.5, 1, 3.01), a);
   near(before[0] - a.hp, structureBlastPoints(3.5, 'he', 0), 1e-9, 'the struck shed takes the contact blast');
-  // b's nearest surface: x 1.0 and z 1.5, the burst at x −2, z 1.51 → 3 m and 1 cm away
-  near(before[1] - b.hp, structureBlastPoints(3.5, 'he', Math.hypot(3.0, 0.01)), 1e-9,
+  // b's nearest surface: x 0.5 and z 3, the burst at x −3.5, z 3.01 → 4 m and 1 cm away
+  near(before[1] - b.hp, structureBlastPoints(3.5, 'he', Math.hypot(4.0, 0.01)), 1e-9,
     'its neighbour across the bucket edge takes the falloff');
-  assert.equal(c.hp, before[2], 'a shed 30 m off is out of a 3.5 kg charge’s reach');
-  damage.applyBlast(0, 'he', blowAt(-2, 1, 0));
-  damage.applyBlast(20, 'howitzer', blowAt(30, 1, 0), c);
+  assert.equal(c.hp, before[2], 'a shed 40 m off is out of a 3.5 kg charge’s reach');
+  damage.applyBlast(0, 'he', blowAt(-3.5, 1, 0));
+  damage.applyBlast(20, 'howitzer', blowAt(40, 1, 0), c);
   assert.ok(c.hp < before[2], 'the gunship howitzer reaches it');
 }
 
@@ -200,18 +215,22 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   const match = createDestructionMatch({ rules, ...first });
   assert.equal(match.enabled, true);
   const events = [];
-  // a hull cooking off against the shed's wall (contact: 25.2 SP of its 38.7), then another hull ramming it at 12 m/s
+  // a hull cooking off against the shed's wall (contact: 25.2 SP of its 13.7) brings it down; the house 18 m off stands
   match.tankDeath('ammorack', 60, 1, 0.5, 2.4);
   match.step();
   match.drainEvents(events);
   assert.deepEqual(events.map((e) => [e.structureId, e.stage, e.munition]),
-    [[0, 'damaged', 'cook_off'], [0, 'breached', 'cook_off']], 'a cook-off against a shed (25.2 of its 38.7) breaches it');
-  match.ram(first.obstacles[0], 60, 12, 0, 1, 0.5, 2.4, 0, -1);
+    [[0, 'damaged', 'cook_off'], [0, 'breached', 'cook_off'], [0, 'collapsed', 'cook_off']], 'a cook-off against a shed');
+  // a heavy hull ramming the house at 9 m/s breaches it; a second ram brings it down
+  match.ram(first.obstacles[1], 60, 9, 0, 15, 0.5, 0, 1, 0);
   match.step();
   match.drainEvents(events);
-  assert.deepEqual(events.slice(2).map((e) => [e.structureId, e.stage, e.cause]), [[0, 'collapsed', 'ram']],
-    'a 60 t hull at 12 m/s brings the breached shed down');
-  assert.equal(match.structures.byId(1).hp, match.structures.byId(1).maxHp, 'the house 18 m off stands');
+  assert.deepEqual(events.slice(3).map((e) => [e.structureId, e.stage, e.cause]), [[1, 'damaged', 'ram'], [1, 'breached', 'ram']],
+    'a 60 t hull at 9 m/s breaches the house');
+  match.ram(first.obstacles[1], 60, 9, 0, 15, 0.5, 0, 1, 0);
+  match.step();
+  match.drainEvents(events);
+  assert.deepEqual(events.slice(5).map((e) => [e.structureId, e.stage]), [[1, 'collapsed']], 'the second ram brings it down');
   assert.deepEqual(match.log.map((e) => `${e.structureId}:${e.stage}`), events.map((e) => `${e.structureId}:${e.stage}`),
     'the log records every released stage in order');
   // a resumed host lays the log down: same flags, same log, no events

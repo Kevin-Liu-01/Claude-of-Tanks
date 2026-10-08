@@ -132,6 +132,9 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import type { StructureStageEvent } from './destructionEvents.ts';
+import { PROP_FELL_PER_BLAST, propFellRadiusM } from './munitionBlast.ts';
+import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
+import { fellConcealersAt } from './spotting.ts';
 
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
@@ -763,7 +766,11 @@ export function createAuthoritativeMatch({
   // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines
   const normalizedGameMode = normalizeGameMode(gameMode);
   const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
-  const heightField = suppliedHeightField || shared!.heightField;
+  // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
+  // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
+  const ground = createTerrainDeformation();
+  const baseHeightField = suppliedHeightField || shared!.heightField;
+  const heightField = createDeformedHeightField(baseHeightField, ground);
   const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
@@ -799,7 +806,18 @@ export function createAuthoritativeMatch({
   const destruction = createDestructionMatch({
     rules: ruleset.destruction, obstacles: staticObstacles,
     colliders: worldCollision && typeof worldCollision.getColliders === 'function' ? worldCollision.getColliders() : [],
+    ground,
+    // the bots' grid re-reads the ground round the heap (botRoutePlanner refreshArea), as the solo step's does
+    onCollapse: (structure) => {
+      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
+    },
+    onBlast: (x, y, z, chargeKg) => { pendingBlasts.push(x, y, z, chargeKg); },
   });
+  /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
+  const pendingBlasts: number[] = [];
   const destructionEvents: StructureStageEvent[] = [];
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
@@ -908,13 +926,14 @@ export function createAuthoritativeMatch({
       return hitT == null ? null : { dist: hitT * maxDistance, kind: 'terrain' };
     };
   const auxiliarySmokeScreens: SmokeScreen[] = [];
+  const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
+    ? worldCollision.getConcealment() ?? [] : [];
   const spotting = createSpottingSystem({
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
     opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
-    concealers: worldCollision && typeof worldCollision.getConcealment === 'function'
-      ? worldCollision.getConcealment() : [],
+    concealers: worldConcealers,
     getEquipment: (entity) => entityById.get(entity.id)?.equip ?? null,
     getCamoBonus: () => 0,
     rng: mulberry32(seed + 31000),
@@ -1351,6 +1370,8 @@ export function createAuthoritativeMatch({
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
+    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
+    if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
     emit('world_prop_destroyed', {
       obstacleIndex: destroyedIndex,
       propIdx: obstacle.propIdx,
@@ -1368,6 +1389,35 @@ export function createAuthoritativeMatch({
       z: (obstacle.min[2] + obstacle.max[2]) * 0.5,
     });
     return true;
+  }
+
+  /** Destruction: a blast fells the light props within its reach (trees, fences, crates, huts), nearest first. */
+  const blastCandidates: AuthoritativeObstacle[] = [];
+  const blastFelled: AuthoritativeObstacle[] = [];
+  function fellPropsByBlast(x: number, y: number, z: number, chargeKg: number): void {
+    const radius = propFellRadiusM(chargeKg);
+    if (!(radius > 0) || !worldCollision || typeof worldCollision.queryObstacles !== 'function') return;
+    worldCollision.queryObstacles(x - radius, z - radius, x + radius, z + radius, blastCandidates);
+    blastFelled.length = 0;
+    for (const obstacle of blastCandidates) {
+      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+      const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
+      if (Math.hypot(cx - x, cz - z) <= radius) blastFelled.push(obstacle);
+    }
+    // nearest first, then authority order: the same props fall on every run
+    blastFelled.sort((a, b) => {
+      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const db = Math.hypot((b.min[0] + b.max[0]) * 0.5 - x, (b.min[2] + b.max[2]) * 0.5 - z);
+      return da - db || (obstacleIndex.get(a) ?? 0) - (obstacleIndex.get(b) ?? 0);
+    });
+    for (let i = 0; i < blastFelled.length && i < PROP_FELL_PER_BLAST; i++) {
+      const obstacle = blastFelled[i];
+      const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
+      const length = Math.hypot(dx, dz) || 1;
+      destroyObstacle(obstacle, null, 'blast', dx / length, dz / length, 6);
+    }
+    blastCandidates.length = 0;
+    blastFelled.length = 0;
   }
 
   function resolvePendingCrushes(): void {
@@ -2305,6 +2355,11 @@ export function createAuthoritativeMatch({
   /** Destruction's end of step: queued collapses swap their collision, stage events go out (every viewer). */
   function advanceDestruction(): void {
     if (!destruction.enabled) return;
+    // the tick's blasts fell their light props, in report order (the solo step's stepDestruction alike)
+    for (let b = 0; b < pendingBlasts.length; b += 4) {
+      fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3]);
+    }
+    pendingBlasts.length = 0;
     destruction.step();
     destructionEvents.length = 0;
     destruction.drainEvents(destructionEvents);
@@ -2337,7 +2392,8 @@ export function createAuthoritativeMatch({
     entities,
     entityById,
     requiredPeerIds: entities.filter((entity) => !entity.bot).map((entity) => entity.id),
-    heightField,
+    // the supplied (or shared) field itself; the match's own ground, the overlay on top of it, stays inside
+    heightField: baseHeightField,
     get timeS() { return timeS; },
     get result() { return result; },
     get resultReason() { return resultReason; },

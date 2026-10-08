@@ -1025,6 +1025,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/munitionBlast.selftest.mjs',
     'src/sim/structureDamage.selftest.mjs',
     'src/sim/destructionParity.selftest.mjs',
+    'src/sim/terrainDeformation.selftest.mjs',
+    'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.

@@ -17,6 +17,7 @@ import {
   type MunitionShellLike,
 } from './munitionBlast.ts';
 import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
+import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
 
 
 export interface DestructionMatchOptions {
@@ -24,8 +25,12 @@ export interface DestructionMatchOptions {
   /** The match world's movement records and shell/sight records (the same objects its grids hold). */
   obstacles: readonly CollisionRecord[];
   colliders: readonly CollisionRecord[];
-  /** A collapse was applied (its records already flipped): raise its rubble, refresh the route grid. */
+  /** The match's ground overlay (terrainDeformation.ts): a collapse raises its rubble mound there. */
+  ground?: TerrainDeformation | null;
+  /** A collapse was applied (records flipped, rubble raised): refresh the route grid. */
   onCollapse?(structure: StructureState): void;
+  /** A blast of `chargeKg` burst at (x, y, z): the caller fells the light props within `propFellRadiusM` of it. */
+  onBlast?(x: number, y: number, z: number, chargeKg: number): void;
 }
 
 export interface DestructionMatch {
@@ -76,10 +81,16 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const hasGroups = options.obstacles.some((record) => record.structureIdx !== undefined)
     || options.colliders.some((record) => record.structureIdx !== undefined);
   const enabled = !!rules?.structures && hasGroups;
+  const ground = options.ground ?? null;
   const structures = enabled
     ? createStructureDamage(options.obstacles, options.colliders, {
       damageScale: rules!.structureDamageScale,
-      onCollapse: options.onCollapse,
+      // the heap over its footprint first (a hull on it rides the mound from this tick), then the caller's refresh
+      onCollapse: (structure) => {
+        ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
+          rubbleHeightFor(structure.topY - structure.baseY));
+        options.onCollapse?.(structure);
+      },
     })
     : null;
   const log: DestructionLogEntry[] = [];
@@ -108,13 +119,19 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       const kinetic = struck ? kineticStructurePoints(spec, munition) : 0;
       if (struck && kinetic > 0) structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ));
       const charge = munitionChargeKg(spec, munition);
-      if (charge > 0) structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ), struck);
+      if (charge > 0) {
+        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ), struck);
+        options.onBlast?.(x, y, z, charge);
+      }
     },
     shellBurst(spec, x, y, z, dirX, dirZ) {
       if (!structures) return;
       const munition = munitionClassForShell(spec);
       const charge = munitionChargeKg(spec, munition);
-      if (charge > 0) structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ));
+      if (charge > 0) {
+        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ));
+        options.onBlast?.(x, y, z, charge);
+      }
     },
     ram(record, massTons, closingMps, priorClosingMps, x, y, z, dirX, dirZ) {
       if (!structures) return;
@@ -131,7 +148,9 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     tankDeath(cause, massTons, x, y, z) {
       if (!structures) return;
       if (cause === 'ammo_rack' || cause === 'ammorack') {
-        structures.applyBlast(cookOffChargeKg(massTons), 'cook_off', setBlow('blast', 'cook_off', x, y, z, 0, 0));
+        const charge = cookOffChargeKg(massTons);
+        structures.applyBlast(charge, 'cook_off', setBlow('blast', 'cook_off', x, y, z, 0, 0));
+        options.onBlast?.(x, y, z, charge);
       } else if (cause === 'fire') {
         structures.applyBlast(FUEL_CHARGE_KG, 'fuel', setBlow('blast', 'fuel', x, y, z, 0, 0));
       }

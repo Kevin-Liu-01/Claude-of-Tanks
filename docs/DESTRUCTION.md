@@ -98,7 +98,7 @@ the records alone, identically in the solo world (the rendered build) and on the
 | `baseY`, `topY` | contact record's `min[1]`; highest shell band's `max[1]` |
 | built volume `V` | Σ over shell bands of (part area × band height), m³ |
 | mass class | `fixed` role → indestructible; `setpiece` role or `V ≥ 20,000 m³` → `landmark`; `V < 200` → `shed`; `V < 2,500` → `house`; else `large` |
-| hit points | `HP = 5·√V` structure points (SP), floor 25: shed 60 m³ → 39, house 560 m³ → 118, warehouse 7,200 m³ → 424, landmark 50,000 m³ → 1,118 |
+| hit points | `HP = 0.72·V^0.72` structure points (SP), floor 10: shed 60 m³ → 13.7, house 600 m³ → 72, warehouse 7,200 m³ → 431, landmark 50,000 m³ → 1,742 (tuned to the feel targets in §5) |
 | records | indices of its contact/movement records (obstacles) and shell bands (colliders) |
 
 Measured on the 33 shards (AABB × height, an over-estimate): p10 237 m³, median 1,103, p90 4,149, p99 44,409; by the
@@ -177,8 +177,9 @@ SP = 3.5 · W · structureFactor · g(Z) · rules.structureDamageScale
 g(Z) = 1 for Z ≤ 0.6;  (0.6 / Z)^2.2 for 0.6 < Z ≤ 6;  0 beyond
 ```
 
-A contact burst of a 125 mm HE shell deals 12 SP (a house takes ten); a 152 mm howitzer shell 24; the gunship's
-howitzer 70 (a house in two); its missile 38; an ATGM 8; an FPV warhead 3; a cook-off beside a wall 25. A near miss
+A contact burst of a 125 mm HE shell deals 12 SP (a 600 m³ house is damaged by the second, breached by the fourth and
+down by the sixth); a 152 mm howitzer shell 24; the gunship's howitzer 70 (a house and a little more); its missile 38;
+an ATGM 8; an FPV warhead 3; a cook-off beside a wall 25. A near miss
 falls off fast: the 125 mm shell 3 m from a wall deals 0.9 SP. Blasts are about direct hits; splash does not level
 blocks.
 
@@ -195,20 +196,20 @@ recorded per entity as the structure it pressed) is priced by the impact system'
 prices a crash on the accumulated closing speed `v`, the structure takes
 
 ```
-SP = max(0, E − 120 kJ) / 40,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
+SP = max(0, E − 40 kJ) / 48,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
 ```
 
-60 t at 10 m/s → 72 SP (a shed collapses, a house is breached); 45 t at 15 m/s → 123 SP (a house comes down); a hull
-nudging a wall at 2 m/s → nothing.
+A 60 t heavy at 9 m/s → 50 SP (breaches a 600 m³ house); at 12 m/s → 89 (brings it down; so does a second 9 m/s ram);
+a 37.5 t medium at 8 m/s → 24 (damages it); a 40 t medium at 6 m/s → 14 (a shed comes down); a 1 m/s nudge → nothing.
 
 **A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
 along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets
 the hull through, the ram is priced and the collapse queued, and the hull keeps `√(1 − E_abs / E)` of its speed, where
-`E_abs = 120 kJ + 40 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
+`E_abs = 40 kJ + 48 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
 priced on the hull. A structure that holds is a hard surface: the hull takes the impact law's crash and the structure
-takes the ram. Measured (destructionParity, the authority on verdant): an M1A2 at 18.4 m/s through a 147 HP house
-deals 296 SP, keeps 13 m/s, takes no damage and drives on; the same hull into an intact large building crashes as
-into a wall.
+takes the ram. Measured (destructionParity, the authority on verdant): an M1A2 at 18.4 m/s through a 94 HP house
+brings it down, keeps most of its speed, takes no damage and drives on; the same hull into an intact large building
+crashes as into a wall.
 
 ### 4.5 Craters
 
@@ -226,12 +227,17 @@ nothing deforms.
 
 ## 5. Damage stages per mass class
 
-| Class | HP | Damaged | Breached | Collapses | Typical killers |
+Tuned 2026-10-07 to the coordinator's feel targets (every blow shows; a house damaged after one or two tank HE rounds,
+breached after three or four, down after about six or one gunship howitzer shell and a little; a shed to one or two
+HE rounds or a medium hull at 5–6 m/s; a heavy hull at 8–10 m/s breaches a house and a second ram or 12 m/s brings it
+down), to be settled by the pacing and fairness runs (§12):
+
+| Class | HP (typical) | Damaged at | Breached at | Collapses | Typical killers |
 |---|---|---|---|---|---|
-| shed | ~40 | 28 | 14 | yes | one full-speed ram; two 152 mm shells; four 125 mm HE |
-| house | ~120 | 84 | 42 | yes | ten 125 mm HE; two gunship howitzer shells; a 45 t hull at 15 m/s |
-| large | ~420 | 294 | 147 | yes | six gunship howitzer shells; a TOS salvo |
-| landmark | ~1,100 | 770 | 385 | **no** (floor 5 %) | — |
+| shed (60 m³) | 13.7 | 9.6 | 4.8 | yes | two 125 mm HE; one 152 mm shell; a 40 t hull at 6 m/s |
+| house (600 m³) | 72 | 50 | 25 | yes | 125 mm HE: damaged 2, breached 4, down 6; the gunship howitzer and a little; a 60 t hull at 9 m/s breaches, at 12 m/s (or twice at 9) it comes down |
+| large (7,200 m³) | 431 | 302 | 151 | yes | seven gunship howitzer shells; a TOS-1A salvo on target |
+| landmark (50,000 m³) | 1,742 | 1,219 | 610 | **no** (floor 5 %) | — |
 
 Collapses are queued: at most two structures change collision per tick (FIFO in authority order); a third waits for
 the next tick. HP and the stage transition are decided at the blow's tick; only the collision swap and its event can
@@ -248,10 +254,18 @@ lag by a tick.
   (the impact law prices the fall); a hull inside an open-plan footprint is lifted by the mound like any slope (the
   mound under a hull's footprint at the collapse tick is capped at its belly + 0.4 m, so nothing launches).
 - **Bots** read terrain crests and the world raycast live, so cover and sight lines change by themselves. The cached
-  piece is the route grid: `refreshNavigationArea(grid, minX, minZ, maxX, maxZ)` re-samples the blocked cells, the hull
-  edges, their bends and the components of the cells under the footprint plus one cell (at most 16 cells, 128 edges;
-  the wreck overlay's pass is the model). Called by the solo step and the authority with the same footprint, so bots
-  route identically in both. Routes in flight are replanned on their cadence.
+  piece is the route grid: `grid.refreshArea(minX, minZ, maxX, maxZ)` (botRoutePlanner.ts) re-reads, from the build's
+  own per-cell and per-edge rules, the cells within 3.5 m of the heap's extent (blocked, height, ground, liquid), the
+  grade and liquid of their edges, the hull edges and bends within reach (clearance + the widest bend + a cell) and
+  the components, and marks the wreck overlay for a full re-test. The solo step and the authority call it with the
+  same extent (the footprint plus the heap's skirt). Receipt: the refreshed arrays equal a grid built from scratch on
+  the changed world, byte for byte. Routes in flight are replanned on their cadence.
+- **Concealment**: a felled tree's canopy disc (`ConcealerDisc.dead`, spotting.ts `fellConcealersAt`) stops concealing,
+  whether a hull, a shell or a blast felled it; a cached world's next battle restores them. Structures never
+  concealed (they block sight outright through their shell bands).
+- **Light props in a blast**: a burst of 2 kg or more fells the crushable props whose centre lies within
+  `1.2·W^⅓` of it (a 125 mm HE round 1.8 m, the gunship's howitzer 3.3 m), nearest first, at most six a blast, through
+  each sim's own destroy seam (`world_prop_destroyed` with cause `blast`), at the end of the step in both sims.
 
 ## 7. Ground deformation (craters and rubble)
 
@@ -264,7 +278,9 @@ lag by a tick.
 
 Stamps are bucketed on a 16 m grid (64 × 64 heads, ≤ 8 stamps per bucket). The sum is clamped to [−2.5, +3] m.
 
-**Sampling.** The match's height field is wrapped once (`createDeformedHeightField(base, overlay)`):
+**Sampling.** The match's height field is wrapped once (`createDeformedHeightField(base, overlay)`; the authority keeps
+exposing the supplied base as `match.heightField`, the wrapper is its internal ground; the solo step keeps one wrapper
+per cached world and resets its overlay every battle):
 `getHeightAt` and `getHeightAtFast` add `overlay.offsetAt(x, z)` (one bucket read when the bucket is empty, the common
 case); `getContactHeightAt` adds the offsets of the containing triangle's three lattice vertices with the same
 barycentric weights (`terrainContactSurface.ts`'s lattice and diagonal), so the contact surface equals a mesh whose
@@ -274,6 +290,10 @@ no stamp leaks into the next battle or another match in the same process.
 
 **Bounds.** At most 160 craters per match deform the ground (`rules.maxCraters`); the rest, and any crater whose bucket
 is full, are marks. Rubble mounds are one per collapsed structure. The overlay never shrinks within a match.
+
+**Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
+nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
+hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
 
 **Render (P3).** The ground mesh is updated in place: the lattice vertices inside a stamp's influence, on every
 terrain LOD level that covers them, take `offsetAt(vertex)`, their normals are recomputed locally, and the position
@@ -434,6 +454,8 @@ Cover that disappears changes the game. The gates, every phase:
 6. Collision groups ride in the shards (`g`, `gr`): one recapture of every shard, no new list, no reordering.
 7. Every damage stage is built from the building's own kit through one seam (§16); the core owns anatomy and default
    layouts, kits override, the presentation renders.
+8. The §5 tuning follows the coordinator's feel targets (houses give way to a few HE rounds and to a hard ram); if
+   pacing or fairness says it is too cheap, the large class's hit points rise first, not the houses'.
 
 ## 16. The kit seam: damage built from the building's own kit
 

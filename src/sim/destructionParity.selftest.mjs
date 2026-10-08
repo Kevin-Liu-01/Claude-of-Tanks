@@ -9,7 +9,7 @@ import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { kineticStructurePoints, munitionChargeKg, structureBlastPoints } from './munitionBlast.ts';
-import { ramStructurePoints } from './structureDamage.ts';
+import { ramStructurePoints, structureHitPoints } from './structureDamage.ts';
 import { createObstacleGrid, setCompoundShape, setObbShape } from '../world/collision.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
@@ -34,7 +34,7 @@ for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'],
   assert.match(text, /tankDeath\((String\(payload\.cause\)|cause), (dead|ent)\.spec\.weightTons,/, `${name}: a hull's death bursts on the structures beside it`);
 }
 assert.match(authority, /advanceRepairs\(dt\);\s*advanceDestruction\(\);\s*updateVisibility\(\);/, 'the authority steps destruction before sight');
-assert.match(solo, /tickRepairs\(game, bus, SIM_DT\);\s*stepDestruction\(game, bus\);/, 'the solo step steps it at the same place');
+assert.match(solo, /tickRepairs\(game, bus, SIM_DT\);\s*stepDestruction\(game, bus, world\);/, 'the solo step steps it at the same place');
 assert.match(solo, /resetStructureRecords\(world\.getObstacles\(\), worldColliders\);/, 'a reused solo world stands its buildings again');
 
 // ---- the shell paths: a real HE round and a real APFSDS round on a structure ---------------------------------------
@@ -67,7 +67,7 @@ function houseRecords(id, cx, cz, w, d, h, baseY = 0) {
 }
 
 // ---- the authority, run for real: a hull driven into a house brings it down -----------------------------------------
-// A 24 × 6 m house, 6 m tall (864 m³: a house of 147 hit points) across the hull's path on verdant, as impactParity's wall,
+// A 24 × 6 m house, 6 m tall (864 m³: a house of 94 hit points) across the hull's path on verdant, as impactParity's wall,
 // standing on the ground there (its contact record from the ground line to 1.8 m above it, as the build seats one).
 const groundProbe = createAuthoritativeMatch({ mapId: 'verdant', seed: 1, countdownS: 0,
   players: [{ id: 'probe', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
@@ -123,10 +123,10 @@ function run(seed, steps, onTick = () => {}) {
   assert.ok(stages.every((event) => event.structureId === 0 && event.cause === 'ram' && event.munition === null), 'a ram');
   assert.equal(stages[0].massClass, 'house');
   assert.ok(Math.abs(stages[0].cx) < 1e-6 && Math.abs(stages[0].cz + 35) < 1e-6, 'the event carries the footprint identity');
-  const hp = 5 * Math.sqrt(24 * 6 * 6);
+  const hp = structureHitPoints(24 * 6 * 6);
   const total = stages.reduce((max, event) => Math.max(max, event.points), 0);
-  assert.ok(total > 0 && total <= ramStructurePoints(hull.spec.weightTons, 30), `priced by the ram law (${total.toFixed(1)} SP)`);
-  assert.ok(stages.at(-1).integrity === 0 && hp > 140, 'down to nothing');
+  assert.ok(total >= hp && total <= ramStructurePoints(hull.spec.weightTons, 30), `priced by the ram law (${total.toFixed(1)} SP of ${hp.toFixed(1)})`);
+  assert.ok(stages.at(-1).integrity === 0, 'down to nothing');
   assert.equal(world.getObstacles()[0].crushed, true, 'the contact record no longer pushes');
   assert.equal(world.getColliders()[0].dead, true, 'the shell band no longer stops shells or sight');
   assert.ok(crossedAt > 0, 'the hull drove on through where the house stood');
