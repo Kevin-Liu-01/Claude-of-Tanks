@@ -14,6 +14,8 @@ import {
   buildTerrainMeshesAsync,
   sampleSplatNoise,
 } from './terrain.ts';
+// The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
+import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
@@ -40,6 +42,7 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
+import { supplyHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
@@ -281,12 +284,13 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
-  // (and the horizon ring's geometry pipeline in its own worker, taken by the terrain build after its chunks; a rematch on
-  // the same map takes the kept ring instead — horizonRingPrefetch.ts)
+  // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
+  // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
   const ringSource = startHorizonRingBuild({
     mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
     debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
   });
+  supplyHorizonRing(ringSource);
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -314,7 +318,7 @@ export async function createMapAsync(
         // Heightfield/collision/spotting data remains complete and deterministic.
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
-      }, terrainSources, ringSource));
+      }, terrainSources));
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
@@ -344,6 +348,7 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
+    supplyHorizonRing(null);
     ringSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }

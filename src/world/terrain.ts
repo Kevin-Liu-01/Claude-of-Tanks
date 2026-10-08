@@ -21,10 +21,9 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
-import {
-  HORIZON_SEGMENTS, buildHorizonRingSteps, horizonRingGeometrySteps, type HorizonMapConfig, type HorizonRingPipeline,
-} from './maps/horizon.ts';
-import type { HorizonRingSource } from './horizonRingPrefetch.ts';
+import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
+// The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
+import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -7500,11 +7499,9 @@ export async function buildTerrainMeshesAsync(
   fineSlices = false,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
-  // (the time-to-battle lane, 2026-10-08) the ring's geometry pipeline from its worker (horizonRingPrefetch.ts), or null
-  ringSource: HorizonRingSource | null = null,
 ): Promise<THREE.Group> {
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
-    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation, ringSource);
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
   let completed = false;
   try {
     let r = g.next();
@@ -7529,13 +7526,23 @@ export async function buildTerrainMeshesAsync(
   }
 }
 
+/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. */
+function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
+  return horizonRing().buildHorizonRingSteps(...args);
+}
+/** The installed ring's geometry pipeline (the perf lane, 2026-10-08): the ring built where it stands. */
+function horizonRingGeometrySteps(
+  ...args: Parameters<HorizonRing['horizonRingGeometrySteps']>
+): ReturnType<HorizonRing['horizonRingGeometrySteps']> {
+  return horizonRing().horizonRingGeometrySteps(...args);
+}
+
 function* terrainBuildSteps(
   heightField: HeightField,
   engineCtx: TerrainEngineContext,
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
-  ringSource: HorizonRingSource | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
@@ -7746,10 +7753,12 @@ function* terrainBuildSteps(
   }
   for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
   // (the time-to-battle lane, 2026-10-08) the horizon ring after the chunks: its geometry pipeline (maps/horizon.ts
-  // horizonRingGeometrySteps) runs in a worker beside them (horizonRingPrefetch.ts) and is taken here — awaited if it is
-  // not back yet — or built here where there is none; then the ring's material half, its attribute passes and its
-  // binding as before. The ring reads nothing the chunks write: the same ring.
+  // horizonRingGeometrySteps) runs in a worker beside them and comes through the ring's hook (horizonRingHook.ts: the
+  // worker's pipeline, the kept ring of a rematch — horizonRingPrefetch.ts), awaited if it is not back yet, or is built
+  // here where there is none; then the ring's material half, its attribute passes and its binding as before. The ring
+  // reads nothing the chunks write: the same ring.
   let ringPipeline: HorizonRingPipeline | null = null;
+  const ringSource = horizonRingSupplyFor(cfg);
   if (ringSource) {
     if (ringSource.pending) yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false, () => ringSource.settled()];
     ringPipeline = ringSource.take();
@@ -7862,7 +7871,7 @@ function* terrainBuildSteps(
     // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
     if (ringInfo) {
       bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
-        columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+        columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
         continuousGround: true, ground: heightField,
       });
       // Curvature also controls turf moisture and ambient light. A missing

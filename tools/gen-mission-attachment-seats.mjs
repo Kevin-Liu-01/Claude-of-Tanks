@@ -6,13 +6,20 @@ import {TANK_SPECS} from '../src/vehicles/specs.ts';
 import {ensureInteriorFills} from '../src/vehicles/interiorFills.ts';
 import {MISSION_ATTACHMENT_SEATS} from '../src/sim/missionAttachmentSeats.generated.ts';
 import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachmentSignature,missionAttachmentTurretPivot,DRONE_DOCK_CRADLE} from '../src/sim/missionAttachment.ts';
-import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
+import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
 import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
 const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=value('--ids',Object.keys(TANK_SPECS).join(',')).split(',');
 const seeds=value('--seeds','4000,4242,8191').split(',').map(Number),qualities=value('--qualities','high,low').split(',');
 const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json');
-const hintsPath=value('--hints',''),hintRows=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
+// Authored stands taller than the standard rises reach; a --hints row for the same id replaces one. The BMPT's braced
+// stand is the one src/game/missionAttachmentMechanical.selftest.mjs certifies independently: no other BMPT roof or
+// hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
+const AUTHORED_DOCKS=[
+ {id:'bmpt_t90',chosen:{frame:'turret',x:.07,y:1.3280000162124634,z:.09,payloadOffset:[-.24,-.24],braced:true},riseM:.32},
+];
+const hintsPath=value('--hints',''),fileHints=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
+const hintRows=[...AUTHORED_DOCKS.filter(dock=>!fileHints.some(row=>row.id===dock.id)),...fileHints];
 const hints=Object.fromEntries(hintRows.filter(r=>r.chosen).map(r=>[r.id,r.chosen]));
 // A measured, authored bracket may need a nonstandard rise. This is only a
 // candidate preference: every support, weapon, launch and seed/LOD check runs.
@@ -68,7 +75,8 @@ function validateCases(spec,seat,candidates,cases){
  return {failures,hashes};
 }
 function refinedCandidates(spec,cases,candidates){
- const entry=ensureCase(cases,spec.id,'high',4000),result=[];
+ // The cantilever pass offsets this list, so it carries the authored supports too.
+ const entry=ensureCase(cases,spec.id,'high',4000),result=authoredSupportCandidates(spec.id,DRONE_DOCK_CRADLE).map(c=>({...c,...DRONE_DOCK_CRADLE}));
  for(const frame of spec.armor.turretless?['hull']:['turret','hull']){
   const stock=caseStock(entry,frame,candidates),rows=stock.support;if(!rows.length)continue;
   const minX=Math.min(...rows.map(r=>r.bounds.min.x)),maxX=Math.max(...rows.map(r=>r.bounds.max.x));
@@ -132,7 +140,11 @@ for(const id of ids){
  stockPool.clear();
  const spec=TANK_SPECS[id];if(!spec)throw new Error('Unknown vehicle '+id);
  await ensureInteriorFills([id]);
- const candidates=[...(hints[id]?[hints[id]]:[]),...(records[id]?[records[id]]:[]),...missionAttachmentCandidates(spec)].map(c=>({...c,...DRONE_DOCK_CRADLE})),cases=new Map();
+ // Authored supports (a receiver's pads, a welded patch) are narrow, and the
+ // .06 m native grid can step over them (2026-10-08: no Twardy, M1A1 SA or
+ // Russian patch seat in 280,000+ candidates each). Offer them after any
+ // hint and the current record, before the broad grid; every check runs.
+ const candidates=[...(hints[id]?[hints[id]]:[]),...(records[id]?[records[id]]:[]),...authoredSupportCandidates(id,DRONE_DOCK_CRADLE),...missionAttachmentCandidates(spec)].map(c=>({...c,...DRONE_DOCK_CRADLE})),cases=new Map();
  try{
   const result=check?inspectRecord(spec,records[id],candidates,cases):findSeat(spec,candidates,cases);
   if(result.seat)records[id]=result.seat;

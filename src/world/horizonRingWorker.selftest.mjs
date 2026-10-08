@@ -10,8 +10,10 @@
 //      identity, every descendant), on maps with and without a continued border.
 //   3. The prefetch: no worker means no pipeline (the terrain build builds it where it stands and keeps it); a kept ring
 //      serves the same map's next build, a copy each time, and no other map; a failed or disposed worker yields nothing.
-//   4. The wiring: map.ts starts the prefetch with the world's seeds and disposes it; terrain.ts builds the ring after the
-//      chunk rows from the source and keeps the ring the terrain's first child.
+//   4. The wiring, on the ring's hook (horizonRingHook.ts, fix/inherited-reds): maps/horizon.ts installs the pipeline
+//      beside the builder; map.ts supplies the hook with its prefetch for its own build and withdraws it; the hook hands
+//      a terrain build the supply of its own map and variant only; terrain.ts takes the ring only through the hook, after
+//      the chunk rows, and keeps the ring the terrain's first child.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -24,6 +26,7 @@ const { buildHorizonRingSteps, horizonRingGeometrySteps } = await import('./maps
 const { buildHorizonRingWire } = await import('./horizonRingWorker.ts');
 const { unpackHorizonRing, packHorizonRing } = await import('./horizonRingWire.ts');
 const { startHorizonRingBuild, horizonRingKey, forgetHorizonRing } = await import('./horizonRingPrefetch.ts');
+const { horizonRing, horizonRingSupplyFor, supplyHorizonRing } = await import('./horizonRingHook.ts');
 const { worldBuildConfig } = await import('./worldBuildConfig.ts');
 
 const drain = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
@@ -203,10 +206,25 @@ const bind = terrainSource.indexOf('bindAutumnHorizonGround(horizonMesh, mat, sp
 assert.ok(rows > 0 && ring > rows && bind > ring, 'terrain.ts builds the ring after the chunk rows, then binds it');
 assert.ok(terrainSource.includes('group.children.unshift(group.children.pop()!);'), 'the ring stays the terrain\'s first child');
 assert.ok(terrainSource.includes('ringSource.remember(ringPipeline);'), 'a ring built where it stands is kept');
+assert.ok(terrainSource.includes('const ringSource = horizonRingSupplyFor(cfg);'), 'terrain.ts takes the ring through the hook');
+assert.doesNotMatch(terrainSource, /^import (?!type)[^;]*from '\.\/(maps\/horizon|horizonRingPrefetch|horizonRingWorker|horizonRingWire)\.ts'/m,
+  'terrain.ts imports neither the visual horizon nor the prefetch: the authority\'s height field stays clear of both');
 const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(mapSource, /startHorizonRingBuild\(\{\s*mapId, terrainVariant: terrainVariant \?\? null, fieldSeed: seed, ringSeed: 1337/);
-assert.match(mapSource, /terrainSources, ringSource\)\)/);
-assert.match(mapSource, /ringSource\.dispose\(\);/);
+assert.match(mapSource, /supplyHorizonRing\(ringSource\);/);
+assert.match(mapSource, /supplyHorizonRing\(null\);\s*ringSource\.dispose\(\);/);
+// the hook: the installed pipeline is the module's; a supply serves its own map and variant only, until withdrawn
+assert.equal(horizonRing().horizonRingGeometrySteps, horizonRingGeometrySteps, 'maps/horizon.ts installs its pipeline');
+{
+  const supply = startHorizonRingBuild({ mapId: 'verdant', terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
+  supplyHorizonRing(supply);
+  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply);
+  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null, 'another map\'s build gets no supply');
+  assert.equal(horizonRingSupplyFor(worldBuildConfig('verdant', 'assault-trenches')), null, 'nor does the trench variant');
+  assert.equal(horizonRingSupplyFor(null), null);
+  supplyHorizonRing(null);
+  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), null, 'withdrawn when the world build ends');
+}
 
 console.log(`horizonRingWorker.selftest: ${checked} maps' ring pipelines (${vertices} vertices) identical worker against inline, the trench `
   + 'variant on both tiers, the ring from a precomputed pipeline identical on 3 maps, the prefetch\'s kept ring, fallbacks and disposal, '

@@ -267,7 +267,7 @@
       "reload": 7,
       "aim": 1.92,
       "view": 405,
-      "smoke": 10,
+      "smoke": 20,
       "lights": true,
       "roofGun": false,
       "missile": false,
@@ -2810,7 +2810,7 @@
       "view": 425,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3377,7 +3377,7 @@
       "view": 425,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3398,7 +3398,7 @@
       "view": 420,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3566,7 +3566,7 @@
       "view": 445,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3755,7 +3755,7 @@
       "view": 435,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
