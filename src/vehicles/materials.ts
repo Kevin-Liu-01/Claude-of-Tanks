@@ -159,60 +159,62 @@ function makeCanvas(w: number, h: number): HTMLCanvasElement {
 const materialPainter = createMaterialPainter(makeCanvas);
 const { mulberry32, hexToRgb, mix, scale3, paintCamo, paintRoughness, paintPatchRoughness, exposureTrim } = materialPainter;
 
-// One track texture: 4 link rows per repeat, chevron/waffle grousers.
+// One track texture: 4 link rows per repeat.
+// Fleet lane round 1 (2026-10-08; the fleet audit's Garage running gear): the band's visible face is the track's INNER
+// run, the face the road wheels roll on (the shoes' pads cover its outer face), yet it carried the outer chevron
+// grousers, so the bottom run read as pale chevron planks. Each link now shows the inner surface: the joint and its pin
+// bosses, bolted end connectors at both edges, two road-wheel paths worn bright along the travel either side of the
+// guide-horn row, and the horn's shadow. Same warm manganese ramp (r3: never polished silver).
 function paintTrack(rng: Rng): HTMLCanvasElement {
   const S = texSize(512); // shared/repeating track tile keeps the world-scale budget
   const c = makeCanvas(S, S);
   const ctx = canvas2d(c);
-  // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
-  // dark manganese steel", T-90M idler "navy-blue sparkle"): the old cool
-  // blue-grey ramp read as polished silver under the field sun. Warm dark
-  // manganese-iron ramp with an earth cast; wear highlights cut below.
-  ctx.fillStyle = '#332f2a';
+  ctx.fillStyle = '#2a2824';
   ctx.fillRect(0, 0, S, S);
   const rows = 4, rh = S / rows;
   for (let r = 0; r < rows; r++) {
     const y = r * rh;
-    // link body shading
+    // link body: dark oily steel, a touch lighter across the middle of the link
     const g = ctx.createLinearGradient(0, y, 0, y + rh);
-    g.addColorStop(0, '#494439');
-    g.addColorStop(0.45, '#3a362e');
-    g.addColorStop(0.5, '#211f1a');
-    g.addColorStop(0.55, '#3c382f');
-    g.addColorStop(1, '#302d26');
+    g.addColorStop(0, '#2e2b25');
+    g.addColorStop(0.5, '#3a362f');
+    g.addColorStop(1, '#2c2924');
     ctx.fillStyle = g;
-    ctx.fillRect(0, y + 4, S, rh - 8);
-    // pin gap + end-connector bumps
-    ctx.fillStyle = '#0d0c0a';
-    ctx.fillRect(0, y, S, 6);
-    ctx.fillStyle = '#403c33';
-    for (let x = 0; x < S; x += S / 8) ctx.fillRect(x + 4, y, S / 16, 5);
-    // chevron grouser
-    ctx.strokeStyle = '#524d40';
-    ctx.lineWidth = 14;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.08, y + rh * 0.72);
-    ctx.lineTo(S * 0.5, y + rh * 0.3);
-    ctx.lineTo(S * 0.92, y + rh * 0.72);
-    ctx.stroke();
-    ctx.strokeStyle = '#211f19';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(S * 0.08, y + rh * 0.78);
-    ctx.lineTo(S * 0.5, y + rh * 0.36);
-    ctx.lineTo(S * 0.92, y + rh * 0.78);
-    ctx.stroke();
-    // guide horn shadow (center)
-    ctx.fillStyle = '#0f0e0b';
-    ctx.fillRect(S * 0.46, y + rh * 0.15, S * 0.08, rh * 0.5);
-    // wear highlights on contact ridge — dull burnished steel, not silver
-    // sparkle (r3: alpha halved, count trimmed, warm dust tint)
-    ctx.fillStyle = 'rgba(148,138,118,0.26)';
-    for (let i = 0; i < 20; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
-    // mud/rust — heavier, the run should read dragged through earth
-    ctx.fillStyle = 'rgba(92,70,44,0.32)';
-    for (let i = 0; i < 52; i++) {
-      ctx.beginPath(); ctx.arc(rng() * S, y + rng() * rh, 2 + rng() * 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(0, y + 5, S, rh - 10);
+    // the joint between two links and the pin's round bosses at both ends of it
+    ctx.fillStyle = '#0c0b09';
+    ctx.fillRect(0, y, S, 7);
+    ctx.fillStyle = '#56514a';
+    for (const bx of [0.11, 0.89]) { ctx.beginPath(); ctx.arc(S * bx, y + 3.5, rh * 0.085, 0, Math.PI * 2); ctx.fill(); }
+    // bolted end connectors over the pin ends
+    ctx.fillStyle = '#433f37';
+    ctx.fillRect(0, y + 8, S * 0.075, rh - 16);
+    ctx.fillRect(S * 0.925, y + 8, S * 0.075, rh - 16);
+    ctx.fillStyle = '#5b564b';
+    ctx.fillRect(0, y + 8, S * 0.075, 3);
+    ctx.fillRect(S * 0.925, y + 8, S * 0.075, 3);
+    // the road-wheel paths, worn bright along the travel either side of the guide-horn row
+    for (const [x0, x1] of [[0.16, 0.42], [0.58, 0.84]]) {
+      const w = ctx.createLinearGradient(S * x0, 0, S * x1, 0);
+      w.addColorStop(0, '#36332c');
+      w.addColorStop(0.5, '#59544a');
+      w.addColorStop(1, '#36332c');
+      ctx.fillStyle = w;
+      ctx.fillRect(S * x0, y + 8, S * (x1 - x0), rh - 16);
+      ctx.fillStyle = 'rgba(168,158,136,0.20)';
+      for (let i = 0; i < 10; i++) ctx.fillRect(S * (x0 + rng() * (x1 - x0)), y + 9, 2, (rh - 18) * (0.4 + rng() * 0.6));
+    }
+    // the guide horn's shadow in the middle of the link, its lit leading edge
+    ctx.fillStyle = '#0e0d0a';
+    ctx.fillRect(S * 0.455, y + rh * 0.18, S * 0.09, rh * 0.56);
+    ctx.fillStyle = '#4a453b';
+    ctx.fillRect(S * 0.455, y + rh * 0.18, S * 0.09, 3);
+    // mud and rust in the joints and along the edges, lighter on the polished paths
+    ctx.fillStyle = 'rgba(92,70,44,0.30)';
+    for (let i = 0; i < 40; i++) {
+      const edge = rng() < 0.6;
+      const x = edge ? (rng() < 0.5 ? rng() * 0.16 : 0.84 + rng() * 0.16) * S : rng() * S;
+      ctx.beginPath(); ctx.arc(x, y + rng() * rh, 2 + rng() * 7, 0, Math.PI * 2); ctx.fill();
     }
   }
   return c;
