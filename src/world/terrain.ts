@@ -5138,14 +5138,20 @@ void splatCompute() {
           float furI = floor(acrossP * 1.25);
           float hF = soilHash(furI, floor(jit * 4096.0));
           float clodL = (0.28 + 0.27 * hF) * kP;
-          float aC = alongP / clodL + hF * 17.0;
+          // (2026-10-07, the lab at wave 237's Frontier views: straight cracks square across every slice read as a brick
+          // wall) a clod breaks off its slice on a slant and a curve: the crack's place along the run swings across the
+          // slice's width, its own way in each furrow
+          float slice = fract(acrossP * 1.25);
+          float aC = alongP / clodL + hF * 17.0 + (slice - 0.5) * (0.9 * hF - 0.45) + 0.18 * sin(slice * 6.2832 + hF * 11.0);
           clodF = fract(aC);
           hC = soilHash(floor(aC), furI + 7919.0);
           float footA = abs(dot(gDwX, rowDir)) + abs(dot(gDwY, rowDir));
           clodVis = uLandTier > 1.5 ? smoothstep(2.5, 6.0, clodL / max(footA, 1e-4)) * furrowVis : 0.0;
         }
-        float crack = 1.0 - smoothstep(0.0, 0.14, min(clodF, 1.0 - clodF));
-        cropCol *= 1.0 + ((hC - 0.5) * 0.36 - crack * 0.45) * clodVis - 0.03 * (1.0 - clodVis);
+        // (the crack a soft, shallow seam and each clod's tone eased toward its ends, not a dark ruled line round a flat
+        // block; the mean held where the clods fade)
+        float crack = 1.0 - smoothstep(0.0, 0.24, min(clodF, 1.0 - clodF));
+        cropCol *= 1.0 + ((hC - 0.5) * 0.30 * (0.55 + 0.45 * sin(clodF * 3.14159)) - crack * 0.22) * clodVis - 0.05 * (1.0 - clodVis);
         // (mr4) its far mottle: the turned earth's damp and dry, its clods' clusters, ±16 % over 10–40 m where the
         // furrows have gone to their mean (the coarse read above; a pixel's own furrows near the camera keep it off)
         cropCol *= 1.0 + (nFar.y - 0.5) * 0.32 * farW * (1.0 - furrowVis);
