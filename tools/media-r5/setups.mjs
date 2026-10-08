@@ -359,7 +359,10 @@ export function buildShot(s, m) {
   // motion smooth and the hulls crisp
   // a 90° shutter (media wave m1, 2026-10-07: at 120° the critics read fast moves as smear, and the owner asked for
   // videos "not blurry")
-  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 90, samples: 8, maxSamples: 48 };
+  // a 60° shutter (shutter wave s1, 2026-10-08: S13 rendered at 60° and 90° and judged blind in three frame pairs; both
+  // critics called 60° clearer in all three, on the near-lens ground, the foliage and the road wheels, and read its
+  // streaks as camera motion rather than a filter)
+  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 60, samples: 8, maxSamples: 48 };
   scene.effects = [...(s.effects ?? []), ...(m.effects ?? [])].sort((a, b) => a.tMs - b.tMs).map(fx => {
     if (!fx.at?.hero) return fx;
     const hp = heroPath(fx.tMs), q = frame(hp.p, hp.h).at(fx.at.hero[0], fx.at.hero[1]);
