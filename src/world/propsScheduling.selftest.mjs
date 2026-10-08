@@ -178,6 +178,11 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       createVegetationAsync: async () => { clock += 30; return {}; },
       createPropsAsync: async () => { events.push('props'); clock += 5; return props; },
       assembleWorld: () => { events.push('assemble'); return world; },
+      // (2026-10-07, the time-to-battle lane) the wrapper starts the planned wreck bakes and the fixed-input prints beside
+      // the terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts); none here, so the props build bakes and paints itself
+      startPlannedWreckBakes: () => null,
+      startSurfacePaints: () => null,
+      plannedSurfacePaints: () => [],
       performance: { now: () => clock },
     };
     const run = new Function(...Object.keys(ports), code + '\nreturn createMapAsync;')(...Object.values(ports));
@@ -237,6 +242,22 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   assert.equal(disposed, 1);
   assert.deepEqual(f.events.map(([event]) => event), ['work', 'closed']);
   assert.equal(f.args[0][6].signal.aborted, true, 'failed worker await cancels this build source consumer');
+}
+{
+  // (the time-to-battle lane, 2026-10-08) the map's planned bakes already run in the prefetch's own worker: this build's
+  // worker is not started up front; a planned request is the prefetch's, a request the plan lacks starts the worker
+  const calls = [];
+  const client = { prepare() { calls.push('prepare'); }, async bake(id) { calls.push(['bake', id]); return { id }; },
+    dispose() { calls.push('disposed'); } };
+  const planned = { specId: 'm60a2', options: { seed: 2002, pop: true }, result: null };
+  const unplanned = { specId: 'k2', options: { seed: 2133, pop: false }, result: null };
+  const prefetch = { take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
+  const f = fixture([{ fine: true, progress: false, wreckBake: planned }, { fine: true, progress: false, wreckBake: unplanned }],
+    undefined, undefined, client);
+  await f.run({}, {}, 2002, null, null, true, null, prefetch);
+  assert.deepEqual(planned.result, { id: 'planned' }, 'the planned bake is the prefetch\'s');
+  assert.deepEqual(unplanned.result, { id: 'k2' });
+  assert.deepEqual(calls, [['bake', 'k2'], 'disposed'], 'no eager start: only the miss starts this build\'s worker');
 }
 for (const props of [{ wrecks: 0 }, { tankWrecks: { count: 0 } }]) {
   const client = { prepare() { assert.fail('empty wreck cast must not start a worker'); },
@@ -566,7 +587,9 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     },
     putImageData(image) { canvas.pixels = image.data; },
   };
-  const dependencies = { terrainNearMeshHeightAt, richCount: (n, fallback = 0) => n ?? fallback, // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
+  const dependencies = { terrainNearMeshHeightAt, richCount: (n, fallback = 0) => n ?? fallback,
+    // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
+    nearMeshVertexHeight: (px, pz) => dependencies.heightField.getHeightAt(px, pz), // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {

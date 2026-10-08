@@ -1176,6 +1176,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-layout-metrics.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
+    'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
     'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
     'tools/worldColliderAudit.selftest.mjs', // 2026-10-07 the hitbox lane: the world collider audit's measures
@@ -1263,6 +1264,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainResources.selftest.mjs',
     'src/world/propsResources.selftest.mjs',
     'src/world/plasterSurfaceSharing.selftest.mjs',
+    'src/world/plasterBaseMemo.selftest.mjs', // 2026-10-08: the render families paint one untoned base per build
+    'src/world/nearMeshVertexMemo.selftest.mjs', // 2026-10-08: the near mesh's vertex heights asked once per props build
     'src/world/propsScheduling.selftest.mjs',
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
@@ -1361,6 +1364,7 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
+    'src/world/horizonSeamSampler.selftest.mjs', // the time-to-battle lane (2026-10-08): the seam byte for byte with half the samples
     'src/world/horizonMesaTexture.selftest.mjs',
     'src/world/horizonNoiseSampling.selftest.mjs',
     'src/world/horizonMesaSurface.selftest.mjs',
@@ -1427,6 +1431,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',
     'src/world/wreckBakeClient.selftest.mjs',
+    'src/world/wreckBakePrefetch.selftest.mjs',
+    'src/world/surfacePaintPrefetch.selftest.mjs',
     'src/world/wreckBakeWorker.selftest.mjs',
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
