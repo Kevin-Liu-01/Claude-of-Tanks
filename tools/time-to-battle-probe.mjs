@@ -226,8 +226,8 @@ async function afterOpen({ gl0, t0 }) {
   return {
     earlyBattle,
     matrices,
-    // (2026-10-08, the ring worker) where the horizon ring came from and when: the worker's run, its answer, the terrain
-    // build's wait for it (horizonRingPrefetch.ts stats; null on a build without the worker)
+    // (2026-10-08, the ring worker) where the horizon ring came from and when: the worker's run, its answer, when the
+    // terrain build asked for it and took it (horizonRingPrefetch.ts stats; null on a build without the worker)
     horizonRing: D.world?.group?.children?.find?.((c) => c.name === 'terrain')?.userData?.horizonRingLoad ?? null,
     settledMs: Math.round(performance.now() - t0), allVisuals: D.game.tanks.every((e) => e.visual),
     visualTimings: window.__VISUAL_LOAD_TIMINGS ?? [], countdownWarm: window.__BATTLE_COUNTDOWN_WARM ?? null,

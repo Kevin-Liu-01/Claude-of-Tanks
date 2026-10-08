@@ -12,6 +12,7 @@ import {
   createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
+  finishHorizonRingAsync,
   sampleSplatNoise,
 } from './terrain.ts';
 // The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
@@ -42,7 +43,7 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
-import { supplyHorizonRing } from './horizonRingHook.ts';
+import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
@@ -319,8 +320,6 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
-    // the ring's source and its timing for the load probes, beside the terrain's streaming record
-    terrain.userData.horizonRingLoad = ringSource.stats;
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
@@ -338,6 +337,11 @@ export async function createMapAsync(
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
     }
     await step('Sealing the battlefield', 0.96);
+    // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
+    // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for
+    // the load probes, beside the terrain's streaming record
+    await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
+    terrain.userData.horizonRingLoad = ringSource.stats;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
@@ -350,7 +354,7 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
-    supplyHorizonRing(null);
+    withdrawHorizonRing(ringSource);
     ringSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }

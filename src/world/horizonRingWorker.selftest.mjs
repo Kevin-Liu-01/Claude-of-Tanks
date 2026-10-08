@@ -12,8 +12,10 @@
 //      serves the same map's next build, a copy each time, and no other map; a failed or disposed worker yields nothing.
 //   4. The wiring, on the ring's hook (horizonRingHook.ts, fix/inherited-reds): maps/horizon.ts installs the pipeline
 //      beside the builder; map.ts supplies the hook with its prefetch for its own build and withdraws it; the hook hands
-//      a terrain build the supply of its own map and variant only; terrain.ts takes the ring only through the hook, after
-//      the chunk rows, and keeps the ring the terrain's first child.
+//      a terrain build the supply of its own map and variant only; terrain.ts takes the ring only through the hook — a
+//      supplied build leaves the ring's stage on the group and map.ts finishes it after the props, before the world is
+//      assembled (the worker's whole build to answer; the stage builds the pipeline meanwhile and takes the worker's the
+//      moment it arrives, never waiting) — and keeps the ring the terrain's first child.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -26,7 +28,7 @@ const { buildHorizonRingSteps, horizonRingGeometrySteps } = await import('./maps
 const { buildHorizonRingWire } = await import('./horizonRingWorker.ts');
 const { unpackHorizonRing, packHorizonRing } = await import('./horizonRingWire.ts');
 const { startHorizonRingBuild, horizonRingKey, forgetHorizonRing } = await import('./horizonRingPrefetch.ts');
-const { horizonRing, horizonRingSupplyFor, supplyHorizonRing } = await import('./horizonRingHook.ts');
+const { horizonRing, horizonRingSupplyFor, supplyHorizonRing, withdrawHorizonRing } = await import('./horizonRingHook.ts');
 const { worldBuildConfig } = await import('./worldBuildConfig.ts');
 
 const drain = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
@@ -172,32 +174,45 @@ for (const mapId of ['verdant', 'badlands', 'coastal']) {
     p.onmessage?.({ data: { id: job.id, ok: true, wire: structuredClone(wire, { transfer }), ms: 1 } });
   }));
   assert.equal(ok.pending, true);
+  assert.equal(ok.take(), null, 'nothing to take while the worker is at it (the terrain build makes the ring meanwhile)');
   await ok.settled();
   assert.equal(ok.pending, false);
-  assert.equal(ok.stats.source, 'worker');
   assert.equal(pipelineDigest(ok.take()), pipelineDigest(inline), 'the worker\'s answer is the ring');
-  assert.equal(startHorizonRingBuild(request, null).stats.source, 'kept', 'the worker\'s ring is kept for a rematch');
+  assert.equal(ok.stats.source, 'worker', 'taken from the worker');
+  const rematchTake = startHorizonRingBuild(request, null);
+  assert.ok(rematchTake.take());
+  assert.equal(rematchTake.stats.source, 'kept', 'the worker\'s ring is kept for a rematch');
   // the record the world build leaves on the terrain group (map.ts: userData.horizonRingLoad): when the terrain build
-  // reached the ring while the worker was still at it, how long it waited, when it took the pipeline (ms from the start)
+  // first asked (the ring stage began), when the worker answered, when the build took its pipeline (ms from the start);
+  // the build never waits: a ring it made itself is 'inline', whatever the worker does after
   forgetHorizonRing();
   let clock = 0;
   const timed = startHorizonRingBuild(request, () => port((p, job) => {
     p.onmessage?.({ data: { id: job.id, ok: true, wire: structuredClone(packHorizonRing(inline).wire), ms: 7 } });
   }), () => clock);
   clock = 100;
-  const waiting = timed.settled();
+  assert.equal(timed.take(), null, 'the ring stage began before the worker answered');
   clock = 250;
-  await waiting;
+  await timed.settled();
   clock = 300;
-  assert.ok(timed.take());
-  assert.deepEqual({ ...timed.stats }, { source: 'worker', failed: false, workerMs: 7, doneMs: 250, askedMs: 100, waitMs: 150, takenMs: 300 },
-    'the worker answered 150 ms after the terrain build reached the ring, which took it at 300 ms');
+  assert.ok(timed.take(), 'its answer is taken at the next step');
+  assert.deepEqual({ ...timed.stats }, { source: 'worker', failed: false, workerMs: 7, doneMs: 250, askedMs: 100, takenMs: 300 },
+    'asked at 100 ms, answered at 250 ms, taken at 300 ms');
   clock = 1000;
   const rematch = startHorizonRingBuild(request, null, () => clock);
   clock = 1040;
   assert.ok(rematch.take());
-  assert.deepEqual({ ...rematch.stats }, { source: 'kept', failed: false, workerMs: 0, doneMs: 0, askedMs: -1, waitMs: 0, takenMs: 40 },
-    'a rematch takes the kept ring without waiting');
+  assert.deepEqual({ ...rematch.stats }, { source: 'kept', failed: false, workerMs: 0, doneMs: 0, askedMs: 40, takenMs: 40 },
+    'a rematch takes the kept ring at once');
+  forgetHorizonRing();
+  clock = 0;
+  const late = startHorizonRingBuild(request, () => port(() => {}), () => clock);
+  clock = 80;
+  assert.equal(late.take(), null);
+  late.remember(inline);
+  late.dispose();
+  assert.deepEqual({ ...late.stats }, { source: 'inline', failed: false, workerMs: 0, doneMs: 80, askedMs: 80, takenMs: -1 },
+    'no answer before the build finished the ring itself: inline, the worker disposed with the build');
   forgetHorizonRing();
   const failed = startHorizonRingBuild(request, () => port((p, job) => p.onmessage?.({ data: { id: job.id, ok: false, message: 'boom' } })));
   await failed.settled();
@@ -227,13 +242,26 @@ const bind = terrainSource.indexOf('bindAutumnHorizonGround(horizonMesh, mat, sp
 assert.ok(rows > 0 && ring > rows && bind > ring, 'terrain.ts builds the ring after the chunk rows, then binds it');
 assert.ok(terrainSource.includes('group.children.unshift(group.children.pop()!);'), 'the ring stays the terrain\'s first child');
 assert.ok(terrainSource.includes('ringSource.remember(ringPipeline);'), 'a ring built where it stands is kept');
+assert.match(terrainSource, /if \(ringSource\) group\.userData\.finishHorizonRing = horizonRingStage;\s*else yield\* horizonRingStage\(\);/,
+  'a supplied build leaves the ring stage for the world build\'s end; any other build makes it after the chunks');
+assert.match(terrainSource, /ringPipeline = ringSource\.take\(\);\s*if \(ringPipeline\) break;/,
+  'the stage takes the worker\'s pipeline the moment it arrives');
+assert.doesNotMatch(terrainSource, /ringSource\.settled\(\)/, 'nothing waits for the worker');
+assert.match(terrainSource, /export function buildTerrainMeshes\([\s\S]{0,700}userData\.finishHorizonRing[\s\S]{0,300}while \(!steps\.next\(\)\.done\)/,
+  'a synchronous terrain build that met a supply finishes the deferred ring itself');
 assert.ok(terrainSource.includes('const ringSource = horizonRingSupplyFor(cfg);'), 'terrain.ts takes the ring through the hook');
 assert.doesNotMatch(terrainSource, /^import (?!type)[^;]*from '\.\/(maps\/horizon|horizonRingPrefetch|horizonRingWorker|horizonRingWire)\.ts'/m,
   'terrain.ts imports neither the visual horizon nor the prefetch: the authority\'s height field stays clear of both');
 const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(mapSource, /startHorizonRingBuild\(\{\s*mapId, terrainVariant: terrainVariant \?\? null, fieldSeed: seed, ringSeed: 1337/);
 assert.match(mapSource, /supplyHorizonRing\(ringSource\);/);
-assert.match(mapSource, /supplyHorizonRing\(null\);\s*ringSource\.dispose\(\);/);
+assert.match(mapSource, /withdrawHorizonRing\(ringSource\);\s*ringSource\.dispose\(\);/);
+{
+  const props = mapSource.indexOf('const props = await createPropsAsync(');
+  const finish = mapSource.indexOf('await finishHorizonRingAsync(terrain, ');
+  const assemble = mapSource.indexOf('const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);');
+  assert.ok(props > 0 && finish > props && assemble > finish, 'map.ts finishes the ring after the props, before the world is assembled');
+}
 // the hook: the installed pipeline is the module's; a supply serves its own map and variant only, until withdrawn
 assert.equal(horizonRing().horizonRingGeometrySteps, horizonRingGeometrySteps, 'maps/horizon.ts installs its pipeline');
 {
@@ -243,6 +271,13 @@ assert.equal(horizonRing().horizonRingGeometrySteps, horizonRingGeometrySteps, '
   assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null, 'another map\'s build gets no supply');
   assert.equal(horizonRingSupplyFor(worldBuildConfig('verdant', 'assault-trenches')), null, 'nor does the trench variant');
   assert.equal(horizonRingSupplyFor(null), null);
+  const later = startHorizonRingBuild({ mapId: 'coastal', terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
+  supplyHorizonRing(later);
+  withdrawHorizonRing(supply);
+  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), later, 'an ended build withdraws only its own supply');
+  withdrawHorizonRing(later);
+  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null);
+  supplyHorizonRing(supply);
   supplyHorizonRing(null);
   assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), null, 'withdrawn when the world build ends');
 }

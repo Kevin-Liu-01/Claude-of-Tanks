@@ -288,7 +288,7 @@ function mapFixture(fine, fail = false) {
     // (2026-10-08, the time-to-battle lane) the world build's config (worldBuildConfig.ts) and the horizon ring's prefetch,
     // supplied to the terrain build through the ring's hook (horizonRingPrefetch.ts, horizonRingHook.ts): none here
     worldBuildConfig: () => urban, getDeviceTier: () => 'desktop',
-    startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {},
+    startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
     createHeightField() { assert.equal(fine, false); events.push('sync-field'); return field; },
     async createHeightFieldAsync(_seed, _config, tick) {
       assert.equal(fine, true); events.push('field-start');

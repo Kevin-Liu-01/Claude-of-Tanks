@@ -48,6 +48,11 @@ export function supplyHorizonRing(supply: HorizonRingSupply | null): void {
   supplied = supply;
 }
 
+/** Withdraw a supply when its world build ends — only if it is still the one supplied (a later build's stays). */
+export function withdrawHorizonRing(supply: HorizonRingSupply): void {
+  if (supplied === supply) supplied = null;
+}
+
 /** The supply for a terrain build of this config (its map and its trench variant), else null. */
 export function horizonRingSupplyFor(cfg: { readonly id?: string; readonly assaultTrenches?: boolean } | null): HorizonRingSupply | null {
   if (!supplied || !cfg) return null;

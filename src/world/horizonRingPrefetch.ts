@@ -44,10 +44,11 @@ interface HorizonRingSource {
   remember(pipeline: HorizonRingPipeline): void;
   dispose(): void;
   /**
-   * Where the ring came from and when (ms from the start): the worker's own run (workerMs), its answer (doneMs), the
-   * moment the terrain build reached the ring while the worker was still at it (askedMs, -1 when it was done by then), how
-   * long the build waited (waitMs) and when it took the pipeline (takenMs, -1 until it does). The world build leaves this
-   * record on the terrain group (userData.horizonRingLoad) for the load probes.
+   * Where the ring came from and when (ms from the start): 'kept' or 'worker' when the terrain build took that pipeline,
+   * 'inline' when it built its own (no worker, a failure, or no answer before the build finished it); the worker's own
+   * run (workerMs) and its answer (doneMs, failed or disposed included); when the terrain build first asked (askedMs) and
+   * when it took a pipeline (takenMs; -1 when it built its own). The world build leaves this record on the terrain group
+   * (userData.horizonRingLoad) for the load probes.
    */
   readonly stats: HorizonRingStats;
 }
@@ -58,7 +59,6 @@ interface HorizonRingStats {
   workerMs: number;
   doneMs: number;
   askedMs: number;
-  waitMs: number;
   takenMs: number;
 }
 
@@ -70,20 +70,20 @@ export function startHorizonRingBuild(
 ): HorizonRingSource {
   const key = horizonRingKey(request);
   const startedAt = now();
-  const stats: HorizonRingStats = { source: 'inline', failed: false, workerMs: 0, doneMs: 0, askedMs: -1, waitMs: 0, takenMs: -1 };
+  const stats: HorizonRingStats = { source: 'inline', failed: false, workerMs: 0, doneMs: 0, askedMs: -1, takenMs: -1 };
+  let kept = false;
   let pipeline: HorizonRingPipeline | null = null;
   let worker: RingWorkerPort | null = null;
   let resolveSettled: () => void = () => {};
   const settledPromise = new Promise<void>((resolve) => { resolveSettled = resolve; });
   const finish = (): void => {
     stats.doneMs = Math.round(now() - startedAt);
-    if (stats.askedMs >= 0) stats.waitMs = Math.max(0, stats.doneMs - stats.askedMs);
     if (worker) { worker.onmessage = worker.onerror = null; worker.terminate(); worker = null; }
     resolveSettled();
   };
   if (lastRing && lastRing.key === key) {
     pipeline = unpackHorizonRing(copyHorizonRingWire(lastRing.wire));
-    stats.source = 'kept';
+    kept = true;
     finish();
   } else if (makeWorker) {
     try {
@@ -94,7 +94,6 @@ export function startHorizonRingBuild(
         if (reply.ok) {
           lastRing = { key, wire: copyHorizonRingWire(reply.wire) };
           pipeline = unpackHorizonRing(reply.wire);
-          stats.source = 'worker';
           stats.workerMs = reply.ms;
         } else stats.failed = true;
         finish();
@@ -109,17 +108,19 @@ export function startHorizonRingBuild(
   return {
     request,
     get pending() { return worker !== null; },
-    settled: () => {
-      if (worker && stats.askedMs < 0) stats.askedMs = Math.round(now() - startedAt);
-      return settledPromise;
-    },
+    settled: () => settledPromise,
     take() {
-      if (stats.takenMs < 0) stats.takenMs = Math.round(now() - startedAt);
+      if (stats.askedMs < 0) stats.askedMs = Math.round(now() - startedAt);
       const taken = pipeline;
       pipeline = null;
+      if (taken) {
+        stats.takenMs = Math.round(now() - startedAt);
+        stats.source = kept ? 'kept' : 'worker';
+      }
       return taken;
     },
     remember(built) {
+      stats.source = 'inline';
       lastRing = { key, wire: copyHorizonRingWire(packHorizonRing(built).wire) };
     },
     dispose() {
