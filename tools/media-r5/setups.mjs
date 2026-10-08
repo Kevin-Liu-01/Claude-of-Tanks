@@ -189,7 +189,8 @@ export function routePath(route, fr) {
 }
 
 const catmull1 = (p0, p1, p2, p3, u) => 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u);
-const CAM_FIELDS = ['side', 'along', 'lift', 'fov', 'roll', 'ls', 'la', 'll', 'orbit', 'radius'];
+// (aheadM interpolates like the rest: held key to key it stepped the route leads' distance, S01's previz 2026-10-08)
+const CAM_FIELDS = ['side', 'along', 'lift', 'fov', 'roll', 'ls', 'la', 'll', 'orbit', 'radius', 'aheadM'];
 /** Sample sparse camera keys (Catmull-Rom across keys, C1) at time t. */
 function sampleKeys(keys, t, ease) {
   const ks = keys;

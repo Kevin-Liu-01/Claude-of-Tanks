@@ -151,18 +151,19 @@ const lowMoves = (kind) => [1, -1].flatMap((s) => [
 ]);
 
 /** Route leads (2026-10-08: in Steinburg's narrow streets every low orbit and every lens offset along the hull's heading
- * met a wall where the street bends): the lens rides the hull's own route 10-16 m ahead of it, a metre or two to the
- * side and 2-3.4 m up, looking back at it, so it follows the street's curve on ground the route keeps clear. The zoom
- * variant falls back along the route from 9 to 24 m ahead while the lens closes from 40° to 22°. */
+ * met a wall where the street bends): the lens rides the hull's own route 9-13 m ahead of it, a metre or two to the
+ * side and 2-3.2 m up, looking back at it, so it follows the street's curve on ground the route keeps clear. The zoom
+ * variant falls back along the route from 9 to 24 m ahead while the lens closes from 40° to 15.6°, distance × tan(fov/2)
+ * held, so the hull keeps its size (a true dolly zoom). */
 const ROUTE_LEADS = [1, -1].flatMap((s) => [
   [`routeLead${s > 0 ? 'R' : 'L'}`, [
-    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 16, side: 0.8 * s, along: 0, lift: 2, fov: 38, lookHero: [0, 0, 1.6] },
-    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 13, side: 1.2 * s, along: 0, lift: 2.6, fov: 38, lookHero: [0, 0, 1.6] },
-    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 10, side: 1.6 * s, along: 0, lift: 3.4, fov: 40, lookHero: [0, 0, 1.5] }]],
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 13, side: 0.8 * s, along: 0, lift: 2, fov: 36, lookHero: [0, 0, 1.6] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 11, side: 1.2 * s, along: 0, lift: 2.6, fov: 37, lookHero: [0, 0, 1.6] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 9, side: 1.6 * s, along: 0, lift: 3.2, fov: 38, lookHero: [0, 0, 1.5] }]],
   [`routeLeadZoom${s > 0 ? 'R' : 'L'}`, [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 9, side: 0.8 * s, along: 0, lift: 1.8, fov: 40, lookHero: [0, 0, 1.6] },
-    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 15, side: 1 * s, along: 0, lift: 2.4, fov: 30, lookHero: [0, 0, 1.5] },
-    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 24, side: 1.2 * s, along: 0, lift: 3, fov: 22, lookHero: [0, 0, 1.4] }]],
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 15, side: 1 * s, along: 0, lift: 2.4, fov: 24.6, lookHero: [0, 0, 1.5] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 24, side: 1.2 * s, along: 0, lift: 3, fov: 15.6, lookHero: [0, 0, 1.4] }]],
   // a high view down the street done with a long lens (the titles' church tower and roof tiles): from tower height
   // (11-12 m) 38-46 m ahead on the route, or roof height (7-8 m) 22-30 m ahead, the lens at 19-28° keeps the look-down
   // near 15° and the hull large, where the old street cranes looked down from 27-34 m
@@ -360,7 +361,8 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
   const best = results[0], secs = ((Date.now() - t0) / 1000).toFixed(0);
   if (process.env.WHY || !best) console.log(`   rejected: ${[...why].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ×${v}`).join('; ')}`);
   if (process.env.TOP) for (const r of results.slice(0, Number(process.env.TOP))) console.log(`   ${r.score.toFixed(2)} ${r.family} ${r.lens} sweet ${r.fr.sweet.toFixed(2)} bad ${r.fr.bad.toFixed(2)}`);
-  if (!best) { console.log(`s${String(n).padStart(2, '0')} ${id}: no candidate clears every check — keeps its own motion (${secs} s)`); delete plan[n]; continue; }
+  // (2026-10-08: a partial run that found nothing deleted three takes' plans; the plan in hand stays unless DROP=1)
+  if (!best) { console.log(`s${String(n).padStart(2, '0')} ${id}: no candidate clears every check — ${process.env.DROP === '1' ? 'keeps its own motion' : plan[n] ? 'keeps its plan' : 'keeps its own motion'} (${secs} s)`); if (process.env.DROP === '1') delete plan[n]; continue; }
   for (const k of [best.lens.replace(/[LR]$/, ''), best.family.split(/[[+-]/)[0]]) usage.set(k, (usage.get(k) ?? 0) + 1);
   for (const k of setKeys(n, best.family, best.lens)) setUse.set(k, (setUse.get(k) ?? 0) + 1);
   plan[n] = { note: `${best.family} at ${best.m.speed.toFixed(0)} m/s; ${best.lens}${best.fix ? ` (lens ${best.fix})` : ''}${found.count ? `; ${found.count} tanks` : ''}`, ...MOTION,
