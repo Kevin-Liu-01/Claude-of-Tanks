@@ -4,9 +4,12 @@
 // Every HTML entry declares the catalog it loads: `<meta name="cot-i18n-catalog" content="home">`. The game
 // (index.html) declares `game`, the full catalogs. Pages that declare the same page catalog share it (the twelve
 // manual topics and their fallback run one module graph). A page catalog holds every catalog key that its
-// pages' module scripts, and everything those import statically or through a literal import(), can reach, plus
-// the pages' data-i18n markup. tools/viteI18nPageCatalogs.ts builds one chunk per page catalog and locale from
-// this scan, and the i18n runtime (src/ui/i18nDictionaries.ts) loads the chunk its document names.
+// pages' module scripts, and everything those import statically, can reach, plus the pages' data-i18n markup. A
+// literal import() whose target the page does not reach statically is a lazy boundary (2026-10-08, the perf lane):
+// the keys only the lazy graphs reach are the page's lazy chunk, which the build loads before the module at every
+// import() of a lazy boundary (src/ui/i18nDictionaries.ts loadLazyCatalog), so the page's boot catalog carries only
+// what its boot graph can show. tools/viteI18nPageCatalogs.ts builds a boot and a lazy chunk per page catalog and
+// locale from this scan, and the i18n runtime loads the chunks its document names.
 //
 // A use is an over-approximation; any key the code may hand to t() stays in the catalog:
 //   - a string literal equal to a key, anywhere in a reached module (key tables, conditionals, defaults);
@@ -148,6 +151,14 @@ function lineOf(source, offset) {
   return line;
 }
 
+/** Whether an analysed module also imports a specifier statically (it counts once in `imports` per occurrence). */
+function staticallyImports(result, specifier) {
+  let all = 0, dynamic = 0;
+  for (const s of result.imports) if (s === specifier) all++;
+  for (const s of result.dynamicImports) if (s === specifier) dynamic++;
+  return all > dynamic;
+}
+
 function resolveSpecifier(fromFile, specifier) {
   const path = resolve(dirname(fromFile), specifier.split(/[?#]/, 1)[0]);
   if (existsSync(path)) return path;
@@ -169,11 +180,12 @@ function keyIndex(keys) {
 /**
  * One source module's relative imports (static and literal import() targets), key uses and issues.
  * `file` is project-relative to `root`; `keys` the English catalog keys (an array, reused across calls).
- * Returns { imports, exact: Set, prefixes: Set, patterns: RegExp[], issues: string[] }.
+ * Returns { imports, dynamicImports, exact: Set, prefixes: Set, patterns: RegExp[], issues: string[] }: `imports` every
+ * relative specifier, `dynamicImports` those of them a literal import() names.
  */
 export function analyzeModuleSource(source, file, { root = ROOT, keys }) {
   const { list: keyList, set: keySet } = keyIndex(keys);
-  const result = { imports: [], exact: new Set(), prefixes: new Set(), patterns: [], issues: [] };
+  const result = { imports: [], dynamicImports: [], exact: new Set(), prefixes: new Set(), patterns: [], issues: [] };
   const at = (node) => `${file}:${lineOf(source, node.start)}`;
   const snippet = (node) => source.slice(node.start, node.end).replace(/\s+/g, ' ').slice(0, 96);
   const matchesAny = (regex) => keyList.some((key) => regex.test(key));
@@ -290,9 +302,12 @@ export function analyzeModuleSource(source, file, { root = ROOT, keys }) {
       }
     } else if (node.type === 'ImportExpression') {
       const specifier = node.source;
-      if (specifier.type === 'Literal' && typeof specifier.value === 'string') addImport(specifier.value);
-      else if (specifier.type === 'TemplateLiteral' && !specifier.expressions.length) addImport(specifier.quasis[0].value.cooked);
-      else if (file !== CATALOG_LOADER) {
+      const literal = specifier.type === 'Literal' && typeof specifier.value === 'string' ? specifier.value
+        : specifier.type === 'TemplateLiteral' && !specifier.expressions.length ? specifier.quasis[0].value.cooked : null;
+      if (literal !== null) {
+        addImport(literal);
+        if (literal.startsWith('./') || literal.startsWith('../')) result.dynamicImports.push(literal);
+      } else if (file !== CATALOG_LOADER) {
         result.issues.push(`${at(node)}: import() with a computed specifier (${snippet(node)}); the key scan cannot follow it`);
       }
     } else if (node.type === 'MemberExpression' && node.object?.type === 'MetaProperty'
@@ -342,8 +357,12 @@ export function htmlInputs(config, { root = ROOT } = {}) {
 /**
  * Group HTML entries by the catalog they declare and scan each page catalog's module graph.
  * `cache` (a Map, optional) keeps module analyses across scans of the same `english` object; a module is
- * re-read every scan and re-analysed only when its text changed. Returns { catalogs: { [name]: { pages, modules, keys } }, issues };
- * the full catalog lists its pages and every key.
+ * re-read every scan and re-analysed only when its text changed. Returns { catalogs: { [name]: { pages, modules, keys,
+ * lazyKeys, lazy } }, lazySites: { [module]: specifiers }, issues }: a page catalog's `keys` are its boot graph's (the
+ * scripts and their static imports) and its markup's, `lazyKeys` the further keys its lazy graphs reach, `lazy` its lazy
+ * boundaries (literal import() targets outside its boot graph, and theirs in turn), `modules` everything it reaches;
+ * `lazySites` names, per module, the import() specifiers of lazy boundaries whose own graphs can show a key of their
+ * page's lazy chunk (the sites the build rewrites to load it first). The full catalog lists its pages and every key.
  */
 export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map() }) {
   const rootDir = resolve(root);
@@ -378,10 +397,73 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
     const cached = cache.get(module);
     if (cached?.source === source && cached.catalog === catalog) return cached.result;
     const result = module.endsWith('.json')
-      ? { imports: [], exact: jsonKeys(source, keySet), prefixes: new Set(), patterns: [], issues: [] }
+      ? { imports: [], dynamicImports: [], exact: jsonKeys(source, keySet), prefixes: new Set(), patterns: [], issues: [] }
       : analyzeModuleSource(source, module, { root: rootDir, keys: keyList });
     cache.set(module, { source, catalog, result });
     return result;
+  };
+
+  // A module graph walked from its roots through static imports; a literal import() target is not walked into but
+  // recorded as a boundary. A module's analysis issues count once it is reached.
+  const resolved = (module, specifier) => {
+    const target = resolveSpecifier(resolve(rootDir, module), specifier);
+    if (!target) {
+      issues.push(`${module}: unresolved import ${specifier}`);
+      return null;
+    }
+    const next = toPosix(relative(rootDir, target));
+    return CATALOG_MODULE_RE.test(next) ? null : next;
+  };
+  // every literal import() of a lazy boundary, by importing module: the sites the build rewrites (lazySites)
+  const boundarySites = new Map();
+  const staticGraph = (roots) => {
+    const modules = new Set(roots), boundaries = [], queue = [...roots];
+    while (queue.length) {
+      const module = queue.shift();
+      if (!SCRIPT_RE.test(module) && !module.endsWith('.json')) continue;
+      const result = analysis(module);
+      issues.push(...result.issues);
+      const dynamic = new Set(result.dynamicImports);
+      for (const specifier of result.imports) {
+        const next = resolved(module, specifier);
+        if (!next) continue;
+        // (a specifier imported both ways is a static edge)
+        if (dynamic.has(specifier) && !staticallyImports(result, specifier)) {
+          boundaries.push(next);
+          if (!boundarySites.has(module)) boundarySites.set(module, new Map());
+          boundarySites.get(module).set(specifier, next);
+          continue;
+        }
+        if (modules.has(next)) continue;
+        modules.add(next);
+        queue.push(next);
+      }
+    }
+    return { modules, boundaries };
+  };
+  const lazyGraphs = new Map();
+  /** A lazy boundary's own static graph. */
+  const lazyGraph = (boundary) => {
+    let graph = lazyGraphs.get(boundary);
+    if (!graph) lazyGraphs.set(boundary, graph = staticGraph([boundary]));
+    return graph;
+  };
+  /** The catalog keys a set of modules (and some markup keys) can show. */
+  const keysOf = (modules, markup) => {
+    const used = new Set(markup);
+    const prefixes = new Set();
+    const patterns = [];
+    for (const module of modules) {
+      if (!SCRIPT_RE.test(module) && !module.endsWith('.json')) continue;
+      const result = analysis(module);
+      for (const key of result.exact) used.add(key);
+      for (const prefix of result.prefixes) prefixes.add(prefix);
+      patterns.push(...result.patterns);
+    }
+    const prefixList = [...prefixes];
+    return keyList.filter((key) => used.has(key)
+      || prefixList.some((prefix) => key.startsWith(prefix))
+      || patterns.some((regex) => regex.test(key)));
   };
 
   const catalogs = {};
@@ -389,48 +471,47 @@ export function scanPageCatalogs({ root = ROOT, pages, english, cache = new Map(
     if (name === FULL_CATALOG) {
       const others = group.pages.filter((page) => page !== 'index.html');
       if (others.length) issues.push(`${others.join(', ')}: only the game (index.html) loads the full catalogs`);
-      catalogs[name] = { pages: group.pages, modules: [], keys: keyList };
+      catalogs[name] = { pages: group.pages, modules: [], keys: keyList, lazyKeys: [], lazy: [] };
       continue;
     }
-    const reached = new Set();
-    const queue = [];
-    for (const script of group.scripts) {
-      if (!existsSync(resolve(rootDir, script))) issues.push(`${group.pages.join(', ')}: module script ${script} does not exist`);
-      else if (!reached.has(script)) {
-        reached.add(script);
-        queue.push(script);
-      }
+    const missing = group.scripts.filter((script) => !existsSync(resolve(rootDir, script)));
+    for (const script of missing) issues.push(`${group.pages.join(', ')}: module script ${script} does not exist`);
+    const boot = staticGraph(group.scripts.filter((script) => !missing.includes(script)));
+    const reached = new Set(boot.modules);
+    const lazy = new Set();
+    const pendingBoundaries = boot.boundaries.filter((boundary) => !boot.modules.has(boundary));
+    while (pendingBoundaries.length) {
+      const boundary = pendingBoundaries.shift();
+      if (lazy.has(boundary)) continue;
+      lazy.add(boundary);
+      const graph = lazyGraph(boundary);
+      for (const module of graph.modules) reached.add(module);
+      for (const next of graph.boundaries) if (!boot.modules.has(next) && !lazy.has(next)) pendingBoundaries.push(next);
     }
-    const used = new Set(group.markup);
-    const prefixes = new Set();
-    const patterns = [];
-    while (queue.length) {
-      const module = queue.shift();
-      if (!SCRIPT_RE.test(module) && !module.endsWith('.json')) continue;
-      const result = analysis(module);
-      issues.push(...result.issues);
-      for (const key of result.exact) used.add(key);
-      for (const prefix of result.prefixes) prefixes.add(prefix);
-      patterns.push(...result.patterns);
-      for (const specifier of result.imports) {
-        const target = resolveSpecifier(resolve(rootDir, module), specifier);
-        if (!target) {
-          issues.push(`${module}: unresolved import ${specifier}`);
-          continue;
-        }
-        const next = toPosix(relative(rootDir, target));
-        if (reached.has(next) || CATALOG_MODULE_RE.test(next)) continue;
-        reached.add(next);
-        queue.push(next);
-      }
-    }
-    const prefixList = [...prefixes];
-    const keys = keyList.filter((key) => used.has(key)
-      || prefixList.some((prefix) => key.startsWith(prefix))
-      || patterns.some((regex) => regex.test(key)));
-    catalogs[name] = { pages: group.pages, modules: [...reached].sort(), keys };
+    const keys = keysOf(boot.modules, group.markup);
+    const bootKeys = new Set(keys);
+    const lazyKeys = lazy.size ? keysOf(reached, []).filter((key) => !bootKeys.has(key)) : [];
+    catalogs[name] = { pages: group.pages, modules: [...reached].sort(), keys, lazyKeys, lazy: [...lazy].sort() };
   }
-  return { catalogs, issues: [...new Set(issues)] };
+  // the sites to rewrite: an import() of a module that some page reaches only through import() and whose own graph can
+  // show a key of that page's lazy chunk (a boundary whose keys the boot catalog already holds — a builder, a stylesheet,
+  // a data module — needs no chunk before it)
+  const lazyBoundaries = new Set();
+  for (const catalog of Object.values(catalogs)) {
+    if (!catalog.lazyKeys.length) continue;
+    const lazyKeys = new Set(catalog.lazyKeys);
+    for (const boundary of catalog.lazy) {
+      if (!lazyBoundaries.has(boundary) && keysOf(lazyGraph(boundary).modules, []).some((key) => lazyKeys.has(key))) {
+        lazyBoundaries.add(boundary);
+      }
+    }
+  }
+  const lazySites = {};
+  for (const [module, sites] of [...boundarySites].sort(([a], [b]) => a.localeCompare(b))) {
+    const specifiers = [...sites].filter(([, target]) => lazyBoundaries.has(target)).map(([specifier]) => specifier).sort();
+    if (specifiers.length) lazySites[module] = specifiers;
+  }
+  return { catalogs, lazySites, issues: [...new Set(issues)] };
 }
 
 /** One locale's dictionary restricted to a page catalog's keys (a key the locale lacks falls back to English). */
@@ -448,10 +529,12 @@ async function main(argv) {
   if (argv.includes('--json')) console.log(JSON.stringify(scan, null, 2));
   else {
     const total = Buffer.byteLength(JSON.stringify(english));
-    for (const [name, { pages, modules, keys }] of Object.entries(scan.catalogs)) {
+    for (const [name, { pages, modules, keys, lazyKeys, lazy }] of Object.entries(scan.catalogs)) {
       const bytes = Buffer.byteLength(JSON.stringify(catalogSubset(english, keys)));
+      const lazyBytes = Buffer.byteLength(JSON.stringify(catalogSubset(english, lazyKeys)));
       console.log(`${name.padEnd(10)} ${String(keys.length).padStart(5)} keys ${String(bytes).padStart(7)} B of ${total} `
-        + `(${modules.length} modules; ${pages.length === 1 ? pages[0] : `${pages.length} pages`})`);
+        + `(${modules.length} modules; ${pages.length === 1 ? pages[0] : `${pages.length} pages`})`
+        + `${lazyKeys.length ? ` + lazy ${lazyKeys.length} keys ${lazyBytes} B behind ${lazy.length} import() boundar${lazy.length === 1 ? 'y' : 'ies'}` : ''}`);
     }
     for (const issue of scan.issues) console.error(`issue: ${issue}`);
   }

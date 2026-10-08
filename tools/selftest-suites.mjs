@@ -840,6 +840,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/oasisShoreline.selftest.mjs',
     'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
+    // the trees lane (2026-10-08, wave 260): a bush grown as its slot's leafy birch draws its leaves as the slot's trees do
+    'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
