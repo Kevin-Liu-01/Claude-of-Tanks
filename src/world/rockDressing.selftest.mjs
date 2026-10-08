@@ -553,7 +553,8 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
   assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
   assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,
     'the terrain splits a cell along the diagonal from its +x corner to its +z corner');
-  assert.match(source, /const meshHeightAt = \(px: number, pz: number\): number => terrainNearMeshHeightAt\(groundHeightAt, px, pz\);/,
+  // (the time-to-battle lane, 2026-10-08: through the props build's memo of the field's own heights, nearMeshVertexHeight)
+  assert.match(source, /const meshHeightAt = \(px: number, pz: number\): number => terrainNearMeshHeightAt\(nearMeshVertexHeight, px, pz\);/,
     'the patch reads the terrain\'s own export, no copied grid');
   // the export against the terrain's own chunk index: the grid it samples (read from the corners it asks for) and the
   // diagonal its cells split on (read from acquireTerrainChunkIndex), so the two can never diverge
@@ -635,6 +636,8 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const sharesSrc = /const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
   const contactShare = new Function(`const CONTACT_PATCH_RINGS = ${ringsSrc}, ROCK_PATCH_SHARES = ${sharesSrc};\n${stripTypeScriptTypes(source.slice(shareAt, source.indexOf('\n  }\n', shareAt) + 4))}\nreturn contactShare;`)();
   const SPOT_R = 2.6;
+  // (b37) the beds' cells (512 m, one geometry a cell with the wall turf), declared beside the builder
+  const cellSrc = stripTypeScriptTypes(/  const BED_CELL_M = \d+;\n  const bedCellKey = [^\n]*\n/.exec(source)[0]);
   const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
@@ -644,9 +647,12 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockClutter = new Map(crushable ? [[placement, {}]] : []);
     const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
     const rockBedShades = [];
-    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
+    // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
+    const fixtureField = { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) };
+    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'nearMeshVertexHeight', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, fixtureField,
+      (px, pz) => fixtureField.getHeightAt(px, pz),
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();
