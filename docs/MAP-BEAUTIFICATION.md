@@ -7933,11 +7933,23 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   establishing +0.55 ± 0.39, sky-w +1.32 ± 0.53 ms of the GPU, the CPU −0.01 / +0.09 / +0.05 ms — the storm exception's
   caps (+1.0 / +2.0 / +2.0) held, the CPU under the normal line: ACCEPT.
 
+- *F2, the final Monsoon medium* (same arms, 8 cycles, load 48–90): chase +0.15 ± 0.44, establishing +0.56 ± 0.52, sky-w
+  +1.07 ± 0.32 ms of the GPU (the ± a standard error), the CPU −0.01 / −0.04 / −0.03 — sky-w over the normal line the
+  exception keeps for medium. A top-up to 16 would have needed its 8 new cycles under 0.13 ms, so the medium law changed
+  instead. *Round 11 (0051c45ce):* the march's light budget is per tier in `CLOUD_TIERS`: medium and low light every 4th
+  lit step, leave the march at 0.08 of the light and refine a cloud's entry with two samples at half a step (the layer's
+  timer priced the three on Monsoon's towers at high: −0.77 ms on establishing and sky-w); high and ultra keep the law the
+  waves passed and F1 measured, their path unchanged. The arms moved to the PR head e65122a84 (push 3b; the merge
+  ed0619982) for the remaining finals: F2c (Monsoon medium, a fresh 8 cycles), Whiteout high, Verdant high and low, and
+  the broken decks' frames, whose Monsoon variants are the look check on the cheaper budget.
+
 **Lessons (the cost work).**
 - A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
   knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
 - A QA knob read when the preset is packed (the cumulus core, the lanes aloft) does not take effect when a variant only
   changes `__LIGHT_TUNE`: the preset's key is unchanged. Knobs for a screen must be read every frame.
+- A top-up is arithmetic before it is a hold: at 8 cycles of mean m, 16 pass only if the next 8 average under
+  2 × 0.6 − m; when that sits several standard errors below m, change the law instead of buying the cycles.
 - A shader-compile check needs no game boot: build the layer's materials in Node and compile them in a blank page with
   three's renderer on SwiftShader (`.qa-dev/glsl-check.mjs`); three checks a program's status on its first use, so touch
   each program's uniforms after `compile()`, and prove the checker on a deliberately broken program.
