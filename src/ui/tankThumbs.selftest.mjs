@@ -832,6 +832,32 @@ try {
   assert(!fake.events.some((event) => event.id === cloneRejected.root.name),
     'clone rejection leaves no borrowed resource listener or queued renderer work');
 
+  {
+    // (the time-to-battle lane, 2026-10-08) a built vehicle's root keeps live objects in userData
+    // (nearVehicleShadowDetail.ts); Object3D.copy's JSON deep copy serialized them through toJSON, every canvas texture
+    // encoded to PNG (0.8 s of the battle entry). The mask clone serializes nothing, carries no userData, and the source
+    // keeps its own, the same objects.
+    const live = addSource('mask-live-userdata');
+    const detail = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    const record = { detail: [detail], proxies: [] };
+    live.root.userData.nearShadowDetail = record;
+    const part = live.root.children[0];
+    part.userData.live = { detail };
+    const toJSON = THREE.Object3D.prototype.toJSON;
+    let serialized = 0;
+    THREE.Object3D.prototype.toJSON = function (...args) { serialized++; return toJSON.apply(this, args); };
+    let request;
+    try {
+      request = prepareTopDownMasks(spec(live.root.name), live.visual);
+    } finally { THREE.Object3D.prototype.toJSON = toJSON; }
+    assert.equal(live.clones, 1);
+    assert.equal(serialized, 0, 'the mask clone serializes no live object through toJSON');
+    assert.strictEqual(live.root.userData.nearShadowDetail, record, 'the source keeps its own userData');
+    assert.strictEqual(part.userData.live.detail, detail);
+    assert((await settle(request))?.ready, 'the mask still builds from the clone');
+    live.assertUntouched();
+  }
+
   for (const throwsAfterClone of [false, true]) {
     const batched = addSource(`mask-batch-${throwsAfterClone ? 'throw' : 'success'}`, true);
     if (throwsAfterClone) batched.rejectAfterClone(new Error('injected error after native clone'));
