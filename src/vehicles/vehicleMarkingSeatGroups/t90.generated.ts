@@ -10,70 +10,48 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.25,
-        "pos": [
-          1.3002843,
-          0.24338,
-          -0.3011577
-        ],
-        "quaternion": [
-          -0.232486,
-          0.7364967,
-          0.1912202,
-          0.6057703
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.0625822
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.25,
-        "pos": [
-          -1.3002843,
-          0.24338,
-          -0.3011577
-        ],
-        "quaternion": [
-          -0.2324859,
-          -0.7364967,
-          -0.1912203,
-          0.6057703
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.2082499
-      },
-      {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.22,
         "pos": [
-          -0.5984839,
-          0.3382166,
-          -0.9826225
+          -1.1733253,
+          0.3375038,
+          -0.3872062
         ],
         "quaternion": [
-          0.5215579,
-          0.6026532,
-          0.395241,
-          -0.4566957
+          0,
+          -0.8618601,
+          0,
+          0.5071461
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "pt91m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0138468
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          -1.2854541,
+          0.388752,
+          -0.0874858
+        ],
+        "quaternion": [
+          -0.0688758,
+          -0.8156967,
+          -0.0483263,
+          0.5723283
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "pt91m",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0003548
       }
     ]
   },
