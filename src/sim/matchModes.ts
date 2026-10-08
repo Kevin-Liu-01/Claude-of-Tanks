@@ -17,6 +17,7 @@ import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
+  assaultWaveHealthScale,
   MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type RulesetPhysics,
 } from './matchRuleset.ts';
 
@@ -721,7 +722,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const startAssaultWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length,
       assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
-    const healthScale = 1 + lineIndex * assaultRules.hpPerLine + assaultRules.difficultyHp;
+    const healthScale = assaultWaveHealthScale(assaultRules, lineIndex, zones.length);
     // The opening wave is a fresh draw from the formation (owner 2026-09-15). Every later sector REINFORCES
     // the line instead of re-fielding it (owner 2026-09-17: "capturing bases in frontline assault shouldnt
     // reset tanks"): defenders still alive keep their identity, position and damage, and only the arrivals
