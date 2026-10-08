@@ -39,6 +39,8 @@ const SIXTIES_EU = [0xe8e2d0, 0x9a3328, 0x2f5f8a, 0x7a8f5a, 0xc8b26e, 0x4a4a46, 
 const EIGHTIES = [0xe8e8e2, 0xa82b22, 0x1f3f6e, 0x9aa0a4, 0x3e5a3a, 0xc8b070, 0x2a2a2a];
 const DESERT_CARS = [0xece8dc, 0xd8d2c0, 0x9a3a2a, 0x2e4f7a, 0xb8a888, 0x8a8a84];
 const ASIA_CARS = [0xf0f0ec, 0xc8ccd0, 0x2a2c30, 0x7a1e22, 0x3a5a8a, 0xb8b4a6];
+/** Today's European cars: white, silver and greys, black, a dark blue, a red. */
+const PRESENT_EU = [0xf2f2ee, 0xb8bcc0, 0x6a6e72, 0x1e2024, 0x22344e, 0x9a2a26];
 
 const fleet = (id: string, label: string, age: number, roles: Record<CivilianRole, [VehicleModel, readonly number[]]>): Fleet => ({
   id, label, age,
@@ -99,6 +101,13 @@ export const FLEETS: Readonly<Record<string, Fleet>> = {
     sedan: [M.RENAULT_4, SIXTIES_EU], wagon: [M.CITROEN_2CV, [0x8a9aa0, 0x7a2a22, 0xd8d0b8, 0x3a4a3a]], pickup: [M.PEUGEOT_404_PICKUP, SIXTIES_EU],
     van: [M.CITROEN_H, [0x9aa0a4, 0x6a7a8a, 0x2f4f6a]], jeep: [M.MEHARI, [0xd8a03a, 0x8aa070, 0xc84a2a]], truck: [M.BERLIET_GLR, [0x2f4f6a, 0x6a2a22, 0x9aa0a4]],
     truckbox: [M.SAVIEM_BOX, [0xe8e2d0, 0x2f4f6a]], truckflatbed: [M.SAVIEM_FLATBED, [0x2f4f6a, 0x6a2a22]],
+  }),
+  // 2026-10-08 (the coordinator): Saltmere Bay is the Breton coast today, not the 1960s
+  france2020s: fleet('france2020s', 'the Breton coast (the Pays de Leon), the present day', 0.2, {
+    sedan: [M.RENAULT_CLIO_4, PRESENT_EU], wagon: [M.PEUGEOT_308_SW, PRESENT_EU], pickup: [M.HILUX_DC, [0xf2f2ee, 0xb8bcc0, 0x22344e, 0x6a6e72]],
+    van: [M.CITROEN_BERLINGO, [0xf2f2ee, 0xe8e8e4, 0xb8bcc0, 0x22344e]], jeep: [M.DACIA_DUSTER, [0xb8bcc0, 0x6a6e72, 0x2f4a3a, 0xf2f2ee, 0x9a3a2a]],
+    truck: [M.RENAULT_TRUCKS_D, [0xf2f2ee, 0x2e5a8a, 0xb8bcc0]], truckbox: [M.RENAULT_MASTER_BOX, [0xf2f2ee, 0xe8e8e4]],
+    truckflatbed: [M.IVECO_DAILY_DROPSIDE, [0xf2f2ee, 0x2e5a8a, 0xb8bcc0]],
   }),
   iberia1970s: fleet('iberia1970s', 'Ronda and the Serrania, the 1970s', 0.3, {
     sedan: [M.SEAT_600, SIXTIES_EU], wagon: [M.SEAT_124_FAMILIAR, SIXTIES_EU], pickup: [M.SANTANA_PICKUP, [0x6a7a5a, 0xd8d0b8, 0x2f4f6a]],
@@ -178,7 +187,7 @@ const MAP_FLEETS: Readonly<Record<string, string>> = {
   alpine: 'western1944', foundry: 'western1944', reservoir: 'western1944', polders: 'western1944', autumn: 'western1944',
   monsoon: 'britishIndia1944', fjord: 'norway1940', longleaf: 'us1941', blackglass: 'shanghai1937',
   steppe: 'soviet1950s', railyard: 'germany1960s', frontier: 'germany1980s', urban: 'germany1980s',
-  coastal: 'france1960s', cliffbridge: 'iberia1970s', skybridge: 'us1960s', titan_gorge: 'us1960s', whiteout: 'arctic1980s',
+  coastal: 'france2020s', cliffbridge: 'iberia1970s', skybridge: 'us1960s', titan_gorge: 'us1960s', whiteout: 'arctic1980s',
   ruinspires: 'yugoslav1990s', saltwind: 'yugoslav1990s', airfield: 'ukraine2022',
   desert: 'maghreb', oasis: 'egypt', orchard: 'levant1982', badlands: 'jordan',
   caldera: 'japan', delta: 'bangladesh', mangrove: 'vietnam', copper_mesa: 'australia1970s',

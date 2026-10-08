@@ -1541,3 +1541,99 @@ export const SANTANA_PICKUP: PickupModel = {
 export const PEGASO_COMET: TruckModel = { ...MERCEDES_LP813, cab: { ...TAM_BASE.cab, r: 0.14, roofR: 0.12, rake: 0.08 } };
 export const EBRO_BOX: TruckModel = { ...MERCEDES_LP813_BOX };
 export const BARREIROS_DROPSIDE: TruckModel = { ...FAP_1314 };
+
+// ---------------------------------------------------------------------------------------------------- France, the present day
+// 2026-10-08 (the coordinator: Saltmere Bay is the present-day Breton coast — its tank wrecks' era is 'modern' and its
+// references are present-day photographs): Renault, Peugeot and Citroën cars and vans, a fishing pickup, Renault and
+// Iveco light trucks.
+
+/** Renault Clio IV (2012-19): the five-door supermini, its swept lamps either side of a black grille. */
+export const RENAULT_CLIO_4: CarModel = {
+  ...COROLLA_E110,
+  body: { ...COROLLA_E110.body, length: 4.06, width: 1.73, frontAxle: 1.38, rearAxle: -1.21, wheelR: 0.31, tyreW: 0.195, track: 1.5, archR: 0.38,
+    sill: 0.28, belt: 0.92, beltRise: 0.06, noseH: 0.72, tailH: 0.95, cowlZ: 0.7, roofFrontZ: -0.05, roofRearZ: -1.1, glassRearZ: -1.88,
+    roofH: 1.45, roofTaper: 0.8, shoulderR: 0.16, noseRound: 0.34, tailRound: 0.24, rear: 'hatch',
+    doorCuts: [0.7, -0.28, -1.12], pillars: [-0.3], pillarW: 0.06, backlight: { w: 0.8, h: 0.42 } },
+  front: { lamps: [{ shape: 'rect', x: 0.62, y: 0.7, w: 0.34, h: 0.11, bezel: 'black' }],
+    grille: { y: 0.64, w: 0.62, h: 0.12, style: 'hbars', bars: 2, chrome: false, frame: 'black' },
+    bumper: { y: 0.42, h: 0.2, style: 'painted' }, plate: { y: 0.44, w: 0.52, h: 0.11 } },
+  rear: { lamps: [{ shape: 'rect', x: 0.66, y: 0.86, w: 0.22, h: 0.12, lens: 'red' }],
+    bumper: { y: 0.44, h: 0.2, style: 'painted' }, plate: { y: 0.62, w: 0.52, h: 0.11 } },
+};
+
+/** Peugeot 308 SW (2014-21): the estate, its long roof and rails. */
+export const PEUGEOT_308_SW: CarModel = {
+  ...TOYOTA_PROBOX,
+  body: { ...TOYOTA_PROBOX.body, length: 4.58, width: 1.8, frontAxle: 1.5, rearAxle: -1.23, wheelR: 0.32, tyreW: 0.205, track: 1.56, archR: 0.39,
+    sill: 0.28, belt: 0.94, beltRise: 0.05, noseH: 0.74, tailH: 0.98, cowlZ: 0.85, roofFrontZ: 0.08, roofRearZ: -1.95, glassRearZ: -2.12,
+    roofH: 1.47, roofTaper: 0.82, shoulderR: 0.16, noseRound: 0.34, tailRound: 0.16,
+    doorCuts: [0.82, -0.25, -1.12], pillars: [-0.28, -1.25], pillarW: 0.06, backlight: { w: 0.85, h: 0.5 } },
+  front: { lamps: [{ shape: 'rect', x: 0.64, y: 0.72, w: 0.32, h: 0.1, bezel: 'black' }],
+    grille: { y: 0.6, w: 0.7, h: 0.16, style: 'mesh', bars: 8, chrome: false, frame: 'chrome' },
+    bumper: { y: 0.42, h: 0.2, style: 'painted' }, plate: { y: 0.44, w: 0.52, h: 0.11 } },
+  rear: { lamps: [{ shape: 'rect', x: 0.7, y: 0.86, w: 0.18, h: 0.14, lens: 'red' }],
+    bumper: { y: 0.44, h: 0.2, style: 'painted' }, plate: { y: 0.64, w: 0.52, h: 0.11 } },
+  roofRack: true,
+};
+
+/** Citroën Berlingo III (2018-), the van: tall and blunt, its load bay's sides blind behind the doors. */
+export const CITROEN_BERLINGO: CarModel = {
+  ...TOYOTA_INNOVA,
+  body: { ...TOYOTA_INNOVA.body, length: 4.4, width: 1.85, frontAxle: 1.32, rearAxle: -1.46, wheelR: 0.32, tyreW: 0.205, track: 1.55, archR: 0.4,
+    sill: 0.32, belt: 1.06, noseH: 0.86, tailH: 1.1, cowlZ: 0.95, roofFrontZ: 0.3, roofRearZ: -2.1, glassRearZ: -2.18, roofH: 1.84,
+    roofTaper: 0.92, shoulderR: 0.12, noseRound: 0.32, tailRound: 0.08, rear: 'estate',
+    doorCuts: [0.85, -0.2, -1.0], pillars: [-0.22], sideGlassTo: -0.25, backlight: { w: 0.8, h: 0.42 } },
+  front: { lamps: [{ shape: 'rect', x: 0.66, y: 0.84, w: 0.3, h: 0.12, bezel: 'black' }],
+    grille: { y: 0.74, w: 0.8, h: 0.16, style: 'hbars', bars: 2, chrome: false, frame: 'black' },
+    bumper: { y: 0.46, h: 0.24, style: 'black' }, plate: { y: 0.48, w: 0.52, h: 0.11 } },
+  rear: { lamps: [{ shape: 'rect', x: 0.8, y: 0.96, w: 0.1, h: 0.3, lens: 'red' }],
+    bumper: { y: 0.46, h: 0.2, style: 'black' }, plate: { y: 0.7, w: 0.52, h: 0.11 } },
+};
+
+/** Dacia Duster II (2018-): the four-by-four the coast drives, high-set on its big wheels (the jeep role's budget leaves
+ * out its roof rails). */
+export const DACIA_DUSTER: CarModel = {
+  ...TOYOTA_PROBOX,
+  body: { ...TOYOTA_PROBOX.body, length: 4.34, width: 1.8, frontAxle: 1.4, rearAxle: -1.27, wheelR: 0.36, tyreW: 0.215, track: 1.56, archR: 0.44,
+    sill: 0.42, noseBottom: 0.45, tailBottom: 0.48, belt: 1.1, noseH: 0.95, tailH: 1.1, cowlZ: 0.78, roofFrontZ: 0.0, roofRearZ: -1.85,
+    glassRearZ: -2.0, roofH: 1.69, roofTaper: 0.84, shoulderR: 0.14, noseRound: 0.3, tailRound: 0.14,
+    doorCuts: [0.72, -0.3, -1.12], pillars: [-0.32, -1.3], pillarW: 0.07, backlight: { w: 0.8, h: 0.45 } },
+  front: { lamps: [{ shape: 'rect', x: 0.62, y: 0.88, w: 0.3, h: 0.13, bezel: 'black' }],
+    grille: { y: 0.86, w: 0.7, h: 0.16, style: 'hbars', bars: 3, chrome: true, frame: 'chrome' },
+    bumper: { y: 0.55, h: 0.24, style: 'painted' }, plate: { y: 0.54, w: 0.52, h: 0.11 } },
+  rear: { lamps: [{ shape: 'rect', x: 0.72, y: 0.98, w: 0.16, h: 0.16, lens: 'red' }],
+    bumper: { y: 0.56, h: 0.22, style: 'black' }, plate: { y: 0.76, w: 0.52, h: 0.11 } },
+};
+
+/** The light trucks' modern cab: a short sloping nose, the screen raked, the corners well rounded. */
+const MODERN_LIGHT_CAB: TruckModel = {
+  ...CABOVER_LIGHT, length: 6.2, width: 2.05, frontAxle: 2.05, rearAxles: [-1.6], wheelR: 0.36, tyreW: 0.215, trackF: 1.75, trackR: 1.7,
+  wheelStyle: 'disc', frameY: 0.78,
+  cab: { ...CABOVER_LIGHT.cab, zF: 2.95, zB: 1.2, hw: 1.02, y0: 0.9, belt: 1.45, win: 2.05, roof: 2.45, rake: 0.32, tumble: 0.05, r: 0.24, roofR: 0.18 },
+  frontFace: { lamps: [{ shape: 'rect', x: 0.74, y: 1.05, w: 0.3, h: 0.14, bezel: 'black' }],
+    grille: { y: 0.92, w: 1.0, h: 0.2, style: 'hbars', bars: 2, chrome: false, frame: 'black' }, bumper: { y: 0.6, h: 0.22, style: 'black' } },
+  rearLamps: [{ shape: 'rect', x: 0.9, y: 0.9, w: 0.12, h: 0.2, lens: 'red' }],
+};
+
+/** Renault Master III (2010-) with a box body: the coast's delivery van. */
+export const RENAULT_MASTER_BOX: TruckModel = {
+  ...MODERN_LIGHT_CAB, dualRear: false,
+  body: { type: 'box', zF: 1.15, zB: -3.1, hw: 1.05, floorY: 0.98, sideH: 0.5, top: 3.0, wood: false },
+};
+
+/** Iveco Daily (2014-) with drop sides: the oyster farm's and the builders' flatbed. */
+export const IVECO_DAILY_DROPSIDE: TruckModel = {
+  ...MODERN_LIGHT_CAB,
+  frontFace: { ...MODERN_LIGHT_CAB.frontFace, grille: { y: 0.95, w: 1.1, h: 0.26, style: 'hbars', bars: 3, chrome: false, frame: 'black' } },
+  body: { type: 'dropside', zF: 1.15, zB: -3.1, hw: 1.05, floorY: 1.0, sideH: 0.4, wood: false },
+};
+
+/** Renault Trucks D (2013-): the medium distribution lorry, forward control, its tilt. */
+export const RENAULT_TRUCKS_D: TruckModel = {
+  ...KAMAZ_4326, length: 7.4, width: 2.5, frontAxle: 2.6, rearAxles: [-1.6], wheelR: 0.48, tyreW: 0.28, trackF: 2.0, trackR: 1.85,
+  dualRear: true, wheelStyle: 'truck', frameY: 1.0,
+  cab: { ...KAMAZ_4326.cab, zF: 3.5, zB: 1.75, hw: 1.22, y0: 1.15, belt: 1.95, win: 2.65, roof: 2.95, rake: 0.12, tumble: 0.04, r: 0.16, roofR: 0.2 },
+  frontFace: { lamps: [{ shape: 'rect', x: 0.95, y: 0.98, w: 0.3, h: 0.14, bezel: 'black' }],
+    grille: { y: 1.55, w: 1.6, h: 0.4, style: 'hbars', bars: 3, chrome: false, frame: 'black' }, bumper: { y: 0.8, h: 0.3, style: 'black' } },
+  body: { type: 'tilt', zF: 1.65, zB: -3.6, hw: 1.24, floorY: 1.35, sideH: 0.6, top: 3.3, wood: false },
+};
