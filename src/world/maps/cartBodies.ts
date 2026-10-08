@@ -41,6 +41,18 @@ const GALV = material('steel', [0.30, 0.31, 0.31], 0.42, 0.72, 0, 0.8);
 const ALU = material('chrome', [0.52, 0.53, 0.54], 0.3, 0.9, 0, 0.3);
 const GOLD_FOIL = material('chrome', [0.55, 0.36, 0.08], 0.28, 0.9, 0, 0.2);
 const BLACK_PLASTIC = material('trim', [0.03, 0.03, 0.031], 0.55, 0, 0, 0.6);
+// round 5 (wave 278: the airfield bottle cart "three identical, spotless glossy-blue capsules… no valves, caps, chains or
+// scuffs"): the gases' own colours (oxygen blue, propane red, acetylene white), matte and worn, the brass valves, the
+// steel caps, the chain over them, the scuffed paint
+const GAS_OXYGEN = material('paint', linearHex(0x2f4f7a), 0.78, 0.05, 0, 0.6);
+const GAS_PROPANE = material('paint', linearHex(0x8a2a24), 0.78, 0.05, 0, 0.6);
+const GAS_ACETYLENE = material('paint', linearHex(0xd6d2c6), 0.78, 0.05, 0, 0.6);
+const GAS_BAND = material('paint', linearHex(0xe2ded2), 0.7, 0, 0, 0.6);
+const GAS_SCUFF = material('paint', linearHex(0x3a3630), 0.85, 0.1, 0, 0.5);
+const BRASS = material('chrome', linearHex(0xa8863e), 0.35, 0.8, 0, 0.4);
+/** Round 5 (wave 278: the Breton cart "spotless uniform flat blue… no mud, chipping or scuffing"): paint worn to the grey
+ *  wood at the edges and corners. */
+const PAINT_CHIP = material('wood', linearHex(0x8a8274), 0.9, 0, 0, 1);
 // round 4 (wave 260: the Glacier Pass hay "a blotchy green-and-tan pattern that reads as a camouflage tarpaulin"): the
 // straw a warm tan, never olive, and the heap's three shades close (its texture is the straw laid over it, not patches)
 const HAY_A = material('cargo', linearHex(0xb39a62), 0.97, 0, 0, 0.5);
@@ -124,14 +136,6 @@ function face4(mesh: VehicleMesh, p: Vec3[], n: Vec3, m: Mat): void {
   const v = p.map((q) => mesh.vert(q[0], q[1], q[2], n[0], n[1], n[2], m));
   mesh.tri(v[0], v[1], v[2]);
   mesh.tri(v[0], v[2], v[3]);
-}
-
-/** A flat triangle facing `n` (its winding follows the normal): a blade's one side. */
-function face3(mesh: VehicleMesh, a: Vec3, b: Vec3, d: Vec3, n: Vec3, m: Mat): void {
-  const va = mesh.vert(a[0], a[1], a[2], n[0], n[1], n[2], m), vb = mesh.vert(b[0], b[1], b[2], n[0], n[1], n[2], m);
-  const vd = mesh.vert(d[0], d[1], d[2], n[0], n[1], n[2], m);
-  if (dot(cross(sub(b, a), sub(d, a)), n) < 0) mesh.tri(va, vd, vb);
-  else mesh.tri(va, vb, vd);
 }
 
 /**
@@ -613,7 +617,7 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
  * shoulders and across its top, down to the deck on the other, at z. `layers` lists each tier's half-width and top from
  * the bottom up (narrowing), `baseY` the deck under it (dressing; desktop).
  */
-function lashStack(c: Ctx, z: number, baseY: number, layers: readonly (readonly [number, number])[], r = 0.009): void {
+function lashStack(c: Ctx, z: number, baseY: number, layers: readonly (readonly [number, number])[], r = 0.013): void {
   if (c.coarse) return;
   const e = r + 0.004, half: Vec3[] = [[layers[0][0] + 0.05, baseY + 0.01, z]];
   layers.forEach(([hw, top], i) => {
@@ -831,8 +835,25 @@ function charrette(c: Ctx, s: CharretteSpec): Assembly {
       for (const sx of [-1, 1]) beam(c.mesh, [sx * (hw - 0.05), frameY - 0.02, hl - 0.12], [sx * (hw - 0.02), 0.0, hl - 0.05], 0.045, 0.045, woodOf(c, 28));
     }
   };
+  // round 5 (wave 278: "spotless uniform flat blue… no chipping or scuffing"): a painted body worn back to the grey
+  // wood along the sides' top edges, the corners and the floor's lip, where hands and loads rub (dressing)
+  const wear = panel && !c.coarse ? () => c.mesh.dressing(() => {
+    for (const sx of [-1, 1]) {
+      const x = sx * (hw + 0.0005), n: Vec3 = [sx, 0, 0], yTop = floorY + 0.012 + s.sideH;
+      for (let k = 0; k < 6; k++) {
+        const z0 = -hl + 0.1 + (k / 6) * (s.bedL - 0.2) + hash01(k, c.seed + 401 + sx) * 0.12, len = 0.06 + 0.14 * hash01(k, c.seed + 403 + sx);
+        const d = 0.012 + 0.03 * hash01(k, c.seed + 405 + sx);
+        face4(c.mesh, [[x, yTop - d, z0], [x, yTop - d * 0.4, z0 + len], [x, yTop, z0 + len], [x, yTop, z0]], n, PAINT_CHIP);
+      }
+      for (const end of [-1, 1]) {
+        const z = end * (hl - 0.004), w = 0.05 + 0.04 * hash01(end + 2, c.seed + 407 + sx);
+        face4(c.mesh, [[x, floorY + 0.03, z - end * w], [x, floorY + 0.03, z], [x, yTop - 0.02, z], [x, yTop - 0.06, z - end * w * 0.6]], n, PAINT_CHIP);
+      }
+    }
+  }) : null;
   const load = s.load === 'empty' ? undefined : () => {
     const y = floorY + 0.012;
+    wear?.();
     if (s.load === 'sacks') {
       sack(c, -hw * 0.45, y, 0.05, hw * 0.85, 0.24, s.bedL * 0.55, 0.06, BURLAP);
       sack(c, hw * 0.45, y, -0.1, hw * 0.85, 0.24, s.bedL * 0.5, -0.05, BURLAP_DARK);
@@ -1484,7 +1505,6 @@ function bottlecart(c: Ctx, _s: BottleCartSpec): Assembly {
     wheels.push({ x: side * (hw + 0.06), y: R, z, side, r: R, halfWidth: 0.06, emit: () => tyreWheel(c, R, 0.1, 0.55) });
   }
   const frame = PAINT_STEEL;
-  const cyl = fixed(0x2f4f7a, 0.45, 0.3, 'paint');
   const body = () => {
     for (const z of [-hl + 0.16, hl - 0.16]) rod(c, [-hw - 0.08, R, z], [hw + 0.08, R, z], 0.016, IRON, true);
     for (const sx of [-1, 1]) beam(c.mesh, [sx * hw, frameY, -hl], [sx * hw, frameY, hl], 0.05, 0.07, frame);
@@ -1501,13 +1521,53 @@ function bottlecart(c: Ctx, _s: BottleCartSpec): Assembly {
     c.mesh.pop();
   };
   const load = () => {
-    for (const x of [-0.24, 0, 0.24]) {
+    const gases = [GAS_OXYGEN, GAS_PROPANE, GAS_OXYGEN];
+    for (let b = 0; b < 3; b++) {
+      const x = -0.24 + b * 0.24, gas = gases[b], h = 0.72;
       c.mesh.push().translate(x, frameY + 0.17, 0).rotateY(Math.PI / 2);
-      const h = 0.72;
-      c.mesh.lathe([[0.0001, -h], [0.08, -h], [0.11, -h + 0.04], [0.115, -h + 0.12], [0.115, h - 0.1], [0.1, h - 0.03], [0.06, h], [0.03, h + 0.02],
-        [0.03, h + 0.08], [0.0001, h + 0.08]], c.coarse ? 10 : 14, (k) => (k >= 6 ? GALV : cyl));
+      // the shoulder's white band (the gas's name stencilled on it), the neck to the valve (round 5)
+      c.mesh.lathe([[0.0001, -h], [0.08, -h], [0.11, -h + 0.04], [0.115, -h + 0.12], [0.115, h - 0.22], [0.115, h - 0.12], [0.1, h - 0.03], [0.06, h],
+        [0.03, h + 0.02], [0.03, h + 0.08], [0.0001, h + 0.08]], c.coarse ? 10 : 14,
+        (k) => (k >= 7 ? BRASS : k === 4 ? (gas === GAS_OXYGEN ? GAS_BAND : GAS_ACETYLENE) : gas));
       c.mesh.pop();
+      if (c.coarse) continue;
+      c.mesh.dressing(() => {
+        // the valve's hand wheel and outlet, and on the end bottles the ventilated steel cap screwed over it (the lathe's
+        // turn lays the bottle's valve end toward -z)
+        const nz = -(h + 0.11);
+        if (b !== 1) {
+          c.mesh.push().translate(x, frameY + 0.17, nz - 0.02).rotateY(-Math.PI / 2);
+          c.mesh.lathe([[0.07, -0.06], [0.075, -0.04], [0.075, 0.07], [0.055, 0.1], [0.0001, 0.1]], 10, () => GALV);
+          c.mesh.pop();
+        } else {
+          beam(c.mesh, [x - 0.05, frameY + 0.17, nz + 0.02], [x + 0.05, frameY + 0.17, nz + 0.02], 0.025, 0.025, BRASS);
+          c.mesh.push().translate(x, frameY + 0.22, nz + 0.02).rotateZ(Math.PI / 2);
+          c.mesh.lathe([[0.045, -0.006], [0.045, 0.006], [0.0001, 0.006]], 10, () => IRON_WORN);
+          c.mesh.pop();
+        }
+        // scuffs: worn patches down to dark primer on the flanks a hand grips and the ground rubs
+        for (let k = 0; k < 5; k++) {
+          const a = (hash01(k, b * 7 + 3) - 0.5) * 2.4 + (k % 2 ? Math.PI : 0), zc = (hash01(k, b * 7 + 5) - 0.5) * 1.1;
+          const w = 0.03 + 0.05 * hash01(k, b * 7 + 9), l = 0.05 + 0.12 * hash01(k, b * 7 + 11), r = 0.119;
+          const p = (da: number, dz: number): Vec3 => [x + Math.sin(a + da) * r, frameY + 0.17 + Math.cos(a + da) * r, zc + dz];
+          face4(c.mesh, [p(-w / r, -l / 2), p(w / r, -l / 2), p(w / r, l / 2), p(-w / r, l / 2)], [Math.sin(a), Math.cos(a), 0], GAS_SCUFF);
+        }
+      });
     }
+    if (c.coarse) return;
+    // the chain over the three, hooked to the frame either side, at both cradles
+    c.mesh.dressing(() => {
+      for (const z of [-hl * 0.55, hl * 0.55]) {
+        const path: Vec3[] = [[-hw, frameY + 0.03, z]];
+        for (let k = 0; k <= 12; k++) {
+          const t = k / 12, x = -0.36 + t * 0.72, bx = Math.round((x + 0.24) / 0.24) * 0.24 - 0.24;
+          const dx = Math.max(-0.12, Math.min(0.12, x - bx));
+          path.push([x, frameY + 0.17 + Math.sqrt(Math.max(0, 0.124 * 0.124 - dx * dx)) * 0.98 + 0.004, z]);
+        }
+        path.push([hw, frameY + 0.03, z]);
+        bentRod(c, path, 0.007, IRON_WORN, false);
+      }
+    });
   };
   return { wheels, body, load, debris: { w: 0.04, l: 0.9 } };
 }
@@ -2041,6 +2101,37 @@ function runnerLips(c: Ctx, xs: readonly number[], halfThick: number, z0: number
   }
 }
 
+/**
+ * Snow lying on a heap in patches (round 5): `count` lumpy pads sat on its surface near the crown (th about pi/2) and a
+ * little down its flanks, each `r0`..`r1` across and up to `depth` thick, lifted clear of the straw coat (dressing).
+ */
+function snowPatches(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, count: number, r0: number, r1: number, depth: number,
+  salt: number): void {
+  if (!c.snow || c.coarse) return;
+  const P: Vec3 = [0, 0, 0];
+  for (let k = 0; k < count; k++) {
+    const zn = -0.78 + 1.56 * ((k + 0.5) / count) + (hash01(k, salt) - 0.5) * 0.12;
+    const th = Math.PI / 2 + (hash01(k, salt + 1) - 0.5) * 0.9;
+    at(zn, th, P);
+    const r = r0 + (r1 - r0) * hash01(k, salt + 3), d = depth * (0.55 + 0.45 * hash01(k, salt + 5));
+    c.mesh.dressing(() => {
+      c.mesh.push().translate(P[0], P[1] - d * 0.35, P[2]).rotateY(hash01(k, salt + 7) * Math.PI).rotateZ((th - Math.PI / 2) * 0.8);
+      loaf(c, 0, 0, 0, r, r * (0.7 + 0.5 * hash01(k, salt + 9)), d, [SNOW_LYING], { belly: 0.2, lump: 0.35, ends: 1.8, low: true, seed: salt + k * 31 });
+      c.mesh.pop();
+    });
+  }
+}
+
+/** A stack's lashing: ropes over a box-shaped load from the deck on one side, over its top and down the other. */
+function lashBox(c: Ctx, x: number, y0: number, top: number, w: number, zs: readonly number[]): void {
+  if (c.coarse) return;
+  for (const z of zs) {
+    const path: Vec3[] = [[x - w / 2 - 0.015, y0 + 0.01, z], [x - w / 2 - 0.02, top - 0.05, z], [x - w / 2 + 0.06, top + 0.015, z],
+      [x + w / 2 - 0.06, top + 0.015, z], [x + w / 2 + 0.02, top - 0.05, z], [x + w / 2 + 0.015, y0 + 0.01, z]];
+    c.mesh.dressing(() => bentRod(c, path, 0.012, ROPE, false));
+  }
+}
+
 /** Snow settled on a surface: a few uneven drifts lying on it, lumpy and thin, never one smooth lid (dressing). */
 function snowCover(c: Ctx, x: number, y: number, z: number, hw: number, hl: number, depth: number): void {
   if (!c.snow || c.coarse) return;
@@ -2130,10 +2221,14 @@ function sledge(c: Ctx, s: SledgeSpec): Assembly {
           for (const sx of [-1, 1]) rod(c, tip, [sx * rw * 0.9, 0.12, z0 + end * (hhl + 0.08)], 0.014, ROPE, false);
         }
       });
-      // the snow over the crown: a thin cap of the heap's own shape, its rim lost in the hay
-      if (c.snow && !c.coarse) c.mesh.dressing(() => loaf(c, 0, y0 + h * 0.6, z0, hhw * 0.7, hhl * 0.84, h * 0.44, [SNOW_LYING],
-        { belly: 0, lump: 0.14, ends: q, seed: 211 }));
-    } else firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
+      // the snow on the crown (round 5, wave 278: "a smooth, milky, semi-transparent dome like a glass cover"): patches
+      // of it lying on the hay where it settled, thick on the crown and thinning down the flanks, the straw showing
+      // between them, each a lumpy pad above the straw coat
+      if (c.snow && !c.coarse) snowPatches(c, heap, 14, 0.12, 0.3, 0.09, 2111);
+    } else {
+      firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
+      lashBox(c, 0, bedY + 0.02, bedY + 0.04 + 0.518, s.bedW * 0.95, [-hl * 0.1 - s.bedL * 0.22, -hl * 0.1 + s.bedL * 0.22]);
+    }
   };
   // (wave 260: "two ruler-straight hairlines") the troughs a hand wide, out 5 m behind it (the props bend them)
   runnerGrooves(c, [-rw, rw], -hl - 5.0, hl + 0.2, 0.14);
@@ -2202,7 +2297,10 @@ function sled(c: Ctx, s: SledSpec): Assembly {
       } else {
         // a shorter stack, the slats open ahead of it and behind (wave 161: "no snow on the deck")
         firewood(c, 0, deckY + 0.03, -hl * 0.22, s.width * 0.92, hl * 0.98, 3);
-        snowCover(c, 0, deckY + 0.39, -hl * 0.22, rw * 0.72, hl * 0.42, 0.07);
+        // round 5 (wave 278: "no snow or lashing on its log load"): two ropes over the stack to the deck rails, and the
+        // snow on the top logs (it lay sunk under them)
+        lashBox(c, 0, deckY + 0.02, deckY + 0.03 + 0.392, s.width * 0.92, [-hl * 0.22 - hl * 0.3, -hl * 0.22 + hl * 0.3]);
+        snowCover(c, 0, deckY + 0.43, -hl * 0.22, rw * 0.72, hl * 0.42, 0.08);
       }
     };
     // snow lodged on the open slats ahead of the load and behind it
