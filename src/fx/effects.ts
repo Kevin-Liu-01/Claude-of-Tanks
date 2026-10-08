@@ -32,6 +32,17 @@ import type { EventBus } from '../game/stateCore.ts';
 // props (fences, carts, barrels, bales...) break under fire without the sim
 // layer knowing about them (see src/world/destructibles.ts).
 import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
+// destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
+import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
+import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
+import {
+  columnPuff as mediaColumnPuff, dustSurge, groundBurst, isExplosive, kineticStrike, killFireball,
+  muzzleBlast as mediaMuzzleBlast, smolderPuff as mediaSmolderPuff, waterBurst, type BlastContext,
+} from './blastRecipes.ts';
+import { classifyTerrain } from './surfaceLooks.ts';
+import { munitionChargeKg, munitionClassForShell, cookOffChargeKg } from '../sim/munitionBlast.ts';
+import type { MunitionClass } from '../sim/destructionEvents.ts';
+import { getDeviceTier } from '../engine/quality.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -281,6 +292,13 @@ interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
   feedbackPredicted?: boolean;
+  shellName?: string;
+  /** the destruction catalog's class and charge (sim/munitionBlast.ts), when the shooter's step publishes them */
+  munition?: MunitionClass;
+  chargeKg?: number;
+  guided?: boolean;
+  tracer?: string;
+  blastRadiusM?: number;
 }
 
 interface ShellHitEvent {
@@ -318,6 +336,11 @@ interface ShellExpiredEvent {
   /** water pass 2026-09-12: the sim classified the ground point as open water */
   hitWater?: boolean;
   caliberMm?: number;
+  /** the destruction catalog's class and charge (DESTRUCTION.md §8.1), when published */
+  munition?: MunitionClass;
+  chargeKg?: number;
+  /** the round's type (the solo step publishes it with its calibre) */
+  shellType?: string;
 }
 
 interface TankDestroyedEvent {
@@ -926,6 +949,17 @@ function* createFxSteps(
   const drones = createDronePresentation(group);
   group.matrixAutoUpdate = false;
   group.add(particles.group);
+  // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
+  // keeps the pooled puffs below (no atlas download, no sort, no extra draws).
+  const mediaTier = getDeviceTier() !== 'mobile';
+  const vol: VolumeMedia | null = mediaTier
+    ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
+    : null;
+  const chunks: DebrisChunks | null = mediaTier
+    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
+    : null;
+  if (vol) group.add(vol.group);
+  if (chunks) group.add(chunks.group);
 
   let rng = mulberry32(seed);
   let frozen = false;
@@ -1267,6 +1301,7 @@ function* createFxSteps(
   group.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
+      || (vol ? vol.isActive() : false)
       || tracerGeo.instanceCount > 0
       || atgmBodies.count > 0
       || shockRings.some(isRingVisible)
@@ -1641,6 +1676,99 @@ function* createFxSteps(
     return THREE.MathUtils.clamp(caliberMm / 100, 0.5, 1.7);
   }
 
+  // destruction-fx lane: shellId -> the round's munition class and charge (fed by shell:fired, read by its impact)
+  interface ShellMunition { munition: MunitionClass; chargeKg: number; caliberMm: number }
+  const shellMunitions = new Map<ShellId, ShellMunition>();
+  const _munShell = { type: '', caliberMm: 0, name: '', guided: false as boolean | undefined, tracer: undefined as string | undefined,
+    blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
+  function rememberMunition(e: ShellFiredEvent): void {
+    if (shellMunitions.size > 96) shellMunitions.clear();
+    let munition = e.munition;
+    let chargeKg = e.chargeKg;
+    if (!munition || !Number.isFinite(chargeKg)) {
+      _munShell.type = e.shellType; _munShell.caliberMm = e.caliberMm; _munShell.name = e.shellName || '';
+      _munShell.guided = e.guided; _munShell.tracer = e.tracer; _munShell.blastRadiusM = e.blastRadiusM;
+      _munShell.launcherTubes = e.rocket ? 1 : 0;
+      munition = munition ?? munitionClassForShell(_munShell);
+      chargeKg = munitionChargeKg(_munShell, munition);
+    }
+    shellMunitions.set(e.shellId, { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm });
+  }
+  /**
+   * The class of a shell ending with no fired record: its own type and calibre when the event carries them (the solo
+   * step does), a bullet when it is that small, else the Studio's stand-in blast (HE by calibre, shell id -1).
+   */
+  function munitionOfExpiry(e: ShellExpiredEvent): ShellMunition {
+    const caliberMm = e.caliberMm || 0;
+    if (e.shellType) {
+      _munShell.type = e.shellType; _munShell.caliberMm = caliberMm || 76; _munShell.name = ''; _munShell.guided = undefined;
+      _munShell.tracer = undefined; _munShell.blastRadiusM = undefined; _munShell.launcherTubes = 0;
+      const munition = munitionClassForShell(_munShell);
+      return { munition, chargeKg: munitionChargeKg(_munShell, munition), caliberMm: caliberMm || 76 };
+    }
+    if (caliberMm > 0 && caliberMm < 15) return { munition: 'small_arms', chargeKg: 0, caliberMm };
+    if (e.shellId === -1 || e.shellId == null) return heByCaliber(caliberMm || 76);
+    return { munition: caliberMm >= 57 || caliberMm === 0 ? 'kinetic' : 'autocannon_ap', chargeKg: 0, caliberMm: caliberMm || 105 };
+  }
+  /** A terrain or Studio burst with no fired record: HE by calibre (the Studio's stand-in blasts). */
+  function heByCaliber(caliberMm: number): ShellMunition {
+    _munShell.type = 'HE'; _munShell.caliberMm = caliberMm; _munShell.name = ''; _munShell.guided = undefined;
+    _munShell.tracer = undefined; _munShell.blastRadiusM = undefined; _munShell.launcherTubes = 0;
+    const munition = munitionClassForShell(_munShell);
+    return { munition, chargeKg: munitionChargeKg(_munShell, munition), caliberMm };
+  }
+
+  const _pulseV = new THREE.Vector3();
+  const blast: BlastContext | null = vol && chunks ? {
+    rand: () => rng(),
+    groundY: (x: number, z: number) => groundY(x, z),
+    media: (p) => vol.emit(p),
+    chunk: (p) => chunks.emit(p),
+    flash: (o) => particles.emit('flash', o),
+    fire: (o) => particles.emit('fire', o),
+    sparks: (o) => particles.emit('sparks', o),
+    lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number) => {
+      if (replaySuppressed) return;
+      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS); return; }
+      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0) });
+    },
+    distBoost: (x: number, y: number, z: number) => distBoost(x, y, z),
+    tier: 1,
+    m: makeVolumePuff(),
+    k: makeChunkPiece(),
+    lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1],
+      col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
+    ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1,
+      seed: 0, birthOffset: 0 },
+  } : null;
+  const _strikeDir = new THREE.Vector3();
+
+  /**
+   * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
+   * dust cloud, surge, residue), kinetic rounds and bullets strike (a spurt of the ground along the shot, chunks).
+   * Returns false when the media layer is off (the phone tier keeps the pooled plume).
+   */
+  function mediaGroundHit(pos: THREE.Vector3, info: ShellMunition, water: boolean, dir: THREE.Vector3 | null,
+    birthOffset = 0): boolean {
+    if (!blast) return false;
+    const surface = water ? 'water' : classifyTerrain(heightField, pos.x, pos.z);
+    if (isExplosive(info.munition) && info.chargeKg > 0) {
+      const y = water
+        ? (heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z) ?? groundY(pos.x, pos.z))
+        : pos.y;
+      if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+      else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+    } else {
+      kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
+        caliberMm: info.caliberMm, munition: info.munition, surface, birthOffset });
+    }
+    if (water) {
+      const s = calScale(info.caliberMm);
+      heightField?.addWaterImpulse?.(pos.x, pos.z, 0.9 + 1.1 * s, 0.22 * s, 0.85);
+    }
+    return true;
+  }
+
   // --------------------------------------------------------------------------
   // Effect recipes (birthOffset lets the screenshot composers backdate spawns)
   // --------------------------------------------------------------------------
@@ -1951,10 +2079,10 @@ function* createFxSteps(
     }
   }
 
-  function emitLingeringMuzzleFx(state: MuzzleFlashState): void {
+  function emitLingeringMuzzleFx(state: MuzzleFlashState, wisps = true): void {
     const { pos, dir, s, birthOffset, reach, axAtt } = state;
     const smokeBirth = birthOffset - 0.2;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < (wisps ? 8 : 0); i++) {
       const along = 0.15 + rng() * 0.45;
       _puffO.pos[0] = pos.x + dir.x * along; _puffO.pos[1] = pos.y + dir.y * along; _puffO.pos[2] = pos.z + dir.z * along;
       _puffO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
@@ -1972,13 +2100,14 @@ function* createFxSteps(
     sparkFan(_sv, dir, Math.round(9 * (0.4 + 0.6 * axAtt)), 14 * s * reach, 0.22, 0xffd58a, 0.11, 0.018, 0.03, birthOffset);
   }
 
-  function emitMuzzleGroundBlast(state: MuzzleFlashState): void {
+  function emitMuzzleGroundBlast(state: MuzzleFlashState, dust = true): void {
     const { pos, dir, caliberMm, birthOffset, nearAtt, dkF } = state;
     const gy = groundY(pos.x, pos.z);
     const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
     if (hK <= 0.05) return;
     spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
       Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+    if (!dust) return; // destruction-fx lane: the media layer lifts the ground's own dust (blastRecipes muzzleBlast)
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
       _puffO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.8;
@@ -2153,15 +2282,23 @@ function* createFxSteps(
       emitMuzzleCoreAndPetals(state);
       emitMuzzleAxialAndBrakeJets(state);
       emitMuzzleCombustionAndAfterflash(state);
-      emitMuzzlePropellantMass(state);
+      if (!blast) emitMuzzlePropellantMass(state);
     } // end !scoped
-    emitMuzzleSmoke(state);
+    // destruction-fx lane: the propellant gas and the ground dust are simulated media (the flash stays additive)
+    if (blast) {
+      mediaMuzzleBlast(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir.x, dy: dir.y, dz: dir.z, caliberMm,
+        surface: scoped ? null : classifyTerrain(heightField, pos.x, pos.z), birthOffset,
+        nearAtt: scoped ? 0.35 : 0.55 + 0.45 * nearAtt });
+      basisFrom(dir, _v1, _v2);
+    } else {
+      emitMuzzleSmoke(state);
+    }
     // Scoped LIGHT attenuation (r6): the muzzle light an inch from the lens
     // whited out the bottom half of the scope — suppress it like the
     // geometry, leaving a readable kick without the flashbang.
     if (scoped) return lightK * 0.2; // no wisps/bore sparks/ground wash an inch from the lens
-    emitLingeringMuzzleFx(state);
-    emitMuzzleGroundBlast(state);
+    emitLingeringMuzzleFx(state, !blast);
+    emitMuzzleGroundBlast(state, !blast);
     return lightK;
   }
 
@@ -3167,6 +3304,30 @@ function* createFxSteps(
     // orange puff) — scale the big volumetric cards up with camera distance
     const dk = distBoost(pos.x, cy, pos.z);
     emitDestructionFlash(pos, cy, burn, dk, birthOffset);
+    if (blast) {
+      // destruction-fx lane: the fireball body, the eruption and the column's first seconds are simulated media; the
+      // additive fire, the hull fire, the debris and the light stay the battle's
+      emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : 1, dk, birthOffset);
+      killFireball(blast, pos.x, cy, pos.z, rack, birthOffset);
+      emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);
+      dustSurge(blast, pos.x, gy, pos.z, burn ? 0.9 : Math.cbrt(cookOffChargeKg(55)), classifyTerrain(heightField, pos.x, pos.z),
+        birthOffset);
+      spawnScorch(pos.x, pos.z, (burn ? 3.6 : 5.4) + rng() * 1.4);
+      if (!burn) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
+      sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 16 : (burn ? 5 : 10), 18, 0.85, 0xffc470, 0.55, 0.05, 0.034, birthOffset, 0.35);
+      emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset);
+      emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset);
+      if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
+      flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
+        EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
+      // the column already standing: backdated column puffs so a far kill shows its smoke at once
+      const colScale = (burn ? 1.45 : 1.3) * dk;
+      for (let i = 0; i < 5; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset - 0.4 - i * 0.55);
+      columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
+      capColumns();
+      finalizeDestroyedVisual(visual, rack, birthOffset);
+      return;
+    }
     const fireS = emitDestructionFireball(pos, cy, rack, burn, dk, birthOffset);
     // r2 SPAWN-FRAME BUDGET: batches whose particles are born in the FUTURE
     // (positive birthOffset) don't need to be written on the blast frame —
@@ -3247,6 +3408,25 @@ function* createFxSteps(
     // life it thins toward pale grey wisps instead of cutting off.
     const stage = Math.min(1, Math.max(0, col.ttl / SMOKE_COLUMN_S));
     const dk = distBoost(col.pos[0], col.pos[1], col.pos[2]);
+    if (blast) {
+      // destruction-fx lane: one big rolling smoke body about every 0.3 s (each tick draws its share), and the
+      // additive flame licks on the deck
+      if (rng() < COLUMN_TICK_S / 0.3) mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk, birthOffset);
+      if (rng() < 0.70 + 0.30 * stage) {
+        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
+        _puffO.life = 0.30 + rng() * 0.28;
+        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk;
+        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
+        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+        particles.emit('fire', _puffO);
+      }
+      return;
+    }
     const s = col.scale * (0.62 + 0.38 * stage) * dk;
     // r2 COLUMN CONTINUITY: the emitter only fed the bottom ~4 m while the
     // one-shot stalk/cap cards parked a huge long-lived blob at the top —
@@ -3361,6 +3541,7 @@ function* createFxSteps(
   function emitSmolderPuff(col: SmokeColumn, birthOffset = 0): void {
     const k = Math.max(0, (col.smolder ?? 0) / SMOKE_SMOLDER_S); // 1 -> 0 over the tail
     const dk = distBoost(col.pos[0], col.pos[1], col.pos[2]);
+    if (blast) { if (rng() < 0.6) mediaSmolderPuff(blast, col.pos[0], col.pos[1], col.pos[2], k, birthOffset); return; }
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.4;
     _puffO.pos[1] = col.pos[1] + 1.2 + rng() * 1.0; // r5: above the deck line
     _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.4;
@@ -4088,6 +4269,8 @@ function* createFxSteps(
     const delta = atTimeS - particles.getTime();
     if (Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
+    vol?.shiftTime(delta);
+    chunks?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -4585,14 +4768,17 @@ function* createFxSteps(
      * (idempotent, ~200 ms once). Must run before the first fx-visible frame;
      * main.ts warmCombatPipeline() is the enforcing call site.
      */
-    warmTextures() { particles.warmTextures(); },
+    warmTextures() { particles.warmTextures(); void vol?.warm(); },
 
     /** Decode deterministic prebuilt atlases during quiet garage time. */
-    preloadTextures() { return particles.preloadTextures(); },
+    preloadTextures() {
+      return Promise.all([particles.preloadTextures(), vol ? vol.warm() : Promise.resolve(true)]).then(([a]) => a);
+    },
 
     /** Bake deterministic sprite sheets cooperatively with the caller's yielder. */
     warmTexturesChunked(yieldFrame: () => Promise<void>, options?: { assets?: 'preload' | 'ready-only' }) {
-      return particles.warmTexturesChunked(yieldFrame, options);
+      return Promise.all([particles.warmTexturesChunked(yieldFrame, options), vol ? vol.warm() : Promise.resolve(true)])
+        .then(() => undefined);
     },
 
     /**
@@ -4644,6 +4830,8 @@ function* createFxSteps(
       resolveSubject: ((id: string) => FxEntity | null) | null = null,
     ): void {
       particles.update(dt);
+      vol?.update(camera ?? engineCtx.camera ?? null);
+      chunks?.update();
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
@@ -4681,6 +4869,7 @@ function* createFxSteps(
         if (shellKinds.size > 96) { shellKinds.clear(); sweepTails.clear(); } // leak guard
         shellKinds.set(e.shellId, e.shellType);
         sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+        rememberMunition(e);
       });
       onFxEvent(bus, 'weapon:predicted', (e) => {
         if (!e.isPlayer) return;
@@ -4743,6 +4932,14 @@ function* createFxSteps(
         // props around the burst point (HE gets a real radius, AP a token
         // one). Runs BEFORE the terrain gate below — prop-collider hits
         // report hitTerrain=false but still carry pos.
+        // destruction-fx lane: the round's class and charge (the event's own, else its fired record, else HE by
+        // calibre for the Studio's stand-in blasts), and the direction it arrived from (its last swept point)
+        let info = shellMunitions.get(e.shellId) ?? null;
+        shellMunitions.delete(e.shellId);
+        if (e.munition && Number.isFinite(e.chargeKg)) {
+          info = { munition: e.munition, chargeKg: e.chargeKg as number, caliberMm: e.caliberMm || info?.caliberMm || 76 };
+        }
+        let arrival: THREE.Vector3 | null = null;
         {
           const st = shellKinds.get(e.shellId);
           shellKinds.delete(e.shellId);
@@ -4750,8 +4947,11 @@ function* createFxSteps(
           if (tail) {
             sweepTails.delete(e.shellId);
             notifyShellSweep(tail[0], tail[1], tail[2], e.pos[0], e.pos[1], e.pos[2]);
+            _strikeDir.set(e.pos[0] - tail[0], e.pos[1] - tail[1], e.pos[2] - tail[2]);
+            if (_strikeDir.lengthSq() > 1e-6) arrival = _strikeDir.normalize();
           }
-          const he = st === 'HE' || st === 'HESH';
+          // a bullet or a drone is not an HE shell: the class decides the prop blast (FX round 6's map read the type only)
+          const he = info ? isExplosive(info.munition) && info.chargeKg >= 0.5 : (st === 'HE' || st === 'HESH');
           notifyShellImpact(e.pos[0], e.pos[1], e.pos[2], { he, r: he ? 4.6 : 1.0 });
         }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
@@ -4762,7 +4962,9 @@ function* createFxSteps(
           return;
         }
         if (e.hitTerrain) {
-          if (e.hitWater || shellPointOnWater(_v3)) waterSplash(_v3, e.caliberMm || 76, false);
+          const water = !!e.hitWater || shellPointOnWater(_v3);
+          if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) return;
+          if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
       });
@@ -5081,6 +5283,7 @@ function* createFxSteps(
           break;
         }
         case 'he_splash':
+          if (pos.y - groundY(pos.x, pos.z) < 2.5 && mediaGroundHit(pos, heByCaliber(caliberMm), shellPointOnWater(pos), null)) break;
           heFireball(pos, caliberMm);
           if (pos.y - groundY(pos.x, pos.z) < 2.5) {
             if (shellPointOnWater(pos)) waterSplash(pos, caliberMm, true);
@@ -5115,6 +5318,7 @@ function* createFxSteps(
           break;
         }
         case 'terrain':
+          if (mediaGroundHit(pos, heByCaliber(caliberMm), shellPointOnWater(pos), null)) break;
           if (shellPointOnWater(pos)) waterSplash(pos, caliberMm, caliberMm >= 105);
           else dirtPlume(pos, caliberMm, caliberMm >= 105);
           break;
@@ -5458,6 +5662,9 @@ function* createFxSteps(
       replaySuppressed = false;
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
+      vol?.reset();
+      chunks?.reset();
+      shellMunitions.clear();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
       staticTracers.length = 0;

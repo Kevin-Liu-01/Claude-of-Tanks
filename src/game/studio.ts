@@ -1859,6 +1859,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
+            // the round's type and calibre, as the solo step publishes them (fx keys its explosion on the class)
+            shellType: sh.spec?.type, caliberMm: sh.spec?.caliberMm,
           });
         } else if (sh.distM > 4000) {
           sh.dead = true;
