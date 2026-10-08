@@ -65,6 +65,10 @@ export function packCollisionRecord(record) {
   if (record.kind != null) out.k = record.kind;
   if (record.treeIdx != null) out.t = record.treeIdx;
   if (record.propIdx != null) out.p = record.propIdx;
+  // destruction (docs/DESTRUCTION.md §3.1): the structure group and, for a set piece, its role (1 setpiece, 2 fixed)
+  if (record.structureIdx != null) out.g = record.structureIdx;
+  if (record.structureRole === 'setpiece') out.gr = 1;
+  else if (record.structureRole === 'fixed') out.gr = 2;
   return out;
 }
 

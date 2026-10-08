@@ -9,6 +9,7 @@
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
+import type { DestructionRules } from './destructionEvents.ts';
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([
@@ -283,6 +284,8 @@ export interface MatchRuleset {
   /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
   readonly enemyNation: string | null;
   readonly alliedNation?: 'player' | null;
+  /** Buildings that break and collapse, ground that craters (docs/DESTRUCTION.md §9). */
+  readonly destruction: DestructionRules;
 }
 
 export interface CampaignRulesetInput {
@@ -298,11 +301,24 @@ export const ENDING_HOLD_LIMIT_S = 12;
 /** Whole-game post-verdict hold: long enough for the 2.5 s beats and the killcam's live wreck hold. */
 const ENDING_HOLD_S = 8;
 
+/**
+ * Destruction (owner 2026-10-07: "buildings should break and collapse ... after withstanding damage and ramming"; craters
+ * "esp from like the ac 130"): on in every mode but Turbo Ball, whose pitch an unlimited HE ladder would crater under
+ * the ball; the AC-130 digs its craters a quarter wider (docs/DESTRUCTION.md §9).
+ */
+const DESTRUCTION_ON: DestructionRules = Object.freeze({
+  structures: true, craters: true, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+});
+const DESTRUCTION_OFF: DestructionRules = Object.freeze({
+  structures: false, craters: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,
+});
+
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
+  destruction: DESTRUCTION_ON,
 });
 
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
@@ -318,6 +334,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, physics: TURBO_PHYSICS, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
+    destruction: DESTRUCTION_OFF,
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
@@ -351,7 +368,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
   drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
-    ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat' }),
+    ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
+    destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */

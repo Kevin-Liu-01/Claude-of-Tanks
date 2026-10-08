@@ -1,3 +1,4 @@
+import { sectionSolid } from './sectionSolid.ts';
 import { armorLoft } from './europeSourcePrimitives.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // Two independent first-party procedural Swedish IFVs.
@@ -81,16 +82,17 @@ function panelGeometry(corners: [Vec3, Vec3, Vec3, Vec3], thickness: number): TH
 
 function buildCv90Hull(P: CvBuilderPort): void {
   const { box, cylX, cylY } = KIT;
-  // The belly now rises into the upper cell instead of ending below it. Its
-  // sides stop just inboard of the shoe faces, closing the former transverse
-  // daylight slot without intersecting the animated track course.
-  P.add('hull', box(2.12, 1.06, 6.42), 0, 0.77, -0.10);
-  P.add('hull', orientedSlab(
-    [-0.96, 0.32, 2.18], [0.96, 0.32, 2.18],
-    [0.82, 0.55, 3.28], [-0.82, 0.55, 3.28],
-    [-1.05, 1.18, 2.32], [1.05, 1.18, 2.32],
-    [0.96, 1.05, 3.28], [-0.96, 1.05, 3.28],
-  ));
+  // The belly and lower glacis are one closed longitudinal solid. The old
+  // full-length box pierced the sloping bow and exposed a metre-tall end cap.
+  // Only the short 120 mm nose return is vertical; the belly rises to it.
+  const belly = sectionSolid([
+    { z: -3.31, ring: [[-1.06,.24],[1.06,.24],[1.06,1.30],[-1.06,1.30]] },
+    { z: 1.82, ring: [[-1.06,.24],[1.06,.24],[1.06,1.70],[-1.06,1.70]] },
+    { z: 2.14, ring: [[-1.06,.24],[1.06,.24],[1.06,1.573],[-1.06,1.573]] },
+    { z: 3.28, ring: [[-1.02,1.00],[1.02,1.00],[1.02,1.12],[-1.02,1.12]] },
+  ]);
+  belly.userData.cv90HullRole = 'continuous-raked-lower-glacis';
+  P.add('hull', belly);
   // A dedicated planar upper-glacis wedge now carries the bow into the roof
   // break.  It replaces the old non-planar loft cap whose center fan folded
   // into a visible saddle/concavity.
@@ -353,7 +355,7 @@ function buildCv90(P: CvBuilderPort): void {
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
       planarRoofCell: true, upperGlacisConstruction: 'overlapped-planar-wedge',
       monotonicArmorInset: true, concaveSurfaceCount: 0,
-      lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
+      lowerHullFusion: 'continuous-raked-belly-to-nose-v2',
       bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
       rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
       rearTrackDeparture: 'rear-wheel-tangent-wrap-v2', rearTrackDepartureZM: -2.45, // 2026-09-14: under the aft axle
@@ -369,15 +371,16 @@ function buildCv90(P: CvBuilderPort): void {
 
 function buildCv90MkivHull(P: CvBuilderPort): void {
   const { box, cylX, cylY } = KIT;
-  // Raise and widen the armored belly into the mission cell while retaining
-  // a narrow mechanical clearance to the inner track faces.
-  P.add('hull', box(2.24, 1.10, 6.78), 0, 0.75, -0.12);
-  P.add('hull', orientedSlab(
-    [-1.02, 0.31, 2.29], [1.02, 0.31, 2.29],
-    [0.88, 0.59, 3.49], [-0.88, 0.59, 3.49],
-    [-1.12, 1.26, 2.45], [1.12, 1.26, 2.45],
-    [1.02, 1.12, 3.49], [-1.02, 1.12, 3.49],
-  ));
+  // The heavier hull uses its own bow stations. Terminate the belly at
+  // the glacis break instead of carrying a square full-height box through it.
+  const belly = sectionSolid([
+    { z: -3.51, ring: [[-1.12,.20],[1.12,.20],[1.12,1.30],[-1.12,1.30]] },
+    { z: 1.77, ring: [[-1.12,.20],[1.12,.20],[1.12,1.83],[-1.12,1.83]] },
+    { z: 2.24, ring: [[-1.12,.20],[1.12,.20],[1.12,1.658],[-1.12,1.658]] },
+    { z: 3.49, ring: [[-1.09,1.07],[1.09,1.07],[1.09,1.20],[-1.09,1.20]] },
+  ]);
+  belly.userData.cv90HullRole = 'continuous-raked-lower-glacis';
+  P.add('hull', belly);
   P.add('hull', orientedSlab(
     [-1.02, 1.07, 3.49], [1.02, 1.07, 3.49], [1.61, 1.78, 1.77], [-1.61, 1.78, 1.77],
     [-1.09, 1.20, 3.49], [1.09, 1.20, 3.49], [1.61, 1.93, 1.77], [-1.61, 1.93, 1.77],
@@ -499,13 +502,43 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
   }
 }
 
+function addCv90MkivScaffoldedCradle(P: CvBuilderPort): void {
+  // The back of the rocking housing penetrates the crew shell. Its actual
+  // transverse trunnion engages both cheeks at the pitch axis; a long open
+  // cradle carries the visible cannon forward of this compact armor mask.
+  const root = sectionSolid([
+    { z: -.34, ring: [[-.33,-.14],[.33,-.14],[.41,-.06],[.41,.08],[.33,.16],[-.33,.16],[-.41,.08],[-.41,-.06]] },
+    { z: .27, ring: [[-.30,-.21],[.30,-.21],[.36,-.15],[.36,.15],[.30,.21],[-.30,.21],[-.36,.15],[-.36,-.15]] },
+  ]);
+  root.userData.cv90GunRole = 'buried-trunnion-mask';
+  P.addGunExtra(root);
+  P.addGunExtra(KIT.cylX(.18, .90, 24), 0, 0, 0);
+  const point = (side: -1 | 1, t: number, vertical: number): Vec3 => [
+    side * THREE.MathUtils.lerp(.36, .235, t),
+    vertical * THREE.MathUtils.lerp(.21, .12, t),
+    THREE.MathUtils.lerp(.24, 1.18, t),
+  ];
+  for (const vertical of [-1, 1]) {
+    P.addGunExtra(panelGeometry([
+      point(-1,0,vertical), point(1,0,vertical),
+      point(1,1,vertical), point(-1,1,vertical),
+    ], .028));
+  }
+  for (const side of [-1, 1] as const) {
+    for (const vertical of [-1, 1])
+      P.addGunExtra(beamGeometry(point(side,0,vertical),point(side,1,vertical),.046));
+    for (const [rear, front] of [[.04,.30],[.36,.62],[.68,.94]])
+      P.addGunExtra(beamGeometry(point(side,rear,-.90),point(side,front,.90),.036));
+    for (const t of [.015,.985])
+      P.addGunExtra(beamGeometry(point(side,t,-1),point(side,t,1),.040));
+  }
+}
+
 function buildCv90MkivTurret(P: CvBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
-  // Seat the complete moving cannon farther inside the mission module. Moving
-  // the articulated rig preserves the authored shroud/barrel/bore relationship
-  // and shifts the recoil and muzzle anchors with it.
+  // The authored combat frame seats the complete cannon 18 cm farther into
+  // the turret; the visual pivot must use that same frame without an offset.
   const gunTrunnionRecessM = 0.18 * ADVANCED_IFV_SCALE;
-  P.gunG.position.z -= gunTrunnionRecessM;
   // D-series-inspired protection: low broad shoulder modules carry a
   // narrower crew citadel and a long ammunition bustle. Width and roof height
   // change independently at the cheek, trunnion, crew and bustle stations.
@@ -545,13 +578,8 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       splay: side * 0.54, pitch: -0.42, seed: 930 + side,
     }), side * 1.20, 0.58, -0.04, [0, side * 0.98, side * -0.27]);
   }
-  P.addGunExtra(orientedSlab(
-    [-0.44, -0.25, 0.05], [0.44, -0.25, 0.05],
-    [0.26, -0.16, 1.62], [-0.26, -0.16, 1.62],
-    [-0.44, 0.28, 0.05], [0.44, 0.28, 0.05],
-    [0.24, 0.17, 1.62], [-0.24, 0.17, 1.62],
-  ));
-  P.addGunExtraDark(cylZ(0.170, 0.62, 24), 0, 0, 0.48);
+  addCv90MkivScaffoldedCradle(P);
+  P.addGunExtraDark(cylZ(0.170, 0.62, 24), 0, 0, 0.28);
   KIT.buildGun(P, { len: 3.76, r: 0.082, sleeve: true,
     evac: 0.55, evacR: 1.60, collar: true, baseR: 0.16 });
   muzzleBore(P, { len: 3.76, r: 0.082, seg: 20 });
@@ -617,7 +645,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       sharedStructuralBuilder: false, identityFamily: 'cv90-native',
       foreignFamilyGeometryReused: false,
       turretConstruction: 'cv90-mkiv-shoulder-citadel-bustle-v7',
-      gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
+      gunAssembly: 'buried-mask-open-50mm-truss-cradle-v3',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws',
       spikeLauncherTubes: 2, launcherTubes: 2, apsRadarFaces: 4,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
@@ -627,9 +655,10 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       equipmentReseatedForShell: true,
     });
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
-      host: 'cv90_mkiv', architecture: 'faceted-closed-50mm-trunnion-shroud-v2',
-      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: false,
-      diagonalSidePortsPerSide: 0, mainGunCaliberMm: 50, barrelLengthM: 3.76,
+      host: 'cv90_mkiv', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
+      movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
+      rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
+      diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,
     });
     P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
@@ -658,7 +687,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
       suspensionPlacement: 'inboard-behind-road-wheel', sideArmorStationsPerSide: 9,
       sideArmorLayers: 3, planarRoofCell: true,
       upperGlacisConstruction: 'overlapped-planar-wedge', monotonicArmorInset: true,
-      concaveSurfaceCount: 0, lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
+      concaveSurfaceCount: 0, lowerHullFusion: 'continuous-raked-belly-to-nose-v2',
       bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
       rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
       rearTrackDeparture: 'rear-wheel-tangent-wrap-v2', rearTrackDepartureZM: -2.53, // 2026-09-14: under the aft axle
