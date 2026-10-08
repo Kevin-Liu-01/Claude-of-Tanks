@@ -108,7 +108,12 @@ export default {
     // village grid round the sabil — open to the lane on the road's side and at the south corner toward road 3. The setts
     // are ground the houses stand on (no solid refuses them, and they publish no plot: the yards stay as drawn).
     landmarks: [
-      { kind: 'path', x: 17.62, z: 0.82, yawDeg: 142, ground: 'veto', name: "the square", params: { length: 18.3, width: 18.2, surface: 'stone' } },
+      // (round 3b, gauntlet wave 251: the setts "stretched plank or barcode courses … a pristine near-white slab" ending
+      // "in a hard straight edge" on road 0; "a field wall stranded across the square"): the setts at their own scale,
+      // worn along the ways across, a kerb and its gutter along the road side (the square's -z side); the open
+      // paving now leaves out the wall and fence modules on its ground (landmarks/compose.ts)
+      { kind: 'path', x: 17.62, z: 0.82, yawDeg: 142, ground: 'veto', name: "the square",
+        params: { length: 18.3, width: 18.2, surface: 'stone', density: 1.2, wear: 1, kerb: 'back' } },
       { kind: 'fountain', x: 17.5, z: 5, yawDeg: 142, ground: 'veto', name: 'the Ottoman fountain', params: { style: 'ottoman', radius: 3 } },
     ],
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain

@@ -73,7 +73,30 @@ function marktFountain(sink: PartSink, R: number, base: number): ReturnType<Land
 function ottomanFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
   const oct = Math.PI / 8, Ro = R / Math.cos(oct);
   revolve(sink, 'stone', 0, 0, [[Ro, base], [Ro, 0.62], [Ro + 0.1, 0.62], [Ro + 0.1, 0.78], [Ro - 0.36, 0.78], [Ro - 0.36, 0.45]], 8, {}, oct);
-  revolve(sink, 'glass', 0, 0, [[Ro - 0.36, 0.55], [0.6, 0.55]], 8, { decor: true }, oct);
+  // the water (round 3b, gauntlet wave 251: "an opaque cobalt plane with no reflection, depth or ripple"): its surface in
+  // shallow swells, the sky broken in it, the basin's shadow a dark band round its edge, and under each spout the jet's
+  // stream and the rings it spreads (below)
+  const yw = 0.55, rIn = Ro - 0.36;
+  {
+    // the surface: rings from the basin's wall in to the pillar's foot, each vertex a few millimetres up or down (the
+    // swell), every triangle wound to face up; its rim on the octagon's corners as the basin's inner face
+    const RINGS = [rIn, rIn * 0.8, rIn * 0.6, rIn * 0.42, 0.6], N = 16;
+    const swell = (k: number, i: number) => (k === 0 || k === RINGS.length - 1 ? 0 : Math.sin(i * 2.1 + k * 1.7) * 0.006 + Math.sin(i * 0.9 - k * 2.3) * 0.004);
+    const at = (k: number, i: number): Vec3 => {
+      const a = (i / N) * Math.PI * 2 + oct, r = RINGS[k] * (Math.cos(Math.PI / 8) / Math.cos(((a - oct) % (Math.PI / 4)) - Math.PI / 8));
+      return [Math.sin(a) * r, yw + swell(k, i), Math.cos(a) * r];
+    };
+    const up = (a: Vec3, b: Vec3, c: Vec3) => {
+      const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+      sink.polygon('glass', ny >= 0 ? [a, b, c] : [a, c, b], { decor: true });
+    };
+    for (let k = 0; k + 1 < RINGS.length; k++) for (let i = 0; i < N; i++) {
+      const a = at(k, i), b = at(k, (i + 1) % N), c = at(k + 1, (i + 1) % N), d = at(k + 1, i);
+      up(a, b, c); up(a, c, d);
+    }
+  }
+  // the basin's shadow on the water along its wall: a dark band a hand wide (a flat step: it faces up)
+  revolve(sink, 'dark', 0, 0, [[rIn, yw + 0.012], [rIn - 0.16, yw + 0.012]], 8, { decor: true }, oct);
   // the pillar: its foot, the shaft, the band where the spouts come out, the cornice and the dome
   const p = Math.max(0.45, R * 0.16) / Math.cos(oct);
   revolve(sink, 'stone', 0, 0, [[p * 1.35, 0.45], [p * 1.35, 0.85], [p, 1.0], [p, 1.9], [p * 1.12, 1.95], [p * 1.12, 2.25], [p, 2.3], [p, 2.6],
@@ -85,6 +108,14 @@ function ottomanFountain(sink: PartSink, R: number, base: number): ReturnType<La
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4, cs = Math.sin(a), cc = Math.cos(a), r0 = p * Math.cos(oct) * 1.12;
     bar(sink, 'structureMetal', [cs * r0, 2.1, cc * r0], [cs * (r0 + 0.32), 2.04, cc * (r0 + 0.32)], 0.05, { colour: rgb(0xa98a46), decor: true });
+    // its jet, falling in an arc to the water, and the rings it spreads there
+    const r1 = r0 + 0.32, rL = Math.min(rIn - 0.35, r1 + 0.42);
+    const jet = (t: number): Vec3 => { const r = r1 + (rL - r1) * t; return [cs * r, 2.04 - (2.04 - yw) * t * t, cc * r]; };
+    for (let j = 0; j < 4; j++) bar(sink, 'glass', jet(j / 4), jet((j + 1) / 4), 0.035, { decor: true });
+    // (each ring a flat annulus a hair over the water, so it faces up: a profile narrowing at one height)
+    for (const rr of [0.16, 0.36, 0.58]) {
+      revolve(sink, 'glass', cs * rL, cc * rL, [[rr + 0.035, yw + 0.016], [rr - 0.035, yw + 0.016]], 12, { decor: true, fine: rr > 0.5 });
+    }
   }
   return { parts: sink.finish() };
 }
@@ -262,7 +293,53 @@ export const path: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
   const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
-  drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
+  // (round 3b at Orchard, gauntlet wave 251: the setts "stretched plank or barcode courses … a pristine near-white
+  // slab", "a hard straight edge" on the road): `density` the masonry print's scale (setts, not the wall's courses),
+  // `wear` its tone broken in patches and darkened along the ways people cross it, `kerb` the sides that meet a road
+  // (front, back, left, right: +z, -z, -x, +x) a kerb of dressed blocks with the gutter's dark channel inside it
+  const density = Number(ctx.params.density) > 0 ? Number(ctx.params.density) : undefined;
+  const wear = Math.max(0, Math.min(1, Number(ctx.params.wear) || 0));
+  const hashAt = (x: number, z: number) => { const h = Math.sin(Math.round(x * 1.7) * 12.9898 + Math.round(z * 1.7) * 78.233) * 43758.5453; return h - Math.floor(h); };
+  // (the ways: from the road side through the middle, and across corner to corner)
+  const trodden = (p: Vec3) => {
+    const d0 = Math.abs(p[0]) / (w / 2), d1 = Math.min(Math.abs(p[2] / L - p[0] / w), Math.abs(p[2] / L + p[0] / w)) * 2;
+    return Math.max(0, 1 - Math.min(d0, d1) * 2.2);
+  };
+  const emit = surface === 'stone' && (density || wear > 0) ? {
+    ...(density ? { density } : {}),
+    ...(wear > 0 ? {
+      shadeAt: (p: Vec3) => 1 - wear * (0.1 * hashAt(p[0], p[2]) + 0.14 * trodden(p)),
+      tintAt: (p: Vec3): Rgb => { const v = (hashAt(p[0] + 0.5, p[2] - 0.5) - 0.5) * 0.08 * wear; return [1 + v, 1, 1 - v]; },
+    } : {}),
+  } : undefined;
+  drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045, ...(emit ? { emit } : {}) });
+  const sides = String(ctx.params.kerb ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (surface === 'stone' && sides.length) {
+    const ground = ctx.ground ?? ((): number => 0), look = ctx.variant, K = 0.28;
+    for (const side of sides) {
+      // the side's run along its edge: (a, b) its ends, n its outward normal
+      const hw = w / 2, hl = L / 2;
+      const run = side === 'front' ? { a: [-hw, hl], b: [hw, hl], n: [0, 1] } : side === 'back' ? { a: [hw, -hl], b: [-hw, -hl], n: [0, -1] }
+        : side === 'left' ? { a: [-hw, -hl], b: [-hw, hl], n: [-1, 0] } : side === 'right' ? { a: [hw, hl], b: [hw, -hl], n: [1, 0] } : null;
+      if (!run) continue;
+      const len = Math.hypot(run.b[0] - run.a[0], run.b[1] - run.a[1]), ux = (run.b[0] - run.a[0]) / len, uz = (run.b[1] - run.a[1]) / len;
+      for (let t = 0; t < len - 0.05;) {
+        const l = 0.8 + look() * 0.5, e = len - (t + l) < 0.35 ? len : t + l;
+        // a kerb block: on the outline, K inward, from under its lowest ground to a hand over the setts
+        const p0x = run.a[0] + ux * t, p0z = run.a[1] + uz * t, p1x = run.a[0] + ux * e, p1z = run.a[1] + uz * e;
+        const q0x = p0x - run.n[0] * K, q0z = p0z - run.n[1] * K, q1x = p1x - run.n[0] * K, q1z = p1z - run.n[1] * K;
+        const gs = [ground(p0x, p0z), ground(p1x, p1z), ground(q0x, q0z), ground(q1x, q1z)];
+        const tone = 1.02 + look() * 0.1;
+        sink.span('stone', Math.min(p0x, p1x, q0x, q1x), Math.min(...gs) - 0.3, Math.min(p0z, p1z, q0z, q1z), Math.max(p0x, p1x, q0x, q1x),
+          Math.max(...gs) + 0.16, Math.max(p0z, p1z, q0z, q1z) - (Math.abs(uz) > 0.5 ? 0.012 : 0), { decor: true, tint: [tone, tone, tone * 0.97] });
+        t = e + 0.012;
+      }
+      // the gutter: a dark channel of narrower stones just inside the kerb, a hair over the setts
+      const gc: [number, number] = [(run.a[0] + run.b[0]) / 2 - run.n[0] * (K + 0.2), (run.a[1] + run.b[1]) / 2 - run.n[1] * (K + 0.2)];
+      drapedRect(sink, 'stone', ctx.ground, { cx: gc[0], cz: gc[1], hw: Math.abs(run.n[0]) > 0.5 ? 0.2 : len / 2, hd: Math.abs(run.n[1]) > 0.5 ? 0.2 : len / 2 },
+        { lift: 0.052, cell: 1, skirt: 0.02, emit: { shade: 0.66, density: (density ?? 0.5) * 1.6 } });
+    }
+  }
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 

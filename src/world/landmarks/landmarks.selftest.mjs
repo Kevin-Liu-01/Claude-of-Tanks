@@ -497,11 +497,13 @@ check('the mole and its light', () => {
     const it = composeLandmarks({ ...ctx([
       { kind: 'obelisk', x: 150, z: -150, yawDeg: 30, ground: 'veto', name: 'a vetoed obelisk' },
       { kind: 'path', x: 150, z: -100, ground: 'veto', name: 'a vetoed path' },
-    ]), veto: (x, z, yaw, hw, hd) => vetoes.push({ x, z, yaw, hw, hd }) });
+    ]), veto: (x, z, yaw, hw, hd, only) => vetoes.push({ x, z, yaw, hw, hd, only }) });
     let step = it.next(); while (!step.done) step = it.next();
     assert.equal(step.value.placed, 2, 'both stand');
     assert.equal(reserved.length, reservedBefore, 'a vetoed piece reserves no disc');
-    assert.equal(vetoes.length, 1, "the obelisk's ground is vetoed, the open path's is not");
+    // (round 3b at Orchard: an open path's ground still leaves out the wall and fence modules on it — barriers only)
+    assert.equal(vetoes.filter((v) => !v.only).length, 1, "the obelisk's ground is vetoed, the open path's is not");
+    assert.deepEqual(vetoes.filter((v) => v.only).map((v) => v.only), ['barriers'], "the open path's ground leaves out its barriers only");
     const [vhw, vhl] = LANDMARK_KINDS.obelisk.footprint(resolveLandmarkParams({ kind: 'obelisk', x: 0, z: 0 }));
     assert.ok(vetoes[0].x === 150 && vetoes[0].z === -150 && Math.abs(vetoes[0].yaw - Math.PI / 6) < 1e-9
       && vetoes[0].hw === vhw && vetoes[0].hd === vhl, 'its whole footprint, turned with it');

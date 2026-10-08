@@ -74,7 +74,8 @@ interface LandmarkComposeContext {
    * (centre, heading, half extents across and along), inside which the props leave out what those passes would set —
    * their draws all taken, so nothing else they place moves for the piece. Absent where nothing places after it.
    */
-  veto?(x: number, z: number, yaw: number, hw: number, hd: number): void;
+  /** `only: 'barriers'`: leave out only the wall and fence modules on that ground (an open paving's own furniture stays). */
+  veto?(x: number, z: number, yaw: number, hw: number, hd: number, only?: 'barriers'): void;
   /** A disc of a paved piece's ground the grass, the litter and the tall grass keep off (map.ts's ground-cover holes). */
   groundHole?(x: number, z: number, r: number): void;
   /**
@@ -355,6 +356,9 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (placement.ground === 'veto') {
       entry.ground = 'veto';
       if (!spec.open) for (const [rx, rz, rw, rl] of solidRects) ctx.veto?.(rx, rz, yaw, rw, rl);
+      // (an open surface keeps what stands on it, but for a wall or fence run across it: round 3b at Orchard, gauntlet
+      // wave 251, "a field wall is stranded across the square")
+      else for (const [rx, rz, rw, rl] of solidRects) ctx.veto?.(rx, rz, yaw, rw, rl, 'barriers');
     } else {
       const long = Math.max(hw, hl), short = Math.min(hw, hl), along = hl >= hw;
       const reserves = Math.max(1, Math.ceil(long / Math.max(short, 1.5)));

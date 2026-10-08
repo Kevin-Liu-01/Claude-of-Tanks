@@ -3721,7 +3721,7 @@ ${snowCap ? `
   // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
   // would stand on a piece's ground is left out here — its draws already taken, and no record, pool slot, body or
   // contact made — so nothing else they place moves for the piece. The pieces' own furniture is exempt.
-  const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
+  const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number; only?: 'barriers' }> = [];
   const landmarkVetoed: Record<string, number> = {};
   let landmarkFurniture = false;
   function addDestructible(
@@ -3739,6 +3739,8 @@ ${snowCap ? `
       // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
       const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = Math.min(r, 0.5);
       for (const v of landmarkVetoes) {
+        // (an open paving's veto leaves out only the wall and fence modules on it)
+        if (v.only === 'barriers' && !meta.wall && !meta.fence) continue;
         const dx = x - v.x, dz = z - v.z;
         if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) {
           landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
@@ -4756,7 +4758,7 @@ ${snowCap ? `
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
-      veto: (x, z, yaw, hw, hd) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd }); },
+      veto: (x, z, yaw, hw, hd, only) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd, ...(only ? { only } : {}) }); },
       groundHole: (x, z, r) => { landmarkGroundHoles.push({ x, z, r }); },
       publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
       // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
