@@ -4624,6 +4624,11 @@ void splatCompute() {
     a = mix(a, aD, fD);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
   }
+  // (2026-10-07, Ironworks round 4: a green strip of turf down every works road — the base layer between a road and the
+  // lots, where no field is drawn) a works' floor is cinder under its turf too, a few weeds' worth of green left in it
+  if (gWorksFloor > 0.5 && fD < 0.998) {
+    a.rgb = mix(a.rgb, worksSlag(n1h, n2, 0.5) * 1.15 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), 0.85 * (1.0 - fD));
+  }
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);

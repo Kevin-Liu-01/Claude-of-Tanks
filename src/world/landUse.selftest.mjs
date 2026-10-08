@@ -238,6 +238,7 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(terrain.includes("mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),"), 'its wear its cinder');
   assert.ok(terrain.includes('if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * gWorksFloor);'), 'its roads and yards trodden cinder');
   assert.ok(terrain.includes('float worksPad = uLandE.w > 1.5 ? (1.0 - smoothstep(0.05, 0.25, mk.g)) : 0.0;'), 'its paved hardstands cinder');
+  assert.ok(terrain.includes('if (gWorksFloor > 0.5 && fD < 0.998) {'), 'its floor\'s turf cinder too (no green strip down its roads)');
   assert.equal(LAND_CROP_GROWTH[19].keep, 0.035, 'a court\'s gravel thinly weeded');
   assert.equal(LAND_CROP_GROWTH[15].sward, false, 'the slag bare');
 }
