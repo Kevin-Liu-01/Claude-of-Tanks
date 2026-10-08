@@ -10,6 +10,7 @@ import { castModernizedTurret } from './nationalDonorCore.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addNationalUkraineProtection, NATIONAL_UKRAINE_GHILLIE, ukrainianSkirtEra } from './nationalUkraineProtection.ts';
 import { NATIONAL_UKRAINE_DESIGNS } from '../nationalUkraineDesign.ts';
 import type { NationalModernizationConfig } from '../nationalModernizationConfig.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -98,9 +99,12 @@ function turretAssembly(P:TankBuilderPort,c:NationalModernizationConfig):void {
     const seeds=c.model===0?[[1.28,.405,.56],[1.14,.405,.99],[.81,.40,1.39]]:
       c.model===1?[[1.25,.425,.50],[1.16,.425,.91],[.86,.41,1.35]]:
       [[1.19,.40,.53],[1.04,.40,.90],[.79,.385,1.25]];
-    for(const [x,y,z]of seeds)housingEra(P,stock,side,[side*x,y,z],
-      [c.model===2?.28:.34,.10,c.model===2?.23:.27]);
-    if(c.model!==2)for(const z of [-.36,-.83])housingEra(P,stock,side,[side*1.5,.39,z],[.31,.09,.25]);
+    for(const [x,y,z]of seeds)for(const dy of [-.082,.082])housingEra(P,stock,side,[side*x,y+dy,z],
+      [c.model===2?.135:.16,.10,c.model===2?.23:.27]);
+    for(const z of [-.38,-.76,-1.03]){
+      const ys=c.model===2?[.31]:[.315,.49];
+      for(const y of ys)housingEra(P,stock,side,[side*1.5,y,z],[.15,.09,.205]);
+    }
     // Upper side rails and the rear frame attach directly to permanent armor.
     const outer=c.model===0?1.61:c.model===1?1.57:1.62;
     if(c.model===2){
@@ -159,16 +163,6 @@ function sich(P:TankBuilderPort,c:NationalModernizationConfig):void {
     P.addEquipment('hullDetail',box(.026,.026,3.82),side*2.19,1.36,-.15);
     for(const z of [-1.85,-.37,1.11])P.addEquipment('hullDetail',box(.15,.022,.033),side*2.12,1.36,z);
   }
-  addVehicleGhillieSuit(P,{
-    id:c.id,seed:846,style:'leafy',density:.86,leafScale:.58,
-    light:0x4c6040,dark:0x2b3a28,netColor:'rgba(38,50,29,0.8)',
-    hull:{side:[-1,1].map(side=>({side,z0:-2.03,z1:1.70,nz:34,ny:6,seed:29+side,
-      topAt:z=>1.35-.025*Math.cos(z*4.1),bottomAt:z=>.93+.045*Math.sin(z*6.3),
-      outAt:(z,t)=>2.206+.028*Math.sin(z*3.4)**2+.025*t}))},
-    turret:{side:[-1,1].map(side=>({side,z0:-1.08,z1:-.20,nz:12,ny:5,seed:43+side,
-      topAt:z=>.70-.017*Math.cos(z*5.2),bottomAt:z=>.37+.025*Math.sin(z*7.7),
-      outAt:(z,t)=>1.645+.026*Math.sin(z*4.5)**2+.015*t}))},
-  });
 }
 
 /** A permanent carrier backs each removable face. Chamfered front/rear
@@ -207,7 +201,7 @@ function skirtPackage(P:TankBuilderPort,c:NationalModernizationConfig,count:numb
         [z+step/2-.10,back,outer,lower,top],
         [z+step/2-.026,back,outer-.023,lower+.075,top-.045],
       ]));
-      eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*(outer+.028),1.09,z],[.075,.47,step-.14]);
+      ukrainianSkirtEra(P,side,z,step,outer);
       P.addEquipment('hullDetail',cylZ(.023,.16,10),side*(outer-.015),1.415,z);
     }
     P.addExternalArmor('hull',sideHousing(side,[
@@ -366,8 +360,8 @@ function nationalRoofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):
 }
 
 function glacisTiles(P:TankBuilderPort,zs:readonly number[],x:number,w:number,d:number):void {
-  for(const side of [-1,1])for(const z of zs)glacisEraCassette(P,
-    `glacis_era_${side<0?'L':'R'}`,side*x,z,[w,.074,d]);
+  for(const side of [-1,1])for(const z of zs)for(const dx of [-w*.255,w*.255])glacisEraCassette(P,
+    `glacis_era_${side<0?'L':'R'}`,side*x+dx,z,[w*.455,.074,d]);
 }
 
 function hullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
@@ -412,4 +406,6 @@ function roofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
 export function buildNationalUkraine(P:TankBuilderPort,c:NationalModernizationConfig):void {
   if(c.model===0)zoria(P,c);else if(c.model===1)hetman(P,c);else sich(P,c);
   hullEquipment(P,c);roofEquipment(P,c);nationalRoofEquipment(P,c);
+  const id=c.model===0?'ua_t80u_modern':c.model===1?'ua_t72b3m_modern':'ua_t72b3_modern';
+  addNationalUkraineProtection(P,id);addVehicleGhillieSuit(P,NATIONAL_UKRAINE_GHILLIE[id]);
 }

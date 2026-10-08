@@ -680,18 +680,21 @@ function buildDragunTurret(P: TankBuilderPort): void {
     }
     buildDragunRoofWeapon(P);
     optic(P, 'turret', -.32, 2.535, .12, .25, .17, .28);
-    // The trunnion boot pitches with the cradle; only the tube recoils.
-    // Object_17's rounded stepped boot: independent 16/10-sided elliptical
-    // sections, measured maximum .652 x .388 x .305 m around the trunnion.
-    const sides = P.q ? 16 : 10;
-    P.addGunExtra(sectionSolid([
-        [-.237, -.0524, -.0106, .262, .170], [-.100, -.0524, -.0106, .326, .1938],
-        [.0685, 0, 0, .166, .1564],
-    ].map(([z, cx, cy, rx, ry]) => ({ z, ring: Array.from({ length: sides }, (_, i) => {
-            const a = 2 * Math.PI * i / sides;
-            return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry] as const;
-        }) }))));
-    P.addGunExtra(cylZ(.160, .075, P.q ? 28 : 16), 0, 0, .052);
+    // The armored rocking mask is rooted inside the raked turret face.
+    // Its broad rear shoulders narrow into a bevelled front face around the
+    // circular barrel gland; the lower return clears the hull through pitch.
+    const mask = sectionSolid([
+        {z:-.36,ring:[[-.305,-.14],[.305,-.14],[.38,-.065],[.38,.175],[.305,.25],[-.305,.25],[-.38,.175],[-.38,-.065]]},
+        {z:.18,ring:[[-.235,-.165],[.235,-.165],[.29,-.11],[.29,.145],[.235,.20],[-.235,.20],[-.29,.145],[-.29,-.11]]},
+    ]);
+    mask.userData.dragunGunRole = 'armored-rocking-mantlet';
+    P.addGunExtra(mask);
+    P.addGunExtra(cylX(.145,.84,P.q?28:16),0,0,0);
+    for (const side of [-1,1])
+        P.add('turret',box(.12,.31,.36),side*.40,.2585,1.50);
+    P.addGunExtra(cylZ(.166,.125,P.q?28:16),0,0,.2025);
+    for (const side of [-1,1]) for (const y of [-.095,.115])
+        P.addGunExtra(cylZ(.016,.014,8),side*.228,y,.188);
     barrel(P, 4.6957, .083, 2.60, { z: 2.58, length: .74, radius: .119 }, .0625);
 }
 export function buildBmp3mDragun125X(P: TankBuilderPort): void {

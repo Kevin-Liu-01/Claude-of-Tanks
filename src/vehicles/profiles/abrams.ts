@@ -1,6 +1,8 @@
+import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
 import {abramsPlanarCheek} from './abramsPlanarCheek.ts';
 import {facetedSlab,symmetricSlab} from './facetedSlab.ts';
+import {pushConvexQuad} from '../factoryGeometry.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sweptTube } from '../accessoryPrimitives.ts';
@@ -372,7 +374,7 @@ function configuredAbramsProfile(
 ) {
   return {
     ...options,
-    build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder), options),
+    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a2')addRearFieldStowage(P); },
   };
 }
 
@@ -394,6 +396,30 @@ const towCable: typeof KIT.towCable = (...args) => KIT.towCable(...args);
 const headlight: typeof KIT.headlight = (...args) => KIT.headlight(...args);
 const xform: typeof KIT.xform = (...args) => KIT.xform(...args);
 const mergeAll: typeof KIT.mergeAll = (...args) => KIT.mergeAll(...args);
+
+const M1_RETURN_COURSE_IDS = new Set([
+  'm1a1', 'm1a1ha', 'ua_m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+]);
+
+// Deck and belly stations need not have the same longitudinal slope. Their
+// narrow side returns therefore have four noncoplanar corners: keep those
+// measured edges, but form the exterior ridge instead of an inward diagonal
+// dent. Only the two side panels change; roof, floor and station end faces
+// remain byte-identical. The same outward rule reflects the physical surface,
+// unlike choosing one default diagonal independently on opposite sides.
+function abramsReturnCourse(...corners: Parameters<typeof KIT.slab>): THREE.BufferGeometry {
+  const geometry = slab(...corners);
+  const [a, b, c, d, e, f, g, h] = corners;
+  const position = geometry.getAttribute('position');
+  for (const [start, points] of [[6, [b, c, g, f]], [18, [d, a, e, h]]] as const) {
+    const triangles: number[] = [];
+    pushConvexQuad(triangles, ...points);
+    for (let i = 0; i < 6; i++) position.setXYZ(start + i,
+      triangles[i * 3], triangles[i * 3 + 1], triangles[i * 3 + 2]);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 // ---------------------------------------------------------------------------
 // Curve helpers
@@ -433,7 +459,8 @@ function loftBand(
     const tf = lineAt(top, zf), tr = lineAt(top, zr);
     const bf = bottomAt(zf), br = bottomAt(zr);
     if (tf - bf < 0.015 && tr - br < 0.015) continue;
-    const bandSlab = P.spec.id === 'm1a3' ? symmetricSlab : slab;
+    const bandSlab = M1_RETURN_COURSE_IDS.has(P.spec.id) ? abramsReturnCourse
+      : P.spec.id === 'm1a3' ? symmetricSlab : slab;
     P.add(bucket, bandSlab(
       [-halfW, bf, zf], [halfW, bf, zf], [halfW, br, zr], [-halfW, br, zr],
       [-(halfW - inset), tf, zf], [halfW - inset, tf, zf],
@@ -483,7 +510,8 @@ function loftTrackClearBand(
           [tx0, tf, zf], [tx1, tf, zf], [tx1, tr, zr], [tx0, tr, zr]]
         : [[x1, of, zf], [x0, of, zf], [x0, or, zr], [x1, or, zr],
           [tx1, tf, zf], [tx0, tf, zf], [tx0, tr, zr], [tx1, tr, zr]];
-      P.add(bucket, slab(...points));
+      P.add(bucket, M1_RETURN_COURSE_IDS.has(P.spec.id)
+        ? abramsReturnCourse(...points) : slab(...points));
     }
   }
 }
@@ -1742,7 +1770,8 @@ function addAbramsShellBody(
   layout: AbramsShellLayout,
 ): void {
   const { tw, inset, zMain, yBotRear } = layout;
-  const bodySlab = t.planarCheekCourses ? symmetricSlab : slab;
+  const bodySlab = t.separateMantlet && M1_RETURN_COURSE_IDS.has(P.spec.id)
+    ? abramsReturnCourse : t.planarCheekCourses ? symmetricSlab : slab;
   // Cheek->roof transition wedge (roofWide across the shoulders). wedgePull
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
@@ -4193,6 +4222,14 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     : null;
   const t = {
     ...TEJAS_TURRET,
+    // Both cheeks are fabricated from the same planar armor courses. The
+    // former source-fit offsets twisted their fronts and chose opposite
+    // diagonals across the roofs; equipment keeps its intentional asymmetry.
+    planarCheekCourses: true,
+    zTipR: TEJAS_TURRET.zTip,
+    twTipR: TEJAS_TURRET.tw,
+    roofCheekInnerRearY: TEJAS_TURRET.roofWide,
+    roofCheekOuterRearY: TEJAS_TURRET.roofWide,
     ...(dufMul ? { rackDufMul: dufMul } : {}),
     // The owner's photographs replace the earlier plan-skewed throat cover.
     // Cheeks bound a real bay; the broad M256 shield is authored in gun space.
@@ -7333,7 +7370,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     [z, w, y0, y1, roofW, broadY = y0, baseW = w]: AxShellStation,
   ): AxShellLocal => {
     const terraceReceipt = axRearTerraces.get(z);
-    return ({
+    const station: AxShellLocal = {
     // The final visual reduction is deliberately sub-voxel at the outer
     // envelope: enough to tighten the broad read, but not enough to move the
     // registered armor out of its measured source cells.
@@ -7368,7 +7405,19 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         shoulderOuterW: shoulderOuterW ?? (baseW * 0.985),
       };
     })() : null,
-  });
+    };
+    // The low rear tip has only 70 mm of raw stock. The independent visual
+    // offsets above formerly put its floor above its roof, crossing two aft
+    // layers. Keep the exterior roof datum and widths, and nest these buried
+    // backing courses below it with finite 5 mm minimum depth. This applies
+    // only to the terminal tail; the forward gun aperture is untouched.
+    if (z < -2.0) {
+      station.roofShoulderY = Math.min(station.roofShoulderY, station.y1 - 0.005);
+      station.shoulderY = Math.min(station.shoulderY, station.roofShoulderY - 0.005);
+      station.kneeY = Math.min(station.kneeY, station.shoulderY - 0.005);
+      station.shellY = Math.min(station.shellY, station.kneeY - 0.005);
+    }
+    return station;
   };
   // Emit one armor layer between adjacent longitudinal stations.  Forward
   // of z=1.549 the oracle's cross-width trace is EMPTY across |x|<0.38:

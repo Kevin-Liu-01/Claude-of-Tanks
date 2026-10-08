@@ -1624,7 +1624,10 @@ function buildMBT70(P: Modern2BuilderPort) {
   };
   P.add('turret', polyMultiLoft(turretPlan, [
     { height: turretFloorHeight, inset: 1.00 },
-    { height: 0.22, inset: rearBiasedInset(0.88, 0.96, 0.99) },
+    // The raked aft floor reaches .23 m: carry the lower belt above it
+    // instead of letting a constant .22 m ring cross through that floor.
+    { height: (point: readonly [number, number]) => Math.max(0.22, turretFloorHeight(point) + 0.025),
+      inset: rearBiasedInset(0.88, 0.96, 0.99) },
     { height: 0.52, inset: rearBiasedInset(0.70, 0.89, 0.95) },
     { height: TH, inset: rearBiasedInset(0.52, 0.84, 0.91) },
   ]));

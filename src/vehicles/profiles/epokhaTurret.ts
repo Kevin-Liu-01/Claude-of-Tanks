@@ -245,7 +245,7 @@ function addKurganetsRoofMasts(P: TankBuilderPort): void {
     localTurret(P, 'turretDetail', box(.022, .0742, .0377), -.292545, 3.66235, -1.22183);
 }
 function addKurganetsGun(P: TankBuilderPort): void {
-    const gunLength = 1.537;
+    const gunLength = 2.45;
     // Source Object_31: .2366 m receiver, raised .2694 m cover and a
     // .1037 m collar around the compact 57 mm tube. Analytic closed stock,
     // with the mantlet pitching independently of the recoiling barrel.
@@ -261,8 +261,14 @@ function addKurganetsGun(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
         localTurret(P, 'turretDetail', box(.07, .30, .23), -.004 + side * .25, 2.85465, -.68);
     }
-    openTube(P, .0395, .08, gunLength, .0285);
-    P.add('gun', cylZ(.052, .25, P.q ? 24 : 12), 0, 0, .30);
+    // Owner-requested larger cannon package: longer exposed tube and a
+    // substantial stepped recoil jacket. The actual bore remains 57 mm;
+    // enlarging the outer steel must never silently change ammunition.
+    openTube(P, .069, .08, gunLength, .0285);
+    P.add('gun', cylZ(.105, .46, P.q ? 28 : 16), 0, 0, .35);
+    P.add('gun', cylZ(.078, .92, P.q ? 28 : 16, .092), 0, 0, 1.02);
+    for (const z of [.18,.55,1.48])
+        P.add('gun', cylZ(z < .6 ? .112 : .083, .045, P.q ? 28 : 16),0,0,z);
     // The source has a small offset coaxial receiver/barrel on the right.
     // It follows gun pitch, independently of the main cannon's recoil.
     P.addGunExtraDark(box(.179, .205, .563), .956, .022, -.619);
