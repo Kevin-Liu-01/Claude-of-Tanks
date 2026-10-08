@@ -513,6 +513,10 @@ interface PropsSettings {
   sandbagLines?: number;
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
+  /** The Redrock lane (2026-10-07): the field works' pillboxes keep their 8 m square off every trunk the vegetation
+   *  planted (a pillbox stood in Redrock's west spring with three palm trunks through its roof). Opt-in: the same overlap
+   *  stands on Alpine, Caldera, Delta, Frontier, Steppe and Verdant, whose shards and pacing move with it. */
+  pillboxClearOfTrees?: boolean;
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
@@ -7450,6 +7454,12 @@ ${snowCap ? `
       && heightField.getNormalAt(x, z).y >= 0.86 && !nearTrench(x, z)
       && ![player, ...enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 45)
       && !placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 6);
+    const trunks = P.pillboxClearOfTrees ? (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      reach: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2 + 6.2,
+    })) : [];
+    const pillboxOnTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
+      && Math.abs(z - t.z) < t.reach);
     let placed = 0;
     for (let attempt = 0; attempt < target * 30 && placed < target; attempt++) {
       const along = 0.22 + wrng() * 0.56;
@@ -7486,13 +7496,14 @@ ${snowCap ? `
         addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, wireYaw, wireScale);
       }
       // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
+      // (on a map with pillboxClearOfTrees its 8 m square keeps off every trunk, as the landform boulders do)
       if (placed % 2 === 0) {
         const first = wrng() < 0.5 ? 1 : -1;
         const reach = modules * 1.35 + 4.4;
         for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
           const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
           // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre
-          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9 || pillboxOnTree(px, pz)
             || !destructibleClearOfRoad('bunker', px, pz, Math.atan2(fx, fz), 1)) continue;
           addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
           if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
