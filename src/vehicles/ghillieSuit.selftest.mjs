@@ -243,14 +243,112 @@ for (const id of ids) {
   tank.dispose();
 }
 
-// the suits with their own receipts (the A4) or their own field configs (the Ukrainian T-72 rebuilds) are held to the
-// same contact rule
-for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern']) {
+// the suits with their own receipts (the A4) or their own field configs (the Ukrainian national rebuilds, push 3:
+// nationalUkraineProtection.ts) are held to the same contact rule
+for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const floating = suitContact(tank, id);
   assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
   tank.dispose();
+}
+
+// 2026-10-08 (round 5; the lane lead on push 3b's field roof cage: "the turret-roof net must not pass through the cage
+// bars or legs"; "drape the net over the cage top and let it fall over the wing edges, the way Ukrainian crews hang nets
+// on cope cages. Keep the central hatch, sight and weapon corridor open"): every suited hull with main's roof cage
+// carries a net on each wing's lattice that hangs over the wing's outer tube, nothing of it reaches in over the corridor
+// between the wings, and no suit triangle (net or garnish) passes into a tube or leg of the cage.
+{
+  // the cage's tubes, wing by wing, by fieldRoofCage.ts's rule (kept apart from the builder's own copy)
+  const cageOf = (wing) => {
+    const [c0, c1, c2] = wing.corners;
+    const s = c0[0] < 0 ? -1 : 1, inner = Math.abs(c0[0]), outer = Math.abs(c1[0]), y = c0[1];
+    const z0 = Math.min(c0[2], c2[2]), z1 = Math.max(c0[2], c2[2]);
+    // a leg is a flat-ended tube up to the lattice's tube line (the frame and rows carry on above it)
+    const tubes = wing.feet.map(([x, base, z]) => ({ a: [x, base + 0.01, z], b: [x, y - 0.021, z], r: 0.021 }));
+    for (let i = 0; i < 4; i++) tubes.push({ a: wing.corners[i], b: wing.corners[(i + 1) % 4], r: 0.019 });
+    const rows = Math.ceil((z1 - z0) / 0.145);
+    for (let i = 1; i < rows; i++) { const z = z0 + ((z1 - z0) * i) / rows; tubes.push({ a: [s * inner, y, z], b: [s * outer, y, z], r: 0.008 }); }
+    for (let i = 1; i < 4; i++) { const x = s * (inner + ((outer - inner) * i) / 4); tubes.push({ a: [x, y, z0], b: [x, y, z1], r: 0.008 }); }
+    const braceX = Math.max(...wing.feet.map((f) => Math.abs(f[0])));
+    for (const z of new Set(wing.feet.map((f) => f[2]))) tubes.push({ a: [s * braceX, y - 0.12, z], b: [s * outer, y, z], r: 0.012 });
+    return { s, inner, outer, y, z0, z1, tubes: tubes.map((t) => ({ a: new THREE.Vector3(...t.a), b: new THREE.Vector3(...t.b), r: t.r })) };
+  };
+  // closest distance between segments p1-q1 and p2-q2 (Ericson, Real-Time Collision Detection 5.1.9)
+  const segmentGap = (p1, q1, p2, q2) => {
+    const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2);
+    const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+    let s = 0, t = 0;
+    if (a <= 1e-12 && e <= 1e-12) return r.length();
+    if (a <= 1e-12) t = THREE.MathUtils.clamp(f / e, 0, 1);
+    else {
+      const c = d1.dot(r);
+      if (e <= 1e-12) s = THREE.MathUtils.clamp(-c / a, 0, 1);
+      else {
+        const b = d1.dot(d2), denom = a * e - b * b;
+        s = denom > 1e-12 ? THREE.MathUtils.clamp((b * f - c * e) / denom, 0, 1) : 0;
+        t = (b * s + f) / e;
+        if (t < 0) { t = 0; s = THREE.MathUtils.clamp(-c / a, 0, 1); } else if (t > 1) { t = 1; s = THREE.MathUtils.clamp((b - c) / a, 0, 1); }
+      }
+    }
+    return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
+  };
+  for (const id of ['ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_modern', 'ua_t72b3m_modern']) {
+    const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+    tank.root.updateMatrixWorld(true);
+    const turret = tank.root.getObjectByName('rig_turret');
+    const record = turret.userData.fieldRoofCage;
+    assert.ok(Array.isArray(record) && record.length === 2, `${id} carries push 3b's two-wing roof cage`);
+    const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+    const local = (name) => {
+      const mesh = tank.root.getObjectByName(name);
+      assert.ok(mesh?.isMesh, `${name} is built`);
+      const m = toTurret.clone().multiply(mesh.matrixWorld), pos = mesh.geometry.attributes.position, index = mesh.geometry.index;
+      const n = index ? index.count : pos.count, out = [];
+      for (let k = 0; k < n; k++) out.push(new THREE.Vector3().fromBufferAttribute(pos, index ? index.getX(k) : k).applyMatrix4(m));
+      return out;
+    };
+    const net = local(`${id}_ghillie_turret_net`), leaves = local(`${id}_ghillie_turret_leaves`);
+    // a wing the roof gun traverses low over is left bare for its field of fire (nationalRoof.selftest holds the sweep
+    // clear of the suit); every other wing carries its net
+    let netted = 0;
+    for (const wing of record.map(cageOf)) {
+      const over = net.filter((v) => wing.s * v.x > wing.inner && wing.s * v.x < wing.outer && v.z > wing.z0 && v.z < wing.z1
+        && v.y > wing.y + 0.004 && v.y < wing.y + 0.1).length;
+      if (over >= 40) {
+        netted++;
+        const hanging = net.filter((v) => wing.s * v.x > wing.outer + 0.01 && wing.s * v.x < wing.outer + 0.12
+          && v.z > wing.z0 && v.z < wing.z1 && v.y < wing.y - 0.08 && v.y > wing.y - 0.45).length;
+        assert.ok(hanging >= 10, `${id} hangs the wing's net over its outer tube (${hanging} vertices below it)`);
+      }
+      // this wing's half of the corridor: from the centre line out to 3 cm inside its inner tube
+      const inward = net.filter((v) => wing.s * v.x > -0.02 && wing.s * v.x < wing.inner - 0.03 && v.y > wing.y - 0.05
+        && v.z > wing.z0 - 0.05 && v.z < wing.z1 + 0.05).length;
+      assert.equal(inward, 0, `${id} keeps the corridor inboard of its ${wing.s > 0 ? 'left' : 'right'} wing open`);
+      const lo = new THREE.Vector3(Math.min(wing.s * wing.inner, wing.s * wing.outer) - 0.1, -Infinity, wing.z0 - 0.1);
+      const hi = new THREE.Vector3(Math.max(wing.s * wing.inner, wing.s * wing.outer) + 0.1, wing.y + 0.1, wing.z1 + 0.1);
+      const crossings = [];
+      for (const [layer, verts] of [['net', net], ['garnish', leaves]]) {
+        for (let k = 0; k + 2 < verts.length; k += 3) {
+          const t = [verts[k], verts[k + 1], verts[k + 2]];
+          if (t.every((v) => v.x < lo.x) || t.every((v) => v.x > hi.x) || t.every((v) => v.y > hi.y)
+            || t.every((v) => v.z < lo.z) || t.every((v) => v.z > hi.z)) continue;
+          for (const tube of wing.tubes) {
+            const edge = [[0, 1], [1, 2], [2, 0]].some(([i, j]) => segmentGap(t[i], t[j], tube.a, tube.b) < tube.r - 0.001);
+            const dir = tube.b.clone().sub(tube.a), len = dir.length();
+            const hit = new THREE.Ray(tube.a, dir.normalize()).intersectTriangle(t[0], t[1], t[2], false, new THREE.Vector3());
+            if (edge || (hit && hit.distanceTo(tube.a) <= len)) {
+              crossings.push(`${layer} at ${t[0].toArray().map((v) => v.toFixed(3)).join(',')} through the tube ${tube.a.toArray().map((v) => v.toFixed(2)).join(',')} -> ${tube.b.toArray().map((v) => v.toFixed(2)).join(',')}`);
+              break;
+            }
+          }
+        }
+      }
+      assert.deepEqual(crossings.slice(0, 8), [], `${id}: ${crossings.length} suit triangles pass into the cage`);
+    }
+    assert.ok(netted >= 1, `${id} drapes a net over its roof cage`);
+    tank.dispose();
+  }
 }
 
 // 2026-10-08 (round 5, the lane lead's integration rehearsal): the suit is laid after assembly through the port's
