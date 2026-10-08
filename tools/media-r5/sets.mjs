@@ -42,7 +42,7 @@ const W = (n, ...ids) => Array.from({ length: n }, (_, i) => ids[i % ids.length]
 const NIGHT_FLARE = (at, h = 100) => flare(at, 0, { heightM: h, burnS: 40, driftMps: 1.2 }); // FX lane night-firefight recipe
 
 export const SETS = [
-  { id: 'steinburg-night-street', map: 'urban', time: 'night', seed: 401, anchor: [36, -70], heading: 0,
+  { id: 'steinburg-night-street', map: 'urban', time: 'night', seed: 401, anchor: [20, -35], heading: 180, // 2.0 Steinburg: was [36, -70] at 0°, its start inside a block
     formation: [[0, 0], [-1.5, -18], [1.5, -36]], lineup: [CAST.leo, CAST.kf51, CAST.leo], camo: 'factory',
     enemies: { along: 120, lat: 0, count: 2, formation: 'column', spread: 0.6, lineup: [CAST.t90m, CAST.t72b3m], states: ['burning', 'intact'] },
     still: { fxTime: 2480, effects: [NIGHT_FLARE([40, 10]), burn('foe0', 0), smoke('foe0', 0), embers('foe0', 0), fire('hero', 2370), fire('foe1', 1300), mg('ally1', 2300, 9)],
@@ -143,7 +143,7 @@ export const SETS = [
       { id: 't15-strand-follow', durMs: 3000, speed: 9, effects: [fire('hero', 1700)], cam: RIG.follow({ side: [13, 11], along: [2, 0], lift: 1.2, fov: 32, look: [0, 0, 1.6] }) },
       { id: 't43-strand-drone', durMs: 3500, speed: 9, effects: [], cam: RIG.drone({ side: -10, along: [-14, -6], lift: [15, 13], fov: 46, look: [3, 16, 0] }) },
     ] },
-  { id: 'nordhavn-dusk-fjord', map: 'fjord', time: 'dusk', seed: 412, anchor: [205, -60], heading: 10, formation: 'column',
+  { id: 'nordhavn-dusk-fjord', map: 'fjord', time: 'dusk', seed: 412, anchor: [208.2, -52.5], heading: 186.9, formation: 'column', // 2.0: was [205, -60] at 10°, in a hedgehog line
     lineup: [CAST.leo, CAST.cv90, CAST.leo], camo: 'factory', count: 3,
     still: { fxTime: 800, effects: [dust('hero', 400, 8, 0.8)], cameras: [C.worm, { name: 'sea-side', side: -20, along: 10, lift: 2, fov: 38, lookHero: [0, -12, 2] }] },
     films: [
@@ -161,7 +161,7 @@ export const SETS = [
       { id: 't44-yard-follow', durMs: 3000, speed: 5, effects: [flare(H(0, 30), 0, { heightM: 70, burnS: 40, intensity: 1.6, driftMps: 0.6 }), fireField(H(-9, 9), 0, { radiusM: 3 }), embers(H(-9, 9), 0), fireField(H(-8, 22), 0, { radiusM: 3 })],
         cam: RIG.follow({ side: [12, 11], along: [3, 1], lift: 1.4, fov: 34, look: [0, 1, 1.6] }) },
     ] },
-  { id: 'frosthollow-night-village', map: 'winter', time: 'night', seed: 414, anchor: [-84, -100], heading: 8,
+  { id: 'frosthollow-night-village', map: 'winter', time: 'night', seed: 414, anchor: [-80, -100], heading: 0, // 2.0: was [-84, -100] at 8°, an ally in a sauna hut
     formation: [[0, 0], [-2, -18], [2, -36]], lineup: [CAST.leo, CAST.kf51, CAST.leo], camo: 'factory',
     enemies: { along: 120, lat: -4, count: 1, lineup: [CAST.t90m], states: ['burning'] },
     still: { fxTime: 2480, effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), embers('foe0', 0), fire('hero', 2440), dust('hero', 2200, 10, 1)], cameras: [C.rear, C.hero34] },
@@ -194,7 +194,7 @@ export const SETS = [
     films: [
       { id: 't37-mars-drone', durMs: 3500, speed: 8, effects: [], cam: RIG.drone({ side: 8, along: [-26, -12], lift: [22, 18], fov: 46, look: [0, 34, 0] }) },
     ] },
-  { id: 'steinburg-day-crossroads', map: 'urban', time: 'day', seed: 422, anchor: [36, -20], heading: 90, formation: 'pair',
+  { id: 'steinburg-day-crossroads', map: 'urban', time: 'day', seed: 422, anchor: [21.5, -12], heading: 183.7, formation: 'pair', // 2.0: was [36, -20] at 90°
     lineup: [CAST.sepv3, CAST.leo], camo: 'factory',
     enemies: { along: 70, lat: 4, count: 1, lineup: [CAST.t90m], states: ['wrecked-burnt'] },
     still: { fxTime: 2480, effects: [burn('foe0', 0), fire('hero', 2440)], cameras: [{ name: 'corner-high', side: -14, along: 16, lift: 7, fov: 40 }, C.worm] },
@@ -225,7 +225,7 @@ export const SETS = [
         film: { fps: 30, shutterDeg: 180, samples: 12, maxSamples: 64, speed: [{ tMs: 0, speed: 1 }, { tMs: 340, speed: 1 }, { tMs: 420, speed: 0.22, ease: 'smooth' }, { tMs: 2400, speed: 0.22 }] },
         cam: [{ tMs: 0, side: -2.2, along: -9, lift: 3.4, fov: 22, lookHero: [3, 72, 1.6] }, { tMs: 2400, side: -2.0, along: -7.5, lift: 3.3, fov: 20, lookHero: [3, 72, 2.4] }] },
     ] },
-  { id: 'verdant-day-assault', map: 'verdant', time: 'day', seed: 419, anchor: [-80, 20], heading: 83, formation: 'wedge',
+  { id: 'verdant-day-assault', map: 'verdant', time: 'day', seed: 419, anchor: [-80.1, 59.8], heading: 263.8, formation: 'wedge', // 2.0: was [-80, 20] at 83°, an ally in a wood
     lineup: [CAST.t90m, CAST.t14, CAST.t90m, CAST.t14, CAST.kurganets], camo: 'factory',
     enemies: { along: 82, lat: 4, count: 3, formation: 'line', spread: 0.7, lineup: ['leo2a6_x', 'm1a2_x', 'leo2a5_x'], states: ['burning', 'wrecked-burnt', 'intact'] },
     still: { fxTime: 2480, effects: [burn('foe0', 0), burn('foe1', 0), smoke('foe1', 0), huge([-6, 52], 900), fire('hero', 2440), fire('ally1', 1900), fire('foe2', 1500), dust('hero', 2100, 12, 1), boom([-20, 40], 1800, 'large'), barrage([-10, 20], 1200, 5, 18)],
