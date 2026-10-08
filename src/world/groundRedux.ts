@@ -84,6 +84,12 @@ export interface GroundReduxProfile {
   /** Terrain v2: the wind's share of the map's authored sand ripples (splat.rippleAmp): 1 where wind shapes the sand,
    * 0 where nothing blows (an airless regolith keeps its impact texture, no ripples). */
   windRipple: number;
+  /** Ground lane (2026-10-08, the gauntlet's wave 260 — the railyard's drays, Saltmere's handcart, Hostomel: "evenly
+   * spaced identical dry sprigs", "bright-yellow grass clumps dotted evenly"): last season's straw stands in the sward's
+   * dry patches, 5–15 m across (strawPatchWeight, the height field's `_strawPatchAt`), instead of one tuft in six
+   * everywhere; a pasture's cured blades the same. 1 = on (every vegetated
+   * map), 0 = the old even scatter (Verdant: the owner's light touch keeps its pixels; a map with no row). */
+  strawPatches?: number;
   /** Ground lane (2026-10-03): a volcanic basin's zoning (0 = off, 1 = full): pumice and ash on the level ground,
    * black and red cinder streaked down the fall line on the cones' flanks, talus aprons at their feet — keyed to the
    * slopes and folds of the landforms, not to a wind (the material's uReduxFold.w). */
@@ -172,6 +178,7 @@ const TEMPERATE: Omit<GroundReduxProfile, 'grass'> = {
   foldMoist: 0.7, foldAO: 0.5, foldCrest: 0.5, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0, swashLines: 0,
   lip: 0.8, verge: 0.8, rim: 0.7, rimTint: LICHEN, midAlbedo: 1.0, driftEdge: 0,
   exposure: 0.9, climate: 'vegetated', bedIrregularity: 1, patchwork: 1, windRipple: 1,
+  strawPatches: 1, // ground lane (2026-10-08): the straw in the sward's dry patches (Verdant opts out)
 };
 // the arid maps' worn-sand patches take a gentler transition (the owner's history with black contours on sand): the
 // hard-edge share on Sirocco's chase view went 8 → 22 % at 0.45 with no grass in the frame; the lip stays low there
@@ -199,7 +206,8 @@ const STILL_WATER: Omit<GroundReduxProfile, 'grass'> = {
 
 /** Every battlefield's row (an unknown id runs TEMPERATE with no sward). */
 const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
-  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0) },
+  // (2026-10-08: the straw patches off — the owner's light touch on Amberford keeps its tufts' and blades' old scatter)
+  verdant: { ...TEMPERATE, scree: 0.25, grass: meadow(1.0), strawPatches: 0 },
   desert: { ...ARID, grass: null },
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
@@ -244,7 +252,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   cliffbridge: { ...TEMPERATE, scree: .3, grass: meadow(1.0) },
 });
 
-const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass: null });
+const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass: null, strawPatches: 0 });
 
 export function groundReduxProfileIds(): string[] {
   return Object.keys(PROFILES);
@@ -253,6 +261,36 @@ export function groundReduxProfileIds(): string[] {
 /** The map's row, or the temperate defaults with no sward. */
 export function resolveGroundReduxProfile(mapId: string | null | undefined): GroundReduxProfile {
   return PROFILES[mapId ?? ''] ?? DEFAULT_PROFILE;
+}
+
+/**
+ * Ground lane (2026-10-08, the gauntlet's wave 260): the weight (0..1) of the sward's dry patch at (x, z) — patches of
+ * last season's straw 5–15 m across with ragged edges: an ~11 m and a ~4.3 m value noise, each on its own turned grid
+ * (an integer position hash: the client, the host and the receipts read the same field), summed and cut at 0.58–0.70 —
+ * a fifth of the ground at their hearts. (Not the terrain's own straw field, mA: its CPU twin reads the noise at its
+ * finest level, where half its power lies under 3 m, and a cut of it is speckle, not patches.) The tiers that grow on
+ * the ground cure their straw there (vegetation.ts makeTuft, tallGrass.ts admit) on a map whose profile has
+ * `strawPatches`.
+ */
+export function strawPatchWeight(x: number, z: number): number {
+  const v = strawValueNoise((0.6 * x - 0.8 * z) / 11, (0.8 * x + 0.6 * z) / 11, 0x2f17) * 0.6
+    + strawValueNoise((0.28 * x + 0.96 * z) / 4.3, (-0.96 * x + 0.28 * z) / 4.3, 0x6c3b) * 0.4;
+  const t = Math.min(1, Math.max(0, (v - 0.58) / 0.12));
+  return t * t * (3 - 2 * t);
+}
+function strawValueNoise(fx: number, fz: number, salt: number): number {
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => {
+    let k = Math.imul(a | 0, 0x2f6a1b3d) ^ Math.imul(b | 0, 0x5bd1e995) ^ salt;
+    k = Math.imul(k ^ (k >>> 15), 0x85ebca6b);
+    k = Math.imul(k ^ (k >>> 13), 0xc2b2ae35);
+    return ((k ^ (k >>> 16)) >>> 0) / 4294967295;
+  };
+  const a0 = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const a1 = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a0 + (a1 - a0) * sz;
 }
 
 /** Terrain-material uniform packing (one vec4 each, no sampler): the receipt and the material share this shape. */
