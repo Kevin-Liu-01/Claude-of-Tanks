@@ -53,6 +53,7 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   mars: { dirDeg: 187, speed: 4 }, // legacy
   moon: { dirDeg: 113, speed: 4 }, // legacy
   cliffbridge: { dirDeg: 37, speed: 3.6 }, // ground
+  goreme: { dirDeg: 22, speed: 3.6 }, // ground (Chimney Valley, the map-revival lane: the Cappadocian sward's grass wind)
 });
 
 export interface SceneWind {
