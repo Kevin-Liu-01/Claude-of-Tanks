@@ -11,7 +11,6 @@ import {
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
-import type { AerialView } from './aerialCombat.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
@@ -20,6 +19,17 @@ import {
   assaultWaveHealthScale,
   MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type RulesetPhysics,
 } from './matchRuleset.ts';
+
+/** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
+ * gunship in flight. Declared here, not in aerialCombat.ts, so the mode rules name it without importing the flight
+ * model, whose launch seats read the vehicle auxiliary inventory and weapons (missionAttachment.ts): the rooms Worker
+ * reaches these rules through matchRuleset's types and keeps src/vehicles out of its program (roomWorkerProgram.selftest).
+ * aerialCombat.ts re-exports it for every other reader. */
+export interface AerialView {
+  kind: 'drone' | 'gunship'; active: boolean; launching: boolean;
+  x: number; y: number; z: number; yaw: number; pitch: number;
+  batteryS: number; cooldownS: number;
+}
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
