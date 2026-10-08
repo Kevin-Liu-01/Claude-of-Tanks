@@ -9,9 +9,9 @@ import assert from 'node:assert/strict';
 import { nearestColliderHit, setCompoundShape, setObbShape } from '../world/collision.ts';
 import { COLLAPSE_SETTLE_TICKS, collapseStoreyTicks, createStructureDamage } from './structureDamage.ts';
 
-/** The house's storeys are 3.2 m: each takes sqrt(2·3.2/9.81) s to fall, 48 ticks. */
+/** The house's storeys are 3.2 m: each takes sqrt(2·3.2/9.81) s to fall, rounded up to 49 ticks. */
 const COLLAPSE_STOREY_TICKS = collapseStoreyTicks(3.2);
-assert.equal(COLLAPSE_STOREY_TICKS, 48, 'a 3.2 m storey falls in 48 ticks');
+assert.equal(COLLAPSE_STOREY_TICKS, 49, 'a 3.2 m storey falls in 49 ticks (0.808 s rounded up)');
 assert.equal(collapseStoreyTicks(0.3), 18, 'never faster than 18');
 
 /** A three-storey house at the origin, 8 m across (x) and 10 m along (z): walls to 9.6 m in one filled band (three
@@ -89,7 +89,7 @@ function bringDown(sections, ticks = 200, beforeStep = null) {
   // the swap and the 'collapsed' stage a settle-interval after the ground storey
   const collapsed = stages.filter((e) => e.stage === 'collapsed');
   assert.equal(collapsed.length, 1, 'one collapse');
-  assert.equal(collapsed[0].tick, firstTick(0) + COLLAPSE_SETTLE_TICKS, 'collapsed once the ground storey has settled');
+  assert.equal(collapsed[0].tick, firstTick(0) + COLLAPSE_STOREY_TICKS + COLLAPSE_SETTLE_TICKS, 'collapsed once the ground storey has landed and settled');
   assert.equal(run.swapAt, collapsed[0].tick, 'the collision swaps with it, not before');
   assert.ok(stages.findIndex((e) => e.stage === 'breached') < stages.findIndex((e) => e.stage === 'collapsed'), 'stages in order');
   // shells meet what still stands: the top storey stops a high shell until it drops (step 22); the middle one a shell
@@ -120,5 +120,5 @@ function bringDown(sections, ticks = 200, beforeStep = null) {
 }
 
 console.log(`collapseCascade: with sections on a house comes down top first (the roof, then each storey ${COLLAPSE_STOREY_TICKS} ticks apart, each `
-  + `with one storeyDown), its swap and 'collapsed' ${COLLAPSE_SETTLE_TICKS} ticks after the ground storey; shells meet what still stands; `
+  + `with one storeyDown), its swap and 'collapsed' once the ground storey has landed (${COLLAPSE_STOREY_TICKS} + ${COLLAPSE_SETTLE_TICKS} ticks); shells meet what still stands; `
   + 'a ramming hull drives through while it falls; sections off it is P1\'s single event; a restore mid-fall ends it once PASS');
