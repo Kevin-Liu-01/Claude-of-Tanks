@@ -100,6 +100,32 @@ for (const [stage, run] of Object.entries(runs)) {
 assert.ok(results.damaged.writers.pieces.count > 0);
 assert.ok(results.damaged.writers.pieces.list.some((p) => p[0] === 'glass'), 'the glass breaks out');
 assert.deepEqual(results.damaged.result.hides, [{ section: null, partClass: 'glass' }]);
+// damaged leaves two spalled patches on the ground storey's widest faces (front, back: 10 m), each a shallow cut that
+// spares what stands proud of the wall, the core's units and a backing in it, the render's lip round it, clear of windows
+{
+  const spalls = results.damaged.result.cuts;
+  assert.equal(spalls.length, 2, 'two spalled patches');
+  for (const cut of spalls) {
+    assert.equal(cut.outsideM, 0.01);
+    assert.ok(cut.radiusM >= 0.3 && cut.radiusM <= 0.5 && cut.depthM > 0.03 && cut.depthM < 0.1, 'a shallow disc');
+    assert.ok(Math.abs(Math.abs(cut.z) - 4) < 1e-9 && cut.nz === Math.sign(cut.z), 'on the front or back face, facing out');
+    assert.ok(cut.y - cut.radiusM > 0.4 && cut.y + cut.radiusM < 3, 'within the ground storey');
+    const windows = anatomy.storeys[0].faces.find((f) => f.out[2] === cut.nz).openings;
+    for (const o of windows) {
+      const u = cut.nz > 0 ? cut.x : -cut.x;
+      assert.ok(Math.abs(u - o.u) > o.w / 2 + cut.radiusM || cut.y + cut.radiusM < o.y0 || cut.y - cut.radiusM > o.y0 + o.h, 'clear of the windows');
+    }
+  }
+  const runs = results.damaged.writers.mesh.runs;
+  assert.deepEqual(runs.map((r) => `${r.bucket}:${r.role}`), ['stone:rim', 'regionalPlaster:rim', 'stone:rim', 'regionalPlaster:rim'],
+    'the core\'s units and the render\'s lip, per patch');
+  for (const [run, cut] of [[runs[0], spalls[0]], [runs[2], spalls[1]]]) {
+    for (const v of run.v) {
+      assert.ok(Math.hypot(v[0] - cut.x, v[1] - cut.y) < cut.radiusM * 1.6, 'the units fill the patch');
+      assert.ok((v[2] - cut.z) * cut.nz <= 0.001, 'behind the face plane');
+    }
+  }
+}
 // breach: the rim's units cover the band the cut's blocky edge runs in (0.75 r – 1.25 r) on the front wall, inside the
 // wall's thickness, the render lip just past it; the room is dark; one cut
 const breachRuns = results.breach.writers.mesh.runs;

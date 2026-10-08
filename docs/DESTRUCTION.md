@@ -652,7 +652,10 @@ type gains `fracture` slots, defaulted from its `mat` (wood â†’ `plank`, straw â
 
 `src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): the default describe reads a
 two-storey house from its parts (storeys, faces, layers, openings by face, roof kind and covering, floors, rubble);
-every stage builder runs twice on the same anatomy and seeds and writes identical bytes within its cap; the rim stands
+every stage builder runs twice on the same anatomy and seeds and writes identical bytes within its cap; `damaged`
+spalls two patches on the ground storey's widest faces (a shallow cut with `outsideM` 0.01, the core's units and a
+backing in it, the render's lip round it, clear of the windows), so a damaged building keeps a mark after its glass
+and chips are gone; the rim stands
 round its hole inside the wall's thickness with the dark room behind it; the pile sits on the sim's heap
 (`bodyMoundHeightAt` = `rubbleMoundHeightAt`); the chain keeps a kit's anatomy with its own builders; `aDamage` tags a
 merge; and Verdant's real build describes every structure, finds its spans (plain and batched) where it stands, tags
