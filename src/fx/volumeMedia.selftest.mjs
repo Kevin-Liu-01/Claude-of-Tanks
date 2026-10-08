@@ -423,6 +423,11 @@ function captureContext(seed) {
     assert.ok(m.r1 > m.b1 * 1.25, 'brick-tinted dust');
     assert.ok(0.2126 * m.r1 + 0.7152 * m.g1 + 0.0722 * m.b1 <= 0.341, 'never cream');
   }
+  // after the P2 cascade (sections on) only the settling dust: a low burst round the base and a little off the pile
+  const cascade = run('collapsed', { sections: true });
+  assert.ok(cascade.media.length > 0 && cascade.media.length < collapsed.media.length / 3 && cascade.chunk.length === 0,
+    `the remains settle in their dust (${cascade.media.length} puffs)`);
+  assert.ok(cascade.media.every((m) => m.birthOffset < 0.6 && m.y <= base.baseY + 1), 'at once, low');
   // a seamed building's pieces are the stages' own (in its buckets): the fx throws none of its own then
   const seamed = captureContext(11);
   structureStageFx(seamed.ctx, { ...base, stage: 'collapsed' }, null, true);

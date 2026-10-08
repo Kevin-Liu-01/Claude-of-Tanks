@@ -269,6 +269,9 @@ export interface StageRunOptions {
   /** false: the builder lays no static runs (the mesh writer's begin() refuses them), only throws its pieces — a wall
    *  panel falling with its storey, whose own fall lays what is left standing. */
   meshes?: boolean;
+  /** false: the builder throws no pieces (the pieces writer's capacity is 0), only lays its runs — a collapse after the
+   *  P2 cascade, whose storeys threw theirs as they dropped. */
+  pieces?: boolean;
 }
 
 export interface StructureDebrisOptions {
@@ -395,6 +398,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageTag = 0;
   let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
   let stageMeshes = true;
+  let stagePiecesOn = true;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
@@ -449,7 +453,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   const pieceWriter: DamagePieceWriter = {
     push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx, vy, vz): boolean {
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls
-      if (stageSettled || stagePieces >= pieceCap) return false;
+      if (stageSettled || !stagePiecesOn || stagePieces >= pieceCap) return false;
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
       const map = mat && 'map' in mat ? (mat.map ?? null) : null;
       const pool = poolFor(map, shape, variant);
@@ -480,7 +484,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       return true;
     },
     get count() { return stagePieces; },
-    get capacity() { return pieceCap; },
+    get capacity() { return stagePiecesOn ? pieceCap : 0; },
   };
   const writers: DamageWriters = { mesh: meshWriter, pieces: pieceWriter };
 
@@ -494,6 +498,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       stageTag = options.tag && options.tag > 0 ? options.tag : 0;
       stageDepth = options.depthFor ?? null;
       stageMeshes = options.meshes !== false;
+      stagePiecesOn = options.pieces !== false;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;

@@ -165,6 +165,18 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(crumbled >= 60, `the walls' pieces leave the front (${crumbled}, the kit's own ${kitOnly})`);
   const phoneCrumble = piecesWith(0.15) - kitOnly;
   assert.ok(phoneCrumble > 0 && phoneCrumble <= crumbled * 0.25, `the phone throws a few (${phoneCrumble} of ${crumbled})`);
+  // the core (2026-10-08): after the P2 cascade ('collapsed' with sections on) the storeys threw their own pieces: the
+  // kit lays its pile at once and throws none, nothing crumbles, and what stands folds within a quarter second
+  {
+    const d = createStructureDebris({ now: () => now, groundY: () => 2 });
+    const m = createStructureMask(64);
+    const st = createStructureStages({ mask: m, debris: d, now: () => now, materialFor: (bucket) => (bucket === 'stone' ? worldStone : null) });
+    st.stage({ ...base, stage: 'collapsed', previous: 'breached', sections: true, x: 40, y: 4, z: -30, dirX: 1, dirZ: 0 }, fresh());
+    assert.equal(d.stats().pieces, 0, 'no pieces thrown again from the full height');
+    assert.ok(d.stats().meshes > 0 && d.group.children.some((q) => q.isMesh && q.visible), 'the pile and stubs laid at once');
+    assert.ok(Math.abs((now - m.texture.image.data[7 * T]) - (COLLAPSE_S - 0.25)) < 1e-4, 'what stands folds within 0.25 s');
+    st.reset();
+  }
   // facades (2026-10-08): the pile and the stubs are seated per vertex on the undeformed ground (a slope's uphill side
   // no longer buries them); a standing stage's runs are not
   {
@@ -439,6 +451,9 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     const wreck = newRuns(() => stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 7,
       z: placement.z, y0: placement.y + 6, y1: placement.y + 8.4 }, seamC)).find((m) => m.name === 'fx-structure-remnant-regionalTrim');
     assert.ok(wreck && wreck.visible, 'the roof\'s wreckage laid');
+    // a building whose roof has its own bucket keeps its walls' tops when the roof goes (no hollow box): the roof-face
+    // pass is for a roof sharing the walls' bucket
+    assert.deepEqual(Array.from(sWall.mesh.geometry.getAttribute('position').array), Array.from(wallBefore), 'the walls untouched by the roof\'s fall');
     const stubRuns = [];
     for (const n of ['front', 'right', 'back']) stubRuns.push(...newRuns(() => stages.breach(fall(1, n), seamC)));
     assert.ok(stubRuns.filter((m) => m.name === 'fx-structure-remnant-regionalPlaster').length === 3, 'each panel before the last lays its stub');
@@ -469,6 +484,52 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.equal(data[slot + 7], 0, 'sections on: the section holes are the breach');
   stages.reset();
   mask.reset();
+}
+
+// ---- a roof drawn in another bucket (facades 2026-10-08: a sheet hall's roof in structureMetal is 'wall' by bucket):
+// the roof's hide takes its upward faces over the eaves; the walls and a vertical gable stay
+{
+  // a sheet hall: thin walls (their tops are strips), a sheet roof over the eaves and a vertical gable end, one bucket
+  const walls = [part('structureMetal', 10, 6, 0.2, 0, 0, 3.9), part('structureMetal', 10, 6, 0.2, 0, 0, -3.9),
+    part('structureMetal', 0.2, 6, 8, 4.9, 0, 0), part('structureMetal', 0.2, 6, 8, -4.9, 0, 0)];
+  const sheet = part('structureMetal', 10.6, 0.05, 8.6, 0, 6.0, 0);
+  const gable = part('structureMetal', 0.05, 1.2, 8, -5, 6.0, 0);
+  const hall = merged('structureMetal', [...walls, sheet, gable]);
+  const hallSpans = hall.ranges.map(([first, count]) => ({ mesh: hall.mesh, geometryId: null, instanceId: null,
+    position: hall.mesh.geometry.getAttribute('position'), bucket: 'structureMetal', partClass: 'wall', first, count }));
+  const hallAnatomy = describeDefault({ structureIdx: 11, mapId: 'verdant', builder: 'hall', style: null,
+    parts: { structureMetal: [...walls, sheet, gable], regionalRoof: [part('regionalRoof', 10.6, 0.1, 8.6, 0, 6.05, 0)] },
+    w: 10, d: 8, h: 6.6, placement, massClass: 'house', seed: damageSeed(5, 1, 2) });
+  const hallSeam = createStructureDamageSeam(11, 'hall', null, hallAnatomy, hallSpans);
+  const before = Float32Array.from(hall.mesh.geometry.getAttribute('position').array);
+  hallSeam.sectionDown = () => ({ cuts: [], hides: [{ section: null, partClass: 'roof' }] });
+  const roofSection = hallAnatomy.roof ? hallAnatomy.roof.section : 0;
+  stages.breach({ ...base, structureId: 11, section: roofSection, sectionKind: 'roof', hole: 255, radiusM: 0, sectionDown: true,
+    x: placement.x, y: placement.y + 6.3, z: placement.z, nx: 0, ny: 1, nz: 0, y0: placement.y + 6, y1: placement.y + 6.6,
+    munition: 'he' }, hallSeam);
+  const after = hall.mesh.geometry.getAttribute('position').array;
+  // the area of a range's triangles, upright ones (|n.y| <= 0.3) or the rest
+  const area = (arr, [f, n], upright) => {
+    let sum = 0;
+    for (let i = f; i + 2 < f + n; i += 3) {
+      const ax = arr[i * 3], ay = arr[i * 3 + 1], az = arr[i * 3 + 2];
+      const ux = arr[i * 3 + 3] - ax, uy = arr[i * 3 + 4] - ay, uz = arr[i * 3 + 5] - az;
+      const vx = arr[i * 3 + 6] - ax, vy = arr[i * 3 + 7] - ay, vz = arr[i * 3 + 8] - az;
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const l = Math.hypot(cx, cy, cz);
+      if (l < 1e-9 || (Math.abs(cy) / l <= 0.3) !== upright) continue;
+      sum += l / 2;
+    }
+    return sum;
+  };
+  const rs = hall.ranges[4], rg = hall.ranges[5];
+  assert.ok(area(after, rs, false) < area(before, rs, false) * 0.05, 'the sheet roof\'s upward faces are gone');
+  for (const rw of hall.ranges.slice(0, 4)) {
+    assert.ok(Math.abs(area(after, rw, true) - area(before, rw, true)) < 1e-3, 'the walls stand (their faces; a strip of top goes)');
+  }
+  assert.ok(Math.abs(area(after, rg, true) - area(before, rg, true)) < 1e-3, 'a vertical gable stays');
+  stages.reset();
+  assert.deepEqual(Array.from(hall.mesh.geometry.getAttribute('position').array), Array.from(before), 'reset stands the roof back up');
 }
 
 // ---- the phone tier: no hole is cut; each cut is drawn on its wall (a breach still reads as damage), and goes with

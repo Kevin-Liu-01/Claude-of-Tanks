@@ -203,7 +203,7 @@ export interface StructureMask {
    *  eaves at 0.8 of the height, the roof's sag even). */
   collapse(structureId: number, startS: number, heightM: number, dirX: number, dirZ: number,
     pivotX: number, baseY: number, pivotZ: number, settled?: boolean,
-    fall?: { eaveM: number; halfW: number; halfD: number; yaw: number }): void;
+    fall?: { eaveM: number; halfW: number; halfD: number; yaw: number }, quickS?: number): void;
   /**
    * A hole through the structure: the builder's cut in the world (centre, radius m, the face's outward normal, depth m
    * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: a fifth hole replaces the first).
@@ -279,12 +279,14 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
     texture,
     uniforms,
     capacity,
-    collapse(id, startS, heightM, dirX, dirZ, pivotX, baseY, pivotZ, settled = false, fall) {
+    collapse(id, startS, heightM, dirX, dirZ, pivotX, baseY, pivotZ, settled = false, fall, quickS) {
       if (!inRange(id)) return;
       const t = id * STRIDE, o = t * 4;
       const dl = Math.hypot(dirX, dirZ);
-      // a start of 0 means "standing": a collapse always stamps a positive time (a settled one far in the past)
-      data[o] = settled ? Math.max(1e-3, uniforms.uStructClock.value - COLLAPSE_S - 1) : Math.max(1e-3, startS);
+      // a start of 0 means "standing": a collapse always stamps a positive time (a settled one far in the past); a quick
+      // fold (what stands after the P2 cascade) is a fall that began long enough ago to end in `quickS`
+      const start = quickS !== undefined && quickS >= 0 ? startS - Math.max(0, COLLAPSE_S - quickS) : startS;
+      data[o] = settled ? Math.max(1e-3, uniforms.uStructClock.value - COLLAPSE_S - 1) : Math.max(1e-3, start);
       data[o + 1] = Math.max(0.5, heightM);
       data[o + 2] = dl > 1e-6 ? dirX / dl : 0;
       data[o + 3] = dl > 1e-6 ? dirZ / dl : 0;

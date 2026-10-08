@@ -283,6 +283,25 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   const p = _edge;
   const tinted = brickDust(L, dust, _tint);
   const tintDark: Rgb = [tinted[0] * 0.62, tinted[1] * 0.6, tinted[2] * 0.58];
+  if ((e as StructureStageEvent & { sections?: boolean }).sections === true) {
+    // after the P2 cascade (every storey dropped with its own dust, sectionFallFx): the remains settle onto the mound —
+    // a low burst out of the base all round and a little dust rising off the pile
+    const n = Math.max(4, Math.round(perim / 6));
+    for (let i = 0; i < n; i++) {
+      footprintEdge(e, cosY, sinY, perim, (i + R()) / n, p);
+      const v = 3 + R() * 3;
+      const life = 5 + R() * 2;
+      puff(C, p[0] + p[2] * 0.5, e.baseY + 0.45, p[1] + p[3] * 0.5, p[2] * v, 0.3 + R() * 0.3, p[3] * v, 2.2, 0.08, 0.9,
+        life, 0.2 * span * dk, (0.38 + R() * 0.12) * span * dk, tintDark, tinted, 0.55, life, 1, R() * 0.15, 2.0 + R() * 0.6);
+    }
+    for (let i = 0; i < 4; i++) {
+      const lx = (R() * 2 - 1) * e.hw * 0.7, lz = (R() * 2 - 1) * e.hd * 0.7;
+      const life = 7 + R() * 3;
+      puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + 0.8, e.cz - lx * sinY + lz * cosY, (R() - 0.5), 0.6 + R() * 0.5, (R() - 0.5),
+        1.3, 0.35, 0.9, life, 0.22 * span * dk, (0.4 + R() * 0.12) * span * dk, tintDark, tinted, 0.5, life, 2, 0.1 + R() * 0.4);
+    }
+    return;
+  }
   // 1. the roof lands inside: dust pushed out through the walls at mid-height, all round
   const roofN = Math.round(Math.min(7, 3 + perim / 10));
   for (let i = 0; i < roofN; i++) {

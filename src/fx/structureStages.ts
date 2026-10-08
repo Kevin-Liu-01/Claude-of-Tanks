@@ -329,8 +329,59 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // the whole structure (a collapse) is the mask's fall; a section's hide waits for sections on the spans (P2)
       if (hide.partClass === null || hide.section !== null) continue;
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
+      // (a building whose roof has its own bucket loses it above; one whose roof shares the walls' bucket loses its faces)
+      if (hide.partClass === 'roof' && !seam.spans.some((sp) => sp.partClass === 'roof')) changed = flattenRoofFaces(seam) || changed;
     }
     if (changed) seam.touchShadows();
+  }
+
+  /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
+   *  bucket) goes with the roof's hide (facades 2026-10-08): every upward triangle of the structure (normal y > 0.3)
+   *  standing over the eaves (or the top storey's top where there is no roof) and inside the footprint plus 1.5 m
+   *  collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged buckets). */
+  const _ta = new THREE.Vector3(), _tb = new THREE.Vector3(), _tc = new THREE.Vector3();
+  const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
+  function flattenRoofFaces(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    const top = a.storeys.length ? a.storeys[a.storeys.length - 1]!.y1 : 0;
+    const eave = a.roof ? a.roof.eaveY - 0.15 : top - 0.1;
+    const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const inBody = (v: THREE.Vector3): boolean => {
+      const wx = v.x - px, wz = v.z - pz;
+      return v.y - py >= eave && Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
+    };
+    let changed = false;
+    for (const span of seam.spans) {
+      if (span.count < 3 || span.partClass === 'roof' || flattenedSpans.has(span)) continue;
+      const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (!geo || geo.index) continue;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      let touched = false;
+      for (let i = start; i + 2 < span.first + span.count; i += 3) {
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+        const n = _e1.cross(_e2);
+        const len = n.length();
+        if (!(len > 1e-9) || Math.abs(n.y) / len <= 0.3) continue;
+        if (!inBody(_ta) || !inBody(_tb) || !inBody(_tc)) continue;
+        if (!touched) { keep(span); touched = true; }
+        for (let k = 1; k < 3; k++) {
+          arr[(i + k) * 3] = arr[i * 3]; arr[(i + k) * 3 + 1] = arr[i * 3 + 1]; arr[(i + k) * 3 + 2] = arr[i * 3 + 2];
+        }
+      }
+      if (touched) {
+        span.position.addUpdateRange(span.first * 3, span.count * 3);
+        span.position.needsUpdate = true;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   // a bucket no mesh of this world draws: a plain lit material over the writer's own vertex tints (made once per bucket)
@@ -367,14 +418,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
     const depths = standing ? depthMaterials(seam) : null;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
-      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly }
-      : { meshes: !piecesOnly });
+      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly,
+        pieces: !noPieces }
+      : { meshes: !piecesOnly, pieces: !noPieces });
     let result: DamageStageResult | null = null;
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
@@ -469,11 +521,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const a = seam?.anatomy;
         const fall = a ? { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2,
           yaw: a.placement.yaw } : { eaveM: 0, halfW: e.hw, halfD: e.hd, yaw: e.yaw };
-        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled, fall);
+        // after the P2 cascade (sections on) every storey is down already: what stands folds quickly under the final dust
+        const cascaded = (e as StructureStageEvent & { sections?: boolean }).sections === true;
+        mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled, fall,
+          cascaded ? 0.25 : undefined);
         o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
-          else falling.push({ seam, until: o.now() + COLLAPSE_S });
+          else falling.push({ seam, until: o.now() + ((e as StructureStageEvent & { sections?: boolean }).sections === true ? 0.3 : COLLAPSE_S) });
         }
       }
       if (!seam) return;
@@ -491,8 +546,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
       // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
       if (e.stage === 'collapsed') {
-        run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
-        if (!settled) crumble(seam, e);
+        // after the P2 cascade the storeys threw their own pieces as they dropped: the kit lays its pile, stubs and
+        // chimneys at once and throws none (its writer's capacity 0); otherwise the pile shows under the falling walls and
+        // the walls' own pieces leave the crumble front
+        if ((e as StructureStageEvent & { sections?: boolean }).sections === true) {
+          run(seam, 0, settled, (out) => seam.collapse(stageSeed(3), out), false, undefined, false, true);
+        } else {
+          run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
+          if (!settled) crumble(seam, e);
+        }
       }
     },
     breach(e, seam) {
