@@ -2915,7 +2915,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums();
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
-      getWorld()?.syncGround?.(); // the drawn ground on the craters dug so far (O(1) when none is new)
       stepFx(0);             // rebuild tracer ribbons/lights for this camera
       renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);
@@ -3679,9 +3678,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       timeScale = 0;
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
-      // the drawn ground follows the craters the step dug (wave 273: an export step runs no world update, so a crater
-      // dug mid-clip never reached the terrain or its cover)
-      getWorld()?.syncGround?.();
       camera.updateMatrixWorld(true);
       lighting.updateFrustums(); lighting.update(true);
       return clockMs;

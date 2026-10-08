@@ -154,11 +154,12 @@ function run(seed) {
     const { readFileSync } = await import('node:fs');
     const studio = readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
     const map = readFileSync(new URL('../world/map.ts', import.meta.url), 'utf8');
-    assert.match(studio, /advanceTimeline\(ms\);[\s\S]{0,400}getWorld\(\)\?\.syncGround\?\.\(\);/, 'an export step syncs the ground');
-    assert.match(studio, /lighting\.update\(true\);[^\n]*\n\s*getWorld\(\)\?\.syncGround\?\.\(\);/, 'and a capture');
-    assert.match(map, /function followGroundCover\(\): void \{\s*\(terrain\.userData\.syncGroundOverlay[^\n]*\n\s*groundCoverCraters\.sync\(boundGroundOverlay\);/,
-      'the world syncs the terrain, then the cover');
-    assert.match(map, /syncGround: followGroundCover,/, 'as syncGround');
+    // (fix/studio-world-step: every Studio step syncs, a capture through its stepFx(0); studioWorldStep.selftest runs it)
+    assert.equal(studio.split('getWorld()?.syncGround?.()').length - 1, 1, 'one sync, in the Studio\'s step');
+    assert.match(map, /function followGroundCover\(\): void \{\s*groundCoverCraters\.sync\(boundGroundOverlay\);/,
+      'the cover follows the bound overlay');
+    assert.match(map, /terrain\.userData\.followGroundOverlay = followGroundCover;/,
+      'as the terrain\'s followGroundOverlay hook, which world.syncGround runs after the terrain\'s own');
   }
   console.log(`destructionCraters: dig law, marks, hard ground, ${CRATERS_PER_TICK} a tick and the match cap, quantized log `
     + `and restore; both sims alike; a real HE round dug crater ${c.craterId} (r ${c.radiusM} m, ${c.depthM} m deep) on Verdant, `
