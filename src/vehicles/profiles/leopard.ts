@@ -3784,7 +3784,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     // silhouette replaces the old collection of unmarked hand-built pieces.
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6,
+        mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6,
         rotation: [0, Math.PI, 0],
       });
       // Sink the canonical foot 12 cm into the sloped plate: its post still
@@ -6849,9 +6849,9 @@ export function buildLeo2A4(builder: object) {
     }
     periscope(P, 'turretDetail', 0.60, 0.65, -0.40);
     // loader MG3 on its pintle at the hatch rim — the §B3 census fitting
-    // (mag class = the 7.62 GPMG family; two-tone per MG PHYSICS).
+    // (the mg3 class since 2026-10-08, round 5: the MG3's perforated jacket and muzzle booster; two-tone per MG PHYSICS).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }
@@ -7443,7 +7443,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // under the 2.6664 grace line (EMES hood keeps the anchor).
     P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.795, -0.05); // mount collar
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
       mg.position.set(-0.40, 0.70, -0.05);
       P.turretG.add(mg);
     }
@@ -7862,9 +7862,9 @@ function buildLeo2Proto(P: TankBuilderPort) {
     whip.position.set(s * 1.09, 0.50, -1.55);
     P.turretG.add(whip);
   }
-  // loader MG3 pintle at the hatch rim (§B3 census weapon, mag class)
+  // loader MG3 pintle at the hatch rim (§B3 census weapon, the mg3 class since 2026-10-08, round 5)
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0] });
     // mount LOW (0.54): the mag receiver band spans several side columns —
     // at a 0.65 mount it wrote heightM p95 2.59 (dims -27.7); at 0.54 the
     // receiver rides ~2.48 and the p95 falls back to the cupola crown.
@@ -12277,7 +12277,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
       P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.05,
+        mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
         scale: 0.96, seed: 15, shield: true, ammo: true,
       });
       mg.position.set(-0.45, 0.91, -0.30);
@@ -13425,7 +13425,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     P.add('turretDetail', box(0.08, 0.05, 0.10), -0.86, 0.645, -2.62);
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: P.spec.id==='leo2a6_ua' ? 'mag' : 'mg3', remoteControlled: P.spec.id==='leo2a6_ua', tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);
@@ -14360,7 +14360,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     periscope(P, 'turretDetail', 0.60, 0.65, -0.40);
     // loader MG3 on its pintle at the hatch rim (§B3 census fitting).
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0] });
       mg.position.set(-0.42, 0.70, -0.38);
       P.turretG.add(mg);
     }
@@ -14483,7 +14483,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     P.add('turret', cylY(0.20, 0.22, 0.030, 18), -0.48, 0.770, -0.66);        // shallow ring collar
     {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.70, elev: 0.06,
+        mats: P.mats, cls: 'mg3', tone: 'two-tone', scale: 0.70, elev: 0.06,
         shield: false, ammo: true, ring: { r: 0.13, stubs: 3 }, seed: 2470,
       });
       mg.position.set(-0.86, 0.66, -0.66);                                    // foot buried 0.02 in the roof, side-swung beside the station

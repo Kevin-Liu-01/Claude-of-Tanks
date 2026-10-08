@@ -622,7 +622,7 @@ function addMarderCastTurret(P: AfvBuilderPort): void {
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
   }), 0, 0.47, -0.86);
-  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mag', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
+  roofMG(P, 0.30, 0.475, -0.48, 3500, 'mg3', 0.05, 0.62);                      // §B3 MG law (seated on the cast)
   for (const sde of [-1, 1]) {
     P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
     mount(P, 'turret', FITTINGS.smokeBank({
@@ -1413,7 +1413,7 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // pose once the §5.249 print restore re-framed the render). Both re-seat
   // on real surfaces: MG pot buried into the roof at its own z, whips onto
   // the bustle roof plate (§B5 physical-seat law).
-  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mag', -0.04, 0.74);
+  roofMG(P, -0.38, 0.735, -0.48, 3700, 'mg3', -0.04, 0.74);
   radioPair(P, 0.79, -1.20, 3710, 0.55);
   P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
   P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
