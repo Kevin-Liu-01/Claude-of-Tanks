@@ -197,8 +197,9 @@ export default {
     // (the deck 2.47 m over the water surface, y 2.90: a fixed plane over the road's own 2.83 there, so the road's
     // endpoint completion never moves it; the landmarks lane's boards read the banks at 2.88–2.90)
     marshes: [{ x: -158, z: 265.5, r: 6, dip: 0, level: 0, crossing: 'bridge', deckWidthM: 6, approachM: 30, deckClearM: 2.47 },
-      // (step 6) the oxbow arm's west horn silted up: a reedy marsh at the arm's level
-      { x: -206, z: 211, r: 15, dip: 0.5, level: 0 }],
+      // (step 6) the oxbow arm's west horn silted up: a reedy pool at the arm's level past the arm's end, a strip of silt
+      // between them (its water and the canals' never overlap: a canal's bed is no flat marsh core)
+      { x: -209, z: 202, r: 8, dip: 0.5, level: 0 }],
     // Step 5 (2026-10-07; the coordinator: "build it yourself ... Polders' vaart and weteringen are the first users"): the
     // polder's drainage in straight water at one level (terrain.canals, canals.ts) — the vaart along the main dyke's
     // north foot from the west road's culvert to the farm court's edge, and two weteringen north from it between the long
@@ -208,12 +209,11 @@ export default {
     canals: [
       // Step 6 (2026-10-07; gauntlet wave 248: "a closed, peanut-shaped basin with a hard outline that reads as a garden
       // pond"; the coordinator's ruling): the oxbow is the old creek's cut-off arm — a curved channel at its level from the
-      // mill's outfall west under the lift bridge, swinging north, its west horn silted to a reedy marsh (marshes) and
-      // drained by a ditch south-west to the west wetering's head, under the north lane on a culvert
-      { path: [[-121, 266], [-140, 266.5], [-158, 266], [-174, 263], [-189, 255], [-200, 243], [-206, 229], [-207, 216]],
+      // mill's outfall west under the lift bridge, swinging north, its west horn silted to a reedy pool (marshes) at the
+      // foot of the south-west long dyke (no ditch cuts the dyke to the west wetering beyond it: a polder's ditches never
+      // breach its dykes)
+      { path: [[-121, 266], [-140, 266.5], [-158, 266], [-174, 263], [-189, 255], [-200, 243], [-206, 229], [-207, 224]],
         widthM: 18, level: 0, profile: 'bank', shelfM: 3, name: 'the oxbow arm' },
-      { path: [[-207, 214], [-221, 192], [-236, 170], [-248, 158], [-252, 155]], widthM: 4, level: 0, profile: 'ditch',
-        name: "the oxbow's drain" },
       { path: [[-282, 20.4], [-112, 19]], widthM: 9, level: -1.7, profile: 'bank', name: 'the vaart' },
       { path: [[-252, 25], [-252, 128]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the west wetering' },
       { path: [[-182, 25], [-182, 140]], widthM: 4, level: -1.7, profile: 'ditch', name: 'the east wetering' },
