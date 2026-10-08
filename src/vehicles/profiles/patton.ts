@@ -4897,8 +4897,22 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
         conformalCorners: 4,
       },
     };
-    P.add('turret', cylY(0.115, 0.12, 0.055, 14), 0.56, yl(2.745), zl(-0.05));
-    P.add('turretDark', box(0.05, 0.014, 0.15), 0.625, yl(2.782), zl(-0.05));
+    // Fleet lane round 1 (2026-10-08; accessories wave 255: the roof "a few large flat facets ... no weld seams or hatch
+    // detail"): the loader's hatch is a welded collar, a lid with its hinge block, handle and two locking dogs, and the
+    // periscope housing ahead of it; the hatch keeps its 2.7725 top and footprint
+    if (P.q) {
+      P.add('turret', cylY(0.124, 0.128, 0.031, 18), 0.56, yl(2.733), zl(-0.05));
+      P.add('turret', torus(0.128, 0.007, 18, 5), 0.56, yl(2.719), zl(-0.05));
+      P.add('turretDetail', cylY(0.116, 0.118, 0.024, 18), 0.56, yl(2.7605), zl(-0.05));
+      P.add('turretDark', box(0.10, 0.026, 0.045), 0.56, yl(2.755), zl(-0.05 - 0.13));
+      P.add('turretDark', box(0.05, 0.012, 0.012), 0.625, yl(2.778), zl(-0.05));
+      for (const dz of [-0.045, 0.045]) P.add('turretDark', box(0.016, 0.010, 0.024), 0.56 + 0.105, yl(2.765), zl(-0.05 + dz));
+      P.add('turretDetail', box(0.10, 0.05, 0.07), 0.56, yl(2.737), zl(-0.05 + 0.185));
+      P.add('turretGlass', box(0.07, 0.022, 0.006), 0.56, yl(2.742), zl(-0.05 + 0.222), -0.35, 0, 0);
+    } else {
+      P.add('turret', cylY(0.115, 0.12, 0.055, 14), 0.56, yl(2.745), zl(-0.05));
+      P.add('turretDark', box(0.05, 0.014, 0.15), 0.625, yl(2.782), zl(-0.05));
+    }
   };
   buildM60TurretStage1();
 
@@ -4910,6 +4924,8 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   const cx = -0.60, cz = zl(0.20);
   const buildM60TurretStage2 = (): void => {
     P.add('turret', cylY(0.28, 0.315, 0.11, P.q ? 20 : 12), cx, yl(3.005), cz);
+    // the cupola's weld bead round its base ring (fleet lane round 1)
+    if (P.q) P.add('turret', torus(0.317, 0.011, 24, 5), cx, yl(2.954), cz);
     P.add('turret', cylY(0.175, 0.185, 0.09, P.q ? 20 : 12), cx, yl(3.105), zl(0.24));
     // 7 vision blocks: a touch taller than r3 (0.05 -> 0.065, still inside the
     // ring band) with pale glass panes outboard so they read as optics, not
