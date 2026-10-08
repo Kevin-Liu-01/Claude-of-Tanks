@@ -22,7 +22,9 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
-import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
+import type { HorizonMapConfig } from './maps/horizon.ts';
+// The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
+import { horizonRing, type HorizonRing } from './horizonRingHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -7479,6 +7481,11 @@ export async function buildTerrainMeshesAsync(
   }
 }
 
+/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. */
+function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
+  return horizonRing().buildHorizonRingSteps(...args);
+}
+
 function* terrainBuildSteps(
   heightField: HeightField,
   engineCtx: TerrainEngineContext,
@@ -7737,7 +7744,7 @@ function* terrainBuildSteps(
     // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
     if (ringInfo) {
       bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
-        columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+        columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
         continuousGround: true, ground: heightField,
       });
       // Curvature also controls turf moisture and ambient light. A missing
