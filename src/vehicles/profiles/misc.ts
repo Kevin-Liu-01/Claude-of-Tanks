@@ -178,7 +178,9 @@ function sightBox(
   P.add(dark, box(0.014, h * 0.8, d * 0.9), x, y, z - 0.01, 0, ry, 0); // door split line
 }
 
-// GALIX-style discharger bank: n dark tubes splayed on a mount wedge.
+// GALIX-style discharger bank: n dark tubes splayed on a mount wedge. `top` tubes ride an upper row (r = -1) on the
+// same wedge, which grows up by one row pitch to carry them; `topShift` slides that row aft along the wedge (the wedge
+// grows aft with it) where the turret side ahead of the bank is taken.
 function galixBank(
   P: MiscBuilderPort,
   x: number,
@@ -187,12 +189,20 @@ function galixBank(
   side: number,
   n = 4,
   rows = 1,
+  top = 0,
+  topShift = 0,
+  topLift = 0,
 ): void {
   const { box, cylZ } = KIT;
-  P.add('turret', box(0.09, 0.26, 0.16 * n * 0.72), x - side * 0.02, y - 0.04, z, 0, side * 0.55, 0);
-  for (let r = 0; r < rows; r++) for (let k = 0; k < n - (r ? 1 : 0); k++) {
-    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06), y + 0.05 - r * 0.15,
-      z + 0.26 - k * 0.135, -0.42 + r * 0.08, side * (0.95 + k * 0.14), 0);
+  const shift = top ? topShift : 0, lift = top ? topLift : 0;
+  const grow = top ? 0.15 + lift : 0;
+  P.add('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift)), x - side * 0.02,
+    y - 0.04 + grow / 2, z + shift / 2, 0, side * 0.55, 0);
+  for (let r = top ? -1 : 0; r < rows; r++) for (let k = 0; k < (r < 0 ? top : n - (r ? 1 : 0)); k++) {
+    // the upper row fans a little tighter, so its sixth tube still fires ahead of the beam (yaw at most 1.5 rad)
+    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06),
+      y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + 0.26 - k * 0.135 + (r < 0 ? shift : 0), -0.42 + r * 0.08,
+      side * (r < 0 ? 0.9 + k * 0.12 : 0.95 + k * 0.14), 0);
   }
 }
 
@@ -1760,8 +1770,15 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // envelope (rear tube lands z_w -1.76 = the documented rear edge; tube
     // tops hold the certified 2.078w crown; base box grows only forward,
     // interior to the priced corner columns).
-    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2);
-    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2);
+    // 2026-10-08 (the coordinator, regional truth with the count kept): the S2 and the XLR carried a generic 6-tube
+    // decor fan bank on each front cheek (a "loose grey slab" to the critics, launchers the real tank does not have)
+    // for 12 of their 30 launch sockets. Those 12 now ride each GALIX wedge as an upper row of six in the bank's own
+    // form, so the smoke salvo keeps its count and every launcher stands at the rear sides, where the GALIX are.
+    const galixTop = variant === 'amx56' ? 0 : 6;
+    // the left (+X) row sits two pitches aft: the side box ahead of that bank owns the turret side forward of z -1.30;
+    // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
+    galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0);
+    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop);
     // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
     // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
     // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat
