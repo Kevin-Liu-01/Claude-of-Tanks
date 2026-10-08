@@ -14,6 +14,7 @@ try {
   const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,reducedMotion:'reduce'});
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tools/fixtures/battle-hud-layout.html`,{waitUntil:'networkidle'});
+  await page.waitForFunction(()=>!!window.__HUD_LAYOUT,null,{timeout:30000}); // the fixture's HUD may finish installing after network idle
   await page.clock.install();await page.evaluate(()=>window.__HUD_LAYOUT.state('reports'));await page.clock.runFor(100);
   await page.evaluate(()=>{
    const f=window.__HUD_LAYOUT, primary=document.querySelector('.cot-si-card');window.__PRIMARY=primary;
