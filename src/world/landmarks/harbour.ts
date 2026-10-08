@@ -25,6 +25,25 @@ const PAINT: Readonly<Record<string, Rgb>> = Object.freeze({
 const IRON = rgb(0x2b2d2e), DOOR = rgb(0x4a3328), WINDOW = rgb(0x1d2124);
 /** The tower's whitewash: the plaster bucket's tint (bright, as a light's daymark must be). */
 const WHITEWASH: [number, number, number] = [1.06, 1.06, 1.04];
+/**
+ * Round 4 (gauntlet wave 247: the quay walls "tiny uniform blocks with no copings, batter… waterline staining, tide
+ * marks"): a Breton quay's granite in big blocks — the stone print at under half its density on the walls, the deck's
+ * slabs a little larger than a house's — and a tidal wall's bands from the water up: the weed, the wet stone, the black
+ * lichen over the high-water line, then the dry granite (each band's occlusion over the weathered stone: shade).
+ */
+const QUAY_DENSITY = 0.22, DECK_DENSITY = 0.3;
+const TIDE_BANDS: ReadonlyArray<readonly [number, number]> = [[0.55, 0.5], [1.05, 0.7], [1.4, 0.44]];
+/** The tide bands' heights over the water (m above it) with their shade, as horizontal cuts between y0 and y1. */
+function tideCuts(yWater: number, y0: number, y1: number): Array<{ lo: number; hi: number; shade: number }> {
+  const cuts: Array<{ lo: number; hi: number; shade: number }> = [];
+  let lo = y0;
+  for (const [over, shade] of TIDE_BANDS) {
+    const hi = Math.min(y1, yWater + over);
+    if (hi > lo + 1e-3) { cuts.push({ lo, hi, shade }); lo = hi; }
+  }
+  if (y1 > lo + 1e-3) cuts.push({ lo, hi: y1, shade: 1 });
+  return cuts;
+}
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
@@ -273,6 +292,8 @@ const HULLS: readonly Rgb[] = [rgb(0xe8e6df), rgb(0x2a4a7a), rgb(0x2f6e5a), rgb(
 const BANDS: readonly Rgb[] = [rgb(0x2a4a7a), rgb(0xe8e6df), rgb(0xe8e6df), rgb(0xe8e6df), rgb(0x2f6e5a), rgb(0xe8e6df)];
 const ANTIFOUL: readonly Rgb[] = [rgb(0x7a2f24), rgb(0x262624), rgb(0x8a3a28)];
 const BOAT_INSIDE = rgb(0xb9b2a2), BOAT_TIMBER = rgb(0x8a7458), CABIN_WHITE = rgb(0xe2e0d8), SPAR = rgb(0x6e5a44);
+/** Round 4 (wave 247: "no mooring lines, no wrack"): a tarred rope's brown, a buoy's orange, the wrack's dark olive. */
+const ROPE = rgb(0x4a3f30), BUOY = rgb(0xd8692a), WRACK = rgb(0x2e2c1c);
 const NETS: readonly Rgb[] = [rgb(0x3f6b4a), rgb(0x2f5d8a), rgb(0xc0622c), rgb(0x5f7a3a)];
 const POT_MESH = rgb(0x3a3e36), POT_BASE = rgb(0x5e4e3c), FISH_BOXES: readonly Rgb[] = [rgb(0x2c5fa0), rgb(0xb83a2e)], FLOAT = rgb(0xe0642a);
 /** How far a wading hull's track plane sinks into a soft bed (the slipway's foot in the water): its entry plate lies so
@@ -314,7 +335,7 @@ const STATIONS: ReadonlyArray<readonly [number, number, number, number]> = [
  * it so its lowest point stands at `floorY` (a hull aground), or it floats at `floatY` (its waterline there). Dressing.
  */
 function boat(sink: PartSink, kind: BoatKind, L: number, B: number, H: number, colour: { hull: Rgb; band: Rgb; bottom: Rgb },
-  at: { x: number; z: number; yaw: number; heel: number; trim: number; floorY: number; floatY: number | null }, fine: boolean): void {
+  at: { x: number; z: number; yaw: number; heel: number; trim: number; floorY: number; floatY: number | null }, fine: boolean): { bow: Vec3; stern: Vec3 } {
   const section = (hb: number, sh: number, yb: number): Array<[number, number]> =>
     [[0, yb], [0.55 * hb, yb + 0.06 * (sh - yb)], [0.9 * hb, yb + 0.38 * (sh - yb)], [hb, sh]];
   const rows = STATIONS.map(([s, k, sh, yb]) => ({ z: -L / 2 + s * L, pts: section(k * B / 2, sh * H, yb * H) }));
@@ -386,6 +407,14 @@ function boat(sink: PartSink, kind: BoatKind, L: number, B: number, H: number, c
     bar(sink, 'structureWood', P.p([0, H * 0.3, L * 0.2]), P.p([0, H + 2.6, L * 0.2]), 0.09, opt(SPAR));
     bar(sink, 'structureWood', P.p([0, H + 2.3, L * 0.2 + 0.1]), P.p([0, H * 0.9, -L * 0.25]), 0.16, opt(rgb(0x9a6a4a)));
   }
+  // (round 4) where its lines make fast: the stem head and the transom's top
+  return { bow: P.p([0, H * 1.3, L / 2 - 0.15]), stern: P.p([0, H, -L / 2 + 0.2]) };
+}
+
+/** A rope from a to b, sagging `sag` at its middle, in three lengths (fine dressing). */
+function rope(sink: PartSink, a: Vec3, c: Vec3, sag: number): void {
+  const pts: Vec3[] = [0, 1 / 3, 2 / 3, 1].map((t) => [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (c[2] - a[2]) * t]);
+  for (let i = 0; i < 3; i++) bar(sink, 'structureWood', pts[i], pts[i + 1], 0.028, { colour: ROPE, decor: true, fine: true });
 }
 
 /** A heap of drying net on the quay: an irregular low mound of mesh, its corks along the top. Dressing. */
@@ -448,7 +477,8 @@ export const harbour: LandmarkBuilder = (ctx) => {
   const h = harbourLayout(ctx.params), { L1, L2, t, W, b, m, dx, dz, Rh } = h;
   const ground = (x: number, z: number) => (ctx.ground ? ctx.ground(b * x, z) : 0);
   const water = (x: number, z: number) => (ctx.water ? ctx.water(b * x, z) : 0);
-  const bat = 0.45, foot = -1.0;
+  // (round 4: the walls battered a metre over their height, as a Breton quay's are)
+  const bat = 1.0, foot = -1.0;
   // the deck: level with the shore at the root (its highest ground over the entry), or as authored
   let rootY = 0;
   for (const z of [0, 1.25, 2.5]) for (const x of [-W / 4, 0, W / 4]) rootY = Math.max(rootY, ground(x, z));
@@ -456,11 +486,16 @@ export const harbour: LandmarkBuilder = (ctx) => {
   const V = (x: number, y: number, z: number): Vec3 => [b * x, y, z];
   const out = (x: number, y: number, z: number): Vec3 => [b * x, y, z];
   const E: [number, number] = [0, L1], H: [number, number] = [h.head[0], h.head[1]];
+  // the sea's level in the frame (its depth over the ground at the head, where the mole stands in it); dry, a hand over
+  // the lowest ground
+  const wHead = water(H[0], H[1]), yWater = wHead > 0.05 ? ground(H[0], H[1]) + wHead : 0.3;
   const left2: [number, number] = [-dz, dx], right2: [number, number] = [dz, -dx];
   const at2 = (s: number, o: number): [number, number] => [E[0] + dx * s + right2[0] * o, E[1] + dz * s + right2[1] * o];
 
   // ---- the body: the legs as battered prisms (their joint mitred), the root platform, the round head
-  const body = (outline: Array<[number, number]>, sides: boolean[], top = D) => {
+  // (round 4: the batter a metre now, so a corner on an open side — the mitre where the legs meet, a leg's end under the
+  // head — leans as the face across the joint does (`joints`: that face's outward normal by corner), not into the joint)
+  const body = (outline: Array<[number, number]>, sides: boolean[], top = D, joints: Record<number, readonly [number, number]> = {}) => {
     const n = outline.length;
     const cx = outline.reduce((a, p) => a + p[0], 0) / n, cz = outline.reduce((a, p) => a + p[1], 0) / n;
     const normals = outline.map((p, i) => {
@@ -470,26 +505,47 @@ export const harbour: LandmarkBuilder = (ctx) => {
       return [nx, nz] as const;
     });
     const low = outline.map((p, i) => {
-      const a = normals[(i + n - 1) % n], c = normals[i], k = bat / Math.max(0.3, 1 + a[0] * c[0] + a[1] * c[1]);
+      const prev = (i + n - 1) % n;
+      let a: readonly [number, number] = normals[prev], c: readonly [number, number] = normals[i];
+      if (!sides[prev]) a = joints[i] ?? c;
+      if (!sides[i]) c = joints[i] ?? a;
+      const k = bat / Math.max(0.3, 1 + a[0] * c[0] + a[1] * c[1]);
       return [p[0] + (a[0] + c[0]) * k, p[1] + (a[1] + c[1]) * k] as const;
     });
-    facing(sink, 'stone', outline.map(([x, z]) => V(x, top, z)), [0, 1, 0]);
+    facing(sink, 'stone', outline.map(([x, z]) => V(x, top, z)), [0, 1, 0], { density: DECK_DENSITY });
+    // each battered face in the tide's bands, a horizontal cut at each (the point at height y down the batter)
+    const at = (i: number, y: number): Vec3 => {
+      const k = (top - y) / (top - foot);
+      return V(outline[i][0] + (low[i][0] - outline[i][0]) * k, y, outline[i][1] + (low[i][1] - outline[i][1]) * k);
+    };
     for (let i = 0; i < n; i++) {
       if (!sides[i]) continue;
       const j = (i + 1) % n;
-      facing(sink, 'stone', [V(outline[i][0], top, outline[i][1]), V(outline[j][0], top, outline[j][1]), V(low[j][0], foot, low[j][1]), V(low[i][0], foot, low[i][1])],
-        out(normals[i][0], 0, normals[i][1]));
+      for (const cut of tideCuts(yWater, foot, top)) {
+        facing(sink, 'stone', [at(i, cut.hi), at(j, cut.hi), at(j, cut.lo), at(i, cut.lo)], out(normals[i][0], 0, normals[i][1]),
+          { density: QUAY_DENSITY, shade: cut.shade });
+      }
     }
   };
   // the first leg (its root end against the shore, its joint with the arm mitred), the root platform beside it
-  body([[-W / 2, 0], [W / 2, 0], [W / 2, L1 - m], [-W / 2, L1 + m]], [true, true, false, true]);
+  body([[-W / 2, 0], [W / 2, 0], [W / 2, L1 - m], [-W / 2, L1 + m]], [true, true, false, true], D, { 2: [dz, -dx], 3: [-dz, dx] });
   const slipW = h.slip, zS0 = h.slipTop;
   if (slipW > 0) body([[W / 2, 0], [W / 2 + slipW, 0], [W / 2 + slipW, zS0], [W / 2, zS0]], [true, true, false, false]);
   // the arm, from the mitre to the head's centre
   const armEnd = (o: number) => at2(L2, o);
-  body([[-W / 2, L1 + m], [W / 2, L1 - m], armEnd(W / 2), armEnd(-W / 2)], [false, true, false, true]);
-  // the round head, a kerb's height proud of the deck
-  revolve(sink, 'stone', b * H[0], H[1], [[Rh + bat, foot], [Rh, D + 0.06], [0, D + 0.06]], 20, {}, Math.PI / 20);
+  body([[-W / 2, L1 + m], [W / 2, L1 - m], armEnd(W / 2), armEnd(-W / 2)], [false, true, false, true], D, { 0: [-1, 0], 1: [1, 0] });
+  // the round head, a kerb's height proud of the deck: (round 4) a musoir rounding the arm's end on a plinth course a hand
+  // under the water, its battered wall in the tide's bands (each band a frustum with no caps between)
+  {
+    const yPl = Math.min(D - 1, yWater - 0.2), rAt = (y: number) => Rh + bat * (D + 0.06 - y) / (D + 0.06 - foot);
+    revolve(sink, 'stone', b * H[0], H[1], [[rAt(foot) + 0.35, foot], [rAt(yPl) + 0.35, yPl], [rAt(yPl), yPl], [rAt(yPl), yPl]], 20,
+      { density: QUAY_DENSITY, shade: TIDE_BANDS[0][1] }, Math.PI / 20);
+    for (const cut of tideCuts(yWater, yPl, D + 0.06)) {
+      revolve(sink, 'stone', b * H[0], H[1], [[rAt(cut.lo), cut.lo], [rAt(cut.lo), cut.lo], [rAt(cut.hi), cut.hi], [rAt(cut.hi), cut.hi]], 20,
+        { density: QUAY_DENSITY, shade: cut.shade }, Math.PI / 20);
+    }
+    revolve(sink, 'stone', b * H[0], H[1], [[Rh, D + 0.06], [0, D + 0.06]], 20, { density: DECK_DENSITY }, Math.PI / 20);
+  }
   // where the shore falls away under the root (the embankment's flank), a pitched granite revetment from the deck's edge
   // down to the ground behind it, so the root sits in the shore rather than standing on it (dressing on the bank)
   {
@@ -513,10 +569,14 @@ export const harbour: LandmarkBuilder = (ctx) => {
     sink.placed(yaw, b * x0, 0, z0, () => {
       // (in the run's frame: along +z, the face toward -x or +x by the inward side)
       const side = (inward[0] * (z1 - z0) - inward[1] * (x1 - x0)) * b > 0 ? 1 : -1;
-      const xi = side * 0.5, xo = -side * 0.06;
-      sink.span('stone', Math.min(xi, xo), D - 0.32, 0, Math.max(xi, xo), D + 0.07, len, { decor: true });
-      for (let s = 1.3; s < len - 0.4; s += 1.3) {
-        sink.span('structureWood', Math.min(xi, xo), D + 0.071, s - 0.015, Math.max(xi, xo), D + 0.074, s + 0.015, { colour: rgb(0x2a2826), decor: true, fine: true });
+      // (round 4, wave 247 "no copings": a course of its own — big dressed blocks a hand and a half proud of the battered
+      // face, each its own length, open joints between them, a shade paler than the wall)
+      const xi = side * 0.55, xo = -side * 0.16;
+      for (let s = 0; s < len - 0.05;) {
+        const l = 1.1 + ctx.variant() * 0.7, e = len - (s + l) < 0.5 ? len : s + l;
+        sink.span('stone', Math.min(xi, xo), D - 0.36, s, Math.max(xi, xo), D + 0.07, Math.max(s + 0.1, e - 0.02),
+          { decor: true, density: DECK_DENSITY, shade: 1.06 });
+        s = e;
       }
     });
   };
@@ -624,14 +684,47 @@ export const harbour: LandmarkBuilder = (ctx) => {
     { x: inBasin(W / 2 + slipW + 9), z: L1 - 12, yaw: 0.15, kind: 'caseyeur' },
     { x: inBasin(W / 2 + slipW + 15), z: L1 - 4, yaw: -0.2, kind: 'canot' },
   ];
+  // (round 4) their lines: the boat alongside the arm made fast fore and aft to the arm's bollards, a boat riding in the
+  // basin to its buoy ahead, a boat aground to its anchor on the sand
+  const bollardTop = (p: [number, number]): Vec3 => V(p[0], D + 0.07 + 0.6, p[1]);
   for (let i = 0; i < Math.min(boats, berths.length); i++) {
     const berth = berths[i], depth = water(berth.x, berth.z), g = ground(berth.x, berth.z);
     const afloat = depth > 0.25, L = berth.kind === 'caseyeur' ? 8.4 + vr() * 1.2 : 5.2 + vr() * 1.0;
     const B = berth.kind === 'caseyeur' ? 2.9 : 1.9, Hh = berth.kind === 'caseyeur' ? 1.25 : 0.82;
     const hue = Math.floor(vr() * HULLS.length) % HULLS.length;
-    boat(sink, berth.kind, L, B, Hh, { hull: HULLS[hue], band: BANDS[hue], bottom: ANTIFOUL[Math.floor(vr() * ANTIFOUL.length) % ANTIFOUL.length] },
+    const ends = boat(sink, berth.kind, L, B, Hh, { hull: HULLS[hue], band: BANDS[hue], bottom: ANTIFOUL[Math.floor(vr() * ANTIFOUL.length) % ANTIFOUL.length] },
       { x: b * berth.x, z: berth.z, yaw: b * berth.yaw, heel: afloat ? 0 : b * (vr() < 0.5 ? -1 : 1) * (0.16 + vr() * 0.1), trim: afloat ? 0 : 0.03,
         floorY: g, floatY: afloat ? g + depth : null }, i >= 3);
+    const fx = Math.sin(berth.yaw), fz = Math.cos(berth.yaw);
+    if (i === 2) {
+      // alongside: the bow line forward and the stern line aft, each to the nearest bollard of the arm's
+      const sAt = (p: Vec3) => (b * p[0] - E[0]) * dx + (p[2] - E[1]) * dz;
+      const posts = [m + 3, (m + L2 - headStart) / 2, L2 - headStart - 1.2].map((sp) => at2(sp, W / 2 - 0.4));
+      const near = (p: Vec3) => posts.reduce((q, r) => Math.abs((r[0] - E[0]) * dx + (r[1] - E[1]) * dz - sAt(p)) < Math.abs((q[0] - E[0]) * dx + (q[1] - E[1]) * dz - sAt(p)) ? r : q);
+      rope(sink, ends.bow, bollardTop(near(ends.bow)), 0.35);
+      rope(sink, ends.stern, bollardTop(near(ends.stern)), 0.35);
+    } else if (afloat) {
+      const bx = berth.x + fx * (L / 2 + 3.2), bz = berth.z + fz * (L / 2 + 3.2), yb = ground(bx, bz) + Math.max(0.1, water(bx, bz));
+      revolve(sink, 'structureMetal', b * bx, bz, [[0, yb - 0.12], [0.3, yb], [0.32, yb + 0.16], [0.2, yb + 0.32], [0, yb + 0.36]], 8, { colour: BUOY, decor: true });
+      rope(sink, ends.bow, V(bx, yb + 0.3, bz), 0.25);
+    } else {
+      const ax = berth.x + fx * (L / 2 + 4.5), az = berth.z + fz * (L / 2 + 4.5), ya = ground(ax, az);
+      rope(sink, ends.bow, V(ax, ya + 0.04, az), 0.05);
+      bar(sink, 'structureMetal', V(ax - fx * 0.4, ya + 0.05, az - fz * 0.4), V(ax + fx * 0.4, ya + 0.05, az + fz * 0.4), 0.06, { colour: IRON, decor: true, fine: true });
+    }
+  }
+  // (round 4, wave 247 "no wrack") the wrack along the basin's tide line: dark tangles of weed on the sand a hand to half
+  // a metre over the water, in scattered drifts
+  {
+    const x0 = W / 2 + slipW + 0.8, x1 = h.across - 1, z0 = zS0, z1 = L1 - 1;
+    for (let x = x0; x < x1; x += 1.3) for (let z = z0; z < z1; z += 1.3) {
+      const jx = x + (vr() - 0.5) * 1.1, jz = z + (vr() - 0.5) * 1.1, g = ground(jx, jz), r = 0.25 + vr() * 0.45, keep = vr();
+      if (water(jx, jz) > 0.01 || g < yWater + 0.08 || g > yWater + 0.55 || keep < 0.35) continue;
+      const a = vr() * Math.PI, ca = Math.cos(a), sa = Math.sin(a), w = r * (0.35 + vr() * 0.3);
+      const pt = (u: number, v: number): Vec3 => { const px = jx + ca * u - sa * v, pz = jz + sa * u + ca * v; return V(px, ground(px, pz) + 0.025, pz); };
+      facing(sink, 'structureWood', [pt(-r, -w), pt(r * 0.2, -w * 1.3), pt(r, -w * 0.4), pt(r * 0.7, w), pt(-r * 0.4, w * 1.2), pt(-r * 1.1, w * 0.3)], [0, 1, 0],
+        { colour: shade(WRACK, 0.8 + vr() * 0.5), decor: true });
+    }
   }
 
   // ---- the nets, pots and fish boxes on the deck by the root, along the parapet's foot (the road stays clear)
