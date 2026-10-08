@@ -1626,6 +1626,50 @@ function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('quonsethut', out);
 }
 
+/**
+ * The Quonset hut broken (the facades lane, 2026-10-08; the scenery lane's broken-state audit scored the shared debris 2/5):
+ * it comes down as a Quonset does. The arch buckles bay by bay: the back bay still near its height, the others sagging to
+ * a third or two thirds of it and spreading, skewed. One bay is torn open to its ribs, bent down. Sheets peeled off lie
+ * round it, the end wall lies thrown down forward with its door, and the stovepipe is down. The base skirts and the
+ * threshold plate stay where they were.
+ */
+function makeQuonsetHutBroken(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8;
+  const bays = 5, len = d / bays, open = 1 + Math.floor(rng() * 3);
+  for (let k = 0; k < bays; k++) {
+    const z = -d / 2 + len * (k + 0.5);
+    if (k === open) {
+      for (const dz of [-len / 4, len / 4]) {
+        const rib = archShell(w * (1 + rng() * 0.08), h * (0.4 + rng() * 0.3), 0.08);
+        rib.rotateZ((rng() - 0.5) * 0.2);
+        colored(out, rib.translate(0, 0, z + dz), p[1], rng, 0.05);
+      }
+      continue;
+    }
+    const keep = k === 0 ? 0.82 + rng() * 0.1 : 0.32 + rng() * 0.36;
+    const bay = archShellSheet(w * (1 + (1 - keep) * 0.22), h * keep, len * 1.02);
+    bay.rotateZ((rng() - 0.5) * 0.2 * (1 - keep));
+    bay.rotateX((rng() - 0.5) * 0.06);
+    colored(out, bay.translate((rng() - 0.5) * 0.3, 0, z), p[0], rng, 0.12);
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = rng() * Math.PI * 2, r = 0.55 + rng() * 0.45;
+    const sheet = slab(1.0 + rng() * 1.4, 0.04, 0.8 + rng() * 0.6);
+    sheet.rotateY(rng() * Math.PI); sheet.rotateX((rng() - 0.5) * 0.5); sheet.rotateZ((rng() - 0.5) * 0.4);
+    colored(out, sheet.translate(Math.cos(a) * (w / 2 + 0.8) * r * 1.6, 0.1 + rng() * 0.25, Math.sin(a) * (d / 2 + 0.5) * r), p[0], rng, 0.12);
+  }
+  const wall = box(3.5, 0.10, 3.0);
+  wall.rotateX(0.1 + rng() * 0.2);
+  colored(out, wall.translate(0, 0.22, d / 2 + 1.65), p[2], rng, 0.05);
+  colored(out, box(1.0, 0.06, 2.1).translate(-0.6, 0.31, d / 2 + 1.85), 0x4a5054, rng, 0.03);
+  for (const side of [-1, 1]) colored(out, box(0.08, 0.34, d - 0.1).translate(side * (w / 2 - 0.02), 0.17, 0), p[2], rng, 0.03);
+  colored(out, slab(3.6, 0.10, 0.9).translate(0, 0.05, d / 2 + 0.5), 0x6f7275, rng, 0.03);
+  const pipe = cylinder(0.09, 0.09, 0.8, 8);
+  pipe.rotateZ(Math.PI / 2 - 0.2);
+  colored(out, pipe.translate(w / 2 + 0.6, 0.14, -d * 0.28), p[2], rng, 0.03);
+  return merge(out.map(ensureWorldNightEmissionMask));
+}
+
 function makeTransformerShed(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 5.4, d = 5.0, h = 3.4;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
@@ -1857,6 +1901,7 @@ function lightMeta(
   pal: Palette,
   build: LightStructureBuilder,
   debrisMaterial: DebrisMaterial = 'wood',
+  brokenBuild: LightStructureBuilder | null = null,
 ): DestructibleBuildingType {
   const surfaceMaterial: DestructibleBuildingType['surfaceMaterial'] = debrisMaterial === 'canvas'
     ? 'structureCanvas'
@@ -1871,11 +1916,14 @@ function lightMeta(
   };
   return {
     ...base,
-    broken: (rng: Rng) => debris(base, pal, rng, debrisMaterial),
+    // (the facades lane, 2026-10-08) a structure with its own broken state (the Quonset's buckled arch, the greenhouse's
+    // stripped ribs) keeps it; the rest the shared debris
+    broken: brokenBuild ?? ((rng: Rng) => debris(base, pal, rng, debrisMaterial)),
   };
 }
 
-const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure });
+const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure,
+  merge: (parts) => merge(parts.map(ensureWorldNightEmissionMask)) });
 
 export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
@@ -1891,7 +1939,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
   guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, makeGuardPost, 'metal'),
   motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, makeMotorPool, 'metal'),
-  quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal'),
+  quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal', makeQuonsetHutBroken),
   transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
   checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
   securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
@@ -1900,7 +1948,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
   missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
-  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal'),
+  greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal', orbital.greenhouseBroken),
   ascentlander: lightMeta('ascentlander', 'orbital', 6.6, 6.6, 13.0, PAL.orbital, orbital.ascentlander, 'metal'),
   rovergarage: lightMeta('rovergarage', 'orbital', 6.5, 8.5, 7.1, PAL.orbital, orbital.rovergarage, 'metal'),
   habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
