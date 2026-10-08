@@ -1,5 +1,6 @@
 import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {addFieldRoofCage} from './fieldRoofCage.ts';
+import {addMissionAttachmentReceiver} from '../missionAttachmentReceiver.ts';
 // Native hulls and fenders remain recognizable beneath national modernization
 // packages. Country modules own cast-turret proportions, armor and equipment.
 import {KIT} from './kit.ts';
@@ -64,6 +65,9 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  const d=nationalModernizationDesign(c),l=NATIONAL_ROOF_LOADOUTS[c.id];
  nationalRoofSystems(P,l);nationalRoofWeapon(P,d.rws,d.cupola,l);
  if(c.package==='ua')addFieldRoofCage(P);
+ // Zoria's roof gun sweeps all of its roof inboard of the left cage wing, so
+ // its drone rides on a receiver laid across that wing (missionAttachmentReceiver.ts).
+ if(c.id==='ua_t80u_modern')addMissionAttachmentReceiver(P,'ua_t80u_modern');
  if(c.package==='cn'||c.id==='ru_t72b3m_modern')addRearFieldStowage(P,c.package==='cn');
  P.topY=nationalModernizationDesign(c).roofY;
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
