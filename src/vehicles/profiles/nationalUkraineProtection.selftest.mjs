@@ -152,7 +152,8 @@ for(const quality of ['high','low'])for(const id of ids){
   tank.root.updateMatrixWorld(true);
   fullMainGunEnvelope(tank,TANK_SPECS[id],addedHull);
   const seat=MISSION_ATTACHMENT_SEATS[id],native=collectMissionStock(tank,seat.frame,-Infinity,false,TANK_SPECS[id]);
-  const supported=nativeSupportedSeat(native,seat);
+  // Re-measure at the record's own cradle rise (the generator certifies .045, .085 or .125 m, as its sameSupport does).
+  const supported=nativeSupportedSeat(native,seat,seat.y-Math.max(...seat.supportY));
   assert(supported,id+': all four existing drone feet retain their native seats');
   assert(Math.abs(supported.y-seat.y)<.0001,id+': camouflage did not become the drone support');
   assert.equal(nativeMissionCollision(native,seat),null,id+': parked drone and cradle clear actual stock and main gun motion');

@@ -32,4 +32,7 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
  const station=g.finish();
  station.scale.setScalar(scale);
  station.userData.fieldWeaponScale=scale;
+ // Field kit, not reconstructed source: audits that witness a hull's source
+ // surfaces skip it (src/vehicles/fieldKitSurface.test-support.mjs).
+ station.userData.fieldKitStation=true;
 }
