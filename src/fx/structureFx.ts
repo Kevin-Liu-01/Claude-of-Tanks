@@ -19,7 +19,7 @@
 import type { StructureStageEvent } from '../sim/destructionEvents.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
-import { linearHex } from './surfaceLooks.ts';
+import { BLAST_RESIDUE, linearHex } from './surfaceLooks.ts';
 
 type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
@@ -198,6 +198,23 @@ function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: 
   C.media(m);
 }
 
+/** A billow of the detonation's own (a fireball cooling to residue, its smoke): heat at birth and its cooling rate. */
+function hot(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
+  rise: number, windK: number, life: number, size0: number, size1: number, c0: Rgb, c1: Rgb, density: number,
+  heatK: number, cool: number, bo: number): void {
+  const m = C.m;
+  const R = C.rand;
+  m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
+  m.vx = vx; m.vy = vy; m.vz = vz; m.drag = drag; m.rise = rise; m.windK = windK; m.grav = 0;
+  m.life = life; m.size0 = size0; m.size1 = size1; m.growExp = 2.6; m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
+  m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
+  m.density = density; m.fadeIn = heatK > 0 ? 0 : 0.3; m.fadeOut = 0.45;
+  m.medium = 'billow'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = life; m.startFrame = 0;
+  m.aspect = 1;
+  m.heat = heatK; m.cool = cool;
+  C.media(m);
+}
+
 function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: number, vx: number, vy: number, vz: number,
   scale: number, life: number, bo: number): void {
   const k = C.k;
@@ -322,7 +339,7 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
 
 /**
  * A round striking a wall (shell:expired on a structure or a hard prop): an explosive one bursts on it (flash, a
- * short fireball, the wall's own dust thrown off the face and its pieces), a kinetic one chips it (a jet of the
+ * short fireball and its residue smoke, the wall's own dust thrown off the face and its pieces), a kinetic one chips it (a jet of the
  * face's dust and a few pieces). `look` is the building's anatomy reduced to its rubble shares, or null.
  */
 export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number,
@@ -343,7 +360,22 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
     lp.col0[0] = 1; lp.col0[1] = 0.96; lp.col0[2] = 0.86; lp.col1[0] = 1; lp.col1[1] = 0.55; lp.col1[2] = 0.16;
     lp.alpha = 1; lp.grav = 0; lp.birthOffset = bo;
     C.flash(lp);
-    C.lightPulse(x + nx, y + 0.5, z + nz, Math.min(1.3, 0.4 + 0.3 * k), 0);
+    // (b4: the struck wall flooded orange from a light a metre off it) the light stands off the face
+    C.lightPulse(x + nx * 1.6, y + 0.5, z + nz * 1.6, Math.min(1.3, 0.4 + 0.3 * k), 0);
+    // the detonation's own fire and smoke on the face, as a ground burst has them: a hot billow cooling to residue in
+    // half a second, then the residue's grey smoke drifting off
+    for (let i = 0; i < 2; i++) {
+      const sp = (2 + R() * 2) * Math.sqrt(k);
+      const life = 1.6 + R() * 0.6;
+      hot(C, x + nx * 0.6, y + ny * 0.6 + 0.2, z + nz * 0.6, nx * sp + (R() - 0.5), ny * sp + 1.5 + R(), nz * sp + (R() - 0.5),
+        2.2, 1.2, 0.5, life, 1.2 * k * dk, (3.2 + R()) * k * dk, BLAST_RESIDUE, BLAST_RESIDUE, 0.92, 1.05, 5.5, bo - 0.02);
+    }
+    const resN = k > 2 ? 2 : 1;
+    for (let i = 0; i < resN; i++) {
+      const life = 5 + R() * 2;
+      hot(C, x + nx * 1.2, y + 0.6, z + nz * 1.2, nx * 0.8 + (R() - 0.5) * 0.6, 1.4 + R() * 0.6, nz * 0.8 + (R() - 0.5) * 0.6,
+        1.2, 0.8 + R() * 0.3, 1, life, 1.4 * k * dk, (4 + R() * 1.5) * k * dk, BLAST_RESIDUE, dust, 0.45, 0, 1, bo + 0.15 + R() * 0.2);
+    }
   }
   // (wave 266: a struck house vanished in opaque dust for seconds) the strike's cloud bursts off the face dense and
   // thins within a few seconds, so the wall behind it (and the hole the stage cut) comes back while it drifts

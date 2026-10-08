@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike } from './structureFx.ts';
 import { createCraterMarks } from './craterMarks.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
 import { createStructureDebris, paletteGeometry, DEBRIS_SHAPES } from './structureDebris.ts';
@@ -304,6 +304,18 @@ function captureContext(seed) {
   const pall = collapsed.media.filter((m) => m.birthOffset >= 2.7 && m.life >= 12);
   assert.ok(pall.length > 0 && pall.every((m) => m.density <= 0.35), 'the pall it leaves is thin');
   assert.ok(breached.media.every((m) => m.life <= 6 && m.density <= 0.5), "a breach's powder thins within seconds");
+  // a shell bursting on a wall burns and smokes as a ground burst does; its dust thins within seconds; a kinetic strike
+  // only chips
+  const strike = (explosive) => {
+    const c = captureContext(13);
+    wallStrike(c.ctx, 12, 3, 20, -1, 0, 0, explosive, explosive ? 2.71 : 1, null);
+    return c.log;
+  };
+  const shellOnWall = strike(true), shotOnWall = strike(false);
+  assert.ok(shellOnWall.media.some((m) => m.heat > 1) && shellOnWall.media.some((m) => m.heat === 0 && m.medium === 'billow'),
+    'a shell on a wall throws its fireball and its residue smoke');
+  assert.ok(shellOnWall.media.filter((m) => m.medium === 'burst').every((m) => m.life <= 6), "the wall's dust thins within seconds");
+  assert.ok(shotOnWall.media.every((m) => m.heat === 0) && shotOnWall.flash === 0, 'a kinetic strike only chips');
   const fence = captureContext(12);
   propBreakFx(fence.ctx, 'wood', 'fenceplank', 0, 0, 0, 1, 0, 1.2);
   assert.ok(fence.log.chunk.length > 0 && fence.log.chunk.every((k) => k.shape === 'splinter'), 'a fence splinters');
