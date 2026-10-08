@@ -998,7 +998,10 @@ export function bodyCentre(anatomy: StructureDamageAnatomy): [number, number] {
  * sim/terrainDeformation.ts rubbleMoundHeightAt); without it (an offline preview, a test), a dome over the house's
  * footprint and a metre round it, its crown from the storeys.
  */
-export type MoundHeight = (x: number, z: number) => number;
+type MoundHeight = (x: number, z: number) => number;
+/** How far the pile's skin stands over the sim's mound where the mound is high (the terrain is raised by the mound
+ *  itself: a skin on its profile would lie in the ground); it tapers to nothing at the heap's rim. */
+const HEAP_LIFT_M = 0.35;
 export function domeMound(anatomy: StructureDamageAnatomy): MoundHeight {
   const rx = anatomy.w / 2 + 1, rz = anatomy.d / 2 + 1, [cx, cz] = bodyCentre(anatomy);
   const crown = Math.max(0.8, Math.min(2.6, anatomy.storeys.length * 0.55 + 0.4));
@@ -1160,7 +1163,8 @@ function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: readonly F
   for (let ring = 1; ring <= RINGS; ring++) {
     const t = Math.pow(ring / RINGS, 0.85);
     for (let k = 0; k < SECTORS; k++) {
-      const a = (k / SECTORS) * Math.PI * 2, r = ext[k] * t * (ring === RINGS ? 1 : 0.92 + rng() * 0.16);
+      // (a ring jittered inward only: never past the next ring out, where the raised skin would fold over itself)
+      const a = (k / SECTORS) * Math.PI * 2, r = ext[k] * t * (ring === RINGS ? 1 : 0.9 + rng() * 0.1);
       const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
       const lump = ring === RINGS ? 0.01 : (rng() - 0.35) * 0.22 * (1 - t * 0.6);
       pos.push([x, mound(x, z) + lump, z]);
@@ -1237,24 +1241,48 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   const extras = extrasOf(anatomy);
   const mesh = new Mesh(out.mesh);
   const st0 = anatomy.storeys[0], [cx, cz] = bodyCentre(anatomy);
-  // the remnant: the ground storey's faces to their stubs
-  if (st0) for (const f of st0.faces) remnantWall(mesh, new FacePen(f, extras?.surfaces.get(f.section) ?? fallbackSurface(f)), anatomy, rng);
+  // (wave 277: "the brick farmhouses leave a thin blue-black band with no brick-red, no wall stubs and no roof
+  // timbers") the sim raises the terrain itself by its mound when a house comes down, so a pile laid on the mound's own
+  // profile lies in the ground: the pile stands a hand and more over it (meeting the ground at its rim), and the walls'
+  // stubs stand over the mound where it banks against them
+  const heapTop = (x: number, z: number): number => {
+    const m = mound(x, z);
+    return m + HEAP_LIFT_M * Math.max(0, Math.min(1, (m - 0.12) / 0.5));
+  };
+  // the remnant: the ground storey's faces to their stubs, at irregular heights over the heap banked against them, the
+  // corners higher
+  if (st0) for (const f of st0.faces) {
+    const pen = new FacePen(f, extras?.surfaces.get(f.section) ?? fallbackSurface(f));
+    const half = f.width / 2, rem = anatomy.remnant;
+    const lobes = Array.from({ length: 5 }, () => [rng() * 2 - 1, rng() * Math.PI * 2]);
+    const cornerRise = 0.9 + rng() * 0.6;
+    const standing = (u: number): number => {
+      let v = 0;
+      for (let k = 0; k < lobes.length; k++) v += lobes[k][0] * Math.sin(u * (k + 1) * 1.3 + lobes[k][1]) / (k + 1);
+      const corner = rem.corners ? Math.max(0, 1 - (half - Math.abs(u)) / 0.9) * cornerRise : 0;
+      const banked = Math.max(0, heapTop(f.origin[0] + f.u[0] * u, f.origin[2] + f.u[2] * u) - f.origin[1]);
+      return Math.min(f.height, Math.max(0.15, banked + rem.stubHeightM * (0.7 + 0.45 * v) + corner * 1.4));
+    };
+    remnantWall(mesh, pen, anatomy, rng, standing);
+  }
   // the plinth stays where it was
   if (anatomy.plinth && mesh.begin(anatomy.plinth.slot.bucket, 'remnant')) {
     const p = anatomy.plinth, hw = anatomy.w / 2 + p.out, hd = anatomy.d / 2 + p.out, y = st0?.y0 ?? p.h; // the ground floor sits on the plinth (house.ts), wherever the house was placed
     const t = p.slot.tint;
     mesh.quadUv([cx - hw, y, cz + hd], [cx + hw, y, cz + hd], [cx + hw, y, cz - hd], [cx - hw, y, cz - hd], [0, 1, 0], 0.5, t);
   }
-  // the chimney stacks stand (a stack that rose from the roof falls with it)
+  // the chimney stacks stand, broken off (wave 277: "the Steinburg gable leaves a lone chimney" at its full height): a
+  // stack from the ground keeps a half to most of its height; one that rose from the roof falls with it
   if (anatomy.remnant.chimneys) for (const c of anatomy.chimneys) {
     if (c.y0 > 1 || !mesh.begin(c.bucket, 'remnant')) continue;
-    heapChunk(mesh, { material: 'brick', bucket: c.bucket, tint: [0.62, 0.42, 0.34], thicknessM: 0.24, share: 0 }, c.x, (c.y0 + c.y1) / 2, c.z,
-      c.sx / 2, (c.y1 - c.y0) / 2, c.sz / 2, 0, 0, () => 0.99);
+    const y1 = c.y0 + (c.y1 - c.y0) * (0.45 + rng() * 0.35);
+    heapChunk(mesh, { material: 'brick', bucket: c.bucket, tint: [0.62, 0.42, 0.34], thicknessM: 0.24, share: 0 }, c.x, (c.y0 + y1) / 2, c.z,
+      c.sx / 2, (y1 - c.y0) / 2, c.sz / 2, 0, 0, () => 0.99);
   }
   // the heap: first a skin over the mound in the walls' own material (the pile reads as this house's rubble, not as
   // ground with chunks on it), then chunks of its materials by their shares, kept where the heap stands high
   const slots = anatomy.rubble.filter((s) => s.share > 0.005);
-  const reach = heapSkin(mesh, anatomy, slots, mound, cx, cz, rng);
+  const reach = heapSkin(mesh, anatomy, slots, heapTop, cx, cz, rng);
   const budget = Math.max(40, Math.min(420, Math.floor((out.mesh.capacity - out.mesh.vertices) / 26)));
   const crown = Math.max(0.05, mound(cx, cz));
   for (const slot of slots) {
@@ -1273,8 +1301,28 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
       const sx = timber ? 0.5 + rng() * 1.1 : flat ? 0.12 + rng() * 0.22 : 0.12 + rng() * 0.26;
       const sy = timber ? 0.07 + rng() * 0.04 : flat ? 0.015 + rng() * 0.03 : 0.08 + rng() * 0.18;
       const sz = timber ? 0.07 + rng() * 0.04 : flat ? 0.1 + rng() * 0.2 : 0.1 + rng() * 0.22;
-      const y = mound(x, z) + sy * 0.35;
+      const y = heapTop(x, z) + sy * 0.35;
       heapChunk(mesh, slot, x, y, z, sx, sy, sz, rng() * Math.PI, timber ? (rng() - 0.5) * 0.6 : (rng() - 0.5) * 0.9, rng);
+    }
+  }
+  // the roof's timbers in the pile: rafters and purlins across it, one end on the heap and the other propped on the
+  // rubble, as a roof comes down onto its own walls (a cast deck breaks into the pile's slabs instead)
+  const frame = anatomy.roof?.structure;
+  if (frame && (frame.material === 'timber' || frame.material === 'metal') && mesh.begin(frame.bucket, 'rubble')) {
+    const n = Math.min(9, 3 + Math.round((anatomy.w + anatomy.d) / 4));
+    for (let k = 0; k < n; k++) {
+      const len = 2.2 + rng() * Math.min(3.5, Math.max(anatomy.w, anatomy.d) * 0.45), ang = rng() * Math.PI;
+      const mx = cx + (rng() - 0.5) * anatomy.w * 0.6, mz = cz + (rng() - 0.5) * anatomy.d * 0.6;
+      // (both ends on the heap: a timber shortened to the footprint and a hand round it)
+      const ca = Math.cos(ang), sa = Math.sin(ang), hx = anatomy.w / 2 + 0.5, hz = anatomy.d / 2 + 0.5;
+      const reachHalf = Math.min(len / 2, Math.abs(ca) > 1e-3 ? (hx - Math.abs(mx - cx)) / Math.abs(ca) : Infinity,
+        Math.abs(sa) > 1e-3 ? (hz - Math.abs(mz - cz)) / Math.abs(sa) : Infinity);
+      if (reachHalf < 0.8) continue;
+      const dx = ca * reachHalf, dz = sa * reachHalf;
+      const a: Vec3 = [mx - dx, heapTop(mx - dx, mz - dz) + 0.06, mz - dz];
+      const b: Vec3 = [mx + dx, heapTop(mx + dx, mz + dz) + 0.25 + rng() * 0.55, mz + dz];
+      const shade = 0.8 + rng() * 0.25;
+      beamBetween(mesh, a, b, 0.12 + rng() * 0.06, 0.14 + rng() * 0.06, [0, 1, 0], [frame.tint[0] * shade, frame.tint[1] * shade, frame.tint[2] * shade * 0.95]);
     }
   }
   mesh.end();
@@ -1326,7 +1374,7 @@ function beamBetween(mesh: Mesh, a: Vec3, b: Vec3, w: number, t: number, upHint:
  * band, the ridge's purlin broken and sagging; a thatch charred and slumped over its blackened rafters; an earth roof
  * dropped between its joists. Tiles, slates, straw and the broken timbers fall as debris.
  */
-export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { mesh: DamageMeshWriter; pieces: DamagePieceWriter }): DamageStageResult {
+function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { mesh: DamageMeshWriter; pieces: DamagePieceWriter }): DamageStageResult {
   const roof = anatomy.roof;
   if (!roof) return { cuts: [], hides: [] };
   const rng = damageRng(seed);
@@ -1543,7 +1591,8 @@ export function storeyDownHouse(anatomy: StructureDamageAnatomy, storeyIndex: nu
     }
   }
   if (!Number.isFinite(x0 + x1 + z0 + z1) || x1 - x0 < 1 || z1 - z0 < 1) return { cuts: [], hides: [] };
-  const floorY = st.y0, storeyH = st.y1 - st.y0;
+  // an open hall's band has no floor under it (damage.ts describeShell): what falls of it lies on the hall's own floor
+  const floorY = st.floor || !anatomy.interior.open ? st.y0 : anatomy.storeys[0].y0, storeyH = st.y1 - st.y0;
   // what the storey was built of: its faces' layers, and the timbers of a framed storey or of its floor
   const slots = new Map<string, FractureSlot>();
   for (const f of st.faces) for (const l of f.layers) if (!slots.has(`${l.material}|${l.bucket}`)) slots.set(`${l.material}|${l.bucket}`, l);

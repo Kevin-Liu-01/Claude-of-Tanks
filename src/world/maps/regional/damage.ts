@@ -25,6 +25,7 @@ import type { ArchitectureStyle } from './types.ts';
 import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
 import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, storeyDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
 import { debrisPiece } from './debris.ts';
+import { readShell } from './shell.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
 const WHITE: Rgb = [1, 1, 1];
@@ -343,6 +344,214 @@ function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput):
   };
 }
 
+// ---------------------------------------------------------------------------------------------------- a shell
+
+/**
+ * Builders whose bodies the shell reading leaves to other hands: open frames and stalls (gantries, markets, ramadas,
+ * container stacks), a ruin's broken walls, and the tall shafts (stacks, water towers, minarets, towers) whose fall
+ * is its own stage (they topple in drums, never settle as a house's heap).
+ */
+const NOT_SHELLS = /gantry|market|ramada|container|ruin|stack|watertower|minaret|tower|needle|arcology|crane|silo|tent/i;
+
+/** A wall bucket's layers, outermost first, in the building's own buckets (a regional kit's or the base set's). */
+function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBucket: string): FractureSlot[] {
+  if (bucket === 'regionalStone' || bucket === 'stone') return [{ material: stoneMaterial(style), bucket, tint, thicknessM: 0.45, share: 1 }];
+  if (bucket === 'structureMetal' || bucket === 'steel') return [{ material: 'metal', bucket, tint, thicknessM: 0.02, share: 1 }];
+  if (bucket === 'wood' || bucket === 'structureWood' || bucket === 'dark') return [{ material: 'plank', bucket, tint, thicknessM: 0.12, share: 1 }];
+  if (bucket === 'straw') return [{ material: 'thatch', bucket, tint, thicknessM: 0.3, share: 1 }];
+  if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return [{ material: 'concrete', bucket, tint, thicknessM: 0.25, share: 1 }];
+  // a render over the region's core (mud brick in the earth kits, the kit's brick, else rubble masonry)
+  const core: FractureMaterial = EARTH_KITS.has(style.id) ? 'adobe' : style.surfaces.stone.kind === 'brick' ? 'brick' : 'rubble';
+  return [
+    { material: 'plaster', bucket, tint, thicknessM: 0.03, share: 1 },
+    core === 'adobe' ? { material: 'adobe', bucket, tint: mul3(tint, CLAY), thicknessM: 0.4, share: 1 }
+      : { material: core, bucket: coreBucket, tint: coreBucket === bucket ? mul3(tint, [0.8, 0.74, 0.68]) : WHITE, thicknessM: 0.4, share: 1 },
+  ];
+}
+
+/**
+ * A coursed wall's layout where no kit tile gives one (a base set's sourced brick or stone print): units of a size the
+ * material breaks into at a building's scale (a brick wall comes apart in stepped lumps of a few courses, dressed stone
+ * by its blocks, rubble by its stones), laid in half bond from the wall's foot, the texture read through the face's
+ * own uv fit (shell.ts) so a broken unit keeps the wall's print where it stood.
+ */
+function unitMasonry(material: FractureMaterial, height: number, width: number, floorY: number,
+  uvAt: (u: number, y: number, out: [number, number]) => void): MasonryLayout | null {
+  const unit = material === 'brick' ? [0.3, 0.56] : material === 'stone' ? [0.42, 0.74] : material === 'rubble' ? [0.32, 0.46] : null;
+  if (!unit || height < 0.5) return null;
+  const [ch, cw] = unit;
+  const n = Math.max(1, Math.round(height / ch)), step = height / n;
+  const courses = Array.from({ length: n }, (_, k) => k * step);
+  const half = width / 2;
+  const jointsOf = new Map<number, readonly number[]>();
+  return {
+    courses,
+    joints(index: number): readonly number[] {
+      const hit = jointsOf.get(index);
+      if (hit) return hit;
+      // half bond: every other course shifted half a unit; a unit's length varies a little by its course (seeded by
+      // the course index, so the wall is the same wall every time it is read)
+      const shift = (index % 2) * cw / 2, k = 0.85 + 0.3 * (((index * 7919) % 13) / 13);
+      const out: number[] = [];
+      for (let u = -half + shift + cw * k; u < half - 1e-3; u += cw * k) out.push(u);
+      jointsOf.set(index, out);
+      return out;
+    },
+    uv(u: number, y: number, out: [number, number]): void { uvAt(u, floorY + y, out); },
+  };
+}
+
+/** A roof covering in the building's own bucket: the kit's roof kind for its tiles, else by the bucket. */
+function shellCovering(style: ArchitectureStyle, bucket: string, tint: Rgb, flat: boolean): FractureSlot {
+  if (bucket === 'straw') return { material: 'thatch', bucket, tint, thicknessM: 0.35, share: 1 };
+  if (bucket === 'structureMetal' || bucket === 'steel') return { material: 'metal', bucket, tint, thicknessM: 0.01, share: 1 };
+  if (bucket === 'wood' || bucket === 'structureWood') return { material: 'plank', bucket, tint, thicknessM: 0.04, share: 1 };
+  if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return { material: 'concrete', bucket, tint, thicknessM: 0.22, share: 1 };
+  // a deck of the walls' render: rammed earth over its beams in the earth kits, a cast slab elsewhere
+  if (bucket !== 'roof' && bucket !== 'regionalRoof') {
+    return flat ? { material: EARTH_KITS.has(style.id) ? 'earth' : 'concrete', bucket, tint, thicknessM: EARTH_KITS.has(style.id) ? 0.3 : 0.22, share: 1 }
+      : { material: 'plaster', bucket, tint, thicknessM: 0.3, share: 1 };
+  }
+  const r = style.surfaces.roof.kind;
+  const material: FractureMaterial = r === 'slate' ? 'slate' : r === 'shingle' ? 'plank' : r === 'sheet' || r === 'asbestos' ? 'metal' : 'tile';
+  return { material, bucket, tint, thicknessM: material === 'metal' ? 0.01 : 0.04, share: 1 };
+}
+
+/**
+ * The anatomy of a body its kit built no house plan for, read off its parts (shell.ts readShell): a works hall, a store,
+ * a fire station or a chapel of the base set on a regional map, a regional hall. Its walls in their own buckets, the
+ * texture they show fitted from the parts (a redrawn skin meets the wall round it), its colour up the wall sampled
+ * (wallProfile), its roof's slopes, glass and doors and chimneys, so the kit's stage builders dress it as they dress a
+ * house: the same breaches, wall and roof falls and heaps, in this building's materials. Null where the parts do not
+ * close into a shell (the default kit reads those).
+ */
+function describeShell(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
+  if (NOT_SHELLS.test(input.builder)) return null;
+  const r = readShell(input.parts);
+  if (!r) return null;
+  const W = r.x1 - r.x0, D = r.z1 - r.z0, wallH = r.eave - r.base;
+  // a shaft (taller than twice its footprint) falls as a shaft, not as a house
+  if (wallH > 2.2 * Math.max(W, D)) return null;
+  // a sheet-clad body tears and buckles on its frame, where a house's builders would heap it like masonry: its own
+  // builders come with the sheet kit (until then the default reads it)
+  if (r.faces.filter((f) => f.bucket === 'structureMetal' || f.bucket === 'steel').length >= 2) return null;
+  // a light structure baked into one coloured mesh (a Quonset's arch, a greenhouse's glass, a shack's boards: the base
+  // set's DESTRUCTIBLE_BUILDING_TYPES) says nothing of its material by its bucket: its own kit reads it
+  if (r.faces.some((f) => f.bucket === 'baked')) return null;
+  const open = OPEN_SHELLS.has(input.builder) || /hall|works|factory|warehouse|depot|shed|garage|hangar|mill|station|barn|store/i.test(input.builder);
+  // the bands the sim cuts the walls into (sim/structureSections.ts: 3.2 m, at most six), so a fallen section shows the
+  // band that fell; an open hall's bands have no floors between them
+  const count = Math.max(1, Math.min(6, Math.round(wallH / 3.2)));
+  const storeyH = wallH / count;
+  const has = (b: string): boolean => !!input.parts[b]?.length;
+  const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
+  const surfaces = new Map<number, FaceSurface>();
+  const damp = style.weather?.damp ?? 0.8, relief = style.surfaces.relief?.plasterUv ?? 1;
+  const storeys: DamageStorey[] = [];
+  for (let i = 0; i < count; i++) {
+    const y0 = r.base + i * storeyH, y1 = y0 + storeyH;
+    const faces: DamageFace[] = r.faces.map((sf, f) => {
+      const layers = shellLayers(style, sf.bucket, sf.tint, coreBucket || sf.bucket);
+      const origin: Vec3 = [sf.origin[0], y0, sf.origin[2]];
+      const fit = sf.uv;
+      const regional = sf.bucket.startsWith('regional');
+      surfaces.set(i * 4 + f, {
+        colour: (() => {
+          const profile = wallProfile(input.parts, sf.bucket, origin, sf.u, sf.out, sf.width, storeyH);
+          return profile ? (bucket: string, y: number, out: [number, number, number]) => profile.at(bucket, y, out) : undefined;
+        })(),
+        uv(bucket, u, y, out) {
+          if (fit && bucket === fit.bucket) { out[0] = fit.au * u + fit.bu; out[1] = fit.av * (y0 + y) + fit.bv; return; }
+          const plaster = bucket.startsWith('regionalPlaster') || bucket.startsWith('plaster');
+          const dn = plaster ? BUCKET_UV_DENSITY.plaster : bucket === 'regionalStone' || bucket === 'stone' ? BUCKET_UV_DENSITY.stone : BUCKET_UV_DENSITY.wood;
+          const k = plaster ? relief : 1;
+          const axis = Math.abs(sf.out[2]) > 0.5 ? 0 : 2;
+          out[0] = (origin[axis] + sf.u[axis] * u) * dn * k;
+          out[1] = (y0 + y) * dn * k;
+        },
+        weather: (bucket, y) => (regional && bucket.startsWith('regional') && bucket !== 'regionalRoof' ? wallWeather(y0 + y, damp) : 1),
+      });
+      // a coursed regional wall's joints, when its texture lies as the kit lays it (world uv at the stone density along
+      // the face's axis): the offset is the fit's, less the face centre's own coordinate
+      const axis = Math.abs(sf.out[2]) > 0.5 ? 0 : 2, dStone = BUCKET_UV_DENSITY.stone;
+      const masonry = sf.bucket === 'regionalStone' && fit && Math.abs(fit.au - sf.u[axis] * dStone) < 0.01 && Math.abs(fit.av - dStone) < 0.01
+        ? masonryOn(style, { origin: [sf.origin[0], 0, sf.origin[2]], u: sf.u, out: sf.out, width: sf.width }, y0, storeyH,
+          [fit.bu - sf.origin[axis] * dStone, fit.bv])
+        // a base set's print (no kit tile): units the wall's material breaks into, through the wall's own uv
+        : unitMasonry(layers[0].material, storeyH, sf.width, y0, (uu, yy, o) => {
+          if (fit) { o[0] = fit.au * uu + fit.bu; o[1] = fit.av * yy + fit.bv; return; }
+          o[0] = (sf.origin[axis] + sf.u[axis] * uu) * dStone; o[1] = yy * dStone;
+        });
+      return {
+        name: sf.name, section: i * 4 + f, origin, u: sf.u, out: sf.out, width: sf.width, height: storeyH,
+        bucket: layers[0].bucket, layers: layers.map((l) => ({ ...l })), members: [], masonry,
+        openings: sf.openings.filter((o) => o.y0 + o.h > i * storeyH + 0.2 && o.y0 < (i + 1) * storeyH - 0.2).map((o) => {
+          const lo = Math.max(o.y0, i * storeyH) - i * storeyH, hi = Math.min(o.y0 + o.h, (i + 1) * storeyH) - i * storeyH;
+          return { kind: o.kind, u: o.u, w: o.w, y0: lo, h: Math.max(0.3, hi - lo), reveal: Math.min(0.3, layers.reduce((a, l) => a + l.thicknessM, 0)) };
+        }),
+      };
+    });
+    const concrete = faces[0].layers.some((l) => l.material === 'concrete');
+    storeys.push({
+      index: i, y0, y1, jetty: [0, 0, 0, 0], framed: false, faces,
+      floor: i === 0 || open ? null : concrete
+        ? { thicknessM: 0.25, joistPitchM: 0, structure: { material: 'concrete', bucket: faces[0].bucket, tint: faces[0].layers[0].tint, thicknessM: 0.25, share: 1 } }
+        : { thicknessM: 0.22, joistPitchM: 0.62, structure: { material: 'timber', bucket: has('structureWood') ? 'structureWood' : 'wood', tint: JOIST, thicknessM: 0.22, share: 1 } },
+    });
+  }
+  let roof: DamageRoof | null = null;
+  if (r.roof) {
+    const cover = shellCovering(style, r.roof.bucket, r.roof.tint, r.roof.kind === 'flat');
+    const timberBucket = has('structureWood') ? 'structureWood' : 'wood';
+    roof = {
+      kind: r.roof.kind === 'hip' ? 'hip' : r.roof.kind === 'shed' ? 'shed' : r.roof.kind === 'flat' ? 'flat' : 'gable',
+      section: count * 4, pitchDeg: r.roof.pitchDeg, eaveY: r.roof.eaveY, ridgeY: r.roof.ridgeY, thicknessM: r.roof.thicknessM,
+      covering: cover,
+      structure: r.roof.kind === 'flat' && cover.material !== 'metal'
+        ? { material: 'concrete', bucket: storeys[0].faces[0].bucket, tint: storeys[0].faces[0].layers[0].tint, thicknessM: 0.22, share: 1 }
+        : cover.material === 'metal'
+          ? { material: 'metal', bucket: has('structureMetal') ? 'structureMetal' : cover.bucket, tint: [0.42, 0.42, 0.44], thicknessM: 0.12, share: 1 }
+          : { material: 'timber', bucket: timberBucket, tint: RAFTER, thicknessM: 0.14, share: 1 },
+      battenPitchM: cover.material === 'thatch' ? 0.35 : 0.3, rafterPitchM: cover.material === 'metal' ? 1.2 : 0.8,
+      slabs: r.roof.slabs.map((corners) => ({ corners, bucket: cover.bucket })),
+    };
+  }
+  const chimneys: DamageChimney[] = r.chimneys.map((c) => ({ ...c }));
+  const plinth = r.plinth ? { h: r.plinth.h, out: r.plinth.out,
+    slot: { ...shellLayers(style, r.plinth.bucket, r.plinth.tint, coreBucket || r.plinth.bucket).at(-1)!, thicknessM: 0.5, share: 1 } } : null;
+  // the pile, as a house's: the walls' layers by volume, the roof's covering and its frame, the floors
+  const pile = new Map<string, FractureSlot>();
+  const add = (slot: FractureSlot, volume: number) => {
+    const key = `${slot.material}|${slot.bucket}`;
+    const had = pile.get(key);
+    if (had) had.share += volume; else pile.set(key, { ...slot, share: volume });
+  };
+  for (const st of storeys) for (const f of st.faces) {
+    const area = Math.max(0, f.width * f.height - f.openings.reduce((a, o) => a + o.w * o.h, 0));
+    for (const l of f.layers) add(l, area * l.thicknessM);
+    if (st.floor) add(st.floor.structure, f.width * 0.05);
+  }
+  if (roof) {
+    const roofArea = roof.slabs.reduce((a, s) => a + quadArea(s.corners), 0);
+    add(roof.covering, roofArea * Math.max(0.04, roof.covering.thicknessM));
+    add(roof.structure, roofArea * 0.03);
+  }
+  for (const c of chimneys) add({ material: 'brick', bucket: c.bucket, tint: WHITE, thicknessM: 0.24, share: 0 }, c.sx * c.sz * (c.y1 - c.y0) * 0.6);
+  const total = [...pile.values()].reduce((a, s) => a + s.share, 0) || 1;
+  const rubble = [...pile.values()].map((s) => ({ ...s, share: s.share / total })).sort((a, b) => b.share - a.share);
+  const ground = storeys[0].faces[0].layers.at(-1)!.material;
+  const masonryGround = ground === 'stone' || ground === 'brick' || ground === 'concrete';
+  return {
+    structureIdx: input.structureIdx, kit: style.id, seed: input.seed, massClass: input.massClass, placement: input.placement,
+    w: W, d: D, h: Math.max(roof?.ridgeY ?? r.eave, ...chimneys.map((c) => c.y1)),
+    plinth, storeys, roof, chimneys,
+    interior: { color: ROOM, open },
+    rubble,
+    remnant: { stubHeightM: masonryGround ? 1.1 : 0.8, corners: masonryGround, chimneys: true },
+    kitPlan: { damage: { kind: 'house-damage', surfaces } satisfies HouseDamageExtras },
+  };
+}
+
 /**
  * A face's intact wall colour up its height (the weathering pass's tint, damp, rain shadow and foot grime, which vary
  * up a wall far more than along it): sampled from the built parts at nine heights, a few places along the face, so a
@@ -425,7 +634,8 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
   for (const style of styles) {
     const kit: StructureDamageKit = {
       id: style.id,
-      describe: (input) => describeHouse(style, input),
+      // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
+      describe: (input) => describeHouse(style, input) ?? describeShell(style, input),
       breach: (anatomy, hole, out) => breachHouse(anatomy, hole, out),
       damaged: (anatomy, seed, out) => damagedHouse(anatomy, seed, out),
       piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
