@@ -2738,8 +2738,8 @@ function* heightFieldBuildSteps(
     ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
     : outlandHeightAt;
   return {
-    getHeightAt, getHeightAtFast, getContactHeightAt, getContactNormalAt: getContactHeightAt.normalAt, warmFastTilesAround, getNormalAt,
-    getGroundType, getDriveGroundType,
+    getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
+    getContactNormalAt: getContactHeightAt.normalAt,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
