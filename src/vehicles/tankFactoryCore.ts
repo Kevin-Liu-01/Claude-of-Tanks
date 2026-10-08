@@ -6095,7 +6095,8 @@ const GLASS_SURROUND_BUCKET: Readonly<Record<string, string>> = Object.freeze({
 function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
   const target = GLASS_SURROUND_BUCKET[bucket];
   const params = (geometry as THREE.BufferGeometry & { parameters?: { width: number; height: number; depth: number } }).parameters;
-  if (!target || geometry.type !== 'BoxGeometry' || !params) return [];
+  // an aperture whose authored housing already frames it (a radar panel in its box) keeps its whole face
+  if (!target || geometry.type !== 'BoxGeometry' || !params || geometry.userData.apertureFrame === 'housing') return [];
   const dims = [params.width, params.height, params.depth];
   const thin = Math.min(...dims);
   const thinAxis = dims.indexOf(thin);
