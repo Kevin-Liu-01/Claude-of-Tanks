@@ -3984,11 +3984,13 @@ function pattonSideCassette(
     ));
     // Fleet lane round 1 (2026-10-08; accessories wave 255: "a row of near-identical clean rectangles with no ...
     // missing corners or varied hinge heights"): each cassette's face plate takes its own seat (height within 1.5 cm,
-    // size within a few per cent, set 0-2 mm into the frame), deterministic from its station, and its own window and
-    // paint batch as a camouflage panel (camoPanels.ts); the cassette bodies and the outer face line are unchanged.
+    // size within a few per cent), deterministic from its station, and its own window and paint batch as a camouflage
+    // panel (camoPanels.ts); the cassette bodies and the outer face line are unchanged (every face keeps the published
+    // 1.8165 m line: an inset face moved the hull's outer extent, and with it the watertight census lattice under the
+    // generated interior fills).
     const seed = Math.abs(Math.imul(Math.round(z * 1000) + (side > 0 ? 7919 : 0), 0x9e3779b1)) >>> 0;
     const u = (k: number): number => (((seed >>> (k * 8)) & 0xff) / 255);
-    const faceX = side * (1.8165 - 0.002 * u(0));
+    const faceX = side * 1.8165;
     const face = box(0.008, h * (0.74 + 0.06 * u(1)), len * (0.80 + 0.06 * u(2)));
     markCamoPanel(face, `m60-cassette-${side > 0 ? 'r' : 'l'}-${Math.round(z * 100)}`);
     P.add('hullDetail', face, faceX, y + (u(3) - 0.5) * 0.03, z);
@@ -4802,9 +4804,10 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     }
     P.add('hullDetail', box(0.34, 0.18, 0.06), 0, 1.16, -3.31);
     P.add('hullDetail', cylZ(0.042, 0.07, 8), 0, 1.16, -3.375);
-    // the jaw: 261 degrees of ring in the vehicle's long vertical plane, its gap turned to the top (latch side); the
-    // ring's rear edge keeps the -3.52 rear extent the old pin had
-    P.add('hullDark', xform(new THREE.TorusGeometry(0.052, 0.02, 6, P.q ? 12 : 8, Math.PI * 1.45), 0, 0, 0, 0, Math.PI / 2, 0),
+    // the jaw: 261 degrees of forged ring in the vehicle's long vertical plane, its gap turned to the top (latch side);
+    // the ring's rear edge keeps the -3.52 rear extent the old pin had, and its throat stays under 4 cm (a wider eye
+    // left an open voxel the watertight census reads as a pocket)
+    P.add('hullDark', xform(new THREE.TorusGeometry(0.046, 0.026, 6, P.q ? 12 : 8, Math.PI * 1.45), 0, 0, 0, 0, Math.PI / 2, 0),
       0, 1.16, -3.448, 2.435, 0, 0);
     // rear-plate louver wall (r4 tell 3): the r3 patch (4 slats x 1.18 m) left
     // the ref's rear reading "ribbed machinery" vs proc "camo wall with a
