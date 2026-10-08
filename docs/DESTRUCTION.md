@@ -198,16 +198,33 @@ recorded per entity as the structure it pressed) is priced by the impact system'
 prices a crash on the accumulated closing speed `v`, the structure takes
 
 ```
-SP = max(0, E − 40 kJ) / 48,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
+SP = max(0, E − E₀(material)) / 40,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
 ```
 
-A 60 t heavy at 9 m/s → 50 SP (breaches a 600 m³ house); at 12 m/s → 89 (brings it down; so does a second 9 m/s ram);
-a 37.5 t medium at 8 m/s → 24 (damages it); a 40 t medium at 6 m/s → 14 (a shed comes down); a 1 m/s nudge → nothing.
+**Scuff energy, by material (2026-10-08, the coordinator's ruling: a deliberate ram breaks a wall, a scrape does
+not).** E₀ is the energy a wall's face absorbs crushing over a hull's bow before the wall loses section: a glacis or
+nose block on the wall is about A = 2 m² (2 m × 1 m), and the face can lose d = 2 cm (render, the faces of the units)
+without the wall losing strength, so E₀ = σc · A · d with the face's crushing strength σc:
+
+| Material | σc | E₀ | A 50 t hull scuffs up to | Which structures |
+|---|---|---|---|---|
+| timber and sheet | ≈ 0.75 MPa (cladding and studs give) | 30 kJ | 1.1 m/s | every shed |
+| mudbrick under render | ≈ 1.5 MPa | 60 kJ | 1.5 m/s | houses of the earth styles (wadirum, ksar, siwa, navajo, kolkhoz) |
+| brick and stone masonry | ≈ 7.5 MPa | 300 kJ | 3.5 m/s | houses of every other style, and every large building and landmark |
+| reinforced concrete | ≈ 27.5 MPa | 1.1 MJ | 6.6 m/s | the concrete style's houses, halls and landmarks (glencanyon) |
+
+A host has collision records only, so the material is the map's architecture style for its houses
+(`sim/structureMaterial.ts wallMaterialForStyle`, the earth list the default kit reads too), timber for sheds, and
+nothing softer than masonry for halls and landmarks (`structureMaterialFor`). The coordinator's 1.3 m/s bump (42 kJ)
+scuffs masonry; a manoeuvring hull that corners into a wall at 2–3 m/s scuffs it; a ram at speed breaks it. One point
+per 40 kJ above the scuff keeps §5's feel on a masonry house: a 60 t heavy at 9 m/s → 53 SP (breaches a 600 m³ house);
+at 12 m/s → 101 (brings it down; so does a second 9 m/s ram); a 37.5 t medium at 8 m/s → 23 (damages it); a 40 t
+medium at 6 m/s on a timber shed → 17 (it comes down).
 
 **A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
 along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets
 the hull through, the ram is priced and the collapse queued, and the hull keeps `√(1 − E_abs / E)` of its speed, where
-`E_abs = 40 kJ + 48 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
+`E_abs = E₀ + 40 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
 priced on the hull. A structure that holds is a hard surface: the hull takes the impact law's crash and the structure
 takes the ram. Measured (destructionParity, the authority on verdant): an M1A2 at 18.4 m/s through a 94 HP house
 brings it down, keeps most of its speed, takes no damage and drives on; the same hull into an intact large building
@@ -363,9 +380,18 @@ its stage's upper bound (70 % or 35 %), a small gift to the building, documented
 ### 8.4 Identity across layouts
 
 Every event carries the structure's footprint centre and class (`StructureIdentity`). The presentation resolves the
-id against its own world's structure table when the layouts match (desktop tier, base terrain), else by identity
-(centre within 5 cm, same class), else applies nothing (the host's world still decides). Craters are positions, valid
-in any layout.
+id against its own world's structure table when the layouts match (desktop tier, the mode's own battlefield), else by
+identity (centre within 5 cm, same class), else applies nothing (the host's world still decides). Craters are
+positions, valid in any layout.
+
+**The authority plays what the clients build (2026-10-08).** A mode's battlefield variant is a ruleset rule
+(`MatchRuleset.terrainVariant`, `terrainVariantFor(mode)`: Frontline Assault's `'assault-trenches'`). Every client
+already built it; the hosts built the base map — hulls on uncarved ground, none of the trench works' records (on
+Verdant the variant differs by 3,390 obstacle records each way: the carving moves every placement after it). Now the
+browser host (`loadCollisionWorld(…, { variant })`) and the dedicated actor (`createDedicatedWorldCollision(…,
+{ variant })`) load the variant's own shard over the variant's field, so a desktop client of either shares the
+authority's indices (`authorityObstacles`: only the mobile tier lays out otherwise, until its placement split).
+Receipt: `src/mp/host/frontlineVariant.selftest.mjs`.
 
 ### 8.5 Budget
 

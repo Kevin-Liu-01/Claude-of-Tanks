@@ -26,6 +26,7 @@ import {
 } from './munitionBlast.ts';
 import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
+import type { StructureMaterial } from './structureMaterial.ts';
 
 
 export interface DestructionMatchOptions {
@@ -41,6 +42,8 @@ export interface DestructionMatchOptions {
   onBlast?(x: number, y: number, z: number, chargeKg: number): void;
   /** The ground's drive type at a point (terrain.ts getGroundType): no crater on 'hard' ground (roads, decks, ice). */
   groundTypeAt?(x: number, z: number): string;
+  /** The map's house walls (structureMaterial.ts): the ram's scuff energy per structure (§4.4). */
+  wallMaterial?: StructureMaterial;
 }
 
 /** Deforming craters a fixed step may dig (§8.5): the rest of the tick's ground bursts are marks. */
@@ -112,6 +115,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const structures = enabled
     ? createStructureDamage(options.obstacles, options.colliders, {
       damageScale: rules!.structureDamageScale,
+      wallMaterial: options.wallMaterial ?? 'masonry',
       // the heap over its footprint first (a hull on it rides the mound from this tick), then the caller's refresh
       onCollapse: (structure) => {
         ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,

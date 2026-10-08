@@ -127,6 +127,8 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { getMapConfig } from '../world/maps/index.ts';
 import {
   FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
 } from '../sim/munitionBlast.ts';
@@ -1241,6 +1243,8 @@ export function setupBattle(
     onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
     // P3: no crater on hard ground (roads, bridge decks, ice), as the authority reads it
     groundTypeAt: (x, z) => world.heightField?.getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4), as the authority reads them
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
   game._destructionEvents = [];
   game._destructionCraters = [];

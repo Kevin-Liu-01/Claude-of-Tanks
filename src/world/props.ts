@@ -164,13 +164,14 @@ import {
 import { setDefaultKitStyleReader } from './destructionDefaultKit.ts';
 import type { StructureDamageAnatomy } from './destructionKit.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
+import { EARTH_ARCHITECTURE_STYLES } from '../sim/structureMaterial.ts';
 
-// destruction (docs/DESTRUCTION.md §16): the default damage kit reads a style's surfaces through the regional registry
-const EARTH_STYLES: ReadonlySet<string> = new Set(['wadirum', 'ksar', 'siwa', 'navajo', 'kolkhoz']);
+// destruction (docs/DESTRUCTION.md §16): the default damage kit reads a style's surfaces through the regional registry;
+// which styles build in earth is the simulation's list (structureMaterial.ts), so a ram prices the walls the kit breaks
 setDefaultKitStyleReader((id) => {
   const style = resolveRegionalArchitecture(id);
   return style ? { stoneKind: style.surfaces.stone.kind, roofKind: style.surfaces.roof.kind,
-    concrete: !!style.surfaces.concrete, earth: EARTH_STYLES.has(style.id) } : null;
+    concrete: !!style.surfaces.concrete, earth: EARTH_ARCHITECTURE_STYLES.has(style.id) } : null;
 });
 
 /** A structure as the world described it at build time (docs/DESTRUCTION.md §16): its kit's anatomy and its spans. */
