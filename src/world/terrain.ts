@@ -5130,7 +5130,7 @@ void splatCompute() {
         // (2026-10-06, the land use's far field: a far quilt's warps walked every crop's near work — the furrows' slices,
         // clods and relief below are exactly zero-weighted once a furrow is under two pixels, so past that they are
         // skipped, the result unchanged: the cracks' mean, the soil's flat relief)
-        float clodVis = 0.0, hC = 0.5, clodF = 0.5, fx = 0.0;
+        float clodVis = 0.0, hC = 0.5, clodF = 0.5, fx = 0.0, seam = 1.0;
         // the clods: each furrow's slice breaks along its run into clods 0.2–0.45 m long (the length the furrow's own),
         // each a lump of its own height and tone with a dark crack at its ends — exact cells of an integer hash, faded as
         // a clod nears 3 px along the footprint (and as its furrow fades across it); the cracks' mean stays past the fade
@@ -5145,13 +5145,16 @@ void splatCompute() {
           float aC = alongP / clodL + hF * 17.0 + (slice - 0.5) * (0.9 * hF - 0.45) + 0.18 * sin(slice * 6.2832 + hF * 11.0);
           clodF = fract(aC);
           hC = soilHash(floor(aC), furI + 7919.0);
+          // (the lab's second look: even slanted, a crack at every clod's length still laid the slices in courses) not
+          // every seam opens — a third stay shut, so the clods run one, two and three lengths along a furrow
+          seam = smoothstep(0.18, 0.50, soilHash(floor(aC + 0.5), furI + 3271.0));
           float footA = abs(dot(gDwX, rowDir)) + abs(dot(gDwY, rowDir));
           clodVis = uLandTier > 1.5 ? smoothstep(2.5, 6.0, clodL / max(footA, 1e-4)) * furrowVis : 0.0;
         }
         // (the crack a soft, shallow seam and each clod's tone eased toward its ends, not a dark ruled line round a flat
         // block; the mean held where the clods fade)
-        float crack = 1.0 - smoothstep(0.0, 0.24, min(clodF, 1.0 - clodF));
-        cropCol *= 1.0 + ((hC - 0.5) * 0.30 * (0.55 + 0.45 * sin(clodF * 3.14159)) - crack * 0.22) * clodVis - 0.05 * (1.0 - clodVis);
+        float crack = (1.0 - smoothstep(0.0, 0.24, min(clodF, 1.0 - clodF))) * seam;
+        cropCol *= 1.0 + ((hC - 0.5) * 0.30 * (0.55 + 0.45 * sin(clodF * 3.14159)) - crack * 0.22) * clodVis - 0.035 * (1.0 - clodVis);
         // (mr4) its far mottle: the turned earth's damp and dry, its clods' clusters, ±16 % over 10–40 m where the
         // furrows have gone to their mean (the coarse read above; a pixel's own furrows near the camera keep it off)
         cropCol *= 1.0 + (nFar.y - 0.5) * 0.32 * farW * (1.0 - furrowVis);
@@ -5185,7 +5188,8 @@ void splatCompute() {
         if (nrmOn) {
           n.xy += acrossDir * sin(acrossP * 1.963 + jit * 3.0) * 0.14 * stripeAA(3.2 * kP, acrossDir) * soilHere;
           if (clodVis > 0.001) {
-            float lumpS = cos(clodF * 3.14159) * (0.6 + 0.8 * hC);
+            // (a shut seam's lump runs on through it: no roll at its end)
+            float lumpS = cos(clodF * 3.14159) * (0.6 + 0.8 * hC) * (1.0 - (1.0 - seam) * (1.0 - smoothstep(0.0, 0.30, min(clodF, 1.0 - clodF))));
             n.xy += (rowDir * lumpS * 0.28 + acrossDir * (fract(hC * 13.71) - 0.5) * 0.30) * clodVis * soilHere;
           }
           float crumbVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.02, 0.06, gFootM) : 0.0;
@@ -5204,9 +5208,19 @@ void splatCompute() {
         // gold over the soil (half the field's tone where two thirds was straw)
         vec3 straw = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright;
         vec2 acrossS = vec2(-rowDir.y, rowDir.x);
-        float drillVis = uLandTier > 0.5 ? stripeAA(0.15, acrossS) : 0.0;
-        float stalk = 1.0 - smoothstep(0.12, 0.22, abs(fract(across / 0.15 + jit * 3.0) - 0.5));
-        cropCol = mix(mix(soilF * 1.05, straw * 0.85, 0.25), straw, mix(0.36, stalk, drillVis));
+        // (2026-10-07, the lab at wave 237's Frontier front-lit view: the rows' sharp lines beat into a wavy corduroy at
+        // 3–5 px a row — a line keeps its harmonics, a sine only its one) the rows hold from ten pixels a row and fade to
+        // their mean below; and a row is a line of stalk clumps, not a ruled stroke: broken along its run every 9 cm,
+        // a third of its clumps thin (faded along the run as the clumps near the pixel), its straw 0.21–0.81 of the
+        // ground about the same 0.36 mean
+        float drillVis = uLandTier > 0.5 ? stripeAA(0.45, acrossS) : 0.0;
+        float rowP = across / 0.15 + jit * 3.0;
+        float stalk = 1.0 - smoothstep(0.12, 0.22, abs(fract(rowP) - 0.5));
+        if (drillVis > 0.0) {
+          float clump = soilHash(floor(dot(wp.xz, rowDir) / 0.09 + fract(floor(rowP) * 0.618) * 7.0), floor(rowP) + 911.0);
+          stalk *= 1.0 - stripeAA(0.27, rowDir) * (1.0 - smoothstep(0.15, 0.55, clump)) * 0.75;
+        }
+        cropCol = mix(mix(soilF * 1.05, straw * 0.85, 0.25), straw, mix(0.36, 0.21 + 0.60 * stalk, drillVis));
         // the straw's lengths on the soil, streaks along the combine's run (High, near: gone by a 4 cm footprint)
         float litVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.015, 0.04, gFootM) : 0.0;
         if (litVis > 0.001) {
