@@ -39,7 +39,9 @@ for (const kind of Object.keys(ROLLING_STOCK_LENGTH)) {
     worst = Math.max(worst, tris);
     // a locomotive carries more than a wagon: the Soviet stock's 6000, and the V60's rods, cranks and jackshaft, its
     // rounded hoods, rails and three lamps an end (round 4, wave 260) at that too
-    const budget = SOVIET.has(kind) || kind === 'v60' ? 6000 : 5000;
+    // (round 5, wave 278) the Omm's heap at a granular grain, its rough lumps and its spill: a coal wagon at 6000 too
+    // and the V60 at 6500: its louvres, framed glass, sand boxes, white tyre rims and soot (round 5, wave 278)
+    const budget = kind === 'v60' ? 6500 : SOVIET.has(kind) || kind === 'omm' ? 6000 : 5000;
     assert.ok(tris <= budget, `${kind}: ${tris} triangles within the budget (${budget})`);
     const again = buildRollingStock(kind);
     assert.equal(digest(again), digest(g), `${kind}: a rebuild is byte-identical`);

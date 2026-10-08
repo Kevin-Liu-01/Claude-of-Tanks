@@ -44,6 +44,14 @@ const V60_RED = material('paint', linearHex(0x7a1c22), 0.5, 0.05, 0, 1);
 const V60_ROD = material('steel', linearHex(0xa29d93), 0.42, 0.7, 0, 1);
 /** Round 4 (wave 260: "no… handrails"): the handrails a light galvanised grey that reads on the red and the black. */
 const HANDRAIL = material('steel', linearHex(0xc4c2ba), 0.5, 0.4, 0, 0.8);
+/** Round 5 (wave 278: the V60 "a flat red box with blank dark window cut-outs, no louvres… plain black disc wheels"; the
+ * stock's baked material reads colours alone, so its detail is told in shades): the cab glass catching the sky, its
+ * rubber and aluminium frames, the louvres' black frames and pale slats, the tyres' white-painted rims. */
+const V60_GLASS = material('glass', linearHex(0x4a5864), 0.1, 0, 0, 0.3);
+const V60_GLASS_HI = material('glass', linearHex(0x8a9aa4), 0.1, 0, 0, 0.3);
+const V60_FRAME = material('steel', linearHex(0xb8b6ae), 0.5, 0.4, 0, 0.6);
+const LOUVRE_SLAT = material('paint', linearHex(0xa04a44), 0.6, 0, 0, 0.8);
+const TYRE_WHITE = material('paint', linearHex(0xd8d6ce), 0.6, 0, 0, 0.6);
 /** Round 4: the buffer heads' greased faces, worn bright. */
 const BUFFER_FACE = material('steel', linearHex(0x8e8a82), 0.4, 0.6, 0, 0.6);
 const GLASS = material('glass', [0.02, 0.024, 0.028], 0.06, 0, 0, 0.2);
@@ -272,15 +280,47 @@ function walkwayRails(mesh: VehicleMesh, coarse: boolean, xs: readonly number[],
  * hand-sized one too), facets catching the light in two shades; on desktop a scatter of loose lumps on top (round 2,
  * wave 152: "smooth black slabs", "a black box insert, not a heap of coal").
  */
-function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: number, W: number, sink: number, rise: number, seed: number): void {
-  const nu = coarse ? 6 : 22, nv = coarse ? 6 : 12;
+/**
+ * Round 5 (wave 278: the Omm's coal "a flat dark-grey lid flush with the sides, sprinkled with black cubes"): the heap's
+ * finer options. `peaks` dumps along the length (the loading chute's cones), the surface on a finer grid with its lumps'
+ * relief at two scales, `lumps` irregular lumps (rough octahedra, never cubes) bedded over it, and coal spilled on the
+ * top rails and its dust streaked down the sides (`spill`: the walls' outer face, x).
+ */
+interface CoalHeapOptions { grid?: readonly [number, number]; peaks?: number; lumps?: number; spill?: number }
+
+/** A rough lump: an octahedron with every vertex pulled in or out, flat-shaded facets (8 triangles). */
+function coalLump(mesh: VehicleMesh, x: number, y: number, z: number, r: number, seed: number, m: Mat, m2: Mat): void {
+  const axes: Vec3[] = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  const v = axes.map((a, k) => {
+    const s = r * (0.65 + 0.6 * hash2(k, seed)) * (a[1] !== 0 ? 0.7 : 1);
+    return [x + a[0] * s + (hash2(k, seed + 3) - 0.5) * r * 0.3, y + a[1] * s, z + a[2] * s + (hash2(k, seed + 5) - 0.5) * r * 0.3] as Vec3;
+  });
+  const faces: [number, number, number][] = [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [4, 3, 0], [1, 3, 4], [5, 3, 1], [0, 3, 5]];
+  for (let f = 0; f < faces.length; f++) {
+    const [a, b, c] = faces[f];
+    const n = unit(crossV(sub(v[b], v[a]), sub(v[c], v[a])));
+    const out: Vec3 = dotV(n, sub(v[a], [x, y, z])) < 0 ? [-n[0], -n[1], -n[2]] : n;
+    const mat = hash2(f, seed + 7) < 0.5 ? m : m2;
+    const ia = mesh.vert(v[a][0], v[a][1], v[a][2], out[0], out[1], out[2], mat), ib = mesh.vert(v[b][0], v[b][1], v[b][2], out[0], out[1], out[2], mat);
+    const ic = mesh.vert(v[c][0], v[c][1], v[c][2], out[0], out[1], out[2], mat);
+    if (dotV(crossV(sub(v[b], v[a]), sub(v[c], v[a])), out) < 0) mesh.tri(ia, ic, ib); else mesh.tri(ia, ib, ic);
+  }
+}
+
+function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: number, W: number, sink: number, rise: number, seed: number,
+  o: CoalHeapOptions = {}): void {
+  const [gu, gv] = o.grid ?? [22, 12];
+  const nu = coarse ? 6 : gu, nv = coarse ? 6 : gv, peaks = o.peaks ?? 0;
   const lenZ = frameHalf * 2 - 0.25, widX = W - 0.2;
   const heightAt = (x: number, z: number): number => {
     const u = z / lenZ + 0.5, v = x / widX + 0.5;
-    const ridge = Math.sin(Math.min(1, Math.max(0, v)) * Math.PI) * Math.pow(Math.sin(Math.min(1, Math.max(0, u)) * Math.PI), 0.4);
+    const along = Math.pow(Math.sin(Math.min(1, Math.max(0, u)) * Math.PI), 0.4)
+      * (peaks ? 0.8 + 0.2 * Math.cos((u * peaks - 0.5) * Math.PI * 2) : 1);
+    const ridge = Math.sin(Math.min(1, Math.max(0, v)) * Math.PI) * along;
     const broad = Math.sin(z * 2.2 + x * 3.2 + seed) * 0.04 + Math.sin(z * 5.5 - x * 4.2 + seed * 1.7) * 0.025;
-    const fine = coarse ? 0 : Math.sin(z * 11.3 + x * 7.9 + seed * 2.3) * 0.022 + Math.sin(z * 8.1 - x * 13.7 + seed * 0.7) * 0.018;
-    return top - sink + ridge * rise + (broad + fine) * ridge;
+    const fine = coarse ? 0 : Math.sin(z * 11.3 + x * 7.9 + seed * 2.3) * 0.022 + Math.sin(z * 8.1 - x * 13.7 + seed * 0.7) * 0.018
+      + (peaks ? (hash2(Math.round(z * 9), Math.round(x * 9) + seed) - 0.5) * 0.05 : 0);
+    return top - sink + ridge * rise + (broad + fine) * Math.max(0.35, ridge);
   };
   // (round 3, wave 234: "a smooth black cap") the heap faces up (i runs along z, j along x: i x j is up); it was
   // flipped, so the game culled it from above and the wagon's black floor showed between the lumps
@@ -291,6 +331,31 @@ function coalHeap(mesh: VehicleMesh, coarse: boolean, top: number, frameHalf: nu
   if (coarse) return;
   // loose lumps lying on the heap: rough blocks tumbled every way, a few the size of two fists
   mesh.dressing(() => {
+    if (o.lumps) {
+      // round 5: rough lumps, mostly small, bedded half into the heap all over it (never cubes)
+      for (let k = 0; k < o.lumps; k++) {
+        const u = (k + 0.5) / o.lumps, v = (k * 0.618034 + seed * 0.13) % 1;
+        const z = (u - 0.5) * lenZ * 0.92, x = (v - 0.5) * widX * 0.86;
+        const r = 0.035 + 0.075 * Math.pow(hash2(k, seed + 5), 2);
+        coalLump(mesh, x, heightAt(x, z) + r * 0.2, z, r, seed * 97 + k * 13, COAL_FACE, COAL_DULL);
+      }
+      if (o.spill !== undefined) {
+        // coal spilled along the top rails, and its dust down the walls' outer face from the rim
+        for (const side of [1, -1]) {
+          for (let k = 0; k < 9; k++) {
+            const z = (hash2(k, seed + side * 17) - 0.5) * lenZ * 0.9, r = 0.03 + 0.03 * hash2(k, seed + side * 19);
+            coalLump(mesh, side * (o.spill - 0.02), top + r * 0.4, z, r, seed * 53 + k * 7 + side, COAL_FACE, COAL_DULL);
+          }
+          const n: Vec3 = [side, 0, 0], xf = side * (o.spill + 0.006);
+          for (let k = 0; k < 7; k++) {
+            if (hash2(k, seed + 23 + side) < 0.25) continue;
+            const z = (hash2(k, seed + 29 + side) - 0.5) * lenZ * 0.9, w = 0.12 + 0.3 * hash2(k, seed + 31), len = 0.25 + 0.6 * hash2(k, seed + 37);
+            face4(mesh, [[xf, top - 0.08, z - w / 2], [xf, top - 0.08, z + w / 2], [xf, top - 0.08 - len, z + w * 0.15], [xf, top - 0.08 - len, z - w * 0.15]], n, COAL_GRIME);
+          }
+        }
+      }
+      return;
+    }
     const n = 34;
     for (let k = 0; k < n; k++) {
       const u = (k + 0.5) / n, v = (k * 0.618034 + seed * 0.13) % 1;
@@ -629,8 +694,10 @@ function omm(mesh: VehicleMesh, coarse: boolean): void {
     for (const x of [-0.9, 0, 0.9]) mesh.box(x, floorY + h / 2, end * (frameHalf + 0.03), 0.09, h, 0.06, DB_BROWN, 0);
   }
   mesh.box(0, floorY + 0.03, 0, W - 0.06, 0.06, frameHalf * 2 - 0.06, FRAME_BLACK, 0);
-  // the load: coal heaped over the top rails, a ridge along the middle
-  coalHeap(mesh, coarse, top, frameHalf, W, 0.25, 0.55, 1);
+  // the load: coal heaped over the top rails, a ridge along the middle; round 5 (wave 278: "a flat dark-grey lid flush
+  // with the sides… black cubes"): it comes up to the rims and crowns 0.35 m over them in three chute dumps, granular,
+  // its lumps rough, some spilled on the rails and its dust down the sides
+  coalHeap(mesh, coarse, top, frameHalf, W, 0.05, 0.42, 1, { grid: [34, 16], peaks: 3, lumps: 96, spill: hw + 0.07 });
 }
 
 function g10(mesh: VehicleMesh, coarse: boolean): void {
@@ -800,6 +867,16 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   // plate frame over the wheels hid the rods and the upper wheels; the frame now stands over the running gear as the
   // locomotive's does, its plates inside the wheels, so the wheels, the cranks and the rods show whole)
   for (const z of [-2.2, 0, 2.2]) wheelset(mesh, z, r, false);
+  // (round 5, wave 278: "plain black disc wheels") each wheel's tyre rim painted white on its outer face and a
+  // counterweight on its disc opposite the crank (the crank at the top: the weight below the hub)
+  if (!coarse) {
+    for (const z of [-2.2, 0, 2.2]) for (const side of [1, -1]) {
+      mesh.push().translate(side * 0.79, r, z).scale(side, 1, 1);
+      mesh.lathe([[r - 0.012, 0.004], [r - 0.07, 0.004]], 14, () => TYRE_WHITE);
+      mesh.pop();
+      mesh.box(side * 0.785, r - 0.3, z, 0.03, 0.18, 0.42, GEAR_STEEL, 0);
+    }
+  }
   underframe(mesh, frameHalf, W, frameTop, 0.25, L);
   const pin = r + 0.22, xCrank = 0.85, xPin = 0.9, xRod = 0.94;
   for (const side of [1, -1]) {
@@ -826,6 +903,11 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
       mesh.pop();
     }
     beam(mesh, [side * xRod, pin, -3.5], [side * xRod, pin, 2.2], 0.05, 0.17, V60_ROD);
+    // (round 5, wave 278: "no… sand boxes") the sand boxes on the frame over the outer wheels, their filler caps
+    for (const z of [-2.2 - 0.62, 2.2 + 0.62]) {
+      mesh.box(side * 1.18, frameTop - 0.32, z, 0.28, 0.42, 0.34, FRAME_BLACK, 0);
+      if (!coarse) mesh.box(side * 1.18, frameTop - 0.08, z, 0.12, 0.05, 0.12, GEAR_STEEL, 0);
+    }
     // the jackshaft's gear case behind the frame, between the plates
     if (side > 0) mesh.box(0, r + 0.15, -3.5, 1.05, 0.7, 0.62, FRAME_BLACK, coarse ? 0 : 0.03);
     // (round 3, wave 234: "steps") the end steps: two treads, worn bright, between their hangers at each corner; (round
@@ -847,10 +929,17 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   const RC = 0.3;
   const hood = (z0: number, z1: number, h: number, w: number) => {
     roundedHood(mesh, coarse, z0, z1, frameTop, h, w, RC, V60_RED);
-    // its louvres and doors
+    // its louvres: (round 5, wave 278: "no louvres") a black panel per door, eight pale slats across it, so the grilles
+    // read at a yard's distance
     if (!coarse) mesh.dressing(() => {
       for (const side of [1, -1]) for (let k = 0; k < Math.floor((z1 - z0) / 0.7); k++) {
-        mesh.box(side * (w / 2 + 0.004), frameTop + h * 0.5, z0 + 0.35 + k * 0.7, 0.008, h * 0.42, 0.5, linearMat(0x5a1418), 0);
+        const zc = z0 + 0.35 + k * 0.7, yc = frameTop + h * 0.5, hh = h * 0.21, x = side * (w / 2 + 0.004), n: Vec3 = [side, 0, 0];
+        face4(mesh, [[x, yc - hh, zc - 0.25], [x, yc - hh, zc + 0.25], [x, yc + hh, zc + 0.25], [x, yc + hh, zc - 0.25]], n, FRAME_BLACK);
+        const xs = side * (w / 2 + 0.008);
+        for (let s2 = 0; s2 < 8; s2++) {
+          const y0 = yc - hh + 0.04 + (s2 / 8) * (2 * hh - 0.04), y1 = y0 + (2 * hh - 0.08) / 16;
+          face4(mesh, [[xs, y0, zc - 0.22], [xs, y0, zc + 0.22], [xs, y1, zc + 0.22], [xs, y1, zc - 0.22]], n, LOUVRE_SLAT);
+        }
       }
     });
     // (round 2, wave 152: "a toy", "no handrails… or grime") the grab rail along each side on its brackets, the
@@ -881,14 +970,35 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   roundedHood(mesh, coarse, cz0, cz1, frameTop, cabTop - frameTop, W - 0.1, 0.32, V60_RED);
   mesh.box(0, cabTop + 0.015, (cz0 + cz1) / 2, W - 0.8, 0.03, cz1 - cz0 + 0.12, FRAME_BLACK, 0);
   for (const side of [1, -1]) {
-    for (const z of [-1.35, -0.3]) mesh.box(side * ((W - 0.1) / 2 + 0.006), cabTop - 0.75, z, 0.012, 0.75, 0.75, GLASS, 0);
+    for (const z of [-1.35, -0.3]) {
+      mesh.box(side * ((W - 0.1) / 2 + 0.006), cabTop - 0.75, z, 0.012, 0.75, 0.75, V60_GLASS, 0);
+      // (round 5) its frame and the sky's highlight across it, so it reads as glass and not a hole
+      if (!coarse) mesh.dressing(() => {
+        const x = side * ((W - 0.1) / 2 + 0.014), n: Vec3 = [side, 0, 0], y0 = cabTop - 1.125, y1 = cabTop - 0.375, za = z - 0.375, zb = z + 0.375, t = 0.04;
+        face4(mesh, [[x, y0, za], [x, y0, zb], [x, y0 + t, zb], [x, y0 + t, za]], n, V60_FRAME);
+        face4(mesh, [[x, y1 - t, za], [x, y1 - t, zb], [x, y1, zb], [x, y1, za]], n, V60_FRAME);
+        face4(mesh, [[x, y0, za], [x, y0, za + t], [x, y1, za + t], [x, y1, za]], n, V60_FRAME);
+        face4(mesh, [[x, y0, zb - t], [x, y0, zb], [x, y1, zb], [x, y1, zb - t]], n, V60_FRAME);
+        face4(mesh, [[x, y0 + 0.2, za + 0.12], [x, y0 + 0.32, za + 0.12], [x, y1 - 0.12, zb - 0.2], [x, y1 - 0.24, zb - 0.2]], n, V60_GLASS_HI);
+      });
+    }
     // the cab door's grab handles either side of it
     if (!coarse) mesh.dressing(() => {
       for (const z of [cz0 + 0.12, cz1 - 0.12]) mesh.tube([[side * ((W - 0.1) / 2 + 0.06), frameTop + 0.4, z], [side * ((W - 0.1) / 2 + 0.06), frameTop + 1.7, z]], 0.018, 5, HANDRAIL, { caps: true });
     });
   }
   for (const end of [1, -1]) {
-    for (const x of [-0.85, 0.85]) mesh.box(x, cabTop - 0.7, end > 0 ? cz1 + 0.006 : cz0 - 0.006, 0.6, 0.65, 0.012, GLASS, 0);
+    for (const x of [-0.85, 0.85]) {
+      const zf = end > 0 ? cz1 + 0.006 : cz0 - 0.006;
+      mesh.box(x, cabTop - 0.7, zf, 0.6, 0.65, 0.012, V60_GLASS, 0);
+      if (!coarse) mesh.dressing(() => {
+        const z = end > 0 ? cz1 + 0.014 : cz0 - 0.014, n: Vec3 = [0, 0, end], y0 = cabTop - 1.025, y1 = cabTop - 0.375, xa = x - 0.3, xb = x + 0.3, t = 0.04;
+        face4(mesh, [[xa, y0, z], [xb, y0, z], [xb, y0 + t, z], [xa, y0 + t, z]], n, V60_FRAME);
+        face4(mesh, [[xa, y1 - t, z], [xb, y1 - t, z], [xb, y1, z], [xa, y1, z]], n, V60_FRAME);
+        face4(mesh, [[xa, y0, z], [xa + t, y0, z], [xa + t, y1, z], [xa, y1, z]], n, V60_FRAME);
+        face4(mesh, [[xb - t, y0, z], [xb, y0, z], [xb, y1, z], [xb - t, y1, z]], n, V60_FRAME);
+      });
+    }
   }
   // the buffer beams' warning stripes
   if (!coarse) mesh.dressing(() => {
@@ -933,6 +1043,19 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
       const flip = dotV(crossV(sub(b, a), sub(c, a)), up) < 0;
       const va = mesh.vert(a[0], a[1], a[2], 0, 1, 0, SOOT), vb = mesh.vert(b[0], b[1], b[2], 0, 1, 0, SOOT), vc = mesh.vert(c[0], c[1], c[2], 0, 1, 0, SOOT);
       if (flip) mesh.tri(va, vc, vb); else mesh.tri(va, vb, vc);
+    }
+    // (round 5, wave 278: "no… exhaust staining") the stack's soot carried astern over the hood's roof and down its
+    // rounded edges either side
+    for (const side of [1, -1]) {
+      // on the roof's rounded edge (radius 0.3 about (0.625, h - 0.3)), a centimetre proud, from 15 to 80 degrees off
+      // the top, the stain narrowing as it runs down and astern
+      const arc = (deg: number): Vec3 => { const a = (deg * Math.PI) / 180; return [side * (0.625 + Math.sin(a) * 0.31), frameTop + 1.7 + Math.cos(a) * 0.31, 0]; };
+      const st = [arc(15), arc(48), arc(80)], zs = [[0.95, 2.6], [1.05, 2.45], [1.2, 2.2]] as const;
+      for (let q = 0; q < 2; q++) {
+        const a = st[q], b = st[q + 1], am = (15 + 32.5 * (q * 2 + 1)) * Math.PI / 180;
+        const n: Vec3 = [side * Math.sin(am), Math.cos(am), 0];
+        face4(mesh, [[a[0], a[1], zs[q][0]], [a[0], a[1], zs[q][1]], [b[0], b[1], zs[q + 1][1]], [b[0], b[1], zs[q + 1][0]]], n, SOOT);
+      }
     }
     // (round 4, wave 260: "no… grime") oil weeping down the hood sides from the louvres, and the fuel filler's spill
     for (const side of [1, -1]) {
