@@ -472,34 +472,36 @@ uniform vec3 uVehUp;
 uniform vec3 uVehWearFwd;
 uniform vec4 uVehWearSoot;
 uniform vec4 uVehWearSootAxis;
-varying vec3 vCotWearPos;
+varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying vec3 vCotWearSide;
+varying float vCotWearSootOff;
 vec3 cotWearSeed( const in float id ) {
 	return fract( vec3( id * 0.6180339, id * 0.4142136, id * 0.7320508 ) + 0.37 ) * 7.0;
 }
 `;
 /** ...and, per vertex, the vehicle frame (height above the ground contact, the normal along the vehicle's up and
- * forward, the station along the hull, the offset to its left) and the bound soot source's (along its axis, off it),
- * so the fragment does no matrix work: all are linear across a plate, and a smooth part interpolates its normals. */
+ * forward, the station along the hull) and the bound soot source's (along its axis, off it), so the fragment does no
+ * matrix work: all are linear across a plate, and a smooth part interpolates its normals. Packed into two vec4 and a
+ * float (the pattern position carries the height in its w): two and a quarter varying slots beside three's own. */
 export const FIELD_WEAR_VERTEX = /* glsl */ `
-	vCotWearPos = transformed;
+	vec3 cotWearPos = transformed;
 	vec4 cotWearWorld = vec4( transformed, 1.0 );
 	#ifdef USE_BATCHING
-		vCotWearPos += cotWearSeed( getIndirectIndex( gl_DrawID ) );
+		cotWearPos += cotWearSeed( getIndirectIndex( gl_DrawID ) );
 		cotWearWorld = batchingMatrix * cotWearWorld;
 	#endif
 	#ifdef USE_INSTANCING
-		vCotWearPos += cotWearSeed( float( gl_InstanceID ) );
+		cotWearPos += cotWearSeed( float( gl_InstanceID ) );
 		cotWearWorld = instanceMatrix * cotWearWorld;
 	#endif
 	cotWearWorld = modelMatrix * cotWearWorld;
 	vec3 cotWearN = inverseTransformDirection( transformedNormal, viewMatrix );
 	vec3 cotWearRel = cotWearWorld.xyz - uVehGround.xyz;
-	vCotWearFrame = vec4( dot( cotWearRel, uVehUp ), dot( cotWearN, uVehUp ), dot( cotWearN, uVehWearFwd ), dot( cotWearRel, uVehWearFwd ) );
+	vCotWearPos = vec4( cotWearPos, dot( cotWearRel, uVehUp ) );
 	vec3 cotSootRel = cotWearWorld.xyz - uVehWearSoot.xyz;
 	float cotSootAlong = dot( cotSootRel, uVehWearSootAxis.xyz );
-	vCotWearSide = vec3( cotSootAlong, length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong ), dot( cotWearRel, cross( uVehUp, uVehWearFwd ) ) );
+	vCotWearFrame = vec4( dot( cotWearN, uVehUp ), dot( cotWearN, uVehWearFwd ), dot( cotWearRel, uVehWearFwd ), cotSootAlong );
+	vCotWearSootOff = length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong );
 `;
 
 /** The value noise (inside the receipts' GLSL subset: vehicleFieldWear.selftest.mjs runs these bodies). */
@@ -527,16 +529,15 @@ uniform vec4 uVehWearSootAxis;
 uniform vec4 uVehWearDeep;
 uniform vec4 uVehWearSplash;
 uniform vec4 uVehWearSettle;
-varying vec3 vCotWearPos;
+varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying vec3 vCotWearSide;
+varying float vCotWearSootOff;
 ${FIELD_WEAR_NOISE_GLSL}`;
 
 /**
  * The field wear (inside the receipts' GLSL subset). Inputs: wearH (metres above the ground contact along the vehicle's
  * up), wearUp (the face's world normal along that up), wearBack (how squarely it faces the stern: the tracks throw their
- * rooster tail up the rear plate), wearAlong / wearAcross (the station along the hull and the offset to its left, the
- * vehicle's own metres), wearSootAlong / wearSootOff (along and off the bound soot source's axis), wearRelief (the
+ * rooster tail up the rear plate), wearAlong (the station along the hull, the vehicle's own metres), wearSootAlong / wearSootOff (along and off the bound soot source's axis), wearRelief (the
  * plate's normal-map relief: seams, welds, bolts, rings), wearQ (the pattern's 2D frame on the face's own plane: across,
  * then down a vertical plate), wearFoot (metres one pixel spans), wearN1 / wearN2 (the low and fine noise octaves,
  * 0..1), wearStrength, wearRole, wearHull, wearSoot, wearSootAxis, soilDeep, soilSplash,
@@ -636,20 +637,19 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
  */
 export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 	if ( uVehGround.w > 0.0 && uVehWearRole.x + uVehWearRole.y + uVehWearRole.w > 0.0 ) {
-		float wearH = vCotWearFrame.x;
-		float wearUp = vCotWearFrame.y * faceDirection;
-		float wearBack = clamp( - vCotWearFrame.z * faceDirection, 0.0, 1.0 );
-		float wearAlong = vCotWearFrame.w;
-		float wearAcross = vCotWearSide.z;
-		float wearSootAlong = vCotWearSide.x;
-		float wearSootOff = vCotWearSide.y;
+		float wearH = vCotWearPos.w;
+		float wearUp = vCotWearFrame.x * faceDirection;
+		float wearBack = clamp( - vCotWearFrame.y * faceDirection, 0.0, 1.0 );
+		float wearAlong = vCotWearFrame.z;
+		float wearSootAlong = vCotWearFrame.w;
+		float wearSootOff = vCotWearSootOff;
 		// the pattern's frame and footprint from the screen derivatives: the face's own plane in the mesh frame picks the
 		// projection (a side plate's z and y, a deck's x and z), so the noise keeps its shape on every plate
-		vec3 wearDx = dFdx( vCotWearPos );
-		vec3 wearDy = dFdy( vCotWearPos );
+		vec3 wearDx = dFdx( vCotWearPos.xyz );
+		vec3 wearDy = dFdy( vCotWearPos.xyz );
 		float wearFoot = length( abs( wearDx ) + abs( wearDy ) );
 		vec3 wearFace = abs( cross( wearDx, wearDy ) );
-		vec3 wearP = vCotWearPos;
+		vec3 wearP = vCotWearPos.xyz;
 		vec2 wearQ = wearFace.x > max( wearFace.y, wearFace.z ) ? wearP.zy : ( wearFace.y > wearFace.z ? wearP.xz : wearP.xy );
 		float wearN1 = cotWearNoise( wearQ * vec2( 3.0, 2.0 ) );
 		float wearN2 = 0.5;

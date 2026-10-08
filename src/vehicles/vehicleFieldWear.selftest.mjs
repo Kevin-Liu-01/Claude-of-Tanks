@@ -18,7 +18,7 @@ import { getMapConfig, MAP_IDS } from '../world/maps/index.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import {
   VEHICLE_FIELD_GROUNDS, VEHICLE_FIELD_WEAR_GARAGE, VEHICLE_FIELD_WEAR_UNIFORMS, FIELD_WEAR_CORE_GLSL, FIELD_WEAR_FRAGMENT,
-  FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, bindVehicleFieldWear, installVehicleFieldWear, vehicleFieldSoil, vehicleFieldWearRole,
+  FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, bindVehicleFieldWear, installVehicleFieldWear, vehicleFieldSoil, vehicleFieldWearRole,
 } from './vehicleFieldWear.ts';
 import { setCamoBiome, setVehicleGroundFromRoot, resetVehicleGround, vehicleAmbientFloorHook } from './materials.ts';
 
@@ -116,7 +116,7 @@ const core = parseGlsl(FIELD_WEAR_CORE_GLSL);
 const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, s.spatter], soilSettle: [...s.settle, s.settleAmount] });
 const PAINT = [1, 1, 1, 1], IRON = [0.9, 0.6, 2, 0.6], STEEL = [0.9, 0.8, 3, 1];
 const BASE = {
-  wearH: 0.3, wearUp: 0, wearBack: 0, wearAlong: 0, wearAcross: 0, wearSootAlong: 0, wearSootOff: 9, wearRelief: 0,
+  wearH: 0.3, wearUp: 0, wearBack: 0, wearAlong: 0, wearSootAlong: 0, wearSootOff: 9, wearRelief: 0,
   wearQ: [0.31, 1.2], wearFoot: 0.004, wearN1: 0.5, wearN2: 0.5, wearStrength: 1, wearRole: PAINT,
   wearHull: [-3.4, 3.6, 1.5, 1.8], wearSoot: [0, 0, 0, 0], wearSootAxis: [0, 0, 1, 1],
   ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: [0.1, 0.12, 0.06], wearRough: 0.7, wearMetal: 0.05,
@@ -193,7 +193,7 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.ok(chipped.wearMetal > 0.3 && luma(chipped.wearAlbedo) < luma(smooth.wearAlbedo) * 0.7, 'dark chips along the relief');
   assert.ok(smooth.wearMetal < 0.1, 'no chips on a plain plate');
   const walk = run({ wearH: 1.45, wearUp: 1, wearAlong: 3.3, wearN1: 0.8, wearN2: 0.6 });
-  const midDeck = run({ wearH: 1.45, wearUp: 1, wearAlong: 0.2, wearAcross: 0, wearN1: 0.8, wearN2: 0.6 });
+  const midDeck = run({ wearH: 1.45, wearUp: 1, wearAlong: 0.2, wearN1: 0.8, wearN2: 0.6 });
   assert.ok(walk.wearRough < midDeck.wearRough - 0.05, 'boots rub the walkway by the bow smoother than the middle of the deck');
   // the columns a 4.5 cm hash picks: some streak, most do not, and a streak only darkens
   let streakCols = 0, darker = true;
@@ -218,7 +218,7 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   const vars = (h, up, face = 1, role = [1, 1, 0, 0]) => ({
     uVehGround: [0, 0, 0, 1], uVehWearRole: role, uVehWearHull: [-3.4, 3.6, 1.5, 1.8], uVehWearSoot: [0, 0, 0, 0], uVehWearSootAxis: [0, 0, 1, 1],
     ...Object.fromEntries(Object.entries(soilVec(vehicleFieldSoil('verdant'))).map(([k, v]) => [`uVehWear${k.slice(4)}`, v])),
-    vCotWearFrame: [h, up, 0, 0], vCotWearSide: [0, 9, 0], faceDirection: face, vCotWearPos: [1.7, h, 0.4],
+    vCotWearFrame: [up, 0, 0, 0], vCotWearSootOff: 9, faceDirection: face, vCotWearPos: [1.7, h, 0.4, h],
     diffuseColor: [0.1, 0.12, 0.06, 1], roughnessFactor: 0.7, metalnessFactor: 0.05,
   });
   const low = runGlsl(glue, vars(0.3, 0), stub, new Set());
@@ -233,9 +233,13 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.deepEqual(none.diffuseColor, [0.1, 0.12, 0.06, 1], 'a role of none skips the whole wear');
   assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearFoot <'),
     'screen derivatives are taken in uniform control flow, before the close-range branch');
-  assert.ok(FIELD_WEAR_VERTEX.includes('vCotWearPos = transformed;') && FIELD_WEAR_VERTEX.includes('USE_INSTANCING')
+  assert.ok(FIELD_WEAR_VERTEX.includes('vec3 cotWearPos = transformed;') && FIELD_WEAR_VERTEX.includes('USE_INSTANCING')
     && FIELD_WEAR_VERTEX.includes('USE_BATCHING'), 'instances and batched parts each take their own pattern offset');
   assert.ok(!/viewMatrix|cameraPosition|vViewPosition/.test(FIELD_WEAR_FRAGMENT), 'no matrix work per fragment: the frames come from the vertex stage');
+  // varying budget: WebGL2 guarantees only fifteen vectors and three's lit material with four shadow cascades uses about
+  // ten, so the wear packs its frames into two vec4 and a float
+  const varyings = [...FIELD_WEAR_FRAGMENT_PARS.matchAll(/varying (float|vec2|vec3|vec4) /g)].map((m) => m[1]);
+  assert.deepEqual(varyings.sort(), ['float', 'vec4', 'vec4'], `the wear's varyings stay packed (${varyings})`);
 }
 
 // ---------------------------------------------------------------- 3. plumbing
