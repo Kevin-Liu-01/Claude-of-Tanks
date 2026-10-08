@@ -2607,7 +2607,13 @@ function idlerGeo(
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
     const a = (k / boltCount) * Math.PI * 2 + 0.2;
-    dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
+    // Fleet lane round 1 (2026-10-07): the heads stand 6 mm proud of the hub drum's end face. Ending in its plane,
+    // each overlapped the drum's cap disc (r 0.26·r vs heads at 0.30·r ± 22 mm): two coplanar filled caps that fought
+    // in depth on every idler (the inherited fleetPass circularCapOverlap red, 157 hulls at LOW).
+    // and on a small idler (or a many-bolt pattern) the heads keep a gap: neighbours at 0.30·r used to overlap
+    // edge to edge in one plane (Leopard 2A6 UA's front idler).
+    const headR = Math.min(0.022, (Math.PI * 2 * r * 0.30 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w + hD * 1.6 + 0.012, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
   return { body: mergeAll(body), dark: mergeAll(dark) };
@@ -2748,7 +2754,9 @@ function sprocketGeo(
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < (stock ? 0 : boltCount); k++) {     // dark bolt ring on the hub boss
     const a = (k / boltCount) * Math.PI * 2;
-    dark.push(xform(cylX(0.02, w * 1.06, 6),
+    // fleet lane round 1: neighbouring heads never overlap in their shared end plane (see idlerGeo)
+    const headR = Math.min(0.02, (Math.PI * 2 * r * 0.44 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
   const mergedBody = mergeAll(body), mergedDark = mergeAll(dark);
