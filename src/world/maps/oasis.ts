@@ -1,5 +1,13 @@
 // A crescent oasis west of the town creates a short wet cut, an exposed
 // caravan road and a long dune-back flank. Reuses only the desert materials.
+//
+// Reference (the map-revival lane, 2026-10-05): Siwa, in Egypt's Western Desert below the Qattara Depression: the
+// springs and their salt lakes, the palm gardens walled in mud, and the old town of Shali, its kershef houses (salt-
+// crusted mud and rock) heaped up a hill in rounded, battered blocks. The settlement stands where the plan seats it in
+// the siwa variant of the ksar kit (maps/regional/ksar.ts): the kershef houses with their palm-beam ends, shuttered
+// windows and plank doors; old Shali's blocks of one to three storeys heaped together on the compound plots; the
+// mosque's tapering mud minaret and a watch tower; the spring in its stone rim with the café's palm-rib shelter; the
+// souk's stalls under their palm-rib mats; the melted ruins of the old town.
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
@@ -49,14 +57,16 @@ export default {
   splat: { sourcedPalette: 'desert', ...desert.splat,
     // The spring owns this liquid layer: desert's brown dry-clay tone is
     // inappropriate here. Keep its subdued lightness with a small lift.
-    mudTone: (_h: number, _s: number, l: number) => [0.50, 0.35, Math.min(0.42, l * 1.5 + 0.07)],
-    seaLake: true, seaFoam: 0.04, seaRamp: [0.08, 0.40], iceDrift: 0.02, marshGloss: 0.88, iceSky: [0.22, 0.46, 0.43], midRelief: 0.52, rippleDir: [0.4, 0.92] },
+    // (round 2, wave 125: "water pale mineral") Siwa's spring water is a pale, milky mineral turquoise over white sand
+    mudTone: (_h: number, _s: number, l: number) => [0.47, 0.28, Math.min(0.56, l * 1.5 + 0.17)],
+    seaLake: true, seaFoam: 0.04, seaRamp: [0.08, 0.40], iceDrift: 0.02, marshGloss: 0.88, iceSky: [0.32, 0.54, 0.52], midRelief: 0.52, rippleDir: [0.4, 0.92] },
   vegetation: {
     grassTexTone: desert.vegetation.grassTexTone, tuftTone: desert.vegetation.tuftTone,
     species: ['palm', 'acacia', 'eucalyptus'], clusterMix: [['palm', 0.65], ['acacia', 0.3], ['eucalyptus', 0.05]],
     loneMix: [['acacia', 0.65], ['palm', 0.3], ['eucalyptus', 0.05]], rimMix: [['acacia', 0.55], ['palm', 0.35], ['eucalyptus', 0.1]],
-    clusterCount: 24, loneCount: 28, rimCount: 30, grassDensity: 0.5, clusterScrub: 2.0, bushCount: 0.8, bushSpecies: 'acacia', palettes: desert.vegetation.palettes,
-    belts: [{ x0: -208, z0: -104, x1: -218, z1: 148, gap: 18, jitter: 5, species: 'palm' }, { x0: 10, z0: -102, x1: 24, z1: 142, gap: 19, jitter: 5, species: 'palm' }],
+    clusterCount: 32, loneCount: 28, rimCount: 30, grassDensity: 0.5, clusterScrub: 2.0, bushCount: 0.8, bushSpecies: 'acacia', palettes: desert.vegetation.palettes,
+        // (round 2, wave 125: "dense palms") the palm rows planted close, as Siwa's gardens are
+    belts: [{ x0: -208, z0: -104, x1: -218, z1: 148, gap: 13, jitter: 4, species: 'palm' }, { x0: 10, z0: -102, x1: 24, z1: 142, gap: 14, jitter: 4, species: 'palm' }],
     // Trees round 2b (2026-10-03, the gauntlet's wave 15): the palms grow in the oasis only: the spring basin and its
     // banks, and the two palm rows along its east and west shores (discs every 40 m down each row); a palm drawn out
     // on the sand grows as an acacia.
@@ -68,6 +78,8 @@ export default {
     palmFallback: 'acacia',
   },
   props: {
+    // the map-revival lane (2026-10-05): the town is Siwa's, in the siwa variant of the ksar kit (maps/regional/ksar.ts)
+    architecture: 'siwa',
     sourcedPalette: 'desert',
     plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
@@ -82,13 +94,18 @@ export default {
       { id: 'western-dune-lookout', role: 'scout', x: -345, z: 32, yawDeg: 90, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
       { id: 'spring-supply-camp', role: 'support', x: -72, z: 256, yawDeg: 180, structure: 'deserttent', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
     ],
-    tones: desert.props.tones, wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
+    // the kit's kershef tones own the renders (a salt-mud grey-beige, not the Dahar's warm sand adobe); the roofs, field
+    // stone, timber and straw keep the desert's
+    tones: { roof: desert.props.tones.roof, stone: desert.props.tones.stone, wood: desert.props.tones.wood, straw: desert.props.tones.straw },
+    wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
     wallRuns: [[38, -40, 38, 18, 2], [108, -106, 168, -106, 2], [248, 12, 248, 84, 3], [176, 90, 248, 90, 2], [-108, 280, -32, 280, 3], [-108, 216, -108, 280, 2]],
-    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: false,
+    // (round 2, wave 125: no round bales in a date-palm oasis)
+    // (round 2, wave 125: "a red-tiled wishing well", "a red fence") the springs are the water; palm-rib fences only
+    well: false, hayCrates: false, fences: false, telegraph: false, carts: true, logs: false,
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['merkava4b', 'm60a3', 'merkava3d', 'm1a2', 't90a'] },
-    inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
+    inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a flat erg of low soft dunes

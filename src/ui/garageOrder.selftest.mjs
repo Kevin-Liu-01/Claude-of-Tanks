@@ -91,13 +91,13 @@ assert.deepEqual(
 
 const usTopRun = [
   'm1a2_x', 'm3a3_bradley', 'm1a2_sepv2_x', 'm1a3', 'griffin50_x',
-  'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm1a2_sepv3_x',
+  'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm1a2_sepv3_x', 'griffin_viper', 'm6_linebacker',
 ].map(id => ({ id, nation: 'USA', name: id }));
 assert.deepEqual(
   usTopRun.sort((a, b) => compareCountryThenTierThenName(a, b, rank, () => 10))
-    .slice(0, 8).map(card => card.id),
-  ['m1a3', 'm1a2_sepv3_x', 'm1a2_sepv2_x', 'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm3a3_bradley', 'griffin50_x'],
-  'the American showcase follows the owner’s September 22 order',
+    .map(card => card.id),
+  ['m1a3', 'm1a2_sepv3_x', 'm1a2_sepv2_x', 'm1a2_tusk_x', 'abramsx', 'm551a1_tts', 'm6_linebacker', 'griffin50_x', 'griffin_viper', 'm3a3_bradley', 'm1a2_x'],
+  'the American showcase preserves the Abrams leaders, then follows the owner’s October 4 order',
 );
 
 const nationalShowcaseCases = [

@@ -1,25 +1,36 @@
 import assert from 'node:assert/strict';
+import { writeFileSync } from 'node:fs';
 import { preparePacingRoster } from './pacingRoster.test-support.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
+import { PACING_SAMPLES, pacingSeed, pacingStats, pacingVerdicts } from './battlePacing.test-support.mjs';
 
+// Modes (docs/DEVELOPMENT.md, "The pacing tail"):
+// - core (npm test): the 132 matches, four per map, judged by the gate below; one match may end inside 90 s.
+// - tail (COT_PACING_TAIL=1, `npm run test:pacing:tail`): the 264 matches, the 132 plus samples 4-7 on every map,
+//   judged by the same gate with the owner's floor as a rate: at most 0.5 % of them inside 90 s.
+// - COT_PACING_MAPS=a,b plays those maps' matches of the full run (the seeds are keyed to each map's index in MAP_IDS)
+//   and reports them without the distribution gate, which a subset of the maps cannot answer.
+//   COT_PACING_REPORT=<file> writes the match records: tools/pacing-tail.mjs merges a run played in shards, judges it
+//   by the same gate and, given the PR head's records on the same matches, compares the share inside 90 s.
+const TAIL = process.env.COT_PACING_TAIL === '1';
+const SAMPLES = TAIL ? PACING_SAMPLES.tail : PACING_SAMPLES.core;
 const MAPS = process.env.COT_PACING_MAPS
   ? process.env.COT_PACING_MAPS.split(',').filter((id) => MAP_IDS.includes(id))
   : MAP_IDS;
-const durations = [];
-const resultReasons = [];
+const PARTIAL = MAPS.length < MAP_IDS.length;
 const matches = [];
 
-// Four deterministic default private-lobby rosters per battlefield.  The
-// human remains idle deliberately: this is the historical worst case where
-// the bot fill used to converge, ram, and decide matches in roughly two
-// minutes.  It also verifies bots do not dog-pile an inactive player.
-for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
-  const mapId = MAPS[mapIndex];
-  const mapDurations = [];
-  for (let sample = 0; sample < 4; sample++) {
-    const matchSeed = 21000 + mapIndex * 1000 + sample;
+// Deterministic default private-lobby rosters per battlefield. The human remains idle deliberately: this is the
+// historical worst case where the bot fill used to converge, ram, and decide matches in roughly two minutes. It also
+// verifies bots do not dog-pile an inactive player.
+for (const mapId of MAPS) {
+  const mapMatches = [];
+  for (let sample = 0; sample < SAMPLES; sample++) {
+    // keyed to the map's index in MAP_IDS: a run over some maps plays the full run's matches on them (a seed keyed to
+    // the filtered list played other matches)
+    const matchSeed = pacingSeed(MAP_IDS, mapId, sample);
     const lobby = {
       phase: 'starting',
       matchSeed,
@@ -46,46 +57,45 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
       assert.ok(match.timeS >= 899,
         `${mapId}/${sample}: time-limit result occurs at the configured cap`);
     }
-    durations.push(match.timeS);
-    resultReasons.push(match.resultReason);
-    matches.push({ mapId, seed: matchSeed, timeS: match.timeS, roster: players.map((player) => player.specId) });
-    mapDurations.push(match.timeS);
+    const record = { mapId, seed: matchSeed, sample, timeS: match.timeS, result: match.resultReason,
+      roster: players.map((player) => player.specId) };
+    matches.push(record);
+    mapMatches.push(record);
   }
-  const mapTimeouts = resultReasons.slice(-mapDurations.length)
-    .filter((reason) => reason === 'time_limit').length;
-  console.log(`${mapId}: ${mapDurations.map((v) => v.toFixed(0)).join('/')}s ` +
-    `timeouts=${mapTimeouts}/4`);
+  const mapTimeouts = mapMatches.filter((match) => match.result === 'time_limit').length;
+  console.log(`${mapId}: ${mapMatches.map((match) => match.timeS.toFixed(0)).join('/')}s ` +
+    `timeouts=${mapTimeouts}/${SAMPLES}`);
 }
 
-durations.sort((a, b) => a - b);
-const medianS = durations[Math.floor(durations.length / 2)];
-const p10S = durations[Math.floor(durations.length * 0.1)];
-const subTwoMinute = durations.filter((duration) => duration < 120).length;
-const timeouts = resultReasons.filter((reason) => reason === 'time_limit').length;
+if (process.env.COT_PACING_REPORT) {
+  writeFileSync(process.env.COT_PACING_REPORT, JSON.stringify({
+    mode: TAIL ? 'tail' : 'core', samples: SAMPLES, maps: MAPS, matches,
+  }, null, 1));
+}
 
-// Active route recovery removes idle deployment time, and no-contact bots search from 25 s (fc966a16d). The owner
-// accepted the faster battles that gives (ruling 2026-10-03): a 3–8 minute median (209 s measured; searching after
-// the old 120–165 s deployment windows gave 342 s). The fast tail still guards against bots converging and deciding
-// matches in about two minutes. Each outcome is chaotic in its inputs, so the tail is a share, not a count: p10 at
-// least 120 s, at most 5 % of the matches inside 120 s (5 of 132 measured, 98–119 s), none inside 90 s.
-// PR #9 (2026-10-04): the ruling replaces the pending-ruling band and the two named floor exceptions the PR carried
-// (Polders 41002, Mars 51000); neither seed ends inside 120 s on the merged tree. Each fast match is still printed by
-// map, seed and seconds, so a seed that crosses into the tail is named in the log.
-const MEDIAN_BAND_S = { min: 180, max: 480 };
-assert.ok(medianS >= MEDIAN_BAND_S.min && medianS <= MEDIAN_BAND_S.max,
-  `default bot match median must stay in the 3-8 minute band (got ${medianS.toFixed(1)} s)`);
-assert.ok(p10S >= 120,
-  `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
-const maxSubTwoMinute = Math.round(durations.length * 0.05);
-assert.ok(subTwoMinute <= maxSubTwoMinute,
-  `at most ${maxSubTwoMinute} default bot matches may end inside two minutes (got ${subTwoMinute})`);
-assert.ok(durations[0] >= 90, `no default bot match collapses inside 90 s (fastest ${durations[0].toFixed(1)} s)`);
-for (const entry of matches.filter((match) => match.timeS < 120)) {
+// The gate (battlePacing.test-support.mjs). History: active route recovery removes idle deployment time, and
+// no-contact bots search from 25 s (fc966a16d). The owner accepted the faster battles that gives (ruling 2026-10-03):
+// a 3–8 minute median (209 s measured; searching after the old 120–165 s deployment windows gave 342 s). The fast
+// tail still guards against bots converging and deciding matches in about two minutes. Each outcome is chaotic in its
+// inputs, so the tail is a share, not a count: p10 at least 120 s, at most 5 % of the matches inside 120 s (5 of 132
+// measured, 98–119 s), none inside 90 s. PR #9 (2026-10-04): the ruling replaced the pending-ruling band and the two
+// named floor exceptions the PR carried (Polders 41002, Mars 51000).
+// The owner's ruling of 2026-10-05, "floor as a tail rate", replaces "none inside 90 s": the fastest single match is a
+// lottery (the physics lane's set moved 91 of the 132 times by more than 10 %, and the inside-90 match moved from seed
+// to seed with every change), so the floor is a rate judged on the tail mode's 264 matches: at most 0.5 % inside 90 s,
+// and no more than the PR head's share on the same matches (the documented procedure; a receipt cannot run the head).
+// The core run's 132 matches allow one. Each fast match is still printed by map, seed and seconds, so a seed that
+// crosses into the tail is named in the log.
+const stats = pacingStats(matches);
+for (const entry of stats.fast) {
   console.log(`battlePacing.selftest: fast match ${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`);
 }
-const maxTimeouts = Math.floor(durations.length * 0.125);
-assert.ok(timeouts <= maxTimeouts,
-  `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);
-
-console.log(`battlePacing.selftest: median=${medianS.toFixed(1)}s p10=${p10S.toFixed(1)}s ` +
-  `sub120=${subTwoMinute} timeouts=${timeouts}/${durations.length}`);
+const summary = `median=${stats.medianS.toFixed(1)}s p10=${stats.p10S.toFixed(1)}s sub120=${stats.sub120} ` +
+  `sub90=${stats.sub90} timeouts=${stats.timeouts}/${stats.matches}`;
+if (PARTIAL) {
+  console.log(`battlePacing.selftest: ${MAPS.length} of ${MAP_IDS.length} maps, ${summary}; a subset of the maps has `
+    + 'no distribution gate (tools/pacing-tail.mjs judges a run merged from shards)');
+} else {
+  for (const verdict of pacingVerdicts(stats)) assert.ok(verdict.ok, `battlePacing (${TAIL ? 'tail' : 'core'}): ${verdict.label}`);
+  console.log(`battlePacing.selftest: ${TAIL ? 'tail' : 'core'} ${summary}`);
+}

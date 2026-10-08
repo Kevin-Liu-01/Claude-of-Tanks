@@ -3,6 +3,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from '../internalLayoutRegistry.ts';
 import { tankTier } from '../tier.ts';
+import {shellPart,auditShellParts} from '../../../tools/base-shell-audit-math.mjs';
 
 const spec = getSpec('m1a3');
 assert.equal(spec.name, 'M1A3 Abrams');
@@ -61,12 +62,21 @@ assert.equal(layout.systems.engine.form, 'hybridElectricPowerpack');
 assert.equal(layout.systems.autoloader.form, 'fourRoundBustleConveyor');
 assert.equal(layout.systems.missileRack.form, 'gunLaunchedHypersonicRounds');
 
+const baseStock=[];
 const tank = createTank('m1a3', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
   geometryReceipt: true,
+  partCensus(bucket,g,source){
+    if(source!=='add'||!['hull','turret'].includes(bucket))return;
+    const part=shellPart(g,{bucket,ordinal:baseStock.length});
+    if(Math.max(...part.size.toArray())>=.75&&part.area>=.35)baseStock.push(part);
+  },
 });
+for(const pair of auditShellParts(baseStock).mirroredPairs){
+  assert.ok(pair.maxM<.005,`M1A3 primary mirrored surface mismatch ${pair.maxM}m`);
+}
 const baseline = createTank('m1a2', null, {
   proceduralOnly: true,
   quality: 'high',
@@ -105,9 +115,9 @@ assert.ok(Math.abs(turretVertexY(-1.15, 1.08) - 0.68) < 1e-4,
   'left shoulder retains the broad front-plane roof seam');
 assert.ok(Math.abs(turretVertexY(1.15, 1.08) - 0.68) < 1e-4,
   'right shoulder retains the broad front-plane roof seam');
-near(turretVertexY(-0.36, 1.74), 0.50,
+near(turretVertexY(-0.36, 1.890107239), 0.50,
   'left cheek preserves the low mantlet brow');
-near(turretVertexY(0.36, 1.74), 0.50,
+near(turretVertexY(0.36, 1.890107239), 0.50,
   'right cheek preserves the low mantlet brow');
 const mountPositions = tank.root.getObjectByName('gunMount').geometry.attributes.position;
 near(turretVertexY(-0.348, 1.66, mountPositions, gunRig.position), 0.67,
@@ -122,7 +132,8 @@ near(turretVertexY(0.348, 0.72, mountPositions, gunRig.position), roofRampY(0.72
   'center throat rear edge rises into the existing roof plane');
 
 const cheekRoofCorners = (side) => [
-  [side * 0.36, 0.50, 1.74],
+  [side * 0.36, 0.50, 1.890107239],
+  [side * 0.36, 0.68, 1.08],
   [side * 1.15, 0.68, 1.08],
   [side * 1.15, roofRampY(0.38), 0.38],
   [side * 0.36, roofRampY(1.03), 1.03],
@@ -141,7 +152,7 @@ const cheekRoofTriangles = (side) => {
     });
     if (vertices.every((vertex) => vertexMatches(vertex, expected))) triangles.push(vertices);
   }
-  assert.equal(triangles.length, 2, `${side < 0 ? 'left' : 'right'} cheek roof has one two-triangle facet`);
+  assert.equal(triangles.length, 3, `${side < 0 ? 'left' : 'right'} cheek roof has two deliberate planar courses`);
   return triangles;
 };
 const triangleNormal = ([a, b, c]) => {
@@ -160,10 +171,10 @@ const facetAngleDeg = (triangles) => {
   const dot = Math.max(-1, Math.min(1, a.reduce((sum, value, index) => sum + value * b[index], 0)));
   return Math.acos(dot) * 180 / Math.PI;
 };
-const leftCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(-1));
-const rightCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(1));
-assert.ok(rightCheekFacetAngle < 14,
-  `right cheek roof remains one Gallery surface (${rightCheekFacetAngle.toFixed(2)} degrees)`);
+const leftCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(-1).filter(t=>t.every(p=>p[2]<1.081)));
+const rightCheekFacetAngle = facetAngleDeg(cheekRoofTriangles(1).filter(t=>t.every(p=>p[2]<1.081)));
+assert.ok(rightCheekFacetAngle < .001,
+  `aft cheek roof is planar (${rightCheekFacetAngle.toFixed(2)} degrees)`);
 near(rightCheekFacetAngle, leftCheekFacetAngle,
   'right cheek roof mirrors the joined left cheek surface');
 
@@ -199,7 +210,7 @@ assert.deepEqual(receipt, {
   enhancedCheekModules: 0,
   turretRoofInsetM: .45,
   mantletRoofRamp: expectedMantletRoofRamp,
-  cheekRoofSurface: 'joined-mirrored-facet',
+  cheekRoofSurface: 'planar-front-and-transverse-roof-courses',
 }, 'the visible M1A3 feature receipt remains complete');
 
 function geometryStats(root) {

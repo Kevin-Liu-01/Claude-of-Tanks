@@ -223,6 +223,16 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
   assert.ok(shape.longleafPine.crownBase > 0.55 && shape.longleafPine.crownBase > shape.pine.crownBase,
     `the longleaf stands on the longest clear bole (${JSON.stringify(shape.longleafPine)})`);
   assert.equal(TREE_GROWTH_PROFILES.longleafPine.habit, 'tuft', 'and carries its needles in tufts');
+  // (trees lane, 2026-10-05, wave 124: "broccoli-crowned blobs"): at the placed trees' mean scale (1.325) a 16-20 m
+  // tree, its crown from about 70 % of its height and narrow against it — a small crown high on a tall clear bole
+  for (let variant = 0; variant < 3; variant++) {
+    const { skeleton } = grow('longleafPine', variant);
+    const lowest = Math.min(...skeleton.leaves.map((l) => l.y)), width = 2 * Math.max(...skeleton.leaves.map((l) => Math.hypot(l.x, l.z)));
+    const height = skeleton.height * 1.325;
+    if (variant === 1) assert.ok(height >= 16 && height <= 20, `longleafPine: ${height.toFixed(1)} m tall at the mean scale`);
+    assert.ok(lowest / skeleton.height >= 0.62, `longleafPine/${variant}: the crown from ${(lowest / skeleton.height).toFixed(2)} of its height`);
+    assert.ok(width / skeleton.height < 0.42, `longleafPine/${variant}: a small crown (${width.toFixed(1)} m across a ${skeleton.height.toFixed(1)} m tree)`);
+  }
   assert.ok(shape.lebanonCedar.aspect > 1.2 && shape.lebanonCedar.aspect > shape.cedar.aspect * 1.5,
     `the cedar of Lebanon spreads broad (${shape.lebanonCedar.aspect} against the cedar's ${shape.cedar.aspect})`);
   for (let variant = 0; variant < 3; variant++) {

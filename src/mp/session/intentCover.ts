@@ -63,7 +63,7 @@ export function createIntentCover({
       const displayTeam = own?.team === 'spectator'
         ? 'alpha'
         : String(own?.team || 'alpha');
-      const lobby = { players: state?.players ?? [] };
+      const lobby = { players: state?.players ?? [], gameMode: state?.gameMode };
 
       coverRendering();
       resetRoundState(game);
