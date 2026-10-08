@@ -2316,339 +2316,23 @@ const VEHICLE_GROUND_DARK = 0.66;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
-/**
- * Field wear (2026-10-07, tank-accessories lane round 3; the blind critics' lowest criterion everywhere,
- * materials_weathering 2.0-2.2: "spotless toy-like tri-tone blotches, no dust or mud", "the hull, road wheels and tracks
- * are factory-clean ... no mud on the running gear or dust on the lower hull", "smoke dischargers show no soot or scorch
- * behind or around the tubes"). The camouflage albedo is one world-scale 2 m tile with no height in it, so the wear is a
- * shader term on the materials that opt in (`COT_FIELD_WEAR`, set in createTankMaterials). Height comes from the
- * per-draw ground reference (the vehicle root: origin at the ground contact, +Y up); the pattern that breaks the wear up
- * comes from each mesh's own vertex positions, so it rides a turning turret, a rolling wheel and a running track link
- * instead of swimming over them. Strength is the reference's w: 1 in battle, VEHICLE_FIELD_WEAR_GARAGE on the Garage
- * showroom build (staticPreview), 0 for anything drawn without a vehicle root (tooling, stubs: unchanged). No new
- * texture, sampler or geometry.
- * Round 4 (2026-10-07; blind wave 240 scored the round-3 wear on and off exactly flat: "each view appears twice ...
- * differ only in the mud-flap colour", "a pale uniform haze over the upper surfaces or a flat dark band over the running
- * gear that stops at the skirt line"). The round-3 dust blended at most half-way to a pale grey, its deck film was one
- * even haze, and its mud was as dark as the running gear it covered. Now, per mode:
- * - 1 painted bodywork (hull, barrel, fitting paint, gunmetal, markings) and 4 cloth and wood: ochre-brown dust thrown
- *   up off the tracks, a heavy coat up to about the skirts' mid-height under a ragged, streaky top edge, a thin film
- *   above it and only a light film on the decks and turret, so the upper camouflage stays crisp; dried mud caked over
- *   the lowest band; clusters of wet mud spatter above the tracks; exhaust soot on the rear plate's upper band and the
- *   last stretch of the engine deck; dark, slightly glossy oil and fuel pools on the engine deck; sun-faded darker paint
- *   on the plates that face the sky. Mode 1 alone adds sharp chips of dark, slightly metallic bare steel where boots and
- *   tools rub (the plate edges at deck height, more sparsely the decks and roof) and grime packed into the plate seams,
- *   welds and bolts of its normal map.
- * - 2 running gear (wheel paint, tyres, track links, spare track, flaps): a light dusty coat over the dark steel and
- *   rubber, caked dried mud and wet clods thickening toward the ground.
- * - 3 the scrolling track band: a pattern-free dusty coat, caked on the ground run.
- * - Soot at the muzzle (the last stretch of the barrel) and around each smoke-discharger bank (setVehicleSootSources).
- * The stern, deck and bow come from the vehicle's own plates (setVehicleWearFrame); a vehicle without that frame skips
- * the exhaust, oil and climbing wear. Every octave fades to its mean once a cycle spans fewer than a few pixels, so the
- * wear never sparkles at range.
- */
-export const VEHICLE_FIELD_WEAR_GARAGE = 0.45;
-/**
- * Soot sources a root can publish (setVehicleSootSources): its muzzle and its smoke-discharger banks, the largest first.
- * Round 4 (2026-10-07): 4 -> 5 so the muzzle's carbon takes a slot of its own beside up to four banks.
- */
-const VEHICLE_SOOT_SLOTS = 5;
-export interface VehicleSootSource {
-  /** The object whose frame `mouth` and `axis` are in; read through its matrixWorld at draw time. */
-  owner: THREE.Object3D;
-  /** The bank's mouth centre and outward axis (unit) in the owner's frame. */
-  mouth: THREE.Vector3;
-  axis: THREE.Vector3;
-  /** Lateral reach of the soot around the axis and how far it runs back along it, metres; strength 0..1. */
-  radius: number;
-  length: number;
-  strength: number;
-}
-/**
- * The hull frame the exhaust soot, the engine-deck oil and the climbing wear read (round 4, 2026-10-07), in the vehicle
- * root's own frame (origin at the ground contact, +Y up, +Z forward), metres: the rear plate's and the bow's station
- * along +Z, the engine deck's height and the hull's half width.
- */
-export interface VehicleWearFrame {
-  sternZ: number;
-  bowZ: number;
-  deckY: number;
-  halfWidth: number;
-}
-interface VehicleWearState {
-  sources: VehicleSootSource[];
-  world: THREE.Vector4[];
-  frame: number;
-  hull: VehicleWearFrame | null;
-}
 /** The ground reference every vehicle material's ground occlusion reads; set per draw by the drawn mesh. */
 const VEHICLE_GROUND = Object.freeze({
   uVehGround: { value: new THREE.Vector4(0, VEHICLE_GROUND_IDLE_Y, 0, 0) },
   uVehUp: { value: new THREE.Vector3(0, 1, 0) },
-  // per soot source: (world mouth, lateral reach), (world axis, run back along it); reach 0 = unused
-  uVehSoot: { value: Array.from({ length: VEHICLE_SOOT_SLOTS * 2 }, () => new THREE.Vector4()) },
-  // round 4 hull frame in the world: (forward axis, the stern's station along it), (deck height, bow station, half
-  // width, 0); a deck height of 0 = no frame
-  uVehFwd: { value: new THREE.Vector4(0, 0, 1, 0) },
-  uVehHull: { value: new THREE.Vector4() },
 });
-let vehicleSootLive = false;
-let vehicleHullLive = false;
-const sootMouth = new THREE.Vector3();
-const sootAxis = new THREE.Vector3();
-// Held beside the root, never in its userData: three's Object3D.copy deep-copies userData through JSON (tank thumbnail
-// masks clone the root), and a source's owner is a live Object3D.
-const VEHICLE_WEAR = new WeakMap<THREE.Object3D, VehicleWearState>();
-function vehicleWearState(root: THREE.Object3D): VehicleWearState {
-  let state = VEHICLE_WEAR.get(root);
-  if (!state) {
-    state = { sources: [], world: [], frame: NaN, hull: null };
-    VEHICLE_WEAR.set(root, state);
-  }
-  return state;
-}
-/** Publish a vehicle's soot sources (tankFactoryCore.ts collects the muzzle and the discharger banks at build end). */
-export function setVehicleSootSources(root: THREE.Object3D, sources: readonly VehicleSootSource[]): void {
-  const state = vehicleWearState(root);
-  state.sources = sources.slice(0, VEHICLE_SOOT_SLOTS);
-  state.world = state.sources.flatMap(() => [new THREE.Vector4(), new THREE.Vector4()]);
-  state.frame = NaN;
-}
-/** The soot sources a vehicle root published (diagnostics and receipts). */
-export function vehicleSootSources(root: THREE.Object3D): readonly VehicleSootSource[] {
-  return VEHICLE_WEAR.get(root)?.sources ?? [];
-}
-/** Publish a vehicle's hull frame (tankFactoryCore.ts measures it from the hull's own plates at build end). */
-export function setVehicleWearFrame(root: THREE.Object3D, frame: VehicleWearFrame | null): void {
-  vehicleWearState(root).hull = frame && frame.deckY > 0.05 ? { ...frame } : null;
-}
-/** The hull frame a vehicle root published (diagnostics and receipts). */
-export function vehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null {
-  return VEHICLE_WEAR.get(root)?.hull ?? null;
-}
-function writeVehicleSoot(state: VehicleWearState | undefined, frame: number): void {
-  const out = VEHICLE_GROUND.uVehSoot.value;
-  if (!state?.sources.length) {
-    if (vehicleSootLive) for (const slot of out) slot.set(0, 0, 0, 0);
-    vehicleSootLive = false;
-    return;
-  }
-  // the sources move with their owners (a turret's banks traverse with it): placed once per rendered frame, reused by
-  // every draw and shadow pass of that frame (frame < 0: no frame counter, place every time)
-  if (frame < 0 || state.frame !== frame) {
-    for (let index = 0; index < state.sources.length; index++) {
-      const source = state.sources[index];
-      sootMouth.copy(source.mouth).applyMatrix4(source.owner.matrixWorld);
-      sootAxis.copy(source.axis).transformDirection(source.owner.matrixWorld);
-      state.world[index * 2].set(sootMouth.x, sootMouth.y, sootMouth.z, source.radius);
-      state.world[index * 2 + 1].set(sootAxis.x * source.strength, sootAxis.y * source.strength,
-        sootAxis.z * source.strength, source.length);
-    }
-    state.frame = frame;
-  }
-  for (let index = 0; index < out.length; index++) {
-    if (index < state.world.length) out[index].copy(state.world[index]);
-    else out[index].set(0, 0, 0, 0);
-  }
-  vehicleSootLive = true;
-}
-function writeVehicleHull(hull: VehicleWearFrame | null | undefined, e: ArrayLike<number>, upScale: number): void {
-  if (!hull) {
-    if (vehicleHullLive) VEHICLE_GROUND.uVehHull.value.set(0, 0, 0, 0);
-    vehicleHullLive = false;
-    return;
-  }
-  // the frame is in the root's own metres; a scaled root (a showroom pedestal) carries it into the world's
-  const forwardScale = Math.hypot(e[8], e[9], e[10]) || 1;
-  VEHICLE_GROUND.uVehFwd.value.set(e[8] / forwardScale, e[9] / forwardScale, e[10] / forwardScale, hull.sternZ * forwardScale);
-  VEHICLE_GROUND.uVehHull.value.set(hull.deckY * upScale, hull.bowZ * forwardScale,
-    hull.halfWidth * (Math.hypot(e[0], e[1], e[2]) || 1), 0);
-  vehicleHullLive = true;
-}
 /** Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis). */
-export function setVehicleGroundFromRoot(root: THREE.Object3D, frame = -1): void {
+export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
   const e = root.matrixWorld.elements;
-  const wear = root.userData.fieldWear;
-  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], typeof wear === 'number' ? wear : 1);
+  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], 1);
   const n = Math.hypot(e[4], e[5], e[6]) || 1;
   VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
-  const state = VEHICLE_WEAR.get(root);
-  writeVehicleSoot(state, frame);
-  writeVehicleHull(state?.hull, e, n);
 }
-/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and no field wear. */
+/** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening). */
 export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehGround.value.set(0, VEHICLE_GROUND_IDLE_Y, 0, 0);
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
 }
-
-// Field-wear shader pieces (see VEHICLE_FIELD_WEAR_GARAGE). Linear-space targets: dry road dust an ochre khaki between
-// a dark earth and a pale tan (the paint's own pattern shows through the thinner coats), caked mud a mid umber, wet
-// mud a dark umber, soot and oil near-black, bare steel a dark grey. The running gear is darker than any dust, so dust
-// lightens it; the round-3 mud darkened it into one flat band.
-const FIELD_WEAR_VERTEX_HEADER = '#ifdef COT_FIELD_WEAR\nvarying vec3 vCotWearPos;\n#endif\n';
-const FIELD_WEAR_HEADER = `#ifdef COT_FIELD_WEAR
-uniform vec4 uVehSoot[ ${VEHICLE_SOOT_SLOTS * 2} ];
-uniform vec4 uVehFwd;
-uniform vec4 uVehHull;
-varying vec3 vCotWearPos;
-const mat3 cotWearTurn = mat3( 0.0, 0.8, 0.6, -0.8, 0.36, -0.48, -0.6, -0.48, 0.64 );
-float cotWearHash( vec3 p ) {
-	p = fract( p * 0.3183099 + vec3( 0.71, 0.113, 0.419 ) );
-	p *= 17.0;
-	return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) );
-}
-float cotWearNoise( vec3 x ) {
-	vec3 i = floor( x );
-	vec3 f = fract( x );
-	f = f * f * ( 3.0 - 2.0 * f );
-	return mix( mix( mix( cotWearHash( i ), cotWearHash( i + vec3( 1.0, 0.0, 0.0 ) ), f.x ),
-			mix( cotWearHash( i + vec3( 0.0, 1.0, 0.0 ) ), cotWearHash( i + vec3( 1.0, 1.0, 0.0 ) ), f.x ), f.y ),
-		mix( mix( cotWearHash( i + vec3( 0.0, 0.0, 1.0 ) ), cotWearHash( i + vec3( 1.0, 0.0, 1.0 ) ), f.x ),
-			mix( cotWearHash( i + vec3( 0.0, 1.0, 1.0 ) ), cotWearHash( i + vec3( 1.0, 1.0, 1.0 ) ), f.x ), f.y ), f.z );
-}
-// one band-limited octave: it settles to its mean as a cycle shrinks under about five pixels (cycles: the octave's
-// frequency times the metres one pixel covers), so the wear never sparkles at range
-float cotWearOctave( vec3 p, float cycles ) {
-	return mix( cotWearNoise( p ), 0.5, smoothstep( 0.18, 0.4, cycles ) );
-}
-#endif
-`;
-const FIELD_WEAR_FRAGMENT = `
-	#ifdef COT_FIELD_WEAR
-	if ( uVehGround.w > 0.0 ) {
-		// tank-accessories round 4 field wear (2026-10-07): height from the vehicle's ground reference, the stern and deck
-		// from its hull frame, the pattern from the mesh's own frame (derivatives here, in uniform control flow)
-		float wearW = uVehGround.w;
-		vec3 wearWorld = cameraPosition + ( vec4( - vViewPosition, 0.0 ) * viewMatrix ).xyz;
-		vec3 wearRel = wearWorld - uVehGround.xyz;
-		float wearH = dot( wearRel, uVehUp );
-		vec3 wearN = inverseTransformDirection( nonPerturbedNormal, viewMatrix );
-		float wearSky = smoothstep( 0.35, 0.85, dot( wearN, uVehUp ) );
-		float wearPx = max( length( dFdx( vCotWearPos ) ), length( dFdy( vCotWearPos ) ) );
-		float wearDust = 0.0;
-		float wearCake = 0.0;
-		float wearMud = 0.0;
-		float wearChip = 0.0;
-		float wearOil = 0.0;
-		float wearExhaust = 0.0;
-		float wearSeam = 0.0;
-		float wearSun = 0.0;
-		float wearStreak = 0.5;
-		float wearTone = 0.5;
-		float wearCover = 0.85;
-		float wearShade = 1.0;
-		#if COT_FIELD_WEAR == 3
-		// the scrolling track band: no fixed pattern (it would stand still while the band runs), a dusty coat caked low
-		wearDust = 0.55;
-		wearCake = 0.6 * ( 1.0 - smoothstep( 0.1, 0.55, wearH ) );
-		wearCover = 0.6;
-		wearShade = 0.72;
-		#elif COT_FIELD_WEAR == 2
-		// running gear: a dusty coat over the dark steel and rubber, caked dried mud and wet clods toward the ground
-		float wearG1 = cotWearOctave( vCotWearPos * 3.0, 3.0 * wearPx );
-		float wearG2 = cotWearOctave( vCotWearPos * 9.0 + vec3( 4.3, 1.7, 8.9 ), 9.0 * wearPx );
-		float wearGearLow = 1.0 - smoothstep( 0.15, 1.0, wearH );
-		wearDust = 0.35 + 0.3 * wearG1 + 0.3 * wearGearLow;
-		wearCake = smoothstep( 0.5, 0.72, wearG2 * 0.6 + wearG1 * 0.2 + wearGearLow * 0.35 );
-		float wearClodEdge = 0.02 + 14.0 * wearPx;
-		wearMud = smoothstep( 0.7 - wearClodEdge, 0.7 + wearClodEdge, wearG2 * 0.75 + wearGearLow * 0.25 + wearW * 0.04 )
-			* ( 1.0 - smoothstep( 0.18, 0.4, 9.0 * wearPx ) );
-		wearStreak = wearG2;
-		wearTone = wearG1;
-		wearCover = 0.62;
-		wearShade = 0.8;
-		#else
-		// bodywork (1) and cloth and wood (4)
-		float wearB1 = cotWearOctave( vCotWearPos * vec3( 2.3, 0.9, 2.3 ), 2.3 * wearPx );
-		float wearB2 = cotWearOctave( vCotWearPos * vec3( 7.0, 1.3, 7.0 ) + vec3( 3.1, 7.7, 1.3 ), 7.0 * wearPx );
-		float wearB3 = cotWearOctave( cotWearTurn * vCotWearPos * 10.0 + vec3( 9.2, 2.6, 5.4 ), 10.0 * wearPx );
-		float wearFine = 1.0 - smoothstep( 0.18, 0.4, 10.0 * wearPx );
-		// dust thrown up off the tracks: a heavy coat under a ragged, streaky top edge that wanders about 0.3 m, a graded
-		// film above it up the hull, and patches settled on the plates that face the sky, thinner up the turret
-		float wearEdge = ( wearB1 - 0.5 ) * 0.55 + ( wearB2 - 0.5 ) * 0.65;
-		wearDust = max( ( 1.0 - smoothstep( 0.84, 0.98, wearH + wearEdge ) ) * ( 0.78 + 0.22 * wearB2 ),
-			( 1.0 - smoothstep( 0.95, 1.6, wearH + wearEdge * 0.5 ) ) * ( 0.12 + 0.14 * wearB2 ) );
-		wearDust = max( wearDust, wearSky * ( 0.03 + 0.09 * wearB2 + 0.06 * wearB1 ) * ( 1.0 - 0.5 * smoothstep( 1.7, 2.5, wearH ) ) );
-		// dried mud caked over the lowest band
-		wearCake = ( 1.0 - smoothstep( 0.36, 0.7, wearH + wearEdge * 0.6 ) ) * ( 0.55 + 0.45 * wearB2 );
-		// wet mud flung up off the tracks: clusters of drops, thick low on the skirts, glacis and rear plate
-		float wearSpatZone = 1.0 - smoothstep( 0.35, 1.45, wearH + ( wearB1 - 0.5 ) * 0.5 );
-		float wearSpatEdge = 0.02 + 15.0 * wearPx;
-		wearMud = smoothstep( 0.76 - wearSpatEdge, 0.76 + wearSpatEdge,
-			wearB3 * 0.65 + wearB1 * 0.25 + wearSpatZone * 0.22 + wearW * 0.04 ) * wearSpatZone * wearFine;
-		// the hull frame: exhaust soot on the rear plate's upper band and the last stretch of the engine deck, oil and
-		// fuel pools on the engine deck where the dust is thin
-		float wearFramed = step( 0.05, uVehHull.x );
-		float wearStern = dot( wearRel, uVehFwd.xyz ) - uVehFwd.w;
-		float wearDeckH = wearH - uVehHull.x;
-		float wearFacing = dot( wearN, uVehFwd.xyz );
-		wearExhaust = wearFramed * max(
-			smoothstep( 0.3, 0.7, - wearFacing ) * ( 1.0 - smoothstep( 0.12, 0.45, wearStern ) )
-				* smoothstep( - 0.75, - 0.25, wearDeckH ) * ( 1.0 - smoothstep( 0.02, 0.3, wearDeckH ) ) * ( 0.3 + 0.85 * wearB2 ),
-			wearSky * ( 1.0 - smoothstep( 0.1, 0.95, wearStern ) ) * ( 1.0 - smoothstep( 0.12, 0.4, abs( wearDeckH ) ) )
-				* ( 0.15 + 0.75 * wearB1 ) );
-		float wearEngine = wearFramed * wearSky * ( 1.0 - smoothstep( 0.36, 0.5, wearStern / max( uVehHull.y - uVehFwd.w, 2.0 ) ) )
-			* ( 1.0 - smoothstep( 0.12, 0.32, abs( wearDeckH ) ) );
-		wearOil = wearEngine * smoothstep( 0.645, 0.685, ( 1.0 - wearB1 ) * 0.7 + wearB2 * 0.3 + wearW * 0.03 );
-		// sun-faded paint where the plates face the sky, in patches
-		wearSun = wearSky * ( 0.6 + 0.4 * wearB1 );
-		#if COT_FIELD_WEAR == 1
-		// bare steel where boots and tools rub: the plate edges at deck height crews climb over, more sparsely the deck and
-		// roof plates they walk (less on the engine deck); sharp-edged, a few centimetres across, darker than the paint (a
-		// light chip read as "flour dust" speckle in the r8-r10 painter rounds)
-		float wearTread = clamp( wearSky * 0.5 * ( 1.0 - 0.7 * wearEngine ) + wearFramed * smoothstep( 0.3, 0.7, abs( wearFacing ) )
-			* ( 1.0 - smoothstep( 0.04, 0.16, abs( wearDeckH + 0.06 ) ) ), 0.0, 1.0 );
-		float wearChipEdge = 0.015 + 12.0 * wearPx;
-		wearChip = ( 1.0 - smoothstep( 0.18 - wearChipEdge, 0.18 + wearChipEdge,
-			wearB3 + ( 1.0 - wearTread ) * 0.12 - wearW * 0.04 ) ) * wearFine;
-		#ifdef USE_NORMALMAP_TANGENTSPACE
-		// grime packed into the seams, welds and bolts the plate's normal map carves (it fades with the map's mips)
-		wearSeam = smoothstep( 0.18, 0.6, length( mapN.xy ) );
-		#endif
-		#endif
-		wearStreak = wearB2;
-		wearTone = wearB1 * 0.55 + wearB2 * 0.45;
-		#endif
-		float wearSoot = 0.0;
-		for ( int i = 0; i < ${VEHICLE_SOOT_SLOTS}; i ++ ) {
-			vec4 sootAt = uVehSoot[ i * 2 ];
-			vec4 sootRun = uVehSoot[ i * 2 + 1 ];
-			if ( sootAt.w <= 0.0 ) continue;
-			float sootStrength = length( sootRun.xyz );
-			vec3 sootAxis = sootRun.xyz / max( sootStrength, 1e-4 );
-			vec3 sootRel = wearWorld - sootAt.xyz;
-			float sootAlong = dot( sootRel, sootAxis );
-			float sootBack = clamp( - sootAlong / max( sootRun.w, 1e-3 ), 0.0, 1.0 );
-			float sootReach = sootAt.w * ( 1.0 + 0.5 * sootBack );
-			float sootSide = length( sootRel - sootAxis * sootAlong );
-			wearSoot = max( wearSoot, sootStrength * ( 1.0 - smoothstep( 0.3 * sootReach, sootReach, sootSide ) )
-				* smoothstep( - sootRun.w * 1.25, - sootRun.w * 0.5, sootAlong ) * ( 1.0 - smoothstep( 0.04, 0.22, sootAlong ) ) );
-		}
-		wearSoot = clamp( wearSoot * ( 0.7 + 0.3 * wearStreak ) * ( 0.35 + 0.65 * wearW ), 0.0, 1.0 );
-		vec3 wearPaint = diffuseColor.rgb;
-		float wearLuma = dot( wearPaint, vec3( 0.2126, 0.7152, 0.0722 ) );
-		wearPaint = mix( wearPaint, wearLuma * vec3( 1.08, 1.0, 0.84 ), wearSun * 0.08 * wearW * ( 1.0 - smoothstep( 0.08, 0.25, wearLuma ) ) );
-		wearPaint *= 1.0 - wearSeam * 0.5 * wearW;
-		wearPaint = mix( wearPaint, vec3( 0.02, 0.017, 0.013 ), wearOil * 0.8 );
-		wearPaint = mix( wearPaint, vec3( 0.017, 0.016, 0.015 ), clamp( wearExhaust, 0.0, 1.0 ) * ( 0.45 + 0.4 * wearW ) );
-		float wearDustCover = clamp( wearDust * wearW, 0.0, 1.0 ) * wearCover;
-		wearPaint = mix( wearPaint, mix( vec3( 0.19, 0.135, 0.075 ), vec3( 0.3, 0.22, 0.12 ), wearTone ) * wearShade, wearDustCover );
-		float wearCakeCover = clamp( wearCake * wearW, 0.0, 1.0 ) * 0.8;
-		wearPaint = mix( wearPaint, vec3( 0.125, 0.09, 0.056 ), wearCakeCover );
-		wearPaint = mix( wearPaint, vec3( 0.05, 0.034, 0.02 ), wearMud * 0.9 );
-		wearPaint = mix( wearPaint, vec3( 0.065, 0.064, 0.062 ), wearChip );
-		wearPaint = mix( wearPaint, vec3( 0.012, 0.011, 0.01 ), wearSoot * 0.85 );
-		diffuseColor.rgb = wearPaint;
-		// dust, mud and soot are matte; oil is slick; bare steel a little metallic
-		roughnessFactor = mix( roughnessFactor, 1.0, max( max( wearDustCover, wearCakeCover ), max( wearMud, wearSoot ) ) * 0.85 );
-		#if COT_FIELD_WEAR == 1
-		roughnessFactor = mix( roughnessFactor, 0.34, wearOil );
-		roughnessFactor = mix( roughnessFactor, 0.45, wearChip );
-		metalnessFactor = mix( metalnessFactor, 0.45, wearChip );
-		#endif
-	}
-	#endif`;
 
 /**
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
@@ -2661,21 +2345,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  shader.uniforms.uVehSoot = VEHICLE_GROUND.uVehSoot;
-  // round 4 (2026-10-07): the hull frame the exhaust soot, engine-deck oil and climbing wear read
-  shader.uniforms.uVehFwd = VEHICLE_GROUND.uVehFwd;
-  shader.uniforms.uVehHull = VEHICLE_GROUND.uVehHull;
-  shader.fragmentShader =`uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${FIELD_WEAR_HEADER}${shader.fragmentShader}`;
-  // 2026-10-07 field wear (VEHICLE_FIELD_WEAR_GARAGE): the wear pattern follows each mesh's own vertex frame, and the
-  // paint takes the dust, mud and soot before any light reads it (after the normal, before lights_physical_fragment)
-  shader.vertexShader = `${FIELD_WEAR_VERTEX_HEADER}${shader.vertexShader}`.replace(
-    '#include <begin_vertex>',
-    '#include <begin_vertex>\n#ifdef COT_FIELD_WEAR\n\tvCotWearPos = transformed;\n#endif',
-  );
-  shader.fragmentShader = shader.fragmentShader.replace(
-    '#include <normal_fragment_maps>',
-    `#include <normal_fragment_maps>${FIELD_WEAR_FRAGMENT}`,
-  );
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
   // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
   // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
   // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
@@ -2871,7 +2541,7 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_FIELD_WEAR'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY'] as const;
 
 /**
  * Clone a vehicle material into its source's cascade registration, readability hook, program key and switches.
@@ -3287,8 +2957,6 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
         depthWrite: false,
       })));
-      // a marking is paint on the plate: it takes the plate's field wear (VEHICLE_FIELD_WEAR_GARAGE), not a clean patch
-      m.defines = { ...m.defines, COT_FIELD_WEAR: 1 };
       decalCache.set(key, m);
     }
     const material = decalCache.get(key);
@@ -3318,19 +2986,6 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(burnt, 'burnt', 'burnt');
   tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
   tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
-
-  // 2026-10-07 field wear (VEHICLE_FIELD_WEAR_GARAGE): painted bodywork, fittings and gunmetal take the dust, mud and
-  // soot of the vehicle frame (1); the wheels, tyres and track links their own running-gear wear (2); the scrolling track
-  // band a pattern-free film (3). Glass, the AO panels and the wreck stay as they are. Round 4 (2026-10-07): cloth and
-  // wood (4) wear the bodywork's dust, mud, soot and stains without its bare-steel chips, slick oil or seam grime.
-  for (const [mode, materials] of [
-    [1, [hull, barrel, detail, dark]],
-    [2, [wheels, wheelsRecessed, rubber, trackLink, spareTrack]],
-    [3, [trackL, trackR]],
-    [4, [canvasCloth, canvasPale, wood, bark]],
-  ] as const) {
-    for (const material of materials) material.defines = { ...material.defines, COT_FIELD_WEAR: mode };
-  }
 
   // Fittings are assembled after the material set is created, outside the
   // main hull/turret merge that normally owns boxUV(). Publish the fleet

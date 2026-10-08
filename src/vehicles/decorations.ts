@@ -470,13 +470,9 @@ const triCount = (geo: THREE.BufferGeometry) => ((geo.index ? geo.index.count : 
 
 // Per-piece baked shade: tone jitter + a soft downward-face AO so merged
 // families don't read as one flat injection-molded color (the same trick
-// tankFactory.bakeDirt plays on the camo shells). 2026-10-06 (round 2: the
-// critics found every piece factory-clean): a field-wear ramp in the piece's
-// seat frame (origin on the support, +Y up) — road dust settled on the faces
-// that look up, warm and pale, and mud caked over the lowest 10 cm where the
-// piece meets the hull, dark and brown.
-const DECOR_DUST_GAIN: readonly [number, number, number] = [0.42, 0.3, 0.06];
-const DECOR_MUD_LOSS: readonly [number, number, number] = [0.32, 0.38, 0.46];
+// tankFactory.bakeDirt plays on the camo shells, minus the dust ramp).
+// 2026-10-08: round 2's baked dust-and-mud ramp left with the field wear (blind waves 240 and 264 scored the wear flat
+// up close: "a gravity-blind overlay ... flat tan tints"); the wear redesign owns dirt.
 function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
@@ -485,9 +481,7 @@ function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferG
   for (let i = 0; i < pos.count; i++) {
     const nyv = nor.getY(i);
     const a = (1 - Math.max(0, -nyv) * ao) * (1 - Math.max(0, nyv) * ao * 0.25);
-    const dust = Math.pow(Math.max(0, nyv), 1.5) * 0.34;
-    const mud = Math.pow(THREE.MathUtils.clamp(1 - pos.getY(i) / 0.1, 0, 1), 1.5) * 0.42;
-    for (let k = 0; k < 3; k++) col[i * 3 + k] = tone * a * (1 + dust * DECOR_DUST_GAIN[k]) * (1 - mud * DECOR_MUD_LOSS[k]);
+    col[i * 3] = tone * a; col[i * 3 + 1] = tone * a; col[i * 3 + 2] = tone * a;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
@@ -1214,13 +1208,6 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.1,
     }),
   };
-  // 2026-10-07 round 4 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE; wave 240: "every item is spotless flat
-  // colour (drums, jerrycans, box, bag ...) with no dirt, rust, fuel stains or edge wear"): the kit wears the vehicle's
-  // dust, mud, soot and stains, the hard kit, steel and cans as painted bodywork (1), cloth, burlap, wood and rubber as
-  // soft goods (4). Nets, wire mesh, lenses and leaves stay as they are.
-  const fieldWear: Partial<Record<DecorMaterialKey, number>> = {
-    kit: 1, steel: 1, cans: 1, canvas: 4, burlap: 4, wood: 4, rubber: 4,
-  };
   return {
     get(key: DecorMaterialKey) {
       if (!made[key]) {
@@ -1229,8 +1216,6 @@ function buildDecorMaterials(
         const material = new THREE.MeshStandardMaterial(def);
         made[key] = material;
         setup(material);
-        const wear = fieldWear[key];
-        if (wear) material.defines = { ...material.defines, COT_FIELD_WEAR: wear };
         material.name = `Decor_${key}`;
       }
       return made[key]!;
