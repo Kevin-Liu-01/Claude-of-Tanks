@@ -620,7 +620,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       // edges") the field's law and the wild sward's meet across the gate's own band — the slope's 2–6°, the village's
       // and the road's feathers — not on its middle line: a candidate takes the field's law where the gate passes a
       // clumpy draw of its own (a 1.1 m value noise between 0.15 and 0.85), as the terrain draws the field's colour over
-      // the same band by weight; and a field's margin ends half a metre either way of its line
+      // the same band by weight
       const landDraw = 0.15 + 0.70 * swardNoise(x, z, 1.1, 0x6a1d);
       if (landW > landDraw && _field.active) {
         if (_field.track > 0.5) {
@@ -639,7 +639,15 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             if (Math.abs(laneQ) < 1.15 + 0.35 * wR) return;
             if (laneQ < 0) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
           }
-        } else if (_field.edgeM < _field.marginM + (swardNoise(x, z, 0.9, 0x2b3c) - 0.5) * 0.9) {
+        } else if (_field.boundary < 1.5
+          // (wave 274, the same slope: the bald band was a young crop's headland under the margin's rank grass — 2.3 m
+          // of blade a square metre against 0.4) a grass margin's rank grass meets the crop across the terrain's own
+          // ragged band (terrain.ts inField: a 4 m fade wandering ±2–3 m along the boundary), not on a line: a candidate
+          // takes the margin's law by a clumpy draw (a 0.9 m value noise) against a share falling from the margin's inner
+          // half to 2.6 m into the field, the line itself wandering ±1.5 m over ~5 m. A bund's and a wall's footing keep
+          // their own straight line
+          ? swardNoise(x, z, 0.9, 0x2b3c) < 1 - smoothstep(-1.6, 2.6, _field.edgeM - _field.marginM + (swardNoise(x, z, 5.0, 0x3d4e) - 0.5) * 3.0)
+          : _field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
           else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
           else {

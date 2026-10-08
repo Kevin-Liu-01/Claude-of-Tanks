@@ -1,7 +1,9 @@
 // Ground lane (2026-10-08, the gauntlet's wave 274 on Amberford and Monsoon Ridge): the sward and its ground.
 // 1. The field's law and the wild sward's meet across the field gate's own band, never on its middle line (Amberford's
 //    slope: "a bald patch that steps hard from the dense tall grass"): the share of blades the field's law takes rises
-//    smoothly through the band, and outside it (the gate 0 or 1) every blade is what it was.
+//    smoothly through the band, and outside it (the gate 0 or 1) every blade is what it was. A grass margin's rank grass
+//    meets the crop across a ragged band (its young crop's headland lay under the margin's rank grass: the bald band),
+//    a wall's footing keeps its line; a young green crop's ground keeps the sward's relief (terrain.ts gCropReliefW).
 // 2. Monsoon Ridge's sward follows its ground (its slope: "no thinning on the steeper upper slope … no dry stems"):
 //    thinner and shorter up a steep slope, drier on one turned to the sun; the profile (Monsoon only), the field's hook.
 // 3. Monsoon's foot ("no soil, litter or dry thatch" under the sward): the material's thatch block — gated on its
@@ -68,6 +70,44 @@ let shares = '', slopeRead = '';
   grass.dispose();
 }
 
+// 1b. The margin across its band: a ploughed field (no sward of its own) whose edge runs along x (edgeM = x, the margin
+//     1.8 m), flat — every blade is the margin's, so the count is the share its law takes. The share falls from the
+//     margin's inner half to ~3 m into the field over metres, not on the line (the old law: at 1.8 m, ±0.45 m); a dry
+//     stone wall's field keeps its footing bare and its line.
+let marginRead = '';
+{
+  const edgeField = (boundary, crop) => ({
+    getHeightAt: flat, getHeightAtFast: flat, _roadDist: () => 1e9, getGroundType: () => 'medium', _noVeg: () => false,
+    getWaterMaskAt: () => 0, _villageMask: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }),
+    _landUseAt: (x, z, out) => {
+      out.active = 1; out.crop = crop; out.track = 0; out.boundary = boundary; out.edgeM = Math.max(0, x); out.marginM = 1.8;
+      out.sward = crop === 4 ? 0 : 1; out.cropKeep = crop === 4 ? 0 : 0.75; out.cropHeight = crop === 4 ? 0 : 1.1; out.jitter = 0.4;
+      out.weed = 0; out.urban = 0; out.tintR = 0.30; out.tintG = 0.22; out.tintB = 0.075; out.sV = 9; out.laneQ = 1e9;
+      return out;
+    },
+  });
+  const lay = (boundary, crop) => {
+    const g = createTallGrass(edgeField(boundary, crop), { seed: 7, tier: 'desktop', biome: meadow, qualityScale: () => 1 });
+    settle(g);
+    const out = read(g);
+    g.dispose();
+    return out;
+  };
+  const grass = lay(0, 4);
+  const count = (x0, x1) => grass.filter((bl) => bl.x >= x0 && bl.x < x1).length / (x1 - x0);
+  const inner = count(0, 0.6);
+  const share = [];
+  for (let e = 0; e < 5.5; e += 0.5) share.push(count(e, e + 0.5) / inner);
+  const at = (v) => { for (let i = 0; i < share.length; i++) if (share[i] < v) return i * 0.5 + 0.25; return 99; };
+  const w = at(0.2) - at(0.8);
+  assert.ok(inner > 0.5, `the margin's rank grass stands (${inner.toFixed(2)} blades a metre of the strip)`);
+  assert.ok(w >= 1.5, `the margin's share falls over metres, not on its line (0.8 -> 0.2 over ${w.toFixed(2)} m: ${share.map((v) => v.toFixed(2)).join(' ')})`);
+  assert.ok(share[share.length - 1] < 0.05, 'and is gone 3.5 m into the field');
+  marginRead = `0.8 -> 0.2 over ${w.toFixed(1)} m, from ${at(0.8).toFixed(1)} to ${at(0.2).toFixed(1)} m`;
+  const walled = lay(3, 1);
+  assert.equal(walled.filter((bl) => bl.x >= 0 && bl.x < 0.6).length, 0, 'a dry stone wall\'s footing stays bare');
+}
+
 // 2. Monsoon's sward follows its ground: the profile, the field's hook with the map's sun, the law on a stub slope.
 for (const id of groundReduxProfileIds()) {
   const p = resolveGroundReduxProfile(id);
@@ -125,12 +165,17 @@ for (const id of groundReduxProfileIds()) {
     assert.ok(at > filter && at < prep, `in the compiled section: ${decl}`);
   }
   assert.ok(veg.includes('if (fieldW > 0.15 + 0.70 * fieldDrawAt(x, z)) {'), 'the field gate across its band');
-  assert.ok(veg.includes('else if (f.edgeM < f.marginM + (fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) - 0.5) * 0.9) {'), 'the margin ragged');
+  assert.ok(veg.includes('? fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) < 1 - smoothstepJs(-1.6, 2.6, f.edgeM - f.marginM + (fieldDrawAt(x * 0.22 + 3.1, z * 0.22 + 7.7) - 0.5) * 3.0)')
+    && veg.includes(': f.edgeM < f.marginM) {'), 'the margin across its band, a bund\'s and a wall\'s on their line');
   assert.ok(veg.includes('if (clJ < 0.55 * steepK) return null;'), 'thinner up a steep slope');
   const tg = readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8');
-  assert.ok(tg.includes('if (landW > landDraw && _field.active) {') && tg.includes('_field.edgeM < _field.marginM + (swardNoise(x, z, 0.9, 0x2b3c) - 0.5) * 0.9'),
+  assert.ok(tg.includes('if (landW > landDraw && _field.active) {')
+    && tg.includes('? swardNoise(x, z, 0.9, 0x2b3c) < 1 - smoothstep(-1.6, 2.6, _field.edgeM - _field.marginM + (swardNoise(x, z, 5.0, 0x3d4e) - 0.5) * 3.0)'),
     'the tall grass reads the gate and the margin the same way');
+  const terr = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terr.includes('gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;'), 'a young green crop keeps the sward\'s relief');
 }
 
-console.log(`swardTerrain: the field gate across its band (the field's share ${shares} from the flat up the slope), Monsoon's sward on its `
+console.log(`swardTerrain: the field gate across its band (the field's share ${shares} from the flat up the slope), the margin across `
+  + `its band (its share ${marginRead}; a wall's footing bare), Monsoon's sward on its `
   + `slopes (${slopeRead}; profile and hook Monsoon only), the thatch block gated and bound, the tufts' laws PASS; no GPU/art claim`);

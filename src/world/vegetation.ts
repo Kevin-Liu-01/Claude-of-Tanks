@@ -4232,7 +4232,11 @@ function* vegetationBuildSteps(
             if (laneQ < 0 ? clJ < 0.45 : clJ < 0.5) return null;
             if (laneQ < 0) sy *= 0.6;
           }
-          else if (f.edgeM < f.marginM + (fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) - 0.5) * 0.9) {
+          // (wave 274: a grass margin meets the crop across the terrain's ragged band, a bund's and a wall's on their line —
+          // tallGrass.ts admit: the same law)
+          else if (f.boundary < 1.5
+            ? fieldDrawAt(x * 1.22 + 17.3, z * 1.22 - 5.1) < 1 - smoothstepJs(-1.6, 2.6, f.edgeM - f.marginM + (fieldDrawAt(x * 0.22 + 3.1, z * 0.22 + 7.7) - 0.5) * 3.0)
+            : f.edgeM < f.marginM) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;

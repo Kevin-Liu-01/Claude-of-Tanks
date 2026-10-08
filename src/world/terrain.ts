@@ -3966,6 +3966,7 @@ float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (m
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
+float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
@@ -5393,6 +5394,10 @@ void splatCompute() {
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
       // tussock and coarse-turf relief and their photo tone ran on under the soil; a sown field carries its own rows)
       gCropW = (crop > 0.5 && (crop < 12.5 || crop > 13.5)) ? inField * landW : 0.0;
+      // (wave 274, Verdant's slope: a young crop's "bald, flat olive ground" between its tufts) a young green crop is a
+      // short leafy sward: its ground keeps the sward's own blade, tussock and turf relief (a pasture's and a hay meadow's
+      // do); its meadow patches, worn lips and sheet stay down with every sown field's (gCropW)
+      gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
@@ -6056,7 +6061,7 @@ void splatCompute() {
       // Detail belongs to the remaining base layer. Reapplying turf after
       // the dirt/rock blend made worked yards inherit the meadow's grain.
       // The same coverage also keeps base snow/sand off exposed soil/rock.
-      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropW)); // ground lane: no blades on a turned field
+      float nearG = openNear2 * meadowG * (1.0 - fR) * (1.0 - max(gSoilW, 0.6 * gCropReliefW)); // ground lane: no blades on a turned field
       n.xy += dn2.xy * 0.75 * nearG; // relief pass 2 (2026-09-12): the full 1049e4e blade/clod relief
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
@@ -6070,7 +6075,7 @@ void splatCompute() {
   // ~1.1 m carries the 26–150 m band (open ground, off the carriageway), fading out before the far band's own relief.
   {
     float dMidN = smoothstep(20.0, 40.0, camDist) * (1.0 - smoothstep(110.0, 190.0, camDist)) * uReduxA.y; // round 73b: 26–150 → 20–190 m
-    dMidN *= 1.0 - max(0.85 * gCropW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
+    dMidN *= 1.0 - max(0.85 * gCropReliefW, gSoilW); // ground lane: the tussock octave is the sward's (none on turned earth)
     dMidN *= tileVis(1.075); // ground lane: its 1.08 m tile, seen from a raised camera, was the gauntlet's moiré
     if (dMidN > 0.003) {
       vec3 dnM = texture2D(uNrmG, uv * 0.93).xyz * 2.0 - 1.0;
@@ -6572,7 +6577,7 @@ void splatCompute() {
     }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
-    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropW, gSoilW)); // ground lane: nor the coarse turf
+    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore) * (1.0 - max(0.85 * gCropReliefW, gSoilW)); // ground lane: nor the coarse turf
     if (farG > 0.003) {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
