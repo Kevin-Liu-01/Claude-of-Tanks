@@ -193,6 +193,12 @@ export interface WorldRuntime {
   ): boolean;
   resetDestructibles(): void;
   /**
+   * Ground lane (2026-10-08, the FX lane's explosive marks): the cover inside `r` of (x, z) cleared for the rest of the
+   * battle and the tall grass laid low in the ring out to 1.6 r — presentation only (no overlay stamp, no lift; the
+   * crater law's presentation hole, groundCoverCraters.ts addHole). Call it once per mark; the battle's reset clears it.
+   */
+  clearCoverAt(x: number, z: number, r: number): void;
+  /**
    * Destruction (docs/DESTRUCTION.md §16): a structure's damage seam by its group id — its anatomy (the sim's mound
    * filled in), where its parts are in the merged buckets, and its kit chain's stage builders — or null.
    */
@@ -770,7 +776,9 @@ function assembleWorld(
     },
     // DESTRUCTIBLES r1: rematch hook — startBattle restores every broken/
     // toppled destructible of the (cached, reused) world to its intact state.
+    clearCoverAt: (x, z, r) => { groundCoverCraters.addHole(x, z, r); },
     resetDestructibles: () => {
+      groundCoverCraters.resetHoles(); // ground lane: the battle's presentation holes go with it
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
     },

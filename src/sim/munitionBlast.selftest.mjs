@@ -128,9 +128,18 @@ const crater = { radiusM: 0, depthM: 0, rimM: 0 };
 craterFor(he125, 'he', 1, crater);
 near(crater.radiusM, 1.67, 0.01, '125 mm HE crater radius');
 near(crater.depthM, 0.585, 0.01, '125 mm HE crater depth');
+near(crater.rimM, 0.4, 0.01, '125 mm HE crater rim (crater round 3: read from the player\'s eye height)');
 assert.ok(crater.radiusM >= CRATER_DEFORM_MIN_RADIUS_M, 'a 125 mm HE crater deforms the ground');
 craterFor(munitionChargeKg(gunshipHowitzer), 'howitzer', 1, crater);
 near(crater.radiusM, 3.44, 0.01, 'the gunship howitzer crater');
+near(crater.depthM / crater.radiusM, 0.4, 1e-9, 'a howitzer shell digs deeper');
+near(crater.rimM / crater.radiusM, 0.26, 1e-9, 'and throws a higher rim');
+craterFor(munitionChargeKg({ type: 'HE', caliberMm: 152 }), 'howitzer', 1, crater);
+assert.ok(crater.rimM > 0.55, `a 152 mm howitzer shell's rim reads from 25 m (${crater.rimM.toFixed(2)} m)`);
+for (const [munition, kg] of [['atgm', 3.4], ['drone_fpv', 1.2], ['heat', 1.6]]) {
+  craterFor(kg, munition, 1.25, crater);
+  assert.ok(crater.radiusM < CRATER_DEFORM_MIN_RADIUS_M, `a shaped charge (${munition}) never bowls, even under the gunship's scale (${crater.radiusM.toFixed(2)} m)`);
+}
 craterFor(munitionChargeKg({ type: 'HE', caliberMm: 105 }), 'he', 1, crater);
 assert.ok(crater.radiusM < CRATER_DEFORM_MIN_RADIUS_M, `a 105 mm HE crater (${crater.radiusM.toFixed(2)} m) is a mark`);
 craterFor(1000, 'missile', 1, crater);

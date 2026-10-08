@@ -38,8 +38,18 @@ assert.ok(overlay.addCrater(C.x, C.z, C.r, +(0.35 * C.r).toFixed(3), +(0.12 * C.
 overlay.addRubble(-60, 40, 5, 7, 0.3, 1.6);
 law.sync(overlay);
 assert.equal(law.count, 2);
-assert.equal(law.holeAt(C.x + 0.89 * C.r, C.z), true, 'inside 0.9 R: cleared');
-assert.equal(law.holeAt(C.x + 0.91 * C.r, C.z), false, 'past 0.9 R: re-seated');
+assert.equal(law.holeAt(C.x + (CRATER_COVER_CLEAR - 0.01) * C.r, C.z), true, 'inside the bowl and its crest: cleared');
+assert.equal(law.holeAt(C.x + (CRATER_COVER_CLEAR + 0.01) * C.r, C.z), false, 'past them: re-seated');
+// crater round 3: round the cleared disc the tall grass lies low, 0.42 at its edge, whole by 1.6 times it
+{
+  const edge = CRATER_COVER_CLEAR * C.r;
+  assert.ok(Math.abs(law.squashAt(C.x + edge, C.z) - 0.42) < 1e-9, 'the ring laid low at the cleared edge');
+  assert.ok(law.squashAt(C.x + edge * 1.3, C.z) > 0.42 && law.squashAt(C.x + edge * 1.3, C.z) < 1, 'rising out through it');
+  assert.equal(law.squashAt(C.x + edge * 1.6 + 0.01, C.z), 1, 'whole past 1.6 times the cleared radius');
+  const b = law.bounds(0, [0, 0, 0, 0]);
+  assert.ok(b[2] >= C.x + edge * 1.6 && b[0] <= C.x - edge * 1.6, 'the ring inside the stamp\'s reach (the followers re-read it)');
+  assert.equal(law.squashAt(-60, 40), 1, 'a rubble heap lays nothing low');
+}
 assert.equal(law.holeAt(-60, 40), false, 'a rubble heap clears nothing');
 for (const [x, z] of [[C.x + 3, C.z + 1], [C.x - 4.5, C.z], [-58, 42]]) assert.equal(law.liftAt(x, z), overlay.offsetAt(x, z), 'the lift is the overlay');
 assert.ok(law.touches(C.x - 1, C.z - 1, C.x + 1, C.z + 1) && !law.touches(300, 300, 310, 310), 'touches reads the reaches');
@@ -75,7 +85,7 @@ for (const name of ['near', 'far']) {
   for (let i = 0; i < mesh.count; i++) {
     const x = m[i * 16 + 12], z = m[i * 16 + 14], d = Math.hypot(x - C.x, z - C.z);
     if (d < CRATER_COVER_CLEAR * C.r) {
-      assert.equal(b[i * 4 + 1], 0, `${name}: no blade stands inside 0.9 R`);
+      assert.equal(b[i * 4 + 1], 0, `${name}: no blade stands inside the cleared bowl and crest`);
       cleared++;
     } else if (reach(x, z)) {
       rimWorst = Math.max(rimWorst, Math.abs(m[i * 16 + 13] - (snap.m[i * 16 + 13] + overlay.offsetAt(x, z))));
@@ -109,6 +119,64 @@ for (const name of ['near', 'far']) {
   assert.equal(now.count, before[name].count);
   for (let i = 0; i < now.m.length; i++) assert.ok(Object.is(now.m[i], before[name].m[i]), `${name}: a reset restores the ring`);
   for (let i = 0; i < now.b.length; i++) assert.ok(Object.is(now.b[i], before[name].b[i]), `${name}: a reset restores the blades`);
+}
+
+// 2b. a presentation hole (the FX lane's explosive marks, kept out of the simulation's overlay): no overlay, no lift —
+//     the blades inside r gone, the ring's out to 1.6 r laid low (0.42 at r, whole by 1.6 r), the rest their bits; the
+//     battle's reset (resetHoles) restores the set; an overlay's own reset clears the holes with its stamps
+let ringLow = 0, holeBlades = 0;
+{
+  const H = { x: C.x + 2.5, z: C.z + 1.5, r: 2.2 };
+  const ph = createGroundCoverCraters();
+  ph.sync(null);
+  ph.addHole(H.x, H.z, H.r);
+  assert.ok(ph.active && ph.count === 1, 'a hole is an entry of the law');
+  assert.ok(ph.holeAt(H.x + 0.9 * H.r, H.z) && !ph.holeAt(H.x + 1.05 * H.r, H.z), 'cleared inside r only');
+  assert.equal(ph.liftAt(H.x, H.z), 0, 'no lift: the ground is the overlay\'s');
+  assert.ok(Math.abs(ph.squashAt(H.x + H.r, H.z) - 0.42) < 1e-9 && ph.squashAt(H.x + 1.6 * H.r, H.z) === 1 && ph.squashAt(H.x + 5 * H.r, H.z) === 1,
+    'the ring laid low at r, whole by 1.6 r');
+  let last = 0;
+  for (let k = 0; k <= 12; k++) { const f = ph.squashAt(H.x + H.r * (1 + 0.05 * k), H.z); assert.ok(f >= last - 1e-12, 'rising out through the ring'); last = f; }
+  const hb = ph.bounds(0, [0, 0, 0, 0]);
+  assert.ok(Math.abs(hb[0] - (H.x - 1.6 * H.r)) < 1e-9 && Math.abs(hb[3] - (H.z + 1.6 * H.r)) < 1e-9, 'its reach is the ring\'s box');
+  grass.followCraters(ph);
+  grass.update(1 / 60, cam, null, null);
+  for (const name of ['near', 'far']) {
+    const mesh = grass[name], snap = before[name];
+    const m = mesh.instanceMatrix.array, b = mesh.geometry.getAttribute('aBlade').array;
+    for (let i = 0; i < mesh.count; i++) {
+      const x = m[i * 16 + 12], z = m[i * 16 + 14], d = Math.hypot(x - H.x, z - H.z);
+      assert.ok(Object.is(m[i * 16 + 13], snap.m[i * 16 + 13]), `${name}: no lift anywhere`);
+      if (d < H.r) { assert.equal(b[i * 4 + 1], 0, `${name}: nothing stands inside r`); holeBlades++; }
+      else if (d < 1.6 * H.r) {
+        assert.ok(Math.abs(b[i * 4 + 1] - snap.b[i * 4 + 1] * ph.squashAt(x, z)) < 1e-5, `${name}: the ring's blade laid low by the law`);
+        if (ph.squashAt(x, z) < 0.99) ringLow++;
+      } else assert.ok(Object.is(b[i * 4 + 1], snap.b[i * 4 + 1]), `${name}: past the ring, its bits`);
+    }
+  }
+  assert.ok(holeBlades >= 10 && ringLow >= 20, `the hole cleared (${holeBlades}) and the ring laid low (${ringLow})`);
+  const e0 = ph.epoch;
+  ph.resetHoles();
+  assert.ok(ph.epoch > e0 && !ph.active && ph.squashAt(H.x + H.r, H.z) === 1, 'the battle\'s reset clears the holes');
+  grass.followCraters(ph);
+  settle(grass, cam, 5);
+  for (const name of ['near', 'far']) {
+    const now = ringSnap(grass[name]);
+    for (let i = 0; i < now.b.length; i++) assert.ok(Object.is(now.b[i], before[name].b[i]), `${name}: the reset restores the blades`);
+  }
+  // with an overlay: its stamps and the holes are entries of one law, in arrival order; the overlay's reset clears both
+  const ov2 = createTerrainDeformation();
+  ph.sync(ov2);
+  ph.addHole(H.x, H.z, H.r);
+  assert.ok(ov2.addCrater(C.x, C.z, C.r, +(0.35 * C.r).toFixed(3), +(0.12 * C.r).toFixed(3), 4243));
+  ph.sync(ov2);
+  assert.equal(ph.count, 2, 'a hole and a stamp');
+  assert.ok(ph.holeAt(H.x, H.z) && ph.holeAt(C.x, C.z), 'both clear');
+  ov2.reset();
+  ph.sync(ov2);
+  assert.ok(!ph.active && !ph.holeAt(H.x, H.z), 'the overlay\'s reset (a new battle) clears the holes with its stamps');
+  grass.followCraters(quiet);
+  settle(grass, cam, 5);
 }
 
 // 3. the litter on Verdant (its ring republishes from its base cells)
@@ -254,6 +322,11 @@ for (const name of ['near', 'far']) {
   assert.ok(veg.includes('reseat: (x, z) => (craterLaw?.active ? (craterLaw.holeAt(x, z) ? NaN : craterLaw.liftAt(x, z)) : 0),'), 'the carpet writes by the law');
   assert.ok(veg.includes('reseatCraterTrees(law, trees, x0, z0, x1, z1, writeCraterTree);'), 'the trees follow');
   assert.ok(veg.includes("(c.userData.bush === true || c.userData.understorey === true)"), 'the bushes and the understorey follow');
+  assert.ok(map.includes('clearCoverAt: (x, z, r) => { groundCoverCraters.addHole(x, z, r); },')
+    && map.includes('groundCoverCraters.resetHoles(); // ground lane: the battle\'s presentation holes go with it'),
+    'the world takes the FX lane\'s holes and clears them with the battle');
+  const tg = compact(readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8'));
+  assert.ok(tg.includes('blades[i * 4 + 1] = seg.data[at + 4] * law.squashAt(x, z);'), 'the tall grass lays its ring low by the law');
 }
 
-console.log(`groundCoverCraters: the law (0.9 R cleared, base + offsetAt, rubble clears nothing, epochs); Verdant's tall grass — ${cleared} blades cleared, ${rim} re-seated (worst ${(rimWorst * 100).toFixed(3)} cm), ${kept} untouched, republish = patch, reset restores; litter, static meshes, trees and the carpet by the same law; map.ts wiring PASS; no GPU/art claim`);
+console.log(`groundCoverCraters: the law (0.9 R cleared, base + offsetAt, rubble clears nothing, epochs); Verdant's tall grass — ${cleared} blades cleared, ${rim} re-seated (worst ${(rimWorst * 100).toFixed(3)} cm), ${kept} untouched, republish = patch, reset restores; a presentation hole — ${holeBlades} cleared, ${ringLow} laid low in its ring, reset restores; litter, static meshes, trees and the carpet by the same law; map.ts wiring PASS; no GPU/art claim`);
