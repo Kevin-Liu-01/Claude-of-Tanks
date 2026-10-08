@@ -1213,6 +1213,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainSurfaceDetail.selftest.mjs',
+    'src/world/terraceBenches.selftest.mjs', // 2026-10-07: Orchard's terrace zones cut after the near-field relief, the benches at their levels
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
     'src/world/terrainSandCoverage.selftest.mjs',

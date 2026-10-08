@@ -1983,6 +1983,7 @@ function* heightFieldBuildSteps(
     // the open midfield offers hull-down folds instead of a flat golf course.
     // Attenuated (not zeroed) on drive corridors so they stay drivable, and
     // suppressed in the village/marshes.
+    const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
     {
       const f1 = noi.noise(x * 0.0104 + 610, z * 0.0104 - 320);
       const f2 = noi.noise(x * 0.0233 - 105, z * 0.0233 + 77);
@@ -1992,10 +1993,8 @@ function* heightFieldBuildSteps(
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
       // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
-      const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
       if (tz) micro *= 1 - 0.85 * tz.weight;
       h += micro;
-      if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
     // and settling (~10-25 cm) so the ground stops reading as a smooth
@@ -2007,6 +2006,10 @@ function* heightFieldBuildSteps(
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
       h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;
     }
+    // the map-revival lane (2026-10-05; round 5, 2026-10-07): a terrace zone is stepped after the near-field relief, so
+    // its humps are taken into the steps — the benches level, each riser one clean face (the relief laid over the steps
+    // broke the risers into lit and shaded facets at range, the ground lane's read of gauntlet wave 251)
+    if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
     if (sorStation >= 0) {
       h -= sorDig;
