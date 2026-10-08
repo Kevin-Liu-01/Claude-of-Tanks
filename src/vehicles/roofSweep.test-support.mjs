@@ -27,4 +27,3 @@ export function topIndex(meshes,minimumY){
   return {top,name};
  };
 }
-
