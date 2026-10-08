@@ -9,8 +9,9 @@
  *   showing, a lip of render round them, a backing behind; on bare masonry the units' faces broken back), chips off the
  *   walls in the outer layer's bucket, the glass gone (shards);
  * - breach: a ragged rim of the wall's own units (bricks, blocks, stones, plates) over the band 0.75 r – 1.25 r round the
- *   hole, where the presentation's blocky cut edge runs (0.8 r – 1.2 r), the render spalled back past it, the dark room
- *   behind it with the floor-slab edge where the hole crosses a storey line, debris thrown along the blow;
+ *   hole, where the presentation's blocky cut edge runs (0.8 r – 1.2 r); on a rendered wall the render broken back
+ *   further (a shallow ring cut of 1.45 r with the core's units in it); the dark room behind with the floor-slab edge
+ *   where the hole crosses a storey line; debris thrown along the blow. Nothing stands proud of the wall;
  * - sectionDown: a roof's covering sliding off (tiles, slates, sheet, straw);
  * - collapse: ragged wall stubs (taller at a masonry building's corners), a heap of chunks in the building's own buckets
  *   seated on the sim's mound, and the falling debris.
@@ -315,10 +316,12 @@ function layCourses(mesh: DamageMeshWriter, face: DamageFace, slot: FractureSlot
       const n = Math.max(1, Math.round((b - a) / unitW)), w = (b - a) / n;
       for (let i = 0; i < n && roomFor(mesh, 1); i++) {
         const lu = a + (i + 0.5) * w;
-        const along = -(fromM + (toM - fromM) * (0.5 + (rng() - 0.5) * 0.4));
+        // a unit's depth stays inside fromM – toM (its centre wanders a tenth of the span, its half depth is 0.4 of it), so
+        // nothing stands proud of the wall's plane: a tier that cuts nothing shows none of it
+        const along = -(fromM + (toM - fromM) * (0.5 + (rng() - 0.5) * 0.2));
         writeBox(mesh, cx + face.u[0] * lu + face.out[0] * along, cy + ly, cz + face.u[2] * lu + face.out[2] * along,
-          w * 0.5 * (1 + rng() * 0.08), unitH * 0.5 * (0.96 + rng() * 0.08), Math.max(0.005, (toM - fromM) * 0.5),
-          yaw + (rng() - 0.5) * 0.08, slot.tint, shade * (0.8 + rng() * 0.2));
+          w * 0.5 * (1 + rng() * 0.08), unitH * 0.5 * (0.96 + rng() * 0.08), Math.max(0.004, (toM - fromM) * 0.4),
+          yaw + (rng() - 0.5) * 0.04, slot.tint, shade * (0.8 + rng() * 0.2));
       }
     }
   }
@@ -411,29 +414,26 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   // (a broken masonry edge steps along its courses); a big hole's units grow with it so the band stays within the cap
   const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
   const skin = face.layers[0]!;
-  const unitW = Math.max(unitOf(slot.material).size, radius * 0.3), unitH = unitW * 0.5;
+  const unitW = Math.max(unitOf(slot.material).size, radius * 0.4), unitH = unitW * 0.5;
   const inner = radius * 0.75, outer = radius * 1.25;
   if (mesh.begin(slot.bucket, 'rim')) {
     layCourses(mesh, face, slot, rng, cx, cy, cz, inner, outer, unitW, unitH, depth * 0.1, depth * 0.9, 0.95);
     mesh.end();
   }
-  // the render lip: the outer skin spalled back just past the cut's edge
-  if (skin !== slot && mesh.begin(skin.bucket, 'rim')) {
-    const yaw = Math.atan2(face.out[0], face.out[2]);
-    for (let k = 0; k < 12 && roomFor(mesh, 1); k++) {
-      const a = (k / 12) * Math.PI * 2 + rng() * 0.4, reach = radius * (1.2 + rng() * 0.15);
-      const lu = Math.cos(a) * reach, ly = Math.sin(a) * reach;
-      if (cy + ly < 0.02) continue;
-      writeBox(mesh, cx + face.u[0] * lu + face.out[0] * 0.01, cy + ly, cz + face.u[2] * lu + face.out[2] * 0.01,
-        0.12 + rng() * 0.1, 0.08 + rng() * 0.06, skin.thicknessM * 0.6, yaw, skin.tint);
-    }
+  // a rendered wall's render broken back round the hole: a shallow ring cut wider than the hole (its blocky edge runs
+  // 1.16 r – 1.74 r) with the core's units showing in it just behind the render's plane. Nothing stands proud of the
+  // wall, so a tier that cuts nothing shows none of it
+  const ring = skin !== slot ? radius * 1.45 : 0;
+  if (ring > 0 && mesh.begin(slot.bucket, 'rim')) {
+    const unitR = Math.max(unitOf(slot.material).size, radius * 0.6);
+    layCourses(mesh, face, slot, rng, cx, cy, cz, radius, ring * 1.2, unitR, unitR * 0.5, skin.thicknessM + 0.004, skin.thicknessM + 0.07, 0.85);
     mesh.end();
   }
   // the room behind it: a dark backing, and the slab edge where the hole crosses a storey line
   if (mesh.begin('dark', 'room')) {
     const yaw = Math.atan2(face.out[0], face.out[2]);
     const back = anatomy.interior.open ? -Math.min(anatomy.w, anatomy.d) * 0.9 : -depth - 0.6;
-    writeBox(mesh, cx + face.out[0] * back, cy, cz + face.out[2] * back, radius * 1.1, radius * 1.1, 0.05, yaw, anatomy.interior.color);
+    writeBox(mesh, cx + face.out[0] * back, cy, cz + face.out[2] * back, radius * 1.5, radius * 1.5, 0.05, yaw, anatomy.interior.color);
     for (const s of anatomy.storeys) {
       if (!s.floor || Math.abs(s.y0 - cy) > radius) continue;
       const half = Math.sqrt(Math.max(0, radius * radius - (s.y0 - cy) ** 2));
@@ -451,8 +451,12 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
     pushPiece(pieces, k % 4 === 0 ? skin : slot, rng, cx + face.u[0] * Math.cos(a) * reach, cy + Math.sin(a) * reach, cz + face.u[2] * Math.cos(a) * reach,
       dirX * speed + (rng() - 0.5) * 2, 1 + rng() * 3, dirZ * speed + (rng() - 0.5) * 2);
   }
+  // the ring first, the hole last (the newest cut a ring buffer keeps)
+  const hole0: StructureCut = { x: cx, y: cy, z: cz, nx: face.out[0], nz: face.out[2], radiusM: radius, depthM: depth + 0.2, outsideM: 0.3 };
   return {
-    cuts: [{ x: cx, y: cy, z: cz, nx: face.out[0], nz: face.out[2], radiusM: radius, depthM: depth + 0.2, outsideM: 0.3 }],
+    cuts: ring > 0
+      ? [{ x: cx, y: cy, z: cz, nx: face.out[0], nz: face.out[2], radiusM: ring, depthM: skin.thicknessM + 0.02, outsideM: 0.01 }, hole0]
+      : [hole0],
     hides: [],
   };
 }
