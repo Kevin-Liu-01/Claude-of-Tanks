@@ -1029,7 +1029,7 @@ function stubBlock(mesh: Mesh, pen: FacePen, slot: FractureSlot, u0: number, u1:
  * standing higher), a render or a frame's infill to a ragged line with its core along the break, a framed wall's
  * sill and the stumps of its posts; never across a door or a window.
  */
-function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, rng: () => number, profile?: (u: number) => number,
+export function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAnatomy, rng: () => number, profile?: (u: number) => number,
   from = 0, postRise = 0.8): void {
   // (`from`: a section's fall leaves the intact wall standing to its clamp line, the presentation's: the stub is drawn
   // from there up, never over the wall's own face below it)
@@ -1203,7 +1203,7 @@ export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: rea
 }
 
 /** A chunk of the pile: an irregular box seated on the mound, in its bucket with its tint (body frame, world uvs). */
-function heapChunk(mesh: Mesh, slot: FractureSlot, cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, yaw: number,
+export function heapChunk(mesh: Mesh, slot: FractureSlot, cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, yaw: number,
   tilt: number, rng: () => number): void {
   if (!mesh.fits(24)) return;
   const c = Math.cos(yaw), s = Math.sin(yaw), ct = Math.cos(tilt), st = Math.sin(tilt);
