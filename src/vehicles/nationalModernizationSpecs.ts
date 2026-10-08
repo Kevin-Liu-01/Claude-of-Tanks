@@ -5,6 +5,7 @@ import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
 import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH,NATIONAL_BARREL_RADIUS} from './nationalModernizationDesign.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
+import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -44,7 +45,7 @@ export function synchronizeNationalModernizationMetadata():void {
     }
     s.armor.gunPivot=[...NATIONAL_GUN_PIVOT];
     s.armor.gunBarrel={...s.armor.gunBarrel,lengthM:NATIONAL_BARREL_LENGTH,radiusM:NATIONAL_BARREL_RADIUS};
-    s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:design.width,
+    s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,
       heightM:design.heightM,
       overallLengthM:design.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};
     stripSilhouetteDimensions(s.dims);
