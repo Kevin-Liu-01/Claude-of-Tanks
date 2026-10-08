@@ -12,6 +12,10 @@ export interface AuthoredTreeFeature {
   count: number;
   /** Small lateral staggering in metres, not random scatter discs. */
   width?: number;
+  /** The map-revival lane (2026-10-05, Orchard Valley's terraces): a row on terraced ground — each station slides along
+   * the hillside's fall line (up to `searchM` either way, nearest first) to the first ground a tree's root stands level
+   * on, so the row keeps to the benches whatever the terrain seed. Absent: stations stand where the path puts them. */
+  bench?: { searchM: number };
 }
 
 export interface AuthoredTreeRecord {
@@ -42,6 +46,42 @@ interface AuthoredTreeReceipt {
   noDonor: number;
   /** Accepted stations whose procedural squatter was moved onto the donor's old ground (2026-09-14). */
   displaced?: number;
+}
+
+/** A map's planned building site (props.ts `plannedSites`): its pose and, when it is authored at its size, its plot. */
+interface PlannedSite { x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }
+
+/** Half a side of a planned site without a plot: the kits' buildings measure up to 28 m (Kestrel's warehouses 27.3 m). */
+const PLANNED_SITE_HALF_M = 14;
+
+/**
+ * Trees lane (2026-10-05, Kestrel's dispersal stands): the settlement rect keeps every tree off a map's buildings. A map
+ * whose authored stands stand inside it (vegetation.ts `authoredInSettlement`) keeps them off its planned sites instead:
+ * each its plot, or a 28 m square on its yaw, with the beats' 0.75 m apron.
+ */
+export function plannedSiteClearances(sites: readonly PlannedSite[]): StructureClearance[] {
+  return sites.map((site) => {
+    const yaw = site.yawDeg * Math.PI / 180;
+    return {
+      x: site.x, z: site.z,
+      halfWidth: (site.plot ? site.plot.w / 2 : PLANNED_SITE_HALF_M) + 0.75,
+      halfLength: (site.plot ? site.plot.d / 2 : PLANNED_SITE_HALF_M) + 0.75,
+      cos: Math.cos(yaw), sin: Math.sin(yaw),
+    };
+  });
+}
+
+/** Whether (x, z) lies inside one of the polygons ([x, z] rings, even-odd): the clear ground a map names for its stands. */
+export function insideClearPolygon(polygons: readonly (readonly (readonly [number, number])[])[], x: number, z: number): boolean {
+  for (const polygon of polygons) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, zi] = polygon[i], [xj, zj] = polygon[j];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
 }
 
 /** Equal arc-length stations keep bent bank ribbons and farm rows readable. */
@@ -86,6 +126,34 @@ function supportedRoot(tree: AuthoredTreeRecord, x: number, z: number, terrain: 
         || terrain.getNormalAt(px, pz).y <= 0.82 || Math.abs(terrain.getHeightAt(px, pz) - y) > 1.2) return false;
   }
   return true;
+}
+
+/** A terraced row's station slid along the hillside's fall line (a 6 m baseline reads the slope, not the bench under it)
+ * to the nearest ground within `searchM` that a root stands level on (16 points 3.2 m out within 0.9 m of the station's
+ * height) and `admit` passes (the site rules, no two trunks already there); the station itself where none does.
+ * Deterministic: no RNG. */
+function benchStation(station: { x: number; z: number }, searchM: number, terrain: PlacementTerrain,
+  admit: (x: number, z: number) => boolean): { x: number; z: number } {
+  const h = (x: number, z: number) => terrain.getHeightAt(x, z);
+  const gx = h(station.x + 6, station.z) - h(station.x - 6, station.z), gz = h(station.x, station.z + 6) - h(station.x, station.z - 6);
+  const g = Math.hypot(gx, gz);
+  if (g < 1e-6) return station;
+  const ux = gx / g, uz = gz / g;
+  const level = (x: number, z: number) => {
+    const y = h(x, z);
+    for (let i = 0; i < 16; i++) {
+      const a = i * Math.PI / 8;
+      if (Math.abs(h(x + Math.cos(a) * 3.2, z + Math.sin(a) * 3.2) - y) > 0.9) return false;
+    }
+    return true;
+  };
+  for (let k = 0; k <= Math.round(searchM * 2); k++) {
+    for (const sign of k === 0 ? [1] : [1, -1]) {
+      const x = station.x + ux * sign * k * 0.5, z = station.z + uz * sign * k * 0.5;
+      if (admit(x, z) && level(x, z)) return { x, z };
+    }
+  }
+  return station;
 }
 
 function targetClear(tree: AuthoredTreeRecord, x: number, z: number,
@@ -175,7 +243,10 @@ export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
   const used = new Set<T>();
   return features.map(feature => {
     const receipt = { id: feature.id, attempted: feature.count, accepted: 0, unsafe: 0, noDonor: 0, displaced: 0 };
-    for (const point of authoredTreeStations(feature)) {
+    for (const station of authoredTreeStations(feature)) {
+      const point = feature.bench
+        ? benchStation(station, feature.bench.searchM, terrain, (x, z) => siteOk(x, z, 0) && stationOccupant(trees, x, z) !== -2)
+        : station;
       if (!siteOk(point.x, point.z, 0)) { receipt.unsafe++; continue; }
       // Once per station, not a quadratic scan for every possible donor.
       const occupied = stationOccupant(trees, point.x, point.z);

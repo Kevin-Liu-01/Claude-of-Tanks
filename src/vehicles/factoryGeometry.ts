@@ -243,11 +243,26 @@ function scaledRing(
   });
 }
 
+/** Triangulate an outward-ordered welded quad along its convex ridge.
+ * All four authored corners remain fixed. This is opt-in for faceted armor;
+ * cast surfaces keep their existing tessellation and normal treatment. */
+export function pushConvexQuad(
+  positions: number[], a: Point3, b: Point3, c: Point3, d: Point3,
+): void {
+  const ab = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+  const ac = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+  const n = [ab[1]*ac[2]-ab[2]*ac[1], ab[2]*ac[0]-ab[0]*ac[2], ab[0]*ac[1]-ab[1]*ac[0]];
+  const otherSide = n[0]*(d[0]-a[0])+n[1]*(d[1]-a[1])+n[2]*(d[2]-a[2]);
+  if (otherSide > 1e-12) positions.push(...a,...b,...d,...b,...c,...d);
+  else positions.push(...a,...b,...c,...a,...c,...d);
+}
+
 function pushOrientedSides(
   positions: number[],
   lower: readonly Point3[],
   upper: readonly Point3[],
   center: Point2,
+  convexSideQuads = false,
 ): void {
   const [centerX, centerZ] = center;
   const triangle = (a: Point3, b: Point3, c: Point3): void => {
@@ -259,7 +274,11 @@ function pushOrientedSides(
     const midpointZ = (lower[index][2] + lower[next][2]) / 2 - centerZ;
     const edgeX = lower[next][0] - lower[index][0];
     const edgeZ = lower[next][2] - lower[index][2];
-    if (edgeX * midpointZ - edgeZ * midpointX > 0) {
+    if (convexSideQuads) {
+      if (edgeX * midpointZ - edgeZ * midpointX > 0)
+        pushConvexQuad(positions, lower[index], lower[next], upper[next], upper[index]);
+      else pushConvexQuad(positions, lower[next], lower[index], upper[index], upper[next]);
+    } else if (edgeX * midpointZ - edgeZ * midpointX > 0) {
       triangle(lower[index], lower[next], upper[next]);
       triangle(lower[index], upper[next], upper[index]);
     } else {
@@ -324,6 +343,7 @@ export function polyLoft(
 export function polyMultiLoft(
   plan: readonly Point2[],
   rings: readonly PolyMultiLoftRing[],
+  options: { readonly convexSideQuads?: boolean } = {},
 ): THREE.BufferGeometry {
   if (rings.length < 2) throw new Error('polyMultiLoft requires at least two rings');
   const center = planCenter(plan);
@@ -344,7 +364,7 @@ export function polyMultiLoft(
     pushOrientedSides(positions, resolved[index], resolved[index + 1], [
       (ringCenters[index][0] + ringCenters[index + 1][0]) * 0.5,
       (ringCenters[index][1] + ringCenters[index + 1][1]) * 0.5,
-    ]);
+    ], options.convexSideQuads);
   }
   // sealed check 2026-09-13: the caps used to inherit the plan's winding, so a
   // counter-clockwise plan (the T-14 roof) produced an inside-out lid whose top

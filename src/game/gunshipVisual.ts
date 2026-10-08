@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-interface Aircraft { root: THREE.Group; rotors: THREE.Mesh[] }
+interface Aircraft { root: THREE.Group; rotors: THREE.Mesh[]; dispose(): void }
 const aircraft = new WeakMap<THREE.Object3D, Aircraft>();
 /** An orbiting four-engine gunship replaces the tank exterior in aerial mode. */
 export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean): void {
@@ -17,13 +17,14 @@ export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vect
       const prop=box(.2,5,.1,x,0,4.7,black);rotors.push(prop);
     }
     for(const z of [-4,0,4])box(3,.25,.25,-2.5,-.1,z,black);
-    model={root,rotors};aircraft.set(tankRoot,model);
+
     const release = () => {
       root.removeFromParent();
       root.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
       gray.dispose(); black.dispose(); aircraft.delete(tankRoot);
       tankRoot.removeEventListener('removed', release);
     };
+    model={root,rotors,dispose:release};aircraft.set(tankRoot,model);
     tankRoot.addEventListener('removed', release);
   }
   if(tankRoot.parent&&model.root.parent!==tankRoot.parent)tankRoot.parent.add(model.root);
@@ -32,3 +33,21 @@ export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vect
   tankRoot.visible=false;
 }
 export function hideGunshipVisual(tankRoot: THREE.Object3D): void { const model=aircraft.get(tankRoot);if(model)model.root.visible=false; }
+
+/** Aircraft-only battle carrier. It never constructs a tank or its textures. */
+export function createGunshipBattleVisual(specId: string) {
+  const root = new THREE.Group();
+  root.name = 'AC-130 flight anchor';
+  root.userData.aircraftOnly = true;
+  const worldPosition = (out: THREE.Vector3) => root.getWorldPosition(out);
+  return {
+    specId, root,
+    setVisible(visible: boolean) { root.visible = visible; if (!visible) hideGunshipVisual(root); },
+    syncFromState(state: { pos: THREE.Vector3; yaw: number }) {
+      root.position.copy(state.pos); root.rotation.set(0, state.yaw, 0);
+    },
+    turretTopWorld: worldPosition, gunPivotWorld: worldPosition, gunMuzzleWorld: worldPosition,
+    gunDirWorld(out: THREE.Vector3) { return out.set(0, 0, 1).applyQuaternion(root.quaternion); },
+    dispose() { aircraft.get(root)?.dispose(); root.removeFromParent(); },
+  };
+}

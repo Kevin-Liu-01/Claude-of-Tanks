@@ -22,7 +22,7 @@
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -224,6 +224,10 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   court: [[19, 0.80], [18, 0.12], [16, 0.08]],
   // the works roads' verges: black cinder, the court gravel spread out, a little rank grass
   cinder: [[15, 0.66], [19, 0.20], [17, 0.14]],
+  // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
+  // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
+  // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
+  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
 });
 
 /** Each region's field boundary. */
@@ -232,6 +236,7 @@ const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
+  secano: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -297,9 +302,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.19, blockU: 64, blockV: 46, maxSplit: 2, marginM: 1.2, trackShare: 0.15, hedgeShare: 0.05,
     warpM: 16, region: 'karst', salt: 79,
   },
-  // (Caldera: the maps lane rebuilt it as Las Cañadas — a volcanic basin of ash flats, cinder cones and lava flows with
-  // no fields; its ground is the volcanic zoning of groundRedux.ts, not a land use. The 'terrace' region stays for a
-  // paddy map.)
+  // Obsidian Caldera (caldera: the Aso caldera's floor, the map-revival lane's Caldera round 2; gauntlet wave 114: "a
+  // flat grey-beige plain ... Aso's floor is a patchwork of rice paddies, flooded or stubble, bunds, field roads"):
+  // rectangular paddies between earth bunds, green and flooded, vegetable plots and meadow, a field road along some of
+  // the long boundaries, a few windbreak hedges; the fields keep to the level floor (the material keeps them off the
+  // cones, the lava shelves, the roads and the village)
+  caldera: {
+    strength: 1, heading: 0.18, blockU: 96, blockV: 58, maxSplit: 3, marginM: 0.8, trackShare: 0.32, hedgeShare: 0.14,
+    warpM: 10, region: 'terrace', salt: 103,
+  },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
   // works' streets (an axis grid), birch scrub seeded along some of the plot lines, works tracks along others
   // (2026-10-05, the cities lane: "slag, black-grey cinder, round the blast furnaces and along the works roads; gravel in
@@ -369,6 +380,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
       { region: 'cityslope', band: { zMin: 185, zMax: 300, xMin: -360, xMax: 360 }, trackShare: 0.4, hedgeShare: 0 },
     ],
   },
+  // Aegis Crossing (cliffbridge: Ronda and the Tajo, map revival lane 2, 2026-10-05): the open campiña of the tableland
+  // in big dry-farmed blocks along the main road's north-south line (its length-weighted heading), tracks along many of
+  // the long lines, almost no hedges (open country); the plough on the map's own soil layer (no per-region soil tone)
+  cliffbridge: {
+    strength: 1, heading: 1.571, blockU: 170, blockV: 110, maxSplit: 3, marginM: 2.0, trackShare: 0.4, hedgeShare: 0.05,
+    warpM: 20, region: 'secano', salt: 103,
+  },
+  // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
+  // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
 });
 
 /** The map's land use, or null (no fields). */
@@ -674,8 +694,9 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
 
 /**
  * A farm track's wheel lanes (wave 83, Verdant: "crisp, uniform dark-grey stripes straight into the distance like painted
- * rails"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's, and its half-width swells and
- * narrows 0.19–0.29 m along the track, the two lanes on their own phases. u is the track's along coordinate — the
+ * rails"; wave 86: "constant-width strips"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's
+ * (and a few centimetres by the metre), and its half-width swells and narrows 0.12–0.36 m along the track over 5–17 m
+ * (wave 88: the swell of centimetres was not visible at the camera's range), the two lanes on their own phases. u is the track's along coordinate — the
  * unwarped grid's u (the slow boundary warp turns a track by well under a degree across a lane) — and side ±1 the side
  * of the track's line (the sign of sV). LAND_USE_GLSL's lu_laneC and lu_laneW are the same sums; the material sinks
  * the lanes there and the grass tiers keep them bare (tallGrass.ts, vegetation.ts: laneQ).
@@ -687,10 +708,10 @@ export function trackLaneMeander(u: number): number {
 }
 export function trackLaneCentre(u: number, side: number): number {
   return 0.85 + 0.11 * (0.50 * Math.sin(u * 0.53 + side * 1.9) + 0.32 * Math.sin(u * 1.37 + side * 0.7 + 1.1)
-    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4));
+    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4)) + 0.025 * Math.sin(u * 7.9 + side * 3.1);
 }
 export function trackLaneHalfWidth(u: number, side: number): number {
-  return 0.24 * (1 + 0.22 * Math.sin(u * 0.91 + side * 2.6 + 0.4));
+  return 0.24 * (1 + 0.32 * Math.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * Math.sin(u * 1.13 + side * 1.3 + 2.0));
 }
 
 function smooth(a: number, b: number, x: number): number {
@@ -846,9 +867,10 @@ float lu_sV(vec2 p, vec4 b, vec4 k, ivec2 t) {
 // at the along coordinate u = dot(p, uLandRot), side ±1 the mid-line's side (landUse.ts trackLaneCentre /
 // trackLaneHalfWidth / trackLaneMeander)
 float lu_laneC(float u, float side) {
-  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4));
+  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4))
+    + 0.025 * sin(u * 7.9 + side * 3.1);
 }
-float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.22 * sin(u * 0.91 + side * 2.6 + 0.4)); }
+float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.32 * sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * sin(u * 1.13 + side * 1.3 + 2.0)); }
 float lu_laneM(float u) { return 0.30 * sin(u * 0.105 + 0.7) + 0.18 * sin(u * 0.043 + 2.3); } // the lanes' common meander
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
   vec4 a, b, k; ivec2 t;

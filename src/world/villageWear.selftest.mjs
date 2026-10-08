@@ -9,10 +9,12 @@ import { createHardstandPaintCover } from './hardstandSurface.ts';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
 const pilots = ['coastal', 'saltwind'];
-const activityMaps = ['coastal', 'foundry', 'saltwind'];
+// map revival lane 2 (2026-10-05): Aegis Crossing takes the activity mode off the gorge its village rect spans
+const activityMaps = ['coastal', 'foundry', 'saltwind', 'cliffbridge'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
-// the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it
-const plotMaps = ['verdant'];
+// the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
+// Orchard Valley's walled yards and threshing floors (2026-10-05)
+const plotMaps = ['verdant', 'orchard'];
 // 2026-10-01 (frozen pins retired): the all28 parent mask digests (desktop/mobile, baked on historical road, shoreline,
 // exit, Badlands and Foundry inputs), the archived pilot masks, the parent config digest and the literal Alpine/Autumn/
 // Foundry config pins were change detectors of past outputs and authored data. Every comparison below is live: each
@@ -31,9 +33,9 @@ function wearDisabled(cfg) {
 }
 function checkScope(resolve) {
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).terrain.villageWear === 'activity-patches'), activityMaps,
-    'activity wear stays opt-in: only the three activity maps replace the blanket village apron');
+    'activity wear stays opt-in: only the four activity maps replace the blanket village apron');
   assert.deepEqual(MAP_IDS.filter(id => ![undefined, 'activity-patches'].includes(resolve(id).terrain.villageWear)), plotMaps,
-    'the village plots stay opt-in: Verdant alone, and no third mode');
+    'the village plots stay opt-in: the plot maps alone, and no third mode');
   for (const id of plotMaps) assert.equal(resolve(id).terrain.villageWear, 'plots', `${id}: the village in plots`);
   for (const id of activityMaps) {
     assert.equal(resolve(id).terrain.villageWear, 'activity-patches', `${id}: activity-patch wear mode`);
@@ -95,6 +97,29 @@ function activityCoverage(before, after, size, patches) {
   return { oldArea, newArea, erased, meanAlpha: alphaSum / newArea, coreArea };
 }
 
+// map revival lane 2 (2026-10-05, Aegis Crossing; gauntlet wave 108b): the activity mode there takes the blanket wear off
+// the gorge the village rect spans (the ground reads a steep face under worn soil as an earthwork, so its walls were turf
+// inside the rect), and the towns' and the gravel bed's worn ground comes back as three authored patches. The rule: no
+// off-road wear on the gorge walls under the rect, the most of the blanket's area kept, every bit of it inside the patches.
+function gorgeCoverage(before, after, size, patches) {
+  const bounds = patches.map(extent), texel = 1024 / size;
+  let oldArea = 0, newArea = 0, wallWear = 0;
+  for (let i = 0; i < before.length; i += 4) {
+    if (before[i] || before[i + 2]) continue;
+    if (before[i + 3]) oldArea += texel ** 2;
+    if (!after[i + 3]) continue;
+    newArea += texel ** 2;
+    const col = i / 4 % size, row = Math.floor(i / 4 / size);
+    const x = (col + .5) * texel - 512, z = (row + .5) * texel - 512;
+    if (Math.abs(x) < 130 && Math.abs(z) > 58 && Math.abs(z) < 86) wallWear += texel ** 2;
+    assert.ok(bounds.some(b => x >= b[0] && x <= b[1] && z >= b[2] && z <= b[3]),
+      'remaining off-road wear stays inside authored activity support');
+  }
+  assert.equal(wallWear, 0, 'the gorge walls under the village rect carry no worn soil');
+  assert.ok(newArea > oldArea * .5, 'the towns and the gravel bed keep their worn ground');
+  return { oldArea, newArea, wallWear };
+}
+
 // Retained seed1337 stall/landing centers plus explicitly authored turning
 // courts and the redesigned market street. Removed loop/croft yards must not
 // force obsolete bare soil back into the current layout.
@@ -103,6 +128,8 @@ const activityPoints = {
   saltwind: [[-199.496, -42.573], [-184.043, -47.939], [-140, -58], [-65, -54], [-264.885, -21.707]],
   // Inside the accepted loading court, southern approach and container lane.
   foundry: [[101, -110], [102, -146], [160, -104]],
+  // the towns' ground beside each square and below them, both halves, and the gorge's gravel bed
+  cliffbridge: [[-70, -205], [75, -150], [-85, -235], [-70, 205], [75, 150], [-60, 30], [80, -25]],
 };
 function checkActivityPoints(id, pixels, size) {
   for (const [x,z] of activityPoints[id]) assert.ok(pixels[at(size,x,z) + 3] > 30,
@@ -139,7 +166,8 @@ function checkPilot(id, seed) {
     assert.equal(current.draws, original.draws, 'identical caller RNG draw count');
     assert.deepEqual(current.rngTail, original.rngTail, 'identical caller RNG tail');
     protectedChannels(original.pixels, current.pixels, createHardstandPaintCover(cfg.terrain.hardstands) ?? undefined);
-    const coverage = activityCoverage(original.pixels, current.pixels, current.size, cfg.terrain.workedGround);
+    const coverageOf = id === 'cliffbridge' ? gorgeCoverage : activityCoverage;
+    const coverage = coverageOf(original.pixels, current.pixels, current.size, cfg.terrain.workedGround);
     if (id === 'foundry') {
       assert.ok(coverage.newArea < 5000 && coverage.coreArea > 500,
         'Foundry retains substantial high-alpha soil inside a compact court, not a district apron');
@@ -154,12 +182,12 @@ function checkPilot(id, seed) {
       const repeated = bake(cfg, seed);
       try { assert.deepEqual(repeated.pixels, current.pixels, 'same input produces byte-exact activity coverage'); }
       finally { repeated.texture.dispose(); }
-      assert.throws(() => activityCoverage(original.pixels, original.pixels, current.size, cfg.terrain.workedGround),
+      assert.throws(() => coverageOf(original.pixels, original.pixels, current.size, cfg.terrain.workedGround),
         'restoring the rejected blanket rectangle must fail');
-      assert.throws(() => activityCoverage(original.pixels, new Uint8Array(current.pixels.length), current.size, cfg.terrain.workedGround),
+      assert.throws(() => coverageOf(original.pixels, new Uint8Array(current.pixels.length), current.size, cfg.terrain.workedGround),
         'removing all activity soil must fail');
       const shifted = cfg.terrain.workedGround.map(p => ({ ...p, boundary: p.boundary.map(([x,z]) => [x + 350,z]) }));
-      assert.throws(() => activityCoverage(original.pixels, current.pixels, current.size, shifted), 'unrelated relocated polygons fail the geographic check');
+      assert.throws(() => coverageOf(original.pixels, current.pixels, current.size, shifted), 'unrelated relocated polygons fail the geographic check');
       const corrupt = current.pixels.slice(); corrupt[0] ^= 1;
       assert.throws(() => protectedChannels(original.pixels, corrupt), /road\/rut\/water channel/);
     }

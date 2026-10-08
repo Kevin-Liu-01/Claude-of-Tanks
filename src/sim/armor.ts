@@ -58,6 +58,8 @@ export interface EraProtection {
 }
 
 export interface ArmorPlate {
+  /** Dense anti-drone lattice: gameplay interception probability at this face. */
+  droneInterception?: number;
   name: string;
   verts: readonly Vec3Tuple[];
   /** Finite-stock opt-in: [] retains closed boundaries; listed cut edges are
@@ -156,6 +158,8 @@ interface TrackPrismShape {
 }
 
 export interface ArmorModel {
+  /** Airframe contact envelopes; ordinary bullets and shells pass through the gaps. */
+  droneScreens?: { hull?: readonly ArmorPlate[]; turret?: readonly ArmorPlate[] };
   roofGun?: AuxiliaryInventory['guns'][number];
   turretPivot?: Vec3Tuple | number[];
   gunPivot?: Vec3Tuple | number[];
@@ -1311,6 +1315,7 @@ export function traceTank(
   pose: TankArmorPose,
   armorModel: ArmorModel,
   eraSpent: ReadonlySet<string> = EMPTY_SET,
+  drone = false,
 ): ArmorIntersection[] {
   buildFrames(pose, armorModel);
   localizeSegment(from, to);
@@ -1333,6 +1338,10 @@ export function traceTank(
   traceCollisionShell(hullCells, FR_HULL, out);
   traceCollisionShell(turretCells, FR_TURRET, out);
   traceExternalWeapons(armorModel.externalWeapons, out);
+  if (drone) {
+    tracePlates(armorModel.droneScreens?.hull, FR_HULL, false, eraSpent, null, out);
+    tracePlates(armorModel.droneScreens?.turret, FR_TURRET, false, eraSpent, null, out);
+  }
 
   if (trackShapes) traceTrackShapes(trackShapes, out);
   traceModuleVolumes(armorModel.modules, trackShapes, out);

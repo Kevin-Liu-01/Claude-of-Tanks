@@ -134,11 +134,14 @@ function checkSourceContract(text) {
     'uRockGate','uSea','uSeaFoam','uSeaOpeningCount','uSeaOpenings','uSeaBanks','uSeaRamp',
     'uWashboard', // ground lane (2026-10-06): a styled dirt road's corrugation (strength, spacing m; vec2, no sampler)
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+    'uRoadPuddle', // ground lane (2026-10-05): the map's share of the ruts' puddles and their mud (scalar, no sampler)
     'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
     // round 42 (2026-09-23, AAA checks 4/11): the sun the vista ring shades with and the sky-light weight for steep faces turned from it
     'uSunDirW', 'uWallSkyLift',
     // ground lane (wave 65): the ring's caprock band, metres over the field's highest ground (vec2, no sampler)
     'uRingCap',
+    // map revival lane 2 (2026-10-05, Aegis Crossing): a map's paved town rect (SplatConfig townPaving; vec4, no sampler)
+    'uTownPave',
     'uSlopeGrassHold', // round 45 (2026-09-23): tropical hills hold turf to steeper slopes (scalar, no sampler)
     'uRingRock', // round 49 (2026-09-23): per-map slope band over which a ring face past the square becomes landform rock (vec2, no sampler)
     'uBeddedR', // round 55 (2026-09-24): 1 on the maps whose R layer is the procedural bedded sandstone tile — their wall crag is analytic (scalar, no sampler)
@@ -178,6 +181,9 @@ function checkSourceContract(text) {
     // ground lane (2026-10-05, the road styles): the road layer's size and first row in the mask stack, on when a styled
     // net bakes one (vec4, no sampler — the layer rides in uMask's unit, fetched exactly)
     'uRoadClass',
+    // the map-revival lane (2026-10-05): the terrace zones' rects and riser band — the risers take the rock layer
+    // (vec4[4] and vec4, no sampler)
+    'uTerraceRect', 'uTerraceParam',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

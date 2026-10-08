@@ -11,11 +11,13 @@ import {
   EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_GROUND_RETURN, OVERCAST_SKY_CUT,
   SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
   EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV, OVERCAST_DIRECT_CUT, OVERCAST_DIFFUSED_FROM,
+  OVERCAST_THICK_CUT, OVERCAST_THICK_FROM, OVERCAST_SATURATION_CUT,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
-  resolveLightModel, resolveOvercast,
+  resolveLightModel, resolveOvercast, resolveDeckClosure, DECK_CLOSED_COVERAGE, OVERCAST_DIRECT_CUT_SHARED,
 } from './lightModelCore.ts';
+import { CLOUD_LAYER_RULES } from './cloudPresets.ts';
 import { ATMO_GROUND_KM, skyPresetToAtmosphere } from './atmosphere.ts';
 import { transmittanceDirect } from './atmosphere.test-support.mjs';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -112,6 +114,47 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
 // sky"): the deck sends back OVERCAST_GROUND_RETURN of what the ground sends up, in its own light — the direct light
 // × g / (1 − g), g = overcast × the share × the ground's albedo — and the clear sky's share under a closed deck keeps
 // none of the dome's blue
+// 2026-10-05 (the skies lane; the gauntlet's wave 93: Frosthollow and Railyard facing the sun show it in a clear gap, "yet
+// the snow, trees and yard have no shadows, rims or glare"): a deck with gaps takes its direct cut spatially — the cloud
+// shade map's pattern where the volumetric layer draws — and only a closed deck cuts the sun uniformly. The cascades' sun
+// takes the overcast's cut by the deck's closure; the meter, the ground's radiance and the deck's return keep the average
+// cut, so the exposure and the open ground's mean level hold.
+{
+  assert.equal(OVERCAST_DIRECT_CUT_SHARED, OVERCAST_DIRECT_CUT, 'the shared copy of the cut (the far ranges build before the model loads)');
+  assert.deepEqual([...DECK_CLOSED_COVERAGE], [...CLOUD_LAYER_RULES.deckClosedCoverage], 'the light model and the layer close a deck at one coverage');
+  const scape = (regime, coverage) => ({ ...verdantSky, cloudscape: { regime, coverage } });
+  // the closure: a broken deck none, a closed one whole; a shadow-casting cumulus, an authored overcast and a tier without
+  // the layer keep the uniform rule (1)
+  assert.equal(resolveDeckClosure(scape('stratocumulus-deck', 0.8), true), 0, 'a deck with gaps: its pattern carries the cut');
+  assert.equal(resolveDeckClosure(scape('industrial-stratocumulus', 0.92), true), 0, 'Railyard (0.92): its gaps let the sun through');
+  assert.equal(resolveDeckClosure(scape('dense-overcast', 1), true), 1, 'a closed deck: the uniform cut');
+  const mid = resolveDeckClosure(scape('dense-overcast', 0.96), true);
+  assert.ok(mid > 0 && mid < 1, `the deck closes over ${DECK_CLOSED_COVERAGE.join('–')} (0.96: ${mid.toFixed(2)})`);
+  assert.equal(resolveDeckClosure(scape('stratocumulus-deck', 0.8), false), 1, 'no layer (the phones): the uniform cut');
+  assert.equal(resolveDeckClosure({ ...verdantSky, lighting: { overcast: 0.8 } }, true), 1, 'an authored overcast: the uniform cut');
+  assert.equal(resolveDeckClosure(scape('fair-weather-cumulus', 0.36), true), 1, 'a cumulus: its own map, the rule unchanged');
+  // the model: Frosthollow's deck with and without the pattern
+  const winterSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('winter').sky, cloudscape: getMapConfig('winter').clouds };
+  const winterAtmo = skyPresetToAtmosphere(winterSky);
+  const uniform = resolveLightModel(winterSky, winterAtmo, { irradianceRaw: irr }, null, false);
+  const spatial = resolveLightModel(winterSky, winterAtmo, { irradianceRaw: irr }, null, true);
+  assert.ok(uniform.overcast > 0.6 && uniform.deckClosure === 1 && spatial.deckClosure === 0, 'Frosthollow: the pattern carries its cut');
+  const clearSun = deriveSun(winterAtmo, 0);
+  near(spatial.sunIntensity * luminance(spatial.sunColor), clearSun.intensity * luminance(clearSun.color), 1e-9, 'in a gap the cascades carry the clear sun');
+  near(spatial.illuminance, uniform.illuminance, 1e-12, 'the meter keeps the average cut');
+  near(spatial.exposure, uniform.exposure, 1e-12, 'and the exposure');
+  near(spatial.hemiIntensity, uniform.hemiIntensity, 1e-12, 'the deck\'s glow is its own');
+  spatial.groundRadiance.forEach((g, c) => near(g, uniform.groundRadiance[c], 1e-12, `the ground's radiance (ch${c}): the average sun`));
+  // the cells: a deck cell takes the thick core, so a shaded cell keeps (1 − core) of the clear sun — under the closed
+  // deck's own residual only when the core passes the cut
+  assert.ok(CLOUD_LAYER_RULES.deckShadowCore >= 0.85 && CLOUD_LAYER_RULES.deckShadowCore <= 0.95, 'a deck cell takes most of the sun');
+  // a closed deck: unchanged by the pattern
+  const titanSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('titan_gorge').sky, cloudscape: getMapConfig('titan_gorge').clouds };
+  const titanAtmo = skyPresetToAtmosphere(titanSky);
+  const tA = resolveLightModel(titanSky, titanAtmo, { irradianceRaw: irr }, null, false), tB = resolveLightModel(titanSky, titanAtmo, { irradianceRaw: irr }, null, true);
+  near(tA.sunIntensity, tB.sunIntensity, 1e-12, 'Titan Gorge: the uniform cut either way');
+  near(tA.illuminance, tB.illuminance, 1e-12, 'and its light');
+}
 // 2026-10-04 (the skies lane; the gauntlet's waves 80 and 82: under Titan Gorge's closed deck the ground still read as lit
 // by a sunny day — "crisp, hard-edged shadows" under a discless glow): a closed deck passes OVERCAST_DIRECT_CUT's
 // remainder of the beam, a few per cent, and sends what it cuts past OVERCAST_DIFFUSED_FROM (the cut its glow was
@@ -144,6 +187,38 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
   const full = at(1, { OVERCAST_DIRECT_CUT: 1 });
   near(full.sunIntensity, 0, 1e-12, 'a full cut: no beam');
   near(full.illuminance, closedWas.illuminance, 1e-9, 'a full cut: all of it diffused, the light still whole');
+}
+// 2026-10-05 (the skies lane; the gauntlet's wave 118: "sand and lawn are bright and saturated under grey overcast",
+// ground/sky about twice the overcast photographs'): a thick deck passes less glow — OVERCAST_THICK_CUT over the
+// overcast's last stretch — and the grade's saturation falls with the overcast; neither touches an open sky
+{
+  const at = (overcast, tune) => {
+    const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune;
+    try { return resolveLightModel({ ...verdantSky, lighting: { overcast } }, verdant, { irradianceRaw: irr }, null); }
+    finally { globalThis.__LIGHT_TUNE = saved; }
+  };
+  assert.ok(OVERCAST_THICK_CUT > 0.4 && OVERCAST_THICK_CUT < 0.7 && OVERCAST_THICK_FROM === 0.5, 'a closed deck passes a little under half the glow');
+  assert.ok(OVERCAST_SATURATION_CUT > 0.1 && OVERCAST_SATURATION_CUT < 0.25, 'the grade loses a sixth of its saturation under a closed deck');
+  const noThick = { OVERCAST_THICK_CUT: 0, OVERCAST_SATURATION_CUT: 0 };
+  // the deck's own light: the hemisphere less what the deck returns of the ground's (E × the return share), and less the
+  // beam the cut diffuses (the QA knob OVERCAST_BEAM_DIFFUSE 0 drops it) — the glow the thickness scales
+  const deckOf = (m, o) => m.hemiIntensity - m.illuminance * Math.min(0.9, o * OVERCAST_GROUND_RETURN * luminance(m.groundAlbedo));
+  const glowOf = (o, tune) => deckOf(at(o, { ...tune, OVERCAST_BEAM_DIFFUSE: 0 }), o);
+  for (const o of [0, 0.3, 0.5]) {
+    const m = at(o, undefined), m0 = at(o, noThick);
+    near(m.hemiIntensity, m0.hemiIntensity, 1e-12, `overcast ${o}: the glow untouched below OVERCAST_THICK_FROM`);
+    near(m.saturation, 1 - OVERCAST_SATURATION_CUT * o, 1e-12, `overcast ${o}: the saturation × (1 − ${OVERCAST_SATURATION_CUT} × overcast)`);
+  }
+  const clearM = at(0, undefined);
+  near(clearM.saturation, 1, 0, 'an open sky keeps its saturation');
+  near(clearM.illuminance, at(0, noThick).illuminance, 0, 'and its light');
+  const shut = at(1, undefined), shut0 = at(1, noThick);
+  near(glowOf(1, {}), (1 - OVERCAST_THICK_CUT) * glowOf(1, noThick), 1e-9, `a closed deck: the glow × ${(1 - OVERCAST_THICK_CUT).toFixed(2)}`);
+  near(deckOf(shut, 1) - glowOf(1, {}), deckOf(shut0, 1) - glowOf(1, noThick), 1e-9, 'the diffused beam is the cut\'s, untouched');
+  near(shut.saturation, 1 - OVERCAST_SATURATION_CUT, 1e-12, 'a closed deck: the saturation');
+  assert.ok(shut.illuminance < 0.7 * shut0.illuminance && shut.exposure > shut0.exposure, `a closed deck: the light ${(shut.illuminance / shut0.illuminance).toFixed(2)}x, the exposure up`);
+  near(shut.sunIntensity, shut0.sunIntensity, 1e-12, 'the beam is the cut\'s alone');
+  near(glowOf(0.75, {}), (1 - OVERCAST_THICK_CUT / 2) * glowOf(0.75, noThick), 1e-9, 'half the cut midway (overcast 0.75)');
 }
 
 {
@@ -295,7 +370,8 @@ const renderer = readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8')
 assert.match(renderer, /renderer\.toneMapping = THREE\.AgXToneMapping;/, 'AgX');
 assert.match(renderer, /renderer\.toneMappingExposure = 1\.0;/, 'the exposure is the light model\'s');
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(sky, /resolveLightModel\(preset, params, \{ irradianceRaw: [^}]*\},\s*authoredSunOf\(preset as LightModelPreset\)\)/, 'the environment\'s ground sees the same moon the rig lights');
+// (2026-10-05: and the same deck pattern — the volumetric layer's — as the rig resolves it)
+assert.match(sky, /resolveLightModel\(preset, params, \{ irradianceRaw: [^}]*\},\s*authoredSunOf\(preset as LightModelPreset\), !!volumetricClouds\)/, 'the environment\'s ground sees the same moon the rig lights');
 assert.match(lighting, /const authoredSun = authoredSunOf\(opts\);/);
 assert.match(main, /setSun: \(skyConfig\) => lighting\.setSun\(sky\.sunDir, withWorldCloudscape\(skyConfig\)\),/, 'the world activation sets the light with the deck');
 assert.match(main, /getBattleSkyConfig: \(\) => withWorldCloudscape\(currentWorld\(\)\?\.config\.sky \?\? null\),/, 'and so does the Garage trim\'s restore');
