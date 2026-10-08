@@ -1071,6 +1071,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.colliderStop.selftest.mjs',
     // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
     'src/game/ai.lastRun.selftest.mjs',
+    // 2026-10-08 (modes lane): a mission's own aim (Turbo Ball's striker shot) lays the gun and fires only when cleared.
+    'src/game/ai.missionAim.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
