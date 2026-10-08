@@ -4290,34 +4290,44 @@ vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float foot
   if (uj < c0) { j -= 1.0; c0 = (j + 0.7 * (jh1(j * 1.37 + 8.0) - 0.5)) * W; }
   float c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W;
   if (uj >= c1) { j += 1.0; c0 = c1; c1 = (j + 1.0 + 0.7 * (jh1((j + 1.0) * 1.37 + 8.0) - 0.5)) * W; }
-  float dl = uj - c0, dr = c1 - uj, hw = max(0.32, 2.0 * footM);
-  // (the crack shows where the bed still holds it: two beds in three along each joint's line)
-  float pl = step(0.33, jh1(j * 7.7 + k * 1.3)), pr = step(0.33, jh1((j + 1.0) * 7.7 + k * 1.3));
+  // (round 11, the gauntlet's wave 282: "hairline drawn cracks" — the terrain's own clefts carry the joints now: here a
+  // soft dark seam half a metre to a metre wide on about half the beds' stretches of each line, turned a little)
+  float dl = uj - c0, dr = c1 - uj, hw = max(0.5, 3.0 * footM);
+  float pl = step(0.55, jh1(j * 7.7 + k * 1.3)), pr = step(0.55, jh1((j + 1.0) * 7.7 + k * 1.3));
   float vl = pl * clamp(1.0 - dl / hw, 0.0, 1.0), vr = pr * clamp(1.0 - dr / hw, 0.0, 1.0);
-  float tu = -0.5 * pl * step(dl, hw) + 0.5 * pr * step(dr, hw);
-  shade *= (1.0 - 0.45 * vl * vl) * (1.0 - 0.45 * vr * vr);
+  float tu = -0.35 * pl * step(dl, hw) + 0.35 * pr * step(dr, hw);
+  shade *= (1.0 - 0.3 * vl * vl) * (1.0 - 0.3 * vr * vr);
   // the column's own face: a lean and a shade per column, whole down the cliff
   tu += (jh1(j * 3.3 + 1.9) - 0.5) * 0.22;
+  // (round 11, the gauntlet's wave 282: "no fluting") its flutes: one to three rounded grooves across the column, each
+  // column its own count, depth and phase, in the red below the pale formation (whose domes are not fluted)
+  float fu = clamp((uj - c0) / max(c1 - c0, 0.5), 0.0, 1.0), fn = 1.0 + floor(3.0 * jh1(j * 4.9 + 0.3));
+  float fA = 0.3 * jh1(j * 8.3 + 2.6) * (1.0 - smoothstep(46.0, 60.0, y)) * smoothstep(0.0, 0.12, fu) * smoothstep(0.0, 0.12, 1.0 - fu);
+  tu += fA * sin(6.2831853 * (fn * fu + 0.5 * jh1(j * 2.2 + 5.1)));
   tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
   shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
   // the honeycomb: pits in 1.3 m cells, in patches
   if (tafW > 0.003) {
-    vec2 p = vec2(u, yb) / 1.3, cell = floor(p);
+    // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
+    // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
+    // small, a few large; dark in their hollows; in patches)
+    float cs = 1.0 + 1.2 * jh1(floor(u / 13.0) * 5.7 + floor(yb / 9.0) * 3.3 + 0.7);
+    vec2 p = vec2(u, yb) / cs, cell = floor(p);
     // (not 'patch': a word GLSL ES 3.00 reserves for future use, so the program would not compile)
-    float pitPatch = smoothstep(0.35, 0.75, jh1(floor(u / 9.0) * 3.1 + floor(yb / 7.0) * 7.3 + 1.9));
+    float pitPatch = smoothstep(0.45, 0.8, jh1(floor(u / 7.0) * 3.1 + floor(yb / 5.0) * 7.3 + 1.9));
     for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
       vec2 c = cell + vec2(float(i), float(m));
       float hc = jh1(c.x * 12.9 + c.y * 78.2);
-      if (hc < 0.42) continue;
-      vec2 ctr = c + 0.5 + 0.7 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
-      float R = 0.17 + 0.28 * jh1(c.x * 7.1 + c.y * 2.3);
+      if (hc < 0.6) continue;
+      vec2 ctr = c + 0.5 + 0.8 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
+      float rk = jh1(c.x * 7.1 + c.y * 2.3), R = 0.1 + 0.42 * rk * rk;
       vec2 dpv = p - ctr;
       float r = length(dpv) / R;
       if (r < 1.0) {
         float wpit = tafW * pitPatch;
         tu -= dpv.x / R * 0.9 * wpit;
         tv -= dpv.y / R * 0.9 * wpit;
-        shade *= 1.0 - wpit * 0.5 * (1.0 - r * r);
+        shade *= 1.0 - wpit * 0.78 * (1.0 - r * r);
       }
     }
   }
@@ -4638,6 +4648,14 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  // (the Redrock lane, round 11, the gauntlet's wave 282: the talus "a painted triangle laid on the wall with a seam where
+  // it meets the sand" — on a jebel-face map the talus band under the walls, below 13-20 m, is sand drifted between its
+  // blocks: the rock gives way to sand in ragged patches 4-20 m across, so the rock's edge wanders up and down the slope)
+  if (uJebelFace.x > 0.0) {
+    float talusBand = smoothstep(0.16, 0.26, slopeR) * (1.0 - smoothstep(0.40, 0.55, slopeR)) * (1.0 - smoothstep(13.0, 20.0, wp.y));
+    float drift = nz(wp.xz, 0.11, vec2(0.27, 0.61)).b * 0.6 + n1h * 0.4;
+    fR *= 1.0 - talusBand * (1.0 - smoothstep(0.38, 0.62, drift)) * 0.85;
+  }
   // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
   fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
   // the Redrock lane: the square's own caprock (splat.caprockY) — the jebels' and domes' tops are bare rock, not sand
@@ -5796,7 +5814,8 @@ void splatCompute() {
       // (its own slow phase field, not the crag's read: a cliff's joints and its buttresses wander independently)
       float fpx = nz(gWallUVx, 0.0031, vec2(0.29, 0.83)).r, fpz = nz(gWallUVz, 0.0031, vec2(0.29, 0.83)).r;
       float nearJ = 1.0 - smoothstep(30.0, 80.0, camDist);
-      float tafJ = uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(26.0, 40.0, wp.y));
+      // (round 11: the honeycomb low on the walls and the domes' feet, where the salts work — not over whole domes)
+      float tafJ = uJebelFace.z * (1.0 - smoothstep(40.0, 85.0, camDist)) * (1.0 - smoothstep(9.0, 17.0, wp.y));
       float yJ = wp.y - gBedWob;
       vec3 jx = vec3(0.0, 0.0, 1.0), jz = vec3(0.0, 0.0, 1.0);
       if (gWallW < 0.997) jx = jebelFaceV2(gWallUVx.x, yJ, fpx, nearJ, tafJ, gFootM);
@@ -5867,8 +5886,20 @@ void splatCompute() {
     // ground lane: two formations — under the boundary (wandering with the beds and its own ±m) the paler, harder
     // sandstone, above it the redder; the step is one bed thick, and it reads on the rock wherever the rock shows
     if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {
-      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y;
+      float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y
+        + (nz(wp.xz, 0.031, vec2(0.17, 0.53)).g - 0.5) * 0.7 * uFormation.y;
       float upper = smoothstep(-uFormation.z, uFormation.z, fy);
+      // (round 11, the gauntlet's wave 282: "one hard, smeared horizontal band running straight across every wall segment
+      // at the same height" — the contact ragged at a 140 m and a 32 m wander, and on the walls the pale formation's wash
+      // hanging below it in drips, a metre or two wide and 3-14 m long, down the fall line)
+      if (steep > 0.0 && fy < 0.0 && fy > -16.0) {
+        float lodP = max(0.0, gNoiseLog + log2(0.09));
+        float drip = mix(textureLod(uNoise, gWallUVx * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r,
+                         textureLod(uNoise, gWallUVz * vec2(0.09, 0.0) + vec2(0.41, 0.77), lodP).r, gWallW);
+        float dlen = 3.0 + 11.0 * mix(textureLod(uNoise, gWallUVx * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g,
+                                      textureLod(uNoise, gWallUVz * vec2(0.023, 0.0) + vec2(0.63, 0.12), lodP).g, gWallW);
+        upper = max(upper, smoothstep(0.62, 0.84, drip) * (1.0 - smoothstep(0.3 * dlen, dlen, -fy)) * steep * 0.85);
+      }
       // (the Redrock lane, 2026-10-07: each formation is a colour on the rock's own luminance — a pale sandstone a buff or
       // cream, not a lighter red; Redrock, the one map with a formation, sets both)
       // (round 10, the gauntlet's wave on Redrock: the tiers' ledges, sunlit over a shadowed face, took the pale tint on

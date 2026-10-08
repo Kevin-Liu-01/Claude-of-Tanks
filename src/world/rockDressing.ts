@@ -750,7 +750,9 @@ export function buildBoulderForm(
   const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3);
   // the normals are the fitted surface's own, averaged over a third of a grid cell either side: they carry the grain
   // the mesh is too coarse to follow, and an arris narrower than a cell shades as one a cell wide instead of flickering
-  const eps = (Math.PI / 2 / n) * 0.35;
+  // (the Redrock lane, round 11, the gauntlet's wave 282: an angular map's fallen blocks read as "soft cushion shapes" —
+  // their arrises shade over a seventh of a cell, not a third)
+  const eps = (Math.PI / 2 / n) * (0.35 - 0.2 * Math.min(1, angular));
   for (let v = 0; v < count; v++) {
     const ux = dirs[v * 3], uy = dirs[v * 3 + 1], uz = dirs[v * 3 + 2];
     const p = fitted(ux, uy, uz);
