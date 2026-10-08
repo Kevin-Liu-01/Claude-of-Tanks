@@ -391,7 +391,8 @@ function groundWindFromAloft(speedAloft: number): number {
 }
 
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
-const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.22, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55 });
+// skySat 0.22 -> 0.12 (wave 273: thinning dust turned bluish)
+const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.12, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55 });
 
 interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
