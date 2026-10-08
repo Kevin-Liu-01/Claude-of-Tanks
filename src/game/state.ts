@@ -125,6 +125,8 @@ import {
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
+import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
+import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent } from '../sim/destructionEvents.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
@@ -251,6 +253,10 @@ type SoloPooledEntity = Omit<RosterEntity,
     /** Impact physics: closing speed already priced in the crash that is still resolving, and when it last grew. */
     _impactAccumMps?: number;
     _impactAccumT?: number;
+    /** Destruction: the structure record this hull met hard this tick (a crash prices a ram on it). */
+    _ramRecord?: CollisionRecord | null;
+    /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
+    _ramKeep?: number;
     _modeTargetX?: number;
     _modeTargetZ?: number;
     _reloadEvent?: ReloadPresentationEvent;
@@ -323,6 +329,9 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _botNavigation?: Readonly<BotNavigationGrid> | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
+  /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
+  _destruction?: DestructionMatch | null;
+  _destructionEvents?: StructureStageEvent[];
 }
 
 interface SpawnPoint {
@@ -363,6 +372,8 @@ interface SoloWorld {
   heightField: SoloHeightField;
   raycast(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number): SoloWorldHit | null;
   getObstacles(): SoloObstacle[];
+  /** Shell and sight records (destruction reads the structures' shell bands). */
+  getColliders?(): SoloObstacle[];
   queryObstacles?: (
     minX: number,
     minZ: number,
@@ -1196,6 +1207,14 @@ export function setupBattle(
   }
   game.allTanks = game.allTanks.filter(entity => !entity.matchReinforcement);
   resetBattleSession(game, opts);
+  // destruction (docs/DESTRUCTION.md): the cached world's buildings stand again before anything reads them (the
+  // placement's route grid skips crushed records), then this battle's structures from the same records
+  const worldColliders = world.getColliders ? world.getColliders() : [];
+  resetStructureRecords(world.getObstacles(), worldColliders);
+  game._destruction = createDestructionMatch({
+    rules: game.ruleset.destruction, obstacles: world.getObstacles(), colliders: worldColliders,
+  });
+  game._destructionEvents = [];
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
@@ -1578,6 +1597,16 @@ function queueCrush(
 /** The contacts the first obstacle sweep found hard, swept again (resolveObstacleCollisions). */
 const _hardObstacles: SoloObstacle[] = [];
 
+/** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
+function structureYield(game: SoloGameState, entity: SoloEntity, obstacle: SoloObstacle, pushX: number, pushZ: number): number | null {
+  const length = Math.hypot(pushX, pushZ);
+  if (length <= 1e-9 || !game._destruction) return null;
+  const state = entity.state;
+  const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+  return game._destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
+    state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
+}
+
 function resolveObstacleCollisions(
   game: SoloGameState,
   world: SoloWorld,
@@ -1646,8 +1675,19 @@ function resolveObstacleCollisions(
       outPush.z = beforeZ;
       continue;
     }
+    // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
+    if (self && obstacle.structureIdx !== undefined && game._destruction?.enabled) {
+      const keep = structureYield(game, self, obstacle, outPush.x - beforeX, outPush.z - beforeZ);
+      if (keep !== null) {
+        outPush.x = beforeX;
+        outPush.z = beforeZ;
+        self._ramKeep = Math.min(self._ramKeep ?? 1, keep);
+        continue;
+      }
+    }
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
+    if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
   for (let index = 0; index < hardCount; index++) {
@@ -1798,6 +1838,8 @@ function announceDestroyed(
 ): void {
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId);
+  // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
+  game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
   ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
@@ -2059,6 +2101,8 @@ function resolveTankShellImpact(
   const intersections = nearest.intersections;
   if (!entity || !intersections) return;
   knockEntityFromShell(entity, shell);
+  const strike = intersections[0]?.point;
+  if (strike) game._destruction?.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, intersections[0].point, entity, intersections);
   } else {
@@ -2150,6 +2194,8 @@ function resolveWorldShellImpact(
     shell.dead = true;
   }
   crushWorldPropFromShell(world, bus, shell, hit);
+  // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4)
+  game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z);
   bus.emit('shell:expired', {
     shellId: shell.id,
     shooterId: shell.shooterId,
@@ -2429,6 +2475,11 @@ function resolveTankImpacts(
       entity._lastImpactT = game.timeS;
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
+    // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
+    if (entity._ramRecord && state.impactSource === IMPACT_SOURCE_COLLIDER) {
+      game._destruction?.ram(entity._ramRecord, entity.spec.weightTons, closing, prior,
+        state.pos.x, state.pos.y, state.pos.z, -state.impactNx, -state.impactNz);
+    }
   } else if (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S) {
     // a soft contact (another hull): the thud and the shake, the ram resolution prices it
     entity._lastImpactT = game.timeS;
@@ -2489,8 +2540,11 @@ function stepTankMovement(
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+    entity._ramRecord = null;
+    entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }
     finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
+    if (entity._ramKeep !== undefined) entity.state.speed *= entity._ramKeep;
     resolveTankImpacts(game, entity, bus, rig, collider);
   }
 }
@@ -2933,7 +2987,19 @@ export function simStep(
   stepShells(game, bus, world);
   stepFireDamage(game, bus);
   tickRepairs(game, bus, SIM_DT);
+  stepDestruction(game, bus);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
+}
+
+/** Destruction's end of step (the authority's advanceDestruction): queued collapses swap, stage events go out. */
+function stepDestruction(game: SoloGameState, bus: EventBus): void {
+  const destruction = game._destruction;
+  if (!destruction?.enabled) return;
+  destruction.step();
+  const events = game._destructionEvents ??= [];
+  events.length = 0;
+  destruction.drainEvents(events);
+  for (const event of events) bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
 }
 
 /**
