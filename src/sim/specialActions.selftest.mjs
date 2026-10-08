@@ -11,6 +11,7 @@ import {
   guideShellToward,
 } from './ballistics.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
+import { auxiliaryState } from './auxiliarySystems.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { captureEntitySnapshot, SNAPSHOT_FLAGS } from './worldSnapshot.ts';
 import {
@@ -218,6 +219,8 @@ const match = createAuthoritativeMatch({
   ],
 });
 match.onMatchReady();
+// 2026-10-05: equipped automatic guns start on (c3eac0914); the launch below counts the ATGM alone, so neither roof gun fires.
+for (const entity of match.entityById.values()) auxiliaryState(entity).gunOn = false;
 const input = (actionBits = 0, shellSlot = 0) => ({
   throttle: 0,
   steer: 0,

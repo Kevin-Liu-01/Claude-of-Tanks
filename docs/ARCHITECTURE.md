@@ -796,8 +796,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   move, even when one side touches first"): the fall's momentum about that contact turns it at v·r/(k² + r²) (the
   contact's lever r, the hull's radius of gyration k about the axis), never faster than aligns it in 0.08 s nor than
   its root can follow down (1.7 rad/s, 0.09 m a step), and while the landing settles a turn that would carry the hull
-  past the plane stops on it, the other side's landing. A level hull dropped onto a 10° cross slope turns onto it in
-  0.13 s at 6.9 m/s and 0.15 s at 4.2 m/s, where the attitude spring took 0.25 s for both. A hull running onto ground
+  past the plane stops on it, the other side's landing. Past 1.3 rad/s the turn grows with the closing at 0.45 of the
+  rest, so a harder landing turns faster up to the cap (round 8: on the real tracks' narrower lever a 4.3 m/s landing on
+  a 10° cross slope asked 1.67 rad/s, at the cap with the 6.9 m/s one). A level hull dropped onto a 10° cross slope
+  turns onto it in 0.13 s at 6.9 m/s and 0.17 s at 4.2 m/s, where the attitude spring took 0.25 s for both. A hull running onto ground
   above 3 m/s meets it with the front of its tracks and rolls onto it along its travel, and one coming down on its shell
   takes the old impulse (the mismatch × the closing × 0.22).
 - *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says
@@ -824,6 +826,19 @@ contact constraints and cannot be crossed by residual uphill speed.
   kinematic, not pulls: a hull running down a grade keeps its tracks on it at its own travel's rate over the slope
   (only when every track sample carries it, and never while the ride still rises: over a crest it flies), and a hull
   tipping about an edge has its root follow the turn.
+- *One track contact everywhere.* Each playable tank publishes its tracks' ground contact as data (round 8, the ruling
+  of 2026-10-04: `sim/trackContact.ts`; the combat anatomy generator measures the built model's flat run, its centre,
+  outer half width, lowest surface, belly pan and track-end rises, and `finalizeCombatAnatomy` puts it on the spec's
+  armour), and the support solve reads it wherever it runs: the host, its Worker, the client's prediction, the torture
+  matrix and solo play alike. The host used to run 0.45 x the hull's length either side of its root at the hull's full
+  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only. The flat
+  run is read off the drawn band (the coordinator's ruling of 2026-10-04 on item 1; `tankFactoryCore.ts`
+  `bandGroundContact`, `drawnBandContact`): each band's loop, the same on every render tier, ends where the band has
+  risen 4 cm off its ground run, carried through the band's transforms to the tank's frame and moved with the
+  side-station bake, the union over sides and units, the end rise read off the bands past each end. The profiles'
+  pinned contactZF/ZR used to publish the run whatever the band became: the T-90M's ran 0.75 m past its drawn ground
+  contact, so the solve carried the hull at a trench's far bank on track that was not drawn while all its road wheels
+  hung at full droop. The HIGH and LOW fleet passes hold every build within 5 mm of its published receipt.
 - *The hull lies on its plane.* The attitude fit reads the ground's rise per hull-local metre under the track lines,
   sin(pitch) for a hull lying on it (`planePitch`, `planeRoll`); its arctangent laid the hull flatter than its ground
   (0.2° on a 15° face, 1° on 25°, 5° on 45°), the downhill end of a parked hull hanging up to 12 cm (gauntlet wave 23's
@@ -841,6 +856,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   (within their reach of the loaded line, fading out at twice it): it goes over level until its centre of mass
   overhangs the near lip (physics lane round 7; leaning into the trench, a hull met the far wall 14-16 degrees nose-down
   at 9-11 m/s). A face that falls away and does not come back keeps the lean, so a hull over a crest follows it.
+  While the hull tips about an axis the suspension rock conforms nothing about it (round 8, motion wave 73 item 2): the
+  corners past the edge hang and those behind it lift off, and read within the wheels' reach they pulled the drawn hull
+  back toward the ground it was leaving. A hull driven off a roof hung level over air while the physics tipped it
+  (+5.2 degrees drawn against the tip when it left the roof) and spun up in flight as the rock let go; the drawn hull
+  now tips from the moment the centre of mass passes the edge, at the rate it leaves with.
 - *A stop takes the climb with it.* A blow that removes the hull's travel (the grade rule, the cliff probe, a
   collider) removes the same share of the vertical motion that travel carried; it prices nothing by itself.
 - *A grade turns the travel.* The vertical speed the ground gives a hull on a grade comes out of its travel by the
@@ -857,11 +877,27 @@ contact constraints and cannot be crossed by residual uphill speed.
   hull about its centre of mass as well as lifting it, as a rigid body struck there moves: the root takes its share,
   `k²/(k²+a²)` of the rest, and the turn the remainder as a pitch rate eased in at 0.25 rad/s a step. Trenches crossed
   at speed slow at the far wall: entering an assault trench at 11 m/s, the median hull's slowest is 7.9 m/s where it
-  kept 9.0. A strike on the hull's own body (an end guard, not a track station) is still resolved by position, the
-  floor lifting the root: a UDES 03 landing 13 degrees nose-down in an assault trench at 11 m/s in the Earth-gravity
-  mode has its nose guard meet the far wall and is lifted 0.135 m in a step (a known glitch run of the torture matrix).
-  Splitting it like a station's strike leaves the guard 6.5 cm in the wall, since a guard has no stops to take the
-  first 8 cm; the fix is a body strike taken as a velocity impact.
+  kept 9.0. A strike on the hull's own body is a station too (round 8): an end guard (the lowest shell past the tracks'
+  flat run at each of four pitches, 14 to 63 degrees, in three lateral bins; up to 24, the fleet's median 7), or on a
+  structure one of the contact box's bottom corners 0.15 m over the track line, whatever the tracks' seat, grip or
+  travel. There are no stops between: the strike is the plastic impulse a rigid body takes at the struck end, in its
+  pitch plane (`rigidStrikeImpulse`): the face pushes along its normal and grips along it, up to 0.7 of the push
+  (`STRIKE_FRICTION`, steel ploughing soil; the hull's shell does not roll as a track does). The end stops on the face
+  where the grip holds it and slides under the grip where it does not; the push at the end turns the hull nose-up, the
+  grip below the centre of mass turns it back, and the travel loses both shares. A frontal strike digs in (round 8,
+  motion wave 73 item 3): pushed along the normal alone, a T-90M meeting an assault trench's 42-degree far wall at
+  11 m/s slid up it with 7 m/s of its travel and a 1.4 rad/s nose-up turn and sailed off the lip onto its tail; it now
+  stops at the wall, 11 to 0.3 m/s, and climbs out. The turn eases in at most 0.2 rad/s a step, the root taking the
+  end's rise the turn defers, and the depth
+  the end is left with comes back as position, at most 0.1 m a step (round 8, the parity iteration: taken at once, with
+  the step's whole depth as the end's closing rate, the end rose past the ground, the spring brought it back and it
+  struck again, step after step; a trench crossing's rendered jerk p99 rose by more than half).
+  A turn about the centre of mass that would sink the far end's body contact turns about that contact instead. A body
+  contact the hull rests on above its tracks joins the contact-aware fit (the plane, the gravity tip about it, the root
+  following a pivot there): a hull half over a roof's edge, its tracks past it, tips off the roof on its box rather than
+  resting on its nose 0.6 m over its track line, 0.55 m into the roof by the standing rule's reading, until the rule
+  pushed it out 0.15-0.9 m in a step. A body contact against a face steeper than the wall grade (the ground rising to
+  it from 0.3 m back) is no floor: the face meets it horizontally.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
@@ -924,7 +960,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   half the track's width in from its outer edge (`trackCentreHalfGauge`; round 8, wave 42: "side-load transfer is about
   half its physical size"): read at the outer edges, the roll stiffness was 22-71 % high (42 % at the fleet's median)
   and the hull rolled 0.8°, 5.9 cm. A slide, or a hull on its shell, holds nothing and
-  transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
+  transfers nothing. The posture and the dive turn the drawn hull over its seated tracks about its root, and past the
+  tracks' ends the overhang swings down with them; where an end guard would go into the ground (read at the tracks'
+  seat and at the drawn pose, the ground the hull can reach) the end rests on it: the posture and the dive keep the
+  share of their turn that brings it down to the ground, and their rates into it stop (round 8: on the drawn model's
+  tracks a BMP-2 holding its posture at a wall's foot drew its tail 18 cm into the ground). On the ground they give way
+  at most 0.003 rad a step, the root holding the drawn end on the ground meanwhile; at once, the drawn pitch jumped by
+  up to two degrees in a step. Nothing at rest changes. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
   rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
   degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
   a 14-degree grade; a ZTZ-100's launch mouth sat 1 cm off the server's on its first shot and 8 mm once settled on a
@@ -993,6 +1035,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   3 cm clear, at most 0.1 m a step, taking the travel into it as a wall impact (the hull's outline as drawn: 11-21
   points of its closed shell). A hull partly over an 80-degree face at the foot of its apron (maps lane A's Redrock and
   Skybridge faces) was carried 7-12 m up the face by its own samples and dropped back, again and again, for 500-1900 hp.
+  A sheer face taller than a track climbs (rising more than 1 m from its foot, steeper than the wall grade over 0.25 m),
+  within 0.75 m of a track sample toward the root, is the face's wherever the ground there stands more than 1 m over the
+  track line: the sample reads its foot, however far the cone of the cliff grade reaches, and a hull point deep inside it
+  is held off back toward the root (round 8). Ground the hull is level with is not a climb.
 - *The ground lifts a ride at most 0.25 m a step.* A floor that rises past the ride faster (a support that jumped
   under the hull, a top found under it) lifts it over several steps, never in one.
 - *A fall is the hull's own.* Fall damage prices the closing less, by energy, the height the support rose under the
@@ -1406,12 +1452,13 @@ battle, then restore behind the covered return frame. The Verdant fixture object
 remain in the stable light set at zero intensity outdoors, while one shadowless
 hero bounce remains active. Outdoor static scenery receives but does not cast
 live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
-maintenance layer after interactive readiness. Four diagonally opposed bays—
-Burlak gantry, Abrams welding, T-90M armor service, and K2 teardown—surround
-every Garage and are recomposed by the destination layout. The Abrams and K2
-bay owners use an explicit static half-turn to exchange opposite quadrants as
-complete assemblies, keeping the Verdant overhead work lamp attached to the
-Abrams repair choreography. The rolled K2 hull rests in a connected steel
+maintenance layer after interactive readiness. Four bays—Burlak gantry, Abrams
+welding, T-90M armor service, and K2 teardown—surround every Garage and are
+recomposed by the destination layout. The K2 bay owner uses an explicit static
+half-turn into the Abrams's authored quadrant; the Abrams bay owner keeps its
+authored orientation and stands beside the Garage camera, outside the hero's
+silhouette from the default and close views (`ABRAMS_WELDING_BAY_PLACEMENT`),
+with the Verdant overhead work lamp following its repair choreography. The rolled K2 hull rests in a connected steel
 rollover cradle with grounded skids, crossmembers, A-frames, a continuous spine,
 and rubber contact saddles instead of disconnected timber blocks. A connected
 freestanding field-record display shares that graph in every variant, remains
@@ -1511,6 +1558,28 @@ Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 Point
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).
 
+#### 3.8.3 `combat/` (the combat media layer, 2026-10-05)
+`effects.ts` composes `src/fx/combat/combatFx.ts` and delegates the media of its ground and water impacts
+(`dirtPlume`, `waterSplash`), the muzzle blast's gas, cloud and ground dust (`spawnMuzzleFlash` after its flash
+cards and jets), a kill's fireball, cook-off, early column and ground shock (`spawnDestruction`), and the wreck
+column, deck flames and smoulder (`emitColumnPuff`, `emitSmolderPuff`). The layer owns:
+- two instanced media pools on the late-FX layer (`mediaPool.ts`, `mediaShader.ts`): every puff relaxes from its
+  launch velocity toward the scene wind x its coupling plus a terminal rise (its own drag; a ballistic term for
+  soil and spray), grows on an ease-out curve, flattens along world-up, smears along its screen-space velocity and
+  is domain-warped, so it deforms rather than scaling one sprite; lit by the published rig (sun, sky / environment,
+  ground pole, the pooled explosion light) from the normal-mapped lobed sheets (`mediaAtlas.ts`, baked once from the
+  fx seed in `warmTextures`), with optional blackbody heat: the heat x the lobe structure x the puff's side toward
+  the blast (back along its launch), so a cooling fireball's outer shell turns to smoke first and its heart glows on;
+- thrown clods in the ground's colour (`clods.ts`, a recorded landing point and time) and one crater batch
+  (`craters.ts`);
+- the surface classifier (`surface.ts`: soil, sand, snow, mud, rock, water from the height field's water mask,
+  track surface, ground type and slope).
+Recipes (`impactBurst.ts`, `muzzleBlast.ts`, `killBlast.ts`) draw from the runtime's seeded stream, so Studio's
+`resetSeed` and frozen captures stay deterministic; the clock rebase, `resetAll` and the late pass's activity cover
+the layer. The wind is the cloud layer's, slowed to the ground, until the world publishes
+`scene.userData.surfaceWind` (a world-XZ velocity, m/s). The mobile tier halves the counts and the pools and draws
+the media without the warp and frame cross-fade. Receipt: `src/fx/combat/combatFx.selftest.mjs`.
+
 `src/fx/fxRuntimeAccess.ts` owns the browser lifecycle around this API. Module
 preload is permitted on explicit intent, while `createFx` remains a singleton
 construction gate. Module and initializer failures are independently retryable;
@@ -1593,7 +1662,7 @@ asset, one still decoding is silent, and no cue or crew covers for another
 **Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 107 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
+× 109 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text

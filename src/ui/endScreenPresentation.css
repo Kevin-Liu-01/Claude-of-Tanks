@@ -1,0 +1,83 @@
+body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
+/* The debrief keeps result, personal highlights, rewards and team detail distinct. */
+body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:linear-gradient(90deg,#070e16f0,#070e1690 65%,#070e16d9),linear-gradient(0deg,#070e16 0%,#070e1633 100%),var(--report-map,none) center/cover no-repeat #080f16}
+body[data-cot-width] .cot-es.cot-es--record .es-hero{width:100%;max-width:none;flex:0 0 auto;padding:clamp(12px,3vh,30px) 24px;max-height:30dvh;overflow:auto;scrollbar-width:thin}
+body[data-cot-width] .cot-es.cot-es--record :is(.es-kick,.es-ban,.es-sub,.es-meta,.es-blow){text-align:left;justify-content:flex-start;text-indent:0;letter-spacing:normal}
+body[data-cot-width] .cot-es.cot-es--record .es-kick{font-size:10px;letter-spacing:.2em;color:#98aebb}
+body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:clamp(34px,5vw,58px);letter-spacing:-.03em;margin:6px 0 0;text-shadow:none}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.v{color:#b8edc6}body[data-cot-width] .cot-es.cot-es--record .es-ban.d{color:#f1b0a6}
+body[data-cot-width] .cot-es.cot-es--record .es-rule{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:9px;font-size:14px;color:#a8bccb}
+body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:16px;flex-wrap:wrap;font-size:11px;margin-top:9px;letter-spacing:.05em}
+body[data-cot-width] .cot-es.cot-es--record .es-view-tabs{display:flex;gap:4px;width:100%;flex:0 0 auto;padding:6px;background:#0e171ee8;border:1px solid #8b9ead66;border-bottom:0}
+.cot-es--record .es-view-tabs button{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;flex:1;border:1px solid transparent;padding:10px;color:#a6b7c5;background:transparent;font:800 12px 'ABC Monument Grotesk',sans-serif;cursor:pointer}.cot-es--record .es-view-tabs [aria-selected=true]{border-color:#b9893d;background:#3d2c16;color:#ffd18a}.cot-es--record button:focus-visible,.cot-es--record summary:focus-visible{outline:2px solid #ffc96b;outline-offset:-2px}
+body[data-cot-width] .cot-es.cot-es--record .es-report{display:block;width:100%;max-width:none;flex:1 1 auto;min-height:0;height:auto;margin:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#6a8397 #111b25;border:1px solid #8b9ead33;overscroll-behavior:contain}
+body[data-cot-width] .cot-es.cot-es--record .es-debrief{display:block;height:auto;min-height:100%;overflow:visible;border:0;box-shadow:none;background:#0b131bea}
+body[data-cot-width] .cot-es.cot-es--record .es-debrief[hidden]{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-dh{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 20px;gap:16px;border-bottom:1px solid #8b9ead33}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:100px;background:transparent;border:0;box-shadow:none}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{object-fit:contain;width:100%;height:100%;max-height:130px}
+body[data-cot-width] .cot-es.cot-es--record .es-tal{background:none;border:0;padding:12px;gap:8px}
+body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:40px;line-height:1.1;letter-spacing:-.03em}
+body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:11px;letter-spacing:.08em}
+body[data-cot-width] .cot-es.cot-es--record .es-tal[data-stat=accuracy] .v::after{content:'%';font-size:.55em;margin-left:3px}
+body[data-cot-width] .cot-es.cot-es--record .es-awards{display:block;margin:0;padding:20px;border:0;border-bottom:1px solid #8b9ead33;background:linear-gradient(120deg,#8b601518,transparent 65%)}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .ak{font-size:11px;letter-spacing:.14em;gap:9px;margin-bottom:16px}
+.cot-es--record .es-awards .ak small{margin-left:auto;color:#92a8b9}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .al{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;padding:14px 8px;border:1px solid #88774b44;background:radial-gradient(ellipse at 50% 15%,#987a4030,transparent 70%),#101a23;cursor:help;min-height:132px;font:inherit;color:#e7eff5}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw.signature{border-color:#d09c4d88;background:#32291c}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw:hover{border-color:#ffcf7d;background:#343026}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw b{white-space:normal;font-size:12px;text-transform:none;letter-spacing:0;text-align:center;line-height:1.4}
+body[data-cot-width] .cot-es.cot-es--record .es-best{margin:18px 20px;background:linear-gradient(110deg,#5e472327,#16222dc9);border:1px solid #a68b5366}
+.cot-es--record .es-combat-details{padding:0 20px 18px}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid #ffffff18;color:#a8bdcc;font-size:12px;font-weight:700}.cot-es--record .es-combat-details>summary::before{content:'+';color:#f1b85f;font-size:22px}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{border:0;background:transparent;margin:16px 20px;gap:10px}.cot-es--record .es-combat-details .es-mini{padding:14px}.cot-es--record .es-combat-details .es-blow{font-size:12px;margin:10px 0;color:#9db4c5}
+body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}.cot-es--record .es-kl{max-height:none}
+body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0;background:transparent;border:0;border-bottom:1px solid #ffffff20}
+body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;padding:20px;gap:20px}
+body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}
+body[data-cot-width] .cot-es.cot-es--record .es-tr{min-height:56px;height:auto;padding:10px 8px}
+body[data-cot-width] .cot-es.cot-es--record .es-actions{flex:0 0 auto;width:100%;justify-content:flex-end;padding:12px 0 0;margin:0;gap:10px;background:transparent;position:static}
+body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-width:160px;min-height:48px;padding:12px 22px;font-size:12px;letter-spacing:.09em}
+body[data-cot-width] .cot-es.cot-es--record .es-rematch{flex:0 0 auto;width:100%;max-height:24dvh;overflow:auto;margin:8px 0 0}
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record{padding:10px}.cot-es--record .es-view-tabs button{font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:66px repeat(3,minmax(0,1fr));padding:10px;gap:3px}body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:64px}body[data-cot-width] .cot-es.cot-es--record .es-tal{padding:8px 4px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:26px}body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:9px}body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{padding:12px 6px}body[data-cot-width] .cot-es.cot-es--record .es-rosters{grid-template-columns:1fr;padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-best{margin:14px}.cot-es--record .es-combat-details{padding:0 14px 14px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{flex:1;min-width:0;padding:10px;font-size:10px}body[data-cot-width] .cot-es.cot-es--record .es-sub{font-size:12px}body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:8px;font-size:10px}body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:12px}}
+@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record{padding:8px 12px}body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:0 4px 8px;max-height:25dvh}body[data-cot-width] .cot-es.cot-es--record .es-kick{display:none}body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:28px;margin:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:4px;font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-meta{font-size:10px;margin-top:4px}body[data-cot-width] .cot-es.cot-es--record .es-actions{padding-top:6px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-height:44px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(4,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-rematch{max-height:30dvh}}
+
+body[data-cot-width] .cot-es.cot-es--record .es-tal .k{flex-wrap:wrap;gap:6px;letter-spacing:.04em;overflow-wrap:anywhere}
+
+body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{max-height:none;margin:0;padding:14px;overflow:visible;border:0;border-bottom:1px solid #8b9ead33}
+
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-tal .k{flex-wrap:nowrap;font-size:9px;gap:4px}body[data-cot-width] .cot-es.cot-es--record .es-tal .k svg{width:12px;height:12px}body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:26px}}
+
+@media(max-height:320px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{max-height:32px;padding-bottom:4px}body[data-cot-width] .cot-es.cot-es--record .es-hero :is(.es-sub,.es-meta){display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding:4px 10px}body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:64px;padding:6px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v,body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:24px}}
+
+/* Battle imagery stays behind the report. Complete steel frames replace one-edge accents. */
+body[data-cot-width] .cot-es.cot-es--record::before{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-hero{border:1px solid #9cabb750;background:linear-gradient(90deg,#101923d9,#10192350);margin-bottom:12px;box-shadow:inset 0 1px #ffffff0c}
+body[data-cot-width] .cot-es.cot-es--record .es-kick{color:#ffd18a}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{background:linear-gradient(100deg,#96734716,transparent 60%);align-items:center}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{background:radial-gradient(ellipse,#a9853622,transparent 70%)}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:12px 14px;border:1px solid #a1b1bf30;background:linear-gradient(135deg,#26343f75,#0d171d80)}
+body[data-cot-width] .cot-es.cot-es--record .es-mini .mv{font-size:24px}
+body[data-cot-width] .cot-es.cot-es--record .es-blow{padding:12px 16px;margin:16px 20px;border:1px solid #a8875655;background:#29201888;line-height:1.5;font-size:13px}
+.cot-es--record .es-comparison{margin:20px;padding:16px 18px;border:1px solid #9aadb935;background:linear-gradient(110deg,#2a543115,transparent,#6f313119)}
+.cot-es--record :is(.es-comparison-head,.es-comparison-row){display:grid;grid-template-columns:1fr minmax(110px,1.4fr) 1fr;gap:6px 14px;align-items:center}
+.cot-es--record .es-comparison-head{padding-bottom:12px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#9caebb}
+.cot-es--record .es-comparison-head>b:first-child{color:#9cd4ab}.cot-es--record .es-comparison-head>b:last-child{color:#eca69b}
+.cot-es--record :is(.es-comparison-head,.es-comparison-row)>:nth-child(2){text-align:center}
+.cot-es--record :is(.es-comparison-head,.es-comparison-row)>:nth-child(3){text-align:right}
+.cot-es--record .es-comparison-row{padding:7px 0;font-size:12px;color:#a9bbc9}
+.cot-es--record .es-comparison-row>b{color:#e6edf2;font-size:17px;font-variant-numeric:tabular-nums}
+.cot-es--record .es-comparison-bar{grid-column:1/-1;height:4px;background:#bb746c70;overflow:hidden}
+.cot-es--record .es-comparison-bar i{display:block;width:var(--allied-share);height:100%;background:#83c298}
+.cot-es--record .es-comparison-row.empty .es-comparison-bar{background:#80909f30}.cot-es--record .es-comparison-row.empty i{background:transparent}
+@media(min-width:1000px){body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:1.15fr 1fr;align-content:start;min-height:100%;gap:0}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-grid,body[data-cot-width] .cot-es.cot-es--record .personal>.es-combat-details{grid-column:1/-1}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-secondary{margin-right:10px}body[data-cot-width] .cot-es.cot-es--record .personal>.es-comparison{margin-left:10px;align-self:stretch}body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1/-1;border-top:1px solid #8b9ead33}body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-best,.es-blow){grid-column:1/-1}}
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:12px;margin-bottom:8px}.cot-es--record .es-comparison{margin:14px;padding:12px}.cot-es--record .es-comparison-head{font-size:9px;letter-spacing:.05em}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{margin:14px;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:10px}body[data-cot-width] .cot-es.cot-es--record .es-blow{margin:14px}}
+@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px 12px;margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block;margin-right:14px}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campaign){border:1px solid #93a5b438;box-shadow:inset 0 1px #ffffff06}
+body[data-cot-width] .cot-es.cot-es--record .es-tr.me{border-color:#c89a5066;background:linear-gradient(90deg,#a2792920,#a2792908)}
+body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
+body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}

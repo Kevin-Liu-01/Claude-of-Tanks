@@ -35,7 +35,12 @@ deterministic static tank-wreck and zero-extra-draw-call debris baking.
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same
 footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-
 coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the new shell, so a kit change regenerates
-the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits").
+the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits"). On desktop builds the facade
+craft (`maps/regional/facade.ts`, 2026-10-05) finishes every kit's houses — window heads and carved surrounds, cornices,
+painted bands, gutter fittings, thatch courses, dormers, weathering — as dressing only, desktop only and from its own
+stream (`facade.selftest.mjs` holds the three laws). `maps/regional/skyline.ts` is the tall- and big-building kit (art-deco
+and curtain towers, slabs, the Stalinist high-rise, sawtooth halls, gasholders, a terminus, a cathedral, each with its
+damage states) a city kit binds into its builders (`SKYLINE_CITY`).
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
@@ -263,7 +268,16 @@ and keep variant 2 open-grown, the woods' trees take the pair and the field tree
 impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes). On a map with a field system
 a field tree stands on a hedged boundary, a field's edge or a wood's edge, never in a field's interior (`addFieldTree`,
 `fieldTreeMove`: the draws stay, only the seats move; a conifer form stands in the open only at a wood's edge; the
-census is `group.userData.fieldTreeLaw`).
+census is `group.userData.fieldTreeLaw`). A map's `vegetation.bare` stands its deciduous broadleaves leafless
+(`BARE_SPRAY_KINDS`: each form's winter twigs in its own habit, the birch's lattice, the oak's crooked twigs, the
+poplar's climbing shoots, the buddleia's winter canes under dry panicles; `bareFormPalette` drops the leaf colours and
+`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes. The `apple`
+form is the Streuobst fruit tree (an `orchard` profile: never forest-grown, its slot never a forest species): its
+`variantShape` grows the plum, the apple and the pear at their ages, its `variantTiles` give each its own atlas tiles
+(`paintOrchardTile`: leaves and summer fruit). A map's `vegetation.hedgeTrees` plants trees along its land use's
+hedged field ends (`plantHedgeTrees`: the hedge band read through `landUseAt`, a seat every `spacingM`, a field gate a
+hedge, ordinary field trees on their own stream after every other placement; census `group.userData.hedgeTrees`, with
+trees per hedge km).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
@@ -328,6 +342,14 @@ sheared to follow its slope (`wallSpanPlacement.ts` `fitWallSpan`). Every wall r
 its heads tumble out past them (and on snow maps lee and windward drifts and snow loads) by `maps/fieldWallDressing.ts`,
 through one owner (`createWallDressing`) on streams of their own; the sandbag nests are bedded in their spoil
 (`maps/sceneryKit.ts` `buildSandbagBedding`, the `props-sandbag-beds` mesh).
+The landmarks lane (2026-10-05): a map's set pieces — bridges, monuments, parks and squares, gates, towers and civic
+buildings — are `props.landmarks` entries built by `landmarks/` (`plan.ts` kinds and footprints, `kit.ts` the kernel over
+the regional part sink: revolved drums and domes, walls pierced by arches, porticos; one builder file per family) and
+placed by `landmarks/compose.ts` right after the settlement stands: merged into the props buckets, weathered by the
+map's kit, collision derived from the solids (a gate's piers and arch as separate solids so its passage stays open; a
+bridge's standable deck authored, its shells derived through `deriveRuntimeStructureShellBands`), its ground reserved
+from the later passes and its footprint kept clear of trees (`vegetationClearance.ts`). `landmarks.selftest.mjs` pins
+the budgets, collision, open gates, drivable decks and the pass; docs/MAP-LAYOUT-BRIEF.md "Set pieces" is the guide.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

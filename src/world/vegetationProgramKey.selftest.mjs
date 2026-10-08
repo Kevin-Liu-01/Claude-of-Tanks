@@ -641,9 +641,15 @@ function checkWoodFine(environment) {
   const cfg = { vegetation: { species: ['oak', 'pine', 'birch'], clusterCount: 4, loneCount: 8, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
   const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
   try {
-    const bark = registered.find(m => m.customProgramCacheKey?.() === 'world-tree-bark-v11');
-    assert.ok(bark, 'the bark program carries the fine wood (v11)');
+    const bark = registered.find(m => m.customProgramCacheKey?.() === 'world-tree-bark-v12');
+    assert.ok(bark, 'the bark program carries the fine wood and the grazing dissolve (v12)');
     const { parameters } = environment.expand(bark), vertex = parameters.vertexShader;
+    // trees lane (2026-10-05, the gauntlet's wave 122: the close trunk "a see-through dotted tube"): the bark dissolves only
+    // between the camera's near plane and 1 m — below any distance a pose holds the camera from bark — so a trunk at rest
+    // stands solid
+    const nearBand = /fadeKeep \*= smoothstep\(([0-9.]+), ([0-9.]+), length\(vViewPosition\)\);/.exec(parameters.fragmentShader);
+    assert.ok(nearBand, 'the bark keeps a near dissolve');
+    assert.ok(+nearBand[1] >= camera.near && +nearBand[2] <= 1.0, `the bark's near band ${nearBand[1]}-${nearBand[2]} m lies inside 1 m, from the near plane`);
     assert.match(vertex, /attribute float aWoodFine;\nuniform float uCotWoodFineFar;/, 'the tag and the reach reach the vertex stage');
     assert.match(vertex, /if \( aWoodFine > 0\.5 \) \{\s*float cotWoodHash = fract\( sin\( dot\( instanceMatrix\[ 3 \]\.xz, vec2\( 12\.9898, 78\.233 \) \) \) \* 43758\.5453 \);\s*if \( distance\( instanceMatrix\[ 3 \]\.xyz, uCamPos \) > uCotWoodFineFar \* aWoodFine \* \( 0\.85 \+ 0\.3 \* cotWoodHash \) \) transformed = vec3\( 0\.0 \);\s*\}/,
       'fine wood past its tree\'s share of the reach (mid wood past twice it) collapses to the instance origin');

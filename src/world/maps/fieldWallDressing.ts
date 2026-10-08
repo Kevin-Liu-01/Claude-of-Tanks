@@ -5,7 +5,8 @@
 //     gaps and drapes a little over both faces (the snow-cap shader whitens it: its faces look up);
 //   - buildWallFootStones: the stones that settled at a dry-stone wall's foot, half sunk in the ground on both faces;
 //   - buildWallDrift: the drift a winter wind banks against a wall's windward face, rising from its toe to the face;
-//   - buildMudApron: the mud a rain washes off an adobe wall into a skirt round its foot, with the spalled lumps on it.
+//   - buildMudApron: the mud a rain washes off an adobe wall into a skirt round its foot, with the spalled lumps on it;
+//   - buildWallTurf (b18): the soil and turf banked up against a dry-stone wall's foot, for the ground's own material.
 //
 // World-free builders on a height field. Each draws its own stream, named by its place, never the props stream. Every
 // geometry carries position, normal and uv only (the props buckets merge them with the kit's own parts).
@@ -283,6 +284,79 @@ export function buildWallTumble(
   return parts.length ? mergeParts(parts) : null;
 }
 
+// ------------------------------------------------------------------------------------------------ the turf
+
+/** The turf fillet's profile across its reach: shares of it out from the face, and of the lip there (the toe below). */
+export const WALL_TURF_OUT: readonly number[] = Object.freeze([0, 0.3, 0.6, 1]);
+const WALL_TURF_RISE: readonly number[] = Object.freeze([1, 0.42, 0.08, 0]);
+/** How far under the drawn ground the toe and the ends sink (m): the ground covers the fillet's edges. */
+export const WALL_TURF_SINK_M = 0.05;
+
+/**
+ * The scenery lane (b18; gauntlet wave 121 on Verdant's yard walls: "it meets the turf in a clean line with no settling
+ * or weeds at its foot", "meeting a lawn-flat green ground with no settling"): the ground built up against a dry-stone
+ * wall's foot along a-b on both faces — the soil and the turf that creep up a wall where no foot treads and no plough
+ * reaches — a fillet from inside the face (hidden) at its lip, 4 to 13 cm up the wall and wandering along it, falling
+ * away to the ground a third to a half metre out and sinking WALL_TURF_SINK_M under it at its toe, the whole sinking out
+ * over half a metre at the island's ends (a head stands there on its own foot). On the nearest terrain mesh (`meshAt`),
+ * with the ground's fold byte under every vertex (`foldAt`, -1 crest .. +1 hollow), for the world to draw with the
+ * ground's own material (props.ts collects it with the boulders' beds): its colour, grain and light are the ground's
+ * there. A row every 0.4 m; its own stream, named by its place.
+ */
+export function buildWallTurf(
+  meshAt: (x: number, z: number) => number, foldAt: ((x: number, z: number) => number) | null,
+  ax: number, az: number, bx: number, bz: number, half: number, seed: number,
+): THREE.BufferGeometry | null {
+  const len = Math.hypot(bx - ax, bz - az);
+  if (len < 0.8) return null;
+  const tx = (bx - ax) / len, tz = (bz - az) / len;
+  const r = dressingRng(seed);
+  const ext = -0.1, step = 0.4;
+  const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
+  const cols = WALL_TURF_OUT.length + 1; // the hidden row inside the face, then the profile
+  const positions: number[] = [], fold: number[] = [], index: number[] = [];
+  const foldByte = (x: number, z: number): number => {
+    if (!foldAt) return 0;
+    const f = foldAt(x, z);
+    return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+  };
+  for (const side of [1, -1] as const) {
+    const nx = tz * side, nz = -tx * side;
+    const rise = wobble(r), reachW = wobble(r);
+    const base = positions.length / 3;
+    for (let i = 0; i <= along; i++) {
+      const s = -ext + (len + 2 * ext) * (i / along);
+      const end = Math.min(1, Math.max(0, (s + ext) / 0.5), Math.max(0, (len + ext - s) / 0.5));
+      const taper = end * end * (3 - 2 * end);
+      const lip = (0.085 + 0.045 * rise(s * 0.8)) * taper;
+      const reach = 0.42 + 0.12 * reachW(s * 0.6);
+      const sink = -WALL_TURF_SINK_M * (1 - taper);
+      for (let k = 0; k < cols; k++) {
+        const o = k === 0 ? -1 : WALL_TURF_OUT[k - 1];
+        const d = k === 0 ? half - 0.08 : half + reach * o;
+        const x = ax + tx * s + nx * d, z = az + tz * s + nz * d;
+        const y = meshAt(x, z) + sink + (k === 0 ? lip
+          : o >= 1 ? -WALL_TURF_SINK_M * taper : lip * WALL_TURF_RISE[k - 1] - (o > 0.45 ? 0.012 * taper : 0));
+        positions.push(x, y, z);
+        fold.push(foldByte(x, z));
+      }
+    }
+    for (let i = 0; i < along; i++) {
+      for (let k = 0; k + 1 < cols; k++) {
+        const a = base + i * cols + k, b = a + 1, c = a + cols, d = c + 1;
+        // (facing up whichever face it lies on: the winding follows the side)
+        if (side > 0) index.push(a, c, b, b, c, d); else index.push(a, b, c, b, d, c);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+
 // ------------------------------------------------------------------------------------------------ the drifts
 
 /**
@@ -401,6 +475,11 @@ export interface WallDressingOptions {
   adobeBucket: string;
   mudUv: number;
   plainV?: readonly [number, number];
+  /**
+   * (b18) The ground the turf banks against the dry-stone walls' feet: the nearest terrain mesh's height and the
+   * ground's fold (buildWallTurf). Absent: no turf (a snow map's drifts and the phones' walls go without).
+   */
+  turf?: { meshAt(x: number, z: number): number; foldAt: ((x: number, z: number) => number) | null };
 }
 
 export interface WallDressing {
@@ -412,6 +491,8 @@ export interface WallDressing {
   /** The foot of one built island a-b of a run, for the wall's bucket; on a snow map its drift joins `drifts`. Streams
    * named by the island's place. */
   island(adobe: boolean, ax: number, az: number, bx: number, bz: number, half: number): { wall: THREE.BufferGeometry[] };
+  /** (b18) The turf banked against the dry-stone walls' feet, for the ground's own material (WallDressingOptions.turf). */
+  turfs: THREE.BufferGeometry[];
   /** A run head with the winter's load on its top (one geometry; the head is consumed). */
   loadHead(head: THREE.BufferGeometry, seed: number): THREE.BufferGeometry;
   /** The tumbled stones (or a mud wall's fallen lumps) at a run's end (x, z), (ox, oz) out of the wall; null if none. */
@@ -441,8 +522,9 @@ export function jitterFieldStoneUV<T extends THREE.BufferGeometry>(g: T, rng: ()
 /** The owner the props wall runs call (props.ts addWallRun): one name in the run's scope. */
 export function createWallDressing(o: WallDressingOptions): WallDressing {
   const drifts: THREE.BufferGeometry[] = [];
+  const turfs: THREE.BufferGeometry[] = [];
   return {
-    snow: o.snow, adobeBucket: o.adobeBucket, mudUv: o.mudUv, drifts,
+    snow: o.snow, adobeBucket: o.adobeBucket, mudUv: o.mudUv, drifts, turfs,
     island(adobe, ax, az, bx, bz, half) {
       const out = { wall: [] as THREE.BufferGeometry[] };
       if (adobe) {
@@ -465,6 +547,11 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       }
       const foot = buildWallFootStones(o.ground, ax, az, bx, bz, half + 0.05, placeSeed(ax, az, 0xf007), { mobile: o.mobile });
       if (foot) out.wall.push(foot);
+      // (b18) the soil and turf banked against its feet, for the ground's own material (none under a snow load)
+      if (o.turf && !o.snow && !o.mobile) {
+        const turf = buildWallTurf(o.turf.meshAt, o.turf.foldAt, ax, az, bx, bz, half, placeSeed(ax, az, 0x7a2f));
+        if (turf) turfs.push(turf);
+      }
       if (o.snow) {
         // windward: the face whose outward normal meets the wind (downwind is (cos, -sin) of the wind's yaw); the lee
         // drift on the other face, the big one (wave 34)

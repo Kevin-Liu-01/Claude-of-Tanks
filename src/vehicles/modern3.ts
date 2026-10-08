@@ -10,7 +10,8 @@ import { weaponAssembly } from './profiles/weaponStock.ts';
 
 import * as THREE from 'three';
 import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactoryCore.ts';
-import { FITTINGS } from './profiles/kit.ts';
+import { FITTINGS, convexSlab } from './profiles/kit.ts';
+import { facetedSlab } from './profiles/facetedSlab.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
@@ -231,9 +232,14 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   P.add('hull', slab(                                                          // nose lip face — broad, low and receding between the shoulder caps
     [-1.08, 0.90, 3.51], [1.08, 0.90, 3.51], [1.08, 0.90, 3.45], [-1.08, 0.90, 3.45],
     [-1.08, 1.18, 3.555], [1.08, 1.18, 3.555], [1.08, 1.17, 3.47], [-1.08, 1.17, 3.47]));
-  P.add('hull', slab(                                                          // 42° chin plane into the measured high lip
+  // Keep the eight measured datums and broad 42° chin plane. Its side quads
+  // are not coplanar: a fixed diagonal dented only one side inward. Supporting
+  // triangular side facets close the same finite stock symmetrically.
+  const chin = convexSlab(
     [-0.72, 0.40, 3.33], [0.72, 0.40, 3.33], [0.72, 0.40, 3.11], [-0.72, 0.40, 3.11],
-    [-1.08, 0.90, 3.51], [1.08, 0.90, 3.51], [1.08, 0.88, 3.41], [-1.08, 0.88, 3.41]));
+    [-1.08, 0.90, 3.51], [1.08, 0.90, 3.51], [1.08, 0.88, 3.41], [-1.08, 0.88, 3.41]);
+  chin.userData.primaryStockRole = 'k2-bow-chin';
+  P.add('hull', chin);
   P.add('hull', box(1.50, 0.14, 0.22), 0, 0.49, 3.22);                         // narrow toe beam reveals both fender shoulders
   for (const s of [-1, 1]) P.add('hullDetail', box(0.14, 0.12, 0.16), s * 0.62, 0.55, 3.37); // bow tow hooks
   };
@@ -534,28 +540,37 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     [-2.15, 1.36, 0.12, 1.16, 0.60],
     [-2.62, 0.60, 0.14, 0.48, 0.34],
   ];
+  // Each station is convex armor stock. A fixed quad diagonal previously
+  // dimpled one flank inward and chose a different physical face on its mirror.
+  // Preserve every silhouette datum and let the supporting planes own faces.
+  const addShellStock = (...corners: [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple,
+    Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]) => {
+    const geometry = convexSlab(...corners);
+    geometry.userData.primaryStockRole = 'k2-turret-shell';
+    P.add('turret', geometry);
+  };
   const turretRoofLift = -0.05;
   for (let k = 0; k < turretStations.length - 1; k++) {
     const [za, bwa, bya, twa, tya] = turretStations[k];
     const [zb, bwb, byb, twb, tyb] = turretStations[k + 1];
-    P.add('turret', slab(
+    addShellStock(
       [-bwa, bya, za], [bwa, bya, za], [bwb, byb, zb], [-bwb, byb, zb],
       [-twa, tya + turretRoofLift, za], [twa, tya + turretRoofLift, za],
-      [twb, tyb + turretRoofLift, zb], [-twb, tyb + turretRoofLift, zb]));
+      [twb, tyb + turretRoofLift, zb], [-twb, tyb + turretRoofLift, zb]);
   }
   // Measured two-stage roof skin: the structural loft terminates below these
   // joined armor planes so the hatches, KCPS and panel rails stand proud.
   // This is the Leclerc construction rule applied literally: first the long
   // raked face, then the small brow/roof plane, never one inflated box.
-  P.add('turret', slab(
+  addShellStock(
     [-0.42, 0.57, 2.65], [0.42, 0.57, 2.65], [1.12, 0.57, 1.05], [-1.12, 0.57, 1.05],
-    [-0.35, 0.71, 2.62], [0.35, 0.71, 2.62], [1.05, 0.71, 1.08], [-1.05, 0.71, 1.08]));
-  P.add('turret', slab(
+    [-0.35, 0.71, 2.62], [0.35, 0.71, 2.62], [1.05, 0.71, 1.08], [-1.05, 0.71, 1.08]);
+  addShellStock(
     [-1.15, 0.54, 1.10], [1.15, 0.54, 1.10], [1.20, 0.54, -0.10], [-1.20, 0.54, -0.10],
-    [-1.05, 0.69, 1.10], [1.05, 0.69, 1.10], [1.12, 0.56, -0.10], [-1.12, 0.56, -0.10]));
-  P.add('turret', slab(
+    [-1.05, 0.69, 1.10], [1.05, 0.69, 1.10], [1.12, 0.56, -0.10], [-1.12, 0.56, -0.10]);
+  addShellStock(
     [-1.20, 0.54, -0.10], [1.20, 0.54, -0.10], [1.20, 0.54, -1.80], [-1.20, 0.54, -1.80],
-    [-1.12, 0.56, -0.10], [1.12, 0.56, -0.10], [1.10, 0.69, -1.75], [-1.10, 0.69, -1.75]));
+    [-1.12, 0.56, -0.10], [1.12, 0.56, -0.10], [1.10, 0.69, -1.75], [-1.10, 0.69, -1.75]);
   // Leclerc-method datum split: the closed armor mass is low, while a close-
   // fitted bevel rises to the print's high roof boundary.  The first cut used
   // hairline bars here and read as a stand-off rack; these joined wedge bands
@@ -1940,7 +1955,7 @@ function buildType10Native2026(
         centerHeight: 0.649 + shellLift,
         inset: [0.88, 0.88, 0.87, 0.88, 0.90, 0.92, 0.93, 0.93, 0.92, 0.91,
           0.91, 0.92, 0.93, 0.93, 0.92, 0.90, 0.88, 0.87] },
-    ]));
+    ], { convexSideQuads: true }));
     // MODULAR SIDE ARMOR (identity): stepped outboard courses to the print's
     // wide band ×1.10; asymmetric module split (photo class) + seam/handle
     // dressing so every module reads as a fitted cassette, not a bare box
@@ -2471,10 +2486,13 @@ export function buildBradley(P: Modern3BuilderPort) {
     // owned the 0.11..0.78 plan cols +0.08); tops taper 1.36@2.90 -> 1.28 at
     // the tip (the z 3.273 side col reads ref 1.274, mine read 1.348).
     for (const sn of [-1, 1]) {
-      P.add('hull', sn > 0 ? slab(
+      // The right cap is concave in plan. A-C crosses its nose notch and
+      // flips one triangle downward; B-D stays inside the real outline.
+      P.add('hull', sn > 0 ? facetedSlab([
         [0.60, 1.24, 3.22], [0.75, 1.24, 3.22], [1.52, 1.24, 3.28], [0.60, 1.24, 2.90],
+      ],[
         [0.60, 1.355, 3.22], [0.75, 1.355, 3.22], [1.51, 1.27, 3.28], [0.60, 1.36, 2.90],
-      ) : slab(
+      ],1,'bd') : slab(
         [-0.75, 1.24, 3.22], [-0.60, 1.24, 3.22], [-0.60, 1.24, 2.90], [-1.394, 1.24, 3.28],
         [-0.75, 1.355, 3.22], [-0.60, 1.355, 3.22], [-0.60, 1.36, 2.90], [-1.386, 1.27, 3.28],
       ), 0, 0, 0);                                                                // (r5b center verts -> 3.22: the
@@ -4523,9 +4541,14 @@ export function buildPuma(P: Modern3BuilderPort) {
     // front voxels: pin caps reach x 1.495 and the shoe stack tops
     // 1.482).
     const m = (x: number) => (s < 0 ? -x : x);
-    P.add('hull', slab(
+    // These eight shoulder datums are not corresponding top/bottom rings:
+    // the inward offset made the old caps cross by up to 147 mm. Use their
+    // convex armor envelope so the bow keeps its contour with positive stock.
+    const shoulder = convexSlab(
       [m(1.26), 1.44, 3.58], [m(1.42), 1.46, 3.42], [m(1.66), 1.64, 1.41], [m(1.42), 1.92, 1.63],
-      [m(1.18), 1.48, 3.56], [m(1.34), 1.50, 3.40], [m(1.58), 1.68, 1.43], [m(1.34), 1.96, 1.63]));
+      [m(1.18), 1.48, 3.56], [m(1.34), 1.50, 3.40], [m(1.58), 1.68, 1.43], [m(1.34), 1.96, 1.63]);
+    shoulder.userData.primaryStockRole = 'puma-bow-shoulder';
+    P.add('hull', shoulder);
   }
   // ---- §B2 NO-AIR NOSE CLOSURE (owner order 2026-08-07, AFV under-glacis
   // round, secondary check — class PRESENT): the bow plane hung over an

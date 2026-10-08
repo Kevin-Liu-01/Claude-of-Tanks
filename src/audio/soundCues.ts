@@ -158,6 +158,18 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   distant_flak: o({ bus: 'environment', space: 'world', priority: 12, refM: 200, rolloff: 0.6, maxM: 5000, absorb: 0.3, send: 0.3, loudDb: 150, gainDb: -8 }),
   distant_mg: o({ bus: 'environment', space: 'world', priority: 10, refM: 150, rolloff: 0.6, maxM: 4000, absorb: 0.35, send: 0.3, loudDb: 140, gainDb: -8 }),
   jet_flyover: o({ bus: 'environment', space: 'world', priority: 30, refM: 200, rolloff: 0.7, maxM: 6000, absorb: 0.3, send: 0.2, loudDb: 160, gainDb: -6 }),
+  // The Second World War fronts' aircraft (2026-10-06): piston engines carry a little less far than a jet's roar.
+  flyover_piston: o({ bus: 'environment', space: 'world', priority: 30, refM: 180, rolloff: 0.7, maxM: 5000, absorb: 0.3, send: 0.2, loudDb: 154, gainDb: -6 }),
+  flyover_bomber: o({ bus: 'environment', space: 'world', priority: 30, refM: 200, rolloff: 0.7, maxM: 5500, absorb: 0.3, send: 0.2, loudDb: 156, gainDb: -6 }),
+  // A landmark's bell (2026-10-06): heard across the map, as bells are, but on the ambience bus under everything else.
+  // The director tolls it only in a quiet stretch and schedules a toll's strokes together (a cooldown, checked when a
+  // stroke is scheduled, would swallow the second and third); each stroke's hum may overlap the next.
+  bell_toll: o({ bus: 'ambience', space: 'world', priority: 12, maxInstances: 3, cooldownS: 0, refM: 90, rolloff: 0.85, maxM: 2200, absorb: 0.6, send: 0.35, loudDb: 112, gainDb: -7, pitch: [0.99, 1.01] }),
+  bell_orthodox: o({ bus: 'ambience', space: 'world', priority: 12, maxInstances: 2, cooldownS: 0, refM: 90, rolloff: 0.85, maxM: 2200, absorb: 0.6, send: 0.35, loudDb: 112, gainDb: -7, pitch: [0.99, 1.01] }),
+  // A loose drum knocked about clangs once per shove, not on every contact of a hull pushing it along.
+  can_knock: o({ maxInstances: 3, cooldownS: 0.3, maxM: 200 }),
+  // The red fuel drum's blast carries like a small shell's.
+  fuel_drum_blast: o({ loudDb: 136 }),
   heli_loop: o({ bus: 'environment', space: 'world', priority: 25, refM: 120, rolloff: 0.7, maxM: 5000, absorb: 0.35, send: 0.2, loudDb: 150, gainDb: -6 }),
   // Workshop sounds inside the hangar: placed a few metres away (indoor scene).
   garage_clank: o({ bus: 'ambience', space: 'world', refM: 6, rolloff: 0.9, maxM: 80, absorb: 0.3, send: 0.45, loudDb: 100, gainDb: -2 }),
