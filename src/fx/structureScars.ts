@@ -109,6 +109,8 @@ export interface StructureScars {
   add(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number, deep: boolean, seed: number): void;
   /** A building came down: its scars go with it. */
   clearStructure(structureId: number): void;
+  /** A section of it fell: the scars standing in it (world centre) go with it. */
+  clearWhere(structureId: number, inside: (x: number, y: number, z: number) => boolean): void;
   /** The sun and sky the scars are lit by (event time: when a scar is added). */
   light(scene: THREE.Scene | null | undefined): void;
   reset(): void;
@@ -163,6 +165,14 @@ export function createStructureScars(): StructureScars {
     clearStructure(structureId) {
       for (let i = 0; i < SLOTS; i++) {
         if (owner[i] !== structureId) continue;
+        C[i * 4 + 3] = 0;
+        owner[i] = -1;
+        upload(i);
+      }
+    },
+    clearWhere(structureId, inside) {
+      for (let i = 0; i < SLOTS; i++) {
+        if (owner[i] !== structureId || !(C[i * 4 + 3] > 0) || !inside(C[i * 4], C[i * 4 + 1], C[i * 4 + 2])) continue;
         C[i * 4 + 3] = 0;
         owner[i] = -1;
         upload(i);

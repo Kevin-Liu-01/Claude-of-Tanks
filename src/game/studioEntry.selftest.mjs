@@ -68,7 +68,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     enterGarage: async () => { calls.push('enter-garage'); game.phase = 'garage'; presentation.setSunTrim(true); },
     stopRecording: noop,
     // the destruction stages the Studio played and its own dug ground (fx lane, destruction core lane, 2026-10-08)
-    studioStages: new Map(), resetStudioGround: noop,
+    studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {

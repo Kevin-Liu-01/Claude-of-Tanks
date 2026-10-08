@@ -320,13 +320,19 @@ const ENDING_HOLD_S = 8;
  * "esp from like the ac 130"): on in every mode but Turbo Ball, whose pitch an unlimited HE ladder would crater under
  * the ball; the AC-130 digs its craters a quarter wider (docs/DESTRUCTION.md §9).
  */
-// craters (P3) stay off until the rendered terrain follows the ground overlay (docs/DESTRUCTION.md §7, §14): a crater
-// the simulation digs under a flat drawn ground would sink hulls into it
+/**
+ * The crater switch (destruction core lane, 2026-10-08; docs/DESTRUCTION.md §7, crater-render-spec §F): on, the
+ * simulation digs craters in every mode that plays destruction, and the drawn terrain (world/terrainCraterMesh.ts), the
+ * ground cover (world/groundCoverCraters.ts) and the crater's own surface (fx/craterMarks.ts) follow the dug ground.
+ * Off until the switch-on gates pass (pacing and fairness paired against craters off, both audits, cost with a
+ * barrage, the network's stamp-once and late join).
+ */
+const CRATERS_SWITCH = false;
 // sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
 // (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
 const SECTIONS_SWITCH = false;
 const DESTRUCTION_ON: DestructionRules = Object.freeze({
-  structures: true, craters: false, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
+  structures: true, craters: CRATERS_SWITCH, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
 });
 const DESTRUCTION_OFF: DestructionRules = Object.freeze({
   structures: false, craters: false, sections: false, structureDamageScale: 0, craterScale: 0, maxCraters: 0,

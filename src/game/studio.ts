@@ -7,9 +7,14 @@ import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolic
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
+  type TerrainCraterEvent,
 } from '../sim/destructionEvents.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
-import { munitionChargeKg, munitionClassForShell, type MunitionShellLike } from '../sim/munitionBlast.ts';
+import {
+  CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg, munitionClassForShell, type MunitionShellLike,
+} from '../sim/munitionBlast.ts';
+import { quantizeCrater, type QuantizedCrater } from '../sim/destructionMatch.ts';
+import { createTerrainDeformation, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
 import { createStudioDestruction, type StudioDestruction } from './studioDestruction.ts';
 /**
@@ -268,6 +273,8 @@ interface StudioEffectParams {
   stage?: string;
   /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
   wall?: boolean;
+  /** explosion with a munition: only its crater, laid down settled (a late joiner's view: no blast) */
+  settled?: boolean;
   hitH?: number;
   chargeKg?: number;
   cause?: string;
@@ -523,6 +530,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let timeOfDay: BattleTimeOfDay = 'day';
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
+  // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
+  // live renders between steps), on the wall clock again in playback and outside the Studio
+  let flareOnExportClock = false;
+  const flareToWallClock = (): void => {
+    if (!flareOnExportClock) return;
+    flareOnExportClock = false;
+    post.lensFlare?.setClock?.(null);
+  };
   let uidSeq = 1;
   let effectUidSeq = 1;
   const actors: StudioActor[] = []; // see addActor()
@@ -1566,6 +1581,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         });
         return true;
       }
+      // params.settled: the crater as a late joiner lays it down (crater-render-spec §D/§F): dug, drawn at its final
+      // state, no blast, no burst, no ejecta
+      if (params.settled) {
+        const dug = studioDig(munition, chargeKg, position.x, position.z);
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true });
+        return true;
+      }
+      // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
+      const crater = studioDig(munition, chargeKg, position.x, position.z);
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: position.x, y: position.y, z: position.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+        ...(crater ? { craterId: crater.craterId } : {}),
+      });
       fxBus.emit('shell:expired', {
         shellId: -1,
         hitTerrain: true,
@@ -1574,6 +1602,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         chargeKg,
         caliberMm: params.caliberMm || 120,
       });
+      if (crater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
       return true;
     }
     if (size === 'small') {
@@ -1586,6 +1615,39 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
     }
     return true;
+  }
+
+  /**
+   * Craters in the Studio (destruction core lane, 2026-10-08; crater-render-spec §F's strips): a burst of a munition
+   * class digs what the battle would dig at that point — the simulation's law, quantization and seed
+   * (sim/destructionMatch.ts dig and quantizeCrater: radius at least CRATER_DEFORM_MIN_RADIUS_M, never on hard ground,
+   * the ruleset's crater switch and scale) — on a ground overlay of the Studio's own, bound to the world while the Studio digs, so the
+   * drawn terrain, the ground cover and the crater's surface follow it as they do in battle. A scene reload levels it;
+   * leaving the Studio unbinds it (the next battle binds its own). The Studio's hulls keep the undug ground.
+   */
+  let studioGround: TerrainDeformation | null = null;
+  let studioCraters = 0;
+  const studioCraterShape = { radiusM: 0, depthM: 0, rimM: 0 };
+  const studioCraterDug: QuantizedCrater = { x: 0, z: 0, radiusM: 0, depthM: 0, rimM: 0, seed: 0 };
+  function studioDig(munition: MunitionClass, chargeKg: number, x: number, z: number): TerrainCraterEvent | null {
+    const rules = matchRulesetFor('standard').destruction;
+    const w = getWorld();
+    if (!rules.craters || !w || !(chargeKg > 0) || studioCraters >= rules.maxCraters) return null;
+    craterFor(chargeKg, munition, rules.craterScale, studioCraterShape);
+    if (studioCraterShape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
+    if (w.heightField?.getGroundType?.(x, z) === 'hard') return null;
+    if (!studioGround) studioGround = createTerrainDeformation();
+    if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
+    const { x: qx, z: qz, radiusM, depthM, rimM, seed } = quantizeCrater(x, z, studioCraterShape, studioCraterDug);
+    if (!studioGround.addCrater(qx, qz, radiusM, depthM, rimM, seed)) return null;
+    return { craterId: studioCraters++, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true };
+  }
+  function resetStudioGround(unbind: boolean): void {
+    studioCraters = 0;
+    if (!studioGround) return;
+    studioGround.reset();
+    const w = getWorld();
+    if (unbind && w && w.groundOverlay() === studioGround) w.bindGroundOverlay(null);
   }
 
   /**
@@ -2164,11 +2226,40 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
   }
 
+  // destruction-fx: a driven actor kicks up its tracks' dust as a battle hull does (battlePresentationRuntime emitDust's
+  // law: one call per side every 0.45-0.7 m of travel, from the rear of each track), so the Studio films the dust
+  // skirt; on the fixed timeline, through the fx's own seeded stream
+  const studioDustTravel = new Map<StudioActor, number>();
+  const _dustPos = new THREE.Vector3(), _dustFwd = new THREE.Vector3();
+  function emitStudioTrackDust(dt: number): void {
+    for (const a of actors) {
+      const st = a.state;
+      const speed = Math.abs(st.speed ?? 0);
+      if (speed <= 0.8 || st.grounded === false) { studioDustTravel.set(a, 0); continue; }
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const intensity = Math.min(1, speed / topSpeedMps);
+      const spacingM = 0.7 + (0.45 - 0.7) * intensity;
+      const travel = Math.min(spacingM * 2, (studioDustTravel.get(a) ?? 0) + speed * dt);
+      if (travel < spacingM) { studioDustTravel.set(a, travel); continue; }
+      studioDustTravel.set(a, travel - spacingM);
+      const sign = (st.speed ?? 0) < 0 ? -1 : 1;
+      _dustFwd.set(Math.sin(st.yaw) * sign, 0, Math.cos(st.yaw) * sign);
+      const dims = a.spec.dims;
+      for (let side = -1; side <= 1; side += 2) {
+        _dustPos.copy(st.pos).addScaledVector(_dustFwd, -dims.hullLengthM * 0.45);
+        _dustPos.x += _dustFwd.z * side * dims.widthM * 0.45;
+        _dustPos.z += -_dustFwd.x * side * dims.widthM * 0.45;
+        fx.dust(_dustPos, _dustFwd, intensity);
+      }
+    }
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
+      emitStudioTrackDust(dt);
       stepFx(dt);
       advanceWater(dt);
       for (const a of actors) a.visual.syncFromState(a.state, dt);
@@ -2186,6 +2277,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // every building stands again (the Studio's destruction: openings cleared, the next strike starts fresh)
     studioSim?.reset();
     studioSimLog.length = 0;
+    resetStudioGround(false);
+    studioDustTravel.clear();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
@@ -2256,6 +2349,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     rebuildEffects(target);
+    post.lensFlare?.snap?.();
     panel.refreshAll();
     return Math.round(clockMs);
   }
@@ -2289,6 +2383,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function playTimeline() {
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
+    flareToWallClock();
     timeScale = 1;
     rail.updateVisibility();
     panel.refreshTime();
@@ -3059,6 +3154,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       startupTimer: null,
     };
     recording = session;
+    flareToWallClock();
     const clearStartupTimer = () => {
       if (session.startupTimer !== null) clearTimeout(session.startupTimer);
       session.startupTimer = null;
@@ -3316,6 +3412,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       await yieldForFrameBudget();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
       restoreLoadedPresentation(json, fxMs);
+      // a clip starts with the flare at its target: no eased history from the last clip or page
+      post.lensFlare?.snap?.();
       return stateJson();
     } finally {
       loading = false;
@@ -3554,6 +3652,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function doExit() {
     if (!active) return;
     if (recording) stopRecording();
+    flareToWallClock();
     active = false;
     panel.hide();
     marker.group.visible = false;
@@ -3567,6 +3666,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     activeEffectIds.clear();
     fx.resetAll();
     studioStages.clear();
+    resetStudioGround(true);
     fx.setFrozen(false);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras
@@ -3731,6 +3831,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     advanceFrame(ms: number) {
       if (recording || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
       timeScale = 0;
+      if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
       camera.updateMatrixWorld(true);
