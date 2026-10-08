@@ -58,7 +58,9 @@ function checkLaunchers(meshes, yaw) {
         undefined, 'no carrier, armor or adjacent launcher fills the actual bore');
       const rim = turretRay(meshes, yaw, mouth.clone().addScaledVector(radial, .040).toArray(),
         axis.clone().negate().toArray());
-      assert.equal(rim?.object.name, 'turretDetail', 'closed metal annulus surrounds every mouth');
+      // 2026-10-08 (tank-accessories round 4): discharger tubes authored into turretDetail merge into the matte fitting
+      // paint (tankFactoryCore SMOKE_TUBE_PAINT_BUCKET, after the profile build), so the annulus is that bucket's
+      assert.equal(rim?.object.name, 'turretFittingPaint', 'closed metal annulus surrounds every mouth');
       near(rim?.distance, .050, 2e-6, 'actual forward annular face');
     }
     const lowerStock = turretRay(meshes, yaw, [side * 1.548, 2.12, z - .051], [0, 1, 0]);
