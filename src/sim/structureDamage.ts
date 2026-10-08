@@ -28,7 +28,7 @@ import type {
 import { blastReachM, structureBlastPoints } from './munitionBlast.ts';
 import {
   attachOpenings, blastHoleRadiusM, cascadeFalls, createStructureSections, fellSection, holeRadiusFor, MIN_HOLE_M, NO_HOLE,
-  openHole, sectionAt, sectionCentre, sectionKind, sectionNormal, sectionSpan, shapeArea, storeyDownAt,
+  openHole, roofSection, sectionAt, sectionCentre, sectionKind, sectionNormal, sectionSpan, shapeArea, storeyDownAt,
   type StructureSections,
 } from './structureSections.ts';
 import { structureOpeningAt, STRUCTURE_HOLES_PER_SECTION } from '../world/collision.ts';
@@ -67,6 +67,19 @@ const RAM_KJ_PER_POINT = 40;
 /** Collision swaps per fixed step (§5, §10): a collapse's work (the swap, the heap, the route grid's refresh round it) is
  * about 1–4 ms of CPU, so a second collapse in the same tick waits for the next (16.7 ms later). */
 export const COLLAPSES_PER_TICK = 1;
+/**
+ * The collapse, seen (P2, 2026-10-08; wave 277: "the building is never seen to come down" — it stood, then was gone a
+ * second later behind its dust). With sections on, a structure whose whole crosses collapse comes down top first before
+ * its swap: the roof if it still stands, then each storey from the top every COLLAPSE_STOREY_TICKS, its standing faces
+ * falling with it (the last one's breach carries storeyDown: the kit's heap on that floor line), the ground storey to
+ * its metre-high stubs. COLLAPSE_SETTLE_TICKS after the last drop its collision swaps, its heap rises and its
+ * 'collapsed' stage releases. A three-storey house: the roof at once, the storeys 0.35, 0.7 and 1.05 s later, the swap at
+ * 1.45 s. A hull that rammed it keeps driving through while it falls (yieldTo, as P1's one-tick wait did); shells and
+ * sight lines meet what still stands (the openings' cap falls with each storey). Sections off: one event and the next
+ * tick's swap, as in P1.
+ */
+export const COLLAPSE_STOREY_TICKS = 21;
+export const COLLAPSE_SETTLE_TICKS = 24;
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
 export const STAGE_EVENTS_PER_TICK = 4;
 /** Breach events (holes and section falls, P2) per fixed step: the overflow is reported in the next tick. */
@@ -403,6 +416,17 @@ export function createStructureDamage(
   const collapseQueue: StructureState[] = [];
   const pendingEvents: StructureStageEvent[] = [];
   const released: StructureStageEvent[] = [];
+  // the collapses coming down storey by storey (sections on): the next fall's tick, the stage event the swap releases
+  interface CollapseCascade {
+    structure: StructureState;
+    sections: StructureSections;
+    at: number;
+    event: StructureStageEvent;
+    munition: MunitionClass | null;
+    settling: boolean;
+  }
+  const cascades: CollapseCascade[] = [];
+  let tick = 0;
 
   // ---- sections (P2) ----
   const sectionsOn = options.sections === true;
@@ -478,6 +502,33 @@ export function createStructureDamage(
     if (opened) attachOpenings(sections);
   }
 
+  /** Whether any wall panel or the roof of `sections` still stands (the stubs below a fallen panel do not count). */
+  function standing(sections: StructureSections): boolean {
+    for (let i = 0; i < sections.count; i++) if (!sections.down[i]) return true;
+    return false;
+  }
+
+  /** A collapse cascade's next fall: the roof while it stands, else every standing face of the top storey that still has
+   * one (the last face's event carries storeyDown). False when nothing stands. */
+  function fellNext(cascade: CollapseCascade): boolean {
+    const s = cascade.sections;
+    const roof = roofSection(s);
+    if (!s.down[roof]) {
+      fall(cascade.structure, s, roof, cascade.munition);
+      return true;
+    }
+    for (let k = s.storeys - 1; k >= 0; k--) {
+      let fell = false;
+      for (let f = 0; f < 4; f++) {
+        if (s.down[k * 4 + f]) continue; // a face the fall before this one already brought down
+        fall(cascade.structure, s, k * 4 + f, cascade.munition);
+        fell = true;
+      }
+      if (fell) return true;
+    }
+    return false;
+  }
+
   function eventFor(structure: StructureState, stage: number, previous: number, points: number,
     blow: StructureBlow): StructureStageEvent {
     return {
@@ -504,12 +555,18 @@ export function createStructureDamage(
     let after = stageForIntegrity(structure.maxHp > 0 ? structure.hp / structure.maxHp : 0);
     if (!structure.collapsible && after > 2) after = 2;
     if (after <= before) return;
-    // one event per stage crossed, in order; the collapse waits in the queue for its collision swap
+    // one event per stage crossed, in order; the collapse waits in the queue for its collision swap (with sections on,
+    // after its cascade has brought it down storey by storey)
     for (let stage = before + 1; stage <= after; stage++) {
       if (stage === 3) {
         structure.collapsePending = true;
-        collapseQueue.push(structure);
-        pendingEvents.push(eventFor(structure, 3, stage - 1, points * damageScale, blow));
+        const event = eventFor(structure, 3, stage - 1, points * damageScale, blow);
+        const sections = sectionsFor(structure);
+        if (sections) cascades.push({ structure, sections, at: tick, event, munition: blow.munition, settling: false });
+        else {
+          collapseQueue.push(structure);
+          pendingEvents.push(event);
+        }
       } else {
         structure.stage = stage;
         pendingEvents.push(eventFor(structure, stage, stage - 1, points * damageScale, blow));
@@ -580,6 +637,23 @@ export function createStructureDamage(
       return energyKj > absorbedKj ? Math.sqrt(1 - absorbedKj / energyKj) : 0;
     },
     step() {
+      tick++;
+      // collapses coming down (sections on): the next storey's fall when its tick comes; the swap once all is down and
+      // settled
+      for (let i = 0; i < cascades.length;) {
+        const cascade = cascades[i];
+        if (tick < cascade.at) { i++; continue; }
+        if (!cascade.settling) {
+          if (fellNext(cascade)) attachOpenings(cascade.sections);
+          if (standing(cascade.sections)) cascade.at = tick + COLLAPSE_STOREY_TICKS;
+          else { cascade.settling = true; cascade.at = tick + COLLAPSE_SETTLE_TICKS; }
+          i++;
+          continue;
+        }
+        collapseQueue.push(cascade.structure);
+        pendingEvents.push(cascade.event);
+        cascades.splice(i, 1);
+      }
       let collapses = 0;
       while (collapseQueue.length && collapses < COLLAPSES_PER_TICK) {
         const structure = collapseQueue.shift()!;
@@ -651,6 +725,8 @@ export function createStructureDamage(
         structure.collapsePending = false;
         const queued = collapseQueue.indexOf(structure);
         if (queued >= 0) collapseQueue.splice(queued, 1);
+        const falling = cascades.findIndex((cascade) => cascade.structure === structure);
+        if (falling >= 0) cascades.splice(falling, 1);
         flipCollapse(structure);
         options.onCollapse?.(structure);
       }
