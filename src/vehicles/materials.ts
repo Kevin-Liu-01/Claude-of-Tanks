@@ -2335,13 +2335,14 @@ const VEHICLE_GROUND = Object.freeze({
  * (vehicleWearFrameOf: `frame` is the render's frame counter, -1 places it every call); its w carries the root's
  * field-wear strength (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on
  * the Garage showroom build with its neutral film; a root without it wears 1). The drawn material selects how much coat,
- * film and use-wear its surface takes, and `gun` (the drawn object sits under rig_gun) which soot source it reads.
+ * film and use-wear its surface takes and which soot source it reads (every value is the root's or the material's:
+ * three uploads a material's uniforms only when the material changes between draws).
  */
-export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1, gun = false): void {
+export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1): void {
   const state = vehicleWearFrameOf(root, frame);
   VEHICLE_GROUND.uVehGround.value.copy(state.ground);
   VEHICLE_GROUND.uVehUp.value.copy(state.up);
-  bindVehicleFieldWear(state, material, gun);
+  bindVehicleFieldWear(state, material);
 }
 /** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and wears no field wear. */
 export function resetVehicleGround(): void {
@@ -2366,6 +2367,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   shader.uniforms.uVehWearRole = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearRole;
   shader.uniforms.uVehWearFwd = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd;
   shader.uniforms.uVehWearHull = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearHull;
+  shader.uniforms.uVehWearPlanes = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearPlanes;
   shader.uniforms.uVehWearSoot = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSoot;
   shader.uniforms.uVehWearSootAxis = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearSootAxis;
   shader.uniforms.uVehWearDeep = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearDeep;

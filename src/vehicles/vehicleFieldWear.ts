@@ -18,10 +18,15 @@
 //   settles only on faces that look up (decks, fenders, roofs), thinner up the turret;
 // - wear where use puts it (installVehicleFieldWear): exhaust and muzzle soot, track iron and bare steel worn smooth,
 //   chips along the plates' relief, rubbed walkways, thin grime and rust runs (the fine marks only up close);
+// - age at every distance (the lead's round 5 brief, from the media lane's blind pairs: "clean hulls"): grime gathered
+//   in the recesses (at the foot of whatever stands on the deck, the fenders and the turret roof, round the turret's
+//   foot, under the overhangs and in the wheel bays), dark worn edges along the fender lips and the rear deck's edge,
+//   and varied specular (the paint's sheen broken up, polished walkways and raised tops), all large-scale values on
+//   the hull frame and planes measured at build end, band-limited by the pixel's footprint;
 // - it darkens freely but never lightens a surface by more than about a third: the running gear stays darker than the
 //   paint under every soil and in shade (the readability floor scales a shaded texel's light by its albedo);
 // - priced for the 14 v 14 frame: no texture, sampler, define or program key; seven vec4 and a vec3 uniform (the soil per
-//   battle, the role, hull frame and soot source per draw), two vec4 and a vec3 varying, one 2D value-noise octave
+//   battle, the role, hull frame, planes and soot source per draw), three vec4 varyings, one 2D value-noise octave
 //   where the coat, film or soot can show, a second and the runs' 3D octave only up close (never on the running gear),
 //   and branches that skip the pixels no wear reaches.
 // The per-material role (how much coat, film, use-wear and soot a surface takes) rides the per-draw ground reference
@@ -199,8 +204,13 @@ export const VEHICLE_FIELD_WEAR_UNIFORMS = Object.freeze({
   // per draw: the vehicle's hull frame in its own metres (stern station, bow station, deck height, half width; a deck
   // height of 0 = no frame), measured at build end (measureVehicleWearFrame)
   uVehWearHull: { value: new THREE.Vector4(0, 0, 0, 0) },
-  // per draw: the soot source the drawn material reads, in the world: the muzzle for the gun's paint and bare steel,
-  // the exhaust for the rest; (mouth, reach across the axis) and (axis the soot runs along, its length); reach 0 = none
+  // per draw: the planes things stand on, in the vehicle's own metres (the fenders' top, the turret roof, the turret's
+  // foot; 0 = none): the recess grime gathers at the foot of whatever stands on them, the worn edges run along the
+  // fenders' lips
+  uVehWearPlanes: { value: new THREE.Vector4(0, 0, 0, 0) },
+  // per draw: the soot source the drawn material reads, in the world: the muzzle for the materials only the gun draws
+  // with, the exhaust for the rest; (mouth, reach across the axis) and (axis the soot runs along, its length); reach 0 =
+  // none
   uVehWearSoot: { value: new THREE.Vector4(0, 0, 0, 0) },
   uVehWearSootAxis: { value: new THREE.Vector4(0, 0, 1, 1) },
   // per battle (Garage: the neutral film): deep coat (rgb, wetness), thrown coat (rgb, unused), film (rgb, amount)
@@ -287,13 +297,17 @@ export function vehicleFieldWearRole(material: THREE.Material): THREE.Vector4 {
 // ---------------------------------------------------------------------------------------------------------- the vehicle
 /**
  * A vehicle's hull frame in its root's own metres (origin at the ground contact, +Y up, +Z forward, +X its left): the
- * rear plate's and the bow's stations along +Z, the engine deck's height and the hull's half width.
+ * rear plate's and the bow's stations along +Z, the engine deck's height and the hull's half width; and the planes things
+ * stand on: the fenders' (or the sponsons') top, the turret roof and the turret's foot (0: no turret).
  */
 interface VehicleWearFrame {
   sternZ: number;
   bowZ: number;
   deckY: number;
   halfWidth: number;
+  fenderY: number;
+  roofY: number;
+  turretBaseY: number;
 }
 /** Where a vehicle's engine breathes: out over its rear deck and plate, or out of its left flank (the T-72 lineage). */
 type ExhaustLayout = 'rear' | 'left';
@@ -310,6 +324,8 @@ interface SootSource {
 }
 interface VehicleWearState {
   hull: THREE.Vector4;
+  /** The planes things stand on: (the fenders' top, the turret roof, the turret's foot, 0); 0 = none. */
+  planes: THREE.Vector4;
   exhaust: SootSource | null;
   muzzle: SootSource | null;
   /** The render frame the root's own frame below was placed for (NaN: never; -1 calls place every time). */
@@ -324,6 +340,7 @@ interface VehicleWearState {
 // masks clone the root), and a soot source's owner is a live Object3D.
 const VEHICLE_WEAR = new WeakMap<THREE.Object3D, VehicleWearState>();
 const NO_HULL = Object.freeze(new THREE.Vector4(0, 0, 0, 0));
+const NO_PLANES = Object.freeze(new THREE.Vector4(0, 0, 0, 0));
 const NO_SOOT = Object.freeze(new THREE.Vector4(0, 0, 0, 0)); // (a Vector4's w defaults to 1: a live reach)
 
 /** The vehicle families whose exhaust leaves through the left flank above the track (T-54/55/62, T-64/72/90, PT-91, M-84, BMPT). */
@@ -333,8 +350,12 @@ const LEFT_EXHAUST = /^(t54|t55|t62|t64|t72|t90|pt91|m84|bmpt)/;
  * Measure a vehicle's hull frame from its own camouflaged plates outside the turret (round 4's measurement, kept with
  * the redesign): the rear plate is the rearmost rear-facing plate in the hull's last third with at least two fifths of
  * the largest one's area (a rack's bars behind it are smaller, a step ahead of it does not win), the engine deck the
- * up-facing plate with the most area in the rear half of the hull's middle. About 24,000 sampled triangles in all (a mesh
- * at most 4,000, never under 48), so a build pays a few milliseconds. Null when the hull has no such plates.
+ * up-facing plate with the most area in the rear half of the hull's middle. The planes the recess grime and the edge
+ * wear stand on: the fenders, the up-facing hull plates with the most area in the outer two fifths of the width; the
+ * turret roof, the turret's up-facing plates with the most area. Each plane is its 5 cm bin's area-weighted mean height
+ * (to a millimetre on a flat plate: the grime starts just above it, never on a plate whose top edge ends there). About
+ * 24,000 sampled triangles in all (a mesh at most 4,000, never under 48), so a build pays a few milliseconds. Null when
+ * the hull has no such plates.
  */
 function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null {
   root.updateMatrixWorld(true);
@@ -345,29 +366,32 @@ function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null 
   const ab = new THREE.Vector3(), ac = new THREE.Vector3();
   const rear: number[] = []; // [z, area] pairs of rear-facing plates
   const up: number[] = []; // [y, z, |x|, area] of up-facing plates
-  let minZ = Infinity, maxZ = -Infinity, maxX = 0;
-  // the hull's camouflaged plates outside the turret, visible, on each LOD's finest level (the coarse levels repeat the
-  // same plates)
-  const plates: Array<{ mesh: THREE.Mesh; count: number }> = [];
+  const roof: number[] = []; // [y, area] of the turret's up-facing plates
+  let minZ = Infinity, maxZ = -Infinity, maxX = 0, turretMinY = Infinity;
+  // the camouflaged plates, visible, on each LOD's finest level (the coarse levels repeat the same plates): the hull's,
+  // and the turret's for its roof
+  const plates: Array<{ mesh: THREE.Mesh; count: number; onTurret: boolean }> = [];
   root.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh || (mesh as unknown as { isBatchedMesh?: boolean }).isBatchedMesh || !mesh.geometry || mesh.visible === false) return;
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     if (!materials.some((material) => material?.name === 'cot:armor-paint')) return;
+    let onTurret = false;
     for (let child: THREE.Object3D = mesh, parent = mesh.parent; parent; child = parent, parent = parent.parent) {
-      if (parent === turret || parent.visible === false) return;
+      if (parent.visible === false) return;
+      if (parent === turret) onTurret = true;
       const lod = parent as THREE.LOD;
       if (lod.isLOD && lod.levels.findIndex((level) => level.object === child) > 0) return;
     }
     const position = mesh.geometry.getAttribute('position');
     if (!position) return;
     const count = mesh.geometry.index ? mesh.geometry.index.count : position.count;
-    plates.push({ mesh, count });
+    plates.push({ mesh, count, onTurret });
   });
-  // One budget for the whole hull: about 24,000 sampled triangles in all, a mesh never under 48 (a 12-triangle plate box
-  // stays whole), so a hull of many painted meshes costs what a hull of five does (the fleet's are five to nine: 0.3-1 ms)
+  // One budget for the whole vehicle: about 24,000 sampled triangles in all, a mesh never under 48 (a 12-triangle plate
+  // box stays whole), so a hull of many painted meshes costs what a hull of five does (the fleet's are five to nine)
   const perMesh = Math.min(4000, Math.max(48, 24000 / Math.max(1, plates.length)));
-  for (const { mesh, count } of plates) {
+  for (const { mesh, count, onTurret } of plates) {
     const position = mesh.geometry.getAttribute('position');
     const index = mesh.geometry.index;
     const stride = Math.max(1, Math.ceil(count / 3 / perMesh)) * 3;
@@ -382,6 +406,11 @@ function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null 
       if (!(twice > 1e-9)) continue;
       normal.divideScalar(twice);
       const area = twice / 2 * (stride / 3);
+      if (onTurret) {
+        turretMinY = Math.min(turretMinY, a.y, b.y, c.y);
+        if (normal.y > 0.85) roof.push((a.y + b.y + c.y) / 3, area);
+        continue;
+      }
       const z = (a.z + b.z + c.z) / 3;
       minZ = Math.min(minZ, a.z, b.z, c.z);
       maxZ = Math.max(maxZ, a.z, b.z, c.z);
@@ -402,17 +431,34 @@ function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null 
   const sternArea = Math.max(0, ...rearBins.values());
   for (const [bin, area] of rearBins) if (area >= sternArea * 0.4 && (sternBin === null || bin < sternBin)) sternBin = bin;
   const sternZ = sternBin === null ? minZ : (sternBin + 0.5) * 0.05;
-  const deckBins = new Map<number, number>();
-  for (let at = 0; at < up.length; at += 4) {
-    if (up[at + 1] > sternZ + (maxZ - sternZ) * 0.5 || up[at + 2] > maxX * 0.55) continue;
-    const bin = Math.floor(up[at] / 0.05);
-    deckBins.set(bin, (deckBins.get(bin) ?? 0) + up[at + 3]);
-  }
-  let deckBin: number | null = null, deckArea = 0;
-  for (const [bin, area] of deckBins) if (area > deckArea) { deckBin = bin; deckArea = area; }
-  const deckY = deckBin === null ? null : (deckBin + 0.5) * 0.05;
+  const deckY = planeHeight(up, 4, (at) => up[at + 1] <= sternZ + (maxZ - sternZ) * 0.5 && up[at + 2] <= maxX * 0.55);
   if (deckY === null || !(deckY > 0.3)) return null;
-  return { sternZ, bowZ: maxZ, deckY, halfWidth: maxX };
+  const fenderY = planeHeight(up, 4, (at) => up[at + 2] > maxX * 0.6) ?? deckY;
+  const roofY = planeHeight(roof, 2, () => true) ?? 0;
+  // the turret's foot: its lowest painted plate, or the deck where a basket or collar reaches below it
+  const turretBaseY = roofY > deckY && Number.isFinite(turretMinY) ? Math.max(turretMinY, deckY) : 0;
+  return { sternZ, bowZ: maxZ, deckY, halfWidth: maxX, fenderY, roofY: roofY > deckY ? roofY : 0, turretBaseY };
+}
+
+/** The plane with the most area among `entries` (stride `step`: height first, area last) that `keep` admits: its 5 cm
+ * bin's area-weighted mean height, or null. */
+function planeHeight(entries: readonly number[], step: number, keep: (at: number) => boolean): number | null {
+  const bins = new Map<number, number>();
+  for (let at = 0; at < entries.length; at += step) {
+    if (!keep(at)) continue;
+    const bin = Math.floor(entries[at] / 0.05);
+    bins.set(bin, (bins.get(bin) ?? 0) + entries[at + step - 1]);
+  }
+  let best: number | null = null, bestArea = 0;
+  for (const [bin, area] of bins) if (area > bestArea) { best = bin; bestArea = area; }
+  if (best === null) return null;
+  let sum = 0, weight = 0;
+  for (let at = 0; at < entries.length; at += step) {
+    if (!keep(at) || Math.floor(entries[at] / 0.05) !== best) continue;
+    sum += entries[at] * entries[at + step - 1];
+    weight += entries[at + step - 1];
+  }
+  return weight > 0 ? sum / weight : null;
 }
 
 /**
@@ -426,6 +472,7 @@ export function installVehicleFieldWear(root: THREE.Object3D, specId: string): v
   let frame: VehicleWearFrame | null = null;
   try { frame = measureVehicleWearFrame(root); } catch { frame = null; }
   const hull = frame ? new THREE.Vector4(frame.sternZ, frame.bowZ, frame.deckY, frame.halfWidth) : NO_HULL;
+  const planes = frame ? new THREE.Vector4(frame.fenderY, frame.roofY, frame.turretBaseY, 0) : NO_PLANES;
   const layout: ExhaustLayout = LEFT_EXHAUST.test(specId) ? 'left' : 'rear';
   const source = (owner: THREE.Object3D, mouth: THREE.Vector3, axis: THREE.Vector3, reach: number, length: number): SootSource => ({
     owner, mouth, axis: axis.normalize(), reach, length, world: new THREE.Vector4(), worldAxis: new THREE.Vector4(),
@@ -438,12 +485,33 @@ export function installVehicleFieldWear(root: THREE.Object3D, specId: string): v
   const muzzleRig = root.getObjectByName('rig_muzzle');
   // the soot runs back along the tube from a hand-span ahead of the muzzle plane (a brake past it is sooted to its tip)
   const muzzle = muzzleRig ? source(muzzleRig, new THREE.Vector3(0, 0, 0.12), new THREE.Vector3(0, 0, -1), 0.22, 0.8) : null;
-  VEHICLE_WEAR.set(root, newWearState(hull, exhaust, muzzle));
+  VEHICLE_WEAR.set(root, newWearState(hull, planes, exhaust, muzzle));
+  markGunMaterials(root);
 }
 
-function newWearState(hull: THREE.Vector4, exhaust: SootSource | null, muzzle: SootSource | null): VehicleWearState {
-  return { hull, exhaust, muzzle, frame: NaN, ground: new THREE.Vector4(), up: new THREE.Vector3(0, 1, 0),
+function newWearState(hull: THREE.Vector4, planes: THREE.Vector4, exhaust: SootSource | null, muzzle: SootSource | null): VehicleWearState {
+  return { hull, planes, exhaust, muzzle, frame: NaN, ground: new THREE.Vector4(), up: new THREE.Vector3(0, 1, 0),
     fwd: new THREE.Vector3(0, 0, 1), garage: false };
+}
+
+/**
+ * The materials only the gun draws with (under `rig_gun`: the tube's paint, a brake's or a mantlet's own steel) read the
+ * muzzle's soot; every other material the exhaust's. Chosen per material, never per drawn object: three uploads a
+ * material's uniforms only when the material changes between draws, so a value set for one object of a run of draws that
+ * share a material never reaches the others (a hull grille and the gun's brake sharing one steel would read whichever
+ * source the run's first draw bound).
+ */
+const GUN_MATERIALS = new WeakSet<THREE.Material>();
+function markGunMaterials(root: THREE.Object3D): void {
+  const gun = new Set<THREE.Material>(), rest = new Set<THREE.Material>();
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.material) return;
+    let onGun = false;
+    for (let at: THREE.Object3D | null = mesh; at && !onGun; at = at.parent) onGun = at.name === 'rig_gun';
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) (onGun ? gun : rest).add(material);
+  });
+  for (const material of gun) if (!rest.has(material)) GUN_MATERIALS.add(material);
 }
 
 const sootMouth = new THREE.Vector3();
@@ -455,12 +523,6 @@ function placeSoot(source: SootSource): void {
   source.worldAxis.set(sootAxis.x, sootAxis.y, sootAxis.z, source.length);
 }
 
-/** Whether a drawn object belongs to the gun (under `rig_gun`: the tube, the brake, the mantlet): the per-draw hook asks
- * once per object when it is installed (tankFactoryCore.ts installVehicleGroundReference). */
-export function isVehicleGunPart(object: THREE.Object3D): boolean {
-  for (let at: THREE.Object3D | null = object; at; at = at.parent) if (at.name === 'rig_gun') return true;
-  return false;
-}
 
 /**
  * A vehicle root's frame for the current render frame (materials.ts setVehicleGroundFromRoot): its ground contact with
@@ -475,7 +537,7 @@ export function vehicleWearFrameOf(root: THREE.Object3D, frame: number): Vehicle
   if (root === lastRoot && lastRootState && frame >= 0 && lastRootState.frame === frame) return lastRootState;
   let state = VEHICLE_WEAR.get(root);
   if (!state) {
-    state = newWearState(NO_HULL, null, null);
+    state = newWearState(NO_HULL, NO_PLANES, null, null);
     VEHICLE_WEAR.set(root, state);
   }
   if (frame < 0 || state.frame !== frame) {
@@ -503,20 +565,19 @@ let lastRole: THREE.Vector4 | null = null;
 let lastMaterial: THREE.Material | null = null;
 let lastSoot: SootSource | null | undefined;
 /**
- * Per draw (materials.ts setVehicleGroundFromRoot, after vehicleWearFrameOf): the drawn material's role, the root's hull
- * frame and forward axis, its soot source (the muzzle for the gun's own parts, the exhaust for everything else: the
- * engine grilles' bare steel included) and, for a Garage build, the neutral film. Reference compares, and a copy only
- * when something changed since the last draw: no allocation, no matrix work.
+ * Per draw (materials.ts setVehicleGroundFromRoot, after vehicleWearFrameOf): the root's hull frame, planes and forward
+ * axis, the Garage's neutral film or the battle's soil; the drawn material's role and soot source (the muzzle for the
+ * gun's own materials, the exhaust for everything else: the engine grilles' bare steel included). Every value is the
+ * root's or the material's, never the drawn object's (three uploads a material's uniforms only when the material
+ * changes). Reference compares, and a copy only when something changed since the last draw: no allocation, no matrix
+ * work.
  */
-export function bindVehicleFieldWear(
-  state: VehicleWearState,
-  material: THREE.Material | null | undefined,
-  gun = false,
-): void {
+export function bindVehicleFieldWear(state: VehicleWearState, material: THREE.Material | null | undefined): void {
   const U = VEHICLE_FIELD_WEAR_UNIFORMS;
   if (state !== lastState) {
     U.uVehWearFwd.value.copy(state.fwd);
     U.uVehWearHull.value.copy(state.hull);
+    U.uVehWearPlanes.value.copy(state.planes);
     const source = state.garage ? GARAGE : BATTLE;
     if (source !== soilSource) {
       U.uVehWearDeep.value.copy(source.deep);
@@ -542,7 +603,7 @@ export function bindVehicleFieldWear(
     }
     lastMaterial = material ?? null;
   }
-  const soot = gun ? state.muzzle : state.exhaust;
+  const soot = material && GUN_MATERIALS.has(material) ? state.muzzle : state.exhaust;
   if (soot !== lastSoot) {
     if (soot) {
       U.uVehWearSoot.value.copy(soot.world);
@@ -564,7 +625,7 @@ uniform vec4 uVehWearSoot;
 uniform vec4 uVehWearSootAxis;
 varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying vec3 vCotWearSide;
+varying vec4 vCotWearSide;
 vec3 cotWearSeed( const in float id ) {
 	return fract( vec3( id * 0.6180339, id * 0.4142136, id * 0.7320508 ) + 0.37 ) * 7.0;
 }
@@ -607,7 +668,8 @@ export const FIELD_WEAR_VERTEX = /* glsl */ `
 	vec3 cotSootRel = cotWearWorld.xyz - uVehWearSoot.xyz;
 	float cotSootAlong = dot( cotSootRel, uVehWearSootAxis.xyz );
 	vCotWearFrame = vec4( dot( cotWearN, uVehUp ), dot( cotWearN, uVehWearFwd ), dot( cotWearRel, uVehWearFwd ), cotSootAlong );
-	vCotWearSide = vec3( length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong ), cotWearLevel );
+	vCotWearSide = vec4( length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong ), cotWearLevel,
+		dot( cotWearRel, cross( uVehUp, uVehWearFwd ) ) );
 `;
 
 /** The value noise (inside the receipts' GLSL subset: vehicleFieldWear.selftest.mjs runs these bodies). */
@@ -626,6 +688,13 @@ float cotWearNoise( vec2 x ) {
 	vec2 u = f * f * ( 3.0 - 2.0 * f );
 	return mix( mix( cotWearHash( i ), cotWearHash( i + vec2( 1.0, 0.0 ) ), u.x ),
 		mix( cotWearHash( i + vec2( 0.0, 1.0 ) ), cotWearHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
+float cotWearBand( float x, float lo, float hi, vec2 soft, float foot ) {
+	// a band from lo to hi with soft edges (below, above), each edge's ramp widened by the pixel's footprint: the two ramps'
+	// difference keeps the band's area, so far off a thin band settles to a faint wide one instead of flickering between
+	// pixels
+	vec2 s = soft + foot;
+	return max( smoothstep( lo - s.x, lo + s.x, x ) - smoothstep( hi - s.y, hi + s.y, x ), 0.0 );
 }
 float cotWearHash3( vec3 p ) {
 	return fract( sin( dot( p, vec3( 0.1271, 0.3117, 0.0919 ) ) ) * 43758.5453 );
@@ -647,6 +716,7 @@ float cotWearNoise3( vec3 x ) {
 export const FIELD_WEAR_FRAGMENT_PARS = /* glsl */ `
 uniform vec4 uVehWearRole;
 uniform vec4 uVehWearHull;
+uniform vec4 uVehWearPlanes;
 uniform vec4 uVehWearSoot;
 uniform vec4 uVehWearSootAxis;
 uniform vec4 uVehWearDeep;
@@ -654,21 +724,24 @@ uniform vec4 uVehWearSplash;
 uniform vec4 uVehWearSettle;
 varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying vec3 vCotWearSide;
+varying vec4 vCotWearSide;
 ${FIELD_WEAR_NOISE_GLSL}`;
 
 /**
  * The field wear (inside the receipts' GLSL subset). Inputs: wearH (metres above the ground contact along the vehicle's
- * up), wearUp (the face's world normal along that up), wearBack (how squarely it faces the stern: the tracks throw their
- * rooster tail up the rear plate), wearAlong (the station along the hull, the vehicle's own metres), wearSootAlong /
- * wearSootOff (along and off the bound soot source's axis), wearRelief (the plate's normal-map relief: seams, welds,
- * bolts, rings), wearFoot (metres one pixel spans), wearNear (1 where the fine octave resolves, fading to 0 by 2.2 cm a
- * pixel), wearSootIn (the pixel lies inside the bound soot source's reach), wearN1 / wearN2 (the low and fine noise
- * octaves, 0..1), wearRuns (soft vertical runs up close, 0.5 at range), wearStrength, wearRole, wearHull, wearSoot,
- * wearSootAxis, soilDeep, soilSplash, soilSettle. In and out: wearAlbedo (linear), wearRough, wearMetal.
- * Order: the thrown coat and the settled film; up close, track iron and bare steel worn smooth, chips along the plate's
- * relief, boots' rubbing on the walkways, grime and rust runs; then a cap on how far all of it may lighten the surface,
- * and last the soot of the exhaust or the muzzle. Round 5's GPU review (2026-10-08): every breakup is soft-edged and
+ * up), wearUp (the face's world normal along that up), wearFront (along the vehicle's forward) and wearBack (how squarely
+ * it faces the stern: the tracks throw their rooster tail up the rear plate), wearAlong / wearAcross (the station along
+ * the hull and across it, the vehicle's own metres), wearSootAlong / wearSootOff (along and off the bound soot source's
+ * axis), wearRelief (the plate's normal-map relief: seams, welds, bolts, rings), wearFoot (metres one pixel spans),
+ * wearNear (1 where the fine octave resolves, fading to 0 by 2.2 cm a pixel), wearSootIn (the pixel lies inside the bound
+ * soot source's reach), wearN1 / wearN2 (the low and fine noise octaves, 0..1), wearRuns (soft vertical runs up close,
+ * 0.5 at range), wearStrength, wearRole, wearHull, wearPlanes, wearSoot, wearSootAxis, soilDeep, soilSplash, soilSettle.
+ * In and out: wearAlbedo (linear), wearRough, wearMetal.
+ * Order: the thrown coat and the settled film; at every distance, the recess grime, the worn edges, the paint's sheen
+ * breakup and the polished walkways and raised tops (large-scale values on the measured hull frame, band-limited by the
+ * footprint); up close, track iron and bare steel worn smooth, chips along the plate's relief and in the walkways, grime
+ * and rust runs; then a cap on how far all of it may lighten the surface, and last the soot of the exhaust or the
+ * muzzle. Round 5's GPU review (2026-10-08): every breakup is soft-edged and
  * low-contrast (a thresholded fine octave drew "digital camo" blotches on the M60A1's mud flaps), the spatter dots are
  * gone ("ink-blot specks"), and nothing may lighten a surface by more than about a third: the vehicle readability floor
  * scales a shaded texel's light by its albedo over its paint's mean, so a coat that lit the dark track band drew "the
@@ -704,27 +777,85 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		wearAlbedo = mix( wearAlbedo, soilSettle.rgb, settleAmt );
 		wearRough = mix( wearRough, 1.0, settleAmt );
 	}
+	float isPaint = step( 0.5, wearRole.z ) * step( wearRole.z, 1.5 );
+	// use-wear marks the vehicle's age, not the battlefield: near full under the Garage's light film too; the large-scale
+	// marks stand on the measured hull frame (a vehicle the measurement could not read wears the coat and the soot)
+	float useAge = min( 1.0, wearStrength * 2.0 );
+	float useAmt = useAge * step( 0.05, wearHull.z );
+	float walkway = 0.0;
+	if ( useAmt > 0.0 && gearCoat < 0.5 ) {
+		float upright = 1.0 - smoothstep( 0.45, 0.7, abs( wearUp ) );
+		// where things stand on the deck and the fenders: inside the hull's outline (clear of the rear plate, the bow's
+		// plates, the hull sides and the skirts, which only pass through those heights), so a plate that runs past a plane
+		// never takes a stripe; the turret roof's features stand anywhere above it
+		float along = smoothstep( wearHull.x + 0.15, wearHull.x + 0.3, wearAlong ) * ( 1.0 - smoothstep( wearHull.y - 1.1, wearHull.y - 0.9, wearAlong ) );
+		float inboard = ( 1.0 - smoothstep( wearHull.w - 0.55, wearHull.w - 0.4, abs( wearAcross ) ) ) * along;
+		float onFender = smoothstep( wearHull.w - 1.0, wearHull.w - 0.85, abs( wearAcross ) )
+			* ( 1.0 - smoothstep( wearHull.w - 0.16, wearHull.w - 0.1, abs( wearAcross ) ) ) * along;
+		// grime in the recesses: at the foot of every wall standing on the deck, the fenders or the turret roof, and round
+		// the turret's own foot (the ring's gap, hatch and box corners, the hull side's foot along the fender), under the
+		// overhangs (the bustle, the mantlet, the sponsons) and in the wheel bays (the hull's own sides inboard of the
+		// tracks); the battlefield's dried soil, matte: darker than a tan hull, browner than a dark green one (a multiply
+		// alone barely read on dark camouflage). Every band's ramps widen with the pixel's footprint and keep its area, so
+		// far off a thin one settles to a faint wide one, never a flicker.
+		vec2 baseSoft = vec2( 0.004, 0.05 );
+		float base = max( cotWearBand( wearH, wearHull.z + 0.006, wearHull.z + 0.07, baseSoft, wearFoot ) * inboard,
+			cotWearBand( wearH, wearPlanes.x + 0.006, wearPlanes.x + 0.07, baseSoft, wearFoot ) * onFender );
+		base = max( base, step( 0.05, wearPlanes.z ) * inboard
+			* cotWearBand( wearH, wearPlanes.z + 0.004, wearPlanes.z + 0.07, baseSoft, wearFoot ) );
+		// (on the roof only true walls, hatch rims and a cupola's sides: a cast dome rising off its bustle is tilted, and a
+		// band down its flank read as a smear)
+		base = max( base, step( 0.05, wearPlanes.y ) * ( 1.0 - smoothstep( 0.25, 0.4, abs( wearUp ) ) )
+			* cotWearBand( wearH, wearPlanes.y + 0.006, wearPlanes.y + 0.06, vec2( 0.004, 0.04 ), wearFoot ) );
+		float under = smoothstep( 0.3, 0.75, - wearUp ) * smoothstep( 0.8, 1.2, wearH );
+		float bay = upright * ( 1.0 - smoothstep( 0.45, 0.75, abs( wearFront ) ) )
+			* ( 1.0 - smoothstep( wearHull.w - 0.45, wearHull.w - 0.3, abs( wearAcross ) ) )
+			* ( 1.0 - smoothstep( wearPlanes.x - 0.15, wearPlanes.x - 0.03, wearH ) );
+		float grime = clamp( max( max( base * upright * 0.8, under * 0.6 ), bay * 0.55 ) * ( 0.8 + 0.4 * n1 ), 0.0, 1.0 )
+			* useAmt * wearRole.x;
+		vec3 grimeCol = mix( soilSplash.rgb, soilDeep.rgb, 0.35 ) * 0.9;
+		wearAlbedo = mix( wearAlbedo, grimeCol, grime * 0.85 );
+		wearRough = mix( wearRough, 0.82, grime * 0.7 );
+		wearMetal = mix( wearMetal, 0.0, grime );
+		// worn edges, broken along their length by the low octave: the fender lips (the hull's outermost width at the
+		// fenders' top) and the rear deck's edge with the rear plate's top; the paint worn through to dark steel with a
+		// dull sheen (never a light line: wave 264's outline)
+		float lip = cotWearBand( abs( wearAcross ), wearHull.w - 0.075, wearHull.w + 0.05, vec2( 0.012, 0.0 ), wearFoot )
+			* cotWearBand( wearH, wearPlanes.x - 0.09, wearPlanes.x + 0.012, vec2( 0.03, 0.006 ), wearFoot );
+		float sternEdge = cotWearBand( wearAlong, wearHull.x - 0.05, wearHull.x + 0.07, vec2( 0.0, 0.015 ), wearFoot )
+			* cotWearBand( wearH, wearHull.z - 0.07, wearHull.z + 0.012, vec2( 0.025, 0.006 ), wearFoot );
+		float edge = max( lip, sternEdge ) * smoothstep( 0.36, 0.64, n1 ) * isPaint * useAmt;
+		wearAlbedo = mix( wearAlbedo, vec3( 0.06, 0.057, 0.053 ), edge * 0.75 );
+		wearRough = mix( wearRough, 0.48, edge * 0.75 );
+		wearMetal = mix( wearMetal, 0.45, edge * 0.75 );
+		// varied specular at every distance: the paint's sheen breaks up with the low octave (chalky and smoother
+		// patches); boots and hands polish the walkways (the front fenders and the glacis top, the rear deck's edge) and
+		// the raised tops just above the deck and the turret roof (hatch rims and lids, box lids)
+		wearRough = clamp( wearRough + ( n1 - 0.5 ) * 0.16 * isPaint * useAmt, 0.04, 1.0 );
+		walkway = isPaint * smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.7, 0.9, wearH )
+			* ( 1.0 - smoothstep( wearHull.z + 0.05, wearHull.z + 0.3, wearH ) )
+			* max( smoothstep( wearHull.y - 1.7, wearHull.y - 0.8, wearAlong ), 1.0 - smoothstep( wearHull.x + 0.5, wearHull.x + 1.0, wearAlong ) )
+			* smoothstep( 0.42, 0.6, n1 ) * useAmt;
+		float raised = smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.3, 0.6, n1 ) * isPaint * useAmt * max(
+			cotWearBand( wearH, wearHull.z + 0.02, wearHull.z + 0.14, vec2( 0.006, 0.03 ), wearFoot ) * inboard,
+			step( 0.05, wearPlanes.y ) * cotWearBand( wearH, wearPlanes.y + 0.02, wearPlanes.y + 0.14, vec2( 0.006, 0.03 ), wearFoot ) );
+		float rubLuma = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
+		wearAlbedo = mix( wearAlbedo, mix( wearAlbedo, vec3( rubLuma ), 0.25 ) * 0.92, walkway * 0.7 );
+		wearRough = mix( wearRough, 0.52, max( walkway, raised ) * 0.7 );
+		wearMetal = mix( wearMetal, 0.25, raised * 0.4 );
+	}
 	if ( wearNear > 0.0 ) {
-		float isPaint = step( 0.5, wearRole.z ) * step( wearRole.z, 1.5 );
 		float isIron = step( 1.5, wearRole.z ) * step( wearRole.z, 2.5 );
 		float isSteel = step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 );
 		// worn smooth where wheels, ground, hands and tools rub: a dull dark sheen, never a bright edge
 		float polish = isIron * smoothstep( 0.45, 0.85, wearUp ) * ( 1.0 - smoothstep( 1.15, 1.4, wearH ) ) * smoothstep( 0.4, 0.7, n2 );
-		polish = max( polish, isSteel * smoothstep( 0.55, 0.75, n2 * 0.6 + n1 * 0.4 ) ) * wearStrength * wearNear;
+		polish = max( polish, isSteel * smoothstep( 0.55, 0.75, n2 * 0.6 + n1 * 0.4 ) ) * useAge * wearNear;
 		wearAlbedo = mix( wearAlbedo, vec3( 0.075, 0.073, 0.07 ), polish * 0.5 );
 		wearRough = mix( wearRough, 0.6, polish * 0.6 );
 		wearMetal = mix( wearMetal, 0.3, polish * 0.5 );
-		// chips along the plate's own relief (seams, welds, bolts, rings), sparse and soft-edged
-		float chip = isPaint * smoothstep( 0.4, 0.8, wearRelief ) * smoothstep( 0.6, 0.76, n2 + ( n1 - 0.5 ) * 0.2 ) * wearNear * wearStrength;
-		// where crews climb and walk: the front fenders and the glacis top, and the rear deck's edge
-		float walkway = step( 0.05, wearHull.z ) * isPaint * smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.7, 0.9, wearH )
-			* ( 1.0 - smoothstep( wearHull.z + 0.05, wearHull.z + 0.3, wearH ) )
-			* max( smoothstep( wearHull.y - 1.7, wearHull.y - 0.8, wearAlong ), 1.0 - smoothstep( wearHull.x + 0.5, wearHull.x + 1.0, wearAlong ) );
-		walkway *= smoothstep( 0.42, 0.6, n1 ) * wearStrength * wearNear;
-		float rubLuma = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
-		wearAlbedo = mix( wearAlbedo, mix( wearAlbedo, vec3( rubLuma ), 0.25 ) * 1.08, walkway * 0.7 );
-		wearRough = mix( wearRough, 0.55, walkway * 0.7 );
-		chip = max( chip, walkway * smoothstep( 0.64, 0.78, wearN2 ) );
+		// chips along the plate's own relief (seams, welds, bolts, rings) and in the walkways, sparse and soft-edged
+		float chip = isPaint * smoothstep( 0.4, 0.8, wearRelief ) * smoothstep( 0.6, 0.76, n2 + ( n1 - 0.5 ) * 0.2 ) * wearNear * useAge;
+		chip = max( chip, walkway * smoothstep( 0.64, 0.78, wearN2 ) * wearNear );
 		wearAlbedo = mix( wearAlbedo, vec3( 0.05, 0.048, 0.044 ), chip * 0.65 );
 		wearRough = mix( wearRough, 0.55, chip * 0.8 );
 		wearMetal = mix( wearMetal, 0.3, chip * 0.8 );
@@ -732,7 +863,7 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		// soft and sparse, a multiply
 		float streakZone = isPaint * ( 1.0 - smoothstep( 0.2, 0.45, abs( wearUp ) ) ) * smoothstep( 0.45, 0.8, wearH )
 			* ( 1.0 - smoothstep( 2.6, 3.0, wearH ) );
-		float streak = smoothstep( 0.66, 0.86, runs ) * smoothstep( 0.52, 0.72, n1 ) * streakZone * wearNear * wearStrength;
+		float streak = smoothstep( 0.66, 0.86, runs ) * smoothstep( 0.52, 0.72, n1 ) * streakZone * wearNear * useAge;
 		vec3 streakTint = mix( vec3( 0.74, 0.72, 0.69 ), vec3( 0.8, 0.67, 0.55 ), smoothstep( 0.6, 0.8, n1 ) );
 		wearAlbedo *= mix( vec3( 1.0 ), streakTint, streak * 0.45 );
 	}
@@ -768,10 +899,12 @@ export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 		#endif
 		float wearH = vCotWearPos.w;
 		float wearUp = vCotWearFrame.x * wearSide;
-		float wearBack = clamp( - vCotWearFrame.y * wearSide, 0.0, 1.0 );
+		float wearFront = vCotWearFrame.y * wearSide;
+		float wearBack = clamp( - wearFront, 0.0, 1.0 );
 		float wearAlong = vCotWearFrame.z;
 		float wearSootAlong = vCotWearFrame.w;
 		float wearSootOff = vCotWearSide.x;
+		float wearAcross = vCotWearSide.w;
 		// the pattern's frame and footprint from the screen derivatives: the face's own plane in the mesh frame picks the
 		// projection (a side plate's z and y, a deck's x and z), so the noise keeps its shape on every plate
 		vec3 wearDx = dFdx( vCotWearPos.xyz );
@@ -782,14 +915,15 @@ export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 		#ifdef USE_NORMALMAP_TANGENTSPACE
 			wearRelief = length( mapN.xy );
 		#endif
-		// the fine marks resolve only up close; past that, a pixel the coat, the film and the soot cannot reach (a turret's
-		// sides, most of a barrel) skips the noise and the core
+		// the fine marks resolve only up close; past that, a pixel no coat, film, grime, edge or soot can reach (a turret's
+		// mid sides, most of a barrel) skips the noise and the core
 		float wearNear = 1.0 - smoothstep( 0.008, 0.022, wearFoot );
 		vec4 wearSoot = uVehWearSoot;
 		vec4 wearSootAxis = uVehWearSootAxis;
 		bool wearSootIn = wearSoot.w > 0.0 && wearSootOff < wearSoot.w && wearSootAlong > - 0.35 * wearSootAxis.w
 			&& wearSootAlong < wearSootAxis.w;
-		if ( wearH < 1.75 || wearUp > 0.3 || wearNear > 0.0 || wearSootIn ) {
+		if ( wearH < max( 1.75, uVehWearHull.z + 0.25 ) || wearUp > 0.3 || wearUp < - 0.25 || abs( wearH - uVehWearPlanes.y ) < 0.3
+			|| wearNear > 0.0 || wearSootIn ) {
 			vec3 wearP = vCotWearPos.xyz;
 			vec2 wearQ = wearFace.x > max( wearFace.y, wearFace.z ) ? wearP.zy : ( wearFace.y > wearFace.z ? wearP.xz : wearP.xy );
 			wearQ = vec2( wearQ.x * 0.8 - wearQ.y * 0.6, wearQ.x * 0.6 + wearQ.y * 0.8 );
@@ -809,6 +943,7 @@ export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 			float wearStrength = uVehGround.w;
 			vec4 wearRole = uVehWearRole;
 			vec4 wearHull = uVehWearHull;
+			vec4 wearPlanes = uVehWearPlanes;
 			vec4 soilDeep = uVehWearDeep;
 			vec4 soilSplash = uVehWearSplash;
 			vec4 soilSettle = uVehWearSettle;

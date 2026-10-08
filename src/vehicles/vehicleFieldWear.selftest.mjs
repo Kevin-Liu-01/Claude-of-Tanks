@@ -6,9 +6,11 @@
 // 2. the shader text runs through the receipts' GLSL subset (src/world/glslSubset.test-support.mjs): the glue in full,
 //    the core's laws (graded up from the ground contact, film only on faces that look up, the far octaves settle to their
 //    mean, the desert's grime darker than a tan paint and its film only a tint, the farmland's coat darker and wetter, the
-//    running gear dark under every soil, the breakup soft, nothing lit past the cap, nothing at strength 0);
+//    running gear dark under every soil, the breakup soft, nothing lit past the cap, nothing at strength 0; the recess
+//    grime, the worn edges and the varied specular at 40 m and in the Garage, every thin band keeping its area far off);
 // 3. the plumbing: per-draw roles and soils, setCamoBiome → the battle soil, the floor hook's uniforms and injections with
-//    no define (no program variant) and the per-root strength through setVehicleGroundFromRoot.
+//    no define (no program variant), the per-root strength through setVehicleGroundFromRoot, the measured planes, and the
+//    soot source chosen per material (three uploads a material's uniforms only when the material changes).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -19,7 +21,7 @@ import { getMapConfig, MAP_IDS } from '../world/maps/index.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import {
   VEHICLE_FIELD_GROUNDS, VEHICLE_FIELD_WEAR_GARAGE, VEHICLE_FIELD_WEAR_UNIFORMS, FIELD_WEAR_CORE_GLSL, FIELD_WEAR_FRAGMENT,
-  FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, installVehicleFieldWear, isVehicleGunPart, vehicleFieldSoil,
+  FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, installVehicleFieldWear, vehicleFieldSoil,
   vehicleFieldWearRole,
 } from './vehicleFieldWear.ts';
 import { setCamoBiome, setVehicleGroundFromRoot, resetVehicleGround, vehicleAmbientFloorHook } from './materials.ts';
@@ -109,12 +111,13 @@ const fnTree = (name) => {
   return parseGlsl(text.slice(open + 1, k - 1));
 };
 const hashT = fnTree('cotWearHash('), noiseT = fnTree('cotWearNoise(');
-const hash3T = fnTree('cotWearHash3'), noise3T = fnTree('cotWearNoise3');
+const hash3T = fnTree('cotWearHash3'), noise3T = fnTree('cotWearNoise3'), bandT = fnTree('cotWearBand');
 const fns = {};
 fns.cotWearHash = (p) => runGlslFunction(hashT, { p }, fns, new Set());
 fns.cotWearNoise = (x) => runGlslFunction(noiseT, { x }, fns, new Set());
 fns.cotWearHash3 = (p) => runGlslFunction(hash3T, { p }, fns, new Set());
 fns.cotWearNoise3 = (x) => runGlslFunction(noise3T, { x }, fns, new Set());
+fns.cotWearBand = (x, lo, hi, soft, foot) => runGlslFunction(bandT, { x, lo, hi, soft, foot }, fns, new Set());
 for (let i = 0; i < 64; i++) {
   const v = fns.cotWearNoise([i * 0.731 - 9, i * 1.37 + 2]);
   assert.ok(v >= 0 && v <= 1, 'the value noise stays in 0..1');
@@ -134,10 +137,12 @@ for (let i = 0; i < 64; i++) {
 const core = parseGlsl(FIELD_WEAR_CORE_GLSL);
 const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, 0], soilSettle: [...s.settle, s.settleAmount] });
 const PAINT = [1, 1, 1, 1], IRON = [0.9, 0, 2, 0.6], STEEL = [0.9, 0.8, 3, 1];
+// (a hull 7 m long, its deck at 1.5 m, its fenders at 1.05 m and 1.8 m out, its turret roof at 2.05 m and the turret's
+// foot at 1.52 m; the base pixel sits over the fenders, outboard of the wheel bays and inboard of the fender lip)
 const BASE = {
-  wearH: 0.3, wearUp: 0, wearBack: 0, wearAlong: 0, wearSootAlong: 0, wearSootOff: 9, wearRelief: 0,
+  wearH: 0.3, wearUp: 0, wearFront: 0, wearBack: 0, wearAlong: 0, wearAcross: 1.6, wearSootAlong: 0, wearSootOff: 9, wearRelief: 0,
   wearFoot: 0.004, wearN1: 0.5, wearN2: 0.5, wearRuns: 0.5, wearStrength: 1, wearRole: PAINT,
-  wearHull: [-3.4, 3.6, 1.5, 1.8], wearSoot: [0, 0, 0, 0], wearSootAxis: [0, 0, 1, 1],
+  wearHull: [-3.4, 3.6, 1.5, 1.8], wearPlanes: [1.05, 2.05, 1.52, 0], wearSoot: [0, 0, 0, 0], wearSootAxis: [0, 0, 1, 1],
   ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: [0.1, 0.12, 0.06], wearRough: 0.7, wearMetal: 0.05,
 };
 const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -271,6 +276,97 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
     'runs hang on vertical plates, not on decks');
   assert.ok(runAt(0.95, 0.8).wearAlbedo.every((v, k) => v <= flatPlate.wearAlbedo[k] + 1e-9), 'a run multiplies: never a bright mark');
 }
+// at every distance (the lead's round 5 brief: the media lane's blind pairs called the hulls clean): grime in the
+// recesses, worn edges and varied specular, large-scale values on the measured hull frame (deck 1.5, fenders 1.05 and
+// 1.8 m out, roof 2.05, the turret's foot 1.52), band-limited by the footprint; FAR is a 40 m battle pixel (2.3 cm: no
+// fine octave)
+{
+  const FAR = 0.023;
+  const lum = (o) => luma(o.wearAlbedo);
+  // (1) recess grime: at the foot of a wall standing on the deck (inside the hull's outline), the fenders, the turret
+  // roof or round the turret's foot; none on a plate whose top edge ends at the plane (the band starts just above it),
+  // and none on a plate that only runs past a plane's height at the hull's outline (the rear plate, the bow's plates,
+  // the skirts)
+  // (value on a tan hull in the desert, where it must read darker; the hue on a dark green one below)
+  const desertTan = { ...soilVec(vehicleFieldSoil('desert')), wearAlbedo: [0.40, 0.33, 0.22] };
+  const wall = (h, over = {}) => run({ wearH: h, wearUp: 0, wearFoot: FAR, wearAcross: 0.5, ...desertTan, ...over });
+  const deckless = { wearHull: [-3.4, 3.6, 1.2, 1.8], wearPlanes: [1.05, 2.05, 0, 0] };
+  assert.ok(lum(wall(1.53)) < lum(wall(1.53, deckless)) * 0.8, 'grime at the foot of a wall standing on the deck (a hatch, a box)');
+  assert.ok(Math.abs(lum(wall(1.49, { wearFoot: 0.004 })) - lum(wall(1.49, { wearFoot: 0.004, ...deckless }))) < 1e-9,
+    'none on the top of a plate that ends at the deck');
+  assert.ok(lum(wall(1.75)) > lum(wall(1.53)) * 1.2, 'it fades up the wall within a hand-span');
+  const footed = { wearHull: [-3.4, 3.6, 1.2, 1.8] };
+  assert.ok(lum(wall(1.55, { ...footed, wearPlanes: [1.05, 2.05, 1.52, 0] })) < lum(wall(1.55, { ...footed, wearPlanes: [1.05, 2.05, 0, 0] })) * 0.8,
+    'round the turret\'s foot (the ring\'s gap), wherever the turret stands');
+  assert.ok(lum(wall(2.08)) < lum(wall(2.08, { wearPlanes: [1.05, 0, 1.52, 0] })) * 0.8, 'at the foot of a hatch rim or cupola on the roof');
+  assert.ok(lum(wall(1.09, { wearAcross: 1.3 })) < lum(wall(1.09, { wearAcross: 1.3, wearPlanes: [0.6, 2.05, 1.52, 0] })) * 0.8,
+    'at the foot of the hull side along the fender');
+  for (const [what, over] of [['the rear plate', { wearAlong: -3.38, wearFront: -1, wearBack: 1 }], ['the bow\'s plates', { wearAlong: 3.2, wearFront: 1 }],
+    ['the skirts', { wearAcross: 1.78 }]]) {
+    for (const h of [1.53, 1.08, 1.56]) {
+      const a = wall(h, { ...over, wearRole: [1, 1, 0, 0] }), b = wall(h, { ...over, wearRole: [1, 1, 0, 0], ...deckless, wearPlanes: [0.2, 2.05, 0, 0] });
+      assert.ok(Math.abs(lum(a) - lum(b)) < 1e-9, `no stripe on ${what} where it runs past a plane (h ${h})`);
+    }
+  }
+  const underside = run({ wearH: 2.0, wearUp: -1, wearFoot: FAR, ...desertTan });
+  assert.ok(lum(underside) < lum(run({ wearH: 2.0, wearUp: -1, wearFoot: FAR, ...desertTan, wearHull: [0, 0, 0, 0] })) * 0.8, 'under the bustle');
+  const bayIn = run({ wearH: 0.6, wearAcross: 0.9, wearFoot: FAR, ...desertTan }), bayOut = run({ wearH: 0.6, wearAcross: 1.6, wearFoot: FAR, ...desertTan });
+  assert.ok(lum(bayIn) < lum(bayOut) * 0.85, 'the wheel bays: the hull\'s own sides inboard of the tracks');
+  // on a dark green hull the grime reads by hue: the farmland's dried earth, browner, within a quarter of the paint's value
+  const green = [0.07, 0.09, 0.04], gIn = run({ wearH: 1.53, wearAcross: 0.5, wearFoot: FAR, wearAlbedo: green });
+  const gOut = run({ wearH: 1.53, wearAcross: 0.5, wearFoot: FAR, wearAlbedo: green, wearHull: [-3.4, 3.6, 1.2, 1.8], wearPlanes: [1.05, 2.05, 0, 0] });
+  assert.ok(gIn.wearAlbedo[0] / gIn.wearAlbedo[1] > gOut.wearAlbedo[0] / gOut.wearAlbedo[1] * 1.15 && Math.abs(lum(gIn) / lum(gOut) - 1) < 0.25,
+    'on dark green the corner grime reads browner, not just darker');
+  const rearIn = run({ wearH: 0.6, wearAcross: 0.9, wearFront: -1, wearBack: 1, wearFoot: FAR });
+  const rearOut = run({ wearH: 0.6, wearAcross: 1.6, wearFront: -1, wearBack: 1, wearFoot: FAR });
+  assert.ok(Math.abs(lum(rearIn) - lum(rearOut)) < 1e-9, 'not the rear plate (it faces the stern, not a bay)');
+  for (const role of [IRON, [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6]]) {
+    const a = run({ wearH: 0.6, wearAcross: 0.9, wearFoot: FAR, wearRole: role }), b = run({ wearH: 0.6, wearAcross: 1.6, wearFoot: FAR, wearRole: role });
+    assert.deepEqual(a.wearAlbedo, b.wearAlbedo, 'the running gear keeps its own packed coat');
+  }
+  assert.ok(bayIn.wearAlbedo.every((v, k) => v <= bayOut.wearAlbedo[k] + 1e-9) && underside.wearRough > 0.75, 'on a tan hull the grime only darkens, matte');
+  // (2) worn edges, broken along their length: the fender lip and the rear deck's edge; dark steel with a sheen, never a
+  // light line
+  const lipAt = (across, n1, over = {}) => run({ wearH: 1.03, wearUp: 1, wearAcross: across, wearN1: n1, wearFoot: FAR, ...over });
+  const lip = lipAt(1.77, 0.8), inboard = lipAt(1.5, 0.8);
+  assert.ok(lum(lip) < lum(inboard) * 0.8 && lip.wearMetal > inboard.wearMetal + 0.15 && lip.wearRough < inboard.wearRough - 0.1,
+    `the fender lip worn to dark steel with a sheen at 40 m (${lum(lip).toFixed(3)} vs ${lum(inboard).toFixed(3)})`);
+  assert.ok(Math.abs(lum(lipAt(1.77, 0.2)) - lum(lipAt(1.5, 0.2))) < 0.002, 'broken along its length by the low octave');
+  const tan = [0.40, 0.33, 0.22], dark = [0.02, 0.022, 0.018];
+  assert.ok(lum(lipAt(1.77, 0.8, { wearAlbedo: tan })) < luma(tan) * 0.6, 'on a tan hull a dark worn line');
+  assert.ok(lum(lipAt(1.77, 0.8, { wearAlbedo: dark })) <= luma(dark) * 1.35 + 0.01 + 1e-9, 'never a light line on a dark one');
+  const stern = (along, foot = FAR) => run({ wearH: 1.5, wearUp: 1, wearAlong: along, wearN1: 0.8, wearFoot: foot });
+  assert.ok(lum(stern(-3.38)) < lum(stern(-3.1)) * 0.85 && lum(stern(-3.38, 0.004)) < lum(stern(-3.1, 0.004)) * 0.75,
+    'the rear deck\'s edge (at 40 m and up close)');
+  // (a broad band down a cast turret's rounded shoulder read as a dark smear in the round 5 sheet: no shoulder term)
+  const shoulder = (role) => run({ wearH: 2.0, wearUp: 0.6, wearN1: 0.5, wearFoot: FAR, wearRole: role });
+  assert.ok(Math.abs(lum(shoulder(PAINT)) - lum(shoulder([1, 1, 0, 1]))) < 1e-9, 'no smear down a turret\'s shoulder');
+  // band-limited: far off a band widens and dims, keeping its area (a thin band never flickers on and off between
+  // pixels); the lip's peak dims with it
+  for (const [lo, hi, soft] of [[0.0, 0.05, [0.004, 0.06]], [0.0, 0.125, [0.012, 0]], [0.0, 0.1, [0.03, 0.006]]]) {
+    const area = (foot) => {
+      let sum = 0, peak = 0;
+      for (let k = -400; k <= 600; k++) { const v = fns.cotWearBand(k * 0.001, lo, hi, soft, foot); sum += v * 0.001; peak = Math.max(peak, v); }
+      return { sum, peak };
+    };
+    const a = area(0.002), b = area(0.06), c = area(0.15);
+    assert.ok(Math.abs(b.sum / a.sum - 1) < 0.05 && Math.abs(c.sum / a.sum - 1) < 0.05 && c.peak < a.peak * 0.75,
+      `a ${hi - lo} m band keeps its area far off (${a.sum.toFixed(4)} -> ${b.sum.toFixed(4)} -> ${c.sum.toFixed(4)}, peak ${a.peak.toFixed(2)} -> ${c.peak.toFixed(2)})`);
+  }
+  assert.ok(lum(lipAt(1.77, 0.8, { wearFoot: 0.08 })) > lum(lipAt(1.77, 0.8, { wearFoot: 0.004 })), 'the lip dims far off');
+  // (3) varied specular at 40 m: the wet coat low, the dust film on the deck, the polished walkway by the bow, the worn
+  // edge, the paint's own breakup
+  const rough = (over) => run({ wearFoot: FAR, ...over }).wearRough;
+  const lowCoat = rough({ wearH: 0.15 }), film = rough({ wearH: 1.3, wearUp: 1, wearAlong: 0.2, wearN1: 0.8 });
+  const walkway = rough({ wearH: 1.3, wearUp: 1, wearAlong: 3.1, wearN1: 0.8 });
+  assert.ok(lowCoat < 0.6 && film > 0.75 && walkway < film - 0.15, `wet coat ${lowCoat.toFixed(2)}, film ${film.toFixed(2)}, walkway ${walkway.toFixed(2)}`);
+  assert.ok(Math.abs(rough({ wearH: 2.2, wearN1: 0.15 }) - rough({ wearH: 2.2, wearN1: 0.85 })) > 0.08, 'the paint\'s sheen breaks up at 40 m');
+  const raisedTop = rough({ wearH: 2.1, wearUp: 1, wearN1: 0.8 }), roofTop = rough({ wearH: 2.05, wearUp: 1, wearN1: 0.8 });
+  assert.ok(raisedTop < roofTop - 0.1, 'a raised top just above the roof (a hatch rim or lid) is polished');
+  // the Garage's light film keeps the use-wear near full (age, not the battlefield)
+  const garage = (over) => lum(wall(1.53, { wearStrength: VEHICLE_FIELD_WEAR_GARAGE, ...over }));
+  assert.ok(garage({}) < garage(deckless) * 0.82, 'the Garage shows the recess grime too');
+}
 // the glue runs whole: the screen derivatives stand in as fixed steps, the normal-map relief block is preprocessor-only
 {
   // (as a DOUBLE_SIDED material compiles it: that block's body kept, the other preprocessor blocks dropped)
@@ -282,9 +378,10 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
     cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
   };
   const vars = (h, up, face = 1, role = [1, 1, 0, 0]) => ({
-    uVehGround: [0, 0, 0, 1], uVehWearRole: role, uVehWearHull: [-3.4, 3.6, 1.5, 1.8], uVehWearSoot: [0, 0, 0, 0], uVehWearSootAxis: [0, 0, 1, 1],
+    uVehGround: [0, 0, 0, 1], uVehWearRole: role, uVehWearHull: [-3.4, 3.6, 1.5, 1.8], uVehWearPlanes: [1.05, 2.05, 0, 0],
+    uVehWearSoot: [0, 0, 0, 0], uVehWearSootAxis: [0, 0, 1, 1],
     ...Object.fromEntries(Object.entries(soilVec(vehicleFieldSoil('verdant'))).map(([k, v]) => [`uVehWear${k.slice(4)}`, v])),
-    vCotWearFrame: [up, 0, 0, 0], vCotWearSide: [9, 0.37, -0.52], faceDirection: face, vCotWearPos: [1.7, h, 0.4, h],
+    vCotWearFrame: [up, 0, 0, 0], vCotWearSide: [9, 0.37, -0.52, 1.6], faceDirection: face, vCotWearPos: [1.7, h, 0.4, h],
     diffuseColor: [0.1, 0.12, 0.06, 1], roughnessFactor: 0.7, metalnessFactor: 0.05,
   });
   const low = runGlsl(glue, vars(0.3, 0), stub, new Set());
@@ -294,12 +391,14 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.deepEqual(high.diffuseColor, [0.1, 0.12, 0.06, 1], 'nothing on a high vertical face of a material without use-wear');
   const roof = runGlsl(glue, vars(2.4, 1), stub, new Set()), under = runGlsl(glue, vars(2.4, 1, -1), stub, new Set());
   assert.notDeepEqual(roof.diffuseColor, [0.1, 0.12, 0.06, 1], 'a roof takes the film');
-  assert.deepEqual(under.diffuseColor, [0.1, 0.12, 0.06, 1], 'the back face of double-sided cloth turns the frame over');
+  const downFacing = runGlsl(glue, vars(2.4, -1), stub, new Set());
+  assert.deepEqual(under.diffuseColor, downFacing.diffuseColor, 'the back face of double-sided cloth turns the frame over');
+  assert.ok(luma(under.diffuseColor) < luma(roof.diffuseColor), 'so it takes the underside\'s grime, not the roof\'s film');
   const backSide = runGlsl(singleSided, vars(2.4, 1, -1), stub, new Set());
   assert.notDeepEqual(backSide.diffuseColor, [0.1, 0.12, 0.06, 1], 'a single-sided material keeps its (vertex-flipped) frame');
   const none = runGlsl(glue, vars(0.3, 0, 1, [0, 0, 0, 0]), stub, new Set());
   assert.deepEqual(none.diffuseColor, [0.1, 0.12, 0.06, 1], 'a role of none skips the whole wear');
-  assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearH < 1.75'),
+  assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearH < max( 1.75'),
     'screen derivatives are taken in uniform control flow, before the per-pixel skip');
   // a high vertical face at range, outside the soot's reach, skips the noise and the core entirely
   const skipped = runGlsl(glue, { ...vars(2.4, 0), uVehWearRole: [1, 1, 1, 1] }, { ...stub, dFdx: () => [0.05, 0, 0], dFdy: () => [0, 0.05, 0],
@@ -329,7 +428,7 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   }
   // the runs are off on the running gear (it turns under a pattern laid level with the ground) and on decks
   {
-    const at = (role, run, up = 0, h = 0.6) => runGlsl(glue, { ...vars(h, up, 1, role), vCotWearSide: [9, run, -0.52] }, stub, new Set()).diffuseColor;
+    const at = (role, run, up = 0, h = 0.6) => runGlsl(glue, { ...vars(h, up, 1, role), vCotWearSide: [9, run, -0.52, 1.6] }, stub, new Set()).diffuseColor;
     for (const role of [[0.9, 0, 2, 0.6], [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6]]) {
       assert.deepEqual(at(role, 0.1), at(role, 0.37), `no runs on the running gear (class ${role[2]})`);
     }
@@ -339,9 +438,9 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   }
   assert.ok(!/viewMatrix|cameraPosition|vViewPosition/.test(FIELD_WEAR_FRAGMENT), 'no matrix work per fragment: the frames come from the vertex stage');
   // varying budget: WebGL2 guarantees only fifteen vectors and three's lit material with four shadow cascades uses about
-  // ten, so the wear packs its frames into two vec4 and a vec3
+  // ten, so the wear packs its frames into three vec4
   const varyings = [...FIELD_WEAR_FRAGMENT_PARS.matchAll(/varying (float|vec2|vec3|vec4) /g)].map((m) => m[1]);
-  assert.deepEqual(varyings.sort(), ['vec3', 'vec4', 'vec4'], `the wear's varyings stay packed (${varyings})`);
+  assert.deepEqual(varyings.sort(), ['vec4', 'vec4', 'vec4'], `the wear's varyings stay packed (${varyings})`);
 }
 
 // ---------------------------------------------------------------- 3. plumbing
@@ -404,7 +503,8 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   setVehicleGroundFromRoot(root, mat('armorPaint'), -1);
   const fwd = shader.uniforms.uVehWearFwd.value;
   assert.ok(Math.abs(fwd.x - 1) < 1e-9 && Math.abs(fwd.z) < 1e-9, 'the forward axis follows the root (+Z turned to +X)');
-  for (const name of ['uVehWearRole', 'uVehWearFwd', 'uVehWearHull', 'uVehWearSoot', 'uVehWearSootAxis', 'uVehWearDeep', 'uVehWearSplash', 'uVehWearSettle']) {
+  for (const name of ['uVehWearRole', 'uVehWearFwd', 'uVehWearHull', 'uVehWearPlanes', 'uVehWearSoot', 'uVehWearSootAxis', 'uVehWearDeep',
+    'uVehWearSplash', 'uVehWearSettle']) {
     assert.equal(shader.uniforms[name], U[name], `${name} is the shared uniform object`);
   }
   assert.ok(shader.fragmentShader.includes(`#include <normal_fragment_maps>${FIELD_WEAR_FRAGMENT}`), 'the wear reads the surface after the normal maps');
@@ -416,11 +516,20 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   // a built vehicle's use-wear: its hull frame measured from its plates, its exhaust by family, its muzzle
   const paint = new THREE.MeshStandardMaterial(); paint.name = 'cot:armor-paint';
   const barrel = new THREE.MeshStandardMaterial(); barrel.name = 'cot:barrel-paint';
+  // (the gun draws with its own tube paint and brake steel; the hull's grille steel is its own; one steel both share)
+  const brakeSteel = mat('gunmetal'), grilleSteel = mat('gunmetal'), sharedSteel = mat('gunmetal');
+  let brake = null, grille = null, sharedOnGun = null;
   const tank = (id) => {
     const r = new THREE.Group();
     const hullBox = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.1, 6.8), paint); hullBox.position.set(0, 0.95, 0.1); r.add(hullBox);
     const turret = new THREE.Group(); turret.name = 'rig_turret'; turret.position.set(0, 1.5, 0.6); r.add(turret);
     turret.add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 2.6), paint));
+    const gunG = new THREE.Group(); gunG.name = 'rig_gun'; gunG.position.set(0, 0.2, 1.3); turret.add(gunG);
+    gunG.add(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 3.6), barrel));
+    brake = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.3), brakeSteel); gunG.add(brake);
+    sharedOnGun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), sharedSteel); gunG.add(sharedOnGun);
+    grille = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 1), grilleSteel); r.add(grille);
+    r.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), sharedSteel));
     const muzzle = new THREE.Object3D(); muzzle.name = 'rig_muzzle'; muzzle.position.set(0, 0.2, 5.0); turret.add(muzzle);
     r.updateMatrixWorld(true);
     installVehicleFieldWear(r, id);
@@ -435,26 +544,53 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.ok(rearSoot.w > 0.5 && Math.abs(rearSoot.x) < 1e-6 && rearSoot.z < -2.5 && rearAxis.z < -0.9, 'a rear exhaust fans over the deck and the rear plate');
   setVehicleGroundFromRoot(t72, paint, frameNo);
   assert.ok(U.uVehWearSoot.value.x > 1 && U.uVehWearSootAxis.value.x > 0.4, 'the T-72 lineage soots its left flank');
-  setVehicleGroundFromRoot(leo, barrel, frameNo, true);
+  setVehicleGroundFromRoot(leo, barrel, frameNo);
   const muzzleAt = U.uVehWearSoot.value;
   assert.ok(Math.abs(muzzleAt.z - 5.72) < 1e-6 && Math.abs(muzzleAt.y - 1.7) < 1e-6 && U.uVehWearSootAxis.value.z < -0.99,
     'the gun reads the muzzle, sooting back along the tube');
-  // by the drawn object: the gun's own parts (under rig_gun) read the muzzle, the hull's bare steel (engine grilles) the
-  // exhaust
-  const gunG = new THREE.Group(); gunG.name = 'rig_gun'; leo.getObjectByName('rig_turret').add(gunG);
-  const brake = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.3), mat('gunmetal')); gunG.add(brake);
-  const grille = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 1), mat('gunmetal')); leo.add(grille);
-  leo.updateMatrixWorld(true);
-  assert.ok(isVehicleGunPart(brake) && !isVehicleGunPart(grille), 'the hook asks once whether a part sits under rig_gun');
-  setVehicleGroundFromRoot(leo, brake.material, frameNo, isVehicleGunPart(brake));
-  assert.ok(Math.abs(U.uVehWearSoot.value.z - 5.72) < 1e-6, 'a muzzle brake (under rig_gun) reads the muzzle');
-  setVehicleGroundFromRoot(leo, grille.material, frameNo, isVehicleGunPart(grille));
+  // by the drawn material (three uploads a material's uniforms only when the material changes between draws, so a value
+  // chosen per object would go stale inside a run of draws that share one): the materials only the gun draws with read
+  // the muzzle, the rest the exhaust; one steel shared by the gun and the hull reads the exhaust
+  setVehicleGroundFromRoot(leo, brake.material, frameNo);
+  assert.ok(Math.abs(U.uVehWearSoot.value.z - 5.72) < 1e-6, 'a muzzle brake\'s own steel reads the muzzle');
+  setVehicleGroundFromRoot(leo, grille.material, frameNo);
   assert.ok(U.uVehWearSoot.value.z < -2.5, 'an engine grille\'s bare steel reads the exhaust');
+  setVehicleGroundFromRoot(leo, sharedOnGun.material, frameNo);
+  assert.ok(U.uVehWearSoot.value.z < -2.5, 'a steel the hull shares with the gun reads the exhaust, whichever object draws');
+  const hookSrc = readFileSync(new URL('./tankFactoryCore.ts', import.meta.url), 'utf8');
+  assert.ok(/setVehicleGroundFromRoot\(root, args\[4\], args\[0\]\?\.info\?\.render\?\.frame \?\? -1\);/.test(hookSrc),
+    'the per-draw hook passes only the root, the drawn material and the frame: nothing per object');
+  // the planes things stand on, each to a millimetre (its bin's area-weighted mean): a hull 2.6 m wide with its deck at
+  // 1.5 m, fenders 0.5 m out with their tops at 1.05 m, a turret roof at 1.9 m; a plain box hull's fenders are its deck
+  const fendered = (() => {
+    const r = new THREE.Group();
+    const hullBox = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 6.8), paint); hullBox.position.set(0, 0.95, 0.1); r.add(hullBox);
+    for (const side of [-1, 1]) {
+      const fender = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 6.4), paint); fender.position.set(side * 1.55, 1.03, 0.1); r.add(fender);
+    }
+    const turret = new THREE.Group(); turret.name = 'rig_turret'; turret.position.set(0, 1.5, 0.6); r.add(turret);
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 2.6), paint); shell.position.y = 0.2; turret.add(shell);
+    r.updateMatrixWorld(true);
+    installVehicleFieldWear(r, 'leo2a6');
+    return r;
+  })();
+  setVehicleGroundFromRoot(fendered, paint, ++frameNo);
+  const planes = U.uVehWearPlanes.value;
+  assert.ok(Math.abs(U.uVehWearHull.value.z - 1.5) < 0.002 && Math.abs(planes.x - 1.05) < 0.002 && Math.abs(planes.y - 1.9) < 0.002
+    && Math.abs(planes.z - 1.5) < 0.002 && Math.abs(U.uVehWearHull.value.w - 1.8) < 0.002,
+    `deck, fenders, roof and the turret's foot measured to a millimetre (${U.uVehWearHull.value.z.toFixed(3)}, ${planes.x.toFixed(3)}, `
+    + `${planes.y.toFixed(3)}, ${planes.z.toFixed(3)})`);
+  setVehicleGroundFromRoot(leo, paint, frameNo);
+  assert.ok(Math.abs(U.uVehWearPlanes.value.x - 1.5) < 0.002 && Math.abs(U.uVehWearPlanes.value.y - 1.9) < 0.002,
+    'a box hull without fenders: the fender plane is its deck; each root binds its own planes');
   setVehicleGroundFromRoot(new THREE.Object3D(), paint, frameNo);
   assert.equal(U.uVehWearSoot.value.w, 0, 'a root without use-wear binds no soot');
   assert.equal(U.uVehWearHull.value.z, 0, 'nor a hull frame');
+  assert.equal(U.uVehWearPlanes.value.y, 0, 'nor planes');
 }
 
 console.log(`vehicleFieldWear.selftest: ${MAP_IDS.length} battlefields' soils follow their terrain; the coat, film, polish, `
   + 'chips, walkways, runs and soot grade, settle, stay soft, never light a dark surface past the cap and band-limit through '
-  + 'the shader text; roles, soils, frames, soot sources and strength bind per draw with no program variant');
+  + 'the shader text; recess grime, worn edges and varied specular read at 40 m and in the Garage, with no stripe where a '
+  + 'plate only runs past a plane; roles, soils, frames, planes, soot sources (per material) and strength bind per draw '
+  + 'with no program variant');

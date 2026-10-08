@@ -408,9 +408,21 @@ material out with `userData.cotWearRole = 'none'`). The pattern rides each mesh'
 (identical panels never repeat one pattern), the vehicle frame (height, up, stern) comes from the vertex stage, the
 runs lie across each face level with the ground (never along a mesh's own axis: a turned mesh drew diagonal bars), and
 every octave settles to its mean before it can sparkle. Use-wear reads what `installVehicleFieldWear` publishes at
-build end (before static batching): the hull frame measured from the unbatched plates, the exhaust (rear deck and plate,
-or the left flank for the T-54/55/62, T-64/72/90, PT-91, M-84 and BMPT lineage) and `rig_muzzle`; each draw binds one
-soot source (the gun's paint and bare steel the muzzle, the rest the exhaust), placed once per rendered frame. The role's
+build end (before static batching): the hull frame measured from the unbatched plates (the stern and bow stations, the
+engine deck and the half width) and the planes things stand on (the fenders' top, the turret roof and the turret's foot,
+each its bin's area-weighted mean height), the exhaust (rear deck and plate, or the left flank for the T-54/55/62,
+T-64/72/90, PT-91, M-84 and BMPT lineage) and `rig_muzzle`. Every per-draw value is the root's or the material's, never
+the drawn object's: three uploads a material's uniforms only when the material changes between draws, so a value set
+for one object goes stale inside a run of draws sharing that material. So the soot source is chosen per material (the
+materials only the gun draws with read the muzzle, the rest the exhaust), placed once per rendered frame. At every
+distance (the lead's round 5 brief: the media lane's blind pairs called the hulls clean): grime at the foot of whatever
+stands on the deck and the fenders (inside the hull's outline only, so the rear plate, the bow's plates and the skirts,
+which merely run past those heights, never take a stripe), on the turret roof (true walls only) and round the turret's
+foot, under the overhangs and in the wheel bays, in the battlefield's dried soil colour (a multiply alone barely read on
+dark green camouflage; the soil darkens a tan hull and browns a green one); dark worn edges along the fender lips and
+the rear deck's edge; the paint's sheen broken up with polished walkways and raised tops. Every thin band widens with
+the pixel's footprint and keeps its area (`cotWearBand`). A broad band down a cast turret's shoulder read as a smear in
+the sheet and was dropped. The role's
 z picks the use-wear class (1 painted metal: chips along the normal-map relief, rubbed walkways at the bow and the stern,
 thin grime runs; 2 track iron: up-facing faces worn smooth; 3 bare steel: contact spots worn smooth; 4 rubber and the
 scrolling band, 5 wheels), its w the soot it takes; classes 2, 4 and 5 keep the dark packed coat all round and take no

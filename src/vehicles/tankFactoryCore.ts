@@ -40,7 +40,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
-import { VEHICLE_FIELD_WEAR_GARAGE, installVehicleFieldWear, isVehicleGunPart } from './vehicleFieldWear.ts';
+import { VEHICLE_FIELD_WEAR_GARAGE, installVehicleFieldWear } from './vehicleFieldWear.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
@@ -1541,12 +1541,10 @@ function installVehicleGroundReference(root: THREE.Object3D): void {
   root.traverse((object) => {
     if (!(object as THREE.Mesh).isMesh) return;
     const before = object.onBeforeRender, after = object.onAfterRender;
-    // (round 5 field wear, 2026-10-08: a gun part reads the muzzle's soot, the rest the exhaust's; asked once here)
-    const gun = isVehicleGunPart(object);
     object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
-      // (the drawn material picks its coat, film and use-wear; the render's frame counter places the root's frame and
-      // soot sources once per frame, materials.ts)
-      setVehicleGroundFromRoot(root, args[4], args[0]?.info?.render?.frame ?? -1, gun);
+      // (round 5 field wear, 2026-10-08: the drawn material picks its coat, film, use-wear and soot source; the render's
+      // frame counter places the root's frame and soot sources once per frame, materials.ts)
+      setVehicleGroundFromRoot(root, args[4], args[0]?.info?.render?.frame ?? -1);
       before.apply(this, args);
     };
     object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
