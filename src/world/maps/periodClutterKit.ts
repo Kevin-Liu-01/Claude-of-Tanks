@@ -18,6 +18,8 @@ type Palette = readonly [number, number, number];
 /**
  * A map's setting year, where its identity gives one (REGIONAL-MAP-IDENTITIES, MAP-BEAUTIFICATION, MAP-LAYOUT-BRIEF's
  * regional kits, its own config, the period its audio scene flies over it); a map without one is set in the present.
+ * (Saltmere Bay is present day: the coordinator's ruling of 2026-10-08 — its references are present-day photographs of
+ * L'Aber Wrac'h and the Pays de Léon coast.)
  */
 export const MAP_SETTING_YEAR: Readonly<Record<string, number>> = Object.freeze({
   blackglass: 1937, // Suzhou Creek, Shanghai, autumn 1937
@@ -25,7 +27,6 @@ export const MAP_SETTING_YEAR: Readonly<Record<string, number>> = Object.freeze(
   longleaf: 1941, // the Louisiana Maneuvers of 1941
   verdant: 1943, // Prokhorovka, 1943
   autumn: 1944, // a Norman river-ford market town under the piston fighters and bombers
-  coastal: 1944, // Saltmere Bay: the Breton coast, 1944
   monsoon: 1944, // Kohima, 1944
   polders: 1944, // Zeeland, 1944
   reservoir: 1944, // the Rur dams, 1944-45
