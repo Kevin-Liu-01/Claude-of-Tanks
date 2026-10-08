@@ -385,16 +385,74 @@ export const garden: LandmarkBuilder = (ctx) => {
   const fence = String(ctx.params.fence || 'fencepicket'), pathW = Math.max(0, Number(ctx.params.path) || 0);
   const destructibles: GroundsDestructible[] = [];
   const hw = W / 2, hd = D / 2;
-  if (String(ctx.params.back) === 'fence') enclosure(destructibles, fence, { cx: 0, cz: 0, hw, hd }, { side: '+z', kind: 'gate' });
+  const look = ctx.variant;
+  /** A low hedge run from a to b (decor), its top rounded and a little uneven, its clipped faces a shade apart. */
+  const hedgeRun = (a: readonly [number, number], b: readonly [number, number]) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, n = Math.max(1, Math.round(len / 1.6));
+    for (let k = 0; k < n; k++) {
+      const t0 = len * k / n, t1 = len * (k + 1) / n, h = 0.85 + look() * 0.18, wv = 0.32 + look() * 0.06;
+      const p = (t: number, o: number, y: number): Vec3 => {
+        // (o across the run, to its right: every face below wound outward)
+        const x = a[0] + ux * t + uz * o, z = a[1] + uz * t - ux * o;
+        return [x, (ctx.ground?.(x, z) ?? 0) + y, z];
+      };
+      const colour = shade(BOX_GREEN, 0.9 + look() * 0.22);
+      // the two faces, the rounded top in two slopes, and its ends (a hedge's run is a few clipped blocks)
+      sink.quad('structureWood', p(t0, -wv, -0.05), p(t1, -wv, -0.05), p(t1, -wv * 0.9, h - 0.12), p(t0, -wv * 0.9, h - 0.12), { colour, decor: true });
+      sink.quad('structureWood', p(t1, wv, -0.05), p(t0, wv, -0.05), p(t0, wv * 0.9, h - 0.12), p(t1, wv * 0.9, h - 0.12), { colour: shade(colour, 0.9), decor: true });
+      sink.quad('structureWood', p(t0, -wv * 0.9, h - 0.12), p(t1, -wv * 0.9, h - 0.12), p(t1, 0, h), p(t0, 0, h), { colour: shade(colour, 1.08), decor: true });
+      sink.quad('structureWood', p(t1, wv * 0.9, h - 0.12), p(t0, wv * 0.9, h - 0.12), p(t0, 0, h), p(t1, 0, h), { colour: shade(colour, 1.0), decor: true });
+      sink.polygon('structureWood', [p(t0, wv, -0.05), p(t0, -wv, -0.05), p(t0, -wv * 0.9, h - 0.12), p(t0, 0, h), p(t0, wv * 0.9, h - 0.12)], { colour, decor: true });
+      sink.polygon('structureWood', [p(t1, -wv, -0.05), p(t1, wv, -0.05), p(t1, wv * 0.9, h - 0.12), p(t1, 0, h), p(t1, -wv * 0.9, h - 0.12)], { colour, decor: true });
+    }
+  };
+  // (`fence: 'hedge'`, round 2b at Monsoon, gauntlet wave 249: the beds "penned by picket fences": a colonial garden's
+  // clipped hedge round it, its gate a gap)
+  if (fence === 'hedge') {
+    const gate = Math.max(1.4, pathW + 0.6) / 2;
+    hedgeRun([hw, -hd], [hw, hd]);
+    hedgeRun([-hw, hd], [-hw, -hd]);
+    hedgeRun([hw, hd], [gate, hd]);
+    hedgeRun([-gate, hd], [-hw, hd]);
+    if (String(ctx.params.back) === 'fence') hedgeRun([-hw, -hd], [hw, -hd]);
+  } else if (String(ctx.params.back) === 'fence') enclosure(destructibles, fence, { cx: 0, cz: 0, hw, hd }, { side: '+z', kind: 'gate' });
   else {
     fenceRun(destructibles, fence, [hw, -hd], [hw, hd]);
     fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd]);
     fenceRun(destructibles, fence, [hw, hd], [-hw, hd], { gateAt: hw, gate: 'gate' });
   }
   if (pathW > 0) drapedPath(sink, 'plaster3', ctx.ground, [0, hd + 0.3], [0, -hd - 0.6], pathW, { lift: 0.04 });
-  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them
-  const look = ctx.variant;
+  // the borders: beds a metre wide inside the fence, their brick edging, the bushes in them; (`planting: 'shrubs'`, round
+  // 2b at Monsoon, gauntlet wave 249: the beds "green cuboids with flat pink, orange and red lids … toy boxes or
+  // beehives") low irregular masses of shrubs instead, rounded and overlapping, their flowers as cards among the leaves
+  const shrubs = String(ctx.params.planting) === 'shrubs';
+  /** One shrub: a rounded mass on the ground at (x, z), r across and h tall, its outline a little uneven. */
+  const shrub = (x: number, z: number, r: number, h: number) => {
+    const y = ctx.ground?.(x, z) ?? 0, k = [0.82 + look() * 0.3, 0.82 + look() * 0.3, 0.82 + look() * 0.3];
+    const leaf = shade(FOLIAGE[Math.floor(look() * FOLIAGE.length) % FOLIAGE.length], 0.9 + look() * 0.25);
+    revolve(sink, 'structureWood', x, z, [[r * 0.7 * k[0], y - 0.05], [r * k[1], y + h * 0.38], [r * 0.82 * k[2], y + h * 0.72], [r * 0.36, y + h * 0.95], [0, y + h]], 7,
+      { colour: leaf, decor: true }, look() * Math.PI);
+    if (look() < 0.75) {
+      const bloom = BLOOM[Math.floor(look() * BLOOM.length) % BLOOM.length];
+      for (let f = 0; f < 4; f++) {
+        const a = look() * Math.PI * 2, rr = r * (0.55 + look() * 0.35), fy = y + h * (0.55 + look() * 0.4), s2 = 0.09 + look() * 0.06;
+        const cx = x + Math.cos(a) * rr, cz = z + Math.sin(a) * rr, ox = -Math.sin(a) * s2, oz = Math.cos(a) * s2;
+        const card = { colour: shade(bloom, 0.9 + look() * 0.2), decor: true, fine: true };
+        // (a card seen from either side)
+        sink.quad('structureWood', [cx - ox, fy - s2, cz - oz], [cx + ox, fy - s2, cz + oz], [cx + ox, fy + s2, cz + oz], [cx - ox, fy + s2, cz - oz], card);
+        sink.quad('structureWood', [cx + ox, fy - s2, cz + oz], [cx - ox, fy - s2, cz - oz], [cx - ox, fy + s2, cz - oz], [cx + ox, fy + s2, cz + oz], card);
+      }
+    }
+  };
   const bed = (cx: number, cz: number, bw: number, bd: number) => {
+    if (shrubs) {
+      const along = bw > bd, len = Math.max(bw, bd), span = Math.min(bw, bd);
+      for (let t = -len / 2 + 0.3; t < len / 2 - 0.2; t += 0.55 + look() * 0.45) {
+        const off = (look() - 0.5) * span * 0.5, x = cx + (along ? t : off), z = cz + (along ? off : t);
+        shrub(x, z, 0.32 + look() * 0.32, 0.4 + look() * 0.55);
+      }
+      return;
+    }
     drapedRect(sink, 'structureWood', ctx.ground, { cx, cz, hw: bw / 2, hd: bd / 2 }, { lift: 0.07, cell: 1.5, emit: { colour: SOIL_DARK } });
     for (const [ex, ez, ew, ed] of [[cx, cz - bd / 2, bw / 2 + 0.06, 0.06], [cx, cz + bd / 2, bw / 2 + 0.06, 0.06], [cx - bw / 2, cz, 0.06, bd / 2], [cx + bw / 2, cz, 0.06, bd / 2]] as const) {
       drapedRect(sink, 'structureWood', ctx.ground, { cx: ex, cz: ez, hw: ew, hd: ed }, { lift: 0.13, cell: 2, skirt: 0.2, emit: { colour: BRICK_EDGE } });
@@ -422,7 +480,8 @@ export const garden: LandmarkBuilder = (ctx) => {
     // the clipped box hedges either side of the path inside the gate
     for (const sx of [-1, 1]) {
       const x = sx * (pathW / 2 + 0.55), z = hd - 1.6, y = ctx.ground?.(x, z) ?? 0;
-      sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
+      if (shrubs) hedgeRun([x, z - 0.9], [x, z + 0.9]);
+      else sink.span('structureWood', x - 0.3, y, z - 0.9, x + 0.3, y + 0.8, z + 0.9, { colour: BOX_GREEN, decor: true });
     }
   }
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT.gravel }, destructibles };

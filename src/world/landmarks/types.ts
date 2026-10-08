@@ -72,6 +72,12 @@ export interface LandmarkPlacement {
    */
   approaches?: readonly LandmarkApproach[];
   /**
+   * A lawn round the piece, the radius of a disc on it (m): no grass card, tall grass or litter grows there, the ground's
+   * own sward shows as a mown lawn (the landmarks lane, 2026-10-07, Monsoon round 2b: "knee-high savanna grass runs right
+   * up to the verandah steps"; compose.ts hands it to map.ts as a ground-cover hole).
+   */
+  lawn?: number;
+  /**
    * Its own tints over its builder's (weather.ts WeatherTints), where the map's kit weathers it: the kit's own surfaces
    * retinted, never another surface (the landmarks lane, 2026-10-07, Frontier's round 3: the Rathaus's and the church's
    * roofs the blue-grey of slate, the market's setts basalt). Each an rgb factor on the surface's colour, 0.2–1.6.

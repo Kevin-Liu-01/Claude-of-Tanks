@@ -12,7 +12,7 @@
 // lines, the net and its posts, the wire fence on its posts, the stone retaining wall where the ground falls away from
 // the terrace, and the trench the siege dug across it (`damage` > 0). The terrace authors its movement record (a
 // standable floor a hull drives onto from the uphill side, the retaining walls a hull meets from below).
-import { PartSink, faceBox, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
+import { PartSink, faceBox, rgb, shade, type Face, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { buildHouse, windowRhythm, withWear, type HouseDialect, type Opening, type RoofSpec, emitRoof, roofGeometry } from '../maps/regional/house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from '../maps/regional/openings.ts';
 import type { SimpleCollisionShape } from '../collision.ts';
@@ -185,79 +185,124 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
     const sag = (x: number) => 0.16 * (1 - (x / (CW + 0.9)) ** 2);
     sink.span('structureWood', x0, top + 0.05, -0.012, x1, top + 1.0 - Math.max(sag(x0), sag(x1)), 0.012, { colour: NET, decor: true, fine: k % 2 === 1 });
   }
-  // the banks: from the terrace's edge down to the slope at about 40 degrees, trodden earth (plaster3), sampled every
-  // 2 m along each side; the corners fan between their two sides' last samples
-  const BANK = 1.2, edgeOut = 0.5, bankMax = Math.max(0.5, Number(ctx.params.bank) || 4);
+  // the terrace's edges (round 2b, 2026-10-07; gauntlet wave 249: the banks "a flat, evenly lit, sand-coloured plane
+  // with a leopard-print blotch texture, a ruler-straight top and a crisp seam into the lawn … a box or table set on the
+  // hill"): where the ground falls from the terrace, a retaining wall of the hills' rubble stands on the slope — battered,
+  // its foot in the ground, darker toward its foot with the wet and the moss, streaked by the rain from its coping, ferns
+  // in its joints — capped with flat stones over the terrace's edge, a low parapet on it where the fall is more than a
+  // hand; where the ground stays at the terrace's level the turf meets the court's edge
+  const edgeOut = 0.5, BATTER = 0.14, look = ctx.variant;
+  const ex = Wt / 2 + edgeOut, ez = L / 2 + edgeOut;
   type Side = { a: [number, number]; b: [number, number]; n: [number, number] };
+  // the walls' line: the terrace's outline edgeOut beyond the court, each side corner to corner
   const sideList: Side[] = [
-    { a: [Wt / 2, -L / 2], b: [Wt / 2, L / 2], n: [1, 0] }, { a: [-Wt / 2, L / 2], b: [-Wt / 2, -L / 2], n: [-1, 0] },
-    { a: [Wt / 2, L / 2], b: [-Wt / 2, L / 2], n: [0, 1] }, { a: [-Wt / 2, -L / 2], b: [Wt / 2, -L / 2], n: [0, -1] },
+    { a: [ex, -ez], b: [ex, ez], n: [1, 0] }, { a: [-ex, ez], b: [-ex, -ez], n: [-1, 0] },
+    { a: [ex, ez], b: [-ex, ez], n: [0, 1] }, { a: [-ex, -ez], b: [ex, -ez], n: [0, -1] },
   ];
   const movement: SimpleCollisionShape[] = [];
+  const FERN: readonly Rgb[] = [rgb(0x3d5a2a), rgb(0x4a6a30), rgb(0x34502a)];
   for (const side of sideList) {
     const len = Math.hypot(side.b[0] - side.a[0], side.b[1] - side.a[1]), ux = (side.b[0] - side.a[0]) / len, uz = (side.b[1] - side.a[1]) / len;
-    const n = Math.max(2, Math.round(len / 2));
-    let reach = 0;
-    const inner: Array<[number, number, number]> = [], outer: Array<[number, number, number]> = [];
+    const [nx, nz] = side.n, n = Math.max(2, Math.round(len / 2));
+    // the samples: the wall's top on the line, its foot down the batter on the ground; a corner's foot mitred out along
+    // the line as far as down the batter, so two walls meet at their corner
+    const tops: Vec3[] = [], feet: Vec3[] = [];
+    let fall = 0;
     for (let k = 0; k <= n; k++) {
-      const t = len * k / n, ex = side.a[0] + ux * t + side.n[0] * edgeOut, ez = side.a[1] + uz * t + side.n[1] * edgeOut;
-      // the bank's foot: where the slope meets the fall from the terrace's level at the bank's angle
-      let d = 0.3;
-      for (let it = 0; it < 4; it++) d = Math.min(bankMax, Math.max(0.3, (top - g(ex + side.n[0] * d, ez + side.n[1] * d)) * BANK));
-      reach = Math.max(reach, d);
-      inner.push([ex, top - 0.02, ez]);
-      outer.push([ex + side.n[0] * d, g(ex + side.n[0] * d, ez + side.n[1] * d) - 0.15, ez + side.n[1] * d]);
+      const t = len * k / n, px = side.a[0] + ux * t, pz = side.a[1] + uz * t, ends = k === 0 ? -1 : k === n ? 1 : 0;
+      let d = BATTER * (top - g(px, pz) + 0.3), fx = px, fz = pz, gf = g(px, pz);
+      for (let it = 0; it < 3; it++) {
+        fx = px + nx * d + ux * d * ends; fz = pz + nz * d + uz * d * ends; gf = g(fx, fz); d = BATTER * Math.max(0, top - gf + 0.3);
+      }
+      fall = Math.max(fall, top - gf);
+      tops.push([px, top, pz]);
+      feet.push([fx, gf - 0.3, fz]);
     }
+    if (fall < 0.25) continue;
+    const parapet = fall > 0.6 ? 0.45 : 0;
+    // the stepped side keeps its parapet open over the flight's landing at the net line
+    const landing = stepSide !== 0 && nx === stepSide;
+    const gap = (t: number) => landing && Math.abs(t - len / 2) < 1.05;
     for (let k = 0; k < n; k++) {
-      // counter-clockwise seen from above and outside: along the terrace's edge, then down to the foot
-      sink.quad('plaster2', inner[k], inner[k + 1], outer[k + 1], outer[k], { decor: true });
-    }
-    // the low dry-stone wall along the edge where the bank falls more than half a metre (a gap for the steps)
-    const fall = Math.max(...outer.map((p) => top - p[1]));
-    if (fall > 0.6) {
-      // (for the stepped side, the wall leaves a gap over the flight at the net line)
-      const spans: Array<[number, number]> = stepSide !== 0 && side.n[0] === stepSide ? [[0, len / 2 - 1.3], [len / 2 + 1.3, len]] : [[0, len]];
-      for (const [t0, t1] of spans) {
-        const ax = side.a[0] + ux * t0, az = side.a[1] + uz * t0, bx = side.a[0] + ux * t1, bz = side.a[1] + uz * t1;
-        const nx = side.n[0], nz = side.n[1];
-        sink.span('stone', Math.min(ax, bx) + Math.min(0, nx * 0.5), top - 0.4, Math.min(az, bz) + Math.min(0, nz * 0.5),
-          Math.max(ax, bx) + Math.max(0, nx * 0.5), top + 0.62, Math.max(az, bz) + Math.max(0, nz * 0.5), { decor: true });
+      // counter-clockwise from outside: along the top, then down to the foot; darker toward the foot (the wet, the moss)
+      const a = tops[k], b = tops[k + 1], c = feet[k + 1], dft = feet[k];
+      const low = Math.min(c[1], dft[1]);
+      sink.quad('stone', a, b, c, dft, { shadeAt: (q) => 0.62 + 0.38 * Math.max(0, Math.min(1, (q[1] - low) / Math.max(0.5, top - low))) });
+      // the rain's runs from the coping, and the ferns in the joints of its lower half
+      const t0 = len * k / n, segLen = len / n;
+      for (let r = 0; r < 2; r++) {
+        if (look() < 0.45) continue;
+        const tt = t0 + look() * segLen, w = 0.12 + look() * 0.22, runLen = 0.6 + look() * Math.max(0.4, top - low - 0.9);
+        const fAt = (u: number, y: number): Vec3 => {
+          const s0 = Math.max(0, Math.min(1, (top - y) / Math.max(0.3, top - low))), px = side.a[0] + ux * u, pz = side.a[1] + uz * u;
+          const off = BATTER * (top - y) + 0.012;
+          void s0;
+          return [px + nx * off, y, pz + nz * off];
+        };
+        const yTop = top - 0.04, yBot = Math.max(low + 0.3, yTop - runLen);
+        sink.quad('stone', fAt(tt - w / 2, yTop), fAt(tt + w / 2, yTop), fAt(tt + w / 2, yBot), fAt(tt - w / 2, yBot),
+          { decor: true, shadeAt: (q) => 0.55 + 0.45 * Math.max(0, Math.min(1, (yTop - q[1]) / Math.max(0.3, yTop - yBot))) });
+      }
+      if (top - low > 0.9 && look() < 0.55) {
+        const tt = t0 + (0.2 + look() * 0.6) * segLen, y = low + 0.45 + look() * Math.max(0.1, (top - low) * 0.45);
+        const off = BATTER * (top - y) + 0.02, px = side.a[0] + ux * tt + nx * off, pz = side.a[1] + uz * tt + nz * off;
+        const colour = FERN[Math.floor(look() * FERN.length) % FERN.length];
+        for (let f = 0; f < 5; f++) {
+          // a frond: a narrow blade out from the joint, arching down
+          const ang = (f / 4 - 0.5) * 2.2 + (look() - 0.5) * 0.3, lenF = 0.35 + look() * 0.25;
+          const dx = nx * Math.cos(ang * 0.4) * 0.6 + ux * Math.sin(ang) * 0.8, dz = nz * Math.cos(ang * 0.4) * 0.6 + uz * Math.sin(ang) * 0.8;
+          const tip: Vec3 = [px + dx * lenF, y + 0.05 - lenF * (0.35 + Math.abs(ang) * 0.15), pz + dz * lenF];
+          const mid: Vec3 = [px + dx * lenF * 0.5, y + 0.12, pz + dz * lenF * 0.5];
+          const sx = -dz * 0.05, sz = dx * 0.05;
+          const frond = { colour: shade(colour, 0.85 + look() * 0.3), decor: true, fine: true };
+          const base: Vec3[] = [[px - sx, y, pz - sz], [px + sx, y, pz + sz], [mid[0] + sx * 1.6, mid[1], mid[2] + sz * 1.6], [mid[0] - sx * 1.6, mid[1], mid[2] - sz * 1.6]];
+          // (each blade seen from either side)
+          sink.quad('structureWood', base[0], base[1], base[2], base[3], frond);
+          sink.quad('structureWood', base[1], base[0], base[3], base[2], frond);
+          sink.polygon('structureWood', [base[3], base[2], tip], frond);
+          sink.polygon('structureWood', [base[2], base[3], tip], frond);
+        }
       }
     }
-    // the bank's footprint a hull meets from below (its foot to the terrace's edge)
-    const cxs = (side.a[0] + side.b[0]) / 2 + side.n[0] * (edgeOut + reach) / 2, czs = (side.a[1] + side.b[1]) / 2 + side.n[1] * (edgeOut + reach) / 2;
-    const lowest = Math.min(...outer.map((p) => p[1]));
-    if (top - lowest > 0.35) {
-      movement.push({ kind: 'obb', cx: cxs, cz: czs, hw: side.n[0] !== 0 ? (edgeOut + reach) / 2 : len / 2, hl: side.n[0] !== 0 ? len / 2 : (edgeOut + reach) / 2,
-        yaw: 0, y0: lowest - 0.3, y1: top });
+    // the parapet on the wall's top (open over the landing) and the coping: flat stones from the court's edge over it
+    const runs: Array<[number, number]> = landing ? [[0, len / 2 - 1.05], [len / 2 + 1.05, len]] : [[0, len]];
+    for (const [r0, r1] of runs) {
+      for (let tt = r0; tt < r1 - 0.05;) {
+        const l = Math.min(r1 - tt, 0.7 + look() * 0.6), te = r1 - (tt + l) < 0.3 ? r1 : tt + l;
+        const p0 = [side.a[0] + ux * tt, side.a[1] + uz * tt], p1 = [side.a[0] + ux * te, side.a[1] + uz * te];
+        const inX = -nx * (parapet > 0 ? 0.42 : edgeOut), inZ = -nz * (parapet > 0 ? 0.42 : edgeOut);
+        const x0 = Math.min(p0[0], p1[0], p0[0] + inX, p1[0] + inX) - (nx > 0 ? 0 : 0.06) * Math.abs(nx), x1 = Math.max(p0[0], p1[0], p0[0] + inX, p1[0] + inX) + (nx > 0 ? 0.06 : 0) * Math.abs(nx);
+        const z0 = Math.min(p0[1], p1[1], p0[1] + inZ, p1[1] + inZ) - (nz > 0 ? 0 : 0.06) * Math.abs(nz), z1 = Math.max(p0[1], p1[1], p0[1] + inZ, p1[1] + inZ) + (nz > 0 ? 0.06 : 0) * Math.abs(nz);
+        if (parapet > 0 && !gap((tt + te) / 2)) sink.span('stone', x0, top - 0.05, z0, x1, top + parapet, z1, { decor: true });
+        const yc = parapet > 0 && !gap((tt + te) / 2) ? top + parapet : top;
+        sink.span('stone', x0 - 0.04 * Math.abs(nz), yc, z0 - 0.04 * Math.abs(nx), x1 + 0.04 * Math.abs(nz), yc + 0.1, z1 + 0.04 * Math.abs(nx), { decor: true, shade: 1.06 });
+        tt = te + 0.015;
+      }
     }
+    // the wall a hull meets from below (its foot to the terrace's edge)
+    const reach = Math.max(...feet.map((f, k) => Math.hypot(f[0] - tops[k][0], f[2] - tops[k][2])));
+    const lowest = Math.min(...feet.map((f) => f[1]));
+    const cxs = (side.a[0] + side.b[0]) / 2 + nx * (reach - edgeOut) / 2, czs = (side.a[1] + side.b[1]) / 2 + nz * (reach - edgeOut) / 2;
+    movement.push({ kind: 'obb', cx: cxs, cz: czs, hw: nx !== 0 ? (edgeOut + reach) / 2 : len / 2, hl: nx !== 0 ? len / 2 : (edgeOut + reach) / 2,
+      yaw: 0, y0: lowest, y1: top + parapet });
   }
-  // the corners' fans between their sides' end samples (a quarter cone of earth)
-  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
-    const cx = sx * (Wt / 2 + edgeOut), cz = sz * (L / 2 + edgeOut);
-    const pts: Array<[number, number, number]> = [];
-    for (let k = 0; k <= 4; k++) {
-      const a = Math.atan2(sz, 0) * 0 + (sx > 0 ? 0 : Math.PI) + (sx > 0 === sz > 0 ? 1 : -1) * (Math.PI / 2) * k / 4;
-      const nx = Math.cos(a), nz = Math.sin(a);
-      let d = 0.3;
-      for (let it = 0; it < 4; it++) d = Math.min(bankMax, Math.max(0.3, (top - g(cx + nx * d, cz + nz * d)) * BANK));
-      pts.push([cx + nx * d, g(cx + nx * d, cz + nz * d) - 0.15, cz + nz * d]);
-    }
-    for (let k = 0; k < 4; k++) {
-      const tri = [[cx, top - 0.02, cz] as [number, number, number], pts[k], pts[k + 1]];
-      // wind each triangle to face up and out
-      const ux1 = tri[1][0] - tri[0][0], uz1 = tri[1][2] - tri[0][2], ux2 = tri[2][0] - tri[0][0], uz2 = tri[2][2] - tri[0][2];
-      sink.polygon('plaster2', ux1 * uz2 - uz1 * ux2 < 0 ? tri : [tri[0], tri[2], tri[1]], { decor: true });
-    }
-  }
-  // the flight of stone steps down the bank on the stepped side, at the net line
+  // the flight of stone steps down the stepped side, against its wall: a landing at the net line over the wall's line,
+  // then the treads along the wall's face, each a block to the ground
   if (stepSide !== 0) {
-    const x0 = stepSide * (Wt / 2 + edgeOut);
-    let y = top, x = x0, k = 0;
-    while (y - g(x + stepSide * 0.35, 0) > 0.1 && k < 24) {
-      const tread = 0.36, rise = Math.min(0.19, y - g(x + stepSide * tread, 0));
-      sink.span('stone', Math.min(x, x + stepSide * tread), y - rise - 0.25, -0.9, Math.max(x, x + stepSide * tread), y - rise + 0.02, 0.9, { decor: true });
-      x += stepSide * tread; y -= rise; k++;
+    const xIn = stepSide * ex, w = 1.3;
+    const block = (yTop: number, z0: number, z1: number) => {
+      const xa = xIn + stepSide * BATTER * Math.max(0, top - yTop), xb = xa + stepSide * w;
+      const gz = Math.min(g(xa, z0), g(xb, z0), g(xa, z1), g(xb, z1));
+      sink.span('stone', Math.min(xa, xb), gz - 0.3, z0, Math.max(xa, xb), yTop, z1, { decor: true });
+    };
+    block(top, -1.0, 1.0);
+    let y = top, z = 1.0;
+    for (let k = 0; k < 30; k++) {
+      const rise = 0.18, tread = 0.32, xo = xIn + stepSide * (BATTER * (top - y) + w * 0.5);
+      if (y - rise <= g(xo, z + tread) + 0.04) break;
+      y -= rise;
+      block(y, z, z + tread);
+      z += tread;
     }
   }
   // the fence: posts every 3 m round the terrace, rails and the wire's bands (a run torn down with the damage; open
@@ -303,7 +348,6 @@ export const tennisCourt: LandmarkBuilder = (ctx) => {
     movement.push({ kind: 'obb', cx: -Wt / 4 + Wt / 2 * j, cz: -L / 2 + L / 8 + L / 4 * i, hw: Wt / 4, hl: L / 8, yaw: 0, y0: top - 1.0, y1: top });
   }
   for (const sx of [-1, 1]) movement.push({ kind: 'obb', cx: sx * (CW + 0.9), cz: 0, hw: 0.05, hl: 0.05, yaw: 0, y0: top, y1: top + 1.07 });
-  // the court's clay (the plaster bucket in the clay's colour) and the trodden earth of its banks and worn patches
-  // (the banks in plaster2: rough grass gone to earth in patches, the hill's own green; the worn clay and the spoil in plaster3)
-  return { parts: sink.finish(), movement, tints: { plaster: [CLAY[0] * 1.5, CLAY[1] * 1.5, CLAY[2] * 1.5], plaster2: [0.5, 0.56, 0.36], plaster3: [0.62, 0.5, 0.38] } };
+  // the court's clay (the plaster bucket in the clay's colour), the worn clay and the spoil (plaster3), the walls' rubble
+  return { parts: sink.finish(), movement, tints: { plaster: [CLAY[0] * 1.5, CLAY[1] * 1.5, CLAY[2] * 1.5], plaster3: [0.62, 0.5, 0.38] } };
 };

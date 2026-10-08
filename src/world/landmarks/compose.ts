@@ -445,6 +445,8 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // a paved piece's ground grows no grass up through it (gauntlet round 2's captures: tall grass through Delta's brick
     // court and the paths' setts): discs over its footprint, each covering its cell, the cells no wider than the piece is
     // narrow (a path's run a metre at a time, a court's in 3 m cells)
+    // (a lawn round it, types.ts `lawn`: one disc of mown ground)
+    if (Number(placement.lawn) > 0) ctx.groundHole?.(placement.x, placement.z, Number(placement.lawn));
     if (GROUND_HOLE_KINDS.has(placement.kind)) {
       const cell = Math.min(3, Math.max(0.5, Math.min(hw, hl)));
       const nx = Math.max(1, Math.ceil(hw / cell)), nz = Math.max(1, Math.ceil(hl / cell)), cw = hw / nx, cl = hl / nz, r = Math.hypot(cw, cl);

@@ -112,10 +112,18 @@ export default {
     // a stripped roof patch, spalled render, soot over its windows); its garden before the porch — the picket fence and
     // gate, the gravel path to the steps of the porch, the flower borders and the box — and the gravel path on from the
     // garden's gate to the court's steps.
+    // Round 2b (2026-10-07; gauntlet wave 249: the terrace's bank "a flat, evenly lit, sand-coloured plane … a box or table
+    // set on the hill", the beds "toy boxes or beehives" penned by picket fences, savanna grass "right up to the verandah
+    // steps" with no lawn or drive): the court's terrace held by battered rubble walls (moss, rain runs, ferns, a coping, a
+    // low parapet, the steps down against the west wall); the garden hedged, its borders shrubs and flowers; mown lawns
+    // round the bungalow and the court (types.ts `lawn`); the gravel drive from road 4 up past the garden to the porch.
     landmarks: [
-      { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1, steps: -1 } },
-      { kind: 'colonialBungalow', x: -190, z: 262, yawDeg: 150, name: "the Deputy Commissioner's bungalow", params: { damage: 0.5 } },
-      { kind: 'garden', x: -180.9, z: 246.24, yawDeg: 150, name: "the DC's garden", params: { width: 14, depth: 10 } },
+      { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1, steps: -1 }, lawn: 32 },
+      { kind: 'colonialBungalow', x: -190, z: 262, yawDeg: 150, name: "the Deputy Commissioner's bungalow", params: { damage: 0.5 }, lawn: 28 },
+      { kind: 'garden', x: -180.9, z: 246.24, yawDeg: 150, name: "the DC's garden", params: { width: 14, depth: 10, fence: 'hedge', planting: 'shrubs' } },
+      // (the drive: from road 4's verge north-west up past the garden's west hedge to the porch's side, two runs of gravel)
+      { kind: 'path', x: -172.4, z: 205.85, yawDeg: 157.32, ground: 'veto', name: "the drive from the road", params: { length: 68.95, width: 3.2, surface: 'gravel' } },
+      { kind: 'path', x: -188.25, z: 241.97, yawDeg: 150.06, ground: 'veto', name: "the drive to the porch", params: { length: 12.02, width: 3.2, surface: 'gravel' } },
       // (the path leaves the garden's gate outward, clear of its front fence, and stops at the foot of the court's steps:
       // laid into the finished map, ground 'veto', an open surface reserving no ground)
       { kind: 'path', x: -169.47, z: 245.43, yawDeg: 55.81, ground: 'veto', name: "the path from the garden to the court's steps", params: { length: 19.05, width: 1.4, surface: 'gravel' } },
