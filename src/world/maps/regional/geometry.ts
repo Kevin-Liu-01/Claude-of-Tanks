@@ -123,6 +123,11 @@ export class PartSink {
    * wall it has cut openings in; 0 everywhere else, where a unit sits on a solid face).
    */
   recess = 0;
+  /**
+   * The paint of a coloured bucket's parts emitted with no colour of their own (null: the neutral grey). A kit sets it
+   * round a body whose walls it builds in a coloured bucket (a painted weatherboard cottage: Queenstown's cottageRow).
+   */
+  paint: Rgb | null = null;
   constructor(uvOffset: readonly [number, number] = [0, 0]) { this.uvOffset = uvOffset; }
 
   /** Emit `body` with every point turned `yaw` about Y and moved by (x, y, z); UVs stay in the body's own frame. */
@@ -169,7 +174,7 @@ export class PartSink {
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
     const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
-    const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
+    const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
     const mode = opts.uv ?? WORLD;
