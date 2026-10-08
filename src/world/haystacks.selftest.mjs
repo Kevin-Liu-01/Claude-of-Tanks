@@ -257,8 +257,22 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
 {
   const props6 = () => readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
   const bale = DESTRUCTIBLE_TYPES.bale, cock = HAYCOCK_BALE;
-  for (const key of ['cls', 'mat', 'contact', 'r', 'h', 'shape', 'collisionR', 'broken']) {
+  for (const key of ['cls', 'mat', 'contact', 'r', 'h', 'shape', 'collisionR']) {
     assert.equal(cock[key], bale[key], `the haycock keeps the round bale's ${key}`);
+  }
+  // (b39) its own broken state — the cock torn open, not the round bale's burst roll — on the round bale's draws
+  assert.notEqual(cock.broken, bale.broken, 'the haycock breaks as a haycock');
+  {
+    let cockDraws = 0, rollDraws = 0;
+    const a = mulberry32(5), b = mulberry32(5);
+    const gc = cock.broken(() => { cockDraws++; return a(); }), gb = bale.broken(() => { rollDraws++; return b(); });
+    assert.equal(cockDraws, rollDraws, `the torn haycock spends the round bale's broken draws (${rollDraws}): every later pool keeps its geometry`);
+    assert.equal(a(), b(), 'the stream after them unchanged');
+    const tris = (gc.index ? gc.index.count : gc.attributes.position.count) / 3;
+    assert.ok(tris <= 450, `the torn haycock within a broken stack's budget (${tris} triangles)`);
+    const uvc = gc.attributes.uv;
+    for (let i = 0; i < uvc.count; i++) assert.ok(inBands(uvc.getY(i)), `the torn haycock's print in the bands (v ${uvc.getY(i).toFixed(3)})`);
+    gc.dispose(); gb.dispose();
   }
   let draws = 0, baleDraws = 0;
   cock.build(() => { draws++; return 0.5; });

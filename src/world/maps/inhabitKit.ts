@@ -2821,8 +2821,16 @@ export const DESTRUCTIBLE_TYPES = {
  * were from its convex cylinder (one outline, not the dome's ear-clipped dozens).
  */
 export const HAYCOCK_BALE: DestructiblePropType = {
-  ...DESTRUCTIBLE_TYPES.bale, build: () => buildHaycock(), contactProxy: () => buildHaycockContactProxy(),
+  ...DESTRUCTIBLE_TYPES.bale, build: () => buildHaycock(), broken: bHaycockBroken, contactProxy: () => buildHaycockContactProxy(),
 };
+/**
+ * (b39) The haycock torn open (haystackKit spilledStack), not the round bale's burst roll: a bite out of the cock, its
+ * hay fanned out of the bite, clumps thrown beyond. It spends the round bale's legacy heap's draws first, as the burst
+ * bale does, so every later pool keeps its geometry.
+ */
+function bHaycockBroken(rng: Rng): THREE.BufferGeometry {
+  return spilledStack(spentDraws(bBaleBrokenLegacy, rng, 0x4acc), { R: 0.86, H: 1.36 });
+}
 
 /**
  * (b39; the audit's "2-3 plain box chunks") The coursed module breached, in its own courses: each course's blocks gone
