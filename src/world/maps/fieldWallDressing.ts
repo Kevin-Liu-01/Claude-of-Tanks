@@ -286,6 +286,25 @@ export function buildWallTumble(
 
 // ------------------------------------------------------------------------------------------------ the turf
 
+/**
+ * (b44; gauntlet wave 272, the boulders' beds read as a tan ring) what the chunk under a vertex carries, for a fillet the
+ * world draws with the ground's own material: the drawn ground's normal (terrain.ts terrainNearMeshNormalAt — the
+ * material's slope laws read it, and a fillet's own 10–20° dropped the fields, the soil and the litter the level ground
+ * wears) and the strand's inverted shore byte. Absent, the fillet keeps its own normals and no shore byte.
+ */
+interface WallTurfSurface {
+  normalAt(x: number, z: number, out: THREE.Vector3): THREE.Vector3;
+  shoreByte(x: number, z: number): number;
+}
+
+/**
+ * (b44) The share of a ground fillet's own form in its light, by ring out from the face — the hidden ring inside the
+ * face, the face, then out to the toe — the rest the drawn ground's normal: the bank reads, gently, near the face (under
+ * the ~9° where the ground material's first slope law begins) and not at all at the toe, where it goes under the ground,
+ * so it has no edge. The walls' turf and the boulders' beds (props.ts buildRockBeds) both.
+ */
+export const GROUND_FILLET_FORM_SHARE: readonly number[] = Object.freeze([0.3, 0.3, 0.2, 0.08, 0]);
+
 /** The turf fillet's profile across its reach: shares of it out from the face, and of the lip there (the toe below). */
 export const WALL_TURF_OUT: readonly number[] = Object.freeze([0, 0.3, 0.6, 1]);
 const WALL_TURF_RISE: readonly number[] = Object.freeze([1, 0.42, 0.08, 0]);
@@ -305,7 +324,7 @@ export const WALL_TURF_SINK_M = 0.05;
  */
 export function buildWallTurf(
   meshAt: (x: number, z: number) => number, foldAt: ((x: number, z: number) => number) | null,
-  ax: number, az: number, bx: number, bz: number, half: number, seed: number,
+  ax: number, az: number, bx: number, bz: number, half: number, seed: number, surface: WallTurfSurface | null = null,
 ): THREE.BufferGeometry | null {
   const len = Math.hypot(bx - ax, bz - az);
   if (len < 0.8) return null;
@@ -314,7 +333,8 @@ export function buildWallTurf(
   const ext = -0.1, step = 0.4;
   const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
   const cols = WALL_TURF_OUT.length + 1; // the hidden row inside the face, then the profile
-  const positions: number[] = [], fold: number[] = [], index: number[] = [];
+  const positions: number[] = [], normals: number[] = [], fold: number[] = [], shore: number[] = [], index: number[] = [];
+  const groundN = new THREE.Vector3();
   const foldByte = (x: number, z: number): number => {
     if (!foldAt) return 0;
     const f = foldAt(x, z);
@@ -339,6 +359,11 @@ export function buildWallTurf(
           : o >= 1 ? -WALL_TURF_SINK_M * taper : lip * WALL_TURF_RISE[k - 1] - (o > 0.45 ? 0.012 * taper : 0));
         positions.push(x, y, z);
         fold.push(foldByte(x, z));
+        if (surface) {
+          surface.normalAt(x, z, groundN);
+          normals.push(groundN.x, groundN.y, groundN.z);
+          shore.push(surface.shoreByte(x, z));
+        }
       }
     }
     for (let i = 0; i < along; i++) {
@@ -354,6 +379,17 @@ export function buildWallTurf(
   g.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
   g.setIndex(index);
   g.computeVertexNormals();
+  if (surface) {
+    // the drawn ground's light, a share of the fillet's own form by its column out from the face
+    const n = g.getAttribute('normal') as THREE.BufferAttribute;
+    for (let i = 0; i < n.count; i++) {
+      const share = GROUND_FILLET_FORM_SHARE[i % cols], gx = normals[i * 3], gy = normals[i * 3 + 1], gz = normals[i * 3 + 2];
+      const x = gx + share * (n.getX(i) - gx), y = gy + share * (n.getY(i) - gy), z = gz + share * (n.getZ(i) - gz);
+      const l = Math.hypot(x, y, z) || 1;
+      n.setXYZ(i, x / l, y / l, z / l);
+    }
+    g.setAttribute('shore', new THREE.BufferAttribute(Uint8Array.from(shore), 1, true));
+  }
   return g;
 }
 
@@ -479,7 +515,7 @@ export interface WallDressingOptions {
    * (b18) The ground the turf banks against the dry-stone walls' feet: the nearest terrain mesh's height and the
    * ground's fold (buildWallTurf). Absent: no turf (a snow map's drifts and the phones' walls go without).
    */
-  turf?: { meshAt(x: number, z: number): number; foldAt: ((x: number, z: number) => number) | null };
+  turf?: { meshAt(x: number, z: number): number; foldAt: ((x: number, z: number) => number) | null; surface?: WallTurfSurface };
 }
 
 export interface WallDressing {
@@ -549,7 +585,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       if (foot) out.wall.push(foot);
       // (b18) the soil and turf banked against its feet, for the ground's own material (none under a snow load)
       if (o.turf && !o.snow && !o.mobile) {
-        const turf = buildWallTurf(o.turf.meshAt, o.turf.foldAt, ax, az, bx, bz, half, placeSeed(ax, az, 0x7a2f));
+        const turf = buildWallTurf(o.turf.meshAt, o.turf.foldAt, ax, az, bx, bz, half, placeSeed(ax, az, 0x7a2f), o.turf.surface ?? null);
         if (turf) turfs.push(turf);
       }
       if (o.snow) {
