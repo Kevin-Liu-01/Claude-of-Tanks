@@ -10052,7 +10052,7 @@ ${snowCap ? `
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
-    clutter: (clutter) => pendingClutter.push(clutter),
+    clutter: (clutter) => pendingClutter.push(clutter), buildings: buildingFeatures,
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
