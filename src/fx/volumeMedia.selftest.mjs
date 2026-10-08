@@ -375,6 +375,12 @@ function captureContext(seed) {
 {
   const craters = createCraterMarks();
   assert.equal(craters.count, 0);
+  // (wave 273: near-black stamped ovals; a clean dark oval in snow) the surface weathers with age, its blanket is
+  // pocked with clods and secondary craters, and snow's blanket is dirty snow sprayed with soil
+  const fragSrc = craters.mesh.material.fragmentShader;
+  assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 240\.0, age \);/, 'soot weathers away with age');
+  assert.match(fragSrc, /float pock = blanket \* step\( 0\.82, cellH \)/, 'the blanket is pocked');
+  assert.match(fragSrc, /vec3 dirty = vec3\( 0\.46, 0\.47, 0\.49 \);/, 'snow shows dirty snow and soil spray');
   assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
   assert.equal(craters.count, 96, 'the marks ring keeps the latest 96');

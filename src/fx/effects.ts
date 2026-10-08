@@ -5181,7 +5181,7 @@ function* createFxSteps(
         const settled = e.settled === true;
         const now = particles.getTime();
         craters.crater({ x: e.x, z: e.z, radiusM: e.radiusM, p1, p2, p3, surface, climate: groundClimate(), explosive: true,
-          seed: (e.seed % 65536) / 65536, birth: settled ? now - 10 : now }, deformedGroundY);
+          seed: (e.seed % 65536) / 65536, birth: settled ? now - 600 : now }, deformedGroundY);  // settled: an old, weathered crater
         if (!settled && blast) craterEjecta(blast, e.x, e.z, e.radiusM, surface, deformedGroundY, 0);
       });
       onFxEvent(bus, 'shell:fired', (e) => {

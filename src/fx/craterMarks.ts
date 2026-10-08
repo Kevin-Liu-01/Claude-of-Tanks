@@ -146,19 +146,41 @@ void main() {
   vec3 nFlank = normalize( vec3( out2.x * 0.6, 1.0, out2.y * 0.6 ) );
   vec3 n = normalize( mix( vec3( 0.0, 1.0, 0.0 ), wall > crest ? nWall : nFlank, clamp( wall + crest, 0.0, 1.0 ) ) );
   float ndl = clamp( dot( n, uSunDir ), 0.0, 1.0 );
-  // the place's turned soil: the pit darkest and wettest, the rim broken soil, the ejecta the soil itself
+  // (wave 273: near-black ovals and slots stamped on the ground; a neat dark oval in clean snow) the place's turned soil,
+  // weathered with age: the pit a moist darker soil (not black), the raised rim broken soil catching the light, the
+  // ejecta blanket the soil itself thrown out in rays and clumps, pocked with clods and small secondary craters; soot
+  // only at the blast's heart and along a few rays, fading as the crater ages (a late joiner's craters are old)
+  float age = uTime - vInfo.x;
+  float fresh = 1.0 - smoothstep( 20.0, 240.0, age );
   vec3 soil = vSoil.rgb;
-  vec3 pitC = soil * 0.38, rimC = soil * 0.72, ejC = soil;
-  if ( kind == 2 ) ejC = vec3( 0.32, 0.33, 0.35 ); // snow: dark soil in the bowl and on the rim, white powder thrown out
+  vec3 pitC = soil * ( 0.5 + 0.18 * fine ), rimC = soil * ( 0.9 + 0.2 * clumps ), ejC = soil * ( 0.82 + 0.3 * fine );
+  if ( kind == 2 ) {
+    // snow: dark soil in the bowl and on the rim; the blanket dirty snow, soil sprayed out along the rays
+    vec3 dirty = vec3( 0.46, 0.47, 0.49 );
+    ejC = mix( dirty, soil * 1.4, clamp( 0.25 + 0.55 * smoothstep( 0.45, 0.75, rays ) + 0.3 * smoothstep( 0.6, 0.85, clumps ), 0.0, 1.0 ) );
+    rimC = mix( soil, dirty, 0.18 );
+  }
   vec3 col = mix( ejC, rimC, clamp( crest + wall * 0.6 + churn * 0.35, 0.0, 1.0 ) );
   col = mix( col, pitC, pit );
-  col *= 0.75 + 0.5 * fine;
-  // soot: the blast's black heart and streaks along the rays
-  float soot = explosive * ( pit * 0.85 + wall * 0.6 + smoothstep( 0.55, 0.8, rays ) * blanket * 0.55 ) * ( 0.7 + 0.3 * fine );
-  col = mix( col, vec3( 0.007, 0.006, 0.005 ), clamp( soot, 0.0, 0.88 ) );
-  float a = max( max( pit, wall ), max( max( crest * 0.95, churn * 0.9 ), ejecta * 0.85 ) );
-  a = max( a, blanket * ( 0.18 + 0.22 * explosive ) * smoothstep( 0.3, 0.6, fine ) );
-  a *= vSoil.a * smoothstep( 0.0, 0.35, uTime - vInfo.x );  // the ejecta lands over the first third of a second
+  col *= 0.8 + 0.4 * fine;
+  // pocks on the blanket: thrown clods (dark) and the small craters they punched (a dark dot in a lighter ring)
+  vec2 cellP = vDisc * ( crater ? 16.0 : 11.0 ) + so;
+  vec2 cellI = floor( cellP ), cellF = fract( cellP ) - 0.5;
+  float cellH = h21( cellI + 3.7 );
+  vec2 off = vec2( h21( cellI + 11.1 ), h21( cellI + 23.9 ) ) - 0.5;
+  float d = length( cellF - off * 0.5 );
+  float pock = blanket * step( 0.82, cellH ) * ( 1.0 - smoothstep( 0.08, 0.16, d ) );
+  float pockRing = blanket * step( 0.93, cellH ) * smoothstep( 0.12, 0.18, d ) * ( 1.0 - smoothstep( 0.2, 0.3, d ) );
+  col = mix( col, soil * 0.45, pock * 0.8 );
+  col = mix( col, rimC * 1.1, pockRing * 0.6 );
+  // soot: the blast's black heart and a few streaks along the rays, weathering away
+  float soot = explosive * ( ( 1.0 - smoothstep( 0.0, 0.55, q ) ) * 0.75 + wall * 0.22 + smoothstep( 0.62, 0.85, rays ) * blanket * 0.3 )
+    * ( 0.7 + 0.3 * fine ) * ( 0.3 + 0.7 * fresh );
+  col = mix( col, vec3( 0.012, 0.011, 0.01 ), clamp( soot, 0.0, 0.8 ) );
+  float a = max( max( pit, wall ), max( max( crest * 0.97, churn * 0.92 ), ejecta * 0.9 ) );
+  a = max( a, blanket * ( 0.3 + 0.25 * explosive ) * smoothstep( 0.25, 0.55, fine ) );
+  a = max( a, max( pock, pockRing ) * 0.9 );
+  a *= vSoil.a * smoothstep( 0.0, 0.35, age );  // the ejecta lands over the first third of a second
   if ( a < 0.01 ) discard;
   col *= uSunCol * ( 0.35 + 0.65 * ndl ) + uSkyCol;
   #ifdef USE_FOG
