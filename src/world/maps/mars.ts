@@ -21,6 +21,9 @@ import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
+/** The fractured blocks' basalt (sceneryRocks.ts 'breccia'): dark rust, the dust paler at the foot. */
+const MARS_BASALT: readonly [number, number, number] = [0.03, 0.36, 0.3];
+
 export default {
   id: 'mars',
   name: 'Olympus Basin',
@@ -191,6 +194,19 @@ export default {
     },
   },
 
+  // The hitbox lane (2026-10-08; round 2): the stones' own colliders let the fights round the station through where the
+  // boulders' old prisms had stood, and bravo, deploying north, fell from 53.8 to 41.2 % of the swap-balanced games
+  // (batch 5's fairness at 80): its tanks died more 40-100 m north of the station (f17's death census; round 2's kill trace). Fields of the
+  // basin's own shattered basalt there, size-graded, half sunk in the dust banked against them, give bravo's line the
+  // cover the prisms had faked.
+  scenery: {
+    rocks: [
+      { form: 'blocks', geology: 'breccia', x: -14, z: 106, radius: 6, height: 2.6, yawDeg: 30, tone: MARS_BASALT, name: 'the basalt blocks north of the station' },
+      { form: 'blocks', geology: 'breccia', x: -62, z: 104, radius: 6, height: 2.4, yawDeg: 110, tone: MARS_BASALT, name: 'the basalt blocks north-west of the station' },
+      { form: 'blocks', geology: 'breccia', x: 41, z: 58, radius: 6, height: 2.5, yawDeg: 160, tone: MARS_BASALT, name: 'the basalt blocks north-east of the station' },
+      { form: 'blocks', geology: 'breccia', x: -9, z: 56, radius: 5.5, height: 2.4, yawDeg: 70, tone: MARS_BASALT, name: 'the basalt blocks by the north road' },
+    ],
+  },
   horizon: {
     baseHex: 0x6a3a2b, amp: 1.2, style: 'mesa', banding: 0.22,
     rockHex: 0x8a4a34, haze: 0.38, grain: 0.85,
