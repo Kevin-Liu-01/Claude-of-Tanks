@@ -153,6 +153,12 @@ export default {
     // (the Redrock lane, 2026-10-07: no tree on a dome's cap or a jebel's top — the floor, the ramps and the dunes lie
     // under 15 m, the domes' caps over 22 m)
     treeCeilingY: 16,
+    // (the Redrock lane: each tree's, sapling's and bush's draws its own, so the walls and domes refusing a seat move no
+    // other tree — the shared stream had turned the halves' tree cover 100/102 into 136/87; and the halves either side of
+    // the outpost hold the same cover, as the floor's strongpoints, tracks and springs turn about it — six or seven open
+    // groves fall three to one side as often as not, and the swap test's north share followed the trees)
+    keyedPlacement: true,
+    coverHalvesAbout: { x: 8, z: 0 },
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
     // are cured straw, as Sirocco's are. Trees round 4 (2026-10-04, the gauntlet's wave 50: "olive reed tufts", "flat,
     // uniformly saturated billboards"): Wadi Rum's tussocks are sun-bleached — a pale buff, a third of the straw's

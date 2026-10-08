@@ -82,11 +82,11 @@
       "concealers": 10433
     },
     "badlands": {
-      "bytes": 761510,
-      "sha256": "61a73fd6d898dcc05501fa435ad3457e835da196211c59c7554023169ade958c",
-      "obstacles": 1511,
-      "colliders": 1167,
-      "concealers": 306
+      "bytes": 760122,
+      "sha256": "69a8b401ba7cd0e484a9aa23eca36c96029a1b2210ea0945d1091163db4c1ef8",
+      "obstacles": 1490,
+      "colliders": 1146,
+      "concealers": 282
     },
     "monsoon": {
       "bytes": 2004076,
