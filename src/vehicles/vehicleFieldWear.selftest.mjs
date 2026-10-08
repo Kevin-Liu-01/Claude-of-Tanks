@@ -186,6 +186,14 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
     'polished track iron on its up-facing faces: dark bare steel, not a pale plank');
   const ironSide = run({ wearRole: IRON, wearUp: 0, wearH: 0.9, wearN2: 0.8, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
   assert.ok(ironSide.wearMetal < 0.25, 'not on its sides');
+  // the track's top run and the tyres keep the dark packed coat, never the pale splash (wave 264: "a bright white outline
+  // traces both track runs"); a painted plate at the same height takes the paler splash
+  const desertSoil = soilVec(vehicleFieldSoil('desert'));
+  for (const role of [IRON, [0.9, 0.5, 4, 0.6]]) {
+    const top = run({ wearRole: role, wearUp: 0, wearH: 0.85, wearN1: 0.5, wearN2: 0.5, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
+    const plate = run({ wearRole: [1, 1, 0, 0], wearUp: 0, wearH: 0.85, wearN1: 0.5, wearN2: 0.5, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
+    assert.ok(luma(top.wearAlbedo) < luma(plate.wearAlbedo) * 0.7, 'the running gear keeps the dark deep coat at its top');
+  }
   let worn = 0;
   for (let i = 0; i <= 10; i++) if (run({ wearRole: STEEL, wearH: 2, wearN1: i / 10, wearN2: i / 10, wearMetal: 0.4 }).wearMetal > 0.5) worn++;
   assert.ok(worn > 0 && worn < 8, 'bare steel is polished in spots, not all over');

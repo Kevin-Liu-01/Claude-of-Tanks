@@ -209,7 +209,8 @@ export function setVehicleFieldSoil(mapId: string | null | undefined): void {
 // ---------------------------------------------------------------------------------------------------------- roles
 // (x coat, y settled film, z use-wear class, w soot): how much of each a material takes. Use-wear classes: 1 painted
 // metal (chips along its plate seams, bolts and rings, boots' rubbing on the walkways, grime and rust streaks), 2 track
-// iron (polished where the wheels run and the ground grinds), 3 bare steel (polished where hands and tools rub). Rubber,
+// iron (polished where the wheels run and the ground grinds), 3 bare steel (polished where hands and tools rub), 4 tyre
+// rubber (none); 2 and 4 wear the deep coat at every height. Rubber,
 // tracks and wheels take the coat in full; cloth and wood keep a little less of the thrown coat and all of the film;
 // glass sheds most; the wheel bays' near-black recess panels, the wreck's char and every alpha-cut card (nets, leaves,
 // garnish, wire grids) take none (an alpha-cut cord near the ground lit almost white under round 4's coat: "the hem
@@ -219,7 +220,9 @@ const ROLE_PAINT = Object.freeze(new THREE.Vector4(1, 1, 1, 1));
 const ROLE_BARREL = Object.freeze(new THREE.Vector4(1, 1, 0, 1));
 // (no plate use-wear on the wheels: a streak or chip in a wheel's own frame would turn with it like a painted stripe)
 const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.9, 0.6, 0, 0.6));
-const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0.5, 0, 0.6));
+// (class 4: no use-wear, but like the track iron it wears the packed deep coat all the way up, not the drier, paler
+// splash: a pale top run read as "a bright white outline traces both track runs" on wave 264's M60A1)
+const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0.5, 4, 0.6));
 const ROLE_IRON = Object.freeze(new THREE.Vector4(0.9, 0.6, 2, 0.6));
 const ROLE_STEEL = Object.freeze(new THREE.Vector4(0.9, 0.8, 3, 1));
 const ROLE_SOFT = Object.freeze(new THREE.Vector4(0.85, 1, 0, 0.8));
@@ -555,7 +558,9 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 	float n2 = mix( 0.5, wearN2, wearNear );
 	float lineH = wearH - wearBack * 0.35 + ( n1 - 0.5 ) * 0.6 + ( n2 - 0.5 ) * 0.14;
 	float coat = 1.0 - smoothstep( 0.2, 1.45, lineH );
-	float deep = clamp( 1.0 - smoothstep( 0.05, 0.75, lineH ) + ( n1 - 0.5 ) * 0.5, 0.0, 1.0 );
+	// track iron and rubber (classes 2 and 4) keep the packed deep coat at every height
+	float gearCoat = step( 1.5, wearRole.z ) * ( 1.0 - step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 ) );
+	float deep = max( clamp( 1.0 - smoothstep( 0.05, 0.75, lineH ) + ( n1 - 0.5 ) * 0.5, 0.0, 1.0 ), gearCoat );
 	vec3 coatCol = mix( soilSplash.rgb, soilDeep.rgb, deep ) * ( 0.75 + 0.5 * n2 );
 	// a coat far paler than the surface under it (desert dust on black rubber) lies as a film, not in patches: broken up
 	// as hard as a dark coat, it reads as holes
@@ -577,7 +582,7 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 	float settleAmt = clamp( settle * wearStrength, 0.0, 1.0 ) * 0.55;
 	wearAlbedo = mix( wearAlbedo, soilSettle.rgb * ( 0.92 + 0.16 * n1 ), settleAmt );
 	wearRough = mix( wearRough, 1.0, settleAmt );
-	float useW = clamp( wearStrength * 1.6, 0.0, 1.0 );
+	float useW = wearStrength; // (the Garage's light film keeps its use-wear as light)
 	if ( wearNear > 0.0 ) {
 		// up close only (the fine octave resolves): spatter, polish, chips, rubbed walkways, streaks
 		float spatZone = smoothstep( 0.25, 0.6, wearH ) * ( 1.0 - smoothstep( 0.6, 1.4, lineH - 0.3 ) ) * soilSplash.a;
@@ -588,7 +593,7 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		wearRough = mix( wearRough, mix( 1.0, 0.5, soilDeep.a ), spatAmt );
 		float isPaint = step( 0.5, wearRole.z ) * step( wearRole.z, 1.5 );
 		float isIron = step( 1.5, wearRole.z ) * step( wearRole.z, 2.5 );
-		float isSteel = step( 2.5, wearRole.z );
+		float isSteel = step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 );
 		float polish = isIron * smoothstep( 0.45, 0.85, wearUp ) * ( 1.0 - smoothstep( 1.15, 1.4, wearH ) )
 			* ( 0.4 + 0.6 * smoothstep( 0.35, 0.65, n2 ) );
 		polish = max( polish, isSteel * smoothstep( 0.58, 0.72, n2 * 0.6 + n1 * 0.4 ) * 0.8 ) * useW * wearNear;
