@@ -51,7 +51,7 @@ interface TallGrassField {
 
 /** The borders lane (2026-10-08): how far past the square's edge the sward grows on the ring's near band (m). The square's
  * own last band (474–512 m) grows it as the square does; past the edge the ring's surface carries it. */
-export const TALL_GRASS_OUTSIDE_M = 170;
+export const TALL_GRASS_OUTSIDE_M = 120;
 const SQUARE_EDGE_M = 511.5;
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -553,7 +553,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // hedges and crops and the exits' carriageways stand in for them; the sward thins out over its last 70 m.
     const outside = edgeR > SQUARE_EDGE_M;
     if (outside && !(field._ringSurfaceAt && edgeR <= SQUARE_EDGE_M + TALL_GRASS_OUTSIDE_M)) return;
-    let keep = outside ? 1 - smoothstep(TALL_GRASS_OUTSIDE_M - 70, TALL_GRASS_OUTSIDE_M, edgeR - SQUARE_EDGE_M) : 1;
+    let keep = outside ? 1 - smoothstep(TALL_GRASS_OUTSIDE_M - 60, TALL_GRASS_OUTSIDE_M, edgeR - SQUARE_EDGE_M) : 1;
     let ringY = Number.NaN;
     if (outside) {
       ringY = field._ringSurfaceAt!(x, z);
