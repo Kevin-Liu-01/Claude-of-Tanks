@@ -350,6 +350,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/facetedSlab.selftest.mjs',
     'src/vehicles/profiles/nationalBaseShell.selftest.mjs',
     'src/vehicles/profiles/nationalRussiaChevrons.selftest.mjs',
+    'src/vehicles/profiles/chineseChevronEra.selftest.mjs',
+  'src/vehicles/profiles/fieldEquipment.selftest.mjs',
     'src/vehicles/profiles/chineseFuelDrum.selftest.mjs',
     'src/vehicles/profiles/oplotWing.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
