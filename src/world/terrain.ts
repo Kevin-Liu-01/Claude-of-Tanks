@@ -2,7 +2,7 @@ import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadG
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
-import { continuedGroundAt } from './horizonSurface.ts';
+import { continuedGroundAt, ringMeshSurfaceSampler } from './horizonSurface.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -549,6 +549,9 @@ export interface HeightField {
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
    * the ring's own height there (`surfaceY`) leaves the line's bed. */
   _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
+  /** The borders lane (2026-10-08): the drawn horizon ring's surface height past the square (NaN off the ring), set
+   * once the ring is built (terrain.ts terrainBuildSteps); absent on a field without a built ring. */
+  _ringSurfaceAt?(x: number, z: number): number;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -7492,6 +7495,12 @@ function* terrainBuildSteps(
     horizonStep = horizonSteps.next();
   }
   group.add(horizonStep.value);
+  // the borders lane (2026-10-08): the drawn ring's surface past the square, for what grows on it across the red line
+  // (tallGrass.ts: the sward runs on over the ring's near band instead of stopping 4 m past the playable edge)
+  {
+    const ringPosition = (horizonStep.value as THREE.Mesh).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+    if (ringPosition) heightField._ringSurfaceAt = ringMeshSurfaceSampler(ringPosition, HORIZON_SEGMENTS);
+  }
   yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
   // material renders those ring faces as open water and the shallow-water sheet continues over them

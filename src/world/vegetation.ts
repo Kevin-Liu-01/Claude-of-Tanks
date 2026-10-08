@@ -4147,7 +4147,10 @@ function* vegetationBuildSteps(
   ): number[] | null {
     // round 67: a candidate on a railway cutting's batter face passes the rim-band cull (the deep faces at the map
     // edge lie beyond 474 m); every other candidate out there is culled before it draws, as before
-    if (Math.max(Math.abs(x), Math.abs(z)) > 474 && !(batterSeedAt !== null && batterSeedAt(x, z) > 0)) return null;
+    // (the borders lane, 2026-10-08: the border landform lowered the rim, so the cull moves to the square's edge — the
+    // tufts stopped 4 m past the playable edge, a line where the grass ended in every view out of the square; the slope
+    // test below keeps them off what steep rim face is left, and tallGrass.ts carries the sward on over the ring)
+    if (Math.max(Math.abs(x), Math.abs(z)) > 511 && !(batterSeedAt !== null && batterSeedAt(x, z) > 0)) return null;
     if (inAvoid(x, z)) return null;
     const roll = crng(), yaw = crng() * Math.PI * 2;
     const sxz = 0.74 + crng() * 0.62;

@@ -34,3 +34,37 @@ export function sampleHorizonFace(
   out.slope = Math.hypot(nx, nz) / Math.max(1e-6, Math.abs(ny));
   return out;
 }
+
+/**
+ * The borders lane (2026-10-08): the drawn ring's own surface height at a world point — along each column the rows'
+ * heights linear in the radius, then between the two columns — read lazily from the ring mesh's position attribute
+ * (`columns` + 1 seam column per row), so the seam's later refinements are included. NaN off the ring.
+ */
+export function ringMeshSurfaceSampler(position: { array: ArrayLike<number>; count: number }, columns: number): (x: number, z: number) => number {
+  let radii: Float32Array | null = null, heights: Float32Array | null = null, rows = 0;
+  const init = (): void => {
+    const stride = columns + 1;
+    rows = Math.floor(position.count / stride);
+    radii = new Float32Array(rows * columns); heights = new Float32Array(rows * columns);
+    const a = position.array;
+    for (let j = 0; j < rows; j++) for (let k = 0; k < columns; k++) {
+      const i = j * stride + k, o = j * columns + k;
+      radii[o] = Math.hypot(a[i * 3], a[i * 3 + 2]); heights[o] = a[i * 3 + 1];
+    }
+  };
+  const along = (k: number, r: number): number => {
+    const R = radii!, Y = heights!;
+    if (r < R[k] || r > R[(rows - 1) * columns + k]) return Number.NaN;
+    let lo = 0, hi = rows - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (R[mid * columns + k] <= r) lo = mid; else hi = mid; }
+    const r0 = R[lo * columns + k], r1 = R[hi * columns + k], t = r1 > r0 ? (r - r0) / (r1 - r0) : 0;
+    return Y[lo * columns + k] * (1 - t) + Y[hi * columns + k] * t;
+  };
+  return (x: number, z: number): number => {
+    if (!radii) init();
+    let a = Math.atan2(z, x); if (a < 0) a += Math.PI * 2;
+    const f = (a / (Math.PI * 2)) * columns, k0 = Math.floor(f) % columns, k1 = (k0 + 1) % columns, t = f - Math.floor(f);
+    const r = Math.hypot(x, z);
+    return along(k0, r) * (1 - t) + along(k1, r) * t;
+  };
+}
