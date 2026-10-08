@@ -8,6 +8,10 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   DESTRUCTION_BUS_EVENTS, MUNITION_PROFILES, type MunitionClass, type StructureStage, type StructureStageEvent,
 } from '../sim/destructionEvents.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { munitionChargeKg, munitionClassForShell, type MunitionShellLike } from '../sim/munitionBlast.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { createStudioDestruction, type StudioDestruction } from './studioDestruction.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -100,7 +104,11 @@ import type { WorldRuntime } from '../world/map.ts';
 
 type TankSpec = ReturnType<typeof getSpec>;
 type TankVisual = ReturnType<typeof createTank>;
-type StudioShell = ReturnType<typeof createShell> & { _studioMaxDistM?: number };
+type StudioShell = ReturnType<typeof createShell> & {
+  _studioMaxDistM?: number;
+  /** A 'strike' round (destruction core lane, P2): traced through the world each step, the sim's own strike where it stops. */
+  _studioWorld?: boolean;
+};
 type ProgressListener = (fraction: number, label: string) => void;
 
 interface StudioPoolTank {
@@ -285,6 +293,11 @@ interface StudioEffectParams {
   spreadDeg?: number;
   to?: readonly number[];
   tracer?: boolean;
+  /** strike (destruction P2): the round ({ type, caliberMm, name?, blastRadiusM?, pen100Mm?, velocityMps? }), its climb
+   * (degrees) and how far it flies before it is gone (m) */
+  shell?: Record<string, unknown>;
+  pitchDeg?: number;
+  rangeM?: number;
 }
 
 interface StudioEffectInput {
@@ -1832,6 +1845,72 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  // ---- destruction core lane (P2, docs/DESTRUCTION.md §11): the Studio films the sim's own destruction ----
+  /** The Studio's destruction match over the world it shows (game/studioDestruction.ts), made for each world. */
+  let studioSim: StudioDestruction | null = null;
+  let studioSimWorld: WorldRuntime | null = null;
+  function studioDestructionNow(): StudioDestruction | null {
+    const w = getWorld();
+    if (!w) return null;
+    if (studioSimWorld !== w) {
+      ensureFxBus();
+      studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], fxBus, {
+        rules: matchRulesetFor('standard').destruction,
+        wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
+      });
+      studioSimWorld = w;
+    }
+    return studioSim;
+  }
+  const _strikePrev = new THREE.Vector3();
+  const _strikeDir = new THREE.Vector3();
+  /**
+   * A round flying through the Studio's world as a battle round does: from the effect point along dirDeg (pitchDeg up)
+   * at speedMps, traced against the world each step — whose raycast reads the sim's openings, so a round finds a hole
+   * and crosses the room — and where it stops a structure takes the sim's own strike (the hole, a section's fall, its
+   * stages, raised on the bus as the solo step raises them). params.shell: the round ({ type, caliberMm, name?,
+   * blastRadiusM?, pen100Mm? }: 'HE' 125 mm by default; an explicit blastRadiusM makes a howitzer's envelope).
+   */
+  function fireStrike({ position, params }: StudioEffectExecution): boolean {
+    if (!studioDestructionNow()) return false;
+    const heading = (Number(params.dirDeg) || 0) * DEG, pitch = (Number(params.pitchDeg) || 0) * DEG;
+    _v3.set(Math.sin(heading) * Math.cos(pitch), Math.sin(pitch), Math.cos(heading) * Math.cos(pitch));
+    const given = (params.shell && typeof params.shell === 'object' ? params.shell : {}) as Partial<MunitionShellLike> & { velocityMps?: number };
+    const spec = {
+      name: typeof given.name === 'string' ? given.name : 'studio', type: typeof given.type === 'string' ? given.type : 'HE',
+      caliberMm: Number(given.caliberMm) || 125, velocityMps: Number(params.speedMps) || Number(given.velocityMps) || 800,
+      tracer: params.tracer === false ? null : (typeof given.type === 'string' ? given.type : 'HE'),
+      ...(Number.isFinite(given.blastRadiusM) ? { blastRadiusM: Number(given.blastRadiusM) } : {}),
+      ...(Number.isFinite(given.pen100Mm) ? { pen100Mm: Number(given.pen100Mm) } : {}),
+    };
+    const shellId = -(uidSeq * 100000 + shells.length + 1);
+    const shell: StudioShell = createShell(spec, 'studio', false, position, _v3, shellId);
+    shell._studioWorld = true;
+    shell._studioMaxDistM = Number.isFinite(params.rangeM) ? Number(params.rangeM) : 600;
+    shells.push(shell);
+    return true;
+  }
+  /** A strike round met the world at `hit` (a record, not the ground): the sim's strike, then the burst where it stopped. */
+  function strikeWorld(sh: StudioShell, hit: { point: THREE.Vector3; normal: THREE.Vector3; record?: { structureIdx?: number } | null },
+    dir: THREE.Vector3): void {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const record = (hit.record ?? null) as Parameters<StudioDestruction['strike']>[1];
+    studioDestructionNow()?.strike(spec, record, hit.point.x, hit.point.y, hit.point.z, dir.x, dir.z);
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const structureId = typeof hit.record?.structureIdx === 'number' ? hit.record.structureIdx : undefined;
+    if (chargeKg > 0) {
+      fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+        munition, chargeKg, x: hit.point.x, y: hit.point.y, z: hit.point.z, nx: hit.normal.x, ny: hit.normal.y, nz: hit.normal.z,
+        surface: structureId !== undefined ? 'structure' : 'prop', ...(structureId !== undefined ? { structureId } : {}),
+      });
+    }
+    fxBus.emit('shell:expired', {
+      shellId: sh.id, hitTerrain: false, hitKind: 'prop', pos: [hit.point.x, hit.point.y, hit.point.z],
+      normal: [hit.normal.x, hit.normal.y, hit.normal.z], shellType: spec.type, caliberMm: spec.caliberMm, munition, chargeKg,
+      surfaceKind: structureId !== undefined ? 'structure' : 'prop',
+    });
+  }
+
   function fireExhaust({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
@@ -1870,6 +1949,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     barrage: fireBarrage,
     armor_scar: fireArmorScar,
     exhaust: fireExhaust,
+    strike: fireStrike,
   });
 
   function recordFiredEffect(
@@ -1991,9 +2071,23 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (dt > 0) {
       clockMs += dt * 1000;
       // projectiles
+      const traceWorld = getWorld();
       for (const sh of shells) {
         if (sh.dead) continue;
+        if (sh._studioWorld) _strikePrev.copy(sh.pos);
         stepShell(sh, dt);
+        // a strike round (P2) meets what the world puts in its path this step — the raycast reads the sim's openings
+        if (sh._studioWorld && traceWorld) {
+          _strikeDir.subVectors(sh.pos, _strikePrev);
+          const length = _strikeDir.length();
+          const hit = length > 1e-6 ? traceWorld.raycast(_strikePrev, _strikeDir.multiplyScalar(1 / length), length) : null;
+          if (hit && hit.kind !== 'terrain') {
+            sh.dead = true;
+            sh.pos.copy(hit.point);
+            strikeWorld(sh, hit, _strikeDir);
+            continue;
+          }
+        }
         const gy = hfProxy.getHeightAt(sh.pos.x, sh.pos.z);
         if (sh.pos.y <= gy) {
           sh.pos.y = gy + 0.05;
@@ -2009,6 +2103,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
+      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus)
+      studioSim?.step();
       // continuous per-actor emitters
       for (const a of actors) {
         if (a.smoking) {
@@ -2070,6 +2166,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.length = 0;
     fx.resetAll();
     studioStages.clear();
+    // every building stands again (the Studio's destruction: openings cleared, the next strike starts fresh)
+    studioSim?.reset();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
