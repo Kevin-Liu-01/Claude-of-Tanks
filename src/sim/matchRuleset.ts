@@ -371,7 +371,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // the goals stand on ground as steep as a spawn slot's (a scoring disc the ball rolls into, not a flag a hull stops
     // on): the flags' stricter footprint seated no mirrored pair near 500 m on Saltwind (modes lane 2026-10-08)
     bases: Object.freeze({ separationM: 500, radiusM: 18, reliefM: 7, normalY: 0.90, arena: true }),
-    ball: Object.freeze({ keep: 0.42, drive: 0.82, push: 4, closingPush: 0.35, lift: 2.5, closingLift: 0.12, drag: 0.992,
+    // the touch at 1.35x the original drive and push (coordinator-approved test, modes lane 2026-10-08): a head-on ram at
+    // the mode's top speed carries the ball about 70 m, a shell's hit about 71 m
+    ball: Object.freeze({ keep: 0.42, drive: 1.1, push: 5.5, closingPush: 0.47, lift: 2.5, closingLift: 0.12, drag: 0.992,
       shotSpeedMps: 34, shotLift: 7, shotPitchLift: 20, goalRadiusM: 18 }),
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
