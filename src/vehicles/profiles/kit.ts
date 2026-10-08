@@ -2703,11 +2703,12 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
       const loop = new THREE.CatmullRomCurve3([at(r * 0.4, r * 1.0), at(L * 0.42, W * 0.92), at(L * 0.84, W * 0.78), at(L, 0),
         at(L * 0.84, -W * 0.78), at(L * 0.42, -W * 0.92), at(r * 0.4, -r * 1.0)], false, 'centripetal');
       parts.add(slot, strandRope(new THREE.TubeGeometry(loop, 14, r * 0.92, 6, false), loop, 14));
-      // the ferrule: a pressed sleeve round the throat, both legs and the rope's end inside it
+      // the ferrule: a pressed sleeve round the throat, both legs and the rope's end inside it, in the rope's own draw
+      // (a second slot cost every cable fitting a mesh and a draw)
       const ferrule = new THREE.CylinderGeometry(r * 2.2, r * 2.2, r * 3.6, 8, 1, false)
         .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, out))
         .translate(p.x + out.x * r * 0.9, p.y + out.y * r * 0.9, p.z + out.z * r * 0.9);
-      parts.add(slot === 'dark' ? 'detail' : 'dark', ferrule);
+      parts.add(slot, ferrule);
     }
   }
   return fitAssemble('towCable', parts, opts);
