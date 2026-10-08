@@ -27,10 +27,15 @@ const ARM_HALF = 24, ARM_DEPTH = -22.5;
 /** The lake's level (m), half a metre over the arm's floor: the discs flatten their cores to it, and the floor between
  * their outlines lies under the sheet, never at its height (round 5's "water plane slices through in steps"). */
 const WATER_LEVEL = -22;
-/** The tailwater pocket below the dam: half-width, depth, length, and its middle along the road from the dam's (m). */
-const POCKET_HALF = 13, POCKET_DEPTH = -28, POCKET_LENGTH = 38, POCKET_ALONG = -13;
-/** The pocket's section (round 4's: a sheer wall from 0.86 to 0.92 of the half-width over a level floor, no talus). */
-const POCKET_WALL = [0.86, 0.92] as const;
+/**
+ * The tailwater pocket below the dam (round 7; gauntlet wave 259: "a rectangular pit with right-angled corners and a grey
+ * kerb"): a short canyon running downstream from the dam's battered face, its start square under the face (the
+ * concrete is its near wall) and its far end a nose — a D in plan, the river's outlet tunnel in its far wall — in the
+ * arm's section (a level floor, a short talus, two tiers of wall split by a ledge, a rounded brow). Its half-width,
+ * depth and length (m), and its axis's offset along the road from the dam's middle (m), where round 4's pocket stood;
+ * its nose keeps 17 m from the east cross road's line (road 3), its west side 28 m from the west one's.
+ */
+const POCKET_HALF = 17, POCKET_DEPTH = -28, POCKET_LENGTH = 34, POCKET_ALONG = -13;
 /** Road 5's junctions either side of the arm: the dam's crest is the road between them. */
 const CREST_A = [-73.9, 235.78] as const, CREST_B = [42, 204] as const;
 const CREST_L = Math.hypot(CREST_B[0] - CREST_A[0], CREST_B[1] - CREST_A[1]);
@@ -110,15 +115,18 @@ const SIDE_CANYONS: ReadonlyArray<{ path: ReadonlyArray<readonly [number, number
   sideCanyon(60, -1, 52, -20, 9),
   sideCanyon(200, 1, 60, 30, 8),
 ];
-/** The disc cores reach this far past the walls' feet, so the water meets every wall; the pocket's walls are cut
- * straight. */
-const WATER_PAD = 2, POCKET_PAD = 0.5;
+/** The disc cores reach this far past the walls' feet, so the water meets every wall. */
+const WATER_PAD = 2;
+
+/** The pocket's axis: from its square start under the dam's face, CREST_GAP downstream of the road's centre line at
+ * POCKET_ALONG, straight downstream (DOWN) for POCKET_LENGTH. */
+const POCKET_START = [DAM_X + CREST_U[0] * POCKET_ALONG + DOWN[0] * CREST_GAP, DAM_Z + CREST_U[1] * POCKET_ALONG + DOWN[1] * CREST_GAP] as const;
+const POCKET_PATH: ReadonlyArray<readonly [number, number]> = [
+  [Math.round(POCKET_START[0] * 10) / 10, Math.round(POCKET_START[1] * 10) / 10],
+  [Math.round((POCKET_START[0] + DOWN[0] * POCKET_LENGTH) * 10) / 10, Math.round((POCKET_START[1] + DOWN[1] * POCKET_LENGTH) * 10) / 10],
+];
 
 function armTerrain() {
-  const north = DOWN;
-  const pocket = [DAM_X + CREST_U[0] * POCKET_ALONG + north[0] * (CREST_GAP + POCKET_HALF),
-    DAM_Z + CREST_U[1] * POCKET_ALONG + north[1] * (CREST_GAP + POCKET_HALF)];
-  const crestYaw = Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI;
   const r1 = (v: number) => Math.round(v * 10) / 10;
   const scale = { corridorScale: 1, settlementScale: 1, wetScale: 1 };
   // the arm and its side canyons: path ridges carved as one union (terrain.ts), the arm's head a nose and its end square
@@ -128,12 +136,10 @@ function armTerrain() {
   // (the side canyons hang over the lake: dry slots half as deep, their floors ending at a pour-off in the arm's wall)
   const sides = SIDE_CANYONS.map((c) => ({ kind: 'ridge' as const, path: c.path, x: 0, z: 0, width: c.half, height: SIDE_DEPTH,
     union: 'carve' as const, ...scale, geology: canyon({ cliffEnd: 'nose-end', ledge: 0.08 }) }));
-  const landforms = [
-    arm, ...sides,
-    { kind: 'ridge' as const, x: r1(pocket[0]), z: r1(pocket[1]), length: POCKET_LENGTH, width: POCKET_HALF, height: POCKET_DEPTH,
-      yawDeg: r1(crestYaw), ...scale,
-      geology: { profile: 'canyon' as const, wall: POCKET_WALL, apron: 0, outline: 0, rough: 0, cliffEnd: 'both' as const } },
-  ];
+  // (round 7) the tailwater pocket: its start square under the dam's face, its far end a nose, the arm's section
+  const pocketForm = { kind: 'ridge' as const, path: POCKET_PATH, x: 0, z: 0, width: POCKET_HALF, height: POCKET_DEPTH, union: 'carve' as const,
+    ...scale, geology: canyon({ cliffEnd: 'nose-end', ledge: 0.06 }) };
+  const landforms = [arm, ...sides, pocketForm];
   // the carved union's depth at a point (the arm and its side canyons as terrain.ts sums them), for fitting the water
   const carved = [arm, ...sides].map((form) => {
     const outline = form.geology.outline ?? 0, widths = (form as { widths?: ReadonlyArray<number> }).widths ?? null;
@@ -232,15 +238,48 @@ function armTerrain() {
         WATER_LEVEL - ARM_DEPTH);
     }
   }
-  const pfloor = POCKET_HALF * POCKET_WALL[0], pcore = pfloor + POCKET_PAD, pfade = POCKET_LENGTH * 0.03;
-  const pend = POCKET_LENGTH / 2 - pfade - pcore + POCKET_PAD, steps = Math.max(1, Math.round(2 * pend / 8));
-  for (let i = 0; i <= steps; i++) {
-    const t = -pend + 2 * pend * i / steps;
-    disc(pocket[0] + CREST_U[0] * t, pocket[1] + CREST_U[1] * t, pcore, POCKET_DEPTH);
-  }
-  for (const se of [-1, 1]) for (const sa of [-1, 1]) for (const size of [6, 2.5]) {
-    const t = se * (POCKET_LENGTH / 2 - pfade - size + POCKET_PAD), w = sa * (pfloor - size + POCKET_PAD);
-    disc(pocket[0] + CREST_U[0] * t + north[0] * w, pocket[1] + CREST_U[1] * t + north[1] * w, size, POCKET_DEPTH);
+  // (round 7) the pocket's water: its own carved depth (it lies below the arm's level and apart from it), round discs
+  // fitted to its D — a row along the square start under the dam's face, then along its axis into the nose — and the gaps
+  // filled as the arm's are, at the pocket's level
+  const pocketCarved = (() => {
+    const outline = pocketForm.geology.outline ?? 0;
+    const path = prepareLandformPath(pocketForm.path, pocketForm.width * (1 + outline) + 4);
+    return { ...pocketForm, x: path.cx, z: path.cz, length: path.length, yawDeg: 0, _path: path };
+  })();
+  const pocketDepthAt = (x: number, z: number) =>
+    landformPathFrame(pocketCarved._path, x, z, frame) ? Math.min(0, ridgeGeologyHeight(pocketCarved, frame.lx, frame.lz, 1) ?? 0) : 0;
+  const pocketFit = (x: number, z: number, core: number): number => {
+    for (let r = core; r >= 2; r -= 0.5) {
+      let ok = true;
+      for (let k = 0; k < 24 && ok; k++) {
+        const a = k / 24 * Math.PI * 2;
+        if (pocketDepthAt(x + Math.cos(a) * r, z + Math.sin(a) * r) > POCKET_DEPTH * 0.25) ok = false;
+      }
+      if (ok) return r;
+    }
+    return 0;
+  };
+  {
+    const pfloor = POCKET_HALF * ARM_WALL[0], fade = POCKET_LENGTH * 0.06, n = [CREST_U[0], CREST_U[1]];
+    const at = (back: number, across: number) => [POCKET_START[0] + DOWN[0] * back + n[0] * across, POCKET_START[1] + DOWN[1] * back + n[1] * across];
+    // the row along the start: under the face, across the floor
+    for (let across = -pfloor + 4; across <= pfloor - 4 + 1e-9; across += (2 * pfloor - 8) / 4) {
+      const [x, z] = at(fade + 5, across), r = pocketFit(x, z, 6 + WATER_PAD);
+      if (r >= 3) disc(x, z, r, POCKET_DEPTH);
+    }
+    // along the axis, into the nose
+    for (let back = fade + 9; back <= POCKET_LENGTH - 4; back += 6) {
+      const [x, z] = at(back, 0), r = pocketFit(x, z, pfloor + WATER_PAD);
+      if (r >= 3) disc(x, z, r, POCKET_DEPTH);
+    }
+    // the gaps: the pocket's floor (at least 0.97 of its depth down) outside every disc's wet core
+    const inCore = (x: number, z: number) => lakes.some((l) => Math.hypot(x - l.x, z - l.z) < l.r * 0.85 * radiusAt(l.radii, Math.atan2(z - l.z, x - l.x)));
+    for (let back = 0; back <= POCKET_LENGTH + 4; back += 1.5) for (let across = -POCKET_HALF; across <= POCKET_HALF; across += 1.5) {
+      const [x, z] = at(back, across);
+      if (pocketDepthAt(x, z) > POCKET_DEPTH * 0.97 || inCore(x, z)) continue;
+      const [cx, cz] = at(Math.min(back + 2, POCKET_LENGTH), across * 0.85), r = pocketFit(cx, cz, 6);
+      if (r >= 2) disc(cx, cz, r, POCKET_DEPTH);
+    }
   }
   // the nose's centre (where its half-disc turns round the head: a reach in from the first point along the curve) and
   // the head's outward bearing, for the boulders on its brow
@@ -250,7 +289,13 @@ function armTerrain() {
   const out = [A.xs[0] - A.xs[2], A.zs[0] - A.zs[2]], ol = Math.hypot(out[0], out[1]);
   return { landforms, lakes, armLength: carved[0].length, armCentre: [carved[0].x, carved[0].z] as const,
     sideCentres: carved.slice(1).map((c) => [c.x, c.z] as const),
-    head: { x: A.xs[hi], z: A.zs[hi], ux: out[0] / ol, uz: out[1] / ol }, depthAt };
+    head: { x: A.xs[hi], z: A.zs[hi], ux: out[0] / ol, uz: out[1] / ol }, depthAt, pocketDepthAt,
+    pocketNose: (() => {
+      // the nose's half-disc centre (landformGeology.ts ridgeNose: a width and its outline in from the last point, never
+      // short of the middle — the pocket is about as long as it is wide, so its nose turns round from the middle)
+      const back = POCKET_LENGTH / 2 + Math.max(0, POCKET_LENGTH / 2 - POCKET_HALF * (1 + (pocketForm.geology.outline ?? 0)));
+      return { x: POCKET_START[0] + DOWN[0] * back, z: POCKET_START[1] + DOWN[1] * back, back };
+    })() };
 }
 
 /**
@@ -285,6 +330,38 @@ function headBoulders(ARM: ReturnType<typeof armTerrain>) {
       yawDeg: Math.round(h(i, 4) * 180), shed: 0.4, name: "the head's brow, a fallen block" });
     // the next block a hull's width on at most (2.6-3.4 m of air between them)
     a += (3.2 + h(i, 5) * 1.6 + 2 * rocks[rocks.length - 1].radius) / r * 180 / Math.PI;
+    i++;
+  }
+  return rocks;
+}
+
+/**
+ * The fallen blocks round the tailwater pocket's brow (round 7: round 4's kerb ring and rail round the pocket go — "a
+ * rectangular pit ... and a grey kerb"): as the head's, along the lip round the nose and back up both sides toward the
+ * road, a hull's width apart or less; the road's own parapet guards the side under it (the map's road filter leaves out a
+ * block on its carriageway).
+ */
+function pocketBoulders(ARM: ReturnType<typeof armTerrain>) {
+  const h = (i: number, k: number) => { const v = Math.sin(i * 19.9137 + k * 47.581 + 3.7) * 24634.6345; return v - Math.floor(v); };
+  const { x, z } = ARM.pocketNose, ux = DOWN[0], uz = DOWN[1], side = [CREST_U[0], CREST_U[1]];
+  const rocks: { form: 'outcrop'; geology: 'sandstone'; x: number; z: number; radius: number; height: number; yawDeg: number; shed: number; name: string }[] = [];
+  const reach = POCKET_HALF * 1.2 + 8;
+  let a = -150, i = 0;
+  while (a <= 150) {
+    const t = a * Math.PI / 180, dx = ux * Math.cos(t) + side[0] * Math.sin(t), dz = uz * Math.cos(t) + side[1] * Math.sin(t);
+    let r = POCKET_HALF * 0.5;
+    while (ARM.pocketDepthAt(x + dx * r, z + dz * r) < -0.05 && r < reach) r += 0.25;
+    const radius = 1.4 + h(i, 2) * 0.9;
+    r += radius * 0.8 + h(i, 1) * 1.2;
+    const px = x + dx * r, pz = z + dz * r;
+    // (past the pocket's start the ray runs out under the road and the dam: no lip there)
+    const back = (px - POCKET_START[0]) * DOWN[0] + (pz - POCKET_START[1]) * DOWN[1];
+    if (back > 2 && ARM.pocketDepthAt(px, pz) >= -0.05 && ARM.depthAt(px, pz) >= -0.05) {
+      rocks.push({ form: 'outcrop', geology: 'sandstone', x: Math.round(px * 10) / 10, z: Math.round(pz * 10) / 10,
+        radius: Math.round(radius * 100) / 100, height: Math.round((1.1 + h(i, 3) * 0.8) * 100) / 100,
+        yawDeg: Math.round(h(i, 4) * 180), shed: 0.4, name: "the tailwater's brow, a fallen block" });
+    }
+    a += (3.2 + h(i, 5) * 1.6 + 2 * radius) / r * 180 / Math.PI;
     i++;
   }
   return rocks;
@@ -325,17 +402,26 @@ export function computeSkybridgeArm(): SkybridgeArmData {
   return {
     landforms: ARM.landforms,
     lakes: ARM.lakes,
-    rocks: headBoulders(ARM),
+    rocks: [...headBoulders(ARM), ...pocketBoulders(ARM)],
     arm: { path: ARM_PATH, widths: ARM_WIDTHS, centre: [round(ARM.armCentre[0]), round(ARM.armCentre[1])], length: round(ARM.armLength),
       endHalf: ARM_END_HALF, waterLevel: WATER_LEVEL },
     sides: SIDE_CANYONS.map((c, i) => ({ path: c.path, half: c.half, centre: [round(ARM.sideCentres[i][0]), round(ARM.sideCentres[i][1])] as const })),
     dam: {
       x: DAM_X, z: Math.round(DAM_Z * 100) / 100, roadDeg: Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI,
       halfChordM: DAM_HALF_CHORD, archRadiusM: 80, abutmentM: round(CREST_GAP + ARM.armLength * 0.03), roadHalfM: 5.2,
-      reservoirBedY: ARM_DEPTH, tailwaterBedY: POCKET_DEPTH,
-      pocketFromM: POCKET_ALONG - POCKET_LENGTH / 2, pocketToM: POCKET_ALONG + POCKET_LENGTH / 2,
-      pocketHalfM: POCKET_HALF * POCKET_WALL[1], pocketWallM: CREST_GAP + POCKET_HALF * (1 - POCKET_WALL[1]),
+      reservoirBedY: ARM_DEPTH, tailwaterBedY: POCKET_DEPTH, waterY: WATER_LEVEL,
+      // (round 7) the tailwater's square start under the face: its walls' tops either side of its axis (the arm's section,
+      // 0.8 of the half-width), its near wall the face's line CREST_GAP downstream of the road's
+      pocketFromM: round(POCKET_ALONG - POCKET_HALF * ARM_WALL[1]), pocketToM: round(POCKET_ALONG + POCKET_HALF * ARM_WALL[1]),
+      pocketHalfM: round(POCKET_HALF * ARM_WALL[1]), pocketWallM: CREST_GAP,
       rimGuards: armRimGuards(),
+      // the outlet's portal at the foot of the nose's far wall, facing back up the tailwater to the dam
+      outlet: (() => {
+        const back = ARM.pocketNose.back + POCKET_HALF * ARM_WALL[0] - 0.6;
+        return { x: round(POCKET_START[0] + DOWN[0] * back), z: round(POCKET_START[1] + DOWN[1] * back),
+          yawDeg: round(Math.atan2(-DOWN[1], -DOWN[0]) * 180 / Math.PI) };
+      })(),
+      naturalTailwater: true,
     },
   };
 }

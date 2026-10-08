@@ -947,6 +947,9 @@ const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   // the ruin fills the old ruin's reach (its bounds)
+  // (Skybridge round 7, gauntlet wave 259: "white toy-brick ruins", "clean white rubble blocks that look like foam"): a
+  // burnt-out house of block — its walls broken low, a few stubs to the sill, the charred tops dark, the chimney stack
+  // standing with its soot, the roof's rusted sheets and its burnt timbers down inside it, a scorch over the slab
   const R = reach(ctx), W = Math.max(5, R.W - 0.6), D = Math.max(6, R.D - 0.6), t = 0.22;
   // (props census #7, lane B 2026-10-14; the judges: "block slices to random tops, a heap cone") the ruin grammar: the
   // ranch house's own block walls broken, its door and windows cut through, the chimney standing with its firebox, the
@@ -991,7 +994,9 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // the town's shingled gables; the Bureau's and the town's concrete block
     roof: { kind: 'shingle', tint: [0.46, 0.43, 0.40] },
-    stone: { kind: 'block', tint: [0.76, 0.73, 0.68] },
+    // (Skybridge round 7, gauntlet wave 259: the block walls and ruins read "white toy-brick", "foam": the block taken to a
+    // dust-stained buff, as the town's painted and weathered block stands in the canyon country's dust)
+    stone: { kind: 'block', tint: [0.72, 0.66, 0.58] },
     sourced: { plaster: false, wood: true },
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
@@ -1013,7 +1018,7 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
-    stone: [[1, 1, 1], [0.95, 0.94, 0.92], [1.03, 1.0, 0.96]],
+    stone: [[1, 1, 1], [0.93, 0.9, 0.86], [1.02, 0.97, 0.9], [0.88, 0.84, 0.78]],
     roof: [[1, 1, 1], [0.86, 0.84, 0.82], [1.06, 1.0, 0.94], [0.9, 0.86, 0.8]],
     damp: 0.2, moss: 0.02,
   },

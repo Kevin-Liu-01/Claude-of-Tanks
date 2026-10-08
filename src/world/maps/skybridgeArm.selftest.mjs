@@ -22,8 +22,15 @@ assert.ok(path.minRadius > arm.widths[0] * 1.04 + 4 && path.minRadius > 28, `the
 assert.ok(arm.widths[0] < 16 && arm.widths[arm.widths.length - 1] === arm.endHalf, 'a slot head, the dam\'s span at the end');
 assert.ok(SKYBRIDGE_ARM.lakes.length < 100, `the water in fewer than a hundred discs (${SKYBRIDGE_ARM.lakes.length})`);
 const field = createHeightField(1337, cfg);
+// (round 7: the tailwater's blocks too. On the plain: dry, and level with the ground 6 m further out from the nearest water
+// — the plain's own relief stands a metre and a half under the canyons' rims east of the tailwater)
 for (const rock of SKYBRIDGE_ARM.rocks) {
-  assert.ok(field.getHeightAt(rock.x, rock.z) > -1 && field.getWaterMaskAt(rock.x, rock.z) === 0, `a brow boulder on the plain (${rock.x}, ${rock.z})`);
+  let near = null, best = Infinity;
+  for (const l of SKYBRIDGE_ARM.lakes) { const d = Math.hypot(rock.x - l.x, rock.z - l.z); if (d < best) { best = d; near = l; } }
+  const ox = (rock.x - near.x) / best, oz = (rock.z - near.z) / best, h = field.getHeightAt(rock.x, rock.z);
+  const plain = field.getHeightAt(rock.x + ox * 6, rock.z + oz * 6);
+  assert.ok(field.getWaterMaskAt(rock.x, rock.z) === 0 && h > -2.5 && Math.abs(h - plain) < 1.2,
+    `a brow boulder on the plain (${rock.x}, ${rock.z}: ${h.toFixed(2)} m, the plain beyond ${plain.toFixed(2)} m)`);
 }
 assert.ok(SKYBRIDGE_ARM.dam.rimGuards.length === 2, 'kerbs only where the road meets the rim');
 console.log(`skybridgeArm.selftest: the generated arm is current — a ${arm.length.toFixed(0)} m meander (tightest bend ${path.minRadius.toFixed(0)} m), ${SKYBRIDGE_ARM.lakes.length} water discs, ${SKYBRIDGE_ARM.sides.length} side canyons, ${SKYBRIDGE_ARM.rocks.length} brow boulders, ${SKYBRIDGE_ARM.dam.rimGuards.length} road kerbs`);

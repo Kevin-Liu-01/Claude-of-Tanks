@@ -9,8 +9,12 @@
 //   3. the dam is an arch convex to the reservoir (about 8 m of sag over 70 m), its upstream face from the walkway into
 //      the reservoir's bed, four intake towers, the battered downstream face 29 m into the pocket, the powerhouse at its
 //      toe; inside its triangle budget, finite, drawn in the shared buckets (no draw of its own), deterministic;
-//   4. its collision is the road's parapets and the pocket's kerb only — thin walls off the road's core and out of the
-//      water — and only Skybridge's dressing lays it, last in the stream.
+//   4. its collision is the road's parapets and the rims' kerbs only — thin walls off the road's core and out of the
+//      water — and only Skybridge's dressing lays it, last in the stream;
+//   5. (round 7) the tailwater is rock: a D below the face (its start square under the concrete, its far end a nose),
+//      no kerb ring round it, fallen blocks on its brow, the outlet's portal in its far wall; the dam's concrete carries
+//      its lifts, joints, the lake's ring and the runoff in the kit's weathered render, and no hoist house stands on the
+//      walkway.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -43,7 +47,8 @@ for (const s of [-28, -13, 0, 12, 25]) {
 }
 // (round 6: the arm meets the dam 68 m wide at its rim, its floor 50 m: the water against the dam across the floor)
 for (const s of [-20, -10, 0, 10, 20]) assert.ok(wet(s, 18), `the reservoir lies against the dam (${s} m along)`);
-for (const s of [-28, -13, 0]) assert.ok(wet(s, -18), `the tailwater lies in the pocket (${s} m along)`);
+// (round 7: the tailwater's D runs downstream from the face, its floor 25 m across along the road under it)
+for (const s of [-22, -13, -4]) assert.ok(wet(s, -18), `the tailwater lies in the pocket (${s} m along)`);
 assert.ok(!wet(20, -18) && height(20, -18) > -3, 'past the pocket the plain runs on under the road');
 
 // 2. wall to wall, and the bots keep out
@@ -80,7 +85,9 @@ assert.ok(receipt.sagM >= 6 && receipt.sagM <= 10, `and bows into the reservoir 
 assert.equal(receipt.towers, 4, 'four intake towers');
 assert.ok(receipt.upstreamFaceM > 22 && receipt.downstreamFaceM > 26, `faces of ${receipt.upstreamFaceM} and ${receipt.downstreamFaceM} m`);
 assert.ok(Math.abs(receipt.crestY - height(0, 0)) < 0.01, 'the walkway stands at the road');
-assert.ok(receipt.triangles > 1500 && receipt.triangles < 6000, `inside its budget (${receipt.triangles} triangles)`);
+// (round 7: the lattice gantry, the lamp standards' arms and the concrete's painted bands; about 2.6 times round 6's)
+assert.ok(receipt.triangles > 1500 && receipt.triangles < 16000, `inside its budget (${receipt.triangles} triangles)`);
+assert.ok(receipt.lifts >= 6, `the upstream face's lift lines over the lake's ring (${receipt.lifts})`);
 let lowFace = Infinity, minT = Infinity, maxT = -Infinity;
 for (const g of [...buckets.plaster2, ...buckets.dark, ...buckets.structureMetal]) {
   const p = g.getAttribute('position');
@@ -104,7 +111,7 @@ assert.deepEqual(again.receipt, receipt, 'deterministic');
 assert.equal(obstacles.length, 1, 'one compound record');
 assert.equal(colliders.length, 1, 'mirrored for the colliders');
 const parts = obstacles[0].shape2.kind === 'compound' ? obstacles[0].shape2.parts : [obstacles[0].shape2];
-assert.ok(parts.length >= 7, `the road's two parapets, the pocket's kerb and the rims' kerbs (${parts.length})`);
+assert.ok(parts.length >= 4, `the road's two parapets and the rims' kerbs (${parts.length})`);
 for (const part of parts) {
   assert.equal(part.kind, 'obb');
   assert.ok(part.hw <= 0.4, 'a thin wall');
@@ -119,6 +126,48 @@ for (const part of parts) {
     assert.ok(road > 4.2, `a wall keeps out of the road's core (${road.toFixed(1)} m at ${x.toFixed(0)}, ${z.toFixed(0)})`);
     assert.ok(field.getWaterMaskAt(x, z) < 0.5, 'and out of the water');
   }
+}
+// 5. (round 7) the rock tailwater: no kerb ring (the walls above are the road's parapets and the rims' two guards), its
+// brow's fallen blocks on dry ground at the lip and off the roads, the outlet's portal at the foot of its far wall
+assert.ok(D.naturalTailwater && D.outlet, 'the tailwater is rock, its outlet in its far wall');
+assert.equal(parts.length, 2 + (D.rimGuards ?? []).length, 'no kerb ring round the tailwater');
+{
+  let wetNear = false;
+  for (let a = 0; a < 16; a++) {
+    const x = D.outlet.x + Math.cos(a / 16 * Math.PI * 2) * 2.5, z = D.outlet.z + Math.sin(a / 16 * Math.PI * 2) * 2.5;
+    if (field.getWaterMaskAt(x, z) > 0.5) wetNear = true;
+  }
+  assert.ok(wetNear, `the outlet's portal stands at the water (${D.outlet.x}, ${D.outlet.z})`);
+  assert.ok(field.getHeightAt(D.outlet.x, D.outlet.z) < D.tailwaterBedY + 6, 'at the foot of the far wall');
+}
+const blocks = (cfg.scenery.rocks ?? []).filter((r) => /tailwater/.test(r.name ?? ''));
+assert.ok(blocks.length >= 6, `fallen blocks on the tailwater's brow (${blocks.length})`);
+for (const b of blocks) {
+  assert.ok(field.getHeightAt(b.x, b.z) > -2.5 && field.getWaterMaskAt(b.x, b.z) < 0.05, `a block on the lip, dry (${b.x}, ${b.z})`);
+}
+// the concrete in the kit's weathered render: unindexed and painted, the lake's ring, the lifts and the joints among its
+// tints; no hoist house stands over the walkway (round 6's four boxes read as "a row of grey towers")
+{
+  const seed = new (await import('three')).BoxGeometry(1, 1, 1).toNonIndexed();
+  seed.setAttribute('color', new (await import('three')).BufferAttribute(new Float32Array(seed.getAttribute('position').count * 3).fill(1), 3));
+  const regional = { regionalPlaster2: [seed], plaster2: [], dark: [], structureMetal: [] };
+  dressReservoirDam(D, field, regional, [], []);
+  const laid = regional.regionalPlaster2.slice(1);
+  assert.ok(laid.length > 20 && laid.every((g) => !g.index && g.getAttribute('color')), 'the dam\'s concrete in the regional bucket, unindexed and painted');
+  const tints = laid.map((g) => { const c = g.getAttribute('color'); return [c.getX(0), c.getY(0), c.getZ(0)]; });
+  for (const tint of [[1, 0.985, 0.95], [0.68, 0.66, 0.62], [0.58, 0.56, 0.53], [0.84, 0.82, 0.78]]) {
+    assert.ok(tints.some((c) => c.every((x, i) => Math.abs(x - tint[i]) < 1e-3)), `the concrete carries the tint ${tint.join(', ')}`);
+  }
+  const crest = receipt.crestY + 0.15 + 1.1;
+  let tall = 0;
+  for (const g of laid) {
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), t = (x - D.x) * v[0] + (z - D.z) * v[1], along = (x - D.x) * u[0] + (z - D.z) * u[1];
+      if (t > D.roadHalfM + 1 && Math.abs(along) < D.halfChordM && y > crest + 0.9) tall++;
+    }
+  }
+  assert.equal(tall, 0, 'no concrete stands over the walkway past the parapet (no hoist houses)');
 }
 for (const id of MAP_IDS) assert.equal((getMapConfig(id).props?.extraKits ?? []).includes('dam'), id === 'skybridge', `${id}: only Skybridge's dressing lays the dam`);
 const kits = readFileSync(new URL('./mapKits.ts', import.meta.url), 'utf8');
