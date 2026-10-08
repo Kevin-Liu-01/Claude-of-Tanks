@@ -23,7 +23,21 @@ export function nationalRoofSystems(P:TankBuilderPort,l:NationalRoofLoadout):voi
  try {
   for(const side of [-1,1])lamp(P,side*.68,.96,seat(side*.68,.96),l.lamp);
   const sides=l.eyes==='twin'?[-1,1]:l.eyes==='monocle-left'?[-1]:[1];
-  for(const side of sides)eye(P,side*1.03,.52,seat(side*1.03,.52),l);
+  const cheekEyes=['ru_t80u_modern','ru_t72b3m_modern','cn_t72b3m_modern'].includes(P.spec.id);
+  if(cheekEyes) {
+   const anchors:number[][]=[];
+   for(const side of [-1,1]) {
+    const x=side*.90,y=.43;
+    const hit=new THREE.Raycaster(new THREE.Vector3(x,y,4),new THREE.Vector3(0,0,-1)).intersectObjects(stock,false)[0];
+    if(!hit)throw Error(`${P.spec.id}: missing cheek optic receiver`);
+    // Keep the optical head ahead of removable ERA; its bracket reaches the permanent shell.
+    const z=hit.point.z+.24;
+    P.addEquipment('turretDetail',box(.18,.13,.31),x,y-.08,hit.point.z+.12);
+    eye(P,x,z,y-l.eyeRadius-.06,l);
+    anchors.push([x,y,hit.point.z]);
+   }
+   P.turretG.userData.cheekOptics={anchors,axisY:.43};
+  }else for(const side of sides)eye(P,side*1.03,.52,seat(side*1.03,.52),l);
   roof(P,-.06,l.roofZ,seat(-.06,l.roofZ),l);
  }finally{material.dispose();}
 }
