@@ -99,11 +99,13 @@ const idOf = job => job.out.split('/').pop();
 const receiptOf = job => { const file = join(job.out, 'cinema-receipt.json'); return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null; };
 // a started film keeps the master and proxy its receipt records (cinema refuses a resume with other settings)
 for (const job of films) { const r = receiptOf(job); if (r) { job.master = r.config.master; job.proxy = String(r.config.proxy); } }
-// a job is done when its receipt finished clean with every film and still it asks for
+// A job is done when its receipt holds every film and still it asks for, complete (a row is complete only after its
+// files are written, verified and hashed). Not `finished`: a batch killed by a signal never stamps that on rows it
+// completed (2026-10-07). A batch whose sources changed under it discards everything it rendered.
 const formatsOf = job => String(job.formats ?? 'landscape').split(',').length;
 const done = job => {
   const r = receiptOf(job);
-  if (!r?.finished || r.errors?.length) return false;
+  if (!r || r.errors?.some(e => /inputs changed during capture/i.test(String(e.error)))) return false;
   const films = job.film === 'false' ? 0 : formatsOf(job), stillCount = job.stills ? String(job.stills).split(',').length * formatsOf(job) : 0;
   return r.films.filter(row => row.complete).length >= films && r.stills.filter(row => row.complete).length >= stillCount;
 };
