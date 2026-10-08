@@ -71,7 +71,11 @@ for (const [biomeId, biome] of Object.entries(AUTO_CAMO_BIOMES)) {
   assert.ok(biome.pool.length, `${biomeId}: a non-empty shared pool`);
   for (const patternId of biome.pool) assert.ok(patternId === 'urban' || isBuiltInCamoId(patternId), `${biomeId}: ${patternId}`);
 }
-for (const mapId of ['oasis', 'random', '', '__proto__', 'constructor', 'toString']) assert.equal(autoCamoBiomeId(mapId), 'verdant', mapId);
+// (fleet lane 2026-10-08: every real battlefield now names its own theatre row, battleTheatreCamo.selftest.mjs; Sunscar
+// Oasis reads as its own desert row, not Verdant. Unknown and inherited ids still read as verdant.)
+for (const mapId of ['random', '', '__proto__', 'constructor', 'toString']) assert.equal(autoCamoBiomeId(mapId), 'verdant', mapId);
+assert.equal(autoCamoBiomeId('oasis'), 'oasis');
+assert.equal(AUTO_CAMO_BIOMES.oasis.environment, 'desert');
 assert.equal(autoCamoBiomeId('desert'), 'desert');
 
 // --- the coordinator's cases on Sirocco Wadi (the desert-line scene): four nations, four schemes
@@ -110,7 +114,8 @@ for (const id of ['leo2a4', 'leo2a6', 'ariete_c1', 'type10', 'strv122', 't80u'])
 // --- the verdant-spawn scene: four nations, each in its own woodland coat (round 4, 2026-10-07: the T-90M Proryv in
 // the Russian green, sand and black coat, not service digital; the Leopard 2A4 in the NATO three-tone only)
 const woodland = {
-  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['paint_ru_t80u_modern'],
+  // (fleet lane 2026-10-08: Russia's current hulls in 4BO single-colour or the irregular three-tone)
+  m1a2_sepv3: ['paint_m1a1'], t90m_proryv: ['paint_ru_t80u_modern', 'national_ru'],
   pt91_twardy: ['paint_pl_t80u_modern', 'service_pl01'], leo2a4: ['paint_marder2'],
 };
 for (const [id, allowed] of Object.entries(woodland)) assert.ok(allowed.includes(auto(id, 'verdant')), `${id} on verdant: ${auto(id, 'verdant')}`);
@@ -129,12 +134,16 @@ for (const [mapId, ids] of [['desert', ['challenger1', 'm60a1', 'type99a', 'merk
 // with green rosettes"): each army's own scheme for the biome, pixel only where the nation fields it
 for (const tag of ['usa', 'de', 'ru', 'uk', 'fr', 'it', 'jp', 'se', 'il']) assert.equal(nationFieldsPixelCamo(tag), false, tag);
 for (const tag of ['cn', 'pl', 'kr', 'ua']) assert.equal(nationFieldsPixelCamo(tag), true, tag);
+// fleet lane 2026-10-08 (the coordinator: "4BO green single-colour; the irregular three-tone summer scheme"): a current
+// Russian hull on grass wears either
+const RU_WOODLAND = ['national_ru', 'paint_ru_t80u_modern'];
 for (const [id, verdant, desert] of [
-  ['t90m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['t90m_proryv', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']],
-  ['t72b3m', 'paint_ru_t80u_modern', ['sig_t90ms', 'paint_t90ms']], ['leo2a6', 'paint_marder2', ['desert']],
+  ['t90m', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']], ['t90m_proryv', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']],
+  ['t72b3m', RU_WOODLAND, ['sig_t90ms', 'paint_t90ms']], ['leo2a6', 'paint_marder2', ['desert']],
   ['leo2a4', 'paint_marder2', ['desert']], ['m1a2_sepv3', 'paint_m1a1', ['carc_tan']], ['m60a1', 'paint_m1a1', ['carc_tan']],
 ]) {
-  assert.equal(auto(id, 'verdant'), verdant, `${id} on verdant: ${verdant}`);
+  if (Array.isArray(verdant)) assert.ok(verdant.includes(auto(id, 'verdant')), `${id} on verdant: ${auto(id, 'verdant')}`);
+  else assert.equal(auto(id, 'verdant'), verdant, `${id} on verdant: ${verdant}`);
   assert.ok(desert.includes(auto(id, 'desert')), `${id} on sand: ${auto(id, 'desert')}`);
 }
 assert.equal(resolveCamoVisual(getSpec('leo2a6'), auto('leo2a6', 'verdant')).scheme, 'nato', 'the Leopard: NATO three-tone');
@@ -151,7 +160,8 @@ for (const id of ALL_TANK_IDS) {
 // era rows: the wartime and Cold War hulls wear their period's scheme
 assert.equal(auto('kv2', 'verdant'), 'service_soviet_ww2');
 assert.equal(auto('kv2', 'urban'), 'berlin45');
-assert.equal(auto('t80', 'verdant'), 'service_soviet_coldwar');
+// (fleet lane 2026-10-08: the Cold War Soviet row is plain 4BO green AND the three-tone amoeba; the draw picks one)
+assert.ok(['national_ru', 'service_soviet_coldwar'].includes(auto('t80', 'verdant')), 'Cold War Soviet: 4BO green or three-tone');
 assert.equal(auto('m60a1', 'verdant'), 'paint_m1a1', 'round 4: the NATO three-tone in woodland (MERDC left the row)');
 assert.equal(auto('m60a1', 'winter'), 'merdcwinter');
 assert.ok(AUTO_CAMO_BIOMES.winter.pool.includes(auto('m1a2_sepv3', 'winter')), 'no modern US winter scheme: the shared pool');
@@ -174,14 +184,21 @@ for (const id of ALL_TANK_IDS) {
     assert.ok(pick !== 'auto' && pick !== 'factory' && pick !== 'signature', `${id}@${biomeId}: never an alias`);
     assert.equal(autoCamoPatternIdFor({ id: spec.id, nation: spec.nation, era: spec.era }, biomeId), pick, `${id}@${biomeId}: pure`);
     assert.ok(nationTags(pick).every((tag) => tag === own), `${id}@${biomeId}: ${pick} is not another nation's scheme`);
-    if (!biome.environment) assert.ok(biome.pool.includes(pick), `${id}@${biomeId}: the seasonal pool`);
+    // (fleet lane 2026-10-08: an army that paints every vehicle one coat wears it in the seasonal biomes too: the IDF's
+    // Sinai grey)
+    if (!biome.environment && own !== 'il') assert.ok(biome.pool.includes(pick), `${id}@${biomeId}: the seasonal pool`);
+    if (own === 'il') assert.equal(pick, 'service_merkava2d', `${id}@${biomeId}: Sinai grey`);
     // multiplayer: every peer resolves the wire selection 'auto' to the same scheme from the shared registry spec
     assert.equal(resolveMultiplayerCamoPattern(spec, 'auto', biomeId), pick, `${id}@${biomeId}: the peer resolution agrees`);
     assert.equal(autoCamoPatternIdFor({ id }, biomeId), legacyPick(biome.pool, `${id}:${biomeId}`), `${id}@${biomeId}: no-nation draw`);
   }
 }
-assert.equal(autoCamoPatternIdFor(getSpec('leo2a4'), 'oasis'), autoCamoPatternIdFor(getSpec('leo2a4'), 'verdant'),
-  'a map without its own biome row paints as verdant (unchanged)');
+// (fleet lane 2026-10-08: Sunscar Oasis has its own desert theatre row now; a Leopard 2A4 there paints the desert pool's
+// neutral desert, as on Sirocco Wadi. An id without a row still paints as verdant.)
+assert.equal(autoCamoPatternIdFor(getSpec('leo2a4'), 'oasis'), autoCamoPatternIdFor(getSpec('leo2a4'), 'desert'),
+  'Sunscar Oasis paints as the desert theatre');
+assert.equal(autoCamoPatternIdFor(getSpec('leo2a4'), 'random'), autoCamoPatternIdFor(getSpec('leo2a4'), 'verdant'),
+  'an id without its own row paints as verdant (unchanged)');
 
 // --- the wire carries the selection, never the resolution; explicit and custom selections are untouched
 assert.equal(networkCamoId('auto'), 'auto');

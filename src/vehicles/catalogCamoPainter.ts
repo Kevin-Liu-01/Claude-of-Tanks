@@ -2,6 +2,7 @@
 // their palettes and morphology while sharing these bounded baked artists:
 // no extra GPU textures, geometry, shaders, or work during a rendered frame.
 import type { MaterialCanvas, MaterialCanvasContext, MaterialVisual } from './materialPainter.ts';
+import { patchFields, patchPixelTones, patchRoles, composeTone, type PatchFieldSet, type PatchRoles } from './camoPatchField.ts';
 
 export const CATALOG_CAMO_ART_IDS = [
   'summer', 'desert', 'winter', 'urban', 'digital', 'merdc', 'tropic',
@@ -42,7 +43,9 @@ const smooth = (v: number): number => v * v * (3 - 2 * v);
 // Periodic value noise. Only the small lattice is randomized; sampling and
 // colour selection use no RNG so HIGH/LOW and picker crops share one pattern.
 function noise(rng: Rng, size: number): (x: number, y: number) => number {
-  const values = Float32Array.from({ length: size * size }, rng);
+  return latticeNoise(Float32Array.from({ length: size * size }, rng), size);
+}
+function latticeNoise(values: Float32Array, size: number): (x: number, y: number) => number {
   return (x, y) => {
     x = (x - Math.floor(x)) * size; y = (y - Math.floor(y)) * size;
     const ix = Math.floor(x), iy = Math.floor(y), tx = smooth(x - ix), ty = smooth(y - iy);
@@ -60,6 +63,14 @@ function cellHash(x: number, y: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+// Periodic value noise on a hashed lattice: it draws nothing from the RNG stream, so a field built from it never moves
+// another stencil's draws or a later painter's.
+function hashNoise(seed: number, size: number): (x: number, y: number) => number {
+  const values = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) values[y * size + x] = cellHash(x, y, seed);
+  return latticeNoise(values, size);
 }
 
 /**
@@ -160,6 +171,104 @@ function ellipse(ctx: Context, x: number, y: number, rx: number, ry: number, col
   ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill();
 }
 
+/** The field schemes drawn by the v2 patch fields (camoPatchField.ts): the fleet's three-colour field ('summer', the
+ * nato and woodland recipes) and the digital patterns. */
+const PATCH_FIELD_ARTS: ReadonlySet<string> = new Set(['summer', 'desert', 'digital', 'digitaldesert']);
+/** Whether an art is drawn by the v2 patch fields (the bake then keeps its grime glaze light: the patches carry the
+ * scheme, and a dark cloud over them read as "a soft smear" / "a blurred texture"). */
+export function isPatchFieldArt(id: string | undefined): boolean {
+  return !!id && PATCH_FIELD_ARTS.has(id);
+}
+/** Raster texels across the tile for the v2 fields (the continuous fields are sampled bilinearly at the tile's size). */
+const PATCH_FIELD_RASTER = 160;
+
+/** The macro cells across the two-metre tile for a recipe: half-metre cells at the reference density, more for recipes
+ * authored denser (camoScale above 0.5 or patchK below 1), three to six. */
+function patchMacroCells(visual: MaterialVisual): number {
+  return Math.max(3, Math.min(6, Math.round(4 * (visual.camoScale || .5) / .5 / (visual.patchK || 1))));
+}
+
+function paintPatchField(ctx: Context, size: number, visual: MaterialVisual, palette: Color[], seed: number, pixel: boolean): void {
+  const roles = patchRoles(palette);
+  if (pixel) {
+    const n = Math.round(80 / Math.max(.85, visual.digitalCellK || 1));
+    const fields = patchFields({ n, seed, macroCells: patchMacroCells(visual) });
+    const tones = patchPixelTones(fields, n, roles, seed);
+    const cells = new Uint8ClampedArray(n * n * 4);
+    const pigment = lattice(seed ^ 0x2f6b7c41, 6);
+    for (let at = 0; at < n * n; at++) {
+      const c = palette[tones[at]], vary = 1 + (pigment((at % n) / n, Math.floor(at / n) / n) - .5) * .06;
+      cells[at * 4] = c[0] * vary; cells[at * 4 + 1] = c[1] * vary; cells[at * 4 + 2] = c[2] * vary; cells[at * 4 + 3] = 255;
+    }
+    paintPixels(ctx, size, n, cells);
+    return;
+  }
+  const n = Math.min(PATCH_FIELD_RASTER, size);
+  const fields = patchFields({ n, seed, macroCells: patchMacroCells(visual) });
+  paintPatchEdges(ctx, size, n, fields, palette, roles, seed);
+}
+
+/** The v2 fields at the tile's own size: each texel takes the tone of the fields sampled bilinearly at four points
+ * inside it (2 x 2 supersampling: one anti-aliased texel at every edge, edges at their true positions); a raster cell
+ * whose four corners share one tone well away from every boundary is filled at once. A slight periodic pigment
+ * variation runs through every tone. */
+function paintPatchEdges(ctx: Context, size: number, n: number, fields: PatchFieldSet, palette: Color[], roles: PatchRoles,
+  seed: number): void {
+  const k = n / size, { main, dark, fourth } = fields;
+  const sample = (field: Float32Array, fx: number, fy: number): number => {
+    const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    const a = wrap(y0, n) * n, b = wrap(y0 + 1, n) * n, c0 = wrap(x0, n), c1 = wrap(x0 + 1, n);
+    const top = field[a + c0] + (field[a + c1] - field[a + c0]) * tx;
+    return top + (field[b + c0] + (field[b + c1] - field[b + c0]) * tx - top) * ty;
+  };
+  // a raster cell is uniform when its four corners give one tone and every field stays clear of zero there by more
+  // than its change across the cell (bilinear values are convex combinations of the corners)
+  const cellTone = new Int16Array(n * n).fill(-1);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const corners = [y * n + x, y * n + (x + 1) % n, ((y + 1) % n) * n + x, ((y + 1) % n) * n + (x + 1) % n];
+    const t = composeTone(main[corners[0]], dark[corners[0]], fourth[corners[0]], roles);
+    let uniform = true;
+    for (const f of [main, dark, fourth]) {
+      const lo = Math.min(...corners.map((c) => f[c])), hi = Math.max(...corners.map((c) => f[c]));
+      if (lo < 0 && hi > 0) { uniform = false; break; }
+    }
+    if (uniform) for (const c of corners) if (composeTone(main[c], dark[c], fourth[c], roles) !== t) { uniform = false; break; }
+    if (uniform) cellTone[y * n + x] = t;
+  }
+  const pigment = lattice(seed ^ 0x2f6b7c41, 6);
+  const out = ctx.createImageData(size, size), data = out.data;
+  const sub = [.25, .75];
+  for (let Y = 0; Y < size; Y++) {
+    for (let X = 0; X < size; X++) {
+      const at = (Y * size + X) * 4;
+      const vary = 1 + (pigment(X / size, Y / size) - .5) * .06;
+      const fxc = (X + .5) * k - .5, fyc = (Y + .5) * k - .5;
+      const cell = cellTone[wrap(Math.floor(fyc), n) * n + wrap(Math.floor(fxc), n)];
+      if (cell >= 0) {
+        const c = palette[cell];
+        data[at] = c[0] * vary; data[at + 1] = c[1] * vary; data[at + 2] = c[2] * vary; data[at + 3] = 255;
+        continue;
+      }
+      let r = 0, g = 0, b = 0;
+      for (const sy of sub) for (const sx of sub) {
+        const fx = (X + sx) * k - .5, fy = (Y + sy) * k - .5;
+        const c = palette[composeTone(sample(main, fx, fy), sample(dark, fx, fy), sample(fourth, fx, fy), roles)];
+        r += c[0]; g += c[1]; b += c[2];
+      }
+      data[at] = r * .25 * vary; data[at + 1] = g * .25 * vary; data[at + 2] = b * .25 * vary; data[at + 3] = 255;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+/** Periodic value noise on a hashed lattice (the v2 painter's pigment variation). */
+function lattice(seed: number, size: number): (x: number, y: number) => number {
+  return hashNoise(seed, size);
+}
+
+/** How strongly the three-colour field's dark strokes are pulled onto the main colour boundaries (field units). */
+const STROKE_BOUNDARY_PULL = .38;
+
 // Connected stencil fields, large enough to break up a hull silhouette. Small
 // colour islands live inside the macro fields instead of replacing them with
 // uniformly distributed dots. Quantiles keep each intended colour present for
@@ -169,6 +278,14 @@ function paintField<C extends MaterialCanvas>(
 ): void {
   const id = visual.catalogPattern!;
   const pixel = id === 'digital' || id === 'digitaldesert';
+  if (PATCH_FIELD_ARTS.has(id)) {
+    // the v2 patch fields (camoPatchField.ts): seeded from the recipe's own stream once, nothing else drawn from it
+    const palette = [visual.base, ...(visual.patches || [])].map(parse);
+    if (palette.length === 1) palette.push(parse(visual.weather || visual.base));
+    if (pixel) for (let tone = 0; tone < palette.length; tone++) palette[tone] = liftDigitalTone(palette[tone]);
+    paintPatchField(ctx, size, visual, palette, Math.floor(rng() * 0x7fffffff) | 0, pixel);
+    return;
+  }
   const fleck = id === 'flecktarn' || id === 'oakleaf' || id === 'ambushdot';
   const wash = ['winter', 'washworn', 'ardennes44', 'rasputitsa'].includes(id);
   const band = ['tigerstripe', 'naval', 'winterbands', 'pacific45', 'service-stripes'].includes(id);
@@ -181,6 +298,14 @@ function paintField<C extends MaterialCanvas>(
   const macro = noise(rng, id === 'amoeba' ? 3 : density);
   const detail = noise(rng, fleck ? 29 : 13), warpX = noise(rng, 5), warpY = noise(rng, 5);
   const phase = rng() * TAU;
+  // Fleet lane fields (2026-10-08), on hashed lattices so they draw nothing from the stream: the three-colour field's
+  // dark strokes and the digital fields' second octave (see sampleFields).
+  const fieldSeed = Math.floor(phase * 0x10000) | 0;
+  const strokes = id === 'summer';
+  const strokeMain = strokes ? hashNoise(fieldSeed ^ 0x3c6ef372, 3) : null;
+  const strokeEdge = strokes ? hashNoise(fieldSeed ^ 0x1b873593, 11) : null;
+  const meso = pixel ? hashNoise(fieldSeed ^ 0x7f4a7c15, 8) : null;
+  const mesoSecond = pixel ? hashNoise(fieldSeed ^ 0x94d049bb, 8) : null;
   const palette = [visual.base, ...(visual.patches || [])].map(parse);
   if (id === 'pacific45') palette.length = 2;
   if (palette.length === 1) palette.push(parse(visual.weather || visual.base));
@@ -214,8 +339,16 @@ function paintField<C extends MaterialCanvas>(
         f = .5 + .31 * Math.sin(TAU * ((angled ? u + v : v) * 3 + warpX(u, v) * .52) + phase)
           + (detail(u, v) - .5) * .2;
       } else if (fleck) f = macro(wx, wy) * .6 + detail(u, v) * .4;
+      if (meso) f = macro(wx, wy) * .6 + meso(wx, wy) * .28 + detail(u, v) * .12;
       values[y * n + x] = f;
       secondary[y * n + x] = macro(wx + .37, wy + .61) * (fleck ? .55 : .82) + detail(u + .23, v + .47) * (fleck ? .45 : .18);
+      if (mesoSecond) secondary[y * n + x] = macro(wx + .37, wy + .61) * .6 + mesoSecond(wx, wy) * .28 + detail(u + .23, v + .47) * .12;
+      if (strokeMain && strokeEdge) {
+        // sheared lattice (u + v, 3v - u): integer coefficients keep the two-metre repeat, and the round lattice blobs
+        // become strokes about two and a half times longer than wide, bent by the shared warps
+        const sx = u + v + (warpX(u, v) - .5) * .5, sy = 3 * v - u + (warpY(u, v) - .5) * .5;
+        secondary[y * n + x] = strokeMain(sx, sy) * .86 + strokeEdge(u, v) * .14;
+      }
     }
   };
   sampleFields();
@@ -239,6 +372,14 @@ function paintField<C extends MaterialCanvas>(
   const merdc = id === 'merdc' || id === 'merdcwinter';
   const baseCoverage = wash ? (id === 'winter' ? .83 : .66) : palette.length === 3 ? .64 : .5;
   const mainCut = threshold(values, baseCoverage);
+  if (strokes) {
+    // the dark strokes ride the boundaries between the two main colours (the way the black of a three-colour scheme
+    // bridges the green and the sand) instead of floating as lone ovals inside either field
+    const spread = Math.max(1e-3, threshold(values, .75) - threshold(values, .25));
+    for (let index = 0; index < n * n; index++) {
+      secondary[index] += STROKE_BOUNDARY_PULL * Math.min(1, Math.abs(values[index] - mainCut) / spread);
+    }
+  }
   const darkCut = threshold(secondary, merdc ? .05 : .18);
   const accentCut = threshold(secondary, merdc ? .95 : .80);
   const colorAt = (f: number, second: number): Color => {

@@ -17,8 +17,14 @@ export function readMapCamoPools(policySource = new URL('../src/vehicles/camoPol
   const prefix = /const CAMO_LS_PREFIX = '([^']+)';/.exec(materials);
   if (!table || !prefix) return null;
   const pools = {};
-  for (const row of table[1].matchAll(/(\w+):\s*autoBiome\([^,]*,\s*\[([^\]]*)\]\)/g)) {
-    const schemes = [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  // a row names its schemes inline or through a shared pool constant (fleet lane 2026-10-08: the theatre pools every
+  // desert, winter, urban and woodland map shares, e.g. `const DESERT_POOL: readonly AutoCamoPatternId[] = [...]`)
+  const named = {};
+  for (const c of policy.matchAll(/const (\w+)(?::[^=]*)?=\s*(?:Object\.freeze\()?\[([^\]]*)\]/g)) {
+    named[c[1]] = [...c[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  }
+  for (const row of table[1].matchAll(/(\w+):\s*autoBiome\([^,]*,\s*(?:\[([^\]]*)\]|(\w+))\)/g)) {
+    const schemes = row[2] !== undefined ? [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]) : named[row[3]] || [];
     if (schemes.length) pools[row[1]] = Object.freeze(schemes);
   }
   return pools.verdant ? Object.freeze({ storagePrefix: prefix[1], pools: Object.freeze(pools) }) : null;

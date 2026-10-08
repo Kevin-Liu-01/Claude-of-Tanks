@@ -663,6 +663,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
     'src/vehicles/autoCamoNational.selftest.mjs',
+    'src/vehicles/battleTheatreCamo.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
@@ -674,6 +675,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
     'src/vehicles/camoFieldEdges.selftest.mjs',
+    'src/vehicles/camoPatchFields.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',

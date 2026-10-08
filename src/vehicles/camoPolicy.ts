@@ -858,17 +858,50 @@ const autoBiome = (environment: AutoCamoEnvironment | null, pool: readonly AutoC
  * bots on grass defeated biome matching), Amberford wears the autumn blotches, the hay-gold steppe reads tan,
  * Cinder Junction and the lunar basin are industrial grey ('urban' is the AUTO-only neutral grey 3-tone).
  */
+const WOODLAND_POOL: readonly AutoCamoPatternId[] = ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc'];
+const DESERT_POOL: readonly AutoCamoPatternId[] = ['desert', 'chocchip', 'digitaldesert', 'pinkdesert'];
+const WINTER_POOL: readonly AutoCamoPatternId[] = ['winter', 'washworn', 'winterbands', 'merdcwinter'];
+const URBAN_POOL: readonly AutoCamoPatternId[] = ['urban', 'urbanblock', 'berlin'];
+
 export const AUTO_CAMO_BIOMES: Readonly<Record<string, AutoCamoBiome>> = Object.freeze({
-  verdant: autoBiome('woodland', ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc']),
-  desert: autoBiome('desert', ['desert', 'chocchip', 'digitaldesert', 'pinkdesert']),
-  winter: autoBiome('winter', ['winter', 'washworn', 'winterbands', 'merdcwinter']),
-  urban: autoBiome('urban', ['urban', 'urbanblock', 'berlin']),
+  verdant: autoBiome('woodland', WOODLAND_POOL),
+  desert: autoBiome('desert', DESERT_POOL),
+  winter: autoBiome('winter', WINTER_POOL),
+  urban: autoBiome('urban', URBAN_POOL),
   autumn: autoBiome(null, ['autumn', 'oakleaf']),
   coastal: autoBiome('woodland', ['summer', 'dpm', 'merdc']),
   steppe: autoBiome('desert', ['desert', 'digitaldesert', 'chocchip']),
-  railyard: autoBiome('urban', ['urban', 'urbanblock', 'berlin']),
+  railyard: autoBiome('urban', URBAN_POOL),
   moon: autoBiome(null, ['urban', 'urbanblock']),
   cliffbridge: autoBiome('woodland', ['summer', 'flecktarn', 'dpm']),
+  // Fleet lane (2026-10-08; the coordinator after wave 258: "battle picks the scheme from the map's theatre"): every
+  // other battlefield read as Verdant, so a US hull on Sunscar Oasis wore NATO green and a T-72 on Whiteout Station its
+  // summer coat. Each map now names its theatre by its ground: the sand, rock-desert and Martian basins are desert; the
+  // snowbound maps winter (Glacier Pass is the Mont-Cenis saddle in April 1945, its lake still frozen); the built-up
+  // districts urban; the farmland, forest, river, delta, coast and highland maps woodland.
+  oasis: autoBiome('desert', DESERT_POOL),
+  titan_gorge: autoBiome('desert', DESERT_POOL),
+  skybridge: autoBiome('desert', DESERT_POOL),
+  badlands: autoBiome('desert', DESERT_POOL),
+  copper_mesa: autoBiome('desert', DESERT_POOL),
+  mars: autoBiome('desert', DESERT_POOL),
+  whiteout: autoBiome('winter', WINTER_POOL),
+  alpine: autoBiome('winter', WINTER_POOL),
+  ruinspires: autoBiome('urban', URBAN_POOL),
+  foundry: autoBiome('urban', URBAN_POOL),
+  blackglass: autoBiome('urban', URBAN_POOL),
+  frontier: autoBiome('woodland', WOODLAND_POOL),
+  fjord: autoBiome('woodland', WOODLAND_POOL),
+  delta: autoBiome('woodland', WOODLAND_POOL),
+  monsoon: autoBiome('woodland', WOODLAND_POOL),
+  polders: autoBiome('woodland', WOODLAND_POOL),
+  orchard: autoBiome('woodland', WOODLAND_POOL),
+  longleaf: autoBiome('woodland', WOODLAND_POOL),
+  mangrove: autoBiome('woodland', WOODLAND_POOL),
+  reservoir: autoBiome('woodland', WOODLAND_POOL),
+  saltwind: autoBiome('woodland', WOODLAND_POOL),
+  airfield: autoBiome('woodland', WOODLAND_POOL),
+  caldera: autoBiome('woodland', WOODLAND_POOL),
 });
 
 /** The AUTO biome a map paints for; any id without its own row (including inherited keys) reads as verdant. */
@@ -907,8 +940,10 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
   // The NATO three-colour CARC coat in woodland (round 4, 2026-10-07, the coordinator after wave 240: "US: CARC tan in
   // desert, NATO three-tone in woodland"; MERDC's four colours with sand patches left the woodland row), plain CARC
   // Tan on sand (the Gulf War M60A1s and M1s alike).
+  // Fleet lane (2026-10-08): the wartime hulls in olive drab (the Normandy field coat and plain US Army green), never
+  // the NATO three-tone of the 1980s.
   usa: nationTable({
-    woodland: [row(['paint_m1a1'])],
+    woodland: [row(['normandy44', 'national_usa'], WARTIME_ERAS), row(['paint_m1a1'])],
     desert: [row(['carc_tan'])],
     winter: [row(['merdcwinter'], COLD_WAR_ERAS)],
   }),
@@ -917,8 +952,12 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
   // exhibition and export hulls); the T-90MS desert export coat and plain khaki-brown on sand; the Berlin '45 white
   // band for the wartime hulls in a city.
   ru: nationTable({
-    woodland: [row(['service_soviet_ww2'], WARTIME_ERAS), row(['service_soviet_coldwar'], COLD_WAR_ERAS),
-      row(['paint_ru_t80u_modern'])],
+    // fleet lane (2026-10-08; the coordinator: "Soviet/Russian: 4BO green, and three-tone summer"): the Cold War hulls
+    // in plain 4BO green as well as the three-tone amoeba
+    // and (the coordinator, 2026-10-08: "4BO green single-colour; the irregular three-tone summer scheme") today's hulls
+    // in plain 4BO as often as in the green, sand and black three-tone
+    woodland: [row(['service_soviet_ww2'], WARTIME_ERAS), row(['national_ru', 'service_soviet_coldwar'], COLD_WAR_ERAS),
+      row(['national_ru', 'paint_ru_t80u_modern'])],
     desert: [row(['sig_t90ms', 'paint_t90ms'], CURRENT_ERAS)],
     urban: [row(['berlin45'], WARTIME_ERAS)],
   }),
@@ -932,7 +971,9 @@ export const NATIONAL_AUTO_CAMO: Readonly<Record<CamoCountryTagId, NationalAutoC
   // Hinterhalt ambush paint for the wartime hulls, the Bundeswehr's NATO three-tone of green, brown and black after
   // (round 4, 2026-10-07; wave 240: the Leopard 2A6 in "a four-colour scheme with cream patches", the banded
   // service_leo2a6m, left the row).
-  de: nationTable({ woodland: [row(['ambushdot'], WARTIME_ERAS), row(['paint_marder2'])] }),
+  // (fleet lane 2026-10-08: the Cold War Bundeswehr also in its plain bronze green, worn until the 1984 three-tone)
+  de: nationTable({ woodland: [row(['ambushdot'], WARTIME_ERAS), row(['national_de', 'paint_marder2'], COLD_WAR_ERAS),
+    row(['paint_marder2'])] }),
   // Plain vert armée until the mid-1980s, the French NATO three-colour after; plain khaki on sand.
   fr: nationTable({
     woodland: [row(['national_fr', 'service_leclerc_xlr'], COLD_WAR_ERAS), row(['service_leclerc_xlr'])],
@@ -1011,14 +1052,56 @@ export interface AutoCamoVehicle {
   readonly era?: string | null;
 }
 
-/** The concrete scheme AUTO paints `vehicle` in on `mapId`: national first, the shared biome pool otherwise. */
-export function autoCamoPatternIdFor(vehicle: AutoCamoVehicle, mapId: string): AutoCamoPatternId {
+/** The concrete scheme AUTO paints `vehicle` in on `mapId`: national first, the shared biome pool otherwise. A battle
+ * seed (fleet lane 2026-10-08: bots only) re-draws among the same candidates per battle, so a roster of one nation
+ * fans out over its real schemes; without one the draw is the camo r2 per-(vehicle, biome) choice the garage previews. */
+/**
+ * Armies that paint every vehicle one coat in every theatre (fleet lane 2026-10-08, the coordinator after wave 257: "IDF
+ * tanks are Sinai grey, single-colour"): on their hulls no other scheme suits a battlefield, so a bot never keeps a
+ * multi-tone signature there and takes its AUTO coat.
+ */
+const SINGLE_COAT_NATIONS: Readonly<Partial<Record<CamoCountryTagId, readonly string[]>>> = Object.freeze({
+  il: Object.freeze(['service_merkava2d', 'national_il']),
+});
+
+export function autoCamoPatternIdFor(vehicle: AutoCamoVehicle, mapId: string, battleSeed: number | null = null): AutoCamoPatternId {
+  const coat = SINGLE_COAT_NATIONS[camoNationTag(vehicle.nation ?? null) as CamoCountryTagId];
+  if (coat) return coat[0] as AutoCamoPatternId;
   const biomeId = autoCamoBiomeId(mapId);
   const biome = AUTO_CAMO_BIOMES[biomeId];
   const national = biome.environment
     ? nationalAutoCamoSchemes(vehicle.nation, vehicle.era, biome.environment) : [];
   const candidates: readonly AutoCamoPatternId[] = national.length ? national : sharedAutoCamoPool(biome, vehicle.nation);
-  return seededAutoCamoPick(candidates, `${vehicle.id}:${biomeId}`);
+  return seededAutoCamoPick(candidates, battleSeed === null ? `${vehicle.id}:${biomeId}` : `${vehicle.id}:${biomeId}:${battleSeed}`);
+}
+
+const THEATRE_TAGS: Readonly<Record<AutoCamoEnvironment, readonly CamoTagId[]>> = Object.freeze({
+  woodland: Object.freeze(['woodland', 'tropical'] as CamoTagId[]),
+  desert: Object.freeze(['desert'] as CamoTagId[]),
+  winter: Object.freeze(['winter'] as CamoTagId[]),
+  urban: Object.freeze(['urban'] as CamoTagId[]),
+});
+
+/**
+ * Fleet lane (2026-10-08; the coordinator after wave 258: "background tanks on Verdant's summer grass spattered with
+ * bright white blobs"; bots that kept their own paint ignored the map): whether a concrete scheme belongs on `mapId`'s
+ * battlefield for a vehicle of `nation`. The scheme's theatre tag must be the map's (whitewash and winter coats only on
+ * winter maps, desert coats only on desert ones); pixel schemes only for a nation that fields them; an AUTO biome
+ * without an environment (autumn, the lunar basin) takes only its own pool; brand, special and signature-only finishes
+ * carry no theatre and never suit. AUTO itself always suits (it is the map's own choice).
+ */
+export function camoSuitsTheatre(patternId: string, nation: string | null | undefined, mapId: string): boolean {
+  if (patternId === 'auto') return true;
+  const coat = SINGLE_COAT_NATIONS[camoNationTag(nation ?? null) as CamoCountryTagId];
+  if (coat) return coat.includes(patternId);
+  const biome = AUTO_CAMO_BIOMES[autoCamoBiomeId(mapId)];
+  const tags = camoPatternTags(patternId);
+  if (tags.includes('digital')) {
+    const own = camoNationTag(nation ?? null);
+    if (!own || !NATIONS_FIELDING_PIXEL.has(own)) return false;
+  }
+  if (!biome.environment) return biome.pool.includes(patternId as AutoCamoPatternId);
+  return THEATRE_TAGS[biome.environment].some((tag) => tags.includes(tag));
 }
 
 export const CUSTOM_CAMO_ID = 'custom';
