@@ -597,13 +597,17 @@ export function createGarageStage(
   }));
   addOutdoorSeed('horizon', horizonSeedMaterial);
 
-  // subtle contact-glow pool under the podium (fake bounce light)
+  // subtle contact-glow pool under the podium (fake bounce light). Fleet lane round 2 (2026-10-08; waves 264-269:
+  // "almost no contact shadow under the hull"): the pool peaked at its centre, exactly under the hull, and lit the floor
+  // where the vehicle's contact shadow falls. It is now a ring of bounce round the podium, dark under the tank.
   const poolC = document.createElement('canvas');
   poolC.width = poolC.height = 256;
   const pg = get2dContext(poolC);
   const pgrad = pg.createRadialGradient(128, 128, 10, 128, 128, 128);
-  pgrad.addColorStop(0, 'rgba(255,238,205,0.30)');
-  pgrad.addColorStop(0.55, 'rgba(255,238,205,0.10)');
+  pgrad.addColorStop(0, 'rgba(255,238,205,0)');
+  pgrad.addColorStop(0.3, 'rgba(255,238,205,0.02)');
+  pgrad.addColorStop(0.5, 'rgba(255,238,205,0.12)');
+  pgrad.addColorStop(0.7, 'rgba(255,238,205,0.08)');
   pgrad.addColorStop(1, 'rgba(255,238,205,0)');
   pg.fillStyle = pgrad;
   pg.fillRect(0, 0, 256, 256);
@@ -1128,11 +1132,23 @@ export function createGarageStage(
   // second light pool: warm additive splash on the floor under the west-wall
   // flood housing (its lens is emissive) — fakes the third fixture being live
   // without adding a real light to every shader
+  // (a splash centred on the fixture's footprint, unlike the podium's ring: nothing stands under this one)
+  const splashC = document.createElement('canvas');
+  splashC.width = splashC.height = 256;
+  {
+    const sg = get2dContext(splashC);
+    const sgrad = sg.createRadialGradient(128, 128, 10, 128, 128, 128);
+    sgrad.addColorStop(0, 'rgba(255,238,205,0.30)');
+    sgrad.addColorStop(0.55, 'rgba(255,238,205,0.10)');
+    sgrad.addColorStop(1, 'rgba(255,238,205,0)');
+    sg.fillStyle = sgrad;
+    sg.fillRect(0, 0, 256, 256);
+  }
   const pool2 = new THREE.Mesh(track(new THREE.PlaneGeometry(14, 14)), poolMat);
   pool2.rotation.x = -Math.PI / 2;
   pool2.position.set(-15.5, 0.04, 4);
   pool2.material = track(new THREE.MeshBasicMaterial({
-    map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    map: track(canvasTexture(splashC)), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     opacity: 0.55,
   }));
   group.add(pool2);
