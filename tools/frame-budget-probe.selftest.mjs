@@ -10,8 +10,8 @@ import {
 } from './frame-pass-timer.mjs';
 import * as THREE from 'three';
 import {
-  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, judgeScenes, parseFrameProbeArgs, pinnedOpponents,
-  profileSelfByChunk,
+  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, hideOtherVehicles, judgeScenes, parseFrameProbeArgs,
+  pinnedOpponents, profileSelfByChunk,
 } from './frame-budget-probe.mjs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
 
@@ -409,4 +409,32 @@ assert.equal(stats([]).med, null);
   }
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report) PASS');
+{
+  // --hide-bots (2026-10-07, the whole-PR census): a hidden hull leaves the near-vehicle shadow policy too — the policy reads
+  // a scene child's `visible` and its userData.nearShadowDetail, the battle re-shows every ally each frame, so the hidden
+  // allies nearer the camera took the four slots and the player's hull cast through its proxies on some layouts only
+  const hull = (isPlayer) => {
+    const root = { visible: true, userData: { nearShadowDetail: { detail: [{}], proxies: [{}] } }, layersOff: 0,
+      layers: { disableAll() { root.layersOff++; } }, traverse(fn) { fn(root); } };
+    return { isPlayer, visual: { root } };
+  };
+  const tanks = [hull(true), hull(false), hull(false), { isPlayer: false, visual: null }];
+  const saved = globalThis.window;
+  globalThis.window = { __DEBUG: { game: { tanks } } };
+  try {
+    assert.equal(hideOtherVehicles(), 2, 'the two bots with a vehicle are hidden');
+    const player = tanks[0].visual.root;
+    assert.equal(player.visible, true);
+    assert.ok(player.userData.nearShadowDetail, 'the player keeps its near-shadow detail record');
+    assert.equal(player.layersOff, 0);
+    for (const { visual: { root } } of tanks.slice(1, 3)) {
+      assert.equal(root.visible, false);
+      assert.equal(root.layersOff, 1, 'every layer of a hidden hull is off');
+      assert.equal(root.userData.nearShadowDetail, undefined, 'a hidden hull takes no near-shadow slot');
+    }
+  } finally {
+    globalThis.window = saved;
+  }
+}
+
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots PASS');

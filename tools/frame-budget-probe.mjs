@@ -328,14 +328,24 @@ export function freezeBattle(governor) {
   return { roster, dynScale: P.dynScale, perfTrim: P.perfTrim };
 }
 
-/** --hide-bots: every vehicle but the player's out of the frame (root hidden, all its layers off); the count hidden. */
-function hideOtherVehicles() {
+/**
+ * --hide-bots: every vehicle but the player's out of the frame (root hidden, all its layers off); the count hidden.
+ *
+ * (2026-10-07, the whole-PR census) The hidden hulls also leave the near-vehicle shadow policy
+ * (engine/nearVehicleShadowDetail.ts): it gives its four slots to the nearest scene-child hulls that are `visible` and carry
+ * `userData.nearShadowDetail`, and battlePresentationRuntime sets every ally's root visible again each frame, so hidden allies
+ * spawned nearer the camera took the slots and the player's hull cast through its convex proxies — on one build and not the
+ * other wherever a layout moved the spawns (±16–19 shadow draws in the player's cascades). Clearing the hidden hulls' detail
+ * record keeps the player in its slot on every build.
+ */
+export function hideOtherVehicles() {
   let hidden = 0;
   for (const e of window.__DEBUG.game.tanks) {
     const root = e.isPlayer ? null : e.visual?.root;
     if (!root) continue;
     root.visible = false;
     root.traverse((o) => o.layers.disableAll());
+    if (root.userData) delete root.userData.nearShadowDetail;
     hidden++;
   }
   return hidden;
