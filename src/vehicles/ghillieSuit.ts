@@ -1629,7 +1629,9 @@ function makeNet(
     if (shared) {
       m.map = shared.map;
       m.bumpMap = shared.bump;
-      m.bumpScale = leafy ? 1.4 : 1.1;
+      // three's bump slope is the height change per screen pixel times bumpScale: kept near the cloth's own 0.5 so the
+      // cords and strips stand in relief up close without sparkling at range
+      m.bumpScale = leafy ? 0.7 : 0.6;
       m.alphaTest = 0.5;
       m.transparent = false;
     }
