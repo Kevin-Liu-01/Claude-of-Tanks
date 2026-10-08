@@ -257,6 +257,7 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
 type ActorRef = StudioActor | StudioPanelActor | string | number | null | undefined;
 
 interface StudioEffectParams {
+  /** a wreck's age (char and settle), or a settled crater's (crater round 3: the presentation weathers it by age), s */
   ageS?: number;
   caliberMm?: number;
   /** explosion: a munition class (sim/destructionEvents.ts) and its charge, kg TNT (default: the class's nominal) */
@@ -1572,7 +1573,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // state, no blast, no burst, no ejecta
       if (params.settled) {
         const dug = studioDig(munition, chargeKg, position.x, position.z);
-        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true });
+        const ageS = Number.isFinite(params.ageS) && (params.ageS as number) >= 0 ? (params.ageS as number) : null;
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true, ...(ageS !== null ? { ageS } : {}) });
         return true;
       }
       // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater

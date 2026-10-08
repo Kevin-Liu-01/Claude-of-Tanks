@@ -189,8 +189,24 @@ const CRATER_RADIUS_PER_CBRT_KG = 1.1;
 export const CRATER_MAX_RADIUS_M = 6;
 /** Craters smaller than this (1.2 cells of the 1.333 m terrain lattice) are marks: they never move the ground. */
 export const CRATER_DEFORM_MIN_RADIUS_M = 1.6;
+/**
+ * A crater's form (crater round 3, 2026-10-08; wave 276 found no rim from the player's eye height, and a bowl alone
+ * never reads from 1.5–3 m): its depth and its thrown rim as shares of its radius. HE digs a 0.35 R bowl under a 0.24 R
+ * rim (125 mm: 0.58 m deep, a 0.4 m rim); the rest by munition below (a 152 mm howitzer shell 0.96 m deep under a
+ * 0.62 m rim). The rim's height is broken round the crater by its seed (terrainDeformation.ts craterProfile: 0.55–1.45
+ * of it). Shaped charges (HEAT, ATGM, FPV) never reach CRATER_DEFORM_MIN_RADIUS_M: they leave marks, not bowls.
+ */
 const CRATER_DEPTH_PER_RADIUS = 0.35;
-const CRATER_RIM_PER_RADIUS = 0.12;
+const CRATER_RIM_PER_RADIUS = 0.24;
+/** [depth, rim] per radius where a munition's crater differs from HE's: a howitzer shell's deep bowl and high thrown
+ * rim, a missile warhead's close to it, a rocket's shallower scoop, a cook-off's low heap, a 30–40 mm round's dimple. */
+const CRATER_FORM: Readonly<Partial<Record<MunitionClass, readonly [number, number]>>> = Object.freeze({
+  howitzer: Object.freeze([0.4, 0.26] as const),
+  missile: Object.freeze([0.38, 0.25] as const),
+  rocket: Object.freeze([0.3, 0.22] as const),
+  cook_off: Object.freeze([0.25, 0.16] as const),
+  autocannon_he: Object.freeze([0.3, 0.18] as const),
+});
 
 export interface CraterShape {
   radiusM: number;
@@ -200,16 +216,18 @@ export interface CraterShape {
 
 /**
  * The crater a burst digs (before the ground decides: hard ground halves the depth, water and decks take none):
- * `R = 1.1 · W^⅓ · craterFactor · craterScale` (≤ 6 m), depth 0.35 R, rim 0.12 R. Writes `out` and returns it.
+ * `R = 1.1 · W^⅓ · craterFactor · craterScale` (≤ 6 m), depth 0.35 R and rim 0.24 R for HE, by munition otherwise
+ * (CRATER_FORM). Writes `out` and returns it.
  */
 export function craterFor(chargeKg: number, munition: MunitionClass, craterScale: number, out: CraterShape): CraterShape {
   const factor = MUNITION_PROFILES[munition].craterFactor;
   const scale = Number.isFinite(craterScale) && craterScale > 0 ? craterScale : 0;
   const radius = chargeKg > 0 && factor > 0 && scale > 0
     ? Math.min(CRATER_MAX_RADIUS_M, CRATER_RADIUS_PER_CBRT_KG * Math.cbrt(chargeKg) * factor * scale) : 0;
+  const form = CRATER_FORM[munition];
   out.radiusM = radius;
-  out.depthM = radius * CRATER_DEPTH_PER_RADIUS;
-  out.rimM = radius * CRATER_RIM_PER_RADIUS;
+  out.depthM = radius * (form ? form[0] : CRATER_DEPTH_PER_RADIUS);
+  out.rimM = radius * (form ? form[1] : CRATER_RIM_PER_RADIUS);
   return out;
 }
 

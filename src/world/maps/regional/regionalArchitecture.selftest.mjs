@@ -32,6 +32,8 @@ import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
 import { createHeightField } from '../../terrain.ts';
 import { MAP_IDS, getMapConfig } from '../index.ts';
+import { bindStructureSpans, describeStructure, tagStructureVertices } from '../../structureDamageSeam.ts';
+import { createStructureDamage } from '../../../sim/structureDamage.ts';
 import { registerHooks } from 'node:module';
 
 const STYLES = ARCHITECTURE_STYLES;
@@ -274,6 +276,8 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
+  // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
+  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };

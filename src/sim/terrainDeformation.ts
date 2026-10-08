@@ -26,9 +26,18 @@ const MAX_RAISE_M = 3;
 /** The terrain contact lattice (terrainContactSurface.ts): 1,024 m in 768 cells. */
 const LATTICE_STEP = 128 / 96;
 const LATTICE_CELLS = 768;
-/** A crater's influence reaches 1.6 R; its rim fades out over the last 0.3 R. */
-const CRATER_REACH = 1.6;
-const CRATER_FADE_START = 1.3;
+/** A crater's influence reaches 2 R (its rim's broad outer flank); the flank fades out over the last 0.4 R. */
+const CRATER_REACH = 2;
+const CRATER_FADE_START = 1.6;
+/**
+ * The rim (crater round 3, 2026-10-08): its crest at the bowl's ragged edge, steep inside (0.3 R) and a broad thrown
+ * flank outside (0.55 R), broad enough that the 1.333 m lattice the ground is drawn and driven on carries it (the old
+ * 0.35 R flank lost most of a 125 mm crater's rim between the lattice's vertices); its height broken round the crater
+ * by the seed, 0.55–1.45 of the rim: thrown earth, not a torus.
+ */
+const RIM_INNER = 0.3;
+const RIM_OUTER = 0.55;
+const RIM_BREAK = 0.45;
 /** Rubble: the plateau holds the inner 70 % of the footprint; the skirt runs max(3, 2.2·h) m past its edge. */
 const RUBBLE_PLATEAU = 0.7;
 const RUBBLE_SKIRT_MIN_M = 3;
@@ -66,7 +75,7 @@ export interface RubbleStamp {
 export type TerrainStamp = CraterStamp | RubbleStamp;
 
 /**
- * The ground a stamp moves, as an axis-aligned box [minX, minZ, maxX, maxZ] into `out` (a crater's 1.6 R influence with
+ * The ground a stamp moves, as an axis-aligned box [minX, minZ, maxX, maxZ] into `out` (a crater's 2 R influence with
  * its 10 % wobble margin; a heap's rotated footprint grown by its skirt): what a renderer re-reads (crater-render-spec §B).
  */
 export function stampBounds(stamp: TerrainStamp, out: number[] | Float64Array): number[] | Float64Array {
@@ -112,7 +121,8 @@ export function rubbleHeightFor(structureHeightM: number): number {
   return Math.max(0.6, Math.min(2.6, 0.18 * Math.max(0, structureHeightM)));
 }
 
-/** A crater's profile at distance r from its centre and angle a (§7): a bowl, a rim, ragged by the seed's phases. */
+/** A crater's profile at distance r from its centre and angle a (§7): a bowl, a rim broken round it, ragged by the
+ * seed's phases. */
 export function craterProfile(stamp: CraterStamp, r: number, angle: number): number {
   const wobble = 1 + 0.08 * (0.5 * Math.sin(3 * angle + stamp.p1) + 0.3 * Math.sin(5 * angle + stamp.p2)
     + 0.2 * Math.sin(7 * angle + stamp.p3));
@@ -120,8 +130,10 @@ export function craterProfile(stamp: CraterStamp, r: number, angle: number): num
   if (!(radius > 0) || r >= radius * CRATER_REACH) return 0;
   const q = r / radius;
   const bowl = q < 1 ? -stamp.depthM * (1 - q * q) * (1 - q * q) : 0;
-  const ring = (q - 1) / 0.35;
-  let rim = stamp.rimM * Math.exp(-ring * ring);
+  const ring = (q - 1) / (q < 1 ? RIM_INNER : RIM_OUTER);
+  const broken = 1 + RIM_BREAK * (0.5 * Math.sin(2 * angle + stamp.p2) + 0.3 * Math.sin(4 * angle + stamp.p3)
+    + 0.2 * Math.sin(6 * angle + stamp.p1));
+  let rim = stamp.rimM * broken * Math.exp(-ring * ring);
   if (q > CRATER_FADE_START) {
     const t = (CRATER_REACH - q) / (CRATER_REACH - CRATER_FADE_START);
     rim *= t * t * (3 - 2 * t);
@@ -260,7 +272,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       const reach = radiusM * CRATER_REACH * 1.1;
       const stamp: CraterStamp = { kind: 'crater', x, z, radiusM, depthM, rimM, seed: seed >>> 0, p1, p2, p3 };
       const admitted = admit(stamp, x - reach, z - reach, x + reach, z + reach, false);
-      if (admitted) maxRaise = Math.min(MAX_RAISE_M, maxRaise + rimM);
+      if (admitted) maxRaise = Math.min(MAX_RAISE_M, maxRaise + rimM * (1 + RIM_BREAK));
       return admitted;
     },
     addRubble(cx, cz, hw, hd, yaw, heightM) {

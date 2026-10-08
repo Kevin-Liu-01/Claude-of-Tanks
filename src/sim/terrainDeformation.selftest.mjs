@@ -34,9 +34,33 @@ function makeBase() {
   const overlay = createTerrainDeformation();
   assert.equal(overlay.addCrater(10, 20, 2.4, 0.84, 0.29, 0x1234), true);
   const crater = overlay.stamps[0];
-  near(craterProfile(crater, 0, 0), -0.84 + 0.29 * Math.exp(-1 / 0.35 / 0.35), 1e-9, 'the bowl at the centre');
+  near(craterProfile(crater, 0, 0), -0.84, 1e-3, 'the bowl at the centre (the rim\'s steep inner flank adds nothing there)');
   assert.ok(craterProfile(crater, 2.4, 1.1) > 0.15, 'the rim stands at the radius');
-  assert.equal(craterProfile(crater, 2.4 * 1.8, 0.3), 0, 'nothing past the reach');
+  assert.equal(craterProfile(crater, 2.4 * 2.3, 0.3), 0, 'nothing past the reach');
+  // crater round 3: the rim broken round the crater by the seed (0.55–1.45 of it), and broad enough outside that the
+  // 1.333 m lattice keeps most of it
+  {
+    const crests = [];
+    for (let a = 0; a < 64; a++) {
+      const angle = (a / 64) * Math.PI * 2;
+      let top = -Infinity;
+      for (let r = 1.5; r <= 3.6; r += 0.01) top = Math.max(top, craterProfile(crater, r, angle));
+      crests.push(top);
+    }
+    const lo = Math.min(...crests), hi = Math.max(...crests);
+    assert.ok(lo >= 0.29 * 0.55 - 1e-6 && hi <= 0.29 * 1.45 + 1e-6 && hi - lo > 0.29 * 0.35,
+      `the crest's height broken round the crater (${lo.toFixed(3)}..${hi.toFixed(3)} m of a 0.29 m rim)`);
+    near(overlay.maxRaiseM, 0.29 * 1.45, 1e-9, 'the ray march ceiling holds the highest crest');
+    // the outer flank 0.67 m (half a lattice step) past the crest keeps over half the crest's height
+    let kept = Infinity;
+    for (let a = 0; a < 64; a++) {
+      const angle = (a / 64) * Math.PI * 2;
+      let topR = 0, top = -Infinity;
+      for (let r = 1.5; r <= 3.6; r += 0.01) { const v = craterProfile(crater, r, angle); if (v > top) { top = v; topR = r; } }
+      kept = Math.min(kept, craterProfile(crater, topR + 0.67, angle) / top);
+    }
+    assert.ok(kept > 0.5, `the flank half a lattice step out keeps ${(kept * 100).toFixed(0)} % of the crest`);
+  }
   assert.ok(overlay.offsetAt(10, 20) < -0.8, 'the overlay carries the bowl');
   assert.equal(overlay.offsetAt(10 + 8, 20), 0, 'and nothing 8 m off');
   // rubble: the plateau, the skirt, climbable

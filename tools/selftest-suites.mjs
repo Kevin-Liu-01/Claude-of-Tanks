@@ -942,6 +942,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/battlePresentation.selftest.mjs',
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
+    // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
+    // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
+    'src/mp/presentation/craterSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1047,6 +1050,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverCraters.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
+    // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
+    'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.

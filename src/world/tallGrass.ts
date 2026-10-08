@@ -769,7 +769,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       const x = seg.data[at], z = seg.data[at + 2];
       if (x < x0 || x > x1 || z < z0 || z > z1) continue;
       if (law.holeAt(x, z)) { matrices[i * 16 + 13] = seg.data[at + 1]; blades[i * 4 + 1] = 0; }
-      else { matrices[i * 16 + 13] = seg.data[at + 1] + law.liftAt(x, z); blades[i * 4 + 1] = seg.data[at + 4]; }
+      // (a presentation hole's ring — the FX lane's explosive marks: the blast laid the stalks low out to 1.6 r, for good)
+      else { matrices[i * 16 + 13] = seg.data[at + 1] + law.liftAt(x, z); blades[i * 4 + 1] = seg.data[at + 4] * law.squashAt(x, z); }
       moved++;
     }
     if (upload && moved) {
