@@ -18,7 +18,10 @@
 // (also the turbo-ball kickoff) and on two crater-free stretches of the floor either side of it.
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
-const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.60, .025, .30 + l * .35];
+// (2026-10-08, the skies lane; the gauntlet's wave 260: "a cold blue-white cast … a snowfield at night rather than the
+// neutral grey sunlit Moon of the Apollo photographs"): the regolith's tones a faintly warm neutral grey (hue 0.60 was
+// blue) — the terrain plan's sourced regolith (sourcedTextures.ts, tint .44/.43/.41) is already a warm grey
+const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.08, .02, .30 + l * .35];
 export default {
   id: 'moon', name: 'Earthrise Basin',
   blurb: 'Lunar crater rims, a research outpost and long shadows beneath a vast blue Earth',
@@ -71,7 +74,8 @@ export default {
   },
   splat: { ...mars.splat, sourcedPalette: 'moon', sandstone: false,
     grassTone: grey, dirtTone: grey, rockTone: grey, mudTone: grey,
-    tintA: [.94,.96,1], tintB: [.82,.84,.88], tintC: [1,1,1], roadTint: [.76,.78,.82], rippleAmp: .05, strata: 0,
+    // (2026-10-08: the tints neutral — were blue-leaning .94/.96/1, .82/.84/.88 and .76/.78/.82)
+    tintA: [.97,.965,.955], tintB: [.85,.845,.835], tintC: [1,1,1], roadTint: [.79,.785,.775], rippleAmp: .05, strata: 0,
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
@@ -115,7 +119,8 @@ export default {
       ]),
     ],
   },
-  horizon: { baseHex: 0x686b73, rockHex: 0x858a94, amp: 1.35, style: 'rolling', treeline: 0,
+  // (2026-10-08: the far massifs the regolith's neutral grey — were 0x686b73 / 0x858a94, a blue grey)
+  horizon: { baseHex: 0x6b6a68, rockHex: 0x8a8885, amp: 1.35, style: 'rolling', treeline: 0,
     treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
     // the mountains lane (2026-10-02): the moon keeps its own walls — the carved landform drew straight-flanked
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
@@ -123,10 +128,14 @@ export default {
   sky: { skyIntensity: 0, nightSky: 1, galaxy: .35, nebulaHex: 0, earth: 1, planetDeg: 18, planetHex: 0x8abdff,
     sunElevationDeg: 28, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
     fogDensity: 0, fogMix: 0, envIntensity: .3, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
-    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .38, fillIntensity: .16, postExposure: .98,
+    // (2026-10-08, the gauntlet's wave 260): the hard white sun above any atmosphere (was a cool 0xf1f4ff); the shadows lit
+    // by the sunlit regolith around them — a neutral grey from below and the horizon — never by the blue Earth's hue the rig
+    // took from the sky's irradiance (lightModelCore.ts hemiSkyHex note); the anti-sun fill the regolith's too
+    sunIntensity: 3.5, sunColorHex: 0xfffcf6, hemiIntensity: .38, fillIntensity: .16, postExposure: .98,
+    hemiSkyHex: 0x3c3b3a, hemiGroundHex: 0x8a8885, fillColorHex: 0x9d9b98,
     atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x676b73 },
   },
-  minimap: { ...mars.minimap, base: [108,111,118], hard: [145,148,155], soft: [90,93,100],
+  minimap: { ...mars.minimap, base: [110,109,107], hard: [149,148,146], soft: [93,92,90],
     roadFill: 'rgba(180,185,195,.95)', roadCasing: 'rgba(60,65,75,.9)' },
   shot: { pos: [-175,38,-195], look: [110,167.55,65] },
 } satisfies MapCompositionConfig;

@@ -44,6 +44,16 @@ export interface LightModelPreset {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
+  /**
+   * 2026-10-08 (the skies lane; the gauntlet's wave 260 on Earthrise Basin: "the regolith and the hills carry a cold
+   * blue-white cast … a snowfield at night rather than the neutral grey sunlit Moon of the Apollo photographs"): the
+   * authored rig's ambient colours, where a map's sky is not the light around it. The hemisphere's sky colour otherwise
+   * takes the sky's irradiance hue at the rig's level — under an airless sky that is the blue Earth's — its ground
+   * colour the rig's warm bounce, the anti-sun fill a cool sky's.
+   */
+  hemiSkyHex?: number | null;
+  hemiGroundHex?: number | null;
+  fillColorHex?: number | null;
   envIntensity?: number;
   postExposure?: number;
   lighting?: LightingConfig | null;

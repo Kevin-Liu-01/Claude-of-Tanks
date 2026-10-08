@@ -146,6 +146,10 @@ export interface MapSkyConfig extends Partial<SkyPreset> {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
+  /** 2026-10-08: the authored rig's ambient colours, where the sky is not the light around it (lightModelCore.ts). */
+  hemiSkyHex?: number;
+  hemiGroundHex?: number;
+  fillColorHex?: number;
 }
 
 export interface HorizonMapConfig {

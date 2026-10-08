@@ -871,6 +871,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sunGlare.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
+    // 2026-10-08 (the skies lane, the gauntlet's wave 260): Earthrise Basin's white sun, neutral ambient and regolith
+    'src/world/lunarLight.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',

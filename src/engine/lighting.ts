@@ -1305,9 +1305,12 @@ export function createLighting(
     } else {
       const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
       hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
-      hemi.groundColor.setHex(HEMI_GROUND_COLOR);
-      applyHemisphereSkyHue();
+      // (2026-10-08: a preset may author the rig's ambient colours — lightModelCore.ts hemiSkyHex note)
+      hemi.groundColor.setHex(opts.hemiGroundHex ?? HEMI_GROUND_COLOR);
+      if (opts.hemiSkyHex != null) hemi.color.setHex(opts.hemiSkyHex);
+      else applyHemisphereSkyHue();
     }
+    fill.color.setHex(model.mode !== 'physical' && opts.fillColorHex != null ? opts.fillColorHex : FILL_COLOR);
     const sun = csm.lightDirection;
     const fx = sun.x, fz = sun.z; // csm.lightDirection points FROM the sun: its xz is the anti-sun azimuth
     const fl = Math.hypot(fx, fz) || 1;
@@ -1320,6 +1323,7 @@ export function createLighting(
     if (model.mode === 'physical') lightRig.sunColor.setRGB(model.sunColor[0], model.sunColor[1], model.sunColor[2]);
     lightRig.hemiIntensity = hemi.intensity;
     lightRig.fillIntensity = fill.intensity;
+    lightRig.fillColor.copy(fill.color);
     lightRig.fillDir.copy(fill.position).normalize();
     applyGroundBounce();
     shadowFitCache.invalidate();
