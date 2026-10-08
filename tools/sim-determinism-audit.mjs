@@ -48,6 +48,8 @@ function stateDigest(match, events) {
   const snapshot = match.snapshot({ tick: 0, serverTimeMs: 0, viewerId: '__audit__', ackInputSeq: null });
   for (const shell of snapshot.shells) hash.update(`shell ${shell.id} ${shell.shooterId} ${shell.x} ${shell.y} ${shell.z} ${shell.vx} ${shell.vy} ${shell.vz}\n`);
   hash.update(`destroyed ${JSON.stringify(snapshot.meta.destroyedObstacleIndices)} rev ${snapshot.meta.destructibleRevision}\n`);
+  // destruction (2026-10-07): the structures' log (stages, breaches, craters) is authoritative state too
+  hash.update(`destruction ${JSON.stringify(snapshot.meta.destructionLog ?? [])}\n`);
   hash.update(`events ${events.length} ${events.map((e) => `${e.type}:${JSON.stringify(e).length}`).join(',')}\n`);
   return hash.digest('hex').slice(0, 16);
 }
@@ -70,6 +72,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
     let crushes = 0;
     let impacts = 0;
     let hits = 0;
+    let stages = 0;
     const inputs = new Map();
     for (let tick = 1; tick <= ticks; tick++) {
       inputs.set('h1', scriptedInput(0, tick));
@@ -81,12 +84,13 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
         if (event.type === 'world_prop_destroyed') crushes++;
         else if (event.type === 'shell_impact') impacts++;
         else if (event.type === 'shell_hit') hits++;
+        else if (event.type === 'structure_stage') stages++;
       }
       match.afterEventBroadcast();
       if (tick % every === 0) digests.push([tick, stateDigest(match, events)]);
     }
     world.release?.();
-    return { digests, counts: { events: events.length, crushes, impacts, hits }, final: stateDigest(match, events) };
+    return { digests, counts: { events: events.length, crushes, impacts, hits, stages }, final: stateDigest(match, events) };
   };
   const started = performance.now();
   const a = run();

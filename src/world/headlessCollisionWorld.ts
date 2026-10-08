@@ -27,6 +27,9 @@ export interface PackedCollisionRecord {
   k?: string | null;
   t?: number | null;
   p?: number | null;
+  /** The structure group (docs/DESTRUCTION.md §3.1) and its role (1 setpiece, 2 fixed); absent before 2026-10-07. */
+  g?: number | null;
+  gr?: number | null;
 }
 
 interface ConcealmentRecord {
@@ -118,6 +121,9 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
   }
   if (packed.t != null) record.treeIdx = packed.t;
   if (packed.p != null) record.propIdx = packed.p;
+  if (packed.g != null) record.structureIdx = packed.g;
+  if (packed.gr === 1) record.structureRole = 'setpiece';
+  else if (packed.gr === 2) record.structureRole = 'fixed';
   return record;
 }
 

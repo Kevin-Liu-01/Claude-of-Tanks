@@ -259,6 +259,22 @@ export const DESTRUCTION_WIRE_EVENTS = Object.freeze({
   crater: 'terrain_crater',
 } as const);
 
+// ---- Rules -----------------------------------------------------------------------------------------------------
+
+/** The ruleset's destruction block (sim/matchRuleset.ts MatchRuleset.destruction; DESTRUCTION.md §9). */
+export interface DestructionRules {
+  /** Buildings take damage and collapse. */
+  readonly structures: boolean;
+  /** Explosions deform the ground. */
+  readonly craters: boolean;
+  /** Multiplies every structure point dealt. */
+  readonly structureDamageScale: number;
+  /** Multiplies crater radii. */
+  readonly craterScale: number;
+  /** Deforming craters per match. */
+  readonly maxCraters: number;
+}
+
 // ---- Settled state ---------------------------------------------------------------------------------------------
 
 /**
@@ -268,7 +284,8 @@ export const DESTRUCTION_WIRE_EVENTS = Object.freeze({
  * joiner lays every entry down settled. `revision` is the log's length.
  */
 export type DestructionLogEntry =
-  | { readonly kind: 'stage'; readonly structureId: number; readonly stage: StructureStage }
+  /** A stage, and the structure's footprint centre (its identity in a world laid out otherwise; absent from old logs). */
+  | { readonly kind: 'stage'; readonly structureId: number; readonly stage: StructureStage; readonly cx?: number; readonly cz?: number }
   | { readonly kind: 'breach'; readonly structureId: number; readonly section: number; readonly hole: number;
       readonly x: number; readonly y: number; readonly z: number; readonly radiusM: number; readonly sectionDown: boolean }
   | { readonly kind: 'crater'; readonly craterId: number; readonly x: number; readonly z: number;

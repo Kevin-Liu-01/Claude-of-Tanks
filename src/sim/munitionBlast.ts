@@ -14,13 +14,15 @@ import { MUNITION_PROFILES, type MunitionClass } from './destructionEvents.ts';
 export interface MunitionShellLike {
   readonly type: string;
   readonly caliberMm: number;
-  readonly name?: string;
-  readonly guided?: boolean;
-  readonly tracer?: string;
-  readonly blastRadiusM?: number;
-  readonly launcherTubes?: number;
-  readonly pen100Mm?: number;
+  readonly name?: unknown;
+  readonly guided?: unknown;
+  readonly tracer?: unknown;
+  readonly blastRadiusM?: unknown;
+  readonly launcherTubes?: unknown;
+  readonly pen100Mm?: unknown;
 }
+
+const finiteOrNull = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 
 /** Kinetic rounds under this calibre are small arms (roof machine guns). */
 const SMALL_ARMS_MAX_MM = 15;
@@ -70,9 +72,9 @@ export function munitionClassForShell(spec: MunitionShellLike): MunitionClass {
       if (SMOKE_NAME.test(name)) return 'smoke';
       if (HESH_NAME.test(name)) return 'hesh';
       if (spec.guided === true) return 'missile';
-      if ((spec.launcherTubes ?? 0) > 0) return 'rocket';
+      if ((finiteOrNull(spec.launcherTubes) ?? 0) > 0) return 'rocket';
       if (caliber < AUTOCANNON_MAX_MM) return 'autocannon_he';
-      if (caliber >= HOWITZER_MIN_MM || Number.isFinite(spec.blastRadiusM)) return 'howitzer';
+      if (caliber >= HOWITZER_MIN_MM || finiteOrNull(spec.blastRadiusM) !== null) return 'howitzer';
       return 'he';
     default:
       return 'kinetic';
@@ -90,7 +92,8 @@ function envelopeChargeKg(radiusM: number): number {
 export function munitionChargeKg(spec: MunitionShellLike, munition: MunitionClass = munitionClassForShell(spec)): number {
   const c = caliberOf(spec) / 100;
   const c3 = c * c * c;
-  const envelope = Number.isFinite(spec.blastRadiusM) ? envelopeChargeKg(spec.blastRadiusM as number) : null;
+  const radius = finiteOrNull(spec.blastRadiusM);
+  const envelope = radius !== null ? envelopeChargeKg(radius) : null;
   switch (munition) {
     case 'autocannon_he':
     case 'he':
@@ -155,12 +158,22 @@ export function structureBlastPoints(chargeKg: number, munition: MunitionClass, 
   return BLAST_POINTS_PER_KG * chargeKg * factor * blastFalloff(distance / Math.cbrt(chargeKg));
 }
 
+/** Light props a blast fells (§6): trees, fences, crates and huts within 1.2 · W^⅓ of a burst of 2 kg or more. */
+export const PROP_FELL_MIN_CHARGE_KG = 2;
+/** At most this many props fall to one blast, and to all of a tick's blasts together (the wire's event budget, §8.5:
+ * one EVENT message per viewer per tick, dropped whole above 64 events). */
+export const PROP_FELL_PER_BLAST = 6;
+export const PROP_FELL_PER_TICK = 12;
+export function propFellRadiusM(chargeKg: number): number {
+  return chargeKg >= PROP_FELL_MIN_CHARGE_KG ? 1.2 * Math.cbrt(chargeKg) : 0;
+}
+
 // ---- Penetrators (§4.3) ----------------------------------------------------------------------------------------
 
 /** Structure points a penetrator's strike deals (kinetic rods, AP shot, shaped-charge jets): 0.004 · pen · cal/100. */
 export function kineticStructurePoints(spec: MunitionShellLike, munition: MunitionClass = munitionClassForShell(spec)): number {
   if (!MUNITION_PROFILES[munition].penetrator) return 0;
-  const pen = Number(spec.pen100Mm);
+  const pen = finiteOrNull(spec.pen100Mm) ?? 0;
   if (!(pen > 0)) return 0;
   return 0.004 * pen * (caliberOf(spec) / 100);
 }

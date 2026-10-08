@@ -3895,6 +3895,9 @@ ${snowCap ? `
     return { y: support.y, spread: support.spread, hx, hz };
   }
 
+  // destruction (docs/DESTRUCTION.md §3.1): every structure placement is one group, numbered in build order; its records
+  // and its parts carry the number (the shards pack it; the presentation reads it off the merged geometry)
+  let structureSerial = 0;
   function addStructureCollision(
     id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
   ) {
@@ -3904,9 +3907,17 @@ ${snowCap ? `
     } catch (error) {
       throw new Error(`${id}: unable to derive structure collision`, { cause: error });
     }
-    appendStructureCollisionBand(obstacles, profile.contact, x, baseY, z, yaw).kind = 'structure';
+    const structureIdx = structureSerial++;
+    const contact = appendStructureCollisionBand(obstacles, profile.contact, x, baseY, z, yaw);
+    contact.kind = 'structure';
+    contact.structureIdx = structureIdx;
     for (const band of profile.shell) {
-      appendStructureCollisionBand(colliders, band, x, baseY, z, yaw).kind = 'structure';
+      const shell = appendStructureCollisionBand(colliders, band, x, baseY, z, yaw);
+      shell.kind = 'structure';
+      shell.structureIdx = structureIdx;
+    }
+    for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) {
+      geometry.userData.structureIdx = structureIdx;
     }
     return profile;
   }
@@ -4740,6 +4751,7 @@ ${snowCap ? `
     const receipt = yield* composeLandmarks({
       mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
       obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      structureIndex: () => structureSerial++,
       hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
