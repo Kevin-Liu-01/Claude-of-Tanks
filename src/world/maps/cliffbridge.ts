@@ -237,10 +237,16 @@ export default {
       // zone-control disc west of the viaduct) and at the mill pool east of it (the turbo-ball kickoff). (Round 5: the
       // pair under the bridge is gone with the floor there — the waist is the river's.)
       // (round 5's layout brief: the middle band's cover fell to 0.26 with the waist's open lips and the floor's levees under
-      // the bridge gone) a short pair at each reach's near end, out of the zone disc's and the kickoff's 30 m
-      ...[[-335, 210], [-200, 80], [200, 80], [335, 210]].flatMap(([x, length]) => [
+      // the bridge gone) a narrower pair at each reach's near end, out on the floor at ±45 m — on the axis they would tilt
+      // the zone disc's and the kickoff's 30 m (the placement then seats the zone on a lip) — their centres more than 75 m
+      // from Verdant's two swells (the brief's skeleton rule)
+      ...[[-335, 210], [335, 210]].flatMap(([x, length]) => [
         { kind: 'ridge', x, z: -25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
         { kind: 'ridge', x, z: 25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
+      ]),
+      ...[[-170, 80], [-115, 40], [115, 40], [170, 80]].flatMap(([x, length]) => [
+        { kind: 'ridge', x, z: -45, length, width: 12, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
+        { kind: 'ridge', x, z: 45, length, width: 12, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
       ]),
       // and in the waist, between the pools and the walls' feet, a narrower pair either side of the bridge
       ...[-75, 75].flatMap((x) => [
