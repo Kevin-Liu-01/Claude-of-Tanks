@@ -317,9 +317,16 @@ const TERRAIN_PLAN = {
     // (Copper Mesa round 2, wave 117: still "orange-tan sand"): the sand set half desaturated under a cooler pink-grey,
     // and the steep ground — the rills' walls, the benches' risers — the grey rock set warmed toward the conglomerate's
     // pink, lifted off black (round 47)
-    G: { set: 'sand', desat: 0.5, tint: [0.80, 0.72, 0.78], roughMul: 1.26 },
-    D: { set: 'sand', desat: 0.5, tint: [0.70, 0.62, 0.68], roughMul: 1.3 },
-    R: { set: 'rock', desat: 0.55, tint: [1.22, 1.08, 1.06], lift: 0.04, roughMul: 1.2 }, M: null,
+    // (Copper Mesa round 3, wave 132: "a near-white lilac that reads as snow or a salt pan", "wind-ripple striations",
+    // no pink, ochre or grey conglomerate): the sand set's photographed ripples were the striations, and its pink-grey
+    // under the overcast's blue fill the lilac. The hills' gravel is the dirt set (grit and clods, no ripples) toned to
+    // a pale pink-buff, mean ≈ 0.62/0.53/0.48 (luma 0.55, the old floor's brightness); the worn ground, the scree and
+    // the rills' sides — the D layer on the 26°–47° slopes, the benches' risers — the iron-stained ochre gravel the rain
+    // washes down them, ≈ 0.62/0.44/0.30; the steep faces the rock set warmed to the conglomerate's mauve-grey,
+    // ≈ 0.47/0.42/0.43, its orange veins kept
+    G: { set: 'dirt', desat: 0.45, tint: [1.46, 1.36, 1.49], lift: 0.05, roughMul: 1.26 },
+    D: { set: 'dirt', desat: 0.15, tint: [1.43, 1.18, 0.95], lift: 0.03, roughMul: 1.3 },
+    R: { set: 'rock', desat: 0.35, tint: [1.45, 1.12, 1.10], lift: 0.04, roughMul: 1.2 }, M: null,
   },
   ruinspires: {
     // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),

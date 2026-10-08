@@ -528,3 +528,143 @@ export function readShaft(parts: ShellParts): ShaftReading | null {
   if (!bands.length) return null;
   return { base, top: Math.max(wallTop, crown?.y1 ?? wallTop), bands, crown };
 }
+
+// ---------------------------------------------------------------------------------------------------- a cluster
+
+/** A cell of a compound read off its parts: the box of one closed body among the merged walls, and its bucket. */
+interface CellReading {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+  bucket: string;
+  tint: Rgb;
+  /** the level of its roof slab's top (a parapet stands above it): the highest level its up-facing faces cover a third of
+   *  its footprint at; its box's top when none does */
+  deck: number;
+}
+
+/**
+ * The cells of a compound (a Siwan or Wadi Rum compound, a caravanserai, a souk), read off its merged parts: the wall
+ * buckets' solid triangles joined where they share a corner (welded at a centimetre) into closed bodies, each a cell (at
+ * least 1.5 m every way, its surface most of its box's: a cubic room, not a parapet or a stair). Null below three cells
+ * (a body of one or two closed boxes is a house or a shell).
+ */
+export function readCells(parts: ShellParts): CellReading[] | null {
+  const tris = trianglesOf(parts).filter((t) => WALL_BUCKETS.has(t.bucket) && !t.geometry.userData?.noCollision);
+  if (tris.length < 24) return null;
+  const parent = tris.map((_, i) => i);
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const byKey = new Map<string, number>();
+  tris.forEach((t, i) => {
+    for (const v of [t.a, t.b, t.c]) {
+      const key = `${Math.round(v[0] * 100)},${Math.round(v[1] * 100)},${Math.round(v[2] * 100)}`;
+      const j = byKey.get(key);
+      if (j === undefined) byKey.set(key, i); else { const a = find(i), b = find(j); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); }
+    }
+  });
+  const comps = new Map<number, { tris: Tri[]; area: number; lo: [number, number, number]; hi: [number, number, number] }>();
+  tris.forEach((t, i) => {
+    const r = find(i);
+    const c = comps.get(r) ?? { tris: [], area: 0, lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
+    c.tris.push(t); c.area += t.area;
+    for (const v of [t.a, t.b, t.c]) for (let k = 0; k < 3; k++) { c.lo[k] = Math.min(c.lo[k], v[k]); c.hi[k] = Math.max(c.hi[k], v[k]); }
+    comps.set(r, c);
+  });
+  const cells: CellReading[] = [];
+  for (const [, c] of [...comps].sort((p, q) => p[0] - q[0])) {
+    const sx = c.hi[0] - c.lo[0], sy = c.hi[1] - c.lo[1], sz = c.hi[2] - c.lo[2];
+    if (sx < 1.5 || sy < 1.5 || sz < 1.5) continue;
+    if (c.area < 0.6 * 2 * (sx * sy + sy * sz + sz * sx)) continue;
+    const byBucket = new Map<string, number>();
+    for (const t of c.tris) byBucket.set(t.bucket, (byBucket.get(t.bucket) ?? 0) + t.area);
+    let bucket = '', most = 0;
+    for (const [b, a] of byBucket) if (a > most) { most = a; bucket = b; }
+    // the deck: up-facing area by level (5 cm), the highest level that covers a third of the footprint
+    const levels = new Map<number, number>();
+    for (const t of c.tris) if (t.n[1] > 0.9) { const y = Math.round((t.a[1] + t.b[1] + t.c[1]) / 3 * 20); levels.set(y, (levels.get(y) ?? 0) + t.area); }
+    let deck = c.hi[1];
+    const decks = [...levels].filter(([, a]) => a >= sx * sz / 3).map(([y]) => y / 20);
+    if (decks.length) deck = Math.max(...decks);
+    cells.push({ x0: c.lo[0], x1: c.hi[0], y0: c.lo[1], y1: c.hi[1], z0: c.lo[2], z1: c.hi[2], bucket, deck,
+      tint: meanColour(c.tris.filter((t) => t.bucket === bucket)) });
+  }
+  return cells.length >= 3 ? cells : null;
+}
+
+// ---------------------------------------------------------------------------------------------------- a ruin
+
+/** A wall piece of a ruin read off its parts: its base's middle, its axes, its half length and thickness, its top. */
+interface WallPieceReading {
+  c: Vec3;
+  along: Vec3;
+  out: Vec3;
+  hl: number;
+  ht: number;
+  /** the top's height over the base at evenly spaced points along the piece (its ragged line) */
+  top: number[];
+  bucket: string;
+  tint: Rgb;
+}
+
+/**
+ * The wall pieces of a ruin (what is left of a house: its walls standing to ragged tops), read off its merged parts: the
+ * wall buckets' solid triangles joined where they share a corner (welded at a centimetre) into closed bodies; a body
+ * whose faces mostly face one horizontal way (the area-weighted normals' main axis) is a wall piece when it is 0.15-1.2 m
+ * thick, at least 0.8 m long and half again as long as it is thick, and 0.6 m tall. Its top is sampled every 0.75 m or so
+ * along it. Null below two pieces (a lone wall is a shell's, a heap of blocks the default's).
+ */
+export function readWallPieces(parts: ShellParts): WallPieceReading[] | null {
+  const tris = trianglesOf(parts).filter((t) => WALL_BUCKETS.has(t.bucket) && t.bucket !== 'wood' && t.bucket !== 'structureWood'
+    && !t.geometry.userData?.noCollision);
+  if (tris.length < 12) return null;
+  const parent = tris.map((_, i) => i);
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const byKey = new Map<string, number>();
+  tris.forEach((t, i) => {
+    for (const v of [t.a, t.b, t.c]) {
+      const key = `${Math.round(v[0] * 100)},${Math.round(v[1] * 100)},${Math.round(v[2] * 100)}`;
+      const j = byKey.get(key);
+      if (j === undefined) byKey.set(key, i); else { const a = find(i), b = find(j); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); }
+    }
+  });
+  const comps = new Map<number, Tri[]>();
+  tris.forEach((t, i) => { const r = find(i); const list = comps.get(r) ?? []; list.push(t); comps.set(r, list); });
+  const pieces: WallPieceReading[] = [];
+  // (the pieces must be most of the masonry's standing faces: a ruin whose walls read otherwise stays the default's)
+  const upright = (list: readonly Tri[]) => list.reduce((a, t) => a + (Math.abs(t.n[1]) < 0.3 ? t.area : 0), 0);
+  let pieceArea = 0;
+  for (const [, list] of [...comps].sort((p, q) => p[0] - q[0])) {
+    // the face normal's main horizontal axis (a 2 x 2 tensor of the vertical faces' normals, by area)
+    let xx = 0, xz = 0, zz = 0;
+    for (const t of list) if (Math.abs(t.n[1]) < 0.3) { xx += t.area * t.n[0] * t.n[0]; xz += t.area * t.n[0] * t.n[2]; zz += t.area * t.n[2] * t.n[2]; }
+    if (xx + zz < 1e-6) continue;
+    const ang = 0.5 * Math.atan2(2 * xz, xx - zz);
+    const out: Vec3 = [Math.cos(ang), 0, Math.sin(ang)], along: Vec3 = [-out[2], 0, out[0]];
+    let a0 = Infinity, a1 = -Infinity, o0 = Infinity, o1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const t of list) for (const v of [t.a, t.b, t.c]) {
+      const pa = v[0] * along[0] + v[2] * along[2], po = v[0] * out[0] + v[2] * out[2];
+      a0 = Math.min(a0, pa); a1 = Math.max(a1, pa); o0 = Math.min(o0, po); o1 = Math.max(o1, po); y0 = Math.min(y0, v[1]); y1 = Math.max(y1, v[1]);
+    }
+    const len = a1 - a0, thick = o1 - o0, h = y1 - y0;
+    if (thick < 0.15 || thick > 1.2 || len < 0.8 || len < 1.5 * thick || h < 0.6) continue;
+    const n = Math.max(2, Math.min(12, Math.round(len / 0.75)));
+    const top = new Array<number>(n).fill(0);
+    for (const t of list) for (const v of [t.a, t.b, t.c]) {
+      const pa = v[0] * along[0] + v[2] * along[2];
+      const k = Math.max(0, Math.min(n - 1, Math.floor(((pa - a0) / len) * n)));
+      top[k] = Math.max(top[k], v[1] - y0);
+    }
+    const byBucket = new Map<string, number>();
+    for (const t of list) byBucket.set(t.bucket, (byBucket.get(t.bucket) ?? 0) + t.area);
+    let bucket = '', most = 0;
+    for (const [b, a] of byBucket) if (a > most) { most = a; bucket = b; }
+    const ca = (a0 + a1) / 2, co = (o0 + o1) / 2;
+    pieceArea += upright(list);
+    pieces.push({ c: [along[0] * ca + out[0] * co, y0, along[2] * ca + out[2] * co], along, out, hl: len / 2, ht: thick / 2,
+      top: top.map((y) => Math.max(0.3, y)), bucket, tint: meanColour(list.filter((t) => t.bucket === bucket)) });
+  }
+  return pieces.length >= 2 && pieceArea >= 0.5 * upright(tris) ? pieces : null;
+}

@@ -1134,6 +1134,9 @@ export function remnantWall(mesh: Mesh, pen: FacePen, anatomy: StructureDamageAn
 
 /** The skin's bucket: the walls' main material in the pile (a render's core where the skin is a render). */
 const SKIN_MATERIALS: ReadonlySet<string> = new Set(['stone', 'brick', 'rubble', 'concrete', 'adobe', 'earth', 'plaster']);
+/** The pale dust a fall leaves over its pile (the skin and the pieces lying in it are drawn toward it). */
+const PILE_DUST: Rgb = [0.62, 0.58, 0.52];
+const dusted = (t: Rgb, k: number): Rgb => [t[0] * (1 - k) + PILE_DUST[0] * k, t[1] * (1 - k) + PILE_DUST[1] * k, t[2] * (1 - k) + PILE_DUST[2] * k];
 
 /**
  * The heap's skin: a polar grid over the mound from its crown out to where it stands 12 cm high, each vertex on the
@@ -1144,6 +1147,7 @@ export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: rea
   rng: () => number): [number, number] {
   const RINGS = 7, SECTORS = 22, EDGE = 0.12;
   const rx = anatomy.w / 2 + 0.8, rz = anatomy.d / 2 + 0.8, far = 1.8 * Math.max(rx, rz);
+  const lumpK = Math.max(0.25, Math.min(1, (Math.min(rx, rz) - 0.8) / 3));
   // how far out each sector's ray stays on the heap
   const ext: number[] = [];
   let reachX = rx, reachZ = rz;
@@ -1156,9 +1160,14 @@ export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: rea
     reachZ = Math.max(reachZ, Math.abs(dz) * (r + 0.6));
   }
   const slot = slots.find((s) => SKIN_MATERIALS.has(s.material)) ?? slots[0];
-  if (!slot || !mesh.room(1 + RINGS * SECTORS) || !mesh.begin(slot.bucket, 'rubble')) return [reachX, reachZ];
-  const density = slot.bucket.includes('laster') ? 0.42 : 0.5, dust = 0.8;
-  const tint: Rgb = [slot.tint[0] * dust, slot.tint[1] * dust * 0.98, slot.tint[2] * dust * 0.95];
+  const GROUPS = 5;
+  if (!slot || !mesh.room(GROUPS * (1 + RINGS * (Math.ceil(SECTORS / GROUPS) + 1))) || !mesh.begin(slot.bucket, 'rubble')) return [reachX, reachZ];
+  // (s1c review: the wall's print draped over the mound read as paving) the print at about 2.4 times its wall density, so
+  // its courses break into rubble-sized bits, and the colour dust-coated: drawn toward the pale dust of a fall and
+  // lumpy (each vertex a shade apart)
+  const density = (slot.bucket.includes('laster') ? 0.42 : 0.5) * 2.4;
+  const tint: Rgb = [0.92 * (slot.tint[0] * 0.7 + PILE_DUST[0] * 0.3), 0.92 * (slot.tint[1] * 0.7 + PILE_DUST[1] * 0.3),
+    0.92 * (slot.tint[2] * 0.7 + PILE_DUST[2] * 0.3)];
   // the positions first (a lump at every vertex but the rim, which stays on the heap), then the normals across the grid
   const pos: Vec3[] = [[cx, mound(cx, cz) + 0.05, cz]];
   for (let ring = 1; ring <= RINGS; ring++) {
@@ -1167,12 +1176,13 @@ export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: rea
       // (a ring jittered inward only: never past the next ring out, where the raised skin would fold over itself)
       const a = (k / SECTORS) * Math.PI * 2, r = ext[k] * t * (ring === RINGS ? 1 : 0.9 + rng() * 0.1);
       const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      const lump = ring === RINGS ? 0.01 : (rng() - 0.35) * 0.22 * (1 - t * 0.6);
+      // (a small skin, the cone at a fallen wall's foot, lumps less: its rings lie a hand apart, and a full lump folds it)
+      const lump = ring === RINGS ? 0.01 : (rng() - 0.35) * 0.22 * lumpK * (1 - t * 0.6);
       pos.push([x, mound(x, z) + lump, z]);
     }
   }
   const at = (ring: number, k: number): number => (ring === 0 ? 0 : 1 + (ring - 1) * SECTORS + ((k + SECTORS) % SECTORS));
-  const idx: number[] = [];
+  const nor: Vec3[] = [], col: Rgb[] = [];
   for (let i = 0; i < pos.length; i++) {
     const ring = i === 0 ? 0 : 1 + Math.floor((i - 1) / SECTORS), k = i === 0 ? 0 : (i - 1) % SECTORS;
     let n: Vec3 = [0, 1, 0];
@@ -1186,16 +1196,34 @@ export function heapSkin(mesh: Mesh, anatomy: StructureDamageAnatomy, slots: rea
       if (!Number.isFinite(n[0])) n = [0, 1, 0];
       void p;
     }
-    const shade = 0.78 + 0.22 * n[1];
-    idx.push(mesh.rawVertex(pos[i], n, pos[i][0] * density, pos[i][2] * density, [tint[0] * shade, tint[1] * shade, tint[2] * shade]));
+    const shade = (0.78 + 0.22 * n[1]) * (0.86 + rng() * 0.26);
+    nor.push(n);
+    col.push([tint[0] * shade, tint[1] * shade, tint[2] * shade]);
   }
-  // counter-clockwise from above: the crown's fan, then the rings' quads
-  for (let k = 0; k < SECTORS; k++) mesh.rawTriangle(idx[0], idx[at(1, k + 1)], idx[at(1, k)]);
-  for (let ring = 1; ring < RINGS; ring++) {
-    for (let k = 0; k < SECTORS; k++) {
-      const a = idx[at(ring, k)], b = idx[at(ring, k + 1)], c = idx[at(ring + 1, k + 1)], d = idx[at(ring + 1, k)];
-      mesh.rawTriangle(a, b, c);
-      mesh.rawTriangle(a, c, d);
+  // (s1c review: "the wall's print draped over the mound read as paving") the skin in five patches of sectors, each its
+  // print turned and shifted on its own, meeting at seams like slumps of rubble against one another; a grid point on a
+  // seam is written once a patch, its normal and shade the same in both
+  for (let g = 0; g < GROUPS; g++) {
+    const k0 = Math.round((g * SECTORS) / GROUPS), k1 = Math.round(((g + 1) * SECTORS) / GROUPS);
+    const turn = rng() * Math.PI * 2, ct = Math.cos(turn), st = Math.sin(turn), ou = rng() * 4, ov = rng() * 4;
+    const local = new Map<number, number>();
+    const vert = (i: number): number => {
+      let j = local.get(i);
+      if (j === undefined) {
+        const x = pos[i][0] * density, z = pos[i][2] * density;
+        j = mesh.rawVertex(pos[i], nor[i], x * ct - z * st + ou, x * st + z * ct + ov, col[i]);
+        local.set(i, j);
+      }
+      return j;
+    };
+    // counter-clockwise from above: the crown's fan, then the rings' quads
+    for (let k = k0; k < k1; k++) mesh.rawTriangle(vert(0), vert(at(1, k + 1)), vert(at(1, k)));
+    for (let ring = 1; ring < RINGS; ring++) {
+      for (let k = k0; k < k1; k++) {
+        const a = vert(at(ring, k)), b = vert(at(ring, k + 1)), c = vert(at(ring + 1, k + 1)), d = vert(at(ring + 1, k));
+        mesh.rawTriangle(a, b, c);
+        mesh.rawTriangle(a, c, d);
+      }
     }
   }
   mesh.end();
@@ -1252,17 +1280,31 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   };
   // the remnant: the ground storey's faces to their stubs, at irregular heights over the heap banked against them, the
   // corners higher
+  // (s1c review) the corners stand as piers 2-2.5 m over the heap, and one gable end keeps a broad remnant of its wall
+  const gables = st0 ? gableFaces(anatomy, st0.faces) : [];
+  const remnantGable = gables.length ? gables[Math.floor(rng() * gables.length)] : null;
   if (st0) for (const f of st0.faces) {
     const pen = new FacePen(f, extras?.surfaces.get(f.section) ?? fallbackSurface(f));
     const half = f.width / 2, rem = anatomy.remnant;
     const lobes = Array.from({ length: 5 }, () => [rng() * 2 - 1, rng() * Math.PI * 2]);
-    const cornerRise = 0.9 + rng() * 0.6;
+    const piers = [2 + rng() * 0.5, 2 + rng() * 0.5];
+    const hump = f === remnantGable ? { u: (rng() - 0.5) * f.width * 0.35, w: f.width * (0.3 + rng() * 0.12), h: 2.2 + rng() * 0.8 } : null;
     const standing = (u: number): number => {
       let v = 0;
       for (let k = 0; k < lobes.length; k++) v += lobes[k][0] * Math.sin(u * (k + 1) * 1.3 + lobes[k][1]) / (k + 1);
-      const corner = rem.corners ? Math.max(0, 1 - (half - Math.abs(u)) / 0.9) * cornerRise : 0;
-      const banked = Math.max(0, heapTop(f.origin[0] + f.u[0] * u, f.origin[2] + f.u[2] * u) - f.origin[1]);
-      return Math.min(f.height, Math.max(0.15, banked + rem.stubHeightM * (0.7 + 0.45 * v) + corner * 1.4));
+      const heap = heapTop(f.origin[0] + f.u[0] * u, f.origin[2] + f.u[2] * u) - f.origin[1];
+      const banked = Math.max(0, heap);
+      let y = banked + rem.stubHeightM * (0.7 + 0.45 * v);
+      if (rem.corners) {
+        // a pier the last 0.9 m to each corner, ragged on its inner shoulder
+        const t = Math.max(0, 1 - (half - Math.abs(u)) / 0.9), pier = piers[u < 0 ? 0 : 1];
+        if (t > 0) y = Math.max(y, banked + pier * Math.min(1, t * 1.6) * (0.92 + 0.08 * Math.sin(u * 7.3 + lobes[0][1])));
+      }
+      if (hump) {
+        const t = Math.max(0, 1 - Math.abs(u - hump.u) / hump.w);
+        if (t > 0) y = Math.max(y, banked + hump.h * Math.sqrt(t) * (0.9 + 0.1 * Math.sin(u * 5.1 + lobes[1][1])));
+      }
+      return Math.min(f.height, Math.max(0.15, y));
     };
     remnantWall(mesh, pen, anatomy, rng, standing);
   }
@@ -1284,7 +1326,8 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
   // ground with chunks on it), then chunks of its materials by their shares, kept where the heap stands high
   const slots = anatomy.rubble.filter((s) => s.share > 0.005);
   const reach = heapSkin(mesh, anatomy, slots, heapTop, cx, cz, rng);
-  const budget = Math.max(40, Math.min(420, Math.floor((out.mesh.capacity - out.mesh.vertices) / 26)));
+  // (the chunks take three fifths of what is left: the slabs, the roof's covering and the timbers follow them)
+  const budget = Math.max(40, Math.min(420, Math.floor((out.mesh.capacity - out.mesh.vertices) * 0.6 / 26)));
   const crown = Math.max(0.05, mound(cx, cz));
   for (const slot of slots) {
     const count = Math.round(budget * slot.share);
@@ -1306,6 +1349,56 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
       heapChunk(mesh, slot, x, y, z, sx, sy, sz, rng() * Math.PI, timber ? (rng() - 0.5) * 0.6 : (rng() - 0.5) * 0.9, rng);
     }
   }
+  // (s1c review) large pieces of the walls lying whole at angles in their face's own skin (a render stays on its slab, a
+  // brick wall's courses with it), one edge in the heap and the other up
+  if (st0) for (const f of st0.faces) {
+    const skin = f.layers.find((l) => l.material !== 'timber') ?? f.layers[0];
+    if (!skin || !mesh.begin(skin.bucket, 'rubble')) continue;
+    const n = Math.max(1, Math.min(2, Math.round(f.width / 5)));
+    const across = Math.min(anatomy.w, anatomy.d) / 2;
+    const yaw = Math.atan2(-f.u[2], f.u[0]);
+    for (let k = 0; k < n; k++) {
+      const u = (rng() - 0.5) * f.width * 0.7, inward = Math.min(across - 0.4, 0.7 + rng() * 2.2);
+      if (inward < 0.4) continue;
+      const x = f.origin[0] + f.u[0] * u - f.out[0] * inward, z = f.origin[2] + f.u[2] * u - f.out[2] * inward;
+      const hl = 0.55 + rng() * 0.6, hh = 0.4 + rng() * 0.45, ht = Math.max(0.09, Math.min(0.22, skin.thicknessM / 2 + 0.05));
+      const tilt = (0.35 + rng() * 0.6) * (rng() < 0.5 ? 1 : -1);
+      heapChunk(mesh, { ...skin, tint: dusted(skin.tint, 0.18) }, x, heapTop(x, z) + hh * Math.abs(Math.sin(tilt)) * 0.45, z,
+        hl, ht, hh, yaw + (rng() - 0.5) * 0.5, tilt, rng);
+    }
+  }
+  // (s1c review: "the farmhouse's huge roof had almost vanished from its pile") the roof comes down last, onto its walls:
+  // its covering over the top of the heap by the roof's area — a few whole sections at angles, tile and slate plates
+  // over the crown
+  const roof = anatomy.roof;
+  if (roof && ROOF_PLATES.has(roof.covering.material) && roof.slabs.length) {
+    const area = roof.slabs.reduce((a, sl) => {
+      const [p0, p1, p2, p3] = sl.corners;
+      const tri = (a1: Vec3, b1: Vec3, c1: Vec3) => Math.hypot(...cross3([b1[0] - a1[0], b1[1] - a1[1], b1[2] - a1[2]], [c1[0] - a1[0], c1[1] - a1[1], c1[2] - a1[2]])) / 2;
+      return a + tri(p0, p1, p2) + tri(p0, p2, p3);
+    }, 0);
+    const cover = { ...roof.covering, tint: dusted(roof.covering.tint, 0.15) };
+    if (mesh.begin(roof.covering.bucket, 'rubble')) {
+      const sections = Math.min(5, Math.max(1, Math.round(area / 20)));
+      const sectionTint = { ...cover, tint: dusted(roof.covering.tint, 0.25) };
+      for (let k = 0; k < sections; k++) {
+        const x = cx + (rng() - 0.5) * anatomy.w * 0.55, z = cz + (rng() - 0.5) * anatomy.d * 0.55;
+        const tilt = (0.35 + rng() * 0.55) * (rng() < 0.5 ? 1 : -1);
+        heapChunk(mesh, sectionTint, x, heapTop(x, z) + 0.15, z, 0.45 + rng() * 0.4, 0.035, 0.35 + rng() * 0.35, rng() * Math.PI, tilt, rng);
+      }
+      const plates = Math.min(220, Math.round(area * 1.2), Math.max(0, Math.floor((out.mesh.capacity - out.mesh.vertices) * 0.3 / 24)));
+      for (let i = 0; i < plates; i++) {
+        let x = cx, z = cz;
+        for (let t = 0; t < 8; t++) {
+          const a = rng() * Math.PI * 2, r = Math.sqrt(rng());
+          const px = cx + Math.cos(a) * r * reach[0] * 0.9, pz = cz + Math.sin(a) * r * reach[1] * 0.9;
+          if (rng() * crown < mound(px, pz) * 1.3) { x = px; z = pz; break; }
+        }
+        heapChunk(mesh, cover, x, heapTop(x, z) + 0.03, z, 0.1 + rng() * 0.12, 0.012 + rng() * 0.008, 0.08 + rng() * 0.1,
+          rng() * Math.PI, (rng() - 0.5) * 1.0, rng);
+      }
+    }
+  }
   // the roof's timbers in the pile: rafters and purlins across it, one end on the heap and the other propped on the
   // rubble, as a roof comes down onto its own walls (a cast deck breaks into the pile's slabs instead)
   const frame = anatomy.roof?.structure;
@@ -1320,8 +1413,10 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
         Math.abs(sa) > 1e-3 ? (hz - Math.abs(mz - cz)) / Math.abs(sa) : Infinity);
       if (reachHalf < 0.8) continue;
       const dx = ca * reachHalf, dz = sa * reachHalf;
-      const a: Vec3 = [mx - dx, heapTop(mx - dx, mz - dz) + 0.06, mz - dz];
-      const b: Vec3 = [mx + dx, heapTop(mx + dx, mz + dz) + 0.25 + rng() * 0.55, mz + dz];
+      // (s1c review) a third of them poke up out of the heap: one end buried, the other 1-1.6 m over it
+      const poke = k % 3 === 2;
+      const a: Vec3 = [mx - dx, heapTop(mx - dx, mz - dz) + (poke ? -0.25 : 0.06), mz - dz];
+      const b: Vec3 = [mx + dx, heapTop(mx + dx, mz + dz) + (poke ? 1 + rng() * 0.6 : 0.25 + rng() * 0.55), mz + dz];
       const shade = 0.8 + rng() * 0.25;
       beamBetween(mesh, a, b, 0.12 + rng() * 0.06, 0.14 + rng() * 0.06, [0, 1, 0], [frame.tint[0] * shade, frame.tint[1] * shade, frame.tint[2] * shade * 0.95]);
     }
@@ -1347,6 +1442,23 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
 }
 
 // ---------------------------------------------------------------------------------------------------- the roof falls
+
+/** The roof coverings that come down as plates (tiles, slates, sheet): a thatch slumps, an earth roof falls as clods. */
+const ROOF_PLATES: ReadonlySet<string> = new Set(['tile', 'slate', 'metal', 'plank']);
+
+/**
+ * A storey's gable ends: the faces the roof's slopes do not drain toward (each slab's fall line lies along the face, not
+ * across it). None for a hip or a flat roof (every face takes an eave).
+ */
+function gableFaces(anatomy: StructureDamageAnatomy, faces: readonly DamageFace[]): DamageFace[] {
+  const roof = anatomy.roof;
+  if (!roof || (roof.kind !== 'gable' && roof.kind !== 'halfhip') || !roof.slabs.length) return [];
+  const [p0, p1, p2] = roof.slabs[0].corners;
+  const n = cross3([p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]], [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]]);
+  const h = Math.hypot(n[0], n[2]);
+  if (h < 1e-6) return [];
+  return faces.filter((f) => Math.abs((f.out[0] * n[0] + f.out[2] * n[2]) / h) < 0.3);
+}
 
 /** A timber between two body-frame points, `w` wide and `t` deep, its broad face toward `up` (a rafter, a batten). */
 export function beamBetween(mesh: Mesh, a: Vec3, b: Vec3, w: number, t: number, upHint: Vec3, tint: Rgb): void {

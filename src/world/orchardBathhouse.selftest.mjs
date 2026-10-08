@@ -349,7 +349,8 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
 // envelope with them). This receipt holds the variant's own contract on the base pipeline, so the fixture places it with
 // the kit off; the kit's rebuild — placements, stream and contacts on today's Orchard — is regionalArchitecture's.
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
-  const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'] };
+  // (2026-10-07, Orchard round 4: the square's closers are the Chouf kit's planned sites; this fixture places the bathhouse alone)
+  const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'], plannedSites: undefined };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
   const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);

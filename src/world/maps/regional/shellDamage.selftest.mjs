@@ -9,7 +9,16 @@
 //      and baked light structures, shafts and open frames stay with the default;
 //   3. every stage on every shell (a breach on each face, the damaged stage, each ground face's fall, the roof's fall,
 //      each upper storey's drop, the collapse) writes the same bytes twice, within the seam's caps, its vertices finite
-//      and inside the body's reach, every triangle facing its normal.
+//      and inside the body's reach, every triangle facing its normal;
+//   4. the compounds (cluster.ts): their cells read off the merged walls, each with its deck under its parapet; a blow on
+//      the cluster's face opens the cell it reaches, on that cell's face, its room under the cell's deck; a face's fall
+//      opens a gap down to the floor in every cell on that side, the earth banked at its foot;
+//   5. the container rows (container.ts): their boxes read off the parts (ISO sizes, their own axes and liveries); a blow
+//      on the row's face opens the box it reaches, on that box's side; a face's fall tears the boxes on that side; the
+//      collapse lays every box crushed or tipped on the ground, its steel in the structure steel;
+//   6. the ruins (ruin.ts): their wall pieces read off the merged masonry (thickness, length, ragged top); a blow opens the
+//      piece it reaches under that piece's own top, with no dark room behind (a ruin is open to the sky); a face's fall
+//      breaks the pieces on that side down from their heads; the collapse leaves stubs no higher than the pieces stood.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { readShell } from './shell.ts';
@@ -19,6 +28,9 @@ import { describeStructure, createStructureDamageSeam } from '../../structureDam
 import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
+import { cellsOf } from './cluster.ts';
+import { containersOf } from './container.ts';
+import { ruinPiecesOf } from './ruin.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -116,8 +128,9 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0;
-const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set();
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0, ruins = 0;
+const ruinIds = new Set();
+const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set(), clusterIds = new Set();
 function exercise(label, a, seam) {
   // (the body's own middle: a shell's walls need not centre on its parts' origin)
   const fo = a.storeys[0].faces.map((f) => f.origin);
@@ -156,7 +169,8 @@ function validate(label, a, styleId) {
     assert.deepEqual(st.faces.map((f) => f.section), [0, 1, 2, 3].map((k) => st.index * 4 + k), `${label}: sections by storey and face`);
     for (const f of st.faces) {
       for (const v of [...f.origin, ...f.u, ...f.out, f.width, f.height]) finite(v, `${label} face`);
-      assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
+      // (a ruin's box is round the walls it has left, which need not stand round its plot's middle)
+      if (!ruinPiecesOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
       assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0), `${label}: a face's layers`);
       for (const o of f.openings) assert.ok(Math.abs(o.u) <= f.width / 2 + 0.05 && o.y0 >= -0.05 && o.y0 + o.h <= f.height + 0.05, `${label}: an opening inside its face`);
       if (f.masonry) {
@@ -203,6 +217,108 @@ function describeAndRun(label, builder, styleId, parts) {
     }, 0);
     assert.ok(far > shaftH * 0.6, `${label}: the shaft lies along the ground (${far.toFixed(1)} m out of ${shaftH.toFixed(1)})`);
     assert.ok(out.runs.some((r) => r.role === 'remnant' && r.pos.length), `${label}: a stump stands`);
+  }
+  const cells = cellsOf(a);
+  if (cells) {
+    clusterShells++; clusterIds.add(label.split(' ')[0]);
+    for (const c of cells) {
+      assert.ok(c.x1 > c.x0 && c.y1 > c.y0 && c.z1 > c.z0, `${label}: a cell's box`);
+      assert.ok(c.deck === undefined || (c.deck > c.y0 + 1 && c.deck <= c.y1 + 1e-6), `${label}: a cell's deck inside its box (${c.deck} in ${c.y0}..${c.y1})`);
+    }
+    const onFace = (cut) => cells.some((c) => cut.y >= c.y0 - 0.05 && cut.y <= c.y1 + 0.05 && (Math.abs(cut.nz) > 0.5
+      ? Math.abs(cut.z - (cut.nz > 0 ? c.z1 : c.z0)) < 0.05 && cut.x >= c.x0 - 0.05 && cut.x <= c.x1 + 0.05
+      : Math.abs(cut.x - (cut.nx > 0 ? c.x1 : c.x0)) < 0.05 && cut.z >= c.z0 - 0.05 && cut.z <= c.z1 + 0.05));
+    const topDeck = Math.max(...cells.map((c) => c.deck ?? c.y1));
+    for (const f of a.storeys[0].faces) {
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: 0, y: 1.5, radiusM: 0.9, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 3 + f.section }, out);
+      for (const cut of res.cuts) assert.ok(onFace(cut), `${label}: the ${f.name} breach on a cell's face (${JSON.stringify(cut)})`);
+      for (const r of out.runs.filter((x) => x.role === 'room')) for (let i = 1; i < r.pos.length; i += 3) {
+        assert.ok(r.pos[i] <= topDeck + 0.05, `${label}: the room behind the ${f.name} hole under the decks (${r.pos[i].toFixed(2)} vs ${topDeck.toFixed(2)})`);
+      }
+      const fell = writers(...CAPS.sectionDown);
+      const down = seam.sectionDown(f.section, 9 + f.section, fell);
+      for (const cut of down.cuts) {
+        assert.ok(onFace(cut), `${label}: the ${f.name} fall's gap on a cell's face`);
+        assert.ok(cut.y - cut.radiusM < a.storeys[0].y0 + 0.6, `${label}: the ${f.name} fall's gap reaches the floor (${(cut.y - cut.radiusM).toFixed(2)})`);
+      }
+      if (down.cuts.length) assert.ok(fell.runs.some((r) => r.role === 'rubble' && r.pos.length), `${label}: the earth at the ${f.name} gap's foot`);
+    }
+  }
+  const boxes = containersOf(a);
+  if (boxes) {
+    containerRows++;
+    assert.ok(boxes.length >= 3, `${label}: the row's containers read (${boxes.length})`);
+    for (const b of boxes) {
+      assert.ok(b.hl * 2 >= 5.4 && b.hl * 2 <= 12.9 && b.hw * 2 >= 2.1 && b.hw * 2 <= 2.8 && b.hh * 2 >= 2.2, `${label}: an ISO box`);
+      assert.ok(Math.abs(Math.hypot(b.a[0], b.a[2]) - 1) < 1e-6 && b.a[1] === 0, `${label}: a box's long axis level and unit`);
+    }
+    // a cut on a box's side: on the plane of one of its four sides and inside it
+    const onSide = (cut) => boxes.some((b) => {
+      const w = [-b.a[2], 0, b.a[0]], rx = cut.x - b.c[0], rz = cut.z - b.c[2];
+      const pa = rx * b.a[0] + rz * b.a[2], pw = rx * w[0] + rz * w[2];
+      if (Math.abs(cut.y - b.c[1]) > b.hh + 0.05) return false;
+      return (Math.abs(Math.abs(pa) - b.hl) < 0.05 && Math.abs(pw) <= b.hw + 0.05) || (Math.abs(Math.abs(pw) - b.hw) < 0.05 && Math.abs(pa) <= b.hl + 0.05);
+    });
+    let opened = 0;
+    for (const f of a.storeys[0].faces) {
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: 0, y: 1.3, radiusM: 0.8, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 5 + f.section }, out);
+      for (const cut of res.cuts) assert.ok(onSide(cut), `${label}: the ${f.name} breach on a box's side (${JSON.stringify(cut)})`);
+      // (no frame behind a container's sheet: its rim and the dark hold only)
+      assert.ok(!out.runs.some((r) => r.role === 'rim' && r.pos.length && r.idx.length && r.bucket !== 'structureMetal'), `${label}: the ${f.name} breach in the box's steel`);
+      const fell = writers(...CAPS.sectionDown);
+      const down = seam.sectionDown(f.section, 21 + f.section, fell);
+      for (const cut of down.cuts) assert.ok(onSide(cut), `${label}: the ${f.name} fall on a box's side`);
+      opened += down.cuts.length;
+    }
+    assert.ok(opened >= 2, `${label}: the faces' falls tear the boxes on their sides (${opened})`);
+    const fallen = writers(...CAPS.collapse);
+    const res = seam.collapse(13, fallen);
+    assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${label}: the collapse hides the row`);
+    const steel = fallen.runs.filter((r) => r.role === 'rubble' && r.bucket === 'structureMetal');
+    assert.ok(steel.reduce((n, r) => n + r.pos.length / 3, 0) >= boxes.length * 60, `${label}: every box crushed or tipped`);
+    let high = 0;
+    for (const r of steel) for (let i = 1; i < r.pos.length; i += 3) high = Math.max(high, r.pos[i]);
+    const top = Math.max(...boxes.map((b) => b.c[1] + b.hh));
+    assert.ok(high < top + 0.2, `${label}: nothing of the row stands higher than it did (${high.toFixed(2)} vs ${top.toFixed(2)})`);
+  }
+  const pieces = ruinPiecesOf(a);
+  if (pieces) {
+    ruins++; ruinIds.add(label.split(' ')[0]);
+    assert.ok(pieces.length >= 2, `${label}: the ruin's wall pieces read (${pieces.length})`);
+    for (const p of pieces) {
+      assert.ok(p.ht * 2 >= 0.15 && p.ht * 2 <= 1.2 && p.hl * 2 >= 0.8 && p.top.every((y) => y >= 0.3), `${label}: a wall piece's size and top`);
+    }
+    let opened = 0;
+    for (const f of a.storeys[0].faces) {
+      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap)
+      const aim = pieces.map((p) => ({ u: (p.c[0] - f.origin[0]) * f.u[0] + (p.c[2] - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
+        y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, Math.min(...p.top) / 2) }))
+        .filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => x.o - y.o)[0];
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: aim ? aim.u : 0, y: aim ? aim.y : 1.0, radiusM: 0.6, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 9 + f.section }, out);
+      opened += res.cuts.length;
+      assert.ok(!out.runs.some((r) => r.role === 'room' && r.pos.length), `${label}: no dark room behind a ruin's hole (open to the sky)`);
+      for (const cut of res.cuts) {
+        assert.ok(pieces.some((p) => cut.y >= p.c[1] && cut.y <= p.c[1] + Math.max(...p.top) + 0.05), `${label}: the ${f.name} breach in a piece's height`);
+      }
+      const fell = writers(...CAPS.sectionDown);
+      seam.sectionDown(f.section, 31 + f.section, fell);
+      assert.ok(!fell.runs.some((r) => r.role === 'room' && r.pos.length), `${label}: no dark room behind a fallen piece`);
+    }
+    assert.ok(opened >= 1, `${label}: a blow on the ruin opens a piece (${opened})`);
+    const fallen = writers(...CAPS.collapse);
+    const res = seam.collapse(17, fallen);
+    assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${label}: the collapse hides the ruin`);
+    const tallest = Math.max(...pieces.map((p) => p.c[1] + Math.max(...p.top)));
+    for (const r of fallen.runs) if (r.role === 'remnant') for (let i = 1; i < r.pos.length; i += 3) {
+      assert.ok(r.pos[i] <= tallest + 0.05, `${label}: a stub no higher than the ruin stood (${r.pos[i].toFixed(2)} vs ${tallest.toFixed(2)})`);
+    }
+    assert.ok(fallen.runs.some((r) => r.role === 'remnant' && r.pos.length), `${label}: the pieces leave stubs`);
   }
   if (isSheetBody(a)) {
     sheetShells++;
@@ -267,8 +383,13 @@ assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetS
 // the shafts read as shafts and topple (shaft.ts)
 for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
 assert.ok(shaftShells >= 6, `shafts the kit topples (${shaftShells})`);
-for (const id of ['saar/gantry', 'ksar/caravanserai']) {
-  assert.ok(!shellIds.has(id), `${id}: left to the default (an open frame, a courtyard)`);
-}
+assert.ok(!shellIds.has('saar/gantry'), 'saar/gantry: left to the default (an open frame)');
+// the compounds read as clusters of cells, broken cell by cell (cluster.ts); a courtyard that is one body stays the default's
+assert.ok(!shellIds.has('ksar/caravanserai') || clusterIds.has('ksar/caravanserai'), 'ksar/caravanserai: a cluster of cells or the default');
+assert.ok(clusterShells >= 2, `compounds the cluster kit breaks (${clusterShells}: ${[...clusterIds].join(', ')})`);
+// the container rows read as boxes and break box by box (container.ts)
+assert.ok(shellIds.has('base:containerRow') && containerRows >= 2, `the container rows the container kit breaks (${containerRows})`);
+// the ruins read as wall pieces and break piece by piece (ruin.ts)
+assert.ok(ruins >= 2, `the ruins the ruin kit breaks (${ruins}: ${[...ruinIds].join(', ')})`);
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}; ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}), ${containerRows} container rows box by box, ${ruins} ruins piece by piece (${[...ruinIds].join(', ')};  ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);

@@ -218,8 +218,9 @@ for (const [styleId, id, wall] of SAMPLE) {
       // a chunk is kept only where the heap stands, and reaches at most 1.6 m past its centre (a long timber's half)
       assert.ok((x / (rx + 1.7)) ** 2 + (z / (rz + 1.7)) ** 2 <= 1.0001, `${styleId}/${id}: rubble on the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
       const m = mound(x + cx, z + cz);
-      // (the pile stands a hand and more over the sim's mound, which raises the terrain itself; its timbers lean on it)
-      assert.ok(y >= m - 1.2 && y <= m + 2.0, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
+      // (the pile stands a hand and more over the sim's mound, which raises the terrain itself; its timbers lean on it;
+      // the s1c review: wall slabs lie at angles and timbers poke up out of it)
+      assert.ok(y >= m - 1.2 && y <= m + 2.4, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
     } else if (run.role === 'remnant') {
       assert.ok(Math.abs(x) <= a.w / 2 + 1 && Math.abs(z) <= a.d / 2 + 1, `${styleId}/${id}: the remnant inside the footprint`);
       assert.ok(y <= Math.max(a.storeys[0].y1 + 0.5, ...a.chimneys.map((c) => c.y1)) + 0.05, `${styleId}/${id}: the remnant no taller than its storey or a stack`);
@@ -240,9 +241,35 @@ for (const [styleId, id, wall] of SAMPLE) {
     stubOver = Math.max(stubOver, run.pos[i + 1] - mound(run.pos[i], run.pos[i + 2]));
   }
   assert.ok(stubOver >= 0.5, `${styleId}/${id}: wall stubs stand over the heap against them (${stubOver.toFixed(2)})`);
-  if (a.roof && (a.roof.structure.material === 'timber' || a.roof.structure.material === 'metal')) {
-    assert.ok(one.runs.some((r) => r.role === 'rubble' && r.bucket === a.roof.structure.bucket && r.pos.length >= 48), `${styleId}/${id}: the roof's timbers in the pile`);
+  // (s1c review, 2026-10-08: "about half the wave-277 bar") the corners stand as piers 2-2.5 m over the heap where the
+  // ground storey is that tall
+  if (a.remnant.corners && a.storeys[0].y1 - a.storeys[0].y0 >= 3.2) {
+    assert.ok(stubOver >= 1.8, `${styleId}/${id}: corner piers stand over the heap (${stubOver.toFixed(2)})`);
   }
+  if (a.roof && (a.roof.structure.material === 'timber' || a.roof.structure.material === 'metal')) {
+    const beams = one.runs.filter((r) => r.role === 'rubble' && r.bucket === a.roof.structure.bucket);
+    assert.ok(beams.some((r) => r.pos.length >= 48), `${styleId}/${id}: the roof's timbers in the pile`);
+    let poke = 0;
+    for (const r of beams) for (let i = 0; i < r.pos.length; i += 3) poke = Math.max(poke, r.pos[i + 1] - mound(r.pos[i], r.pos[i + 2]));
+    assert.ok(poke >= 1.1, `${styleId}/${id}: a timber pokes up out of the heap (${poke.toFixed(2)})`);
+  }
+  // the roof's covering over the pile: its plates in the covering's own bucket
+  if (a.roof && ['tile', 'slate', 'metal', 'plank'].includes(a.roof.covering.material)) {
+    assert.ok(one.runs.some((r) => r.role === 'rubble' && r.bucket === a.roof.covering.bucket && r.pos.length >= 24 * 20),
+      `${styleId}/${id}: the roof's covering lies over the pile (${a.roof.covering.material})`);
+  }
+  // a wall slab lying whole: a box in a wall's skin bucket more than 1.3 m across (a chunk's box spans under 1.1 m)
+  const skinBuckets = new Set(a.storeys[0].faces.map((f) => (f.layers.find((l) => l.material !== 'timber') ?? f.layers[0])?.bucket));
+  let slab = 0;
+  for (const r of one.runs) {
+    if (r.role !== 'rubble' || !skinBuckets.has(r.bucket) || (r.pos.length / 3) % 24) continue; // (boxes only: the skin is a fan)
+    for (let i = 0; i + 23 * 3 < r.pos.length; i += 24 * 3) {
+      let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (let k = 0; k < 24; k++) for (let c = 0; c < 3; c++) { lo[c] = Math.min(lo[c], r.pos[i + k * 3 + c]); hi[c] = Math.max(hi[c], r.pos[i + k * 3 + c]); }
+      slab = Math.max(slab, Math.hypot(hi[0] - lo[0], hi[2] - lo[2]));
+    }
+  }
+  assert.ok(slab >= 1.3, `${styleId}/${id}: a wall slab lies whole in the pile (${slab.toFixed(2)} m)`);
   falls++; fv += one.mesh.vertices;
 }
 console.log(`house damage: ${falls} collapses deterministic, within a house's caps (mean ${(fv / falls).toFixed(0)} vertices), the structure hidden, remnants in the footprint, heaps over the mound with stubs over them and the roof's timbers in them`);
@@ -394,7 +421,7 @@ import { bodyMoundHeightAt, kitPlanFor } from '../../destructionKit.ts';
     for (let i = 0; i < run.pos.length; i += 3) {
       const m = bodyMoundHeightAt(a, run.pos[i], run.pos[i + 2]);
       worst = Math.max(worst, Math.abs(run.pos[i + 1] - m));
-      assert.ok(run.pos[i + 1] >= m - 1.2 && run.pos[i + 1] <= m + 1.6, `the heap on the sim's mound (${run.pos[i + 1].toFixed(2)} at ${m.toFixed(2)})`);
+      assert.ok(run.pos[i + 1] >= m - 1.2 && run.pos[i + 1] <= m + 2.4, `the heap on the sim's mound (${run.pos[i + 1].toFixed(2)} at ${m.toFixed(2)})`);
     }
     if (run.idx.length && run === one.runs.find((r) => r.role === 'rubble')) skin = run.pos.length / 3;
   }
