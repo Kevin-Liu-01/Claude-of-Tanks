@@ -134,15 +134,6 @@ export default {
     wallRuns: [[-196, 28, -196, 94, 2], [-190, 112, -122, 112, 3], [-48, -10, 10, -10, 2], [-48, 104, 14, 104, 3], [292, 40, 292, 112, 2], [32, -300, 104, -300, 3]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 194, outcrops: 32, craters: 48, rubblePiles: 14, cropFields: 3, sandbagLines: 16, hedgehogs: 10,
-    // The hitbox lane (2026-10-08): the stones' own colliders took from the brief's cover the empty corners their legacy
-    // records had counted, and bravo's centre fell under its band (coverSectorMin 0.156 -> 0.144 of 0.15). Three outcrops
-    // of the map's own boulders on the slope up to the east plateau, south-east of the lake, each a crescent bulging west
-    // toward alpha, put real hull-down cover back where the layout metric found the open ground.
-    coverOutcrops: [
-      { x: 298, z: -86, towardDeg: 179, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders under the east plateau' },
-      { x: 303, z: -72, towardDeg: 179, count: 4, radius: 6, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders under the east plateau, north' },
-      { x: 313, z: -76, towardDeg: 179, count: 5, radius: 6, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the plateau\'s lip' },
-    ],
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['k1a1', 'type99a', 'k2', 'bmp3', 'type90'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
@@ -154,6 +145,15 @@ export default {
     rocks: [
       { form: 'crag', geology: 'slate', x: 200, z: -150, radius: 6, height: 5, yawDeg: 20, name: 'the crag above the south shore' },
       { form: 'crag', geology: 'slate', x: 40, z: 160, radius: 6, height: 4.5, yawDeg: 60, name: 'the crag above the north shore' },
+      // The hitbox lane (2026-10-08; round 2): the stones' own colliders took from the brief's cover the empty corners
+      // their legacy records had counted, and bravo's centre fell under its band (coverSectorMin 0.156 -> 0.144 of 0.15).
+      // Two crags of the ridge's own slate and a field of its greywacke blocks on the slope up to the east plateau,
+      // south-east of the lake, the crags' plates
+      // striking north-south so their faces stand to the west and alpha, give the hull-down cover back (gauntlet wave
+      // 272 read the boulder crescents first put there as smooth eggs on the turf: the Eifel's stone is cleaved slate).
+      { form: 'crag', geology: 'slate', x: 294, z: -83, radius: 6, height: 3.2, yawDeg: 92, shed: 0.7, name: 'the slate under the east plateau' },
+      { form: 'crag', geology: 'slate', x: 312, z: -71, radius: 5, height: 2.8, yawDeg: 104, shed: 0.5, name: 'the slate on the plateau\'s lip' },
+      { form: 'blocks', geology: 'slate', x: 298, z: -61, radius: 5, height: 2.6, yawDeg: 86, name: 'the greywacke blocks under the plateau' },
     ],
     rockFields: [
       { geology: 'slate', x: -276, z: 14, radius: 95, count: 7, slopeBias: 0.8, size: [2.5, 5], name: 'the west ridge slate' },

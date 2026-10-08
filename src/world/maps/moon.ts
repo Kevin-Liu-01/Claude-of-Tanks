@@ -19,6 +19,8 @@
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.60, .025, .30 + l * .35];
+/** The ejecta blocks' breccia (sceneryRocks.ts 'breccia'): a neutral grey a shade under the regolith, dust at the foot. */
+const LUNAR_BRECCIA: readonly [number, number, number] = [0.09, 0.04, 0.33];
 export default {
   id: 'moon', name: 'Earthrise Basin',
   blurb: 'Lunar crater rims, a research outpost and long shadows beneath a vast blue Earth',
@@ -96,19 +98,6 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
-    // The hitbox lane (2026-10-08): the stones' own colliders took from the brief's cover the empty corners their legacy
-    // records had counted, and the valley's middle band fell under its band (coverMidShare 0.308 -> 0.296 of 0.30).
-    // Three pairs of outcrops of the valley's own boulders, each pair the other's rotation about the landing field and
-    // clear of the zone-control discs, each a crescent bulging toward the side it shelters from, put real hull-down cover
-    // back on the open floor where the layout metric found it short.
-    coverOutcrops: [
-      { x: 106, z: 88, towardDeg: -108, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders north-east of the outpost' },
-      { x: -106, z: -88, towardDeg: 72, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders south-west of the outpost' },
-      { x: 244, z: -26, towardDeg: -128, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor' },
-      { x: -244, z: 26, towardDeg: 52, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor' },
-      { x: -224, z: 58, towardDeg: -71, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the west floor, north' },
-      { x: 224, z: -58, towardDeg: 109, count: 5, radius: 7, scaleMin: 2.3, scaleMax: 3.2, name: 'the boulders on the east floor, south' },
-    ],
     tankWrecks: { era: 'modern', count: 3, debris: true, ids: ['m1a2','type10','m551_sheridan'] },
     // The outpost round the landing field, each module paired with one at its rotation.
     orbitalSettlement: [
@@ -127,6 +116,20 @@ export default {
         { id: `lunar-power-${i + 3}`, structure: 'solararray', x: -95 - i * 30, z: -175, yawDeg: 25 },
       ]),
     ],
+  },
+  // The hitbox lane (2026-10-08; round 2): the stones' own colliders took from the brief's cover the empty corners their
+  // legacy records had counted, and the valley's middle band fell under its band (coverMidShare 0.308 -> 0.296 of
+  // 0.30). Three pairs of block fields on the floor, each pair the other's rotation about the landing field and clear of
+  // the zone-control discs: the breccia a crater threw out, as round Shorty and Camelot — angular blocks of every size,
+  // sunk in the regolith banked against them, chips round their feet (gauntlet wave 272 read the boulder crescents first
+  // put there as smooth pale domes).
+  scenery: {
+    rocks: ([[106, 88, 20], [244, -26, 70], [224, -58, 140]] as const).flatMap(([x, z, yawDeg], i) => [
+      { form: 'blocks' as const, geology: 'breccia' as const, x, z, radius: 6, height: 2.6, yawDeg, tone: LUNAR_BRECCIA,
+        name: `the ejecta blocks ${['north-east of the outpost', 'on the east floor', 'on the east floor, south'][i]}` },
+      { form: 'blocks' as const, geology: 'breccia' as const, x: -x, z: -z, radius: 6, height: 2.6, yawDeg: yawDeg + 180, tone: LUNAR_BRECCIA,
+        name: `the ejecta blocks ${['south-west of the outpost', 'on the west floor', 'on the west floor, north'][i]}` },
+    ]),
   },
   horizon: { baseHex: 0x686b73, rockHex: 0x858a94, amp: 1.35, style: 'rolling', treeline: 0,
     treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,

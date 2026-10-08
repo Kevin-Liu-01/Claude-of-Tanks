@@ -319,19 +319,6 @@ interface InhabitSettings {
   gateStacks?: number;
 }
 
-/** An authored outcrop: `count` boulders on a crescent of `radius` m round (x, z), bulging toward `towardDeg` (degrees,
- * atan2(dz, dx)); the boulders' scales between `scaleMin` and `scaleMax`. */
-interface CoverOutcropSettings {
-  x: number;
-  z: number;
-  towardDeg?: number;
-  count?: number;
-  radius?: number;
-  scaleMin?: number;
-  scaleMax?: number;
-  name?: string;
-}
-
 interface TacticalOutcropSettings {
   count?: number;
   radius?: number;
@@ -466,8 +453,6 @@ interface PropsSettings {
   structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
-  /** Authored hard-cover outcrops (the hitbox lane, 2026-10-08; placeCoverOutcrops). */
-  coverOutcrops?: readonly CoverOutcropSettings[];
   craters: number;
   rubblePiles: number;
   wrecks: number;
@@ -6236,19 +6221,17 @@ ${snowCap ? `
     slopePref: boolean,
     sink = 0.22,
     tactical = false,
-    // (the hitbox lane, 2026-10-08: an authored outcrop draws on its own stream, so no stone placed after it moves)
-    draw: Rng = rng,
   ): boolean {
-    const vv = (draw() * 3) | 0;
-    const yawR = draw() * Math.PI * 2;
-    const sc = scMin + Math.pow(draw(), 1.6) * (scMax - scMin);
+    const vv = (rng() * 3) | 0;
+    const yawR = rng() * Math.PI * 2;
+    const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
     if (!rockSiteOpen(x, z)) return false;
     if (slopePref) {
       const steep = heightField.getNormalAt(x, z).y < 0.93;
-      if (!steep && draw() > 0.30) return false; // prefer rocky slopes
+      if (!steep && rng() > 0.30) return false; // prefer rocky slopes
     }
     // (the stone's height scale, drawn where the seat's matrix always drew it, so a re-site takes no draw of its own)
-    const scaleY = sc * (0.8 + draw() * 0.35);
+    const scaleY = sc * (0.8 + rng() * 0.35);
     // The boulder keeps its whole footprint (the collision hull) out of the road core. One that would reach into it is
     // left out, its draws still taken and its count kept, so every later placement keeps its seat.
     const hull = rockHulls[vv];
@@ -6410,24 +6393,6 @@ ${snowCap ? `
   }
   }
   scatterBoulderOutcrops();
-  // The hitbox lane (2026-10-08): the layout brief's cover where the stones' own colliders left a sector short of it
-  // (the cover the legacy records' empty corners had counted; docs/MAP-LAYOUT-BRIEF.md, tools/map-layout-metrics.mjs):
-  // authored outcrops of the map's own boulders, each a crescent bulging toward its threat as a tactical beat's does,
-  // hard cover (never crushable), on their own seeded draws so no stone placed before or after them moves.
-  function placeCoverOutcrops(): void {
-    (P.coverOutcrops ?? []).forEach((spot, index) => {
-      const draw = mulberry32(seed + 7919 + index * 104729);
-      const count = spot.count ?? 4, radius = spot.radius ?? 6;
-      const toward = THREE.MathUtils.degToRad(spot.towardDeg ?? 0);
-      for (let i = 0; i < count; i++) {
-        const arc = count === 1 ? 0 : (i / (count - 1) - 0.5) * Math.PI * 0.8;
-        const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + index)));
-        tryRock(spot.x + Math.cos(toward + arc) * rr, spot.z + Math.sin(toward + arc) * rr,
-          spot.scaleMin ?? 1.6, spot.scaleMax ?? 3.0, false, 0.24, true, draw);
-      }
-    });
-  }
-  placeCoverOutcrops();
 
   yield { fine: true, stage: 'boulder-outcrops' };
   // The hitbox lane (2026-10-07; owner: "rock hitboxes are way too big and inaccurate"): every stone's colliders from its
