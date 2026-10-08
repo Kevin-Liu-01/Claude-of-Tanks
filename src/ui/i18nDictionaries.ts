@@ -16,6 +16,11 @@
  * their Chinese one (src/presentation/localizedHtml.ts), so the await stays off the
  * critical path; English visitors never download Chinese.
  *
+ * A page catalog holds the keys of the page's boot graph; the keys only its lazy modules
+ * (reached through import()) can show are the page's lazy chunk (`data-en-us-lazy`,
+ * `data-zh-cn-lazy`), which the build loads before the module at every such import()
+ * (loadLazyCatalog, 2026-10-08): the page boots on the strings it can show at boot.
+ *
  * Server and build code that needs both full catalogs synchronously imports
  * `i18nCatalog.ts`, which registers them here; browser code must not
  * (src/ui/i18nLazyCatalog.selftest.mjs).
@@ -31,14 +36,50 @@ const FULL_CATALOGS: Readonly<Record<CatalogLocale, () => Promise<{ default: Dic
 const loaded: Partial<Record<CatalogLocale, Dictionary>> = {};
 const pending: Partial<Record<CatalogLocale, Promise<void>>> = {};
 
-/** The page catalog chunk this document names for a locale (a same-origin path), else null: the full catalog loads. */
-export function pageCatalogUrl(locale: CatalogLocale): string | null {
+/** The chunk the page catalog meta names under `data-<locale>` (or `-lazy`): a same-origin path, else null. */
+function catalogUrl(locale: CatalogLocale, suffix: '' | '-lazy'): string | null {
   try {
-    const url = globalThis.document?.querySelector?.('meta[name="cot-i18n-catalog"]')?.getAttribute(`data-${locale.toLowerCase()}`);
+    const url = globalThis.document?.querySelector?.('meta[name="cot-i18n-catalog"]')
+      ?.getAttribute(`data-${locale.toLowerCase()}${suffix}`);
     return url && /^\/[^/\\]/.test(url) ? url : null;
   } catch (_) {
     return null; // a Node test's stand-in document
   }
+}
+
+/** The page catalog chunk this document names for a locale, else null: the full catalog loads. */
+export const pageCatalogUrl = (locale: CatalogLocale): string | null => catalogUrl(locale, '');
+/** The page's lazy chunk for a locale (the keys only its import() targets can show), else null. */
+export const lazyCatalogUrl = (locale: CatalogLocale): string | null => catalogUrl(locale, '-lazy');
+
+const lazyLoads: Partial<Record<CatalogLocale, Promise<void>>> = {};
+let lazyWanted = false;
+
+function loadLazyLocale(locale: CatalogLocale): Promise<void> {
+  const url = lazyCatalogUrl(locale);
+  if (!url || !loaded[locale]) return Promise.resolve();
+  return lazyLoads[locale] ??= (import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }>).then((module) => {
+    loaded[locale] = { ...loaded[locale], ...module.default };
+  }, (error: unknown) => {
+    delete lazyLoads[locale]; // a later import() retries
+    throw error;
+  });
+}
+
+/**
+ * Make the page's lazy chunk resident for every resident locale (the build calls this before each import() of a module
+ * the page reaches only through import(); a document without a lazy chunk — the game's full catalogs — resolves at
+ * once). A locale that loads later takes its lazy chunk with it.
+ */
+export function loadLazyCatalog(): Promise<unknown> {
+  lazyWanted = true;
+  return Promise.all((Object.keys(loaded) as CatalogLocale[]).map(loadLazyLocale));
+}
+
+// The build's import() sites reach the loader through the global (no static import: a module shared with a worker must
+// not pull the boot runtime into it). Workers, Node and documents without a lazy chunk find nothing to load.
+if (typeof document !== 'undefined') {
+  (globalThis as { __cotI18nLazy?: () => Promise<unknown> }).__cotI18nLazy = loadLazyCatalog;
 }
 
 /** Make a dictionary resident (the server-side full catalog registers both locales on import). */
@@ -61,6 +102,9 @@ export function loadLocaleDictionary(locale: CatalogLocale): Promise<void> {
   return pending[locale] ??= (url ? import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }> : FULL_CATALOGS[locale]())
     .then((module) => {
       loaded[locale] = module.default;
+      // (a locale switched to in place after a lazy module loaded takes the page's lazy chunk too; English for those
+      // keys until a retry when it fails)
+      return lazyWanted ? loadLazyLocale(locale).catch(() => {}) : undefined;
     })
     .finally(() => {
       delete pending[locale];

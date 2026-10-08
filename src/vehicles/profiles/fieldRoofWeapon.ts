@@ -6,7 +6,7 @@ type Point=readonly[number,number,number];
 
 /** Functional independent yaw/pitch station with a receiver, side feed,
  * trunnions, optical head and open bore. Ammunition follows its real caliber. */
-export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,name:string,mastLift=0):void{
+export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,name:string,mastLift=0,scale=1):void{
  const [x,b,z]=seat,y=b+.59+mastLift,tip=caliber===30?1.10:.91;
  const g=sourceMachineGun(P,[0,0,0],{name,caliberMm:caliber,yaw:seat,pivot:[x,y,z],muzzle:[x,y,z+tip]});
  const {box,cylY,cylX,cylZ}=KIT;
@@ -29,5 +29,10 @@ export function addFieldRoofWeapon(P:TankBuilderPort,seat:Point,caliber:12.7|30,
  g.add('turretDetail',box(.15,.23,.23),x+.285,y+.15,z+.035);
  g.add('turretDetail',box(.13,.035,.17),x+.22,y+.075,z+.035);
  for(const dy of[-.047,.052])g.add('turretGlass',cylZ(dy<0?.036:.047,.013,20),x+.285,y+.15+dy,z+.156);
- g.finish();
+ const station=g.finish();
+ station.scale.setScalar(scale);
+ station.userData.fieldWeaponScale=scale;
+ // Field kit, not reconstructed source: audits that witness a hull's source
+ // surfaces skip it (src/vehicles/fieldKitSurface.test-support.mjs).
+ station.userData.fieldKitStation=true;
 }
