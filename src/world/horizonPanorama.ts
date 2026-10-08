@@ -1325,6 +1325,7 @@ uniform vec4 uShore;      // the far shore's height share (0: open sea), the cha
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief), the far air's floor
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
+uniform vec2 uHazeFar;    // QA (2026-10-07): the far path's layer scale height × x, its datum's wander (m) y — at rest 1, 0
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
 ${NOISE_GLSL}
@@ -1575,7 +1576,12 @@ void main() {
   // wave 6, "a flat, hazy, nearly featureless silhouette": a 13 km e-fold, a step under the fog's tone).
   if (uHaze.w > 0.5) {
     vec3 target = lawTarget;
-    float layer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(wp.y - uHaze.z, 0.0) * uHaze.y);
+    // (the skies lane, 2026-10-07, QA knobs at bake time for Glacier's white band — the layer's top seen at one elevation
+    // across the far ranges: PANO_HAZE_SCALE the far path's scale height × this, PANO_HAZE_WANDER the far path's datum
+    // wandering this many metres over the far country, 3.2 km across — at rest 1 and 0, the law as it shipped)
+    float datumF = uHaze.z + (uHazeFar.y > 0.0 ? uHazeFar.y * noised(wp.xz / 3200.0 + vec2(1.7, -3.3)).x : 0.0);
+    float invF = uHaze.y / max(uHazeFar.x, 0.05);
+    float layer = hazeLayerMean(max(uFrame.w - datumF, 0.0) * invF, max(wp.y - datumF, 0.0) * invF);
     // the regional air's floor over the far path (the character's farAirFloor): a far summit hazes as its distance owes
     layer = mix(layer, 1.0, uAir.w);
     vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
@@ -1909,6 +1915,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uHaze: { value: new THREE.Vector4(haze?.sigma ?? 0, haze?.invScale ?? 0, hazeDatumM, haze ? 1 : 0) },
       uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+      uHazeFar: { value: new THREE.Vector2(lightTune('PANO_HAZE_SCALE', 1), lightTune('PANO_HAZE_WANDER', 0)) },
       uHazeAnti: { value: haze?.anti ?? new THREE.Vector3() },
       uHazeToward: { value: haze?.toward ?? new THREE.Vector3() },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },

@@ -36,7 +36,8 @@ assert.equal(floorOf('saltwind'), 0, 'Saltwind\'s far ridge (the bake receipt\'s
 // 3. the strip: the mix between the layer's mean and the far path's transmittance; the uniform carries the knob
 const strip = HORIZON_PANORAMA_SHADERS.strip;
 const at = (needle) => { const i = strip.indexOf(needle); assert.ok(i >= 0, `the strip holds: ${needle}`); return i; };
-const layerAt = at('float layer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(wp.y - uHaze.z, 0.0) * uHaze.y);');
+// (2026-10-07: the far path's datum and scale through the QA knobs, 3d — at rest the battlefield's datum and the law's scale)
+const layerAt = at('float layer = hazeLayerMean(max(uFrame.w - datumF, 0.0) * invF, max(wp.y - datumF, 0.0) * invF);');
 const mixAt = at('layer = mix(layer, 1.0, uAir.w);');
 const pathAt = at('vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);');
 assert.ok(layerAt < mixAt && mixAt < pathAt, 'the floor mixes the layer\'s mean before the far path\'s transmittance');
@@ -54,6 +55,14 @@ assert.ok(source.includes("uNearBand: { value: new THREE.Vector4(lightTune('PANO
 assert.ok(source.includes("(ch.plinth ? -1 : 1) * lightTune('PANO_LAYERS', ch.layers)"), 'the layers\' strength a knob over the character\'s');
 assert.ok(/const PANO_SEA_SOFT_DEG = 4;/.test(source) && source.includes("lightTune('PANO_SEA_SOFT_DEG', PANO_SEA_SOFT_DEG)"), 'the sea sectors\' softening at rest 4 degrees, a knob');
 assert.ok(/function bake\(renderer: HorizonPanoramaRenderer\): void \{\s*const started = performance\.now\(\);\s*buildEdgeData\(\);/.test(source), 'the edge data rebuilt at each bake (the knob read there)');
+// 3d. (2026-10-07) the far path's haze: its scale height and its datum's wander, QA knobs at bake time — at rest the law as it
+// shipped (the datum the battlefield's, the scale × 1, so the strip's arithmetic is exact)
+assert.ok(source.includes("uHazeFar: { value: new THREE.Vector2(lightTune('PANO_HAZE_SCALE', 1), lightTune('PANO_HAZE_WANDER', 0)) },"), 'the far haze knobs at rest 1 and 0');
+for (const needle of [
+  'float datumF = uHaze.z + (uHazeFar.y > 0.0 ? uHazeFar.y * noised(wp.xz / 3200.0 + vec2(1.7, -3.3)).x : 0.0);',
+  'float invF = uHaze.y / max(uHazeFar.x, 0.05);',
+  'float layer = hazeLayerMean(max(uFrame.w - datumF, 0.0) * invF, max(wp.y - datumF, 0.0) * invF);',
+]) assert.ok(source.includes(needle), `the strip's far path: ${needle}`);
 for (const needle of [
   'uniform vec4 uNearBand;',
   'if (uNearBand.z > 0.0) {',
