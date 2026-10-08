@@ -308,8 +308,11 @@ export default {
     // soft coastal uplands ringing the bay, heavily hazed so the wall melts
     // toward the bright maritime sky instead of boxing the sea in
     // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Finistère's low, wind-scoured granite
-    // moors behind the bocage — no range
-    baseHex: 0x5b6a50, amp: 0.55, style: 'rolling', treeline: 0.90, treelineLayers: 2, panorama: { regional: 'upland', ampM: 180, trees: 6 },
+    // moors behind the bocage — no range (the borders lane, round 4: "a large mountain on the horizon that doesn't belong in
+    // Brittany" — the upland's plinth and far rise stood its moors up as a massif; the Monts d'Arrée are low rounded
+    // ridges: no plinth, no far rise, a lower amplitude)
+    baseHex: 0x5b6a50, amp: 0.55, style: 'rolling', treeline: 0.90, treelineLayers: 2,
+    panorama: { regional: 'upland', ampM: 110, farRise: 0, plinth: false, layers: 0.3, trees: 8 },
     forestHex: 0x3d5539, rockHex: 0x757a6c, haze: 1.08, grain: 0.8,
     // round 40 (2026-09-22, "water at the edge: same level and shader beyond"): no authored grey — the aperture takes
     // this map's deep-water colour (waterContact.ts) and the shallow-water sheet continues over it (edgeWater.ts)

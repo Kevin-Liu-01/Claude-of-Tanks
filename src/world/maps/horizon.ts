@@ -42,7 +42,7 @@ import { shapeJebelSkyline } from '../horizonJebelSkyline.ts';
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
-  HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M, bakeHorizonReliefSteps, horizonStandReach, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { resolveTreeWind } from '../treeClimate.ts';
@@ -53,7 +53,7 @@ import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloud
 import { continuedGroundAt, continuedGroundSampler } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
-import { buildBorderHedgerows } from '../borderHedgerows.ts';
+import { type HedgeLine, buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
 import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { installHorizonRing } from '../horizonRingHook.ts';
@@ -3929,7 +3929,7 @@ export function* buildHorizonRingSteps(
   const standAt = reliefBake?.canopy ? horizonCanopySampler(reliefBake) : null;
   mesh.userData.horizonRing.standAt = standAt;
   const woodsPastHandOver = standAt && borderWoodsAt ? (x: number, z: number): number =>
-    (Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : borderWoodsAt(x, z)) : borderWoodsAt;
+    (horizonStandReach(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : borderWoodsAt(x, z)) : borderWoodsAt;
   // The map-borders lane (2026-10-03): the farmsteads' yards are chosen before the forest, which stands their shelter
   // trees (borderFarmsteads.ts farmsteadTreesAt); the buildings follow below
   const farmSpec = ground?._borderFarmsteads;
@@ -3954,7 +3954,7 @@ export function* buildHorizonRingSteps(
   // the water or a railway's right of way)
   const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
     (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
-    && !(standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] && standAt(x, z) > 0.5)
+    && !(standAt && horizonStandReach(x, z) > HORIZON_STAND_HANDOVER_M[0] && standAt(x, z) > 0.5)
     && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05
     && !(roadClearAt && roadClearAt(x, z) > 0.5)) : [];
   const treeRows = vista && ground ? borderTreeRows(((seed ^ 0x7E55) ^ idHash(mapId)) >>> 0, hedgeLines,
@@ -3987,7 +3987,7 @@ export function* buildHorizonRingSteps(
     ...(parcelTintAt ? { loneAt: (() => {
       const tint: [number, number, number, number] = [0, 0, 0, 1];
       return (x: number, z: number): number => parcelTintAt(x, z, tint,
-        standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined)[3];
+        standAt && horizonStandReach(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined)[3];
     })() } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
@@ -4032,14 +4032,18 @@ export function* buildHorizonRingSteps(
   // The map-borders lane (2026-10-03, gauntlet wave 1: "the empty middle distance"): the hedges as bush lines along the
   // hedged stretches of the field boundaries past the edge (hedgeLines, traced before the forest, which stands their
   // belts and the roads' avenues)
-  if (hedgeLines.length) {
+  // (the borders lane, round 4: the woods' mantle — the bushes along the edges the square faces, horizonVista.ts
+  // shapeWoodsEdges — drawn with the hedges, in the same mesh)
+  const mantleLines = (forestGroup?.userData.horizonForestMantle as HedgeLine[] | undefined) ?? [];
+  if (hedgeLines.length || mantleLines.length) {
     // (the borders lane, 2026-10-08: Tarkhan's lead broadleaf, the poplar, has no crown palette of its own, so its hedges
     // took the default lime over a gold steppe beside its olive-gold oaks) the hedge takes the crowns of the first rim
     // broadleaf, by share, that carries a palette
     const hedgeCanopy = rimMix.filter(([species]) => !isConifer(species)).slice().sort((a, b) => b[1] - a[1])
       .map(([species]) => vegetation?.palettes?.[species]?.canopy).find((canopy) => canopy);
     const hedges = buildBorderHedgerows({
-      seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: mantleLines.length ? hedgeLines.concat(mantleLines) : hedgeLines,
+      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
       palette: horizonBroadleafPalette(hedgeCanopy),
     });
     if (hedges) {

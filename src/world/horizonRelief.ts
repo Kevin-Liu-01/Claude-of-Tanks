@@ -635,9 +635,21 @@ function hashCell(ix: number, iz: number, seed: number): number {
 /** Where the ring's range trees stop (horizonVista.ts buildHorizonForest: no range-class tree past 880 m); the baked
  * stands fade in under their outer edge so the two meet without a band. */
 export const HORIZON_COVER_RADIUS_M: readonly [number, number] = [720, 900];
-/** The radii (m) over which the stands hand over from the border's woods to the ranges' own stand field: where the ring's
- * range trees (which stand in the border's woods) thin out and stop, so no woodland parcel climbs a face past the trees. */
+/** The reaches (m, horizonStandReach) over which the stands hand over from the border's woods to the ranges' own stand
+ * field: where the ring's range trees (which stand in the border's woods) thin out and stop, so no woodland parcel climbs a
+ * face past the trees. */
 export const HORIZON_STAND_HANDOVER_M: readonly [number, number] = [720, 880];
+/**
+ * The hand-over's measure (the borders lane, round 4, 2026-10-08; the gauntlet at Verdant's, Steinburg's and Saltmere's
+ * south-west corners: "a uniform, even-height treeline runs across the whole horizon and closes the view"): the
+ * battlefield's own square metric, max(|x|, |z|) — 512 m plus the distance past the edge — so the border's woods (its
+ * fields open along the edge, its copses, its hedged parcels) hold to 208-368 m past the edge at a corner as at a side's
+ * middle. Measured on the radius, the hand-over fell inside the square's corners (512 √2 = 724 m): the ranges' own stand
+ * masses, 400 m across, stood from the corner itself and closed every corner's view.
+ */
+export function horizonStandReach(x: number, z: number): number {
+  return Math.max(Math.abs(x), Math.abs(z));
+}
 
 interface DrainageInput {
   W: number; H: number; r0: number; dr: number;
@@ -822,7 +834,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         // ranges' faces, the stands are the field's own (gauntlet wave 6, Verdant's edge-n: a woodland parcel's straight
         // edges drawn up the mountain read as "a translucent blue-grey band smeared diagonally across the mountain")
         const natural = smoothstep(-0.05, 0.05, field + bias);
-        const borderW = input.woodsAt ? 1 - smoothstep(HORIZON_STAND_HANDOVER_M[0], HORIZON_STAND_HANDOVER_M[1], r) : 0;
+        const borderW = input.woodsAt ? 1 - smoothstep(HORIZON_STAND_HANDOVER_M[0], HORIZON_STAND_HANDOVER_M[1], horizonStandReach(x, z)) : 0;
         let stand = borderW > 0.001 ? natural + (input.woodsAt!(x, z) - natural) * borderW : natural;
         stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
         // the borders lane (2026-10-08): a ragged treeline — tongues of forest up the gullies and the lee faces, the

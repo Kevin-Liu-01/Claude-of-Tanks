@@ -57,8 +57,13 @@ try {
   // (2026-10-04, the map-borders lane: the road exits now end at the ranges' foot, terrain.ts roadExitOnRing, so a
   // taller ring moves their avenues, rides and villages and with them the near class's mix of conifers and broadleaves:
   // Railyard 231312 -> 231240 triangles; a re-rolled shape swung it by up to 44k)
-  assert.equal(b.forest.userData.horizonForest.near, a.forest.userData.horizonForest.near, 'the near class\'s count holds at its cap');
-  assert.ok(Math.abs(shadowB - shadowA) <= shadowA * 0.01, `the near class's shadow triangles hold (${shadowA} -> ${shadowB})`);
+  // (the borders lane, round 4, 2026-10-08: the near band's woods are copses now — glades through them, the corners'
+  // fields open past the edge — and Railyard's near class stands under its cap of 1500, so a taller ring re-thins it by
+  // a tree or two in a hundred: 1362 -> 1387; at the cap it holds exactly)
+  const nearA = a.forest.userData.horizonForest.near, nearB = b.forest.userData.horizonForest.near;
+  if (nearA >= 1500 && nearB >= 1500) assert.equal(nearB, nearA, 'the near class\'s count holds at its cap');
+  else assert.ok(Math.abs(nearB - nearA) <= nearA * 0.03, `the near class's count holds within a few trees in a hundred (${nearA} -> ${nearB})`);
+  assert.ok(Math.abs(shadowB - shadowA) <= shadowA * 0.03, `the near class's shadow triangles hold (${shadowA} -> ${shadowB})`);
   console.log(`horizonForestShapes.selftest: Railyard's ring 3 % taller: ${compared} pool templates identical, shadow ${shadowA} -> ${shadowB} triangles, ` +
     `${a.forest.userData.horizonForest.instances} -> ${b.forest.userData.horizonForest.instances} trees`);
 } finally {

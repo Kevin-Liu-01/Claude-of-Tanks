@@ -906,6 +906,10 @@ interface ForestPlacement {
   face?: boolean;
   /** The borders lane: a face tree's stand weight (the bake's canopy there, 0..1) — the budget keeps the stands' cores. */
   stand?: number;
+  /** The borders lane (round 4): the border's woods field at a band or range tree (options.woodsAt), -1 where unread. */
+  woods?: number;
+  /** The borders lane (round 4): a face tree on the last face rising to a crest (it stands against the sky). */
+  crest?: boolean;
   variant: number; tone: number;
   /** thinning key. */
   key: number;
@@ -920,6 +924,184 @@ function horizonForestShapeSeed(seed: number, conifer: boolean, detail: number, 
   h = Math.imul(h ^ (h >>> 16) ^ (conifer ? 0x85EBCA6B : 0xC2B2AE35), 0x27D4EB2F);
   h = Math.imul(h ^ (h >>> 15) ^ Math.imul(detail + 3, 0x165667B1) ^ Math.imul(variant + 2, 0xD3A2646C), 0x9E3779B1);
   return (h ^ (h >>> 13)) >>> 0;
+}
+
+/** The borders lane (round 4): how far past the square's edge a wood's edge facing the square is drawn as one (m). */
+const WOODS_EDGE_REACH_M = 470;
+/** ... and how far its mantle of bushes stands (a 4 m bush is a pixel past this from anywhere a tank can stand). */
+const WOODS_MANTLE_REACH_M = 420;
+/** The probes toward the square (m) that find a tree's depth inside its wood. */
+const WOODS_EDGE_PROBES_M: readonly number[] = [7, 16, 28];
+/** A mantle line's bushes against a hedge's: taller (3.1-6 m) and twice as broad. */
+const WOODS_MANTLE_HEIGHT_K = 1.3;
+const WOODS_MANTLE_GIRTH_K = 1.9;
+
+/** A woods edge's mantle line: world points every 8 m with the bushes' presence (borderHedgerows.ts HedgeLine). */
+export interface HorizonWoodsMantleLine { xs: number[]; zs: number[]; w: number[]; heightK: number; girthK: number }
+
+function placementHash(x: number, z: number, k: number): number {
+  const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453;
+  return v - Math.floor(v);
+}
+function smooth01(t: number): number {
+  const c = t < 0 ? 0 : t > 1 ? 1 : t;
+  return c * c * (3 - 2 * c);
+}
+
+/**
+ * The borders lane (round 4, 2026-10-08; the gauntlet at Verdant's and Steinburg's south-west corners: "a uniform,
+ * even-height treeline runs across the whole horizon and closes the view"; at Saltmere's: "a straight palisade of
+ * identical bare trunks under a flat canopy line, no shrub mantle"): a wood's edge as a wood's edge. Each band or range
+ * tree standing in the border's woods probes toward the square (7, 16 and 28 m) for its depth inside the wood's edge
+ * facing it; the stature rises from 0.58 of a tree's at that edge to all of it 27 m in (the young growth and the low
+ * edge trees under the canopy behind — a tenth of the edge trees stand full, old trees kept by the field), each wood its
+ * own stature (0.82-1.18 over ~240 m patches), and one interior tree in fourteen an emergent (1.2-1.45). The trees at
+ * the edge leave a mantle point 2.5-5 m in front of them; the points chain along the edge into mantle lines (bushes
+ * 3-6 m high, drawn with the hedges), broken now and then. Positional hashes only: the placement stream is untouched.
+ */
+function shapeWoodsEdges(
+  trees: ForestPlacement[], woodsAt: (x: number, z: number) => number, noise: ((u: number, v: number) => number) | null,
+): { lines: HorizonWoodsMantleLine[]; metres: number; edgeTrees: number; probed: number } {
+  const pts: number[] = [];
+  let edgeTrees = 0, probed = 0;
+  for (const p of trees) {
+    if (!(p.woods !== undefined && p.woods >= 0.5)) continue;
+    const edgeOut = Math.max(Math.abs(p.x), Math.abs(p.z)) - 512;
+    const woodK = noise ? 0.82 + 0.36 * noise(p.x * 0.0042 + 0.37, p.z * 0.0042 + 0.91) : 1;
+    const h1 = placementHash(p.x, p.z, 1), h2 = placementHash(p.x, p.z, 2);
+    let depth = 32, ux = 0, uz = 0;
+    if (edgeOut > 0 && edgeOut < WOODS_EDGE_REACH_M) {
+      // toward the square: its edge's nearest point (a side's normal, a corner's diagonal)
+      ux = Math.max(-512, Math.min(512, p.x)) - p.x; uz = Math.max(-512, Math.min(512, p.z)) - p.z;
+      const l = Math.hypot(ux, uz) || 1;
+      ux /= l; uz /= l;
+      probed++;
+      let prev = 0;
+      for (const probe of WOODS_EDGE_PROBES_M) {
+        if (woodsAt(p.x + ux * probe, p.z + uz * probe) < 0.5) { depth = (prev + probe) * 0.5; break; }
+        prev = probe;
+      }
+    }
+    const e = smooth01((depth - 3.5) / 24);
+    const edgeK = h1 > 0.9 ? 1 : 0.58 + 0.42 * e;
+    const emergent = e > 0.5 && h1 < 0.07 ? 1.2 + 0.25 * h2 : 1;
+    p.scale *= edgeK * woodK * emergent;
+    if (depth <= 3.5) {
+      edgeTrees++;
+      if (edgeOut < WOODS_MANTLE_REACH_M) {
+        const off = 2.5 + 2.5 * h2;
+        pts.push(p.x + ux * off, p.z + uz * off, ux, uz);
+      }
+    }
+  }
+  const { lines, metres } = chainWoodsMantle(pts);
+  return { lines, metres, edgeTrees, probed };
+}
+
+/**
+ * The mantle points (x, z and the look toward the square, four numbers each) chained along their edges: from each
+ * unvisited point both ways along the edge (across its look), to the best next point within 18 m and 72° of the way on
+ * the same edge (looks agreeing); each run smoothed (its trees stood a few metres either way) and resampled every 8 m, a
+ * tenth of the points left bare (a break in the bushes). A point no other joins is a clump of its own, 10 m along the
+ * edge.
+ */
+function chainWoodsMantle(pts: number[]): { lines: HorizonWoodsMantleLine[]; metres: number } {
+  const n = pts.length / 4;
+  const lines: HorizonWoodsMantleLine[] = [];
+  let metres = 0;
+  if (n < 3) return { lines, metres };
+  const CELL = 16;
+  const keyOf = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
+  const grid = new Map<number, number[]>();
+  for (let k = 0; k < n; k++) {
+    const key = keyOf(Math.floor(pts[k * 4] / CELL), Math.floor(pts[k * 4 + 1] / CELL));
+    let bucket = grid.get(key);
+    if (!bucket) { bucket = []; grid.set(key, bucket); }
+    bucket.push(k);
+  }
+  const used = new Uint8Array(n);
+  const nextFrom = (from: number, dx: number, dz: number): number => {
+    const x = pts[from * 4], z = pts[from * 4 + 1];
+    const i0 = Math.floor(x / CELL), j0 = Math.floor(z / CELL);
+    let best = -1, bestScore = Infinity;
+    for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) {
+      const bucket = grid.get(keyOf(i, j));
+      if (!bucket) continue;
+      for (const k of bucket) {
+        if (used[k]) continue;
+        const ex = pts[k * 4] - x, ez = pts[k * 4 + 1] - z, d = Math.hypot(ex, ez);
+        if (d < 0.5 || d > 18) continue;
+        const along = (ex * dx + ez * dz) / d;
+        if (along < 0.3) continue;
+        if (pts[k * 4 + 2] * pts[from * 4 + 2] + pts[k * 4 + 3] * pts[from * 4 + 3] < 0.5) continue;
+        const score = d * (2 - along);
+        if (score < bestScore) { bestScore = score; best = k; }
+      }
+    }
+    return best;
+  };
+  for (let s = 0; s < n; s++) {
+    if (used[s]) continue;
+    used[s] = 1;
+    const chain = [s];
+    for (const sign of [1, -1]) {
+      let cur = s, dx = -pts[s * 4 + 3] * sign, dz = pts[s * 4 + 2] * sign;
+      for (;;) {
+        const next = nextFrom(cur, dx, dz);
+        if (next < 0) break;
+        used[next] = 1;
+        const ex = pts[next * 4] - pts[cur * 4], ez = pts[next * 4 + 1] - pts[cur * 4 + 1], d = Math.hypot(ex, ez) || 1;
+        dx = dx * 0.5 + (ex / d) * 0.5; dz = dz * 0.5 + (ez / d) * 0.5;
+        const dl = Math.hypot(dx, dz) || 1;
+        dx /= dl; dz /= dl;
+        if (sign > 0) chain.push(next); else chain.unshift(next);
+        cur = next;
+      }
+    }
+    let xs = chain.map((k) => pts[k * 4]), zs = chain.map((k) => pts[k * 4 + 1]);
+    if (chain.length === 1) {
+      // (a lone edge tree's own clump: 10 m along the edge, across its look)
+      const tx = -pts[s * 4 + 3], tz = pts[s * 4 + 2];
+      xs = [xs[0] - tx * 5, xs[0] + tx * 5]; zs = [zs[0] - tz * 5, zs[0] + tz * 5];
+    }
+    for (let pass = 0; pass < 2; pass++) {
+      const sx = xs.slice(), sz = zs.slice();
+      for (let k = 1; k + 1 < xs.length; k++) { sx[k] = (xs[k - 1] + 2 * xs[k] + xs[k + 1]) / 4; sz[k] = (zs[k - 1] + 2 * zs[k] + zs[k + 1]) / 4; }
+      xs = sx; zs = sz;
+    }
+    const cum = [0];
+    for (let k = 1; k < xs.length; k++) cum.push(cum[k - 1] + Math.hypot(xs[k] - xs[k - 1], zs[k] - zs[k - 1]));
+    const total = cum[cum.length - 1];
+    if (total < 6) continue;
+    const line: HorizonWoodsMantleLine = { xs: [], zs: [], w: [], heightK: WOODS_MANTLE_HEIGHT_K, girthK: WOODS_MANTLE_GIRTH_K };
+    const samples = Math.max(2, Math.round(total / 8) + 1);
+    let seg = 0;
+    for (let q = 0; q < samples; q++) {
+      const t = (q / (samples - 1)) * total;
+      while (seg + 2 < cum.length && cum[seg + 1] < t) seg++;
+      const f = (t - cum[seg]) / Math.max(1e-6, cum[seg + 1] - cum[seg]);
+      const x = xs[seg] + (xs[seg + 1] - xs[seg]) * f, z = zs[seg] + (zs[seg + 1] - zs[seg]) * f;
+      line.xs.push(x); line.zs.push(z);
+      line.w.push(placementHash(x, z, 7) < 0.1 ? 0 : 1);
+    }
+    lines.push(line);
+    metres += total;
+  }
+  return { lines, metres };
+}
+
+/**
+ * The borders lane (round 4; the gauntlet at Nordhavn and Monsoon: "conifers sprinkled along the crest line like a
+ * fringe", "palms on the crests like comb teeth"): the face trees' canopy lines broken — each stand its own stature
+ * (0.82-1.18 over ~240 m patches) and one tree in fourteen an emergent (1.2-1.45) — and the trees on a crest, the ones
+ * that stand against the sky, wind-shorn to 0.72 of theirs and never emergent. Positional hashes only.
+ */
+function shapeFaceCanopy(trees: ForestPlacement[], noise: ((u: number, v: number) => number) | null): void {
+  for (const p of trees) {
+    const woodK = noise ? 0.82 + 0.36 * noise(p.x * 0.0042 + 0.37, p.z * 0.0042 + 0.91) : 1;
+    const h1 = placementHash(p.x, p.z, 1), h2 = placementHash(p.x, p.z, 2);
+    p.scale *= p.crest ? woodK * 0.72 : woodK * (h1 < 0.07 ? 1.2 + 0.25 * h2 : 1);
+  }
 }
 
 /**
@@ -1090,6 +1272,9 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
       if (faceCanopyAt && !band) {
         const faceR = Math.hypot(positions[i00 * 3], positions[i00 * 3 + 2]);
         if (faceR >= HORIZON_FACE_FOREST_M[0] - 40 && faceR <= faceRadius) {
+          // (round 4: the last face rising to a crest — the ground falls beyond it — stands its trees against the sky)
+          const crestFace = row + 2 < rows.length
+            && (heights[(row + 2) * n + column] + heights[(row + 2) * n + k1]) * 0.5 - (heights[i10] + heights[i11]) * 0.5 < -0.5;
           let fc = (area / HORIZON_FACE_CANDIDATE_M2) * faceDensity;
           fc = Math.floor(fc) + (faceRng() < fc - Math.floor(fc) ? 1 : 0);
           for (let t = 0; t < fc; t++) {
@@ -1110,7 +1295,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
               // taller face class would shrink the band's trees by the red line)
               x, y: y - 0.4, z, scale: 0.9 + scaleRoll * 0.55, yaw: yaw * Math.PI * 2, conifer: kind < options.coniferShare,
               band: false, beyond: beyondRim(x, z), detail: 0, variant: tone < 0.5 ? 0 : 1, tone: 0.82 + tone * 0.3, key, face: true,
-              stand,
+              stand, crest: crestFace,
             });
           }
         }
@@ -1133,13 +1318,17 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (band && y > maxHeight * 0.5) continue; // and no band tree on a foothill crest that climbs past half the ring
         if (options.clearAt && options.clearAt(x, z) > 0.5) continue; // round 63: the cutting's right-of-way
         let stand = standWeightAt(x, y, z, faceSlope, band);
+        let woodsV = -1;
         // the map-borders lane: the woods are patches covering the map's share, on the band and on the near ranges the
         // border landform now shapes (its hills reach 330–820 m out); a lone tree stands in the open
         if (bandShare !== undefined) {
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
           const lone = 0.045 * bandShare * (options.loneAt ? options.loneAt(x, z) : 1);
           // (the hedges' bush lines are geometry now, borderHedgerows.ts: the ring forest stands only their standards)
-          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
+          if (options.woodsAt) {
+            woodsV = options.woodsAt(x, z);
+            stand *= Math.max(lone, woodsV, options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
+          }
           else {
             const w = woodsAt(x, z, faceSlope);
             stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : lone;
@@ -1170,6 +1359,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         const placement: ForestPlacement = {
           x, y: y - 0.4, z, scale: 0.9 + rng() * 0.55, yaw: rng() * Math.PI * 2, conifer: rng() < options.coniferShare,
           band, beyond: beyondRim(x, z), detail: 1, variant: rng() < 0.5 ? 0 : 1, tone: 0.86 + rng() * 0.26, key: rng(),
+          woods: woodsV,
         };
         candidates.push(placement);
       }
@@ -1225,6 +1415,9 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   const faceBudget = faceBudgetN;
   const faceKept = faceCandidates.length <= faceBudget ? faceCandidates
     : faceCandidates.slice().sort((a, b) => ((b.stand ?? 0) + b.key * 0.14) - ((a.stand ?? 0) + a.key * 0.14)).slice(0, faceBudget);
+  // the borders lane (round 4): a wood's edge as a wood's edge (shapeWoodsEdges), and the far stands' canopy lines broken
+  const mantle = options.woodsAt ? shapeWoodsEdges(bandKept.concat(rangeKept), options.woodsAt, noise ?? null) : null;
+  shapeFaceCanopy(faceKept, noise ?? null);
   const placements = bandKept.concat(rangeKept, faceKept);
   const nearCount = placements.filter((placement) => placement.detail === 2).length;
   const group = new THREE.Group();
@@ -1354,8 +1547,11 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
     packed[o] = p.x; packed[o + 1] = p.y; packed[o + 2] = p.z; packed[o + 3] = p.scale; packed[o + 4] = p.yaw;
     packed[o + 5] = p.conifer ? 1 : 0; packed[o + 6] = p.variant; packed[o + 7] = p.tone; packed[o + 8] = p.key; packed[o + 9] = p.detail;
   });
+  // (the edge trees' mantle: bush lines along the woods' edges facing the square, drawn with the hedges, maps/horizon.ts)
+  group.userData.horizonForestMantle = mantle?.lines ?? [];
   group.userData.horizonForest = {
     instances: placements.length,
+    mantle: mantle ? { lines: mantle.lines.length, metres: Math.round(mantle.metres), edgeTrees: mantle.edgeTrees, probed: mantle.probed } : null,
     conifers: placements.filter((p) => p.conifer).length,
     near: nearCount,
     band: bandKept.length,

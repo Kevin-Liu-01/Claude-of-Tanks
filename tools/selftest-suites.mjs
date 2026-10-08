@@ -1366,6 +1366,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderHedgerows.selftest.mjs',
     'src/world/horizonSurface.selftest.mjs',
     'src/world/horizonFaceForest.selftest.mjs',
+    'src/world/borderWoodsEdge.selftest.mjs',
     'src/world/horizonJebelKinds.selftest.mjs',
     'src/world/horizonJebelSkyline.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',

@@ -3,7 +3,7 @@ import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
 import { continuedGroundAt, ringMeshSurfaceSampler, ringWaterlineMetres } from './horizonSurface.ts';
-import { HORIZON_STAND_HANDOVER_M } from './horizonRelief.ts';
+import { HORIZON_STAND_HANDOVER_M, horizonStandReach } from './horizonRelief.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -6516,7 +6516,9 @@ void splatCompute() {
     // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~30 degrees)
     float cropWeight = 1.0 - vBorderTint.w;
     if (cropWeight > 0.002) {
-      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.07, 0.15, slope));
+      // (the borders lane, round 4: Frontier's plain "meeting the slope along a hard line" — the crop fades over a wider
+      // band of slope, the sward taking the steeper ground by degrees)
+      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.06, 0.24, slope));
       a.rgb = mix(a.rgb, vBorderTint.rgb / cropWeight * reduxLuma(a.rgb), cropW);
     }
     // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): 3 m of packed dirt beside the
@@ -7759,7 +7761,7 @@ function* terrainBuildSteps(
     let any = false;
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i), z = position.getZ(i);
-      heightField._borderParcelAt(x, z, tint, standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined);
+      heightField._borderParcelAt(x, z, tint, standAt && horizonStandReach(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined);
       tintAttr.set(tint, i * 4);
       if (tint[3] < 1) any = true;
     }

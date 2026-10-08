@@ -17,8 +17,9 @@
 import * as THREE from 'three';
 import { SHADOW_CASTER_LAST_CASCADE, setShadowCasterCascades } from '../engine/renderLayers.ts';
 
-/** A hedged stretch: world points ~8 m apart along a field boundary, each with the hedge's presence (0..1). */
-export interface HedgeLine { xs: number[]; zs: number[]; w: number[] }
+/** A hedged stretch: world points ~8 m apart along a field boundary, each with the hedge's presence (0..1). A line may
+ * carry its own height and girth factors (a woods edge's mantle, horizonVista.ts: taller and broader bushes). */
+export interface HedgeLine { xs: number[]; zs: number[]; w: number[]; heightK?: number; girthK?: number }
 
 export interface HedgePalette { hue: number; sat: number; l0: number; l1: number }
 
@@ -94,6 +95,7 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
   };
   for (const line of options.lines) {
     const n = line.xs.length;
+    const heightK = line.heightK ?? 1, girthK = line.girthK ?? 1;
     let i = 0;
     while (i < n) {
       // a run: consecutive points where the hedge stands
@@ -157,8 +159,8 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
         // (the crest a string of crowns 4.5-9 m apart over the hedge's body, not a wavy embankment: the PR head's census and
         // this lane's render at 120 and 300 m)
         const { lift, shade, hue: crownHue, sat: crownSat } = crownAt(k * step);
-        const crest = (hLo + (hHi - hLo) * swell) * lift * (0.30 + 0.70 * endTaper) * (0.55 + 0.45 * presence);
-        const half = HALF_FOOT_M * (0.75 + 0.35 * swell) * (0.70 + 0.36 * lift) * (0.45 + 0.55 * endTaper);
+        const crest = (hLo + (hHi - hLo) * swell) * lift * (0.30 + 0.70 * endTaper) * (0.55 + 0.45 * presence) * heightK;
+        const half = HALF_FOOT_M * (0.75 + 0.35 * swell) * (0.70 + 0.36 * lift) * (0.45 + 0.55 * endTaper) * girthK;
         stations.push({ x: p.x, z: p.z, nx: -tz, nz: tx, tx, tz, g, crest, half, lean: (swell - 0.5) * 0.5 * leanK + (rng() - 0.5) * 0.25,
           shade: shade * (0.95 + 0.10 * rng()), hue: crownHue, sat: crownSat });
       }

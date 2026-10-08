@@ -66,6 +66,15 @@ const CROPS: Readonly<Record<string, readonly [number, number, number, number]>>
   sunflower: [0.66, 0.93, 0.33, 1],
   rapeseed: [3.2, 2.9, 0.55, 1],
 });
+/**
+ * The borders lane (round 4, 2026-10-08; the gauntlet at Monsoon Ridge's corner: "open lawn between evenly spaced bare
+ * trunks" under the ring's woods): a wood's floor — leaf litter and shade under the canopy, a dark olive as a multiple of
+ * the sward's luminance like a crop's — on the ring's ground under the border's woods, its weight there.
+ */
+const WOODS_FLOOR: readonly [number, number, number] = [0.46, 0.56, 0.30];
+const WOODS_FLOOR_W = 0.82;
+/** How much of a hill's crest the fields leave to the sward (the share at the crest; 0.7 before round 4's "bald dome"). */
+const FIELD_CREST_THIN = 0.38;
 /** Each region's rotation (landUse.ts ROTATIONS; the polders take the bocage's grazing with rapeseed for sunflower). */
 const ROTATIONS: Readonly<Record<'temperate' | 'steppe' | 'polder', readonly (readonly [string, number])[]>> = Object.freeze({
   steppe: [['pasture', 0.16], ['wheat', 0.27], ['barley', 0.11], ['green', 0.14], ['plough', 0.15], ['stubble', 0.11], ['sunflower', 0.06]],
@@ -123,6 +132,12 @@ export interface BorderLandformSettings {
    * them would reshuffle every stand of the ring). Default true.
    */
   farmBuildings?: boolean;
+  /**
+   * The borders lane (round 4, 2026-10-08): 0..1, the glades through the free-form woods on the first few hundred metres
+   * past the edge (a third of their ground at 1, none past 470 m; the whole-field woods of farmland keep their parcels).
+   * Default 1.
+   */
+  glades?: number;
   /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
@@ -475,6 +490,21 @@ export function createBorderLandform(
     return samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))];
   })();
 
+  // The borders lane (round 4, 2026-10-08; the gauntlet at Verdant's, Steinburg's and Saltmere's corners: "a uniform,
+  // even-height treeline runs across the whole horizon and closes the view"): the free-form woods on the first few hundred
+  // metres past the edge stand as copses, not as one wood — glades 40-90 m across (the 95 m field, ragged by the 35 m one)
+  // through them, most near the edge and none past 470 m, so the eye runs between the copses to the woods and the hills
+  // behind. The square's band and the first 25 m past the edge keep their woods (the rim trees stand by them).
+  const gladeShare = Math.max(0, Math.min(1, settings.glades ?? 1));
+  function gladeAt(x: number, z: number, edgeOut: number): number {
+    if (gladeShare <= 0 || edgeOut <= 25 || edgeOut >= 470) return 0;
+    const reach = smoothstep(25, 70, edgeOut) * (1 - smoothstep(300, 470, edgeOut)) * gladeShare;
+    if (reach <= 0) return 0;
+    const g = noise.noise(x * 0.0105 + 41.3, z * 0.0105 - 17.9) * 0.75 + noise.noise(x * 0.029 - 5.1, z * 0.029 + 9.4) * 0.25;
+    const cut = 1 - 0.8 * reach;
+    return smoothstep(cut - 0.04, cut + 0.04, g);
+  }
+
   let woodsX = Number.NaN, woodsZ = Number.NaN, woodsLast = 0;
   function woodsAt(x: number, z: number): number {
     if (x === woodsX && z === woodsZ) return woodsLast;
@@ -491,7 +521,8 @@ export function createBorderLandform(
       // land-use map the woods are free-form: the whole-field cells would be the landform's grid, not the map's)
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const cut = woodsCut + 0.18 * (1 - smoothstep(30, 160, edgeOut)) + 0.08 * (1 - smoothstep(160, 320, edgeOut));
-      return smoothstep(cut - 0.025, cut + 0.025, woodsField(x, z));
+      const wild = smoothstep(cut - 0.025, cut + 0.025, woodsField(x, z));
+      return wild > 0 ? wild * (1 - gladeAt(x, z, edgeOut)) : 0;
     }
     // In farmland most woods are whole fields, so their edges run straight along the boundaries: a field is wooded
     // where the woods field at its middle passes the cut. The free-form woods keep only their cores (on the hills).
@@ -502,7 +533,9 @@ export function createBorderLandform(
     if (field === undefined) { field = fieldCellWoods(ca, cb); fieldWoods.set(cellKey, field); }
     const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
     const core = woodsCut + 0.06 + 0.3 * (1 - smoothstep(40, 190, edgeOut)) + 0.12 * (1 - smoothstep(190, 380, edgeOut));
-    return Math.max(field, smoothstep(core, core + 0.05, woodsField(x, z)));
+    if (field >= 1) return 1;
+    const copse = smoothstep(core, core + 0.05, woodsField(x, z));
+    return Math.max(field, copse > 0 ? copse * (1 - gladeAt(x, z, edgeOut)) : 0);
   }
   function fieldCellWoods(ca: number, cb: number): number {
     let na = ca + 1, nb = cb + 1;
@@ -646,22 +679,30 @@ export function createBorderLandform(
       if (landUse) {
         // a land-use map: the material draws the map's own fields past the edge; the attribute carries only where they
         // may lie — off the woods, thinning onto the crests (no fade: the fields run straight across the edge)
-        out[3] = 1 - (1 - wood) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+        out[3] = 1 - (1 - wood) * (1 - FIELD_CREST_THIN * smoothstep(0.62, 0.92, hillsAt(x, z)));
         return out;
       }
-      if (settings.fields <= 0) return out;
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+      // (round 4) the woods' floor under the ring's woods, to where the relief bake's canopy takes the stands' shade over
+      // (horizonRelief.ts HORIZON_COVER_RADIUS_M)
+      const floorW = wood > 0.25 ? WOODS_FLOOR_W * smoothstep(0.25, 0.75, wood) * smoothstep(10, 50, edgeOut)
+        * (1 - smoothstep(720, 900, Math.hypot(x, z))) : 0;
+      if (floorW > 0) {
+        out[0] = WOODS_FLOOR[0] * floorW; out[1] = WOODS_FLOOR[1] * floorW; out[2] = WOODS_FLOOR[2] * floorW; out[3] = 1 - floorW;
+      }
+      if (settings.fields <= 0) return out;
       const fade = smoothstep(0, 40, edgeOut);
       if (fade <= 0) return out;
-      // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills
-      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - wood) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+      // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills (round 4: the fields
+      // climb the hills — a bald dome was the tell — and give a third of the crest to the sward)
+      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - wood) * (1 - FIELD_CREST_THIN * smoothstep(0.62, 0.92, hillsAt(x, z)));
       if (w0 <= 0.002) return out;
       const { a, b } = fieldCoords(x, z);
       const id = fieldCell(a, 0) * 7919 + fieldCell(b, 1) * 104729;
       // (a pasture's sward varies more from field to field than a crop's colour: lush, grazed, cut for hay)
       const crop = cropOf(settings.crops, fieldHash(id)), pasture = crop[3] < 1;
       const bright = (pasture ? 0.78 : 0.9) + (pasture ? 0.44 : 0.2) * fieldHash(id + 31), w = w0 * crop[3];
-      out[0] = crop[0] * bright * w; out[1] = crop[1] * bright * w; out[2] = crop[2] * bright * w; out[3] = 1 - w;
+      out[0] += crop[0] * bright * w; out[1] += crop[1] * bright * w; out[2] += crop[2] * bright * w; out[3] -= w;
       return out;
     },
     woodsAt,

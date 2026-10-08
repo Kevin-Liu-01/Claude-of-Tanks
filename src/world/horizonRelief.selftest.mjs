@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import {
-  HORIZON_COVER_RADIUS_M, HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M,
+  HORIZON_COVER_RADIUS_M, HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M, horizonStandReach,
   HORIZON_RELIEF_CHARACTERS, HORIZON_RELIEF_GRAD_SCALE, HORIZON_RELIEF_SHADE, HORIZON_RELIEF_SUN_DEPTH,
   bakeHorizonRelief, createHorizonReliefField, encodeCanopyAo, encodeCanopySun, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from './horizonRelief.ts';
@@ -237,15 +237,18 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
     const stands = { ...settings, cover: { ...settings.cover, fields: 0 } };
     const at = (woodsAt) => bakeHorizonRelief({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt }, createHorizonReliefField(0x51ab, stands), [0.4, 0.6, 0.7], { width: 512, height: 64 });
     const none = at(() => 0), all = at(() => 1);
+    // (the borders lane, round 4: the hand-over is measured on the square's metric, horizonStandReach — a corner keeps the
+    // border's woods as far past its edges as a side's middle)
     let inBand = 0, past = 0;
     for (let j = 0; j < 64; j++) {
       const r = none.r0 + (j + 0.5) * (none.r1 - none.r0) / 64;
       for (let i = 0; i < 512; i++) {
         const idx = (j * 512 + i) * 4;
+        const theta = (i / 512) * Math.PI * 2, reach = horizonStandReach(Math.cos(theta) * r, Math.sin(theta) * r);
         const differs = none.data[idx + 2] !== all.data[idx + 2] || none.data[idx + 3] !== all.data[idx + 3];
-        if (r > HORIZON_STAND_HANDOVER_M[0] && r < HORIZON_STAND_HANDOVER_M[1]) { if (differs) inBand++; }
+        if (reach > HORIZON_STAND_HANDOVER_M[0] && reach < HORIZON_STAND_HANDOVER_M[1]) { if (differs) inBand++; }
         // (past the occlusion's and the cast shadows' reach of a band stand's canopy: its shadow falls a little way out)
-        else if (r > HORIZON_STAND_HANDOVER_M[1] + 220 && differs) past++;
+        else if (reach > HORIZON_STAND_HANDOVER_M[1] + 220 && differs) past++;
       }
     }
     assert.ok(inBand > 200, `the border's woods lead the stands across the hand-over (${inBand} texels follow them)`);
