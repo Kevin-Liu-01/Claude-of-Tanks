@@ -502,6 +502,12 @@ came down (damaged > breached > collapsed), 18 of 18 stage deliveries presented 
 every earlier check unchanged. The determinism audit hashes the destruction log beside the destroyed list, and
 `src/sim/destructionShard.selftest` replays a ram on Steinburg's real shard bit for bit.
 
+P2 (2026-10-08): the audit logs `structure_breach` keyed by what it names (`breach:<structure>:<section>:<hole>`, a
+fall's hole 255) and judges it as it judges a stage: missing, duplicate, late, a breach older than the view animated, a
+breach the host never sent, and one the new host re-sends after the migration. With the switch flipped (sections on),
+the scripted ram's breaches presented on 3 views, 3 of 3, none re-sent by the new host; its stages 18 of 18 as before.
+With sections off (every mode today) the host sends none and the earlier judgments are unchanged.
+
 ## 9. Per-mode rules
 
 `MatchRuleset.destruction` (`sim/matchRuleset.ts`), read by the solo step, the authority and the rule cards:
@@ -558,6 +564,11 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
   route grid's refresh (`hullComponentLabels` alone a quarter: the whole grid's components relabelled), 20 % its obstacle
   queries, 20 % its height samples, under 2 % the structure table and the heap. Hence one collapse a tick (§5); the
   browser's worst frame is the collapse-spike probe's to measure.
+- *A ray through openings (P2, 2026-10-08, sections head 958ae7dbf).* The world raycast (shells, spotting, bots) with
+  every house opened, its worst case: each structure holed and a third of them with a fallen panel, against the same
+  40,000 rays with nothing open (process CPU, best of 5 passes). Steinburg 495 → 484 µs a ray (0.98 ×, noise),
+  Ruinspires 417 → 474 µs (1.14 ×). Only an opened structure's records run the hollow-box test (§6); the hits agree
+  ray for ray but one per map (a ray now passing a hole).
 
 ## 11. The presentation contract
 
@@ -627,7 +638,7 @@ Cover that disappears changes the game. The gates, every phase:
 | `game/studioDestruction.selftest.mjs` | P2: the Studio films the sim's own holes (a strike, a round through the hole, reset) |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
-| `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |
+| `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments; P2's breaches judged as stages are (§8.6) |
 | `tools/sim-determinism-audit` (extended) | destruction in the hash |
 | `world/destructionKit.selftest.mjs` | the kit seam and the world's tags, spans, depth materials and shadow touch (§16.7) |
 | `sim/destructionParity.selftest.mjs` (extended) | the detonations raised alike in both sims; a real HE round's `shell_impact` names the house it struck |
