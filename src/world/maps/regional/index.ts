@@ -119,7 +119,14 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground } };
   const tints = pickWeatherTints(palette, weatherRng);
-  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // (the facades lane, round 6) the sun's horizontal direction in the building's frame: the slopes turned from it
+  // weather greener (a world direction turned back through the building's yaw, as props.ts places it)
+  const sun = ctx.sunAzimuthDeg !== undefined ? (() => {
+    const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
+    return [wx * c - wz * s, wx * s + wz * c] as const;
+  })() : null;
+  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints,
+    { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;
@@ -150,6 +157,8 @@ interface RebuildContext {
   seed: number;
   /** the ground the building is seated on, in its frame (RegionalBuildContext.ground) */
   ground?: RegionalGround;
+  /** the map's sun azimuth, degrees (RegionalBuildContext.sunAzimuthDeg) */
+  sunAzimuthDeg?: number;
 }
 
 /**
@@ -171,6 +180,7 @@ export function rebuildRegionalStructure(
     // the world pose, for look and form choices only (types.ts RegionalBuildContext)
     x, z, yaw,
     ...(context.ground ? { ground: context.ground } : {}),
+    ...(context.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: context.sunAzimuthDeg } : {}),
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = buildRegionalParts(style, ctx,

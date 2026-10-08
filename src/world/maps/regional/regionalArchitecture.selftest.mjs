@@ -289,6 +289,7 @@ const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScri
   const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   const ensureSteelAtlas = () => {};
+  const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };\n")}

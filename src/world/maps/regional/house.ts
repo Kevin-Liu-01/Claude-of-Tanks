@@ -580,6 +580,13 @@ function weatheredSheet(c: Rgb, lo: number, hi: number): (p: Vec3) => Rgb {
 }
 
 /** Emit the roof slabs, ridge and hip caps. */
+/**
+ * The ridge and hip caps' weather (the facades lane, round 6; gauntlet wave 241: "unweathered clay roofs": "moss, lichen
+ * and soot at the ridge and eaves"): caps bedded in lime mortar hold the wet and the soot the chimneys give off — a
+ * shade darker than the slopes and grey-green with crust lichen (a weathered bucket's paint; geometry.ts tint and shade)
+ */
+const CAP_WEATHER: EmitOptions = Object.freeze({ shade: 0.8, tint: [0.9, 0.95, 0.86] as Rgb });
+
 export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colour?: Rgb): void {
   const { s, halfD, tanP, eaveY, ridgeY } = rg;
   const t = roof.thickness;
@@ -658,11 +665,11 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
         const apex = top([0, ridgeY, end * ridgeHalf]);
         thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n, { stepped: roof.thatch !== 'rows' });
       }
-      // hip caps along both hip lines
+      // hip caps along both hip lines (round 6: bedded in mortar, lichened, as the ridge)
       for (const sx of [1, -1]) {
         const a: Vec3 = [0, ridgeY + t / cosP + 0.02, end * ridgeHalf];
         const b: Vec3 = [sx * xC, yC + t + 0.02, end * D];
-        sink.member(bucket, a, b, 0.2, 0.1, normalize3([sx * 0.3, 1, end * 0.3]), { ...dec, uv: { kind: 'member' }, exposed: true }, 0.05);
+        sink.member(bucket, a, b, 0.2, 0.1, normalize3([sx * 0.3, 1, end * 0.3]), { ...dec, ...CAP_WEATHER, uv: { kind: 'member' }, exposed: true }, 0.05);
       }
     }
   }
@@ -674,7 +681,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     const capPts: Vec3[] = [[-half, rt - 0.06, -ridgeLen - (roof.kind === 'gable' ? roof.verge * 0 : 0)],
       [half, rt - 0.06, -ridgeLen], [half, rt + 0.04, -ridgeLen], [0, rt + 0.11, -ridgeLen], [-half, rt + 0.04, -ridgeLen]];
     // extrude the cap profile along z (points ccw seen from +z)
-    sink.prism(bucket, capPts, [0, 0, 1], 2 * ridgeLen, dec, { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
+    sink.prism(bucket, capPts, [0, 0, 1], 2 * ridgeLen, { ...dec, ...CAP_WEATHER }, { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
   }
 }
 

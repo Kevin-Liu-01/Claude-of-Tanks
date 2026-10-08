@@ -55,6 +55,11 @@ export interface RegionalBuildContext {
   yaw?: number;
   /** the ground under the placed building (absent in a bare build: the receipts, a donor); see RegionalGround */
   ground?: RegionalGround;
+  /**
+   * The map's sun azimuth (degrees, its sky's sunAzimuthDeg: 0 toward +z, 90 toward +x), for the weathering only: the
+   * slopes turned from the sun grow their moss and lichen (weather.ts). Absent (a bare build), no slope is favoured.
+   */
+  sunAzimuthDeg?: number;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;

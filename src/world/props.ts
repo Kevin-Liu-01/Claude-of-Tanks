@@ -3965,6 +3965,12 @@ ${snowCap ? `
     e.list.push(_mat4.clone());
   }
 
+  // (facades lane, round 6) the sun a regional kit's roofs weather by: their slopes turned from it grow the moss
+  // (maps/regional/weather.ts). Outside the placement stage the receipts reduce: they mirror it in their own scope
+  // (roadBuildingFrontage, orchardBathhouse, regionalArchitecture)
+  const sunAzimuthDeg = (cfg as { sky?: { sunAzimuthDeg?: number } } | null)?.sky?.sunAzimuthDeg;
+  const regionalSun = sunAzimuthDeg !== undefined ? { sunAzimuthDeg } : {};
+
   function groundFit(x: number, z: number, w: number, d: number, rot: number) {
     const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot));
     const hx = (w * cs + d * sn) / 2, hz = (w * sn + d * cs) / 2;
@@ -4261,7 +4267,7 @@ ${snowCap ? `
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
           ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) }, px, pz, rot);
       if (rebuilt) {
         tmp = rebuilt;
@@ -4367,7 +4373,7 @@ ${snowCap ? `
       ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
-        { mapId, snowCap: structureContext.snowCap, seed,
+        { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
           ground: P.roadBuildingClearance ? undefined : regionalGround(entry.x, entry.z, entry.rot, fit.y + 0.05) },
         entry.x, entry.z, entry.rot) ?? tmp;
     }
@@ -4501,7 +4507,7 @@ ${snowCap ? `
         if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
         if (regionalArchitecture) {
           tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
-            { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot) ?? tmp;
         }
         addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
         _quat.setFromAxisAngle(_upAxis, entry.rot);
@@ -4621,7 +4627,7 @@ ${snowCap ? `
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
-          { mapId, snowCap: structureContext.snowCap, seed, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
+          { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun, ground: regionalGround(x, z, rot, fit.y + 0.05) }, x, z, rot) ?? tmp;
       }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);

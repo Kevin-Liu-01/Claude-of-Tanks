@@ -262,14 +262,37 @@ function* beavertail(s: number, tint: Tint, seed: number): Generator<SurfaceSlic
       const weather = weatherF(x, y);
       const lichen = smooth(0.68, 0.86, lichenF(x, y)) * smooth(0.45, 0.8, k2);
       const soot = smooth(0.55, 0.85, weather) * 0.25;
-      let v = 0.78 + k * 0.32 + curve * 0.08 + (grain - 0.5) * 0.12 - soot;
-      v *= 1 - edgeUp * 0.38 - joint * 0.45;
+      // (the facades lane, round 6; gauntlet wave 241: "one clean terracotta tile texture ... no moss, soot, patched
+      // repairs") an old roof's life on each tile: a tile replaced (new orange) or sooted dark here and there; rosettes
+      // of orange wall lichen and grey crust lichen on the exposed tails; moss in the damp shadow under the tails
+      const k3 = hash2(t.col, r, seed + 47), fresh = k3 < 0.035 ? 1 : 0, sooty = k3 > 0.94 ? 1 : 0;
+      let rosette = 0, orange = 0;
+      if (!fresh && !onUp) {
+        // three tiles in ten carry a rosette or two, 1-3 cm across, ragged at the rim
+        const kq = hash2(t.col, r, seed + 51), count = kq < 0.7 ? 0 : kq < 0.93 ? 1 : 2;
+        for (let q = 0; q < count; q++) {
+          const qx = 0.2 + hash2(t.col * 3 + q, r, seed + 53) * 0.6, qy = 0.1 + hash2(t.col * 3 + q, r, seed + 59) * 0.45;
+          const rad = (1.6 + hash2(t.col * 3 + q, r, seed + 61) * 2.2) / ch;
+          const ddx = (t.fx - qx) * tw / ch, ddy = fy - qy;
+          const ragged = 0.78 + 0.22 * Math.sin(Math.atan2(ddy, ddx) * 3 + hash2(t.col, r * 3 + q, seed + 63) * 6.28);
+          const dd = Math.sqrt(ddx * ddx + ddy * ddy) / (rad * ragged);
+          if (dd < 1) { const a = 1 - dd * dd; if (a > rosette) { rosette = a; orange = hash2(t.col * 3 + q, r, seed + 67) < 0.55 ? 1 : 0; } }
+        }
+      }
+      const moss = onUp ? 0 : smooth(0.45, 0.95, edgeUp) * smooth(0.62, 0.86, lichenF((x + 61) % s, (y + 37) % s)) * (1 - fresh);
+      let v = 0.78 + k * 0.32 + curve * 0.08 + (grain - 0.5) * 0.12 - soot * (1 - fresh);
+      v *= (1 - edgeUp * 0.38 - joint * 0.45) * (sooty ? 0.7 : 1);
       const hueShift = (k2 - 0.5) * 0.16;
       let rr = tint[0] * v * (1 + hueShift), gg = tint[1] * v * (1 - hueShift * 0.4), bb = tint[2] * v * (1 - hueShift * 0.6);
-      rr = rr * (1 - lichen) + 0.52 * lichen; gg = gg * (1 - lichen) + 0.50 * lichen; bb = bb * (1 - lichen) + 0.40 * lichen;
+      if (fresh) { rr *= 1.28; gg *= 1.12; bb *= 0.96; }
+      const lich = fresh ? 0 : lichen;
+      rr = rr * (1 - lich) + 0.52 * lich; gg = gg * (1 - lich) + 0.50 * lich; bb = bb * (1 - lich) + 0.40 * lich;
+      const ro = rosette * 0.62, [lr, lg, lb] = orange ? [0.64, 0.5, 0.24] : [0.56, 0.56, 0.5];
+      rr = rr * (1 - ro) + lr * ro; gg = gg * (1 - ro) + lg * ro; bb = bb * (1 - ro) + lb * ro;
+      rr = rr * (1 - moss * 0.8) + 0.2 * moss * 0.8; gg = gg * (1 - moss * 0.8) + 0.24 * moss * 0.8; bb = bb * (1 - moss * 0.8) + 0.1 * moss * 0.8;
       put(px, j, rr, gg, bb);
-      hgt[i] = clamp((onUp ? 0.62 : 0.3 + 0.28 * (1 - fyT)) + curve * 0.14 - joint * 0.3 - edgeUp * 0.12);
-      rough[i] = clamp(0.78 + (1 - curve) * 0.08 + lichen * 0.1 + joint * 0.1);
+      hgt[i] = clamp((onUp ? 0.62 : 0.3 + 0.28 * (1 - fyT)) + curve * 0.14 - joint * 0.3 - edgeUp * 0.12 + rosette * 0.03 + moss * 0.05);
+      rough[i] = clamp(0.78 + (1 - curve) * 0.08 + lichen * 0.1 + joint * 0.1 + rosette * 0.1 + moss * 0.12);
     }
     if ((y & 15) === 15) yield { fine: true, stage: `roof-beavertail-${y + 1}` };
   }
