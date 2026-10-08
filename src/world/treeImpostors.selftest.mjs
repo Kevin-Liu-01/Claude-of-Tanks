@@ -125,7 +125,7 @@ function auditFarSlots(world, id) {
     assert.equal(mesh.geometry.getAttribute('aImpRow').array[tree.fslot], impVariant, `${id}: the slot carries its tree's near variant`);
     const e = mesh.instanceMatrix.array;
     assert.ok(Math.abs(e[tree.fslot * 16 + 12] - tree.x) < 1e-3 && Math.abs(e[tree.fslot * 16 + 14] - tree.z) < 1e-3, `${id}: the slot carries its tree`);
-    assert.ok(impVariant >= 0 && impVariant < TREE_IMPOSTOR_VARIANTS && (tree.variant < TREE_IMPOSTOR_VARIANTS || (tree.variant <= 4 && !tree.wood)));
+    assert.ok(impVariant >= 0 && impVariant < TREE_IMPOSTOR_VARIANTS && (tree.variant < TREE_IMPOSTOR_VARIANTS || (tree.variant <= 4 && (!tree.wood || tree.margin))));
     const row = library.rowBase(tree.species) + (impVariant % library.variants);
     assert.equal(row, library.rows.findIndex(r => r.species === tree.species && r.variant === impVariant % library.variants));
   }

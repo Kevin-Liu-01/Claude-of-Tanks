@@ -2000,7 +2000,15 @@ export const GROWTH_SIDE_TUBE_BUDGET: Readonly<Record<'desktop' | 'mobile', numb
  * shadow (their stability rule), so a grown trunk under its own crown would read as lit in the open — the canopy's
  * sky occlusion (canopySkyOcclusion) is baked into the wood's tint at this weight.
  */
-export const GROWTH_CANOPY_AO = 0.5;
+export const GROWTH_CANOPY_AO = 0.65;
+/**
+ * Trees round 8 pass B (2026-10-07, the gauntlet's wave 237 on Frontier's wood edge: "trunks and branches that stay
+ * mid-grey instead of silhouetting against glowing yellow-green leaves when back-lit", "what is missing is dark limb
+ * silhouettes inside the crowns"): how far the wood deep in a crown darkens toward its heart (round 2: a half). With
+ * GROWTH_CANOPY_AO (0.5 → 0.65) the limbs inside a crown read as its dark frame both ways: against the leaves' glow
+ * back-lit, under the lit shell front-lit.
+ */
+export const GROWTH_INNER_WOOD_SHADE = 0.7;
 
 /**
  * The sky the sprays above a point hide from it: each spray's opaque area (a third of its card) over its squared
@@ -2101,7 +2109,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       // and under it: the sky the sprays above take (the stem below a broad crown, the limbs within it)
       const canopy = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, node.x, node.y, node.z);
       const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1)
-        * Math.min(1 - 0.5 * inner * inner * (3 - 2 * inner), canopy);
+        * Math.min(1 - GROWTH_INNER_WOOD_SHADE * inner * inner * (3 - 2 * inner), canopy);
       // trees round 4 (the gauntlet's wave 51: the white birch trunks "cardboard-like"): a birch's stem is rough and dark
       // at its foot — black fissured bark up to a metre or two, breaking into the white (birchFoot, streaked round the
       // stem below); the papery white above
@@ -2233,7 +2241,10 @@ interface CardEmitOptions {
  * underside, which sees the ground instead of the sky.
  */
 export const GROWTH_CROWN_SHADING = Object.freeze({
-  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.12,
+  // (round 8 pass B, wave 237: "inner branches as bright as the outer foliage when front-lit" — a card's depth shade
+  // 0.4 → 0.55, the heart darker; the gain 1.1 → 1.17 keeps the lit shell where it was. A back-lit crown's leaves pass
+  // light by their own colour, so its glow now gathers at the thin shell and gaps)
+  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.55, underside: 0.12,
   /**
    * Trees round 4 (the waves' "hard dark band at the canopy base"): the lowest a crown card's normal turns toward the
    * ground before it is normalised — the underside still faces down, but sees some sky round it, as an open crown's does
@@ -2246,7 +2257,7 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
    * where the summer photographs of the places show woods a good deal darker than the grass round them: 1.1 keeps the
    * lit shell a little over the round-1 cards and the crown as a whole darker than them, the heart in shade.
    */
-  crownGain: 1.1,
+  crownGain: 1.17,
   /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
   shrubDepthShade: 0.3, shrubGain: 1.04,
   /** Trees round 4: a tufted pine's tuft by its stem darkens by up to this share (its depth in the crown's ellipsoid). */
