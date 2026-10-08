@@ -1110,6 +1110,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
     'src/vehicles/decorDrawBudget.selftest.mjs',
+    // 2026-10-08 (tank-accessories round 5): every accessory piece touches the vehicle within 15 mm (a ratchet to zero)
+    'src/vehicles/accessoryContact.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
     'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',

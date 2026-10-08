@@ -784,6 +784,10 @@ function makeCloth(
     mat.envMapIntensity = 0.08;
     // sealed check 2026-09-13: cloth is seen from both sides as the camera orbits
     mat.side = THREE.DoubleSide;
+    // round 4 field wear (2026-10-08, the GPU check pair: the Leopard 2A4's hull net hem read as white lace over the
+    // skirts): the canvas's soft-goods dust (COT_FIELD_WEAR 4) graded by height lit the alpha-cut cords near the ground
+    // almost white. A suit hangs loose over the vehicle and sheds the caked coat, so its cloth carries no field wear.
+    if (mat.defines) delete mat.defines.COT_FIELD_WEAR;
     configure(mat);
   });
 }

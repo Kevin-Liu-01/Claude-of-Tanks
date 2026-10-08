@@ -3342,10 +3342,8 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
   // closeup, near-invisible at distance. buildPershing is the family
   // source — m60a1/m60a3 (buildM60) keep their own certified fix.
   const buildPershingRunningGearStage1 = (): void => {
-    P.mats.glass.color.setHex(0x3d443c);
-    P.mats.glass.roughness = 0.48;
-    P.mats.glass.metalness = 0.38;
-    P.mats.glass.envMapIntensity = 0.3;
+    // round 5 (2026-10-08): the family's own smoked pane (0x3d443c, metalness 0.38, env 0.3) gave way to the fleet's
+    // matte smoked optic glass (materials.ts, round 4), which the M60 sight-window critique asked for fleet-wide
     if (cfg.gearTone) {
       // A1/A2 (m47 r4): the running gear rendered as a black-and-grey
       // mechanical diagram on an olive tank (view-left gear band [60..580]x
@@ -4602,14 +4600,11 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
   // brightest pixel is no longer a glass pane and pane median sits below the
   // lit camo plates.
-  const buildM60AssemblyStage1 = (): void => {
-    P.mats.glass.color.setHex(0x46525b);
-    P.mats.glass.roughness = 0.52;
-    P.mats.glass.metalness = 0.50;
-    // round 3 (2026-10-07, critics: the M60A1 "IR searchlight has a bright blue lens"): the full sky env still
-    // mirrored blue off the smoked pane; the family keeps its tone and loses the mirror.
-    P.mats.glass.envMapIntensity = 0.3;
-  };
+  // round 5 (2026-10-08, wave 255 m60a1-hero: "the turret-front sight window is a saturated blue disc ... real sight
+  // glass is dark with a faint coated tint"): the family's blue-grey half-metal pane (0x46525b, metalness 0.50, env
+  // 0.3) still mirrored the sky on the gunner's sight. The M60 now wears the fleet's matte smoked optic glass
+  // (materials.ts, round 4: dark faintly green, rough 0.58, almost dielectric, a quarter of the sky).
+  const buildM60AssemblyStage1 = (): void => {};
   buildM60AssemblyStage1();
   const vehicleScale = 0.90;
   const hull = curveHull(P, cfg.hull);
