@@ -4108,8 +4108,9 @@ export function* attachTankDecorationsSteps(
           const yaw = turn + transitYaw(slotRng) * 0.3;
           const e = placedBox(parts, new THREE.Vector3(), new THREE.Euler(0, yaw, 0));
           const w = e.max.x - e.min.x, d = e.max.z - e.min.z;
-          // a soft load may overhang its carrier's lid by a quarter each side and droop there; its middle rides the lid
-          if (w > cw * (rigid ? 1.04 : 1.5) || d > cd * (rigid ? 1.04 : 1.5)) continue;
+          // a soft load may overhang its carrier's lid by a seventh a side (its outer foot points still land on the lid:
+          // the bag keeps its shape, so a longer overhang hangs in the air); a case stands within the lid
+          if (w > cw * (rigid ? 1.04 : 1.28) || d > cd * (rigid ? 1.04 : 1.28)) continue;
           const x = ccx - (e.min.x + e.max.x) / 2, z = ccz - (e.min.z + e.max.z) / 2;
           // the lid under the middle of the load's footprint: 3 x 3 rays onto the carrier (its ties included)
           const ray = new THREE.Raycaster();
