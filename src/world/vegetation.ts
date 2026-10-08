@@ -4071,8 +4071,13 @@ function* vegetationBuildSteps(
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
+  // (the map-revival lane, 2026-10-07: Orchard's lanes keep their treads clear in a chain of discs) the discs' bounds, so a
+  // candidate away from them pays four comparisons
+  const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
+    Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
+    if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
     for (const av of veg.avoid) {
       if (Math.hypot(x - av.x, z - av.z) < av.r) return true;
     }
