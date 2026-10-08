@@ -29,6 +29,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import { breachBlowFor } from './structureFx.ts';
 import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
+import type { StructureScars } from './structureScars.ts';
 
 export interface StructureStages {
   /** A stage event, with its structure's seam (null: the mask alone — a world without the seam). */
@@ -53,6 +54,8 @@ export interface StructureStagesOptions {
    * under its render, the timber of its floors — in buckets its own spans may not draw); null when the world has none.
    */
   materialFor?(bucket: string): THREE.Material | null;
+  /** The phone tier's scars (its walls stand uncut: each cut is drawn on the face instead). */
+  scars?: StructureScars | null;
 }
 
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
@@ -97,8 +100,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const c = Math.cos(yaw), s = Math.sin(yaw);
     for (const cut of result.cuts ?? []) {
       // world = R(yaw) body + placement (world/structureDamageSeam.ts holeOnAnatomy's frame)
-      mask.addHole(seam.structureIdx, px + cut.x * c + cut.z * s, py + cut.y, pz - cut.x * s + cut.z * c,
-        cut.radiusM, cut.nx * c + cut.nz * s, -cut.nx * s + cut.nz * c, cut.depthM, cut.outsideM ?? 0.3);
+      const wx = px + cut.x * c + cut.z * s, wz = pz - cut.x * s + cut.z * c;
+      const wnx = cut.nx * c + cut.nz * s, wnz = -cut.nx * s + cut.nz * c;
+      mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3);
+      // a hole goes through the wall's layers; a spall or the render ring only through its render
+      o.scars?.add(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM >= 0.2,
+        (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
       changed = true;
     }
     for (const hide of result.hides ?? []) {
@@ -155,6 +162,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'collapsed') {
         // the building crumbles into its dust over COLLAPSE_S, then is gone (settled: gone at once)
         mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, settled);
+        o.scars?.clearStructure(e.structureId);
         if (seam) {
           if (settled) seam.touchShadows();
           else falling.push({ seam, until: o.now() + COLLAPSE_S });
@@ -201,6 +209,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;
+      o.scars?.reset();
     },
     stats: () => ({ falling: falling.length, flattened: flattened.length }),
   };

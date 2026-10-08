@@ -11,6 +11,7 @@ import { createStructureDamageSeam } from '../world/structureDamageSeam.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
 import { createStructureDebris } from './structureDebris.ts';
 import { createStructureStages } from './structureStages.ts';
+import { createStructureScars } from './structureScars.ts';
 
 // ---- a two-storey plastered house with a tiled roof and windows (the kit selftest's), placed and merged
 function part(bucket, w, h, d, x, y, z, color) {
@@ -177,6 +178,26 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     x: fx, y: 3.5, z: fz, nx: s, ny: 0, nz: c, radiusM: 0.6, munition: 'atgm', sectionDown: false }, seam);
   assert.equal(data[o + 7], MAX_HOLES, 'four holes kept');
   stages.reset();
+}
+
+// ---- the phone tier: no hole is cut; each cut is drawn on its wall (a breach still reads as damage), and goes with
+// the building when it falls
+{
+  const phoneMask = createStructureMask(64, { holes: false });
+  const scars = createStructureScars();
+  const phone = createStructureStages({ mask: phoneMask, debris, now: () => now, scars });
+  const seam = fresh();
+  const [fx, , fz] = toWorld(1, 0, 4.3);
+  phone.stage({ ...base, stage: 'breached', previous: 'intact', x: fx, y: 3, z: fz, dirX: -s, dirZ: -c }, seam);
+  assert.equal(scars.count, 4, 'the spalls, the render ring and the hole, drawn on the wall');
+  const C = scars.mesh.geometry.getAttribute('aC').array, N = scars.mesh.geometry.getAttribute('aN').array;
+  assert.equal(N[3 * 4 + 2], 1, 'the hole reads as a breach (deep)');
+  assert.equal(N[0 * 4 + 2], 0, 'a spall reads as a patch of the core');
+  assert.ok(Math.abs(N[3 * 4] - s) < 1e-3 && Math.abs(N[3 * 4 + 1] - c) < 1e-3, 'facing out of the front wall');
+  phone.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 0, dirZ: 1 }, seam);
+  assert.ok([0, 1, 2, 3].every((i) => C[i * 4 + 3] === 0), 'a collapse takes its scars with it');
+  phone.reset();
+  assert.equal(scars.count, 0);
 }
 
 // ---- a world without the seam: the mask alone (the fall still happens)

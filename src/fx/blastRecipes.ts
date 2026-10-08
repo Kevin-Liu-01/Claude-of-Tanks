@@ -584,18 +584,21 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
     const hAbove = I.y - gy;
     const k = L.blastDust * Math.max(0, 1 - Math.max(0, hAbove - 1.6) / 2.4) * s;
     if (k > 0.05) {
-      const n = Math.round(3 + 4 * Math.min(1.3, k));
+      // (round 2: a few tall opaque puffs stood in a row of tan balls for three seconds; the blast lifts a low, wide,
+      // thin sheet that rolls out and settles)
+      const n = Math.round(5 + 5 * Math.min(1.3, k));
       for (let i = 0; i < n; i++) {
         // mostly ahead of the bore, some to the sides
         const a = Math.atan2(I.dz, I.dx) + (R() - 0.5) * 2.6;
         const r = 1.0 + R() * 3.0;
         const v = (5 + R() * 6) * Math.sqrt(k);
         const px = I.x + Math.cos(a) * r + I.dx * 1.5, pz = I.z + Math.sin(a) * r + I.dz * 1.5;
-        place(m, px, C.groundY(px, pz) + 0.45, pz, bo + 0.02 + R() * 0.06);
-        move(m, Math.cos(a) * v, 0.9 + R() * 0.8, Math.sin(a) * v, 2.4, 0.18, 1.0, 0);
-        shape(m, 3.2 + R() * 1.8, 1.0, (3.4 + R() * 1.6) * Math.min(1.4, 0.6 + k), 2.2, R);
-        look(m, L.dust, L.dust, Math.min(0.85, 0.42 + 0.35 * k) * att, 0.08, 0.4);
-        book(m, 'burst', R, 3.6, 4);
+        place(m, px, C.groundY(px, pz) + 0.25, pz, bo + 0.02 + R() * 0.06);
+        move(m, Math.cos(a) * v, 0.35 + R() * 0.4, Math.sin(a) * v, 2.6, 0.08, 1.0, 0);
+        shape(m, (1.8 + R() * 1.2) * L.hang, 0.6, (2.0 + R() * 1.2) * Math.min(1.4, 0.6 + k), 2.2, R);
+        look(m, L.dust, L.dust, Math.min(0.55, 0.22 + 0.22 * k) * att, 0.06, 0.35);
+        book(m, 'burst', R, 3.0, 4);
+        card(m, 2.2 + R() * 0.8, R, 0.06);
         heat(m, 0, 1);
         C.media(m);
       }

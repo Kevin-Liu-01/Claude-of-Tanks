@@ -45,6 +45,7 @@ import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, type StructureStages } from './structureStages.ts';
+import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
@@ -1012,9 +1013,12 @@ function* createFxSteps(
   // a structure's stages laid into the world's own geometry (structureStages.ts): builders, cuts, hides, shadow touches
   // every bucket material the world draws, by bucket (a plain mesh's over a batch's clone): what the builders write in
   const bucketMaterials = new Map<string, { material: THREE.Material; batched: boolean }>();
+  // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
+  const scars: StructureScars | null = mediaTier ? null : createStructureScars();
+  if (scars) group.add(scars.mesh);
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars })
     : null;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
@@ -1823,8 +1827,9 @@ function* createFxSteps(
   } : null;
   const _strikeDir = new THREE.Vector3();
   const _crater = { radiusM: 0, depthM: 0, rimM: 0 };
-  /** The core lane's terrain:crater events own the marks once any arrives (DESTRUCTION.md §7); until then the burst does. */
-  let craterEventsSeen = false;
+  /** The last detonation on the ground (munition:blast): whether it dug a crater the core announces with its own
+   *  terrain:crater event (that event stamps the mark); a burst that did not dig marks the ground itself. */
+  const lastGroundBlast = { x: 0, z: 0, craterId: -1 };
 
   // ---- one burst per HE round ------------------------------------------------------------------------------------
   // An HE round's burst reaches FX as several events: on the ground, a he_splash for every hull inside its blast
@@ -1898,7 +1903,12 @@ function* createFxSteps(
       if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
       else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset,
         ...(dir ? { dx: dir.x, dy: dir.y, dz: dir.z } : {}) });
-      if (!water && craters && !craterEventsSeen) {
+      // a burst that dug a crater (munition:blast named it, raised just before this event) gets its mark from the
+      // crater's own event at the end of the tick; one that did not dig (small, past the tick's or the match's cap,
+      // craters off) leaves its mark here
+      const dug = lastGroundBlast.craterId >= 0 && Math.abs(lastGroundBlast.x - pos.x) + Math.abs(lastGroundBlast.z - pos.z) < 1;
+      lastGroundBlast.craterId = -1;
+      if (!water && craters && !dug) {
         craterFor(info.chargeKg, info.munition, 1, _crater);
         if (_crater.radiusM > 0.25) {
           craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, groundY);
@@ -5070,6 +5080,7 @@ function* createFxSteps(
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
+      if (scars && scars.count > 0) scars.light(engineCtx.scene ?? null);
       structDebris?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
@@ -5117,11 +5128,12 @@ function* createFxSteps(
         if (b.surface === 'structure' && typeof b.structureId === 'number') {
           lastBlast.x = b.x; lastBlast.y = b.y; lastBlast.z = b.z; lastBlast.structureId = b.structureId;
         } else lastBlast.structureId = -1;
+        lastGroundBlast.x = b.x; lastGroundBlast.z = b.z;
+        lastGroundBlast.craterId = typeof b.craterId === 'number' ? b.craterId : -1;
       });
       bus.on(DESTRUCTION_BUS_EVENTS.crater, (payload) => {
         const e = payload as TerrainCraterEvent;
         if (!craters) return;
-        craterEventsSeen = true;
         if (!(e.radiusM > 0.2)) return;
         craters.stamp(e.x, e.z, e.radiusM, classifyTerrain(heightField, e.x, e.z), true, (e.seed % 65536) / 65536,
           e.settled ? particles.getTime() - 10 : particles.getTime(), groundY);
@@ -5975,7 +5987,7 @@ function* createFxSteps(
       structDebris?.reset();
       stages?.reset();
       lastBlast.structureId = -1;
-      craterEventsSeen = false;
+      lastGroundBlast.craterId = -1;
       pendingHeCount = 0;
       burstDrawn.clear();
       burstOnHull.clear();
