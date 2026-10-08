@@ -2022,6 +2022,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       advanceFx(Math.max(0, due.tMs - clockMs));
       applyStoryboardActors(due.tMs, 0);
       fireEffect(due, { record: false, refresh: false });
+      // its moment has passed whether it fired or not: an effect whose handler bails (its actor gone) was offered again at
+      // the same time forever, spinning a film capture at 100 % CPU (the media lane, 2026-10-08)
+      activeEffectIds.add(due.id);
       due = nextPendingEffect(target);
     }
     advanceFx(Math.max(0, target - clockMs));
@@ -3001,6 +3004,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function replaceLoadEffects(json: StudioSceneInput, fxMs: number): void {
     const effects = (json.effects || [])
+      // an effect naming an actor the scene does not stage cannot fire: dropped, with a warning (the media lane's
+      // s38-church-knockout named an ally1 it never staged)
+      .filter((effect: StudioEffectInput) => {
+        if (effect.actor == null || findActor(effect.actor)) return true;
+        console.warn(`[studio] ${effect.type} at ${effect.tMs || 0} ms names actor ${String(effect.actor)}, which the scene does not stage: dropped`);
+        return false;
+      })
       .map((effect: StudioEffectInput): StudioEffectInput & { tMs: number } => ({
         ...effect,
         tMs: clampStudioTime(effect.tMs || 0, storyboard.durationMs),
