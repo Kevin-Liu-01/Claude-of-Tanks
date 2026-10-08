@@ -3567,12 +3567,12 @@ ${snowCap ? `
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (and on a map without a kit, its set pieces' weathered walls are the coloured metal's shader with the render's and
       // the stone's maps: they share its program, so a kit-less map's set pieces compile none of their own)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw'
-        : !regionalArchitecture && materialKind.startsWith('regional') ? 'structureMetal' : materialKind;
+      const sharedKind = !regionalArchitecture && programKind.startsWith('regional') ? 'structureMetal' : programKind;
       material.customProgramCacheKey = () =>
-        'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
+        'world-props-' + sharedKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();
@@ -9071,7 +9071,7 @@ ${snowCap ? `
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return null;
     // (a kind that keeps its metadata footprint — the kopna's circle — is not refitted: DestructiblePropType.metaFootprint)
-    if (pool.meta.metaFootprint) return null;
+    if (pool.meta?.metaFootprint) return null;
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.
