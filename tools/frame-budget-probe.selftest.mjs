@@ -10,8 +10,8 @@ import {
 } from './frame-pass-timer.mjs';
 import * as THREE from 'three';
 import {
-  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, hideOtherVehicles, judgeScenes, parseFrameProbeArgs,
-  pinnedOpponents, profileSelfByChunk, streamedDuring,
+  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, cacheOfUnits, cacheTrace, chunkOfUrl, hideOtherVehicles,
+  judgeScenes, parseFrameProbeArgs, pinnedOpponents, profileSelfByChunk, shadowCacheCopyToggle, streamedDuring,
 } from './frame-budget-probe.mjs';
 import { readFileSync } from 'node:fs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
@@ -454,4 +454,55 @@ assert.equal(stats([]).med, null);
   assert.ok(/streamedDuring: streamedDuring\(graphics, after\)/.test(body), 'every sample records what streamed while it ran');
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots, the terrain stream settled before every sample PASS');
+{
+  // the static shadow cache's record of a block (2026-10-08, the perf lane): read frame by frame from the telemetry, per
+  // cascade and by reason, and a side's blocks pooled per frame
+  const frames = [];
+  let tel = { enabled: true, failed: null, rebuilds: [], reuses: [], copies: 0, fullRenders: 0, unsettled: 0, contentChanges: 0,
+    promotions: 0, demotions: 0, promoted: 0, staticCasters: 70, lastRebuildReason: '', hashMs: 0.1, targetBytes: 1 };
+  const step = (fn) => { tel = structuredClone(tel); fn(tel); frames.shift()?.(); };
+  const saved = { window: globalThis.window, raf: globalThis.requestAnimationFrame };
+  globalThis.window = { __DEBUG: { lighting: { getShadowTelemetry: () => ({ staticCache: tel }) } } };
+  globalThis.requestAnimationFrame = (cb) => frames.push(cb);
+  try {
+    cacheTrace('start'); // the record at 'start' is the baseline; each poll after it is one frame
+    step((t) => { t.rebuilds = [1, 1, 1, 1]; t.copies += 4; t.contentChanges++; t.lastRebuildReason = 'content'; });
+    step((t) => { t.reuses = [1, 1, 1, 1]; t.copies += 4; });
+    step((t) => { t.reuses = [2, 2, 2, 1]; t.copies += 3; });
+    step((t) => { t.rebuilds = [2, 1, 1, 1]; t.reuses = [2, 3, 3, 1]; t.copies += 3; t.lastRebuildReason = 'pose'; });
+    step((t) => { t.fullRenders += 4; t.unsettled += 4; });
+    const r = cacheTrace('stop');
+    assert.equal(r.frames, 5);
+    assert.deepEqual(r.perCascade, [{ rebuilds: 2, reuses: 2 }, { rebuilds: 1, reuses: 3 }, { rebuilds: 1, reuses: 3 }, { rebuilds: 1, reuses: 1 }]);
+    assert.deepEqual([r.rebuilds, r.reuses, r.copies, r.full, r.unsettled, r.contentChanges], [5, 9, 14, 4, 4, 1]);
+    assert.deepEqual(r.reasons, { content: 4, pose: 1 }, 'a frame\'s rebuilds are charged to its last reason');
+    assert.equal(r.pattern, 'R..Rf');
+    const pooled = cacheOfUnits([{ cache: r }, { cache: { ...r, reasons: { pose: 5 } } }, { cache: null }]);
+    assert.deepEqual([pooled.frames, pooled.rebuilds, pooled.reuses, pooled.copies], [10, 1, 1.8, 2.8], 'per frame over the side\'s blocks');
+    assert.deepEqual(pooled.reasons, { content: 4, pose: 6 });
+    assert.equal(cacheOfUnits([{ cache: null }]), null);
+  } finally {
+    globalThis.window = saved.window;
+    globalThis.requestAnimationFrame = saved.raf;
+  }
+  // the copy toggle: the cache on both sides, each depth copy made twice on 'on' and once on 'off', colour copies untouched
+  const calls = [];
+  const R = { copyTextureToTexture(src, dst) { calls.push(`${src.name}>${dst.name}`); } };
+  globalThis.window = { __DEBUG: { renderer: R }, __SHADOW_DEBUG: { noStaticCache: true } };
+  try {
+    const depth = { name: 'd', isDepthTexture: true }, colour = { name: 'c' };
+    assert.deepEqual(eval(shadowCacheCopyToggle(true)), { copies: 2 });
+    assert.equal(window.__SHADOW_DEBUG.noStaticCache, false, 'the cache is on');
+    R.copyTextureToTexture(depth, depth); R.copyTextureToTexture(colour, colour);
+    assert.deepEqual(calls.splice(0), ['d>d', 'd>d', 'c>c']);
+    eval(shadowCacheCopyToggle(false));
+    eval(shadowCacheCopyToggle(true)); eval(shadowCacheCopyToggle(false)); // the wrapper is installed once
+    R.copyTextureToTexture(depth, depth);
+    assert.deepEqual(calls.splice(0), ['d>d']);
+    assert.equal(window.__SHADOW_DEBUG.noStaticCache, false);
+  } finally {
+    globalThis.window = saved.window;
+  }
+}
+
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots, the terrain stream settled before every sample, the static shadow cache\'s block record and the copy toggle PASS');
