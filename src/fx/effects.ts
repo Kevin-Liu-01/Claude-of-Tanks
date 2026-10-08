@@ -209,6 +209,9 @@ interface LightState {
   dur: number;
   peak: number;
   pow: number;
+  /** the light's own decay (a pulse may set a shorter one for itself: a ground burst's 0.2 s) */
+  baseDur: number;
+  basePow: number;
 }
 
 interface ShockRingState {
@@ -1088,10 +1091,11 @@ function* createFxSteps(
   // every destroy_* frame past 0 s still carried the FULL 430-peak orange
   // blast light parked over the wreck (THE "uniform terracotta deck").
   const lightStates: LightState[] = [
-    { light: muzzleLight, bornAt: -1e9, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2 },
+    { light: muzzleLight, bornAt: -1e9, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2, baseDur: MUZZLE_LIGHT_S, basePow: 2 },
     // pow 2.6 (was 1.15): front-loaded blast punch that visibly collapses —
     // the r5 near-linear decay was the "static painted stain" (r6 major)
-    { light: explosionLight, bornAt: -1e9, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 2.6 },
+    { light: explosionLight, bornAt: -1e9, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 2.6, baseDur: EXPLOSION_LIGHT_S,
+      basePow: 2.6 },
   ];
 
   function lightAge(state: LightState): number {
@@ -1127,10 +1131,14 @@ function* createFxSteps(
     pos: THREE.Vector3,
     peak: number,
     ageS = 0,
+    durS?: number,
+    pow?: number,
   ): void {
     state.light.position.copy(pos);
     state.bornAt = particles.getTime() - ageS;
     state.peak = peak;
+    state.dur = durS && durS > 0 ? durS : state.baseDur;
+    state.pow = pow && pow > 0 ? pow : state.basePow;
     applyLight(state);
   }
 
@@ -1843,10 +1851,17 @@ function* createFxSteps(
     sparks: (o) => particles.emit('sparks', o),
     jet: (o) => particles.emit('jet', o),
     shockRing: (x: number, z: number, scaleK: number, alphaK: number, ageS: number) => spawnShockRing(x, z, ageS, scaleK, alphaK),
-    lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number) => {
+    lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number, durS?: number) => {
       if (replaySuppressed) return;
-      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS); return; }
-      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0) });
+      // (round 7, wave 276: the ground burst's light lay on the ground as a flat orange wash for 800 ms) a pulse may
+      // carry its own short decay; the kill light keeps the long one
+      const pw = durS ? 2 : undefined;
+      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS, durS, pw); return; }
+      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0, durS, pw) });
+    },
+    glow: (x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number) => {
+      if (replaySuppressed) return;
+      vol?.glow(x, y, z, radiusM, peak, durS, birthOffset);
     },
     distBoost: (x: number, y: number, z: number) => distBoost(x, y, z),
     tier: 1,

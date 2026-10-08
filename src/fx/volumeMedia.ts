@@ -145,6 +145,9 @@ const FOG_PARS_F = `
 #endif
 `;
 
+/** Burst glow slots (a ring: the oldest is replaced). */
+const GLOW_SLOTS = 4;
+
 const VOLUME_VERT = /* glsl */ `
 attribute vec4 aPB;
 attribute vec4 aVL;
@@ -160,6 +163,9 @@ uniform vec3 uSunDir;
 uniform vec4 uAtlas;      // columns, total rows, rows per band, frames
 uniform vec2 uNearFade;
 uniform vec4 uBandWarp[ ${VOLUME_ATLAS.bands} ]; // per band: 1/gamma, unused...
+uniform vec4 uGlowP[ ${GLOW_SLOTS} ];  // a burst's light inside the medium: centre xyz, birth (fx clock)
+uniform vec4 uGlowK[ ${GLOW_SLOTS} ];  // its radius (m), peak, duration (s), unused
+varying float vGlow;
 varying vec2 vUvA;
 varying vec2 vUvB;
 varying vec4 vTiles;      // tile min corners (atlas uv) of frames A and B
@@ -181,7 +187,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0;
+    vFeather = 1.0; vGlow = 0.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -243,6 +249,19 @@ void main() {
   float near = smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
   vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
   vHeat = aHT.x * exp( -aHT.y * age );
+  // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
+  // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
+  float gl = 0.0;
+  for ( int i = 0; i < ${GLOW_SLOTS}; i++ ) {
+    vec4 gp = uGlowP[ i ];
+    vec4 gk = uGlowK[ i ];
+    float ga = uTime - gp.w;
+    if ( gk.z <= 0.0 || ga < 0.0 || ga > gk.z ) continue;
+    float q = 1.0 - ga / gk.z;
+    vec3 gd = center - gp.xyz;
+    gl += gk.y * q * q * exp( -dot( gd, gd ) / max( gk.x * gk.x, 1e-3 ) );
+  }
+  vGlow = gl;
   vFeather = clamp( size * 0.22, 0.5, 6.0 );
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   vParticleDepth = -mvPosition.z;
@@ -282,6 +301,7 @@ varying float vT;
 varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
+varying float vGlow;
 ${FOG_PARS_F}
 float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
@@ -349,6 +369,8 @@ void main() {
     vec3 glow = blackbody( min( h, 1.0 ) ) * ( 6.5 * h * h ) * uGrade.y;
     col = col * ( 1.0 - 0.85 * smoothstep( 0.1, 0.55, h ) ) + glow;
   }
+  // lit from inside by a burst: the thick body more than its thin rim, in the medium's own colour warmed by the fire
+  if ( vGlow > 0.002 ) col += ( vColor.rgb * 0.6 + vec3( 0.55, 0.2, 0.05 ) ) * vGlow * ( 0.35 + 0.65 * cov ) * uGrade.y;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -465,11 +487,13 @@ export interface VolumeMedia {
   stats(): { live: number; capacity: number; drawn: number; wind: [number, number]; ready: boolean };
   /** receipts: the motion law's wind */
   readonly wind: THREE.Vector3;
+  /** A burst's light inside the medium for `durS` from now + `birthOffset` (centre, radius m, peak 0..~1.5). */
+  glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset?: number): void;
 }
 
 export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   // (round 3: longer-lived column puffs; 1024 records hold six burning hulls and a barrage)
-  const capacity = Math.max(16, o.capacity ?? 1024);
+  const capacity = Math.max(16, o.capacity ?? 1536);
   const group = new THREE.Group();
   group.name = 'fx-volume-media';
   group.matrixAutoUpdate = false;
@@ -523,6 +547,9 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     for (let v = 0; v < m.variants; v++) bandWarp[m.firstBand + v].x = 1 / m.gamma;
   }
   const tune = { ...DEFAULT_TUNE };
+  const glowP: THREE.Vector4[] = [], glowK: THREE.Vector4[] = [];
+  for (let i = 0; i < GLOW_SLOTS; i++) { glowP.push(new THREE.Vector4(0, 0, 0, -1e9)); glowK.push(new THREE.Vector4(1, 0, 0, 0)); }
+  let glowNext = 0;
   const detail = detailNoiseTexture(0x5eedde7);
   const uDetailK = { value: DETAIL_K };
   group.userData.volumeTune = tune;
@@ -536,6 +563,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uAtlas: { value: new THREE.Vector4(VOLUME_ATLAS.columns, totalRows, VOLUME_ATLAS.rowsPerBand, VOLUME_ATLAS.frames) },
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
       uBandWarp: { value: bandWarp },
+      uGlowP: { value: glowP }, uGlowK: { value: glowK },
       uNearFade: { value: new THREE.Vector2(0.8, 3.4) },
       uDetail: { value: detail }, uDetailK,
       uSceneDepth: o.soft.uSceneDepth,
@@ -754,6 +782,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       if (rec[ob + 7] > 0) rec[ob + 3] += delta;
     }
     if (Number.isFinite(liveUntil)) liveUntil += delta;
+    for (const g of glowP) if (g.w > -1e8) g.w += delta;
   }
 
   function reset(): void {
@@ -764,6 +793,16 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     geo.instanceCount = 0;
     mesh.visible = false;
     drawn = 0; liveCount = 0;
+    for (let i = 0; i < GLOW_SLOTS; i++) { glowP[i].set(0, 0, 0, -1e9); glowK[i].set(1, 0, 0, 0); }
+    glowNext = 0;
+  }
+
+  function glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset = 0): void {
+    if (!(radiusM > 0) || !(peak > 0) || !(durS > 0)) return;
+    const i = glowNext;
+    glowNext = (glowNext + 1) % GLOW_SLOTS;
+    glowP[i].set(x, y, z, o_now() + birthOffset);
+    glowK[i].set(radiusM, peak, durS, 0);
   }
 
   return {
@@ -774,6 +813,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     update,
     shiftTime,
     reset,
+    glow,
     isActive: () => o_now() <= liveUntil,
     stats: () => ({ live: liveCount, capacity, drawn, wind: [uWind.value.x, uWind.value.z], ready }),
     wind: uWind.value,
