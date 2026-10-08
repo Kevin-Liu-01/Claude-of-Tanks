@@ -211,7 +211,10 @@ function gunnerRoundedSight(P: TankBuilderPort): void {
     .map(([y,r])=>({z:y,ring:roundedSightRing(r)}))).rotateX(-Math.PI/2);
   worldTurretEquipment(P,'turretDetail',shell,0,0,0);
   worldTurretEquipment(P,'turretDark',box(.153,.242,.014),-.63645,2.58514,.77877);
-  worldTurretEquipment(P,'turretGlass',box(.1479,.2412,.002),-.63645,2.58514,.78527);
+  // the glass stands in the shell's own open-front slot, which is its frame (tankFactoryCore.ts armouredGlassSurround)
+  const slotGlass=box(.1479,.2412,.002);
+  slotGlass.userData.apertureFrame='housing';
+  worldTurretEquipment(P,'turretGlass',slotGlass,-.63645,2.58514,.78527);
 }
 
 function commanderEyeBank(P: TankBuilderPort): void {
