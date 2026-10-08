@@ -172,7 +172,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       // (2026-10-08, the time-to-battle lane) the world build's config (worldBuildConfig.ts) and the horizon ring's
       // prefetch, supplied to the terrain build through the ring's hook: none here
       worldBuildConfig: () => ({ id: 'urban', splat: {} }), getDeviceTier: () => 'desktop',
-      startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
+      startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
