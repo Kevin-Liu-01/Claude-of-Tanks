@@ -6506,8 +6506,15 @@ ${snowCap ? `
    * and light are the ground's at that place; it casts nothing. Not under the crushable stones (a tank flattens them),
    * nor on the phones.
    */
+  /**
+   * (b37; the whole-PR census: "rock-beds" 0 -> 9-21 colour-pass draws a view, each on the terrain's heavy ground
+   * material) the beds' and the wall-foot turf's cells: 512 m, one geometry a cell for both — up to four on a map, two or
+   * three in a view (bedCellKey)
+   */
+  const BED_CELL_M = 512;
+  const bedCellKey = (x: number, z: number): number => Math.floor((x + 512) / BED_CELL_M) * 64 + Math.floor((z + 512) / BED_CELL_M);
   function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
-    const SEGMENTS = 24, CELL = 256, RINGS = 5;
+    const SEGMENTS = 24, RINGS = 5;
     const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z);
     const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
@@ -6548,7 +6555,7 @@ ${snowCap ? `
         }
         if (meanR < 0.3) continue;
         const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
-        const key = Math.floor((px + 512) / CELL) * 64 + Math.floor((pz + 512) / CELL);
+        const key = bedCellKey(px, pz);
         let cell = cells.get(key);
         if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
         const base = cell.pos.length / 3;
@@ -6700,19 +6707,21 @@ ${snowCap ? `
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
-  // (b18) and the turf banked against the dry-stone walls' feet, merged by 256 m cell, the same ground material's
+  // (b18) and the turf banked against the dry-stone walls' feet, the same ground material's: (b37) merged into its cell's
+  // bed, one geometry a 512 m cell for both (bedCellKey), so a cell costs one draw, not two
   if (wallDressing.turfs.length) {
-    const turfCells = new Map<number, THREE.BufferGeometry[]>();
-    for (const turf of wallDressing.turfs) {
-      turf.computeBoundingSphere();
-      const c = turf.boundingSphere!.center, key = Math.floor((c.x + 512) / 256) * 64 + Math.floor((c.z + 512) / 256);
-      const list = turfCells.get(key);
-      if (list) list.push(turf); else turfCells.set(key, [turf]);
-    }
-    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
-    for (const list of turfCells.values()) {
+    const byCell = new Map<number, THREE.BufferGeometry[]>();
+    const add = (g: THREE.BufferGeometry) => {
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      const c = g.boundingSphere!.center, key = bedCellKey(c.x, c.z), list = byCell.get(key);
+      if (list) list.push(g); else byCell.set(key, [g]);
+    };
+    for (const bed of (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? []) add(bed);
+    for (const turf of wallDressing.turfs) add(turf);
+    const beds: THREE.BufferGeometry[] = [];
+    for (const list of byCell.values()) {
       const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
-      if (!merged) continue;
+      if (!merged) { beds.push(...list); continue; }
       if (merged !== list[0]) for (const g of list) g.dispose();
       merged.computeBoundingSphere();
       beds.push(merged);

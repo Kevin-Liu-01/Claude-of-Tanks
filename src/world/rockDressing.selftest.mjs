@@ -663,6 +663,8 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const outlineAtAt = source.indexOf('  function outlineAt(');
   const outlineAt = new Function(`${stripTypeScriptTypes(source.slice(outlineAtAt, source.indexOf('\n  }\n', outlineAtAt) + 4))}\nreturn outlineAt;`)();
   const SPOT_R = 2.6;
+  // (b37) the beds' cells (512 m, one geometry a cell with the wall turf), declared beside the builder
+  const cellSrc = stripTypeScriptTypes(/  const BED_CELL_M = \d+;\n  const bedCellKey = [^\n]*\n/.exec(source)[0]);
   const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
@@ -674,7 +676,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockBedShades = [];
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare', 'outlineAt',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt,
+      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt,
       { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0), ...(foldAt ? { _foldAt: foldAt } : {}) },
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare, outlineAt);
