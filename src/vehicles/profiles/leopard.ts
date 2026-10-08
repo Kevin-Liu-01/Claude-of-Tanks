@@ -1,3 +1,4 @@
+import { addModernFieldCage } from './modernFieldCage.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
 // leo2a6_buh, recovered leo2a5 / leo2a7v / leo2_revolution / leopard2_proto,
@@ -13787,6 +13788,7 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
   // closing the hatch, sight or weapon-station service lanes.
   addLeopardUaRoofBasket(P);
   addMissionAttachmentReceiver(P, 'leo2a6_ua');
+  addModernFieldCage(P);
 
   const remoteStations = [
     // Each min/max pair brackets the authored armor under the full pedestal,
