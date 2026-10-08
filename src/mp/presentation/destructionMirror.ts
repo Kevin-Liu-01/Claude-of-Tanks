@@ -42,6 +42,8 @@ export interface DestructionMirror {
   applyStageEvent(payload: Record<string, unknown>): StructureState | null;
   /** The snapshot's log: every stage not yet applied here and not owed to an event, laid down settled. */
   applyLog(entries: readonly DestructionLogEntry[], pending: ((structureId: number) => boolean) | null): void;
+  /** This world's structure for an authority id, when known (the same id where the layouts agree), else null. */
+  localId(authorityId: number): number | null;
 }
 
 const finite = (value: unknown, fallback = 0): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -147,6 +149,12 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
       if (stage !== 'damaged' && stage !== 'breached' && stage !== 'collapsed') return null;
       apply(structure, stage, false, payload);
       return structure;
+    },
+    localId(authorityId) {
+      if (!structures || !Number.isSafeInteger(authorityId)) return null;
+      const learnedStructure = learned.get(authorityId);
+      if (learnedStructure) return learnedStructure.id;
+      return idsShared ? structures.byId(authorityId)?.id ?? null : null;
     },
     applyLog(entries, pending) {
       if (!structures || settledUpTo >= entries.length) return;

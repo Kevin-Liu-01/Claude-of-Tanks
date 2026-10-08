@@ -8,7 +8,7 @@
  *
  * Pure and dependency-light (only the contract module): no three, no world, no damage tables. Units: kg TNT, metres.
  */
-import { MUNITION_PROFILES, type MunitionClass } from './destructionEvents.ts';
+import { MUNITION_PROFILES, type MunitionBlastEvent, type MunitionClass } from './destructionEvents.ts';
 
 /** The fields of a shell spec the classifier reads (sim/shellSpec.ts ShellSpec and every authored round satisfy it). */
 export interface MunitionShellLike {
@@ -211,4 +211,19 @@ export function craterFor(chargeKg: number, munition: MunitionClass, craterScale
   out.depthM = radius * CRATER_DEPTH_PER_RADIUS;
   out.rimM = radius * CRATER_RIM_PER_RADIUS;
   return out;
+}
+
+// ---- The blast event (§11) ---------------------------------------------------------------------------------------
+
+/**
+ * The `munition:blast` a round's detonation makes at (x, y, z) with surface normal (nx, ny, nz), or null for a round that
+ * does not detonate (kinetic, small arms, smoke). `structureId` names the structure it struck, when it struck one.
+ */
+export function munitionBlastEventFor(spec: MunitionShellLike, x: number, y: number, z: number, nx: number, ny: number,
+  nz: number, surface: MunitionBlastEvent['surface'], structureId?: number | null): MunitionBlastEvent | null {
+  const munition = munitionClassForShell(spec);
+  const chargeKg = munitionChargeKg(spec, munition);
+  if (!(chargeKg > 0)) return null;
+  return { munition, chargeKg, x, y, z, nx, ny, nz, surface,
+    ...(typeof structureId === 'number' && Number.isSafeInteger(structureId) ? { structureId } : {}) };
 }

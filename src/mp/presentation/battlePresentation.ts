@@ -43,6 +43,9 @@ import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
+import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent } from '../../sim/destructionEvents.ts';
+import { FUEL_CHARGE_KG, cookOffChargeKg } from '../../sim/munitionBlast.ts';
+import { shellHitsWater } from '../../sim/shellSurface.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
@@ -280,6 +283,20 @@ export function createBattlePresentation({
   const authorityObstacles = createAuthorityObstacles(worldCollision);
   // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
   const destruction = createDestructionMirror(worldCollision as Parameters<typeof createDestructionMirror>[0], bus);
+  /** The authority's detonation as this world's munition:blast (its structure mapped to this world's), or false. */
+  function emitBlast(payload: Record<string, unknown>, surface: MunitionBlastEvent['surface']): boolean {
+    const chargeKg = Number(payload.chargeKg);
+    if (typeof payload.munition !== 'string' || !(chargeKg > 0)) return false;
+    const point = Array.isArray(payload.pos) ? payload.pos as number[] : [Number(payload.x), Number(payload.y), Number(payload.z)];
+    if (!point.every((v) => Number.isFinite(v))) return false;
+    const normal = Array.isArray(payload.normal) ? payload.normal as number[] : [Number(payload.nx) || 0, Number(payload.ny ?? 1), Number(payload.nz) || 0];
+    const structureId = typeof payload.structureId === 'number' ? destruction.localId(payload.structureId) : null;
+    bus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+      munition: payload.munition as MunitionBlastEvent['munition'], chargeKg, x: point[0]!, y: point[1]!, z: point[2]!,
+      nx: normal[0] ?? 0, ny: normal[1] ?? 1, nz: normal[2] ?? 0, surface, ...(structureId !== null ? { structureId } : {}),
+    } satisfies MunitionBlastEvent);
+    return true;
+  }
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -861,6 +878,12 @@ export function createBattlePresentation({
         // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
         // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms
         feedKillcam(hit, actors.get(String(payload.targetId ?? '')) ?? null);
+        // a round that burst on a hull: its detonation rides the direct hit's event (destruction §11), raised before the
+        // hit as the solo step raises it; splash hits carry none
+        if (Array.isArray(payload.blast) && payload.blast.length === 6) {
+          const blast = payload.blast as number[];
+          emitBlast({ munition: payload.munition, chargeKg: payload.chargeKg, pos: blast.slice(0, 3), normal: blast.slice(3, 6) }, 'tank');
+        }
         bus.emit('shell:hit', hit);
         return;
       }
@@ -869,6 +892,12 @@ export function createBattlePresentation({
         destruction.applyStageEvent(payload as Record<string, unknown>);
         return;
       case 'shell_impact':
+        // the detonation first (destruction §11), as the solo step raises it before the round expires; open water by this
+        // world's own mask, as the solo step reads it
+        emitBlast(payload, payload.kind === 'terrain'
+          ? (shellHitsWater(worldCollision as Parameters<typeof shellHitsWater>[0],
+            { kind: 'terrain', point: { x: Number(payload.x), z: Number(payload.z) } }) ? 'water' : 'terrain')
+          : typeof payload.structureId === 'number' ? 'structure' : 'prop');
         bus.emit('shell:expired', {
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,
           surfaceKind: payload.surfaceKind || payload.kind, normal: [payload.nx || 0, payload.ny ?? 1, payload.nz || 0],
@@ -884,6 +913,15 @@ export function createBattlePresentation({
         // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
         // carries no position: the presented pose stands in.
         const died = typeof payload.x === 'number' && typeof payload.y === 'number' && typeof payload.z === 'number';
+        // a cook-off or a fuel fire is a blast too (destruction §11), emitted before the death as the solo step does
+        if ((payload.cause === 'ammo_rack' || payload.cause === 'fire') && (died || actor)) {
+          const cookOff = payload.cause === 'ammo_rack';
+          bus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+            munition: cookOff ? 'cook_off' : 'fuel', chargeKg: cookOff ? cookOffChargeKg(actor?.spec.weightTons ?? 40) : FUEL_CHARGE_KG,
+            x: died ? payload.x : actor!.state.pos.x, y: (died ? Number(payload.y) : actor!.state.pos.y) + 1,
+            z: died ? payload.z : actor!.state.pos.z, nx: 0, ny: 1, nz: 0, surface: 'tank',
+          });
+        }
         bus.emit('tank:destroyed', {
           id, specId: actor?.specId, killerId: payload.killerId, cause: payload.cause === 'ammo_rack' ? 'ammorack' : payload.cause,
           pos: died ? [payload.x, payload.y, payload.z] : actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,

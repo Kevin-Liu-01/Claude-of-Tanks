@@ -132,7 +132,7 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import type { DestructionLogEntry, StructureStageEvent } from './destructionEvents.ts';
-import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from './munitionBlast.ts';
+import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
 import { fellConcealersAt } from './spotting.ts';
 
@@ -1779,13 +1779,24 @@ export function createAuthoritativeMatch({
     }
   }
 
+  /**
+   * A round detonating on a hull (destruction §11): its point and normal ride the first shell_hit it makes (the direct
+   * hit's), so every peer raises one munition:blast where it burst, as the solo step does; splash hits carry none.
+   */
+  let pendingTankBlast: { shellId: number; blast: number[] } | null = null;
+
   function emitShellHitEvent(
     shell: DamageShell,
     hit: HitEvent,
     target: AuthoritativeEntity | null | undefined,
   ): void {
+    const munition = munitionClassForShell(shell.spec);
+    const chargeKg = munitionChargeKg(shell.spec, munition);
+    const blast = pendingTankBlast?.shellId === shell.id && chargeKg > 0 ? pendingTankBlast.blast : null;
+    if (blast) pendingTankBlast = null;
     emit('shell_hit', {
       ...hit,
+      munition, chargeKg, ...(blast ? { blast } : {}),
       shooterId: shell.shooterId,
       attackerId: shell.shooterId,
       targetName: target?.spec.name,
@@ -1927,7 +1938,13 @@ export function createAuthoritativeMatch({
   }
 
   function emitWorldShellImpact(shell: DamageShell, worldHit: WorldTrace): void {
+    // destruction (docs/DESTRUCTION.md §11): the round's class and charge, and the structure it struck, for the peers'
+    // explosions and their munition:blast
+    const munition = munitionClassForShell(shell.spec);
+    const structureId = worldHit.record?.structureIdx;
     emit('shell_impact', {
+      munition, chargeKg: munitionChargeKg(shell.spec, munition),
+      ...(typeof structureId === 'number' ? { structureId } : {}),
       shellId: shell.id,
       shooterId: shell.shooterId,
       kind: worldHit.kind,
@@ -1964,13 +1981,21 @@ export function createAuthoritativeMatch({
     knockTargetFromShell(tankHit.target, shell);
     const strike = tankHit.hits[0]?.point;
     if (strike) destruction.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
-    if (isHeClass(shell.spec.type)) {
-      resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
-      return;
+    if (strike) {
+      const normal = (tankHit.hits[0] as { normal?: { x: number; y: number; z: number } }).normal;
+      pendingTankBlast = { shellId: shell.id, blast: [strike.x, strike.y, strike.z, normal?.x ?? 0, normal?.y ?? 1, normal?.z ?? 0] };
     }
-    const wasDestroyed = tankHit.target.combat.destroyed;
-    const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
-    recordShellHit(shell, hit, wasDestroyed);
+    try {
+      if (isHeClass(shell.spec.type)) {
+        resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
+        return;
+      }
+      const wasDestroyed = tankHit.target.combat.destroyed;
+      const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
+      recordShellHit(shell, hit, wasDestroyed);
+    } finally {
+      pendingTankBlast = null;
+    }
   }
 
   function compactLiveShells(): void {

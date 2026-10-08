@@ -1,0 +1,482 @@
+/**
+ * destructionDefaultKit.ts — the default structure damage kit (destruction core lane, 2026-10-07; docs/DESTRUCTION.md
+ * §16). It serves every structure whose own kit (a regional house kit, a landmark) gives no plan: the base structure
+ * kit's buildings, sheds, industrial halls, set pieces without a kit. `describe` reads the building's parts by bucket
+ * (bounding boxes, sampled vertex colours: numbers only, cheap enough for a 400-building map); the stage builders write
+ * the damage in the building's own buckets and tints, deterministically from their seeds, within the §16.3 caps:
+ *
+ * - damaged: spalled chips off the walls in the outer layer's bucket, the glass gone (shards);
+ * - breach: a ragged rim of the wall's own units (bricks, blocks, stones, plates) over the band 0.75 r – 1.25 r round the
+ *   hole, where the presentation's blocky cut edge runs (0.8 r – 1.2 r), the render spalled back past it, the dark room
+ *   behind it with the floor-slab edge where the hole crosses a storey line, debris thrown along the blow;
+ * - sectionDown: a roof's covering sliding off (tiles, slates, sheet, straw);
+ * - collapse: ragged wall stubs (taller at a masonry building's corners), a heap of chunks in the building's own buckets
+ *   seated on the sim's mound, and the falling debris.
+ *
+ * Frames are the body frame (destructionKit.ts). Registered as 'default' on import (the world's seam imports it).
+ */
+import type { BufferGeometry } from 'three';
+import {
+  bodyMoundHeightAt, damageRng, registerStructureDamageKit,
+  type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
+  type DamageRoof, type DamageStageResult, type DamageStorey, type DamageWriters, type DebrisShape, type FaceName,
+  type FractureMaterial, type FractureSlot, type Rgb, type StructureDamageAnatomy, type StructureDamageKit,
+  type StructureDescribeInput, type Vec3,
+} from './destructionKit.ts';
+
+/** What the default describe needs of a map's regional style (maps/regional/types.ts ArchitectureSurfaces). */
+export interface DefaultKitStyle {
+  stoneKind?: string;
+  roofKind?: string;
+  concrete?: boolean;
+  earth?: boolean;
+}
+
+let styleOf: (style: string | null) => DefaultKitStyle | null = () => null;
+/** The world builder registers how a style id reads (props.ts: from the map's regional architecture). */
+export function setDefaultKitStyleReader(reader: (style: string | null) => DefaultKitStyle | null): void {
+  styleOf = reader;
+}
+
+const ROOM: Rgb = [0.032, 0.028, 0.025];
+const TIMBER: Rgb = [0.36, 0.27, 0.19];
+const WHITE: Rgb = [1, 1, 1];
+const STOREY_M = 3;
+const FACE_ORDER: readonly FaceName[] = ['front', 'right', 'back', 'left'];
+const OPEN_SHELLS = /barn|granary|shed|depot|mill|warehouse|hangar|garage|stable|hall|works|factory|foundry|silo/i;
+const WALL_BUCKETS = ['regionalStone', 'stone', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'plaster', 'plaster2',
+  'plaster3', 'structureMetal', 'steel', 'wood', 'structureWood', 'baked', 'dark'] as const;
+const ROOF_BUCKETS = new Set(['roof', 'regionalRoof']);
+
+// ---- describe ----------------------------------------------------------------------------------------------------
+
+interface BucketSummary {
+  area: number;
+  minY: number;
+  maxY: number;
+  tint: [number, number, number];
+  tinted: number;
+}
+
+/** Bounding-box surface area and a sampled mean vertex colour per bucket (64 vertices a part at most). */
+function summarize(parts: Readonly<Record<string, readonly BufferGeometry[]>>): Map<string, BucketSummary> {
+  const out = new Map<string, BucketSummary>();
+  for (const [bucket, list] of Object.entries(parts)) {
+    for (const geometry of list ?? []) {
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const box = geometry.boundingBox;
+      if (!box || box.isEmpty()) continue;
+      const sx = box.max.x - box.min.x, sy = box.max.y - box.min.y, sz = box.max.z - box.min.z;
+      const entry = out.get(bucket) ?? { area: 0, minY: Infinity, maxY: -Infinity, tint: [0, 0, 0], tinted: 0 };
+      entry.area += 2 * (sx * sy + sy * sz + sz * sx);
+      entry.minY = Math.min(entry.minY, box.min.y);
+      entry.maxY = Math.max(entry.maxY, box.max.y);
+      const color = geometry.getAttribute('color');
+      if (color) {
+        const step = Math.max(1, Math.floor(color.count / 64));
+        for (let i = 0; i < color.count; i += step) {
+          entry.tint[0] += color.getX(i); entry.tint[1] += color.getY(i); entry.tint[2] += color.getZ(i);
+          entry.tinted++;
+        }
+      }
+      out.set(bucket, entry);
+    }
+  }
+  return out;
+}
+
+const tintOf = (summary: BucketSummary | undefined): Rgb => (summary && summary.tinted
+  ? [summary.tint[0] / summary.tinted, summary.tint[1] / summary.tinted, summary.tint[2] / summary.tinted] : WHITE);
+
+function wallLayers(bucket: string, tint: Rgb, style: DefaultKitStyle | null): FractureSlot[] {
+  if (bucket === 'regionalStone' || bucket === 'stone') {
+    const kind = style?.stoneKind;
+    const material: FractureMaterial = kind === 'brick' ? 'brick' : kind === 'block' ? 'concrete'
+      : kind === 'rubble' || kind === 'fieldstone' || kind === 'greywacke' ? 'rubble' : 'stone';
+    return [{ material, bucket, tint, thicknessM: 0.45, share: 1 }];
+  }
+  if (bucket === 'wood' || bucket === 'structureWood' || bucket === 'dark') return [{ material: 'plank', bucket, tint, thicknessM: 0.1, share: 1 }];
+  if (bucket === 'structureMetal' || bucket === 'steel') return [{ material: 'metal', bucket, tint, thicknessM: 0.02, share: 1 }];
+  if (bucket === 'baked') return [{ material: 'concrete', bucket, tint, thicknessM: 0.25, share: 1 }];
+  // render over its core: concrete where the style pours it, earth in the earth kits, else rubble masonry
+  if (style?.concrete && /plaster2/i.test(bucket)) return [{ material: 'concrete', bucket, tint, thicknessM: 0.25, share: 1 }];
+  const core: FractureMaterial = style?.earth ? 'adobe' : style?.stoneKind === 'brick' ? 'brick' : 'rubble';
+  return [
+    { material: 'plaster', bucket, tint, thicknessM: 0.03, share: 1 },
+    { material: core, bucket: core === 'adobe' ? bucket : 'stone', tint: core === 'adobe' ? tint : WHITE, thicknessM: 0.4, share: 1 },
+  ];
+}
+
+function roofCovering(bucket: string, tint: Rgb, style: DefaultKitStyle | null): FractureSlot {
+  if (bucket === 'straw') return { material: 'thatch', bucket, tint, thicknessM: 0.35, share: 1 };
+  const kind = style?.roofKind;
+  const material: FractureMaterial = kind === 'slate' ? 'slate' : kind === 'sheet' || kind === 'asbestos' ? 'metal'
+    : kind === 'shingle' ? 'plank' : 'tile';
+  return { material, bucket, tint, thicknessM: material === 'metal' ? 0.01 : 0.04, share: 1 };
+}
+
+/** The four faces of a w × d body on a storey (house.ts bodyFaces: front +Z, right +X, back −Z, left −X). */
+function storeyFaces(w: number, d: number, y0: number, height: number, section0: number, layers: FractureSlot[], bucket: string): DamageFace[] {
+  const faces: Record<FaceName, { origin: Vec3; u: Vec3; out: Vec3; width: number }> = {
+    front: { origin: [0, y0, d / 2], u: [1, 0, 0], out: [0, 0, 1], width: w },
+    right: { origin: [w / 2, y0, 0], u: [0, 0, -1], out: [1, 0, 0], width: d },
+    back: { origin: [0, y0, -d / 2], u: [-1, 0, 0], out: [0, 0, -1], width: w },
+    left: { origin: [-w / 2, y0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: d },
+  };
+  return FACE_ORDER.map((name, i) => ({ name, ...faces[name], height, section: section0 + i, bucket, layers,
+    openings: [], members: [], masonry: null }));
+}
+
+/** Glass parts' boxes as openings on the nearest face of their storey. */
+function placeOpenings(parts: Readonly<Record<string, readonly BufferGeometry[]>>, storeys: DamageStorey[]): void {
+  for (const geometry of parts.glass ?? []) {
+    const box = geometry.boundingBox;
+    if (!box || box.isEmpty()) continue;
+    const cx = (box.min.x + box.max.x) / 2, cy = (box.min.y + box.max.y) / 2, cz = (box.min.z + box.max.z) / 2;
+    const storey = storeys.find((s) => cy >= s.y0 && cy < s.y1) ?? storeys[storeys.length - 1];
+    if (!storey) continue;
+    let best: DamageFace | null = null, bestGap = Infinity;
+    for (const face of storey.faces) {
+      const gap = Math.abs((cx - face.origin[0]) * face.out[0] + (cz - face.origin[2]) * face.out[2]);
+      if (gap < bestGap) { bestGap = gap; best = face; }
+    }
+    if (!best || bestGap > 1.5) continue;
+    const u = (cx - best.origin[0]) * best.u[0] + (cz - best.origin[2]) * best.u[2];
+    const extent = Math.abs(best.u[0]) > 0.5 ? box.max.x - box.min.x : box.max.z - box.min.z;
+    const opening: DamageOpening = { kind: 'window', u, w: Math.max(0.3, extent), y0: box.min.y - storey.y0,
+      h: Math.max(0.3, box.max.y - box.min.y), reveal: 0.2 };
+    best.openings.push(opening);
+  }
+}
+
+export function describeDefault(input: StructureDescribeInput): StructureDamageAnatomy {
+  const style = styleOf(input.style);
+  const summary = summarize(input.parts);
+  let wallBucket = 'stone', wallArea = -1;
+  for (const bucket of WALL_BUCKETS) {
+    const entry = summary.get(bucket);
+    if (entry && entry.area > wallArea) { wallArea = entry.area; wallBucket = bucket; }
+  }
+  const roofBucket = [...summary.keys()].find((bucket) => ROOF_BUCKETS.has(bucket)) ?? (summary.has('straw') ? 'straw' : null);
+  const roofEntry = roofBucket ? summary.get(roofBucket) : undefined;
+  let top = 0;
+  for (const entry of summary.values()) top = Math.max(top, entry.maxY);
+  const height = Math.max(1, Number.isFinite(input.h) && input.h > 0 ? Math.max(input.h, top) : top);
+  const eave = roofEntry && roofEntry.minY > 1 ? Math.min(roofEntry.minY, height) : height;
+  const count = Math.max(1, Math.min(12, Math.round(eave / STOREY_M)));
+  const storeyH = eave / count;
+  const wallTint = tintOf(summary.get(wallBucket));
+  const layers = wallLayers(wallBucket, wallTint, style);
+  const concrete = layers.some((slot) => slot.material === 'concrete');
+  const storeys: DamageStorey[] = [];
+  for (let i = 0; i < count; i++) {
+    const y0 = i * storeyH;
+    storeys.push({
+      index: i, y0, y1: y0 + storeyH, jetty: [0, 0, 0, 0], framed: false,
+      faces: storeyFaces(input.w, input.d, y0, storeyH, i * 4, layers, wallBucket),
+      floor: i === 0 ? null : {
+        thicknessM: concrete ? 0.25 : 0.22,
+        structure: concrete
+          ? { material: 'concrete', bucket: wallBucket, tint: wallTint, thicknessM: 0.25, share: 1 }
+          : { material: 'timber', bucket: 'wood', tint: TIMBER, thicknessM: 0.22, share: 1 },
+        joistPitchM: concrete ? 0 : 0.6,
+      },
+    });
+  }
+  placeOpenings(input.parts, storeys);
+  let roof: DamageRoof | null = null;
+  if (roofBucket && roofEntry) {
+    const rise = Math.max(0, roofEntry.maxY - eave);
+    const half = Math.max(0.5, Math.min(input.w, input.d) / 2);
+    roof = {
+      kind: rise > 0.6 ? 'gable' : 'flat', section: count * 4, pitchDeg: Math.atan2(rise, half) * 180 / Math.PI,
+      eaveY: eave, ridgeY: Math.max(eave, roofEntry.maxY), thicknessM: 0.2,
+      covering: roofCovering(roofBucket, tintOf(roofEntry), style),
+      structure: concrete
+        ? { material: 'concrete', bucket: wallBucket, tint: wallTint, thicknessM: 0.2, share: 1 }
+        : { material: 'timber', bucket: 'wood', tint: TIMBER, thicknessM: 0.16, share: 1 },
+      battenPitchM: 0.35, rafterPitchM: 0.9, slabs: [],
+    };
+  }
+  const masonry = layers.some((slot) => slot.material === 'brick' || slot.material === 'stone' || slot.material === 'rubble'
+    || slot.material === 'concrete' || slot.material === 'adobe');
+  const rubble: FractureSlot[] = [];
+  for (const slot of layers) rubble.push({ ...slot, share: slot.material === 'plaster' ? 0.1 : 0.6 });
+  if (roof) rubble.push({ ...roof.covering, share: 0.2 });
+  if (summary.has('wood') || summary.has('structureWood')) {
+    rubble.push({ material: 'timber', bucket: summary.has('wood') ? 'wood' : 'structureWood', tint: TIMBER, thicknessM: 0.2, share: 0.1 });
+  }
+  return {
+    structureIdx: input.structureIdx, kit: 'default', seed: input.seed, massClass: input.massClass,
+    placement: input.placement, w: input.w, d: input.d, h: height,
+    plinth: null, storeys, roof, chimneys: [],
+    interior: { color: ROOM, open: OPEN_SHELLS.test(input.builder) },
+    rubble,
+    remnant: { stubHeightM: Math.min(1.4, 0.3 * eave), corners: masonry, chimneys: false },
+  };
+}
+
+// ---- shared writing helpers --------------------------------------------------------------------------------------
+
+/** A box (a chunk, a stub, a slab edge) as 12 triangles: centre, half extents along the body axes, yaw about +Y. */
+function writeBox(out: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
+  tint: Rgb, shade = 1): void {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const corner = (sx: number, sy: number, sz: number): Vec3 => {
+    const lx = sx * hx, lz = sz * hz;
+    return [cx + lx * c + lz * s, cy + sy * hy, cz - lx * s + lz * c];
+  };
+  const faces: Array<[Vec3, [number, number, number][]]> = [
+    [[0, 1, 0], [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]]],
+    [[0, -1, 0], [[-1, -1, 1], [1, -1, 1], [1, -1, -1], [-1, -1, -1]]],
+    [[1, 0, 0], [[1, -1, -1], [1, -1, 1], [1, 1, 1], [1, 1, -1]]],
+    [[-1, 0, 0], [[-1, -1, 1], [-1, -1, -1], [-1, 1, -1], [-1, 1, 1]]],
+    [[0, 0, 1], [[1, -1, 1], [-1, -1, 1], [-1, 1, 1], [1, 1, 1]]],
+    [[0, 0, -1], [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1]]],
+  ];
+  const r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  for (const [n, quad] of faces) {
+    const nx = n[0] * c + n[2] * s, nz = -n[0] * s + n[2] * c;
+    const ids = quad.map(([sx, sy, sz], i) => {
+      const p = corner(sx, sy, sz);
+      return out.vertex(p[0], p[1], p[2], nx, n[1], nz, i === 1 || i === 2 ? 1 : 0, i >= 2 ? 1 : 0, r, g, b);
+    });
+    out.triangle(ids[0]!, ids[1]!, ids[2]!);
+    out.triangle(ids[0]!, ids[2]!, ids[3]!);
+  }
+}
+
+const VERTS_PER_BOX = 24;
+
+/** The writer's room for `boxes` more boxes. */
+const roomFor = (out: DamageMeshWriter, boxes: number): boolean => out.vertices + boxes * VERTS_PER_BOX <= out.capacity;
+
+function unitOf(material: FractureMaterial): { shape: DebrisShape; size: number } {
+  switch (material) {
+    case 'brick': return { shape: 'brick', size: 0.24 };
+    case 'stone': return { shape: 'block', size: 0.4 };
+    case 'rubble': return { shape: 'stone', size: 0.3 };
+    case 'concrete': return { shape: 'plate', size: 0.45 };
+    case 'adobe': return { shape: 'clod', size: 0.3 };
+    case 'plaster': return { shape: 'plate', size: 0.25 };
+    case 'timber': return { shape: 'beam', size: 0.6 };
+    case 'plank': return { shape: 'splinter', size: 0.5 };
+    case 'metal': return { shape: 'sheet', size: 0.6 };
+    case 'glass': return { shape: 'shard', size: 0.12 };
+    case 'tile': return { shape: 'tile', size: 0.3 };
+    case 'slate': return { shape: 'slate', size: 0.3 };
+    case 'thatch': return { shape: 'straw', size: 0.5 };
+    case 'earth': return { shape: 'clod', size: 0.4 };
+    default: return { shape: 'chunk', size: 0.3 };
+  }
+}
+
+function pushPiece(out: DamagePieceWriter, slot: FractureSlot, rng: () => number, x: number, y: number, z: number,
+  vx: number, vy: number, vz: number, scale = 1): boolean {
+  const unit = unitOf(slot.material);
+  const size = unit.size * scale * (0.7 + rng() * 0.6);
+  // a uniformly random orientation (Shoemake): a unit quaternion from three draws
+  const u1 = rng(), u2 = rng() * Math.PI * 2, u3 = rng() * Math.PI * 2;
+  const a = Math.sqrt(1 - u1), b = Math.sqrt(u1);
+  const flat = unit.shape === 'plate' || unit.shape === 'sheet' || unit.shape === 'tile' || unit.shape === 'slate';
+  return out.push(slot.bucket, unit.shape, Math.floor(rng() * 4), x, y, z,
+    a * Math.sin(u2), a * Math.cos(u2), b * Math.sin(u3), b * Math.cos(u3),
+    size, size * (flat ? 0.15 : 0.6), size * 0.8,
+    slot.tint[0], slot.tint[1], slot.tint[2], vx, vy, vz);
+}
+
+function faceOf(anatomy: StructureDamageAnatomy, storeyIndex: number, name: FaceName): { storey: DamageStorey; face: DamageFace } | null {
+  const storey = anatomy.storeys[Math.max(0, Math.min(anatomy.storeys.length - 1, storeyIndex))];
+  const face = storey?.faces.find((f) => f.name === name);
+  return storey && face ? { storey, face } : null;
+}
+
+const thicknessOf = (face: DamageFace): number => face.layers.reduce((sum, slot) => sum + slot.thicknessM, 0) || 0.3;
+
+// ---- stages ------------------------------------------------------------------------------------------------------
+
+function damaged(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
+  const rng = damageRng(seed);
+  const pieces = out.pieces;
+  // chips off the walls: a few spalls a face on the ground storey and the next
+  for (const storey of anatomy.storeys.slice(0, 2)) {
+    for (const face of storey.faces) {
+      const slot = face.layers[0];
+      if (!slot) continue;
+      for (let k = 0; k < 3 && pieces.count < pieces.capacity; k++) {
+        const u = (rng() - 0.5) * face.width * 0.9, y = storey.y0 + rng() * face.height;
+        const x = face.origin[0] + face.u[0] * u + face.out[0] * 0.05, z = face.origin[2] + face.u[2] * u + face.out[2] * 0.05;
+        pushPiece(pieces, slot, rng, x, y, z, face.out[0] * (0.5 + rng()), 0.5 + rng(), face.out[2] * (0.5 + rng()), 0.6);
+      }
+      // the glass in its openings breaks out
+      for (const opening of face.openings) {
+        const glass: FractureSlot = { material: 'glass', bucket: 'glass', tint: WHITE, thicknessM: 0.01, share: 1 };
+        for (let k = 0; k < 2 && pieces.count < pieces.capacity; k++) {
+          const u = opening.u + (rng() - 0.5) * opening.w, y = storey.y0 + opening.y0 + rng() * opening.h;
+          pushPiece(pieces, glass, rng, face.origin[0] + face.u[0] * u + face.out[0] * 0.1, y,
+            face.origin[2] + face.u[2] * u + face.out[2] * 0.1, face.out[0] * (1 + rng()), rng(), face.out[2] * (1 + rng()));
+        }
+      }
+    }
+  }
+  return { cuts: [], hides: [{ section: null, partClass: 'glass' }] };
+}
+
+function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWriters): DamageStageResult {
+  const rng = damageRng(hole.seed);
+  const located = faceOf(anatomy, hole.storey, hole.face);
+  if (!located) return { cuts: [], hides: [] };
+  const { storey, face } = located;
+  const depth = thicknessOf(face);
+  const cx = face.origin[0] + face.u[0] * hole.u, cz = face.origin[2] + face.u[2] * hole.u;
+  const cy = storey.y0 + hole.y;
+  const radius = Math.max(0.15, hole.radiusM);
+  const mesh = out.mesh;
+  // the rim: the wall's own units laid in courses over the band the cut's blocky edge runs in (0.75 r – 1.25 r): each
+  // course fills its chords of the annulus with whole units, its ends stepped a little, set into the wall's thickness
+  // (a broken masonry edge steps along its courses); a big hole's units grow with it so the band stays within the cap
+  const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
+  const skin = face.layers[0]!;
+  const unitW = Math.max(unitOf(slot.material).size, radius * 0.3), unitH = unitW * 0.5;
+  const inner = radius * 0.75, outer = radius * 1.25;
+  if (mesh.begin(slot.bucket, 'rim')) {
+    const yaw = Math.atan2(face.out[0], face.out[2]);
+    const rows = Math.ceil((2 * outer) / unitH);
+    for (let row = 0; row < rows && roomFor(mesh, 1); row++) {
+      const ly = -outer + (row + 0.5) * unitH;
+      if (cy + ly - unitH * 0.5 < 0.02) continue;
+      const outerHalf = Math.sqrt(Math.max(0, outer * outer - ly * ly));
+      const innerHalf = Math.abs(ly) < inner ? Math.sqrt(inner * inner - ly * ly) : 0;
+      const chords: Array<[number, number]> = innerHalf > 0
+        ? [[-outerHalf, -innerHalf], [innerHalf, outerHalf]] : [[-outerHalf, outerHalf]];
+      for (const [from, to] of chords) {
+        const a = from - rng() * radius * 0.04, b = to + rng() * radius * 0.04;
+        const n = Math.max(1, Math.round((b - a) / unitW)), w = (b - a) / n;
+        for (let i = 0; i < n && roomFor(mesh, 1); i++) {
+          const lu = a + (i + 0.5) * w;
+          const along = -depth * (0.2 + rng() * 0.6);
+          const x = cx + face.u[0] * lu + face.out[0] * along, z = cz + face.u[2] * lu + face.out[2] * along;
+          writeBox(mesh, x, cy + ly, z, w * 0.5 * (1 + rng() * 0.08), unitH * 0.5 * (0.96 + rng() * 0.08), depth * 0.45,
+            yaw + (rng() - 0.5) * 0.08, slot.tint, 0.75 + rng() * 0.25);
+        }
+      }
+    }
+    mesh.end();
+  }
+  // the render lip: the outer skin spalled back just past the cut's edge
+  if (skin !== slot && mesh.begin(skin.bucket, 'rim')) {
+    const yaw = Math.atan2(face.out[0], face.out[2]);
+    for (let k = 0; k < 12 && roomFor(mesh, 1); k++) {
+      const a = (k / 12) * Math.PI * 2 + rng() * 0.4, reach = radius * (1.2 + rng() * 0.15);
+      const lu = Math.cos(a) * reach, ly = Math.sin(a) * reach;
+      if (cy + ly < 0.02) continue;
+      writeBox(mesh, cx + face.u[0] * lu + face.out[0] * 0.01, cy + ly, cz + face.u[2] * lu + face.out[2] * 0.01,
+        0.12 + rng() * 0.1, 0.08 + rng() * 0.06, skin.thicknessM * 0.6, yaw, skin.tint);
+    }
+    mesh.end();
+  }
+  // the room behind it: a dark backing, and the slab edge where the hole crosses a storey line
+  if (mesh.begin('dark', 'room')) {
+    const yaw = Math.atan2(face.out[0], face.out[2]);
+    const back = anatomy.interior.open ? -Math.min(anatomy.w, anatomy.d) * 0.9 : -depth - 0.6;
+    writeBox(mesh, cx + face.out[0] * back, cy, cz + face.out[2] * back, radius * 1.1, radius * 1.1, 0.05, yaw, anatomy.interior.color);
+    for (const s of anatomy.storeys) {
+      if (!s.floor || Math.abs(s.y0 - cy) > radius) continue;
+      const half = Math.sqrt(Math.max(0, radius * radius - (s.y0 - cy) ** 2));
+      writeBox(mesh, cx + face.out[0] * (-depth - 0.3), s.y0, cz + face.out[2] * (-depth - 0.3), half, s.floor.thicknessM / 2, 0.3, yaw,
+        s.floor.structure.tint, 0.8);
+    }
+    mesh.end();
+  }
+  // debris thrown along the blow
+  const pieces = out.pieces;
+  const dirX = Number.isFinite(hole.dirX) ? hole.dirX : -face.out[0], dirZ = Number.isFinite(hole.dirZ) ? hole.dirZ : -face.out[2];
+  for (let k = 0; k < 24 && pieces.count < pieces.capacity; k++) {
+    const a = rng() * Math.PI * 2, reach = radius * Math.sqrt(rng());
+    const speed = 2 + rng() * (hole.cause === 'kinetic' ? 4 : 7);
+    pushPiece(pieces, k % 4 === 0 ? skin : slot, rng, cx + face.u[0] * Math.cos(a) * reach, cy + Math.sin(a) * reach, cz + face.u[2] * Math.cos(a) * reach,
+      dirX * speed + (rng() - 0.5) * 2, 1 + rng() * 3, dirZ * speed + (rng() - 0.5) * 2);
+  }
+  return {
+    cuts: [{ x: cx, y: cy, z: cz, nx: face.out[0], nz: face.out[2], radiusM: radius, depthM: depth + 0.2, outsideM: 0.3 }],
+    hides: [],
+  };
+}
+
+function sectionDown(anatomy: StructureDamageAnatomy, section: number, seed: number, out: DamageWriters): DamageStageResult {
+  const rng = damageRng(seed);
+  const roof = anatomy.roof;
+  if (!roof || roof.section !== section) return { cuts: [], hides: [] };
+  const pieces = out.pieces;
+  // the covering slides off and falls: its own units across the roof's plan, thrown outward a little
+  for (let k = 0; k < 120 && pieces.count < pieces.capacity; k++) {
+    const x = (rng() - 0.5) * anatomy.w, z = (rng() - 0.5) * anatomy.d;
+    const y = roof.eaveY + (roof.ridgeY - roof.eaveY) * (1 - Math.abs(x) / Math.max(0.5, anatomy.w / 2)) * rng();
+    pushPiece(pieces, roof.covering, rng, x, y, z, x * 0.3 + (rng() - 0.5), rng(), z * 0.3 + (rng() - 0.5));
+  }
+  return { cuts: [], hides: [{ section: null, partClass: 'roof' }] };
+}
+
+function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
+  const rng = damageRng(seed);
+  const mesh = out.mesh;
+  const ground = anatomy.storeys[0];
+  if (!ground) return { cuts: [], hides: [{ section: null, partClass: null }] };
+  // the stubs: ragged runs along each ground-storey face, taller at a masonry building's corners
+  const stub = anatomy.remnant.stubHeightM;
+  for (const face of ground.faces) {
+    const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
+    if (!mesh.begin(slot.bucket, 'remnant')) continue;
+    const yaw = Math.atan2(face.out[0], face.out[2]) + Math.PI / 2;
+    const depth = thicknessOf(face);
+    const runs = Math.max(2, Math.round(face.width / 1.5));
+    for (let k = 0; k < runs && roomFor(mesh, 1); k++) {
+      const u0 = -face.width / 2 + (k / runs) * face.width, u1 = -face.width / 2 + ((k + 1) / runs) * face.width;
+      const corner = anatomy.remnant.corners && (k === 0 || k === runs - 1);
+      const h = stub * (corner ? 1.2 + rng() * 0.6 : 0.3 + rng() * 0.7);
+      if (h < 0.1) continue;
+      const u = (u0 + u1) / 2;
+      writeBox(mesh, face.origin[0] + face.u[0] * u - face.out[0] * depth / 2, h / 2, face.origin[2] + face.u[2] * u - face.out[2] * depth / 2,
+        (u1 - u0) / 2, h / 2, depth / 2, yaw, slot.tint, 0.85 + rng() * 0.15);
+    }
+    mesh.end();
+  }
+  // the heap: chunks in the building's own buckets by their shares, seated on the sim's mound
+  const total = anatomy.rubble.reduce((sum, slot) => sum + slot.share, 0) || 1;
+  const reach = { x: anatomy.w / 2 + 2, z: anatomy.d / 2 + 2 };
+  for (const slot of anatomy.rubble) {
+    if (!mesh.begin(slot.bucket, 'rubble')) continue;
+    const unit = unitOf(slot.material).size;
+    const wanted = Math.round((slot.share / total) * Math.min(400, (mesh.capacity - mesh.vertices) / VERTS_PER_BOX));
+    for (let k = 0; k < wanted && roomFor(mesh, 1); k++) {
+      const x = (rng() * 2 - 1) * reach.x, z = (rng() * 2 - 1) * reach.z;
+      const top = bodyMoundHeightAt(anatomy, x, z);
+      if (top < 0.05 && rng() < 0.7) continue;
+      const size = unit * (0.8 + rng() * 1.6);
+      writeBox(mesh, x, Math.max(size * 0.3, top - size * 0.25), z, size * (0.6 + rng() * 0.6), size * (0.25 + rng() * 0.35),
+        size * (0.5 + rng() * 0.5), rng() * Math.PI, slot.tint, 0.7 + rng() * 0.3);
+    }
+    mesh.end();
+  }
+  // the falling debris: off the wall tops and the roof line, inward and down
+  const pieces = out.pieces;
+  const top = anatomy.roof ? anatomy.roof.eaveY : anatomy.h;
+  for (let k = 0; k < 240 && pieces.count < pieces.capacity; k++) {
+    const slot = anatomy.rubble[k % Math.max(1, anatomy.rubble.length)]!;
+    const face = ground.faces[k % ground.faces.length]!;
+    const u = (rng() - 0.5) * face.width;
+    pushPiece(pieces, slot, rng, face.origin[0] + face.u[0] * u, top * (0.4 + rng() * 0.6), face.origin[2] + face.u[2] * u,
+      -face.out[0] * rng() * 2, -rng() * 2, -face.out[2] * rng() * 2);
+  }
+  return { cuts: [], hides: [{ section: null, partClass: null }] };
+}
+
+export const DEFAULT_STRUCTURE_DAMAGE_KIT: StructureDamageKit = Object.freeze({
+  id: 'default',
+  describe: describeDefault,
+  damaged,
+  breach,
+  sectionDown,
+  collapse,
+});
+registerStructureDamageKit(DEFAULT_STRUCTURE_DAMAGE_KIT);
