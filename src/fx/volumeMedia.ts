@@ -338,7 +338,11 @@ void main() {
   float ms = uGrade.w * smoothstep( 0.08, 0.5, albedoL );
   sunL = mix( sunL, sqrt( sunL ), ms );
   skyL = mix( skyL, sqrt( skyL ), ms * 0.6 );
-  vec3 col = vColor.rgb * ( uSunCol * sunL + uSkyCol * skyL + uGroundCol * ( 0.35 * D + 0.1 ) );
+  // dark media take the sky neutral: soot scatters what little it does without the sky's blue (round 4: a rocket's
+  // smoke read as blue ghosts), bright dust keeps a little of it
+  float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+  vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
+  vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 ) );
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float h = clamp( B.g * B.g * vHeat, 0.0, 1.6 );
   if ( h > 0.002 ) {
