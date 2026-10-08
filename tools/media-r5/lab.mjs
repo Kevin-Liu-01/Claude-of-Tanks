@@ -11,7 +11,7 @@ import { resolve, join, basename } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const ROOT = process.cwd();
-const { createCaptureLock } = await import(join(ROOT, 'tools/capture-lock.mjs'));
+const { createCaptureLock, CAPTURE_LOCK_DIR, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
 const out = resolve(args.out ?? 'shots/media-r5/lab');
 const WIDTH = Number(args.width ?? 960);
@@ -119,8 +119,34 @@ const SCOUT_FN = async (mapId, opts) => {
 
 // --- run ----------------------------------------------------------------------
 const lock = createCaptureLock();
-console.log('[lab] waiting for capture lock');
-await lock.acquire(3 * 60 * 60 * 1000);
+// --ticket-stamp=<ms> (the finals' scheme, 2026-10-07: a per-job lease rejoined a 45-ticket line at its back for every
+// take): every acquisition joins the queue at that place, the media lane's. With --lease=budget each later lease first
+// lets --yield-holds other holds (2 by default; a hold is one lock directory, its inode and birth time) take the lock,
+// so the place never starves the line; with the lock free a minute and nobody waiting (five minutes at most) it goes on.
+const STAMP = args['ticket-stamp'] ? Number(args['ticket-stamp']) : null;
+const YIELD_HOLDS = Math.max(0, Number(args['yield-holds'] ?? 2));
+const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
+let leaseCount = 0;
+async function take(ms) {
+  // (--yield-first: also before the first lease, for a run that follows another media lease straight away)
+  if (STAMP && args.lease === 'budget' && (leaseCount > 0 || args['yield-first']) && YIELD_HOLDS) {
+    const seen = new Set();
+    let freeSince = Date.now();
+    for (;;) {
+      const id = holdId();
+      if (id) { seen.add(id); freeSince = Date.now(); }
+      if (seen.size >= YIELD_HOLDS) break;
+      const free = id ? 0 : Date.now() - freeSince;
+      if ((free > 60000 && !(lock.waiting?.() > 0)) || free > 300000) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    console.log(`[lab] yielded to ${seen.size} hold${seen.size === 1 ? '' : 's'}; rejoining the queue at ${STAMP}`);
+  }
+  leaseCount++;
+  await lock.acquire(ms, STAMP ? { ticket: ticketAt(STAMP) } : {});
+}
+console.log(`[lab] waiting for capture lock${STAMP ? ` at ${STAMP}` : ''}`);
+await take(3 * 60 * 60 * 1000);
 const bootLockAt = Date.now();
 const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
 // --lease=job: hold the shared GPU lock per map load and per job (short leases), not for the whole run
@@ -170,7 +196,7 @@ try {
   const defaultLineup = ['abramsx', 'kf51b', 'leo2a7v', 'challenger_3', 'm1a2_sepv3', 'leclerc_xlr', 't14', 'k2', 'type10b', 't90m']
     .filter(id => tankIds.includes(id));
   for (const map of maps) {
-    if (PER_JOB || (PER_MAP && !holding)) { await lock.acquire(LOCK_WAIT); holding = true; heldSince = Date.now(); }
+    if (PER_JOB || (PER_MAP && !holding)) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
     try {
     const t0 = Date.now();
     await page.evaluate(map => window.__STUDIO.load({ map, actors: [], effects: [], fxTime: 0, timeScale: 0 }), map);
@@ -225,9 +251,9 @@ try {
       for (const s of scouted) mapJobs.push({ map, name: s.name, scene: s.scene, variants: s.variants, site: s.site });
     }
     for (const job of mapJobs) {
-      if (PER_JOB) await lock.acquire(LOCK_WAIT);
+      if (PER_JOB) await take(LOCK_WAIT);
       // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
-      if (BUDGET_MS && !holding) { await lock.acquire(LOCK_WAIT); holding = true; heldSince = Date.now(); }
+      if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
       try {
         if (args.format) { job.scene.__format = args.format; if (args['lens-k']) job.scene.__lensK = Number(args['lens-k']); }
         await page.evaluate(scene => {

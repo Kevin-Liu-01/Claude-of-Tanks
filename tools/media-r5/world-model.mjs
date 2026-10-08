@@ -103,7 +103,7 @@ function segmentHitsBox(a, b, min, max) {
  * as its square, a convex or a part without a shape as its bounds), plus a tree's canopy: from the trunk's top up two
  * canopy radii, the canopy radius around the trunk.
  */
-function solidsOf(r) {
+export function solidsOf(r) {
   if (r._solids) return r._solids;
   const out = [];
   const add = (shape, y0, y1) => {

@@ -183,3 +183,42 @@ The complete test suite, TypeScript check and production build pass. Historical 
 All 31 maps were freshly captured at native 3840×2160 using the current renderer, with one reviewed daylight overview per map (Mars retains its galaxy sky). Saltwind’s production camera now looks toward the harbor and bay from the inland ridge. The capture receipt and full masters are local at `.qa-dev/maps-refresh-r3/final/`; the public manifest records the source fingerprint, recipes and reviewed hashes. Every composition was inspected in three-image contact strips, with additional master inspection for Coastal, Red Rock Divide and Saltwind. This is a photo review of those camera views, not a repeat of the earlier exhaustive shoreline survey.
 
 The 93 generated map images supply the map pickers, Scene Studio, battle loading screens, website map wall, media archive, field manual and README. The rendering and worlds social cards were regenerated from the new photos. The three catalogued films and their posters retain their earlier provenance; they were not re-recorded for this still-image refresh.
+
+## October 8, 2026 framing for the site fifty
+
+Blind critics judge the 4K finals and the engine reviews on the gauntlet's terms: two model-distinct critics, and the
+lower critic's score counts. Since the reference library came back, every wave also carries blind pairs against real
+photographs of each hero's type. The packet builders and the hash-chained ledger live in `shots/media-r5/gauntlet/`
+(local, not committed).
+
+- **Wave m1 (the first four finals).** It scored 4.33. The tanks read as toys, the smear read as a filter, and the
+  framing left each tank small, cut or behind something.
+- **Wave m2 (the same takes re-rendered).** With realistic hero paint, a 90° shutter and 2 ms stills chosen by framing,
+  it scored 4.55; clarity rose most. The blind pairs identified the real photograph 16 times in 16, from the vehicles'
+  surfacing and the sprite effects.
+- **Composition wave c1 (all fifty takes).** On engine review 3, at 3 frames each, it scored 3.78.
+  `gauntlet/calibrate-composition.mjs` holds the lens record against the critics' flags:
+  - the score falls with the lens's look-down (rank correlation −0.63), its height (−0.57) and its distance (−0.46);
+  - a look-down of 18° or more is marked a bad angle 91 % of the time;
+  - the frames marked GOOD hold the lens about 2 m up and level, 11–18 m out, with the hull 40–55 % of the frame's
+    height, centred and whole.
+
+`lens-check.mjs` now records, for each sample:
+- the lens's pitch and height;
+- the hull's screen box;
+- the largest thing in the foreground, both over the whole frame and in the zone under the hull.
+
+`motion-search.mjs` scores each candidate on the share of the take in that sweet spot, minus the share the critics
+mark. Range comes from distance at a low height and from dolly zooms, not from climbing. A candidate whose lens passes
+inside any record is rejected outright; `site50.selftest.mjs` holds the same rule for every take.
+
+`tools/media-r5/site50.mjs` reflects a placed burst that would land between the lens and a routed hull to the far side of
+the hull, moving its debris with it.
+
+On the record, the re-plan raised the sweet-spot share from 0.16 to 0.71 and cut the bad share from 0.68 to 0.14. The
+plan it replaced is kept at `shots/media-r5/tmp/site50-motion-r7.json`.
+
+The shared GPU follows the coordinator's scheme. Priority tickets queue FIFO in their own band. The media lane takes its
+fairness slot, 1791397979999, once two other holds have run since its last lease:
+- the finals runner: `--keep-place=1791397979999 --yield-holds=2`;
+- the lab: `--ticket-stamp=1791397979999 --yield-holds=2`, plus `--yield-first` when another media lease has just ended.

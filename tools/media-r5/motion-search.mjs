@@ -8,7 +8,8 @@
 // clear route-check (walls, woods, water, edges, the other hulls, 15 m off the foes) and the lens checks (blocked
 // ≤ 5 %, hero in frame ≥ 90 %, the site50 selftest's bar); the survivors are scored on what the owner asked for — the lens's close-to-far
 // range, its climb, front angles, speed — with a spread penalty so neighbouring shots don't share a move, and the
-// best is written to site50-motion.json, which siteScene merges over the shot's own motion.
+// best is written to site50-motion.json, which siteScene merges over the shot's own motion. Since composition wave c1
+// (2026-10-07) the score is led by framing: the share of the take in the blind critics' sweet spot (framing below).
 //   MEDIA_R5_LIGHT=1 node tools/media-r5/motion-search.mjs [--ids=4,21] [--out=tools/media-r5/site50-motion.json]
 //   WHY=1 also prints each shot's rejection tally.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,7 +19,7 @@ import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { lensReport } from './lens-check.mjs';
+import { FORE_SHARE, lensReport } from './lens-check.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { sampleActorTrack } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -26,6 +27,9 @@ import { SHOTS as SHOTS_DIR } from './paths.mjs';
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const IDS = arg('ids', '').split(',').filter(Boolean).map(Number), OUT = arg('out', 'tools/media-r5/site50-motion.json');
 const DUR = 6600, TOWNS = new Set(['urban']);
+// the spread penalty per earlier use of a move family (USAGE_W; 0.5 until composition wave c1 narrowed the moves that
+// frame well, when 0.9 keeps the fifty from settling on three low moves)
+const USAGE_W = Number(process.env.USAGE_W ?? 0.5);
 const rad = (d) => d * Math.PI / 180;
 const MOTION_FIELDS = ['speed', 'curveDegS', 'foeSpeed', 'pinMs', 'cam', 'turrets', 'guns', 'turretKeys', 'turretSweep', 'keepWidth', 'frame', 'lookFrame', 'ease', 'stepMs'];
 
@@ -102,27 +106,87 @@ const STREET_MOVES = [1, -1].flatMap((s) => [
   [`streetCrane${s > 0 ? 'R' : 'L'}`, street([[0, -2 * s, -9, 2, 40, [0, 4, 1.6]], [0.35, -1 * s, -3, 9, 40, [0, 6, 1.4]], [0.7, 0, 6, 24, 42, [0, 10, 0.8]], [1, 0, 13, 32, 44, [0, 16, 0.4]]])],
 ]);
 
+/** Low street moves (composition wave c1, 2026-10-07: the critics' good frames hold the lens about 2 m up and level; the
+ * street moves above climb to 27-34 m and look down on roofs): a dolly back down the street ahead of the tank rising
+ * only to 5 m, and a drop from 9 m into the street ahead of it. */
+const STREET_LOW = [1, -1].flatMap((s) => [
+  [`streetLeadLow${s > 0 ? 'R' : 'L'}`, street([[0, 0.8 * s, 9, 1.6, 38, [0, 0, 1.8]], [0.35, 1.5 * s, 13, 2.2, 38, [0, 1, 1.8]], [0.7, 2 * s, 18, 3.4, 36, [0, 0, 1.6]], [1, 1 * s, 24, 5, 34, [0, -1, 1.4]]])],
+  [`streetDropLow${s > 0 ? 'R' : 'L'}`, street([[0, 0.5 * s, 26, 9, 32, [0, 0, 1.2]], [0.35, 1 * s, 18, 4.5, 34, [0, 0, 1.4]], [0.7, 1.5 * s, 12, 2.2, 38, [0, 0, 1.6]], [1, 2.5 * s, 9, 1.8, 40, [0, 0, 1.6]]])],
+  // the street's dolly zoom: falling back from 9 to 30 m down the street while the lens closes from 40° to 16°, so the
+  // tank keeps its size and the street compresses behind it (close to far without the tank going small)
+  [`streetPullZoom${s > 0 ? 'R' : 'L'}`, street([[0, 0.8 * s, 9, 1.6, 40, [0, 0, 1.6]], [0.5, 1.2 * s, 18, 2.2, 26, [0, 0, 1.5]], [1, 1.5 * s, 30, 3, 16, [0, 0, 1.4]]])],
+]);
+
+/** Low moves for any kind (composition wave c1, 2026-10-07): the critics' composition falls with the lens's look-down
+ * (rank correlation -0.63), its height (-0.57) and its distance (-0.46); their GOOD frames sit about 2 m up, 11-18 m
+ * out, the hull 40-55 % of the frame's height, centred and whole. Range comes from distance at a low height and a
+ * longer lens, not from climbing: a tracking pass off the front quarter, a lead that falls back and rises to 5 m, a low
+ * orbit, a gentle swoop from 7 m, and a long-lens track from 6-9 m up for the wide takes. */
+const lowMoves = (kind) => [1, -1].flatMap((s) => [
+  [`trackLow${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 32, radius: 17, lift: 2.2, fov: 36, lookHero: [0, 1.5, 1.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 62, radius: 11, lift: 1.6, fov: 40, lookHero: [0, 1, 1.5] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 38, radius: 19, lift: 3, fov: 36, lookHero: [0, 1.5, 1.3] }]],
+  [`leadLow${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 10, radius: 11, lift: 1.6, fov: 38, lookHero: [0, 0, 1.6] },
+    { tMs: Math.round(DUR * 0.4), frame: 'travel', lookFrame: 'travel', orbit: s * 22, radius: 15, lift: 2.4, fov: 38, lookHero: [0, 0.5, 1.5] },
+    { tMs: Math.round(DUR * 0.75), frame: 'travel', lookFrame: 'travel', orbit: s * 34, radius: 20, lift: 3.6, fov: 36, lookHero: [0, 0, 1.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 44, radius: 25, lift: 5, fov: 34, lookHero: [0, -1, 1.3] }]],
+  [`orbitLow${s > 0 ? 'R' : 'L'}`, orbitRise(DUR, { ...(s > 0 ? { from: -55, to: 75 } : { from: 55, to: -75 }), radius: [12, 17], lift: [1.6, 4.5], fov: [40, 38] })],
+  [`swoopLow${s > 0 ? 'R' : 'L'}`, swoop(DUR, { side: s, high: [7, 30], low: [2.2, 11], out: [3, 18], fov: [34, 40, 38], lookAhead: 1.5 })],
+  // dolly zooms: the range of close and far with the hull holding its size (the lens closes as it falls back, opens as it
+  // pushes in), the background compressing or opening behind it
+  [`pullZoom${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 15, radius: 10, lift: 1.6, fov: 40, lookHero: [0, 0.5, 1.5] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 22, radius: 19, lift: 2.4, fov: 25, lookHero: [0, 0.5, 1.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 28, radius: 31, lift: 3.2, fov: 16, lookHero: [0, 0.5, 1.4] }]],
+  [`pushZoom${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 38, radius: 32, lift: 3.2, fov: 16, lookHero: [0, 0.5, 1.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 28, radius: 20, lift: 2.4, fov: 25, lookHero: [0, 0.5, 1.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 18, radius: 11, lift: 1.8, fov: 38, lookHero: [0, 0.5, 1.5] }]],
+  ...(kind === 'scene' || kind === 'battle' ? [[`teleTrack${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 30, lift: 6, fov: 26, lookHero: [0, 2, 1.2] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 58, radius: 25, lift: 7.5, fov: 27, lookHero: [0, 1.5, 1.2] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 74, radius: 28, lift: 9, fov: 28, lookHero: [0, 1, 1.1] }]]] : []),
+]);
+
 /** Lens moves by kind: [name, keys]. */
 function lensMoves(kind, town = false) {
-  if (town && kind !== 'scene') return STREET_MOVES;
-  if (town) return [...STREET_MOVES, ...lensMoves(kind)];
-  if (kind === 'tank') return [1, -1].flatMap((s) => [
+  if (town && kind !== 'scene') return [...STREET_MOVES, ...STREET_LOW, ...lowMoves(kind)];
+  if (town) return [...STREET_MOVES, ...STREET_LOW, ...lensMoves(kind)];
+  if (kind === 'tank') return [...lowMoves(kind), ...[1, -1].flatMap((s) => [
     [`swoop${s > 0 ? 'R' : 'L'}`, swoop(DUR, { side: s, high: [34, 66], low: [2.1, 7.5], out: [11, 30] })],
     [`leadReveal${s > 0 ? 'R' : 'L'}`, leadReveal(DUR, { side: s, near: [1.5, 9], far: [26, 50], swing: 38 })],
     [`orbitRise${s > 0 ? 'R' : 'L'}`, orbitRise(DUR, s > 0 ? { from: -70, to: 110 } : { from: 70, to: -110 })],
     [`overtake${s > 0 ? 'R' : 'L'}`, overtake(DUR, { side: s })],
-  ]);
-  if (kind === 'battle') return [1, -1].flatMap((s) => [
+  ])];
+  if (kind === 'battle') return [...lowMoves(kind), ...[1, -1].flatMap((s) => [
     [`swoop${s > 0 ? 'R' : 'L'}`, swoop(DUR, { side: s, high: [42, 80], low: [2.6, 10], out: [14, 36], lookAhead: 10 })],
     [`orbitRise${s > 0 ? 'R' : 'L'}`, orbitRise(DUR, { ...(s > 0 ? { from: -60, to: 100 } : { from: 60, to: -100 }), radius: [11, 32], lift: [2, 24] })],
     [`weave${s > 0 ? 'R' : 'L'}`, weave(DUR, { side: s, close: 7, wide: 26 })],
     [`leadReveal${s > 0 ? 'R' : 'L'}`, leadReveal(DUR, { side: s, near: [1.8, 11], far: [30, 60], swing: 45 })],
-  ]);
-  return [1, -1].flatMap((s) => [
+  ])];
+  return [...lowMoves(kind), ...[1, -1].flatMap((s) => [
     [`swoopHigh${s > 0 ? 'R' : 'L'}`, swoop(DUR, { side: s, high: [70, 110], low: [7, 16], out: [28, 50], fov: [44, 42, 44], lookAhead: 14 })],
     [`orbitRiseHigh${s > 0 ? 'R' : 'L'}`, orbitRise(DUR, { ...(s > 0 ? { from: -40, to: 120 } : { from: 40, to: -120 }), radius: [18, 52], lift: [9, 48], fov: [44, 42] })],
     [`leadRevealHigh${s > 0 ? 'R' : 'L'}`, leadReveal(DUR, { side: s, near: [4, 14], far: [48, 80], swing: 50, fov: [38, 44] })],
-  ]);
+  ])];
+}
+
+/**
+ * The take's framing by the blind critics' measure (composition wave c1, 2026-10-07, calibrate-composition.mjs over 147
+ * frames): sweet, the share of the take with the lens at most 6 m up and looking down no more than 15°, the hull 30-62 %
+ * of the frame's height, whole, its centre in the middle 30 % either side, nothing nearer the lens over FORE_SHARE of the
+ * frame; bad, the share where the critics mark it (a look-down past 18°: BAD_ANGLE in 91 % of frames; the lens over
+ * 13 m; the hull under 20 % of the height; cut while under 58 %; its centre past half way to an edge; a foreground thing
+ * over 6 % of the frame; out of frame).
+ */
+function framing(report) {
+  const ps = report.perSample, n = ps.length || 1;
+  const edge = (p) => (p.box ? Math.abs((p.box[0] + p.box[2]) / 2) : 2);
+  const sweet = ps.filter((p) => p.seen && p.heightM <= 6 && p.pitchDeg >= -15 && p.size >= 0.3 && p.size <= 0.62 && p.whole && edge(p) <= 0.3 && p.fore.share < FORE_SHARE).length / n;
+  const bad = ps.filter((p) => !p.seen || p.pitchDeg < -18 || p.heightM > 13 || p.size < 0.2 || (!p.whole && p.size < 0.58) || edge(p) > 0.5 || p.fore.share >= 0.06).length / n;
+  return { sweet, bad };
 }
 
 const featuresOf = (() => { const cache = new Map(); return (map) => { if (!cache.has(map)) { const f = join(SHOTS_DIR, 'features', `features-${map}.json`); cache.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); } return cache.get(map); }; })();
@@ -143,6 +207,12 @@ function metrics(scene) {
 
 const plan = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {};
 const usage = new Map();
+for (const [n, entry] of Object.entries(plan)) {
+  if (!IDS.length || IDS.includes(Number(n))) continue;
+  const [family, rest = ''] = (entry.note ?? '').split(' at ');
+  const lens = rest.split('; ')[1]?.split(/[ (;]/)[0];
+  for (const k of [lens?.replace(/[LR]$/, ''), family?.split(/[[+-]/)[0]]) if (k) usage.set(k, (usage.get(k) ?? 0) + 1);
+}
 for (const [n, id, kind, title, set, film, still] of SHOTS) {
   if (IDS.length && !IDS.includes(n)) continue;
   const features = featuresOf(set.map);
@@ -228,7 +298,10 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         // the rail as the Studio plays it, against every prop, canopy and roof (lens-check.mjs)
         const lensSeen = model ? lensReport(scene, model) : null;
         if (lensSeen && (lensSeen.blocked > 0.05 || lensSeen.outOfFrame > 0.1)) { reject(lensSeen.blocked > 0.05 ? `lens blocked by ${lensSeen.worst[0]?.by.replace(/^a /, '') ?? 'props'}` : 'hero out of frame between keys'); continue; }
+        if (lensSeen?.inside > 0) { reject('lens inside a record'); continue; }
         const blocked = Math.max(footprintBlocked, lensSeen?.blocked ?? 0);
+        const fr = lensSeen ? framing(lensSeen) : { sweet: 0, bad: 1 };
+        if (fr.bad > 0.5) { reject('framing: half the take outside the critics\' bar'); continue; }
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
         // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
         // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
@@ -237,10 +310,12 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
         const flankSwing = scene.meta.turrets?.style === 'flank' && heroKeys.some((k) => Math.abs(wrapD(k.turretDeg)) >= 40) ? 1 : 0;
         // a move family (left and right alike) and a route family used before cost the next shot, so the fifty mix
         const moveFamily = lens.replace(/[LR]$/, ''), routeFamily = family.split(/[[+-]/)[0];
-        const score = 1.2 * Math.min(range, 7) / 7 + 0.8 * Math.min(m.climb, 30) / 30 + 1.0 * m.front + 0.5 * Math.min(m.speed, speed) / speed + 0.3 * closing
-          + 0.5 * inFrame - 2 * blocked - 0.5 * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
+        // framing leads (composition wave c1): the sweet share and the bad share outweigh the motion terms, whose range
+        // and climb rewards (which drove the lens up into the look-down) are capped low
+        const score = 4 * fr.sweet - 3 * fr.bad + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
+          + 0.3 * inFrame - 2 * blocked - USAGE_W * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
           + 0.6 * flankSwing;
-        results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null });
+        results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null, fr });
       }
     }
     results.sort((a, b) => b.score - a.score);
@@ -256,8 +331,9 @@ for (const [n, id, kind, title, set, film, still] of SHOTS) {
   plan[n] = { note: `${best.family} at ${best.m.speed.toFixed(0)} m/s; ${best.lens}${best.fix ? ` (lens ${best.fix})` : ''}${found.count ? `; ${found.count} tanks` : ''}`, ...MOTION,
     ...(found.count ? { count: found.count } : {}),
     routes: best.routes, ...(best.aim ? { aim: best.aim } : {}), cam: best.cam ?? [...lensMoves(kind, town), ...lensMoves(kind)].find(([l]) => l === best.lens)[1],
-    checks: { lens: `${best.m.near.toFixed(0)}–${best.m.far.toFixed(0)} m`, climb: +best.m.climb.toFixed(1), front: +best.m.front.toFixed(2), inFrame: +best.inFrame.toFixed(2), blocked: +best.blocked.toFixed(2), candidates: results.length } };
-  console.log(`s${String(n).padStart(2, '0')} ${id}: ${plan[n].note} · lens ${plan[n].checks.lens}, climb ${plan[n].checks.climb} m, front ${plan[n].checks.front}, ${results.length} passed (${secs} s)`);
+    checks: { lens: `${best.m.near.toFixed(0)}–${best.m.far.toFixed(0)} m`, climb: +best.m.climb.toFixed(1), front: +best.m.front.toFixed(2), inFrame: +best.inFrame.toFixed(2), blocked: +best.blocked.toFixed(2),
+      sweet: +best.fr.sweet.toFixed(2), bad: +best.fr.bad.toFixed(2), candidates: results.length } };
+  console.log(`s${String(n).padStart(2, '0')} ${id}: ${plan[n].note} · lens ${plan[n].checks.lens}, climb ${plan[n].checks.climb} m, front ${plan[n].checks.front}, sweet ${plan[n].checks.sweet}, bad ${plan[n].checks.bad}, ${results.length} passed (${secs} s)`);
 }
 writeFileSync(OUT, `${JSON.stringify(plan, null, 1)}\n`);
 console.log(`motion plan: ${Object.keys(plan).length} shots -> ${OUT}`);

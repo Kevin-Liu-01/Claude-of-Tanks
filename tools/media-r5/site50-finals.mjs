@@ -150,7 +150,8 @@ async function renderJobs(label, all, file) {
     if (keepPlace && existsSync(leaseMark)) await yieldGpu();
     const code = await cinema(`${label}, ${jobs.length} jobs${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
       ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
-    writeFileSync(leaseMark, new Date().toISOString());
+    // (a run stopped by a signal may never have held the lock: no mark, so a restart does not yield first)
+    if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
     if (stopping) throw new Error(`stopped by a signal in ${label}`);
     if (code === 75 && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
     if (code === 0) continue; // every job rendered: the next pass finds nothing pending
@@ -201,7 +202,7 @@ for (const job of [...films, ...stills].filter(j => failed.has(j.out))) {
   writeFileSync(file, JSON.stringify([{ ...job, resume: 'true' }], null, 1));
   if (keepPlace && existsSync(leaseMark)) await yieldGpu();
   const code = await cinema(`retry ${nameOf(job)}`, ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
-  writeFileSync(leaseMark, new Date().toISOString());
+  if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
   if (stopping) throw new Error(`stopped by a signal in the retry of ${nameOf(job)}`);
   if (done(job)) {
     failed.delete(job.out);

@@ -8,12 +8,21 @@
 // studioCrush.ts) stops blocking once it falls: a felled tree's canopy is no longer over the road.
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { planStudioCrushes } from '../../src/game/studioCrush.ts';
-import { insideRecord, sightBlockers } from './world-model.mjs';
+import { insideRecord, sightBlockers, solidsOf } from './world-model.mjs';
 import { hullOf } from './route-check.mjs';
 
 const LOW_COVER_M = 1.4;
 /** A blocker this large against the hero's width on screen hides it (lensReport). */
 const MAJOR_SHARE = 0.35;
+/** A thing nearer the lens than the hull this large a share of the frame crowds it (media wave m1, 2026-10-07: S04's
+ *  burnt truck box covered about 6 % of the frame's bottom at 2 s). */
+export const FORE_SHARE = 0.04;
+/** The same, counted only inside the foreground zone: the frame's middle 60 % across, from its bottom up to the hull's
+ *  screen box. Houses that line a street stand at the frame's sides and stay out of it; a roof or a wreck under the
+ *  lens is in it. */
+export const FORE_ZONE = 0.03;
+/** A lens looking down more than this many degrees flattens a hull into its roof (composition wave c1). */
+export const STEEP_DEG = 30;
 
 /**
  * When each record the scene's hulls crush falls (ms), by the Studio's plan with each hull's contact rectangle: a
@@ -61,18 +70,22 @@ export function absoluteShots(scene, model) {
  * The lens's view of the hero over the take: { blocked, outOfFrame, samples, worst, blockedAt, perSample } where blocked
  * and outOfFrame are fractions of the samples, worst lists the first blocked moments ({ tMs, by }), blockedAt every
  * blocked time and perSample each sample's { tMs, seen (any hull point in frame), centred (the hull's centre inside
- * 70 % of the frame), clear (no blocker), distM (lens to hull centre) }.
+ * 70 % of the frame), clear (no blocker), distM (lens to hull centre), box (the hull's screen box), whole (the box inside
+ * the frame), size (its half height), fore ({ share, kind, zone, zoneKind }: the largest thing nearer the lens than the
+ * hull, as a share of the frame, and the largest inside the foreground zone, FORE_ZONE), at (the hull's [x, z]), eye
+ * (the lens), pitchDeg (the lens's look up or down; composition wave c1, 2026-10-07: a 40-60° look-down makes the tanks
+ * roof plans) and heightM (the lens over the ground under it) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
   const heroKeys = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
   const heroActor = scene.actors.find((a) => a.name === 'hero');
-  if (!shots.length || !heroActor) return { blocked: 0, outOfFrame: 0, samples: 0, worst: [], blockedAt: [], perSample: [] };
+  if (!shots.length || !heroActor) return { blocked: 0, outOfFrame: 0, inside: 0, samples: 0, worst: [], blockedAt: [], perSample: [] };
   const [halfLength, halfWidth] = hullOf(heroActor.id);
   const cam = {}, pose = {}, hits = [], fallen = crushTimes(scene, model);
-  let samples = 0, blocked = 0, outOfFrame = 0, now = 0;
+  let samples = 0, blocked = 0, outOfFrame = 0, insideCount = 0, now = 0;
   const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || (fallen.get(r) ?? Infinity) <= now;
-  const worst = [], blockedAt = [], perSample = [];
+  const worst = [], blockedAt = [], perSample = [], nearby = [];
   for (let t = 0; t <= dur; t += stepMs) {
     if (!sampleCameraRail(shots, t, cam)) continue;
     now = t;
@@ -91,8 +104,9 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     // in frame: any of the hull's five points inside 95 % of a 16:9 frame at the sample's vertical fov (a close pass
     // sweeps the hull's centre past the frame's edge while the hull fills that side of it)
     const f = [cam.lookX - cam.x, cam.lookY - cam.y, cam.lookZ - cam.z], fl = Math.hypot(...f) || 1;
-    const fw = f.map((v) => v / fl), rl = Math.hypot(fw[2], fw[0]) || 1, right = [fw[2] / rl, 0, -fw[0] / rl];
-    const up = [fw[1] * right[2] - fw[2] * right[1], fw[2] * right[0] - fw[0] * right[2], fw[0] * right[1] - fw[1] * right[0]];
+    // screen right and up as the render has them (2026-10-07: right was mirrored; every check then was symmetric)
+    const fw = f.map((v) => v / fl), rl = Math.hypot(fw[2], fw[0]) || 1, right = [-fw[2] / rl, 0, fw[0] / rl];
+    const up = [right[1] * fw[2] - right[2] * fw[1], right[2] * fw[0] - right[0] * fw[2], right[0] * fw[1] - right[1] * fw[0]];
     const ty = Math.tan((cam.fov ?? 40) * Math.PI / 360), tx = ty * aspect;
     const seen = (p) => {
       const d = [p[0] - cam.x, p[1] - cam.y, p[2] - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
@@ -105,6 +119,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     const centred = cDepth > 0.5 && Math.abs((c[0] * right[0] + c[1] * right[1] + c[2] * right[2]) / cDepth) < tx * 0.7
       && Math.abs((c[0] * up[0] + c[1] * up[1] + c[2] * up[2]) / cDepth) < ty * 0.7;
     const insideAny = insideRecord(model, eye, 0.3), inside = insideAny && !ignore(insideAny) ? insideAny : null;
+    if (inside) insideCount++;
     let blockedRays = 0, by = inside ? `lens inside a ${inside.kind}` : '';
     if (!inside) {
       // a blocker counts when it is large on screen: at least MAJOR_SHARE of the hero's own width there (a pole at
@@ -138,10 +153,88 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     }
     const box = ahead ? [x0, y0, x1, y1].map((v) => +v.toFixed(3)) : null;
     const whole = !!box && box[0] > -0.92 && box[2] < 0.92 && box[1] > -0.92 && box[3] < 0.92;
-    perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z).toFixed(1),
-      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0 });
+    const distM = Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z);
+    // the foreground (media wave m1, 2026-10-07: a burnt truck's cargo box filled the bottom of S04 at 2 s, clear of every
+    // sightline): each record nearer the lens than the hull, its solids' corners on screen, the union clipped to the frame,
+    // as a share of it; the largest is kept. Low crushable cover (fences and wire under the lens), trees (the woods rule
+    // keeps the lens out of them) and what the hulls have crushed by then are left out.
+    let foreShare = 0, foreKind = null, zoneShare = 0, zoneKind = null;
+    const zoneTop = box ? Math.min(box[1], 0.2) : 0.2;
+    model.query(Math.min(cam.x, x) - 10, Math.min(cam.z, z) - 10, Math.max(cam.x, x) + 10, Math.max(cam.z, z) + 10, nearby);
+    for (const r of nearby) {
+      if (r.treeIdx != null || r.canopyR || ignore(r)) continue;
+      const nx = Math.max(r.min[0], Math.min(cam.x, r.max[0])), ny = Math.max(r.min[1], Math.min(cam.y, r.max[1])), nz = Math.max(r.min[2], Math.min(cam.z, r.max[2]));
+      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > distM - 3) continue;
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const o of solidsOf(r)) {
+        if (o.canopy) continue;
+        for (const lx of [-o.hw, o.hw]) for (const lz of [-o.hl, o.hl]) for (const qy of [o.y0, o.y1]) {
+          const qx = o.cx + o.c * lx + o.s * lz, qz = o.cz - o.s * lx + o.c * lz;
+          const d = [qx - cam.x, qy - cam.y, qz - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+          if (depth <= 0.3) continue;
+          const sx = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth / tx, sy = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth / ty;
+          a0 = Math.min(a0, sx); a1 = Math.max(a1, sx); b0 = Math.min(b0, sy); b1 = Math.max(b1, sy);
+        }
+      }
+      const w = Math.min(1, a1) - Math.max(-1, a0), h = Math.min(1, b1) - Math.max(-1, b0);
+      const share = w > 0 && h > 0 ? (w * h) / 4 : 0;
+      if (share > foreShare) { foreShare = share; foreKind = r.kind; }
+      const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
+      const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
+      if (zone > zoneShare) { zoneShare = zone; zoneKind = r.kind; }
+    }
+    perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
+      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind },
+      at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)],
+      pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
   }
-  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, samples, worst, blockedAt, perSample };
+  // inside: the share of samples with the lens inside a record (2026-10-08: the dolly zooms ran S12, S15 and S49's lenses
+  // into rubble and walls for their last 0.2 s, and S30's through a longhouse, all under the 5 % blocked allowance; the
+  // lens inside anything is never allowed)
+  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample };
+}
+
+/**
+ * Whether a burst buries the hull at a lens sample (media wave m1, 2026-10-07: S04's barrage at 5 s): a burst on the
+ * hero, or one placed (no actor) within its reach of the hull or of the lens's line to it, from its start until
+ * `burstMs` after it ends. Returns a predicate over lensReport's perSample entries.
+ */
+export function burstsAt(scene, { burstMs = 1200 } = {}) {
+  const bursts = (scene.effects ?? []).filter((e) => /dust|boom|explosion|barrage|debris|shockwave|smoke/.test(e.type ?? '')
+    && (e.actor === 'hero' || (Array.isArray(e.at) && !e.actor)));
+  const lineDist = (q, a, b) => {
+    const abx = b[0] - a[0], abz = b[1] - a[1], l2 = abx * abx + abz * abz || 1;
+    const u = Math.max(0, Math.min(1, ((q[0] - a[0]) * abx + (q[1] - a[1]) * abz) / l2));
+    return Math.hypot(q[0] - a[0] - u * abx, q[1] - a[1] - u * abz);
+  };
+  return (p) => bursts.some((e) => {
+    const t0 = e.tMs ?? 0, t1 = t0 + burstMs + (e.params?.durationS ?? 0) * 1000;
+    if (p.tMs < t0 || p.tMs > t1) return false;
+    if (e.actor === 'hero') return true;
+    const reach = (e.params?.radiusM ?? 0) + (/huge|large/.test(e.params?.size ?? '') ? 12 : 8);
+    return Math.hypot(e.at[0] - p.at[0], e.at[1] - p.at[1]) < reach || lineDist(e.at, [p.eye[0], p.eye[2]], p.at) < reach * 0.6;
+  });
+}
+
+/**
+ * The take's framing faults from its lens record (media wave m1 and composition wave c1, 2026-10-07: the subject small
+ * in empty ground, cut by the frame or squeezed against its edge, a wreck under the lens, buried in dust), each as the
+ * share of the take's samples: small (the hull under 12 % of the frame's height), cut (crossing an edge while under
+ * 60 % of the height; a close-up that fills the frame is a choice, a mid-size hull half out of it is not), squeezed (its
+ * centre outside the middle 60 % across), crowded (the foreground zone over FORE_ZONE), buried (burstsAt) and steep (the
+ * lens looking down more than STEEP_DEG: the critics' first fault, roof plans over empty ground).
+ */
+export function framingFaults(scene, report) {
+  const ps = report.perSample, n = ps.length || 1, buried = burstsAt(scene);
+  const share = (f) => ps.filter(f).length / n;
+  return {
+    small: share((p) => p.seen && p.size < 0.12),
+    cut: share((p) => p.seen && !p.whole && p.size < 0.6),
+    squeezed: share((p) => p.box && Math.abs((p.box[0] + p.box[2]) / 2) > 0.6),
+    crowded: share((p) => p.fore?.zone > FORE_ZONE),
+    buried: share((p) => p.seen && buried(p)),
+    steep: share((p) => p.pitchDeg < -STEEP_DEG),
+  };
 }
 
 /**
@@ -154,12 +247,17 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
 export function stillMoments(scene, model, designatedMs, { minDistM = 8, apartMs = 900, edgeMs = 400, nearMs = 700, burstMs = 1200 } = {}) {
   const dur = scene.storyboard?.durationMs ?? 0;
   // media wave m1 (2026-10-07): a still keeps the whole hull in frame (not cut by an edge), its centre in the middle
-  // band of the frame (not squeezed to one side), and no burst at the hero just before (dust or a blast would bury it)
-  const bursts = (scene.effects ?? []).filter((e) => e.actor === 'hero' && /dust|boom|huge|barrage|debris|shockwave|smoke/.test(e.type ?? ''));
-  const buried = (t) => bursts.some((e) => t >= (e.tMs ?? 0) && t <= (e.tMs ?? 0) + burstMs);
+  // band of the frame (not squeezed to one side), nothing big in front of it, and no burst at the hero just before (dust
+  // or a blast would bury it): one on the hero, or one placed within its reach of the hull or of the lens's line to it
+  // (S04's barrage at 5 s)
+  const buried = burstsAt(scene, { burstMs });
   const framed = (p) => p.whole && p.box && Math.abs((p.box[0] + p.box[2]) / 2) <= 0.4;
+  const open = (p) => !(p.fore?.zone > FORE_ZONE);
   const samples = lensReport(scene, model).perSample.filter((p) => p.seen && p.clear && p.tMs >= edgeMs && p.tMs <= dur - edgeMs);
-  const good = samples.filter((p) => framed(p) && !buried(p.tMs));
+  // the strictest rule set that leaves a moment: all of them, then the bursts allowed, then the foreground too; the
+  // close portrait looks through the same tiers on its own, so a take keeps its two stills
+  const pools = [samples.filter((p) => framed(p) && open(p) && !buried(p)), samples.filter((p) => framed(p) && open(p)), samples.filter(framed)];
+  const good = pools.find((g) => g.length) ?? [];
   if (!good.length) return [designatedMs];
   // the key moment: the designated instant if it frames well, else the best-framed sample within nearMs of it (the
   // larger hull wins), else the nearest good sample
@@ -168,6 +266,13 @@ export function stillMoments(scene, model, designatedMs, { minDistM = 8, apartMs
   const first = exact ? designatedMs : near.length ? near.reduce((a, b) => (b.size > a.size ? b : a)).tMs
     : good.reduce((a, b) => (Math.abs(b.tMs - designatedMs) < Math.abs(a.tMs - designatedMs) ? b : a)).tMs;
   // the close portrait: the largest hull on screen, at least apartMs from the first, never nearer than minDistM
-  const close = good.filter((p) => p.distM >= minDistM && Math.abs(p.tMs - first) >= apartMs).sort((a, b) => b.size - a.size)[0];
+  // (a close portrait is close: at least 60 % of the largest framed hull in the take, and 18 % of the frame's height)
+  const largest = Math.max(0, ...pools[2].filter((p) => p.distM >= minDistM).map((p) => p.size));
+  const closeEnough = (p) => p.size >= Math.min(largest, Math.max(0.18, 0.6 * largest));
+  let close = null;
+  for (const pool of pools) {
+    close = pool.filter((p) => p.distM >= minDistM && Math.abs(p.tMs - first) >= apartMs && closeEnough(p)).sort((a, b) => b.size - a.size)[0];
+    if (close) break;
+  }
   return close ? [first, close.tMs] : [first];
 }

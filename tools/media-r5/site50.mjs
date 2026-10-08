@@ -12,7 +12,8 @@ import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barra
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
-import { stillMoments } from './lens-check.mjs';
+import { absoluteShots, stillMoments } from './lens-check.mjs';
+import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { choreograph } from './turret-choreo.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 import { worldModel } from './world-model.mjs';
@@ -109,6 +110,42 @@ const boom = (at, tMs, size = 'large') => blast(at, tMs, size, SHOT);
 const huge = (at, tMs) => hugeBlast(at, tMs, SHOT);
 const hitNear = (lat, lon, tMs, size = 'large') => [boom(H(lat, lon), tMs, size), debris(H(lat, lon), tMs + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 })];
 const incoming = (foe, lat, lon, tMs) => [fire(foe, tMs), ...hitNear(lat, lon, tMs + 110)];
+
+/**
+ * Bursts off the sightline (composition wave c1, 2026-10-07: dust and fire buried the hero in S04, S07, S17, S39 and S50).
+ * The placed bursts were set for each set's first, standing staging; a routed hull now drives past them, and some land
+ * between the lens and the hull. A placed explosion or barrage (no actor) whose spread reaches in front of the hull on
+ * the lens's line at its moment (the barrage's midpoint) is reflected through the hull along that line, landing as far
+ * behind it, clear of its own radius, the same distance to the side; its own debris and dust (placed within 3 m of it and
+ * within 300 ms after it, as hitNear lays them) move with it. Returns how many moved.
+ */
+function clearBursts(scene, world) {
+  const shots = absoluteShots(scene, world), hero = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
+  if (!shots.length || !hero?.length) return 0;
+  const cam = {}, pose = {};
+  let moved = 0;
+  for (const e of scene.effects ?? []) {
+    if (e.actor || !Array.isArray(e.at) || !/^(explosion|barrage)$/.test(e.type ?? '')) continue;
+    const t = (e.tMs ?? 0) + (e.params?.durationS ?? 0) * 500;
+    if (!sampleCameraRail(shots, t, cam) || !sampleActorTrack(hero, t, pose)) continue;
+    const dx = pose.x - cam.x, dz = pose.z - cam.z, L = Math.hypot(dx, dz);
+    if (L < 1) continue;
+    const ux = dx / L, uz = dz / L, r = e.params?.radiusM ?? 0;
+    const along = (e.at[0] - cam.x) * ux + (e.at[1] - cam.z) * uz, side = -(e.at[0] - cam.x) * uz + (e.at[1] - cam.z) * ux;
+    const reach = r + (/huge|large/.test(e.params?.size ?? '') ? 12 : 8);
+    if (along - r >= L || Math.abs(side) >= reach || along + r <= 0) continue;
+    const back = L + Math.min(40, Math.max(8, L - along) + r), from = e.at;
+    e.at = [+(cam.x + ux * back - uz * side).toFixed(2), +(cam.z + uz * back + ux * side).toFixed(2)];
+    const dx2 = e.at[0] - from[0], dz2 = e.at[1] - from[1];
+    for (const c of scene.effects) {
+      if (c === e || c.actor || !Array.isArray(c.at) || !/^(debris|dust|shockwave)$/.test(c.type ?? '')) continue;
+      if (c.tMs < (e.tMs ?? 0) || c.tMs > (e.tMs ?? 0) + 300 || Math.hypot(c.at[0] - from[0], c.at[1] - from[1]) > 3) continue;
+      c.at = [+(c.at[0] + dx2).toFixed(2), +(c.at[1] + dz2).toFixed(2)];
+    }
+    moved++;
+  }
+  return moved;
+}
 const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
 // lenses: the Open Graph high three-quarter (over the hero's right shoulder, the hull big in the lower frame, the fight
 // ahead behind it) and the Steinburg high rear quarter (over the engine deck, down the street); k = -1 mirrors sides.
@@ -529,6 +566,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // a routed take is placed and checked against the props by the planner (route-check.mjs propProblems): the lab's
   // spiral nudge would shift its routes off the checked lines
   if (set.autoPlace === false || film.routes) scene.autoPlace = false;
+  const burstWorld = film.routes ? modelOf(set.map) : null;
+  if (burstWorld) clearBursts(scene, burstWorld);
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };

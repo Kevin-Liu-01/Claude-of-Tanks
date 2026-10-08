@@ -71,6 +71,7 @@ for (const shot of SHOTS) {
     assert.deepEqual(props, [], `${id}: the routes crush what they can and meet nothing else`);
     const lens = lensReport(scene, model);
     assert.ok(lens.blocked <= 0.05, `${id}: the lens sees the hero past the props (${(lens.blocked * 100).toFixed(0)} % blocked: ${lens.worst.map((w) => `${w.tMs} ms ${w.by}`).join(', ')})`);
+    assert.equal(lens.inside, 0, `${id}: the lens never passes inside a building, wall or prop (${(lens.inside * 100).toFixed(0)} % of the take)`);
   }
   assert.ok(scene.meta.still.tMs > 0 && scene.meta.still.tMs < dur, `${id}: the still moment lies inside the take`);
   for (const a of scene.actors.filter(a => !a.name.startsWith('foe'))) assert.ok(cast.has(a.id), `${id}: ${a.name} is a cast tank (${a.id})`);
