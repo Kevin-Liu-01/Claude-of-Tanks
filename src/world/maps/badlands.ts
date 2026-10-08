@@ -111,16 +111,16 @@ export default {
     // Broad weathered beds, not high-contrast repeated marker stripes.
     // (the Redrock lane, 2026-10-07, owner: "redrock is really rough"; the walls, domes and far jebels read mauve, the
     // sandstone tile desaturated to a fifth) Wadi Rum's sandstone is red-orange: the tile keeps its saturation and more
-    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.036, clamp01(s * 1.35), clamp01(0.31 + (l - 0.45) * 0.42)],
+    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.036, clamp01(s * 1.35), clamp01(0.31 + (l - 0.45) * 0.38)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     // (ground lane, wave 62: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
     // sandstone" — the squiggles were the tile's marker beds and partings, repeating every 6.45 m up each wall) the
     // bedding is the material's, at the wall's scale: a few thick beds of unequal tone, rust beds 2–5 m thick, joint
     // blocks stepping their weathering along the face and varnish under the ledges (strata 0.12: six tenths of the
     // joints, as Copper Mesa's), and the tile keeps its grain and broad beds without the stamped lines
-    // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show; Titan
-    // and Skybridge run 0.22 and 0.18)
-    roadTint: [0.78, 0.61, 0.51], strata: 0.16, sandstoneMarkers: 0, sandMacro: 0.9,
+    // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show — at the
+    // quiet wash's ceiling, 0.13, with the joints and varnish raised by wallWeather below)
+    roadTint: [0.78, 0.61, 0.51], strata: 0.13, sandstoneMarkers: 0, sandMacro: 0.9,
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
     // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper
@@ -132,12 +132,12 @@ export default {
     // the ramps lie below 13 m, the Disi bench at 10-16 m, the domes' caps at 20-38 m)
     caprockY: [13, 16],
     // (the Redrock lane: the faces keep their joints and varnish under the map's own sun, a head-on light included)
-    wallWeather: [0.45, 0.95],
+    wallWeather: [0.57, 1.21],
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes. (The Redrock lane, 2026-10-07, owner: "redrock
     // is really rough"; the floor's mid-ground read as leopard spots: the mid-relief dapple's 59 m octave lays 1-5 m bump
     // spots that a 30-degree sun turns into a dark blotch field — uMidRelief 0 cleared it in the PR's own renderer,
-    // uSandMacro 0 changed nothing. A trace of its broad roll stays; the wind's ripples carry the sand's grain.)
-    rippleAmp: 0.22, midRelief: 0.12, midReliefFar: 780,
+    // uSandMacro 0 changed nothing. A trace of its broad roll stays; the ripples at the quiet wash's ceiling, 0.06.)
+    rippleAmp: 0.06, midRelief: 0.12, midReliefFar: 780,
   },
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],

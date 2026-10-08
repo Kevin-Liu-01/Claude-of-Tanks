@@ -39,25 +39,26 @@ function wander(t: number, salt: number): number {
   return a + (hash(i + 1, salt) - a) * u;
 }
 
-/** Rounded vertical grooves along a wall run, 0..1 at their deepest: flutes every 7-14 m (a domain-warped cosine). */
+/** Rounded vertical grooves along a wall run, 0..1 at their deepest: flutes every 8-16 m (a domain-warped cosine). */
 function flute(s: number, salt: number): number {
-  const phase = s / 9.5 + 1.1 * wander(s / 31, salt + 11) + hash(3, salt);
+  const phase = s / 11 + 0.8 * wander(s / 31, salt + 11) + hash(3, salt);
   const notch = Math.max(0, Math.cos(phase * Math.PI * 2));
   return notch * notch * (0.45 + 0.55 * wander(s / 17 + 2.3, salt + 12));
 }
 
-/** The chimneys: a narrow cleft every ~70 m of wall on about half the cells, as metres it sets the cliff back. */
+/** The gullies: a broad cleft every ~70 m of wall on about half the cells, as metres it sets the cliff back. (Half-width
+ * 6-10 m and a set-back under 0.8 of it: the 1.33 m grid draws the cleft — a narrower slot aliased into flat facets the
+ * material painted as sand, pale "flames" up the face — and the face never turns past ~85 degrees, so the height
+ * field stays a function a 2 mm seam probe reads as continuous.) */
 function chimney(s: number, salt: number): number {
   const cell = Math.floor(s / 70);
   let back = 0;
   for (let c = cell - 1; c <= cell + 1; c++) {
     if (hash(c, salt + 21) < 0.45) continue;
-    // (half-width 2.8-5.4 m: the playable terrain's 1.33 m grid draws the cleft's walls, where a 1.6 m slot aliased into
-    // flat facets the material painted as sand — pale "flames" up the face)
-    const at = (c + 0.2 + 0.6 * hash(c, salt + 22)) * 70, half = 2.8 + 2.6 * hash(c, salt + 23);
+    const at = (c + 0.2 + 0.6 * hash(c, salt + 22)) * 70, half = 6 + 4 * hash(c, salt + 23);
     const q = (s - at) / half;
     if (q * q >= 1) continue;
-    back = Math.max(back, (7 + 10 * hash(c, salt + 24)) * (1 - q * q) ** 1.5);
+    back = Math.max(back, half * (0.5 + 0.25 * hash(c, salt + 24)) * (1 - q * q) ** 2);
   }
   return back;
 }
@@ -122,7 +123,7 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   // degrees — where the bench running on flat into every groove laid a sand floor in each: pale flames up the face.)
   const benchW = 2 + 9 * w3;
   const bench = disiEnd + benchW + 8 * wander(s / 52 + 1.9, salt + 3);
-  const foot = bench + detail * (3.5 * flute(s, salt) + chimney(s, salt));
+  const foot = bench + detail * (1.6 * flute(s, salt) + chimney(s, salt));
   // near vertical over most of its height: a 78-82 degree face rounding at its foot and its lip
   const rise = H - disiTop - 0.8, run = Math.max(4, rise * (0.19 + 0.55 * soft));
   sectionLip = foot + run;
@@ -131,12 +132,14 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   if (d <= foot) return Math.min(H, cleft);
   if (d >= sectionLip) return H;
   const t = (d - foot) / run;
-  let y = t < 0.12 ? (t * t) / 0.24 : t > 0.88 ? 1 - ((1 - t) * (1 - t)) / 0.24 : (t - 0.06) / 0.88;
+  // (a trapezoid of slope: eased in over the first 12 % and out over the last, linear between — continuous in value and
+  // slope, y = t^2 / (2 * 0.12 * 0.88) on the ends)
+  let y = t < 0.12 ? (t * t) / 0.2112 : t > 0.88 ? 1 - ((1 - t) * (1 - t)) / 0.2112 : (t - 0.06) / 0.88;
   // where the ring draws it, a rounded massif: steep at its foot, its shoulder rounding over (no sharp lip for the rows)
   if (soft > 0) { const e = t * t * (3 - 2 * t); y += soft * (e * (2 - e) - y); }
-  // bedding ledges every ~9-13 m: the face eases back for a moment at each bed
+  // bedding ledges every ~9-13 m: the face eases back for a moment at each bed (its slope 0.7-1.3 of the face's)
   const bed = 9 + 4 * w1, phase = 6.2832 * (y * rise + 7 * w2) / bed;
-  y += detail * 0.5 * (bed / rise) * Math.sin(phase) / 6.2832 * (1 - (2 * y - 1) ** 8);
+  y += detail * 0.3 * (bed / rise) * Math.sin(phase) / 6.2832 * (1 - (2 * y - 1) ** 8);
   return Math.min(H, Math.max(cleft, disiTop + 0.8 + rise * y));
 }
 
@@ -155,18 +158,23 @@ export function redrockCanyonFloorHalfWidth(z: number): number {
 function southRavineZ(across: number): number { return -207 + across * 0.035; }
 function northRavineZ(across: number): number { return 110 + Math.abs(across) * 0.24; }
 
-function canyonWall(across: number, along: number, z: number, toeDistance: number, detail: number,
-  ravines: boolean, lift = 0): number {
-  const west = across < 0;
+/** How far a wall's toe stands back from its floor's edge at z: broad alcoves and buttresses along the run. */
+function recessAt(z: number, west: boolean): number {
   // Unequal buttresses, talus shelves and side washes continue through the
   // whole region. Fading this sculpture out at |z|=300 made the boundary
   // flanks become smooth ramps. Recesses only cut away from the valley floor.
   const sculpt = 0.94 + 0.06 * Math.sin(z * 0.007 + (west ? 0.5 : 2.4));
   const mouthApron = ramp(330, 430, Math.abs(z)) * (1 - ramp(560, 720, Math.abs(z)));
-  const recess = 32 * mouthApron + sculpt * (24
+  return 32 * mouthApron + sculpt * (24
     + 12 * Math.sin(z * 0.029 + (west ? 0.8 : 2.5))
     + 6 * Math.sin(z * 0.071 + (west ? 2.1 : 0.3)));
-  const depth = toeDistance - recess;
+}
+
+function canyonWall(across: number, along: number, z: number, toeDistance: number, detail: number,
+  ravines: boolean, lift = 0): number {
+  const west = across < 0;
+  const sculpt = 0.94 + 0.06 * Math.sin(z * 0.007 + (west ? 0.5 : 2.4));
+  const depth = toeDistance - recessAt(z, west);
   if (depth <= 0) return 0;
   // (the mouths' walls lay their feet out wider; the heads past them close the basin on their own, compact feet)
   const apron = ravines ? ramp(220, 330, Math.abs(z)) : 0;
