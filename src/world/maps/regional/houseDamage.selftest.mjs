@@ -97,8 +97,9 @@ console.log(`house damage: ${described} anatomies from house plans, ${houseless}
 
 // 2. breach: every face of every storey of a sample of houses, determinism, caps, rim and room bounds
 const SAMPLE = [['hessian', 'cottage', 'stone'], ['hessian', 'tavern', 'plaster'], ['franconian', 'rowhouse', 'plaster'], ['kolkhoz', 'cottage', 'plaster'],
-  ['breton', 'cottage', 'stone'], ['dalmatian', 'cottage', 'stone'], ['polder', 'cottage', 'stone'], ['savoyard', 'cottage', 'plaster']];
-let holes = 0, verts = 0, pcs = 0, worst = 0;
+  ['breton', 'cottage', 'stone'], ['dalmatian', 'cottage', 'stone'], ['polder', 'cottage', 'stone'], ['savoyard', 'cottage', 'plaster'],
+  ['glencanyon', 'megatower', 'plaster2']];
+let holes = 0, verts = 0, pcs = 0, worst = 0, poured = 0, reinforced = 0;
 for (const [styleId, id, wall] of SAMPLE) {
   const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
   if (!style?.builders[id]) continue;
@@ -131,10 +132,15 @@ for (const [styleId, id, wall] of SAMPLE) {
         }
       }
     }
+    if (f.layers.some((l) => l.material === 'concrete')) {
+      poured++;
+      if (one.runs.some((run) => run.bucket === 'structureMetal' && run.role === 'rim' && run.idx.length)) reinforced++;
+    }
     verts += one.mesh.vertices; pcs += one.pieces.count; worst = Math.max(worst, one.mesh.vertices); holes++;
   }
 }
-console.log(`house damage: ${holes} breaches deterministic, within the caps (worst ${worst} vertices, mean ${(verts / holes).toFixed(0)} vertices and ${(pcs / holes).toFixed(1)} pieces), rims inside their cuts, rooms behind the walls`);
+assert.ok(poured > 0 && reinforced >= poured * 0.8, `a poured wall's breaches show their bars (${reinforced} of ${poured})`);
+console.log(`house damage: ${holes} breaches deterministic, within the caps (worst ${worst} vertices, mean ${(verts / holes).toFixed(0)} vertices and ${(pcs / holes).toFixed(1)} pieces), rims inside their cuts, rooms behind the walls, ${reinforced} of ${poured} concrete breaches with their bars`);
 
 // 3. damaged: deterministic, within its caps (1,500 vertices, 48 pieces), its spalls shallow cuts on their faces, the
 // glass hidden
@@ -167,7 +173,7 @@ console.log(`house damage: ${stages} damaged stages deterministic and within the
 
 // 4. collapse: deterministic, within a house's caps (16,000 vertices, 240 pieces), the whole structure hidden, the
 // remnant within the footprint and below the storey, the heap within the mound's footprint and seated on its surface
-import { domeMound } from './fracture.ts';
+import { bodyCentre, domeMound } from './fracture.ts';
 let falls = 0, fv = 0;
 for (const [styleId, id, wall] of SAMPLE) {
   const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
@@ -177,7 +183,7 @@ for (const [styleId, id, wall] of SAMPLE) {
   const a = describe({ structureIdx: 4, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
     massClass: 'house', seed: 12, kitPlan: regionalKitPlanOf(parts) });
   assert.ok(a && collapse, `${styleId}/${id}: a collapse builder`);
-  const mound = domeMound(a), rx = a.w / 2 + 1.05, rz = a.d / 2 + 1.05;
+  const mound = domeMound(a), rx = a.w / 2 + 1.05, rz = a.d / 2 + 1.05, [cx, cz] = bodyCentre(a);
   const one = writers(16000, 240), two = writers(16000, 240);
   const res = collapse(a, 77, one), again = collapse(a, 77, two);
   assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id}: a collapse writes the same bytes twice`);
@@ -185,10 +191,11 @@ for (const [styleId, id, wall] of SAMPLE) {
   assert.deepEqual(again, res);
   assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${styleId}/${id}: a collapse hides the structure`);
   for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
-    const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+    const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     if (run.role === 'rubble') {
       assert.ok((x / (rx + 0.6)) ** 2 + (z / (rz + 0.6)) ** 2 <= 1.0001, `${styleId}/${id}: rubble inside the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
-      assert.ok(y >= mound(x, z) - 1.2 && y <= mound(x, z) + 1.6, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${mound(x, z).toFixed(2)})`);
+      const m = mound(x + cx, z + cz);
+      assert.ok(y >= m - 1.2 && y <= m + 1.6, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
     } else if (run.role === 'remnant') {
       assert.ok(Math.abs(x) <= a.w / 2 + 1 && Math.abs(z) <= a.d / 2 + 1, `${styleId}/${id}: the remnant inside the footprint`);
       assert.ok(y <= Math.max(a.storeys[0].y1 + 0.5, ...a.chimneys.map((c) => c.y1)) + 0.05, `${styleId}/${id}: the remnant no taller than its storey or a stack`);
@@ -225,13 +232,14 @@ for (const [styleId, id, wall] of SAMPLE) {
   const a = describe({ structureIdx: 5, mapId: 'damage', builder: id, style: styleId, parts, w, d, h, placement: { x: 0, y: 0, z: 0, yaw: 0 },
     massClass: 'house', seed: 14, kitPlan: regionalKitPlanOf(parts) });
   if (!a?.roof) continue;
+  const [cx, cz] = bodyCentre(a);
   const one = writers(6000, 160), two = writers(6000, 160);
   const res = sectionDown(a, a.roof.section, 31, one), again = sectionDown(a, a.roof.section, 31, two);
   assert.deepEqual(JSON.stringify(two.runs), JSON.stringify(one.runs), `${styleId}/${id}: the roof falls the same way twice`);
   assert.deepEqual(again, res);
   assert.ok(res.hides.some((x) => x.section === a.roof.section && x.partClass === 'roof'), `${styleId}/${id}: the fallen roof's covering hidden`);
   for (const run of one.runs) for (let i = 0; i < run.pos.length; i += 3) {
-    const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+    const x = run.pos[i] - cx, y = run.pos[i + 1], z = run.pos[i + 2] - cz;
     assert.ok(Math.abs(x) <= a.w / 2 + 1.5 && Math.abs(z) <= a.d / 2 + 1.5, `${styleId}/${id}: the fallen roof inside the footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
     assert.ok(y <= a.roof.ridgeY + 0.3 && y >= -0.1, `${styleId}/${id}: under the ridge (${y.toFixed(2)} of ${a.roof.ridgeY.toFixed(2)})`);
   }

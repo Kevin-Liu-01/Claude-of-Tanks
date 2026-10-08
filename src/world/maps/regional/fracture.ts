@@ -212,6 +212,58 @@ function inOpening(f: DamageFace, u: number, y: number): boolean {
   return f.openings.some((o) => Math.abs(u - o.u) < o.w / 2 && y > o.y0 && y < o.y0 + o.h);
 }
 
+type FacePt = readonly [number, number, number];
+
+/** A convex polygon on a face (u, y, o) clipped to the half-plane a·u + b·y ≤ c (Sutherland–Hodgman; o follows). */
+function clipFacePoly(poly: readonly FacePt[], a: number, b: number, c: number): FacePt[] {
+  const out: FacePt[] = [];
+  for (let k = 0; k < poly.length; k++) {
+    const p = poly[k], q = poly[(k + 1) % poly.length];
+    const sp = a * p[0] + b * p[1] - c, sq = a * q[0] + b * q[1] - c;
+    if (sp <= 0) out.push(p);
+    if ((sp <= 0) !== (sq <= 0)) {
+      const t = sp / (sp - sq);
+      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]);
+    }
+  }
+  return out;
+}
+
+function facePolyArea(poly: readonly FacePt[]): number {
+  let a = 0;
+  for (let k = 0; k < poly.length; k++) {
+    const p = poly[k], q = poly[(k + 1) % poly.length];
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return Math.abs(a) / 2;
+}
+
+/**
+ * A convex polygon of redrawn wall less the face's openings and kept to the face's width: the convex pieces left (a
+ * breach beside a door redraws the wall up to its jamb, not over it, and leaves no gap where a whole quad would have
+ * touched it).
+ */
+function wallPieces(f: DamageFace, poly: readonly FacePt[]): FacePt[][] {
+  const half = f.width / 2;
+  const inWidth = clipFacePoly(clipFacePoly(clipFacePoly(poly, 1, 0, half), -1, 0, half), 0, -1, 0.05);
+  let pieces: FacePt[][] = inWidth.length >= 3 ? [inWidth] : [];
+  for (const o of f.openings) {
+    const u0 = o.u - o.w / 2, u1 = o.u + o.w / 2, y0 = o.y0, y1 = o.y0 + o.h;
+    const next: FacePt[][] = [];
+    for (const p of pieces) {
+      let minU = Infinity, maxU = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const v of p) { minU = Math.min(minU, v[0]); maxU = Math.max(maxU, v[0]); minY = Math.min(minY, v[1]); maxY = Math.max(maxY, v[1]); }
+      if (maxU <= u0 || minU >= u1 || maxY <= y0 || minY >= y1) { next.push(p); continue; }
+      const mid = clipFacePoly(clipFacePoly(p, -1, 0, -u0), 1, 0, u1);
+      for (const q of [clipFacePoly(p, 1, 0, u0), clipFacePoly(p, -1, 0, -u1), clipFacePoly(mid, 0, 1, y0), clipFacePoly(mid, 0, -1, -y1)]) {
+        if (q.length >= 3 && facePolyArea(q) > 1e-5) next.push(q);
+      }
+    }
+    pieces = next;
+  }
+  return pieces;
+}
+
 /**
  * The redrawn wall runs a hair past the cut and a hair proud of the intact face (OVERLAP, LIFT), so no crack opens along
  * the circle where the presentation's discard meets it (the two coincide in texture and tint).
@@ -331,9 +383,9 @@ function masonryRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, m: Maso
   if (!mesh.begin(bucket, 'rim', true)) return true;
   // the blocks the cut clipped and the blow left: their faces, clipped to the circle
   for (const b of blocks) {
-    if (b.gone || inOpening(f, (b.u0 + b.u1) / 2, (b.y0 + b.y1) / 2)) continue;
+    if (b.gone) continue;
     const poly = rectInCircle(b.u0, b.y0, b.u1, b.y1, cu, cy, r + OVERLAP);
-    if (poly.length) mesh.facePoly(pen, bucket, poly.map(([u, y]) => [u, y, LIFT] as const), n, tint, 1);
+    if (poly.length) for (const piece of wallPieces(f, poly.map(([u, y]) => [u, y, LIFT] as const))) mesh.facePoly(pen, bucket, piece, n, tint, 1);
   }
   // the gap's sides: where a standing block meets a fallen one, its end or bed through the wall's depth
   const shade = 0.72;
@@ -393,7 +445,7 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
     for (let i = 0; i < N; i++) {
       const th0 = (i / N) * Math.PI * 2, th1 = ((i + 1) / N) * Math.PI * 2;
       const q = [at(i, R + OVERLAP, LIFT), at(i + 1, R + OVERLAP, LIFT), at(i + 1, skinEdge(th1), LIFT), at(i, skinEdge(th0), LIFT)];
-      if (q.every(inFace) && !q.some((c) => inOpening(pen.f, c[0], c[1]))) mesh.facePoly(pen, skin.bucket, [q[0], q[3], q[2], q[1]], n, skin.tint, 1);
+      for (const piece of wallPieces(pen.f, [q[0], q[3], q[2], q[1]])) mesh.facePoly(pen, skin.bucket, piece, n, skin.tint, 1);
     }
     // the skin's lip: its broken edge through its own thickness (or, alone, through the wall)
     const lip = core ? t : depth;
@@ -410,7 +462,7 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
     for (let i = 0; i < N; i++) {
       const th0 = (i / N) * Math.PI * 2, th1 = ((i + 1) / N) * Math.PI * 2;
       const q = [at(i, skinEdge(th0), -t), at(i + 1, skinEdge(th1), -t), at(i + 1, coreEdge(th1), -t), at(i, coreEdge(th0), -t)];
-      if (q.every(inFace) && !q.some((c) => inOpening(pen.f, c[0], c[1]))) mesh.facePoly(pen, core.bucket, [q[0], q[3], q[2], q[1]], n, core.tint, 0.86);
+      for (const piece of wallPieces(pen.f, [q[0], q[3], q[2], q[1]])) mesh.facePoly(pen, core.bucket, piece, n, core.tint, 0.86);
     }
     // its ragged returns through the wall
     for (let i = 0; i < N; i++) {
@@ -422,6 +474,64 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
     }
   }
   mesh.end();
+  // poured concrete: the reinforcement left in the break. Two mats of bars at 20 cm each way near the wall's faces (one
+  // mat in a thin wall); where a bar crosses the hole the blow stripped the concrete off it: a short span is left whole,
+  // bowed with the blow, a longer one snapped into stubs bent along it. The grid does not centre on the hole.
+  const concrete = skin.material === 'concrete' ? skin : core?.material === 'concrete' ? core : null;
+  if (concrete && mesh.begin('structureMetal', 'rim')) {
+    const rust: Rgb = [0.2, 0.11, 0.07], BAR = 0.016, SPACING = 0.2, MAX_BARS = 40;
+    const edgeOf = core ? coreEdge : skinEdge;
+    const push = hole.dirX * pen.f.out[0] + hole.dirZ * pen.f.out[2] <= 0 ? -1 : 1; // into the wall, or out of it
+    const mats = depth > 0.16 ? [-0.05, -depth + 0.05] : [-depth / 2];
+    const bend = (o: number, k: number) => Math.max(-depth - 0.03, Math.min(0.03, o + push * k));
+    // half the chord a grid line (offset `off` across it) cuts through the ragged edge on side s; 0 when it misses
+    const halfChord = (off: number, s: number, vertical: boolean): number => {
+      let h = Math.sqrt(Math.max(0, r * r - off * off));
+      for (let pass = 0; pass < 2; pass++) {
+        const rad = edgeOf(vertical ? Math.atan2(s * h, off) : Math.atan2(off, s * h));
+        h = rad > Math.abs(off) ? Math.sqrt(rad * rad - off * off) : 0;
+      }
+      return h;
+    };
+    const P = (vertical: boolean, off: number, along: number, o: number, sag = 0): Vec3 => {
+      const u = vertical ? cu + off : cu + along, y = vertical ? cy + along : cy + off;
+      return [pen.x(u, o), pen.y(y) - sag, pen.z(u, o)];
+    };
+    const onWall = (vertical: boolean, off: number, along: number) => {
+      const u = vertical ? cu + off : cu + along, y = vertical ? cy + along : cy + off;
+      return inFace([u, y, 0]) && !inOpening(pen.f, u, y);
+    };
+    // the crossings first, so a large hole thins its bars evenly rather than running out on one side
+    const lines: Array<[boolean, number, number, number, number]> = []; // vertical, off, o, the two half chords
+    for (const o of mats) {
+      const phase = rng() * SPACING;
+      for (const vertical of [true, false]) {
+        for (let off = phase - Math.ceil((r + phase) / SPACING) * SPACING; off < r; off += SPACING) {
+          const hi = halfChord(off, 1, vertical), lo = halfChord(off, -1, vertical);
+          if (hi > 0.02 && lo > 0.02) lines.push([vertical, off, o, hi, lo]);
+        }
+      }
+    }
+    const keep = Math.min(0.85, MAX_BARS / Math.max(1, lines.length));
+    for (const [vertical, off, o, hi, lo] of lines) {
+      if (rng() >= keep) continue;
+      const droop = vertical ? 0 : 0.04; // a horizontal bar sags under its own weight
+      if (hi + lo < 0.75 && rng() < 0.5) {
+        // a short span left whole, bowed with the blow
+        const a = P(vertical, off, hi + 0.03, o), b = P(vertical, off, -lo - 0.03, o);
+        const m = P(vertical, off, (hi - lo) / 2, bend(o, 0.04 + rng() * 0.1), droop * rng());
+        if (onWall(vertical, off, hi) && onWall(vertical, off, -lo)) { beamBetween(mesh, a, m, BAR, BAR, pen.f.out, rust); beamBetween(mesh, m, b, BAR, BAR, pen.f.out, rust); }
+        continue;
+      }
+      // snapped: a stub from each side, bent along the blow
+      for (const [edge, dir] of [[hi, -1], [-lo, 1]] as const) {
+        if (rng() < 0.25 || !onWall(vertical, off, edge)) continue;
+        const reach = Math.min(Math.abs(edge) * 0.85, 0.06 + rng() * 0.3);
+        const a = P(vertical, off, edge - dir * 0.03, o), b = P(vertical, off, edge + dir * reach, bend(o, 0.02 + rng() * 0.12), droop * reach * rng() * 3);
+        beamBetween(mesh, a, b, BAR, BAR, pen.f.out, rust);
+      }
+    }
+  }
   // the pieces: plates of render, chunks of the core, along the blow
   const speed = blowSpeed(hole), count = Math.min(24, Math.round(6 + r * 14));
   for (let k = 0; k < count; k++) {
@@ -431,6 +541,12 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
     const shape: DebrisShape = slot.material === 'plaster' ? 'plate' : slot.material === 'adobe' ? 'clod' : slot.material === 'brick' ? 'brick'
       : slot.material === 'plank' ? 'splinter' : slot.material === 'metal' ? 'sheet' : 'chunk';
     const s = 0.06 + rng() * 0.16;
+    if (slot.material === 'concrete' && k % 5 === 4) {
+      // a cut length of bar torn out with the concrete
+      if (!throwPiece(pieces, pen, hole, rng, 'structureMetal', 'rebar', cu + Math.cos(th) * rad, cy + Math.sin(th) * rad, -0.05,
+        0.016, 0.016, 0.2 + rng() * 0.35, [0.2, 0.11, 0.07], speed)) break;
+      continue;
+    }
     if (!throwPiece(pieces, pen, hole, rng, slot.bucket, shape, cu + Math.cos(th) * rad, cy + Math.sin(th) * rad, fromCore ? -depth * 0.4 : 0,
       s, shape === 'plate' ? s * 0.18 : s * 0.7, s * 0.8, slot.tint, speed)) break;
   }
@@ -790,16 +906,29 @@ function quatFromBasis(x: Vec3, y: Vec3, z: Vec3): [number, number, number, numb
 // ---------------------------------------------------------------------------------------------------- collapse
 
 /**
- * The ground under a collapsed house as the sim lays its rubble mound (DESTRUCTION.md §7: sim/terrainDeformation.ts
- * rubbleMoundHeightAt), in the body frame: the height of the pile's surface above the house's base at (x, z). Until
- * the core publishes the mound, a dome over the footprint and a metre round it, its crown from the rubble's volume.
+ * The middle of the house's ground storey in the body frame: the mean of its four faces' middles (a builder can set its
+ * main body off the plot's centre, a tower behind its forecourt, a hall beside its yard). The origin without storeys.
  */
-export type RubbleMound = (x: number, z: number) => number;
-export function domeMound(anatomy: StructureDamageAnatomy): RubbleMound {
-  const rx = anatomy.w / 2 + 1, rz = anatomy.d / 2 + 1;
+export function bodyCentre(anatomy: StructureDamageAnatomy): [number, number] {
+  const faces = anatomy.storeys[0]?.faces;
+  if (!faces?.length) return [0, 0];
+  let x = 0, z = 0;
+  for (const f of faces) { x += f.origin[0]; z += f.origin[2]; }
+  return [x / faces.length, z / faces.length];
+}
+
+/**
+ * The ground under a collapsed house as the sim lays its rubble mound, in the body frame: the height of the pile's
+ * surface above the terrain at (x, z). The world gives the sim's own (destructionKit.ts bodyMoundHeightAt over
+ * sim/terrainDeformation.ts rubbleMoundHeightAt); without it (an offline preview, a test), a dome over the house's
+ * footprint and a metre round it, its crown from the storeys.
+ */
+export type MoundHeight = (x: number, z: number) => number;
+export function domeMound(anatomy: StructureDamageAnatomy): MoundHeight {
+  const rx = anatomy.w / 2 + 1, rz = anatomy.d / 2 + 1, [cx, cz] = bodyCentre(anatomy);
   const crown = Math.max(0.8, Math.min(2.6, anatomy.storeys.length * 0.55 + 0.4));
   return (x, z) => {
-    const q = (x / rx) ** 2 + (z / rz) ** 2;
+    const q = ((x - cx) / rx) ** 2 + ((z - cz) / rz) ** 2;
     return q >= 1 ? 0 : crown * Math.pow(1 - q, 0.7);
   };
 }
@@ -938,18 +1067,18 @@ function heapChunk(mesh: Mesh, slot: FractureSlot, cx: number, cy: number, cz: n
  * and out from the storeys and the roof.
  */
 export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out: { mesh: DamageMeshWriter; pieces: DamagePieceWriter },
-  mound: RubbleMound = domeMound(anatomy)): DamageStageResult {
+  mound: MoundHeight = domeMound(anatomy)): DamageStageResult {
   const rng = damageRng(seed);
   const extras = extrasOf(anatomy);
   const mesh = new Mesh(out.mesh);
-  const st0 = anatomy.storeys[0];
+  const st0 = anatomy.storeys[0], [cx, cz] = bodyCentre(anatomy);
   // the remnant: the ground storey's faces to their stubs
   if (st0) for (const f of st0.faces) remnantWall(mesh, new FacePen(f, extras?.surfaces.get(f.section) ?? fallbackSurface(f)), anatomy, rng);
   // the plinth stays where it was
   if (anatomy.plinth && mesh.begin(anatomy.plinth.slot.bucket, 'remnant')) {
-    const p = anatomy.plinth, hw = anatomy.w / 2 + p.out, hd = anatomy.d / 2 + p.out, y = p.h;
+    const p = anatomy.plinth, hw = anatomy.w / 2 + p.out, hd = anatomy.d / 2 + p.out, y = st0?.y0 ?? p.h; // the ground floor sits on the plinth (house.ts), wherever the house was placed
     const t = p.slot.tint;
-    mesh.quadUv([-hw, y, hd], [hw, y, hd], [hw, y, -hd], [-hw, y, -hd], [0, 1, 0], 0.5, t);
+    mesh.quadUv([cx - hw, y, cz + hd], [cx + hw, y, cz + hd], [cx + hw, y, cz - hd], [cx - hw, y, cz - hd], [0, 1, 0], 0.5, t);
   }
   // the chimney stacks stand (a stack that rose from the roof falls with it)
   if (anatomy.remnant.chimneys) for (const c of anatomy.chimneys) {
@@ -967,7 +1096,7 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
     for (let i = 0; i < count; i++) {
       // a point in the footprint's ellipse, drawn toward the middle
       const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * (0.4 + 0.6 * rng());
-      const x = Math.cos(a) * r * rx, z = Math.sin(a) * r * rz;
+      const x = cx + Math.cos(a) * r * rx, z = cz + Math.sin(a) * r * rz;
       const timber = slot.material === 'timber' || slot.material === 'plank';
       const flat = slot.material === 'tile' || slot.material === 'slate' || slot.material === 'plaster' || slot.material === 'infill' || slot.material === 'metal';
       const sx = timber ? 0.5 + rng() * 1.1 : flat ? 0.12 + rng() * 0.22 : 0.12 + rng() * 0.26;
@@ -987,12 +1116,12 @@ export function collapseHouse(anatomy: StructureDamageAnatomy, seed: number, out
     const shape: DebrisShape = slot.material === 'brick' ? 'brick' : slot.material === 'stone' ? 'block' : slot.material === 'rubble' ? 'stone'
       : slot.material === 'timber' ? 'beam' : slot.material === 'plank' ? 'splinter' : slot.material === 'tile' ? 'tile' : slot.material === 'slate' ? 'slate'
         : slot.material === 'thatch' ? 'straw' : slot.material === 'adobe' || slot.material === 'earth' ? 'clod' : slot.material === 'metal' ? 'sheet' : 'chunk';
-    const x = (rng() - 0.5) * anatomy.w, z = (rng() - 0.5) * anatomy.d, y = 1 + rng() * (top - 1);
-    const out2 = Math.hypot(x, z) || 1, sp = 1.5 + rng() * 3;
+    const ox = (rng() - 0.5) * anatomy.w, oz = (rng() - 0.5) * anatomy.d, x = cx + ox, z = cz + oz, y = 1 + rng() * (top - 1);
+    const out2 = Math.hypot(ox, oz) || 1, sp = 1.5 + rng() * 3;
     const s = shape === 'beam' ? [1 + rng() * 1.6, 0.16, 0.16] : shape === 'tile' ? [0.2, 0.015, 0.34] : [0.15 + rng() * 0.25, 0.1 + rng() * 0.15, 0.12 + rng() * 0.2];
     const ang = rng() * Math.PI * 2;
     if (!out.pieces.push(slot.bucket, shape, Math.floor(rng() * 4), x, y, z, 0, Math.sin(ang / 2), 0, Math.cos(ang / 2), s[0], s[1], s[2],
-      slot.tint[0], slot.tint[1], slot.tint[2], (x / out2) * sp, -1 - rng() * 2, (z / out2) * sp)) break;
+      slot.tint[0], slot.tint[1], slot.tint[2], (ox / out2) * sp, -1 - rng() * 2, (oz / out2) * sp)) break;
   }
   return { cuts: [], hides: [{ section: null, partClass: null }] };
 }
@@ -1031,7 +1160,7 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
   if (!roof) return { cuts: [], hides: [] };
   const rng = damageRng(seed);
   const mesh = new Mesh(out.mesh);
-  const cover = roof.covering, timber = roof.structure;
+  const cover = roof.covering, timber = roof.structure, [cx, cz] = bodyCentre(anatomy);
   const thatch = cover.material === 'thatch', earth = cover.material === 'earth';
   const charred = (c: Rgb, k: number): Rgb => [c[0] * k, c[1] * k * 0.92, c[2] * k * 0.85];
   const coverTint = thatch ? charred(cover.tint, 0.42) : cover.tint;
@@ -1137,7 +1266,7 @@ export function roofDown(anatomy: StructureDamageAnatomy, seed: number, out: { m
       }
     }
     for (let k = 0; k < 60; k++) {
-      const p: Vec3 = [(rng() - 0.5) * anatomy.w * 0.8, roof.eaveY - 0.3, (rng() - 0.5) * anatomy.d * 0.8];
+      const p: Vec3 = [cx + (rng() - 0.5) * anatomy.w * 0.8, roof.eaveY - 0.3, cz + (rng() - 0.5) * anatomy.d * 0.8];
       if (!throwPieceAt(out.pieces, rng, cover.bucket, 'clod', p, [0.25 + rng() * 0.3, 0.15 + rng() * 0.2, 0.25 + rng() * 0.3], cover.tint, 1)) break;
     }
   }
