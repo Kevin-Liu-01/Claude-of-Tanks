@@ -302,6 +302,8 @@ interface SuspensionEntry {
   anchorY: number;
   anchorZ: number;
   x: number;
+  /** A paired bogie's second arm: its hull pivot is an earlier entry's, which already draws the boss. */
+  sharedAnchor?: boolean;
 }
 
 interface WheelSpinner {
@@ -4096,6 +4098,20 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   const buildRunningGearRunningGearStage14 = (): void => {
     buildRunningGearAssemblyStage7();
+    // Fleet lane round 1 (2026-10-07): paired bogies (Horstmann, Chieftain) hang two arms from one hull pivot. Each
+    // arm used to draw its own pivot boss at the same spot, two coincident forgings whose end caps fought in depth
+    // (the circularCapOverlap finding on chieftain5 / chieftain_mk10). The second arm's pivot boss now collapses.
+    for (let i = 0; i < suspensionEntries.length; i++) {
+      const link = suspensionEntries[i];
+      for (let j = 0; j < i; j++) {
+        const earlier = suspensionEntries[j];
+        if (earlier.side === link.side && !earlier.sharedAnchor && Math.abs(earlier.x - link.x) < 1e-3
+          && Math.abs(earlier.anchorY - link.anchorY) < 1e-3 && Math.abs(earlier.anchorZ - link.anchorZ) < 1e-3) {
+          link.sharedAnchor = true;
+          break;
+        }
+      }
+    }
   };
   buildRunningGearRunningGearStage14();
   // Local +Z points from the hull pivot to the wheel axle. A slightly wider
@@ -4187,6 +4203,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _s.set(width, radius, radius);
       _v.x = link.side * center;
     }
+    if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
     _m.compose(_v, _q, _s);
     suspensionJointIM.setMatrixAt(index, _m);
   }
