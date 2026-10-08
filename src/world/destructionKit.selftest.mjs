@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { BoxGeometry, BufferAttribute, Float32BufferAttribute } from 'three';
 import {
-  bodyMoundHeightAt, damageSeed, registerStructureDamageKit, structureDamageKitChain,
+  bodyMoundHeightAt, damageSeed, holeOutlineK, registerStructureDamageKit, structureDamageKitChain,
 } from './destructionKit.ts';
 import { DEFAULT_STRUCTURE_DAMAGE_KIT, describeDefault } from './destructionDefaultKit.ts';
 import { createStructureDamageSeam, describeStructure, tagStructureVertices } from './structureDamageSeam.ts';
@@ -129,8 +129,8 @@ assert.deepEqual(results.damaged.result.hides, [{ section: null, partClass: 'gla
     }
   }
 }
-// breach: the rim's units cover the band the cut's blocky edge runs in (0.75 r – 1.25 r) on the front wall, inside the
-// wall's thickness, the render lip just past it; the room is dark; one cut
+// breach: the rim's units round the hole's ragged outline on the front wall (wave 277: no porthole), inside the wall's
+// thickness, the render lip just past it in broken arcs; the room is dark; one cut
 const breachRuns = results.breach.writers.mesh.runs;
 const rimRuns = breachRuns.filter((r) => r.role === 'rim');
 assert.deepEqual(rimRuns.map((r) => r.bucket), ['stone', 'stone'], 'the core\'s units round the hole, then in the render\'s broken-back ring');
@@ -138,39 +138,60 @@ const holeX = 1, holeY = 2, depth = front.layers.reduce((s, l) => s + l.thicknes
 for (const v of rimRuns.flatMap((r) => r.v)) {
   assert.ok(v[2] <= 4 + 1e-9 && v[2] >= 4 - depth - 0.35, `inside the wall, nothing proud of it (z ${v[2].toFixed(3)})`);
 }
-const boxes = [];
-for (let i = 0; i < rimRuns[0].v.length; i += 24) {
-  const box = rimRuns[0].v.slice(i, i + 24);
-  boxes.push([Math.min(...box.map((v) => v[0])), Math.max(...box.map((v) => v[0])), Math.min(...box.map((v) => v[1])), Math.max(...box.map((v) => v[1]))]);
-  const centre = Math.hypot((boxes.at(-1)[0] + boxes.at(-1)[1]) / 2 - holeX, (boxes.at(-1)[2] + boxes.at(-1)[3]) / 2 - holeY);
-  assert.ok(centre > 0.9 * 0.7 && centre < 0.9 * 1.3, `a rim unit stands in the band (${(centre / 0.9).toFixed(2)} r)`);
+// the outline at angle θ (atan2(up, along u); the front's u is +x): holeOutlineK of the edge's distance, the lobes the
+// FX lane's cut follows
+const edgeAt = (theta) => 0.9 * holeOutlineK(theta, hole.seed) / 0.8;
+const boxesOf = (run) => {
+  const out = [];
+  for (let i = 0; i < run.v.length; i += 24) {
+    const box = run.v.slice(i, i + 24);
+    const b = [Math.min(...box.map((v) => v[0])), Math.max(...box.map((v) => v[0])), Math.min(...box.map((v) => v[1])), Math.max(...box.map((v) => v[1]))];
+    const dx = (b[0] + b[1]) / 2 - holeX, dy = (b[2] + b[3]) / 2 - holeY;
+    out.push({ b, dist: Math.hypot(dx, dy), theta: Math.atan2(dy, dx) });
+  }
+  return out;
+};
+const boxes = boxesOf(rimRuns[0]);
+for (const box of boxes) {
+  const ratio = box.dist / edgeAt(box.theta);
+  assert.ok(ratio > 0.62 && ratio < 1.38, `a rim unit stands round the ragged edge (${ratio.toFixed(2)} of its distance at ${box.theta.toFixed(2)})`);
 }
+// the rim is not a ring: its units stand out in the lobes and in in the hollows
+const lobes = boxes.filter((box) => edgeAt(box.theta) > 0.9 * 1.1), hollows = boxes.filter((box) => edgeAt(box.theta) < 0.9 * 0.9);
+const meanDist = (list) => list.reduce((sum, box) => sum + box.dist, 0) / Math.max(1, list.length);
+assert.ok(lobes.length && hollows.length && meanDist(lobes) > meanDist(hollows) * 1.2,
+  `the rim follows the lobes (${meanDist(lobes).toFixed(2)} m out in them, ${meanDist(hollows).toFixed(2)} m in the hollows)`);
 let covered = 0, probes = 0;
-for (let k = 0; k < 72; k++) for (const ring of [0.8, 1, 1.2]) {
-  const px = holeX + Math.cos(k * Math.PI / 36) * 0.9 * ring, py = holeY + Math.sin(k * Math.PI / 36) * 0.9 * ring;
+for (let k = 0; k < 72; k++) for (const ring of [0.85, 1, 1.15]) {
+  const theta = k * Math.PI / 36;
+  const px = holeX + Math.cos(theta) * edgeAt(theta) * ring, py = holeY + Math.sin(theta) * edgeAt(theta) * ring;
   probes++;
-  if (boxes.some((b) => px >= b[0] && px <= b[1] && py >= b[2] && py <= b[3])) covered++;
+  if (boxes.some(({ b }) => px >= b[0] && px <= b[1] && py >= b[2] && py <= b[3])) covered++;
 }
-assert.ok(covered / probes > 0.9, `the rim covers the cut's edge band (${covered}/${probes})`);
+assert.ok(covered / probes > 0.4 && covered / probes < 0.92, `the rim covers the ragged edge band, broken where its chords dropped (${covered}/${probes})`);
+// the render's broken-back ring: two or three arcs, not a full ring
+{
+  const arcBoxes = boxesOf(rimRuns[1]);
+  const bins = new Set(arcBoxes.map((box) => Math.floor(((box.theta + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 18))));
+  assert.ok(arcBoxes.length > 0 && bins.size < 32, `the render ring in broken arcs (${bins.size} of 36 ten-degree sectors)`);
+}
 assert.ok(breachRuns.some((r) => r.role === 'room' && r.bucket === 'dark'), 'the room behind it');
 {
   const [ring, cut] = results.breach.result.cuts;
   assert.equal(results.breach.result.cuts.length, 2, 'the render\'s ring, then the hole (the newest last)');
   assert.ok(Math.abs(ring.radiusM - 0.9 * 1.45) < 1e-9 && ring.outsideM === 0.01 && ring.depthM < 0.1, 'a shallow ring through the render');
   assert.ok(cut.radiusM === 0.9 && cut.outsideM === 0.3 && cut.depthM > depth, 'the hole through the wall');
-  // the ring's units cover its blocky edge (1.16 r – 1.74 r)
-  const ringBoxes = [];
-  for (let i = 0; i < rimRuns[1].v.length; i += 24) {
-    const box = rimRuns[1].v.slice(i, i + 24);
-    ringBoxes.push([Math.min(...box.map((v) => v[0])), Math.max(...box.map((v) => v[0])), Math.min(...box.map((v) => v[1])), Math.max(...box.map((v) => v[1]))]);
-  }
+  // the ring's units lie over its edge band round the ragged outline (1.2–1.7 of the edge's distance), in broken arcs:
+  // some of it, never all of it
+  const ringBoxes = boxesOf(rimRuns[1]).map(({ b }) => b);
   let inRing = 0, probes = 0;
   for (let k = 0; k < 72; k++) for (const reach of [1.2, 1.45, 1.7]) {
-    const px = holeX + Math.cos(k * Math.PI / 36) * 0.9 * reach, py = holeY + Math.sin(k * Math.PI / 36) * 0.9 * reach;
+    const theta = k * Math.PI / 36;
+    const px = holeX + Math.cos(theta) * edgeAt(theta) * reach, py = holeY + Math.sin(theta) * edgeAt(theta) * reach;
     probes++;
     if (ringBoxes.some((b) => px >= b[0] && px <= b[1] && py >= b[2] && py <= b[3])) inRing++;
   }
-  assert.ok(inRing / probes > 0.9, `the ring's units cover its edge band (${inRing}/${probes})`);
+  assert.ok(inRing / probes > 0.15 && inRing / probes < 0.8, `the ring's arcs over part of its edge band (${inRing}/${probes})`);
 }
 assert.ok(results.breach.writers.pieces.list.every((p) => p[18] <= 0.5), 'debris thrown along the blow (−Z, into the room)');
 // sectionDown: the tiles fall, the roof hidden

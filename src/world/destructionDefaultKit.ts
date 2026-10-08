@@ -26,7 +26,7 @@
 import type { BufferGeometry } from 'three';
 import { STRUCTURE_WALL_STUB_M } from './collision.ts';
 import {
-  bodyMoundHeightAt, damageRng, registerStructureDamageKit,
+  bodyMoundHeightAt, damageRng, holeOutlineK, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
   type DamageRoof, type DamageStageResult, type DamageStorey, type DamageWriters, type DebrisShape, type FaceName,
   type FractureMaterial, type FractureSlot, type Rgb, type StructureCut, type StructureDamageAnatomy, type StructureDamageKit,
@@ -333,6 +333,49 @@ function layCourses(mesh: DamageMeshWriter, face: DamageFace, slot: FractureSlot
   }
 }
 
+/**
+ * Units of `slot` laid in courses round (cx, cy, cz) on `face` over a ragged annulus: at angle θ (atan2(up, along u)) a
+ * unit stands when its distance lies between `inner`·k(θ) and `outer`·k(θ), and inside `arcs` when given ([start, span]
+ * radians each). Each course's runs of units (its chords) are kept or dropped whole — `dropShare` of them dropped — so
+ * the rim breaks; set `fromM`–`toM` behind the face plane. Stops at the writer's cap; skips courses under the ground.
+ */
+function layRaggedCourses(mesh: DamageMeshWriter, face: DamageFace, slot: FractureSlot, rng: () => number, cx: number, cy: number,
+  cz: number, inner: number, outer: number, unitW: number, unitH: number, fromM: number, toM: number, shade: number,
+  k: (theta: number) => number, dropShare: number, arcs: ReadonlyArray<readonly [number, number]> | null): void {
+  const yaw = Math.atan2(face.out[0], face.out[2]);
+  let kMax = 0;
+  for (let a = 0; a < 48; a++) kMax = Math.max(kMax, k((a / 48) * Math.PI * 2));
+  const reach = outer * kMax;
+  const rows = Math.ceil((2 * reach) / unitH);
+  const cols = Math.ceil((2 * reach) / unitW) + 1;
+  const inArcs = (theta: number): boolean => {
+    if (!arcs) return true;
+    for (const [start, span] of arcs) {
+      const d = ((theta - start) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      if (d <= span) return true;
+    }
+    return false;
+  };
+  for (let row = 0; row < rows && roomFor(mesh, 1); row++) {
+    const ly = -reach + (row + 0.5) * unitH;
+    if (cy + ly - unitH * 0.5 < 0.02) continue;
+    const stagger = (row % 2 ? 0.5 : 0) * unitW + (rng() - 0.5) * unitW * 0.2;
+    let inRun = false, keep = true;
+    for (let i = 0; i < cols && roomFor(mesh, 1); i++) {
+      const lu = -reach + (i - 0.5) * unitW + stagger;
+      const rho = Math.hypot(lu, ly), theta = Math.atan2(ly, lu), kk = k(theta);
+      if (!(rho >= inner * kk && rho <= outer * kk && inArcs(theta))) { inRun = false; continue; }
+      if (!inRun) { inRun = true; keep = rng() >= dropShare; }
+      if (!keep) continue;
+      // a unit's depth stays inside fromM – toM (as layCourses): nothing stands proud of the wall's plane
+      const along = -(fromM + (toM - fromM) * (0.5 + (rng() - 0.5) * 0.2));
+      writeBox(mesh, cx + face.u[0] * lu + face.out[0] * along, cy + ly, cz + face.u[2] * lu + face.out[2] * along,
+        unitW * 0.5 * (0.92 + rng() * 0.12), unitH * 0.5 * (0.96 + rng() * 0.08), Math.max(0.004, (toM - fromM) * 0.4),
+        yaw + (rng() - 0.5) * 0.06, slot.tint, shade * (0.8 + rng() * 0.2));
+    }
+  }
+}
+
 const SPALLING: ReadonlySet<FractureMaterial> = new Set(['plaster', 'brick', 'stone', 'rubble', 'concrete', 'adobe']);
 
 // ---- stages ------------------------------------------------------------------------------------------------------
@@ -415,24 +458,36 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   const cy = storey.y0 + hole.y;
   const radius = Math.max(0.15, hole.radiusM);
   const mesh = out.mesh;
-  // the rim: the wall's own units laid in courses over the band the cut's blocky edge runs in (0.75 r – 1.25 r): each
-  // course fills its chords of the annulus with whole units, its ends stepped a little, set into the wall's thickness
-  // (a broken masonry edge steps along its courses); a big hole's units grow with it so the band stays within the cap
+  // the rim: the wall's own units laid in courses over the band the cut's edge runs in, following the hole's ragged
+  // outline (holeOutlineK, the FX lane's cut follows the same lobes: 0.75–1.25 of the edge's own distance at each
+  // angle), set into the wall's thickness (a broken masonry edge steps along its courses), about a third of its course
+  // chords dropped so the rim breaks (wave 277: "a neat round dark ring, like a porthole"); a big hole's units grow with
+  // it so the band stays within the cap
   const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
   const skin = face.layers[0]!;
   const unitW = Math.max(unitOf(slot.material).size, radius * 0.4), unitH = unitW * 0.5;
-  const inner = radius * 0.75, outer = radius * 1.25;
+  const edge = (theta: number): number => holeOutlineK(theta, hole.seed) / 0.8;
   if (mesh.begin(slot.bucket, 'rim')) {
-    layCourses(mesh, face, slot, rng, cx, cy, cz, inner, outer, unitW, unitH, depth * 0.1, depth * 0.9, 0.95);
+    layRaggedCourses(mesh, face, slot, rng, cx, cy, cz, radius * 0.75, radius * 1.25, unitW, unitH, depth * 0.1, depth * 0.9, 0.95,
+      edge, 1 / 3, null);
     mesh.end();
   }
-  // a rendered wall's render broken back round the hole: a shallow ring cut wider than the hole (its blocky edge runs
-  // 1.16 r – 1.74 r) with the core's units showing in it just behind the render's plane. Nothing stands proud of the
-  // wall, so a tier that cuts nothing shows none of it
+  // a rendered wall's render broken back round the hole: a shallow ring cut wider than the hole with the core's units
+  // showing in it just behind the render's plane, laid as two or three broken arcs round the ragged edge, not a full
+  // ring. Nothing stands proud of the wall, so a tier that cuts nothing shows none of it
   const ring = skin !== slot ? radius * 1.45 : 0;
   if (ring > 0 && mesh.begin(slot.bucket, 'rim')) {
     const unitR = Math.max(unitOf(slot.material).size, radius * 0.6);
-    layCourses(mesh, face, slot, rng, cx, cy, cz, radius, ring * 1.2, unitR, unitR * 0.5, skin.thicknessM + 0.004, skin.thicknessM + 0.07, 0.85);
+    const arcs: Array<[number, number]> = [];
+    const count = 2 + (rng() < 0.5 ? 1 : 0);
+    let start = rng() * Math.PI * 2;
+    for (let a = 0; a < count; a++) {
+      const span = (0.3 + rng() * 0.25) * Math.PI * (3 / count);
+      arcs.push([start, span]);
+      start += (Math.PI * 2) / count + (rng() - 0.5) * 0.6;
+    }
+    layRaggedCourses(mesh, face, slot, rng, cx, cy, cz, radius, ring * 1.2, unitR, unitR * 0.5, skin.thicknessM + 0.004,
+      skin.thicknessM + 0.07, 0.85, edge, 0.2, arcs);
     mesh.end();
   }
   // the room behind it: a dark backing, and the slab edge where the hole crosses a storey line

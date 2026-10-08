@@ -518,6 +518,20 @@ export function damageSeed(...parts: number[]): number {
   return hash >>> 0;
 }
 
+/**
+ * A breach's outline (wave 277: a hole read as "a neat round dark ring, like a porthole"): at angle θ round its centre
+ * on its face — θ = atan2(up, along the face's u) — its edge stands holeOutlineK(θ, seed) of its radius out:
+ * 0.8 + 0.2·sin(3θ + φ) + 0.12·sin(5θ + 2φ), 0.48–1.12, φ = holeOutlinePhase(seed) from the hole's own seed
+ * (BreachSpec.seed). The kits lay their rims round it and the FX lane's cut follows the same lobes.
+ */
+export function holeOutlinePhase(seed: number): number {
+  return (Math.imul(seed >>> 0, 0x9e3779b1) >>> 0) / 4294967296 * Math.PI * 2;
+}
+export function holeOutlineK(theta: number, seed: number): number {
+  const phase = holeOutlinePhase(seed);
+  return 0.8 + 0.2 * Math.sin(3 * theta + phase) + 0.12 * Math.sin(5 * theta + 2 * phase);
+}
+
 /** The only RNG a builder may draw from (mulberry32 over the seed). */
 export function damageRng(seed: number): () => number {
   let state = seed >>> 0;
