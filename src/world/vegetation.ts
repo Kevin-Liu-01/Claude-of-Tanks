@@ -3718,6 +3718,61 @@ export function buildGrassTuftGeometry(
   return merged;
 }
 
+/**
+ * The trees lane (2026-10-08, the gauntlet's wave 283a: low-view grass "card-like and translucent, flat identical cards"
+ * on Verdant, Amberford and Redrock): the near carpet's tuft as a clump of three blade cards instead of two crossed
+ * planes — their headings uneven about the tuft (never the crossed planes' square: 0°, about 60° and about 120°, each
+ * turned its own few degrees by variant), each card its own width and height, its top leaning out from the tuft's heart
+ * so the clump splays, the third card's blades mirrored, and each card a shade of its own (a vertex colour: one a little
+ * darker and cooler, one a little yellower and lighter), so no two blades of a clump read as one card. The carpet's
+ * normal fan is the crossed planes' (buildGrassTuftGeometry). Six triangles to the crossed planes' four: the carpet only
+ * (CARPET_CAP tufts a variant within CARPET_FAR); the mid and far chunks keep the crossed planes.
+ */
+export const GRASS_CLUMP_SHADES: readonly (readonly [number, number, number])[] = Object.freeze([
+  Object.freeze([0.88, 0.94, 0.9] as const), Object.freeze([1, 1, 1] as const), Object.freeze([1.1, 1.06, 0.94] as const),
+]);
+/**
+ * The clump's cards' widths and heights against the tuft's: one broad and short, one narrow and as tall, one between — none
+ * taller than the crossed planes (the stubble's and the logging yard's height laws bound a tuft's top by them).
+ */
+const GRASS_CLUMP_SIZES: readonly (readonly [number, number])[] = Object.freeze([
+  Object.freeze([1.08, 0.84] as const), Object.freeze([0.86, 1.0] as const), Object.freeze([0.97, 0.92] as const),
+]);
+export function buildGrassClumpGeometry(w: number, h: number, variant: number): THREE.BufferGeometry {
+  const rng = mulberry32((0x9a55 + variant * 977) >>> 0);
+  const heads = [0, Math.PI / 3 + (rng() - 0.5) * 0.3, (2 * Math.PI) / 3 + (rng() - 0.5) * 0.3];
+  const planes: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 3; k++) {
+    // (each card its own size: a base share per card, a little of the variant's own draw over it)
+    const pw = w * GRASS_CLUMP_SIZES[k][0] * (0.95 + rng() * 0.1), ph = h * GRASS_CLUMP_SIZES[k][1] * (0.94 + rng() * 0.06);
+    const lean = (0.06 + rng() * 0.08) * (k === 1 ? -1 : 1);
+    const geometry = new THREE.PlaneGeometry(pw, ph, 1, 1);
+    const uv = attribute(geometry, 'uv'), normal = attribute(geometry, 'normal'), pos = attribute(geometry, 'position');
+    for (let vertex = 0; vertex < normal.count; vertex++) {
+      if (k === 2) uv.setX(vertex, 1 - uv.getX(vertex));
+      // (the crossed planes' fan: mostly up, the tips and the sides their own form shading)
+      const tip = uv.getY(vertex);
+      const nx = (uv.getX(vertex) * 2 - 1) * (0.07 + tip * 0.19);
+      const nz = 0.08 + tip * 0.02;
+      normal.setXYZ(vertex, nx, Math.sqrt(1 - nx * nx - nz * nz), nz);
+    }
+    geometry.translate(0, ph / 2 - 0.03, 0);
+    // the splay: the card's top row out along its face, by its height
+    for (let vertex = 0; vertex < pos.count; vertex++) {
+      const t = Math.max(0, (pos.getY(vertex) + 0.03) / ph);
+      pos.setZ(vertex, pos.getZ(vertex) + lean * ph * t);
+    }
+    geometry.rotateY(heads[k]);
+    const shade = GRASS_CLUMP_SHADES[(k + variant) % 3], colour = new Float32Array(pos.count * 3);
+    for (let vertex = 0; vertex < pos.count; vertex++) colour.set(shade, vertex * 3);
+    geometry.setAttribute('color', new THREE.BufferAttribute(colour, 3));
+    planes.push(geometry);
+  }
+  const merged = mergeGeometries(planes, false) as THREE.BufferGeometry;
+  for (const geometry of planes) geometry.dispose();
+  return merged;
+}
+
 // ---------------------------------------------------------------------------
 // createVegetation
 // ---------------------------------------------------------------------------
@@ -4003,6 +4058,11 @@ function* vegetationBuildSteps(
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
       shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
     }
+    // the trees lane (2026-10-08, the gauntlet's wave 283a: low-view grass "card-like and translucent"): a blade card's
+    // back face in its own shade, a fifth darker than its lit face, so a tuft reads as blades with two sides, not one lit
+    // sheet the light shines through
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>',
+      '#include <alphatest_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb *= 0.8;');
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
@@ -4035,6 +4095,8 @@ function* vegetationBuildSteps(
   const grassVariants: Array<{
     geo: THREE.BufferGeometry;
     geoFar: THREE.BufferGeometry;
+    /** The trees lane (2026-10-08, wave 283a): the near carpet's clump of three blade cards (buildGrassClumpGeometry). */
+    geoCarpet: THREE.BufferGeometry;
     matMid: THREE.MeshLambertMaterial;
     matNear: THREE.MeshLambertMaterial;
     height: number;
@@ -4051,6 +4113,7 @@ function* vegetationBuildSteps(
         height: h - 0.03, radius: w * 0.75 + 0.2,
         geo: buildGrassTuftGeometry(w, h),
         geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
+        geoCarpet: buildGrassClumpGeometry(w, h, gv), // the trees lane (2026-10-08, wave 283a): the carpet's clump
         // Ground cover 2026-09-12: the streamed mid/far tufts cut at 0.34 so the
         // thin blades survive their deep mips and the far fields keep the dark
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
@@ -4059,6 +4122,8 @@ function* vegetationBuildSteps(
         matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
         matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
       });
+      // (the trees lane, 2026-10-08, wave 283a: the carpet's clump carries its cards' shades in a vertex colour)
+      grassVariants[gv].matNear.vertexColors = true;
       yield { stage: 'grassPrep', fine: true };
     }
   }
@@ -4478,7 +4543,7 @@ function* vegetationBuildSteps(
     for (let vv = 0; vv < 2; vv++) {
       const pair: THREE.InstancedMesh[] = [];
       for (let half = 0; half < 2; half++) {
-        const mesh = new THREE.InstancedMesh(grassVariants[vv].geo, grassVariants[vv].matNear, CARPET_CAP);
+        const mesh = new THREE.InstancedMesh(grassVariants[vv].geoCarpet, grassVariants[vv].matNear, CARPET_CAP);
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.frustumCulled = false;
@@ -5164,7 +5229,7 @@ function* vegetationBuildSteps(
   // after the species geometry joins the same ownership record (a second registration would replace the first).
   // Declared here, above the species tables, so the receipts that slice those tables run without them.
   const leafDetail = createLeafDetailLibrary(seed, !mobileTier);
-  const retainedGeometries: THREE.BufferGeometry[] = grassVariants.flatMap(variant => [variant.geo, variant.geoFar]);
+  const retainedGeometries: THREE.BufferGeometry[] = grassVariants.flatMap(variant => [variant.geo, variant.geoFar, variant.geoCarpet]);
   const retainedMaterials: THREE.Material[] = [barkMat, canopyFarMat, ...grassVariants.flatMap(variant => [variant.matMid, variant.matNear])];
   const retainedTextures: THREE.Texture[] = [canopyDetailTex];
 

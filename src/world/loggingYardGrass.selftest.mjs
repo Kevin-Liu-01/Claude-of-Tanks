@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField, sampleSplatNoise } from './terrain.ts';
-import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
+import { buildGrassClumpGeometry, buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
 import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import longleaf from './maps/longleaf.ts';
@@ -28,7 +28,7 @@ const stages = [
 // omitted: this is renderer-free placement evidence, not an atlas/GPU test.
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
-  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
+  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', 'buildGrassClumpGeometry',
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
@@ -52,7 +52,7 @@ function compile(legacy) {
       const carpetCell = (ix, iz) => carpetCache.get(ix + ',' + iz);
       return { chunk, carpetCell, rebuildCarpet, carpetSets, carpetWork, group, grassVariants, stubbleHeightScale, makeTuft };
     }
-  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
+  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry, buildGrassClumpGeometry,
     advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork);
 }
 const build = compile(false), buildLegacy = compile(true);
@@ -68,7 +68,7 @@ function tracedRandom() {
 }
 function dispose(fixture) {
   for (const v of fixture.grassVariants) {
-    v.geo.dispose(); v.geoFar.dispose(); v.matMid.dispose(); v.matNear.dispose();
+    v.geo.dispose(); v.geoFar.dispose(); v.geoCarpet?.dispose(); v.matMid.dispose(); v.matNear.dispose();
   }
   fixture.group.clear();
 }

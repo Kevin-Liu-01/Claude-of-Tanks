@@ -1317,6 +1317,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
     'src/world/grassBladeShape.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 283a): the near carpet's tufts as splayed clumps of three blade cards
+    'src/world/grassClump.selftest.mjs',
     'src/world/autumnSeasonalPalette.selftest.mjs',
     'src/world/autumnLeafSprays.selftest.mjs',
     'src/world/birchCrownForm.selftest.mjs',
