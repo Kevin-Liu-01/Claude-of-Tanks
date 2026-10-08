@@ -2024,23 +2024,37 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     // rope"): six-sided rope whose radius swells on alternate sides and turns a sixth round each span, so three strands
     // wind along its lay (the round-4 tube's 20 spans, one more side)
     const curve = new THREE.CatmullRomCurve3(pts);
-    const rope = new THREE.TubeGeometry(curve, 20, R, 6, false);
-    const rp = rope.getAttribute('position');
-    const c = new THREE.Vector3(), v = new THREE.Vector3();
-    for (let i = 0; i <= 20; i++) {
-      curve.getPointAt(i / 20, c);
-      for (let j = 0; j <= 6; j++) {
-        const k = i * 7 + j;
-        v.fromBufferAttribute(rp, k).sub(c).multiplyScalar(1 + 0.15 * Math.cos(Math.PI * j + 1.05 * i)).add(c);
-        rp.setXYZ(k, v.x, v.y, v.z);
+    const strand = (tube: THREE.TubeGeometry, path: THREE.Curve<THREE.Vector3>, spans: number): THREE.TubeGeometry => {
+      const rp = tube.getAttribute('position');
+      const c = new THREE.Vector3(), v = new THREE.Vector3();
+      for (let i = 0; i <= spans; i++) {
+        path.getPointAt(i / spans, c);
+        for (let j = 0; j <= 6; j++) {
+          const k = i * 7 + j;
+          v.fromBufferAttribute(rp, k).sub(c).multiplyScalar(1 + 0.15 * Math.cos(Math.PI * j + 1.05 * i)).add(c);
+          rp.setXYZ(k, v.x, v.y, v.z);
+        }
       }
+      tube.computeVertexNormals();
+      return tube;
+    };
+    const rope = bakeShade(strand(new THREE.TubeGeometry(curve, 20, R, 6, false), curve, 20), 0.5);
+    // the part order is the cable's contract (griffinViper reads it): the rope, each end's eye and ferrule, three clamps
+    parts.push({ mat: 'steel', geo: rope });
+    for (const s of [-1, 1]) {
+      // round 5 (wave 255 on the T-90M's cable: "the tow-cable eye reads as a rubbery ring, not braided steel"): each end
+      // a spliced eye lying on the deck, the rope itself turned back in a teardrop to a pressed ferrule over the throat
+      // the ferrule stands on the support at the rope's end height (no part dips under the clamp plane, y = 0); the
+      // eye's legs leave it pressed together and the loop sags to rest on the support at its far end
+      const end = curve.getPointAt(s < 0 ? 0 : 1), L = R * 6.5, W = R * 2.4;
+      const yf = Math.max(end.y, R * 1.6 + 0.003), yRest = R * 0.9 + 0.003;
+      const at = (u: number, w: number): THREE.Vector3 => new THREE.Vector3(end.x + s * u, yf + (yRest - yf) * Math.min(1, u / (L * 0.6)), end.z + w);
+      const loop = new THREE.CatmullRomCurve3([at(R * 0.4, R * 0.6), at(L * 0.42, W * 0.92), at(L * 0.84, W * 0.78), at(L, 0),
+        at(L * 0.84, -W * 0.78), at(L * 0.42, -W * 0.92), at(R * 0.4, -R * 0.6)], false, 'centripetal');
+      parts.push({ mat: 'steel', geo: bakeShade(strand(new THREE.TubeGeometry(loop, 8, R * 0.9, 6, false), loop, 8), 0.52) });
+      parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(R * 1.6, R * 3.4, 7), end.x + s * R * 0.9, yf, end.z), 0.55) });
     }
-    rope.computeVertexNormals();
-    parts.push({ mat: 'steel', geo: bakeShade(rope, 0.5) });
-    for (const s of [-1, 1]) { // swaged eye loops + ferrules
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.07, 0.024, 10, 5), s * (len / 2 + 0.07), R + 0.01, 0), 0.52) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.04, 0.11, 7), s * (len / 2 - 0.02), R + 0.012, 0), 0.55) });
-    }
+    const straps: THREE.BufferGeometry[] = [];
     // hull clamps: round 5 (2026-10-08; the contact receipt: the rope ran through solid clamp blocks) a saddle under the
     // rope and a steel strap over it, each where the rope really lies
     for (const s of [-0.3, 0, 0.31]) {
@@ -2059,8 +2073,17 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const strap = new THREE.BufferGeometry();
       strap.setAttribute('position', new THREE.Float32BufferAttribute(ring, 3));
       strap.computeVertexNormals();
-      parts.push({ mat: 'steel', geo: bakeShade(withBoxUV(strap), 0.55) });
+      straps.push(bakeShade(withBoxUV(strap), 0.55));
     }
+    // the clamps' straps ride the rope's own part (one steel draw either way)
+    const flat = rope.index ? rope.toNonIndexed() : rope;
+    const merged = mergeGeometries([flat, ...straps], false);
+    if (merged) {
+      parts[0].geo = merged;
+      if (flat !== rope) flat.dispose();
+      rope.dispose();
+      for (const g of straps) g.dispose();
+    } else for (const g of straps) parts.push({ mat: 'steel', geo: g });
     return parts;
   },
 
