@@ -15,7 +15,10 @@
 //      opens a gap down to the floor in every cell on that side, the earth banked at its foot;
 //   5. the container rows (container.ts): their boxes read off the parts (ISO sizes, their own axes and liveries); a blow
 //      on the row's face opens the box it reaches, on that box's side; a face's fall tears the boxes on that side; the
-//      collapse lays every box crushed or tipped on the ground, its steel in the structure steel.
+//      collapse lays every box crushed or tipped on the ground, its steel in the structure steel;
+//   6. the ruins (ruin.ts): their wall pieces read off the merged masonry (thickness, length, ragged top); a blow opens the
+//      piece it reaches under that piece's own top, with no dark room behind (a ruin is open to the sky); a face's fall
+//      breaks the pieces on that side down from their heads; the collapse leaves stubs no higher than the pieces stood.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { readShell } from './shell.ts';
@@ -27,6 +30,7 @@ import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
 import { cellsOf } from './cluster.ts';
 import { containersOf } from './container.ts';
+import { ruinPiecesOf } from './ruin.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -124,7 +128,8 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0;
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0, ruins = 0;
+const ruinIds = new Set();
 const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set(), clusterIds = new Set();
 function exercise(label, a, seam) {
   // (the body's own middle: a shell's walls need not centre on its parts' origin)
@@ -164,7 +169,8 @@ function validate(label, a, styleId) {
     assert.deepEqual(st.faces.map((f) => f.section), [0, 1, 2, 3].map((k) => st.index * 4 + k), `${label}: sections by storey and face`);
     for (const f of st.faces) {
       for (const v of [...f.origin, ...f.u, ...f.out, f.width, f.height]) finite(v, `${label} face`);
-      assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
+      // (a ruin's box is round the walls it has left, which need not stand round its plot's middle)
+      if (!ruinPiecesOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
       assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0), `${label}: a face's layers`);
       for (const o of f.openings) assert.ok(Math.abs(o.u) <= f.width / 2 + 0.05 && o.y0 >= -0.05 && o.y0 + o.h <= f.height + 0.05, `${label}: an opening inside its face`);
       if (f.masonry) {
@@ -279,6 +285,41 @@ function describeAndRun(label, builder, styleId, parts) {
     const top = Math.max(...boxes.map((b) => b.c[1] + b.hh));
     assert.ok(high < top + 0.2, `${label}: nothing of the row stands higher than it did (${high.toFixed(2)} vs ${top.toFixed(2)})`);
   }
+  const pieces = ruinPiecesOf(a);
+  if (pieces) {
+    ruins++; ruinIds.add(label.split(' ')[0]);
+    assert.ok(pieces.length >= 2, `${label}: the ruin's wall pieces read (${pieces.length})`);
+    for (const p of pieces) {
+      assert.ok(p.ht * 2 >= 0.15 && p.ht * 2 <= 1.2 && p.hl * 2 >= 0.8 && p.top.every((y) => y >= 0.3), `${label}: a wall piece's size and top`);
+    }
+    let opened = 0;
+    for (const f of a.storeys[0].faces) {
+      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap)
+      const aim = pieces.map((p) => ({ u: (p.c[0] - f.origin[0]) * f.u[0] + (p.c[2] - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
+        y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, Math.min(...p.top) / 2) }))
+        .filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => x.o - y.o)[0];
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: aim ? aim.u : 0, y: aim ? aim.y : 1.0, radiusM: 0.6, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 9 + f.section }, out);
+      opened += res.cuts.length;
+      assert.ok(!out.runs.some((r) => r.role === 'room' && r.pos.length), `${label}: no dark room behind a ruin's hole (open to the sky)`);
+      for (const cut of res.cuts) {
+        assert.ok(pieces.some((p) => cut.y >= p.c[1] && cut.y <= p.c[1] + Math.max(...p.top) + 0.05), `${label}: the ${f.name} breach in a piece's height`);
+      }
+      const fell = writers(...CAPS.sectionDown);
+      seam.sectionDown(f.section, 31 + f.section, fell);
+      assert.ok(!fell.runs.some((r) => r.role === 'room' && r.pos.length), `${label}: no dark room behind a fallen piece`);
+    }
+    assert.ok(opened >= 1, `${label}: a blow on the ruin opens a piece (${opened})`);
+    const fallen = writers(...CAPS.collapse);
+    const res = seam.collapse(17, fallen);
+    assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${label}: the collapse hides the ruin`);
+    const tallest = Math.max(...pieces.map((p) => p.c[1] + Math.max(...p.top)));
+    for (const r of fallen.runs) if (r.role === 'remnant') for (let i = 1; i < r.pos.length; i += 3) {
+      assert.ok(r.pos[i] <= tallest + 0.05, `${label}: a stub no higher than the ruin stood (${r.pos[i].toFixed(2)} vs ${tallest.toFixed(2)})`);
+    }
+    assert.ok(fallen.runs.some((r) => r.role === 'remnant' && r.pos.length), `${label}: the pieces leave stubs`);
+  }
   if (isSheetBody(a)) {
     sheetShells++;
     // a blast through a sheet wall: torn sheet round it (both sides), the frame's members across the gap, no masonry
@@ -348,5 +389,7 @@ assert.ok(!shellIds.has('ksar/caravanserai') || clusterIds.has('ksar/caravansera
 assert.ok(clusterShells >= 2, `compounds the cluster kit breaks (${clusterShells}: ${[...clusterIds].join(', ')})`);
 // the container rows read as boxes and break box by box (container.ts)
 assert.ok(shellIds.has('base:containerRow') && containerRows >= 2, `the container rows the container kit breaks (${containerRows})`);
+// the ruins read as wall pieces and break piece by piece (ruin.ts)
+assert.ok(ruins >= 2, `the ruins the ruin kit breaks (${ruins}: ${[...ruinIds].join(', ')})`);
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}), ${containerRows} container rows box by box ( ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}), ${containerRows} container rows box by box, ${ruins} ruins piece by piece (${[...ruinIds].join(', ')};  ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
