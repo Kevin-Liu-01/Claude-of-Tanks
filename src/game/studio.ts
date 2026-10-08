@@ -297,6 +297,9 @@ interface StudioEffectParams {
   slot?: number;
   sooty?: boolean;
   speedMps?: number;
+  /** ram: the hull's mass in tonnes (default the actor's spec), and how far ahead of its nose a wall is met (m) */
+  massTons?: number;
+  reachM?: number;
   spreadDeg?: number;
   to?: readonly number[];
   tracer?: boolean;
@@ -1985,6 +1988,29 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     });
   }
 
+  /**
+   * A hull ramming the building in front of it (P2 staging; wave 277: the ram strip must show the ramming tank): from the
+   * actor's nose (half a hull length ahead along its facing, a metre up) a few metres ahead (params.reachM, 3 m); where
+   * that meets a structure the sim prices the ram at params.speedMps (the closing speed, 10 m/s) for params.massTons (the
+   * actor's hull weight): a ram that brings it down sends it through its cascade, its stages raised as the ram's. The
+   * actor's own motion is the storyboard's: its track runs it into the wall and on.
+   */
+  function fireRam({ actor, params }: StudioEffectExecution): boolean {
+    const sim = studioDestructionNow();
+    const w = getWorld();
+    if (!actor || !sim || !w) return false;
+    _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
+    _v2.copy(actor.state.pos).addScaledVector(_fwd, actor.spec.dims.hullLengthM / 2 - 0.5);
+    _v2.y += 1;
+    const hit = w.raycast(_v2, _fwd, Number.isFinite(params.reachM) ? Math.max(0.5, Number(params.reachM)) : 3);
+    const record = hit && hit.kind !== 'terrain' ? (hit.record ?? null) : null;
+    if (!hit || !record || typeof record.structureIdx !== 'number') return false;
+    const massTons = Number(params.massTons) > 0 ? Number(params.massTons) : (Number(actor.spec.weightTons) || 50);
+    const speed = Number(params.speedMps) > 0 ? Number(params.speedMps) : 10;
+    sim.ram(record as Parameters<StudioDestruction['ram']>[0], massTons, speed, hit.point.x, hit.point.y, hit.point.z, _fwd.x, _fwd.z);
+    return true;
+  }
+
   function fireExhaust({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
     _fwd.set(Math.sin(actor.state.yaw), 0, Math.cos(actor.state.yaw));
@@ -2024,6 +2050,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     armor_scar: fireArmorScar,
     exhaust: fireExhaust,
     strike: fireStrike,
+    ram: fireRam,
   });
 
   function recordFiredEffect(
