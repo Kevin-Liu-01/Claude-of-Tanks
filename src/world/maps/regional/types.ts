@@ -10,6 +10,17 @@ export interface BaseBounds {
   maxY: number;
 }
 
+/**
+ * The ground a placed building stands on, in the building's own frame (props.ts; facades lane, 2026-10-07): the wall-foot
+ * strip lies on it (house.ts groundSkirt). Read-only for the geometry: nothing structural ever asks it.
+ */
+export interface RegionalGround {
+  /** the rendered terrain's height at a point of the building's frame, over the building's base (its local y = 0) */
+  at(x: number, z: number): number;
+  /** keep the world's grass, tall grass and litter off a disc of the building's frame (map.ts holds it with the yards') */
+  hole?(x: number, z: number, r: number): void;
+}
+
 /** Everything a regional builder may read. It never draws from the props placement stream. */
 export interface RegionalBuildContext {
   structureId: string;
@@ -42,6 +53,13 @@ export interface RegionalBuildContext {
   x?: number;
   z?: number;
   yaw?: number;
+  /** the ground under the placed building (absent in a bare build: the receipts, a donor); see RegionalGround */
+  ground?: RegionalGround;
+  /**
+   * The map's sun azimuth (degrees, its sky's sunAzimuthDeg: 0 toward +z, 90 toward +x), for the weathering only: the
+   * slopes turned from the sun grow their moss and lichen (weather.ts). Absent (a bare build), no slope is favoured.
+   */
+  sunAzimuthDeg?: number;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
@@ -85,6 +103,12 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
+  /**
+   * the churchyard round the kit's church (the facades lane, 2026-10-06; wave 150: "both German churches stand on bare
+   * dirt"): a yard on the church's freest side walled like a house's, its graves in place of the beds. A map opts in
+   * (props `churchyard: true`): its walls are destructibles with colliders, so the map's collision shard regenerates
+   */
+  churchyard?: YardStyle;
   /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
   yard?: YardStyle;
 }
@@ -97,6 +121,10 @@ export interface ArchitectureStyle {
 export interface YardStyle {
   /** the plan kinds that keep a yard */
   kinds: readonly string[];
+  /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
+  graves?: boolean;
+  /** the yard never takes the plot's front (+z, the door's side): a church's approach stays open */
+  keepFront?: boolean;
   /** the destructible kind of the enclosure's modules (a fence or a low wall) */
   fence: string;
   /** the destructible hung in the gate's gap, or none (an open gap) */

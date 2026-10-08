@@ -33,10 +33,10 @@
       "concealers": 2478
     },
     "coastal": {
-      "bytes": 1454713,
-      "sha256": "57a6cde0537298beca473879a2a720fc701c41172ef28d4b724adb3e725c96c7",
+      "bytes": 1465820,
+      "sha256": "d0cbcee991d76662233c2c2504c61a334524d7f6c03bfa7c347b8968400648f1",
       "obstacles": 4468,
-      "colliders": 4381,
+      "colliders": 4382,
       "concealers": 4425
     },
     "autumn": {
@@ -54,8 +54,8 @@
       "concealers": 831
     },
     "railyard": {
-      "bytes": 1221868,
-      "sha256": "5c6867219373a1306bbfc458cdc89c3f2c16f0ae6b109c76d27ee2f66466e856",
+      "bytes": 1196102,
+      "sha256": "1faf9ce7fc4bb2d78118c4d68240443f1fb742d8a5fd0c99b72b885759b1f9e9",
       "obstacles": 2372,
       "colliders": 2390,
       "concealers": 1361

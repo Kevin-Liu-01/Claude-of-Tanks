@@ -362,6 +362,7 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   const unexpected = () => { throw new Error('First-bathhouse fixture reached a different house'); };
   const makeCottage = unexpected, makeBarn = unexpected, makeTower = unexpected, makeRuin = unexpected;
   const makeAdobe = unexpected, makeRowhouse = unexpected, URBAN_BUILDERS = {}, VILLAGE_BUILDERS = {};
+  const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };")}
