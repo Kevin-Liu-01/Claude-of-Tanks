@@ -4,8 +4,9 @@
 //
 // The thresholded value noise behind the field schemes is smooth, so every contour it gives is a rounded blob of one
 // size. These fields are built from periodic, domain-warped Voronoi partitions instead:
-//  - a macro partition of the two-metre tile (about half-metre cells) splits the ground into the base and the second
-//    main tone; neighbouring cells of one tone merge into large irregular polygons with straight-edged facets;
+//  - a macro partition of the tile (painter v3: the wide four-metre tile, cells of about 0.8 m) splits the ground into
+//    the base and the second main tone; neighbouring cells of one tone merge into large irregular polygons with
+//    straight-edged facets;
 //  - a finer partition lays the dark tone as bands and patches that bridge the boundaries between the two main tones
 //    (the way a three-colour scheme's black sits across its green and brown), with a few loose patches inside;
 //  - the finest partition cuts the fourth tone of a four-colour palette: the darkest inside the dark areas when the
@@ -15,6 +16,9 @@
 // Each tone class is a continuous signed field (distance to the nearest cell of the other class minus distance to the
 // nearest cell of this class), so the tile is drawn at its own resolution with one anti-aliased texel at every edge.
 // Everything is hashed from the seed: no RNG stream is consumed, so other painters' draws never move.
+// Cost (painter v3, 2026-10-08): the warp lattices are tabled, each partition is laid out on a wrapped border so a
+// sample reads a 3 x 3 block of points with no wrapping arithmetic, and distances compare squared (the v2 fields took
+// 0.1-0.2 s per tile under load; these take 5-10 ms at the 128-sample raster).
 
 export interface PatchFieldSet {
   /** > 0 where the second main tone lies, < 0 on the base. */
@@ -25,7 +29,7 @@ export interface PatchFieldSet {
   readonly fourth: Float32Array;
 }
 
-export interface PatchFieldOptions {
+interface PatchFieldOptions {
   /** Raster size (texels across the periodic tile). */
   readonly n: number;
   readonly seed: number;
@@ -51,15 +55,18 @@ function hash(x: number, y: number, seed: number): number {
 const smooth = (v: number): number => v * v * (3 - 2 * v);
 const wrapIndex = (i: number, n: number): number => ((i % n) + n) % n;
 
-/** Periodic value noise on a hashed lattice of `size` cells across the tile. */
+/** Periodic value noise on a hashed lattice of `size` cells across the tile: the lattice values are tabled once, so a
+ * sample is four loads and a smoothstep blend. */
 function lattice(seed: number, size: number): (u: number, v: number) => number {
+  const table = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) table[j * size + i] = hash(i, j, seed);
   return (u, v) => {
     const x = (u - Math.floor(u)) * size, y = (v - Math.floor(v)) * size;
     const ix = Math.floor(x), iy = Math.floor(y), tx = smooth(x - ix), ty = smooth(y - iy);
-    const x1 = (ix + 1) % size, y1 = (iy + 1) % size;
-    const a = hash(ix, iy, seed) * (1 - tx) + hash(x1, iy, seed) * tx;
-    const b = hash(ix, y1, seed) * (1 - tx) + hash(x1, y1, seed) * tx;
-    return a * (1 - ty) + b * ty;
+    const x1 = ix + 1 === size ? 0 : ix + 1, r0 = iy * size, r1 = (iy + 1 === size ? 0 : iy + 1) * size;
+    const a = table[r0 + ix] + (table[r0 + x1] - table[r0 + ix]) * tx;
+    const b = table[r1 + ix] + (table[r1 + x1] - table[r1 + ix]) * tx;
+    return a + (b - a) * ty;
   };
 }
 
@@ -67,7 +74,7 @@ interface Partition {
   /** Cells across the tile along u and along v (cells are wider than tall when cu < cv). */
   readonly cu: number;
   readonly cv: number;
-  /** Cell seed points in tile units, cell (i, j) at [2 * (j * cu + i)]. */
+  /** Cell seed points in CELL units (cell (i, j) at [2 * (j * cu + i)], its point inside [i, i + 1) x [j, j + 1)). */
   readonly points: Float32Array;
   /** Two-class membership per cell. */
   readonly classOf: Uint8Array;
@@ -77,8 +84,8 @@ function points(cu: number, cv: number, seed: number, jitter = .86): Float32Arra
   const out = new Float32Array(cu * cv * 2);
   for (let j = 0; j < cv; j++) for (let i = 0; i < cu; i++) {
     const at = 2 * (j * cu + i);
-    out[at] = (i + .5 + (hash(i, j, seed) - .5) * jitter) / cu;
-    out[at + 1] = (j + .5 + (hash(i, j, seed ^ 0x9e3779b9) - .5) * jitter) / cv;
+    out[at] = i + .5 + (hash(i, j, seed) - .5) * jitter;
+    out[at + 1] = j + .5 + (hash(i, j, seed ^ 0x9e3779b9) - .5) * jitter;
   }
   return out;
 }
@@ -93,19 +100,45 @@ function chooseShare(count: number, share: number, seed: number, eligible?: (c: 
   return out;
 }
 
-/** Signed class field at (u, v): distance to the nearest class-0 cell minus distance to the nearest class-1 cell (> 0 in
- * class 1), periodic, measured in the anisotropic cell metric (one cell is one unit both ways), with distances beyond
- * the 5 x 5 search capped so the field stays finite. */
-function classField(p: Partition, u: number, v: number): number {
-  const { cu, cv } = p, ci = Math.floor(u * cu), cj = Math.floor(v * cv), cap = 2.5;
-  let d0 = cap, d1 = cap;
-  for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
-    const i = ci + di, j = cj + dj, wi = wrapIndex(i, cu), wj = wrapIndex(j, cv), at = 2 * (wj * cu + wi);
-    const px = (p.points[at] + (i - wi) / cu - u) * cu, py = (p.points[at + 1] + (j - wj) / cv - v) * cv;
-    const d = Math.hypot(px, py);
-    if (p.classOf[wj * cu + wi]) { if (d < d1) d1 = d; } else if (d < d0) d0 = d;
+/** Search reach in cells: the 3 x 3 block round a sample's cell. A boundary sample has both classes in reach, so the
+ * sign and the anti-aliased edge are exact; deep inside one class the other class's distance caps at FIELD_CAP. */
+const REACH = 1;
+const FIELD_CAP = 1.6;
+
+/** A partition laid out for sampling: its points and classes on a border of REACH wrapped cells round the tile, so a
+ * sample reads its 5 x 5 block as five runs of five with no wrapping. */
+interface Sampler {
+  readonly cu: number;
+  readonly cv: number;
+  readonly stride: number;
+  readonly x: Float32Array;
+  readonly y: Float32Array;
+  readonly cls: Uint8Array;
+}
+
+function sampler(p: Partition): Sampler {
+  const { cu, cv } = p, stride = cu + 2 * REACH, rows = cv + 2 * REACH;
+  const x = new Float32Array(stride * rows), y = new Float32Array(stride * rows), cls = new Uint8Array(stride * rows);
+  for (let j = -REACH; j < cv + REACH; j++) for (let i = -REACH; i < cu + REACH; i++) {
+    const wi = ((i % cu) + cu) % cu, wj = ((j % cv) + cv) % cv, c = wj * cu + wi, k = (j + REACH) * stride + i + REACH;
+    x[k] = p.points[2 * c] + (i - wi); y[k] = p.points[2 * c + 1] + (j - wj); cls[k] = p.classOf[c];
   }
-  return d0 - d1;
+  return { cu, cv, stride, x, y, cls };
+}
+
+/** Signed class field at (u, v) in [0, 1): distance to the nearest class-0 cell minus distance to the nearest class-1
+ * cell (> 0 in class 1), periodic, measured in the anisotropic cell metric (one cell is one unit both ways), with
+ * distances beyond the 3 x 3 search capped so the field stays finite. */
+function classField(p: Sampler, u: number, v: number): number {
+  const fu = u * p.cu, fv = v * p.cv, ci = Math.floor(fu), cj = Math.floor(fv), { stride, x, y, cls } = p;
+  let d0 = FIELD_CAP * FIELD_CAP, d1 = d0;
+  for (let row = cj * stride + ci, end = row + (2 * REACH + 1) * stride; row < end; row += stride) {
+    for (let k = row; k < row + 2 * REACH + 1; k++) {
+      const px = x[k] - fu, py = y[k] - fv, d = px * px + py * py;
+      if (cls[k]) { if (d < d1) d1 = d; } else if (d < d0) d0 = d;
+    }
+  }
+  return Math.sqrt(d0) - Math.sqrt(d1);
 }
 
 /** The tone fields of one tile. */
@@ -116,46 +149,51 @@ export function patchFields(o: PatchFieldOptions): PatchFieldSet {
   const fu = Math.max(3, Math.round(mu * 1.9)), fv = Math.max(4, Math.round(mv * 1.9));
   const su = Math.max(4, Math.round(mu * 3.4)), sv = Math.max(5, Math.round(mv * 3.4));
   // warps, in tile units: a gentle bend (a sixth of a macro cell, so facets stay straight-edged) and a sharper mid-scale
-  // break that turns facet edges into notches and fingers
+  // break that turns facet edges into notches and fingers; the lattices scale with the macro cells, so a wider tile
+  // (more cells) keeps the same bend and break per patch
   const bendA = .17 / mu, breakA = .085 / mu;
-  const bendX = lattice(seed ^ 0x7f4a7c15, 3), bendY = lattice(seed ^ 0x94d049bb, 3);
-  const breakX = lattice(seed ^ 0x3c6ef372, 13), breakY = lattice(seed ^ 0xa54ff53a, 17);
-  const warp = (u: number, v: number): [number, number] => {
-    const wu = u + (bendX(u, v) - .5) * 2 * bendA + (breakX(u, v) - .5) * 2 * breakA;
-    const wv = v + (bendY(u, v) - .5) * 2 * bendA + (breakY(u, v) - .5) * 2 * breakA;
-    return [wu - Math.floor(wu), wv - Math.floor(wv)];
+  const bendN = Math.max(3, Math.round(mu * .75)), breakU = Math.max(13, Math.round(mu * 3.25)), breakV = Math.max(17, Math.round(mu * 4.25));
+  const bendX = lattice(seed ^ 0x7f4a7c15, bendN), bendY = lattice(seed ^ 0x94d049bb, bendN);
+  const breakX = lattice(seed ^ 0x3c6ef372, breakU), breakY = lattice(seed ^ 0xa54ff53a, breakV);
+  let wu = 0, wv = 0;
+  const warp = (u: number, v: number): void => {
+    const a = u + (bendX(u, v) - .5) * 2 * bendA + (breakX(u, v) - .5) * 2 * breakA;
+    const b = v + (bendY(u, v) - .5) * 2 * bendA + (breakY(u, v) - .5) * 2 * breakA;
+    wu = a - Math.floor(a); wv = b - Math.floor(b);
   };
   // main classes: exactly `secondShare` of the macro cells take the second main tone (neighbours merge into regions)
-  const macro: Partition = { cu: mu, cv: mv, points: points(mu, mv, seed ^ 0x51ed270b),
-    classOf: chooseShare(mu * mv, o.secondShare ?? .42, seed ^ 0x1b873593) };
+  const macro = sampler({ cu: mu, cv: mv, points: points(mu, mv, seed ^ 0x51ed270b),
+    classOf: chooseShare(mu * mv, o.secondShare ?? .42, seed ^ 0x1b873593) });
   // dark classes on the fine partition: of the fine cells whose seed lies across a main boundary (the macro field within
   // about a fine cell), `darkOnEdge` turn dark; of the rest, `darkLoose`
   const finePoints = points(fu, fv, seed ^ 0x2545f491);
   const nearEdge = new Uint8Array(fu * fv);
-  for (let c = 0; c < fu * fv; c++) {
-    const [wu, wv] = warp(finePoints[2 * c], finePoints[2 * c + 1]);
+  for (let j = 0; j < fv; j++) for (let i = 0; i < fu; i++) {
+    const c = j * fu + i;
+    warp(finePoints[2 * c] / fu, finePoints[2 * c + 1] / fv);
     nearEdge[c] = Math.abs(classField(macro, wu, wv)) < .5 * mu / fu ? 1 : 0;
   }
   const onEdge = chooseShare(fu * fv, o.darkOnEdge ?? .55, seed ^ 0x0bad5eed, (c) => nearEdge[c] === 1);
   const loose = chooseShare(fu * fv, o.darkLoose ?? .06, seed ^ 0x5eed0bad, (c) => nearEdge[c] === 0);
   const fineClass = new Uint8Array(fu * fv);
   for (let c = 0; c < fineClass.length; c++) fineClass[c] = onEdge[c] | loose[c];
-  const fine: Partition = { cu: fu, cv: fv, points: finePoints, classOf: fineClass };
-  const finest: Partition = { cu: su, cv: sv, points: points(su, sv, seed ^ 0x68e31da4),
-    classOf: chooseShare(su * sv, o.fourthShare ?? .3, seed ^ 0x61c88647) };
+  const fine = sampler({ cu: fu, cv: fv, points: finePoints, classOf: fineClass });
+  const finest = sampler({ cu: su, cv: sv, points: points(su, sv, seed ^ 0x68e31da4),
+    classOf: chooseShare(su * sv, o.fourthShare ?? .3, seed ^ 0x61c88647) });
   // islands: a few finest cells flip the main tone (small patches of each main tone inside the other: a second scale)
-  const islands: Partition = { cu: su, cv: sv, points: points(su, sv, seed ^ 0x7a2c9e31),
-    classOf: chooseShare(su * sv, .07, seed ^ 0x33c4a5e7) };
+  const islands = sampler({ cu: su, cv: sv, points: points(su, sv, seed ^ 0x7a2c9e31),
+    classOf: chooseShare(su * sv, .07, seed ^ 0x33c4a5e7) });
   const main = new Float32Array(n * n), dark = new Float32Array(n * n), fourth = new Float32Array(n * n);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const [u, v] = warp((x + .5) / n, (y + .5) / n), at = y * n + x;
+    warp((x + .5) / n, (y + .5) / n);
+    const at = y * n + x;
     // fields in tile units (anisotropic cell distances back to the macro cell's scale), so edges anti-alias evenly
-    let m = classField(macro, u, v) / mu;
-    const island = classField(islands, u, v) / su;
+    let m = classField(macro, wu, wv) / mu;
+    const island = classField(islands, wu, wv) / su;
     if (island > 0) m = -Math.sign(m || 1) * Math.min(Math.abs(m), island);
     main[at] = m;
-    dark[at] = classField(fine, u, v) / fu;
-    fourth[at] = classField(finest, u, v) / su;
+    dark[at] = classField(fine, wu, wv) / fu;
+    fourth[at] = classField(finest, wu, wv) / su;
   }
   return { main, dark, fourth };
 }

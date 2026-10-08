@@ -3,6 +3,7 @@
 // no extra GPU textures, geometry, shaders, or work during a rendered frame.
 import type { MaterialCanvas, MaterialCanvasContext, MaterialVisual } from './materialPainter.ts';
 import { patchFields, patchPixelTones, patchRoles, composeTone, type PatchFieldSet, type PatchRoles } from './camoPatchField.ts';
+import { CAMO_TILE_SPAN_M, CAMO_WIDE_TILE_SPAN_M } from './camoWorldScale.ts';
 
 export const CATALOG_CAMO_ART_IDS = [
   'summer', 'desert', 'winter', 'urban', 'digital', 'merdc', 'tropic',
@@ -171,28 +172,55 @@ function ellipse(ctx: Context, x: number, y: number, rx: number, ry: number, col
   ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill();
 }
 
-/** The field schemes drawn by the v2 patch fields (camoPatchField.ts): the fleet's three-colour field ('summer', the
- * nato and woodland recipes) and the digital patterns. */
+/** The field schemes drawn by the patch fields (camoPatchField.ts): the fleet's three-colour field ('summer', the
+ * nato and woodland recipes), the desert field and the digital patterns. */
 const PATCH_FIELD_ARTS: ReadonlySet<string> = new Set(['summer', 'desert', 'digital', 'digitaldesert']);
-/** Whether an art is drawn by the v2 patch fields (the bake then keeps its grime glaze light: the patches carry the
+/** Whether an art is drawn by the patch fields (the bake then keeps its grime glaze light: the patches carry the
  * scheme, and a dark cloud over them read as "a soft smear" / "a blurred texture"). */
 export function isPatchFieldArt(id: string | undefined): boolean {
   return !!id && PATCH_FIELD_ARTS.has(id);
 }
-/** Raster texels across the tile for the v2 fields (the continuous fields are sampled bilinearly at the tile's size). */
-const PATCH_FIELD_RASTER = 160;
 
-/** The macro cells across the two-metre tile for a recipe: half-metre cells at the reference density, more for recipes
- * authored denser (camoScale above 0.5 or patchK below 1), three to six. */
-function patchMacroCells(visual: MaterialVisual): number {
-  return Math.max(3, Math.min(6, Math.round(4 * (visual.camoScale || .5) / .5 / (visual.patchK || 1))));
+/**
+ * Fleet lane camouflage painter v3 (2026-10-08). The hull projects one shared tile per CAMO_TILE_SPAN_M (2 m), so on a
+ * 7 m hull side every patch came back three and a half times in a row: a wallpaper rhythm, with half-metre patches
+ * where a real three-tone scheme sprays metre-to-two-metre ones. A patch-field scheme now paints its albedo and
+ * roughness tiles over CAMO_WIDE_TILE_SPAN_M (4 m): those two textures repeat at half the shared density (the hull's
+ * UVs, the normal map and the plate plan stay on the 2 m tile, and the bake lays the plate plan's paint marks in the
+ * wide tile's four quadrants, so every seam, weld and chip still sits on its relief). Every other art keeps the
+ * shared tile.
+ */
+export function camoArtTileSpanM(id: string | undefined): number {
+  return isPatchFieldArt(id) ? CAMO_WIDE_TILE_SPAN_M : CAMO_TILE_SPAN_M;
+}
+/** The texture repeat that lays an art's tile on the shared-tile UVs (0.5 for a wide tile, 1 otherwise). */
+export function camoArtTileRepeat(id: string | undefined): number {
+  return CAMO_TILE_SPAN_M / camoArtTileSpanM(id);
 }
 
-function paintPatchField(ctx: Context, size: number, visual: MaterialVisual, palette: Color[], seed: number, pixel: boolean): void {
+/** Field raster samples per metre (3.1 cm): the fields are smooth, and every edge is placed by bilinear interpolation
+ * and drawn with 2 x 2 supersampling at the tile's own resolution, so a finer raster only costs time. */
+const PATCH_FIELD_RASTER_PER_M = 32;
+/** Digital pixels per metre at the reference cell size (2.5 cm pixels). */
+const PATCH_PIXELS_PER_M = 40;
+/** Main-patch cell widths at the reference density: a three-colour scheme sprays metre-to-two-metre patches (cells of
+ * 0.8 m merge into them); a digital scheme's clusters are tighter. */
+const PATCH_CELL_M = 0.8, PIXEL_CLUSTER_CELL_M = 0.65;
+
+/** The macro cells across the tile for a recipe and its tile span: more for recipes authored denser (camoScale above
+ * 0.5 or patchK below 1). */
+function patchMacroCells(visual: MaterialVisual, spanM: number, pixel: boolean): number {
+  const cells = spanM / (pixel ? PIXEL_CLUSTER_CELL_M : PATCH_CELL_M) * (visual.camoScale || .5) / .5 / (visual.patchK || 1);
+  return Math.max(3, Math.min(Math.round(spanM * 2.5), Math.round(cells)));
+}
+
+function paintPatchField(ctx: Context, size: number, visual: MaterialVisual, palette: Color[], seed: number, pixel: boolean,
+  spanM: number): void {
   const roles = patchRoles(palette);
+  const macroCells = patchMacroCells(visual, spanM, pixel);
   if (pixel) {
-    const n = Math.round(80 / Math.max(.85, visual.digitalCellK || 1));
-    const fields = patchFields({ n, seed, macroCells: patchMacroCells(visual) });
+    const n = Math.round(PATCH_PIXELS_PER_M * spanM / Math.max(.85, visual.digitalCellK || 1));
+    const fields = patchFields({ n, seed, macroCells });
     const tones = patchPixelTones(fields, n, roles, seed);
     const cells = new Uint8ClampedArray(n * n * 4);
     const pigment = lattice(seed ^ 0x2f6b7c41, 6);
@@ -203,59 +231,102 @@ function paintPatchField(ctx: Context, size: number, visual: MaterialVisual, pal
     paintPixels(ctx, size, n, cells);
     return;
   }
-  const n = Math.min(PATCH_FIELD_RASTER, size);
-  const fields = patchFields({ n, seed, macroCells: patchMacroCells(visual) });
+  const n = Math.round(PATCH_FIELD_RASTER_PER_M * spanM);
+  const fields = patchFields({ n, seed, macroCells });
   paintPatchEdges(ctx, size, n, fields, palette, roles, seed);
 }
 
-/** The v2 fields at the tile's own size: each texel takes the tone of the fields sampled bilinearly at four points
- * inside it (2 x 2 supersampling: one anti-aliased texel at every edge, edges at their true positions); a raster cell
- * whose four corners share one tone well away from every boundary is filled at once. A slight periodic pigment
- * variation runs through every tone. */
+/** The fields at the tile's own size. A raster cell whose four corners agree in every field's sign holds one tone and is
+ * filled at once; a cell an edge crosses takes, per texel, each field interpolated bilinearly and its coverage from
+ * the field's value over its change across the texel (one anti-aliased texel at every edge, at its true position),
+ * layered in the tones' priority (the main ground, a light fourth tone, the dark tone with a deep fourth inside it).
+ * A slight periodic pigment variation runs through every tone, evaluated per 8 x 8 texel block (it changes over a
+ * sixth of the tile). Painter v3: the v2 per-texel 2 x 2 supersampling of every field took over a second for a hero
+ * tile; this pass is one sample per field per edge texel and plain fills elsewhere. */
 function paintPatchEdges(ctx: Context, size: number, n: number, fields: PatchFieldSet, palette: Color[], roles: PatchRoles,
   seed: number): void {
   const k = n / size, { main, dark, fourth } = fields;
-  const sample = (field: Float32Array, fx: number, fy: number): number => {
-    const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
-    const a = wrap(y0, n) * n, b = wrap(y0 + 1, n) * n, c0 = wrap(x0, n), c1 = wrap(x0 + 1, n);
-    const top = field[a + c0] + (field[a + c1] - field[a + c0]) * tx;
-    return top + (field[b + c0] + (field[b + c1] - field[b + c0]) * tx - top) * ty;
-  };
-  // a raster cell is uniform when its four corners give one tone and every field stays clear of zero there by more
-  // than its change across the cell (bilinear values are convex combinations of the corners)
+  const hasDark = roles.dark >= 0, hasFourth = roles.fourth >= 0, deep = roles.fourthDeep;
+  const col = (index: number): Color => palette[Math.max(0, index)];
+  const baseC = col(roles.base), secondC = col(roles.second), darkC = col(roles.dark), fourthC = col(roles.fourth);
+  // the tone of each raster cell whose corners agree in sign on every field (-1: an edge crosses it)
   const cellTone = new Int16Array(n * n).fill(-1);
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const corners = [y * n + x, y * n + (x + 1) % n, ((y + 1) % n) * n + x, ((y + 1) % n) * n + (x + 1) % n];
-    const t = composeTone(main[corners[0]], dark[corners[0]], fourth[corners[0]], roles);
-    let uniform = true;
-    for (const f of [main, dark, fourth]) {
-      const lo = Math.min(...corners.map((c) => f[c])), hi = Math.max(...corners.map((c) => f[c]));
-      if (lo < 0 && hi > 0) { uniform = false; break; }
+  for (let j = 0; j < n; j++) {
+    const r0 = j * n, r1 = (j + 1 === n ? 0 : j + 1) * n;
+    for (let i = 0; i < n; i++) {
+      const i1 = i + 1 === n ? 0 : i + 1, a = r0 + i, b = r0 + i1, c = r1 + i, d = r1 + i1;
+      const ms = main[a] > 0, ds = dark[a] > 0, fs = fourth[a] > 0;
+      if ((main[b] > 0) !== ms || (main[c] > 0) !== ms || (main[d] > 0) !== ms) continue;
+      if (hasDark && ((dark[b] > 0) !== ds || (dark[c] > 0) !== ds || (dark[d] > 0) !== ds)) continue;
+      if (hasFourth && ((fourth[b] > 0) !== fs || (fourth[c] > 0) !== fs || (fourth[d] > 0) !== fs)) continue;
+      cellTone[a] = composeTone(main[a], dark[a], fourth[a], roles);
     }
-    if (uniform) for (const c of corners) if (composeTone(main[c], dark[c], fourth[c], roles) !== t) { uniform = false; break; }
-    if (uniform) cellTone[y * n + x] = t;
   }
-  const pigment = lattice(seed ^ 0x2f6b7c41, 6);
-  const out = ctx.createImageData(size, size), data = out.data;
-  const sub = [.25, .75];
+  // pigment per 8 x 8 texel block
+  const PB = 8, blocks = Math.ceil(size / PB), pigment = lattice(seed ^ 0x2f6b7c41, 6);
+  const vary = new Float32Array(blocks * blocks);
+  for (let by = 0; by < blocks; by++) for (let bx = 0; bx < blocks; bx++) {
+    vary[by * blocks + bx] = 1 + (pigment((bx * PB + PB / 2) / size, (by * PB + PB / 2) / size) - .5) * .06;
+  }
+  const out = ctx.createImageData(size, size), data = out.data, packed32 = new Uint32Array(data.buffer);
+  // little-endian RGBA as one word (every browser and the node canvas are little-endian)
+  const pack = (r: number, g: number, b: number): number =>
+    ((255 << 24) | (Math.min(255, Math.max(0, Math.round(b))) << 16) | (Math.min(255, Math.max(0, Math.round(g))) << 8)
+      | Math.min(255, Math.max(0, Math.round(r)))) >>> 0;
+  // per texel column: its raster column pair, its blend weight and its pigment block
+  const col0 = new Int32Array(size), col1 = new Int32Array(size), colT = new Float32Array(size), colB = new Int32Array(size);
+  for (let X = 0; X < size; X++) {
+    const fx = (X + .5) * k - .5, ix = Math.floor(fx);
+    col0[X] = ix < 0 ? ix + n : ix; col1[X] = col0[X] + 1 === n ? 0 : col0[X] + 1; colT[X] = fx - ix; colB[X] = X / PB | 0;
+  }
+  // every palette tone at every pigment block of the current block row, packed
+  const tones = palette.length, rowPacked = new Uint32Array(tones * blocks);
+  let packedRow = -1;
+  const k2 = k;
   for (let Y = 0; Y < size; Y++) {
+    const fy = (Y + .5) * k2 - .5, jy = Math.floor(fy), ty = fy - jy;
+    const j0 = jy < 0 ? jy + n : jy, j1 = j0 + 1 === n ? 0 : j0 + 1, r0 = j0 * n, r1 = j1 * n, brow = Y / PB | 0;
+    if (brow !== packedRow) {
+      packedRow = brow;
+      for (let t = 0; t < tones; t++) {
+        const c = palette[t];
+        for (let bx = 0; bx < blocks; bx++) {
+          const v = vary[brow * blocks + bx];
+          rowPacked[t * blocks + bx] = pack(c[0] * v, c[1] * v, c[2] * v);
+        }
+      }
+    }
+    const rowAt = Y * size;
     for (let X = 0; X < size; X++) {
-      const at = (Y * size + X) * 4;
-      const vary = 1 + (pigment(X / size, Y / size) - .5) * .06;
-      const fxc = (X + .5) * k - .5, fyc = (Y + .5) * k - .5;
-      const cell = cellTone[wrap(Math.floor(fyc), n) * n + wrap(Math.floor(fxc), n)];
-      if (cell >= 0) {
-        const c = palette[cell];
-        data[at] = c[0] * vary; data[at + 1] = c[1] * vary; data[at + 2] = c[2] * vary; data[at + 3] = 255;
-        continue;
+      const i0 = col0[X], tone = cellTone[r0 + i0];
+      if (tone >= 0) { packed32[rowAt + X] = rowPacked[tone * blocks + colB[X]]; continue; }
+      const i1 = col1[X], tx = colT[X], a = r0 + i0, b = r0 + i1, c = r1 + i0, d = r1 + i1;
+      // each field's bilinear value and gradient (per raster cell) give its coverage of this texel
+      let fa = main[a], fb = main[b], fc = main[c], fd = main[d], cross = fa - fb - fc + fd;
+      let f = fa + (fb - fa) * tx + (fc - fa) * ty + cross * tx * ty;
+      let w = (Math.abs(fb - fa + cross * ty) + Math.abs(fc - fa + cross * tx)) * k2;
+      const am = w < 1e-9 ? (f > 0 ? 1 : 0) : Math.min(1, Math.max(0, .5 + f / w));
+      let r = baseC[0] + (secondC[0] - baseC[0]) * am, g = baseC[1] + (secondC[1] - baseC[1]) * am,
+        bl = baseC[2] + (secondC[2] - baseC[2]) * am;
+      let af = 0;
+      if (hasFourth) {
+        fa = fourth[a]; fb = fourth[b]; fc = fourth[c]; fd = fourth[d]; cross = fa - fb - fc + fd;
+        f = fa + (fb - fa) * tx + (fc - fa) * ty + cross * tx * ty;
+        w = (Math.abs(fb - fa + cross * ty) + Math.abs(fc - fa + cross * tx)) * k2;
+        af = w < 1e-9 ? (f > 0 ? 1 : 0) : Math.min(1, Math.max(0, .5 + f / w));
+        if (!deep) { r += (fourthC[0] - r) * af; g += (fourthC[1] - g) * af; bl += (fourthC[2] - bl) * af; }
       }
-      let r = 0, g = 0, b = 0;
-      for (const sy of sub) for (const sx of sub) {
-        const fx = (X + sx) * k - .5, fy = (Y + sy) * k - .5;
-        const c = palette[composeTone(sample(main, fx, fy), sample(dark, fx, fy), sample(fourth, fx, fy), roles)];
-        r += c[0]; g += c[1]; b += c[2];
+      if (hasDark) {
+        fa = dark[a]; fb = dark[b]; fc = dark[c]; fd = dark[d]; cross = fa - fb - fc + fd;
+        f = fa + (fb - fa) * tx + (fc - fa) * ty + cross * tx * ty;
+        w = (Math.abs(fb - fa + cross * ty) + Math.abs(fc - fa + cross * tx)) * k2;
+        const ad = w < 1e-9 ? (f > 0 ? 1 : 0) : Math.min(1, Math.max(0, .5 + f / w));
+        let dr = darkC[0], dg = darkC[1], db = darkC[2];
+        if (hasFourth && deep) { dr += (fourthC[0] - dr) * af; dg += (fourthC[1] - dg) * af; db += (fourthC[2] - db) * af; }
+        r += (dr - r) * ad; g += (dg - g) * ad; bl += (db - bl) * ad;
       }
-      data[at] = r * .25 * vary; data[at + 1] = g * .25 * vary; data[at + 2] = b * .25 * vary; data[at + 3] = 255;
+      const v = vary[brow * blocks + colB[X]];
+      packed32[rowAt + X] = pack(r * v, g * v, bl * v);
     }
   }
   ctx.putImageData(out, 0, 0);
@@ -274,7 +345,7 @@ const STROKE_BOUNDARY_PULL = .38;
 // uniformly distributed dots. Quantiles keep each intended colour present for
 // every seed, including the 5% MERDC accents.
 function paintField<C extends MaterialCanvas>(
-  ctx: Context, size: number, visual: MaterialVisual, rng: Rng, scratch: C,
+  ctx: Context, size: number, visual: MaterialVisual, rng: Rng, scratch: C, spanM = CAMO_TILE_SPAN_M,
 ): void {
   const id = visual.catalogPattern!;
   const pixel = id === 'digital' || id === 'digitaldesert';
@@ -283,7 +354,7 @@ function paintField<C extends MaterialCanvas>(
     const palette = [visual.base, ...(visual.patches || [])].map(parse);
     if (palette.length === 1) palette.push(parse(visual.weather || visual.base));
     if (pixel) for (let tone = 0; tone < palette.length; tone++) palette[tone] = liftDigitalTone(palette[tone]);
-    paintPatchField(ctx, size, visual, palette, Math.floor(rng() * 0x7fffffff) | 0, pixel);
+    paintPatchField(ctx, size, visual, palette, Math.floor(rng() * 0x7fffffff) | 0, pixel, spanM);
     return;
   }
   const fleck = id === 'flecktarn' || id === 'oakleaf' || id === 'ambushdot';
@@ -776,7 +847,9 @@ function paintSubstrate<C extends MaterialCanvas>(
 
 export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (w: number, h: number) => C) {
   let fieldScratch: C | null = null;
-  return (ctx: Context, size: number, visual: MaterialVisual, rng: Rng): void => {
+  /** Paint `visual`'s art over the `size` canvas, which spans `spanM` metres of armour (an art drawn by the patch
+   * fields fills a wide tile when the bake gives it one; every other art is authored on the shared tile). */
+  return (ctx: Context, size: number, visual: MaterialVisual, rng: Rng, spanM = CAMO_TILE_SPAN_M): void => {
     const id = visual.catalogPattern;
     if (!id) return;
     const colors = [visual.base, ...(visual.patches || [])];
@@ -787,7 +860,7 @@ export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (
       paintSubstrate(ctx, size, visual, rng, fieldScratch);
     } else if (!graphic.includes(id) && !geometric.includes(id) && id !== 'normandy44' && id !== 'berlin45') {
       fieldScratch ??= makeCanvas(256, 256);
-      paintField(ctx, size, visual, rng, fieldScratch);
+      paintField(ctx, size, visual, rng, fieldScratch, spanM);
     }
     ctx.save(); ctx.scale(size, size);
     if (['splinter', 'm90', 'dazzle', 'prism'].includes(id)) paintSplinter(ctx, rng, colors, id);
