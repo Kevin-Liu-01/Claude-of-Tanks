@@ -65,6 +65,22 @@ export interface RubbleStamp {
 
 export type TerrainStamp = CraterStamp | RubbleStamp;
 
+/**
+ * The ground a stamp moves, as an axis-aligned box [minX, minZ, maxX, maxZ] into `out` (a crater's 1.6 R influence with
+ * its 10 % wobble margin; a heap's rotated footprint grown by its skirt): what a renderer re-reads (crater-render-spec §B).
+ */
+export function stampBounds(stamp: TerrainStamp, out: number[] | Float64Array): number[] | Float64Array {
+  if (stamp.kind === 'crater') {
+    const reach = stamp.radiusM * CRATER_REACH * 1.1;
+    out[0] = stamp.x - reach; out[1] = stamp.z - reach; out[2] = stamp.x + reach; out[3] = stamp.z + reach;
+    return out;
+  }
+  const ex = Math.abs(stamp.s) * stamp.hd + Math.abs(stamp.c) * stamp.hw + stamp.falloffM;
+  const ez = Math.abs(stamp.c) * stamp.hd + Math.abs(stamp.s) * stamp.hw + stamp.falloffM;
+  out[0] = stamp.cx - ex; out[1] = stamp.cz - ez; out[2] = stamp.cx + ex; out[3] = stamp.cz + ez;
+  return out;
+}
+
 export interface TerrainDeformation {
   /** Stamps in the order they were added (the order every peer adds them). */
   readonly stamps: readonly TerrainStamp[];
@@ -152,7 +168,11 @@ export function rubbleProfile(stamp: RubbleStamp, x: number, z: number): number 
   return stamp.heightM * 0.5 * (1 + Math.cos(Math.PI * outside / stamp.falloffM));
 }
 
-/** The seed's three wobble phases (deterministic, no RNG state). */
+/** The seed's three wobble phases (deterministic, no RNG state): a crater's ragged edge, and the presentation's decal
+ * edge that follows it (crater-render-spec §D) — one law, not a copy. */
+export function craterWobblePhases(seed: number): [number, number, number] {
+  return phases(seed);
+}
 function phases(seed: number): [number, number, number] {
   const s = seed >>> 0;
   return [((s & 0xff) / 256) * Math.PI * 2, (((s >>> 8) & 0xff) / 256) * Math.PI * 2, (((s >>> 16) & 0xff) / 256) * Math.PI * 2];

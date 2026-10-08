@@ -114,8 +114,8 @@ export type StructureMassClass = 'shed' | 'house' | 'large' | 'landmark';
 /** What dealt a blow: a detonation's blast, a penetrator's kinetic strike, a hull's ram. */
 export type DestructionCause = 'blast' | 'kinetic' | 'ram';
 
-/** Section kinds of a structure (phase P2): a wall face, the roof, an upper floor. */
-export type StructureSectionKind = 'wall' | 'roof' | 'floor';
+/** Section kinds of a structure (phase P2): a wall face over one storey, or the roof. */
+export type StructureSectionKind = 'wall' | 'roof';
 
 /**
  * A structure as any world can find it: the authority's id plus the footprint that identifies it in a world laid out
@@ -158,24 +158,31 @@ export interface StructureStageEvent extends StructureIdentity {
   points: number;
   /** Hit-point share left after the blow, 0..1 (0 when collapsed). */
   integrity: number;
+  /** The match plays sections (P2): its holes and falls arrive as their own `structure:breach` events, so a `breached`
+   * stage cuts no hole of its own. */
+  sections?: boolean;
   /** State older than this viewer's view (a late joiner, a reconnect, a migration): lay it at its final pose. */
   settled?: boolean;
 }
 
 /**
- * A hole opened in a section (phase P2). Solo bus `structure:breach`; wire event `structure_breach`. Shells and sight
- * lines pass the hole from the event's tick on; the presentation cuts or decals it at (x, y, z) facing (nx, ny, nz).
+ * A hole opened in a section, or a section fell (phase P2, DESTRUCTION.md §3.4). Solo bus `structure:breach`; wire event
+ * `structure_breach` (every viewer). Shells and sight lines pass the opening from the event's tick on: a hole of
+ * `radiusM` centred at (x, y, z) on the face whose outward normal is (nx, ny, nz) (the roof's: a vertical cylinder), or
+ * — `sectionDown` — the whole section (a wall panel above its metre-high stub, the roof, a storey that dropped after
+ * it). A fall carries no hole (`hole` 255, `radiusM` 0) and stands at the section's centre on its face, so the
+ * presentation finds its own section there (seam.holeAt) and drops it (seam.sectionDown).
  */
-export interface StructureBreachEvent {
-  structureId: number;
-  /** The core's section index within the structure (DESTRUCTION.md §3.4: a face of its footprint and a height band,
-   * or its roof). The kit's own sections differ; the world maps a hole to its face and storey by the point below. */
+export interface StructureBreachEvent extends StructureIdentity {
+  /** The core's section index within the structure (DESTRUCTION.md §3.4: `storey · 4 + face` for a wall — faces 0 and 1
+   * the footprint's +/− forward ends, 2 and 3 its +/− across sides — and `storeys · 4` for the roof). The kit's own
+   * sections differ; the world maps a hole to its face and storey by the point. */
   section: number;
   sectionKind: StructureSectionKind;
   /** The section's height span (world y): what falls when `sectionDown`. */
   y0: number;
   y1: number;
-  /** Breach slot within the section's bounded hole list. */
+  /** Breach slot within the section's bounded hole list (0–3; 255 for a fall). */
   hole: number;
   x: number;
   y: number;
@@ -183,11 +190,14 @@ export interface StructureBreachEvent {
   nx: number;
   ny: number;
   nz: number;
-  /** Hole radius in metres. */
+  /** Hole radius in metres (0 for a fall). */
   radiusM: number;
   munition: MunitionClass | null;
-  /** The section fell (a roof or upper floor dropping, a wall panel gone): partial collapse. */
+  /** The section fell (a roof dropping, an upper storey after it, a wall panel gone): partial collapse. */
   sectionDown: boolean;
+  /** This fall completed its storey (P2): the roof and every storey above are down and so are all four of this storey's
+   * faces — everything above its floor line `y0` is gone, its floor slab with it (the ground storey keeps its stubs). */
+  storeyDown?: boolean;
   settled?: boolean;
 }
 
@@ -267,6 +277,8 @@ export interface DestructionRules {
   readonly structures: boolean;
   /** Explosions deform the ground. */
   readonly craters: boolean;
+  /** Structures open in sections (P2): holes and fallen walls, roofs and storeys that shells and sight lines pass. */
+  readonly sections: boolean;
   /** Multiplies every structure point dealt. */
   readonly structureDamageScale: number;
   /** Multiplies crater radii. */
@@ -286,8 +298,10 @@ export interface DestructionRules {
 export type DestructionLogEntry =
   /** A stage, and the structure's footprint centre (its identity in a world laid out otherwise; absent from old logs). */
   | { readonly kind: 'stage'; readonly structureId: number; readonly stage: StructureStage; readonly cx?: number; readonly cz?: number }
+  /** A hole or a section's fall (P2), and the structure's footprint centre (its identity in a world laid out otherwise). */
   | { readonly kind: 'breach'; readonly structureId: number; readonly section: number; readonly hole: number;
-      readonly x: number; readonly y: number; readonly z: number; readonly radiusM: number; readonly sectionDown: boolean }
+      readonly x: number; readonly y: number; readonly z: number; readonly radiusM: number; readonly sectionDown: boolean;
+      readonly cx?: number; readonly cz?: number }
   | { readonly kind: 'crater'; readonly craterId: number; readonly x: number; readonly z: number;
       readonly radiusM: number; readonly depthM: number; readonly rimM: number; readonly seed: number };
 

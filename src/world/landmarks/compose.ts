@@ -63,6 +63,9 @@ interface LandmarkComposeContext {
   colliders: CollisionRecord[];
   /** The next structure group id (destruction, docs/DESTRUCTION.md §3.1): the props' build-order serial. */
   structureIndex?(): number;
+  /** Describe a piece for its damage (destruction §16): its parts in its own frame, its placement, its records. */
+  describeStructure?(structureIdx: number, kind: string, parts: RegionalParts, x: number, y: number, z: number, yaw: number,
+    obstacles: CollisionRecord[], colliders: CollisionRecord[]): void;
   architecture: ArchitectureStyle | null;
   snowCap: boolean;
   seed: number;
@@ -347,6 +350,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
           ctx.colliders[i].structureRole = structureRole;
         }
         for (const geometry of partList(parts)) geometry.userData.structureIdx = structureIdx;
+        if (structureRole === 'setpiece') {
+          ctx.describeStructure?.(structureIdx, placement.kind, parts, placement.x, baseY, placement.z, yaw,
+            ctx.obstacles.slice(obstacleStart), ctx.colliders.slice(colliderStart));
+        }
       }
     } catch (error) {
       for (const geometry of partList(parts)) geometry.dispose();

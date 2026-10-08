@@ -10,15 +10,28 @@
  * records (`crushed` on the obstacles, `crushed` + `dead` on the shell bands), at most `COLLAPSES_PER_TICK` a tick in
  * authority order, and reports it to the caller, which raises the rubble and refreshes the route grid.
  *
+ * Sections (P2, §3.4; structureSections.ts), when the table is made with `sections`: the blow's section takes it too —
+ * a hole where a round strikes a wall (a blast's by its charge, a penetrator's by its calibre), a section that falls at
+ * zero (a wall panel down to its stub, the roof, the storeys after it) — and the structure's shell bands point at its
+ * openings, which the world raycasts read (world/collision.ts rayStructureOpenings). Each hole and fall is a
+ * `StructureBreachEvent`, released by `step` within its budget.
+ *
  * Pure and Node-runnable: no three, no DOM, no clock, no RNG (damage is deterministic in its inputs). Allocates at
  * construction and when a stage actually changes; the per-blow paths reuse scratch state.
  */
 import { convexHull2, type CollisionRecord, type SimpleCollisionShape } from '../world/collision.ts';
 import { impactEnergyKj } from './impact.ts';
+import { structureMaterialFor, type StructureMaterial } from './structureMaterial.ts';
 import type {
-  DestructionCause, MunitionClass, StructureMassClass, StructureStage, StructureStageEvent,
+  DestructionCause, MunitionClass, StructureBreachEvent, StructureMassClass, StructureStage, StructureStageEvent,
 } from './destructionEvents.ts';
 import { blastReachM, structureBlastPoints } from './munitionBlast.ts';
+import {
+  attachOpenings, blastHoleRadiusM, cascadeFalls, createStructureSections, fellSection, holeRadiusFor, MIN_HOLE_M, NO_HOLE,
+  openHole, sectionAt, sectionCentre, sectionKind, sectionNormal, sectionSpan, shapeArea, storeyDownAt,
+  type StructureSections,
+} from './structureSections.ts';
+import { structureOpeningAt, STRUCTURE_HOLES_PER_SECTION } from '../world/collision.ts';
 
 /** Stage index order: intact 0, damaged 1, breached 2, collapsed 3. */
 export const STAGE_ORDER: readonly StructureStage[] = Object.freeze(['intact', 'damaged', 'breached', 'collapsed']);
@@ -37,12 +50,29 @@ const HP_SCALE = 0.72;
 const HP_EXPONENT = 0.72;
 const HP_FLOOR = 10;
 /** Ram pricing (§4.4): energy under this does nothing; above it, one structure point per this many kJ. */
-const RAM_THRESHOLD_KJ = 40;
-const RAM_KJ_PER_POINT = 48;
-/** Collision swaps per fixed step (§5): a third collapse waits a tick. */
-export const COLLAPSES_PER_TICK = 2;
+/**
+ * Ram pricing (§4.4). A crash below a wall's scuff energy only scuffs it: the energy its face absorbs crushing over a
+ * hull's bow contact (≈ 2 m²: a glacis or nose block, 2 m × 1 m) to the 2 cm it can lose without losing section —
+ * E₀ = σc · A · d, with the face's crushing strength σc. Timber and sheet (≈ 0.75 MPa as the cladding and studs give):
+ * 30 kJ; mudbrick (≈ 1.5 MPa): 60 kJ; brick and stone masonry (≈ 7.5 MPa): 300 kJ; reinforced concrete (≈ 27.5 MPa):
+ * 1.1 MJ. For a 50 t hull those are closing speeds of 1.1, 1.5, 3.5 and 6.6 m/s: a 1.3 m/s bump (42 kJ) scuffs
+ * masonry, a deliberate ram at 8–12 m/s (1.6–3.6 MJ) breaks it.
+ */
+export const RAM_SCUFF_KJ: Readonly<Record<StructureMaterial, number>> = Object.freeze({
+  timber: 30, adobe: 60, masonry: 300, concrete: 1100,
+});
+/** One structure point per this much ram energy above the scuff (§5's feel on a masonry house: a 60 t hull at 9 m/s
+ * breaches it, at 12 m/s brings it down, a 37.5 t medium at 8 m/s damages it). */
+const RAM_KJ_PER_POINT = 40;
+/** Collision swaps per fixed step (§5, §10): a collapse's work (the swap, the heap, the route grid's refresh round it) is
+ * about 1–4 ms of CPU, so a second collapse in the same tick waits for the next (16.7 ms later). */
+export const COLLAPSES_PER_TICK = 1;
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
 export const STAGE_EVENTS_PER_TICK = 4;
+/** Breach events (holes and section falls, P2) per fixed step: the overflow is reported in the next tick. */
+export const BREACH_EVENTS_PER_TICK = 6;
+/** A blast this close to a structure (the blast law's contact zone, 0.6 · W^⅓) strikes its nearest section too. */
+const SECTION_CONTACT_Z = 0.6;
 /** Blast query buckets (§10). */
 const BUCKET_M = 16;
 const WORLD_HALF_M = 512;
@@ -53,6 +83,8 @@ export interface StructureState {
   readonly id: number;
   readonly role: 'building' | 'setpiece' | 'fixed';
   readonly massClass: StructureMassClass;
+  /** What its walls are (structureMaterial.ts): the ram's scuff energy (§4.4). */
+  readonly material: StructureMaterial;
   /** Takes damage at all (false for a fixed group). */
   readonly destructible: boolean;
   /** Collapses at zero (false for a landmark). */
@@ -75,6 +107,8 @@ export interface StructureState {
   /** Its contact and movement records (obstacles) and shell bands (colliders). */
   readonly obstacles: CollisionRecord[];
   readonly colliders: CollisionRecord[];
+  /** Its sections (P2), derived when first struck in a table made with `sections`; null until then. */
+  sections: StructureSections | null;
 }
 
 /** One blow, as the caller saw it (where, which way, what made it). */
@@ -86,13 +120,19 @@ export interface StructureBlow {
   z: number;
   dirX: number;
   dirZ: number;
+  /** A penetrator's hole radius at the strike (P2: kinetic and shaped-charge rounds; 0 or absent: none). */
+  holeRadiusM?: number;
 }
 
 export interface StructureDamageOptions {
   /** Multiplies every structure point dealt (the ruleset's structureDamageScale). */
   damageScale?: number;
+  /** The map's house walls (structureMaterial.ts wallMaterialForMap; masonry when absent). */
+  wallMaterial?: StructureMaterial;
   /** A collapse applied (records already flipped): raise the rubble, refresh the route grid. */
   onCollapse?(structure: StructureState): void;
+  /** Sections (P2): blows open holes and fell sections, which shells and sight lines pass (the ruleset's `sections`). */
+  sections?: boolean;
 }
 
 export interface StructureDamage {
@@ -120,8 +160,20 @@ export interface StructureDamage {
   step(): void;
   /** Moves the events released by `step` into `out` (oldest first) and returns how many. */
   drainEvents(out: StructureStageEvent[]): number;
+  /** Moves the breach events (P2) released by `step` into `out` (oldest first) and returns how many. */
+  drainBreaches(out: StructureBreachEvent[]): number;
   /** Lay a stage down without an event (a resumed host, a late joiner's settled log): flips a collapse at once. */
   restoreStage(id: number, stage: StructureStage): boolean;
+  /**
+   * Lay a breach down without an event (a resumed host, a peer replaying the authority's event or log): the hole in its
+   * slot, or the section's fall (`sectionDown`, slot NO_HOLE), in the section at the point (the authority classified
+   * the same quantized point; the named section for a point inside the footprint). Returns the section it opened, or
+   * −1 when nothing changed (already open, a collapsed structure, a table without sections).
+   */
+  restoreBreach(id: number, section: number, hole: number, x: number, y: number, z: number, radiusM: number,
+    sectionDown: boolean): number;
+  /** A structure's sections (derived on first use; null for one that takes no damage or a table without sections). */
+  sectionsOf(structure: StructureState): StructureSections | null;
 }
 
 // ---- Footprints ------------------------------------------------------------------------------------------------
@@ -152,17 +204,6 @@ function recordPoints(record: CollisionRecord, out: Array<[number, number]>): vo
   } else {
     shapePoints(shape, out);
   }
-}
-
-function shapeArea(shape: SimpleCollisionShape): number {
-  if (shape.kind === 'circle') return Math.PI * shape.r * shape.r;
-  if (shape.kind === 'obb') return 4 * shape.hw * shape.hl;
-  let twice = 0;
-  for (let i = 0; i < shape.points.length; i += 2) {
-    const j = (i + 2) % shape.points.length;
-    twice += shape.points[i] * shape.points[j + 1] - shape.points[j] * shape.points[i + 1];
-  }
-  return Math.abs(twice) * 0.5;
 }
 
 /** Built volume of shell bands: each part's area times its own vertical extent (or its record's). */
@@ -248,9 +289,9 @@ export function structureHitPoints(volumeM3: number): number {
   return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
 }
 
-/** Structure points of a ram (§4.4): (½·m·v² − 40 kJ) / 48, 0 below the threshold. */
-export function ramStructurePoints(massTons: number, closingMps: number): number {
-  return Math.max(0, impactEnergyKj(massTons, closingMps) - RAM_THRESHOLD_KJ) / RAM_KJ_PER_POINT;
+/** Structure points of a ram (§4.4): (½·m·v² − E₀(material)) / 40, 0 below the material's scuff energy. */
+export function ramStructurePoints(massTons: number, closingMps: number, material: StructureMaterial = 'masonry'): number {
+  return Math.max(0, impactEnergyKj(massTons, closingMps) - RAM_SCUFF_KJ[material]) / RAM_KJ_PER_POINT;
 }
 
 /** The stage an integrity (hp / maxHp) stands at. */
@@ -265,7 +306,7 @@ export function stageForIntegrity(integrity: number): number {
 
 interface Group { obstacles: CollisionRecord[]; colliders: CollisionRecord[] }
 
-function buildState(id: number, group: Group): StructureState | null {
+function buildState(id: number, group: Group, wallMaterial: StructureMaterial): StructureState | null {
   const role: StructureState['role'] = group.obstacles.concat(group.colliders)
     .some((record) => record.structureRole === 'fixed') ? 'fixed'
     : group.obstacles.concat(group.colliders).some((record) => record.structureRole === 'setpiece') ? 'setpiece'
@@ -288,13 +329,13 @@ function buildState(id: number, group: Group): StructureState | null {
   const massClass = structureMassClass(volume, role);
   const maxHp = structureHitPoints(volume);
   return {
-    id, role, massClass,
+    id, role, massClass, material: structureMaterialFor(massClass, wallMaterial),
     destructible: role !== 'fixed',
     collapsible: role !== 'fixed' && massClass !== 'landmark',
     cx: footprint.cx, cz: footprint.cz, hw: footprint.hw, hd: footprint.hd, yaw: footprint.yaw,
     baseY: Number.isFinite(baseY) ? baseY : 0, topY: Number.isFinite(topY) ? topY : 0,
     volumeM3: volume, maxHp, hp: maxHp, stage: 0, collapsePending: false,
-    obstacles: group.obstacles, colliders: group.colliders,
+    obstacles: group.obstacles, colliders: group.colliders, sections: null,
   };
 }
 
@@ -333,7 +374,7 @@ export function createStructureDamage(
   for (const record of colliders) take(record, 'colliders');
   const structures: StructureState[] = [];
   for (const id of [...groups.keys()].sort((a, b) => a - b)) {
-    const state = buildState(id, groups.get(id)!);
+    const state = buildState(id, groups.get(id)!, options.wallMaterial ?? 'masonry');
     if (state) structures.push(state);
   }
   const byIdMap = new Map<number, StructureState>(structures.map((structure) => [structure.id, structure]));
@@ -363,6 +404,80 @@ export function createStructureDamage(
   const pendingEvents: StructureStageEvent[] = [];
   const released: StructureStageEvent[] = [];
 
+  // ---- sections (P2) ----
+  const sectionsOn = options.sections === true;
+  const pendingBreaches: StructureBreachEvent[] = [];
+  const releasedBreaches: StructureBreachEvent[] = [];
+  const falls: number[] = [];
+  const span = { y0: 0, y1: 0 };
+  const normal = { x: 0, y: 0, z: 0 };
+  const centre = { x: 0, y: 0, z: 0 };
+  // the wire's quantization (mp/wire/destructionLog.ts): centres to the millimetre, radii to the centimetre
+  const mm = (value: number) => Math.round(value * 1000) / 1000;
+  const cm = (value: number) => Math.round(value * 100) / 100;
+
+  function sectionsFor(structure: StructureState): StructureSections | null {
+    if (!sectionsOn || !structure.destructible) return null;
+    return structure.sections ??= createStructureSections(structure);
+  }
+
+  function breachEvent(structure: StructureState, sections: StructureSections, section: number, hole: number,
+    x: number, y: number, z: number, radiusM: number, sectionDown: boolean, munition: MunitionClass | null): StructureBreachEvent {
+    sectionSpan(sections, section, span);
+    sectionNormal(sections, section, normal);
+    return {
+      structureId: structure.id, massClass: structure.massClass,
+      cx: structure.cx, cz: structure.cz, hw: structure.hw, hd: structure.hd, yaw: structure.yaw,
+      baseY: structure.baseY, topY: structure.topY,
+      section, sectionKind: sectionKind(sections, section), y0: span.y0, y1: span.y1, hole,
+      x, y, z, nx: normal.x, ny: normal.y, nz: normal.z, radiusM, munition, sectionDown,
+      ...(sectionDown && storeyDownAt(sections, section) ? { storeyDown: true } : {}),
+    };
+  }
+
+  /** A section falls, then what its fall brings (§3.4): one event each, standing at the section's centre on its face. */
+  function fall(structure: StructureState, sections: StructureSections, section: number, munition: MunitionClass | null): void {
+    fellSection(sections, section);
+    sectionCentre(sections, section, centre);
+    pendingBreaches.push(breachEvent(structure, sections, section, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition));
+    cascadeFalls(sections, falls);
+    for (const next of falls) {
+      sectionCentre(sections, next, centre);
+      pendingBreaches.push(breachEvent(structure, sections, next, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition));
+    }
+  }
+
+  /**
+   * The blow's section takes it (P2): a hole of `holeRadiusM` (before the walls' material) where it struck, unless the
+   * point already lies in an opening or the section's slots are full, and its points; at zero the section falls. The
+   * point is quantized first, so a peer that replays the event classifies it exactly as here.
+   */
+  function strikeSection(structure: StructureState, points: number, blow: StructureBlow, holeRadiusM: number): void {
+    if (!sectionsOn || !structure.destructible || structure.stage >= 3 || structure.collapsePending) return;
+    if (!(points > 0) && !(holeRadiusM > 0)) return;
+    const sections = sectionsFor(structure)!;
+    const x = mm(blow.x), y = mm(blow.y), z = mm(blow.z);
+    const section = sectionAt(sections, x, y, z);
+    if (section < 0 || sections.down[section]) return;
+    let opened = false;
+    const radius = holeRadiusM > 0 ? cm(holeRadiusFor(sections, holeRadiusM, structure.material)) : 0;
+    if (radius >= MIN_HOLE_M && sections.holeCount[section] < STRUCTURE_HOLES_PER_SECTION
+      && !structureOpeningAt(sections, x, y, z)) {
+      const slot = sections.holeCount[section];
+      openHole(sections, section, slot, x, y, z, radius);
+      pendingBreaches.push(breachEvent(structure, sections, section, slot, x, y, z, radius, false, blow.munition));
+      opened = true;
+    }
+    if (points > 0) {
+      sections.hp[section] -= points * damageScale;
+      if (sections.hp[section] <= 0) {
+        fall(structure, sections, section, blow.munition);
+        opened = true;
+      }
+    }
+    if (opened) attachOpenings(sections);
+  }
+
   function eventFor(structure: StructureState, stage: number, previous: number, points: number,
     blow: StructureBlow): StructureStageEvent {
     return {
@@ -372,6 +487,7 @@ export function createStructureDamage(
       stage: STAGE_ORDER[stage], previous: STAGE_ORDER[previous],
       cause: blow.cause, munition: blow.munition, x: blow.x, y: blow.y, z: blow.z, dirX: blow.dirX, dirZ: blow.dirZ,
       points, integrity: structure.maxHp > 0 ? Math.max(0, structure.hp / structure.maxHp) : 0,
+      ...(sectionsOn ? { sections: true } : {}),
     };
   }
 
@@ -415,8 +531,12 @@ export function createStructureDamage(
       const directIndex = direct ? indexOf.get(direct) : undefined;
       if (direct && directIndex !== undefined) {
         visitMark[directIndex] = visitEpoch;
-        damage(direct, structureBlastPoints(chargeKg, munition, 0), blow);
+        const points = structureBlastPoints(chargeKg, munition, 0);
+        // the struck section takes the burst and its hole (a shaped charge's jet: the larger of the two)
+        strikeSection(direct, points, blow, Math.max(blastHoleRadiusM(chargeKg, munition), blow.holeRadiusM ?? 0));
+        damage(direct, points, blow);
       }
+      const contact = SECTION_CONTACT_Z * Math.cbrt(chargeKg);
       const bx0 = bucketOf(blow.x - reach), bx1 = bucketOf(blow.x + reach);
       const bz0 = bucketOf(blow.z - reach), bz1 = bucketOf(blow.z + reach);
       for (let bz = bz0; bz <= bz1; bz++) {
@@ -430,27 +550,33 @@ export function createStructureDamage(
             if (!structure.destructible || structure.stage >= 3) continue;
             const distance = distanceToStructure(structure, blow.x, blow.y, blow.z);
             if (distance > reach) continue;
-            damage(structure, structureBlastPoints(chargeKg, munition, distance), blow);
+            const points = structureBlastPoints(chargeKg, munition, distance);
+            // a burst at a wall's foot strikes its nearest section too (no hole: splash does not punch through)
+            if (distance <= contact) strikeSection(structure, points, blow, 0);
+            damage(structure, points, blow);
           }
         }
       }
     },
     applyPoints(structure, points, blow) {
+      strikeSection(structure, points, blow, blow.holeRadiusM ?? 0);
       damage(structure, points, blow);
     },
     applyRam(structure, massTons, closingMps, priorClosingMps, blow) {
-      const points = ramStructurePoints(massTons, closingMps) - ramStructurePoints(massTons, Math.max(0, priorClosingMps));
+      const points = ramStructurePoints(massTons, closingMps, structure.material)
+        - ramStructurePoints(massTons, Math.max(0, priorClosingMps), structure.material);
+      strikeSection(structure, points, blow, 0);
       damage(structure, points, blow);
     },
     yieldTo(structure, massTons, closingMps, speedMps, blow) {
       if (!structure.collapsible) return null;
       if (structure.stage >= 3 || structure.collapsePending) return 1;
-      const points = ramStructurePoints(massTons, closingMps) * damageScale;
+      const points = ramStructurePoints(massTons, closingMps, structure.material) * damageScale;
       if (!(points > 0) || points < structure.hp) return null;
       // the energy it took to bring the rest of it down, out of the hull's kinetic energy
-      const absorbedKj = RAM_THRESHOLD_KJ + RAM_KJ_PER_POINT * (structure.hp / Math.max(damageScale, 1e-9));
+      const absorbedKj = RAM_SCUFF_KJ[structure.material] + RAM_KJ_PER_POINT * (structure.hp / Math.max(damageScale, 1e-9));
       const energyKj = impactEnergyKj(massTons, speedMps);
-      damage(structure, ramStructurePoints(massTons, closingMps), blow);
+      damage(structure, ramStructurePoints(massTons, closingMps, structure.material), blow);
       return energyKj > absorbedKj ? Math.sqrt(1 - absorbedKj / energyKj) : 0;
     },
     step() {
@@ -474,12 +600,42 @@ export function createStructureDamage(
         else stages++;
         released.push(pendingEvents.shift()!);
       }
+      // holes and section falls (P2) within their own budget
+      for (let breaches = 0; pendingBreaches.length && breaches < BREACH_EVENTS_PER_TICK; breaches++) {
+        releasedBreaches.push(pendingBreaches.shift()!);
+      }
     },
     drainEvents(out) {
       const count = released.length;
       for (let i = 0; i < count; i++) out.push(released[i]);
       released.length = 0;
       return count;
+    },
+    drainBreaches(out) {
+      const count = releasedBreaches.length;
+      for (let i = 0; i < count; i++) out.push(releasedBreaches[i]);
+      releasedBreaches.length = 0;
+      return count;
+    },
+    sectionsOf: (structure) => sectionsFor(structure),
+    restoreBreach(id, section, hole, x, y, z, radiusM, sectionDown) {
+      const structure = byIdMap.get(id);
+      if (!structure || structure.stage >= 3) return -1;
+      const sections = sectionsFor(structure);
+      if (!sections) return -1;
+      const local = sectionAt(sections, x, y, z);
+      const index = local >= 0 ? local : section;
+      if (!(index >= 0 && index < sections.count)) return -1;
+      if (sectionDown) {
+        if (sections.down[index]) return -1;
+        fellSection(sections, index);
+      } else {
+        // a slot already filled is this hole again (a live event, then the log that carries it)
+        if (!(hole >= 0 && hole < STRUCTURE_HOLES_PER_SECTION) || hole < sections.holeCount[index] || !(radiusM > 0)) return -1;
+        openHole(sections, index, hole, x, y, z, radiusM);
+      }
+      attachOpenings(sections);
+      return index;
     },
     restoreStage(id, stage) {
       const structure = byIdMap.get(id);

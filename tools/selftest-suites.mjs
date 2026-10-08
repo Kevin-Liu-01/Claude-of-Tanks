@@ -27,6 +27,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/garageModePreviewRuntime.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
     'src/engine/thermalVehicles.selftest.mjs',
+    'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
     'src/fx/aerialTracers.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
@@ -255,6 +256,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
+    'src/game/studioDestruction.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -349,6 +352,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/facetedSlab.selftest.mjs',
     'src/vehicles/profiles/nationalBaseShell.selftest.mjs',
     'src/vehicles/profiles/nationalRussiaChevrons.selftest.mjs',
+    'src/vehicles/profiles/chineseChevronEra.selftest.mjs',
+  'src/vehicles/profiles/fieldEquipment.selftest.mjs',
     'src/vehicles/profiles/chineseFuelDrum.selftest.mjs',
     'src/vehicles/profiles/oplotWing.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
@@ -613,10 +618,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
-    'src/fx/combat/combatFx.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
+    'src/gallery/damageLab.selftest.mjs',
+    'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
@@ -925,12 +931,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
+    'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
+    // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
+    // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
+    'src/mp/presentation/craterSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1030,6 +1041,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
+    'src/sim/destructionCraters.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
+    'src/sim/structureSections.selftest.mjs',
+    'src/sim/destructionSections.selftest.mjs',
+    // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
+    'src/world/destructionKit.selftest.mjs',
+    // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
+    'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
@@ -1439,6 +1458,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
+    'src/ui/shotReadoutPolicy.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
     'src/ui/battleHudAccess.selftest.mjs',
     'src/ui/minimapAssetRuntime.selftest.mjs',

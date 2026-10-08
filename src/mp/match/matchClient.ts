@@ -111,6 +111,8 @@ export interface MatchFrame {
    * the presentation (its stage belongs to the event, not to the log). */
   destruction: readonly DestructionLogEntry[];
   destructionPending: (structureId: number) => boolean;
+  /** Whether a crater's `terrain_crater` event is still owed to the presentation (P3: the crater belongs to it). */
+  craterPending: (craterId: number) => boolean;
   viewer: ViewerFrame;
   /** This frame's budgeted reliable events (array reused between frames). */
   events: WireEvent[];
@@ -337,6 +339,7 @@ export class MatchClient {
       destroyedPending: (index) => this.events.isObstaclePending(index),
       destruction: [],
       destructionPending: (structureId) => this.events.isStructurePending(structureId),
+      craterPending: (craterId) => this.events.isCraterPending(craterId),
       viewer: {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,
@@ -826,6 +829,17 @@ export class MatchClient {
           const cx = Number(event.payload.cx), cz = Number(event.payload.cz);
           this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz)
             ? { kind: 'stage', structureId, stage, cx, cz } : { kind: 'stage', structureId, stage });
+        }
+      } else if (event.kind === 'structure_breach') {
+        // a hole or a fall (P2), as the log carries it (its footprint centre with it)
+        const p = event.payload;
+        const structureId = Number(p.structureId), section = Number(p.section), hole = Number(p.hole);
+        const x = Number(p.x), y = Number(p.y), z = Number(p.z), radiusM = Number(p.radiusM);
+        if (Number.isSafeInteger(structureId) && structureId >= 0 && Number.isSafeInteger(section) && Number.isSafeInteger(hole)
+          && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(radiusM)) {
+          const cx = Number(p.cx), cz = Number(p.cz);
+          const entry = { kind: 'breach' as const, structureId, section, hole, x, y, z, radiusM, sectionDown: p.sectionDown === true };
+          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
         }
       }
     }

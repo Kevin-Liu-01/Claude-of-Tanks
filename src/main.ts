@@ -176,7 +176,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
-import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
 import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
@@ -235,7 +235,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -682,6 +682,8 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
+    // the battle-only mission-attachment visual (the drone dock on its carrier) lands with the FX graph
+    await loadMissionAttachmentVisual();
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
       auxiliaryEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
@@ -1923,6 +1925,7 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
+    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -2267,7 +2270,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2609,7 +2612,7 @@ function beginBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
@@ -2627,7 +2630,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
@@ -2987,6 +2990,7 @@ let shotHudFrame = false;
 
 let lastAuxiliaryNight: boolean | null = null;
 const mainFrame = createMainFrameRuntime({
+  thermalVehicles: combatWarmComposition.thermalVehicles,
   scene,
   camera,
   game,

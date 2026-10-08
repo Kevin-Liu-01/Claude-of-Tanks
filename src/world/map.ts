@@ -40,10 +40,16 @@ import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
   createObstacleGrid,
-  rayCollisionRecord,
+  nearestColliderHit,
+  type ColliderRayHit,
   type CollisionRecord,
   type ObstacleQuery,
 } from './collision.ts';
+import {
+  createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
+} from './structureDamageSeam.ts';
+import { createStructureDamage } from '../sim/structureDamage.ts';
+import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -185,6 +191,29 @@ export interface WorldRuntime {
     options?: { settled?: boolean },
   ): boolean;
   resetDestructibles(): void;
+  /**
+   * Destruction (docs/DESTRUCTION.md §16): a structure's damage seam by its group id — its anatomy (the sim's mound
+   * filled in), where its parts are in the merged buckets, and its kit chain's stage builders — or null.
+   */
+  structureDamage(structureIdx: number): StructureDamageSeam | null;
+  /**
+   * Hand every props-bucket material (each batch's own clone included, and the depth material every bucket that casts
+   * a structure's shadow draws its shadow with: info.role 'depth') to `patch` once, with the meshes drawing it; returns
+   * how many. For the presentation's structure-state shader: call it before the warm so programs compile once, chain
+   * any existing onBeforeCompile and extend customProgramCacheKey. Merged geometries that hold a structure part carry
+   * `aDamage` (structureIdx + 1; 0 for anything else). Every bucket mesh and batch is in world space.
+   */
+  patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
+  touchStructureShadows(structureIdx: number): void;
+  /**
+   * The battle's ground overlay (sim/terrainDeformation.ts: craters, rubble heaps) this world draws and drapes on —
+   * the solo battle's own ground, or a network round's mirror (crater-render-spec §B). Bound per battle, null between;
+   * the terrain's userData carries it too (`groundOverlay`) for the drawn ground to follow.
+   */
+  bindGroundOverlay(overlay: TerrainDeformation | null): void;
+  /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
+  groundOverlay(): TerrainDeformation | null;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -499,8 +528,8 @@ function assembleWorld(
     terrain.userData.sourcedTexturesReady, props.sourcedTexturesReady,
   );
 
-  const _aabbNrm = new THREE.Vector3();
   const _bestNrm = new THREE.Vector3();
+  const _nearestHit: ColliderRayHit = { distance: Infinity, record: null };
 
   /**
    * Cheap world raycast: heightfield ray-march + tight prop-shape tests.
@@ -520,26 +549,15 @@ function assembleWorld(
     dir: THREE.Vector3,
     maxDist: number,
   ): { distance: number; record: CollisionRecord | null } {
-    let best = Infinity;
-    let record: CollisionRecord | null = null;
     const endX = origin.x + dir.x * maxDist;
     const endZ = origin.z + dir.z * maxDist;
     queryColliders(
       Math.min(origin.x, endX), Math.min(origin.z, endZ),
       Math.max(origin.x, endX), Math.max(origin.z, endZ), rayCandidates);
-    for (const candidate of rayCandidates) {
-      // Destroyed records stay in the broad phase for O(1) rematch restore.
-      if (candidate.dead) continue;
-      const distance = rayCollisionRecord(
-        origin, dir, candidate, Math.min(maxDist, best), _aabbNrm,
-      );
-      if (distance >= 0 && distance < best) {
-        best = distance;
-        record = candidate;
-        _bestNrm.copy(_aabbNrm);
-      }
-    }
-    return { distance: best, record };
+    // destroyed records stay in the broad phase for O(1) rematch restore; a structure with openings (destruction P2)
+    // answers as a whole
+    nearestColliderHit(rayCandidates, origin, dir, maxDist, _bestNrm, _nearestHit);
+    return { distance: _nearestHit.distance, record: _nearestHit.record };
   }
 
   function terrainHitDistance(
@@ -593,6 +611,27 @@ function assembleWorld(
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
 
+  // destruction (§7): the battle's ground overlay, bound per battle (crater-render-spec §B)
+  let boundGroundOverlay: TerrainDeformation | null = null;
+  // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
+  const structureSeams = new Map<number, StructureDamageSeam>();
+  let structureTable: ReturnType<typeof createStructureDamage> | null = null;
+  const getStructureDamage = (structureIdx: number): StructureDamageSeam | null => {
+    const cached = structureSeams.get(structureIdx);
+    if (cached) return cached;
+    const described = props.structureDamage.get(structureIdx);
+    if (!described) return null;
+    structureTable ??= createStructureDamage(obstacles, colliders);
+    const state = structureTable.byId(structureIdx);
+    if (state && !described.anatomy.mound) {
+      described.anatomy.mound = { cx: state.cx, cz: state.cz, hw: state.hw, hd: state.hd, yaw: state.yaw,
+        heightM: rubbleHeightFor(state.topY - state.baseY) };
+    }
+    const seam = createStructureDamageSeam(structureIdx, described.builder, described.style, described.anatomy,
+      props.structureSpans.get(structureIdx) ?? []);
+    structureSeams.set(structureIdx, seam);
+    return seam;
+  };
   const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
@@ -630,6 +669,11 @@ function assembleWorld(
     // effects_combat r1: crushable props (telegraph poles + world-dressing r1
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
+    structureDamage: getStructureDamage,
+    patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
+    touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
+    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
       props.crushProp(i, dx, dz, speedMps)

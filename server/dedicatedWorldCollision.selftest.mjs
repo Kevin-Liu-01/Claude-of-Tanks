@@ -7,6 +7,7 @@ import {
 } from './dedicatedWorldCollision.ts';
 import { OLYMPUS_SETTLEMENT } from '../src/world/maps/marsSettlement.ts';
 import { getMapConfig, MAP_IDS } from '../src/world/maps/index.ts';
+import { TERRAIN_VARIANTS } from '../src/sim/matchRuleset.ts';
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
 import {
   collisionFootprintContainsPoint, pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRecord } from '../src/world/collision.ts';
@@ -166,9 +167,14 @@ function assertClockwiseHeld(mapId, kind, parts) {
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
-assert.deepEqual(readdirSync(new URL('./world-collision-manifests/', import.meta.url))
-  .filter((file) => file.endsWith('.json') && file !== 'index.json').sort(),
-MAP_IDS.map((id) => `${id}.json`).sort(), 'exactly one collision shard exists for every canonical map');
+const shardFiles = readdirSync(new URL('./world-collision-manifests/', import.meta.url))
+  .filter((file) => file.endsWith('.json') && file !== 'index.json').sort();
+assert.deepEqual(shardFiles.filter((file) => !file.includes('@')),
+  MAP_IDS.map((id) => `${id}.json`).sort(), 'exactly one collision shard exists for every canonical map');
+// and one per map for each mode's battlefield variant (Frontline's trenches; frontlineVariant.selftest)
+assert.deepEqual(shardFiles.filter((file) => file.includes('@')),
+  TERRAIN_VARIANTS.flatMap((variant) => MAP_IDS.map((id) => `${id}@${variant}.json`)).sort(),
+  'exactly one variant shard exists for every canonical map and variant');
 for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
   const mapWorld = createDedicatedWorldCollision(mapId);

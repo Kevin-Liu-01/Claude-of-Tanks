@@ -126,8 +126,14 @@ import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
-import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent } from '../sim/destructionEvents.ts';
-import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim/munitionBlast.ts';
+import {
+  DESTRUCTION_BUS_EVENTS, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent,
+} from '../sim/destructionEvents.ts';
+import { architectureStyleOf, wallMaterialForStyle } from '../sim/structureMaterial.ts';
+import { getMapConfig } from '../world/maps/index.ts';
+import {
+  FUEL_CHARGE_KG, PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, cookOffChargeKg, munitionBlastEventFor, propFellRadiusM,
+} from '../sim/munitionBlast.ts';
 import {
   createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
 } from '../sim/terrainDeformation.ts';
@@ -337,6 +343,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   _destructionEvents?: StructureStageEvent[];
+  _destructionBreaches?: StructureBreachEvent[];
+  _destructionCraters?: TerrainCraterEvent[];
   /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
   _destructionBlasts?: number[];
 }
@@ -389,6 +397,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -1220,6 +1230,7 @@ export function setupBattle(
   resetStructureRecords(world.getObstacles(), worldColliders);
   const ground = groundFor(world);
   ground.overlay.reset();
+  world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
@@ -1233,8 +1244,14 @@ export function setupBattle(
       game._botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
     onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); },
+    // P3: no crater on hard ground (roads, bridge decks, ice), as the authority reads it
+    groundTypeAt: (x, z) => world.heightField?.getGroundType?.(x, z) ?? 'medium',
+    // the map's walls price a ram (§4.4), as the authority reads them
+    wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
   game._destructionEvents = [];
+  game._destructionBreaches = [];
+  game._destructionCraters = [];
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
@@ -1860,6 +1877,12 @@ function announceDestroyed(
   game.matchModeController?.recordDestruction(ent.id, killerId);
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
   game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
+  if (cause === 'ammorack' || cause === 'fire') {
+    const cookOff = cause === 'ammorack';
+    bus.emit(DESTRUCTION_BUS_EVENTS.blast, { munition: cookOff ? 'cook_off' : 'fuel',
+      chargeKg: cookOff ? cookOffChargeKg(ent.spec.weightTons) : FUEL_CHARGE_KG,
+      x: ent.state.pos.x, y: ent.state.pos.y + 1, z: ent.state.pos.z, nx: 0, ny: 1, nz: 0, surface: 'tank' });
+  }
   // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
   // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
   ent.visual?.setDestroyed({ pop: cause === 'ammorack' });
@@ -2123,6 +2146,11 @@ function resolveTankShellImpact(
   knockEntityFromShell(entity, shell);
   const strike = intersections[0]?.point;
   if (strike) game._destruction?.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
+  if (strike) {
+    const normal = (intersections[0] as { normal?: { x: number; y: number; z: number } }).normal;
+    const blast = munitionBlastEventFor(shell.spec, strike.x, strike.y, strike.z, normal?.x ?? 0, normal?.y ?? 1, normal?.z ?? 0, 'tank');
+    if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
+  }
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, intersections[0].point, entity, intersections);
   } else {
@@ -2215,8 +2243,16 @@ function resolveWorldShellImpact(
     shell.dead = true;
   }
   crushWorldPropFromShell(world, bus, shell, hit);
-  // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4)
-  game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z);
+  // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4); a burst on the
+  // ground (not on water) may dig a crater (§7, P3)
+  const craterId = game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z,
+    hit.kind === 'terrain' && !hit.record && !shellHitsWater(world, hit)) ?? null;
+  // the detonation, for the explosion's variety (docs/DESTRUCTION.md §11): one per burst, whatever the rules
+  const blast = munitionBlastEventFor(shell.spec, hit.point.x, hit.point.y, hit.point.z,
+    hit.normal?.x ?? 0, hit.normal?.y ?? 1, hit.normal?.z ?? 0,
+    shellHitsWater(world, hit) ? 'water' : hit.kind === 'terrain' ? 'terrain' : hit.record?.structureIdx != null ? 'structure' : 'prop',
+    hit.record?.structureIdx, craterId);
+  if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
   bus.emit('shell:expired', {
     shellId: shell.id,
     shooterId: shell.shooterId,
@@ -3084,14 +3120,23 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
 /** Destruction's end of step (the authority's advanceDestruction): queued collapses swap, stage events go out. */
 function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
   const destruction = game._destruction;
-  if (!destruction?.enabled) return;
+  if (!destruction) return;
   // the tick's blasts fell their light props here, in report order (the authority's advanceDestruction alike)
-  fellBlastProps(game, bus, world);
+  if (destruction.enabled) fellBlastProps(game, bus, world);
   destruction.step();
   const events = game._destructionEvents ??= [];
   events.length = 0;
   destruction.drainEvents(events);
   for (const event of events) bus.emit(DESTRUCTION_BUS_EVENTS.stage, event);
+  // P2: holes and section falls, after the stages of the same tick (the log's order)
+  const breaches = game._destructionBreaches ??= [];
+  breaches.length = 0;
+  destruction.drainBreaches(breaches);
+  for (const breach of breaches) bus.emit(DESTRUCTION_BUS_EVENTS.breach, breach);
+  const craters = game._destructionCraters ??= [];
+  craters.length = 0;
+  destruction.drainCraters(craters);
+  for (const crater of craters) bus.emit(DESTRUCTION_BUS_EVENTS.crater, crater);
 }
 
 /**
