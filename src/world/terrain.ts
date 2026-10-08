@@ -2073,9 +2073,11 @@ function* heightFieldBuildSteps(
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
     // (the map-revival lane, 2026-10-07) the canals carved to their profiles, a road keeping its ground over each (a
-    // culvert: full inside 6 m of its line, fading out by 10 m), on final queries only
+    // culvert: full inside 6 m of its line, fading out by 10 m) except under a bridge's span (the water runs under the
+    // deck), on final queries only
     if (compiledCanals !== null && roadsOn && padsOn) {
-      h = carveCanals(compiledCanals, x, z, h, liquidDepthM, 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z)));
+      const culvert = 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z));
+      h = carveCanals(compiledCanals, x, z, h, liquidDepthM, bridgeDecks.length ? culvert * (1 - bridgeTermsAt(x, z).span) : culvert);
     }
     // the built mounds stand last, over every constraint above (final queries only)
     if (moundCrestYs !== null && roadsOn && padsOn) h = raiseMounds(x, z, h, mounds, moundCrestYs);
@@ -2629,8 +2631,9 @@ function* heightFieldBuildSteps(
     // (the map-revival lane, 2026-10-07) a canal's water, bank to bank, up to a road's culvert: the water starts where the
     // carve is whole again (10 m off the road's line; the lakes' 14–18 m band would leave a dry trench either side of every
     // crossing, and inside 10 m the culvert's wall stands over the level)
-    const canalWet = compiledCanals === null ? 0
-      : canalWetness(compiledCanals, x, z) * smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z));
+    const canalWet = compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * (bridgeDecks.length
+      ? Math.max(smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)), bridgeTermsAt(x, z).span)
+      : smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)));
     if (wetness <= 0) return canalWet;
     // Surface heights deliberately yield to these dry height constraints.
     // The identical callback feeds the existing mask bake and wake queries;
