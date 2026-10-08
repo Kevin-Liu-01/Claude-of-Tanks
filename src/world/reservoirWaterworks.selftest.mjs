@@ -30,11 +30,26 @@ const clone = value => JSON.parse(JSON.stringify(value));
 // houses draw them), so there is no new shader or family: each gains exactly the kiosk's parts, inserted whole into its
 // merged mesh, their vertex counts asserted (KIT_VERTICES); every other non-donor family stays byte-identical. The budget
 // law counts the kit parts, at or under the three donors'. Footprint, collider, RNG and record laws are unchanged.
-const KIT_MESHES = { 'props-bucket-regionalStone': 'regionalStone', 'props-bucket-curtain': 'curtain' };
-/** The kiosk's kit parts: the walls with their reveals (74 triangles), the two stone sills (12) and the two panes (4). */
-const KIT_VERTICES = { regionalStone: 222 + 36, curtain: 12 };
-const KIT_PARTS = { 'reservoir-kiosk-body': 'regionalStone', 'reservoir-kiosk-sills': 'regionalStone',
-  'reservoir-kiosk-panes': 'curtain', 'reservoir-kiosk-ironwork': 'dark', 'reservoir-kiosk-timber': 'wood' };
+// 2026-10-07 (round 3c; the coordinator's ruling): the kit's own parts — now the roof (regionalRoof), the dark glazing
+// (glass), the lantern's lit glass (curtain), the painted door (structureWood) and the painted iron of the gutters and
+// the penstock (steel) as well, each family already standing on Reservoir — draw under a ceiling of their own
+// (KIT_TRIANGLE_CEILING, 1500), the rest of the works at or under the donors as before.
+const KIT_MESHES = { 'props-bucket-regionalStone': 'regionalStone', 'props-bucket-curtain': 'curtain', 'props-bucket-glass': 'glass',
+  'props-bucket-regionalRoof': 'regionalRoof', 'props-bucket-structureWood': 'structureWood', 'props-bucket-steel': 'steel' };
+/** The kit's parts' vertices by family: the walls with their reveals (94 triangles) and their dressing (280: the sills, the
+ * plinth course, the quoins, the cornice, the damp, the lantern's warmth, the step, the vent's hood); the lantern's glass
+ * (8); the windows' glass (4); the roof (80); the door (72); the gutters and the downpipe (84) and the penstock (492). */
+const KIT_VERTICES = { regionalStone: (94 + 280) * 3, curtain: 8 * 3, glass: 4 * 3, regionalRoof: 80 * 3, structureWood: 72 * 3, steel: (84 + 492) * 3 };
+const KIT_PARTS = { 'reservoir-kiosk-body': 'regionalStone', 'reservoir-kiosk-dressing': 'regionalStone',
+  'reservoir-kiosk-lantern': 'curtain', 'reservoir-kiosk-glazing': 'glass', 'reservoir-kiosk-roof': 'regionalRoof',
+  'reservoir-kiosk-door': 'structureWood', 'reservoir-kiosk-gutters': 'steel', 'reservoir-connected-penstock': 'steel',
+  'reservoir-kiosk-ironwork': 'dark', 'reservoir-kiosk-timber': 'wood' };
+/** How far each kit part may reach past the hard plan (m) and its heights over the plan's top: the walls on the plan, the
+ * dressing out to the door's step, the roof and its gutters out to the eaves, the lantern on its bracket. */
+const KIT_REACH = { 'reservoir-kiosk-body': [0.0001, 0], 'reservoir-kiosk-dressing': [0.43, 0], 'reservoir-kiosk-lantern': [0.4, 0],
+  'reservoir-kiosk-glazing': [0.0001, 0], 'reservoir-kiosk-roof': [0.52, 2.4], 'reservoir-kiosk-door': [0.0001, 0],
+  'reservoir-kiosk-gutters': [0.56, 0.1], 'reservoir-kiosk-ironwork': [0.4, 0.3], 'reservoir-kiosk-timber': [0.04, 0] };
+const KIT_TRIANGLE_CEILING = 1500;
 
 function installFixtureCanvas() {
   globalThis.ImageData = class { constructor(data) { this.data = data; } };
@@ -115,8 +130,8 @@ async function wholeWorld(seed) {
       const geometry = Object.values(buckets).flat().filter(g => g.name.startsWith('reservoir-'));
       validateIntake(result, geometry, donors[2].collider);
     } else assert.deepEqual(records.map(clone), before);
-    const kit = control ? null : Object.fromEntries(['regionalStone', 'curtain'].map(family => [family,
-      buckets[family].filter(g => g.name.startsWith('reservoir-kiosk')).map(g => ({ name: g.name, count: g.attributes.position.count,
+    const kit = control ? null : Object.fromEntries(Object.values(KIT_MESHES).map(family => [family,
+      buckets[family].filter(g => KIT_PARTS[g.name]).map(g => ({ name: g.name, count: g.attributes.position.count,
         attributes: Object.fromEntries(Object.entries(g.attributes).map(([n, a]) => [n, a.array.slice()])) }))]));
     seam = { donors: donors.slice(), before, result, kit };
     return result;
@@ -165,7 +180,13 @@ async function wholeWorld(seed) {
     validateKitFamily(name, before.meshes.kit[name], after.meshes.kit[name], after.seam.kit[family], KIT_VERTICES[family]);
   }
   assert.deepEqual(after.meshes.mats, before.meshes.mats, 'no new shader/material family');
-  assert.ok(after.meshes.vertices <= before.meshes.vertices && after.meshes.attributeBytes <= before.meshes.attributeBytes);
+  // (round 3c: the kit's own parts draw under their own ceiling; every other vertex and byte of the world may only shrink)
+  const kitParts = Object.values(after.seam.kit).flat();
+  const kitVertices = kitParts.reduce((n, part) => n + part.count, 0);
+  const kitBytes = kitParts.reduce((n, part) => n + Object.values(part.attributes).reduce((m, a) => m + a.byteLength, 0), 0);
+  assert.equal(kitVertices, Object.values(KIT_VERTICES).reduce((a, b) => a + b, 0), 'the kit families gain exactly the kit\'s parts');
+  assert.ok(after.meshes.vertices - kitVertices <= before.meshes.vertices && after.meshes.attributeBytes - kitBytes <= before.meshes.attributeBytes,
+    'outside the kit, the world only shrinks');
   for (const key of ['obstacles', 'colliders']) {
     const donorKey = key === 'obstacles' ? 'obstacle' : 'collider';
     const indices = before.seam.donors.map(d => before.props[key].indexOf(d[donorKey]));
@@ -213,10 +234,12 @@ function validateKitFamily(name, before, after, parts, expected) {
   }
 }
 
-/** The pump house's kit parts: in their families, closed triangle lists with the families' attributes, on the plan. */
-function validateKitKiosk(body, buckets, geometry) {
-  const attributes = { regionalStone: ['color', 'normal', 'position', 'uv'], curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
-    dark: ['normal', 'position', 'uv'], wood: ['normal', 'position', 'uv'] };
+/** The pump house's kit parts: in their families, closed triangle lists with the families' attributes, on the plan (each
+ * within its reach: KIT_REACH), the penstock along its route over the ground. */
+function validateKitKiosk(body, buckets, geometry, field) {
+  const colour = ['color', 'normal', 'position', 'uv'], plain = ['normal', 'position', 'uv'];
+  const attributes = { regionalStone: colour, regionalRoof: colour, structureWood: colour, steel: colour, curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
+    glass: plain, dark: plain, wood: plain };
   for (const [name, family] of Object.entries(KIT_PARTS)) {
     const parts = geometry.filter(g => g.name === name);
     assert.equal(parts.length, 1, `${name}: one part`);
@@ -225,18 +248,26 @@ function validateKitKiosk(body, buckets, geometry) {
     assert.deepEqual(Object.keys(g.attributes).sort(), attributes[family], `${name}: the family's attributes`);
     assert.equal(g.index, null); assert.equal(p.count % 3, 0);
     for (const a of Object.values(g.attributes)) assert.ok([...a.array].every(Number.isFinite));
-    if (g.attributes.color) assert.ok([...g.attributes.color.array].every(c => c > 0.3 && c <= 1.2), `${name}: weathered tints`);
-    if (family === 'curtain') assert.ok([...g.attributes.nightEmissionMask.array].every(m => m === 1), 'every pane lit at night');
-    // dressing at most 6 cm proud of the hard plan (sills, louvres); everything between the buried foot and the top
+    if (family === 'regionalStone' || family === 'regionalRoof') assert.ok([...g.attributes.color.array].every(c => c > 0.3 && c <= 1.2), `${name}: weathered tints`);
+    else if (g.attributes.color) assert.ok([...g.attributes.color.array].every(c => c > 0 && c <= 1.2), `${name}: its paint`);
+    if (family === 'curtain') assert.ok([...g.attributes.nightEmissionMask.array].every(m => m === 1), 'the lantern\'s glass lit at night, all of it');
+    if (name === 'reservoir-connected-penstock') {
+      // along its route: every vertex over the ground there (a flange's rim may touch it), the tube from the pump house's
+      // wall to the bank
+      for (let i = 0; i < p.count; i++) assert.ok(p.getY(i) > field.getHeightAt(p.getX(i), p.getZ(i)) - 0.06, 'the penstock clears the ground');
+      continue;
+    }
+    const [reach, over] = KIT_REACH[name];
     for (let i = 0; i < p.count; i++) {
-      assert.ok(Math.abs(p.getX(i) - body.x) <= body.width / 2 + 0.0601 && Math.abs(p.getZ(i) - body.z) <= body.depth / 2 + 0.0601);
-      assert.ok(p.getY(i) >= body.bottom - 1e-5 && p.getY(i) <= body.top + 1e-5);
+      assert.ok(Math.abs(p.getX(i) - body.x) <= body.width / 2 + reach && Math.abs(p.getZ(i) - body.z) <= body.depth / 2 + reach,
+        `${name}: within ${reach} m of the hard plan`);
+      assert.ok(p.getY(i) >= body.bottom - 1e-5 && p.getY(i) <= body.top + over + 1e-5, `${name}: between the buried foot and ${over} m over the top`);
     }
   }
   const walls = geometry.find(g => g.name === 'reservoir-kiosk-body');
-  assert.equal(walls.attributes.position.count, 222, 'the walls, plinth, lintels and reveals: 74 triangles');
-  assert.ok(!walls.userData.noCollision && geometry.find(g => g.name === 'reservoir-kiosk-sills').userData.noCollision,
-    'the walls are structure, the sills dressing');
+  assert.equal(walls.attributes.position.count, 94 * 3, 'the walls, plinth, lintels and reveals (the door, the windows, the vent): 94 triangles');
+  assert.ok(!walls.userData.noCollision && geometry.find(g => g.name === 'reservoir-kiosk-dressing').userData.noCollision,
+    'the walls are structure, their dressing dressing');
 }
 
 function validateBodySupport(body, geometry, field) {
@@ -273,7 +304,8 @@ function validateAssembly(receipt, buckets, field) {
     g.computeBoundingBox();
   }
   for (const body of receipt.bodies) validateBodySupport(body, geometry, field);
-  validateKitKiosk(receipt.bodies[0], buckets, geometry);
+  validateKitKiosk(receipt.bodies[0], buckets, geometry, field);
+  assert.ok(receipt.kit.triangles > 0 && receipt.kit.triangles <= KIT_TRIANGLE_CEILING, `the kit's own parts under its ceiling (${receipt.kit.triangles})`);
   const bankCap = geometry.find(g => g.name === 'reservoir-bank-cap').boundingBox;
   const hatches = geometry.filter(g => g.name === 'reservoir-bank-hatch');
   assert.equal(hatches.length, 2, 'both service hatches survive inside the same piece budget');
@@ -284,10 +316,8 @@ function validateAssembly(receipt, buckets, field) {
     assert.ok(b.min.x >= bankCap.min.x && b.max.x <= bankCap.max.x
       && b.min.z >= bankCap.min.z && b.max.z <= bankCap.max.z, 'no unsupported hatch overhang');
   }
-  const pipe = geometry.find(g => g.name === 'reservoir-connected-penstock');
-  assert.equal(pipe.attributes.position.count, 58); assert.equal(pipe.index.count, 288);
-  const p = pipe.attributes.position;
-  for (let i = 0; i < 56; i++) assert.ok(p.getY(i) > field.getHeightAt(p.getX(i), p.getZ(i)), 'tube rings clear actual bank');
+  // (the penstock is a kit part since round 3c: cast iron with its flanges and collar, checked along its route there)
+  assert.equal(geometry.filter(g => g.name === 'reservoir-connected-penstock').length, 1);
   for (const g of geometry.filter(g => g.name === 'reservoir-penstock-support')) {
     const b = g.boundingBox, x = (b.min.x + b.max.x) / 2, z = (b.min.z + b.max.z) / 2;
     for (const px of [b.min.x, b.max.x]) for (const pz of [b.min.z, b.max.z]) {
@@ -486,7 +516,8 @@ function validateIntake(receipt, geometry, collider) {
 }
 
 function fixture() {
-  const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)], regionalStone: [slabBox(1, 1, 1)], curtain: [slabBox(1, 1, 1)] };
+  const buckets = { stone: [], wood: [], dark: [slabBox(1, 1, 1)], regionalStone: [slabBox(1, 1, 1)], curtain: [slabBox(1, 1, 1)],
+    glass: [slabBox(1, 1, 1)], regionalRoof: [slabBox(1, 1, 1)], structureWood: [slabBox(1, 1, 1)], steel: [slabBox(1, 1, 1)] };
   const donors = Array.from({ length: 3 }, (_, i) => {
     const stone = Array.from({ length: 13 }, () => slabBox(1, 1, 1).translate(-200 + i * 10, 0, 160));
     buckets.stone.push(...stone);
@@ -509,19 +540,24 @@ if (process.argv[2] === '--world') {
     assert.deepEqual(geometry.map(geometryHash), hashes, `${id}: byte-identical despite supplied opt-in`);
     geometry.forEach(g => g.dispose());
   }
-  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget', 'no-kit', 'no-kit-family']) {
+  for (const failure of ['unavailable', 'occupied', 'wet-kiosk', 'steep-kiosk', 'budget', 'no-kit', 'no-kit-family', 'no-steel-family']) {
     const f = fixture(); let terrain = field;
     if (failure === 'unavailable') f.donors.pop();
     if (failure === 'occupied') f.blockers.push({ min: [43, -8, 97], max: [44, 2, 98] });
     if (failure === 'wet-kiosk') terrain = { ...field, getWaterMaskAt: () => 1 };
     if (failure === 'steep-kiosk') terrain = { ...field, getHeightAt: (x, z) => x < 18 ? x : field.getHeightAt(x, z) };
-    if (failure === 'budget') f.donors[0].stone.splice(0, 12);
+    // (the works outside the kit stand at or under their donors: each donor down to four stones, 144 triangles and 12
+    // geometries against the works' 288 and 24)
+    if (failure === 'budget') for (const donor of f.donors) donor.stone.splice(0, 9);
     if (failure === 'no-kit-family') f.buckets.curtain.length = 0;
+    // (the steel family empty when the waterworks composes and the map not drawing it: no pump house; Reservoir's own
+    // steel pieces come after it, and props.ts says the map draws the family — `steel` on the kit, below)
+    if (failure === 'no-steel-family') f.buckets.steel.length = 0;
     const geometry = Object.values(f.buckets).flat(), hashes = geometry.map(geometryHash), records = clone(f.blockers);
     const result = composeReservoirWaterworks('reservoir', cfg, terrain, f.donors, f.buckets, f.blockers,
       failure === 'no-kit' ? null : KIT);
     assert.equal(result.status, { unavailable: 'unavailable', occupied: 'unsafe', 'wet-kiosk': 'unsafe', 'steep-kiosk': 'unsafe',
-      budget: 'budget', 'no-kit': 'unavailable', 'no-kit-family': 'unavailable' }[failure], `${failure}: ${result.status}`);
+      budget: 'budget', 'no-kit': 'unavailable', 'no-kit-family': 'unavailable', 'no-steel-family': 'unavailable' }[failure], `${failure}: ${result.status}`);
     assert.deepEqual(Object.values(f.buckets).flat(), geometry, `${failure}: no partial replacement`);
     assert.deepEqual(geometry.map(geometryHash), hashes); assert.deepEqual(f.blockers, records);
     geometry.forEach(g => g.dispose());

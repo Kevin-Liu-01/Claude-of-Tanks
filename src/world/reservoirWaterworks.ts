@@ -1,13 +1,15 @@
 /** Reservoir-only construction: exchange accepted rubble for working waterworks. */
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import { BufferGeometry } from 'three';
 import { setObbShape, type CollisionRecord } from './collision.ts';
 import { slabBox } from './propGeometry.ts';
-import { PartSink, hashSeed, streamFrom, type RegionalBucket, type Rgb, type Vec3 } from './maps/regional/geometry.ts';
-import { DEFAULT_WEATHER, pickWeatherTints, type WeatherPalette } from './maps/regional/weather.ts';
+import { PartSink, hashSeed, newRegionalParts, streamFrom, type RegionalBucket, type Rgb, type Vec3 } from './maps/regional/geometry.ts';
+import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherPalette } from './maps/regional/weather.ts';
+import { emitRoof, roofGeometry, type RoofSpec } from './maps/regional/house.ts';
+import { STEEL_STRIP_V } from './propsSteelAtlas.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];
-type BucketName = 'stone' | 'wood' | 'dark' | 'regionalStone' | 'curtain';
+type BucketName = 'stone' | 'wood' | 'dark' | 'regionalStone' | 'curtain' | 'glass' | 'regionalRoof' | 'structureWood' | 'steel';
 export interface ReservoirWaterworksConfig {
   lakeIndex: number;
   kiosk: Point2;
@@ -33,13 +35,16 @@ interface Buckets {
   stone: BufferGeometry[]; wood: BufferGeometry[]; dark: BufferGeometry[];
   /** the regional kit's weathered stone and curtained panes (props.ts): the pump house draws in them when they exist */
   regionalStone?: BufferGeometry[]; curtain?: BufferGeometry[];
+  /** (round 3c) the families of its roof, glazing, door and iron: each already standing on Reservoir, or no pump house */
+  glass?: BufferGeometry[]; regionalRoof?: BufferGeometry[]; structureWood?: BufferGeometry[]; steel?: BufferGeometry[];
 }
 interface Budget { triangles: number; sourceBytes: number; mergedBytes: number; geometries: number }
 interface Body {
   name: 'kiosk' | 'bank' | 'intake'; x: number; z: number; width: number; depth: number;
   bottom: number; top: number; collisionTop: number; supportMin: number; supportMax: number;
 }
-interface Piece { bucket: BucketName; geometry: BufferGeometry }
+/** A built piece; `kit`: the pump house's own kit parts (and its penstock's iron), budgeted under KIT_TRIANGLE_CEILING. */
+interface Piece { bucket: BucketName; geometry: BufferGeometry; kit?: boolean }
 interface Plan { bodies: Body[]; pipe: Point3[]; waterLevel: number }
 interface SiteRect { x0: number; z0: number; x1: number; z1: number }
 interface Support { min: number; max: number }
@@ -49,7 +54,10 @@ interface ReservoirWaterworksReceipt {
   status: 'built' | 'unavailable' | 'unsafe' | 'budget';
   donors: number;
   before: Budget;
+  /** the works outside the kit (the bank, the intake, their screens, caps and braces): at or under the donors */
   after: Budget;
+  /** the kit's own parts (round 3c): under KIT_TRIANGLE_CEILING */
+  kit: Budget;
   bodies: Body[];
   pipe: Point3[];
 }
@@ -244,16 +252,42 @@ const KIOSK_PLINTH: Rgb = [0.86, 0.86, 0.89];
 interface KioskFace { n: Vec3; r: Vec3; c: Vec3; half: number }
 
 /**
+ * Round 3c (gauntlet wave 250's follow-ups; the coordinator's ruling, 2026-10-07: the kit's own parts under a ceiling of
+ * their own, KIT_TRIANGLE_CEILING): the pump house under a hipped roof of the Eifel slate on its cornice, its corners
+ * quoined, a plinth course at the damp line with the damp rising over it, its windows glazed dark (an unmanned house,
+ * unlit at night) and a lantern by the door lit at night (the curtain family) with a faint warmth on the wall and the
+ * step under it, a painted plank door on its frame with strap hinges, the vent a louvred opening in a reveal under a
+ * stone hood, the gutters and the downpipe in painted iron, and the penstock cast iron with its flanges and its collar
+ * at the wall (the steel family's plain sheet, rust in its mask).
+ */
+const KIOSK_ROOF: RoofSpec = { kind: 'hip', pitchDeg: 34, eave: 0.42, verge: 0.42, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
+/** The cornice under the eaves: its height and its projection at the top. */
+const KIOSK_CORNICE = { height: 0.26, out: 0.14 } as const;
+/** The lantern beside the door: its offset along the face from the door's side, its height over the threshold. */
+const KIOSK_LANTERN = { side: 0.42, over: 2.02, out: 0.26 } as const;
+/** The louvred vent on the east wall: its opening (face u and heights under the top) and its reveal. */
+const KIOSK_VENT = { u: 1.3, half: 0.62, belowTop0: 1.15, belowTop1: 0.5, depth: 0.18 } as const;
+/** The kit's own parts (the kiosk's and its penstock's iron) may draw at most this many triangles (the coordinator). */
+const KIT_TRIANGLE_CEILING = 1500;
+/** The painted iron: the gutters' and the downpipe's grey, the penstock's cast iron, its rust. */
+const IRON_GREY: Rgb = [0.34, 0.35, 0.35], CAST_IRON: Rgb = [0.25, 0.24, 0.23], RUST: Rgb = [0.42, 0.25, 0.15];
+/** The door's paint (an Eifel works green), worn to the grey timber at its foot and bleached toward its head. */
+const DOOR_PAINT: Rgb = [0.21, 0.31, 0.25], BARE_TIMBER: Rgb = [0.42, 0.4, 0.36];
+
+/**
  * The pump house in the Reservoir's regional kit (the Eifel kit, maps/regional/eifel.ts): its walls are the weathered
  * greywacke Reservoir's houses already draw (regionalStone: the building's tint, the rising damp at the foot), on
- * exactly the old body's hard plan, with dressed lintels, a recessed plank door on its threshold and two iron-framed
- * windows over stone sills whose curtained panes are lit at night (the curtain family, its authored aperture mask).
- * No new material family, no collision part, no draw from any props stream (the tints come from the kiosk's own
- * hashed stream). Built in world coordinates so the walls stand on the hard plan to the float.
+ * exactly the old body's hard plan, with dressed lintels and reveals; round 3c as above. No new material family (each
+ * family it draws in already stands on Reservoir: the guard in composeReservoirWaterworks), no collision part, no draw
+ * from any props stream (the tints and the look come from the kiosk's own hashed streams). Built in world coordinates so
+ * the walls stand on the hard plan to the float.
  */
 function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPalette, out: Piece[]): void {
   const sink = new PartSink([2.37, 1.13]);
-  const tint = pickWeatherTints(palette, streamFrom(hashSeed('reservoir:waterworks:kiosk', kiosk.x, kiosk.z))).stone;
+  const tints = pickWeatherTints(palette, streamFrom(hashSeed('reservoir:waterworks:kiosk', kiosk.x, kiosk.z)));
+  const tint = tints.stone;
+  // the look's own stream (the stains' places, the coping's lengths): the tints' stream is never moved by it
+  const look = streamFrom(hashSeed('reservoir:waterworks:kiosk:look', kiosk.x, kiosk.z));
   const damp = Math.min(1, Math.max(0, palette.damp));
   const ground = kiosk.supportMin, yb = kiosk.bottom, yt = kiosk.top, yc = ground + KIOSK_DAMP_CUT_M;
   const kFoot = 1 - (1 - KIOSK_DAMP_FOOT) * damp, kCut = 1 - (1 - KIOSK_DAMP_AT_CUT) * damp;
@@ -284,6 +318,7 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
     sink.quad(bucket, ordered[0], ordered[1], ordered[2], ordered[3], opts);
   };
   const UP: Vec3 = [0, 1, 0], DOWN: Vec3 = [0, -1, 0];
+  const minus = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];
   /** A wall piece on a face, cut at the damp band when it spans it: the plinth course under the cut, the wall over it. */
   const wall = (f: KioskFace, u0: number, u1: number, y0: number, y1: number, k: Rgb = PLAIN): void => {
     const cuts = y0 < yc && yc < y1 ? [y0, yc, y1] : [y0, y1];
@@ -331,27 +366,187 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
   const sill = yt - KIOSK_WINDOWS.sillBelowTop, wHead = yt - KIOSK_WINDOWS.headBelowTop;
   const windows = KIOSK_WINDOWS.us.map((u): [number, number, number, number] =>
     [u - KIOSK_WINDOWS.width / 2, u + KIOSK_WINDOWS.width / 2, sill, wHead]);
+  const vent: [number, number, number, number] = [KIOSK_VENT.u - KIOSK_VENT.half, KIOSK_VENT.u + KIOSK_VENT.half, yt - KIOSK_VENT.belowTop0,
+    yt - KIOSK_VENT.belowTop1];
   pierced(south, [[dU0, dU1, thr, head]]);
   pierced(west, windows);
   wall(north, -north.half, north.half, yb, yt);
-  wall(east, -east.half, east.half, yb, yt);
+  pierced(east, [vent]);
   reveal(south, dU0, dU1, thr, head, KIOSK_DOOR.depth);
   for (const [u0, u1, y0, y1] of windows) reveal(west, u0, u1, y0, y1, KIOSK_WINDOWS.depth);
+  reveal(east, vent[0], vent[1], vent[2], vent[3], KIOSK_VENT.depth);
   // the stone sills under the windows: 5 cm proud of the hard plan, dressing only (no collision part)
   for (const [u0, u1, y0] of windows) {
-    const s0 = u0 - 0.08, s1 = u1 + 0.08, out = -0.05, sy = y0 - 0.08, decor = { colourAt: colour(KIOSK_DRESSED), decor: true };
-    quad('regionalStone', [at(west, s0, y0, out), at(west, s0, y0), at(west, s1, y0), at(west, s1, y0, out)], UP, decor);
-    quad('regionalStone', [at(west, s0, sy, out), at(west, s1, sy, out), at(west, s1, y0, out), at(west, s0, y0, out)], west.n, decor);
-    quad('regionalStone', [at(west, s0, sy, out), at(west, s0, sy), at(west, s1, sy), at(west, s1, sy, out)], DOWN, decor);
+    const s0 = u0 - 0.08, s1 = u1 + 0.08, o = -0.05, sy = y0 - 0.08, decor = { colourAt: colour(KIOSK_DRESSED), decor: true };
+    quad('regionalStone', [at(west, s0, y0, o), at(west, s0, y0), at(west, s1, y0), at(west, s1, y0, o)], UP, decor);
+    quad('regionalStone', [at(west, s0, sy, o), at(west, s1, sy, o), at(west, s1, y0, o), at(west, s0, y0, o)], west.n, decor);
+    quad('regionalStone', [at(west, s0, sy, o), at(west, s0, sy), at(west, s1, sy), at(west, s1, sy, o)], DOWN, decor);
   }
-  // the plank door at the back of its reveal
-  quad('wood', [at(south, dU0, thr, KIOSK_DOOR.depth), at(south, dU1, thr, KIOSK_DOOR.depth),
-    at(south, dU1, head, KIOSK_DOOR.depth), at(south, dU0, head, KIOSK_DOOR.depth)], south.n, { decor: true });
-  // the windows: curtained panes (lit at night: the curtain family's authored aperture) behind iron frames and bars
+  // ---- the walls' dressing (decor): the plinth course, the quoins, the cornice, the damp, the spill, the step, the hood
+  const dressing = (k: Rgb, shade = 1) => ({ colourAt: colour(k, shade), decor: true });
+  /** A box proud of a face: u0..u1 along it, y0..y1, from the wall plane out to `o` (its back face in the wall left out;
+   * `edges` false: its face alone, a quoin's 2.5 cm sides being under a pixel at any range a hull sees it from). */
+  const proud = (f: KioskFace, u0: number, u1: number, y0: number, y1: number, o: number, k: Rgb, edges = true): void => {
+    const neg: Vec3 = [-f.r[0], 0, -f.r[2]], opts = dressing(k);
+    quad('regionalStone', [at(f, u0, y0, -o), at(f, u1, y0, -o), at(f, u1, y1, -o), at(f, u0, y1, -o)], f.n, opts);
+    if (!edges) return;
+    quad('regionalStone', [at(f, u0, y1), at(f, u0, y1, -o), at(f, u1, y1, -o), at(f, u1, y1)], UP, opts);
+    {
+      quad('regionalStone', [at(f, u0, y0), at(f, u0, y1), at(f, u0, y1, -o), at(f, u0, y0, -o)], neg, opts);
+      quad('regionalStone', [at(f, u1, y0), at(f, u1, y0, -o), at(f, u1, y1, -o), at(f, u1, y1)], f.r, opts);
+    }
+  };
+  // the plinth course at the damp line: a weathered ledge 5 cm proud, its top falling outward, broken at the door, the
+  // penstock's collar and the downpipe's shoe
+  const PC0 = yc - 0.06, PC1 = yc + 0.06, PCO = 0.05;
+  const pipeU = -1.5, downU = 2.3;
+  const course = (f: KioskFace, gaps: Array<[number, number]>): void => {
+    let u = -f.half - PCO;
+    for (const [g0, g1] of [...gaps, [f.half + PCO, f.half + PCO] as [number, number]]) {
+      if (g0 - u > 0.05) {
+        const neg: Vec3 = [-f.r[0], 0, -f.r[2]], opts = dressing(KIOSK_DRESSED, 0.92);
+        quad('regionalStone', [at(f, u, PC0, -PCO), at(f, g0, PC0, -PCO), at(f, g0, PC1 - 0.02, -PCO), at(f, u, PC1 - 0.02, -PCO)], f.n, opts);
+        quad('regionalStone', [at(f, u, PC1, 0), at(f, u, PC1 - 0.02, -PCO), at(f, g0, PC1 - 0.02, -PCO), at(f, g0, PC1, 0)], [f.n[0], 1, f.n[2]], opts);
+        quad('regionalStone', [at(f, u, PC0), at(f, g0, PC0), at(f, g0, PC0, -PCO), at(f, u, PC0, -PCO)], DOWN, opts);
+        if (u > -f.half) quad('regionalStone', [at(f, u, PC0), at(f, u, PC0, -PCO), at(f, u, PC1 - 0.02, -PCO), at(f, u, PC1)], neg, opts);
+        if (g0 < f.half) quad('regionalStone', [at(f, g0, PC0), at(f, g0, PC1), at(f, g0, PC1 - 0.02, -PCO), at(f, g0, PC0, -PCO)], f.r, opts);
+      }
+      u = g1;
+    }
+  };
+  course(south, [[dU0, dU1]]);
+  course(north, []);
+  course(west, []);
+  course(east, [[pipeU - 0.55, pipeU + 0.55], [downU - 0.12, downU + 0.12]]);
+  // the quoins: dressed blocks up each corner from the course to the cornice, long and short by turns on each face
+  const CQ0 = PC1 + 0.02, CQ1 = yt - KIOSK_CORNICE.height - 0.02, QO = 0.025;
+  // (seven courses whatever the ground's fall under the plan: the kit's parts keep one count on every seed's terrain)
+  const blocks = 7, bh = (CQ1 - CQ0) / blocks;
+  const corners: Array<[KioskFace, KioskFace]> = [[south, east], [east, north], [north, west], [west, south]];
+  for (const [fa, fb] of corners) for (let k = 0; k < blocks; k++) {
+    const y0 = CQ0 + k * bh + 0.01, y1 = CQ0 + (k + 1) * bh - 0.01, long = k % 2 === 0;
+    // (fa's end at +half, fb's start at -half: the corner they share)
+    proud(fa, fa.half - (long ? 0.44 : 0.27), fa.half + QO, y0, y1, QO, KIOSK_DRESSED, false);
+    proud(fb, -fb.half - QO, -fb.half + (long ? 0.27 : 0.44), y0, y1, QO, KIOSK_DRESSED, false);
+  }
+  // the cornice under the eaves: a cove from the wall out to its crown, mitred at the corners
+  for (const f of [south, east, north, west]) {
+    const c0 = yt - KIOSK_CORNICE.height, o = KIOSK_CORNICE.out, opts = dressing(KIOSK_DRESSED, 0.96);
+    const ext = (y: number, d: number): [Vec3, Vec3] => [at(f, -f.half - d, y, -d), at(f, f.half + d, y, -d)];
+    const rows: Array<[number, number]> = [[c0, 0], [c0 + 0.08, 0.035], [yt - 0.06, o], [yt, o]];
+    for (let i = 0; i + 1 < rows.length; i++) {
+      const [ya, da] = rows[i], [yb2, db] = rows[i + 1];
+      const [a0, a1] = ext(ya, da), [b0, b1] = ext(yb2, db);
+      quad('regionalStone', [a0, a1, b1, b0], [f.n[0], i === 0 ? 0.3 : 0, f.n[2]], opts);
+    }
+    const [t0, t1] = ext(yt, o), [w0, w1] = ext(yt, 0);
+    quad('regionalStone', [w0, w1, t1, t0], UP, opts);
+  }
+  // the damp rising over the course: ragged stains a hand to two over it, darker at their foot, their tops the wall's
+  // own colour (each stain's tint fades to 1 at its top edge); kept off the openings, the quoins and the iron
+  const stain = (f: KioskFace, u: number, w: number, h: number, deep: number): void => {
+    const y0 = PC1 + 0.004, y1 = y0 + h;
+    const k = (p: Vec3): Rgb => { const t = Math.max(0, Math.min(1, (p[1] - y0) / h)), d = 1 - deep * (1 - t) ** 1.5; return [d, d * 1.01, d * 1.02]; };
+    const fade = (p: Vec3): Rgb => { const c = colour(PLAIN)(p), m = k(p); return [c[0] * m[0], c[1] * m[1], c[2] * m[2]]; };
+    // (two quads: the stain's top ragged in a shallow arch)
+    const ym = y1 + h * (look() - 0.5) * 0.4;
+    quad('regionalStone', [at(f, u - w / 2, y0, -0.004), at(f, u, y0, -0.004), at(f, u, ym, -0.004), at(f, u - w / 2, y1 * 0.6 + y0 * 0.4, -0.004)], f.n,
+      { decor: true, colourAt: fade });
+    quad('regionalStone', [at(f, u, y0, -0.004), at(f, u + w / 2, y0, -0.004), at(f, u + w / 2, y1 * 0.7 + y0 * 0.3, -0.004), at(f, u, ym, -0.004)], f.n,
+      { decor: true, colourAt: fade });
+  };
+  const stainSpans: Array<[KioskFace, Array<[number, number]>]> = [
+    [north, [[-2.4, 2.4]]], [west, [[-2.4, 2.4]]], [east, [[-0.9, 1.9]]], [south, [[-2.4, -0.6]]],
+  ];
+  for (const [f, spans] of stainSpans) for (const [u0, u1] of spans) {
+    for (let u = u0; u < u1 - 0.3;) {
+      const w = 0.45 + look() * 0.55;
+      if (u + w > u1) break;
+      if (look() < 0.75) stain(f, u + w / 2, w, 0.18 + look() * 0.42, 0.18 + look() * 0.16);
+      u += w + 0.15 + look() * 0.5;
+    }
+  }
+  // the door's step: a dressed block before the threshold, warm under the lantern
+  const lanternU = dU0 - KIOSK_LANTERN.side, lanternY = thr + KIOSK_LANTERN.over;
+  const warmAt = (cu: number, cy: number, r: number, base: (p: Vec3) => Rgb) => (p: Vec3): Rgb => {
+    // the lantern's light, faint and warm, falling off to nothing at r from the point under it (the south face's u runs
+    // along -x: u = kiosk.x - x), the step's depth out from the wall counted a little longer
+    const d = Math.hypot((kiosk.x - p[0]) - cu, (p[1] - cy) * 0.8, Math.max(0, kiosk.z - hd - p[2]) * 1.2), w = Math.max(0, 1 - d / r) ** 2;
+    const c = base(p);
+    return [Math.min(1.2, c[0] * (1 + 0.16 * w)), Math.min(1.2, c[1] * (1 + 0.09 * w)), Math.min(1.2, c[2] * (1 - 0.02 * w))];
+  };
+  {
+    const s0 = dU0 - 0.25, s1 = dU1 + 0.25, o = 0.42, stepTop = thr - 0.005;
+    const opts = { decor: true, colourAt: warmAt(lanternU, thr, 1.6, colour(KIOSK_DRESSED, 0.95)) };
+    quad('regionalStone', [at(south, s0, stepTop, -o), at(south, s0, stepTop), at(south, s1, stepTop), at(south, s1, stepTop, -o)], UP, opts);
+    quad('regionalStone', [at(south, s0, ground - 0.1, -o), at(south, s1, ground - 0.1, -o), at(south, s1, stepTop, -o), at(south, s0, stepTop, -o)], south.n, opts);
+    quad('regionalStone', [at(south, s0, ground - 0.1), at(south, s0, ground - 0.1, -o), at(south, s0, stepTop, -o), at(south, s0, stepTop)],
+      [-south.r[0], 0, -south.r[2]], opts);
+    quad('regionalStone', [at(south, s1, ground - 0.1), at(south, s1, stepTop), at(south, s1, stepTop, -o), at(south, s1, ground - 0.1, -o)], south.r, opts);
+  }
+  // the spill on the wall under the lantern: a patch 6 mm proud in a grid, its edges the wall's own colour
+  {
+    const u0 = Math.max(-south.half + 0.5, lanternU - 0.75), u1 = dU0 - 0.03, y0 = PC1 + 0.01, y1 = Math.min(yt - KIOSK_CORNICE.height - 0.05, lanternY + 0.5);
+    const NU = 3, NY = 4;
+    const tone = warmAt(lanternU, lanternY - 0.2, 1.25, colour(PLAIN));
+    for (let i = 0; i < NU; i++) for (let j = 0; j < NY; j++) {
+      const ua = u0 + (u1 - u0) * i / NU, ub = u0 + (u1 - u0) * (i + 1) / NU, ya = y0 + (y1 - y0) * j / NY, yb3 = y0 + (y1 - y0) * (j + 1) / NY;
+      quad('regionalStone', [at(south, ua, ya, -0.006), at(south, ub, ya, -0.006), at(south, ub, yb3, -0.006), at(south, ua, yb3, -0.006)], south.n,
+        { decor: true, colourAt: tone });
+    }
+  }
+  // the vent's hood: a dressed stone drip over its head, its top falling outward
+  {
+    const h0 = vent[3] + 0.1, h1 = h0 + 0.12, o = 0.13, u0 = vent[0] - 0.14, u1 = vent[1] + 0.14, opts = dressing(KIOSK_DRESSED);
+    const neg: Vec3 = [-east.r[0], 0, -east.r[2]];
+    quad('regionalStone', [at(east, u0, h0, -o), at(east, u1, h0, -o), at(east, u1, h1 - 0.05, -o), at(east, u0, h1 - 0.05, -o)], east.n, opts);
+    quad('regionalStone', [at(east, u0, h1), at(east, u0, h1 - 0.05, -o), at(east, u1, h1 - 0.05, -o), at(east, u1, h1)], [east.n[0], 1, east.n[2]], opts);
+    quad('regionalStone', [at(east, u0, h0), at(east, u1, h0), at(east, u1, h0, -o), at(east, u0, h0, -o)], DOWN, opts);
+    quad('regionalStone', [at(east, u0, h0), at(east, u0, h0, -o), at(east, u0, h1 - 0.05, -o), at(east, u0, h1)], neg, opts);
+    quad('regionalStone', [at(east, u1, h0), at(east, u1, h1), at(east, u1, h1 - 0.05, -o), at(east, u1, h0, -o)], east.r, opts);
+  }
+  // ---- the door: painted planks at the back of the reveal, the frame round them, two strap hinges and the latch
+  {
+    const d = KIOSK_DOOR.depth, planks = 6, pw = (dU1 - dU0 - 0.12) / planks, gap = 0.008;
+    // the frame: jambs and head in the door's timber, 6 cm wide, on the reveal's back
+    const paint = (shade: number) => (p: Vec3): Rgb => {
+      const t = Math.max(0, Math.min(1, (p[1] - thr) / KIOSK_DOOR.height)), bare = Math.max(0, 1 - (p[1] - thr) / 0.22);
+      const bleach = 1 + 0.18 * t;
+      const c: Rgb = [DOOR_PAINT[0] * bleach, DOOR_PAINT[1] * bleach, DOOR_PAINT[2] * bleach];
+      return [shade * (c[0] + (BARE_TIMBER[0] - c[0]) * bare), shade * (c[1] + (BARE_TIMBER[1] - c[1]) * bare), shade * (c[2] + (BARE_TIMBER[2] - c[2]) * bare)];
+    };
+    const board = (u0: number, u1: number, y0: number, y1: number, inset: number, thick: number, shade: number) => {
+      const front = inset - thick, opts = { colourAt: paint(shade) };
+      quad('structureWood', [at(south, u0, y0, front), at(south, u1, y0, front), at(south, u1, y1, front), at(south, u0, y1, front)], south.n, opts);
+      quad('structureWood', [at(south, u0, y0, inset), at(south, u0, y0, front), at(south, u0, y1, front), at(south, u0, y1, inset)],
+        [-south.r[0], 0, -south.r[2]], opts);
+      quad('structureWood', [at(south, u1, y0, inset), at(south, u1, y1, inset), at(south, u1, y1, front), at(south, u1, y0, front)], south.r, opts);
+      quad('structureWood', [at(south, u0, y1, inset), at(south, u0, y1, front), at(south, u1, y1, front), at(south, u1, y1, inset)], UP, opts);
+    };
+    board(dU0, dU0 + 0.06, thr, head, d, 0.07, 0.86);
+    board(dU1 - 0.06, dU1, thr, head, d, 0.07, 0.86);
+    board(dU0 + 0.06, dU1 - 0.06, head - 0.06, head, d, 0.07, 0.86);
+    for (let k = 0; k < planks; k++) {
+      const u0 = dU0 + 0.06 + k * pw + gap / 2, u1 = u0 + pw - gap;
+      board(u0, u1, thr + 0.01, head - 0.06, d - 0.012, 0.035, 0.92 + 0.12 * ((k * 5 + 3) % 4) / 3);
+    }
+    // the dark of the doorway behind the planks' joints
+    quad('dark', [at(south, dU0 + 0.06, thr, d + 0.01), at(south, dU1 - 0.06, thr, d + 0.01), at(south, dU1 - 0.06, head - 0.06, d + 0.01),
+      at(south, dU0 + 0.06, head - 0.06, d + 0.01)], south.n, { decor: true });
+    // two strap hinges from the hinge side (the door's +u jamb), their pintles in the frame, and the latch
+    for (const y of [thr + 0.32, head - 0.4]) {
+      const u1 = dU1 - 0.07, u0 = u1 - 0.78, f = d - 0.012 - 0.035 - 0.012;
+      quad('dark', [at(south, u0, y - 0.03, f), at(south, u1, y - 0.035, f), at(south, u1, y + 0.035, f), at(south, u0, y + 0.03, f)], south.n, { decor: true });
+      quad('dark', [at(south, u1 - 0.02, y - 0.06, f - 0.005), at(south, u1 + 0.04, y - 0.06, f - 0.005), at(south, u1 + 0.04, y + 0.06, f - 0.005),
+        at(south, u1 - 0.02, y + 0.06, f - 0.005)], south.n, { decor: true });
+    }
+    const lu = dU0 + 0.16, ly = thr + 1.0, lf = d - 0.012 - 0.035 - 0.015;
+    quad('dark', [at(south, lu, ly - 0.07, lf), at(south, lu + 0.05, ly - 0.07, lf), at(south, lu + 0.05, ly + 0.09, lf), at(south, lu, ly + 0.09, lf)], south.n, { decor: true });
+  }
+  // ---- the windows: glazed dark (the glass family: the sky in it by day, unlit at night) behind iron frames and bars
   for (const [u0, u1, y0, y1] of windows) {
     const d = KIOSK_WINDOWS.depth;
-    quad('curtain', [at(west, u0, y0, d), at(west, u1, y0, d), at(west, u1, y1, d), at(west, u0, y1, d)], west.n,
-      { window: west.n });
+    quad('glass', [at(west, u0, y0, d), at(west, u1, y0, d), at(west, u1, y1, d), at(west, u0, y1, d)], west.n, { decor: true });
     const fw = 0.06, bw = 0.045, dd = d - 0.02, um = (u0 + u1) / 2;
     const bar = (a0: number, a1: number, b0: number, b1: number, inset: number) => quad('dark',
       [at(west, a0, b0, inset), at(west, a1, b0, inset), at(west, a1, b1, inset), at(west, a0, b1, inset)], west.n,
@@ -364,26 +559,124 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
       bar(u0 + fw, u1 - fw, yy - bw / 2, yy + bw / 2, dd - 0.002);
     }
   }
-  // the vent high on the east wall (where the dark slab was, its size): five timber louvres over a dark backing, all
-  // within 6 cm of the wall
-  const vu0 = 1.3 - 0.675, vu1 = 1.3 + 0.675, vy0 = yt - 1.125, vy1 = yt - 0.475;
-  quad('dark', [at(east, vu0, vy0, -0.01), at(east, vu1, vy0, -0.01), at(east, vu1, vy1, -0.01), at(east, vu0, vy1, -0.01)],
-    east.n, { decor: true });
-  for (let i = 0; i < 5; i++) {
-    const y = vy0 + (vy1 - vy0) * (i + 0.5) / 5;
-    quad('wood', [at(east, vu0, y - 0.05, -0.06), at(east, vu1, y - 0.05, -0.06), at(east, vu1, y + 0.05, -0.012),
-      at(east, vu0, y + 0.05, -0.012)], [east.n[0], 0.7, east.n[2]], { decor: true });
+  // ---- the vent: five timber louvres in the reveal over its dark, and its frame on the wall
+  {
+    const [u0, u1, y0, y1] = vent, d = KIOSK_VENT.depth;
+    quad('dark', [at(east, u0, y0, d - 0.01), at(east, u1, y0, d - 0.01), at(east, u1, y1, d - 0.01), at(east, u0, y1, d - 0.01)], east.n, { decor: true });
+    for (let i = 0; i < 5; i++) {
+      const y = y0 + (y1 - y0) * (i + 0.5) / 5;
+      quad('wood', [at(east, u0, y - 0.055, d * 0.35), at(east, u1, y - 0.055, d * 0.35), at(east, u1, y + 0.055, d * 0.85),
+        at(east, u0, y + 0.055, d * 0.85)], [east.n[0], 0.7, east.n[2]], { decor: true });
+    }
+    const fr = 0.07, fo = 0.03;
+    for (const [a0, a1, b0, b1] of [[u0 - fr, u0, y0 - fr, y1 + fr], [u1, u1 + fr, y0 - fr, y1 + fr], [u0, u1, y1, y1 + fr], [u0, u1, y0 - fr, y0]] as const) {
+      quad('wood', [at(east, a0, b0, -fo), at(east, a1, b0, -fo), at(east, a1, b1, -fo), at(east, a0, b1, -fo)], east.n, { decor: true });
+    }
+  }
+  // ---- the lantern by the door: a cage on its bracket, its glass in the curtain family (lit at night), a cap and a base
+  {
+    const o = KIOSK_LANTERN.out, r = 0.1, y0 = lanternY - 0.14, y1 = lanternY + 0.14;
+    const cx = at(south, lanternU, 0, -o), c: Vec3 = [cx[0], 0, cx[2]];
+    const corner = (sx: number, sz: number, y: number): Vec3 => [c[0] + sx * r, y, c[2] + sz * r];
+    for (const [sx0, sz0, sx1, sz1, n] of [[-1, -1, 1, -1, [0, 0, -1]], [1, -1, 1, 1, [1, 0, 0]], [1, 1, -1, 1, [0, 0, 1]], [-1, 1, -1, -1, [-1, 0, 0]]] as const) {
+      const nn: Vec3 = [n[0], n[1], n[2]];
+      quad('curtain', [corner(sx0, sz0, y0), corner(sx1, sz1, y0), corner(sx1, sz1, y1), corner(sx0, sz0, y1)], nn, { decor: true, window: nn });
+    }
+    sink.span('dark', c[0] - r - 0.02, y1, c[2] - r - 0.02, c[0] + r + 0.02, y1 + 0.05, c[2] + r + 0.02, { decor: true });
+    sink.polygon('dark', [[c[0] - r - 0.02, y1 + 0.05, c[2] - r - 0.02], [c[0], y1 + 0.17, c[2]], [c[0] + r + 0.02, y1 + 0.05, c[2] - r - 0.02]], { decor: true });
+    sink.polygon('dark', [[c[0] + r + 0.02, y1 + 0.05, c[2] + r + 0.02], [c[0], y1 + 0.17, c[2]], [c[0] - r - 0.02, y1 + 0.05, c[2] + r + 0.02]], { decor: true });
+    sink.polygon('dark', [[c[0] + r + 0.02, y1 + 0.05, c[2] - r - 0.02], [c[0], y1 + 0.17, c[2]], [c[0] + r + 0.02, y1 + 0.05, c[2] + r + 0.02]], { decor: true });
+    sink.polygon('dark', [[c[0] - r - 0.02, y1 + 0.05, c[2] + r + 0.02], [c[0], y1 + 0.17, c[2]], [c[0] - r - 0.02, y1 + 0.05, c[2] - r - 0.02]], { decor: true });
+    sink.span('dark', c[0] - r - 0.01, y0 - 0.05, c[2] - r - 0.01, c[0] + r + 0.01, y0, c[2] + r + 0.01, { decor: true });
+    // the bracket back to the wall
+    const w = at(south, lanternU, 0, 0);
+    sink.span('dark', Math.min(c[0], w[0]) - 0.02, y1 + 0.17, Math.min(c[2], w[2]), Math.max(c[0], w[0]) + 0.02, y1 + 0.21, Math.max(c[2], w[2]), { decor: true });
+  }
+  // ---- the roof: the Eifel slate hipped over the cornice on the cap, weathered (moss at its low courses) in its family
+  const eaveY = yt + 0.06;
+  const rg = roofGeometry(kiosk.width, kiosk.depth, eaveY, KIOSK_ROOF);
+  sink.placed(0, kiosk.x, 0, kiosk.z, () => emitRoof(sink, rg, KIOSK_ROOF));
+  // ---- the gutters along the four eaves (a half-round of three facets under each eave's lip) and the downpipe
+  {
+    const t = Math.tan(KIOSK_ROOF.pitchDeg * Math.PI / 180), lip = KIOSK_ROOF.eave + 0.02, gy = eaveY - KIOSK_ROOF.eave * t - 0.03, gr = 0.065;
+    const opts = { decor: true, colour: IRON_GREY };
+    // each run along an eave, its section a U below the lip (the outer side, the bottom, the inner side), ends closed
+    const runs: Array<[Vec3, Vec3, Vec3]> = [
+      [[kiosk.x - hw - lip, 0, kiosk.z - hd - lip], [kiosk.x + hw + lip, 0, kiosk.z - hd - lip], [0, 0, -1]],
+      [[kiosk.x + hw + lip, 0, kiosk.z - hd - lip], [kiosk.x + hw + lip, 0, kiosk.z + hd + lip], [1, 0, 0]],
+      [[kiosk.x + hw + lip, 0, kiosk.z + hd + lip], [kiosk.x - hw - lip, 0, kiosk.z + hd + lip], [0, 0, 1]],
+      [[kiosk.x - hw - lip, 0, kiosk.z + hd + lip], [kiosk.x - hw - lip, 0, kiosk.z - hd - lip], [-1, 0, 0]],
+    ];
+    const inside = { decor: true, colour: [IRON_GREY[0] * 0.55, IRON_GREY[1] * 0.55, IRON_GREY[2] * 0.55] as Rgb };
+    for (const [a, b, n] of runs) {
+      const p = (q: Vec3, out: number, y: number): Vec3 => [q[0] + n[0] * out, y, q[2] + n[2] * out];
+      const facets: Array<[Vec3, Vec3, Vec3, Vec3, Vec3]> = [
+        [p(a, gr, gy), p(b, gr, gy), p(b, gr * 0.7, gy - gr * 0.7), p(a, gr * 0.7, gy - gr * 0.7), [n[0], -0.3, n[2]]],
+        [p(a, gr * 0.7, gy - gr * 0.7), p(b, gr * 0.7, gy - gr * 0.7), p(b, -gr * 0.6, gy - gr * 0.85), p(a, -gr * 0.6, gy - gr * 0.85), DOWN],
+        [p(a, -gr * 0.6, gy - gr * 0.85), p(b, -gr * 0.6, gy - gr * 0.85), p(b, -gr, gy), p(a, -gr, gy), [-n[0], -0.3, -n[2]]],
+      ];
+      // each facet outside, and inside (the open gutter's trough, seen from above), its own shade
+      for (const [q0, q1, q2, q3, f] of facets) {
+        quad('structureMetal', [q0, q1, q2, q3], f, opts);
+        quad('structureMetal', [q0, q1, q2, q3], minus(f), inside);
+      }
+    }
+    // the downpipe: from the east gutter back under the eave to the wall, down it to its shoe over the course's gap
+    const top: Vec3 = at(east, downU, gy - 0.1, -(lip - 0.02)), wallTop: Vec3 = at(east, downU, gy - 0.45, -0.09), shoe: Vec3 = at(east, downU, PC1 + 0.18, -0.09);
+    const foot: Vec3 = at(east, downU, ground + 0.12, -0.24);
+    const pipe = (a: Vec3, b: Vec3) => {
+      const N = 6, dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz);
+      const ax: Vec3 = [dx / l, dy / l, dz / l];
+      const ref: Vec3 = Math.abs(ax[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+      const u: Vec3 = [ax[1] * ref[2] - ax[2] * ref[1], ax[2] * ref[0] - ax[0] * ref[2], ax[0] * ref[1] - ax[1] * ref[0]];
+      const ul = Math.hypot(...u), uu: Vec3 = [u[0] / ul, u[1] / ul, u[2] / ul];
+      const vv: Vec3 = [ax[1] * uu[2] - ax[2] * uu[1], ax[2] * uu[0] - ax[0] * uu[2], ax[0] * uu[1] - ax[1] * uu[0]];
+      const ring = (q: Vec3, k: number): Vec3 => {
+        const an = k / N * Math.PI * 2, cs = Math.cos(an) * 0.05, sn = Math.sin(an) * 0.05;
+        return [q[0] + uu[0] * cs + vv[0] * sn, q[1] + uu[1] * cs + vv[1] * sn, q[2] + uu[2] * cs + vv[2] * sn];
+      };
+      for (let k = 0; k < N; k++) {
+        const an = (k + 0.5) / N * Math.PI * 2, out: Vec3 = [uu[0] * Math.cos(an) + vv[0] * Math.sin(an), uu[1] * Math.cos(an) + vv[1] * Math.sin(an),
+          uu[2] * Math.cos(an) + vv[2] * Math.sin(an)];
+        quad('structureMetal', [ring(a, k), ring(a, k + 1), ring(b, k + 1), ring(b, k)], out, opts);
+      }
+    };
+    pipe(top, wallTop); pipe(wallTop, shoe); pipe(shoe, foot);
   }
   const parts = sink.finish();
+  // the roof weathered in the kit's family (the kiosk's own tints: the same pick as its walls'), moss at its low courses
+  const roofParts = newRegionalParts();
+  roofParts.roof = parts.roof;
+  const weatheredRoof = weatherRegionalParts(roofParts, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint }).regionalRoof;
   const named: Array<[BucketName, BufferGeometry, string]> = [];
-  for (const g of parts.regionalStone) named.push(['regionalStone', g, g.userData.noCollision ? 'kiosk-sills' : 'kiosk-body']);
-  for (const g of parts.curtain) named.push(['curtain', g, 'kiosk-panes']);
+  for (const g of parts.regionalStone) named.push(['regionalStone', g, g.userData.noCollision ? 'kiosk-dressing' : 'kiosk-body']);
+  for (const g of weatheredRoof) named.push(['regionalRoof', g, 'kiosk-roof']);
+  for (const g of parts.glass) named.push(['glass', g, 'kiosk-glazing']);
+  for (const g of parts.curtain) named.push(['curtain', g, 'kiosk-lantern']);
+  for (const g of parts.structureWood) named.push(['structureWood', g, 'kiosk-door']);
+  for (const g of parts.structureMetal) named.push(['steel', plainSheet(g), 'kiosk-gutters']);
   for (const g of parts.dark) named.push(['dark', g, 'kiosk-ironwork']);
   for (const g of parts.wood) named.push(['wood', g, 'kiosk-timber']);
   for (const [bucket, geometry, name] of named) {
     geometry.name = `reservoir-${name}`;
-    out.push({ bucket, geometry });
+    out.push({ bucket, geometry, kit: true });
   }
+}
+
+/**
+ * A painted iron part from the kit's metal (structureMetal: its colour per vertex) moved into the steel family's plain
+ * sheet: its UVs folded into the atlas's plain strip (propsSteelAtlas.ts STEEL_STRIP_V.plain), the paint and the rust its
+ * vertex colour and the mask's own. Same attributes as the steel family's merged mesh (position, normal, uv, color).
+ */
+function plainSheet(geometry: BufferGeometry): BufferGeometry {
+  const [v0, v1] = STEEL_STRIP_V.plain, uv = geometry.getAttribute('uv');
+  const pad = (v1 - v0) * 0.12;
+  for (let i = 0; i < uv.count; i++) {
+    const v = uv.getY(i), f = v - Math.floor(v);
+    uv.setXY(i, uv.getX(i) * 0.35, v0 + pad + (v1 - v0 - 2 * pad) * f);
+  }
+  uv.needsUpdate = true;
+  return geometry;
 }
 
 function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalette, out: Piece[]): void {
@@ -425,39 +718,89 @@ function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalet
     bank.x, bank.top + 0.06, bank.z + z);
 }
 
-function buildPipe(points: readonly Point3[], out: Piece[]): void {
-  const positions: number[] = [], uv: number[] = [], indices: number[] = [];
+/**
+ * The penstock in cast iron (round 3c, gauntlet wave 250: "glossy black plastic"): the tube through its eight rings from
+ * inside the pump house's east wall to inside the bank (each ring's section upright across the route, as before), a
+ * flanged joint at each inner ring, and its collar where it passes the pump house's wall — the steel family's plain
+ * sheet in the cast iron's colour, rust gathered under it and at its joints (a kit part: under the kit's ceiling).
+ */
+function buildIronPenstock(plan: Plan, out: Piece[]): void {
+  const points = plan.pipe, sink = new PartSink([0.7, 0.3]);
   const first = points[0], last = points[points.length - 1];
   const length = Math.hypot(last[0] - first[0], last[2] - first[2]);
-  const nx = -(last[2] - first[2]) / length, nz = (last[0] - first[0]) / length;
-  let along = 0;
-  for (let ring = 0; ring < points.length; ring++) {
-    const p = points[ring];
-    if (ring) along += Math.hypot(p[0] - points[ring - 1][0], p[1] - points[ring - 1][1], p[2] - points[ring - 1][2]);
-    for (let side = 0; side <= 6; side++) {
-      const angle = side * Math.PI / 3, across = Math.cos(angle) * 0.34;
-      positions.push(p[0] + nx * across, p[1] + Math.sin(angle) * 0.34, p[2] + nz * across);
-      uv.push(side / 6 * 2.14, along);
-      if (ring && side < 6) {
-        const a = (ring - 1) * 7 + side, b = ring * 7 + side;
-        indices.push(a, b, a + 1, b, b + 1, a + 1);
+  const nx = -(last[2] - first[2]) / length, nz = (last[0] - first[0]) / length, dx = -nz, dz = nx;
+  const R = 0.34, N = 10;
+  const at = (p: Point3, a: number, r: number, along = 0): Vec3 =>
+    [p[0] + nx * Math.cos(a) * r + dx * along, p[1] + Math.sin(a) * r, p[2] + nz * Math.cos(a) * r + dz * along];
+  const rustAt = (p: Vec3): Rgb => {
+    // rust under the tube (its lower half wet longest) and in patches along it, from the iron's own hash
+    const h = Math.sin(p[0] * 3.1 + p[2] * 1.7) * 0.5 + Math.sin(p[0] * 0.9 - p[2] * 2.3) * 0.5;
+    const ring = points.reduce((m, q) => Math.min(m, Math.hypot(q[0] - p[0], q[2] - p[2])), Infinity);
+    const k = Math.max(0, Math.min(1, 0.35 * (h + 0.4) + 0.5 * Math.max(0, 1 - ring / 0.6)));
+    return [CAST_IRON[0] + (RUST[0] - CAST_IRON[0]) * k, CAST_IRON[1] + (RUST[1] - CAST_IRON[1]) * k, CAST_IRON[2] + (RUST[2] - CAST_IRON[2]) * k];
+  };
+  const underRust = (centre: Point3) => (p: Vec3): Rgb => {
+    const c = rustAt(p), w = Math.max(0, Math.min(1, (centre[1] - p[1]) / R)) * 0.6;
+    return [c[0] + (RUST[0] - c[0]) * w, c[1] + (RUST[1] - c[1]) * w, c[2] + (RUST[2] - c[2]) * w];
+  };
+  // the tube: a quad per facet per segment, wound outward
+  for (let k = 0; k + 1 < points.length; k++) {
+    const a = points[k], b = points[k + 1], mid: Point3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+    for (let i = 0; i < N; i++) {
+      const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
+      const pts: Vec3[] = [at(a, a0, R), at(b, a0, R), at(b, a1, R), at(a, a1, R)];
+      const am = (a0 + a1) / 2, outN: Vec3 = [nx * Math.cos(am), Math.sin(am), nz * Math.cos(am)];
+      const [p0, p1, p2] = pts;
+      const cx = (p1[1] - p0[1]) * (p2[2] - p0[2]) - (p1[2] - p0[2]) * (p2[1] - p0[1]);
+      const cy = (p1[2] - p0[2]) * (p2[0] - p0[0]) - (p1[0] - p0[0]) * (p2[2] - p0[2]);
+      const cz = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+      const o = cx * outN[0] + cy * outN[1] + cz * outN[2] >= 0 ? pts : [...pts].reverse();
+      sink.quad('structureMetal', o[0], o[1], o[2], o[3], { colourAt: underRust(mid) });
+    }
+  }
+  // its ends closed (inside the pump house's wall and the bank)
+  for (const [p, sign] of [[first, -1], [last, 1]] as const) {
+    const ring = Array.from({ length: N }, (_, i) => at(p, i / N * Math.PI * 2, R));
+    const cx = (ring[1][1] - ring[0][1]) * (ring[2][2] - ring[0][2]) - (ring[1][2] - ring[0][2]) * (ring[2][1] - ring[0][1]);
+    const cz = (ring[1][0] - ring[0][0]) * (ring[2][1] - ring[0][1]) - (ring[1][1] - ring[0][1]) * (ring[2][0] - ring[0][0]);
+    sink.polygon('structureMetal', (cx * dx + cz * dz) * sign >= 0 ? ring : [...ring].reverse(), { colour: CAST_IRON });
+  }
+  /** A flange: an annulus front and back, `t` thick along the route, from r0 to r1, and its rim. */
+  const flange = (p: Point3, r0: number, r1: number, t: number, M: number) => {
+    const opts = { colourAt: underRust(p) };
+    for (let i = 0; i < M; i++) {
+      const a0 = i / M * Math.PI * 2, a1 = (i + 1) / M * Math.PI * 2;
+      for (const side of [-1, 1]) {
+        const s0 = side * t / 2, f: Vec3 = [dx * side, 0, dz * side];
+        const pts: Vec3[] = [at(p, a0, r0, s0), at(p, a1, r0, s0), at(p, a1, r1, s0), at(p, a0, r1, s0)];
+        const [q0, q1, q2] = pts;
+        const cx = (q1[1] - q0[1]) * (q2[2] - q0[2]) - (q1[2] - q0[2]) * (q2[1] - q0[1]);
+        const cz = (q1[0] - q0[0]) * (q2[1] - q0[1]) - (q1[1] - q0[1]) * (q2[0] - q0[0]);
+        const o = cx * f[0] + cz * f[2] >= 0 ? pts : [...pts].reverse();
+        sink.quad('structureMetal', o[0], o[1], o[2], o[3], opts);
       }
+      const am = (a0 + a1) / 2, outN: Vec3 = [nx * Math.cos(am), Math.sin(am), nz * Math.cos(am)];
+      const pts: Vec3[] = [at(p, a0, r1, -t / 2), at(p, a0, r1, t / 2), at(p, a1, r1, t / 2), at(p, a1, r1, -t / 2)];
+      const [q0, q1, q2] = pts;
+      const cx = (q1[1] - q0[1]) * (q2[2] - q0[2]) - (q1[2] - q0[2]) * (q2[1] - q0[1]);
+      const cy = (q1[2] - q0[2]) * (q2[0] - q0[0]) - (q1[0] - q0[0]) * (q2[2] - q0[2]);
+      const cz = (q1[0] - q0[0]) * (q2[1] - q0[1]) - (q1[1] - q0[1]) * (q2[0] - q0[0]);
+      const o = cx * outN[0] + cy * outN[1] + cz * outN[2] >= 0 ? pts : [...pts].reverse();
+      sink.quad('structureMetal', o[0], o[1], o[2], o[3], opts);
     }
+  };
+  for (let k = 1; k + 1 < points.length; k++) flange(points[k], R - 0.04, R + 0.11, 0.07, 8);
+  // the collar where the tube passes the pump house's east wall (its plane, x = the wall): a deeper flange there
+  const [kiosk] = plan.bodies, wallX = kiosk.x + kiosk.width / 2;
+  const t = (wallX - first[0]) / (last[0] - first[0]);
+  if (t > 0 && t < 1 / 7) {
+    const k0 = points[0], k1 = points[1];
+    const tt = t * 7, c: Point3 = [k0[0] + (k1[0] - k0[0]) * tt, k0[1] + (k1[1] - k0[1]) * tt, k0[2] + (k1[2] - k0[2]) * tt];
+    flange(c, R - 0.04, R + 0.17, 0.12, 8);
   }
-  for (const ring of [0, points.length - 1]) {
-    const c = positions.length / 3, p = points[ring];
-    positions.push(...p); uv.push(0.5, 0.5);
-    for (let side = 0; side < 6; side++) {
-      const a = ring * 7 + side;
-      if (ring === 0) indices.push(c, a, a + 1); else indices.push(c, a + 1, a);
-    }
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new Float32BufferAttribute(uv, 2));
-  geometry.setIndex(indices); geometry.computeVertexNormals();
+  const geometry = plainSheet(sink.finish().structureMetal[0]);
   geometry.name = 'reservoir-connected-penstock';
-  out.push({ bucket: 'dark', geometry });
+  out.push({ bucket: 'steel', geometry, kit: true });
 }
 
 function buildBraces(plan: Plan, field: WaterworksTerrain, out: Piece[]): void {
@@ -509,12 +852,13 @@ function collectDonors(donors: readonly WaterworksRubblePacket[], buckets: Bucke
 }
 
 function buildBudgetedWorks(plan: Plan, field: WaterworksTerrain, palette: WeatherPalette, before: Budget,
-  after: Budget): Piece[] | null {
+  after: Budget, kit: Budget): Piece[] | null {
   const pieces: Piece[] = [];
-  buildBodies(plan, field, palette, pieces); buildPipe(plan.pipe, pieces); buildBraces(plan, field, pieces);
-  for (const p of pieces) addBudget(after, p.geometry);
+  buildBodies(plan, field, palette, pieces); buildIronPenstock(plan, pieces); buildBraces(plan, field, pieces);
+  // (the coordinator, 2026-10-07: the kit's own parts under a ceiling of their own; the rest at or under its donors)
+  for (const p of pieces) addBudget(p.kit ? kit : after, p.geometry);
   if (after.triangles > before.triangles || after.sourceBytes > before.sourceBytes
-      || after.mergedBytes > before.mergedBytes || after.geometries > before.geometries) {
+      || after.mergedBytes > before.mergedBytes || after.geometries > before.geometries || kit.triangles > KIT_TRIANGLE_CEILING) {
     pieces.forEach(p => p.geometry.dispose()); return null;
   }
   return pieces;
@@ -532,15 +876,16 @@ function commitWaterworks(plan: Plan, donors: readonly WaterworksRubblePacket[],
 
 /**
  * Atomic, construction-only replacement. No RNG, new material or new collider slot. `kit` is the map's regional
- * architecture (props.ts), whose weathering the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none).
+ * architecture (props.ts), whose weathering the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none),
+ * and whether the map draws the steel family (`steel`: its atlas painted), which the penstock's iron draws in.
  */
 export function composeReservoirWaterworks(mapId: string, config: ReservoirWaterworksConfig | undefined,
   field: WaterworksTerrain, donors: readonly WaterworksRubblePacket[], buckets: Buckets,
-  blockers: readonly CollisionRecord[], kit: { weather?: WeatherPalette } | null = null): ReservoirWaterworksReceipt | null {
+  blockers: readonly CollisionRecord[], kit: { weather?: WeatherPalette; steel?: boolean } | null = null): ReservoirWaterworksReceipt | null {
   if (mapId !== 'reservoir' || !config) return null;
-  const before = emptyBudget(), after = emptyBudget();
+  const before = emptyBudget(), after = emptyBudget(), kitBudget = emptyBudget();
   const receipt: ReservoirWaterworksReceipt = {
-    status: 'unavailable', donors: donors.length, before, after, bodies: [], pipe: [],
+    status: 'unavailable', donors: donors.length, before, after, kit: kitBudget, bodies: [], pipe: [],
   };
   if (donors.length !== 3) return receipt;
   const selection = collectDonors(donors, buckets, blockers, before);
@@ -551,10 +896,13 @@ export function composeReservoirWaterworks(mapId: string, config: ReservoirWater
   // The pump house draws in the kit's weathered stone and curtained panes: only where the map's houses already draw both
   // (no family is activated by the waterworks).
   const palette = kit ? kit.weather ?? DEFAULT_WEATHER : null;
-  if (!palette || !buckets.regionalStone?.length || !buckets.curtain?.length) return receipt;
+  // (the steel family's own pieces, the yards' drums and tanks, are laid after the waterworks: props.ts says whether the
+  // map draws it — its steel atlas is painted — and the guard reads that)
+  if (!palette || !buckets.regionalStone?.length || !buckets.curtain?.length || !buckets.glass?.length || !buckets.regionalRoof?.length
+    || !buckets.structureWood?.length || !(buckets.steel?.length || kit?.steel)) return receipt;
   const plan = planWorks(config, field, blockers, selection.ignored);
   if (!plan) { receipt.status = 'unsafe'; return receipt; }
-  const pieces = buildBudgetedWorks(plan, field, palette, before, after);
+  const pieces = buildBudgetedWorks(plan, field, palette, before, after, kitBudget);
   if (!pieces) { receipt.status = 'budget'; return receipt; }
   // No donor or physical record is changed until the complete assembly passes.
   commitWaterworks(plan, donors, buckets, selection.removed, pieces);

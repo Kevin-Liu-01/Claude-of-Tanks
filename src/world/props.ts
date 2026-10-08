@@ -8682,7 +8682,9 @@ ${snowCap ? `
   function composeAuthoredReservoirWaterworks(): void {
     if (!waterworksRubble) return;
     group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
-      heightField, waterworksRubble, buckets, [...obstacles, ...colliders], regionalArchitecture);
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders],
+      // (whether the map draws the steel family on every tier: the atlas's own test, without its phone fallback)
+      regionalArchitecture ? { weather: regionalArchitecture.weather, steel: steelAtlasNeeded(P.plan, P.industrialCladding) } : null);
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();
