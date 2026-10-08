@@ -630,13 +630,42 @@ function buildUdes03(P: SwedishBuilderPort): void {
   P.topY = 1.34;
 }
 
+/**
+ * A louvre bank lying on an armour plane (fleet lane 2026-10-08; accessories sweep: the glacis banks stood as tilted
+ * slabs and the deck field read as one dark slab with a few bars on it). A painted frame stands round a dark floor,
+ * and angled blades fill the opening, each leaning forward over the next so the bank reads as slatted, not flat.
+ * The plane passes through (x, y, z) and descends toward +z at `pitch` radians; everything is placed in its frame.
+ */
+function addStrv103ALouvreBank(P: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
+  length: number; blades: number }): void {
+  const { box } = KIT;
+  const c = Math.cos(o.pitch), sn = Math.sin(o.pitch);
+  // (across, normal, along) in the plane's frame to the hull frame
+  const at = (normal: number, along: number): [number, number] => [o.y - along * sn + normal * c, o.z + along * c + normal * sn];
+  const FRAME_H = 0.05, FRAME_W = 0.04;
+  for (const end of [-1, 1]) {
+    const [y, z] = at(FRAME_H / 2, end * (o.length / 2 - FRAME_W / 2));
+    P.add('hullPaintedDetail', box(o.width, FRAME_H, FRAME_W), o.x, y, z, o.pitch, 0, 0);
+    const [ys, zs] = at(FRAME_H / 2, 0);
+    P.add('hullPaintedDetail', box(FRAME_W, FRAME_H, o.length - 2 * FRAME_W), o.x + end * (o.width / 2 - FRAME_W / 2), ys, zs,
+      o.pitch, 0, 0);
+  }
+  const [yf, zf] = at(0.005, 0);
+  P.add('hullDark', box(o.width - 2 * FRAME_W, 0.010, o.length - 2 * FRAME_W), o.x, yf, zf, o.pitch, 0, 0);
+  // blades overlap a tenth in plan, and their raised back edges stay under the frame's top
+  const open = o.length - 2 * FRAME_W, step = open / o.blades, LEAN = 0.5, DEPTH = step / Math.cos(LEAN) * 1.1;
+  for (let i = 0; i < o.blades; i++) {
+    const along = -open / 2 + step * (i + .5);
+    const [y, z] = at(0.010 + DEPTH * Math.sin(LEAN) / 2, along);
+    P.add('hullPaintedDetail', box(o.width - 2 * FRAME_W - 0.01, 0.008, DEPTH), o.x, y, z, o.pitch + LEAN, 0, 0);
+  }
+}
+
 function addStrv103ADeckVentilation(P: SwedishBuilderPort): void {
   const { box, cylY } = KIT;
-  P.add('hullDark', box(2.40, 0.022, 0.72), 0, 1.868, 0.30);
-  for (let index = 0; index < 6; index++) {
-    P.add('hullDetail', box(2.32, 0.030, 0.055),
-      0, 1.888, 0.58 - index * 0.12);
-  }
+  // the central deck louvre field behind the glacis break (deck plane 1.85@z0.62 -> 1.88@z-0.60)
+  addStrv103ALouvreBank(P, { x: 0, z: 0.30, y: 1.85 + (0.62 - 0.30) * 0.03 / 1.22, pitch: Math.atan(0.03 / 1.22),
+    width: 2.40, length: 0.72, blades: 10 });
   for (const side of [-1, 1]) {
     P.add('hullDark', box(1.00, 0.025, 0.88), side * 0.60, 1.895, -2.30);
     for (let index = 0; index < 5; index++) {
@@ -742,19 +771,20 @@ function buildStrv103A(P: SwedishBuilderPort): void {
 
   // ---- glacis louvre banks (radiators ON the glacis — family identity).
   // Glacis plane y(z) = 1.845 - (z - 0.62) * 0.1585 over the tube flanks.
+  // Fleet lane 2026-10-08 (accessories sweep: "the glacis louvre banks"): every glacis part was turned -0.335 rad, a
+  // 19 degree pitch the other way from the 9 degree glacis, so each bank stood as a 1.2 m slab buried 0.3 m at its
+  // back edge and 0.3 m clear of the armour at its front. The banks now lie on the glacis plane (GLACIS_PITCH) as
+  // framed recesses of angled blades, clear of the tube's crown, and the splash rail and the spare links follow the
+  // same plane.
   const glY = (z: number): number => 1.845 - (z - 0.62) * 0.1585;
-  for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.86, 0.025, 1.24), s * 0.48, glY(1.62) + 0.005, 1.62, -0.335, 0, 0);
-    for (let i = 0; i < 6; i++) {
-      const z = 1.06 + i * 0.23;
-      P.add('hullDetail', box(0.84, 0.034, 0.065), s * 0.48, glY(z) + 0.032, z + 0.05, -0.335, 0, 0);
-    }
-  }
-  P.add('hullDetail', box(1.86, 0.05, 0.05), 0, glY(2.52) + 0.02, 2.52, -0.335, 0, 0); // splash rail
+  const GLACIS_PITCH = Math.atan(0.1585);
+  for (const s of [-1, 1]) addStrv103ALouvreBank(P, { x: s * 0.55, z: 1.62, y: glY(1.62), pitch: GLACIS_PITCH,
+    width: 0.74, length: 1.20, blades: 16 });
+  P.add('hullDetail', box(1.86, 0.05, 0.05), 0, glY(2.52) + 0.025, 2.52, GLACIS_PITCH, 0, 0); // splash rail
   // spare links planted on the right glacis shoulder (A-era field fit)
   mount(P, 'hull', FITTINGS.spareTrackLinks({
     mats: P.mats, links: 3, width: 0.60, pitch: 0.17, seed: 10420,
-  }), 0.98, glY(2.30) + 0.03, 2.30, [-0.335, 0, 0]);
+  }), 0.98, glY(2.30) + 0.03, 2.30, [GLACIS_PITCH, 0, 0]);
 
   // ---- commander cluster (print z +0.02..-1.42, tops 2.33-2.38 CAPPED at
   // 2.16 by published heightM 2.14 p95 sovereignty; packet cap).

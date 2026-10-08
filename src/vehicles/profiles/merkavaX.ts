@@ -97,12 +97,22 @@ function cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b:
 function chainCurtain(P: TankBuilderPort, frame: Frame, rear: number, half: number, railY: number, drop = .25): void {
   // Real separated rail-and-chain equipment; open space remains open.
   topPart(P,frame,'turretOpenLattice',box(half*2,.035,.035),0,railY,rear);
-  for(let i=0;i<23;i++){
-    const x=-half+.06+i*(half*2-.12)/22;
-    topPart(P,frame,'turretOpenLatticeDark',cylY(.009,drop,6),x,railY-drop/2-.015,rear);
-    // 2026-09-12: the balls are bare steel like their chains; painted spheres
-    // read as a white picket fence under the bustle on every study.
-    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);
+  // Fleet lane 2026-10-08 (accessories sweep: "the ball-and-chain fringe"): 23 identical rods at one pitch, one drop
+  // and one ball height read as a picket fence. A fringe hangs about 5 cm apart: each chain takes its own pitch, drop
+  // and sway, a few are missing, and the steel balls vary in size and height. Hashed from the index, so every build
+  // hangs the same fringe. (2026-09-12: chains and balls stay bare steel; painted spheres read as a white fence.)
+  const span=half*2-.10,n=Math.max(12,Math.round(span/.052))+1,pitch=span/(n-1);
+  const jit=(i:number,k:number):number=>{
+    let h=Math.imul(i+1,0x9e3779b1)^Math.imul(k+7,0x85ebca6b);
+    h^=h>>>15;h=Math.imul(h,0x2c1b3c6d);h^=h>>>12;
+    return (h>>>0)/4294967296-.5;
+  };
+  for(let i=0;i<n;i++){
+    if(i>0&&i<n-1&&jit(i,1)>.42)continue;
+    const x=-half+.05+i*pitch+jit(i,2)*pitch*.35,d=drop*(1+jit(i,3)*.3),lean=jit(i,4)*.07,z=rear+jit(i,5)*.012;
+    topPart(P,frame,'turretOpenLatticeDark',box(.008,d,.008),x+Math.sin(lean)*d/2,railY-.015-Math.cos(lean)*d/2,z,0,0,lean);
+    const r=.019*(1+jit(i,6)*.3);
+    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(r,7,5),x+Math.sin(lean)*d,railY-.015-Math.cos(lean)*d-r*.8,z);
   }
 }
 
@@ -420,7 +430,14 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // The modern source rear openings replace the generic closed Mk.4 case.
     if(candidate!=='merkava4_trophy'&&candidate!=='merkava4_barak')
       P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
-    for(const z of[-3.49,3.50])P.addEquipment('hullDetail',torus(.065,.019,12,6),side*.67,.79,z);
+    // Fleet lane 2026-10-08 (accessories sweep: "the rear tow eye"): the lower towing eyes were flat rings lying half
+    // inside the end plates, a washer pushed into the armour. Each is a pair of lugs welded to the plate, a transverse
+    // pin through them and an upright eye hanging on the pin (KIT.torus lies flat; rz turns it into the YZ plane).
+    for(const [plate,out] of[[-3.475,-1],[3.524,1]] as const){
+      for(const x of[.625,.715])P.addEquipment('hullDetail',box(.03,.08,.10),side*x,.80,plate+out*.045);
+      P.addEquipment('hullDetail',cylX(.016,.12,12),side*.67,.80,plate+out*.07);
+      P.addEquipment('hullDetail',torus(.046,.014,14,6),side*.67,.775,plate+out*.09,0,0,Math.PI/2);
+    }
     // Measured paired glacis tow lugs, with transverse pins and open eyes.
     for(const x of[.930,1.010])P.addEquipment('hullDetail',box(.033,.065,.105),side*x,1.1875,3.3065);
     P.addEquipment('hullDetail',cylX(.020,.117,16),side*.970,1.185,3.322);
