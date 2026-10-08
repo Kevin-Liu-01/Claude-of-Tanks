@@ -14,6 +14,7 @@
 
 import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
+import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
 
@@ -193,6 +194,7 @@ function localizedTip(
 
 export interface BattleLoadRosterRow {
   readonly id: string;
+  readonly kind?: 'aircraft';
   readonly tier?: string;
   readonly name?: string;
   readonly isPlayer?: boolean;
@@ -307,10 +309,13 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       el.className = 'row' + (r.isPlayer ? ' me' : '');
       const tier = document.createElement('div');
       tier.className = 'tier';
-      tier.textContent = r.tier || tierNumeral(r.id);
+      tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
       const sil = document.createElement('div');
       sil.className = 'sil';
-      sil.style.backgroundImage = `url(${iconUrl(r.id, 'side_silhouette')})`;
+      if (r.kind === 'aircraft') {
+        sil.innerHTML = uiIconSVG('modeAc130', 25);
+        sil.style.display = 'grid'; sil.style.placeItems = 'center';
+      } else sil.style.backgroundImage = `url(${iconUrl(r.id, 'side_silhouette')})`;
       const nm = document.createElement('div');
       nm.className = 'nm';
       nm.textContent = r.name || r.id;

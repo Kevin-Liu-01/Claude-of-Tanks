@@ -107,9 +107,11 @@ const CALDERA_LAKE: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x3a3d39, opacity: 0.80, roughness: 0.28, shallowColor: 0x6f7168, foam: 0.1,
   shoreColor: 0x5d5b54, waveScale: 0.044, waveStrength: 0.4,
 });
-const OBSIDIAN_LAKE: Readonly<WaterContactProfile> = Object.freeze({
-  ...LAKE, color: 0x172633, opacity: 0.80, roughness: 0.16, shallowColor: 0x3f5a6b, foam: 0.2,
-  shoreColor: 0x4a5058, waveScale: 0.042, waveStrength: 0.5,
+// Suzhou Creek (blackglass; the map-revival lane, 2026-10-05): the city creek's dark silt-laden water, a slow drift
+// east toward the Huangpu, little foam; the lake's wading depth (the bridges' decks were set over it)
+const SUZHOU_CREEK: Readonly<WaterContactProfile> = Object.freeze({
+  ...LAKE, color: 0x343528, opacity: 0.80, roughness: 0.34, shallowColor: 0x605c42, foam: 0.08,
+  shoreColor: 0x5e5a4c, flowX: 0.010, flowZ: 0.002, waveScale: 0.050, waveStrength: 0.45,
 });
 const MOUNTAIN_LAKE: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x1e4a5f, opacity: 0.72, roughness: 0.20, shallowColor: 0x5f9db0, foam: 0.3,
@@ -146,7 +148,7 @@ export function waterContactProfile(mapId: string): Readonly<WaterContactProfile
     case 'verdant': case 'orchard': case 'longleaf': case 'frontier': return TEMPERATE_POND;
     case 'urban': case 'railyard': case 'foundry': case 'ruinspires': case 'airfield': return INDUSTRIAL_BASIN;
     case 'caldera': return CALDERA_LAKE;
-    case 'blackglass': return OBSIDIAN_LAKE;
+    case 'blackglass': return SUZHOU_CREEK;
     case 'skybridge': case 'titan_gorge': return MOUNTAIN_LAKE;
     case 'badlands': case 'copper_mesa': return MUD_POOL;
     default: return LAKE;

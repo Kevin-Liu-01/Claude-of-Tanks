@@ -47,7 +47,7 @@ assert.match(responsive,
   /body\[data-cot-height='short'\] \.cot-kc-micro,[\s\S]*?\.cot-kc-label\.nm\{display:none!important\}/,
   'short landscape hides secondary micro and near-miss tags');
 assert.match(responsive,
-  /body\[data-cot-width='phone'\] \.cot-spec\{[\s\S]*?transform:translateY\(14px\)[\s\S]*?\.cot-spec\.in\{transform:translateY\(0\)\}/,
+  /body\[data-cot-width='phone'\] \.cot-spec\{[\s\S]*?transform:translateY\(12px\)[\s\S]*?\.cot-spec\.in\{transform:translateY\(0\)\}/,
   'phone spectator bar cancels the desktop horizontal centering transform');
 assert.match(source, /const panelEls(?:: HTMLElement\[\])? = \[dom\.title, dom\.skip, dom\.annot,/,
   'projected callouts reserve the fixed title, skip control, and analysis cards');

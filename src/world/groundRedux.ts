@@ -186,11 +186,10 @@ const SNOW: Omit<GroundReduxProfile, 'grass'> = {
   lip: 0.4, verge: 0.3, rim: 0.5, rimTint: HOAR, midAlbedo: 0.6, driftEdge: 1.0, exposure: 0.7, climate: 'snow', patchwork: 0.6,
 };
 // ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin — one monotone tan-brown in uniform wind-ripple
-// corrugation"): a volcanic basin takes no wind's patchwork and no ripples; its ground is zoned by its landforms
-// (volcanic), its rock greyed by lichen
+// corrugation"): a volcanic basin's rock greyed by lichen. The VOLCANIC profile it was made for (Las Cañadas: no wind's
+// patchwork or ripples, the ground zoned by its landforms) went with Caldera's Aso identity (the map-revival lane, merged
+// in batch 4, 2026-10-06); the zoning stays a profile field (`volcanic`) for the next volcanic place.
 const BASALT_LICHEN = [0.90, 0.94, 0.86] as const;
-// (the map-revival lane, 2026-10-07: Caldera's ground moved off the volcanic zoning in its round 2 — Aso's floor is farmed
-// and grassed; the zoning, `volcanic` above, waits for a map that is a bare volcanic field)
 const COAST: Omit<GroundReduxProfile, 'grass'> = {
   ...TEMPERATE, swashPeriodS: 8.5, swashReachM: 4.5, swashStrength: 1.5, swashLines: 1.0,
 };
@@ -226,10 +225,15 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   titan_gorge: { ...ARID, grass: null },
   skybridge: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.4, swashLines: 0.3, grass: null },
   polders: { ...STILL_WATER, grass: reed(0.7, 1.5, 0.85, 0.7) },
-  copper_mesa: { ...ARID, grass: null },
+  // (the map-revival lane, Copper Mesa round 2: Queenstown's bare conglomerate — no wind's patchwork or ripples, the
+  // rills' hollows darker and damper, scree at the slopes' feet)
+  copper_mesa: { ...ARID, patchwork: 0, windRipple: 0, foldMoist: 0.5, foldAO: 0.65, scree: 0.45, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
-  oasis: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.2) },
-  whiteout: { ...SNOW, scree: 0.3, grass: tundra(0.3, 0.4) },
+  // (round 2, the gauntlet's wave 125: "corduroy ripples" and "lawn-green tufts" — the wind's ripples at four tenths, the
+  // reeds at the spring's waterline, a trace of their meadow on the dry banks: 0.05, was 0.2)
+  oasis: { ...ARID, windRipple: 0.4, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.05) },
+  // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
+  whiteout: { ...SNOW, scree: 0.3, grass: null },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },

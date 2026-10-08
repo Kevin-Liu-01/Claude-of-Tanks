@@ -5,6 +5,7 @@
 // moved rows with npm run tank:geometry:update after review. Keep both rosters when they diverge.
 import assert from 'node:assert/strict';
 import { Group } from 'three';
+import { createCircularCapAudit } from '../../tools/circular-cap-audit.mjs';
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS } from './specs.ts';
@@ -13,6 +14,7 @@ import { createMachineGunAttachmentAudit } from './profiles/machineGunAttachment
 import { createTrackEndWrapAudit } from './trackEndWrap.test-support.mjs';
 import { createWheelQualityAudit } from './wheelQualityAudit.test-support.mjs';
 import { createSurfaceMarkupFleetAudit } from '../gallery/surfaceMarkupFleetAudit.test-support.mjs';
+import { createTrackContactDerivationAudit } from './trackContactDerivationAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
@@ -47,10 +49,14 @@ await runFleetPass({
     { name: 'fleetGeometryLedger', create: () => createFleetGeometryLedgerPassAudit(BUILD) },
     // 2026-10-04: the development hulls too register exactly the running-gear units they draw
     { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
+    { name: 'circularCapOverlap', create: () => createCircularCapAudit({ quality: 'high' }) },
     // the mount inspection keeps its authored camo seed; camo seeds do not move the running gear
     { name: 'machineGunAttachment', ids: DEVELOPMENT_TANK_IDS, create: machineGunMounts },
     { name: 'trackEndWrap', ids: ALL_TANK_IDS, create: trackEndWraps },
     { name: 'wheelQuality', ids: ALL_TANK_IDS, create: createWheelQualityAudit },
+    // 2026-10-04 (physics lane round 8): every tank's HIGH build derives its published track contact (with the LOW pass:
+    // the two tiers agree within 1 cm), and the run's ends sit where its drawn band leaves the ground
+    { name: 'trackContactDerivation', ids: ALL_TANK_IDS, create: () => createTrackContactDerivationAudit('HIGH') },
     { name: 'surfaceMarkupFleet', ids: ALL_TANK_IDS, create: createSurfaceMarkupFleetAudit },
   ],
 });

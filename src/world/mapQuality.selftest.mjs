@@ -33,6 +33,7 @@ const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
   ['caldera', 2], ['polders', 2], // round 47 (2026-09-23): the two bland rings with a skyline impostor gain a second rank
+  ['longleaf', 2], // the map-revival lane (2026-10-05, gauntlet wave 124): the flatwoods' pines close Longleaf's ring in two rows
 ]);
 const polePolicyByMap = new Map();
 const battlefieldWrecks = new Set();
@@ -301,7 +302,12 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
   assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
-  assert.ok(config.props.inhabit.modernClutter >= 18,
+  // an authored mix counts its pieces: a period map keeps the budget in the families of its year (Nordhavn 1940 and
+  // Glacier Pass 1945 have cable reels and direction signs, no traffic cones, Jersey barriers or pad transformers)
+  const modernClutter = config.props.inhabit.modernClutter;
+  const modernBudget = typeof modernClutter === 'object' && modernClutter
+    ? Object.values(modernClutter).reduce((sum, count) => sum + count, 0) : modernClutter;
+  assert.ok(modernBudget >= 18,
     `${mapId}: modern roadside and checkpoint clutter budget`);
   assert.ok(config.props.craters >= 48, `${mapId}: battlefield scarring budget`);
   assert.ok(config.props.wallRuns?.length >= 6,

@@ -51,3 +51,9 @@ assert.equal(mobilePool.release(mobileVisual), false, 'mobile retains no bot vis
 assert.equal(mobileVisual.disposed, 1, 'mobile release disposes immediately');
 
 console.log('battleVisualPool.selftest: detached visual reuse has bounded ownership');
+
+{
+ const aircraft=makeVisual('m1a2');aircraft.root.userData={aircraftOnly:true};
+ const p=createBattleVisualPool();assert.equal(p.release(aircraft),false);
+ assert.equal(aircraft.disposed,1);assert.equal(p.take('m1a2'),null,'aircraft cannot replace a tank on rematch');
+}

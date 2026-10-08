@@ -11,7 +11,7 @@ export const BATTLE_WEATHER_BIOMES = Object.freeze({
   frontier: 'temperate', fjord: 'coastal', delta: 'tropical', badlands: 'arid',
   monsoon: 'tropical', alpine: 'cold', caldera: 'temperate', foundry: 'temperate',
   ruinspires: 'arid', blackglass: 'temperate', titan_gorge: 'arid', skybridge: 'arid',
-  polders: 'coastal', copper_mesa: 'arid', airfield: 'temperate', oasis: 'arid',
+  polders: 'coastal', copper_mesa: 'temperate', airfield: 'temperate', oasis: 'arid',
   whiteout: 'cold', orchard: 'temperate', longleaf: 'temperate', mangrove: 'tropical',
   saltwind: 'coastal', reservoir: 'temperate', mars: 'arid', moon: 'arid', cliffbridge: 'temperate',
 } satisfies Record<MapId, BattleWeatherBiome>);

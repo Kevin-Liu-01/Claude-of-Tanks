@@ -97,8 +97,9 @@ const dispose = (built) => { for (const list of Object.values(built.buckets)) fo
 
 // ------------------------------------------------------------------ the yards: slab, no spur, deterministic track
 // (2026-10-01: Cinder Junction's yard is authored spurs now — its own section below)
+// (batch 4: Skybridge round 3, e53ee9c50 — Page never had a railway, so its yard is gone)
 // (2026-10-07: Obsidian Caldera's yard retired, the map-revival lane's Caldera round 3)
-for (const mapId of ['foundry', 'skybridge']) {
+for (const mapId of ['foundry']) {
   const field = createHeightField(1337, getMapConfig(mapId));
   assert.equal(field._layout.railSpurs, undefined, `${mapId}: a yard authors no spur`);
   const built = build(mapId, field, 1337), again = build(mapId, field, 1337);
@@ -257,4 +258,4 @@ for (const mapId of MAP_IDS) {
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);
+console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; two yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);

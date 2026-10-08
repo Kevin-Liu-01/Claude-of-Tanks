@@ -4,7 +4,9 @@ type TrackSurfacePolicy = 'earth' | 'sand' | 'snow' | 'shore';
 
 /** Pass the resolved SOURCED terrain palette, not the props/horizon palette. */
 export function trackSurfacePolicy(palette: string): TrackSurfacePolicy {
-  if (palette === 'desert' || palette === 'badlands' || palette === 'moon') return 'sand';
+  // (Copper Mesa's own row, Queenstown's bare hills, is the sand set tinted pink and ochre: its loose gravel keeps the sand
+  // prints it had on the badlands row)
+  if (palette === 'desert' || palette === 'badlands' || palette === 'moon' || palette === 'copper_mesa') return 'sand';
   if (palette === 'winter' || palette === 'alpine') return 'snow';
   return palette === 'coastal' ? 'shore' : 'earth';
 }
