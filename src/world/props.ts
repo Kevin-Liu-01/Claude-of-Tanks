@@ -9317,6 +9317,18 @@ ${snowCap ? `
       return [...shapePolygons(ob), band];
     };
     type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null };
+    // (2026-10-08, over batch 5's hitbox lane) a stone that rises past the drive-over line but had no legacy record takes
+    // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone's own contact
+    // footprint, so none is seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
+    const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).map((seat) => {
+      const c = seat.profile!.contact, poly: (readonly [number, number])[] = [];
+      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
+      for (let i = 0; i + 1 < c.length; i += 2) {
+        poly.push([c[i], c[i + 1]] as const);
+        sx0 = Math.min(sx0, c[i]); sx1 = Math.max(sx1, c[i]); sz0 = Math.min(sz0, c[i + 1]); sz1 = Math.max(sz1, c[i + 1]);
+      }
+      return { ob: seat.rec!, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 };
+    });
     const nearOf = new Map<DestructibleRecord, Near[]>();
     for (const cart of carts) {
       const near: Near[] = [];
@@ -9329,6 +9341,10 @@ ${snowCap ? `
           const prop = owners.get(ob);
           near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
         }
+      }
+      for (const stone of risenStones) {
+        if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
+        near.push({ ob: stone.ob, polys: [stone.poly], parked: null });
       }
       nearOf.set(cart, near);
     }
@@ -9344,9 +9360,12 @@ ${snowCap ? `
       const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
       const rect = (x0: number, x1: number, z0: number, z1: number): FootprintPolygon =>
         [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([lx, lz]) => [x + lx * c + lz * s, z - lx * s + lz * c] as const);
-      // a horse or a man stands there: at least 1.2 m wide, 2.5 m long, and a hand's breadth more round both lanes
-      const lane = Math.max(hw, 0.6) + 0.25;
-      const out = [rect(-lane, lane, hl, hl + 2.75)];
+      // a horse or a man stands there: at least 1.2 m wide, 2.5 m long, and a hand's breadth more round both lanes —
+      // where a horse stands (a wagon, a hay sledge); a man pulling a sled by its rope 2.25 m, and a hand cart's is
+      // pushed from between its handles, a man's width and a pace beyond them (the lane rule alone dropped 5 of
+      // Cliffbridge's 35 parked carts from its lanes and steps)
+      const man = record.kind === 'handcart', lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + 0.25;
+      const out = [rect(-lane, lane, hl, hl + (man ? 1.2 : record.kind === 'sled' ? 2.25 : 2.75))];
       if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
       return out;
     };
@@ -9359,7 +9378,8 @@ ${snowCap ? `
         if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
         // (round 5) a cart keeps half a metre of air to anything over half a metre tall (a trunk, a wall, a barrier, a
         // lamp post): a hand's breadth read as jammed against it (a parked vehicle keeps its old gap)
-        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE : cartKinds.has(cart.kind) && tall(n.ob) ? 0.5 : CART_CLEARANCE;
+        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE
+          : cartKinds.has(cart.kind) && tall(n.ob) ? (cart.kind === 'handcart' ? 0.12 : 0.5) : CART_CLEARANCE;
         for (const poly of n.polys ?? shapePolygons(n.ob)) {
           const g = polygonGap(body, poly);
           if (g.gap < clearance) {
