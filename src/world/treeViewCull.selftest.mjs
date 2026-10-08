@@ -237,6 +237,24 @@ try {
     cull = veg._nearCull();
     console.log(JSON.stringify({ pose: 'drive', ...cull }));
 
+    // a felled tree draws from the next update wherever it stands (its fall may swing it into the view)
+    {
+      pools = nearPools(veg);
+      const culled = pools.flatMap((pool) => pool.trees.slice(pool.meshes[0].count));
+      const ob = veg.treeObstacles.find((o) => !o.crushed && culled.includes(veg._trees[o.treeIdx]));
+      assert.ok(ob, 'a culled near tree with a trunk to fell');
+      const tree = veg._trees[ob.treeIdx];
+      assert.ok(veg.crushTree(ob, 1, 0, true), 'the tree falls');
+      step(veg, camera);
+      pools = nearPools(veg);
+      const pool = pools.find((p) => p.trees.includes(tree));
+      assert.ok(tree.slot < pool.meshes[0].count, 'the felled tree joined the drawn run');
+      auditSlots(pools, true);
+      veg.resetToppled();
+      step(veg, camera);
+      auditSlots(nearPools(veg), true);
+    }
+
     // a frame without a camera (the Studio, the warm): every near tree drawn again
     veg.update(1 / 60, camera.position, fwd, null);
     cull = veg._nearCull();

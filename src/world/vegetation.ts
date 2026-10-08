@@ -8136,6 +8136,7 @@ function* vegetationBuildSteps(
     if (!t || t.crushed) return false;
     if (!t.uprightMat) t.uprightMat = t.mat.clone();
     t.crushed = true;
+    nearCullStale = true; // trees perf: a falling tree draws from the next update wherever it stood (nearTreeInVolume)
     ob.crushed = true;
     ob.dead = true;
     setToppleAxis(_tcax, dx, dz);
@@ -8149,6 +8150,7 @@ function* vegetationBuildSteps(
   }
   function resetToppled(): void {
     treeCrushAnims.length = 0;
+    nearCullStale = true; // trees perf: the righted trees are culled again from the next update
     for (const ob of treeObstacles) {
       ob.crushed = false;
       ob.dead = false;
