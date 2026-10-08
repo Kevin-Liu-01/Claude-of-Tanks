@@ -70,6 +70,14 @@ import {
   tileableTorusNoise as torusNoise,
 } from './proceduralTexture.ts';
 
+/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. It sits
+ * above the chunk section on purpose: receipts that compile the chunk section on its own (from the CHUNKS constant to
+ * the end) supply their own buildHorizonRingSteps stub, which a later declaration would override. Keep the chunk
+ * constant's declaration text out of this note: those receipts find the section by its first occurrence. */
+function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
+  return horizonRing().buildHorizonRingSteps(...args);
+}
+
 type GroundType = 'hard' | 'medium' | 'soft';
 type RoadPoint = [number, number];
 type RoadLine = RoadPoint[];
@@ -7528,11 +7536,6 @@ export async function buildTerrainMeshesAsync(
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
     }
   }
-}
-
-/** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. */
-function buildHorizonRingSteps(...args: Parameters<HorizonRing['buildHorizonRingSteps']>): ReturnType<HorizonRing['buildHorizonRingSteps']> {
-  return horizonRing().buildHorizonRingSteps(...args);
 }
 
 function* terrainBuildSteps(
