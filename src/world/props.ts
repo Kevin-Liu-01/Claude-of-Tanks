@@ -1,4 +1,5 @@
-import { placeWreckCollision } from './wreckCollision.ts';
+import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -63,9 +64,16 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
+import {
+  FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
+  type FieldStoneLithology,
+} from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
-import { paintHayBuffers } from './hayPrint.ts';
+import { HAY_PRINT_SEED, paintHayBuffers as paintHayBuffersInline } from './hayPrint.ts';
+import {
+  registerPaintNoise, settledPaint, surfacePaintKey, type SurfacePaintPrefetch, type SurfacePaintRequest,
+} from './surfacePaintPrefetch.ts';
+import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
@@ -120,6 +128,16 @@ import {
   type SimpleCollisionShape,
 } from './collision.ts';
 import {
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
+  rockStaysCrushable,
+  type RockCollisionProfile, type RockForm,
+} from './rockCollision.ts'; // the hitbox lane, 2026-10-07
+/** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
+const HEDGEHOG_SLAB_M = 0.35;
+const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
+/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
+import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
   deriveRuntimeStructureContactBand,
@@ -139,6 +157,7 @@ import {
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, bakeWreckDebris, type WreckBake } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
@@ -300,6 +319,19 @@ interface InhabitSettings {
   gateStacks?: number;
 }
 
+/** An authored outcrop: `count` boulders on a crescent of `radius` m round (x, z), bulging toward `towardDeg` (degrees,
+ * atan2(dz, dx)); the boulders' scales between `scaleMin` and `scaleMax`. */
+interface CoverOutcropSettings {
+  x: number;
+  z: number;
+  towardDeg?: number;
+  count?: number;
+  radius?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  name?: string;
+}
+
 interface TacticalOutcropSettings {
   count?: number;
   radius?: number;
@@ -374,6 +406,10 @@ interface PropsSettings {
      * its author holds the footprints apart. It draws from a stream of its own (its index in the plan), so every
      * placement after it keeps its seat. Every other site keeps the check and the shared stream. */
     terrace?: boolean }[];
+  /** The map-revival lane (2026-10-07, Orchard round 4): the planned sites stand after the roadside plan has placed every
+   * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
+   * sites stand first, as before. */
+  plannedSitesAfterPlan?: boolean;
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -430,6 +466,8 @@ interface PropsSettings {
   structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
+  /** Authored hard-cover outcrops (the hitbox lane, 2026-10-08; placeCoverOutcrops). */
+  coverOutcrops?: readonly CoverOutcropSettings[];
   craters: number;
   rubblePiles: number;
   wrecks: number;
@@ -622,6 +660,25 @@ interface PropsCollisionRecord extends CollisionRecord {
   hedgehogId?: number;
 }
 
+/** One placed stone and its records (the hitbox lane, 2026-10-07): the legacy ones the placement passes read, then the
+ * profile of its own mesh they are refitted to (props.ts settleRockColliders, refitRockColliders). */
+interface RockSeat {
+  vv: number;
+  placement: THREE.Matrix4;
+  x: number;
+  y: number;
+  z: number;
+  sc: number;
+  sink: number;
+  tactical: boolean;
+  rec: CollisionRecord | null;
+  col: CollisionRecord | null;
+  clutter: CrushableClutter | null;
+  profile: RockCollisionProfile | null;
+  /** Records the stone had none of: they join the lists at the refit. */
+  added?: boolean;
+}
+
 interface GroundSupportRecord {
   y?: number;
   min: number;
@@ -738,6 +795,8 @@ interface PropsBuildSlice {
   progress?: boolean;
   tankBuilder?: string;
   wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
+  /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
+  surfacePaint?: { key: string; result: Record<string, unknown> | null };
   stage?: string;
 }
 
@@ -753,6 +812,10 @@ interface PropsBuildDetail {
   maxSliceMs: number;
   slowest: Array<{ stage: string; ms: number }>;
   propModelsAwait?: PropsAwaitTiming & { startMs: number; endMs: number };
+  /** the planned wreck bakes the world build started with the terrain (wreckBakePrefetch.ts) */
+  wreckPrefetch?: import('./wreckBakePrefetch.ts').WreckBakePrefetchStats;
+  /** the fixed-input prints painted ahead by the surface paint worker (surfacePaintPrefetch.ts) */
+  surfacePaints?: SurfacePaintPrefetch['stats'];
   awaitTimings: {
     clock: 'performance.now';
     sliceTicks: PropsAwaitTiming;
@@ -865,6 +928,9 @@ function surfaceFromHeight(h: Float32Array, s: number, anisotropy: number, {
 }
 
 const _col = new THREE.Color();
+/** (the time-to-battle lane, 2026-10-08) the untoned render a props build's noise paints: every render family paints the
+ * same one (plaster, plaster2 and plaster3 differ only in tone), so it is painted once per build and copied */
+const plasterBases = new WeakMap<SimplexNoise, { px: Uint8ClampedArray; hgt: Float32Array }>();
 
 function makePlaster(
   noi: SimplexNoise,
@@ -885,17 +951,24 @@ function makePlaster(
       surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
     };
   }
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
-    const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
-    const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
-    const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
-    // weathered plaster: mid albedo so full sun never blows it to white
-    const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
-    _col.setHSL(0.085, 0.13 - stain * 0.05, l);
-    px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = n1 * 0.5 + n2 * 0.5;
+  const painted = plasterBases.get(noi);
+  if (painted) {
+    px.set(painted.px);
+    hgt.set(painted.hgt);
+  } else {
+    for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
+      const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
+      const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
+      const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
+      // weathered plaster: mid albedo so full sun never blows it to white
+      const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
+      _col.setHSL(0.085, 0.13 - stain * 0.05, l);
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
+      hgt[i] = n1 * 0.5 + n2 * 0.5;
+    }
+    plasterBases.set(noi, { px: px.slice(), hgt: hgt.slice() });
   }
   applyTone(px, tone);
   return {
@@ -1103,6 +1176,47 @@ function makeStraw(
 }
 
 /**
+ * (the time-to-battle lane, 2026-10-07) The fixed-input prints: the async build hands a print in painted ahead by the
+ * surface paint worker when the prefetch holds these exact arguments (surfacePaintPrefetch.ts — the same painter, the
+ * same texels); otherwise, and always in the synchronous build, it is painted here as before.
+ */
+function* paintedAhead<T>(key: string, paint: () => Generator<unknown, T, void>): Generator<PropsBuildSlice, T, void> {
+  const request: NonNullable<PropsBuildSlice['surfacePaint']> = { key, result: null };
+  yield { fine: true, progress: false, stage: `paint-ahead:${key}`, surfacePaint: request };
+  if (request.result) return request.result as unknown as T;
+  return (yield* paint() as Generator<PropsBuildSlice, T, void>);
+}
+function* paintHayBuffers(size = 512, seed = HAY_PRINT_SEED): Generator<PropsBuildSlice, { px: Uint8ClampedArray; hgt: Float32Array }, void> {
+  return yield* paintedAhead(surfacePaintKey({ kind: 'hay', size, seed }), () => paintHayBuffersInline(size, seed));
+}
+function* paintFieldStoneBuffers(size = 512, seed = FIELD_STONE_PRINT_SEED, lithology: FieldStoneLithology = 'fieldstone'):
+  Generator<PropsBuildSlice, FieldStoneBuffers, void> {
+  return yield* paintedAhead(surfacePaintKey({ kind: 'fieldStone', size, seed, lithology }), () => paintFieldStoneBuffersInline(size, seed, lithology));
+}
+
+/** The fixed-input prints a map's props build will paint (the surface paint prefetch starts them with the terrain). */
+export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 2002): SurfacePaintRequest[] {
+  const mobile = getDeviceTier() === 'mobile';
+  const size = mobile ? 256 : 512;
+  const mapId = cfg ? cfg.id : 'verdant';
+  const wallStyle = (cfg?.props as { wallStyle?: string } | undefined)?.wallStyle;
+  // (2026-10-08) and the tiles it paints from its noise (seed + 7) — all in the order the build reaches them: the straw,
+  // the building kit's three detail tiles, the rock tile, the dry-stone print
+  const noiseSeed = propsSeed + 7;
+  const requests: SurfacePaintRequest[] = [
+    { kind: 'hay', size, seed: HAY_PRINT_SEED },
+    { kind: 'structureDetail', detail: 'wood', noiseSeed },
+    { kind: 'structureDetail', detail: 'canvas', noiseSeed },
+    { kind: 'structureDetail', detail: 'steel', noiseSeed },
+    { kind: 'rockDetail', lithology: rockLithologyFor(mapId), noiseSeed },
+  ];
+  if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
+    requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
+  }
+  return requests;
+}
+
+/**
  * The scenery lane (b15; gauntlet wave 106 on the field haystack: "a bare textureless dark cone"): the straw props'
  * print (hayPrint.ts) under the map's straw tone — a bale's packed straw, a stack's face drawn down in locks, a thatched
  * crown's courses and a stack pole's grey timber, four bands of one tile, painted the GPU's way round. Phones paint it
@@ -1211,68 +1325,15 @@ function* makeFieldMud(
   };
 }
 
-// Neutral detail atlases for the vertex-colored destructible building kit.
-// Their RGB stays close to white so the kit palette remains authoritative;
-// the texture contributes grain/weave/corrugation and its normal map adds the
-// readable material response that flat vertex colors could not provide.
-function sampleStructureDetail(
-  noi: SimplexNoise,
-  kind: 'wood' | 'canvas' | 'steel',
-  x: number,
-  y: number,
-  sample: Float32Array,
-): void {
-  const grain = noi.noise(x * 0.17 + (kind === 'steel' ? 70 : 11), y * 0.06 - 31)
-    * 0.5 + 0.5;
-  if (kind === 'wood') {
-    const plank = (x % 28) / 28;
-    const seam = plank < 0.07 ? 1 : 0;
-    const rings = Math.sin(y * 0.11 + noi.noise(x * 0.08, y * 0.018) * 4) * 0.5 + 0.5;
-    sample[0] = seam ? 0.08 : 0.46 + rings * 0.38;
-    sample[1] = (0.86 + grain * 0.13) * (seam ? 0.68 : 1);
-  } else if (kind === 'canvas') {
-    const warp = Math.sin(x * Math.PI * 0.52) * 0.5 + 0.5;
-    const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
-    sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
-    sample[1] = 0.88 + sample[0] * 0.10;
-  } else {
-    // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
-    // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
-    // a rivet line under each seam, scratches, and a rust mask in sample[2] along the seams and the bottom lap.
-    const p = ((x / 27) % 1 + 1) % 1;
-    const corrugation = p < 0.34 ? 1 : p < 0.5 ? 1 - (p - 0.34) / 0.16 : p < 0.84 ? 0 : (p - 0.84) / 0.16;
-    // a three-texel seam ramp: the surface receipt keeps every normal within 32 degrees of the wall plane
-    const seamStep = x % 128;
-    const seam = seamStep < 3 ? 1 - seamStep / 3 : 0;
-    const rivet = !seam && seamStep >= 4 && seamStep < 8 && ((y + 6) % 24) < 5 ? 1 : 0;
-    const scratch = smoothstep(0.72, 0.94,
-      noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
-    const lap = ((y % 128) < 3) ? 1 : 0;
-    const rust = smoothstep(0.55, 0.9, noi.noise(x * 0.05 + 3, y * 0.05 - 41) * 0.5 + 0.5) * (seam || lap ? 0.9 : 0.25)
-      + ((noi.noise(x * 0.4 + 17, y * 0.4 + 9) * 0.5 + 0.5) > 0.86 ? 0.7 : 0);
-    sample[0] = corrugation * 0.72 + grain * 0.10 + 0.12 - seam * 0.30 - lap * 0.22 - rivet * 0.12;
-    sample[1] = 0.92 + corrugation * 0.06 - scratch * 0.08 - seam * 0.25 - lap * 0.12 + rivet * 0.05;
-    sample[2] = clamp(rust, 0, 1);
-  }
-}
-
 export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
 ): GeneratedSurfaceTextures {
-  const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const rust = kind === 'steel' ? new Float32Array(s * s) : null;
-  const sample = new Float32Array(3);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    sample[2] = 0;
-    sampleStructureDetail(noi, kind, x, y, sample);
-    const v = clamp(sample[1], 0.55, 1) * 255;
-    px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
-    hgt[i] = sample[0];
-    if (rust) rust[i] = sample[2];
-  }
+  // (the time-to-battle lane, 2026-10-08) the tile the surface paint worker painted ahead for this build's noise and kind
+  // (surfacePaintPrefetch.ts settledPaint: the same painter, structureDetailTile.ts), or painted here
+  const ahead = settledPaint(noi, (seed) => surfacePaintKey({ kind: 'structureDetail', detail: kind, noiseSeed: seed })) as StructureDetailBuffers | null;
+  const { size: s, px, hgt, rust } = ahead ?? paintStructureDetailBuffers(noi, kind);
   // the rust mask rides the ORM blue channel the weathering hook reads (steel atlas convention, round 75)
   const surface = rust
     ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
@@ -2978,6 +3039,43 @@ export function createProps(
   return r.value;
 }
 
+/** One wreck bake a map's props build asks the worker for: the donor and its seeded options. */
+interface WreckBakeRequestRecord { specId: string; seed: number; pop: boolean }
+
+/**
+ * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
+ * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes),
+ * up to the end of the wreck pass ('wrecks-finalized': nothing after it asks for a bake). tools/wreck-bake-plan.mjs
+ * records them per map so the browser can start those bakes when the world build starts, beside the terrain and
+ * vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ */
+export async function recordWreckBakeRequests(
+  heightField: HeightField,
+  engineCtx: EngineContext,
+  seed: number,
+  cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
+  bake: (specId: string, options: { seed: number; pop: boolean }) => Promise<WreckBake | null>,
+): Promise<WreckBakeRequestRecord[]> {
+  const requests: WreckBakeRequestRecord[] = [];
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, true);
+  let r = g.next();
+  try {
+    while (!r.done) {
+      const request = r.value?.wreckBake;
+      if (request) {
+        requests.push({ specId: request.specId, seed: request.options.seed, pop: request.options.pop });
+        request.result = await bake(request.specId, request.options);
+      }
+      if (r.value?.stage === 'wrecks-finalized') break;
+      r = g.next();
+    }
+  } finally {
+    if (!r.done) g.return(undefined as never);
+  }
+  return requests;
+}
+
 /**
  * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
  * one-call build was a single ~1.6 s task behind the loading bar. Awaits
@@ -2995,6 +3093,8 @@ export async function createPropsAsync(
   tick: ((done: number, total: number) => Promise<void> | void) | null = null,
   fineSlices = false,
   vegetation: FisheryVegetation | null = null,
+  wreckPrefetch: WreckBakePrefetch | null = null,
+  surfacePrefetch: SurfacePaintPrefetch | null = null,
 ): Promise<PropsRuntime> {
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
@@ -3036,12 +3136,22 @@ export async function createPropsAsync(
   };
   try {
     r = g.next();
-    wreckWorker?.prepare();
+    // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
+    // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
+    // builders up front
+    if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;
       slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
+      if (step?.surfacePaint && surfacePrefetch) {
+        // (the time-to-battle lane) a print painted ahead with the terrain; a failed one is painted where it stands
+        const ahead = surfacePrefetch.take(step.surfacePaint.key);
+        if (ahead) {
+          try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
+        }
+      }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
         await ensureTankBuilder(step.tankBuilder);
@@ -3051,8 +3161,24 @@ export async function createPropsAsync(
         const request = step.wreckBake;
         const startedAt = performance.now();
         const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
-        request.result = await wreckWorker.bake(request.specId, request.options,
-          () => observeTick(awaitTimings.wreckCheckpoints));
+        // (the time-to-battle lane) a bake the world build started with the terrain (wreckBakePrefetch.ts): the same
+        // donor, seed and pop through the same worker code — taken here, waited for with the same checkpoints
+        const planned = wreckPrefetch?.take(request.specId, request.options) ?? null;
+        let fromPlan = false;
+        if (planned) {
+          let settled = false, failed = false;
+          let value: WreckBake | null = null;
+          planned.then((baked) => { settled = true; value = baked; }, () => { settled = true; failed = true; });
+          while (!settled) {
+            await new Promise<void>((resolve) => { setTimeout(resolve, 30); });
+            if (!settled) await observeTick(awaitTimings.wreckCheckpoints);
+          }
+          if (!failed) { request.result = value; fromPlan = true; }
+        }
+        if (!fromPlan) {
+          request.result = await wreckWorker.bake(request.specId, request.options,
+            () => observeTick(awaitTimings.wreckCheckpoints));
+        }
         const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
         // Inclusive elapsed time includes nested checkpoints, worker transfer
         // and main-thread hydration. It is not worker CPU time or network time.
@@ -3080,6 +3206,8 @@ export async function createPropsAsync(
       maxSliceMs: slowest[0]?.ms || 0,
       slowest,
       awaitTimings,
+      ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
+      ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
     };
     return runtime;
   } finally {
@@ -3156,6 +3284,20 @@ function* propsBuildSteps(
   const L = heightField._layout;
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
+  registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
+  // (the time-to-battle lane, 2026-10-08) the near terrain mesh's vertex heights, each asked of the field once per build:
+  // the rock beds, the ground contact patches and the wall turf all conform to that grid (terrain.ts
+  // terrainNearMeshHeightAt) and asked its vertices 182 k times on Verdant, 174 k of them again. The field's own heights
+  // by their exact coordinates (the build changes no height), so the same values; released when the build returns.
+  let nearMeshVertexHeights: Map<number, Map<number, number>> | null = new Map();
+  const nearMeshVertexHeight = (px: number, pz: number): number => {
+    if (!nearMeshVertexHeights || px === 0 || pz === 0) return heightField.getHeightAt(px, pz);
+    let row = nearMeshVertexHeights.get(px);
+    if (!row) nearMeshVertexHeights.set(px, row = new Map());
+    let h = row.get(pz);
+    if (h === undefined) row.set(pz, h = heightField.getHeightAt(px, pz));
+    return h;
+  };
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
@@ -3656,21 +3798,24 @@ ${snowCap ? `
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
+  // (the hitbox lane, 2026-10-07: and a stack stops shells and sight lines — collision.ts names sandbags dense cover, but
+  // the stacks published no shell record, so 70-94 % of the rays through a stack passed it; their shell records are the
+  // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -4311,7 +4456,7 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
-  for (const [index, site] of (P.townPlan?.length ? [] : P.plannedSites ?? []).entries()) {
+  for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
@@ -4320,6 +4465,14 @@ ${snowCap ? `
     yield { fine: true };
   }
   yield* placeRoadBuildings();
+  // (the map-revival lane, 2026-10-07) the sites that close a square stand last, between the plan's houses
+  for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
+    if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+    yield { fine: true };
+  }
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
@@ -5120,7 +5273,7 @@ ${snowCap ? `
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
-      meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
+      meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
     } : undefined,
   });
   function addWallRun(
@@ -5966,6 +6119,10 @@ ${snowCap ? `
   // for the far rocks and the far shadow cascades
   const rockGeosFar: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
+  // the hitbox lane (2026-10-07): each variant's collision form (rockCollision.ts) and every stone's seat; the colliders
+  // come from the stone's own mesh once every placement pass has run (refitRockColliders)
+  const rockForms: RockForm[] = [];
+  const rockSeats: RockSeat[] = [];
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
@@ -5988,7 +6145,7 @@ ${snowCap ? `
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
     const hull = convexHull2(projected);
-    rockHulls.push(hull); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    rockHulls.push(hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
     // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
     // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
@@ -5999,6 +6156,12 @@ ${snowCap ? `
     const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
     paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
+    // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
+    const collisionForm = mobileProps
+      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
+      : form.geometry;
+    rockForms.push(rockFormOf(collisionForm));
+    if (collisionForm !== form.geometry) collisionForm.dispose();
     if (!mobileProps) {
       const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
       paintBoulder(far, P.rockTone, lithology);
@@ -6076,17 +6239,19 @@ ${snowCap ? `
     slopePref: boolean,
     sink = 0.22,
     tactical = false,
+    // (the hitbox lane, 2026-10-08: an authored outcrop draws on its own stream, so no stone placed after it moves)
+    draw: Rng = rng,
   ): boolean {
-    const vv = (rng() * 3) | 0;
-    const yawR = rng() * Math.PI * 2;
-    const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
+    const vv = (draw() * 3) | 0;
+    const yawR = draw() * Math.PI * 2;
+    const sc = scMin + Math.pow(draw(), 1.6) * (scMax - scMin);
     if (!rockSiteOpen(x, z)) return false;
     if (slopePref) {
       const steep = heightField.getNormalAt(x, z).y < 0.93;
-      if (!steep && rng() > 0.30) return false; // prefer rocky slopes
+      if (!steep && draw() > 0.30) return false; // prefer rocky slopes
     }
     // (the stone's height scale, drawn where the seat's matrix always drew it, so a re-site takes no draw of its own)
-    const scaleY = sc * (0.8 + rng() * 0.35);
+    const scaleY = sc * (0.8 + draw() * 0.35);
     // The boulder keeps its whole footprint (the collision hull) out of the road core. One that would reach into it is
     // left out, its draws still taken and its count kept, so every later placement keeps its seat.
     const hull = rockHulls[vv];
@@ -6125,12 +6290,17 @@ ${snowCap ? `
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     addPlacedRock(x, z, reach, footprint);
+    // (the hitbox lane: every stone's seat; the records below are the legacy ones every placement pass reads)
+    const seat: RockSeat = { vv, placement, x, y, z, sc, sink, tactical, rec: null, col: null, clutter: null, profile: null };
+    rockSeats.push(seat);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
       // The old square ±1.15*scale AABB made its four empty corners solid;
       // at a 3 m outcrop that stopped a hull more than a metre from the
       // visible stone. Use the displaced mesh's actual projected convex hull.
+      // (the hitbox lane, 2026-10-07: the legacy record every later placement pass reads; refitRockColliders gives it the
+      // stone's own colliders once they have all run)
       const c = Math.cos(yawR), s = Math.sin(yawR);
       const local = rockHulls[vv];
       const points = new Array(local.length);
@@ -6144,10 +6314,12 @@ ${snowCap ? `
       const col = cloneCollisionRecord(rec);
       obstacles.push(rec); colliders.push(col);
       letGroundCoverLap(rec); // (b14: the turf grows against the stone's foot)
+      seat.rec = rec; seat.col = col;
       if (isLooseSurfaceRock(sc, sink, tactical)) {
         rec.kind = col.kind = 'small-rock';
         const clutter = new CrushableClutter('small-rock', x, y + sink * sc, z, sc, sc * 1.1, [rec], [col]);
         rockClutter.set(placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
       }
     }
     return true;
@@ -6241,8 +6413,60 @@ ${snowCap ? `
   }
   }
   scatterBoulderOutcrops();
+  // The hitbox lane (2026-10-08): the layout brief's cover where the stones' own colliders left a sector short of it
+  // (the cover the legacy records' empty corners had counted; docs/MAP-LAYOUT-BRIEF.md, tools/map-layout-metrics.mjs):
+  // authored outcrops of the map's own boulders, each a crescent bulging toward its threat as a tactical beat's does,
+  // hard cover (never crushable), on their own seeded draws so no stone placed before or after them moves.
+  function placeCoverOutcrops(): void {
+    (P.coverOutcrops ?? []).forEach((spot, index) => {
+      const draw = mulberry32(seed + 7919 + index * 104729);
+      const count = spot.count ?? 4, radius = spot.radius ?? 6;
+      const toward = THREE.MathUtils.degToRad(spot.towardDeg ?? 0);
+      for (let i = 0; i < count; i++) {
+        const arc = count === 1 ? 0 : (i / (count - 1) - 0.5) * Math.PI * 0.8;
+        const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + index)));
+        tryRock(spot.x + Math.cos(toward + arc) * rr, spot.z + Math.sin(toward + arc) * rr,
+          spot.scaleMin ?? 1.6, spot.scaleMax ?? 3.0, false, 0.24, true, draw);
+      }
+    });
+  }
+  placeCoverOutcrops();
 
   yield { fine: true, stage: 'boulder-outcrops' };
+  // The hitbox lane (2026-10-07; owner: "rock hitboxes are way too big and inaccurate"): every stone's colliders from its
+  // own mesh over its own ground (rockCollision.ts). The legacy records stand through every placement pass below, so no
+  // prop moves; refitRockColliders swaps these profiles in once all of them have run. Here, before the pools are laid,
+  // the crushable class follows the stones that keep a collider: a stone a hull drives over drops its clutter, and a
+  // stone that rises past the drive-over line with no collider (a small or a deep-set one) becomes a crushable rock.
+  function* settleRockColliders(): Generator<PropsBuildSlice, void, void> {
+    const groundAt = rockGroundAt(heightField);
+    let settled = 0;
+    for (const seat of rockSeats) {
+      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
+      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
+      if (!seat.profile) {
+        if (seat.clutter) {
+          rockClutter.delete(seat.placement);
+          const at = pendingClutter.indexOf(seat.clutter);
+          if (at >= 0) pendingClutter.splice(at, 1);
+          seat.clutter = null;
+        }
+        continue;
+      }
+      if (seat.rec) continue;
+      const rec: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      const col: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      seat.rec = rec; seat.col = col; seat.added = true;
+      if (rockStaysCrushable(seat.sc, seat.tactical)) {
+        rec.kind = col.kind = 'small-rock';
+        const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [rec], [col]);
+        rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
+      }
+    }
+  }
+  yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
@@ -6359,9 +6583,16 @@ ${snowCap ? `
    * and light are the ground's at that place; it casts nothing. Not under the crushable stones (a tank flattens them),
    * nor on the phones.
    */
+  /**
+   * (b37; the whole-PR census: "rock-beds" 0 -> 9-21 colour-pass draws a view, each on the terrain's heavy ground
+   * material) the beds' and the wall-foot turf's cells: 512 m, one geometry a cell for both — up to four on a map, two or
+   * three in a view (bedCellKey)
+   */
+  const BED_CELL_M = 512;
+  const bedCellKey = (x: number, z: number): number => Math.floor((x + 512) / BED_CELL_M) * 64 + Math.floor((z + 512) / BED_CELL_M);
   function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
-    const SEGMENTS = 24, CELL = 256, RINGS = 5;
-    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z);
+    const SEGMENTS = 24, RINGS = 5;
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
     const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
     const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
@@ -6401,7 +6632,7 @@ ${snowCap ? `
         }
         if (meanR < 0.3) continue;
         const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
-        const key = Math.floor((px + 512) / CELL) * 64 + Math.floor((pz + 512) / CELL);
+        const key = bedCellKey(px, pz);
         let cell = cells.get(key);
         if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
         const base = cell.pos.length / 3;
@@ -6515,19 +6746,21 @@ ${snowCap ? `
   // (b14) every boulder's bed, for the world to draw with the ground's own material (map.ts assembleWorld)
   if (!mobileProps) group.userData.rockBeds = yield* buildRockBeds();
   rockClutter.clear();
-  // (b18) and the turf banked against the dry-stone walls' feet, merged by 256 m cell, the same ground material's
+  // (b18) and the turf banked against the dry-stone walls' feet, the same ground material's: (b37) merged into its cell's
+  // bed, one geometry a 512 m cell for both (bedCellKey), so a cell costs one draw, not two
   if (wallDressing.turfs.length) {
-    const turfCells = new Map<number, THREE.BufferGeometry[]>();
-    for (const turf of wallDressing.turfs) {
-      turf.computeBoundingSphere();
-      const c = turf.boundingSphere!.center, key = Math.floor((c.x + 512) / 256) * 64 + Math.floor((c.z + 512) / 256);
-      const list = turfCells.get(key);
-      if (list) list.push(turf); else turfCells.set(key, [turf]);
-    }
-    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
-    for (const list of turfCells.values()) {
+    const byCell = new Map<number, THREE.BufferGeometry[]>();
+    const add = (g: THREE.BufferGeometry) => {
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      const c = g.boundingSphere!.center, key = bedCellKey(c.x, c.z), list = byCell.get(key);
+      if (list) list.push(g); else byCell.set(key, [g]);
+    };
+    for (const bed of (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? []) add(bed);
+    for (const turf of wallDressing.turfs) add(turf);
+    const beds: THREE.BufferGeometry[] = [];
+    for (const list of byCell.values()) {
       const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
-      if (!merged) continue;
+      if (!merged) { beds.push(...list); continue; }
       if (merged !== list[0]) for (const g of list) g.dispose();
       merged.computeBoundingSphere();
       beds.push(merged);
@@ -7116,8 +7349,16 @@ ${snowCap ? `
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
         };
-        setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025,
-          beamSpec.halfLength + 0.025, beamSpec.yaw);
+        // (the hitbox lane, 2026-10-07: the beam's own slabs, which lean with it; its whole projection extruded from foot
+        // to tip stopped a quarter of the sight lines that met it 10+ cm clear of the steel)
+        _hedgehogBeam.makeRotationY(beamSpec.yaw).multiply(_hedgehogTilt.makeRotationX(beamSpec.tilt))
+          .setPosition(hx, y + 0.62 * scale, hz);
+        const slabs = convexSlabs(boxCorners(0.08 * scale + 0.025, 0.08 * scale, 1.05 * scale + 0.025, _hedgehogBeam.elements),
+          HEDGEHOG_SLAB_M, 8);
+        if (slabs.length) {
+          setCompoundShape(record, slabParts(slabs));
+          record.min[1] = slabs[0].y0; record.max[1] = slabs[slabs.length - 1].y1;
+        } else setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025, beamSpec.halfLength + 0.025, beamSpec.yaw);
         const collider = cloneCollisionRecord(record);
         obstacles.push(record); colliders.push(collider);
         clutterObs.push(record); clutterCols.push(collider);
@@ -7361,6 +7602,7 @@ ${snowCap ? `
         addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, wireYaw, wireScale);
       }
       // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
+      // (on a map with pillboxClearOfTrees its 8 m square keeps off every trunk, as the landform boulders do)
       if (placed % 2 === 0) {
         const first = wrng() < 0.5 ? 1 : -1;
         const reach = modules * 1.35 + 4.4, yawP = Math.atan2(fx, fz);
@@ -7560,7 +7802,8 @@ ${snowCap ? `
         const hx = (rec.max[0] - rec.min[0]) * 0.5;
         const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
-        colliders.push(cloneCollisionRecord(rec));
+        // (the hitbox lane, 2026-10-07: shells and sight lines meet the solids in slabs that lean with them)
+        colliders.push(placeWreckShellCollision(baked.shellSolids ?? baked.solids, placement));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({
           specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
@@ -8111,7 +8354,7 @@ ${snowCap ? `
     // its finest grid and its cells' diagonal), not the analytic height, which stands above the mesh on a bank's lip — a
     // patch conformed to that floated over the drawn lip and showed edge-on
     const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
-    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
+    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz);
     // (b12, the coordinator after the Coastal re-shoot: "lighten the patch's inner ring") the ground contact patches carry
     // each ring's share of their darkness in a vertex alpha; a boulder's patch keeps its soft outer shadow but lightens
     // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
@@ -8747,7 +8990,7 @@ ${snowCap ? `
   function composeAuthoredReservoirWaterworks(): void {
     if (!waterworksRubble) return;
     group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
-      heightField, waterworksRubble, buckets, [...obstacles, ...colliders]);
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders], regionalArchitecture);
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();
@@ -9088,6 +9331,38 @@ ${snowCap ? `
       group.add(mesh);
     }
   }
+  // The hitbox lane (2026-10-07): every placement pass has read the stones' legacy records; now each stone takes the
+  // colliders of its own mesh (settleRockColliders above), a stone a hull drives over leaves both lists, and a stone
+  // that rose past the drive-over line with none joins them — before the clutter takes its network identity below.
+  // The ground cover keeps the footprints it has always been sealed against: each legacy record's twin, cosmetic only
+  // (map.ts adds them to the grass, litter, tall-grass and shrub admission), so no tuft or shrub moves with a collider.
+  const rockGroundCover: CollisionRecord[] = [];
+  function refitRockColliders(): void {
+    const dropped = new Set<CollisionRecord>();
+    for (const seat of rockSeats) {
+      if (!seat.rec || !seat.col) continue;
+      if (!seat.added) {
+        const twin = cloneCollisionRecord(seat.rec);
+        letGroundCoverLap(twin);
+        rockGroundCover.push(twin);
+      }
+      if (!seat.profile) { dropped.add(seat.rec); dropped.add(seat.col); continue; }
+      applyRockCollisionProfile(seat.rec, seat.col, seat.profile, seat.y);
+      if (!seat.added) continue;
+      obstacles.push(seat.rec); colliders.push(seat.col);
+      letGroundCoverLap(seat.rec);
+    }
+    if (dropped.size) {
+      for (const list of [obstacles, colliders] as CollisionRecord[][]) {
+        let kept = 0;
+        for (const record of list) if (!dropped.has(record)) list[kept++] = record;
+        list.length = kept;
+      }
+    }
+    rockSeats.length = 0;
+    group.userData.rockGroundCover = rockGroundCover;
+  }
+  refitRockColliders();
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;
@@ -9128,6 +9403,7 @@ ${snowCap ? `
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
@@ -9153,6 +9429,8 @@ ${snowCap ? `
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
+        // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
+        if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
       }
     }
     if (!source) return null;
@@ -10139,6 +10417,7 @@ ${snowCap ? `
     { material: mats.structureMetal, intensity: 1.2 },
     { material: mats.structureCanvas, intensity: 1.2 },
   ]);
+  nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
