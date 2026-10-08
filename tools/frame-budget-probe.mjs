@@ -6,7 +6,7 @@
 //        [--pattern=ABBA] [--views=chase,centre-far] [--viewports=1600x900,1920x1080] [--frames=240] [--block=30] \
 //        [--sides=13x14] [--spec=t90m_x] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
 //        [--queries=,<query>] [--toggle=<name>] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
-//        [--out=<dir>] [--tag=<tag>]
+//        [--hide-bots[=0|1]] [--out=<dir>] [--tag=<tag>]
 //   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
 //
 // Every root is a checkout with a production build in <root>/dist (`npm run build`); the probe serves one root at
@@ -34,6 +34,12 @@
 // before it measures (three readings at most); an earlier slot the judgement implicates is measured again at the end of
 // the run; a slot whose measured counts leave its staged reading, or a report whose slots disagree at a pose, is VOID.
 // --scene-check=off turns the gate off (a change that adds or removes draws on purpose).
+//
+// --hide-bots (cost rule v3, amended 2026-10-07; the mr2 draw census): every bot's vehicle is taken out of the frame
+// (its render root hidden, every layer of it off, so no camera nor shadow camera draws it) once the battle is frozen.
+// The frozen bots stand wherever their routes put them at entry, and a build that changes a map's routes put a 62-draw
+// ally in its chase frame in every cycle: tank draws, not the map's cost. Default on for map holds (the default staging
+// --spec) and off for a vehicle hold (one that names its own --spec); =0 / =1 overrides. Each slot records the count.
 
 import path from 'node:path';
 import os from 'node:os';
@@ -59,6 +65,7 @@ const DEFAULTS = Object.freeze({
   sides: '13x14', spec: 't90m_x', preset: 'high', governor: 'pinned', port: 5395, budgetMin: 18, settleMs: 2500,
   tier: 'desktop', profileSeconds: 0, prefixFrames: 330, noFlush: false, segmented: false, scales: null, liveSeconds: 40,
   twinTrisTol: 3, drawsTol: 25, stableTol: 1, sceneCheck: true,
+  hideBots: 'auto',
 });
 /** The prefix checkpoints a toggle block rotates through (its last one is the whole frame). */
 const TOGGLE_CHECKPOINTS = Object.freeze(['world', 'clouds', 'shadow', 'scene', 'upscale']);
@@ -214,6 +221,11 @@ export function parseFrameProbeArgs(argv) {
       case 'queries': o.queries = (raw ?? '').split(','); break;
       case 'toggle': o.toggle = need(); break;
       case 'shots': if (raw !== undefined) throw new Error('--shots takes no value'); o.shots = true; break;
+      case 'hide-bots':
+        if (raw === undefined || raw === '1') o.hideBots = true;
+        else if (raw === '0') o.hideBots = false;
+        else throw new Error('--hide-bots takes no value, =0 or =1');
+        break;
       case 'port': o.port = Number(need()); break;
       case 'session-mutex': o.sessionMutex = path.resolve(need()); break;
       case 'budget-min': o.budgetMin = Number(need()); break;
@@ -254,6 +266,8 @@ export function parseFrameProbeArgs(argv) {
   if (o.scales && (o.governor !== 'pinned' || o.scales.some((v) => !(v > 0 && v <= 1)))) throw new Error('--scales are pinned render scales in (0, 1]');
   if (o.toggle && !FRAME_PROBE_TOGGLES[o.toggle]) throw new Error(`--toggle must be one of ${Object.keys(FRAME_PROBE_TOGGLES).join(', ')}`);
   if (o.emulate && !MID_RANGE_PROXIES[o.emulate]) throw new Error(`--emulate must be one of ${Object.keys(MID_RANGE_PROXIES).join(', ')}`);
+  // a map hold stages the default tank; a vehicle hold names its own and keeps the field as it is
+  if (o.hideBots === 'auto') o.hideBots = o.spec === DEFAULTS.spec;
   if (!(o.port >= 1024 && o.port < 65536)) throw new Error('--port must be a TCP port');
   for (const k of ['twinTrisTol', 'drawsTol', 'stableTol']) if (!(o[k] >= 0)) throw new Error('--twin-tris-tol, --draws-tol and --stable-tol are percentages');
   if (!o.out) o.out = path.resolve('.qa-dev', 'reports', TOOL);
@@ -312,6 +326,19 @@ export function freezeBattle(governor) {
     try { P.pinDynScale?.(null); } catch { /* optional */ }
   }
   return { roster, dynScale: P.dynScale, perfTrim: P.perfTrim };
+}
+
+/** --hide-bots: every vehicle but the player's out of the frame (root hidden, all its layers off); the count hidden. */
+function hideOtherVehicles() {
+  let hidden = 0;
+  for (const e of window.__DEBUG.game.tanks) {
+    const root = e.isPlayer ? null : e.visual?.root;
+    if (!root) continue;
+    root.visible = false;
+    root.traverse((o) => o.layers.disableAll());
+    hidden++;
+  }
+  return hidden;
 }
 
 export async function awaitTextures(timeoutMs) {
@@ -814,6 +841,8 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
   const entryMs = Date.now() - entryAt;
   const textures = await page.evaluate(awaitTextures, 90000);
   const frozen = await page.evaluate(freezeBattle, options.governor);
+  const hiddenBots = options.hideBots ? await page.evaluate(hideOtherVehicles) : 0;
+  if (options.hideBots) console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${slot.key}: ${hiddenBots} bot vehicle(s) hidden (--hide-bots)`);
   await page.waitForFunction(grassSettled, { timeout: 30000, polling: 250 }).catch(() => {});
   const timer = await page.evaluate(installFramePassTimer);
   let emulator = null;
@@ -895,6 +924,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     return { total: trace.n, passes };
   });
   return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, scene: staged, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
+    bots: { hidden: !!options.hideBots, count: hiddenBots },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
     samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0),

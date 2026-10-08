@@ -7,6 +7,7 @@ import { PartSink, faceBox, rgb, type Face, type RegionalParts } from './geometr
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bindFachwerk, type FachwerkPalette } from './hessian.ts';
+import { facadeOn, trimRing, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 export const EIFEL_PALETTE: FachwerkPalette = Object.freeze({
@@ -68,6 +69,14 @@ const companyOffice: RegionalBuilder = (ctx) => {
     }
   }
   sink.band(DRESSING, b.x0 - 0.06, frame.floors[1] - 0.1, b.z0 - 0.06, b.x1 + 0.06, frame.floors[1] + 0.12, b.z1 + 0.06, { decor: true });
+  if (facadeOn()) {
+    // the company's cornice under the hipped eaves, and hoods over the first floor's windows (facade craft)
+    trimRing(sink, DRESSING, frame.bodies[1], frame.eaveY - 0.32, [{ h: 0.12, out: 0.06 }, { h: 0.08, out: 0.12 }, { h: 0.12, out: 0.2 }]);
+    for (const o of frame.spec.openings) {
+      if (o.storey !== 1 || o.kind !== 'window' || o.state) continue;
+      windowHead(sink, frame.faces[o.face], o.u, frame.floors[1] + o.y0 + o.h + 0.28, o.w + 0.4, { kind: 'hood', bucket: DRESSING, h: 0.2, out: 0.12, ext: 0.02 });
+    }
+  }
   // the ridge lantern: a small slate-capped vent turret
   const top = frame.roof.ridgeTopY;
   sink.span('plaster', -0.6, top - 0.5, -0.6, 0.6, top + 1.1, 0.6);

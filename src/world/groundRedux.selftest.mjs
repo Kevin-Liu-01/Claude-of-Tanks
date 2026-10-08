@@ -22,8 +22,11 @@ assert.equal(fallback.swashStrength, 0, 'and has no wet strand');
 assert.deepEqual(resolveGroundReduxProfile(undefined), fallback);
 
 // 2. Knob bands and the biomes where they belong.
-const ARID = ['desert', 'badlands', 'caldera', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars', 'moon']; // moon (2026-10-01): airless regolith grows no sward
+// (2026-10-05, the map-revival lane's Caldera round 2: Aso's floor is farmed and grazed — Caldera has a sward)
+const ARID = ['desert', 'badlands', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars', 'moon']; // moon (2026-10-01): airless regolith grows no sward
 const SNOW = ['winter', 'whiteout', 'alpine'];
+// trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
+const ICE = ['whiteout'];
 const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
 const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge', 'autumn'];
 for (const id of MAP_IDS) {
@@ -42,10 +45,11 @@ for (const id of MAP_IDS) {
   else assert.equal(p.driftEdge, 0, `${id}: no drift edge off the snow maps`);
   if (COAST.includes(id)) assert.ok(p.swashLines >= 0.9 && p.swashReachM >= 3, `${id}: a foam line and a reach of metres on a sea beach`);
   if (ARID.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the arid ground`);
+  else if (ICE.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the ice sheet`);
   else assert.ok(p.grass, `${id}: a sward`);
   if (SNOW.includes(id)) {
     assert.ok(p.snowRipple > 0 && p.snowMacro > 0 && p.glint > 0, `${id}: drifts, scour and sparkle on snow`);
-    assert.equal(p.grass.kind, 'tundra', `${id}: dead sedge through the snow`);
+    if (!ICE.includes(id)) assert.equal(p.grass.kind, 'tundra', `${id}: dead sedge through the snow`);
   } else {
     assert.equal(p.snowRipple, 0, `${id}: no snow drifts off the snow maps`);
     assert.equal(p.glint, 0, `${id}: no snow sparkle off the snow maps`);
@@ -80,7 +84,7 @@ assert.ok(resolveGroundReduxProfile('alpine').scree >= resolveGroundReduxProfile
 // round 73b: the meadow and hill maps carry a talus skirt under their outcrops too; the arid maps keep none (the
 // owner's black-contour history on sand); a lake margin grows reeds on the Monsoon and Reservoir meadows
 for (const id of ['verdant', 'autumn', 'frontier', 'monsoon', 'reservoir']) assert.ok(resolveGroundReduxProfile(id).scree > 0, `${id}: a scree skirt`);
-for (const id of ['desert', 'badlands', 'caldera', 'mars']) assert.equal(resolveGroundReduxProfile(id).scree, 0, `${id}: no scree on the arid ground`);
+for (const id of ['desert', 'badlands', 'mars']) assert.equal(resolveGroundReduxProfile(id).scree, 0, `${id}: no scree on the arid ground`);
 assert.ok(resolveGroundReduxProfile('monsoon').grass.reedMargin > 0 && resolveGroundReduxProfile('reservoir').grass.reedMargin > 0, 'reed margins on the lake meadows');
 assert.equal(resolveGroundReduxProfile('verdant').grass.reedMargin, 0);
 assert.deepEqual(resolveGroundReduxProfile('monsoon').rimTint, resolveGroundReduxProfile('mangrove').rimTint, 'moss on the wet maps\' outcrops');

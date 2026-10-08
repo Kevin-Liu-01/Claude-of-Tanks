@@ -115,6 +115,7 @@ import { createWorldFramePresentationRuntime } from './world/worldFramePresentat
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import type { WaterDisturbance } from './world/shallowWater.ts';
 import { waterContactMaskAt } from './world/waterContactMask.ts';
+import { sceneWindOf } from './world/sceneWind.ts';
 import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
@@ -511,7 +512,9 @@ const currentWorld = () => worldRuntime?.current ?? null;
  */
 const withWorldCloudscape = <T extends MainWorld['config']['sky'] | null>(skyConfig: T): T => {
   const config: MapCompositionConfig | undefined = currentWorld()?.config;
-  return skyConfig && config?.clouds && config.sky === skyConfig ? { ...skyConfig, cloudscape: config.clouds } as T : skyConfig;
+  // (2026-10-05: and the battlefield's scene wind, world/sceneWind.ts)
+  return skyConfig && config && config.sky === skyConfig
+    ? { ...skyConfig, ...(config.clouds ? { cloudscape: config.clouds } : {}), ...sceneWindOf(config as { id?: string }) } as T : skyConfig;
 };
 const currentHud = () => battleHudRuntime?.currentHud() ?? null;
 const currentDamagePanel = () => battleHudRuntime?.currentDamagePanel() ?? null;
@@ -1388,7 +1391,9 @@ const audio = await bootStage('audio', () => {
   getGameMode: () => game.gameMode,
   getObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
   // Surface under each hull (track sounds), water depth and terrain occlusion.
-  getTerrain: () => (currentWorld() ? hfProxy : null) });
+  getTerrain: () => (currentWorld() ? hfProxy : null),
+  // The churches, belfries and campanile the bells ring from (read when a toll falls due, once per scene).
+  getLandmarks: () => currentWorld()?.getMinimapFeatures().buildings ?? null });
   a.bindBus(bus);
   return a;
 });
@@ -1536,7 +1541,7 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
     const sky = config.sky ?? {};
     // round 71: the map's authored cloudscape (its `clouds` block) rides with its sky block so the volumetric
     // layer derives per map (cloudPresets.ts); the sky block itself stays byte-identical to the Garage's copy
-    return config.clouds ? { ...sky, cloudscape: config.clouds } : sky;
+    return { ...sky, ...(config.clouds ? { cloudscape: config.clouds } : {}), ...sceneWindOf(config as { id?: string }) };
   },
   applyPreset: (preset) => {
     sky.applyPreset(preset, scene);

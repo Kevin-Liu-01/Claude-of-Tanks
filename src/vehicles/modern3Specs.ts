@@ -622,7 +622,7 @@ const MODERN3_SPECS = {
     armor: (() => {
       const a = modernArmor({
         hl: 3.49, hw: 2.02, inW: 1.08, floor: 0.40, trkTop: 1.01, roofY: 1.80,
-        turretPivot: [0, 1.80, -0.44], gunPivot: [0, 0.45, 1.34],
+        turretPivot: [0, 1.80, -0.44], gunPivot: [0, 0.45, 1.16],
         barrelLenM: 3.76, barrelRadM: 0.082,
         glacis: [78, 305, 420], lower: [60, 230, 305], side: [52, 155, 225],
         skirt: [90, 315, 540], rear: 42, roof: 50,
