@@ -3987,6 +3987,9 @@ vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0,
 // fragment's footprint, the tile repeat itself beats against the pixel grid (concentric arcs from a raised camera, the
 // round-73 mid octave's 1.08 m tile at 100–190 m). gFootM is the footprint's major axis (m per pixel, set once in
 // splatCompute); tileVis(P) keeps a term whole while a period spans 10 px or more and fades it out by 4 px.
+// ground lane (2026-10-07, Orchard's dry-stone risers): the terrace riser band's weight, set where the rock takes the
+// risers (splatCompute) and read by the rock layer's coursed-stone pass
+float gRiserW = 0.0;
 float gFootM = 0.01;
 float tileVis(float periodM) { return smoothstep(4.0, 10.0, periodM / max(gFootM, 1e-4)); }
 // ground lane (farmland): the world xz a pixel steps across and down the screen — a stripe of period P across the unit
@@ -4461,6 +4464,16 @@ void splatCompute() {
   float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
   float grazeT = worn - wornCore;
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // ground lane (2026-10-07, wave 251's Orchard bird: "the Chouf in summer isn't uniformly green") a terrace map's dry
+  // ground: on the terraces' treads, between the olives, the soil lies bare and stony in patches, and on the valley's
+  // steeper slopes (~15-35 deg) the turf thins to dry, stony ground in places — the D layer, the map's own dry stony soil
+  // (its palette row); every map without terrace zones as it was
+  if (uTerraceParam.x > 0.5) {
+    float dryN = nzq(uvW, 0.045, vec2(0.71, 0.33)).x * 0.7 + n1h * 0.3; // ~22 m patches, ragged at the ~5 m scale
+    float treadW = terraceZoneW(wp.xz) * (1.0 - smoothstep(uTerraceParam.z, uTerraceParam.w, slope)) * (1.0 - roadCore);
+    float steepDry = smoothstep(0.06, 0.18, slope) * (1.0 - smoothstep(0.30, 0.42, slope)) * (1.0 - roadCore);
+    fD = max(fD, max(treadW * smoothstep(0.50, 0.72, dryN) * 0.80, steepDry * smoothstep(0.44, 0.70, dryN) * 0.70));
+  }
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4557,7 +4570,10 @@ void splatCompute() {
   // the map-revival lane (2026-10-05, Orchard Valley's terraces T2): a terrace zone's risers are its dry-stone walls — the
   // faces the steps stand steeper than the benches (applyTerraces) take the rock layer whatever the turf's hold, the
   // benches keep their ground; the carriageways stay road
-  if (uTerraceParam.x > 0.5) fR = max(fR, terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope));
+  if (uTerraceParam.x > 0.5) {
+    gRiserW = terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope);
+    fR = max(fR, gRiserW);
+  }
   // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
@@ -4803,6 +4819,27 @@ void splatCompute() {
       a = mix(a, aS, steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
+  }
+  // ground lane (2026-10-07, wave 212's Orchard: the risers read as bare rock gashes): a terrace riser is a dry-stone
+  // wall — courses 0.30 m high of blocks 0.45–0.85 m long laid along the face, each block's own tone round the
+  // palette rock's mean, dark joints (exact cells; the coursing fades out by tileVis before it can alias), the photo's
+  // relief flattened — after the rock and the steep wall passes, which both lay the photo rock on a riser. Only where the
+  // riser band holds (gRiserW, terrace zones only: every other map draws as before)
+  if (gRiserW > 0.002) {
+    float cy = wp.y / 0.30, ci = floor(cy);
+    vec2 ch = cellHash2(vec2(ci, 41.0));
+    float along = abs(wn.x) > abs(wn.z) ? wp.z : wp.x;
+    float bw = 0.45 + 0.40 * ch.y;
+    float sb = (along + ch.x * bw) / bw, bi = floor(sb);
+    vec2 bh = cellHash2(vec2(ci, bi + 77.0));
+    vec2 bf = vec2(fract(cy) * 0.30, fract(sb) * bw);
+    float jd = min(min(bf.x, 0.30 - bf.x), min(bf.y, bw - bf.y));
+    float stoneVis = tileVis(0.45);
+    float joint = (1.0 - smoothstep(0.018, 0.034 + 0.5 * gFootM, jd)) * stoneVis;
+    vec3 stone = uMeanR.rgb * (0.80 + 0.40 * bh.x) * vec3(1.0 + 0.06 * (bh.y - 0.5), 1.0, 1.0 - 0.08 * (bh.y - 0.5));
+    vec3 dry = mix(mix(uMeanR.rgb * 0.96, stone, stoneVis) * (0.92 + 0.16 * smoothstep(0.30, 0.70, n1h)), uMeanR.rgb * 0.32, joint);
+    a.rgb = mix(a.rgb, dry, gRiserW);
+    if (nrmOn) n = mix(n, NRM_MEAN, gRiserW * 0.6);
   }
   // Ground lane (wave 80, Titan Gorge's and Redrock's establishing views: "a glaring magenta/pink wavy decal stripe
   // across the ground" — the 38–76° scarps of their ridges and knolls seen edge-on 350–770 m out, each one flat,
@@ -5762,7 +5799,8 @@ void splatCompute() {
   // faces past ~300 m into featureless sheets — re-project the rock layer at
   // a coarse world scale + its normals so distant mesa/cut walls stay craggy
   {
-    float farRock = fR * farM * (1.0 - gSnowRock); // ground lane (wave 62): not the rock's grain on the snow lying on it
+    // (2026-10-07: nor on a terrace riser, a dry-stone wall: its coursing is the riser pass's)
+    float farRock = fR * farM * (1.0 - gSnowRock) * (1.0 - gRiserW); // ground lane (wave 62): not the rock's grain on the snow lying on it
     if (farRock > 0.003) {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across

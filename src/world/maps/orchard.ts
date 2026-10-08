@@ -63,7 +63,8 @@ export default {
   // of the warm dressed cream sandstone") the rock layer (Verdant's Rock058, a dark blue-grey slate) tinted to the
   // Chouf's cream limestone, the ground lane's measure (about sRGB 140 / 132 / 110: their renders at [2.1, 1.8, 1.4] drew the
   // risers near-white from the bird; Saltwind's mechanism)
-  splat: { sourcedPalette: 'verdant', sourcedTint: { R: [1.85, 1.6, 1.25] }, fieldPatch: 1, midRelief: 0.74, tintA: [0.9, 1.06, 0.76], tintB: [0.63, 0.80, 0.53], tintC: [1.1, 1.08, 0.80], roadTint: [0.76, 0.7, 0.58] },
+  // (ground lane, 2026-10-07, wave 251: Orchard's own palette row — its dry stony soil under the worn ground, Verdant's grass)
+  splat: { sourcedPalette: 'orchard', sourcedTint: { R: [1.85, 1.6, 1.25] }, fieldPatch: 1, midRelief: 0.74, tintA: [0.9, 1.06, 0.76], tintB: [0.63, 0.80, 0.53], tintC: [1.1, 1.08, 0.80], roadTint: [0.76, 0.7, 0.58] },
   vegetation: {
     species: ['oak', 'cedar', 'pine'], clusterMix: [['cedar', 0.46], ['pine', 0.34], ['oak', 0.2]],
     loneMix: [['oak', 0.64], ['cedar', 0.26], ['pine', 0.1]], rimMix: [['cedar', 0.54], ['pine', 0.36], ['oak', 0.1]],
