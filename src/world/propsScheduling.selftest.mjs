@@ -12,6 +12,16 @@ import { placeWreckCollision } from './wreckCollision.ts';
 // Geometry/output equivalence is separately checked by the whole-world profile;
 // this test isolates awaited failure and IteratorClose propagation.
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+// (b44) props.ts contactDarkeningMaterial and its shader-anchor helper, sliced and evaluated over the real THREE
+function contactMaterialFromSource() {
+  const slice = (head, tail) => {
+    const at = source.indexOf(head), end = source.indexOf(tail, at);
+    assert.ok(at >= 0 && end > at, `props.ts: ${head}`);
+    return source.slice(at, end + tail.length);
+  };
+  return new Function('THREE', stripTypeScriptTypes(slice('function _mustReplace(src: string, anchor: string, replacement: string): string {', '\n}\n')
+    + slice('function contactDarkeningMaterial(tex: THREE.Texture): THREE.MeshBasicMaterial {', '\n  return mat;\n}\n')) + '\nreturn contactDarkeningMaterial;')(THREE);
+}
 const start = source.indexOf('export async function createPropsAsync(');
 const end = source.indexOf('\nfunction* propsBuildSteps(', start);
 assert.ok(start >= 0 && end > start);
@@ -596,6 +606,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
     rockBedShades: [],
+    // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
+    contactDarkeningMaterial: contactMaterialFromSource(),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -645,6 +657,12 @@ for (const [streetRows, foundry, options] of [
     advanceFoundationInputs(after, iterator);
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
     assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
+    // (b44) the contact layer darkens the ground (a multiplicative, unlit, premultiplied blend); the aprons stay lit
+    for (const mesh of after.group.children) {
+      const contact = mesh.userData.terrainDecalKind === 'ground-contact';
+      assert.equal(mesh.material.blending === THREE.MultiplyBlending && mesh.material.isMeshBasicMaterial === true, contact,
+        `${mesh.userData.terrainDecalKind}: ${contact ? 'the contact darkening' : 'a lit decal'}`);
+    }
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
     assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);
