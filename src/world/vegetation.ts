@@ -4116,6 +4116,9 @@ function* vegetationBuildSteps(
     batterSeedAt !== null && railCuttingSeedAdmits(batterSeedAt(x, z), x, z);
   const steepSeedOk = (normalY: number, x: number, z: number): boolean =>
     normalY >= 0.78 || (batterSeedAt !== null && normalY >= RAIL_CUTTING_SEED_NORMAL_Y && batterAdmits(x, z));
+  // ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction): a cinder yard's weed clumps (the height field's
+  // hook, groundRedux.ts cinderYardWeedsAt) — absent on every other map, whose villages keep the old thinning
+  const yardWeedsAt = heightField._yardWeedsAt ?? null;
   function terrainDryness(
     x: number,
     z: number,
@@ -4130,8 +4133,11 @@ function* vegetationBuildSteps(
     const edgeHash = Math.sin(x * 12.9898 + z * 78.233 + 2678.049) * 43758.5453;
     if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2 + (edgeHash - Math.floor(edgeHash)) * 1.6) return -1;
     if (groundType === 'soft' && roll > 0.3) return -1;
-    if (heightField._villageMask(x, z) > 0.35
-      && roll > (carpet ? 0.35 : 0.15)) return -1;
+    if (heightField._villageMask(x, z) > 0.35) {
+      // (a cinder yard: the tufts keep to the weeds' clumps, thickest at their hearts — none on the trodden cinder)
+      if (yardWeedsAt !== null) { if (roll > yardWeedsAt(x, z) * (carpet ? 0.9 : 0.45)) return -1; }
+      else if (roll > (carpet ? 0.35 : 0.15)) return -1;
+    }
     return groundType === 'soft' ? 0.5 : 0;
   }
   function rejectDenseScatter(
