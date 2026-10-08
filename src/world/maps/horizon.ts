@@ -3718,14 +3718,16 @@ export function* buildHorizonRingSteps(
   // the borders lane (2026-10-08, the face trees on Tarkhan's steppe: its outland 7 % woods to the hand-over, then the
   // rolling character's 42 % stands — blobs of forest a kilometre out on the open steppe): past the hand-over the
   // ranges' stands keep the map's own woods share where its country is sparser than its relief character's (the
-  // border landform's `forest`, the share its near outland is wooded; from 0.3 up the character's cover stands)
+  // border landform's `forest`, the share its near outland is wooded; from 0.3 up the character's cover stands, below it
+  // the cover's forest scales with the share: the stands past 880 m then cover about 1.3 x the share, as Verdant's 36 %
+  // woods carry 48 % stands — Tarkhan's 7 % takes 9 %, Ironworks' 20 % 27 %, Sunscar's 2 % none)
   const reliefCoverBase: Partial<HorizonReliefCover> | null | undefined = H.reliefCover === false ? null
     : H.reliefCover ? { forest: 0, canopy: 0.5, fields: 0, ...reliefSettings.cover, ...H.reliefCover } : undefined;
   const coverForest = (reliefCoverBase === undefined ? reliefSettings.cover : reliefCoverBase)?.forest ?? 0;
   const borderForestShare = borderLand?.getBorderWoodsAt
     ? resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest : null;
   const reliefCover = borderForestShare !== null && coverForest > 0 && borderForestShare < 0.3
-    ? { ...(reliefCoverBase ?? reliefSettings.cover), forest: coverForest * (0.35 + 0.65 * borderForestShare / 0.3) } : reliefCoverBase;
+    ? { ...(reliefCoverBase ?? reliefSettings.cover), forest: coverForest * borderForestShare / 0.3 } : reliefCoverBase;
   const reliefBake: HorizonReliefBake | null = vista ? yield* bakeHorizonReliefSteps({
     columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: pos, heights: hs, maxHeight: maxH, marine: sea.weight,
     seed: ((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0,
