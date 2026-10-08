@@ -517,6 +517,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let timeOfDay: BattleTimeOfDay = 'day';
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
+  // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
+  // live renders between steps), on the wall clock again in playback and outside the Studio
+  let flareOnExportClock = false;
+  const flareToWallClock = (): void => {
+    if (!flareOnExportClock) return;
+    flareOnExportClock = false;
+    post.lensFlare?.setClock?.(null);
+  };
   let uidSeq = 1;
   let effectUidSeq = 1;
   const actors: StudioActor[] = []; // see addActor()
@@ -2225,6 +2233,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     rebuildEffects(target);
+    post.lensFlare?.snap?.();
     panel.refreshAll();
     return Math.round(clockMs);
   }
@@ -2258,6 +2267,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function playTimeline() {
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
+    flareToWallClock();
     timeScale = 1;
     rail.updateVisibility();
     panel.refreshTime();
@@ -3028,6 +3038,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       startupTimer: null,
     };
     recording = session;
+    flareToWallClock();
     const clearStartupTimer = () => {
       if (session.startupTimer !== null) clearTimeout(session.startupTimer);
       session.startupTimer = null;
@@ -3285,6 +3296,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       await yieldForFrameBudget();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
       restoreLoadedPresentation(json, fxMs);
+      // a clip starts with the flare at its target: no eased history from the last clip or page
+      post.lensFlare?.snap?.();
       return stateJson();
     } finally {
       loading = false;
@@ -3523,6 +3536,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function doExit() {
     if (!active) return;
     if (recording) stopRecording();
+    flareToWallClock();
     active = false;
     panel.hide();
     marker.group.visible = false;
@@ -3701,6 +3715,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     advanceFrame(ms: number) {
       if (recording || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
       timeScale = 0;
+      if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
       getWorld()?.setWindTime(0.35 + clockMs / 1000);
       camera.updateMatrixWorld(true);
