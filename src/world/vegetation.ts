@@ -4095,6 +4095,20 @@ function* vegetationBuildSteps(
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
+  // Trees round 8 pass B (2026-10-07, the ground lane: "cull the midfield tufts under `standFloor: 'canopy'`, so the
+  // stand floor shows"): on a map whose stand floor spreads as the drawn crowns, the midfield tufts thin under the
+  // stands as the carpet's and the tall grass's do (0.85 of them under a closed canopy), so the forest floor the terrain
+  // draws there shows through the grass instead of a meadow under the trees. The carpet decides by its tuft's draw; a
+  // midfield chunk is built either before the trees stand (the first-view ring, every chunk of a capture build) or after
+  // (the deferred rest), so its rule is a hash of the tuft's stored place (float32, as its instance matrix holds it): the
+  // chunks built after the cover drop the tufts in makeTuft (after its draws: every stream keeps its draws), those built
+  // before drop the same tufts once the cover is set (cullMidfieldUnderStands) — no chunk line. Maps without the option
+  // keep every tuft.
+  const midfieldStandFloor = veg.standFloor === 'canopy';
+  const MIDFIELD_STAND_THIN = 0.85;
+  function midfieldUnderStand(x: number, z: number): boolean {
+    return woodsCoverAt !== null && treePositionNoise(x, z, 211) < woodsCoverAt(x, z) * MIDFIELD_STAND_THIN;
+  }
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
@@ -4197,6 +4211,7 @@ function* vegetationBuildSteps(
     // before the trees stand (the first-view ring, every chunk in a capture build) and partly after (the deferred
     // rest) — the cover would split them at a chunk line
     if (carpet && woodsCoverAt !== null && clJ < woodsCoverAt(x, z) * 0.85) return null;
+    if (!carpet && midfieldStandFloor && midfieldUnderStand(Math.fround(x), Math.fround(z))) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z, _splatScratch);
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
@@ -8307,6 +8322,32 @@ function* vegetationBuildSteps(
     const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
     return a + (b - a) * fv;
   };
+  /** Trees round 8 pass B: the midfield chunks built before the cover drop the tufts under the stands (midfieldUnderStand). */
+  function cullMidfieldUnderStands(): number {
+    let dropped = 0;
+    for (const gc of grassChunks) {
+      if (!gc.built || !gc.meshes) continue;
+      for (const record of gc.meshes) {
+        const mesh = record.mesh, m = mesh.instanceMatrix.array as Float32Array, c = mesh.instanceColor!.array as Float32Array;
+        let k = 0;
+        for (let i = 0; i < record.total; i++) {
+          if (midfieldUnderStand(m[i * 16 + 12], m[i * 16 + 14])) continue;
+          if (k !== i) { m.copyWithin(k * 16, i * 16, i * 16 + 16); c.copyWithin(k * 3, i * 3, i * 3 + 3); }
+          k++;
+        }
+        if (k === record.total) continue;
+        dropped += record.total - k;
+        // (stable: the kept tufts keep their order, so the density rolloff's prefix stays a thinned field)
+        record.total = k;
+        mesh.count = Math.min(mesh.count, k);
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.instanceColor!.needsUpdate = true;
+      }
+    }
+    return dropped;
+  }
+  const midfieldStandDropped = midfieldStandFloor ? cullMidfieldUnderStands() : 0;
+  if (midfieldStandFloor) group.userData.midfieldStandFloor = { dropped: midfieldStandDropped };
   function setSniperFade(
     f: number,
     immediate = false,

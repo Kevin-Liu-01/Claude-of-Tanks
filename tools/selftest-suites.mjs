@@ -1247,6 +1247,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // trees round 8 (2026-10-07, waves 236-238): canopy and form — the woods' crowns low and meeting, three girths, darker
     // bark, Verdant's woods of ash; only form moves
     'src/world/canopyForm.selftest.mjs',
+    // trees round 8 pass B (2026-10-07): the midfield tufts thin under the stands on a canopy-floor map
+    'src/world/standFloorGrass.selftest.mjs',
     // the trees lane (2026-10-06, the gauntlet's wave 157): Monsoon Ridge's Naga Hills forms, no palm
     'src/world/monsoonTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
