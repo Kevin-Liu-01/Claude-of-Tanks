@@ -676,7 +676,8 @@ for (const mapId of maps.MAP_IDS) {
   if (rock) assert.ok(rock.castShadow && rock.receiveShadow, `${mapId}: the rock mesh casts and receives`);
   // no tree trunk stands inside a scenery rock's standing mass (a mass is a feature's when its centre is within 10 m of
   // the feature's; another lane's convex solids — the jebels' boulder aprons — are not this receipt's)
-  const masses = dressing.obstacles.filter((r) => r.shape2?.kind === 'convex' && !r.crushable && r.kind === undefined && r.max[1] - r.min[1] > 2.4);
+  // (2026-10-07, the hitbox lane: a formation's movement record is its blocks' own outlines, a compound when they part)
+  const masses = dressing.obstacles.filter((r) => (r.shape2?.kind === 'convex' || r.shape2?.kind === 'compound') && !r.crushable && r.kind === undefined && r.max[1] - r.min[1] > 2.4);
   for (const tree of flora.treeObstacles) {
     const x = (tree.min[0] + tree.max[0]) / 2, z = (tree.min[2] + tree.max[2]) / 2;
     for (const mass of masses) {
