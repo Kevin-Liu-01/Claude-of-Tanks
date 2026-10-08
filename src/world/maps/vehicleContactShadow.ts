@@ -134,11 +134,13 @@ function runnerTrackTexture(anisotropy: number): THREE.Texture {
     const image = ctx.createImageData(w, h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const u = Math.abs((x + 0.5) / w - 0.5) * 2, v = (y + 0.5) / h;
-      const across = Math.max(0, 1 - u * u) ** 1.6;
+      const across = Math.max(0, 1 - u * u) ** 1.1;
       // v = 0 the far end behind (gone), v = 1 under the runner; the depth wanders along the run
-      const fade = Math.min(1, v / 0.6) ** 1.4;
-      const vary = 0.72 + 0.16 * Math.sin(v * 37.1 + 1.3) + 0.12 * Math.sin(v * 91.7);
-      const a = across * fade * vary * 0.5;
+      // (round 5, wave 278: "two faint grey streaks… neither indent nor compact the snow") a deeper shade, the groove's
+      // floor in its own shadow
+      const fade = Math.min(1, v / 0.45) ** 1.2;
+      const vary = 0.74 + 0.16 * Math.sin(v * 37.1 + 1.3) + 0.1 * Math.sin(v * 91.7);
+      const a = across * fade * vary * 0.72;
       const k = (y * w + x) * 4;
       image.data[k] = 0; image.data[k + 1] = 0; image.data[k + 2] = 0; image.data[k + 3] = Math.round(Math.max(0, a) * 255);
     }
@@ -151,6 +153,72 @@ function runnerTrackTexture(anisotropy: number): THREE.Texture {
 }
 
 /**
+ * Round 5 (wave 278: the LRV with "no wheel tracks"): a wire-mesh wheel's print in the regolith — the titanium chevrons'
+ * Vs pressed across a darker band, repeating every `v` unit (the uv's v runs in chevron pitches here). Alpha only.
+ */
+function chevronTrackTexture(anisotropy: number): THREE.Texture {
+  const w = 32, h = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (ctx?.createImageData && ctx.putImageData) {
+    const image = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w - 0.5, v = (y + 0.5) / h;
+      const across = Math.max(0, 1 - (Math.abs(u) * 2) ** 4);
+      // the chevron: a V across the band, its arms 2 px wide
+      const vee = (v + Math.abs(u) * 0.7) % 1, bar = vee < 0.22 ? 1 : 0;
+      const a = across * (0.42 + 0.33 * bar);
+      const k = (y * w + x) * 4;
+      image.data[k] = 0; image.data[k + 1] = 0; image.data[k + 2] = 0; image.data[k + 3] = Math.round(a * 255);
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = anisotropy;
+  return texture;
+}
+
+/**
+ * Round 5 (wave 278: the horn sled with "no runner tracks or trampling behind it"): the puller's tread between the
+ * runners — boot prints alternating left and right every v unit (the uv's v runs in strides here), each a shadowed
+ * oval, over a faint compaction. Alpha only.
+ */
+function trampleTexture(anisotropy: number): THREE.Texture {
+  const w = 32, h = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (ctx?.createImageData && ctx.putImageData) {
+    const image = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w - 0.5, v = (y + 0.5) / h;
+      const across = Math.max(0, 1 - (Math.abs(u) * 2) ** 2);
+      // two prints a stride: the left at v 0.25, the right at v 0.75, each an oval 0.2 across, 0.3 long
+      let print = 0;
+      for (const [pu, pv] of [[-0.18, 0.25], [0.18, 0.75]]) {
+        const d = Math.hypot((u - pu) / 0.11, (v - pv) / 0.17);
+        print = Math.max(print, Math.max(0, 1 - d * d));
+      }
+      const a = across * 0.12 + print * 0.45;
+      const k = (y * w + x) * 4;
+      image.data[k] = 0; image.data[k + 1] = 0; image.data[k + 2] = 0; image.data[k + 3] = Math.round(Math.min(1, a) * 255);
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = anisotropy;
+  return texture;
+}
+
+/** A track strip's look: its texture, the mesh's name, and the uv's v in repeats of `pitch` metres (none: 0..1). */
+export interface TrackStyle { readonly texture: 'runner' | 'chevron' | 'trample'; readonly name: string; readonly pitch?: number }
+
+/**
  * Round 3 (wave 234: sleds on "pristine snow with no runner track, sinkage or drift"), round 4 (wave 260: "two
  * ruler-straight hairlines that do not start at the runners"): the troughs each placed sled's runners pressed into the
  * snow, from under its runners back along the way it came — the path bending away gently behind it (a sled is hauled
@@ -159,7 +227,8 @@ function runnerTrackTexture(anisotropy: number): THREE.Texture {
  * placed frame (null: no runners). Desktop tiers; no collision, no stream draws.
  */
 export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[], field: ContactField, anisotropy: number,
-  runners: (kind: string) => RunnerTrackLayout | null, standing: (record: R) => boolean = () => true): THREE.Mesh | null {
+  runners: (kind: string) => RunnerTrackLayout | null, standing: (record: R) => boolean = () => true,
+  style: TrackStyle = { texture: 'runner', name: 'props-runner-tracks' }): THREE.Mesh | null {
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
   let tracks = 0;
   for (const r of records) {
@@ -181,7 +250,7 @@ export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[]
           const lx = x * r.sc + off + side * half * cn, lzs = lz - side * half * slope * cn;
           const px = r.x + lx * c + lzs * s, pz = r.z - lx * s + lzs * c;
           pos.push(px, field.getHeightAt(px, pz) + 0.025, pz);
-          uv.push(side < 0 ? 0 : 1, t);
+          uv.push(side < 0 ? 0 : 1, style.pitch ? (lz - lay.z0 * r.sc) / style.pitch : t);
         }
       }
       for (let k = 0; k < n; k++) {
@@ -197,27 +266,33 @@ export function buildRunnerTracks<R extends ContactRecord>(records: readonly R[]
   geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
   geometry.setIndex(idx);
   geometry.computeVertexNormals();
+  const map = style.texture === 'chevron' ? chevronTrackTexture(anisotropy) : style.texture === 'trample' ? trampleTexture(anisotropy)
+    : runnerTrackTexture(anisotropy);
   const material = new THREE.MeshBasicMaterial({
-    color: 0x000000, map: runnerTrackTexture(anisotropy), transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    color: 0x000000, map, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = 'props-runner-tracks';
+  mesh.name = style.name;
   mesh.renderOrder = 1;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.matrixAutoUpdate = false;
   mesh.userData.terrainDecal = true;
   mesh.userData.groundContactDecal = true;
-  mesh.userData.terrainDecalKind = 'runner-track';
+  mesh.userData.terrainDecalKind = style.texture === 'runner' ? 'runner-track' : style.texture === 'chevron' ? 'wheel-track' : 'trample';
   mesh.userData.decalParts = tracks;
   return mesh;
 }
 
 /** The ground-cover holes over hauled-out boats' mud (map.ts withGroundCoverHoles): discs along each patch. */
-export function boatMudHoles(records: readonly BoatMudRecord[], field: ContactField): Array<{ x: number; z: number; r: number }> {
+export function boatMudHoles(records: readonly BoatMudRecord[], field: ContactField & { getWaterMaskAt?(x: number, z: number): number;
+  getWaterDepthAt?(x: number, z: number): number }): Array<{ x: number; z: number; r: number }> {
   const holes: Array<{ x: number; z: number; r: number }> = [];
   for (const r of records) {
+    // round 5: the apron's grass is gone too, every metre of it down to the water
+    const way = waterward(r, field);
+    if (way) for (let t = 1; t <= way.dist + 0.5; t += 1) holes.push({ x: r.x + way.dx * t, z: r.z + way.dz * t, r: 1.1 });
     const ax = Math.cos(r.yaw), az = -Math.sin(r.yaw);
     const hA = field.getHeightAt(r.x + ax * r.halfLength, r.z + az * r.halfLength);
     const hB = field.getHeightAt(r.x - ax * r.halfLength, r.z - az * r.halfLength);
@@ -228,6 +303,25 @@ export function boatMudHoles(records: readonly BoatMudRecord[], field: ContactFi
     }
   }
   return holes;
+}
+
+/**
+ * Round 5 (wave 278: the Mangrove sampan "on a flat brown decal strip on a mown lawn beside the house, with no tidal mud,
+ * water or wet line"): the way down to the water from a hauled-out hull — the first wet ground (water mask over a half,
+ * or a few centimetres of water) on rings out to 14 m, the nearest bearing on the nearest ring — so its mud runs on
+ * down the bank to the waterline as the drag of its hauling (null: no water in reach).
+ */
+function waterward(r: BoatMudRecord, field: { getWaterMaskAt?(x: number, z: number): number; getWaterDepthAt?(x: number, z: number): number })
+  : { dx: number; dz: number; dist: number } | null {
+  if (!field.getWaterMaskAt && !field.getWaterDepthAt) return null;
+  const wet = (x: number, z: number) => (field.getWaterMaskAt?.(x, z) ?? 0) > 0.5 || (field.getWaterDepthAt?.(x, z) ?? 0) > 0.05;
+  for (let ring = 2; ring <= 14; ring += 0.5) {
+    for (let k = 0; k < 48; k++) {
+      const a = (k / 48) * Math.PI * 2, dx = Math.sin(a), dz = Math.cos(a);
+      if (wet(r.x + dx * ring, r.z + dz * ring)) return { dx, dz, dist: ring };
+    }
+  }
+  return null;
 }
 
 /** A hauled-out boat's plan (mapKits.ts beachedBoat's receipt: its length on (cos yaw, -sin yaw)). */
@@ -269,7 +363,8 @@ function boatMudTexture(anisotropy: number): THREE.Texture {
  * hull all round and further toward the water it was dragged from, conformed to the ground (a 7 x 9 grid), one
  * lit transparent mesh for the map (wet: a low roughness); the caller sets up its shadows. Null when none.
  */
-export function buildBoatMud(records: readonly BoatMudRecord[], field: ContactField & { getWaterMaskAt?(x: number, z: number): number },
+export function buildBoatMud(records: readonly BoatMudRecord[], field: ContactField & { getWaterMaskAt?(x: number, z: number): number;
+  getWaterDepthAt?(x: number, z: number): number },
   anisotropy: number): THREE.Mesh | null {
   const nx = 7, nz = 9;
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
@@ -293,6 +388,24 @@ export function buildBoatMud(records: readonly BoatMudRecord[], field: ContactFi
     for (let iz = 0; iz < nz - 1; iz++) for (let ix = 0; ix < nx - 1; ix++) {
       const a = base + iz * nx + ix, b = a + 1, d = a + nx, e = d + 1;
       if (up) idx.push(a, b, d, b, e, d); else idx.push(a, d, b, b, d, e);
+    }
+    // round 5: the drag down the bank, from under the hull to a metre into the water, its keel groove down the middle
+    const way = waterward(r, field);
+    if (way) {
+      const len = way.dist + 1, steps = Math.max(5, Math.ceil(len / 0.8)), half = Math.max(1.1, r.halfWidth + 0.55);
+      const wx = -way.dz, wz = way.dx, base2 = pos.length / 3;
+      for (let iz = 0; iz <= steps; iz++) for (let ix = 0; ix < nx; ix++) {
+        const u = ix / (nx - 1), v = iz / steps;
+        const along = -0.5 + v * len, across = (u - 0.5) * 2 * half * (1 - 0.25 * v);
+        const px = r.x + way.dx * along + wx * across, pz = r.z + way.dz * along + wz * across;
+        pos.push(px, field.getHeightAt(px, pz) + 0.025, pz);
+        uv.push(u, 0.5 + v * 0.5);
+      }
+      const up2 = way.dx * wz - way.dz * wx > 0;
+      for (let iz = 0; iz < steps; iz++) for (let ix = 0; ix < nx - 1; ix++) {
+        const a = base2 + iz * nx + ix, b = a + 1, d = a + nx, e = d + 1;
+        if (up2) idx.push(a, b, d, b, e, d); else idx.push(a, d, b, b, d, e);
+      }
     }
   }
   if (!idx.length) return null;

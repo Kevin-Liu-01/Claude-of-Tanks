@@ -9320,7 +9320,7 @@ ${snowCap ? `
     const nearOf = new Map<DestructibleRecord, Near[]>();
     for (const cart of carts) {
       const near: Near[] = [];
-      const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 2;
+      const type = LOCAL_TYPES[cart.kind], reach = slideOf(cart) + Math.max(type.hw ?? type.r, type.hl ?? type.r) * cart.sc + 6;
       const x0 = cart.x - reach, x1 = cart.x + reach, z0 = cart.z - reach, z1 = cart.z + reach;
       for (const list of [obstacles, trees] as const) {
         for (const ob of list) {
@@ -9334,18 +9334,48 @@ ${snowCap ? `
     }
     // the cart's body at a seat against what stands near it: a vehicle or a cart keeps the parked clearance, the rest
     // a hand's breadth; `seen` collects each meeting's way out
+    // round 5 (wave 278: the Frosthollow horn sled "jammed against the birch trunk where it couldn't have been drawn"): a
+    // cart was pulled to its seat, so the ground its puller stood on — 2.5 m ahead of its front (local +z: the shafts,
+    // the handles, the horns), at least 1.2 m wide — stays clear of the trees and of every solid over half a metre tall,
+    // and so does the track a sled ran in on, 4 m behind it (each with 25 cm to spare)
+    const approachAt = (record: DestructibleRecord, x: number, z: number): FootprintPolygon[] => {
+      if (!cartKinds.has(record.kind)) return [];
+      const type = LOCAL_TYPES[record.kind], hw = (type.hw ?? type.r) * record.sc, hl = (type.hl ?? type.r) * record.sc;
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
+      const rect = (x0: number, x1: number, z0: number, z1: number): FootprintPolygon =>
+        [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([lx, lz]) => [x + lx * c + lz * s, z - lx * s + lz * c] as const);
+      // a horse or a man stands there: at least 1.2 m wide, 2.5 m long, and a hand's breadth more round both lanes
+      const lane = Math.max(hw, 0.6) + 0.25;
+      const out = [rect(-lane, lane, hl, hl + 2.75)];
+      if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
+      return out;
+    };
+    const tall = (ob: CollisionRecord) => ob.max[1] - ob.min[1] > 0.5;
     const meets = (cart: DestructibleRecord, x: number, z: number, seen?: (nx: number, nz: number, depth: number) => void) => {
       const body = bodyAt(cart, x, z);
+      const approach = approachAt(cart, x, z);
       let met = false;
       for (const n of nearOf.get(cart)!) {
         if (n.parked && (n.parked.dropped || n.parked === cart)) continue;
-        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE : CART_CLEARANCE;
+        // (round 5) a cart keeps half a metre of air to anything over half a metre tall (a trunk, a wall, a barrier, a
+        // lamp post): a hand's breadth read as jammed against it (a parked vehicle keeps its old gap)
+        const clearance = n.parked ? PARKED_VEHICLE_CLEARANCE : cartKinds.has(cart.kind) && tall(n.ob) ? 0.5 : CART_CLEARANCE;
         for (const poly of n.polys ?? shapePolygons(n.ob)) {
           const g = polygonGap(body, poly);
-          if (g.gap >= clearance) continue;
-          if (!seen) return true;
-          met = true;
-          seen(g.nx, g.nz, clearance - g.gap);
+          if (g.gap < clearance) {
+            if (!seen) return true;
+            met = true;
+            seen(g.nx, g.nz, clearance - g.gap);
+            continue;
+          }
+          if (n.parked || !approach.length || !tall(n.ob)) continue;
+          for (const lane of approach) {
+            const a = polygonGap(lane, poly);
+            if (a.gap >= 0) continue;
+            if (!seen) return true;
+            met = true;
+            seen(a.nx, a.nz, -a.gap);
+          }
         }
       }
       return met;
@@ -9952,6 +9982,21 @@ ${snowCap ? `
     const tracks = buildRunnerTracks(destructibles, heightField, aniso, (kind) => LOCAL_TYPES[kind]?.runners ?? null,
       (record) => !record.dropped && record.state === 0);
     if (tracks) group.add(tracks);
+    // round 5 (wave 278: the horn sled "with no runner tracks or trampling behind it"): the puller's boot prints between
+    // a sled's runners, from its track behind it up to where he stood ahead of it
+    const trample = buildRunnerTracks(destructibles, heightField, aniso, (kind) => {
+      const lay = LOCAL_TYPES[kind]?.runners;
+      if (!lay) return null;
+      return { xs: [lay.xs.reduce((a, b) => a + b, 0) / lay.xs.length], z0: lay.z0, z1: lay.z1 + 2, width: 0.26 };
+    }, (record) => !record.dropped && record.state === 0, { texture: 'trample', name: 'props-runner-trample', pitch: 1.4 });
+    if (trample) group.add(trample);
+    // round 5 (wave 278: the LRV with "no wheel tracks"): the rover's chevroned wheel prints, one pair of tracks (each
+    // rear wheel ran in its front wheel's), out behind it the way it drove in
+    const rovers = (P.vehicleSetPieces ?? []).filter((piece) => piece.kind === 'lrv' && !piece.wrecked)
+      .map((piece) => ({ kind: 'lrv', x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, sc: 1 }));
+    const wheelTracks = buildRunnerTracks(rovers, heightField, aniso, () => ({ xs: [-0.915, 0.915], z0: -1.145 - 11, z1: 1.145 + 0.2, width: 0.12 }),
+      () => true, { texture: 'chevron', name: 'props-wheel-tracks', pitch: 0.24 });
+    if (wheelTracks) group.add(wheelTracks);
     // round 3: the mud a landing's hauled-out boat lies in (mapKits.ts beachedBoat's receipt), lit and shadowed
     const hauled = decorationGroundingReceipts.filter((r) => r.kind === 'beached-boat' && r.mud === true)
       .map((r) => ({ x: r.x, z: r.z, yaw: r.yaw as number, halfLength: r.halfLength as number, halfWidth: r.halfWidth as number }));
