@@ -2678,8 +2678,13 @@ export function createTankMaterials(
   stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
+  // Per-material surfaces (2026-10-08, tank-accessories round 5; wave 264, both critics: "paint, steel, rubber and
+  // canvas share one flat matte finish", "nothing reads as steel, rubber or canvas"): each role answers light its own
+  // way. Rubber is the darkest neutral on the vehicle with a soft satin sheen: rougher than paint's grazing film would
+  // allow it to mirror (0.86, was 0.96 under the full-strength sky, envMapIntensity 1, which laid a grey wash over every
+  // tyre and flap in shade); the sun now draws a soft highlight along a tyre's curve and the sky stays out of it.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0,
+    color: 0x292a28, roughness: 0.86, metalness: 0.0, envMapIntensity: 0.3,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -2723,8 +2728,13 @@ export function createTankMaterials(
     // r3: hue pulled off the blue-grey — 0x33383a leaned navy under the sky
     // env and cool key light; neutral warm gunmetal keeps fittings in the
     // same family as the dust/steel gear.
-    color: 0x36342f, roughness: 0.9, metalness: 0.18, roughnessMap: roughTex,
-    envMapIntensity: 0.22,
+    // Round 5 per-material surfaces (2026-10-08; wave 264: "no difference between steel, rubber and stowage"): oily
+    // gun steel is half metallic and smoother than paint (0.68 x the roughness map, ~0.57; was 0.9 / 0.18 / 0.22, the
+    // matte paint's own response), so a muzzle brake, a machine-gun body or a tool handle catches a soft metallic gleam
+    // along its curve. Its dark base keeps the reflectance near the paint's at normal incidence (no sky mirror on the
+    // flat grille bases the r9 note guards) and the roughness stays well above round 2's "mirror chrome" handles.
+    color: 0x36342f, roughness: 0.68, metalness: 0.42, roughnessMap: roughTex,
+    envMapIntensity: 0.32,
   })));
   // Individual track-link pads: worn dusty steel, clearly lighter than the
   // shadowed band behind them so the run reads as articulated links up close.
@@ -2748,9 +2758,12 @@ export function createTankMaterials(
   // elsewhere on the same vehicle"): 0x46423a link pads bounced to pale sand
   // under direct sun while the band texture stayed near-black — one run read
   // as two materials. Pads pulled down into the band's own tonal family.
+  // Round 5 per-material surfaces (2026-10-08): worn iron rather than painted plastic, a quarter metallic and a step
+  // smoother (0.84 x the map; was 0.95 / 0.08), so links, ribs and sprocket teeth take a dull steel sheen where the
+  // sun rakes them; the sky response stays cut (0.1) for the r10 / tank_models r1 blue-tint reasons above.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x353634, roughness: 0.95, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.08,
+    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
   // light-grey trackLink shade read as unpainted plastic sprue racked on the
@@ -2759,8 +2772,10 @@ export function createTankMaterials(
     // r3: roughness floor raised / metalness cut — with the multiplying
     // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
     // recess faces (the T-90M "navy sparkle" read under the closeup key).
-    color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.06,
+    // Round 5 (2026-10-08): the same worn iron as the live links (0.84 / 0.22 / 0.1, was 0.94 / 0.08 / 0.06), still
+    // well above the 0.85 base whose map dips sparkled.
+    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // Optics / headlight lenses: smoked dark-olive glass (round 3, 2026-10-07). The old smooth blue-grey MIRROR
   // (0x2a3540, metalness 0.85, full env) fired the PMREM sky as the most saturated blue on the vehicle. Critics:
@@ -2798,8 +2813,11 @@ export function createTankMaterials(
     color: usesSchemeTintedCanvas
       ? new THREE.Color(cssRGB(canvasRgbOf(patVis)))
       : 0x42452f,
+    // Round 5 per-material surfaces (2026-10-08; wave 264: "no material difference between rubber, steel and canvas"):
+    // woven cotton duck scatters light and mirrors none of the sky, so cloth keeps a tenth of it (0.1, was 0.25, the
+    // painted fittings' own response): bags, tarps and bedrolls go dead matte beside the paint's soft grazing sheen.
     roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1,
     // sealed check 2026-09-13: cloth is thin and seen from both sides —
     // single-sided ghillie strips, tarps and aprons vanished from behind and
     // exposed the hull through the suit as the camera orbited.
@@ -2821,7 +2839,7 @@ export function createTankMaterials(
   // under the hull's value on Sinai Grey (#6f7566) so it reads as kit, not as a lit hull face.
   const canvasPale = track(setup(new THREE.MeshStandardMaterial({
     color: 0x66604a, roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1, // round 5: dead-matte cloth, as the OD canvas above
     side: THREE.DoubleSide,
   })));
   for (const rec of paintableRecs) shared.paintable.add(rec);

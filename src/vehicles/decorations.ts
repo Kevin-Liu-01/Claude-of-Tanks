@@ -1158,10 +1158,13 @@ function buildDecorMaterials(
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
     // 2026-10-06 (round 2): matte, oily steel; at 0.62 roughness and 0.35 metalness thin handles read as mirror chrome
+    // 2026-10-08 (round 5 per-material surfaces; wave 264: "nothing reads as steel, rubber or canvas"): the vehicle's
+    // own gunmetal response, a third metallic at 0.7 (was 0.78 / 0.16 / 0.35), so a tool head or a shackle takes a soft
+    // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
-      color: equipmentPalette.steel, roughness: 0.78, metalness: 0.16,
+      color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
-      vertexColors: true, envMapIntensity: 0.35,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
     // read as varnished mahogany): woodTex's grey-brown ground x a near-neutral multiplier, about #5f5648 in all
@@ -1169,17 +1172,19 @@ function buildDecorMaterials(
       map: woodTex(), color: 0xaca8a5, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.08,
     }),
+    // round 5 (2026-10-08): woven cloth mirrors almost none of the sky (0.06, was 0.12 / 0.1), dead matte beside paint
     canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.12,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
     burlap: () => painted({
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.1,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
+    // round 5: the vehicle tyres' satin rubber (materials.ts: 0.86, a third of the sky; was 0.94 / 0.04 / 0.12)
     rubber: () => ({
-      color: 0x232425, roughness: 0.94, metalness: 0.04,
-      vertexColors: true, envMapIntensity: 0.12,
+      color: 0x232425, roughness: 0.86, metalness: 0.0,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
