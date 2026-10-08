@@ -8,7 +8,7 @@
 //      throws), every checkpoint on Desert and Redrock the gate post, the destructible geometry stream kept.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES } from '../structureKit.ts';
 import { KSAR_GATE_POST, STRUCTURE_VARIANTS, buildKsarGatePost, buildKsarGatePostBroken } from './ksarGate.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -81,7 +81,11 @@ for (const seed of [1, 7, 2024]) {
   const badlands = readFileSync(new URL('../badlands.ts', import.meta.url), 'utf8');
   assert.match(desert, /destructibleBuildings: \['deserttent', 'commandtent', 'checkpointhut', 'guardpost'\],\n\s*structureVariants: \{ checkpointhut: 'ksargate' \},/,
     'Desert: its gates\' checkpoints and the scattered one the gate post (the list keeps its entry: every later seat stays)');
-  assert.match(badlands, /structureVariants: \{ checkpointhut: 'ksargate' \},/, 'Redrock: its checkpoints the gate post');
+  // (the Redrock lane, round 9: Redrock's checkpoints are the Wadi Rum kit's own fuel and water post now — the gauntlet's
+  // wave 261 read the gate post at its fuel points as "a plain tan cube" — and its pillboxes the desert post's sangar)
+  assert.match(badlands, /structureVariants: \{ bunker: 'sangar' \},/, 'Redrock: its pillboxes the sangar, its checkpoints the kit\'s post');
+  assert.ok(REGIONAL_DESTRUCTIBLE_TYPES.wadirum?.checkpointhut, 'Redrock: the Wadi Rum kit builds its checkpoints');
+  assert.ok(STRUCTURE_VARIANTS.sangar, 'the variant table names the sangar');
   assert.match(desert, /structure: 'checkpointhut'/, 'the gate beats keep their key (and with it their footprint and ground fit)');
 }
-console.log('ksarGate.selftest: the gate post of plastered mud brick inside the hut\'s footprint (a dark door under a lintel, no glazing, a parapet), its heap, Desert\'s and Redrock\'s checkpoints by name');
+console.log('ksarGate.selftest: the gate post of plastered mud brick inside the hut\'s footprint (a dark door under a lintel, no glazing, a parapet), its heap, Desert\'s checkpoints by name, Redrock\'s the Wadi Rum kit\'s post and its sangar');
