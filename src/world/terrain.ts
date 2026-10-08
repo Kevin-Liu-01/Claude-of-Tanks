@@ -1297,8 +1297,9 @@ function* heightFieldBuildSteps(
   const gCorridor = new Float32Array(GN * GN);
   // (the map-revival lane, 2026-10-07; RoadPathStyle.crownLiftM) the crowned banks of the lifted paths: per cell, the
   // nearest line's lift (its nodes' ramped lifts, interpolated as the elevation is) and its crest's half-width; null on
-  // every map that lifts no path
-  const crownStyles = layout.roadStyles?.some((style) => (style?.crownLiftM ?? 0) > 0) ? layout.roadStyles : null;
+  // every map that lifts no path, and in the road placement sampler (placementOnly: the settlement keeps the seats the
+  // original field gave it; the banks are a finished-road law)
+  const crownStyles = !placementOnly && layout.roadStyles?.some((style) => (style?.crownLiftM ?? 0) > 0) ? layout.roadStyles : null;
   const gRoadLift = crownStyles ? new Float32Array(GN * GN) : null;
   const gRoadCrest = crownStyles ? new Float32Array(GN * GN) : null;
 
@@ -1578,9 +1579,11 @@ function* heightFieldBuildSteps(
       } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
       // (the map-revival lane, 2026-10-07) a lifted path's crowned bank over the graded plane: the crest to the
       // carriageway's edge and its verge, the shoulders down over six metres; a bridge's approaches grade to its deck
-      // as before (the lift fades with the approach, and is nil on the span)
+      // as before (the lift fades with the approach, and is nil on the span); the bank runs out from 400 m to the square's
+      // 430 m line, so a road leaves the field on the grade every road leaves it on
       if (gRoadLift) {
-        const lift = sampleHeightGridCell(gRoadLift, GN, gridIndex, gridFx, gridFz);
+        const lift = sampleHeightGridCell(gRoadLift, GN, gridIndex, gridFx, gridFz)
+          * (1 - smoothstep(400, 430, Math.max(Math.abs(x), Math.abs(z))));
         if (lift > 0) {
           const crest = sampleHeightGridCell(gRoadCrest!, GN, gridIndex, gridFx, gridFz);
           h += lift * (1 - smoothstep(crest, crest + 6, rd)) * (bridgeDecks.length ? 1 - bridgeTermsAt(x, z).approach : 1);
