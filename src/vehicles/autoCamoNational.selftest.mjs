@@ -184,7 +184,10 @@ for (const id of ALL_TANK_IDS) {
     assert.ok(pick !== 'auto' && pick !== 'factory' && pick !== 'signature', `${id}@${biomeId}: never an alias`);
     assert.equal(autoCamoPatternIdFor({ id: spec.id, nation: spec.nation, era: spec.era }, biomeId), pick, `${id}@${biomeId}: pure`);
     assert.ok(nationTags(pick).every((tag) => tag === own), `${id}@${biomeId}: ${pick} is not another nation's scheme`);
-    if (!biome.environment) assert.ok(biome.pool.includes(pick), `${id}@${biomeId}: the seasonal pool`);
+    // (fleet lane 2026-10-08: an army that paints every vehicle one coat wears it in the seasonal biomes too: the IDF's
+    // Sinai grey)
+    if (!biome.environment && own !== 'il') assert.ok(biome.pool.includes(pick), `${id}@${biomeId}: the seasonal pool`);
+    if (own === 'il') assert.equal(pick, 'service_merkava2d', `${id}@${biomeId}: Sinai grey`);
     // multiplayer: every peer resolves the wire selection 'auto' to the same scheme from the shared registry spec
     assert.equal(resolveMultiplayerCamoPattern(spec, 'auto', biomeId), pick, `${id}@${biomeId}: the peer resolution agrees`);
     assert.equal(autoCamoPatternIdFor({ id }, biomeId), legacyPick(biome.pool, `${id}:${biomeId}`), `${id}@${biomeId}: no-nation draw`);

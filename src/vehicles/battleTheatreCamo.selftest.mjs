@@ -38,7 +38,7 @@ for (const id of ALL_TANK_IDS) {
     const pick = autoCamoPatternIdFor(spec, mapId);
     assert.equal(autoCamoPatternIdFor(spec, mapId), pick, `${id}@${mapId}: AUTO is deterministic`);
     const tags = camoPatternTags(pick);
-    const own = env ? nationalAutoCamoSchemes(spec.nation, spec.era, env) : [];
+    const own = nationTag === 'il' ? ['service_merkava2d'] : env ? nationalAutoCamoSchemes(spec.nation, spec.era, env) : [];
     if (own.length) {
       national++;
       assert.ok(own.includes(pick), `${id}@${mapId}: ${pick} is from ${spec.nation}'s own ${env} list`);
@@ -87,6 +87,22 @@ assert.equal(camoSuitsTheatre('washworn', 'Russia', 'verdant'), false);
 assert.equal(camoSuitsTheatre('washworn', 'Russia', 'whiteout'), true);
 assert.equal(camoSuitsTheatre('sig_t90m_proryv', 'Russia', 'verdant'), false);
 assert.equal(camoSuitsTheatre('service_type99a', 'China', 'verdant'), true);
+// the IDF paints every vehicle Sinai grey in every theatre (the coordinator after wave 257): an Israeli hull keeps no
+// multi-tone signature anywhere, and its AUTO coat is Sinai grey on every map
+let israeli = 0;
+for (const id of ALL_TANK_IDS) {
+  const spec = getSpec(id);
+  if (camoNationTag(spec.nation ?? null) !== 'il') continue;
+  israeli++;
+  for (const mapId of MAP_IDS) {
+    assert.equal(autoCamoPatternIdFor(spec, mapId), 'service_merkava2d', `${id}@${mapId}: Sinai grey`);
+    const stock = stockCamoPatternIdFor(id, spec.nation, spec.era);
+    if (stock && stock !== 'service_merkava2d' && stock !== 'national_il') {
+      assert.equal(camoSuitsTheatre(stock, spec.nation, mapId), false, `${id}@${mapId}: ${stock} is not an IDF coat`);
+    }
+  }
+}
+assert.ok(israeli >= 5, `the Israeli hulls are covered (${israeli})`);
 
 // the roster helper: a bot that rolled to keep its paint takes AUTO when its paint does not suit the theatre; the rolls
 // (and so every other bot's draw) are unchanged

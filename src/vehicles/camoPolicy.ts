@@ -1055,7 +1055,18 @@ export interface AutoCamoVehicle {
 /** The concrete scheme AUTO paints `vehicle` in on `mapId`: national first, the shared biome pool otherwise. A battle
  * seed (fleet lane 2026-10-08: bots only) re-draws among the same candidates per battle, so a roster of one nation
  * fans out over its real schemes; without one the draw is the camo r2 per-(vehicle, biome) choice the garage previews. */
+/**
+ * Armies that paint every vehicle one coat in every theatre (fleet lane 2026-10-08, the coordinator after wave 257: "IDF
+ * tanks are Sinai grey, single-colour"): on their hulls no other scheme suits a battlefield, so a bot never keeps a
+ * multi-tone signature there and takes its AUTO coat.
+ */
+const SINGLE_COAT_NATIONS: Readonly<Partial<Record<CamoCountryTagId, readonly string[]>>> = Object.freeze({
+  il: Object.freeze(['service_merkava2d', 'national_il']),
+});
+
 export function autoCamoPatternIdFor(vehicle: AutoCamoVehicle, mapId: string, battleSeed: number | null = null): AutoCamoPatternId {
+  const coat = SINGLE_COAT_NATIONS[camoNationTag(vehicle.nation ?? null) as CamoCountryTagId];
+  if (coat) return coat[0] as AutoCamoPatternId;
   const biomeId = autoCamoBiomeId(mapId);
   const biome = AUTO_CAMO_BIOMES[biomeId];
   const national = biome.environment
@@ -1081,6 +1092,8 @@ const THEATRE_TAGS: Readonly<Record<AutoCamoEnvironment, readonly CamoTagId[]>> 
  */
 export function camoSuitsTheatre(patternId: string, nation: string | null | undefined, mapId: string): boolean {
   if (patternId === 'auto') return true;
+  const coat = SINGLE_COAT_NATIONS[camoNationTag(nation ?? null) as CamoCountryTagId];
+  if (coat) return coat.includes(patternId);
   const biome = AUTO_CAMO_BIOMES[autoCamoBiomeId(mapId)];
   const tags = camoPatternTags(patternId);
   if (tags.includes('digital')) {
