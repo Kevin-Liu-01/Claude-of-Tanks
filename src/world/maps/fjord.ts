@@ -22,14 +22,6 @@ import { gully, talusFan } from './geology.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
-// Round 5 (map revival lane 2, 2026-10-07): the peninsulas' gneiss (landformGeology.ts) — a butte's section, its cap
-// gently domed to 0.4 of the half-width, the wall to 0.62, a fifth of the height in talus; beds 2.2 m thick, three rills a
-// hundred metres, a metre of knobbly relief, the outline lobed by an eighth, the ends turned round as headlands.
-const PENINSULA_GNEISS = {
-  profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.2, outline: 0.12, strata: { stepM: 2.2, riser: 0.35 },
-  gullies: { count: 3, depthM: 1.3, width: 0.4 }, rough: 0.9, cliffEnd: 'nose' as const,
-};
-
 export default {
   id: 'fjord',
   name: 'Nordhavn Fjord',
@@ -77,13 +69,10 @@ export default {
       { kind: 'basin', x: 252, z: 32, rx: 98, rz: 150, height: -3.2, yawDeg: 3, wetScale: 0.8 },
       // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
       // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
-      // (round 5, gauntlet wave 243's bird view: the arms "ringed by low smooth lawns and grey dike-like aprons"): ice-ground
-      // gneiss headlands — a domed cap breaking off in a steep, bedded wall over a short talus, the outline lobed, rills
-      // down the faces, knobbly rock (PENINSULA_GNEISS), so the fjord's shores are rock, not smooth turf and slab
-      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0, geology: PENINSULA_GNEISS },
-      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0, geology: PENINSULA_GNEISS },
-      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4, geology: PENINSULA_GNEISS },
-      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4, geology: PENINSULA_GNEISS },
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
+      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
       // 2026-10-03 (maps lane B): glacial geology (geology.ts). Roches moutonnées on the heights outside the town — the
       // ice that dug the fjord flowed east, so each knob rises gently from the west and breaks off steep to the east (a
       // long low dome with a short steep one at its lee end); two gullies cut the western heights' south face; and
