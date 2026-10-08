@@ -5826,7 +5826,7 @@ void splatCompute() {
         float down = 0.55 + 0.45 * smoothstep(8.0, 46.0, wp.y);
         float varn = max(smoothstep(0.56, 0.80, v1) * 0.75, smoothstep(0.50, 0.76, v2)) * down;
         a.rgb = mix(a.rgb, a.rgb * vec3(0.50, 0.45, 0.44), varn * uJebelFace.w * steep * 0.80);
-        float wash = smoothstep(0.24, 0.10, v2) * (1.0 - varn);
+        float wash = (1.0 - smoothstep(0.10, 0.24, v2)) * (1.0 - varn);
         a.rgb = mix(a.rgb, a.rgb * vec3(1.12, 1.07, 1.02), wash * uJebelFace.w * steep * 0.30);
       }
       if (uJebelFace.z > 0.0) {
@@ -6057,9 +6057,20 @@ void splatCompute() {
     // ground lane (farmland): on turned earth the clods are a near read — a little stronger beside the tank, gone by
     // 32 m, where at a grazing view the tile smeared into the establishing frames' "brush-stroke smear"
     float dnW = mix(openNear, (1.0 - smoothstep(12.0, 32.0, camDist)) * 1.45 * (1.0 - roadCore), gSoilW);
-    n.xy += dn.xy * 0.85 * dnW * (1.0 - fMs); // relief pass 2 (2026-09-12): the full 1049e4e clod relief
+    // The Redrock lane, round 9 (the gauntlet's wave 261 at cistern-west: "a blurry, vertically smeared texture ...
+    // brushed plastic"): this pass's planar projection runs down a wall as vertical streaks; on a jebel face it stands
+    // down by the face's steepness, and the rock tile and the grain, projected in the wall's own plane, carry the near
+    // relief instead (uJebelFace; absent, wallNear is 0 and the pass is unchanged)
+    float wallNear = steepW * uJebelFace.x;
+    n.xy += dn.xy * 0.85 * dnW * (1.0 - fMs) * (1.0 - wallNear); // relief pass 2 (2026-09-12): the full 1049e4e clod relief
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs);
+    a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs) * (1.0 - wallNear);
+    if (wallNear > 0.002) {
+      vec3 dw = wallNrm(uNrmR, 0.62, df, mipB).xyz * 2.0 - 1.0;
+      n.xyz += dw * 0.6 * openNear * wallNear;
+      float wm = wallNoiseG(0.171, vec2(0.21, 0.49)), wm2 = wallNoiseG(0.43, vec2(0.67, 0.13));
+      a.rgb *= 1.0 + ((wm - 0.5) * 0.30 + (wm2 - 0.5) * 0.18) * openNear * wallNear;
+    }
     // Compacted gravel grain on the carriageway: a CLAMPED zero-mean luminance
     // high-pass of the rock tile, so grit resolves under the hull while the
     // tile's dark cavities cannot return as repeated black marks.
