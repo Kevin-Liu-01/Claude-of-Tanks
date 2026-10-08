@@ -154,6 +154,8 @@ interface SceneryCaprock {
   tone?: readonly [number, number, number];
   thickness?: readonly [number, number];
   blockM?: readonly [number, number];
+  /** (Skybridge round 6) the landform's path: the brows follow its curve (landformPath.ts). */
+  path?: ReadonlyArray<readonly [number, number]>;
   name?: string;
 }
 
@@ -171,6 +173,8 @@ interface SceneryCanyonWall {
   waterLevel?: number;
   span?: number;
   tone?: readonly [number, number, number];
+  /** (Skybridge round 6) the trench's path: the skin follows its curve (landformPath.ts). */
+  path?: ReadonlyArray<readonly [number, number]>;
   name?: string;
 }
 

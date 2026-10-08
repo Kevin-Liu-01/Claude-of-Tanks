@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 import { finishSkin, hsl, SkinMesh, type CastleGround, type V3 } from './castleRock.ts';
+import { landformPathStation, prepareLandformPath, type LandformPathStation } from './landformPath.ts';
 
 type Rng = () => number;
 
@@ -37,6 +38,9 @@ export interface CaprockSpec {
   thickness?: readonly [number, number];
   /** The blocks' length range between the joints (m; default 5-12): a massive sandstone parts less often. */
   blockM?: readonly [number, number];
+  /** (Skybridge round 6) a path landform's control points (its `path`, landformPath.ts): the brows follow the curve,
+   * its length the curve's; x, z, length and yawDeg then only name it. */
+  path?: ReadonlyArray<readonly [number, number]>;
 }
 
 interface CaprockBuildOptions {
@@ -60,12 +64,23 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
   { mobile = false }: CaprockBuildOptions = {}): { geometry: THREE.BufferGeometry | null; triangles: number; blocks: number } {
   const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
   const yaw = THREE.MathUtils.degToRad(spec.yawDeg);
-  const ax: V3 = [Math.cos(yaw), 0, Math.sin(yaw)], cr: V3 = [-Math.sin(yaw), 0, Math.cos(yaw)];
-  const span = (spec.span ?? 0.82) * spec.length;
+  const ax: V3 = [Math.cos(yaw), 0, Math.sin(yaw)];
+  // (round 6) a station's frame: the straight axis's (exactly as before), or the path's point and tangent
+  const path = spec.path ? prepareLandformPath(spec.path, spec.width) : null;
+  const st: LandformPathStation = { x: 0, z: 0, tx: ax[0], tz: ax[2] };
+  let stS = NaN;
+  const frameAt = (s: number): LandformPathStation => {
+    if (s === stS) return st;
+    stS = s;
+    if (path) return landformPathStation(path, s, st);
+    st.x = spec.x + ax[0] * s; st.z = spec.z + ax[2] * s;
+    return st;
+  };
+  const span = (spec.span ?? 0.82) * (path ? path.length : spec.length);
   const step = mobile ? 4 : 2.5;
   const stations = Math.floor(span / step);
   const trench = !!spec.trench;
-  const crest = (s: number) => groundAt(spec.x + ax[0] * s, spec.z + ax[2] * s);
+  const crest = (s: number) => { const f = frameAt(s); return groundAt(f.x, f.z); };
   const tone = spec.tone ?? [0.075, 0.13, 0.52];
   const [tMin, tMax] = spec.thickness ?? [1.2, 2.5];
   const [bMin, bMax] = spec.blockM ?? [5, 12];
@@ -77,7 +92,7 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
     const rims: Array<Brow | null> = [];
     for (let k = 0; k <= stations; k++) {
       const s = -span / 2 + k * step;
-      const at = (r: number) => groundAt(spec.x + ax[0] * s + cr[0] * side * r, spec.z + ax[2] * s + cr[2] * side * r);
+      const at = (r: number) => { const f = frameAt(s); return groundAt(f.x + -f.tz * side * r, f.z + f.tx * side * r); };
       let found: Brow | null = null;
       if (!trench) {
         // a ridge: out from the axis, the first fall steeper than ~39 degrees with three metres down within six
@@ -131,7 +146,8 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
           // dr: metres out over the void from the brow
           const P = (dr: number, y: number): V3 => {
             const r = trench ? rim.r - dr : rim.r + dr;
-            return [spec.x + ax[0] * sJ + cr[0] * side * r, y, spec.z + ax[2] * sJ + cr[2] * side * r];
+            const f = frameAt(sJ);
+            return [f.x + -f.tz * side * r, y, f.z + f.tx * side * r];
           };
           const wob = noise.noise(sJ * 0.31 + salt, side * 3.1) * 0.25;
           const behind = P(-1.8, 0);
@@ -156,15 +172,21 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
             return mesh.vert(p, hsl(tone[0], tone[1], l), groundAt(p[0], p[2]));
           }));
         }
-        const out: V3 = [cr[0] * voidDir, 0, cr[2] * voidDir];
-        for (let q = 0; q + 1 < rows.length; q++) for (let idx = 0; idx < 5; idx++) {
-          const a = rows[q][idx], b = rows[q][idx + 1], c = rows[q + 1][idx + 1], d = rows[q + 1][idx];
-          const o: V3 = idx === 0 ? [0, 1, 0] : idx >= 4 ? [out[0], -1, out[2]] : idx === 1 ? [out[0] * 0.4, 1, out[2] * 0.4] : out;
-          mesh.tri(a, b, c, o); mesh.tri(a, c, d, o);
+        for (let q = 0; q + 1 < rows.length; q++) {
+          // toward the void: the row's own normal (the straight axis's one normal)
+          const f = frameAt(rims[k + q]!.s);
+          const out: V3 = [-f.tz * voidDir, 0, f.tx * voidDir];
+          for (let idx = 0; idx < 5; idx++) {
+            const a = rows[q][idx], b = rows[q][idx + 1], c = rows[q + 1][idx + 1], d = rows[q + 1][idx];
+            const o: V3 = idx === 0 ? [0, 1, 0] : idx >= 4 ? [out[0], -1, out[2]] : idx === 1 ? [out[0] * 0.4, 1, out[2] * 0.4] : out;
+            mesh.tri(a, b, c, o); mesh.tri(a, c, d, o);
+          }
         }
-        // the block's ends
-        mesh.poly(rows[0], scl(ax, -1));
-        mesh.poly(rows[rows.length - 1], ax);
+        // the block's ends, along the curve at each
+        const f0 = frameAt(rims[k]!.s), t0: V3 = [f0.tx, 0, f0.tz];
+        mesh.poly(rows[0], scl(t0, -1));
+        const f1 = frameAt(rims[end]!.s), t1: V3 = [f1.tx, 0, f1.tz];
+        mesh.poly(rows[rows.length - 1], t1);
         blocks++;
       }
       // (the next block starts on this one's last station: the joint is the two ends' trims)

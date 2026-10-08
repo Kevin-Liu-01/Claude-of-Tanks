@@ -128,6 +128,14 @@ its deployments about 500 m apart where the brief's fields stand 600–860 m. It
 
 Every other band (lanes, chokes, cover, hull-down, relief, dressing, objective symmetry) holds at the shared value.
 
+Skybridge Chasm (`skybridge`, round 6) holds the second, for a reading the metric models wrong rather than for scale:
+`sightLongShare` 0.025–0.15. Its rays read the drowned meander's bed, so one that crosses the water finds a hidden
+stretch at the near rim, though a hull on the far rim stays in view over the water: 0.028 as measured, 0.050 with the
+water's cells taken as open (the PR head's straight arm 0.034 and 0.045).
+
+Follow-up for whoever next touches `tools/map-layout-metrics.mjs`: sight over water cells should count as open (a wet
+cell neither starts nor extends a hidden stretch; no hull stands there), after which Skybridge's band can go.
+
 ### Apron banks
 
 An apron (`terrain.hardstands`) is stamped into the road grids. The ground holds the apron's plane to 3.8 m outside

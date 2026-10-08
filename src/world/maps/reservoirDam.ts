@@ -69,7 +69,9 @@ export interface ReservoirDamReceipt {
 
 const WHITE: readonly [number, number, number] = [1, 1, 1];
 const STEEL: readonly [number, number, number] = [0.55, 0.58, 0.58];
-const GANTRY: readonly [number, number, number] = [0.78, 0.62, 0.22];
+// (Skybridge round 6, gauntlet wave 259: "a flat-yellow box-section gantry ... reading as placeholder geometry") the
+// gantry crane in the Bureau's weathered machinery green, as the kit's switchyard steel
+const GANTRY: readonly [number, number, number] = [0.40, 0.47, 0.42];
 const DARK: readonly [number, number, number] = [0.12, 0.12, 0.13];
 const PARAPET_H = 1.1, PARAPET_T = 0.45, KERB_H = 0.9, KERB_T = 0.6;
 

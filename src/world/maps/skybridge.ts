@@ -42,130 +42,39 @@
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import type { ReservoirDamSite } from './reservoirDam.ts';
+import { SKYBRIDGE_ARM } from './skybridgeArm.generated.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
-/** The canyon's section: a sheer wall from 0.86 to 0.92 of the half-width over a level floor, no talus. */
-const ARM_WALL = [0.86, 0.92] as const;
-const canyon = (extra: { cliffEnd?: 'nose' | 'both'; outline?: number }) =>
-  ({ profile: 'canyon' as const, wall: ARM_WALL, apron: 0, outline: 0.04, rough: 0, ...extra });
-/** The arm: half-width, depth, bearing (a ridge's yaw: 80 runs north-north-east) and length (m). */
-const ARM_HALF = 37, ARM_DEPTH = -22, ARM_YAW = 80, ARM_LENGTH = 250;
-/** The tailwater pocket below the dam: half-width, depth, length, and its middle along the road from the dam's (m). */
-const POCKET_HALF = 13, POCKET_DEPTH = -28, POCKET_LENGTH = 38, POCKET_ALONG = -13;
-/** Road 5's junctions either side of the arm: the dam's crest is the road between them. */
-const CREST_A = [-73.9, 235.78] as const, CREST_B = [42, 204] as const;
-const CREST_L = Math.hypot(CREST_B[0] - CREST_A[0], CREST_B[1] - CREST_A[1]);
-const CREST_U = [(CREST_B[0] - CREST_A[0]) / CREST_L, (CREST_B[1] - CREST_A[1]) / CREST_L] as const;
-/** The dam's middle on the road, and the gap from the road's centre line to the arm's end and the pocket's wall (m). */
-const DAM_X = -10, DAM_Z = CREST_A[1] + (DAM_X - CREST_A[0]) / CREST_U[0] * CREST_U[1], CREST_GAP = 6;
-/** Half the dam's chord between its abutments (m): the arm's rim. */
-const DAM_HALF_CHORD = 35;
-/** The disc cores reach this far past the walls' feet, so the water meets every wall: the arm's walls wander (their
- * outline), the pocket's are cut straight. */
-const WATER_PAD = 2, POCKET_PAD = 0.5;
+/** The five roads (their junction nodes below, in the terrain's `roads`). */
+const ROAD_PATHS: Array<Array<[number, number]>> = [
+  [[-430, -450], [-350, -314], [-278, -172], [-239.23, -93.35], [-208, -30], [-132, 118], [-73.9, 235.78], [-58, 268], [-35.25, 319.61], [24, 454]],
+  [[-116, -458], [-72, -318], [-18, -178], [24.53, -81.61], [42, -42], [116, 92], [198, 230], [198.48, 230.63], [292, 354], [380, 456]],
+  [[356, -454], [294, -310], [236, -166], [205.36, -99.16], [170, -22], [92, 116], [42.72, 204.19], [16, 252], [-35.25, 319.61], [-78, 376], [-164, 466]],
+  [[-382, -126], [-246, -92], [-239.23, -93.35], [-116, -118], [18, -80], [24.53, -81.61], [148, -112], [205.36, -99.16], [282, -82], [394, -104]],
+  [[-326, 252], [-204, 210], [-82, 238], [-73.9, 235.78], [42, 204], [42.72, 204.19], [168, 238], [198.48, 230.63], [292, 208]],
+];
 
-function armTerrain() {
-  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)];
-  const n = [a[1], -a[0]], north = [-CREST_U[1], CREST_U[0]];
-  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP];
-  const head = [end[0] - a[0] * ARM_LENGTH, end[1] - a[1] * ARM_LENGTH];
-  const mid = [end[0] - a[0] * ARM_LENGTH / 2, end[1] - a[1] * ARM_LENGTH / 2];
-  const pocket = [DAM_X + CREST_U[0] * POCKET_ALONG + north[0] * (CREST_GAP + POCKET_HALF),
-    DAM_Z + CREST_U[1] * POCKET_ALONG + north[1] * (CREST_GAP + POCKET_HALF)];
-  const crestYaw = Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI;
-  const r1 = (v: number) => Math.round(v * 10) / 10;
-  const scale = { corridorScale: 1, settlementScale: 1, wetScale: 1 };
-  const landforms = [
-    { kind: 'ridge' as const, x: r1(mid[0]), z: r1(mid[1]), length: ARM_LENGTH, width: ARM_HALF, height: ARM_DEPTH, yawDeg: ARM_YAW,
-      ...scale, geology: canyon({ cliffEnd: 'both' }) },
-    { kind: 'knoll' as const, x: r1(head[0]), z: r1(head[1]), rx: ARM_HALF, rz: ARM_HALF, height: ARM_DEPTH, ...scale, geology: canyon({}) },
-    { kind: 'ridge' as const, x: r1(pocket[0]), z: r1(pocket[1]), length: POCKET_LENGTH, width: POCKET_HALF, height: POCKET_DEPTH,
-      yawDeg: r1(crestYaw), ...scale, geology: canyon({ cliffEnd: 'both', outline: 0 }) },
-  ];
-  // the water: round discs (authored radii, all one) whose cores (0.96 of the radius) reach WATER_PAD past the walls'
-  // feet — one over the head, one every 12 m down the arm's axis, one by each wall where the axis discs fall short of the
-  // dam's face over the arm's square end; the pocket's along its axis and one in each corner
-  const round = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] as const;
-  const lakes: { x: number; z: number; r: number; depth: number; level: number; bankBand: number; radii: typeof round }[] = [];
-  const disc = (x: number, z: number, core: number, level: number) =>
-    lakes.push({ x: r1(x), z: r1(z), r: r1(core / 0.96), depth: 1.2, level, bankBand: 0.98, radii: round });
-  const floor = ARM_HALF * ARM_WALL[0], core = floor + WATER_PAD;
-  disc(head[0], head[1], core, ARM_DEPTH);
-  for (let t = 12; t <= ARM_LENGTH - floor; t += 12) disc(head[0] + a[0] * t, head[1] + a[1] * t, core, ARM_DEPTH);
-  // (by each wall at the square end two: a large one where the axis discs' reach along the wall ends, and a small one up
-  // to the dam's face, which stands over the end's fade)
-  const fade = ARM_LENGTH * 0.03;
-  for (const side of [-1, 1]) for (const [back, size] of [[fade + 11, 10], [fade + 3.5, 5]] as const) {
-    const across = core - size;
-    disc(end[0] - a[0] * back + n[0] * side * across, end[1] - a[1] * back + n[1] * side * across, size, ARM_DEPTH);
+/** (round 6) the brow's fallen blocks keep off the roads: the south cross road skirts the head's lip on its fill, and the
+ * scenery pass leaves a rock out within 4 m of a road's line and its radius (scenery.ts admission); a block that
+ * close is not authored. */
+const ROCK_ROAD_CLEAR_M = 4.2;
+function clearOfRoads(rock: { x: number; z: number; radius: number }): boolean {
+  for (const path of ROAD_PATHS) for (let i = 0; i + 1 < path.length; i++) {
+    const [ax, az] = path[i], [bx, bz] = path[i + 1], dx = bx - ax, dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((rock.x - ax) * dx + (rock.z - az) * dz) / (dx * dx + dz * dz)));
+    if (Math.hypot(rock.x - ax - dx * t, rock.z - az - dz * t) < ROCK_ROAD_CLEAR_M + rock.radius) return false;
   }
-  const pfloor = POCKET_HALF * ARM_WALL[0], pcore = pfloor + POCKET_PAD, pfade = POCKET_LENGTH * 0.03;
-  const pend = POCKET_LENGTH / 2 - pfade - pcore + POCKET_PAD, steps = Math.max(1, Math.round(2 * pend / 8));
-  for (let i = 0; i <= steps; i++) {
-    const t = -pend + 2 * pend * i / steps;
-    disc(pocket[0] + CREST_U[0] * t, pocket[1] + CREST_U[1] * t, pcore, POCKET_DEPTH);
-  }
-  for (const se of [-1, 1]) for (const sa of [-1, 1]) for (const size of [6, 2.5]) {
-    const t = se * (POCKET_LENGTH / 2 - pfade - size + POCKET_PAD), w = sa * (pfloor - size + POCKET_PAD);
-    disc(pocket[0] + CREST_U[0] * t + north[0] * w, pocket[1] + CREST_U[1] * t + north[1] * w, size, POCKET_DEPTH);
-  }
-  return { landforms, lakes };
-}
-const ARM = armTerrain();
-
-/** The kerbs along the arm's rims from the dam's abutments: each side, a run from the end of the road's upstream parapet
- * (reservoirDam.ts: the dam's half-chord and 8 m) to the rim 37 m off the axis (the rim, its wander and a hull's width),
- * then 45 m up the arm along it (the swap test, 2026-10-06: one hull slid down the west corner the road's banks grade
- * and sat in the water by the dam for the rest of a match). */
-function armRimGuards(): (readonly [number, number, number, number])[] {
-  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)], n = [a[1], -a[0]];
-  const v = [CREST_U[1], -CREST_U[0]];
-  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP], off = 37, from = 5, to = 50;
-  const r1 = (q: number[]) => q.map((x) => Math.round(x * 10) / 10) as unknown as readonly [number, number, number, number];
-  const runs: (readonly [number, number, number, number])[] = [];
-  for (const side of [-1, 1]) {
-    const parapetEnd = [DAM_X + CREST_U[0] * side * (DAM_HALF_CHORD + 8) + v[0] * 6, DAM_Z + CREST_U[1] * side * (DAM_HALF_CHORD + 8) + v[1] * 6];
-    const rim = [end[0] + n[0] * side * off, end[1] + n[1] * side * off];
-    const start = [rim[0] - a[0] * from, rim[1] - a[1] * from], stop = [rim[0] - a[0] * to, rim[1] - a[1] * to];
-    runs.push(r1([...parapetEnd, ...start]), r1([...start, ...stop]));
-  }
-  return runs;
+  return true;
 }
 
-/** The kerbs round the arm's head: an arc 37 m from the head's centre round its closed end (the brink stands 34.5-35 m
- * out) and on along both rims 60 m toward the dam, in runs of about 10 m so each kerb sits on its own ground (the swap
- * test, 2026-10-07: in 2 of 55 games a hull went over the head's east rim, sat in the water at (-27, -43) beyond the
- * reach of every bot, and held the match to its 15-minute cap). */
-function armHeadGuards(): (readonly [number, number, number, number])[] {
-  const a = [Math.cos(ARM_YAW * Math.PI / 180), Math.sin(ARM_YAW * Math.PI / 180)], n = [a[1], -a[0]];
-  const end = [DAM_X - a[0] * CREST_GAP, DAM_Z - a[1] * CREST_GAP];
-  const head = [end[0] - a[0] * ARM_LENGTH, end[1] - a[1] * ARM_LENGTH], off = 37, along = 60;
-  // in the head's frame: `s` along the arm toward the dam, `c` across it (n)
-  const at = (s: number, c: number) => [head[0] + a[0] * s + n[0] * c, head[1] + a[1] * s + n[1] * c];
-  const pts: number[][] = [];
-  for (let s = along; s > 0; s -= 10) pts.push(at(s, off));
-  for (let deg = 90; deg <= 270; deg += 15) {
-    const t = deg * Math.PI / 180;
-    pts.push(at(Math.cos(t) * off, Math.sin(t) * off));
-  }
-  for (let s = 10; s <= along; s += 10) pts.push(at(s, -off));
-  const r1 = (q: number[]) => q.map((x) => Math.round(x * 10) / 10) as unknown as readonly [number, number, number, number];
-  const runs: (readonly [number, number, number, number])[] = [];
-  for (let i = 0; i + 1 < pts.length; i++) runs.push(r1([...pts[i], ...pts[i + 1]]));
-  return runs;
-}
+/** The reservoir arm (round 6): its course, side canyons, water, brow boulders, kerbs and the dam's site, computed by
+ * skybridgeArm.ts and stored as data (skybridgeArm.generated.ts) so no fitting runs as the map configs load. */
+const ARM = SKYBRIDGE_ARM;
 
 /** The dam on road 5 over the arm's end (reservoirDam.ts, laid by the 'dam' dressing kit). */
-export const SKYBRIDGE_DAM: ReservoirDamSite = {
-  x: DAM_X, z: Math.round(DAM_Z * 100) / 100, roadDeg: Math.atan2(CREST_U[1], CREST_U[0]) * 180 / Math.PI,
-  halfChordM: DAM_HALF_CHORD, archRadiusM: 80, abutmentM: CREST_GAP + ARM_LENGTH * 0.03, roadHalfM: 5.2,
-  reservoirBedY: ARM_DEPTH, tailwaterBedY: POCKET_DEPTH,
-  pocketFromM: POCKET_ALONG - POCKET_LENGTH / 2, pocketToM: POCKET_ALONG + POCKET_LENGTH / 2,
-  pocketHalfM: POCKET_HALF * ARM_WALL[1], pocketWallM: CREST_GAP + POCKET_HALF * (1 - ARM_WALL[1]),
-  rimGuards: [...armRimGuards(), ...armHeadGuards()],
-};
+export const SKYBRIDGE_DAM: ReservoirDamSite = SKYBRIDGE_ARM.dam;
 
 export default {
   id: 'skybridge',
@@ -173,6 +82,13 @@ export default {
   blurb: 'A broken high crossing and fortress-scale control works span a deep flooded canyon',
   // (round 4) the canyon's water is a barrier: bots route round it (the walls give no way down to it)
   navigationWaterPolicy: 'avoid-liquid',
+  // (round 6) the layout metric's rays read the drowned meander's bed: one that crosses the water finds a hidden stretch
+  // at the near rim, although a hull on the far rim stays in view over the open water
+  layoutBrief: { bands: {
+    sightLongShare: { band: [0.025, 0.15], reason: 'the rays end at the drowned meander\'s near rim, where its bed drops out '
+      + 'of sight, though a hull on the far rim stays in view over the water: 0.028 as measured (the PR head\'s straight arm '
+      + '0.034), 0.050 with the water\'s cells taken as open (the head 0.045)' },
+  } },
   terrain: {
     hillScale: 0.62, microScale: 0.66, rimH: 58, softLakes: true,
     // the authored shoulders replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
@@ -192,13 +108,7 @@ export default {
     village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
     // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one
     // point there (no step between two bakes)
-    roads: { paths: [
-      [[-430, -450], [-350, -314], [-278, -172], [-239.23, -93.35], [-208, -30], [-132, 118], [-73.9, 235.78], [-58, 268], [-35.25, 319.61], [24, 454]],
-      [[-116, -458], [-72, -318], [-18, -178], [24.53, -81.61], [42, -42], [116, 92], [198, 230], [198.48, 230.63], [292, 354], [380, 456]],
-      [[356, -454], [294, -310], [236, -166], [205.36, -99.16], [170, -22], [92, 116], [42.72, 204.19], [16, 252], [-35.25, 319.61], [-78, 376], [-164, 466]],
-      [[-382, -126], [-246, -92], [-239.23, -93.35], [-116, -118], [18, -80], [24.53, -81.61], [148, -112], [205.36, -99.16], [282, -82], [394, -104]],
-      [[-326, 252], [-204, 210], [-82, 238], [-73.9, 235.78], [42, 204], [42.72, 204.19], [168, 238], [198.48, 230.63], [292, 208]],
-    ] },
+    roads: { paths: ROAD_PATHS },
     landforms: [
       // The canyon's rock shoulders: bedded sandstone walls (cliff bands, benches, talus; landformGeology.ts) along the
       // west and east, broken where the two cross roads pass, so the floor splits into a west lane, the gorge and an east
@@ -221,6 +131,16 @@ export default {
         geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.55, footVary: 0.08, apron: 0.34, rim: 0.94,
           flutes: { count: 5, depth: 0.12 }, rough: 0.45, boulders: 14, strata: { stepM: 6, riser: 0.2 },
           gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
+      // (round 6, gauntlet wave 259: "a dead-flat plain of noisy shag-carpet texture", "no slickrock domes") the slickrock's
+      // petrified dunes: low domes of cross-bedded Navajo sandstone stepped by their beds, in pairs that are each other's
+      // rotation about (5, 60) — on the south and north floors in front of the deployments' flanks and out in the west and
+      // east lanes — whalebacks 40-90 m long, each 24 m or more from a road, 90 m from a deployment, 20 m from a zone
+      // apron and clear of the shoulders (sited by mr3's dome-sites probe); 5-7.5 m high, drivable over their stepped
+      // flanks
+      ...([[-130, -230, 30, 5.5, 20], [420, -250, 44, 7, 70], [-410, -220, 44, 6.5, 140], [410, -160, 32, 5, 200],
+        [330, -210, 38, 6.5, 250], [-410, 50, 42, 7.5, 310]] as const).flatMap(([x, z, r, height, yaw]) => [[x, z, yaw], [10 - x, 120 - z, yaw + 180]]
+        .map(([px, pz, yawDeg]) => ({ kind: 'knoll' as const, x: px, z: pz, rx: r, rz: Math.round(r * 0.65), height, yawDeg,
+          geology: { profile: 'dome' as const, outline: 0.22, strata: { stepM: 2.2, riser: 0.8 }, rough: 0.4 } }))),
       // (round 4, gauntlet waves 170-171: the basin under the lakes and the round-2 trough round them go — the reservoir
       // is the canyon arm, its dam and the tailwater pocket; armTerrain above)
       ...ARM.landforms,
@@ -267,10 +187,16 @@ export default {
     // (round 3, gauntlet wave 133: "uniform orange dune sand dotted with lush green trees": Glen Canyon's trees are the
     // juniper and the pinyon (treeBiomes.ts: cedar and pine take their forms); the cottonwoods were four in ten and the
     // scrub was theirs — now a few, and the scrub the junipers')
-    species: ['pine', 'poplar', 'cedar'], clusterMix: [['cedar', 0.50], ['pine', 0.42], ['poplar', 0.08]],
-    loneMix: [['cedar', 0.52], ['pine', 0.40], ['poplar', 0.08]], rimMix: [['pine', 0.48], ['cedar', 0.46], ['poplar', 0.06]],
-    clusterCount: 24, loneCount: 42, rimCount: 34, grassDensity: 0.30,
-    clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'cedar',
+    // (round 6, gauntlet wave 259: "dense clumps of lush green broadleaf trees on both sides ... a single tree sprouting
+    // from the summit of the banded butte ... a temperate park instead of Glen Canyon's bare slickrock desert") the
+    // plateau's cover thinned to its own: juniper and pinyon in open, scattered stands and alone, the scrub between
+    // them; hardly a tree on a rim or a cap. The cottonwoods stand only by the water or in the low ground (treeBiomes.ts
+    // riparian): the meander's walls leave no gentle ground at its waterline, so of the lone trees' draws (six in a
+    // hundred) the six that stand are in the low ground east of the dam
+    species: ['pine', 'poplar', 'cedar'], clusterMix: [['cedar', 0.58], ['pine', 0.40], ['poplar', 0.02]],
+    loneMix: [['cedar', 0.576], ['pine', 0.364], ['poplar', 0.06]], rimMix: [['pine', 0.5], ['cedar', 0.5]],
+    clusterCount: 12, loneCount: 36, rimCount: 8, grassDensity: 0.22,
+    clusterScrub: 1.0, bushCount: 0.7, bushSpecies: 'cedar',
     // (Skybridge round 2, the map-revival lane: Glen Canyon's bunchgrass is cured straw on the slickrock's sand, as Titan
     // Gorge's; the default tufts were the meadow's green)
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
@@ -311,6 +237,9 @@ export default {
     // the control district stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03); a building of it
     // that stands in a carriageway moves by the least distance that clears it
     townPlan: TOWN_PLANS.skybridge,
+    // (round 6) the arm's meander and its side canyons run through the seated district: a planned building the water
+    // reaches is packed to dry ground, a light building there is left out (props.ts settlementOverWater)
+    settlementOverWater: true,
     townLightPlan: TOWN_LIGHT_PLANS.skybridge,
     roadBuildingClearance: true,
     // the kit owns the renders' tones; the field walls keep the city preset's stone
@@ -336,12 +265,23 @@ export default {
   // (round 5, gauntlet wave 207 and the coordinator: round 4's arm walls "flat vertical planes" under a soft brow) the
   // arm's walls in relief — buttresses between the seeps' alcoves, the rain's flutes, the cross-beds, the varnish's
   // curtains from the brow and the bathtub ring at the water (canyonWall.ts) — and the hard bed of the slickrock along
-  // both brows, its lip over the void (caprockRim.ts, trench). The arm's ridge (ARM.landforms[0]) is the rock
+  // both brows, its lip over the void (caprockRim.ts, trench). (round 6) Both follow the meander and its side canyons'
+  // curves (their `path`s); the carved landforms are the rock
   scenery: {
-    canyonWalls: [{ x: ARM.landforms[0].x, z: ARM.landforms[0].z, length: ARM_LENGTH, width: ARM_HALF * 1.6, yawDeg: ARM_YAW,
-      waterLevel: ARM_DEPTH, span: 0.88, name: "Lake Powell's arm, its walls" }],
-    caprock: [{ x: ARM.landforms[0].x, z: ARM.landforms[0].z, length: ARM_LENGTH, width: ARM_HALF * 1.6, yawDeg: ARM_YAW,
-      trench: true, span: 0.86, tone: [0.06, 0.3, 0.64], thickness: [1.0, 1.8], blockM: [10, 22], name: "the arm's slickrock brows" }],
+    rocks: ARM.rocks.filter(clearOfRoads),
+    canyonWalls: [
+      { x: ARM.arm.centre[0], z: ARM.arm.centre[1], length: ARM.arm.length, width: ARM.arm.endHalf * 1.6, yawDeg: 0, path: ARM.arm.path,
+        waterLevel: ARM.arm.waterLevel, span: 0.82, name: "Lake Powell's arm, its walls" },
+      ...ARM.sides.map((c, i) => ({ x: c.centre[0], z: c.centre[1], length: 1, width: c.half * 1.6, yawDeg: 0,
+        path: c.path, waterLevel: ARM.arm.waterLevel, span: 0.6, name: `the arm's side canyon ${i + 1}, its walls` })),
+    ],
+    caprock: [
+      { x: ARM.arm.centre[0], z: ARM.arm.centre[1], length: ARM.arm.length, width: ARM.arm.endHalf * 1.6, yawDeg: 0, path: ARM.arm.path,
+        trench: true, span: 0.82, tone: [0.06, 0.3, 0.64], thickness: [1.0, 1.8], blockM: [10, 22], name: "the arm's slickrock brows" },
+      ...ARM.sides.map((c, i) => ({ x: c.centre[0], z: c.centre[1], length: 1, width: c.half * 1.6, yawDeg: 0,
+        path: c.path, trench: true, span: 0.6, tone: [0.06, 0.3, 0.64] as const, thickness: [1.0, 1.6] as const, blockM: [8, 16] as const,
+        name: `the arm's side canyon ${i + 1}, its brows` })),
+    ],
   },
   horizon: {
     baseHex: 0x59433a, amp: 2.0, style: 'mesa', treeline: 0.10,

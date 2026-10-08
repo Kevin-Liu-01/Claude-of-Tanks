@@ -119,7 +119,9 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
  */
 function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, colour: Rgb): void {
   const c = 0.22;
-  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 2.4);
+  // (Skybridge round 6: the frames braced at the dead-end towers' 3.2 m bay and their strings' discs six-sided — the
+  // switchyard back inside the kit's 12,000-triangle budget, 12,952 -> 11,656, with round 4's bushings and strain strings)
+  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 3.2);
   // the beam: two chords and the web between them
   for (const dy of [0, -0.5]) sink.member('structureMetal', [x, h - 0.15 + dy, z0 - 0.3], [x, h - 0.15 + dy, z1 + 0.3], 0.07, 0.07, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
   const n = Math.max(3, Math.round((z1 - z0 + 0.6) / 0.6));

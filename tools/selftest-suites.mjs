@@ -1496,6 +1496,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the paved pads' render-only dressing (no step in the drive surface)
     'src/world/hardstandDressing.selftest.mjs',
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
+    'src/world/landformPath.selftest.mjs', // 2026-10-08: a ridge's curved axis (Skybridge round 6's meander) and the carved union
+    'src/world/maps/skybridgeArm.selftest.mjs', // 2026-10-08: Skybridge's reservoir arm generated as data, current
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground

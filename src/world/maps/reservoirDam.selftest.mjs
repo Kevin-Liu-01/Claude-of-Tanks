@@ -40,14 +40,16 @@ assert.ok(near < 0.5, `the dam's crest is road 5 (${near.toFixed(2)} m off its l
 for (const s of [-28, -13, 0, 12, 25]) {
   const road = height(s, 0);
   for (const t of [-4.5, -2, 2, 4.5]) assert.ok(Math.abs(height(s, t) - road) < 0.6, `the strip keeps the road's height (${s}, ${t})`);
-  assert.ok(wet(s, 18), `the reservoir lies against the dam (${s} m along)`);
 }
+// (round 6: the arm meets the dam 68 m wide at its rim, its floor 50 m: the water against the dam across the floor)
+for (const s of [-20, -10, 0, 10, 20]) assert.ok(wet(s, 18), `the reservoir lies against the dam (${s} m along)`);
 for (const s of [-28, -13, 0]) assert.ok(wet(s, -18), `the tailwater lies in the pocket (${s} m along)`);
 assert.ok(!wet(20, -18) && height(20, -18) > -3, 'past the pocket the plain runs on under the road');
 
 // 2. wall to wall, and the bots keep out
 let dry = 0, water = 0;
-for (let z = -90; z <= 290; z += 2) for (let x = -120; x <= 60; x += 2) {
+// (round 6: the meander's bends and its head reach further out than round 4's straight arm)
+for (let z = -110; z <= 290; z += 2) for (let x = -140; x <= 80; x += 2) {
   let best = Infinity, level = null;
   for (const lake of cfg.terrain.lakes) {
     const d = Math.hypot(x - lake.x, z - lake.z) / lake.r;
@@ -57,9 +59,12 @@ for (let z = -90; z <= 290; z += 2) for (let x = -120; x <= 60; x += 2) {
   if (field.getWaterMaskAt(x, z) > 0.5) { water++; continue; }
   if (field.getHeightAt(x, z) < level - 0.3) dry++;
 }
-assert.ok(water > 3500, `the arm and the pocket hold their water (${water * 4} m²)`);
+// (round 6: the meander is narrower than round 4's arm — 26-68 m of water across, about 1.4 ha with the pocket)
+assert.ok(water > 3000, `the arm and the pocket hold their water (${water * 4} m²)`);
 assert.equal(dry, 0, `no ground under a waterline stays dry (${dry * 4} m²)`);
-assert.ok(cfg.terrain.lakes.every((lake) => lake.radii?.length === 16 && lake.radii.every((r) => r === 1)), 'the discs are round');
+// (round 6: the arm's discs are ellipses along its curve, the pocket's round)
+assert.ok(cfg.terrain.lakes.every((lake) => lake.radii?.length === 16 && lake.radii.every((r, i) => Math.abs(r - lake.radii[(i + 8) & 15]) < 1e-9)),
+  'the discs are ellipses or round');
 assert.equal(cfg.navigationWaterPolicy, 'avoid-liquid', 'the bots route round the water');
 
 // 3. the dam
