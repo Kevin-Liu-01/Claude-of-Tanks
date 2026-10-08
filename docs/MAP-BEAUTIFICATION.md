@@ -7948,6 +7948,21 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   ed0619982) for the remaining finals: F2c (Monsoon medium, a fresh 8 cycles), Whiteout high, Verdant high and low, and
   the broken decks' frames, whose Monsoon variants are the look check on the cheaper budget.
 
+- *F2c, void twice, then the guards (2026-10-08).* The first run (one-frame census) voided 21 of 24 cycles: under the
+  live lighting the outermost cascade redraws every second frame, so one frame's draws flipped by ±62 calls on every page,
+  the twins included — the census became the mean of 24 whole frames. The re-run read B 35–45 % under A in draws, a
+  "saving" of 2–3 ms; the draw diagnostic (D1 / D2: per frame the game's own census, the shadow telemetry with the static
+  cache's counters, every draw by render target and kind, a dirty-caster diff of the frozen world roots and the perf
+  lane's probe) found the three pages drawing the same scene when it ran — B one cloud pass over A, the cache reusing on
+  every page with no content change, the cache off drawing the same — and B's deficit in the re-run equal to the four
+  cascades' draws, without the outer cascade's alternation: B's page had drawn no shadow map for a whole run. The cause
+  is lighting's static-presentation dormancy latch: the Garage's GPU warm sets it in a `finally`, a live battle frame
+  clears it, the shot runtime never does, and shot mode's forced update passes it by — the cost hook's unforced update
+  obeys it, so whichever page latched at staging froze its cascades. The lab now clears the latch at the hook's install
+  and before every pose, refuses a page without shadow maps, and guards B against A (±5 calls, 1 % of the triangles) as
+  well as A against C on the whole frame and on the scene pass (the draws into the scene pass's own target). The finals
+  re-run on the PR head 590f51aaf (push 4; the merge 307b44235) as one-cycle jobs gated by the shared v3 check.
+
 **Lessons (the cost work).**
 - A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
   knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
@@ -7955,6 +7970,11 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   changes `__LIGHT_TUNE`: the preset's key is unchanged. Knobs for a screen must be read every frame.
 - A top-up is arithmetic before it is a hold: at 8 cycles of mean m, 16 pass only if the next 8 average under
   2 × 0.6 − m; when that sits several standard errors below m, change the law instead of buying the cycles.
+- A guard that compares only the two pages of one build cannot see the candidate's page in another state: a page that
+  drew no shadow map for a whole run read as a saving of 2–3 ms. Compare the candidate's scene with the baseline's too,
+  and when a saving looks too good, census the draws by render target before believing it.
+- A state latched outside the measured path (the Garage's shadow dormancy, cleared only by the live frame) survives into
+  a staged capture; any hook that turns a forced update into a live one must restore what the live frame restores.
 - A shader-compile check needs no game boot: build the layer's materials in Node and compile them in a blank page with
   three's renderer on SwiftShader (`.qa-dev/glsl-check.mjs`); three checks a program's status on its first use, so touch
   each program's uniforms after `compile()`, and prove the checker on a deliberately broken program.
