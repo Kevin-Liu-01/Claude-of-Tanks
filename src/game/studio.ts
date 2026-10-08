@@ -2051,11 +2051,40 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     world.advanceWater(dt, actors[0]?.state.pos.x ?? camera.position.x, actors[0]?.state.pos.z ?? camera.position.z);
   }
 
+  // destruction-fx: a driven actor kicks up its tracks' dust as a battle hull does (battlePresentationRuntime emitDust's
+  // law: one call per side every 0.45-0.7 m of travel, from the rear of each track), so the Studio films the dust
+  // skirt; on the fixed timeline, through the fx's own seeded stream
+  const studioDustTravel = new Map<StudioActor, number>();
+  const _dustPos = new THREE.Vector3(), _dustFwd = new THREE.Vector3();
+  function emitStudioTrackDust(dt: number): void {
+    for (const a of actors) {
+      const st = a.state;
+      const speed = Math.abs(st.speed ?? 0);
+      if (speed <= 0.8 || st.grounded === false) { studioDustTravel.set(a, 0); continue; }
+      const topSpeedMps = Math.max(1, (a.spec.topSpeedKmh || 60) / 3.6);
+      const intensity = Math.min(1, speed / topSpeedMps);
+      const spacingM = 0.7 + (0.45 - 0.7) * intensity;
+      const travel = Math.min(spacingM * 2, (studioDustTravel.get(a) ?? 0) + speed * dt);
+      if (travel < spacingM) { studioDustTravel.set(a, travel); continue; }
+      studioDustTravel.set(a, travel - spacingM);
+      const sign = (st.speed ?? 0) < 0 ? -1 : 1;
+      _dustFwd.set(Math.sin(st.yaw) * sign, 0, Math.cos(st.yaw) * sign);
+      const dims = a.spec.dims;
+      for (let side = -1; side <= 1; side += 2) {
+        _dustPos.copy(st.pos).addScaledVector(_dustFwd, -dims.hullLengthM * 0.45);
+        _dustPos.x += _dustFwd.z * side * dims.widthM * 0.45;
+        _dustPos.z += -_dustFwd.x * side * dims.widthM * 0.45;
+        fx.dust(_dustPos, _dustFwd, intensity);
+      }
+    }
+  }
+
   function advanceFx(ms: number): void {
     let remainingS = Math.max(0, ms / 1000);
     while (remainingS > 1e-7) {
       const dt = Math.min(FX_STEP_S, remainingS);
       applyStoryboardActors(clockMs + dt * 1000, dt);
+      emitStudioTrackDust(dt);
       stepFx(dt);
       advanceWater(dt);
       for (const a of actors) a.visual.syncFromState(a.state, dt);
@@ -2070,6 +2099,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.length = 0;
     fx.resetAll();
     studioStages.clear();
+    studioDustTravel.clear();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;

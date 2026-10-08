@@ -225,6 +225,9 @@ picture only; Studio does not currently mix game audio into the capture stream.
     "mode": "fly"               // fly | orbit (orbit needs lookAt)
   },
 
+  // an actor driven along its track kicks up its tracks' dust as a battle hull does (one call per side every
+  // 0.45-0.7 m of travel, on the fixed timeline): on the media tier, the ground's dust skirt behind it
+
   "fxTime": 600,                // ms: advance the fx timeline exactly this far
                                 //   after firing the effects, then FREEZE
   "timeScale": 0                // post-load time scale (default 0 = stay frozen)
