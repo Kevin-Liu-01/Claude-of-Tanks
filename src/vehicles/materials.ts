@@ -2360,9 +2360,9 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   bindVehicleReadabilityUniform(shader.uniforms);
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
-  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the coat, the film and the spatter of the battlefield's soil,
-  // graded up from the ground contact. Uniforms only (shared objects: the soil per battle, the role per draw), so the
-  // program keys and variants are unchanged; the paint takes the wear before any light reads it.
+  // 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the coat and the film of the battlefield's soil, graded up
+  // from the ground contact, and the use-wear. Uniforms only (shared objects: the soil per battle, the role per draw),
+  // so the program keys and variants are unchanged; the paint takes the wear before any light reads it.
   shader.uniforms.uVehWearRole = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearRole;
   shader.uniforms.uVehWearFwd = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd;
   shader.uniforms.uVehWearHull = VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearHull;

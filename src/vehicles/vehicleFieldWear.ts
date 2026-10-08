@@ -8,19 +8,22 @@
 // desert", while at battle distance (wave 265) its dirt concentrated low on the running gear helped. This layer keeps
 // that read and rebuilds the look:
 // - the coat's colours come from the battlefield (VEHICLE_FIELD_GROUNDS, set with the map's AUTO camouflage in
-//   materials.ts setCamoBiome): dark wet earth on the farmland, pale dust with value contrast in the deserts, packed
-//   snow and slush in winter; the Garage shows a light neutral film;
+//   materials.ts setCamoBiome): dark wet earth on the farmland, darker oily grime low with only a faint dust tint
+//   above in the deserts, packed snow and slush in winter; the Garage shows a light neutral film;
 // - the coat is a broad gradient up from the ground contact (never a stencilled band): heavy on the tracks, wheels and
-//   lower skirts, thinning to nothing by about 1.3 m, its top line wandering with a low noise octave, turning into
-//   clumps and spatter where the fine octave resolves (close-ups) and into its plain average where it does not (range:
-//   large-scale value first, no sparkle);
+//   lower skirts, thinning to nothing by about 1.3 m, its top line wandering with a low noise octave and hanging in soft
+//   vertical runs up close, a smooth packed coat whose breakup is soft-edged and low-contrast (never a patch mask), and
+//   its plain average where the fine octaves do not resolve (range: large-scale value first, no sparkle);
 // - gravity-aware: faces turned down toward the tracks catch the most splash, vertical faces shed it, and the dry film
 //   settles only on faces that look up (decks, fenders, roofs), thinner up the turret;
-// - wear where use puts it (installVehicleFieldWear): exhaust and muzzle soot, polished track iron and bare steel, chips
-//   along the plates' relief, rubbed walkways, grime and rust streaks (the fine marks only up close);
+// - wear where use puts it (installVehicleFieldWear): exhaust and muzzle soot, track iron and bare steel worn smooth,
+//   chips along the plates' relief, rubbed walkways, thin grime and rust runs (the fine marks only up close);
+// - it darkens freely but never lightens a surface by more than about a third: the running gear stays darker than the
+//   paint under every soil and in shade (the readability floor scales a shaded texel's light by its albedo);
 // - priced for the 14 v 14 frame: no texture, sampler, define or program key; seven vec4 and a vec3 uniform (the soil per
-//   battle, the role, hull frame and soot source per draw), two vec4 and a float varying, one 2D value-noise octave
-//   where the coat, film or soot can show and a second only up close, and branches that skip the pixels no wear reaches.
+//   battle, the role, hull frame and soot source per draw), two vec4 and a vec3 varying, one 2D value-noise octave
+//   where the coat, film or soot can show, a second and the runs' 3D octave only up close (never on the running gear),
+//   and branches that skip the pixels no wear reaches.
 // The per-material role (how much coat, film, use-wear and soot a surface takes) rides the per-draw ground reference
 // (tankFactoryCore.ts installVehicleGroundReference → materials.ts setVehicleGroundFromRoot), so every vehicle
 // material — profile clones and decor included — reads it without a variant of its own.
@@ -40,8 +43,6 @@ interface VehicleFieldSoil {
   readonly wet: number;
   /** The coat higher up, thinning with height (drying mud, dust, slush). */
   readonly splash: Rgb;
-  /** How much spatter flies above the coat line, 0..1. */
-  readonly spatter: number;
   /** The dry film that settles on faces looking up. */
   readonly settle: Rgb;
   /** How much of it settles, 0..1. */
@@ -109,7 +110,6 @@ export const VEHICLE_FIELD_GROUNDS: Readonly<Record<string, FieldGround>> = Obje
 
 const lum = (c: Rgb): number => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 const scale = (c: Rgb, k: number): Rgb => [c[0] * k, c[1] * k, c[2] * k];
-const lift = (c: Rgb, k: number): Rgb => [c[0] + k, c[1] + k, c[2] + k];
 const mixRgb = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const desat = (c: Rgb, k: number): Rgb => mixRgb(c, [lum(c), lum(c), lum(c)], k);
 /** The colour with its luminance held inside [lo, hi] (hue and saturation kept). */
@@ -124,31 +124,34 @@ const toLuma = (c: Rgb, lo: number, hi: number): Rgb => {
  * void; on the dark tyres and track it reads lighter than the rubber), drying to a mid grey-brown up the hull (0.1 and
  * up, still far darker than round 4's cream), and its fine dust (a grey-brown two to three times the soil's value) on
  * the decks.
- * Arid: the dust is the ground's own sand ground finer, so paler and greyer than both the sand and a tan paint (wave
- * 265: "tan-on-tan erases the form ... dust there needs VALUE contrast"), over an oily grime packed on the running gear
- * at about half the sand's value, so the tracks and wheels stay the darkest band under the pale hull. Snow: packed snow
- * and dirt in the running gear, dark slush thrown up the hull, fresh snow on the decks.
+ * Arid (wave 265: "tan-on-tan erases the form ... dust there needs VALUE contrast"): the contrast is a darker oily grime
+ * packed on the running gear and the lowest plates (two fifths of the sand's value), a greyed dust a shade under the
+ * paint above it and a faint film on the decks (the round 5 GPU frames: a pale film washed the tan hull near white).
+ * Snow: packed snow and dirt in the running gear, dark slush thrown up the hull, fresh snow on the decks. The shader
+ * caps how far any of it lightens a surface (FIELD_WEAR_CORE_GLSL), so dark gear stays dark whatever the soil.
  */
 function deriveVehicleFieldSoil({ dirt, ground: base, climate, wet }: FieldGround): VehicleFieldSoil {
   if (climate === 'arid') {
-    const settle = desat(lift(scale(base, 1.15), 0.08), 0.4);
+    // round 5 GPU review (2026-10-08, the first frames of the M60A1 on Sirocco: the pale film "turns the tan paint near
+    // white over the decks, turret and gun"): the desert's value contrast comes from darker oily grime low on the hull
+    // and the running gear, a greyed dust a shade under the paint above it, and at most a faint tint on the decks
     return Object.freeze({
-      deep: desat(scale(dirt, 0.55), 0.3), wet: Math.min(wet, 0.2),
-      splash: scale(settle, 0.93), spatter: 0.35,
-      settle, settleAmount: 0.9,
+      deep: desat(scale(dirt, 0.4), 0.35), wet: Math.min(wet, 0.2),
+      splash: desat(scale(base, 0.7), 0.4),
+      settle: desat(scale(base, 0.88), 0.45), settleAmount: 0.35,
     });
   }
   if (climate === 'snow') {
     return Object.freeze({
-      deep: mixRgb(base, dirt, 0.45), wet,
-      splash: scale(desat(dirt, 0.45), 1.1), spatter: 0.8,
+      deep: mixRgb(base, dirt, 0.65), wet,
+      splash: scale(desat(dirt, 0.45), 1.1),
       settle: scale(base, 0.96), settleAmount: 0.75,
     });
   }
   const dust = desat(scale(dirt, 2.6), 0.3);
   return Object.freeze({
     deep: desat(scale(toLuma(dirt, 0.06, 0.14), 0.9), 0.25), wet,
-    splash: desat(toLuma(scale(dirt, 2.2), 0.1, 0.3), 0.3), spatter: 0.55 + 0.35 * wet,
+    splash: desat(toLuma(scale(dirt, 2.2), 0.1, 0.3), 0.3),
     settle: toLuma(dust, 0.12, 0.4), settleAmount: 0.8 - 0.25 * wet,
   });
 }
@@ -172,7 +175,7 @@ export function vehicleFieldSoil(mapId: string | null | undefined): VehicleField
  * as "flat tan wheel dishes"), while a light dust rises up the lower hull and settles on the decks.
  */
 const GARAGE_SOIL: VehicleFieldSoil = Object.freeze({
-  deep: [0.042, 0.039, 0.035] as Rgb, wet: 0, splash: [0.2, 0.185, 0.16] as Rgb, spatter: 0.25,
+  deep: [0.042, 0.039, 0.035] as Rgb, wet: 0, splash: [0.2, 0.185, 0.16] as Rgb,
   settle: [0.25, 0.23, 0.2] as Rgb, settleAmount: 0.6,
 });
 
@@ -180,7 +183,7 @@ const BATTLE = { deep: new THREE.Vector4(), splash: new THREE.Vector4(), settle:
 const GARAGE = { deep: new THREE.Vector4(), splash: new THREE.Vector4(), settle: new THREE.Vector4() };
 function packSoil(out: typeof BATTLE, s: VehicleFieldSoil): void {
   out.deep.set(s.deep[0], s.deep[1], s.deep[2], s.wet);
-  out.splash.set(s.splash[0], s.splash[1], s.splash[2], s.spatter);
+  out.splash.set(s.splash[0], s.splash[1], s.splash[2], 0);
   out.settle.set(s.settle[0], s.settle[1], s.settle[2], s.settleAmount);
 }
 packSoil(BATTLE, vehicleFieldSoil('verdant'));
@@ -200,7 +203,7 @@ export const VEHICLE_FIELD_WEAR_UNIFORMS = Object.freeze({
   // the exhaust for the rest; (mouth, reach across the axis) and (axis the soot runs along, its length); reach 0 = none
   uVehWearSoot: { value: new THREE.Vector4(0, 0, 0, 0) },
   uVehWearSootAxis: { value: new THREE.Vector4(0, 0, 1, 1) },
-  // per battle (Garage: the neutral film): deep coat (rgb, wetness), thrown coat (rgb, spatter), film (rgb, amount)
+  // per battle (Garage: the neutral film): deep coat (rgb, wetness), thrown coat (rgb, unused), film (rgb, amount)
   uVehWearDeep: { value: new THREE.Vector4().copy(BATTLE.deep) },
   uVehWearSplash: { value: new THREE.Vector4().copy(BATTLE.splash) },
   uVehWearSettle: { value: new THREE.Vector4().copy(BATTLE.settle) },
@@ -215,9 +218,9 @@ export function setVehicleFieldSoil(mapId: string | null | undefined): void {
 
 // ---------------------------------------------------------------------------------------------------------- roles
 // (x coat, y settled film, z use-wear class, w soot): how much of each a material takes. Use-wear classes: 1 painted
-// metal (chips along its plate seams, bolts and rings, boots' rubbing on the walkways, grime and rust streaks), 2 track
-// iron (polished where the wheels run and the ground grinds), 3 bare steel (polished where hands and tools rub), 4 tyre
-// rubber (none); 2 and 4 wear the deep coat at every height. Rubber,
+// metal (chips along its plate seams, bolts and rings, boots' rubbing on the walkways, grime and rust runs), 2 track
+// iron (worn smooth where the wheels run and the ground grinds), 3 bare steel (worn smooth where hands and tools rub),
+// 4 tyre rubber and the track band (none), 5 wheel paint (none); 2, 4 and 5 wear the deep coat at every height. Rubber,
 // tracks and wheels take the coat in full; cloth and wood keep a little less of the thrown coat and all of the film;
 // glass sheds most; the wheel bays' near-black recess panels, the wreck's char and every alpha-cut card (nets, leaves,
 // garnish, wire grids) take none (an alpha-cut cord near the ground lit almost white under round 4's coat: "the hem
@@ -225,16 +228,19 @@ export function setVehicleFieldSoil(mapId: string | null | undefined): void {
 const ROLE_PAINT = Object.freeze(new THREE.Vector4(1, 1, 1, 1));
 /** The gun's paint: the coat and the film, and the muzzle's carbon instead of the exhaust's (no plate streaks along a tube). */
 const ROLE_BARREL = Object.freeze(new THREE.Vector4(1, 1, 0, 1));
-// (no plate use-wear on the wheels: a streak or chip in a wheel's own frame would turn with it like a painted stripe)
-const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.9, 0.6, 0, 0.6));
+// The running gear (classes 2, 4 and 5) wears the packed deep coat all round and none of the settled film: round 5's
+// first GPU frames found the film on the track's up-facing faces and a pale coat on the wheels' upper arcs drawing
+// "the cream outline round the tracks" again (wave 264's exact complaint). Class 5, the wheel paint: no plate use-wear
+// (a streak or chip in a wheel's own frame would turn with it like a painted stripe).
+const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.75, 0, 5, 0.6));
 // (class 4: no use-wear, but like the track iron it wears the packed deep coat all the way up, not the drier, paler
 // splash: a pale top run read as "a bright white outline traces both track runs" on wave 264's M60A1)
-const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0.5, 4, 0.6));
-const ROLE_IRON = Object.freeze(new THREE.Vector4(0.9, 0.6, 2, 0.6));
+const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0, 4, 0.6));
+const ROLE_IRON = Object.freeze(new THREE.Vector4(0.9, 0, 2, 0.6));
 // The scrolling track band: the iron's deep coat all round but no polish. Its texture runs while its mesh stands still,
 // so a polish pattern laid in the mesh's frame would stand still on a moving track (its own painted worn crests carry
 // the wear); the shoes and links, which ride with their instances, take the iron's polish.
-const ROLE_BAND = Object.freeze(new THREE.Vector4(0.9, 0.6, 4, 0.6));
+const ROLE_BAND = Object.freeze(new THREE.Vector4(0.9, 0, 4, 0.6));
 const ROLE_STEEL = Object.freeze(new THREE.Vector4(0.9, 0.8, 3, 1));
 const ROLE_SOFT = Object.freeze(new THREE.Vector4(0.85, 1, 0, 0.8));
 const ROLE_GLASS = Object.freeze(new THREE.Vector4(0.25, 0.35, 0, 0.5));
@@ -547,9 +553,9 @@ export function bindVehicleFieldWear(
 }
 
 // ---------------------------------------------------------------------------------------------------------- GLSL
-/** Vertex: the wear pattern's frame, each mesh's own (it rides a turning turret, a spinning wheel or a running shoe);
- * every instance of an instanced or batched part takes its own offset, so identical skirt panels or wheels never
- * repeat one pattern (round 4's "identical sawtooth" along the skirts). */
+/** Vertex: the wear pattern's frame, each mesh's own (it rides a turning turret, a spinning wheel or a running shoe), in
+ * metres whatever the mesh's scale; every instance of an instanced or batched part takes its own offset, so identical
+ * skirt panels or wheels never repeat one pattern (round 4's "identical sawtooth" along the skirts). */
 export const FIELD_WEAR_VERTEX_PARS = /* glsl */ `
 uniform vec4 uVehGround;
 uniform vec3 uVehUp;
@@ -558,26 +564,42 @@ uniform vec4 uVehWearSoot;
 uniform vec4 uVehWearSootAxis;
 varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying float vCotWearSootOff;
+varying vec3 vCotWearSide;
 vec3 cotWearSeed( const in float id ) {
 	return fract( vec3( id * 0.6180339, id * 0.4142136, id * 0.7320508 ) + 0.37 ) * 7.0;
 }
 `;
-/** ...and, per vertex, the vehicle frame (height above the ground contact, the normal along the vehicle's up and
- * forward, the station along the hull) and the bound soot source's (along its axis, off it), so the fragment does no
- * matrix work: all are linear across a plate, and a smooth part interpolates its normals. Packed into two vec4 and a
- * float (the pattern position carries the height in its w): two and a quarter varying slots beside three's own. */
+/** ...and, per vertex: the vehicle frame (height above the ground contact, the normal along the vehicle's up and forward,
+ * the station along the hull), the bound soot source's (along its axis, off it), and the runs' frame: the position on a
+ * level plane, in the mesh's own metres, on a horizontal basis built from the vehicle's up in the mesh's frame (round 5's
+ * GPU frames: streak columns laid along a mesh's own axis drew "a repeated diagonal bar pattern" on the M60A1 wherever a
+ * part was turned). The runs are a 3D noise over that plane and the height, stretched up, so they hang straight down
+ * every face, flat or round, with no projection seam. All are linear across a plate. */
 export const FIELD_WEAR_VERTEX = /* glsl */ `
+	float cotWearScale = length( modelMatrix[ 0 ].xyz );
+	vec3 cotWearUp = ( vec4( uVehUp, 0.0 ) * modelMatrix ).xyz;
 	vec3 cotWearPos = transformed;
 	vec4 cotWearWorld = vec4( transformed, 1.0 );
 	#ifdef USE_BATCHING
-		cotWearPos += cotWearSeed( getIndirectIndex( gl_DrawID ) );
+		cotWearScale *= length( batchingMatrix[ 0 ].xyz );
+		cotWearUp = ( vec4( cotWearUp, 0.0 ) * batchingMatrix ).xyz;
 		cotWearWorld = batchingMatrix * cotWearWorld;
 	#endif
 	#ifdef USE_INSTANCING
-		cotWearPos += cotWearSeed( float( gl_InstanceID ) );
+		cotWearScale *= length( instanceMatrix[ 0 ].xyz );
+		cotWearUp = ( vec4( cotWearUp, 0.0 ) * instanceMatrix ).xyz;
 		cotWearWorld = instanceMatrix * cotWearWorld;
 	#endif
+	cotWearPos *= cotWearScale;
+	#ifdef USE_BATCHING
+		cotWearPos += cotWearSeed( getIndirectIndex( gl_DrawID ) );
+	#endif
+	#ifdef USE_INSTANCING
+		cotWearPos += cotWearSeed( float( gl_InstanceID ) );
+	#endif
+	vec3 cotWearV = normalize( cotWearUp );
+	vec3 cotWearE1 = normalize( cross( cotWearV, abs( cotWearV.x ) < 0.9 ? vec3( 1.0, 0.0, 0.0 ) : vec3( 0.0, 0.0, 1.0 ) ) );
+	vec2 cotWearLevel = vec2( dot( cotWearPos, cotWearE1 ), dot( cotWearPos, cross( cotWearV, cotWearE1 ) ) );
 	cotWearWorld = modelMatrix * cotWearWorld;
 	vec3 cotWearN = inverseTransformDirection( transformedNormal, viewMatrix );
 	vec3 cotWearRel = cotWearWorld.xyz - uVehGround.xyz;
@@ -585,7 +607,7 @@ export const FIELD_WEAR_VERTEX = /* glsl */ `
 	vec3 cotSootRel = cotWearWorld.xyz - uVehWearSoot.xyz;
 	float cotSootAlong = dot( cotSootRel, uVehWearSootAxis.xyz );
 	vCotWearFrame = vec4( dot( cotWearN, uVehUp ), dot( cotWearN, uVehWearFwd ), dot( cotWearRel, uVehWearFwd ), cotSootAlong );
-	vCotWearSootOff = length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong );
+	vCotWearSide = vec3( length( cotSootRel - uVehWearSootAxis.xyz * cotSootAlong ), cotWearLevel );
 `;
 
 /** The value noise (inside the receipts' GLSL subset: vehicleFieldWear.selftest.mjs runs these bodies). */
@@ -597,13 +619,28 @@ float cotWearHash( vec2 p ) {
 }
 float cotWearNoise( vec2 x ) {
 	// the lattice wraps every 256 cells, keeping the hash's argument small; the 128-cell shift puts the wrap's seam half a
-	// period from the mesh origin (43 m out for the low octave, 8 m for the fine one), never down a hull's centreline
+	// period from the mesh origin (49 m out for the low octave, 10 m for the fine one), never down a hull's centreline
 	vec2 i = floor( x + 128.0 );
 	i -= floor( i * 0.00390625 ) * 256.0;
 	vec2 f = fract( x );
 	vec2 u = f * f * ( 3.0 - 2.0 * f );
 	return mix( mix( cotWearHash( i ), cotWearHash( i + vec2( 1.0, 0.0 ) ), u.x ),
 		mix( cotWearHash( i + vec2( 0.0, 1.0 ) ), cotWearHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
+float cotWearHash3( vec3 p ) {
+	return fract( sin( dot( p, vec3( 0.1271, 0.3117, 0.0919 ) ) ) * 43758.5453 );
+}
+float cotWearNoise3( vec3 x ) {
+	// the runs: the same lattice in 3D (wrapped every 256 cells, its argument under about 140 rad; the seam 9 m out)
+	vec3 i = floor( x + 128.0 );
+	i -= floor( i * 0.00390625 ) * 256.0;
+	vec3 f = fract( x );
+	vec3 u = f * f * ( 3.0 - 2.0 * f );
+	float lo = mix( mix( cotWearHash3( i ), cotWearHash3( i + vec3( 1.0, 0.0, 0.0 ) ), u.x ),
+		mix( cotWearHash3( i + vec3( 0.0, 1.0, 0.0 ) ), cotWearHash3( i + vec3( 1.0, 1.0, 0.0 ) ), u.x ), u.y );
+	float hi = mix( mix( cotWearHash3( i + vec3( 0.0, 0.0, 1.0 ) ), cotWearHash3( i + vec3( 1.0, 0.0, 1.0 ) ), u.x ),
+		mix( cotWearHash3( i + vec3( 0.0, 1.0, 1.0 ) ), cotWearHash3( i + vec3( 1.0, 1.0, 1.0 ) ), u.x ), u.y );
+	return mix( lo, hi, u.z );
 }
 `;
 
@@ -617,76 +654,68 @@ uniform vec4 uVehWearSplash;
 uniform vec4 uVehWearSettle;
 varying vec4 vCotWearPos;
 varying vec4 vCotWearFrame;
-varying float vCotWearSootOff;
+varying vec3 vCotWearSide;
 ${FIELD_WEAR_NOISE_GLSL}`;
 
 /**
  * The field wear (inside the receipts' GLSL subset). Inputs: wearH (metres above the ground contact along the vehicle's
  * up), wearUp (the face's world normal along that up), wearBack (how squarely it faces the stern: the tracks throw their
- * rooster tail up the rear plate), wearAlong (the station along the hull, the vehicle's own metres), wearSootAlong / wearSootOff (along and off the bound soot source's axis), wearRelief (the
- * plate's normal-map relief: seams, welds, bolts, rings), wearQ (the pattern's 2D frame on the face's own plane: across,
- * then down a vertical plate), wearFoot (metres one pixel spans), wearNear (1 where the fine octave resolves, fading to
- * 0 by 2.2 cm a pixel), wearSootIn (the pixel lies inside the bound soot source's reach), wearN1 / wearN2 (the low and
- * fine noise octaves, 0..1), wearStrength, wearRole, wearHull, wearSoot, wearSootAxis, soilDeep, soilSplash,
- * soilSettle. In and out: wearAlbedo (linear), wearRough, wearMetal.
- * Order: the thrown coat, the settled film and the spatter; then use: track iron and bare steel polished where wheels,
- * ground, hands and tools rub (through the coat), chips along the plate's relief, boots' rubbing on the walkways, grime
- * and rust streaks down the vertical plates, and last the soot of the exhaust or the muzzle over all of it. Every mark
- * darkens or multiplies (the plate painter's law), never a bright stroke; the fine marks resolve only up close.
+ * rooster tail up the rear plate), wearAlong (the station along the hull, the vehicle's own metres), wearSootAlong /
+ * wearSootOff (along and off the bound soot source's axis), wearRelief (the plate's normal-map relief: seams, welds,
+ * bolts, rings), wearFoot (metres one pixel spans), wearNear (1 where the fine octave resolves, fading to 0 by 2.2 cm a
+ * pixel), wearSootIn (the pixel lies inside the bound soot source's reach), wearN1 / wearN2 (the low and fine noise
+ * octaves, 0..1), wearRuns (soft vertical runs up close, 0.5 at range), wearStrength, wearRole, wearHull, wearSoot,
+ * wearSootAxis, soilDeep, soilSplash, soilSettle. In and out: wearAlbedo (linear), wearRough, wearMetal.
+ * Order: the thrown coat and the settled film; up close, track iron and bare steel worn smooth, chips along the plate's
+ * relief, boots' rubbing on the walkways, grime and rust runs; then a cap on how far all of it may lighten the surface,
+ * and last the soot of the exhaust or the muzzle. Round 5's GPU review (2026-10-08): every breakup is soft-edged and
+ * low-contrast (a thresholded fine octave drew "digital camo" blotches on the M60A1's mud flaps), the spatter dots are
+ * gone ("ink-blot specks"), and nothing may lighten a surface by more than about a third: the vehicle readability floor
+ * scales a shaded texel's light by its albedo over its paint's mean, so a coat that lit the dark track band drew "the
+ * cream outline round the tracks" in shade.
  */
 export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
+	float wearL0 = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
 	float wearFar = smoothstep( 0.06, 0.12, wearFoot );
 	float n1 = mix( wearN1, 0.5, wearFar );
 	float n2 = mix( 0.5, wearN2, wearNear );
-	float lineH = wearH - wearBack * 0.35 + ( n1 - 0.5 ) * 0.6 + ( n2 - 0.5 ) * 0.14;
+	float runs = mix( 0.5, wearRuns, wearNear );
+	// the coat's top line wanders with the low octave and hangs in soft runs up close
+	float lineH = wearH - wearBack * 0.35 + ( n1 - 0.5 ) * 0.6 + ( runs - 0.5 ) * 0.24 + ( n2 - 0.5 ) * 0.05;
+	float gearCoat = step( 1.5, wearRole.z ) * ( 1.0 - step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 ) );
 	if ( lineH < 1.45 ) {
-		// the coat thrown up off the tracks; track iron and rubber (classes 2 and 4) keep its packed deep colour all round
+		// thrown up off the tracks; the running gear (classes 2, 4 and 5) keeps its packed deep colour all round
 		float coat = 1.0 - smoothstep( 0.2, 1.45, lineH );
-		float gearCoat = step( 1.5, wearRole.z ) * ( 1.0 - step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 ) );
 		float deep = max( clamp( 1.0 - smoothstep( 0.05, 0.75, lineH ) + ( n1 - 0.5 ) * 0.5, 0.0, 1.0 ), gearCoat );
-		vec3 coatCol = mix( soilSplash.rgb, soilDeep.rgb, deep ) * ( 0.75 + 0.5 * n2 );
-		float cover = coat;
-		if ( wearNear > 0.0 ) {
-			// a coat far paler than the surface under it (desert dust on black rubber) lies as a film, not in patches:
-			// broken up as hard as a dark coat, it reads as holes
-			float coatOver = clamp( ( dot( coatCol - wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) ) - 0.08 ) * 4.0, 0.0, 1.0 );
-			float patchy = min( smoothstep( 0.25, 0.75, coat * 0.85 + ( n2 - 0.5 ) * 0.8 + ( n1 - 0.5 ) * 0.35 ), coat * 2.5 );
-			cover = mix( coat, patchy, wearNear * mix( 0.85, 0.3, coatOver ) );
-		}
+		vec3 coatCol = mix( soilSplash.rgb, soilDeep.rgb, deep ) * ( 0.9 + 0.2 * n1 );
+		// soft, low-contrast breakup: the fine octave and the runs nudge the cover where it is partial, never threshold it
+		float cover = clamp( coat + ( ( n2 - 0.5 ) * 0.3 + ( runs - 0.5 ) * 0.3 ) * coat * ( 1.0 - coat ) * 4.0, 0.0, 1.0 );
 		cover *= 0.85 + 0.3 * clamp( - wearUp, 0.0, 1.0 ) + 0.15 * clamp( wearUp, 0.0, 1.0 ) + 0.2 * wearBack;
 		float coatAmt = clamp( cover * wearStrength * wearRole.x, 0.0, 1.0 );
 		wearAlbedo = mix( wearAlbedo, coatCol, coatAmt * 0.85 );
 		wearRough = mix( wearRough, mix( 1.0, 0.35, soilDeep.a * deep ), coatAmt );
 		wearMetal = mix( wearMetal, 0.0, coatAmt );
 	}
-	if ( wearUp > 0.3 ) {
-		// the dry film settles on faces that look up, thinner up the turret (a film, not specks: a fine speckle on dark
-		// ledges read as snow in wave 264, "pale specks over the turret")
-		float settle = smoothstep( 0.3, 0.85, wearUp ) * soilSettle.a * wearRole.y * ( 0.35 + 0.65 * n1 )
-			* ( 1.0 - 0.5 * smoothstep( 1.2, 2.8, wearH ) ) * ( 0.85 + 0.3 * n2 );
+	if ( wearUp > 0.3 && wearRole.y > 0.0 ) {
+		// the dry film settles on faces that look up, thinner up the turret
+		float settle = smoothstep( 0.3, 0.85, wearUp ) * soilSettle.a * wearRole.y * ( 0.45 + 0.55 * n1 )
+			* ( 1.0 - 0.5 * smoothstep( 1.2, 2.8, wearH ) ) * ( 0.9 + 0.2 * n2 );
 		float settleAmt = clamp( settle * wearStrength, 0.0, 1.0 ) * 0.55;
-		wearAlbedo = mix( wearAlbedo, soilSettle.rgb * ( 0.92 + 0.16 * n1 ), settleAmt );
+		wearAlbedo = mix( wearAlbedo, soilSettle.rgb, settleAmt );
 		wearRough = mix( wearRough, 1.0, settleAmt );
 	}
 	if ( wearNear > 0.0 ) {
-		// up close only (the fine octave resolves): spatter, polish, chips, rubbed walkways, streaks
-		float spatZone = smoothstep( 0.25, 0.6, wearH ) * ( 1.0 - smoothstep( 0.6, 1.4, lineH - 0.3 ) ) * soilSplash.a;
-		float spatCut = mix( 0.6, 0.86, smoothstep( 0.35, 1.45, wearH ) ) - ( n1 - 0.5 ) * 0.45;
-		float spat = smoothstep( spatCut, spatCut + 0.05, wearN2 ) * spatZone * wearNear;
-		float spatAmt = clamp( spat * wearStrength * wearRole.x, 0.0, 1.0 );
-		wearAlbedo = mix( wearAlbedo, mix( soilSplash.rgb, soilDeep.rgb, 0.5 ), spatAmt * 0.85 );
-		wearRough = mix( wearRough, mix( 1.0, 0.5, soilDeep.a ), spatAmt );
 		float isPaint = step( 0.5, wearRole.z ) * step( wearRole.z, 1.5 );
 		float isIron = step( 1.5, wearRole.z ) * step( wearRole.z, 2.5 );
 		float isSteel = step( 2.5, wearRole.z ) * step( wearRole.z, 3.5 );
-		float polish = isIron * smoothstep( 0.45, 0.85, wearUp ) * ( 1.0 - smoothstep( 1.15, 1.4, wearH ) )
-			* ( 0.4 + 0.6 * smoothstep( 0.35, 0.65, n2 ) );
-		polish = max( polish, isSteel * smoothstep( 0.58, 0.72, n2 * 0.6 + n1 * 0.4 ) * 0.8 ) * wearStrength * wearNear;
-		// dark bare steel (a fifth reflectance): a gleam where the light rakes it, never the pale planks of wave 269
-		wearAlbedo = mix( wearAlbedo, vec3( 0.22, 0.215, 0.205 ), polish * 0.6 );
-		wearRough = mix( wearRough, 0.42, polish * 0.8 );
-		wearMetal = mix( wearMetal, 0.7, polish * 0.8 );
-		float chip = isPaint * smoothstep( 0.35, 0.75, wearRelief ) * smoothstep( 0.6, 0.67, n2 + ( n1 - 0.5 ) * 0.25 ) * wearNear * wearStrength;
+		// worn smooth where wheels, ground, hands and tools rub: a dull dark sheen, never a bright edge
+		float polish = isIron * smoothstep( 0.45, 0.85, wearUp ) * ( 1.0 - smoothstep( 1.15, 1.4, wearH ) ) * smoothstep( 0.4, 0.7, n2 );
+		polish = max( polish, isSteel * smoothstep( 0.55, 0.75, n2 * 0.6 + n1 * 0.4 ) ) * wearStrength * wearNear;
+		wearAlbedo = mix( wearAlbedo, vec3( 0.075, 0.073, 0.07 ), polish * 0.5 );
+		wearRough = mix( wearRough, 0.6, polish * 0.6 );
+		wearMetal = mix( wearMetal, 0.3, polish * 0.5 );
+		// chips along the plate's own relief (seams, welds, bolts, rings), sparse and soft-edged
+		float chip = isPaint * smoothstep( 0.4, 0.8, wearRelief ) * smoothstep( 0.6, 0.76, n2 + ( n1 - 0.5 ) * 0.2 ) * wearNear * wearStrength;
 		// where crews climb and walk: the front fenders and the glacis top, and the rear deck's edge
 		float walkway = step( 0.05, wearHull.z ) * isPaint * smoothstep( 0.8, 0.95, wearUp ) * smoothstep( 0.7, 0.9, wearH )
 			* ( 1.0 - smoothstep( wearHull.z + 0.05, wearHull.z + 0.3, wearH ) )
@@ -695,22 +724,23 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		float rubLuma = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
 		wearAlbedo = mix( wearAlbedo, mix( wearAlbedo, vec3( rubLuma ), 0.25 ) * 1.08, walkway * 0.7 );
 		wearRough = mix( wearRough, 0.55, walkway * 0.7 );
-		chip = max( chip, walkway * smoothstep( 0.68, 0.74, wearN2 ) );
-		wearAlbedo = mix( wearAlbedo, vec3( 0.045, 0.043, 0.04 ), chip * 0.9 );
-		wearRough = mix( wearRough, 0.5, chip );
-		wearMetal = mix( wearMetal, 0.45, chip );
-		float streakZone = isPaint * ( 1.0 - smoothstep( 0.2, 0.45, abs( wearUp ) ) ) * smoothstep( 0.4, 0.75, wearH )
+		chip = max( chip, walkway * smoothstep( 0.64, 0.78, wearN2 ) );
+		wearAlbedo = mix( wearAlbedo, vec3( 0.05, 0.048, 0.044 ), chip * 0.65 );
+		wearRough = mix( wearRough, 0.55, chip * 0.8 );
+		wearMetal = mix( wearMetal, 0.3, chip * 0.8 );
+		// grime and rust runs hanging down the vertical painted plates: the runs' crests where the low octave allows, thin,
+		// soft and sparse, a multiply
+		float streakZone = isPaint * ( 1.0 - smoothstep( 0.2, 0.45, abs( wearUp ) ) ) * smoothstep( 0.45, 0.8, wearH )
 			* ( 1.0 - smoothstep( 2.6, 3.0, wearH ) );
-		if ( streakZone > 0.0 ) {
-			// thin runs hanging down a plate: a 4.5 cm column streaks when its hash says so, soft-edged across, its runs as
-			// long as the low octave's cells
-			float streakCol = wearQ.x * 22.0;
-			float streak = step( 0.86, cotWearHash( vec2( floor( streakCol ), 17.0 ) ) ) * ( 1.0 - abs( fract( streakCol ) * 2.0 - 1.0 ) )
-				* smoothstep( 0.45, 0.65, n1 ) * streakZone * wearNear * wearStrength;
-			vec3 streakTint = mix( vec3( 0.66, 0.64, 0.61 ), vec3( 0.78, 0.6, 0.46 ), smoothstep( 0.55, 0.75, n1 ) );
-			wearAlbedo *= mix( vec3( 1.0 ), streakTint, streak * 0.6 );
-		}
+		float streak = smoothstep( 0.66, 0.86, runs ) * smoothstep( 0.52, 0.72, n1 ) * streakZone * wearNear * wearStrength;
+		vec3 streakTint = mix( vec3( 0.74, 0.72, 0.69 ), vec3( 0.8, 0.67, 0.55 ), smoothstep( 0.6, 0.8, n1 ) );
+		wearAlbedo *= mix( vec3( 1.0 ), streakTint, streak * 0.45 );
 	}
+	// the wear darkens freely but lightens a surface by at most about a third: dark gear stays dark (under every soil and
+	// in shade, where the readability floor scales a texel's light by its albedo over its paint's mean), and a pale soil
+	// tints a deck rather than washing it white
+	float wearL = dot( wearAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) );
+	wearAlbedo *= min( 1.0, ( wearL0 * 1.35 + 0.01 ) / max( wearL, 0.0001 ) );
 	if ( wearSootIn ) {
 		// the bound source's soot: the exhaust's fan or the muzzle's carbon (the glue tests its reach)
 		float sootLen = max( wearSootAxis.w, 0.05 );
@@ -726,8 +756,9 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 /**
  * Fragment glue (after the normal maps, before any light reads the surface): the vehicle and soot frames from the vertex
  * stage (the back face of a double-sided card turns them over, as three's own normal does; a back-side material's normal
- * is already flipped in the vertex stage), the footprint and the projection plane in uniform control flow, the two noise
- * octaves (the fine one only up close), then the core.
+ * is already flipped in the vertex stage), the footprint and the projection plane in uniform control flow, the noise
+ * (the low octave on a turned lattice, so its cells never line up with a plate's edges; the fine octave and the runs only
+ * up close), then the core.
  */
 export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 	if ( uVehGround.w > 0.0 && uVehWearRole.x + uVehWearRole.y + uVehWearRole.w > 0.0 ) {
@@ -740,7 +771,7 @@ export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 		float wearBack = clamp( - vCotWearFrame.y * wearSide, 0.0, 1.0 );
 		float wearAlong = vCotWearFrame.z;
 		float wearSootAlong = vCotWearFrame.w;
-		float wearSootOff = vCotWearSootOff;
+		float wearSootOff = vCotWearSide.x;
 		// the pattern's frame and footprint from the screen derivatives: the face's own plane in the mesh frame picks the
 		// projection (a side plate's z and y, a deck's x and z), so the noise keeps its shape on every plate
 		vec3 wearDx = dFdx( vCotWearPos.xyz );
@@ -761,9 +792,20 @@ export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 		if ( wearH < 1.75 || wearUp > 0.3 || wearNear > 0.0 || wearSootIn ) {
 			vec3 wearP = vCotWearPos.xyz;
 			vec2 wearQ = wearFace.x > max( wearFace.y, wearFace.z ) ? wearP.zy : ( wearFace.y > wearFace.z ? wearP.xz : wearP.xy );
-			float wearN1 = cotWearNoise( wearQ * vec2( 3.0, 2.0 ) );
+			wearQ = vec2( wearQ.x * 0.8 - wearQ.y * 0.6, wearQ.x * 0.6 + wearQ.y * 0.8 );
+			float wearN1 = cotWearNoise( wearQ * 2.6 );
 			float wearN2 = 0.5;
-			if ( wearNear > 0.0 ) wearN2 = cotWearNoise( wearQ * 16.0 + vec2( 7.3, 2.9 ) );
+			float wearRuns = 0.5;
+			if ( wearNear > 0.0 ) {
+				wearN2 = cotWearNoise( wearQ * 12.0 + vec2( 7.3, 2.9 ) );
+				// the runs hang down the faces that stand up, and never on the running gear (classes 2, 4 and 5: it turns
+				// under a pattern laid level with the ground)
+				float wearRunsW = ( 1.0 - smoothstep( 0.7, 0.95, abs( wearUp ) ) ) * ( 1.0 - step( 1.5, uVehWearRole.z )
+					* ( 1.0 - step( 2.5, uVehWearRole.z ) * step( uVehWearRole.z, 3.5 ) ) );
+				if ( wearRunsW > 0.0 ) {
+					wearRuns = mix( 0.5, cotWearNoise3( vec3( vCotWearSide.yz * 14.0, wearH * 1.3 ) + vec3( 3.1, 5.7, 0.6 ) ), wearRunsW );
+				}
+			}
 			float wearStrength = uVehGround.w;
 			vec4 wearRole = uVehWearRole;
 			vec4 wearHull = uVehWearHull;

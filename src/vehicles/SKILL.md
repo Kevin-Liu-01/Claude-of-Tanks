@@ -404,15 +404,21 @@ soil follows its terrain (`VEHICLE_FIELD_GROUNDS`: each map's dirt and ground la
 vehicles follow) and is set by `setCamoBiome`. Each draw binds its root's strength (`root.userData.fieldWear`: 1 in
 battle, `VEHICLE_FIELD_WEAR_GARAGE` with the Garage's neutral film, 0 none: tooling that needs a clean vehicle sets 0)
 and its material's role (`vehicleFieldWearRole`: the appearance role or decor family; alpha-cut cards take none; opt a
-material out with `userData.cotWearRole = 'none'`). The pattern rides each mesh's own frame with a per-instance offset
-(identical panels never repeat one pattern), the vehicle frame (height, up, stern) comes from the vertex stage, and
+material out with `userData.cotWearRole = 'none'`). The pattern rides each mesh's own frame in metres with a per-instance offset
+(identical panels never repeat one pattern), the vehicle frame (height, up, stern) comes from the vertex stage, the
+runs lie across each face level with the ground (never along a mesh's own axis: a turned mesh drew diagonal bars), and
 every octave settles to its mean before it can sparkle. Use-wear reads what `installVehicleFieldWear` publishes at
 build end (before static batching): the hull frame measured from the unbatched plates, the exhaust (rear deck and plate,
 or the left flank for the T-54/55/62, T-64/72/90, PT-91, M-84 and BMPT lineage) and `rig_muzzle`; each draw binds one
 soot source (the gun's paint and bare steel the muzzle, the rest the exhaust), placed once per rendered frame. The role's
 z picks the use-wear class (1 painted metal: chips along the normal-map relief, rubbed walkways at the bow and the stern,
-column streaks; 2 track iron: polished up-facing faces; 3 bare steel: polished contact spots), its w the soot it takes.
-Every mark darkens or multiplies; the fine marks resolve only up close.
+thin grime runs; 2 track iron: up-facing faces worn smooth; 3 bare steel: contact spots worn smooth; 4 rubber and the
+scrolling band, 5 wheels), its w the soot it takes; classes 2, 4 and 5 keep the dark packed coat all round and take no
+film. Round 5's first GPU frames (M60A1 on Sirocco) set three laws: the coat's breakup is soft-edged and low-contrast
+(a thresholded octave read as camouflage), the desert's contrast is darker grime low with only a tint on the decks
+(a pale film washed the tank white), and the wear never lightens a surface by more than about a third (the
+readability floor scales a shaded texel's light by its albedo over the paint's mean, so a lit-up track band drew a
+cream outline round the tracks). Marks darken or multiply; the fine marks resolve only up close.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

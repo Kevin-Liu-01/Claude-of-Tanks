@@ -5,7 +5,8 @@
 //    each map's climate is its groundRedux.ts class;
 // 2. the shader text runs through the receipts' GLSL subset (src/world/glslSubset.test-support.mjs): the glue in full,
 //    the core's laws (graded up from the ground contact, film only on faces that look up, the far octaves settle to their
-//    mean, the desert's dust lighter than a tan paint, the farmland's coat darker and wetter, nothing at strength 0);
+//    mean, the desert's grime darker than a tan paint and its film only a tint, the farmland's coat darker and wetter, the
+//    running gear dark under every soil, the breakup soft, nothing lit past the cap, nothing at strength 0);
 // 3. the plumbing: per-draw roles and soils, setCamoBiome → the battle soil, the floor hook's uniforms and injections with
 //    no define (no program variant) and the per-root strength through setVehicleGroundFromRoot.
 import assert from 'node:assert/strict';
@@ -87,13 +88,15 @@ const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     near(row.ground, await layerMean(plan.G, S.sourcedTint?.G), `${id} ground`);
     assert.equal(row.climate, resolveGroundReduxProfile(id).climate, `${id} wears its ground's climate`);
   }
-  // the derived soils keep the critics' reads: farmland darker and wet low, desert dust lighter than a tan paint with a
-  // darker grime under it, winter snow on the decks
+  // the derived soils keep the critics' reads: farmland darker and wet low; the desert's contrast a darker grime low
+  // with only a faint film near the paint's own value on the decks (round 5's GPU frames: a pale film washed the M60A1
+  // white); winter snow on the decks
   const farm = vehicleFieldSoil('verdant'), desert = vehicleFieldSoil('desert'), winter = vehicleFieldSoil('winter');
   const tanPaint = [0.40, 0.33, 0.22];
   assert.ok(farm.wet >= 0.6 && luma(farm.deep) < luma(farm.splash) && luma(farm.splash) < luma(farm.settle), 'farmland: wet deep, drier up, dust on the decks');
   assert.ok(luma(farm.deep) >= 0.03 && luma(farm.deep) < 0.08, 'farmland coat is dark wet earth, not a black void and not cream');
-  assert.ok(luma(desert.settle) > luma(tanPaint) * 1.15 && luma(desert.deep) < luma(desert.splash) * 0.75, 'desert dust is lighter than tan paint over a darker grime');
+  assert.ok(luma(desert.deep) < luma(tanPaint) * 0.45 && luma(desert.deep) < luma(desert.splash) * 0.75, 'desert: a darker grime low');
+  assert.ok(luma(desert.settle) < luma(tanPaint) * 1.05 && desert.settleAmount <= 0.4, 'desert: at most a faint film on the decks');
   assert.ok(desert.wet <= 0.2, 'desert dust is dry');
   assert.ok(luma(winter.settle) > 0.6 && luma(winter.splash) < 0.15, 'winter: snow on the decks, dark slush thrown up');
   assert.equal(vehicleFieldSoil('no-such-map'), vehicleFieldSoil('verdant'), 'an unknown map reads as Verdant');
@@ -101,24 +104,39 @@ const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 
 // ---------------------------------------------------------------- 2. the shader text through the GLSL subset
 const fnTree = (name) => {
-  const text = FIELD_WEAR_NOISE_GLSL; const at = text.indexOf(`${name}(`); const open = text.indexOf('{', at);
+  const text = FIELD_WEAR_NOISE_GLSL; const at = text.indexOf(name.endsWith('(') ? name : `${name}(`); const open = text.indexOf('{', at);
   let depth = 1, k = open + 1; for (; depth; k++) { if (text[k] === '{') depth++; else if (text[k] === '}') depth--; }
   return parseGlsl(text.slice(open + 1, k - 1));
 };
-const hashT = fnTree('cotWearHash'), noiseT = fnTree('cotWearNoise');
+const hashT = fnTree('cotWearHash('), noiseT = fnTree('cotWearNoise(');
+const hash3T = fnTree('cotWearHash3'), noise3T = fnTree('cotWearNoise3');
 const fns = {};
 fns.cotWearHash = (p) => runGlslFunction(hashT, { p }, fns, new Set());
 fns.cotWearNoise = (x) => runGlslFunction(noiseT, { x }, fns, new Set());
+fns.cotWearHash3 = (p) => runGlslFunction(hash3T, { p }, fns, new Set());
+fns.cotWearNoise3 = (x) => runGlslFunction(noise3T, { x }, fns, new Set());
 for (let i = 0; i < 64; i++) {
   const v = fns.cotWearNoise([i * 0.731 - 9, i * 1.37 + 2]);
   assert.ok(v >= 0 && v <= 1, 'the value noise stays in 0..1');
+  const w = fns.cotWearNoise3([i * 0.731 - 9, i * 1.37 + 2, i * 0.29 - 4]);
+  assert.ok(w >= 0 && w <= 1, 'and the runs\' 3D octave');
+}
+// the 3D octave is continuous (no lattice seam inside a hull's reach) and varies (a sane hash)
+{
+  let jump = 0, lo = 1, hi = 0, prev = null;
+  for (let k = 0; k <= 400; k++) {
+    const w = fns.cotWearNoise3([k * 0.01 - 2, 0.37, 0.8]);
+    if (prev !== null) jump = Math.max(jump, Math.abs(w - prev));
+    lo = Math.min(lo, w); hi = Math.max(hi, w); prev = w;
+  }
+  assert.ok(jump < 0.06 && hi - lo > 0.4, `the runs' octave is smooth and varied (step ${jump.toFixed(3)}, range ${(hi - lo).toFixed(2)})`);
 }
 const core = parseGlsl(FIELD_WEAR_CORE_GLSL);
-const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, s.spatter], soilSettle: [...s.settle, s.settleAmount] });
-const PAINT = [1, 1, 1, 1], IRON = [0.9, 0.6, 2, 0.6], STEEL = [0.9, 0.8, 3, 1];
+const soilVec = (s) => ({ soilDeep: [...s.deep, s.wet], soilSplash: [...s.splash, 0], soilSettle: [...s.settle, s.settleAmount] });
+const PAINT = [1, 1, 1, 1], IRON = [0.9, 0, 2, 0.6], STEEL = [0.9, 0.8, 3, 1];
 const BASE = {
   wearH: 0.3, wearUp: 0, wearBack: 0, wearAlong: 0, wearSootAlong: 0, wearSootOff: 9, wearRelief: 0,
-  wearQ: [0.31, 1.2], wearFoot: 0.004, wearN1: 0.5, wearN2: 0.5, wearStrength: 1, wearRole: PAINT,
+  wearFoot: 0.004, wearN1: 0.5, wearN2: 0.5, wearRuns: 0.5, wearStrength: 1, wearRole: PAINT,
   wearHull: [-3.4, 3.6, 1.5, 1.8], wearSoot: [0, 0, 0, 0], wearSootAxis: [0, 0, 1, 1],
   ...soilVec(vehicleFieldSoil('verdant')), wearAlbedo: [0.1, 0.12, 0.06], wearRough: 0.7, wearMetal: 0.05,
 };
@@ -157,24 +175,27 @@ const darkGreen = [0.05, 0.065, 0.035];
 assert.ok(coatAt(2.2, 1, 'verdant', darkGreen) > 0.004 && coatAt(2.2, 0, 'verdant', darkGreen) < 1e-6, 'dust settles on the roof, not the turret side');
 assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkGreen), 'the film thins up the turret');
 // the far octaves settle to their mean: at a battle footprint the noise inputs change nothing (no sparkle), and the
-// fine marks (spatter, polish, chips, walkways, streaks) are gone
+// fine marks (polish, chips, walkways, runs) are gone
 {
   for (const over of [{}, { wearRole: IRON, wearUp: 1 }, { wearRelief: 1, wearUp: 1, wearH: 1.5, wearAlong: 3.2 }]) {
-    const a = run({ wearFoot: 0.2, wearN1: 0, wearN2: 0, wearH: 0.6, wearUp: 0.5, ...over });
-    const b = run({ wearFoot: 0.2, wearN1: 1, wearN2: 1, wearH: 0.6, wearUp: 0.5, ...over });
+    const a = run({ wearFoot: 0.2, wearN1: 0, wearN2: 0, wearRuns: 0, wearH: 0.6, wearUp: 0.5, ...over });
+    const b = run({ wearFoot: 0.2, wearN1: 1, wearN2: 1, wearRuns: 1, wearH: 0.6, wearUp: 0.5, ...over });
     for (let k = 0; k < 3; k++) assert.ok(Math.abs(a.wearAlbedo[k] - b.wearAlbedo[k]) < 1e-9, 'band-limited at range');
     assert.ok(Math.abs(a.wearMetal - b.wearMetal) < 1e-9, 'no polish or chip at range');
   }
 }
-// farmland darkens a light green low and leaves it wet; the desert's film lightens a tan paint on the decks
+// farmland darkens a light green low and leaves it wet; the desert's film only tints a tan deck; the desert's grime
+// darkens the tan lower hull (its value contrast)
 {
   const light = [0.12, 0.16, 0.07];
   const o = run({ wearH: 0.15, wearN1: 0.5, wearN2: 0.5, wearAlbedo: light });
   assert.ok(luma(o.wearAlbedo) < luma(light) && o.wearAlbedo[0] / o.wearAlbedo[1] > light[0] / light[1], 'farmland: dark brown earth low');
   assert.ok(o.wearRough < 0.62, 'farmland earth is wet low on the hull');
   const tan = [0.40, 0.33, 0.22];
-  const d = run({ wearH: 1.0, wearUp: 1, wearN1: 0.6, wearN2: 0.6, wearRole: [1, 1, 0, 0], ...soilVec(vehicleFieldSoil('desert')), wearAlbedo: tan });
-  assert.ok(luma(d.wearAlbedo) > luma(tan) * 1.05 && d.wearRough > 0.75, 'desert: a paler, matte dust film on a tan deck');
+  const d = run({ wearH: 1.6, wearUp: 1, wearN1: 0.6, wearN2: 0.6, wearRole: [1, 1, 0, 0], ...soilVec(vehicleFieldSoil('desert')), wearAlbedo: tan });
+  assert.ok(Math.abs(luma(d.wearAlbedo) - luma(tan)) < luma(tan) * 0.08 && d.wearRough > BASE.wearRough + 0.02, 'desert: a faint, matte film on a tan deck');
+  const low = run({ wearH: 0.3, wearUp: 0, wearRole: [1, 1, 0, 0], ...soilVec(vehicleFieldSoil('desert')), wearAlbedo: tan });
+  assert.ok(luma(low.wearAlbedo) < luma(tan) * 0.6, 'desert: a darker grime low on a tan hull');
 }
 // use: soot near the bound source (the muzzle or the exhaust), nothing past its reach or behind its mouth
 {
@@ -190,39 +211,65 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
 // chips along the plate's relief only, boots' rubbing on the walkways near the bow, streaks down the vertical plates
 {
   const iron = run({ wearRole: IRON, wearUp: 1, wearH: 0.9, wearN2: 0.8, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
-  assert.ok(iron.wearMetal > 0.45 && iron.wearRough < 0.6 && luma(iron.wearAlbedo) > 0.07 && luma(iron.wearAlbedo) < 0.2,
-    'polished track iron on its up-facing faces: dark bare steel, not a pale plank');
+  const ironCoat = run({ wearRole: IRON, wearUp: 1, wearH: 0.9, wearN2: 0.3, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
+  assert.ok(iron.wearMetal > ironCoat.wearMetal + 0.04 && iron.wearRough < ironCoat.wearRough && luma(iron.wearAlbedo) < 0.06,
+    'track iron worn smooth on its up-facing faces: a dull dark sheen, never a pale plank');
   const ironSide = run({ wearRole: IRON, wearUp: 0, wearH: 0.9, wearN2: 0.8, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
-  assert.ok(ironSide.wearMetal < 0.25, 'not on its sides');
+  const ironSideCoat = run({ wearRole: IRON, wearUp: 0, wearH: 0.9, wearN2: 0.3, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
+  assert.ok(ironSide.wearMetal <= ironSideCoat.wearMetal + 1e-9, 'not on its sides');
   // the track's top run and the tyres keep the dark packed coat, never the pale splash (wave 264: "a bright white outline
   // traces both track runs"); a painted plate at the same height takes the paler splash
   const desertSoil = soilVec(vehicleFieldSoil('desert'));
-  for (const role of [IRON, [0.9, 0.5, 4, 0.6]]) {
-    const top = run({ wearRole: role, wearUp: 0, wearH: 0.85, wearN1: 0.5, wearN2: 0.5, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
-    const plate = run({ wearRole: [1, 1, 0, 0], wearUp: 0, wearH: 0.85, wearN1: 0.5, wearN2: 0.5, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
-    assert.ok(luma(top.wearAlbedo) < luma(plate.wearAlbedo) * 0.7, 'the running gear keeps the dark deep coat at its top');
+  const tanWheel = [0.3, 0.25, 0.17];
+  for (const role of [IRON, [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6]]) {
+    const top = run({ wearRole: role, wearUp: 0, wearH: 0.85, ...desertSoil, wearAlbedo: tanWheel });
+    const plate = run({ wearRole: [1, 1, 0, 0], wearUp: 0, wearH: 0.85, ...desertSoil, wearAlbedo: tanWheel });
+    assert.ok(luma(top.wearAlbedo) < luma(plate.wearAlbedo) * 0.9, 'the running gear keeps the dark deep coat at its top');
+    // and takes no settled film on its up-facing faces (the film on the track's top run drew wave 264's cream outline)
+    const up = run({ wearRole: role, wearUp: 1, wearH: 0.85, ...desertSoil, wearAlbedo: [0.03, 0.03, 0.03] });
+    assert.ok(luma(up.wearAlbedo) <= 0.03 * 1.35 + 0.01 + 1e-9, 'no film, and no lightening past the cap, on the running gear');
+  }
+  // every soil, every role: the wear lightens a dark surface by at most a third (the readability floor scales a shaded
+  // texel's light by its albedo over its paint's mean, so a lit-up track band drew a cream outline in shade)
+  for (const soil of ['verdant', 'desert', 'winter', 'moon', 'mars']) {
+    for (const role of [PAINT, IRON, STEEL, [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6], [0.85, 1, 0, 0.8]]) {
+      for (const h of [0.1, 0.6, 1.2, 2.2]) for (const up of [-1, 0, 1]) {
+        const dark = [0.012, 0.0123, 0.0116];
+        const o = run({ wearRole: role, wearUp: up, wearH: h, wearN1: 0.9, wearN2: 0.9, wearRuns: 0.9, ...soilVec(vehicleFieldSoil(soil)), wearAlbedo: dark });
+        assert.ok(luma(o.wearAlbedo) <= luma(dark) * 1.35 + 0.01 + 1e-9, `${soil}: the wear never lights a dark surface up (${role}, h ${h}, up ${up})`);
+      }
+    }
+  }
+  // soft-edged: the cover never jumps; across the fine octave and the runs the albedo moves smoothly (no thresholded
+  // blotch: round 5's GPU frames read one as "digital camo" on the mud flaps)
+  for (const role of [PAINT, [0.9, 0, 4, 0.6]]) for (const key of ['wearN2', 'wearRuns']) {
+    let jump = 0, prev = null;
+    for (let k = 0; k <= 40; k++) {
+      const o = run({ wearRole: role, wearH: 0.7, [key]: k / 40, ...desertSoil, wearAlbedo: [0.3, 0.25, 0.17] });
+      const l = luma(o.wearAlbedo);
+      if (prev !== null) jump = Math.max(jump, Math.abs(l - prev));
+      prev = l;
+    }
+    assert.ok(jump < 0.006, `the coat's breakup is soft (${key}: largest step ${jump.toFixed(4)} per 1/40)`);
   }
   let worn = 0;
-  for (let i = 0; i <= 10; i++) if (run({ wearRole: STEEL, wearH: 2, wearN1: i / 10, wearN2: i / 10, wearMetal: 0.4 }).wearMetal > 0.5) worn++;
-  assert.ok(worn > 0 && worn < 8, 'bare steel is polished in spots, not all over');
+  for (let i = 0; i <= 10; i++) if (run({ wearRole: STEEL, wearH: 2, wearN1: i / 10, wearN2: i / 10, wearMetal: 0.4 }).wearRough < BASE.wearRough - 0.01) worn++;
+  assert.ok(worn > 0 && worn < 8, 'bare steel is worn smooth in spots, not all over');
   const chipped = run({ wearH: 1.6, wearUp: 0.5, wearRelief: 0.9, wearN2: 0.9 });
   const smooth = run({ wearH: 1.6, wearUp: 0.5, wearRelief: 0, wearN2: 0.9 });
-  assert.ok(chipped.wearMetal > 0.3 && luma(chipped.wearAlbedo) < luma(smooth.wearAlbedo) * 0.7, 'dark chips along the relief');
+  assert.ok(chipped.wearMetal > smooth.wearMetal + 0.12 && luma(chipped.wearAlbedo) < luma(smooth.wearAlbedo) * 0.7, 'dark chips along the relief');
   assert.ok(smooth.wearMetal < 0.1, 'no chips on a plain plate');
   const walk = run({ wearH: 1.45, wearUp: 1, wearAlong: 3.3, wearN1: 0.8, wearN2: 0.6 });
   const midDeck = run({ wearH: 1.45, wearUp: 1, wearAlong: 0.2, wearN1: 0.8, wearN2: 0.6 });
   assert.ok(walk.wearRough < midDeck.wearRough - 0.05, 'boots rub the walkway by the bow smoother than the middle of the deck');
-  // the columns a 4.5 cm hash picks: some streak, most do not, and a streak only darkens
-  let streakCols = 0, darker = true;
-  const plain = run({ wearH: 1.6, wearUp: 0, wearN1: 0.6, wearQ: [0.0227, 1.2], wearRole: [1, 1, 0, 1] });
-  for (let c = 0; c < 200; c++) {
-    const o = run({ wearH: 1.6, wearUp: 0, wearN1: 0.6, wearQ: [(c + 0.5) / 22, 1.2] });
-    const flat = run({ wearH: 1.6, wearUp: 0, wearN1: 0.6, wearQ: [(c + 0.5) / 22, 1.2], wearRole: [1, 1, 0, 1] });
-    if (luma(o.wearAlbedo) < luma(flat.wearAlbedo) * 0.9) streakCols++;
-    darker &&= o.wearAlbedo.every((v, k) => v <= flat.wearAlbedo[k] + 1e-9);
-  }
-  assert.ok(streakCols > 10 && streakCols < 50, `grime streaks hang down some columns of a vertical plate (${streakCols} of 200)`);
-  assert.ok(darker && plain.wearAlbedo.length === 3, 'a streak multiplies: never a bright mark');
+  // grime runs: on a vertical painted plate only where the runs crest and the low octave allows, soft, a multiply
+  const runAt = (runs, n1, up = 0) => run({ wearH: 1.6, wearUp: up, wearN1: n1, wearRuns: runs });
+  const flatPlate = run({ wearH: 1.6, wearUp: 0, wearN1: 0.8, wearRuns: 0.5, wearRole: [1, 1, 0, 1] });
+  assert.ok(luma(runAt(0.95, 0.8).wearAlbedo) < luma(flatPlate.wearAlbedo) * 0.9, 'a grime run hangs where the runs crest');
+  assert.ok(luma(runAt(0.95, 0.3).wearAlbedo) > luma(flatPlate.wearAlbedo) * 0.97, 'sparse: none where the low octave is low');
+  assert.ok(luma(runAt(0.95, 0.8, 1).wearAlbedo) >= luma(run({ wearH: 1.6, wearUp: 1, wearN1: 0.8, wearRuns: 0.5 }).wearAlbedo) - 1e-9,
+    'runs hang on vertical plates, not on decks');
+  assert.ok(runAt(0.95, 0.8).wearAlbedo.every((v, k) => v <= flatPlate.wearAlbedo[k] + 1e-9), 'a run multiplies: never a bright mark');
 }
 // the glue runs whole: the screen derivatives stand in as fixed steps, the normal-map relief block is preprocessor-only
 {
@@ -237,7 +284,7 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   const vars = (h, up, face = 1, role = [1, 1, 0, 0]) => ({
     uVehGround: [0, 0, 0, 1], uVehWearRole: role, uVehWearHull: [-3.4, 3.6, 1.5, 1.8], uVehWearSoot: [0, 0, 0, 0], uVehWearSootAxis: [0, 0, 1, 1],
     ...Object.fromEntries(Object.entries(soilVec(vehicleFieldSoil('verdant'))).map(([k, v]) => [`uVehWear${k.slice(4)}`, v])),
-    vCotWearFrame: [up, 0, 0, 0], vCotWearSootOff: 9, faceDirection: face, vCotWearPos: [1.7, h, 0.4, h],
+    vCotWearFrame: [up, 0, 0, 0], vCotWearSide: [9, 0.37, -0.52], faceDirection: face, vCotWearPos: [1.7, h, 0.4, h],
     diffuseColor: [0.1, 0.12, 0.06, 1], roughnessFactor: 0.7, metalnessFactor: 0.05,
   });
   const low = runGlsl(glue, vars(0.3, 0), stub, new Set());
@@ -260,11 +307,41 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.deepEqual(skipped.diffuseColor, [0.1, 0.12, 0.06, 1], 'a pixel no wear reaches skips the noise');
   assert.ok(FIELD_WEAR_VERTEX.includes('vec3 cotWearPos = transformed;') && FIELD_WEAR_VERTEX.includes('USE_INSTANCING')
     && FIELD_WEAR_VERTEX.includes('USE_BATCHING'), 'instances and batched parts each take their own pattern offset');
+  assert.ok(/cotWearPos \*= cotWearScale/.test(FIELD_WEAR_VERTEX), 'the pattern is in metres, whatever a mesh\'s scale');
+  // the runs' frame (the vertex stage's level basis, run through the subset): on a turned mesh, nothing changes straight
+  // down a face and a step across it is that many metres on the level plane; the runs' 3D octave then hangs straight down
+  // every face, flat or round (a 2D coordinate along a face's own tangent collapses to zero round a cylinder about its
+  // origin, and a projection switch leaves seams)
+  {
+    const a = FIELD_WEAR_VERTEX.indexOf('vec3 cotWearV'), b = FIELD_WEAR_VERTEX.indexOf('cotWearWorld = modelMatrix');
+    assert.ok(a > 0 && b > a, 'the vertex stage builds its runs\' basis');
+    const basis = parseGlsl(`${FIELD_WEAR_VERTEX.slice(a, b)}\ncotWearOut = cotWearLevel;`);
+    const levelAt = (up, p) => runGlsl(basis, { cotWearUp: up, cotWearPos: p, cotWearOut: [0, 0] }, stub, new Set()).cotWearOut;
+    for (const [t, axis] of [[0.35, 'z'], [1.2, 'x'], [Math.PI / 2, 'z']]) {
+      const up = axis === 'z' ? [Math.sin(t), Math.cos(t), 0] : [0, Math.cos(t), Math.sin(t)];
+      const across = axis === 'z' ? [Math.cos(t), -Math.sin(t), 0] : [0, -Math.sin(t), Math.cos(t)];
+      const p0 = [0.2, 0.4, 0.5], l0 = levelAt([up[0] * 2, up[1] * 2, up[2] * 2], p0);
+      const down = levelAt(up, p0.map((v, k) => v - up[k] * 0.7));
+      assert.ok(Math.hypot(down[0] - l0[0], down[1] - l0[1]) < 1e-9, `a turned mesh (${t} about ${axis}): no change straight down a face`);
+      const side = levelAt(up, p0.map((v, k) => v + across[k] * 0.3));
+      assert.ok(Math.abs(Math.hypot(side[0] - l0[0], side[1] - l0[1]) - 0.3) < 1e-9, 'and metres across it on the level plane');
+    }
+  }
+  // the runs are off on the running gear (it turns under a pattern laid level with the ground) and on decks
+  {
+    const at = (role, run, up = 0, h = 0.6) => runGlsl(glue, { ...vars(h, up, 1, role), vCotWearSide: [9, run, -0.52] }, stub, new Set()).diffuseColor;
+    for (const role of [[0.9, 0, 2, 0.6], [0.9, 0, 4, 0.6], [0.75, 0, 5, 0.6]]) {
+      assert.deepEqual(at(role, 0.1), at(role, 0.37), `no runs on the running gear (class ${role[2]})`);
+    }
+    let live = 0;
+    for (let k = 0; k < 12; k++) if (luma(at([1, 1, 1, 1], k * 0.05, 0, 0.9)) !== luma(at([1, 1, 1, 1], 0, 0, 0.9))) live++;
+    assert.ok(live > 6, 'the runs hang down a painted plate');
+  }
   assert.ok(!/viewMatrix|cameraPosition|vViewPosition/.test(FIELD_WEAR_FRAGMENT), 'no matrix work per fragment: the frames come from the vertex stage');
   // varying budget: WebGL2 guarantees only fifteen vectors and three's lit material with four shadow cascades uses about
-  // ten, so the wear packs its frames into two vec4 and a float
+  // ten, so the wear packs its frames into two vec4 and a vec3
   const varyings = [...FIELD_WEAR_FRAGMENT_PARS.matchAll(/varying (float|vec2|vec3|vec4) /g)].map((m) => m[1]);
-  assert.deepEqual(varyings.sort(), ['float', 'vec4', 'vec4'], `the wear's varyings stay packed (${varyings})`);
+  assert.deepEqual(varyings.sort(), ['vec3', 'vec4', 'vec4'], `the wear's varyings stay packed (${varyings})`);
 }
 
 // ---------------------------------------------------------------- 3. plumbing
@@ -378,6 +455,6 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   assert.equal(U.uVehWearHull.value.z, 0, 'nor a hull frame');
 }
 
-console.log(`vehicleFieldWear.selftest: ${MAP_IDS.length} battlefields' soils follow their terrain; the coat, film, spatter, `
-  + 'polish, chips, walkways, streaks and soot grade, settle and band-limit through the shader text; roles, soils, frames, '
-  + 'soot sources and strength bind per draw with no program variant');
+console.log(`vehicleFieldWear.selftest: ${MAP_IDS.length} battlefields' soils follow their terrain; the coat, film, polish, `
+  + 'chips, walkways, runs and soot grade, settle, stay soft, never light a dark surface past the cap and band-limit through '
+  + 'the shader text; roles, soils, frames, soot sources and strength bind per draw with no program variant');
