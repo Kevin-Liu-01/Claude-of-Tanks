@@ -113,6 +113,33 @@ export function craterProfile(stamp: CraterStamp, r: number, angle: number): num
   return bowl + rim;
 }
 
+/** A collapsed structure's heap as the sim raises it: its footprint (world frame) and height (§7). */
+export interface RubbleMound {
+  cx: number;
+  cz: number;
+  hw: number;
+  hd: number;
+  yaw: number;
+  heightM: number;
+}
+
+/**
+ * The heap's height above the ground at world (x, z) — the exact profile the simulation adds to the terrain when the
+ * structure collapses (the plateau over the inner 70 % of the footprint, a cosine skirt to nothing), for the
+ * presentation and the kits to seat rubble on so tracks meet what the eye sees.
+ */
+export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): number {
+  const height = Math.max(0, mound.heightM);
+  const falloff = rubbleFalloffM(mound.hw, mound.hd, height);
+  const c = Math.cos(mound.yaw), s = Math.sin(mound.yaw);
+  const dx = x - mound.cx, dz = z - mound.cz;
+  const along = Math.abs(dx * s + dz * c) - mound.hd * RUBBLE_PLATEAU;
+  const across = Math.abs(dx * c - dz * s) - mound.hw * RUBBLE_PLATEAU;
+  const ox = across > 0 ? across : 0, oz = along > 0 ? along : 0;
+  const outside = Math.sqrt(ox * ox + oz * oz);
+  return outside >= falloff ? 0 : height * 0.5 * (1 + Math.cos(Math.PI * outside / falloff));
+}
+
 /** A rubble mound's profile at (x, z) (§7): the plateau's height, a cosine skirt to nothing. */
 export function rubbleProfile(stamp: RubbleStamp, x: number, z: number): number {
   const dx = x - stamp.cx, dz = z - stamp.cz;

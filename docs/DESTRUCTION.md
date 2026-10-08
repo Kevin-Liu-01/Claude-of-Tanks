@@ -531,6 +531,18 @@ the pile carries the building's weather. Storeys come from `h` and the shell ban
 | Roof (P2 `sectionDown`) | a stripped patch shows battens and rafters (`emitRoofPatch`); a fall adds missing slab sections, a broken ridge and hanging rafters; thatch chars and slumps; an earth roof slumps between its beams; sheet bends |
 | Collapse | remnants (wall stubs, corners, chimneys), a heap of chunk prisms in the building's own buckets with its weather tints plus timbers and roof tiles, seated on the sim's mound (`rubbleMoundHeightAt`), and the falling debris |
 
+**The heap.** `rubbleMoundHeightAt(mound, x, z)` (sim/terrainDeformation.ts; `mound` = `{ cx, cz, hw, hd, yaw, heightM }`,
+world frame) is the exact profile the simulation raises; in the body frame a kit calls
+`bodyMoundHeightAt(anatomy, x, z)` (destructionKit.ts), which reads `anatomy.mound` — the world seam fills it from the
+structure table after `describe` (0 while absent). A `collapse` seats its pile on it.
+
+**Cuts and hides.** A `StructureCut` discards from `outsideM` outside the face plane (default 0.3 m: sills, surrounds
+and shutters inside the hole go too) to `depthM` inside it. A `DamageHide` with `section` and `partClass` both null
+hides everything the structure has.
+
+**The kit's plan.** The world's describe call sites pass `kitPlan: kitPlanFor(parts, style)`; a kit module registers its
+reader once with `setKitPlanReader(...)` (the facades lane's `regionalKitPlanOf`), so the world builder imports no kit.
+
 **Writers.** A builder writes **triangles** into `DamageMeshWriter` runs (one bucket and role a run; vertex position,
 normal, UV, tint; indexed triangles) and **pooled debris** into `DamagePieceWriter` (bucket, shape — chunk, brick,
 block, stone, plate, splinter, beam, tile, slate, sheet, shard, clod, straw, rebar — variant, pose, scale, tint,
