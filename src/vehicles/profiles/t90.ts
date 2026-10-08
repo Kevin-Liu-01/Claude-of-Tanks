@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { barkLog, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
+import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { pushConvexQuad } from '../factoryGeometry.ts';
 import { clippedArmorSkin } from './armorFaceSampling.ts';
@@ -6857,10 +6857,13 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // the end caps that read as emblems"): the drums are painted as drums, in the scheme's solid matte equipment paint
     // (FSP-06 fitting paint), never the hull's digital camouflage; two raised straps with buckles replace the hidden
     // blocks inside the shell, and the outer head carries its bung caps.
+    // Round 5 (2026-10-08; wave 269: "a bright orange plastic-looking cylinder at the rear left"): the scheme's fitting
+    // paint read orange under the warm key. The drums take issue paints (DRUM_ISSUE_PAINTS: a dull green each, never the
+    // same), bold rims and ribs, rust where the straps chafe and a fuel stain, in the vertex-coloured draw the log uses.
     const drum = fuelDrumParts({ r: 0.20, len: 0.72, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
-      detail: P.q === false ? 0 : 1 });
+      detail: P.q === false ? 0 : 1, bold: true, paint: DRUM_ISSUE_PAINTS[s > 0 ? 1 : 2], seed: 7811 + (s > 0 ? 1 : 0) });
     const alongX = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry, -0.36, 0, 0, 0, 0, -Math.PI / 2);
-    P.add('hullFittingPaint', alongX(drum.body), s * 0.62, 1.46, -3.44);
+    P.add('hullBark', alongX(drum.body), s * 0.62, 1.46, -3.44);
     for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), s * 0.62, 1.46, -3.44);
     P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.39);
     P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.36, Math.PI / 2, 0, 0);
@@ -6874,8 +6877,16 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     // wood (hullBark): grey-brown bark, pale sapwood ends round a warmer heart, darker rings, one draw.
     const log = barkLog({ len: 1.48, r: 0.105, seed: 7790, detail: P.q === false ? 0 : 1, relief: 2, tinted: true });
     for (const part of [log.bark, ...(log.stub ? [log.stub] : []), ...log.ends, ...log.grain]) P.add('hullBark', part, 0, 0.79, -3.42);
+    // Round 5 (2026-10-08; wave 255: "the log bundle is identical smooth dowels"): five square dark collars stood round
+    // the log like a row of dowel ends. It rides on two steel bands seated on the trunk's own radius, each held to the
+    // transom by a welded lug above it.
+    for (const x of [-0.46, 0.44]) {
+      const band = log.radiusAt((x + 0.74) / 1.48) * 1.09;
+      P.add('hullDark', place(latheY([[band, 0], [band + 0.006, 0.003], [band + 0.006, 0.029], [band, 0.032]],
+        P.q === false ? 10 : 14), x - 0.016, 0, 0, 0, 0, -Math.PI / 2), 0, 0.79, -3.42);
+      P.add('hullDark', box(0.05, 0.05, 0.075), x, 0.79 + band * 0.72, -3.37);
+    }
   }
-  for (const x of [-1.05, -0.50, 0.05, 0.60, 1.15]) P.add('hullDark', box(0.045, 0.25, 0.24), x, 0.79, -3.42);
   // Round 3 (2026-10-07, critics: "the tow cable droops in a free arc below the rear plate ... held by no clips or
   // hooks"): the cable is stowed ON the transom. It runs eye to eye between the two tow hooks along the plate's lower
   // band, under the roll's strap shoes, and four bolted clips hold it to the plate.

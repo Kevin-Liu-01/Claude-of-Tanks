@@ -28,7 +28,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
-import { fuelDrumParts, place } from '../accessoryPrimitives.ts';
+import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -125,10 +125,18 @@ export function addRearFuelDrums(
   P.add('hullDark', box(outerX * 2 + 0.10, 0.09, cradleDepth),
     0, y - radius * 0.76, z + radius * 0.55);
   for (const side of [-1, 1]) {
-    const drum = fuelDrumParts({ r: radius, len: length, seg: 20,
-      straps: [0.5 - bandOffset / length, 0.5 + bandOffset / length], buckleAt: 2.62, bungHead: side > 0 ? 1 : -1 });
+    // Round 5 (2026-10-08; wave 255 on the Type 99A: "identical smooth tubes. Give them rims and ribs, rust at the
+    // straps, spill streaks and some variation"): bold chimes, hoops and swaged ribs; each drum its own issue paint
+    // (DRUM_ISSUE_PAINTS), rust baked where its straps chafe, a fuel stain from its bung, two dents, its straps a little
+    // off its twin's, all in the vertex-coloured matte draw the logs use (fuelDrumParts `paint`)
+    const k = side > 0 ? 1 : 0;
+    const paint = DRUM_ISSUE_PAINTS[(Math.floor(hash01(seed, 5) * 4) + k * 2) % DRUM_ISSUE_PAINTS.length];
+    const skew = (hash01(seed, 7, k) - 0.5) * 0.06;
+    const drum = fuelDrumParts({ r: radius, len: length, seg: 20, bold: true, paint, seed: seed + k * 31,
+      straps: [0.5 - bandOffset / length + skew, 0.5 + bandOffset / length + skew], buckleAt: 2.62 - k * 0.5,
+      bungHead: side > 0 ? 1 : -1 });
     const alongX = (geometry: BufferGeometry): BufferGeometry => place(geometry, -length / 2, 0, 0, 0, 0, -Math.PI / 2);
-    P.add('hullFittingPaint', alongX(drum.body), side * centerX, y, z);
+    P.add('hullBark', alongX(drum.body), side * centerX, y, z);
     for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side * centerX, y, z);
     for (const bandX of [centerX - bandOffset, centerX + bandOffset]) {
       P.add('hullDark', box(0.060, radius * 0.92, cradleDepth),
