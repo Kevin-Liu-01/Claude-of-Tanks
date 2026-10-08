@@ -44,7 +44,7 @@ import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
@@ -5156,6 +5156,8 @@ function* createFxSteps(
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
         stages?.breach(e, seamOf(e.structureId));
+        // a section's fall (P2): its dust in the building's own colour
+        if (e.sectionDown && !e.settled && blast) sectionFallFx(blast, e, lookOf(e.structureId));
       });
       // the detonation's own record, raised before the shell event it belongs to: a burst on a structure names it, so
       // the wall strike that follows throws that building's own materials
@@ -5179,7 +5181,7 @@ function* createFxSteps(
         const settled = e.settled === true;
         const now = particles.getTime();
         craters.crater({ x: e.x, z: e.z, radiusM: e.radiusM, p1, p2, p3, surface, climate: groundClimate(), explosive: true,
-          seed: (e.seed % 65536) / 65536, birth: settled ? now - 10 : now }, deformedGroundY);
+          seed: (e.seed % 65536) / 65536, birth: settled ? now - 600 : now }, deformedGroundY);  // settled: an old, weathered crater
         if (!settled && blast) craterEjecta(blast, e.x, e.z, e.radiusM, surface, deformedGroundY, 0);
       });
       onFxEvent(bus, 'shell:fired', (e) => {

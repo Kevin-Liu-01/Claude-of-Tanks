@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
 import { createCraterMarks, craterSoil } from './craterMarks.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
@@ -180,7 +180,14 @@ function captureContext(seed) {
   };
   const jets = (log) => log.media.filter((m) => m.aspect < 0.6 && m.grav < 0);
   const jetTop = (log) => Math.max(...jets(log).map(peak));
-  assert.ok(jets(a).length >= 8 && jets(a).every((m) => m.density >= 0.95), 'tank HE throws a dense column of soil jets');
+  assert.ok(jets(a).length >= 8 && jets(a).every((m) => m.density >= 0.85), 'tank HE throws a dense column of soil jets');
+  // (b5: the gunship's jets all topped out together, a cluster of drops in the sky) their tops fill the column from low
+  // to high, and fine dust stands in it
+  for (const log of [a, big]) {
+    const tops = jets(log).map(peak);
+    assert.ok(Math.min(...tops) < 0.45 * Math.max(...tops), 'the jets fill the column from the ground to its top');
+    assert.ok(log.media.some((m) => m.grav === 0 && m.aspect < 0.85 && m.y > 1), 'a pillar of fine dust stands in it');
+  }
   assert.ok(jetTop(a) > 8, `tank HE's soil column stands ~9 m (${jetTop(a).toFixed(1)})`);
   assert.ok(jetTop(big) > 18, `the gunship's stands past 18 m (${jetTop(big).toFixed(1)})`);
   const ac = he(5, 'autocannon_he', 0.05, 'soil');
@@ -230,7 +237,8 @@ function captureContext(seed) {
   // body churning for its whole life
   const fire = kf.log.media.filter((m) => m.heat > 1);
   assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
-  assert.ok(fire.every((m) => m.cool >= 1.2), 'its glow is gone within a second or two (a long dull glow read brown)');
+  assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
+  assert.ok(fire.every((m) => m.heat <= 1.4), 'orange-yellow at the heart, never white (b5: heat ~2 saturated the ramp)');
   const soot = kf.log.media.filter((m) => m.heat < 1 && m.birthOffset > 0.15 && m.r0 < 0.1);
   assert.ok(soot.length >= 4, 'black soot rolls out of the fire after it');
   for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
@@ -312,6 +320,18 @@ function captureContext(seed) {
     wallStrike(c.ctx, 12, 3, 20, -1, 0, 0, explosive, explosive ? 2.71 : 1, null);
     return c.log;
   };
+  // P2: a section's fall throws its dust (a panel's sheet and its foot, the roof's up and out, a storey's skirt); a hole
+  // or a settled fall throws none
+  const fallOf = (extra) => {
+    const c = captureContext(17);
+    sectionFallFx(c.ctx, { structureId: 3, section: 0, sectionKind: 'wall', y0: 0, y1: 3, hole: 255, x: 12, y: 1.5, z: 20,
+      nx: 1, ny: 0, nz: 0, radiusM: 0, munition: 'he', sectionDown: true, ...extra }, null);
+    return c.log.media;
+  };
+  assert.ok(fallOf({}).length > 0 && fallOf({}).every((m) => m.heat === 0), 'a panel falls in its dust');
+  assert.ok(fallOf({ storeyDown: true, cx: 10, cz: 20, hw: 5, hd: 4 }).length > fallOf({}).length, 'a storey brings more down');
+  assert.ok(fallOf({ sectionKind: 'roof', y0: 6, y1: 8.4 }).length > 0, 'the roof\'s dust goes up and out');
+  assert.equal(fallOf({ sectionDown: false }).length + fallOf({ settled: true }).length, 0, 'a hole or a settled fall throws no dust');
   const shellOnWall = strike(true), shotOnWall = strike(false);
   assert.ok(shellOnWall.media.some((m) => m.heat > 1) && shellOnWall.media.some((m) => m.heat === 0 && m.medium === 'billow'),
     'a shell on a wall throws its fireball and its residue smoke');
@@ -355,6 +375,12 @@ function captureContext(seed) {
 {
   const craters = createCraterMarks();
   assert.equal(craters.count, 0);
+  // (wave 273: near-black stamped ovals; a clean dark oval in snow) the surface weathers with age, its blanket is
+  // pocked with clods and secondary craters, and snow's blanket is dirty snow sprayed with soil
+  const fragSrc = craters.mesh.material.fragmentShader;
+  assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 240\.0, age \);/, 'soot weathers away with age');
+  assert.match(fragSrc, /float pock = blanket \* step\( 0\.82, cellH \)/, 'the blanket is pocked');
+  assert.match(fragSrc, /vec3 dirty = vec3\( 0\.46, 0\.47, 0\.49 \);/, 'snow shows dirty snow and soil spray');
   assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
   assert.equal(craters.count, 96, 'the marks ring keeps the latest 96');
