@@ -1876,7 +1876,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           fx.exhaust(_v2, 0.85, true); // doubled: damage smoke, not idle haze
         }
       }
+      // the props' own clock on the Studio's (fix/studio-world-step, 2026-10-08): the render loop's world update runs at
+      // dt 0 and an export step runs none, so a felled prop's topple and the loose bodies advance here, step by step
+      getWorld()?.updateProps?.(dt, camera.position);
     }
+    // the drawn ground follows what was dug or raised this step (an export step and a capture run no world update)
+    getWorld()?.syncGround?.();
     fx.update(dt, shells, camera, resolveFxSubject);
   }
 
