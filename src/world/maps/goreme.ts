@@ -134,6 +134,9 @@ export default {
       { x: 0, z: 0, width: 58, length: 58, yawDeg: 0, level: -2.5, grade: 0, bankM: 10 },
       { x: -214, z: 12, width: 54, length: 54, yawDeg: 0, level: 0, grade: 0.05, bankM: 16 },
       { x: 214, z: -12, width: 54, length: 54, yawDeg: 180, level: 0, grade: 0.05, bankM: 16 },
+      // (Chimney Valley round 3b, the swap test's north 38.5 %: each deployment on a levelled pad under its team's block)
+      { x: 0, z: -403, width: 44, length: 34, yawDeg: 0, level: 0, grade: 0, bankM: 12 },
+      { x: 0, z: 401, width: 44, length: 34, yawDeg: 180, level: 0, grade: 0, bankM: 12 },
     ],
     village: { x0: -128, x1: 128, z0: -120, z1: 120, cx: 0, cz: 0, feather: 50, flatten: 0.74, relief: 0.26 },
     // two roads cross in the junction square: Nevşehir's from the west past the west castle rock running on as Ürgüp's
