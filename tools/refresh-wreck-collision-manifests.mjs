@@ -10,18 +10,13 @@ import { fileURLToPath } from 'node:url';
 import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
 import { decodeCollisionManifest } from '../server/collisionManifestCodec.ts';
 import { writeCollisionManifestShard, writeCollisionManifestIndex } from './worldCollisionManifestFiles.mjs';
+import { packCollisionRecord } from './headlessWorldCollision.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const n = value => Math.round(value * 10000) / 10000;
-function packShape(shape) {
-  return ['w', n(shape.y0), n(shape.y1), ...shape.points.map(n)];
-}
-function pack(record) {
-  return { b: [...record.min, ...record.max].map(n),
-    s: record.shape2.kind === 'compound'
-      ? ['m', ...record.shape2.parts.map(packShape)] : ['v', ...record.shape2.points.map(n)],
-    k: 'tank-wreck' };
-}
+// (the hitbox lane, 2026-10-07: the shards' own packer, so a refreshed wreck packs as a capture packs it — a part whose
+// extent is its record's own carries none — and a slabbed shell record round-trips)
+const pack = packCollisionRecord;
 function installGeometryCanvas() {
   globalThis.ImageData = class { constructor(data) { this.data = data; } };
   globalThis.Image = class {
@@ -55,9 +50,14 @@ async function capture(mapId) {
   const field = createHeightField(1337, config);
   const vegetation = createVegetation(field, context, 2001, config);
   const props = createProps(field, context, 2002, config, vegetation);
-  const records = props.obstacles.filter(record => record.kind === 'tank-wreck');
-  assert.equal(records.length, props.tankWreckSpots.length);
-  console.log(JSON.stringify({ records: records.map(pack), spots: props.tankWreckSpots }));
+  // (the hitbox lane, 2026-10-07: a wreck's shell record is its own slabs, no longer a copy of its movement record)
+  const records = {
+    obstacles: props.obstacles.filter(record => record.kind === 'tank-wreck').map(pack),
+    colliders: props.colliders.filter(record => record.kind === 'tank-wreck').map(pack),
+  };
+  assert.equal(records.obstacles.length, props.tankWreckSpots.length);
+  assert.equal(records.colliders.length, props.tankWreckSpots.length);
+  console.log(JSON.stringify({ records, spots: props.tankWreckSpots }));
 }
 function same(a, b) {
   try { assert.deepEqual(a, b); return true; } catch { return false; }
@@ -82,14 +82,14 @@ async function refresh(check) {
       cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 240000,
     });
     const { records, spots } = JSON.parse(raw.trim().split('\n').at(-1));
-    assert.ok(records.length > 0, `${id}: real wrecks must build; missing builders cannot pass verification`);
+    assert.ok(records.obstacles.length > 0, `${id}: real wrecks must build; missing builders cannot pass verification`);
     const manifest = decodeCollisionManifest(JSON.parse(readFileSync(
       new URL(`../server/world-collision-manifests/${id}.json`, import.meta.url), 'utf8')));
-    for (let i = 0; i < records.length; i++) for (const key of ['obstacles', 'colliders']) {
-      replaceWreck(manifest[key], records[i], spots[i], check, `${id}/${i}/${key}`);
+    for (const key of ['obstacles', 'colliders']) for (let i = 0; i < records[key].length; i++) {
+      replaceWreck(manifest[key], records[key][i], spots[i], check, `${id}/${i}/${key}`);
     }
-    updates.push({ id, manifest, count: records.length });
-    console.log(`${id}: ${records.length} wrecks ${check ? 'verified' : 'refreshed'}; other records retained`);
+    updates.push({ id, manifest, count: records.obstacles.length });
+    console.log(`${id}: ${records.obstacles.length} wrecks ${check ? 'verified' : 'refreshed'}; other records retained`);
   }
   if (!check) {
     for (const { id, manifest } of updates) index.maps[id] = writeCollisionManifestShard(id, manifest);
