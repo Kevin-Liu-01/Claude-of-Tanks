@@ -63,6 +63,9 @@ for (const needle of [
   'float invF = uHaze.y / max(uHazeFar.x, 0.05);',
   'float layer = hazeLayerMean(max(uFrame.w - datumF, 0.0) * invF, max(wp.y - datumF, 0.0) * invF);',
 ]) assert.ok(source.includes(needle), `the strip's far path: ${needle}`);
+// 3e. (2026-10-07) the layers' crest margin wandering per range, a QA knob at bake time — at rest 0, the rule as it shipped
+assert.ok(source.includes("uLayerWander: { value: lightTune('PANO_LAYER_WANDER', 0) },"), 'the layers\' wander at rest 0');
+assert.ok(height.includes('if (uLayerWander > 0.0) margin += uLayerWander * noised(p / 2600.0 + vec2(-6.1, 2.4)).x;'), 'the height pass reads it');
 for (const needle of [
   'uniform vec4 uNearBand;',
   'if (uNearBand.z > 0.0) {',

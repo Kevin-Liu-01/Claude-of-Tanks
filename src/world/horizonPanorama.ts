@@ -891,6 +891,7 @@ uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
 uniform vec4 uNearBand; // the near band's cap under the ring's skyline (tan), its squash, its cap's wander (tan)
+uniform float uLayerWander; // QA (2026-10-07): the layers' crest margin wanders per range by this (tan), at rest 0
 ${JEBEL_GLSL}
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -1079,6 +1080,10 @@ float farField(vec2 p) {
     // (a tableland's tops either clear the ring's skyline or stay behind it: a top grazing it stood as a sliver over the
     // ring — gauntlet wave 6, Sirocco's corner-ne "a thin vertical rectangular notch cut into the silhouette")
     float margin = uChar2.z > 0.5 ? mix(-0.03, 0.06, smoothstep(-0.08, 0.08, m)) : mix(-0.015, 0.075, smoothstep(-0.55, 0.55, m));
+    // (the skies lane, 2026-10-07, QA knob PANO_LAYER_WANDER at bake time, at rest 0: the margin wanders per range as well,
+    // over the plane 2.6 km across, so ranges on one bearing at different distances take different crests — the margin
+    // wandered round the compass only, and the scaled crests of a view stood near one elevation)
+    if (uLayerWander > 0.0) margin += uLayerWander * noised(p / 2600.0 + vec2(-6.1, 2.4)).x;
     float target = min(uFrame.w + r * (edge.a + margin), max(150.0, uChar4.y * 1.25));
     if (uChar2.z > 0.5) {
       // the tablelands scale too (their cliffs and talus keep their profile; lifting the tables to the target stood
@@ -1904,6 +1909,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       // (QA, read at each bake: the near band's press, at rest as it shipped)
       uNearBand: { value: new THREE.Vector4(lightTune('PANO_NEAR_CAP', PANO_NEAR_CAP), lightTune('PANO_NEAR_SQUASH', PANO_NEAR_SQUASH),
         lightTune('PANO_NEAR_WANDER', PANO_NEAR_WANDER), 0) },
+      uLayerWander: { value: lightTune('PANO_LAYER_WANDER', 0) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },
