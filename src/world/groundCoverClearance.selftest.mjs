@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
-import { createObstacleGrid, setObbShape, setCircleShape, setCompoundShape } from './collision.ts';
+import { createObstacleGrid, setObbShape, setCircleShape, setCompoundShape, setConvexShape } from './collision.ts';
 import {
   createGroundCoverClearance, compactGroundCoverInstances, createGroundCoverSolidProfile,
-  attachGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
+  attachGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
 } from './groundCoverClearance.ts';
 import {
   applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
@@ -37,6 +37,24 @@ assert.equal(blocked(10, -0.03, 10, 0.7, 0.2), true, 'trunk, not entire canopy')
 assert.equal(blocked(11, -0.03, 10, 0.7, 0.2), false);
 assert.equal(blocked(20, -0.03, 0, 0.7, 0.2), false, 'compound open passage preserved');
 assert.equal(blocked(18.5, -0.03, 0, 0.7, 0.2), true);
+// (the scenery lane, b14; wave 97: boulders "sitting on a clean lawn … no grass … creeping up its skirt") a boulder's
+// footprint takes the turf to its foot: a tuft is cleared only when its own root lies in the stone's footprint, where
+// any other footprint clears every tuft whose disc reaches it; the record itself is unchanged
+{
+  const ring = [];
+  for (let k = 0; k < 8; k++) ring.push(40 + Math.cos((k / 8) * Math.PI * 2) * 1.5, Math.sin((k / 8) * Math.PI * 2) * 1.5);
+  const stone = setConvexShape({ min: [40, 0, 0], max: [40, 1.6, 0] }, ring);
+  const plain = setConvexShape({ min: [50, 0, 0], max: [50, 1.6, 0] }, ring.map((v, i) => (i % 2 === 0 ? v + 10 : v)));
+  const frozen = JSON.stringify([stone, plain]);
+  letGroundCoverLap(stone);
+  const clear = createGroundCoverClearance(createObstacleGrid([stone, plain]));
+  assert.equal(clear(41.6, -0.03, 0, 0.7, 0.4), false, 'a tuft rooted just outside a boulder stands against it');
+  assert.equal(clear(51.6, -0.03, 0, 0.7, 0.4), true, 'the same tuft beside any other footprint is cleared by its disc');
+  assert.equal(clear(41.2, -0.03, 0, 0.7, 0.4), true, 'a tuft rooted inside the boulder is still cleared');
+  assert.equal(JSON.stringify([stone, plain]), frozen, 'the boulder\'s record is unchanged (cosmetic ownership)');
+  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  assert.match(props, /obstacles\.push\(rec\); colliders\.push\(col\);\n\s*letGroundCoverLap\(rec\);/, 'every boulder\'s obstacle lets the turf lap it');
+}
 assert.equal(JSON.stringify(records), before,
   'solid-footprint admission must not mutate collision/spotting records');
 crate.dead = true; crate.crushed = true;

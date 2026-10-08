@@ -1923,11 +1923,16 @@ const REGIONAL_PAL = {
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
   thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
+  // map revival lane 2 (round 2): the Serranía's limewash, its canal tiles, the grey of a dado
+  cal: [0xe6e1d6, 0xa65a36, 0x8a8478],
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
   // the Mount Lyell works' corrugated iron: weathered galvanised, the rusted roofs, the dark of a doorway
   lyellIron: [0x8c8478, 0x6e4a38, 0x3a3634],
+  // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
+  kershef: [0x9a8a74, 0xb3a58d, 0x5e5243],
+  concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2009,6 +2014,34 @@ function makeBengalFisherShed(rng: Rng): THREE.BufferGeometry {
 }
 
 /**
+ * A casemate of the Vallo Alpino (the Savoyard kit's mountain refuge, map revival lane 2, 2026-10-05): a concrete block
+ * under a thick roof slab with stones bedded on it, two splayed embrasures and their slits to the front, one to the
+ * side, the entrance at the back behind its blast wall with a steel door.
+ */
+function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], c = REGIONAL_PAL.concrete;
+  const w = 5.8, d = 6.0, h = 2.6, z0 = 0;
+  colored(out, box(w, h, d).translate(0, h / 2, z0), c[0], rng, 0.05);
+  colored(out, slab(w + 0.5, 0.6, d + 0.5).translate(0, h + 0.3, z0), c[1], rng, 0.05);
+  for (let k = 0; k < 9; k++) {
+    const x = (rng() - 0.5) * (w - 0.6), z = z0 + (rng() - 0.5) * (d - 0.6), s = 0.35 + rng() * 0.35;
+    colored(out, box(s * 1.4, 0.18 + rng() * 0.2, s).translate(x, h + 0.68, z), 0x6f6c66, rng, 0.12);
+  }
+  // the front embrasures: a splay frame proud of the wall and the dark slit in it
+  for (const x of [-1.5, 1.5]) {
+    colored(out, box(1.4, 0.8, 0.22).translate(x, 1.65, z0 + d / 2 + 0.11), c[1], rng, 0.04);
+    colored(out, box(1.0, 0.22, 0.06).translate(x, 1.65, z0 + d / 2 + 0.25), 0x1b1c1d, rng, 0.02);
+  }
+  colored(out, box(0.22, 0.8, 1.4).translate(w / 2 + 0.11, 1.65, z0 + 0.6), c[1], rng, 0.04);
+  colored(out, box(0.06, 0.22, 1.0).translate(w / 2 + 0.25, 1.65, z0 + 0.6), 0x1b1c1d, rng, 0.02);
+  // the entrance at the back: the steel door and the blast wall before it
+  colored(out, box(0.95, 1.9, 0.06).translate(-1.2, 0.95, z0 - d / 2 - 0.03), 0x44494a, rng, 0.04);
+  colored(out, box(3.2, 2.2, 0.5).translate(-1.0, 1.1, z0 - d / 2 - 1.05), c[0], rng, 0.05);
+  colored(out, box(0.5, 2.2, 1.1).translate(-2.85, 1.1, z0 - d / 2 - 0.55), c[0], rng, 0.05);
+  return mergeConnectedStructure('alpinerefuge', out);
+}
+
+/**
  * The Angami house (Kohima, Naga Hills): low plank walls under a deep thatch swept nearly to the ground, the front
  * gable crowned with the crossed house-horn boards (kika) of a feast-giver's house, a plank porch wall with its door.
  */
@@ -2065,6 +2098,43 @@ function makeMekongLongHouse(rng: Rng): THREE.BufferGeometry {
   colored(out, box(1.0, 0.1, 0.5).translate(0.6, 0.45, d / 2 + 1.75), wd[1], rng);
   colored(out, box(0.14, 0.45, 0.14).translate(0.6, 0.225, d / 2 + 1.75), wd[2], rng);
   return mergeConnectedStructure('longhouse', out);
+}
+
+/**
+ * The Andalusian kit's light family (map revival lane 2, round 2; gauntlet wave 108b: "leftover grey modern warehouses"):
+ * the guard post is a town entrance's toll booth (caseta de consumos) — limewash over a grey dado, a hipped roof of canal
+ * tiles, its door and a grilled window — and the field hut a farm's tool house (caseta de aperos) under a tile gable.
+ * Each stands inside its type's footprint and height (the destructible's collision is the type's, not the mesh's).
+ */
+function makeAndalusianCaseta(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.cal;
+  const w = 3.5, d = 3.4, wallH = 2.85;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), p[0], rng, 0.03);
+  colored(out, box(w + 0.05, 0.6, d + 0.05).translate(0, 0.3, 0), p[2], rng, 0.05);
+  // the hipped roof: two tile slopes along x and the hips closed by the end slopes, over a whitewashed eave course
+  colored(out, box(w + 0.16, 0.14, d + 0.16).translate(0, wallH + 0.04, 0), p[0], rng, 0.03);
+  const roof = new THREE.ConeGeometry(Math.hypot(w + 0.5, d + 0.5) / 2, 1.05, 4, 1);
+  roof.rotateY(Math.PI / 4);
+  roof.scale(1, 1, (d + 0.5) / (w + 0.5));
+  colored(out, roof.translate(0, wallH + 0.11 + 0.525, 0), p[1], rng, 0.06);
+  // the door (front), the grilled window (side), the toll board over the door
+  colored(out, box(0.92, 2.0, 0.06).translate(0.6, 1.0, d / 2 + 0.02), 0x355a3c, rng, 0.05);
+  colored(out, markWorldAperture(box(0.06, 0.8, 0.72), [1, 0, 0]).translate(w / 2 + 0.02, 1.65, 0), 0x2b3236, rng, 0.04);
+  for (let k = 0; k < 4; k++) colored(out, box(0.04, 0.88, 0.035).translate(w / 2 + 0.07, 1.65, -0.27 + k * 0.18), 0x1d1e20, rng, 0.02);
+  colored(out, box(1.25, 0.32, 0.04).translate(0.6, 2.38, d / 2 + 0.03), 0xc8a050, rng, 0.04);
+  colored(out, box(1.0, 0.1, 0.3).translate(-0.9, 0.42, d / 2 + 0.17), p[2], rng, 0.05);
+  return mergeConnectedStructure('guardpost', out);
+}
+
+function makeAndalusianAperos(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.cal;
+  const w = 4.0, d = 6.2, wallH = 2.55;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), p[0], rng, 0.04);
+  colored(out, box(w + 0.05, 0.5, d + 0.05).translate(0, 0.25, 0), p[2], rng, 0.05);
+  colored(out, gable(w + 0.5, 1.3, d + 0.4).translate(0, wallH - 0.03, 0), p[1], rng, 0.06);
+  colored(out, box(1.1, 1.9, 0.06).translate(0, 0.95, d / 2 + 0.02), 0x5a3e2a, rng, 0.05);
+  colored(out, markWorldAperture(box(0.06, 0.55, 0.55), [1, 0, 0]).translate(w / 2 + 0.02, 1.7, -1.2), 0x2b3236, rng, 0.04);
+  return mergeConnectedStructure('fieldhut', out);
 }
 
 /** A shrimp-pond guard hut on tall stilts: a small plank room on posts under nipa, its ladder down to the bund. */
@@ -2128,6 +2198,36 @@ function makeLyellWorkshop(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('servicegarage', out);
 }
 
+/**
+ * The Siwan guard post (the checkpoint hut's family; the gauntlet's wave 125 on Sunscar Oasis: "blue corrugated sheds"
+ * at the caravan toll): a kershef hut with battered walls and a parapet over palm-beam ends, a palm-rib shade on two
+ * palm posts before its plank door, two small dark windows, a water jar by the door. Inside the family's footprint and
+ * height (2.40 x 3.7 x 3.3).
+ */
+function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.kershef, w = 4.2, d = 5.4, h = 2.65;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng, 0.08);
+  // the battered foot and the parapet with rounded corners standing over the roof
+  colored(out, box(w + 0.24, 0.6, d + 0.24).translate(0, 0.3, 0), p[0], rng, 0.06);
+  for (const side of [-1, 1]) {
+    colored(out, box(0.24, 0.42, d).translate(side * (w / 2 - 0.12), h + 0.21, 0), p[1], rng, 0.06);
+    colored(out, box(w - 0.48, 0.42, 0.24).translate(0, h + 0.21, side * (d / 2 - 0.12)), p[1], rng, 0.06);
+  }
+  // palm-beam ends under the parapet along the long sides
+  for (const side of [-1, 1]) for (const z of [-1.8, -0.6, 0.6, 1.8]) colored(out, box(0.2, 0.1, 0.1).translate(side * (w / 2 + 0.08), h - 0.2, z), p[2], rng, 0.1);
+  // the door and the windows: dark openings in the walls
+  colored(out, box(0.95, 1.9, 0.06).translate(0, 0.95, d / 2 + 0.02), 0x3b2f24, rng, 0.04);
+  for (const x of [-1.35, 1.35]) colored(out, box(0.42, 0.5, 0.06).translate(x, 1.75, d / 2 + 0.02), 0x2a241e, rng, 0.04);
+  for (const side of [-1, 1]) colored(out, box(0.06, 0.5, 0.42).translate(side * (w / 2 + 0.02), 1.75, -0.8), 0x2a241e, rng, 0.04);
+  // the palm-rib shade before the door: two palm posts, a beam and the mat
+  for (const x of [-1.25, 1.25]) colored(out, box(0.16, 2.3, 0.16).translate(x, 1.15, d / 2 + 1.0), p[2], rng, 0.08);
+  colored(out, box(2.8, 0.14, 0.16).translate(0, 2.33, d / 2 + 1.0), p[2], rng, 0.08);
+  colored(out, slab(2.9, 0.06, 1.15).translate(0, 2.42, d / 2 + 0.55), 0xa8956f, rng, 0.12);
+  // a water jar by the door
+  colored(out, box(0.36, 0.62, 0.36).translate(0.85, 0.31, d / 2 + 0.3), 0xa8673e, rng, 0.08);
+  return mergeConnectedStructure('checkpointhut', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2145,6 +2245,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
       stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
     }),
+    // the Serranía de Ronda: the bridgeheads' tollhouses, the farms' tool houses
+    andalusian: Object.freeze({
+      guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
+      fieldhut: variant('fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
+    }),
     // the stilt house keeps the generic wetland family (already a plank house on posts); the barn and the shack go
     mekong: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
@@ -2154,6 +2259,14 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     queenstown: Object.freeze({
       motorpool: variant('motorpool', REGIONAL_PAL.lyellIron, makeLyellShed, 'metal'),
       servicegarage: variant('servicegarage', REGIONAL_PAL.lyellIron, makeLyellWorkshop, 'metal'),
+    }),
+    // Siwa (Sunscar Oasis): the checkpoint hut stands as a kershef guard post
+    siwa: Object.freeze({
+      checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
+    }),
+    // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
+    savoyard: Object.freeze({
+      alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
     }),
   });
 })();

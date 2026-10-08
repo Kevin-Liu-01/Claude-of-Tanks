@@ -4,6 +4,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import type { DamageShellSpec, CombatState } from './damage.ts';
+import type { SpottingTank } from './spotting.ts';
 
 export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 import type { SmokeScreen } from './smokeScreen.ts';
@@ -27,14 +28,18 @@ export interface AuxiliaryEntity {
   state: { pos: { x: number; y: number; z: number }; yaw: number; turretYaw: number; visualPitch?: number; visualRoll?: number; roofGunYaw?: number; roofGunPitch?: number };
   combat: { destroyed?: boolean; auxiliary?: AuxiliaryState; modules?: CombatState['modules'] };
   modeActive?: boolean;
+  aerial?: SpottingTank['aerial'];
 }
 export const SMOKE_COOLDOWN_S = 28;
 export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
-export function auxiliaryState(entity: Pick<AuxiliaryEntity, 'combat'>): AuxiliaryState {
-  return entity.combat.auxiliary ??= {
-    lights: -1, gunOn: false, gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0,
+export function createAuxiliaryState(spec: { id?: string }): AuxiliaryState {
+  return {
+    lights: -1, gunOn: !!auxiliaryCapabilities(spec)?.guns.length, gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0,
     smokeCharges: 3, smokeReadyAt: 0, smoke: null,
   };
+}
+export function auxiliaryState(entity: Pick<AuxiliaryEntity, 'combat' | 'spec'>): AuxiliaryState {
+  return entity.combat.auxiliary ??= createAuxiliaryState(entity.spec);
 }
 const matrix = new Matrix4(), local = new Matrix4(), euler = new Euler();
 const origin = new Vector3(), direction = new Vector3(), targetPoint = new Vector3();
@@ -87,7 +92,9 @@ interface GunContext {
 const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
 /** Independent weapon-specific bursts. Only spotted enemies with a clear firing lane qualify. */
 export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, context: GunContext): boolean {
-  const state = entity.combat.auxiliary, gun = auxiliaryCapabilities(entity.spec)?.guns[0];
+  if (entity.aerial?.kind === 'gunship') return false;
+  const gun = auxiliaryCapabilities(entity.spec)?.guns[0];
+  const state = entity.combat.auxiliary ?? (gun ? auxiliaryState(entity) : undefined);
   entity.state.roofGunYaw = state?.gunYaw ?? 0;
   entity.state.roofGunPitch = state?.gunPitch ?? 0;
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;

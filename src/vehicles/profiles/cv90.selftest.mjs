@@ -51,8 +51,8 @@ const expected = Object.freeze({
     designLineage: 'independent-tier10-cv90-mkiv-v2',
     hullConstruction: 'cv90-mkiv-raised-troop-roof-v7',
     turretConstruction: 'cv90-mkiv-shoulder-citadel-bustle-v7',
-    gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
-    gunArchitecture: 'faceted-closed-50mm-trunnion-shroud-v2',
+    gunAssembly: 'buried-mask-open-50mm-truss-cradle-v3',
+    gunArchitecture: 'buried-mask-open-50mm-diagonal-truss-v3',
     frontArmorShell: 'split-shoulders-open-gun-throat',
     rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.90,
     turretPivotZ: -0.396,
@@ -115,7 +115,7 @@ for (const [id, target] of Object.entries(expected)) {
     assert.equal(hullReceipt.upperGlacisConstruction, 'overlapped-planar-wedge');
     assert.equal(hullReceipt.monotonicArmorInset, true);
     assert.equal(hullReceipt.concaveSurfaceCount, 0);
-    assert.equal(hullReceipt.lowerHullFusion, 'belly-to-upper-cell-overlap-v1');
+    assert.equal(hullReceipt.lowerHullFusion, 'continuous-raked-belly-to-nose-v2');
     assert.equal(hullReceipt.bowShoulderJoin, 'single-cell-glacis-to-skirt-v1');
     assert.equal(hullReceipt.rearSkirtClosure, 'tapered-armored-rear-corner-v1');
     assert.equal(hullReceipt.lowerRubberStripRemoved, true);

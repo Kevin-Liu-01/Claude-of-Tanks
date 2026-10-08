@@ -26,7 +26,7 @@ const game = {
   phase: 'battle', timeS: 12, player,
   tanks: [player, enemy, hiddenEnemy, ally], tankById: new Map(), shells: [{ id: 1 }],
   spotting: {
-    isSpotted: (id, team, receiver) => id === 'enemy' && team === 'player' && receiver === player,
+    isSpotted: (id, team, receiver) => id === 'enemy' && team === player.team && receiver === player,
     getConcealment: (entity, timeS) => ({ id: entity.id, timeS }),
   },
 };
@@ -127,6 +127,14 @@ assert.deepEqual(overlayFrames.at(-1).targets, [enemy]);
 game.rosterTanks = undefined;
 runtime.reset();
 assert.equal(runtime.frameInfo.rosterTanks, game.tanks, 'solo restores the ordinary complete roster');
+
+// A converted local player must use infected intel, not the original faction.
+player.team='bravo';
+game.spotting.isSpotted=(id,team,receiver)=>id==='ally' && team==='bravo' && receiver===player;
+runtime.update(true,false);
+assert.equal(runtime.frameInfo.spotting.isSpotted('ally'),true);
+assert.equal(runtime.frameInfo.spotting.isSpotted('hidden'),false,'conversion never exposes unspotted enemies');
+player.team='alpha';
 
 assert.throws(() => createBattleHudFrameRuntime({}), /requires every presentation port/);
 

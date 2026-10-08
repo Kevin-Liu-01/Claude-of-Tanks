@@ -43,6 +43,16 @@ export interface TreeBiome {
    * clearing): Las Cañadas' pines on the cinder (an arid place's are open too, and seated in the low ground).
    */
   open?: true;
+  /**
+   * An upland place zoned by height: its conifer forms (juniper, pinyon) on the higher ground, its broadleaf forms
+   * (mesquite) in the low washes, nothing on the slopes between (vegetation.ts uplandZoneOk).
+   */
+  upland?: true;
+  /**
+   * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
+   * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
+   */
+  shrubColour?: Readonly<TreeBiomeColour>;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -54,12 +64,13 @@ export interface TreeBiomeColour {
 
 /**
  * Hyper-arid foliage: an acacia of Wadi Rum or the Sahara is a grey, dust-dulled green, not a lawn's (the gauntlet's
- * wave 15: "lush green groves on Wadi Rum"). The texture keeps two fifths of its saturation at a grey-green hue and the
- * card tint is nearly neutral; wave 26 still read the round-2b khaki-olive (hue 0.17) as "lime-green" in the sun.
+ * wave 15: "lush green groves on Wadi Rum"). The texture keeps a third of its saturation at a grey-green hue and the
+ * card tint is nearly neutral; wave 26 still read the round-2b khaki-olive (hue 0.17) as "lime-green" in the sun, and
+ * round 3's yellow-green (0.2) lit golden-olive (wave 31 asks for Acacia raddiana's grey-green).
  */
 const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.2, cardSat: 0.1,
-  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.2, Math.min(1, s * 0.4), Math.min(1, l * 1.04)],
+  cardHue: 0.26, cardSat: 0.07,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.26, Math.min(1, s * 0.32), Math.min(1, l * 1.04)],
 });
 
 /**
@@ -71,6 +82,16 @@ const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
 });
 
+/**
+ * The Arizona uplands' dusty greens: every form keeps its own hue (the juniper's grey-blue, the pinyon's dark green, the
+ * mesquite's olive) at three fifths of its saturation, a little lighter, under a nearly neutral card tint (gauntlet
+ * wave 28: "green broadleaf and fir clumps on sand").
+ */
+const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.09,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -78,23 +99,34 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
-  open?: true): Readonly<TreeBiome> =>
+  open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
-    ...(open ? { open } : {}) });
+    ...(open ? { open } : {}), ...(upland ? { upland } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
  * every slot as its own form.
  */
 export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object.freeze({
-  // Las Cañadas del Teide: sparse Canary pines on bare cinder in open groves (wave 26: "evenly spaced, grid-like" stands
-  // on a floor that is nearly treeless apart from broom); its acacia slot, the maps lane's scrub stand-in, grows as
-  // young pines among the trees and as broom among the bushes
-  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
-    acacia: { form: 'canaryPine' } }, 'broom', undefined, undefined, true),
+  // the Aso caldera, Kyushu (the map-revival lane, 2026-10-05; was Las Cañadas del Teide): sugi plantations and shrine
+  // groves where the map plants its pines and cypresses, Japanese red pine on the dry cinder where it plants its scrub
+  // stand-in (the acacia slot), the bushes the evergreen broadleaf scrub of the grazed grassland (azalea, camellia) in
+  // the holm oak's dark leaf; the stands stay open groves (treeBiomes open: the placement is the map's)
+  // (Caldera round 2, wave 114: the holm oak's big leaf sprays read at shrub size as "a tropical fern or palm-like
+  // shrub", and the sugi stood in open groves: the bushes are now the grassland's low twiggy scrub (the broom form: bush
+  // clover, Miyama-kirishima azalea) and the sugi stand in closed blocks)
+  caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
+  // Longleaf, Louisiana (the map-revival lane, 2026-10-05; the trees lane's row for round 2, gauntlet wave 124): the Gulf
+  // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
+  // the wiregrass, the cutover's young pines in their grass stage (the map's bushes)
+  longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine' } }, 'longleafSeedling', undefined, undefined, true),
+  // the Chouf on Mount Lebanon (the map-revival lane, 2026-10-05): the cedars of the Barouk, the Mediterranean pines of the
+  // valley sides, olives on the terraces (the map's contour-planted orchard rows)
+  orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },
+    oak: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch
@@ -106,8 +138,15 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // map's oak bushes read as lawn shrubs on the sand)
   badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
   // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
-  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
-  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
+  // (trees round 3, the gauntlet's wave 31: the wadi's shrubs were "bright green balls" — a Saharan wadi's scrub is the
+  // white broom, Retama raetam, grey-green switches, as Wadi Rum's)
+  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  // Monument Valley (the map-revival lane, 2026-10-05; round 2 on trees round 5's forms): Utah and one-seed juniper,
+  // low, multi-stemmed and grey-green, for the cedar and acacia slots; pinyon for the oak; the scrub as the white broom
+  // standing in for sagebrush; the Arizona uplands' dusty greens. The placement stays the map's (no arid or upland
+  // flag: they move the stands)
+  titan_gorge: B('Monument Valley, Colorado Plateau', { cedar: { form: 'juniper' }, acacia: { form: 'juniper' }, oak: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,
@@ -125,6 +164,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
+  // Glen Canyon and Page, Arizona (the map-revival lane, 2026-10-05, Skybridge round 2; look only: the slots keep their
+  // seats): the plateau's Utah juniper (the cedar slot) and Colorado pinyon (the pine slot) in the Arizona uplands'
+  // dusty greens, the Fremont cottonwoods and the town's planted poplars staying poplars, the scrub between them the
+  // broom form's switches (blackbrush, Mormon tea)
+  skybridge: B('Glen Canyon and Page, Arizona', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom', SONORAN_FOLIAGE),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
@@ -187,12 +231,57 @@ export function treeBiomeArid(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.arid);
 }
 
-/** Whether a map's stands are open groves (an arid place's, Las Cañadas'). */
+/**
+ * Trees round 3 (2026-10-03, the gauntlet's wave 31: "real places have closed woods"): how much wider a closed wood's
+ * crowns spread than a field tree's (vegetation.ts placeTreeClusters; an open grove's never do). The tidal mangrove
+ * coast keeps its woods' crowns: its stands lend their trees to the mangrove rows, each in the envelope its row
+ * reserved (tidalMangrove.ts). Trees round 5 (the gauntlet's wave 98 on Saltwind: "the oak canopies merge into a single
+ * flat-topped green wall ... with no sky gaps between individual crowns"): the Dalmatian coast's holm oak and olive
+ * woods are open woodland, each crown its own dome — they keep a field tree's spread.
+ */
+const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 1, saltwind: 1 });
+export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
+  if (treeBiomeOpen(mapId)) return 1;
+  return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
+}
+
+/** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */
+export function treeBiomeUpland(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.upland);
+}
+
+/**
+ * Trees round 2b (wave 28): an upland place's zones from its square's heights sorted ascending — the quantiles at two
+ * fifths and three fifths. Its conifer forms stand at or over the second, its broadleaf forms at or under the first,
+ * nothing on the slopes between (uplandZoneAllows; vegetation.ts uplandZoneOk). No map sets `upland` since Copper Mesa
+ * became Queenstown (batch 4, 2026-10-06); treeCrownShading pins the law on a synthetic fixture.
+ */
+export function uplandBandOf(sortedHeights: readonly number[]): readonly [number, number] {
+  return [sortedHeights[Math.floor(sortedHeights.length * 0.4)], sortedHeights[Math.floor(sortedHeights.length * 0.6)]];
+}
+
+/** Whether a form (a conifer or not) may stand at height h under an upland band; with no band, anywhere. */
+export function uplandZoneAllows(band: readonly [number, number] | null, conifer: boolean, h: number): boolean {
+  if (!band) return true;
+  return conifer ? h >= band[1] : h <= band[0];
+}
+
+/** Whether a place's stands are open groves: its own flag (`open`) or an arid place's. */
+export function treeBiomeIsOpen(biome: Readonly<Pick<TreeBiome, 'open' | 'arid'>> | null | undefined): boolean {
+  return !!(biome?.open || biome?.arid);
+}
+
+/** Whether a map's stands are open groves (an arid place's, or a place that sets `open`). */
 export function treeBiomeOpen(mapId: string | null | undefined): boolean {
-  return !!(mapId && (TREE_BIOMES[mapId]?.open || TREE_BIOMES[mapId]?.arid));
+  return !!mapId && treeBiomeIsOpen(TREE_BIOMES[mapId]);
 }
 
 /** The foliage colour defaults of a map's place, or none. */
 export function treeBiomeColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
   return (mapId ? TREE_BIOMES[mapId]?.palette : null) ?? null;
+}
+
+/** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
+export function treeBiomeShrubColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.shrubColour : null) ?? null;
 }

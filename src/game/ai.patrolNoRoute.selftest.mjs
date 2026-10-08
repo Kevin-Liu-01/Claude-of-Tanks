@@ -4,6 +4,10 @@
 // (a 'direct' leg). The leg crossed a bridge's span, and the bridge gate, finding no route either, held the hull with
 // zero input. A hold has no drive intent, so neither wedge watchdog armed, and every new leg got the same hold: it sat
 // at rest for 798 s and the match ended in a draw. The local router now drives on toward the destination.
+// Re-seated 2026-10-06 (map revival lane 2, Aegis round 3): the Tajo's new walls (terrain.ts gorge `wall` band and
+// `meander`) took that pocket away — the gorge floor runs level through (-45.2, 68.4) now and plans. The same kind of
+// pocket lies a few metres east, at the foot of the north wall beside the viaduct, where the 25 m grid reads the cliff's
+// cell as solid: the Type 96 is held there on the lower wall's 36-degree toe, and nothing plans from it.
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -21,8 +25,9 @@ function ok(cond, label) {
 console.log('[1] Aegis Crossing: the Type 96 at rest in the gorge pocket, on its no-contact search');
 {
   await ensureAuthorityFleet(['m1a2', 'type96_72m_lei']);
-  // the pose the plane-attitude run left it in (4549734b3, 102 s on), held there tick by tick
-  const POSE = { x: -45.2, y: -34.7, z: 68.4, yaw: -64.8 * Math.PI / 180 };
+  // the pose the plane-attitude run left it in (4549734b3, 102 s on), held there tick by tick — re-seated on the new
+  // gorge (2026-10-06): the north wall's toe by the viaduct (ground -37.6 m), the same heading
+  const POSE = { x: -33, y: -37.0, z: 68, yaw: -64.8 * Math.PI / 180 };
   const match = createAuthoritativeMatch({
     players: [
       { id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha', bot: false },

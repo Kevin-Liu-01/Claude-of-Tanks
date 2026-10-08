@@ -236,7 +236,7 @@ const soloBattleEntrySource = await readFile(
   new URL('../game/soloBattleEntryRuntime.ts', import.meta.url), 'utf8',
 );
 assert.match(mainSource,
-  /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,120}playSurface\.hideForBattle\(\)/,
+  /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,200}playSurface\.hideForBattle\(\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
 assert.match(combatWarmCompositionSource,
   /const warmStudioPipeline[\s\S]{0,600}battleWarm\.warmStudioEffects\(/,

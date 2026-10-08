@@ -115,6 +115,16 @@ export default {
   props: {
     // regional-buildings lane: the Jamuna char tin-homestead kit (maps/regional/bengal.ts)
     architecture: 'bengal',
+    // The landmarks lane (2026-10-05; src/world/landmarks/temples.ts): the market village's terracotta aat-chala temple
+    // in the yard west of the square, north of the village's yard wall: the square brick cella on its plinth under
+    // the curved four-sided roof, the smaller cella and its roof above (eight slopes), the kalasa finial, the triple
+    // arched front faced with terracotta plaques turned toward the square.
+    landmarks: [
+      // round 2 (2026-10-06; gauntlet wave 158: the temple "sits on bare lawn with no courtyard, path or village"): its
+      // brick court, the temple standing on it (the court authored first: a dressing piece, it refuses nothing)
+      { kind: 'path', x: -44, z: -6, yawDeg: 45, name: "the temple's brick court", params: { length: 18, width: 18, surface: 'stone' } },
+      { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
+    ],
     plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
       'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
       'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',

@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { box, jitterUV } from './propGeometry.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
+import { placeWreckCollision } from './wreckCollision.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -390,7 +391,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
   const outputs = { wreckGeos: [], wreckShadowGeos: [], obstacles: [], colliders: [],
     wreckScorch: [], tankWreckSpots: [], decorationGroundingReceipts: [] };
   const geometry = { clone: () => ({ rotateY() {}, applyQuaternion() {}, translate() {} }) };
-  const baked = { geo: geometry, shadowGeo: geometry, tris: 12, hx: 2, hz: 3, h: 2 };
+  // one posed hull solid (props.ts places the wreck's collision from baked.solids since f6be3a54d): the hx/hz/h box
+  const hullSolid = [-2, 0, -3, -2, 2, -3, 2, 0, -3, 2, 2, -3, 2, 0, 3, 2, 2, 3, -2, 0, 3, -2, 2, 3];
+  const baked = { geo: geometry, shadowGeo: geometry, tris: 12, hx: 2, hz: 3, h: 2, solids: [hullSolid] };
   const dependencies = {
     ...outputs, pool: wreckCast,
     wCfg: { debris: false, ...(authored ? { ids: wreckCast } : {}) },
@@ -406,7 +409,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
     // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
     boxClearOfPoints, sharpBends: [],
-    _quat: { setFromUnitVectors() {} }, _upAxis: {},
+    // the wreck's collision pose reads the support quaternion (identity on the fixture's level ground)
+    THREE, placeWreckCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
   };
@@ -588,6 +592,10 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     stackSpots: Array.from({ length: stacks }, (_, index) => ({ x: 8 + index, z: 16, r: 2 })), wreckScorch: [[-20, 50]],
     // 2026-10-04 (boulder round 2): every boulder's soil collar is one more private foundation input
     rockSpots: Array.from({ length: rocks }, (_, index) => ({ x: -14 - index * 3, z: 22, r: 1.6 + index * 0.2 })),
+    // (b16) the contact patch's profile, read from props.ts, and the beds' shades (none here: the fixture lays no bed)
+    ROCK_PATCH_SHARES: JSON.parse(/const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
+    CONTACT_PATCH_RINGS: JSON.parse(/const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1]),
+    rockBedShades: [],
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(

@@ -41,7 +41,9 @@ for (const texelM of [2, 4]) {
 }
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-assert.match(terrain, /const core = roadCoreMask\(d, wob, wid, 1 \/ T\);/);
+// (2026-10-05: a styled path's carriageway moves the edge by its half-width less the 3.85 m gauge; an unstyled road's
+// offset is 0 — roadPathStyles.selftest pins the styled bake)
+assert.match(terrain, /const core = roadCoreMask\(d, wob, wid \+ \(styleHalf > 0 \? styleHalf - 3\.85 : 0\), 1 \/ T\);/);
 assert.match(terrain, /segDist\(\(tx \+ 0\.5\) \/ T - HALF, \(tz \+ 0\.5\) \/ T - HALF,/);
 assert.match(terrain, /const x = \(tx \+ 0\.5\) \/ T - HALF/);
 assert.match(terrain, /const z = \(tz \+ 0\.5\) \/ T - HALF/);
