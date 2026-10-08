@@ -27,6 +27,7 @@ import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import {
   loftHull,
   buildT80CastTurret,
@@ -58,10 +59,12 @@ interface DisposableResource {
 }
 
 interface UkraineBuilderPort {
+  postAssemble: TankBuilderPort['postAssemble'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material> & {
+    readonly hull: THREE.Material;
     readonly canvasCloth: THREE.MeshStandardMaterial;
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
@@ -2012,6 +2015,7 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
   }
   addAbramsDroneCage(P);
   addVehicleGhillieSuit(P);
+  addMissionAttachmentReceiver(P, 'ua_m1a1');
 }
 
 export const UKRAINE_PROFILES = {

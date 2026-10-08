@@ -7750,6 +7750,61 @@ QA knobs of the same names (1 / 1200 / 0: the plain law). Receipt: `hazeLaw.self
 through the GLSL subset with the law's own chunk — the plain law at w0 1, less veil near the camera, the whole law from
 1200 m, the law's chromaticity on the luminance rule, every branch).
 
+### 2026-10-07 — snow faces: couloirs and ledges on the steep band, the snow maps' wall basis unsheared (the skies lane)
+
+**The gauntlet** (waves 127–128 and the before side of wave 182): Glacier's and Frosthollow's ring faces "a featureless,
+vertically smeared grey sheet"; "a smooth grey-white ramp with soft vertical streaks dripping from the crest to the
+treeline — no buttresses, strata, ledges or couloirs" (Glacier's establishing view); "grey vertical smears running down its
+face from the crest" (Frosthollow's).
+
+**The causes** (`terrain.ts`, the snow-on-rock branch the snow maps' splat selects, `uReduxD.y > 1.5`: Glacier, Frosthollow,
+Whiteout):
+- *the wall basis sheared by the height:* the strata's stretch and swell multiply the absolute height, so their gradients
+  along the wall shear its v by the height itself — about 2 m of v per metre along the wall at 50 m up, 7 at 150 m, 11 at
+  250 m. The snow maps' steep ring faces stand 50–390 m up: every wall projection there was squeezed into vertical slivers;
+- *the gullies:* one field stretched 8:1 down the height at a 22 m repeat, and a steep face lies wholly inside the hold's
+  45–64° band, so the face printed it as fine vertical hatching with a fringe of snow tongues under every crest.
+
+**The fix** (the snow branch only; the hold line stays the ground lane's law, `snowRockHoldLine`):
+- the snow maps' walls keep the per-cliff offset and the beds' wander, and no stretch (they carry no strata);
+- *couloirs:* the crests of a coarse 3:1 field down the fall line (~25 m across, ~80 m long), only in the systems the slow
+  wall field picks; the hold's own breakup at a quarter of its swing; from ~48° a lean to bare rock outside the couloirs;
+- *ledges:* snow on the shelves of round 35's warped height ladder (beds ~14–30 m apart, the per-cliff phase, ±2 m of
+  along-wall wander), in runs where the slow wall field is high, on the steep band only and gone from the sheerest faces;
+- the exposed rock keeps its beds at full strength, so the seams between the ledges stay dark rock.
+
+**Measured:**
+- *the pair* (the PR head against the branch; Glacier's establishing, street and hospice views, Frosthollow's
+  establishing and bird; `$SP/p2/snow/pair1`): wave 182 +0.34. "Grey vertical smears" leave the after frames' largest
+  defects; the after side's are the buildings and the far peaks over a white band (the shell's, the far-air lane).
+- *no harm off the snow maps* (Verdant, Titan Gorge, Caldera and Saltwind; Whiteout seen): the frames equal but for the ±1
+  dither and the clouds' motion; `snowFaces.selftest` proves the branch selects exactly alpine, whiteout and winter.
+- *cost* (v3: Glacier's establishing view, the PR head against the branch against a head twin, desktop high): 13 cycles
+  pooled over two holds (2 more void over load 250), GPU p25 −0.30 ± 0.74 ms, CPU p50 +0.00 ± 0.15 ms — ACCEPT; the census
+  identical (5,466,742 triangles, 724 draws).
+
+### 2026-10-07 — the ground bounce no longer counts a face's self-shade twice (the skies lane)
+
+**The trace** (the scenery lane's, wave 174; Saltwind's walls "slate blue" in wave 177): Verdant's chalk yard wall cream in
+the sun (B/R 0.84) and grey-blue in its shade (87, 95, 99; B/R 1.13) in front of sunlit grass.
+
+**The cause** (`groundBounce.ts`): the bounce's receiver factor read the raw CSM visibility, `mix(0.4, 1, cotSunVis)`. A face
+turned from the sun lies in its own shadow (`cotSunVis` ≈ 0), so its bounce took the shadowed receiver's 0.4 on top of the
+self-shade the term already applies (`cotSide`, 1 − 0.6 · away · low). It was counted twice, and once the hemisphere's
+ground pole is taken off it often reached zero, leaving those faces only the sky's blue light.
+
+**The fix:** the receiver reads `cotAmbVis`, the visibility the ambient dims already correct for facing (`lighting.ts`,
+`uCotShadowFacing`). A face toward the sun inside a cast shadow keeps the cascade's 0.4 (its ground is shaded too); a face
+turned from the sun keeps its whole bounce. The cost of the rule: a back face that also stands in another object's cast
+shadow takes a little too much bounce (the CSM cannot tell the two shadows apart there). The legacy rig reads
+`cotAmbVis = cotSunVis`, so it is unchanged.
+
+**Measured:**
+- *the look* (the facades lane's r3c fill check, the PR head against the branch on Steinburg and Verdant's wall views):
+  shaded walls +1.8–3.9 % and warmer; nothing else moved.
+- *cost* (v3: Steinburg's shops-eye, the PR head against the branch against a head twin, desktop high): 8 cycles, GPU p25
+  +0.42 ± 1.04 ms (null +0.88), CPU p50 −0.09 ± 0.17 ms — ACCEPT; the census identical (4,664,349 triangles, 495 draws).
+
 ### 2026-10-06 — Clouds 2.0: a layered medium under a Beer shadow map (the clouds lane)
 
 **Why.** The owner wanted the clouds "improved a lot more", after takram three-geospatial's clouds (MIT). The critics'
