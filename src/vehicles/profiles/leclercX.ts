@@ -1,6 +1,9 @@
 // Independent Leclerc reconstruction from the owner-supplied Char Leclerc
 // scalar study. The older same-author model is supplementary, not a variant.
 import * as THREE from 'three';
+import { addRearFieldStowage } from './rearFieldStowage.ts';
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
+import { addLeclercFieldProtection } from './fieldProtectionPack.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -324,6 +327,9 @@ export function buildLeclercX(P: TankBuilderPort): void {
   roofEquipment(P);
   rearRack(P);
   weapons(P);
+  addFieldRoofWeapon(P,[-.82,.67123545,-.38],30,'Leclerc XLR remote 30 mm cannon');
+  addLeclercFieldProtection(P);
+  addRearFieldStowage(P);
 }
 
 export const LECLERC_X_PROFILES = Object.freeze({ leclerc_x: { build: buildLeclercX } });
