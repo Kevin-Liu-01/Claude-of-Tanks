@@ -35,14 +35,25 @@ import { block, latheY, moldedBox, place, roundBar, sweptTube } from './accessor
 // 45 mm breech, a MAG / L7 23 mm over 27 mm, the NSV and Kord 31-34 mm; `front` is where the front sight stands (the
 // M2's on the receiver's trunnion block, the others' on the gas block or the muzzle), `gasEnd` the gas block's station
 // as a share of the barrel, and `feed` the side the belt enters on a crew mount (the gunner's left is +X).
+// 2026-10-08 (round 5; wave 255 on the M60A1 and Type 99A: "a plain dark block with a bare tube barrel and a bulb tip,
+// with no visible cooling-jacket perforations, feed tray, ammunition box, spade grips or sight"; the battle set: "no
+// commander's MG reads on any turret. A real M2 or MG3 on a cupola is a clear dark silhouette at that range"): the heavy
+// guns' drawn receivers take their true height (an M2HB receiver with its cover stands ~0.2 m; the drawn 0.126 m read
+// as a flat block from 15-30 m), `crewL` is the barrel a crew gun carries at true length (an M2HB's runs ~1 m ahead of
+// its trunnion block; `barrelL` stays the station datum a remote station's published muzzle is measured from, so no
+// gameplay muzzle moves), and two national guns join the table: the German MG3 with its perforated jacket and the
+// Chinese QJC-88 (the W85's vehicle form: a small rectangular receiver, a thick gas tube under a light barrel, a
+// slotted brake, carrying handle and a 50-round box on the left).
 export const MG_CLASSES = {
-  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.108, 0.126], bore: 0.48, grip: 'spade', sight: 'leaf', front: 'receiver', barrelR: 0.0200, barrelL: 0.52, jacket: 'sleeve', flashR: 0.025, flashL: 0.07, gas: false, gasEnd: 0, handle: false, caliber: 12.7, feed: 'left', name: 'Browning M2HB' },
-  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.108, 0.126], bore: 0.48, grip: 'spade', sight: 'leaf', front: 'receiver', barrelR: 0.0200, barrelL: 0.52, jacket: 'sleeve', flashR: 0.025, flashL: 0.07, gas: false, gasEnd: 0, handle: false, caliber: 12.7, feed: 'left', name: 'Browning-pattern HMG' },
-  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], body: [0.104, 0.118], bore: 0.46, grip: 'spade', sight: 'ring', front: 'barrel', barrelR: 0.0160, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, gas: true,  gasEnd: 0.62, handle: false, caliber: 12.7, feed: 'left', name: 'DShK-pattern HMG' },
-  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], body: [0.096, 0.124], bore: 0.42, grip: 'spade', sight: 'leaf', front: 'barrel', barrelR: 0.0168, barrelL: 0.55, jacket: 'none',   flashR: 0.031, flashL: 0.10, gas: true,  gasEnd: 0.45, handle: true,  caliber: 12.7, feed: 'right', name: 'NSVT-pattern HMG' },
-  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], body: [0.098, 0.124], bore: 0.42, grip: 'spade', sight: 'leaf', front: 'barrel', barrelR: 0.0180, barrelL: 0.57, jacket: 'ribbed', flashR: 0.030, flashL: 0.10, gas: true,  gasEnd: 0.56, handle: true,  caliber: 12.7, feed: 'right', name: 'Kord-pattern HMG' },
-  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], body: [0.074, 0.112], bore: 0.42, grip: 'pistol', sight: 'leaf', front: 'barrel', barrelR: 0.0155, barrelL: 0.46, jacket: 'none',  flashR: 0.021, flashL: 0.06, gas: true,  gasEnd: 0.80, handle: true,  caliber: 7.62, feed: 'left', name: 'Browning-derived GPMG' },
-  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], body: [0.076, 0.114], bore: 0.42, grip: 'pistol', sight: 'leaf', front: 'barrel', barrelR: 0.0151, barrelL: 0.47, jacket: 'none',  flashR: 0.021, flashL: 0.06, gas: true,  gasEnd: 0.80, handle: true,  caliber: 7.62, feed: 'left', name: 'MAG 58 GPMG' },
+  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.118, 0.168], bore: 0.50, grip: 'spade', sight: 'leaf', front: 'receiver', barrelR: 0.0200, barrelL: 0.52, crewL: 0.80, jacket: 'sleeve', flashR: 0.025, flashL: 0.07, gas: false, gasEnd: 0, handle: false, caliber: 12.7, feed: 'left', name: 'Browning M2HB' },
+  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], body: [0.118, 0.168], bore: 0.50, grip: 'spade', sight: 'leaf', front: 'receiver', barrelR: 0.0200, barrelL: 0.52, crewL: 0.80, jacket: 'sleeve', flashR: 0.025, flashL: 0.07, gas: false, gasEnd: 0, handle: false, caliber: 12.7, feed: 'left', name: 'Browning-pattern HMG' },
+  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], body: [0.110, 0.150], bore: 0.48, grip: 'spade', sight: 'ring', front: 'barrel', barrelR: 0.0160, barrelL: 0.50, crewL: 0.76, jacket: 'fins',   flashR: 0.035, flashL: 0.10, gas: true,  gasEnd: 0.62, handle: false, caliber: 12.7, feed: 'left', name: 'DShK-pattern HMG' },
+  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], body: [0.096, 0.124], bore: 0.42, grip: 'spade', sight: 'leaf', front: 'barrel', barrelR: 0.0168, barrelL: 0.55, crewL: 0.78, jacket: 'none',   flashR: 0.031, flashL: 0.10, gas: true,  gasEnd: 0.45, handle: true,  caliber: 12.7, feed: 'right', name: 'NSVT-pattern HMG' },
+  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], body: [0.100, 0.148], bore: 0.46, grip: 'spade', sight: 'leaf', front: 'barrel', barrelR: 0.0180, barrelL: 0.57, crewL: 0.80, jacket: 'ribbed', flashR: 0.030, flashL: 0.10, gas: true,  gasEnd: 0.56, handle: true,  caliber: 12.7, feed: 'right', name: 'Kord-pattern HMG' },
+  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], body: [0.074, 0.112], bore: 0.42, grip: 'pistol', sight: 'leaf', front: 'barrel', barrelR: 0.0155, barrelL: 0.46, crewL: 0.52, jacket: 'none',  flashR: 0.021, flashL: 0.06, gas: true,  gasEnd: 0.80, handle: true,  caliber: 7.62, feed: 'left', name: 'Browning-derived GPMG' },
+  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], body: [0.076, 0.114], bore: 0.42, grip: 'pistol', sight: 'leaf', front: 'barrel', barrelR: 0.0151, barrelL: 0.47, crewL: 0.53, jacket: 'none',  flashR: 0.021, flashL: 0.06, gas: true,  gasEnd: 0.80, handle: true,  caliber: 7.62, feed: 'left', name: 'MAG 58 GPMG' },
+  mg3:   { s: 0.80, rec: [0.090, 0.050, 0.36], body: [0.066, 0.118], bore: 0.40, grip: 'pistol', sight: 'leaf', front: 'barrel', barrelR: 0.0142, barrelL: 0.44, crewL: 0.50, jacket: 'perforated', flashR: 0.026, flashL: 0.08, gas: false, gasEnd: 0, handle: false, caliber: 7.62, feed: 'left', name: 'MG3 GPMG' },
+  qjc88: { s: 1.00, rec: [0.095, 0.100, 0.40], body: [0.092, 0.132], bore: 0.44, grip: 'spade', sight: 'leaf', front: 'barrel', barrelR: 0.0150, barrelL: 0.60, crewL: 0.82, jacket: 'none',   flashR: 0.037, flashL: 0.13, gas: true,  gasEnd: 0.70, handle: true,  caliber: 12.7, feed: 'left', name: 'QJC-88 HMG' },
 };
 
 /**
@@ -53,6 +64,13 @@ export const MG_CLASSES = {
  */
 export const MG_TRUE_SCALE_FLOOR = { gpmg: 0.60, heavy: 0.72 } as const;
 const MG_MARKER_SCALE = 0.25;
+/**
+ * 2026-10-08 (round 5; wave 262, the battle set at chase distance: "no machine gun or weapon station is legible in any
+ * frame"; the coordinator: "the right size ... keep the barrel and receiver at true scale"): a crew gun is drawn at no
+ * less than this share of its class's true scale (83 crew guns in the fleet stood at 0.60-0.86 of it: GPMGs at 77 %,
+ * heavy guns at 72 %). Remote stations keep MG_TRUE_SCALE_FLOOR, so no published pivot or muzzle moves.
+ */
+const MG_CREW_TRUE_SHARE = 0.95;
 
 export type MgClassKey = keyof typeof MG_CLASSES;
 export type MgClassDefinition = (typeof MG_CLASSES)[MgClassKey];
@@ -90,6 +108,19 @@ export interface PintleOptions {
   riser?: number;
   /** The mount's reflex (collimator) sight on an arm beside the receiver, on the side away from the feed (NSVT). */
   reflexSight?: boolean;
+  /**
+   * The barrel the gun draws (round 5): true takes the class's station datum (`barrelL`, from which a remote station's
+   * published muzzle is measured), false the true crew length (`crewL`). Default: the datum on remote stations and
+   * crewless copies, the true length on crew guns.
+   */
+  datumBarrel?: boolean;
+  /** An explicit drawn barrel length (m, from the trunnion's barrel station): a station whose muzzle is a datum. */
+  barrelLength?: number;
+  /**
+   * A gun whose size is measured from a source study (round 5): it keeps its authored scale above the station floor
+   * (MG_TRUE_SCALE_FLOOR) instead of the crew guns' true-scale floor.
+   */
+  sourceScale?: boolean;
 }
 
 export interface PintleLayout {
@@ -128,6 +159,8 @@ export interface PintleLayout {
   readonly barrelR0: number;
   readonly riser: number;
   readonly reflexSight: boolean;
+  /** The drawn barrel's length from the trunnion's barrel station (the class's crewL or barrelL, times s). */
+  readonly barrelLength: number;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
@@ -139,7 +172,8 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
   const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
   const cls = MG_CLASSES[classKey];
   const authoredScale = (opts.scale || 1) * cls.s;
-  const floor = cls.caliber > 10 ? MG_TRUE_SCALE_FLOOR.heavy : MG_TRUE_SCALE_FLOOR.gpmg;
+  const floor = opts.remote || opts.sourceScale ? (cls.caliber > 10 ? MG_TRUE_SCALE_FLOOR.heavy : MG_TRUE_SCALE_FLOOR.gpmg)
+    : cls.s * MG_CREW_TRUE_SHARE;
   const s = authoredScale < MG_MARKER_SCALE ? authoredScale : Math.max(authoredScale, floor);
   const tone = opts.tone || 'two-tone';
   // Weapons and ammunition stay neutral gunmetal. Tone controls only the support/shield finish; letting the host
@@ -179,6 +213,7 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
     barrelR0: cls.barrelR * barrelScale,
     riser,
     reflexSight: Boolean(opts.reflexSight) && !remote,
+    barrelLength: opts.barrelLength ?? ((opts.datumBarrel ?? (remote || Boolean(opts.sourceScale))) ? cls.barrelL : cls.crewL) * s,
   };
 }
 
@@ -213,6 +248,15 @@ export function addPintleMount(context: PintleLayout): void {
     parts.add(weaponSlot, cylY(0.0045 * s, 0.0045 * s, 0.006, 6), Math.cos(a) * 0.035 * s, 0.009, Math.sin(a) * 0.035 * s);
   }
   parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  if (context.riser > 0.03) {
+    // 2026-10-08 (round 5; wave 254 on the Challenger 1: "it sits on a bare thin pole, so it reads as a prop on a stick
+    // rather than a gun in a mount"): a risen pintle stands in its post: a 64 mm sleeve over the riser with a clamp
+    // collar and its lock bolt at the top, so the spindle above it reads as the pintle in its socket.
+    const sleeveH = context.riser + 0.02;
+    parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
+    parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
+    if (near) parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
+  }
   parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
   // 2026-10-07 (round 3): a cradle that carries the gun. The fork arms used to stand inside the receiver's walls; the
   // cheeks now clasp the receiver from outside, a cradle floor runs under it, and the trunnion pin passes through
@@ -300,8 +344,10 @@ export function addPintleReceiver(context: PintleLayout): void {
   }
   // the charging handle and its slide on the side away from the feed
   parts.add(weaponSlot, block(0.010 * s, bodyH * 0.22, rd * 0.42), -f * (bodyW / 2 + 0.004 * s), trunY - bodyH * 0.05, recZ - 0.02 * s);
-  if (near) parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.011 * s, 0], [0.012 * s, 0.026 * s], [0.0005, 0.03 * s]], 6),
-    0, 0, 0, 0, 0, f * Math.PI / 2), -f * (bodyW / 2 + 0.008 * s), trunY - bodyH * 0.05, recZ + rd * 0.12);
+  // round 5: the handle's knob stands well out from the slide on its stem (it read as a bump on the plate)
+  parts.add(weaponSlot, place(block(0.04 * s, 0.012 * s, 0.014 * s), 0, 0, 0, 0, 0, 0), -f * (bodyW / 2 + 0.022 * s), trunY - bodyH * 0.05, recZ + rd * 0.12);
+  if (near) parts.add(weaponSlot, place(latheY([[0.0005, 0], [0.013 * s, 0], [0.014 * s, 0.03 * s], [0.0005, 0.035 * s]], 6),
+    0, 0, 0, 0, 0, f * Math.PI / 2), -f * (bodyW / 2 + 0.04 * s), trunY - bodyH * 0.05, recZ + rd * 0.12);
   // armoured back plate (buffer housing)
   parts.add(weaponSlot, moldedBox(bodyW * 0.8, bodyH * 0.62, 0.05 * s, 0.008 * s, 1, 0.005 * s), 0, bodyBottom + bodyH * 0.42, backZ - 0.025 * s);
   if (remote) {
@@ -345,19 +391,38 @@ export function addPintleReceiver(context: PintleLayout): void {
   }
 }
 
+/**
+ * A perforated jacket (round 5, 2026-10-08; wave 255: "no visible cooling-jacket perforations"): a closed collar at
+ * each end and a ring of slats between them, so the barrel shows through the openings the way it does through the
+ * M2HB's barrel support and the MG3's jacket (a solid lathe with raised bands read as a plain tube). `bands` adds
+ * thin closed rings across the slats (the MG3's rows of holes). Stations are along the barrel from the trunnion.
+ */
+function addJacketCage(context: PintleLayout, z0: number, z1: number, rj: number, slats: number, collarL: number,
+  bands: readonly number[] = []): void {
+  const { parts, s, trunY, trunZ, weaponSlot } = context;
+  const near = context.detail === 1;
+  const seg = near ? 12 : 8;
+  const rIn = Math.min(rj * 0.62, context.barrelR0 * 1.0);
+  const collar = (za: number, zb: number, rOut: number): void => {
+    parts.add(weaponSlot, aim(barrelLathe([[rIn, 0], [rOut, 0], [rOut, zb - za], [rIn, zb - za], [rIn, 0]], seg), za),
+      0, trunY, trunZ);
+  };
+  collar(z0, z0 + collarL, rj * 1.05);
+  collar(z1 - collarL, z1, rj * 1.05);
+  for (const zb of bands) collar(zb - 0.0035 * s, zb + 0.0035 * s, rj * 1.02);
+  // slats: half the circumference closed, their ends 2 mm into the collars
+  const count = near ? slats : Math.max(4, Math.round(slats / 2));
+  const width = (2 * Math.PI * rj / count) * (near ? 0.5 : 0.7), thick = Math.max(0.0022 * s, rj * 0.11);
+  const length = z1 - z0 - 2 * collarL + 0.004;
+  for (let k = 0; k < count; k++) {
+    const a = (k + 0.5) / count * Math.PI * 2, r = rj - thick / 2;
+    parts.add(weaponSlot, aim(place(block(width, thick, length), Math.sin(a) * r, Math.cos(a) * r, 0, 0, 0, -a), (z0 + z1) / 2),
+      0, trunY, trunZ);
+  }
+}
+
 /** Barrel support, fins or ribs as one lathe profile (radius, station) from the trunnion forward. */
 function barrelJacketProfile(jacket: string, r0: number, s: number): Array<readonly [number, number]> | null {
-  if (jacket === 'sleeve') {
-    // perforated barrel support (the M2HB's 61 mm sleeve) with three raised retaining bands
-    const rj = Math.max(0.031 * s, r0 * 1.4);
-    const profile: Array<readonly [number, number]> = [[r0 * 1.02, 0], [rj, 0.002 * s]];
-    for (let k = 0; k < 3; k++) {
-      const y = (0.034 + k * 0.042) * s;
-      profile.push([rj, y - 0.004 * s], [rj * 1.06, y - 0.0015 * s], [rj * 1.06, y + 0.0015 * s], [rj, y + 0.004 * s]);
-    }
-    profile.push([rj, 0.148 * s], [r0 * 1.02, 0.15 * s]);
-    return profile;
-  }
   if (jacket === 'fins') {
     // the DShK's turned cooling fins over the barrel's breech third
     const profile: Array<readonly [number, number]> = [[r0 * 1.02, 0.02 * s]];
@@ -393,6 +458,20 @@ function muzzleDeviceProfile(classKey: string, r0: number, fr: number, fl: numbe
     return [[r0 * 1.1, 0], [fr, 0.1 * fl], [fr, 0.34 * fl], [fr * 0.82, 0.38 * fl], [fr * 0.82, 0.58 * fl], [fr, 0.62 * fl],
       [fr, fl], [r0 * 0.9, fl]];
   }
+  if (classKey === 'qjc88') {
+    // the W85 family's big slotted brake: three rings of slots between full-diameter collars
+    const profile: Array<readonly [number, number]> = [[r0 * 1.15, 0], [fr * 0.8, 0.05 * fl], [fr, 0.1 * fl]];
+    for (const [a, b] of [[0.2, 0.34], [0.46, 0.6], [0.72, 0.86]]) {
+      profile.push([fr, a * fl], [fr * 0.74, a * fl + 0.004], [fr * 0.74, b * fl - 0.004], [fr, b * fl]);
+    }
+    profile.push([fr, fl], [r0 * 0.9, fl]);
+    return profile;
+  }
+  if (classKey === 'mg3') {
+    // the MG3's muzzle booster: a short drum ahead of the jacket and the conical flash hider in front of it
+    return [[r0 * 1.15, 0], [fr * 0.9, 0.08 * fl], [fr * 0.9, 0.42 * fl], [fr * 0.62, 0.48 * fl], [fr * 0.8, 0.86 * fl],
+      [fr, 0.94 * fl], [fr * 0.92, fl], [r0 * 0.9, fl]];
+  }
   // conical flash hider (M2, the GPMGs)
   return [[r0 * 1.08, 0], [fr * 0.72, 0.26 * fl], [fr, 0.9 * fl], [fr * 0.9, fl], [r0 * 0.9, fl]];
 }
@@ -403,7 +482,10 @@ export function addPintleBarrel(context: PintleLayout): void {
   const near = context.detail === 1;
   const seg = near ? 12 : 8;
   const jacket = barrelJacketProfile(cls.jacket, r0, s);
-  if (jacket) parts.add(weaponSlot, aim(barrelLathe(jacket, cls.jacket === 'fins' ? (near ? 10 : 8) : seg), 0), 0, trunY, trunZ);
+  if (cls.jacket === 'sleeve') {
+    // the M2HB's perforated barrel support (61 mm) from the trunnion block, its retaining collar at the front
+    addJacketCage(context, 0, 0.15 * s, Math.max(0.031 * s, r0 * 1.4), 8, 0.024 * s);
+  } else if (jacket) parts.add(weaponSlot, aim(barrelLathe(jacket, cls.jacket === 'fins' ? (near ? 10 : 8) : seg), 0), 0, trunY, trunZ);
   else {
     // 2026-10-07 (round 3): every barrel is carried from the receiver face. Unsleeved classes (the GPMGs) used to start
     // their barrel 100 mm ahead of the receiver unless a caller asked for `barrelBridge`, so 107 fleet guns showed a
@@ -411,9 +493,15 @@ export function addPintleBarrel(context: PintleLayout): void {
     parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.6, 0], [r0 * 1.6, 0.032 * s], [r0 * 1.32, 0.042 * s], [r0 * 1.24, 0.1 * s + 0.002]], near ? 10 : 8), 0),
       0, trunY, trunZ);
   }
-  const bl = cls.barrelL * s;
+  const bl = context.barrelLength;
   const fl = cls.flashL * s;
   const muzzleBase = 0.10 * s + bl;
+  if (cls.jacket === 'perforated') {
+    // the MG3's perforated jacket over most of the barrel, with the front sight's collar at its muzzle end and two
+    // closed bands across its rows of holes
+    const zj1 = 0.10 * s + bl * 0.86;
+    addJacketCage(context, 0.07 * s, zj1, r0 * 1.85, 8, 0.03 * s, [0.07 * s + (zj1 - 0.07 * s) * 0.36, 0.07 * s + (zj1 - 0.07 * s) * 0.68]);
+  }
   // a heavier breech third, a short taper, then the barrel to the muzzle device (round 4: at its true section)
   parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.12, 0], [r0 * 1.12, bl * 0.3], [r0 * 0.95, bl * 0.4], [r0 * 0.95, bl]], near ? 10 : 8), 0.10 * s),
     0, trunY, trunZ);
@@ -422,9 +510,9 @@ export function addPintleBarrel(context: PintleLayout): void {
   parts.add(weaponSlot, aim(cylZ(r0 * 0.55, 0.010, near ? 10 : 6), muzzleBase + fl + 0.006), 0, trunY, trunZ);
   const gasZ1 = 0.10 * s + bl * cls.gasEnd;
   if (cls.gas) {
-    // the gas cylinder under the barrel with its gas block (GPMGs, Kord, DShK)
-    const gasZ0 = 0.10 * s + bl * 0.04;
-    parts.add(weaponSlot, aim(cylZ(r0 * 0.62, gasZ1 - gasZ0, near ? 8 : 6), (gasZ0 + gasZ1) / 2, -r0 * 1.75), 0, trunY, trunZ);
+    // the gas cylinder under the barrel with its gas block (GPMGs, Kord, DShK; the QJC-88's thick one)
+    const gasZ0 = 0.10 * s + bl * 0.04, gasR = classKey === 'qjc88' ? r0 * 0.95 : r0 * 0.62;
+    parts.add(weaponSlot, aim(cylZ(gasR, gasZ1 - gasZ0, near ? 8 : 6), (gasZ0 + gasZ1) / 2, -r0 * (classKey === 'qjc88' ? 2.0 : 1.75)), 0, trunY, trunZ);
     if (near) parts.add(weaponSlot, aim(block(r0 * 1.6, r0 * 2.9, 0.018 * s), gasZ1, -r0 * 0.9), 0, trunY, trunZ);
   }
   // round 4: the front sight on the barrel (on the gas block, or near the muzzle on a gun without one)
@@ -489,9 +577,11 @@ function addBelt(context: PintleLayout, p0: readonly number[], p1: readonly numb
   for (let index = 0; index < count; index++) {
     const { p, roll } = at(Math.max(0, total - index * round.pitch));
     // the link square to the belt's tangent in the belt's own plane (the rounds stay parallel to the bore)
-    const link = block(round.pitch * 0.8, round.r * 2.3, round.len * 0.3);
+    // round 5: the link wraps the case's middle as a dark band across the round, so the belt reads as a striped run
+    // of rounds in links rather than a row of beads in the can's paint
+    const link = block(round.pitch * 0.82, round.r * 2.3, round.len * 0.42);
     link.applyMatrix4(new THREE.Matrix4().makeRotationZ(roll));
-    parts.add(weaponSlot, link, p[0], p[1], p[2] - round.len * 0.16);
+    parts.add(weaponSlot, link, p[0], p[1], p[2] - round.len * 0.05);
     parts.add(MG_CARTRIDGE_SLOT, cylZ(round.r, round.len, seg), p[0], p[1], p[2] + round.len * 0.08);
   }
 }
@@ -506,7 +596,7 @@ function addBelt(context: PintleLayout, p0: readonly number[], p1: readonly numb
  */
 export function addPintleAmmo(context: PintleLayout): void {
   if (context.classKey === 'nsvt') { addNsvtAmmo(context); return; }
-  const { ammoSlot, bodyBottom, bodyW, feedSign: f, parts, recY, recZ, rh, s, weaponSlot, cls, mount } = context;
+  const { ammoSlot, bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, weaponSlot, cls, mount } = context;
   if (!context.ammo) return;
   const near = context.detail === 1;
   const heavy = cls.caliber > 10;
@@ -553,62 +643,81 @@ export function addPintleAmmo(context: PintleLayout): void {
       parts.add(weaponSlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
     }
   }
-  // the feed tray on the receiver's feed side: a shelf the length of a round, the cartridge stop at its front and a
-  // guide at its rear (round 4)
+  // the belt: out of the mouth, up and over, and down onto the tray at the feedway
+  // round 5: a heavy gun's belt arcs higher over its can (0.065 s before), so it reads from the side and the front
+  // three-quarter; a GPMG's short belt keeps its arc
+  addPintleFeed(context, [inboard + f * mouthW * 0.5, lidY - 0.02 * s, pintleFeedTrayZ(context)], lidY, (heavy ? 0.085 : 0.065) * s,
+    heavy ? 13 : 17);
+}
+
+/** The feed tray's station along the bore: the receiver's forward part, where the belt enters the feedway. */
+export function pintleFeedTrayZ(context: PintleLayout): number {
+  return context.recZ + 0.12 * context.s;
+}
+
+/**
+ * The feed tray on the receiver's feed side (a shelf the length of a round, the cartridge stop at its front and a guide
+ * at its rear; round 4) and the belt from p0 (inside a box's open mouth) up over an apex `rise` above the higher of
+ * `apexOver` and the tray, and down onto the tray at the feedway. The pintle's own can uses it, and so does a remote
+ * station that hangs its box elsewhere on its cradle (round 5, the T-90SM/T-72B3M station).
+ */
+export function addPintleFeed(context: PintleLayout, p0: readonly number[], apexOver: number, rise: number, maxRounds: number): void {
+  const { bodyW, cls, feedSign: f, parts, recY, rh, s, weaponSlot } = context;
+  const near = context.detail === 1;
   const round = roundDims(cls, s);
-  const trayX = f * (bodyW / 2 + 0.016 * s), trayY = recY + rh * 0.18, trayZ = recZ + 0.12 * s;
+  const trayX = f * (bodyW / 2 + 0.016 * s), trayY = recY + rh * 0.18, trayZ = pintleFeedTrayZ(context);
   parts.add(weaponSlot, block(0.034 * s, 0.006 * s, round.len * 0.78), trayX, trayY, trayZ + round.len * 0.08);
   parts.add(weaponSlot, block(0.034 * s, 0.022 * s, 0.005 * s), trayX, trayY + 0.011 * s, trayZ + round.len * 0.6);
   if (near) parts.add(weaponSlot, block(0.034 * s, 0.012 * s, 0.005 * s), trayX, trayY + 0.006 * s, trayZ - round.len * 0.36);
-  // the belt: out of the mouth, up and over, and down onto the tray at the feedway
-  const mouthX = inboard + f * mouthW * 0.5;
-  const p0 = [mouthX, lidY - 0.02 * s, trayZ];
   const p3 = [f * (bodyW / 2 + 0.006 * s), trayY + 0.003 * s + round.r, trayZ];
-  const apex = Math.max(lidY, p3[1]) + 0.065 * s;
-  const p1 = [mouthX, apex, trayZ];
+  const apex = Math.max(apexOver, p3[1]) + rise;
+  const p1 = [p0[0], apex, p0[2]];
   const p2 = [p3[0] + f * 0.05 * s, p3[1] + (apex - p3[1]) * 0.7, trayZ];
-  addBelt(context, p0, p1, p2, p3, round, heavy ? 12 : 16);
+  addBelt(context, p0, p1, p2, p3, round, maxRounds);
 }
 
 export function addPintleShield(context: PintleLayout): void {
   const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
-  if (shieldVariant) {
-    const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
-    const shieldZ = trunZ + 0.035 * s;
-    const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;
-    const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(sideW * s, shieldH * s, 0.022 * s),
-        side * (0.075 + sideW / 2) * s, recY + 0.018 * s, shieldZ,
-        0, -side * 0.055, side * 0.035);
-      parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
-        side * (0.148 + sideW * 0.45) * s, recY + 0.006 * s, shieldZ - 0.020 * s);
-      parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
-        side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
-        -0.22, 0, side * 0.08);
+  if (!shieldVariant) return;
+  // 2026-10-08 (round 5; wave 254 on the T-90M: "the two flat dark plates flanking the gun are slabs with a pair of tiny
+  // slits each, so the shield and sight look like cardboard rather than cast armour around a gun cradle"): each leaf is
+  // a 30 mm armour plate with chamfered edges in two panels, the outer one swept back like a cast shield's wing; one
+  // vision slot per leaf under its own armoured hood; four bolt heads where the leaf meets its stiffener; a chamfered
+  // top beam over the receiver. The envelope, the stiffeners and the braces to the cradle are those of round 4.
+  const near = context.detail === 1;
+  const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
+  const shieldZ = trunZ + 0.035 * s;
+  const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;
+  const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
+  const T = 0.03 * s, innerW = sideW * 0.62, outerW = sideW * 0.42, wing = 0.30;
+  const plate = (w: number, h: number): THREE.BufferGeometry => moldedBox(w * s, h * s, T, 0.006 * s, 1, 0.007 * s);
+  for (const side of [-1, 1]) {
+    const x0 = 0.075 * s, xi = x0 + innerW * s / 2;
+    parts.add(shieldSlot, plate(innerW, shieldH), side * xi, recY + 0.018 * s, shieldZ, 0, -side * 0.055, side * 0.035);
+    // the outer wing, hinged on the inner panel's outboard edge and swept back
+    const xe = x0 + innerW * s * 0.98;
+    parts.add(shieldSlot, plate(outerW, shieldH * 0.94),
+      side * (xe + Math.cos(wing) * outerW * s / 2), recY + 0.018 * s, shieldZ - Math.sin(wing) * outerW * s / 2,
+      0, side * wing, side * 0.035);
+    // the stiffener post behind the inner panel's outboard edge, and the brace down to the cradle
+    parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s), side * (xe - 0.012 * s), recY + 0.006 * s, shieldZ - 0.026 * s);
+    parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
+      side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
+      -0.22, 0, side * 0.08);
+    // the vision slot (a recess in the inner panel) under its hood
+    const slotY = recY + shieldH * 0.22 * s;
+    parts.add('shadow', box(innerW * 0.6 * s, 0.024 * s, T * 0.7), side * xi, slotY, shieldZ + T * 0.2, 0, -side * 0.055, 0);
+    parts.add(shieldSlot, box(innerW * 0.72 * s, 0.012 * s, 0.032 * s), side * xi, slotY + 0.019 * s, shieldZ + T * 0.5 + 0.008 * s,
+      0.4, -side * 0.055, 0);
+    if (near) for (const sy of [-0.3, 0.36]) for (const sx of [0.2, 0.86]) {
+      parts.add('dark', cylZ(0.0095 * s, 0.01 * s, 6), side * (x0 + innerW * sx * s), recY + sy * shieldH * s, shieldZ + T * 0.5 + 0.003 * s);
     }
-    parts.add(shieldSlot, box(0.19 * s, 0.032 * s, 0.026 * s),
-      0, recY + shieldH * 0.48 * s, shieldZ);
-    // Folded lips, sight slots and fastener heads keep the shield from
-    // reading as one featureless rectangle. They share the shield plane and
-    // remain part of the equipment fitting rather than turret armor.
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(0.022 * s, shieldH * 0.92 * s, 0.045 * s),
-        side * (0.075 + sideW - 0.012) * s, recY + 0.018 * s, shieldZ - 0.010 * s,
-        0, -side * 0.10, 0);
-      parts.add('shadow', box(sideW * 0.43 * s, 0.032 * s, 0.012 * s),
-        side * 0.145 * s, recY + shieldH * 0.18 * s, shieldZ + 0.014 * s,
-        0, -side * 0.055, 0);
-      for (const sy of [-0.28, 0.30]) {
-        parts.add('dark', cylZ(0.009 * s, 0.012 * s, 8),
-          side * (0.075 + sideW * 0.70) * s,
-          recY + sy * shieldH * s, shieldZ + 0.018 * s);
-      }
-    }
-    if (shieldVariant === 'armored') {
-      parts.add(shieldSlot, box(0.34 * s, 0.035 * s, 0.18 * s),
-        0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
-    }
+  }
+  // the top beam over the receiver, chamfered, bridging the two inner panels
+  parts.add(shieldSlot, moldedBox(0.19 * s, 0.032 * s, 0.03 * s, 0.006 * s, 1, 0.006 * s), 0, recY + shieldH * 0.48 * s, shieldZ);
+  if (shieldVariant === 'armored') {
+    parts.add(shieldSlot, moldedBox(0.34 * s, 0.035 * s, 0.18 * s, 0.008 * s, 1, 0.008 * s),
+      0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
   }
 }
 
@@ -707,7 +816,7 @@ function addNsvtBarrel(context: PintleLayout): void {
   const { barrelR0: r0, cls, parts, s, trunY, trunZ, weaponSlot } = context;
   const near = context.detail === 1;
   const seg = near ? 12 : 8;
-  const bl = cls.barrelL * s, fl = cls.flashL * s;
+  const bl = context.barrelLength, fl = cls.flashL * s;
   // the barrel socket at the receiver face and the slender, lightly tapered barrel
   parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.75, 0], [r0 * 1.75, 0.034 * s], [r0 * 1.4, 0.046 * s], [r0 * 1.12, 0.1 * s + 0.002]], near ? 10 : 8), 0),
     0, trunY, trunZ);
@@ -775,10 +884,12 @@ function addNsvtAmmo(context: PintleLayout): void {
   const feedY = recTop - bodyH * 0.06;
   const p0 = [mouthX, top - 0.02 * s, beltZ];
   const p3 = [f * (bodyW / 2 + 0.012 * s), feedY, beltZ];
-  const apex = Math.max(top, feedY) + 0.055 * s;
+  // round 5 (wave 254 on the Oplot-M: "the ammunition box ... has no belt, feed chute, handle or latch, so the heavy
+  // machine gun looks as though it could not be fed"): the belt arcs higher out of the box, so it reads over the lid
+  const apex = Math.max(top, feedY) + 0.075 * s;
   const p1 = [mouthX, apex, beltZ];
   const p2 = [p3[0] + f * 0.045 * s, feedY + (apex - feedY) * 0.7, beltZ];
-  addBelt(context, p0, p1, p2, p3, round, 8);
+  addBelt(context, p0, p1, p2, p3, round, 9);
   // the feed guide outside the opening (the belt's last round rests on it)
   parts.add(weaponSlot, block(0.03 * s, 0.006 * s, round.len * 0.7), f * (bodyW / 2 + 0.02 * s), feedY - round.r - 0.004 * s, beltZ + round.len * 0.08);
 }

@@ -265,7 +265,9 @@ function machineGun(P:TankBuilderPort):void {
   const pivot=new THREE.Vector3(-.75156,2.85947,.10957),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis);
   mg.add('turretDark',box(.080,.134,.64).applyQuaternion(q),...pivot.toArray());
   const tip=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),base=new THREE.Vector3(-.8321749,3.0664378,.4178961);
-  mg.add('turretDark',beamBetween(base.toArray(),tip.toArray(),.0198,20),0,0,0);
+  // round 5 (2026-10-08, the fleet lane's circular-cap audit): the barrel ends 6 mm inside the muzzle device instead of
+  // sharing its end cap's plane
+  mg.add('turretDark',beamBetween(base.toArray(),tip.clone().addScaledVector(axis,-.006).toArray(),.0198,20),0,0,0);
   mg.add('turretDetail',beamBetween(base.toArray(),base.clone().addScaledVector(axis,.39).toArray(),.030,20),0,0,0);
   mg.add('turretDark',beamBetween(tip.clone().addScaledVector(axis,-.030).toArray(),tip.toArray(),.027,20),0,0,0);
   const group=mg.finish();

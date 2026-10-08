@@ -473,7 +473,7 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     mount(P, 'turret', FITTINGS.openYokeRws({
       mats: P.mats, bodySlot: 'turret', sizeStandard: 'k2b-compact-tower',
       scale: 0.70, towerRise: 0.08, variant: 'korean-twin', sensorHead: true,
-      sensorMount: 'roof', weapon: true, caliberMm: 12.7,
+      sensorMount: 'roof', weapon: true, caliberMm: 12.7, cls: 'qjc88',
       weaponName: 'QJC-88 remote weapon station', seed: 430,
     }), [0.38, 0.73 + roofLift, -0.86], [0, 0.03, 0]);
     P.addEquipment('turret', box(0.38, 0.15, 0.32), 0.38, 0.69 + roofLift, -0.86);
@@ -485,8 +485,11 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
     P.addEquipment('turret', box(0.42, 0.12, 0.40), 0.48, 0.75 + roofLift, -0.72);
     // round 4 (2026-10-07, wave 215): a flat machined race seated on the pedestal (the round tube floated 6 mm over it)
     addMachinedRace(P, 0.158, 0.19, 0.014, 0.48, 0.81 + roofLift, -0.72, 10);
+    // 2026-10-08 (round 5; wave 255 on the Type 99A: "a long barrel on a plain block receiver with no ammunition box,
+    // belt or feed"; the coordinator: the right gun per nation, at true size): the QJC-88 (the W85's vehicle form) at
+    // true scale, its 50-round box and belt on the left, instead of a 0.72 NSVT.
     mount(P, 'turret', FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 0.72,
+      mats: P.mats, cls: 'qjc88', tone: 'two-tone', scale: 1.0,
       ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944,
     }), [0.48, 0.82 + roofLift, -0.62]);
     P.addEquipment('turret', box(0.48, 0.30, 0.44), 0.72, 0.82 + roofLift, -1.06);

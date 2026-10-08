@@ -1959,7 +1959,9 @@ function addChallenger2WeaponTowerMg(
   stationPart(box(0.16, 0.014, 0.13), 0.775, 0.952, 0.205);
   stationPart(box(0.014, 0.056, 0.10), 0.868, 0.905, 0.20);
   stationPart(box(0.055, 0.020, 0.085), 0.665, 0.918, 0.20);
-  stationPart(cylX(0.018, 0.62, P.q ? 16 : 12), 0.84, 0.925, 0.20,
+  // round 5 (2026-10-08, the fleet lane's circular-cap audit): the barrel's muzzle stands 8 mm out of its sleeve; the two
+  // end caps shared the sleeve's plane and fought
+  stationPart(cylX(0.018, 0.628, P.q ? 16 : 12), 0.844, 0.925, 0.20,
     P.mats.dark, 'challenger2BrowningDerivedBarrel');
   for (const sleeveX of [0.62, 0.69, 0.76]) {
     stationPart(cylX(0.022, 0.020, P.q ? 16 : 12), sleeveX, 0.925, 0.20);
