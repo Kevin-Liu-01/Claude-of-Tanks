@@ -64,6 +64,12 @@ export interface LandmarkPlacement {
    * (props.ts), so no record of theirs moves for it.
    */
   ground?: 'reserve' | 'veto';
+  /**
+   * A ring kept clear of trees round the piece, the half-extent of a square on it (m): a mill's wind (the landmarks lane,
+   * 2026-10-07, gauntlet wave 248: no tall trees within 60-100 m of Tidegate's mills, the Dutch molenbiotoop). Trees
+   * only: shrubs, hedges, grass and crops stand in it (vegetationClearance.ts StructureClearance.treesOnly).
+   */
+  treeRing?: number;
 }
 
 /** What a builder may read. It never draws from the props placement streams. */

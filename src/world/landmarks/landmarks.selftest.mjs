@@ -584,8 +584,12 @@ for (const id of MAP_IDS) {
   const shard = decodeCollisionManifest(JSON.parse(readFileSync(new URL(`../../../server/world-collision-manifests/${id}.json`, import.meta.url), 'utf8')));
   const structures = shard.obstacles.filter((record) => record.k === 'structure');
   assert.equal(landmarkClearances(landmarks).length,
-    landmarks.reduce((n, p) => n + (LANDMARK_KINDS[p.kind].solids?.(resolveLandmarkParams(p)).length ?? 1), 0),
-    `${id}: a vegetation clearance per piece (per solid rectangle where its kind names them)`);
+    landmarks.reduce((n, p) => n + (LANDMARK_KINDS[p.kind].solids?.(resolveLandmarkParams(p)).length ?? 1) + (p.treeRing > 0 ? 1 : 0), 0),
+    `${id}: a vegetation clearance per piece (per solid rectangle where its kind names them), and its tree ring where it keeps one`);
+  // (a tree ring, types.ts treeRing: a square of its half-extent on the piece, trees only — the shrubs keep their places)
+  const rings = landmarkClearances(landmarks).filter((c) => c.treesOnly);
+  assert.deepEqual(rings.map((c) => [c.x, c.z, c.halfWidth, c.halfLength, c.cos, c.sin]),
+    landmarks.filter((p) => p.treeRing > 0).map((p) => [p.x, p.z, p.treeRing, p.treeRing, 1, 0]), `${id}: the tree rings on their pieces`);
   for (const placement of landmarks) check(`${id}/${placement.name ?? placement.kind}`, () => {
     const label = `${id}/${placement.name ?? placement.kind}`;
     assert.ok(LANDMARK_KINDS[placement.kind], `${label}: a known kind`);

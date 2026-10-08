@@ -259,7 +259,13 @@ export function landmarkClearances(landmarks: readonly LandmarkPlacement[] | nul
     const yaw = (placement.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
     const params = resolveLandmarkParams(placement), spec = LANDMARK_KINDS[placement.kind];
     const rects = spec.solids?.(params) ?? [[0, 0, ...spec.footprint(params)] as const];
-    return rects.map(([cx, cz, hw, hl]) => ({ x: placement.x + cx * c + cz * s, z: placement.z - cx * s + cz * c,
+    const footprint: StructureClearance[] = rects.map(([cx, cz, hw, hl]) => ({ x: placement.x + cx * c + cz * s, z: placement.z - cx * s + cz * c,
       halfWidth: hw + TREE_MARGIN_M, halfLength: hl + TREE_MARGIN_M, cos: c, sin: s }));
+    // its tree ring (types.ts treeRing): a square on the piece, trees only — the shrubs and hedges keep their places
+    const ringM = Number(placement.treeRing) || 0;
+    if (ringM <= 0) return footprint;
+    const ring: StructureClearance & { treesOnly: true } = { x: placement.x, z: placement.z, halfWidth: ringM, halfLength: ringM, cos: 1, sin: 0,
+      treesOnly: true };
+    return [...footprint, ring];
   });
 }
