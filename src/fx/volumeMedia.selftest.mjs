@@ -77,6 +77,7 @@ assert.ok(gpuMB <= 16, `the media atlases stay within the 16 MB desktop budget (
   camera.updateMatrixWorld(true);
   media.update(camera);
   assert.equal(media.stats().drawn, 0, 'nothing drawn while empty');
+  assert.equal(media.group.children[0].visible, false, 'an idle pool is out of the render list');
   assert.equal(media.isActive(), false);
   const p = makeVolumePuff();
   const R = mulberry32(7);
@@ -89,6 +90,7 @@ assert.ok(gpuMB <= 16, `the media atlases stay within the 16 MB desktop budget (
   const st = media.stats();
   assert.equal(st.live, 64, 'the ring holds its capacity (the oldest are overwritten)');
   assert.equal(st.drawn, 64, 'every live puff is drawn');
+  assert.equal(media.group.children[0].visible, true, 'a live pool draws');
   // read the sorted instance origins back: depth along the view must not increase
   const mesh = media.group.children[0];
   const pb = mesh.geometry.getAttribute('aPB').array;
@@ -258,6 +260,7 @@ function captureContext(seed) {
 {
   const craters = createCraterMarks();
   assert.equal(craters.count, 0);
+  assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
   assert.equal(craters.count, 96, 'the crater ring keeps the latest 96');
   assert.ok(craters.mesh.geometry.drawRange.count > 0, 'craters draw');

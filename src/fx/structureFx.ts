@@ -47,6 +47,29 @@ const FALLBACK_LOOK: StructureLook = Object.freeze({
   interior: linearHex(0x1c1a17),
 });
 
+const look = (interior: number, ...rubble: [string, number, number][]): StructureLook => Object.freeze({
+  rubble: Object.freeze(rubble.map(([material, hex, share]) => Object.freeze({ material, color: linearHex(hex), share }))),
+  interior: linearHex(interior),
+});
+const METAL_LOOK = look(0x141414, ['metal', 0x5c6156, 0.7], ['glass', 0x9fb0b4, 0.1], ['plank', 0x4a3a2a, 0.2]);
+const WOOD_LOOK = look(0x161210, ['plank', 0x7a5c3e, 0.6], ['timber', 0x5e4632, 0.4]);
+const STONE_LOOK = look(0x181715, ['stone', 0x8d877c, 0.85], ['earth', 0x5d4f3e, 0.15]);
+const ADOBE_LOOK = look(0x1a1612, ['adobe', 0xa98a63, 0.85], ['earth', 0x7c6448, 0.15]);
+const EARTH_LOOK = look(0x161310, ['earth', 0x6e5c45, 0.6], ['canvas', 0x8a7d5c, 0.4]);
+
+/** What a struck prop or structure is made of, by its collision kind (the world's record kind), until the core lane's
+ *  structure anatomy names it exactly. */
+export function lookForStruckKind(kind: string | null | undefined): StructureLook | null {
+  const k = (kind ?? '').toLowerCase();
+  if (!k || k === 'structure') return null;
+  if (/car|truck|van|bus|jeep|vehicle|tractor|container|barrel|drum|tank|cylinder|hedgehog|tetra|metal|steel|iron|crane|gantry|wagon|locomotive|boat|ship|wreck|aagun|gun|artillery|pylon|mast|lamp/.test(k)) return METAL_LOOK;
+  if (/sandbag|bag|berm|earth|trench|mound|bale|hay/.test(k)) return EARTH_LOOK;
+  if (/adobe|limewash|mud/.test(k)) return ADOBE_LOOK;
+  if (/stone|rock|rubble|wall|pillbox|bunker/.test(k)) return STONE_LOOK;
+  if (/tree|stump|trunk|fence|gate|post|crate|wood|timber|log|pallet|hut|shed|barn|shack|kiosk/.test(k)) return WOOD_LOOK;
+  return null;
+}
+
 /** The piece shape a fracture material breaks into. */
 function shapeFor(material: string): ChunkShape {
   switch (material) {
@@ -202,3 +225,44 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
       18 + R() * 8, 0.8 * span * dk, (1.4 + R() * 0.6) * span * dk, dust, dust, 0.45, 18, 10, 1.4 + R() * 2.5);
   }
 }
+
+/**
+ * A round striking a wall (shell:expired on a structure or a hard prop): an explosive one bursts on it (flash, a
+ * short fireball, the wall's own dust thrown off the face and its pieces), a kinetic one chips it (a jet of the
+ * face's dust and a few pieces). `look` is the building's anatomy reduced to its rubble shares, or null.
+ */
+export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number,
+  explosive: boolean, scale: number, look: StructureLook | null, bo = 0): void {
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  const dust = dustOf(L, _dust);
+  const dark: Rgb = [dust[0] * 0.6, dust[1] * 0.6, dust[2] * 0.6];
+  const nl = Math.hypot(nx, ny, nz) || 1;
+  nx /= nl; ny /= nl; nz /= nl;
+  const dk = C.distBoost(x, y, z);
+  const k = Math.max(0.35, scale);
+  if (explosive) {
+    const lp = C.lp;
+    lp.pos[0] = x + nx * 0.3; lp.pos[1] = y + ny * 0.3; lp.pos[2] = z + nz * 0.3;
+    lp.vel[0] = nx; lp.vel[1] = ny + 0.4; lp.vel[2] = nz; lp.life = 0.07;
+    lp.size0 = 1.2 * k * dk; lp.size1 = 3.4 * k * dk; lp.rot = R() * TAU; lp.rotVel = 0;
+    lp.col0[0] = 1; lp.col0[1] = 0.96; lp.col0[2] = 0.86; lp.col1[0] = 1; lp.col1[1] = 0.55; lp.col1[2] = 0.16;
+    lp.alpha = 1; lp.grav = 0; lp.birthOffset = bo;
+    C.flash(lp);
+    C.lightPulse(x + nx, y + 0.5, z + nz, Math.min(1.3, 0.4 + 0.3 * k), 0);
+  }
+  const n = explosive ? 3 + Math.round(k) : 1;
+  for (let i = 0; i < n; i++) {
+    const sp = (explosive ? 7 : 4) * (0.6 + 0.6 * R()) * Math.sqrt(k);
+    puff(C, x + nx * 0.3, y + ny * 0.3, z + nz * 0.3, nx * sp + (R() - 0.5) * 2, ny * sp + 0.6 + R(), nz * sp + (R() - 0.5) * 2,
+      2.4, 0.2, 0.9, (explosive ? 5 : 3) + R() * 2, 0.5 * k * dk, (explosive ? 4.2 : 2) * k * dk, i === 0 ? dark : dust, dust,
+      explosive ? 0.85 : 0.7, 4.5, 2, R() * 0.04);
+  }
+  const pieces = Math.round((explosive ? 14 : 5) * Math.min(2, k));
+  for (let i = 0; i < pieces; i++) {
+    const v = (explosive ? 5 + R() * 9 : 3 + R() * 5) * Math.sqrt(k);
+    piece(C, L, x + nx * 0.1, y + ny * 0.1, z + nz * 0.1, (nx + (R() - 0.5) * 0.9) * v, (ny + 0.3 + R() * 0.6) * v,
+      (nz + (R() - 0.5) * 0.9) * v, 0.05 + R() * (explosive ? 0.22 : 0.1), 2.5 + R() * 2, R() * 0.03);
+  }
+}
+

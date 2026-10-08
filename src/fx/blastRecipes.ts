@@ -27,7 +27,7 @@ import type { MunitionClass } from '../sim/destructionEvents.ts';
 import type { VolumePuff } from './volumeMedia.ts';
 import type { ChunkPiece, ChunkShape } from './debrisChunks.ts';
 import {
-  BLAST_RESIDUE, PROPELLANT, SOOT, SURFACE_LOOKS, UNDER_SNOW_SOIL, type SurfaceKind,
+  BLAST_RESIDUE, PROPELLANT, SMOKE_AGED, SOOT, SURFACE_LOOKS, UNDER_SNOW_SOIL, type SurfaceKind,
 } from './surfaceLooks.ts';
 
 type Rgb = readonly [number, number, number];
@@ -217,8 +217,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   if (I.munition === 'drone_fpv') sparkSpray(C, I.x, by + 0.4, I.z, 0, 1, 0, 22, 24, 1.3, 0.35, 0.022, bo);
 
   // 1. flash and fireball
-  lightPuff(C, 'flash', I.x, by + 0.6 * s, I.z, 0, 0.5, 0, 0.07, 1.6 * s * dk, 4.2 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
-  lightPuff(C, 'flash', I.x, by + 1.1 * s, I.z, 0, 1.0, 0, 0.12, 1.2 * s * dk, 3.4 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.7, 0, bo);
+  lightPuff(C, 'flash', I.x, by + 0.8 * s, I.z, 0, 0.6, 0, 0.09, 1.8 * s * dk, 4.6 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
   const fireN = Math.round((shaped ? 4 : 3) + s);
   for (let i = 0; i < fireN; i++) {
     const a = R() * TAU, up = 0.35 + R() * 0.65, v = (4 + R() * 6) * s;
@@ -246,11 +245,11 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   for (let i = 0; i < ejN; i++) {
     const a = (i / ejN) * TAU + (R() - 0.5) * 0.9;
     const tilt = Math.pow(R(), 1.4) * (shaped ? 0.25 : 0.42);
-    const v = (13 + R() * 9) * sq * L.heightK * (heavy ? 1.25 : 1);
+    const v = (11 + R() * 7) * sq * L.heightK * (heavy ? 1.3 : 1);
     const st = Math.sin(tilt), ct = Math.cos(tilt);
     place(m, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s, bo + R() * 0.03);
-    move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.6, 0, 0.25, -7);
-    shape(m, 1.5 + R() * 0.6, 0.9 * s * dk, (2.6 + R() * 1.2) * s * dk, 2.2, R);
+    move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.7, 0, 0.25, -9);
+    shape(m, 1.6 + R() * 0.6, 1.0 * s * dk, (2.8 + R() * 1.2) * s * dk, 2.2, R);
     const soil = I.surface === 'snow' && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta;
     look(m, c0, mix3(c0, L.dust, 0.5), 0.95, 0.0, 0.42);
@@ -273,28 +272,31 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
 
   // 3. the dust cloud: one mass, born together over the footprint, swelling fast then slowly, drifting downwind
   const cloudN = Math.round(3 + 1.5 * s);
-  const top = (shaped ? 2.4 : 3.6) * s * L.heightK * (heavy ? 1.3 : 1);
+  const top = (shaped ? 1.8 : 2.6) * s * L.heightK * (heavy ? 1.6 : 1);
+  const dustDark: Rgb = [L.dust[0] * 0.72, L.dust[1] * 0.7, L.dust[2] * 0.68];
   for (let i = 0; i < cloudN; i++) {
-    const a = R() * TAU, r = R() * 0.9 * s;
-    const h = (0.25 + 0.75 * (i / Math.max(1, cloudN - 1))) * top;
-    place(m, I.x + Math.cos(a) * r, by + 0.4 + h * 0.35, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
-    move(m, Math.cos(a) * 2.2 * sq, (3.5 + h * 1.6) * sq, Math.sin(a) * 2.2 * sq, 1.4, 0.35 + R() * 0.25, 0.85, 0);
-    shape(m, (7 + R() * 3) * Math.min(1.6, sq), 2.0 * s * dk, (6.5 + R() * 2.5) * s * Math.sqrt(dustK) * dk, 3.2, R);
-    look(m, mix3(L.ejecta, L.dust, 0.35), L.dust, Math.min(1, 0.75 * dustK + 0.1), 0.06, 0.45);
+    const a = R() * TAU, r = R() * 0.6 * s;
+    const h = (0.2 + 0.8 * (i / Math.max(1, cloudN - 1))) * top;
+    place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.06);
+    move(m, Math.cos(a) * 1.6 * sq, (2.2 + h * 1.1) * sq, Math.sin(a) * 1.6 * sq, 1.6, 0.18 + R() * 0.15, 0.85, 0);
+    const size1 = (5.6 + R() * 2.2) * s * Math.sqrt(dustK) * dk;
+    shape(m, (7 + R() * 3) * Math.min(1.6, sq), size1 * 0.42, size1, 2.6, R);
+    look(m, dustDark, L.dust, Math.min(1, 0.8 * dustK + 0.12), 0.05, 0.42);
     book(m, 'burst', R, 4.2 * Math.min(1.8, sq));
     heat(m, 0, 1);
     C.media(m);
   }
 
   // 4. base surge: low dust driven out along the ground
-  const surgeN = Math.round((4 + 2 * s) * Math.sqrt(dustK));
+  const surgeN = Math.round((6 + 2 * s) * Math.sqrt(dustK));
   for (let i = 0; i < surgeN; i++) {
-    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.6;
-    const v = (7 + R() * 5) * sq;
-    place(m, I.x + Math.cos(a) * 0.8 * s, by + 0.5 * sq, I.z + Math.sin(a) * 0.8 * s, bo + R() * 0.05);
-    move(m, Math.cos(a) * v, 0.6 + R() * 0.4, Math.sin(a) * v, 2.8, 0.12, 0.9, 0);
-    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), 1.2 * s * dk, (4.2 + R() * 1.8) * s * Math.sqrt(dustK) * dk, 2.4, R);
-    look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, Math.min(0.9, 0.55 * dustK + 0.1), 0.05, 0.4);
+    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.5;
+    const v = (5 + R() * 4) * sq;
+    place(m, I.x + Math.cos(a) * 0.8 * s, by + 0.55 * sq, I.z + Math.sin(a) * 0.8 * s, bo + R() * 0.05);
+    move(m, Math.cos(a) * v, 0.5 + R() * 0.3, Math.sin(a) * v, 2.4, 0.1, 0.9, 0);
+    const size1 = (4.8 + R() * 1.6) * s * Math.sqrt(dustK) * dk;
+    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), size1 * 0.4, size1, 2.4, R);
+    look(m, dustDark, L.dust, Math.min(0.9, 0.6 * dustK + 0.12), 0.05, 0.4);
     book(m, 'burst', R, 3.6 * Math.min(1.6, sq), 1);
     heat(m, 0, 1);
     C.media(m);
@@ -307,7 +309,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * 0.5 * s, by + 1.0 * s, I.z + Math.sin(a) * 0.5 * s, bo + 0.15 + R() * 0.2);
     move(m, Math.cos(a) * 0.8, 1.6 + R(), Math.sin(a) * 0.8, 1.2, 0.8 + R() * 0.3, 1, 0);
     shape(m, 6 + R() * 2, 1.6 * s * dk, (5.5 + R() * 2) * s * dk, 1.8, R);
-    look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, L.dust, 0.4), 0.5, 0.4, 0.4);
+    look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, L.dust, 0.5), 0.45, 0.4, 0.4);
     book(m, 'billow', R, 5.5, 8);
     heat(m, 0, 1);
     C.media(m);
@@ -393,6 +395,73 @@ function splash(C: BlastContext, x: number, y: number, z: number, s: number, bo:
     heat(m, 0, 1);
     C.media(m);
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// On armour: a round bursting on a hull, and the fragments of a burst striking the hulls around it
+// ---------------------------------------------------------------------------------------------------------------
+
+interface PlateBurstInput {
+  x: number; y: number; z: number;
+  /** the struck plate's outward normal */
+  nx: number; ny: number; nz: number;
+  munition: MunitionClass;
+  chargeKg: number;
+  /** the ground under the burst (its dust when the burst is low), null when it is high */
+  ground: SurfaceKind | null;
+  birthOffset?: number;
+}
+
+/**
+ * An explosive round bursting on a hull (HE, HESH, HEAT, ATGM, FPV, missiles): the flash, a fireball that cools to
+ * residue smoke thrown off the plate, fragments sparking off it, and the ground's dust when the burst sits low.
+ */
+export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
+  const R = C.rand;
+  const m = C.m;
+  const bo = I.birthOffset ?? 0;
+  const s = blastScale(I.chargeKg);
+  const dk = C.distBoost(I.x, I.y, I.z);
+  const nl = Math.hypot(I.nx, I.ny, I.nz) || 1;
+  const nx = I.nx / nl, ny = I.ny / nl, nz = I.nz / nl;
+  lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.07, 1.3 * s * dk,
+    3.6 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
+  const fireN = Math.round(3 + s);
+  for (let i = 0; i < fireN; i++) {
+    const v = (3 + R() * 5) * s;
+    lightPuff(C, 'fire', I.x + nx * 0.4, I.y + ny * 0.4, I.z + nz * 0.4,
+      (nx + (R() - 0.5) * 1.2) * v, (ny + 0.4 + R() * 0.5) * v, (nz + (R() - 0.5) * 1.2) * v,
+      0.13 + R() * 0.12, 0.8 * s * dk, (2.0 + R()) * s * dk, FIRE_HOT, FIRE_DEEP, 0.9, 1.5, bo);
+  }
+  const ballN = 2 + (s > 1.6 ? 1 : 0);
+  for (let i = 0; i < ballN; i++) {
+    place(m, I.x + nx * 0.6 * s, I.y + ny * 0.6 * s + 0.2, I.z + nz * 0.6 * s, bo - 0.02);
+    move(m, (nx + (R() - 0.5) * 0.8) * 3 * s, (ny * 3 + 2 + R() * 2) * s, (nz + (R() - 0.5) * 0.8) * 3 * s, 2.2, 1.2, 0.6, 0);
+    shape(m, 2.6 + R() * 0.8, 1.0 * s * dk, (3.6 + R()) * s * dk, 2.6, R);
+    look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, PROPELLANT, 0.3), 0.85, 0.0, 0.45);
+    book(m, 'billow', R, 3.2);
+    heat(m, 1.35, 4.2);
+    C.media(m);
+  }
+  sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
+  C.lightPulse(I.x + nx, I.y + 1.5, I.z + nz, Math.min(1.4, 0.4 + 0.3 * s), 0);
+  if (I.ground) dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
+}
+
+/** Fragments of a nearby burst striking a hull: a few sparks and a puff of paint and dust off the plate. */
+export function fragmentStrike(C: BlastContext, x: number, y: number, z: number, nx: number, ny: number, nz: number,
+  bo = 0): void {
+  const R = C.rand;
+  const m = C.m;
+  const dk = C.distBoost(x, y, z);
+  sparkSpray(C, x, y, z, nx, ny, nz, 6, 12, 1.1, 0.3, 0.02, bo);
+  place(m, x + nx * 0.2, y + ny * 0.2, z + nz * 0.2, bo);
+  move(m, nx * 1.5, ny * 1.5 + 0.6, nz * 1.5, 2, 0.3, 0.8, 0);
+  shape(m, 1.6 + R() * 0.6, 0.3 * dk, 1.4 * dk, 2.2, R);
+  look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, PROPELLANT, 0.5), 0.55, 0.0, 0.4);
+  book(m, 'burst', R, 2.4, 4);
+  heat(m, 0, 1);
+  C.media(m);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -549,17 +618,18 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
 export function killFireball(C: BlastContext, x: number, y: number, z: number, rack: boolean, bo: number): void {
   const R = C.rand;
   const m = C.m;
-  const S = rack ? 1.25 : 0.9;
+  const S = rack ? 1.3 : 0.95;
   const dk = C.distBoost(x, y, z);
-  const n = rack ? 6 : 4;
+  const n = rack ? 7 : 5;
   for (let i = 0; i < n; i++) {
     const a = R() * TAU, b = R() * 1.2, v = (3 + R() * 5) * S;
     place(m, x + (R() - 0.5) * 1.6, y + (R() - 0.3) * 1.2, z + (R() - 0.5) * 1.6, bo - R() * 0.03);
-    move(m, Math.cos(a) * Math.sin(b) * v, (3 + R() * 3) * S, Math.sin(a) * Math.sin(b) * v, 1.6, 2.6 * S, 0.4, 0);
-    shape(m, 3.6 + R() * 1.4, 2.4 * S * dk, (7.5 + R() * 2.5) * S * dk, 2.4, R);
-    look(m, SOOT, SOOT, 0.97, 0.0, 0.55);
+    move(m, Math.cos(a) * Math.sin(b) * v, (3 + R() * 3) * S, Math.sin(a) * Math.sin(b) * v, 1.6, 2.4 * S, 0.45, 0);
+    const size1 = (7.5 + R() * 2.5) * S * dk;
+    shape(m, 3.8 + R() * 1.4, size1 * 0.4, size1, 2.4, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.35), 0.97, 0.0, 0.55);
     book(m, 'billow', R, 3.6);
-    heat(m, 1.5, rack ? 0.7 : 0.95);
+    heat(m, 2.0, rack ? 0.45 : 0.6);
     C.media(m);
   }
   C.lightPulse(x, y + 2.4, z, rack ? 1 : 0.6, 0);
@@ -569,13 +639,15 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
 export function columnPuff(C: BlastContext, x: number, y: number, z: number, stage: number, scale: number, bo: number): void {
   const R = C.rand;
   const m = C.m;
-  const a = R() * TAU, r = R() * 0.5 * scale;
-  place(m, x + Math.cos(a) * r, y + 1.0 + R() * 0.6, z + Math.sin(a) * r, bo);
-  move(m, Math.cos(a) * 0.6, 2.2 + R() * 0.8, Math.sin(a) * 0.6, 0.7, 2.2 + 1.2 * stage + R() * 0.4, 0.75 + R() * 0.3, 0);
-  shape(m, 7 + R() * 2.5, (1.6 + R() * 0.5) * scale, (8.5 + R() * 3) * scale, 1.5, R);
-  const grey = mix3(SOOT, BLAST_RESIDUE, 0.25 + 0.5 * (1 - stage));
-  look(m, SOOT, grey, 0.62 + 0.3 * stage, 0.25, 0.5);
-  book(m, 'billow', R, 7.5 + R() * 2);
+  const a = R() * TAU, r = R() * 0.45 * scale;
+  place(m, x + Math.cos(a) * r, y + 1.0 + R() * 0.5, z + Math.sin(a) * r, bo);
+  move(m, Math.cos(a) * 0.5, 1.8 + R() * 0.6, Math.sin(a) * 0.5, 0.6, 1.9 + 1.0 * stage + R() * 0.3, 0.8 + R() * 0.3, 0);
+  const size1 = (8.5 + R() * 3) * scale;
+  shape(m, 8 + R() * 2.5, Math.max(1.8 * scale, size1 * 0.28), size1, 1.6, R);
+  // fresh smoke is black; it greys as it rises, cools and thins (and the whole column greys as the fire burns out)
+  const crown = mix3(SOOT, SMOKE_AGED, 0.45 + 0.4 * (1 - stage));
+  look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown, 0.7 + 0.25 * stage, 0.2, 0.55);
+  book(m, 'billow', R, 8.5 + R() * 2);
   heat(m, 0.55 * stage, 2.4);
   C.media(m);
 }

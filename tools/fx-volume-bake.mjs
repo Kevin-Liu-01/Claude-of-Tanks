@@ -51,16 +51,18 @@ export const VOLUME_MEDIA = Object.freeze({
   billow: Object.freeze({
     id: 'billow', seed: 0x5eed01, variants: 1, frames: 64, tile: 128, gamma: 1.5, sigma: 34,
     centre: [0.5, 0.44, 0.5], primary: 10, secondary: 4, tertiary: 2, primaryR: [0.11, 0.17], spread: [0.6, 1.15],
-    upBias: 0.5, flatBottom: 0.3, roll: 1.3, outward: 0.09, grow: 0.22, boil: 1.4,
-    detail: { freq: 5, amp: 0.5, soft: 0.22, octaves: 3 }, thin: 0.25, haze: 0.06, emission: true, heatR: 0.2,
+    secR: 1, upBias: 0.5, flatBottom: 0.3, roll: 1.3, outward: 0.09, grow: 0.22, boil: 1.4,
+    detail: { freq: 6.5, amp: 0.6, soft: 0.3, warp: 0.35, octaves: 3 }, thin: 0.25, haze: 0.06, emission: true,
+    heatR: 0.27, heatFall: 1.0, ms: [0.45, 0.15],
   }),
   // Dust, soil, powder and spray: a lumpy burst thrown out over the ground that slows, breaks up and hangs, its
   // edges tearing into wisps as it thins.
   burst: Object.freeze({
     id: 'burst', seed: 0x5eed02, variants: 1, frames: 64, tile: 128, gamma: 1.8, sigma: 28,
-    centre: [0.5, 0.47, 0.5], primary: 9, secondary: 5, tertiary: 3, primaryR: [0.11, 0.17], spread: [0.55, 1.1],
-    upBias: 0.3, flatBottom: 0.55, roll: 0.9, outward: 0.12, grow: 0.25, boil: 1.1,
-    detail: { freq: 10, amp: 0.7, soft: 0.25, octaves: 4 }, thin: 0.55, haze: 0.32, emission: false, heatR: 0,
+    centre: [0.5, 0.47, 0.5], primary: 6, secondary: 7, tertiary: 2, primaryR: [0.13, 0.2], spread: [0.4, 0.85],
+    secR: 0.6, upBias: 0.3, flatBottom: 0.55, roll: 0.9, outward: 0.12, grow: 0.25, boil: 1.1,
+    detail: { freq: 13, amp: 0.95, soft: 0.42, warp: 0.6, octaves: 4 }, thin: 0.55, haze: 0.4, emission: false,
+    heatR: 0, heatFall: 1.35, ms: [0.5, 0.35],
   }),
 });
 export const MEDIA_ORDER = Object.freeze(['billow', 'burst']);
@@ -198,7 +200,8 @@ function seedBillows(spec, rand) {
       if (al < 1e-3) { ax = 1; ay = 0; az = 0; } else { ax /= al; az /= al; }
       const q = {
         dir, axis: [ax, ay, az], omega: spec.roll * (0.5 + rand()) * (rand() < 0.5 ? -1 : 1) * 0.6,
-        rk: 0.36 + 0.2 * rand(), pulse: 0.12 + 0.12 * rand(), phase: rand(), w: 0.85 + 0.15 * rand(), children: [],
+        rk: (0.36 + 0.2 * rand()) * (spec.secR ?? 1), pulse: 0.12 + 0.12 * rand(), phase: rand(), w: 0.85 + 0.15 * rand(),
+        children: [],
       };
       for (let k = 0; k < spec.tertiary; k++) {
         const t = unitRand(rand, 0);
@@ -330,7 +333,11 @@ function carve(spec, tau, N, box, dens, out, noise, nrot) {
     const x = box.x0 + (i + 0.5) * h - cx, y = box.y0 + (j + 0.5) * h - cy, z = box.z0 + (k + 0.5) * h - cz;
     // a slow turn of the texture about the vertical (the cloud churns)
     const rx = x * ca - z * sa, rz = x * sa + z * ca;
-    const n = noise(rx * fr, y * fr - tau * 0.6, rz * fr);
+    // a domain warp drags the texture into torn, fibrous edges (a lower-frequency read of the same noise)
+    const wq = D.warp ?? 0;
+    const wx = wq ? (noise(rx * fr * 0.37 + 11.3, y * fr * 0.37, rz * fr * 0.37) - 0.5) * wq * 2 : 0;
+    const wy = wq ? (noise(rx * fr * 0.37, y * fr * 0.37 + 7.7, rz * fr * 0.37) - 0.5) * wq * 2 : 0;
+    const n = noise(rx * fr + wx, y * fr - tau * 0.6 + wy, rz * fr - wx * 0.5);
     // where the noise is high the cloud reaches further; where low, it is carved — only near the surface
     const level = v + amp * (n - 0.55) * (1 - smoothstep(0.55, 0.98, v));
     const body = smoothstep(0.18, 0.18 + D.soft, level) * Math.min(1, level);
@@ -343,7 +350,7 @@ function carve(spec, tau, N, box, dens, out, noise, nrot) {
 /** Temperature: the hot core (below the billows' centre) glows early and cools from the outside in. */
 function heatField(spec, tau, N, box, dens, out, noise) {
   const [cx, cy, cz] = spec.centre;
-  const heat = Math.max(0, 1 - tau * 1.35);
+  const heat = Math.max(0, 1 - tau * (spec.heatFall ?? 1.35));
   const r = spec.heatR * (0.6 + 0.8 * heat);
   const h = box.size / N;
   let o = 0;
@@ -400,10 +407,13 @@ function blur3(N, src, dst, tmp) {
  * density, with a two-octave multiple-scattering term: L = (e^-tau + 0.6 e^-tau/4) / 1.6. sigmaCell: extinction per
  * cell at unit density.
  */
-function lightFields(N, dens, sigmaCell, out) {
+function lightFields(N, dens, sigmaCell, out, ms = [0.6, 0]) {
   const NN = N * N;
   const h = sigmaCell;
-  const att = (t) => (Math.exp(-t) + 0.6 * Math.exp(-0.25 * t)) / 1.6;
+  // three octaves of transport (Wrenninge): single scattering, and two softer, deeper-reaching terms standing for the
+  // light scattered many times inside the medium (dust, with an albedo near 0.9, is mostly the latter)
+  const w1 = ms[0], w2 = ms[1], wn = 1 + w1 + w2;
+  const att = (t) => (Math.exp(-t) + w1 * Math.exp(-0.25 * t) + w2 * Math.exp(-0.08 * t)) / wn;
   for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) {
     let t = 0;
     for (let i = N - 1; i >= 0; i--) { const o = i + N * j + NN * k; t += 0.5 * h * dens[o]; out.px[o] = att(t); t += 0.5 * h * dens[o]; }
@@ -581,7 +591,7 @@ export function bakeBand(spec, variant, { res = 96, frames = spec.frames, tile =
     carve(spec, tau, N, box, raw, d, noise, nrot);
     if (spec.emission) heatField(spec, tau, N, box, d, T, heatNoise);
     blur3(N, d, soft, tmp);
-    lightFields(N, soft, spec.sigma * h, L);
+    lightFields(N, soft, spec.sigma * h, L, spec.ms);
     renderTile(N, { d, T, vx, vy, w, L }, spec, box, framings[f], f + 1 < frames ? framings[f + 1] : null, dtau, tile, ta, tb);
     const col = f % ATLAS_COLUMNS, row = Math.floor(f / ATLAS_COLUMNS);
     for (let y = 0; y < tile; y++) {

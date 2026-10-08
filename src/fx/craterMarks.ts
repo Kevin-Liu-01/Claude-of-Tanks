@@ -199,6 +199,7 @@ export function createCraterMarks(): CraterMarks {
   mesh.frustumCulled = false;
   mesh.matrixAutoUpdate = false;
   mesh.renderOrder = 2.5; // after the terrain and the wreck scorch, before every particle
+  mesh.visible = false;   // out of the render list until the first crater
   let cursor = 0;
   let used = 0;
   const REACH = 2.4;
@@ -227,6 +228,7 @@ export function createCraterMarks(): CraterMarks {
       pos.needsUpdate = true;
       inf.needsUpdate = true;
       geo.setDrawRange(0, used * INDICES_PER_SLOT);
+      mesh.visible = true;
     },
     update(now, scene) {
       uTime.value = now;
@@ -258,6 +260,7 @@ export function createCraterMarks(): CraterMarks {
       cursor = 0;
       used = 0;
       geo.setDrawRange(0, 0);
+      mesh.visible = false;
     },
     get count() { return used; },
   };

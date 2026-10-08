@@ -168,6 +168,7 @@ varying vec2 vWfb;        // front, back
 varying float vHeat;
 varying float vMirror;
 varying float vT;
+varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 ${FOG_PARS_V}
@@ -176,7 +177,8 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 );
-    vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vParticleDepth = 1e9; vFeather = 1.0;
+    vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
+    vFeather = 1.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -227,9 +229,11 @@ void main() {
   vWfb = vec2( sp.z * sp.z, sn.z * sn.z );
   // --- colour, opacity, heat
   float fadeIn = aCB.w > 0.0 ? smoothstep( 0.0, aCB.w, age ) : 1.0;
-  float fadeOut = 1.0 - smoothstep( aHT.z, 1.0, t );
+  // the fade-out dissolves the medium from its thin edges inward (the fragment shader's erosion), so a dying puff never
+  // lingers as a uniformly faded ghost of its own silhouette
+  vFade = smoothstep( aHT.z, 1.0, t );
   float near = smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
-  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * fadeOut * near );
+  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
   vHeat = aHT.x * exp( -aHT.y * age );
   vFeather = clamp( size * 0.22, 0.5, 6.0 );
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
@@ -264,6 +268,7 @@ varying vec2 vWfb;
 varying float vHeat;
 varying float vMirror;
 varying float vT;
+varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 ${FOG_PARS_F}
@@ -294,7 +299,10 @@ void main() {
   vec4 A = mix( texture2D( uMapA, uvA ), texture2D( uMapA, uvB ), vBlend );
   vec4 B = mix( texture2D( uMapB, uvA ), texture2D( uMapB, uvB ), vBlend );
   float cov = A.a;
-  float a = cov * vColor.a * uGrade.x;
+  // erode from the thin edges inward as the puff dies (vFade 0 -> 1)
+  float k = vFade;
+  float covE = clamp( ( cov - 0.8 * k ) / max( 1.0 - 0.8 * k, 0.05 ), 0.0, 1.0 );
+  float a = covE * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
   if ( a < 0.003 ) discard;
@@ -475,6 +483,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   // draw order in the late pass: the battle dust (20) and smoke (21) under it, the additive fire (22) over it
   mesh.renderOrder = 21.4;
   mesh.layers.set(LATE_FX_LAYER);
+  mesh.visible = false;
   group.add(mesh);
 
   // --- the atlas load (lazy: warm() at battle warm or Studio entry)
@@ -598,6 +607,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     uTime.value = now;
     if (!(now <= liveUntil)) {
       if (geo.instanceCount !== 0) geo.instanceCount = 0;
+      // idle: out of the render list entirely (no program bind, no uniform upload, no draw)
+      mesh.visible = false;
       drawn = 0; liveCount = 0; orderCount = 0;
       return;
     }
@@ -657,6 +668,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       attr.needsUpdate = true;
     }
     geo.instanceCount = n;
+    mesh.visible = n > 0;
     drawn = n;
   }
 
@@ -674,6 +686,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     orderCount = 0;
     liveUntil = -Infinity;
     geo.instanceCount = 0;
+    mesh.visible = false;
     drawn = 0; liveCount = 0;
   }
 

@@ -36,12 +36,13 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  columnPuff as mediaColumnPuff, dustSurge, groundBurst, isExplosive, kineticStrike, killFireball,
-  muzzleBlast as mediaMuzzleBlast, smolderPuff as mediaSmolderPuff, waterBurst, type BlastContext,
+  blastScale, columnPuff as mediaColumnPuff, dustSurge, fragmentStrike, groundBurst, isExplosive, kineticStrike,
+  killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, waterBurst,
+  type BlastContext,
 } from './blastRecipes.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
-import { structureStageFx, type StructureLook } from './structureFx.ts';
+import { lookForStruckKind, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
@@ -346,6 +347,8 @@ interface ShellExpiredEvent {
   chargeKg?: number;
   /** the round's type (the solo step publishes it with its calibre) */
   shellType?: string;
+  /** what it struck: 'water', a collision record kind ('structure', 'wallstone' ...) or 'terrain' */
+  surfaceKind?: string;
 }
 
 interface TankDestroyedEvent {
@@ -1756,6 +1759,62 @@ function* createFxSteps(
   const _crater = { radiusM: 0, depthM: 0, rimM: 0 };
   /** The core lane's terrain:crater events own the marks once any arrives (DESTRUCTION.md §7); until then the burst does. */
   let craterEventsSeen = false;
+
+  // ---- one burst per HE round ------------------------------------------------------------------------------------
+  // An HE round's burst reaches FX as several events: on the ground, a he_splash for every hull inside its blast
+  // radius and then the shell:expired at the burst point; on a hull, the struck hull's he_pen (or he_splash) first and
+  // then a he_splash for every hull around it. main drew a fireball and a dirt plume at EVERY one of them (a gunship
+  // shell beside four tanks drew five explosions). The hull events wait here until the next update: when the round's
+  // shell:expired drew the burst, they are fragments striking the hulls; otherwise the first of them (the struck hull)
+  // is the burst and the rest are fragments.
+  interface PendingHeHit {
+    shellId: ShellId | null; x: number; y: number; z: number; nx: number; ny: number; nz: number;
+    caliberMm: number; at: number;
+  }
+  const PENDING_HE_MAX = 48;
+  const pendingHe: PendingHeHit[] = [];
+  for (let i = 0; i < PENDING_HE_MAX; i++) pendingHe.push({ shellId: null, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, caliberMm: 0, at: 0 });
+  let pendingHeCount = 0;
+  /** rounds whose burst this frame's shell:expired drew (cleared every resolve) */
+  const burstDrawn = new Set<ShellId>();
+  /** rounds whose burst a hull event drew during the resolve (cleared every resolve) */
+  const burstOnHull = new Set<ShellId>();
+
+  function queueHeHit(e: ShellHitEvent): boolean {
+    if (!blast) return false;
+    if (pendingHeCount >= PENDING_HE_MAX) return false;
+    const r = pendingHe[pendingHeCount++];
+    r.shellId = e.shellId ?? null;
+    r.x = e.pos[0]; r.y = e.pos[1]; r.z = e.pos[2];
+    r.nx = e.normal[0]; r.ny = e.normal[1]; r.nz = e.normal[2];
+    r.caliberMm = e.caliberMm || 120;
+    r.at = particles.getTime();
+    return true;
+  }
+
+  function resolvePendingHe(): void {
+    if (!blast || pendingHeCount === 0) { burstDrawn.clear(); return; }
+    const now = particles.getTime();
+    for (let i = 0; i < pendingHeCount; i++) {
+      const r = pendingHe[i];
+      const bo = Math.min(0, r.at - now);
+      const id = r.shellId;
+      if (id != null && (burstDrawn.has(id) || burstOnHull.has(id))) {
+        fragmentStrike(blast, r.x, r.y, r.z, r.nx, r.ny, r.nz, bo);
+        continue;
+      }
+      if (id != null) burstOnHull.add(id);
+      const info = (id != null ? shellMunitions.get(id) : null) ?? heByCaliber(r.caliberMm);
+      if (id != null) shellMunitions.delete(id);
+      const gy = groundY(r.x, r.z);
+      plateBurst(blast, { x: r.x, y: r.y, z: r.z, nx: r.nx, ny: r.ny, nz: r.nz, munition: info.munition,
+        chargeKg: Math.max(0.3, info.chargeKg), ground: r.y - gy < 2.5 ? classifyTerrain(heightField, r.x, r.z) : null,
+        birthOffset: bo });
+    }
+    pendingHeCount = 0;
+    burstDrawn.clear();
+    burstOnHull.clear();
+  }
 
   /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
@@ -3348,7 +3407,7 @@ function* createFxSteps(
         EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
       // the column already standing: backdated column puffs so a far kill shows its smoke at once
       const colScale = (burn ? 1.45 : 1.3) * dk;
-      for (let i = 0; i < 5; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset - 0.4 - i * 0.55);
+      for (let i = 0; i < 8; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset - 0.3 - i * 0.32);
       columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
       capColumns();
       finalizeDestroyedVisual(visual, rack, birthOffset);
@@ -3437,7 +3496,7 @@ function* createFxSteps(
     if (blast) {
       // destruction-fx lane: one big rolling smoke body about every 0.3 s (each tick draws its share), and the
       // additive flame licks on the deck
-      if (rng() < COLUMN_TICK_S / 0.3) mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk, birthOffset);
+      if (rng() < COLUMN_TICK_S / 0.16) mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk, birthOffset);
       if (rng() < 0.70 + 0.30 * stage) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
@@ -4856,6 +4915,7 @@ function* createFxSteps(
       camera: THREE.Camera,
       resolveSubject: ((id: string) => FxEntity | null) | null = null,
     ): void {
+      resolvePendingHe();
       particles.update(dt);
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
@@ -4962,8 +5022,17 @@ function* createFxSteps(
         }
         // A terminal ERA absorb already received its exact activation above.
         // Legacy payloads still fall through to their ordinary `era` impact.
+        // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
+        if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
           fx.impact(e.kind, _v3, _v4, e.caliberMm);
+        }
+        // a shaped charge (HEAT, an ATGM, a drone's warhead) detonates on the plate whatever its jet then does
+        const info = e.shellId != null ? shellMunitions.get(e.shellId) : null;
+        if (blast && info && (info.munition === 'heat' || info.munition === 'atgm' || info.munition === 'drone_fpv')) {
+          shellMunitions.delete(e.shellId as ShellId);
+          plateBurst(blast, { x: e.pos[0], y: e.pos[1], z: e.pos[2], nx: e.normal[0], ny: e.normal[1], nz: e.normal[2],
+            munition: info.munition, chargeKg: Math.max(0.3, info.chargeKg * 0.5), ground: null });
         }
       });
       onFxEvent(bus, 'shell:expired', (e) => {
@@ -5000,12 +5069,24 @@ function* createFxSteps(
         if (e.hitKind === 'prop') {
           if (Array.isArray(e.normal)) _v4.set(e.normal[0], e.normal[1], e.normal[2]).normalize();
           else _v4.copy(_UP);
+          if (blast) {
+            // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
+            const m = info ?? munitionOfExpiry(e);
+            const explosive = isExplosive(m.munition) && m.chargeKg > 0;
+            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
+              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, lookForStruckKind(e.surfaceKind));
+            if (e.shellId != null) burstDrawn.add(e.shellId);
+            return;
+          }
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
-          if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) return;
+          if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
+            if (e.shellId != null) burstDrawn.add(e.shellId);
+            return;
+          }
           if (water) waterSplash(_v3, e.caliberMm || 76, false);
           else dirtPlume(_v3, e.caliberMm || 76, false);
         }
@@ -5708,6 +5789,9 @@ function* createFxSteps(
       chunks?.reset();
       craters?.reset();
       craterEventsSeen = false;
+      pendingHeCount = 0;
+      burstDrawn.clear();
+      burstOnHull.clear();
       shellMunitions.clear();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
