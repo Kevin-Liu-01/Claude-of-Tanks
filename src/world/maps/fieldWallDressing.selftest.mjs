@@ -21,7 +21,7 @@
 import assert from 'node:assert/strict';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { readFileSync } from 'node:fs';
-import { GROUND_FILLET_FORM_SHARE, WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing } from './fieldWallDressing.ts';
+import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing } from './fieldWallDressing.ts';
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
 
 function mulberry32(seed) {
@@ -235,28 +235,6 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   assert.equal(down, 0, 'every triangle looks up');
   assert.deepEqual(Array.from(buildWallTurf(meshAt, foldAt, ax, az, bx, bz, half, 77).attributes.position.array), Array.from(p.array), 'the same place, the same turf');
   assert.equal(buildWallTurf(meshAt, null, 0, 0, 0, 0.5, half, 1), null, 'no turf on a stub');
-  // (b44; wave 272: the beds' "cookie-cutter decal" ring) given the ground's surface, every vertex carries what the chunk
-  // under it carries — the ground's light (its normal, a share of the fillet's own form by column, none at the toe) and
-  // its shore byte — and the turf's place and fold are what they were
-  {
-    const surface = {
-      normalAt: (x, z, out) => out.set(-0.1 * Math.cos(x), 1, 0.05).normalize(),
-      shoreByte: (x, z) => Math.max(0, Math.min(255, Math.round(z * 20))),
-    };
-    const vec = () => ({ set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }, normalize() { const l = Math.hypot(this.x, this.y, this.z); this.x /= l; this.y /= l; this.z /= l; return this; } });
-    const lit = buildWallTurf(meshAt, foldAt, ax, az, bx, bz, half, 77, surface);
-    const lp = lit.attributes.position, ln = lit.attributes.normal, ls = lit.attributes.shore, own = turf.attributes.normal;
-    assert.deepEqual(Array.from(lp.array), Array.from(p.array), 'the same turf in the same place');
-    assert.deepEqual(Array.from(lit.attributes.fold.array), Array.from(fold.array), 'and the same fold');
-    assert.ok(ls && ls.normalized && ls.array instanceof Uint8Array, 'the chunks\' inverted shore byte');
-    for (let i = 0; i < lp.count; i++) {
-      const g = surface.normalAt(lp.getX(i), lp.getZ(i), vec()), s = GROUND_FILLET_FORM_SHARE[i % cols];
-      const want = vec().set(g.x + s * (own.getX(i) - g.x), g.y + s * (own.getY(i) - g.y), g.z + s * (own.getZ(i) - g.z)).normalize();
-      assert.ok(Math.abs(ln.getX(i) - want.x) < 1e-6 && Math.abs(ln.getY(i) - want.y) < 1e-6 && Math.abs(ln.getZ(i) - want.z) < 1e-6, 'the ground\'s light, a share of the form by column');
-      assert.equal(ls.array[i], surface.shoreByte(lp.getX(i), lp.getZ(i)), 'the shore byte where the vertex lies');
-    }
-    assert.ok(!turf.attributes.shore, 'without the surface: its own normals, no shore byte');
-  }
   // the owner: kept when asked, never under snow, by a mud wall or on the phones
   const ask = { meshAt, foldAt };
   const asked = createWallDressing({ ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3, turf: ask });

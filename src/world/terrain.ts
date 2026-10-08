@@ -531,9 +531,6 @@ export interface HeightField {
   /** Round 73 (2026-09-25): the baked fold term of the terrain build (−1 crest .. +1 hollow, the 8 m / 24 m Laplacian
    * of the relief the chunk vertices carry) — the tall-grass tier thickens and lifts the sward in the hollows. */
   _foldAt?(x: number, z: number): number;
-  /** The scenery lane (b44): the strand's shore distance the chunks carry as their `shore` byte (metres landward of the
-   * waterline, 32 = none near) — the boulders' beds carry the same byte; absent on a map without a shore. */
-  _shoreAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
    * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
@@ -7239,52 +7236,6 @@ export function terrainNearMeshHeightAt(heightAt: (x: number, z: number) => numb
   return hd + (heightAt(x0, z0 + cell) - hd) * (1 - fx) + (heightAt(x0 + cell, z0) - hd) * (1 - fz);
 }
 
-/**
- * The scenery lane (b44): the shore byte the chunks carry for the strand (buildChunkGeometrySteps, round 73b) — metres
- * landward of the waterline, INVERTED (255 at the waterline, 0 at 32 m or more) — for the fillets the world draws with
- * this material (the boulders' beds, the walls' turf), so they carry what the chunk under them carries.
- */
-export function terrainShoreByte(metres: number): number {
-  return metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
-}
-
-/**
- * The scenery lane (b44; gauntlet wave 272, the boulders' beds read as "a cookie-cutter decal" ring): the normal the
- * nearest terrain mesh draws at (x, z) — each vertex of the finest grid takes the chunks' own central difference across
- * its fine neighbours (buildChunkGeometrySteps), blended over the cell's triangle as the rasteriser blends them
- * (terrainNearMeshHeightAt's split). A surface drawn with the ground's material over this normal slopes and lights as
- * the ground under it: the material's slope laws (the fields, the soil, the rock and the litter) read the same slope.
- */
-export function terrainNearMeshNormalAt(
-  heightAt: (x: number, z: number) => number, x: number, z: number, out: THREE.Vector3, cache: Map<number, number[]> | null = null,
-): THREE.Vector3 {
-  const cell = CHUNK_SIZE / LOD_SEGS[0], e = CHUNK_SIZE / FINE_SEGS;
-  const u = (x + HALF) / cell, w = (z + HALF) / cell;
-  const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
-  out.set(0, 0, 0);
-  // (a builder sampling thousands of points near each other — the beds, the turf — passes a cache: each grid vertex's
-  // four heights are read once)
-  const add = (ix: number, iz: number, weight: number): void => {
-    if (weight <= 0) return;
-    const key = (ix + 4096) * 16384 + (iz + 4096);
-    let n = cache?.get(key);
-    if (!n) {
-      const vx = -HALF + ix * cell, vz = -HALF + iz * cell;
-      const nx = (heightAt(vx - e, vz) - heightAt(vx + e, vz)) / (2 * e), nz = (heightAt(vx, vz - e) - heightAt(vx, vz + e)) / (2 * e);
-      const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
-      n = [nx * il, il, nz * il];
-      cache?.set(key, n);
-    }
-    out.x += n[0] * weight; out.y += n[1] * weight; out.z += n[2] * weight;
-  };
-  if (fx + fz <= 1) {
-    add(gx, gz, 1 - fx - fz); add(gx + 1, gz, fx); add(gx, gz + 1, fz);
-  } else {
-    add(gx + 1, gz + 1, fx + fz - 1); add(gx, gz + 1, 1 - fx); add(gx + 1, gz, 1 - fz);
-  }
-  return out.normalize();
-}
-
 export function acquireTerrainChunkIndex(
   pool: TerrainIndexPool,
   segs: number,
@@ -7681,8 +7632,6 @@ function* terrainBuildSteps(
       };
     }
   }
-  // (b44) the boulders' beds carry the chunks' shore byte (props.ts buildRockBeds)
-  if (shoreAt) heightField._shoreAt = shoreAt;
   // The continued coast uses the same strand distances as the playable shore.
   // Leaving the ring's default attribute at zero made the sand/wrack band stop
   // on an exact square even when the bank geometry was continuous.

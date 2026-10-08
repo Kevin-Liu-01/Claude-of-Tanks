@@ -18,7 +18,7 @@ import {
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
 import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
-import { applyTone, terrainNearMeshHeightAt, terrainNearMeshNormalAt, terrainShoreByte, type HeightField, type TerrainLayout } from './terrain.ts';
+import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
@@ -72,7 +72,7 @@ import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M 
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
-import { GROUND_FILLET_FORM_SHARE, buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
+import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -5108,20 +5108,12 @@ ${snowCap ? `
   // brick-print one (its coursed module), nor the phones
   const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
   const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
-  // (b44) the strand's shore byte the chunks carry (terrain.ts terrainShoreByte; 0, none near, on a map without a shore),
-  // for the fillets the world draws with the ground's material: the walls' turf and the boulders' beds
-  const groundShoreAt = (heightField as { _shoreAt?: (x: number, z: number) => number })._shoreAt ?? null;
-  const groundShoreByte = (x: number, z: number): number => (groundShoreAt ? terrainShoreByte(groundShoreAt(x, z)) : 0);
-  // (b44) the drawn ground's normals under the fillets, each grid vertex's read once for the whole build
-  const groundNormalCache = new Map<number, number[]>();
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
       meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
-      // (b44) the chunks' own normal and shore byte under every vertex, as the boulders' beds carry them
-      surface: { normalAt: (x, z, out) => terrainNearMeshNormalAt((px, pz) => heightField.getHeightAt(px, pz), x, z, out, groundNormalCache), shoreByte: groundShoreByte },
     } : undefined,
   });
   function addWallRun(
@@ -6359,14 +6351,6 @@ ${snowCap ? `
    * world-space geometry in 256 m cells, which the world draws with the terrain's material, so the bed's colour, grain
    * and light are the ground's at that place; it casts nothing. Not under the crushable stones (a tank flattens them),
    * nor on the phones.
-   * (b44; gauntlet wave 272: "a flat tan disc that rings its base like a cookie-cutter decal", "a conspicuous pale-tan
-   * ring or dish") every vertex carries what the chunk under it carries — the drawn ground's normal (not the fillet's
-   * own: the material's laws read the slope, and a 10–20° fillet dropped the fields, the soil and the litter that the
-   * level ground round it wears) and the strand's shore byte — so the bed is the ground's own surface risen against the
-   * stone, its burial read where the stone goes into it, never as a ring of its own: a share of the fillet's own form
-   * near the stone (the bank reads, gently — under the ~9° where the material's first slope law begins), none at its toe,
-   * where it goes under the ground (no edge). The same on a sand drift and a snow bank (wave 272's Moon: "a pale halo
-   * along the base").
    */
   /**
    * (b37; the whole-PR census: "rock-beds" 0 -> 9-21 colour-pass draws a view, each on the terrain's heavy ground
@@ -6377,21 +6361,7 @@ ${snowCap ? `
   const bedCellKey = (x: number, z: number): number => Math.floor((x + 512) / BED_CELL_M) * 64 + Math.floor((z + 512) / BED_CELL_M);
   function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
     const SEGMENTS = 24, RINGS = 5;
-    const groundAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
-    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(groundAt, x, z);
-    // (b44) the chunks' per-vertex inputs: the drawn ground's normal and the strand's shore byte (groundShoreByte); the
-    // light a share of the fillet's own form by ring, from the stone's face (the hidden ring and the face) to the toe
-    const groundN = new THREE.Vector3();
-    const lightAsGround = (g: THREE.BufferGeometry, groundNrm: ArrayLike<number>, ringOf: (i: number) => number): void => {
-      g.computeVertexNormals();
-      const n = g.getAttribute('normal') as THREE.BufferAttribute;
-      for (let i = 0; i < n.count; i++) {
-        const share = GROUND_FILLET_FORM_SHARE[ringOf(i)], gx = groundNrm[i * 3], gy = groundNrm[i * 3 + 1], gz = groundNrm[i * 3 + 2];
-        const x = gx + share * (n.getX(i) - gx), y = gy + share * (n.getY(i) - gy), z = gz + share * (n.getZ(i) - gz);
-        const l = Math.hypot(x, y, z) || 1;
-        n.setXYZ(i, x / l, y / l, z / l);
-      }
-    };
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z);
     const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
     const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
@@ -6405,7 +6375,7 @@ ${snowCap ? `
       const f = foldAt(x, z);
       return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
     };
-    const cells = new Map<number, { pos: number[]; nrm: number[]; fold: number[]; shore: number[]; idx: number[] }>();
+    const cells = new Map<number, { pos: number[]; fold: number[]; idx: number[] }>();
     const radius = new Float64Array(SEGMENTS), ground = new Float64Array(SEGMENTS), local = new Float64Array(SEGMENTS * 3);
     let built = 0;
     for (let vi = 0; vi < 3; vi++) {
@@ -6433,13 +6403,13 @@ ${snowCap ? `
         const size = Math.min(1.2, Math.max(0.35, meanR / 1.2));
         const key = bedCellKey(px, pz);
         let cell = cells.get(key);
-        if (!cell) cells.set(key, cell = { pos: [], nrm: [], fold: [], shore: [], idx: [] });
+        if (!cell) cells.set(key, cell = { pos: [], fold: [], idx: [] });
         const base = cell.pos.length / 3;
         // (b16) the stone's contact patch over its bed: the disc's soil at the same place (its uv and its share of the
         // darkness at the same distance from its centre), a few centimetres over the bed's rings from the face out, gone
         // where the bed has sunk under the ground the disc itself lies on
         const spot = rockContact ? rockSpotOf.get(placement) : undefined;
-        const shadePos: number[] = [], shadeNrm: number[] = [], shadeUv: number[] = [], shadeTint: number[] = [];
+        const shadePos: number[] = [], shadeUv: number[] = [], shadeTint: number[] = [];
         for (let k = 0; k < SEGMENTS; k++) {
           const phi = (k / SEGMENTS) * Math.PI * 2, dx = Math.cos(phi), dz = Math.sin(phi);
           const windward = Math.max(0, -(dx * wx + dz * wz)), lee = Math.max(0, dx * wx + dz * wz);
@@ -6469,14 +6439,10 @@ ${snowCap ? `
           for (let j = 0; j < RINGS; j++) {
             const x = px + dx * ringR[j], z = pz + dz * ringR[j], y = (j < 2 ? ground[k] : meshAt(x, z)) + ringY[j];
             cell.pos.push(x, y, z);
-            terrainNearMeshNormalAt(groundAt, x, z, groundN, groundNormalCache);
-            cell.nrm.push(groundN.x, groundN.y, groundN.z);
             cell.fold.push(foldByte(x, z));
-            cell.shore.push(groundShoreByte(x, z));
             if (spot && j >= 1) {
               const rho = Math.hypot(x - spot.x, z - spot.z) / spot.r;
               shadePos.push(x, y + 0.03, z);
-              shadeNrm.push(groundN.x, groundN.y, groundN.z); // (b44: lit as the bed under it, never as a rim)
               const toRim = rho > 1 ? 1 / rho : 1; // (past the rim, where the shade is clear, the disc's edge texel)
               shadeUv.push(0.5 + 0.5 * toRim * (x - spot.x) / spot.r, 0.5 + 0.5 * toRim * (z - spot.z) / spot.r);
               shadeTint.push(1, 1, 1, j === RINGS - 1 ? 0 : contactShare(rho));
@@ -6498,20 +6464,19 @@ ${snowCap ? `
           shade.setAttribute('uv', new THREE.Float32BufferAttribute(shadeUv, 2));
           shade.setAttribute('color', new THREE.Float32BufferAttribute(shadeTint, 4));
           shade.setIndex(idx);
-          lightAsGround(shade, shadeNrm, (i) => (i % rings) + 1);
+          shade.computeVertexNormals();
           rockBedShades.push(shade);
         }
         if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
       }
     }
     const out: THREE.BufferGeometry[] = [];
-    for (const { pos, nrm, fold, shore, idx } of cells.values()) {
+    for (const { pos, fold, idx } of cells.values()) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geometry.setAttribute('fold', new THREE.BufferAttribute(Int8Array.from(fold), 1, true));
-      geometry.setAttribute('shore', new THREE.BufferAttribute(Uint8Array.from(shore), 1, true));
       geometry.setIndex(idx);
-      lightAsGround(geometry, nrm, (i) => i % RINGS);
+      geometry.computeVertexNormals();
       geometry.computeBoundingSphere();
       out.push(geometry);
     }
@@ -6573,7 +6538,6 @@ ${snowCap ? `
     wallDressing.turfs.length = 0;
   }
 
-  groundNormalCache.clear(); // (b44: the walls' turf and the boulders' beds are built)
   yield { fine: true, stage: 'rock-instances' };
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---

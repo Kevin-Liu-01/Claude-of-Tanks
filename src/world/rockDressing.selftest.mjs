@@ -13,12 +13,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
-import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { convexHull2 } from './collision.ts';
 import { MAP_IDS } from './maps/index.ts';
-import { acquireTerrainChunkIndex, terrainNearMeshHeightAt, terrainNearMeshNormalAt, terrainShoreByte } from './terrain.ts';
-import { GROUND_FILLET_FORM_SHARE, buildWallTurf } from './maps/fieldWallDressing.ts';
+import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts';
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
   boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
@@ -638,7 +637,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const SPOT_R = 2.6;
   // (b37) the beds' cells (512 m, one geometry a cell with the wall turf), declared beside the builder
   const cellSrc = stripTypeScriptTypes(/  const BED_CELL_M = \d+;\n  const bedCellKey = [^\n]*\n/.exec(source)[0]);
-  const build = (dust, snowCap, crushable, foldAt = undefined, heightAt = () => 0, shoreAt = undefined) => {
+  const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
     const form = { geometry: new THREE.CylinderGeometry(1, 1, 2, 48, 12) };
@@ -647,10 +646,9 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockClutter = new Map(crushable ? [[placement, {}]] : []);
     const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
     const rockBedShades = [];
-    const groundShoreByte = (x, z) => (shoreAt ? terrainShoreByte(shoreAt(x, z)) : 0);
-    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'terrainNearMeshNormalAt', 'groundShoreByte', 'groundNormalCache', 'GROUND_FILLET_FORM_SHARE', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
+    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
       'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
-      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, terrainNearMeshNormalAt, groundShoreByte, new Map(), GROUND_FILLET_FORM_SHARE, { getHeightAt: heightAt, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) },
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
       rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();
@@ -664,7 +662,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     assert.equal(beds.length, 1, `${label}: one cell's geometry`);
     const g = beds[0], p = g.attributes.position, idx = g.index.array, sections = boulderSections(form.geometry);
     assert.equal(p.count, 24 * 5, `${label}: 24 directions, five rings`);
-    assert.ok(!g.getAttribute('uv') && g.getAttribute('normal') && g.getAttribute('fold') && g.getAttribute('shore'), `${label}: world space, the terrain material\'s attributes (the chunks\' own: normal, fold, shore)`);
+    assert.ok(!g.getAttribute('uv') && g.getAttribute('normal') && g.getAttribute('fold'), `${label}: world space, the terrain material\'s attributes`);
     for (let k = 0; k < 24; k++) {
       const v = (j) => [p.getX(k * 5 + j) - 10, p.getY(k * 5 + j), p.getZ(k * 5 + j) - 20];
       const [x0, y0, z0] = v(0), [x4, y4, z4] = v(4), [x1, y1, z1] = v(1);
@@ -715,78 +713,6 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const hollow = build(0, false, false, () => 0.5).beds[0].getAttribute('fold');
     assert.ok(hollow.array.every((v) => v === 64), 'the ground\'s fold under every vertex, as the terrain\'s chunks carry it');
   }
-  // (b44; wave 272: "a flat tan disc … like a cookie-cutter decal") every vertex the drawn ground's light — its normal,
-  // with a share of the fillet's own form by ring (none at the toe), under the ~9° where the material's first slope law
-  // begins — and the chunks' shore byte; the shade over the bed lit by the same law
-  {
-    const slopeAt = (x, z) => 0.12 * x - 0.05 * z + 0.02 * Math.sin(x * 0.7);
-    const shoreM = (x, z) => Math.abs(x - 10) * 4;
-    const law = (g, ringOf) => {
-      const own = g.clone(); own.deleteAttribute('normal'); own.computeVertexNormals();
-      const p = g.attributes.position, o = own.attributes.normal, want = [], gn = new THREE.Vector3();
-      for (let i = 0; i < p.count; i++) {
-        terrainNearMeshNormalAt(slopeAt, p.getX(i), p.getZ(i), gn);
-        const s = GROUND_FILLET_FORM_SHARE[ringOf(i)];
-        want.push(new THREE.Vector3(gn.x + s * (o.getX(i) - gn.x), gn.y + s * (o.getY(i) - gn.y), gn.z + s * (o.getZ(i) - gn.z)).normalize().toArray().concat([gn.x, gn.y, gn.z]));
-      }
-      return want;
-    };
-    assert.ok(GROUND_FILLET_FORM_SHARE.length === 5 && GROUND_FILLET_FORM_SHARE[4] === 0 && Math.max(...GROUND_FILLET_FORM_SHARE) <= 0.3, 'a share of the form near the face, none at the toe');
-    for (const [label, dust, snow] of [['a soil lip', 0, false], ['a sand drift', 0.8, false], ['a snow bank', 0, true]]) {
-      const tilted = build(dust, snow, false, undefined, slopeAt, shoreM), g = tilted.beds[0];
-      const p = g.attributes.position, n = g.attributes.normal, sh = g.attributes.shore, want = law(g, (i) => i % 5);
-      assert.ok(sh.normalized && sh.array instanceof Uint8Array, `${label}: the shore byte, normalised as the chunks' (terrain.ts buildChunkGeometrySteps)`);
-      let tilt = 0;
-      for (let i = 0; i < p.count; i++) {
-        const w = want[i];
-        assert.ok(Math.abs(n.getX(i) - w[0]) < 1e-5 && Math.abs(n.getY(i) - w[1]) < 1e-5 && Math.abs(n.getZ(i) - w[2]) < 1e-5, `${label}: the ground's light, a share of the form by ring`);
-        if (i % 5 === 4) assert.ok(Math.hypot(n.getX(i) - w[3], n.getY(i) - w[4], n.getZ(i) - w[5]) < 1e-5, `${label}: the drawn ground's own normal at the toe (no edge)`);
-        tilt = Math.max(tilt, Math.acos(Math.min(1, n.getX(i) * w[3] + n.getY(i) * w[4] + n.getZ(i) * w[5])) * 180 / Math.PI);
-        assert.equal(sh.array[i], terrainShoreByte(shoreM(p.getX(i), p.getZ(i))), `${label}: the chunks' inverted shore byte at every vertex`);
-      }
-      assert.ok(tilt < 9, `${label}: never more than 9° off the ground's own normal (${tilt.toFixed(1)}°)`);
-    }
-    assert.equal(terrainShoreByte(0), 255, 'the waterline byte');
-    assert.equal(terrainShoreByte(40), 0, 'none past 32 m');
-    assert.equal(terrainShoreByte(16), 255 - Math.round(16 * 255 / 32), 'the chunks\' formula');
-    {
-      const terrainSrc = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-      assert.ok(terrainSrc.includes('shore[vi] = m >= 32 ? 0 : 255 - Math.round(Math.max(0, m) * (255 / 32));'), 'the chunks\' own byte (the helper follows it)');
-      for (let m = -2; m <= 40; m += 0.37) assert.equal(terrainShoreByte(m), m >= 32 ? 0 : 255 - Math.round(Math.max(0, m) * (255 / 32)), `the chunks' byte at ${m.toFixed(2)} m`);
-    }
-    assert.ok(build(0, false, false).beds[0].attributes.shore.array.every((v) => v === 0), 'no shore near on a map without one (the chunks\' zero)');
-    const tilted = build(0, false, false, undefined, slopeAt, shoreM), shade = tilted.shades[0], sn = shade.attributes.normal, sw = law(shade, (i) => (i % 4) + 1);
-    for (let i = 0; i < sn.count; i++) {
-      assert.ok(Math.abs(sn.getX(i) - sw[i][0]) < 1e-5 && Math.abs(sn.getY(i) - sw[i][1]) < 1e-5 && Math.abs(sn.getZ(i) - sw[i][2]) < 1e-5, 'the shade lit by the same law');
-    }
-    // the helper itself: on a plane the drawn normal is the plane's
-    const plane = (x, z) => 0.2 * x + 0.1 * z, np = terrainNearMeshNormalAt(plane, 3.3, -7.9, new THREE.Vector3()), planeN = new THREE.Vector3(-0.2, 1, -0.1).normalize();
-    assert.ok(np.distanceTo(planeN) < 1e-9, 'a plane\'s own normal');
-    const bumpy = (x, z) => Math.sin(x * 0.9) * 0.6 + Math.cos(z * 0.7) * 0.4, cache = new Map(), c1 = new THREE.Vector3(), c2 = new THREE.Vector3();
-    for (let i = 0; i < 200; i++) {
-      const x = -40 + i * 0.413, z = 17 - i * 0.291;
-      terrainNearMeshNormalAt(bumpy, x, z, c1, cache); terrainNearMeshNormalAt(bumpy, x, z, c2);
-      assert.ok(c1.distanceTo(c2) < 1e-12, 'the cached grid normals are the uncached ones');
-    }
-    assert.ok(cache.size > 0 && cache.size < 200 * 3, `each grid vertex read once (${cache.size} for 600 reads)`);
-    // (b37 + b44) a cell's bed and its walls' turf merge into one geometry (the world's one ground-material draw a cell):
-    // the same attributes, the same layouts — a mismatch would leave them as separate draws
-    {
-      const bed = build(0, false, false, undefined, slopeAt, shoreM).beds[0];
-      const turf = buildWallTurf((x, z) => terrainNearMeshHeightAt(slopeAt, x, z), null, 4, 30, 4, 39, 0.23, 77,
-        { normalAt: (x, z, out) => terrainNearMeshNormalAt(slopeAt, x, z, out), shoreByte: (x, z) => terrainShoreByte(shoreM(x, z)) });
-      assert.deepEqual(Object.keys(bed.attributes).sort(), Object.keys(turf.attributes).sort(), 'the bed and the turf carry the same attributes');
-      for (const name of Object.keys(bed.attributes)) {
-        const a = bed.getAttribute(name), b = turf.getAttribute(name);
-        assert.ok(a.itemSize === b.itemSize && a.normalized === b.normalized && a.array.constructor === b.array.constructor, `${name}: the same layout`);
-      }
-      const merged = mergeGeometries([bed, turf], false);
-      assert.ok(merged && merged.getAttribute('position').count === bed.getAttribute('position').count + turf.getAttribute('position').count, 'one geometry for the cell');
-    }
-  }
-  assert.match(source, /const groundShoreByte = \(x: number, z: number\): number => \(groundShoreAt \? terrainShoreByte\(groundShoreAt\(x, z\)\) : 0\);/, 'the chunks\' shore byte, from the terrain\'s own sampler');
-  assert.match(source, /surface: \{ normalAt: \(x, z, out\) => terrainNearMeshNormalAt\(\(px, pz\) => heightField\.getHeightAt\(px, pz\), x, z, out, groundNormalCache\), shoreByte: groundShoreByte \}/, 'the walls\' turf carries the same');
-  assert.match(source, /group\.userData\.rockBeds = yield\* buildRockBeds\(\);[\s\S]{0,1400}groundNormalCache\.clear\(\);[^\n]*\n\s*yield \{ fine: true, stage: 'rock-instances' \};/, 'the grid normals let go once the fillets are built');
   assert.match(source, /if \(!mobileProps\) group\.userData\.rockBeds = yield\* buildRockBeds\(\);\n\s*rockClutter\.clear\(\);/, 'the beds built while the crushables are known, not on the phones');
   const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
   assert.match(map, /group\.add\(terrain, vegetation\.group, props\.group\);\n\s*bindRockBeds\(terrain, props\.group\);/, 'the world binds the beds');
