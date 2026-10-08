@@ -86,7 +86,11 @@ export default {
     species: ['acacia', 'cedar', 'pine'], clusterMix: [['acacia', 0.58], ['cedar', 0.32], ['pine', 0.1]],
     loneMix: [['acacia', 0.65], ['cedar', 0.25], ['pine', 0.1]], rimMix: [['cedar', 0.5], ['acacia', 0.4], ['pine', 0.1]],
     // (Copper Mesa round 2: the button grass keeps to the hollows — a thinner sward on the bare hills; was 0.36)
-    clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.18, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,
+    // (the map-revival lane, 2026-10-07, the cost fix on the merged rounds 1-2: against the pre-merge map (5d2461283)
+    // Queenstown's closed eucalyptus woods stood 1833 trees to its 1366 and twice its understorey (510 -> 1103), and
+    // round 3b's chase and town views cost +0.55-0.58 ms of CPU and +0.64 / +1.84 ms of GPU (h35, rule v3, nice 0, bots
+    // hidden): fifteen stands of twenty-two, the scrub under them near half)
+    clusterCount: 15, loneCount: 32, rimCount: 40, grassDensity: 0.18, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 0.9,
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
