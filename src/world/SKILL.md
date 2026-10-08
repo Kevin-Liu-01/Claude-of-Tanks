@@ -23,7 +23,8 @@ allocation-free chase-camera occlusion focus passed to an active world,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.ts` owns strict allocation-free broad phase and narrow-phase shape
 contracts (every convex part convex in fact: `convexOutlineInPlace`), `rockCollision.ts` derives every stone's and
-rock formation's colliders from its own mesh and `slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
+rock formation's colliders from its own mesh (the movement record its tiers: nested columns stepping as the stone
+does) and `slabCollision.ts` the shell slabs of the props' leaning solids (wrecks,
 hedgehog beams, pylon legs; all audited by `tools/world-collider-audit.mjs`), `maps/` owns layouts, `shallowWater.ts` owns the lake/sea sheet and `waterRipples.ts` the world-anchored GPU
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
@@ -317,7 +318,9 @@ rock tile and the hook layered on the grime hook.
 The scenery lane (2026-10-03): a map's named landscape features live in its top-level `scenery` block
 (`sceneryPlan.ts` holds the contract, the config-only footprints the vegetation keeps off and the ground-cover holes);
 `sceneryRocks.ts` builds the rock forms (granite tors, bedded sandstone / limestone outcrops, slate crags, limestone
-pavement, scree, menhirs, cairns, calvaries) as welded vertex-coloured geometry with a convex mass per standing form,
+pavement, scree, menhirs, cairns, calvaries, and fields of fractured blocks — `blocks`, size-graded and half sunk, the
+cover a map authors on open ground, in its own stone or the Moon's and Mars's `breccia`) as welded vertex-coloured
+geometry with a convex mass per standing form,
 and a hill's bedrock (`buildBedrock`: jointed beds read off the live ground by rays on the flanks no hull climbs,
 each hill bedded its own way, broken where the ground's clefts cut the wall; a skin with no mass; its `strata` option
 takes the terrain's bed law; parked since wave 16, no map places it: on smooth domes it read as masonry);
