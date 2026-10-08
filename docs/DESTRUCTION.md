@@ -471,8 +471,25 @@ readonly destruction: {
 };
 ```
 
-Craters are off in every mode for now (§7: until the drawn terrain follows the overlay); the column says what each mode
-takes once they ship.
+Craters stay off in every mode behind one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`, until the switch-on gates
+pass. The column says what each mode takes once they ship.
+
+**The switch-on gates (crater-render-spec §F), on feature/destruction-craters (2026-10-08).** This branch is the core plus
+the drawn terrain and ground cover (the ground lane, §B/§C) and the crater surface (the FX lane, §D). The surface drapes on
+the contact surface plus the overlay's `contactOffsetAt`, which is what the drawn LOD0 shows.
+
+| Gate | Result |
+|---|---|
+| Determinism audit, craters on (`tools/sim-determinism-audit.mjs --craters`; its receipt runs both) | identical over 3600 ticks, 7 craters dug |
+| World-events audit (live, rejoin, reconnect, migration, return), terrain_crater judged like a stage | 4 dug, presented 12/12 on 4 views; 6 laid down settled for later views; none re-sent by the new host |
+| battlePacing, paired against craters off on the same seeds | 127 of 132 matches identical; 5 change duration only, no winner; median 199.2 s and p10 154.6 s unchanged |
+| Fairness, paired, 40 games a side on the three maps with the most HE ground bursts | Whiteout +5.0 points (2 winners changed), Polders 0 (0), Saltwind −2.5 (1); 26–31 craters per map |
+| Barrage cost (ABCCBA off/on, live lighting, scene-pass guard) | queued |
+| Motion strips (125 mm, the gunship's 152 mm and its walk, FPV, ATGM, a settled field at 30 and 80 m, snow, sand) | queued |
+
+All-bot standard play digs few craters: bots fire HE at the ground rarely (0.1–0.8 craters a game). The AC-130's
+howitzer and players' HE are where craters come from. A shaped charge (an ATGM, an FPV drone) leaves a mark and no bowl:
+its crater stays under the 1.6 m dig radius.
 
 | Mode | structures | craters | scales | Why |
 |---|---|---|---|---|
