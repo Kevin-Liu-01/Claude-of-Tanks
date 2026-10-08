@@ -579,9 +579,11 @@ export interface HorizonReliefBake {
   r1: number;
   gradScale: number;
   /**
-   * The borders lane (2026-10-08): the landcover's forest weight per texel (0..255, the stands the canopy darkens), or null
-   * where the bake lays no stands — the ring forest seats its face trees on the same stands (horizonVista.ts
-   * buildHorizonForest `faceCanopyAt`), so the trees on the ranges and the dark canopy under them are one wood.
+   * The borders lane (2026-10-08): the landcover's stand weight per texel (0..255: the stands the canopy darkens, the
+   * border's woods handing over to the ranges' own over HORIZON_STAND_HANDOVER_M, before the canopy's fade-in under the
+   * range trees), or null where the bake lays no stands — the ring forest seats its face trees on the same stands
+   * (horizonVista.ts buildHorizonForest `faceCanopyAt`) and past the hand-over its band and range trees, the parcels
+   * (terrain.ts) and the hedges (maps/horizon.ts) keep to them, so the land past the border is one woods field.
    */
   canopy: Uint8Array | null;
   stats: { aoMean: number; shadowMean: number; gradP95: number; fineRangeM: number; passMs: [number, number, number] };
@@ -832,7 +834,9 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         }
         if (snow !== null && !c.overSnow) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
         const forestW = stand * nearW * land;
-        if (canopyW) canopyW[idx] = Math.round(clamp(forestW, 0, 1) * 255);
+        // (the stand itself, before the canopy's own fade-in under the range trees and the seam's: the one woods field past
+        // the border's hand-over that the parcels, the hedges and the ring's trees all keep to)
+        if (canopyW) canopyW[idx] = Math.round(clamp(stand * (1 - marine[idx]), 0, 1) * 255);
         // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
         // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
         // height (16 m, its crowns 3 m either way) stands in the occlusion and the sun searches, so a stand's edge

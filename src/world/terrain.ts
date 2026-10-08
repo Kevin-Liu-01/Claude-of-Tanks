@@ -3,6 +3,7 @@ import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
 import { continuedGroundAt, ringMeshSurfaceSampler } from './horizonSurface.ts';
+import { HORIZON_STAND_HANDOVER_M } from './horizonRelief.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -486,7 +487,7 @@ export interface HeightField {
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line past the edge). */
   getBorderHedgeAt?(x: number, z: number): number;
   /** The map-borders lane: the crop of the field past the edge, premultiplied by its weight (the ring's borderTint). */
-  _borderParcelAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
+  _borderParcelAt?(x: number, z: number, out: [number, number, number, number], woods?: number): [number, number, number, number];
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
@@ -7680,9 +7681,15 @@ function* terrainBuildSteps(
     const position = geometry.getAttribute('position');
     const tintAttr = new Float32Array(position.count * 4);
     const tint: [number, number, number, number] = [0, 0, 0, 1];
+    // (the borders lane, 2026-10-08: past the hand-over the ranges' own stands — the relief bake's, which its canopy
+    // shades and the face trees stand in — took the parcels' crops over them, a wood sown with wheat, while the border's
+    // own woods out there kept the fields off bare sward) past 720 m the fields keep off the bake's stands instead, which
+    // hand over from the border's woods to the ranges' own (maps/horizon.ts standAt, horizonRelief.ts)
+    const standAt = (horizonStep.value.userData.horizonRing as { standAt?: ((x: number, z: number) => number) | null }).standAt ?? null;
     let any = false;
     for (let i = 0; i < position.count; i++) {
-      heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
+      const x = position.getX(i), z = position.getZ(i);
+      heightField._borderParcelAt(x, z, tint, standAt && Math.hypot(x, z) > HORIZON_STAND_HANDOVER_M[0] ? standAt(x, z) : undefined);
       tintAttr.set(tint, i * 4);
       if (tint[3] < 1) any = true;
     }

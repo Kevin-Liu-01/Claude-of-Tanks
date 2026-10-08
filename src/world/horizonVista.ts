@@ -683,6 +683,9 @@ interface HorizonForestOptions {
   /** The map-borders lane: the border's hedgerows (borderLandform.ts hedgeAt, 0..1) — tree lines along the field
    * boundaries past the edge. */
   hedgeAt?: (x: number, z: number) => number;
+  /** The borders lane (2026-10-08): 0..1, how open the ground is to a lone tree — the border's crops keep their
+   * interiors clear (a field tree stands on a boundary, never mid-field, as in the square), a pasture half so. */
+  loneAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -1093,7 +1096,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         // border landform now shapes (its hills reach 330–820 m out); a lone tree stands in the open
         if (bandShare !== undefined) {
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
-          const lone = 0.045 * bandShare;
+          const lone = 0.045 * bandShare * (options.loneAt ? options.loneAt(x, z) : 1);
           // (the hedges' bush lines are geometry now, borderHedgerows.ts: the ring forest stands only their standards)
           if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
           else {

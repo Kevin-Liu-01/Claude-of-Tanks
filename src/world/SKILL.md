@@ -118,7 +118,17 @@ shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the pr
 alignment on oblique flanks (the round-72 field fails it) and where the stands may stand. Where the map-borders lane's
 landform is in, the stands follow its woods field (`getBorderWoodsAt`) across the hand-over where the ring's range trees
 stand (`HORIZON_STAND_HANDOVER_M`, 720-880 m) and its parcels replace the baked ones; past it the stands are the
-ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). The polar and alpine
+ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). Past the hand-over's
+start those stands are the one woods field of the land past the border (the borders lane, 2026-10-08): the bake keeps
+the stand weight itself in `bake.canopy` (before the canopy's fade-in), the ring carries it as
+`userData.horizonRing.standAt`, and the farmsteads' yards, the hedges, the ring forest's woods and the parcels
+(terrain.ts `_borderParcelAt(..., woods)`) all keep to it — no field is sown under a stand the canopy darkens, and the
+face trees stand in it (Verdant's stood 56 % in crops before). The stands' share there follows the map's own woods
+(`borderLandform` `forest`) where it is under 0.3 (Tarkhan's 7 % steppe no longer turns to 42 % forest a kilometre
+out); `borderFarmsteads.selftest.mjs` pins the coherence on Ironworks. The hedges past the edge (`borderHedgerows.ts`)
+are strings of bushes, not prisms: a station every 4 m with its own crown height and girth, a rounded section closed at
+every run's ends, normals out and up as a crown's, the ring forest's crown tones (the first rim broadleaf with a palette);
+one draw, the farmsteads' program (`borderHedgerows.selftest.mjs`). The polar and alpine
 couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
 `horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
 exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the
