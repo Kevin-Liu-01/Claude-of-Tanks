@@ -104,8 +104,12 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
       `${id}: receiver, jacket, barrel and mount stay in gunmetal`);
     assert.equal(receiver?.userData.appearanceRole, 'machineGun');
     const ammoBox = gun.getObjectByName('sheridanCommanderM2AmmoBox');
-    assert.equal(ammoBox?.userData.fittingSlot, 'gunmetalAmmo',
-      `${id}: ammunition chest does not inherit green vehicle paint`);
+    // 2026-10-08 (tank-accessories round 5: the American M2 is the fleet's shared Browning construction at true scale;
+    // wave 255 on the M60A1 read its gunmetal chest as part of a "plain dark block"): the can takes the solid fitting
+    // paint every shared gun's can takes (browningMachineGunStandard), never the host camouflage.
+    assert.equal(ammoBox?.userData.fittingSlot, 'ammoCan',
+      `${id}: ammunition can is the shared construction's fitting-paint can`);
+    assert.equal(ammoBox?.material?.map ?? null, null, `${id}: ammunition can does not inherit the camouflage`);
     assert.equal(gun.children.some((object) => object.userData.fittingSlot === 'detail'), false,
       `${id}: no M2 component is routed through camouflaged fitting paint`);
     gun.traverse((object) => {

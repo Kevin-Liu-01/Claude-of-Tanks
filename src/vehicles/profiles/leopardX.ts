@@ -331,7 +331,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   lengthScale = 1, heightScale = 1): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76,
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
@@ -1000,7 +1000,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // Full, unscaled-height pintle seats directly on the hatch flank. The
   // source rail remains alongside the barrel, not pierced by it; there is
   // no added tall pedestal above the already complete pintle assembly.
-  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,
+  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
     tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);

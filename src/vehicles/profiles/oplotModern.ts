@@ -63,7 +63,7 @@ export function buildOplotModern(P:TankBuilderPort):void {
   // housing stands on the ring's inboard rim and carries the remote sight's window (the optics module).
   const ringTopY=.8735;
   const kt=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',tone:'dark',scale:1,ammo:true,shield:false,remoteWeapon:true,
-    feed:'left',seed:8484});
+    feed:'left',datumBarrel:false,seed:8484});
   kt.name='t84CommanderKt127';
   kt.position.set(.52,ringTopY-.004,-.80);
   P.turretG.add(kt);

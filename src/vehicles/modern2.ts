@@ -1439,8 +1439,11 @@ function buildType99ATurretRoofAndGun(P: Modern2BuilderPort) {
     // carried just ahead of the hatch while the aft spade grips overlap the
     // cupola rim, so a standing commander can actually reach the weapon.
     P.add('turretDetail', box(0.20, 0.035, 0.22), 0.52, 1.097, -0.22);
+    // 2026-10-08 (round 5; wave 255: "a long barrel on a plain block receiver with no ammunition box, belt or feed";
+    // the coordinator: the right gun per nation): the QJC-88's own construction at true scale, its 50-round box and
+    // belt on the left.
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.08, ammo: true,
+      mats: P.mats, cls: 'qjc88', tone: 'dark', scale: 1.0, ammo: true,
       elev: 0.02, rotation: [0, 0, 0], seed: 18,
     });
     mg.position.set(0.52, 1.11, -0.17);

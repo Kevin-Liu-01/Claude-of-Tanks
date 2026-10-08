@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
-import { barkLog, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
+import { barkLog, fabricRollParts, fuelDrumParts, place, sweptTube } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -811,13 +811,43 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     P.addEquipment('turret', box(fit(0.070), plateH, fit(0.28)),
       x + side * fit(0.23), cheekY, z + fit(0.10),
       0, yaw, lean);
+    // round 5: the plate's bolt heads, two rows of two on its outer face
+    for (const by of [-0.3, 0.3]) for (const bz of [-0.09, 0.09]) {
+      const ly = by * plateH;
+      P.add('turretDark', KIT.cylX(fit(0.011), fit(0.012), 6),
+        x + side * (fit(0.23) + fit(0.035) * Math.cos(lean) - ly * Math.sin(Math.abs(lean)) + fit(0.004)),
+        cheekY + ly * Math.cos(lean), z + fit(0.10) + bz * scale, 0, yaw, 0);
+    }
   }
   P.addEquipment('turret', box(fit(0.19), fitY(0.21), fit(0.22)),
     x + fit(0.27), headCenterY - fitY(0.02), z + fit(0.21), 0, yaw, 0);
   P.add('turretGlass', box(fit(0.13), fitY(0.13), fit(0.014)),
     x + fit(0.27), headCenterY, z + fit(0.328), 0, yaw, 0);
+  // 2026-10-08 (tank-accessories round 5; wave 254 on the T-90M: "a stack of blunt slabs (flat side boxes, a
+  // camo-painted sensor block and a bare tube barrel) with no cabling, optics glass, ammunition feed chute or
+  // fasteners"): the sight's window sits in a dark bezel under a sun hood with the rangefinder's port beside it, the
+  // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
+  // and latches, and the armoured plates carry their bolt heads.
+  P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), x + fit(0.27), headCenterY, z + fit(0.322), 0, yaw, 0);
+  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), x + fit(0.27), headCenterY + fitY(0.088), z + fit(0.345),
+    -0.18, yaw, 0);
+  P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.326),
+    0, yaw, 0);
+  P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.336),
+    0, yaw, 0);
+  P.add('turretDark', sweptTube([[x + fit(0.27) + fit(0.07), headCenterY - fitY(0.08), z + fit(0.11)],
+    [x + fit(0.27) + fit(0.105), headCenterY - fitY(0.10), z + fit(0.05)],
+    [x + fit(0.27) + fit(0.105), foundationTopY + fitY(0.02), z + fit(0.0)],
+    [x + fit(0.24), foundationTopY - fitY(0.01), z - fit(0.02)]], fit(0.011), 6, 10));
   P.addEquipment('turret', box(fit(0.22), fitY(0.18), fit(0.28)),
     x - fit(0.27), headCenterY - fitY(0.04), z - fit(0.01), 0, yaw, 0);
+  P.add('turretDark', box(fit(0.226), fitY(0.012), fit(0.286)), x - fit(0.27), headCenterY + fitY(0.035), z - fit(0.01), 0, yaw, 0);
+  for (const dz of [-0.09, 0.09]) {
+    P.add('turretDark', box(fit(0.03), fitY(0.05), fit(0.012)), x - fit(0.27), headCenterY + fitY(0.02),
+      z - fit(0.01) + fit(0.14) + fit(0.004), 0, yaw, 0);
+    P.add('turretDark', box(fit(0.012), fitY(0.05), fit(0.03)), x - fit(0.27) - fit(0.114), headCenterY + fitY(0.02),
+      z - fit(0.01) + dz * scale, 0, yaw, 0);
+  }
   // A protected coaxial work light gives every family station a readable
   // purpose at gallery distance without turning its weapon or optic into a
   // camouflage-painted lump. The housing and lens remain external equipment.
@@ -825,6 +855,9 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.25), 0, yaw, 0);
   P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
     x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.294), 0, yaw, 0);
+  P.add('turretDark', sweptTube([[x - fit(0.25), headCenterY + fitY(0.06), z + fit(0.215)],
+    [x - fit(0.25), headCenterY + fitY(0.04), z + fit(0.15)], [x - fit(0.26), headCenterY + fitY(0.05), z + fit(0.11)]],
+    fit(0.009), 6, 8));
 
   finishStation?.();
   const weapon = FITTINGS.pintleMG({

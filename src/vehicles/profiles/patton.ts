@@ -4485,10 +4485,13 @@ function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
 function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
+  // 2026-10-08 (round 5; wave 255 on the M60A1: "the thin ring around the cupola pedestal hangs with no visible
+  // support. Attach it or remove it"): the M2 stands on its pintle on the cupola roof without an AA ring (the M19
+  // cupola has none); the shared Browning construction draws it at true scale.
   const m2 = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
+    ammoSide: 1, shield: a3, ring: false,
     rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
   m2.position.set(-0.58, 1.34, 0.20);

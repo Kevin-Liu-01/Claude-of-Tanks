@@ -3021,9 +3021,7 @@ function tejasRoofKit(
         const scale = tallStation ? 0.68 : 0.64;
         const baseY = loaderMountTopAt(loaderMountZ) - 0.008;
         const baseZ = loaderMountZ;
-        const receiverY = baseY + 0.345 * scale;
-        if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
-        addAbramsBrowning(P, {
+        const loaderGun = addAbramsBrowning(P, {
           x: loaderX,
           y: baseY,
           z: baseZ,
@@ -3036,13 +3034,17 @@ function tejasRoofKit(
           barrelLength: tallStation ? 0.72 : 0.66,
           ring: lowProfileStation,
         });
+        // round 5: the receipt reads the built gun's datum (the shared Browning construction at true scale)
+        const datum = loaderGun.userData.mountDatum;
+        const receiverY = baseY + datum.receiverY;
+        if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
         loaderWeaponReceipt = {
           station: tallStation ? 'sepv2-loader-m2hb' : 'sepv3-loader-m2hb',
           x: loaderX,
           pintleZ: baseZ,
           pintleBottomY: baseY,
-          pintleTopY: baseY + 0.330 * scale,
-          receiverBottomY: baseY + (0.345 - 0.0725) * scale,
+          pintleTopY: baseY + datum.pintleTopY,
+          receiverBottomY: baseY + datum.receiverBottomY,
           receiverY,
           americanWeaponStandard: 'sheridan-m2hb-v2',
           shieldVariant: tallStation ? 'armored' : 'low',
@@ -3078,9 +3080,8 @@ function tejasRoofKit(
         const pintleBottomY = standardM1A2
           ? loaderMountTopAt(loaderMountZ) - 0.008
           : receiverY - 0.185;
-        const pintleTopY = pintleBottomY + 0.330 * scale;
         const shieldVariant = standardM1A2 ? 'split' : ha ? 'armored' : false;
-        addAbramsBrowning(P, {
+        const loaderGun = addAbramsBrowning(P, {
           x: loaderX,
           y: pintleBottomY,
           z: pintleZ,
@@ -3095,14 +3096,16 @@ function tejasRoofKit(
           ring: !ha,
         });
         if (standardM1A2) {
+          // round 5: measured on the built gun (the shared Browning construction at true scale)
+          const datum = loaderGun.userData.mountDatum;
           loaderWeaponReceipt = {
             station: 'm1a2-loader-m2hb',
             x: loaderX,
             pintleZ,
             pintleBottomY,
-            pintleTopY,
-            receiverBottomY: pintleBottomY + (0.345 - 0.0725) * scale,
-            receiverY: pintleBottomY + 0.345 * scale,
+            pintleTopY: pintleBottomY + datum.pintleTopY,
+            receiverBottomY: pintleBottomY + datum.receiverBottomY,
+            receiverY: pintleBottomY + datum.receiverY,
             americanWeaponStandard: 'sheridan-m2hb-v2',
             shieldVariant: 'split',
           };
