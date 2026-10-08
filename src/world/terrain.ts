@@ -21,7 +21,10 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, sourcedTerrainLayerPlanned, sourcedTerrainLayerSet,
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
-import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
+import {
+  HORIZON_SEGMENTS, buildHorizonRingSteps, horizonRingGeometrySteps, type HorizonMapConfig, type HorizonRingPipeline,
+} from './maps/horizon.ts';
+import type { HorizonRingSource } from './horizonRingPrefetch.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -7497,9 +7500,11 @@ export async function buildTerrainMeshesAsync(
   fineSlices = false,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
+  // (the time-to-battle lane, 2026-10-08) the ring's geometry pipeline from its worker (horizonRingPrefetch.ts), or null
+  ringSource: HorizonRingSource | null = null,
 ): Promise<THREE.Group> {
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
-    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation, ringSource);
   let completed = false;
   try {
     let r = g.next();
@@ -7530,18 +7535,10 @@ function* terrainBuildSteps(
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
+  ringSource: HorizonRingSource | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
-  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true });
-  let horizonStep = horizonSteps.next();
-  while (!horizonStep.done) {
-    yield [0, CHUNKS * CHUNKS + 2, false];
-    horizonStep = horizonSteps.next();
-  }
-  group.add(horizonStep.value);
-  yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   // round 40: where the square's water reaches the edge the ring opens to a sea apron (edgeWater.ts); the terrain
   // material renders those ring faces as open water and the shallow-water sheet continues over them
   const seaOpenings = cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes
@@ -7691,6 +7688,95 @@ function* terrainBuildSteps(
       };
     }
   }
+  // Alternative LOD geometries are retained in `chunks` even when another
+  // level is mounted on the mesh. Register the complete live set so world
+  // eviction releases uploaded dormant buffers as well as the visible tree.
+  const retainedLodGeometries = new Set<THREE.BufferGeometry>();
+  registerRetainedObject3DResources(group, {
+    geometries: retainedLodGeometries,
+    textures: splatTextures,
+  });
+  const streamFarLods = streamOpts?.streamFarLods === true;
+  const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
+  let initialGeometryCount = 0;
+  let initialFineGridCount = 0;
+  yield [1, CHUNKS * CHUNKS + 2, true]; // splat canvas bake done
+  function* buildTerrainRow(cz: number): Generator<TerrainBuildProgress, void, void> {
+    for (let cx = 0; cx < CHUNKS; cx++) {
+      const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
+      const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
+      const openingDistance = Math.hypot(focus.x - ccx, focus.z - ccz);
+      const initialLevels: TerrainLodLevel[] = streamFarLods
+        ? initialTerrainLods(openingDistance) : [0, 1, 2];
+      // A far-only chunk computes the same height and fine-step normals just
+      // at its 25×25 visible vertices; avoid paying for a dormant 99×99 grid.
+      // Near/mid levels still share one fine grid, preserving their exact
+      // cross-LOD shading and avoiding duplicate samples.
+      const needsFineGrid = !streamFarLods || initialLevels.some((level) => level < 2);
+      const progress = {
+        done: 2 + cz * CHUNKS + cx,
+        total: CHUNKS * CHUNKS + 2,
+      };
+      const fine = needsFineGrid
+        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
+      if (fine) initialFineGridCount++;
+      const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
+      for (const level of initialLevels) {
+        const geometry = yield* buildChunkGeometrySteps(
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
+        );
+        lods[level] = geometry;
+        retainedLodGeometries.add(geometry);
+        initialGeometryCount++;
+      }
+      const openingLevel = streamFarLods ? initialLevels[0] : 2;
+      const mesh = new THREE.Mesh(lods[openingLevel]!, mat);
+      mesh.receiveShadow = true;
+      mesh.castShadow = false;
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      group.add(mesh);
+      chunks.push({
+        mesh, lods,
+        fine: streamFarLods && initialLevels.length < LOD_SEGS.length ? fine : null,
+        level: openingLevel, cx: ccx, cz: ccz, cx0, cz0,
+      });
+      yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
+    }
+  }
+  for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
+  // (the time-to-battle lane, 2026-10-08) the horizon ring after the chunks: its geometry pipeline (maps/horizon.ts
+  // horizonRingGeometrySteps) runs in a worker beside them (horizonRingPrefetch.ts) and is taken here — awaited if it is
+  // not back yet — or built here where there is none; then the ring's material half, its attribute passes and its
+  // binding as before. The ring reads nothing the chunks write: the same ring.
+  let ringPipeline: HorizonRingPipeline | null = null;
+  if (ringSource) {
+    if (ringSource.pending) yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false, () => ringSource.settled()];
+    ringPipeline = ringSource.take();
+    if (!ringPipeline) {
+      const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {
+        vista: ringSource.request.vista, debugColors: ringSource.request.debugColors,
+      });
+      let pipelineStep = pipelineSteps.next();
+      while (!pipelineStep.done) {
+        yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        pipelineStep = pipelineSteps.next();
+      }
+      ringPipeline = pipelineStep.value;
+      ringSource.remember(ringPipeline);
+    }
+  }
+  // every ring face draws with this battlefield's terrain material (bindAutumnHorizonGround below, continuousGround)
+  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true, geometry: ringPipeline });
+  let horizonStep = horizonSteps.next();
+  while (!horizonStep.done) {
+    yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+    horizonStep = horizonSteps.next();
+  }
+  group.add(horizonStep.value);
+  // (the terrain's first child, where it stood when it was built before the chunks)
+  group.children.unshift(group.children.pop()!);
+  yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true]; // horizon ring built
   // The continued coast uses the same strand distances as the playable shore.
   // Leaving the ring's default attribute at zero made the sand/wrack band stop
   // on an exact square even when the bank geometry was continuous.
@@ -7786,63 +7872,6 @@ function* terrainBuildSteps(
       void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));
     }
   }
-  // Alternative LOD geometries are retained in `chunks` even when another
-  // level is mounted on the mesh. Register the complete live set so world
-  // eviction releases uploaded dormant buffers as well as the visible tree.
-  const retainedLodGeometries = new Set<THREE.BufferGeometry>();
-  registerRetainedObject3DResources(group, {
-    geometries: retainedLodGeometries,
-    textures: splatTextures,
-  });
-  const streamFarLods = streamOpts?.streamFarLods === true;
-  const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
-  let initialGeometryCount = 0;
-  let initialFineGridCount = 0;
-  yield [1, CHUNKS * CHUNKS + 2, true]; // splat canvas bake done
-  function* buildTerrainRow(cz: number): Generator<TerrainBuildProgress, void, void> {
-    for (let cx = 0; cx < CHUNKS; cx++) {
-      const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
-      const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
-      const openingDistance = Math.hypot(focus.x - ccx, focus.z - ccz);
-      const initialLevels: TerrainLodLevel[] = streamFarLods
-        ? initialTerrainLods(openingDistance) : [0, 1, 2];
-      // A far-only chunk computes the same height and fine-step normals just
-      // at its 25×25 visible vertices; avoid paying for a dormant 99×99 grid.
-      // Near/mid levels still share one fine grid, preserving their exact
-      // cross-LOD shading and avoiding duplicate samples.
-      const needsFineGrid = !streamFarLods || initialLevels.some((level) => level < 2);
-      const progress = {
-        done: 2 + cz * CHUNKS + cx,
-        total: CHUNKS * CHUNKS + 2,
-      };
-      const fine = needsFineGrid
-        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
-      if (fine) initialFineGridCount++;
-      const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
-      for (const level of initialLevels) {
-        const geometry = yield* buildChunkGeometrySteps(
-          heightField, cx0, cz0, LOD_SEGS[level], fine, progress, terrainIndexPool, 8, foldAt, shoreAt,
-        );
-        lods[level] = geometry;
-        retainedLodGeometries.add(geometry);
-        initialGeometryCount++;
-      }
-      const openingLevel = streamFarLods ? initialLevels[0] : 2;
-      const mesh = new THREE.Mesh(lods[openingLevel]!, mat);
-      mesh.receiveShadow = true;
-      mesh.castShadow = false;
-      mesh.matrixAutoUpdate = false;
-      mesh.updateMatrix();
-      group.add(mesh);
-      chunks.push({
-        mesh, lods,
-        fine: streamFarLods && initialLevels.length < LOD_SEGS.length ? fine : null,
-        level: openingLevel, cx: ccx, cz: ccz, cx0, cz0,
-      });
-      yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
-    }
-  }
-  for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
   if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
     const waterSteps = shallowWaterGeometrySteps(heightField);
     let step = waterSteps.next();
