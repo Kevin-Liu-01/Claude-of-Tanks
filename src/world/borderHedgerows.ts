@@ -73,7 +73,7 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
   const pal = options.palette;
   const positions: number[] = [], normals: number[] = [], colors: number[] = [], indices: number[] = [];
   const col = (l: number, hueShift: number, out: number[]): void => {
-    _color.setHSL(pal.hue + hueShift, Math.min(1, pal.sat * 1.06), Math.min(0.9, l), THREE.SRGBColorSpace);
+    _color.setHSL(pal.hue + hueShift, Math.min(1, pal.sat * 0.92), Math.min(0.9, l), THREE.SRGBColorSpace);
     out[0] = _color.r; out[1] = _color.g; out[2] = _color.b;
   };
   const cFoot = [0, 0, 0], cShoulder = [0, 0, 0], cCrest = [0, 0, 0];
@@ -162,18 +162,20 @@ function buildHedges(options: BorderHedgerowOptions): THREE.Mesh | null {
         const dCrest = ((nb.g + nb.crest) - (pb.g + pb.crest)) / (2 * step);
         const ax = -st.tx * dCrest * 0.9, az = -st.tz * dCrest * 0.9;
         const hue = tint * 0.025 + (st.shade - 1) * 0.04;
-        // (the ring forest's crowns run l0 at their foot to l1 at their top, horizonVista.ts paintCanopy: the hedge's bushes
-        // the same, where they stood a shade darker before and read black on their shaded side)
-        col(pal.l0 * 0.96 * st.shade, hue, cFoot);
-        col((pal.l0 + pal.l1) * 0.5 * st.shade, hue, cShoulder);
-        col(pal.l1 * 1.04 * st.shade, hue, cCrest);
+        // (the ring forest's crowns run l0 at their foot to l1 at their top, horizonVista.ts paintCanopy; a hedge's crowns
+        // face the sky and the sun far more than a tree's lobes do, so at the crowns' own tones the bush lines read as
+        // light moss mounds over the sward — (88-102, 118-134, 72-74) beside crowns at (53-69, 80-86, 63-70), the round's
+        // first b1 census: they keep 0.8-0.92 of those tones, a breath less saturated)
+        col(pal.l0 * 0.80 * st.shade, hue, cFoot);
+        col((pal.l0 + pal.l1) * 0.5 * 0.90 * st.shade, hue, cShoulder);
+        col(pal.l1 * 0.92 * st.shade, hue, cCrest);
         const foot = st.g - 0.7, top = st.g + st.crest, shoulderY = st.g + st.crest * 0.6;
         const cx = st.x + st.nx * st.lean, cz = st.z + st.nz * st.lean;
         const ring: number[] = [];
         for (const side of [1, -1]) {
           const sx = st.nx * side, sz = st.nz * side;
           ring.push(pushV(st.x + sx * st.half * 0.78, foot, st.z + sz * st.half * 0.78, sx * 0.85 + ax, 0.55, sz * 0.85 + az, cFoot));
-          ring.push(pushV(cx + sx * st.half, shoulderY, cz + sz * st.half, sx * 0.62 + ax, 0.80, sz * 0.62 + az, cShoulder));
+          ring.push(pushV(cx + sx * st.half, shoulderY, cz + sz * st.half, sx * 0.70 + ax, 0.70, sz * 0.70 + az, cShoulder));
         }
         // the order round the section: left foot 0, left shoulder 1, crest 2, right shoulder 3, right foot 4
         const crestV = pushV(cx, top, cz, st.nx * 0.12 + ax * 1.4, 1.0, st.nz * 0.12 + az * 1.4, cCrest);
