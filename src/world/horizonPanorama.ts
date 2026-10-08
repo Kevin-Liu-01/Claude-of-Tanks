@@ -1329,6 +1329,7 @@ uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief), the far air's floor
+uniform float uFillFog;   // QA (2026-10-07): the old fill's fog share × this (the band over the ring from an elevated camera), at rest 1
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec2 uHazeFar;    // QA (2026-10-07): the far path's layer scale height × x, its datum's wander (m) y — at rest 1, 0
 uniform vec3 uHazeChroma; // its per-channel extinction
@@ -1553,7 +1554,7 @@ void main() {
         fill = mix(cover, uFog * 0.95, 1.0 - exp(-800.0 * recede / 13000.0));
       }
     } else {
-      fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
+      fill = mix(fill, uFog * 1.05, (0.25 + 0.35 * recede) * uFillFog);
     }
     // (not over a jebel's wall: the march past the ring meets the massif's own lower wall there, not grazing ground —
     // painted with the fill, the near massifs stood on a flat band of it from the elevated views, v3b)
@@ -1912,7 +1913,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uLayerWander: { value: lightTune('PANO_LAYER_WANDER', 0) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
       uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
-      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },
+      // (2026-10-07, the skies lane, QA knobs at bake time for Glacier's white band — the fill an elevated camera sees over
+      // the ring: PANO_FILL_LAW the fill's law over the character's (0 / 1), PANO_FILL_FOG the old fill's fog share × this)
+      uAir: { value: new THREE.Vector4(ch.air, lightTune('PANO_FILL_LAW', ch.fillLaw), ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },
+      uFillFog: { value: lightTune('PANO_FILL_FOG', 1) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },

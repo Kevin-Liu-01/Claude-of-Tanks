@@ -42,7 +42,7 @@ const mixAt = at('layer = mix(layer, 1.0, uAir.w);');
 const pathAt = at('vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);');
 assert.ok(layerAt < mixAt && mixAt < pathAt, 'the floor mixes the layer\'s mean before the far path\'s transmittance');
 const source = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
-assert.ok(source.includes("uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },"),
+assert.ok(source.includes("uAir: { value: new THREE.Vector4(ch.air, lightTune('PANO_FILL_LAW', ch.fillLaw), ch.rockFloor, lightTune('PANO_FAR_AIR_FLOOR', ch.farAirFloor)) },"),
   'uAir.w carries the character\'s floor (a QA knob over it, read at each bake)');
 
 // 3b. the near band's press (2026-10-07): QA knobs read at each bake, at rest the press as it shipped (a cap 0.03 under the
@@ -63,6 +63,10 @@ for (const needle of [
   'float invF = uHaze.y / max(uHazeFar.x, 0.05);',
   'float layer = hazeLayerMean(max(uFrame.w - datumF, 0.0) * invF, max(wp.y - datumF, 0.0) * invF);',
 ]) assert.ok(source.includes(needle), `the strip's far path: ${needle}`);
+// 3f. (2026-10-07) the fill an elevated camera sees over the ring (Glacier's white band): the fill's law and the old fill's
+// fog share, QA knobs at bake time — at rest the character's law and the old share × 1
+assert.ok(source.includes("uFillFog: { value: lightTune('PANO_FILL_FOG', 1) },"), 'the old fill\'s fog share a knob at rest 1');
+assert.ok(source.includes('      fill = mix(fill, uFog * 1.05, (0.25 + 0.35 * recede) * uFillFog);'), 'the strip reads it');
 // 3e. (2026-10-07) the layers' crest margin wandering per range, a QA knob at bake time — at rest 0, the rule as it shipped
 assert.ok(source.includes("uLayerWander: { value: lightTune('PANO_LAYER_WANDER', 0) },"), 'the layers\' wander at rest 0');
 assert.ok(height.includes('if (uLayerWander > 0.0) margin += uLayerWander * noised(p / 2600.0 + vec2(-6.1, 2.4)).x;'), 'the height pass reads it');
