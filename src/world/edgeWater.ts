@@ -331,7 +331,10 @@ export function resolveSeaOpenings(
   const halfSize = field && Number.isFinite(field.size) ? (field.size as number) / 2 : 512;
   for (const opening of openings) {
     opening.coastReachM = coastReachAlong(opening, waterAt, halfSize);
-    if (opening.source === 'edge' && waterAt) opening.bankProfile = measureMouthBanks(opening, waterAt, halfSize);
+    // (the borders lane, 2026-10-08: an authored opening's banks are measured too — Saltmere's had none, so its sea went
+    // on past the edge as the sector's own banks: a straight segment down the red line and a ruler-straight diagonal off
+    // the bay's shore, the owner's "evident right angle with shore and water at the border")
+    if (waterAt) opening.bankProfile = measureMouthBanks(opening, waterAt, halfSize);
   }
   return openings;
 }
