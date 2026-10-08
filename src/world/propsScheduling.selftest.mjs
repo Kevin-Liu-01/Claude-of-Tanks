@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { box, jitterUV } from './propGeometry.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
-import { placeWreckCollision } from './wreckCollision.ts';
+import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -410,7 +410,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
     boxClearOfPoints, sharpBends: [],
     // the wreck's collision pose reads the support quaternion (identity on the fixture's level ground)
-    THREE, placeWreckCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
+    // (2026-10-07, the hitbox lane: the wreck's shell record is its own slabs, placeWreckShellCollision)
+    THREE, placeWreckCollision, placeWreckShellCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
   };

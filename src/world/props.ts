@@ -1,4 +1,5 @@
-import { placeWreckCollision } from './wreckCollision.ts';
+import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
+import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -119,6 +120,16 @@ import {
   cloneCollisionRecord, convexHull2, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
   type SimpleCollisionShape,
 } from './collision.ts';
+import {
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
+  rockStaysCrushable,
+  type RockCollisionProfile, type RockForm,
+} from './rockCollision.ts'; // the hitbox lane, 2026-10-07
+/** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
+const HEDGEHOG_SLAB_M = 0.35;
+const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
+/** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
+export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
@@ -300,6 +311,19 @@ interface InhabitSettings {
   gateStacks?: number;
 }
 
+/** An authored outcrop: `count` boulders on a crescent of `radius` m round (x, z), bulging toward `towardDeg` (degrees,
+ * atan2(dz, dx)); the boulders' scales between `scaleMin` and `scaleMax`. */
+interface CoverOutcropSettings {
+  x: number;
+  z: number;
+  towardDeg?: number;
+  count?: number;
+  radius?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  name?: string;
+}
+
 interface TacticalOutcropSettings {
   count?: number;
   radius?: number;
@@ -430,6 +454,8 @@ interface PropsSettings {
   structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
+  /** Authored hard-cover outcrops (the hitbox lane, 2026-10-08; placeCoverOutcrops). */
+  coverOutcrops?: readonly CoverOutcropSettings[];
   craters: number;
   rubblePiles: number;
   wrecks: number;
@@ -616,6 +642,25 @@ interface PropsCollisionRecord extends CollisionRecord {
   _pressS?: number;
   _pressT?: number;
   hedgehogId?: number;
+}
+
+/** One placed stone and its records (the hitbox lane, 2026-10-07): the legacy ones the placement passes read, then the
+ * profile of its own mesh they are refitted to (props.ts settleRockColliders, refitRockColliders). */
+interface RockSeat {
+  vv: number;
+  placement: THREE.Matrix4;
+  x: number;
+  y: number;
+  z: number;
+  sc: number;
+  sink: number;
+  tactical: boolean;
+  rec: CollisionRecord | null;
+  col: CollisionRecord | null;
+  clutter: CrushableClutter | null;
+  profile: RockCollisionProfile | null;
+  /** Records the stone had none of: they join the lists at the refit. */
+  added?: boolean;
 }
 
 interface GroundSupportRecord {
@@ -3649,21 +3694,24 @@ ${snowCap ? `
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
+  // (the hitbox lane, 2026-10-07: and a stack stops shells and sight lines — collision.ts names sandbags dense cover, but
+  // the stacks published no shell record, so 70-94 % of the rays through a stack passed it; their shell records are the
+  // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -5959,6 +6007,10 @@ ${snowCap ? `
   // for the far rocks and the far shadow cascades
   const rockGeosFar: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
+  // the hitbox lane (2026-10-07): each variant's collision form (rockCollision.ts) and every stone's seat; the colliders
+  // come from the stone's own mesh once every placement pass has run (refitRockColliders)
+  const rockForms: RockForm[] = [];
+  const rockSeats: RockSeat[] = [];
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
@@ -5981,7 +6033,7 @@ ${snowCap ? `
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
     const hull = convexHull2(projected);
-    rockHulls.push(hull); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    rockHulls.push(hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
     // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
     // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
@@ -5992,6 +6044,12 @@ ${snowCap ? `
     const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
     paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
+    // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
+    const collisionForm = mobileProps
+      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
+      : form.geometry;
+    rockForms.push(rockFormOf(collisionForm));
+    if (collisionForm !== form.geometry) collisionForm.dispose();
     if (!mobileProps) {
       const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
       paintBoulder(far, P.rockTone, lithology);
@@ -6069,17 +6127,19 @@ ${snowCap ? `
     slopePref: boolean,
     sink = 0.22,
     tactical = false,
+    // (the hitbox lane, 2026-10-08: an authored outcrop draws on its own stream, so no stone placed after it moves)
+    draw: Rng = rng,
   ): boolean {
-    const vv = (rng() * 3) | 0;
-    const yawR = rng() * Math.PI * 2;
-    const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
+    const vv = (draw() * 3) | 0;
+    const yawR = draw() * Math.PI * 2;
+    const sc = scMin + Math.pow(draw(), 1.6) * (scMax - scMin);
     if (!rockSiteOpen(x, z)) return false;
     if (slopePref) {
       const steep = heightField.getNormalAt(x, z).y < 0.93;
-      if (!steep && rng() > 0.30) return false; // prefer rocky slopes
+      if (!steep && draw() > 0.30) return false; // prefer rocky slopes
     }
     // (the stone's height scale, drawn where the seat's matrix always drew it, so a re-site takes no draw of its own)
-    const scaleY = sc * (0.8 + rng() * 0.35);
+    const scaleY = sc * (0.8 + draw() * 0.35);
     // The boulder keeps its whole footprint (the collision hull) out of the road core. One that would reach into it is
     // left out, its draws still taken and its count kept, so every later placement keeps its seat.
     const hull = rockHulls[vv];
@@ -6118,12 +6178,17 @@ ${snowCap ? `
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     addPlacedRock(x, z, reach, footprint);
+    // (the hitbox lane: every stone's seat; the records below are the legacy ones every placement pass reads)
+    const seat: RockSeat = { vv, placement, x, y, z, sc, sink, tactical, rec: null, col: null, clutter: null, profile: null };
+    rockSeats.push(seat);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
       // The old square ±1.15*scale AABB made its four empty corners solid;
       // at a 3 m outcrop that stopped a hull more than a metre from the
       // visible stone. Use the displaced mesh's actual projected convex hull.
+      // (the hitbox lane, 2026-10-07: the legacy record every later placement pass reads; refitRockColliders gives it the
+      // stone's own colliders once they have all run)
       const c = Math.cos(yawR), s = Math.sin(yawR);
       const local = rockHulls[vv];
       const points = new Array(local.length);
@@ -6137,10 +6202,12 @@ ${snowCap ? `
       const col = cloneCollisionRecord(rec);
       obstacles.push(rec); colliders.push(col);
       letGroundCoverLap(rec); // (b14: the turf grows against the stone's foot)
+      seat.rec = rec; seat.col = col;
       if (isLooseSurfaceRock(sc, sink, tactical)) {
         rec.kind = col.kind = 'small-rock';
         const clutter = new CrushableClutter('small-rock', x, y + sink * sc, z, sc, sc * 1.1, [rec], [col]);
         rockClutter.set(placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
       }
     }
     return true;
@@ -6234,8 +6301,60 @@ ${snowCap ? `
   }
   }
   scatterBoulderOutcrops();
+  // The hitbox lane (2026-10-08): the layout brief's cover where the stones' own colliders left a sector short of it
+  // (the cover the legacy records' empty corners had counted; docs/MAP-LAYOUT-BRIEF.md, tools/map-layout-metrics.mjs):
+  // authored outcrops of the map's own boulders, each a crescent bulging toward its threat as a tactical beat's does,
+  // hard cover (never crushable), on their own seeded draws so no stone placed before or after them moves.
+  function placeCoverOutcrops(): void {
+    (P.coverOutcrops ?? []).forEach((spot, index) => {
+      const draw = mulberry32(seed + 7919 + index * 104729);
+      const count = spot.count ?? 4, radius = spot.radius ?? 6;
+      const toward = THREE.MathUtils.degToRad(spot.towardDeg ?? 0);
+      for (let i = 0; i < count; i++) {
+        const arc = count === 1 ? 0 : (i / (count - 1) - 0.5) * Math.PI * 0.8;
+        const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + index)));
+        tryRock(spot.x + Math.cos(toward + arc) * rr, spot.z + Math.sin(toward + arc) * rr,
+          spot.scaleMin ?? 1.6, spot.scaleMax ?? 3.0, false, 0.24, true, draw);
+      }
+    });
+  }
+  placeCoverOutcrops();
 
   yield { fine: true, stage: 'boulder-outcrops' };
+  // The hitbox lane (2026-10-07; owner: "rock hitboxes are way too big and inaccurate"): every stone's colliders from its
+  // own mesh over its own ground (rockCollision.ts). The legacy records stand through every placement pass below, so no
+  // prop moves; refitRockColliders swaps these profiles in once all of them have run. Here, before the pools are laid,
+  // the crushable class follows the stones that keep a collider: a stone a hull drives over drops its clutter, and a
+  // stone that rises past the drive-over line with no collider (a small or a deep-set one) becomes a crushable rock.
+  function* settleRockColliders(): Generator<PropsBuildSlice, void, void> {
+    const groundAt = rockGroundAt(heightField);
+    let settled = 0;
+    for (const seat of rockSeats) {
+      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
+      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
+      if (!seat.profile) {
+        if (seat.clutter) {
+          rockClutter.delete(seat.placement);
+          const at = pendingClutter.indexOf(seat.clutter);
+          if (at >= 0) pendingClutter.splice(at, 1);
+          seat.clutter = null;
+        }
+        continue;
+      }
+      if (seat.rec) continue;
+      const rec: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      const col: CollisionRecord = { min: [seat.x, seat.y, seat.z], max: [seat.x, seat.y, seat.z] };
+      seat.rec = rec; seat.col = col; seat.added = true;
+      if (rockStaysCrushable(seat.sc, seat.tactical)) {
+        rec.kind = col.kind = 'small-rock';
+        const clutter = new CrushableClutter('small-rock', seat.x, seat.y + seat.sink * seat.sc, seat.z, seat.sc, seat.sc * 1.1, [rec], [col]);
+        rockClutter.set(seat.placement, clutter); pendingClutter.push(clutter);
+        seat.clutter = clutter;
+      }
+    }
+  }
+  yield* settleRockColliders();
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
@@ -7109,8 +7228,16 @@ ${snowCap ? `
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
         };
-        setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025,
-          beamSpec.halfLength + 0.025, beamSpec.yaw);
+        // (the hitbox lane, 2026-10-07: the beam's own slabs, which lean with it; its whole projection extruded from foot
+        // to tip stopped a quarter of the sight lines that met it 10+ cm clear of the steel)
+        _hedgehogBeam.makeRotationY(beamSpec.yaw).multiply(_hedgehogTilt.makeRotationX(beamSpec.tilt))
+          .setPosition(hx, y + 0.62 * scale, hz);
+        const slabs = convexSlabs(boxCorners(0.08 * scale + 0.025, 0.08 * scale, 1.05 * scale + 0.025, _hedgehogBeam.elements),
+          HEDGEHOG_SLAB_M, 8);
+        if (slabs.length) {
+          setCompoundShape(record, slabParts(slabs));
+          record.min[1] = slabs[0].y0; record.max[1] = slabs[slabs.length - 1].y1;
+        } else setObbShape(record, hx, hz, beamSpec.halfWidth + 0.025, beamSpec.halfLength + 0.025, beamSpec.yaw);
         const collider = cloneCollisionRecord(record);
         obstacles.push(record); colliders.push(collider);
         clutterObs.push(record); clutterCols.push(collider);
@@ -7495,7 +7622,8 @@ ${snowCap ? `
         const hx = (rec.max[0] - rec.min[0]) * 0.5;
         const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
-        colliders.push(cloneCollisionRecord(rec));
+        // (the hitbox lane, 2026-10-07: shells and sight lines meet the solids in slabs that lean with them)
+        colliders.push(placeWreckShellCollision(baked.shellSolids ?? baked.solids, placement));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({
           specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
@@ -9023,6 +9151,38 @@ ${snowCap ? `
       group.add(mesh);
     }
   }
+  // The hitbox lane (2026-10-07): every placement pass has read the stones' legacy records; now each stone takes the
+  // colliders of its own mesh (settleRockColliders above), a stone a hull drives over leaves both lists, and a stone
+  // that rose past the drive-over line with none joins them — before the clutter takes its network identity below.
+  // The ground cover keeps the footprints it has always been sealed against: each legacy record's twin, cosmetic only
+  // (map.ts adds them to the grass, litter, tall-grass and shrub admission), so no tuft or shrub moves with a collider.
+  const rockGroundCover: CollisionRecord[] = [];
+  function refitRockColliders(): void {
+    const dropped = new Set<CollisionRecord>();
+    for (const seat of rockSeats) {
+      if (!seat.rec || !seat.col) continue;
+      if (!seat.added) {
+        const twin = cloneCollisionRecord(seat.rec);
+        letGroundCoverLap(twin);
+        rockGroundCover.push(twin);
+      }
+      if (!seat.profile) { dropped.add(seat.rec); dropped.add(seat.col); continue; }
+      applyRockCollisionProfile(seat.rec, seat.col, seat.profile, seat.y);
+      if (!seat.added) continue;
+      obstacles.push(seat.rec); colliders.push(seat.col);
+      letGroundCoverLap(seat.rec);
+    }
+    if (dropped.size) {
+      for (const list of [obstacles, colliders] as CollisionRecord[][]) {
+        let kept = 0;
+        for (const record of list) if (!dropped.has(record)) list[kept++] = record;
+        list.length = kept;
+      }
+    }
+    rockSeats.length = 0;
+    group.userData.rockGroundCover = rockGroundCover;
+  }
+  refitRockColliders();
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;
@@ -9063,6 +9223,7 @@ ${snowCap ? `
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
+    const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
@@ -9088,6 +9249,8 @@ ${snowCap ? `
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
+        // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
+        if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
       }
     }
     if (!source) return null;
