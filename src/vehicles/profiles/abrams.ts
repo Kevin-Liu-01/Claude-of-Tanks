@@ -1,3 +1,4 @@
+import { addModernFieldCage } from './modernFieldCage.ts';
 import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
 import {abramsPlanarCheek} from './abramsPlanarCheek.ts';
@@ -8425,6 +8426,7 @@ function buildM1A3(P: AbramsBuilderPort): void {
   addM1A3RemoteWeaponTower(P);
   addM1A3AntennasAndGun(P, layout.t);
   addM1A3UpgradeEquipment(P, layout.t);
+  addModernFieldCage(P);
   publishM1A3DesignReceipt(P, layout);
 }
 
