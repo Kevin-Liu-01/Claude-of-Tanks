@@ -7,6 +7,7 @@ import { box, jitterUV } from './propGeometry.ts';
 import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision } from './wreckCollision.ts';
+import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -414,6 +415,11 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     THREE, placeWreckCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
+    // (2026-10-08) a hulk refuses a seat that meets a tall solid or a tree (props.ts hulkMeetsTallSolid): the fixture's
+    // ground holds neither
+    sceneryTrees: [], shapePolygons, polygonGap,
+    // nor one on a match objective's disc (props.ts hulkOnObjective): the fixture's map has none
+    mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;

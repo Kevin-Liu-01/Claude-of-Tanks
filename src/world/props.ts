@@ -178,6 +178,7 @@ import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
+import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -7596,6 +7597,11 @@ ${snowCap ? `
         // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
         // against the low things, a kerb, a log, a crate on its side)
         if (hulkMeetsTallSolid(x, z, baked.hx, baked.hz, yaw)) return false;
+        // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
+        // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
+        // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
+        // symmetry (matchPlacement, mapLayoutBrief)
+        if (hulkOnObjective(x, z, Math.hypot(baked.hx, baked.hz))) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -7660,6 +7666,14 @@ ${snowCap ? `
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
         return true;
+      }
+      const objectiveLayout = MATCH_OBJECTIVE_LAYOUTS[mapId];
+      const objectiveDiscs: readonly (readonly [number, number, number])[] = [
+        ...(objectiveLayout?.zones ?? []).map((zone) => [zone.x, zone.z, 30 + 3] as const),
+        ...(objectiveLayout?.kickoff ? [[objectiveLayout.kickoff.x, objectiveLayout.kickoff.z, 12 + 3] as const] : []),
+      ];
+      function hulkOnObjective(x: number, z: number, r: number): boolean {
+        return objectiveDiscs.some(([cx, cz, radius]) => Math.hypot(x - cx, z - cz) < radius + r);
       }
       function hulkMeetsTallSolid(x: number, z: number, hx: number, hz: number, yaw: number): boolean {
         const s = Math.sin(yaw), c = Math.cos(yaw), r = Math.hypot(hx, hz);

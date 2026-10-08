@@ -9,7 +9,7 @@ import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPl
 import { scaleUV } from './propGeometry.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, civilianVehicleTypes } from './maps/inhabitKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
-import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
@@ -34,8 +34,9 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
   GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
-  // (2026-10-07) the destructible stage seats a cart tilted to its ground (props.ts cartGroundPose, CART_KINDS)
-  CART_RECEIPTS,
+  // (2026-10-07) the destructible stage seats a cart tilted to its ground (props.ts cartGroundPose, CART_KINDS); since
+  // 2026-10-08 a parked vehicle too (GROUND_POSED_KINDS)
+  CART_RECEIPTS, CIVILIAN_VEHICLE_RECEIPTS,
   authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES,
   // props.ts reads its settlement counts through richCount (tier multiplier, 2026-09-14); this
   // receipt checks the authored counts, i.e. the mobile tier's production value.
