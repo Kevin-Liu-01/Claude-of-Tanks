@@ -12,7 +12,7 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
   caldera: [['m1a1', 2002, 1], ['t80u', 2133, 1], ['m60a2', 2264, 0], ['bmpt_t90', 2395, 1], ['pt91m', 2526, 1], ['ua_t84_oplot_m', 2657, 1], ['m60a3', 2788, 0]],
   cliffbridge: [['m551_sheridan', 2002, 1], ['marder1a3', 2133, 1], ['leo2a7v', 2264, 0], ['m1a1', 2395, 1], ['t90a', 2526, 1]],
   coastal: [['m2a2_bradley', 2002, 1], ['bmp3', 2133, 1], ['merkava3d', 2264, 1], ['ariete', 2395, 1], ['type10', 2526, 1]],
-  copper_mesa: [['m551_sheridan', 2002, 1], ['m60a2', 2133, 1], ['m1a1', 2264, 0], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['m60a3', 2657, 0]],
+  copper_mesa: [['m551_sheridan', 2002, 1], ['m60a2', 2133, 1], ['m1a1', 2264, 0], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['m60a3', 2657, 1]],
   delta: [['challenger2', 2002, 1], ['challenger2', 2133, 0], ['leclerc', 2264, 1], ['leclerc', 2395, 0], ['bmp3', 2526, 0], ['m2a2_bradley', 2657, 1], ['type99a', 2788, 0], ['m551_sheridan', 2919, 1]],
   desert: [['m60a3', 2002, 1], ['merkava4b', 2133, 1], ['m1a2', 2264, 1], ['type99a', 2395, 1], ['ariete', 2526, 1]],
   fjord: [['leo2a7v', 2002, 1], ['t90a', 2133, 0], ['cv90', 2264, 1], ['strv122', 2395, 1], ['strv122', 2526, 0], ['marder1a3', 2657, 1]],
