@@ -452,6 +452,7 @@ function captureContext(seed) {
     return c.log.media;
   };
   assert.ok(fallOf({}).length > 0 && fallOf({}).every((m) => m.heat === 0), 'a panel falls in its dust');
+  assert.ok(fallOf({}).every((m) => m.r1 > m.b1 * 1.2), "in the building's own colour (the fallback's brick), never cream");
   assert.ok(fallOf({ storeyDown: true, cx: 10, cz: 20, hw: 5, hd: 4 }).length > fallOf({}).length, 'a storey brings more down');
   assert.ok(fallOf({ sectionKind: 'roof', y0: 6, y1: 8.4 }).length > 0, 'the roof\'s dust goes up and out');
   assert.equal(fallOf({ sectionDown: false }).length + fallOf({ settled: true }).length, 0, 'a hole or a settled fall throws no dust');

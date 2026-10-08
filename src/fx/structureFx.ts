@@ -391,7 +391,9 @@ export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: Struct
   if (e.settled || !e.sectionDown) return;
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
-  const dust = dustOf(L, _dust);
+  // (round 7, wave 277) a falling section's dust in the building's own colour (its powder pulled toward its main
+  // rubble's hue), as the collapse's
+  const dust = brickDust(L, dustOf(L, _dust), _tint);
   const dark: Rgb = [dust[0] * 0.6, dust[1] * 0.6, dust[2] * 0.6];
   const dk = C.distBoost(e.x, e.y, e.z);
   const band = Math.max(1, e.y1 - e.y0);
