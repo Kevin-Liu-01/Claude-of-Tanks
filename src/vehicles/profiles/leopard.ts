@@ -5535,10 +5535,12 @@ export function buildLeo2A5(builder: object) {
               // columns 0.08 each vs the ref's 0.787 line; 0.32 bottoms 0.77.
               [KIT.xform(KIT.cylX(0.320, 0.012, P.q ? 26 : 18), s * 1.730, 1.09, -3.19), discFace],   // sprocket face disc
               [KIT.xform(KIT.cylX(0.290, 0.004, P.q ? 24 : 16), s * 1.7365, 1.09, -3.19), discDark],  // rim seam ring
-              [KIT.xform(KIT.cylX(0.130, 0.014, 12), s * 1.7315, 1.09, -3.19), discDark],             // hub cap
+              // hub caps stand 2 mm proud of the seam ring (fleet lane 2026-10-07: their outer discs shared the ring's
+              // plane, two filled caps fighting in depth, the circularCapOverlap finding)
+              [KIT.xform(KIT.cylX(0.130, 0.014, 12), s * 1.7335, 1.09, -3.19), discDark],             // hub cap
               [KIT.xform(KIT.cylX(0.315, 0.012, P.q ? 26 : 18), s * 1.7315, 1.11, 3.48), discFace],   // idler face disc
               [KIT.xform(KIT.cylX(0.285, 0.004, P.q ? 24 : 16), s * 1.738, 1.11, 3.48), discDark],
-              [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.733, 1.11, 3.48), discDark],
+              [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.735, 1.11, 3.48), discDark],
             ];
             for (const [g, mat] of runningGearFaces) {
               const mesh = new THREE.Mesh(g, mat);
