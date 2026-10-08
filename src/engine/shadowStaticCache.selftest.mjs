@@ -88,6 +88,15 @@ import {
   assert.notEqual(casterSignature(mesh), s4, 'a material version change does');
   mesh.castShadow = false;
   assert.notEqual(casterSignature(mesh), casterSignature(Object.assign(mesh, { castShadow: true })));
+  // destruction (2026-10-07): a shape only the GPU changes (the structure mask on a props bucket) reaches the hash
+  // through the owner's epoch, bumped on every frame it changes (world structureDamage(id).touchShadows())
+  const s6 = casterSignature(mesh);
+  mesh.userData.cotShadowEpoch = 1;
+  const s7 = casterSignature(mesh);
+  assert.notEqual(s7, s6, 'a shadow epoch bump does');
+  assert.equal(casterSignature(mesh), s7, 'and holds until the next bump');
+  mesh.userData.cotShadowEpoch = 2;
+  assert.notEqual(casterSignature(mesh), s7);
 }
 
 // ---------------------------------------------------------------------------------------------- the two passes

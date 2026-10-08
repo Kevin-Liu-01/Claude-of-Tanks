@@ -416,12 +416,23 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
 - Animate only live events; lay `settled` ones down at their final pose, silently.
 - Draw rubble and craters on the sim's own profiles (`rubbleMoundHeightAt`, `craterOffsetAt` in
   `sim/terrainDeformation.ts`, which is pure and light) so tracks meet what the eye sees.
-- The world tags each structure's geometry at build time (P1): `userData.structureIdx` on every part, and per vertex
-  the structure index, its section and its part class (§16.4), so a stage can cut, hide or swap exactly that
+- The world tags each structure's geometry at build time (P1): `userData.structureIdx` on every part, `aDamage` per
+  vertex and the spans of every part in the merged buckets (§16.4), so a stage can cut, hide or swap exactly that
   building's pieces inside the merged buckets.
 - Every stage's look comes from the building's own kit through the kit seam (§16); the presentation renders what the
   kit generators write.
-- Explosion variety keys on `munition` and `chargeKg` (solo `munition:blast`; network: the shell events' new fields).
+- Explosion variety keys on `munition` and `chargeKg` of `munition:blast` (`MunitionBlastEvent`: class, charge, point,
+  normal, `surface` terrain | water | structure | prop | tank | air, and `structureId` when the struck record belongs to
+  a structure). One per detonation, raised before the event it belongs to, in both simulations:
+  - solo (`game/state.ts`): a round meeting the world (`resolveWorldShellImpact`, before `shell:expired`; water by the
+    map's mask), a round bursting on a hull (`resolveTankShellImpact`, surface tank, before its hits), a cook-off or a
+    fuel fire (`announceDestroyed`, 1 m above the hull, before `tank:destroyed`; `cookOffChargeKg(weight)`,
+    `FUEL_CHARGE_KG`). A penetrator, small arms and smoke raise none (`munitionBlastEventFor` returns null).
+  - network: `shell_impact` carries `munition`, `chargeKg` and `structureId`; every `shell_hit` carries `munition` and
+    `chargeKg`, and the first one a round bursting on a hull makes (the direct hit's) carries `blast: [x, y, z, nx, ny,
+    nz]`, splash hits none; `tank_destroyed` names the cause. `mp/presentation/battlePresentation.ts` raises the same
+    `munition:blast` from them in the same order, the structure mapped to the peer's own world (the mirror's identity,
+    §8.4) and water read from the peer's own mask.
 
 ## 12. Balance
 
@@ -447,6 +458,10 @@ Cover that disappears changes the game. The gates, every phase:
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |
 | `tools/sim-determinism-audit` (extended) | destruction in the hash |
+| `world/destructionKit.selftest.mjs` | the kit seam and the world's tags, spans, depth materials and shadow touch (§16.7) |
+| `sim/destructionParity.selftest.mjs` (extended) | the detonations raised alike in both sims; a real HE round's `shell_impact` names the house it struck |
+| `mp/presentation/battlePresentation.selftest.mjs` (extended) | a peer raises `munition:blast` from the authority's events in solo's order, structure mapped, water by its own mask |
+| `engine/shadowStaticCache.selftest.mjs` (extended) | the shadow epoch reaches the caster signature |
 
 ## 14. Phase plan
 
@@ -542,7 +557,7 @@ the pile carries the building's weather. Storeys come from `h` and the shell ban
 | Plaster over rubble | a render lip round a core of rubble stones |
 | Concrete | plates with rebar stubs at the break edge |
 | Adobe | rounded, crumbled edges and clods |
-| Breach | the dark backing behind every opening becomes a room: the floor plane, the floor-slab edge at the storey line, joist ends at the break's top; the rim in the wall's own layers; debris thrown along the blow |
+| Breach | the dark backing behind every opening becomes a room: the floor plane, the floor-slab edge at the storey line, joist ends at the break's top; the rim in the wall's own layers, its units laid in courses over the band 0.75 r – 1.25 r where the presentation's blocky cut edge runs (0.8 r – 1.2 r), the render lip just past it; debris thrown along the blow |
 | Damaged | spalled render patches, chipped arrises, cracked and missing glass (glass hidden, shards as debris), slipped tiles |
 | Roof (P2 `sectionDown`) | a stripped patch shows battens and rafters (`emitRoofPatch`); a fall adds missing slab sections, a broken ridge and hanging rafters; thatch chars and slumps; an earth roof slumps between its beams; sheet bends |
 | Collapse | remnants (wall stubs, corners, chimneys), a heap of chunk prisms in the building's own buckets with its weather tints plus timbers and roof tiles, seated on the sim's mound (`rubbleMoundHeightAt`), and the falling debris |
@@ -578,13 +593,41 @@ Damage batches are one dynamic mesh per bucket per world (its own material, its 
 adds at most one draw per bucket in use; pooled debris holds at most 1,024 live pieces per world. `collapse` may run
 when the structure is breached and keep its result, so the collapse frame only uploads.
 
-### 16.4 Tags in the intact geometry
+### 16.4 Tags in the intact geometry (landed P1, 2026-10-07)
 
-At build time (P1, core) every part of a structure carries `userData.structureIdx`, and the merge writes a per-vertex
-attribute `aDamage` = (structure index, section, part class: wall, roof, glass, trim, interior). The presentation's
-mask reads it: `damaged` hides glass, a fallen roof hides its section, a collapse hides the structure, a hole discards
-the wall inside its cut. A part's section is the storey and face it lies on (its centroid against the anatomy's face
-rects); a roof part's is the roof's.
+At build time every part of a structure carries `userData.structureIdx` (props.ts `addStructureCollision`, the
+landmarks' compose), and the world describes the structure through its kit chain before the merge places its parts
+(`describeStructure`, the parts object the kit returned, so a kit's plan reader finds it). Then the merge records:
+
+- **`aDamage`** (`Uint16`, item size 1, not normalised) = structureIdx + 1 on a structure's vertices, 0 elsewhere,
+  only in merged buckets that hold a structure part (a bucket without one is untouched). A fine-detail batch tags all
+  its geometries when any holds a structure: a `BatchedMesh` keeps one attribute set. A shader reads
+  `int(aDamage + 0.5) - 1`; −1 (or no attribute) is no structure.
+- **Spans** (`StructureSpan`: mesh, position attribute, first vertex, count, bucket, part class, and for a batch its
+  geometry id and the one instance drawing it): every part's vertex range in the mesh's position attribute, absolute in a batch's shared
+  attributes (its geometry's `vertexStart` included), whole triangles (merged geometry is non-indexed), so a range
+  flattens the same way in a mesh and a batch (crushableClutter's layout). The part class comes from the bucket:
+  glass (`glass`, `curtain`), roof (`roof`, `regionalRoof`, `straw`), trim (a batch cell's fine detail), else wall.
+  Sections are not tagged per vertex in P1: a span's centroid against the anatomy's faces gives its section (P2).
+- **World space**: every bucket mesh and batch stands at identity under the world root (receipted), so spans, the
+  anatomy's placement and a pivot are world points.
+- **Shadows**: a bucket mesh that casts a structure's shadow casts it through its own `MeshDepthMaterial` (RGBA packing,
+  `props-structure-depth-<bucket>`, the depth three's shared one is flipped to), so a vertex patch moves the shadow
+  with the building. The static shadow cache (`engine/shadowStaticCache.ts`) cannot see a shape the GPU changes:
+  `touchShadows()` bumps `userData.cotShadowEpoch` on the structure's casting meshes and `casterSignature` mixes it.
+  Called every frame the mask moves a structure (each frame of a collapse, once for a settled stage), the cache draws
+  those meshes with the dynamic casters while they change and returns them to the static layer a second after.
+
+The runtime API (`world/map.ts`):
+
+| Call | Gives |
+|---|---|
+| `world.structureDamage(id)` | the seam: `anatomy` (the sim's mound filled in), `spans`, `damaged` / `breach` / `sectionDown` / `collapse` resolved member by member through the chain (an anatomy keeps its own kit's builders), `holeAt(x, y, z, radiusM, dirX, dirZ, munition, cause, hole?)` (a world point and blow to the `BreachSpec` of the nearest anatomy face: storey, face, u, y, body-frame direction, seed), `touchShadows()`; null for an unknown id |
+| `world.patchStructureMaterials(fn)` | every props-bucket material once — the buckets' own, each batch's clone (`batched`), the structure depth materials (`role: 'depth'`) — with the meshes drawing it; returns the count. Call before the warm; chain `onBeforeCompile`, extend `customProgramCacheKey` |
+| `world.touchStructureShadows(id)` | the seam's `touchShadows()` by id |
+
+The presentation's mask reads `aDamage`: `damaged` hides glass, a fallen roof hides its section, a collapse hides the
+structure, a hole discards the wall inside its cut.
 
 ### 16.5 Props
 
@@ -607,7 +650,11 @@ type gains `fracture` slots, defaulted from its `mat` (wood → `plank`, straw �
 
 ### 16.7 Receipts
 
-`src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): each registered kit's builders
-run twice on the same anatomies and seeds and write identical bytes; every writer stays within its cap; rim triangles
-stay within 0.3 m of their hole's edge and inside the wall's layers; rubble lies within the mound's footprint and on
-its surface (±5 cm); the default describe of a sample of every kit's buildings names a material for every bucket.
+`src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): the default describe reads a
+two-storey house from its parts (storeys, faces, layers, openings by face, roof kind and covering, floors, rubble);
+every stage builder runs twice on the same anatomy and seeds and writes identical bytes within its cap; the rim stands
+round its hole inside the wall's thickness with the dark room behind it; the pile sits on the sim's heap
+(`bodyMoundHeightAt` = `rubbleMoundHeightAt`); the chain keeps a kit's anatomy with its own builders; `aDamage` tags a
+merge; and Verdant's real build describes every structure, finds its spans (plain and batched) where it stands, tags
+them, stands every bucket at identity, casts each structure bucket through a patchable depth material, and touches
+exactly a structure's casting meshes.
