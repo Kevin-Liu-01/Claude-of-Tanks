@@ -1257,6 +1257,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsResources.selftest.mjs',
     'src/world/plasterSurfaceSharing.selftest.mjs',
     'src/world/plasterBaseMemo.selftest.mjs', // 2026-10-08: the render families paint one untoned base per build
+    'src/world/nearMeshVertexMemo.selftest.mjs', // 2026-10-08: the near mesh's vertex heights asked once per props build
     'src/world/propsScheduling.selftest.mjs',
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',

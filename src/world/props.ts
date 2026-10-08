@@ -3229,6 +3229,19 @@ function* propsBuildSteps(
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
   registerPaintNoise(noi, seed + 7); // (its tiles may come painted ahead: surfacePaintPrefetch.ts)
+  // (the time-to-battle lane, 2026-10-08) the near terrain mesh's vertex heights, each asked of the field once per build:
+  // the rock beds, the ground contact patches and the wall turf all conform to that grid (terrain.ts
+  // terrainNearMeshHeightAt) and asked its vertices 182 k times on Verdant, 174 k of them again. The field's own heights
+  // by their exact coordinates (the build changes no height), so the same values; released when the build returns.
+  let nearMeshVertexHeights: Map<number, Map<number, number>> | null = new Map();
+  const nearMeshVertexHeight = (px: number, pz: number): number => {
+    if (!nearMeshVertexHeights || px === 0 || pz === 0) return heightField.getHeightAt(px, pz);
+    let row = nearMeshVertexHeights.get(px);
+    if (!row) nearMeshVertexHeights.set(px, row = new Map());
+    let h = row.get(pz);
+    if (h === undefined) row.set(pz, h = heightField.getHeightAt(px, pz));
+    return h;
+  };
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
@@ -5193,7 +5206,7 @@ ${snowCap ? `
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
     sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
     turf: wallTurfOn ? {
-      meshAt: (x, z) => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z), foldAt: turfFoldAt,
+      meshAt: (x, z) => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z), foldAt: turfFoldAt,
     } : undefined,
   });
   function addWallRun(
@@ -6434,7 +6447,7 @@ ${snowCap ? `
    */
   function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {
     const SEGMENTS = 24, CELL = 256, RINGS = 5;
-    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt((px, pz) => heightField.getHeightAt(px, pz), x, z);
+    const meshAt = (x: number, z: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, x, z);
     const ripple = (cfg as { splat?: { rippleDir?: readonly [number, number] } } | null)?.splat?.rippleDir ?? [0.8, 0.6];
     const windL = Math.hypot(ripple[0], ripple[1]) || 1, wx = ripple[0] / windL, wz = ripple[1] / windL;
     const sandy = rockDressing.dust >= 0.5, snowy = snowCap;
@@ -8126,7 +8139,7 @@ ${snowCap ? `
     // its finest grid and its cells' diagonal), not the analytic height, which stands above the mesh on a bank's lip — a
     // patch conformed to that floated over the drawn lip and showed edge-on
     const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
-    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
+    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz);
     // (b12, the coordinator after the Coastal re-shoot: "lighten the patch's inner ring") the ground contact patches carry
     // each ring's share of their darkness in a vertex alpha; a boulder's patch keeps its soft outer shadow but lightens
     // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
@@ -10154,6 +10167,7 @@ ${snowCap ? `
     { material: mats.structureMetal, intensity: 1.2 },
     { material: mats.structureCanvas, intensity: 1.2 },
   ]);
+  nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,

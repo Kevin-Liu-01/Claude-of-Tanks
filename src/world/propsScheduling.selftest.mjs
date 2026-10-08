@@ -586,7 +586,9 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     },
     putImageData(image) { canvas.pixels = image.data; },
   };
-  const dependencies = { terrainNearMeshHeightAt, richCount: (n, fallback = 0) => n ?? fallback, // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
+  const dependencies = { terrainNearMeshHeightAt, richCount: (n, fallback = 0) => n ?? fallback,
+    // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
+    nearMeshVertexHeight: (px, pz) => dependencies.heightField.getHeightAt(px, pz), // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {

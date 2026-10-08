@@ -1054,9 +1054,20 @@ export function buildSandbagBedding(
   // skirt beside three boulders each on Verdant and Frontier: on a rock's shaded foot it is no brighter than the dirt
   // beside it, so the rocks keep it. A world-planar uv as the banks have.)
   const op = out.attributes.position, gr = new Float32Array(op.count), uv = new Float32Array(op.count * 2);
+  // (the time-to-battle lane, 2026-10-08) the non-indexed merge repeats a vertex in every triangle it closes: its ground
+  // is asked once (the same exact coordinates, the same height; 27.5 k of the 34 k asks on Verdant were repeats)
+  const groundOf = new Map<number, Map<number, number>>();
   for (let i = 0; i < op.count; i++) {
     const px = op.getX(i), py = op.getY(i), pz = op.getZ(i);
-    gr[i] = ground.getHeightAt(px, pz) - 0.5;
+    let groundY: number | undefined;
+    if (px === 0 || pz === 0) groundY = ground.getHeightAt(px, pz);
+    else {
+      let row = groundOf.get(px);
+      if (!row) groundOf.set(px, row = new Map());
+      groundY = row.get(pz);
+      if (groundY === undefined) row.set(pz, groundY = ground.getHeightAt(px, pz));
+    }
+    gr[i] = groundY - 0.5;
     uv[i * 2] = px * 0.37 + py * 0.21; uv[i * 2 + 1] = pz * 0.37 - py * 0.17;
   }
   out.setAttribute('aRockGround', new THREE.BufferAttribute(gr, 1));
