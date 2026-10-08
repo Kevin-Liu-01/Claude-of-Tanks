@@ -388,12 +388,17 @@ float horizonDim = 1.0; // live material colour / authored day colour (night run
   vec4 relief = vec4(0.5, 0.5, 1.0, 1.0);
   if (uVReliefAmp > 0.001) relief = texture2D(uVRelief, vec2(vMapUv.x * 0.1, (radius - uVReliefR.x) * uVReliefR.y));
   float reliefLand = (1.0 - floorW) * (1.0 - horizonMarine) * uVReliefAmp;
-  vec2 gd = (relief.xy * 2.0 - 1.0) * uVReliefGrad * reliefLand;
+  // (the borders lane, round 4; Glacier Pass: "a near-flat sheer cliff with stretched horizontal strata and a dark
+  // vertical smear") the atlas is read by the radius, which hardly changes up a sheer face: its occlusion, its cast
+  // shadows and its grain stretched there into vertical smears. A wall keeps a fifth of them and takes its light from
+  // its own facing and its joints (below)
+  float reliefFace = reliefLand * (1.0 - 0.8 * smoothstep(0.62, 0.36, n0.y));
+  vec2 gd = (relief.xy * 2.0 - 1.0) * uVReliefGrad * reliefFace;
   vec2 g0 = -n0.xz / max(n0.y, 0.05);
   vec3 nR = normalize(vec3(-(g0.x + gd.x), 1.0, -(g0.y + gd.y)));
   // round 72b: the occlusion read deeper (a further 1.4 power on top of the bake's 1.6) so the folds read at 1.5 km
-  float ao = 1.0 - (1.0 - pow(relief.z, 1.4)) * uVAoStrength * reliefLand;
-  float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefLand;
+  float ao = 1.0 - (1.0 - pow(relief.z, 1.4)) * uVAoStrength * reliefFace;
+  float sunVis = 1.0 - (1.0 - relief.w) * uVShadow * reliefFace;
   // round 72: the volumetric layer's cloud shadow on the sun term (horizonCloudShade.ts; 1 when the layer is off)
 ${HORIZON_CLOUD_SHADE_FRAGMENT}
   sunVis *= cloudLit;
@@ -415,6 +420,12 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   float slope = 1.0 - clamp(mix(n0.y, nR.y, 0.75), 0.0, 1.0);
   // Round 29: a wall is a genuinely steep face — iron staining, desert varnish and gullies belong to walls.
   float wall = smoothstep(0.30, 0.62, slope + nD * 0.06);
+  // (the borders lane, round 4) a wall's joints: narrow couloirs every 10-30 m across the face (along its own horizontal
+  // tangent), wandering with the 45 m and 140 m fields — a cliff reads as jointed buttresses, not one plane
+  vec2 faceT = normalize(vec2(-n0.z, n0.x) + vec2(1e-5, 0.0));
+  float faceS = dot(P.xz, faceT);
+  float jointF = sin(faceS * 0.37 + nD * 7.0 + nC * 3.0) * 0.6 + sin(faceS * 0.13 + nC * 5.0 + nB * 2.0) * 0.4;
+  float couloir = smoothstep(0.62, 0.90, jointF) * wall * macroFade;
   // Round 35 (owner 2026-09-21, "the sides of mountains … look so so bare"): a moderate rock slope is a ledge slope —
   // beds and their relief run across it too (at half weight), never across gentle sand or grass (round 29's lesson).
   float ledgeSlope = smoothstep(0.16, 0.40, slope + nD * 0.05);
@@ -452,6 +463,8 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
     snowW = smoothstep(uSnowline - 0.03, uSnowline + 0.15, hT + nD * 0.07 + nC * 0.05) * (1.0 - snowSlopeEdge);
     snowW = max(snowW, smoothstep(0.80, 0.97, hT) * (1.0 - smoothstep(0.24, 0.31, slope)) * step(uSnowline, 1.5));
     snowW *= 1.0 - bareRockW * 0.9; // round 49: the scoured ribs and crests stay bare
+    // (round 4) the couloirs hold the snow down a wall from just under the snowline
+    snowW = max(snowW, couloir * smoothstep(uSnowline - 0.15, uSnowline + 0.05, hT + nD * 0.05) * 0.85);
   }
   float screeW = smoothstep(0.16, 0.40, slope + nD * 0.22 + nE * 0.10) * (1.0 - rockW) * uVScreeAmp
     * (0.55 + 0.45 * smoothstep(0.15, 0.55, hT));
@@ -468,7 +481,10 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   // --- rock structure: faulted beds, shelves and seams, gullies ------------------
   // beds follow world height with a broad fault offset (600 m field) and a lateral warp (140 m field) so no two
   // stretches of wall carry the same parallel bands; a second thin-bed term breaks each bed into laminae
-  float bedPhase = P.y * 0.42 + nB * 9.0 + nC * 2.4;
+  // (round 4: the beds step where a joint cuts them — blocks of 15-35 m across a wall — so they read as jointed strata,
+  // not bands stretched across the whole face; a mesa's sandstone beds, banded past 0.2, run on unbroken)
+  float bedPhase = P.y * 0.42 + nB * 9.0 + nC * 2.4
+    + floor(faceS / 23.0 + nD * 2.0) * 1.3 * wall * (1.0 - smoothstep(0.15, 0.25, uVBanding));
   float bed = sin(bedPhase) * 0.6 + sin(P.y * 0.13 + nC * 5.0) * 0.4;
   float lamina = sin(P.y * 1.9 + nD * 3.0 + nE * 1.2);
   float bedW = uVBanding * max(wall, 0.5 * ledgeSlope * rockW);
@@ -507,6 +523,7 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
     rockCol = mix(rockCol, rockCol * vec3(1.14, 1.10, 1.02), shelf * bedW * 0.35);
     rockCol = mix(rockCol, rockCol * vec3(0.66, 0.68, 0.72), varnish * 0.45);
     rockCol *= 1.0 - gully * 0.30;
+    rockCol *= 1.0 - couloir * 0.28; // (round 4) the joints' shade
     // rolling and alpine rims: moss and turf creep onto the gentler ledges below the treeline
     float moss = smoothstep(0.10, 0.50, nD + 0.5) * (1.0 - wall) * smoothstep(0.62, 0.22, slope) * treeF * uVForestAmp;
     moss *= 1.0 - knobW * 0.8; // round 55: the knobs stay bare
@@ -555,7 +572,7 @@ ${HORIZON_CLOUD_SHADE_FRAGMENT}
   float sunL = max(ndl, 0.0);
   float sky = 0.55 + 0.45 * clamp(n.y, 0.0, 1.0);
   // cavity: seams, gullies and the shaded side of talus blocks read darker than the open face
-  float cavity = 1.0 - (gully * 0.35 + seam * 0.22) * rockW * macroFade - talusW * 0.10 * clamp(0.5 - nD, 0.0, 1.0) * fineW;
+  float cavity = 1.0 - (gully * 0.35 + seam * 0.22 + couloir * 0.20) * rockW * macroFade - talusW * 0.10 * clamp(0.5 - nD, 0.0, 1.0) * fineW;
   // Round 72: a face turned from the sun takes the sky's own colour (uVSkyTint, the fog tint's chroma) instead of
   // a grey — blue-grey under a clear sky, warm grey under an overcast — the occlusion darkens the valleys and the
   // foot of the crests, and the baked sun visibility lays the ridges' shadows across the ranges behind them
