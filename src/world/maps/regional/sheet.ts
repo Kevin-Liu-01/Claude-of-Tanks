@@ -94,7 +94,7 @@ function sheetQuad(mesh: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3, tint: Rgb): v
  * A sheet lying crumpled: `segments` bends down its length from `origin` along `dir` (horizontal), `width` across, each
  * bend's ridge or trough a little over the surface `ground` (body-frame height at x, z).
  */
-function crumpledSheet(mesh: Mesh, rng: () => number, origin: Vec3, dir: Vec3, width: number, length: number, segments: number,
+export function crumpledSheet(mesh: Mesh, rng: () => number, origin: Vec3, dir: Vec3, width: number, length: number, segments: number,
   ground: (x: number, z: number) => number, tint: Rgb): void {
   const across: Vec3 = norm3([-dir[2], 0, dir[0]]);
   const pts: Array<[Vec3, Vec3]> = [];
@@ -179,10 +179,11 @@ export function breachSheet(anatomy: StructureDamageAnatomy, hole: BreachSpec, o
     }
   }
   // 2. the frame behind the gap: the girts and columns the hole reaches, set back behind the sheet, a blast bending
-  //    them in at the hole
+  //    them in at the hole (a body with no frame, a shipping container (container.ts), shows none)
   const { columns, girts } = frameOf(f);
   const set = -0.12;
-  if (mesh.begin(steelSlot(f).bucket, 'rim')) {
+  const frameless = !!(anatomy.kitPlan as { damage?: { frameless?: boolean } } | undefined)?.damage?.frameless;
+  if (!frameless && mesh.begin(steelSlot(f).bucket, 'rim')) {
     for (const gy of girts) {
       if (Math.abs(gy - cy) > R * 0.9) continue;
       const half = Math.sqrt(Math.max(0, ROUT * ROUT - (gy - cy) ** 2));

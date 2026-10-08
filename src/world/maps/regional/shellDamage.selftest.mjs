@@ -12,7 +12,10 @@
 //      and inside the body's reach, every triangle facing its normal;
 //   4. the compounds (cluster.ts): their cells read off the merged walls, each with its deck under its parapet; a blow on
 //      the cluster's face opens the cell it reaches, on that cell's face, its room under the cell's deck; a face's fall
-//      opens a gap down to the floor in every cell on that side, the earth banked at its foot.
+//      opens a gap down to the floor in every cell on that side, the earth banked at its foot;
+//   5. the container rows (container.ts): their boxes read off the parts (ISO sizes, their own axes and liveries); a blow
+//      on the row's face opens the box it reaches, on that box's side; a face's fall tears the boxes on that side; the
+//      collapse lays every box crushed or tipped on the ground, its steel in the structure steel.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { readShell } from './shell.ts';
@@ -23,6 +26,7 @@ import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
 import { cellsOf } from './cluster.ts';
+import { containersOf } from './container.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -120,7 +124,7 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0;
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0;
 const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set(), clusterIds = new Set();
 function exercise(label, a, seam) {
   // (the body's own middle: a shell's walls need not centre on its parts' origin)
@@ -236,6 +240,45 @@ function describeAndRun(label, builder, styleId, parts) {
       if (down.cuts.length) assert.ok(fell.runs.some((r) => r.role === 'rubble' && r.pos.length), `${label}: the earth at the ${f.name} gap's foot`);
     }
   }
+  const boxes = containersOf(a);
+  if (boxes) {
+    containerRows++;
+    assert.ok(boxes.length >= 3, `${label}: the row's containers read (${boxes.length})`);
+    for (const b of boxes) {
+      assert.ok(b.hl * 2 >= 5.4 && b.hl * 2 <= 12.9 && b.hw * 2 >= 2.1 && b.hw * 2 <= 2.8 && b.hh * 2 >= 2.2, `${label}: an ISO box`);
+      assert.ok(Math.abs(Math.hypot(b.a[0], b.a[2]) - 1) < 1e-6 && b.a[1] === 0, `${label}: a box's long axis level and unit`);
+    }
+    // a cut on a box's side: on the plane of one of its four sides and inside it
+    const onSide = (cut) => boxes.some((b) => {
+      const w = [-b.a[2], 0, b.a[0]], rx = cut.x - b.c[0], rz = cut.z - b.c[2];
+      const pa = rx * b.a[0] + rz * b.a[2], pw = rx * w[0] + rz * w[2];
+      if (Math.abs(cut.y - b.c[1]) > b.hh + 0.05) return false;
+      return (Math.abs(Math.abs(pa) - b.hl) < 0.05 && Math.abs(pw) <= b.hw + 0.05) || (Math.abs(Math.abs(pw) - b.hw) < 0.05 && Math.abs(pa) <= b.hl + 0.05);
+    });
+    let opened = 0;
+    for (const f of a.storeys[0].faces) {
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: 0, y: 1.3, radiusM: 0.8, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 5 + f.section }, out);
+      for (const cut of res.cuts) assert.ok(onSide(cut), `${label}: the ${f.name} breach on a box's side (${JSON.stringify(cut)})`);
+      // (no frame behind a container's sheet: its rim and the dark hold only)
+      assert.ok(!out.runs.some((r) => r.role === 'rim' && r.pos.length && r.idx.length && r.bucket !== 'structureMetal'), `${label}: the ${f.name} breach in the box's steel`);
+      const fell = writers(...CAPS.sectionDown);
+      const down = seam.sectionDown(f.section, 21 + f.section, fell);
+      for (const cut of down.cuts) assert.ok(onSide(cut), `${label}: the ${f.name} fall on a box's side`);
+      opened += down.cuts.length;
+    }
+    assert.ok(opened >= 2, `${label}: the faces' falls tear the boxes on their sides (${opened})`);
+    const fallen = writers(...CAPS.collapse);
+    const res = seam.collapse(13, fallen);
+    assert.ok(res.hides.some((x) => x.section === null && x.partClass === null), `${label}: the collapse hides the row`);
+    const steel = fallen.runs.filter((r) => r.role === 'rubble' && r.bucket === 'structureMetal');
+    assert.ok(steel.reduce((n, r) => n + r.pos.length / 3, 0) >= boxes.length * 60, `${label}: every box crushed or tipped`);
+    let high = 0;
+    for (const r of steel) for (let i = 1; i < r.pos.length; i += 3) high = Math.max(high, r.pos[i]);
+    const top = Math.max(...boxes.map((b) => b.c[1] + b.hh));
+    assert.ok(high < top + 0.2, `${label}: nothing of the row stands higher than it did (${high.toFixed(2)} vs ${top.toFixed(2)})`);
+  }
   if (isSheetBody(a)) {
     sheetShells++;
     // a blast through a sheet wall: torn sheet round it (both sides), the frame's members across the gap, no masonry
@@ -303,5 +346,7 @@ assert.ok(!shellIds.has('saar/gantry'), 'saar/gantry: left to the default (an op
 // the compounds read as clusters of cells, broken cell by cell (cluster.ts); a courtyard that is one body stays the default's
 assert.ok(!shellIds.has('ksar/caravanserai') || clusterIds.has('ksar/caravanserai'), 'ksar/caravanserai: a cluster of cells or the default');
 assert.ok(clusterShells >= 2, `compounds the cluster kit breaks (${clusterShells}: ${[...clusterIds].join(', ')})`);
+// the container rows read as boxes and break box by box (container.ts)
+assert.ok(shellIds.has('base:containerRow') && containerRows >= 2, `the container rows the container kit breaks (${containerRows})`);
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}; ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}), ${containerRows} container rows box by box ( ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);

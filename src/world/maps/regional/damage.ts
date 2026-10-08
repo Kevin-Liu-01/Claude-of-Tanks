@@ -27,6 +27,7 @@ import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, 
 import { debrisPiece } from './debris.ts';
 import { readCells, readShaft, readShell } from './shell.ts';
 import { breachCluster, cellsOf, collapseCluster, damagedCluster, sectionDownCluster } from './cluster.ts';
+import { breachContainers, collapseContainers, containersOf, damagedContainers, readContainers, sectionDownContainers } from './container.ts';
 import { collapseShaft, shaftOf } from './shaft.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
@@ -628,6 +629,57 @@ function describeCluster(style: ArchitectureStyle, input: StructureDescribeInput
   };
 }
 
+/** Builders a container reading takes (a row of shipping containers, a yard's stack). */
+const CONTAINERS = /container/i;
+
+/**
+ * The anatomy of a row of shipping containers (container.ts), read off its parts: the sim's box round every box, its
+ * bands by the stack's height (one or two containers high), its faces on that box in the containers' steel sheet (the
+ * mean livery), and the boxes themselves for the builders to find the one a blow reaches.
+ */
+function describeContainers(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
+  if (!CONTAINERS.test(input.builder)) return null;
+  const boxes = readContainers(input.parts);
+  if (!boxes) return null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, base = Infinity, top = -Infinity;
+  for (const b of boxes) {
+    const w: Vec3 = [-b.a[2], 0, b.a[0]];
+    for (const i of [-1, 1]) for (const j of [-1, 1]) {
+      const x = b.c[0] + b.a[0] * i * b.hl + w[0] * j * b.hw, z = b.c[2] + b.a[2] * i * b.hl + w[2] * j * b.hw;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    base = Math.min(base, b.c[1] - b.hh); top = Math.max(top, b.c[1] + b.hh);
+  }
+  const mean = (k: number): number => boxes.reduce((a, b) => a + b.tint[k], 0) / boxes.length;
+  const tint: Rgb = [mean(0), mean(1), mean(2)];
+  const sheet: FractureSlot = { material: 'metal', bucket: 'structureMetal', tint, thicknessM: 0.03, share: 1 };
+  const count = Math.max(1, Math.min(3, Math.round((top - base) / 2.6)));
+  const step = (top - base) / count;
+  const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
+    { name: 'front', u: [1, 0, 0], out: [0, 0, 1] }, { name: 'right', u: [0, 0, -1], out: [1, 0, 0] },
+    { name: 'back', u: [-1, 0, 0], out: [0, 0, -1] }, { name: 'left', u: [0, 0, 1], out: [-1, 0, 0] },
+  ];
+  const storeys: DamageStorey[] = Array.from({ length: count }, (_, i) => {
+    const y0 = base + i * step;
+    const faces: DamageFace[] = SIDE.map((side, f) => ({
+      name: side.name, section: i * 4 + f, u: side.u, out: side.out,
+      origin: side.name === 'front' ? [(x0 + x1) / 2, y0, z1] : side.name === 'right' ? [x1, y0, (z0 + z1) / 2]
+        : side.name === 'back' ? [(x0 + x1) / 2, y0, z0] : [x0, y0, (z0 + z1) / 2],
+      width: Math.abs(side.out[2]) > 0.5 ? x1 - x0 : z1 - z0, height: step,
+      bucket: 'structureMetal', layers: [{ ...sheet }], openings: [], members: [], masonry: null,
+    }));
+    return { index: i, y0, y1: y0 + step, jetty: [0, 0, 0, 0], framed: false, faces, floor: null };
+  });
+  return {
+    structureIdx: input.structureIdx, kit: style.id, seed: input.seed, massClass: input.massClass, placement: input.placement,
+    w: x1 - x0, d: z1 - z0, h: top, plinth: null, storeys, roof: null, chimneys: [],
+    interior: { color: ROOM, open: false },
+    rubble: [{ ...sheet, share: 0.85 }, { material: 'metal', bucket: 'structureMetal', tint: [0.26, 0.26, 0.27], thicknessM: 0.1, share: 0.15 }],
+    remnant: { stubHeightM: 0, corners: false, chimneys: false },
+    kitPlan: { damage: { kind: 'house-damage', surfaces: new Map(), containers: boxes } },
+  };
+}
+
 /** Builders a shaft reading leaves to others (open frames and stalls, ruins, the city's own towers with their skyline
  *  damage, cranes and tents). */
 const NOT_SHAFTS = /gantry|market|ramada|container|ruin|crane|tent|arcology|needle|megatower|terrace|broadcast/i;
@@ -790,22 +842,26 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
     const kit: StructureDamageKit = {
       id: style.id,
       // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
-      describe: (input) => describeHouse(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input),
+      describe: (input) => describeHouse(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input)
+        ?? describeContainers(style, input),
       // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
-      breach: (anatomy, hole, out) => (cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
+      breach: (anatomy, hole, out) => (containersOf(anatomy) ? breachContainers(anatomy, hole, out) : cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
         ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
-      damaged: (anatomy, seed, out) => (cellsOf(anatomy) ? damagedCluster(anatomy, seed, out) : isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out)
+      damaged: (anatomy, seed, out) => (containersOf(anatomy) ? damagedContainers(anatomy, seed, out) : cellsOf(anatomy) ? damagedCluster(anatomy, seed, out)
+        : isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out)
         : damagedHouse(anatomy, seed, out)),
       piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
       // the pile on the sim's own heap (the world fills `anatomy.mound` from the structure table); a dome over the house
       // where none is given (an offline preview, a receipt)
       collapse: (anatomy, seed, out) => {
         const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
-        return cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound) : shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound)
+        return containersOf(anatomy) ? collapseContainers(anatomy, seed, out, mound) : cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound)
+          : shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound)
           : isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound)
           : collapseHouse(anatomy, seed, out, mound);
       },
       sectionDown: (anatomy, section, seed, out) => {
+        if (containersOf(anatomy)) return sectionDownContainers(anatomy, section, seed, out);
         if (cellsOf(anatomy)) return sectionDownCluster(anatomy, section, seed, out);
         if (anatomy.roof && section === anatomy.roof.section) {
           return anatomy.roof.covering.material === 'metal' && isSheetBody(anatomy) ? roofDownSheet(anatomy, seed, out) : sectionDownHouse(anatomy, section, seed, out);
@@ -814,7 +870,8 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
         return isSheetFace(face) ? sectionDownSheet(anatomy, section, seed, out) : sectionDownHouse(anatomy, section, seed, out);
       },
       // (a compound's cells have no floor the sim's band could drop onto: its section falls carry it)
-      storeyDown: (anatomy, storey, seed, out) => (cellsOf(anatomy) ? { cuts: [], hides: [] } : storeyDownHouse(anatomy, storey, seed, out)),
+      // (a container stack has no floor either: an upper box falls with the collapse)
+      storeyDown: (anatomy, storey, seed, out) => (cellsOf(anatomy) || containersOf(anatomy) ? { cuts: [], hides: [] } : storeyDownHouse(anatomy, storey, seed, out)),
     };
     registerStructureDamageKit(kit);
   }
