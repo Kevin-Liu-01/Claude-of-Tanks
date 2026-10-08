@@ -12,6 +12,7 @@ import { stockCamoPatternIdFor,
   CUSTOM_CAMO_ID,
   autoCamoBiomeId,
   autoCamoPatternIdFor,
+  camoSuitsTheatre,
   customCamoPatternId,
   defaultCamoPatternId,
   hasSignatureCamo,
@@ -1259,7 +1260,26 @@ export function setCamoOverride(specId: string, patternId: string | null): void 
     CAMO_OVERRIDE.set(specId, patternId);
   }
 }
-export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); }
+export function clearCamoOverrides() { CAMO_OVERRIDE.clear(); battleCamoSeed = null; }
+
+// Fleet lane (2026-10-08; the coordinator after wave 258): the battle's seed for its bots' AUTO draws, so one nation's
+// roster fans out over its real schemes from battle to battle. Only overridden (bot) specs read it; the player's own
+// AUTO keeps the per-(vehicle, map) draw the garage previews. Set by setupBattle and the loading coordinator from the
+// battle ordinal they share, so the pre-paint and the battle agree.
+let battleCamoSeed: number | null = null;
+export function setCamoBattleSeed(seed: number | null): void {
+  battleCamoSeed = seed === null || !Number.isFinite(seed) ? null : Math.trunc(seed);
+}
+
+/** Whether a bot may keep its own paint on `mapId` (fleet lane 2026-10-08): the spec's saved or stock selection must
+ * suit the battlefield's theatre (camoPolicy.ts camoSuitsTheatre); a local custom paint never does. */
+export function camoSelectionSuitsTheatre(spec: AutoCamoVehicle, mapId: string): boolean {
+  const selection = getCamoSelection(spec.id);
+  if (selection === 'auto') return true;
+  if (selection === CUSTOM_CAMO_ID) return false;
+  const pattern = selection === 'factory' ? stockCamoPatternIdFor(spec.id, spec.nation ?? undefined, spec.era) : selection;
+  return !!pattern && camoSuitsTheatre(pattern, spec.nation, mapId);
+}
 
 /** Point 'auto' selections at a battlefield biome (call before a battle). */
 export function setCamoBiome(mapId: string): void {
@@ -1279,8 +1299,9 @@ function resolveCamoPattern(spec: AutoCamoVehicle): MaterialPatternId {
   // The vehicle's national scheme for this biome, or a deterministic draw from
   // the shared biome pool (camoPolicy.ts autoCamoPatternIdFor): the same tank
   // always resolves the same scheme on the same map, so the garage AUTO
-  // preview, the battle paint and the repaint cache agree.
-  return autoCamoPatternIdFor(spec, activeBiome);
+  // preview, the battle paint and the repaint cache agree. A bot's override
+  // re-draws with the battle seed (fleet lane 2026-10-08).
+  return autoCamoPatternIdFor(spec, activeBiome, CAMO_OVERRIDE.has(spec.id) ? battleCamoSeed : null);
 }
 
 /** Resolve trusted match material input without local storage. The internal

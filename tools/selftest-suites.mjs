@@ -663,6 +663,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-07 (tank-accessories round 3): AUTO paints each nation's own scheme for the battlefield's environment
     'src/vehicles/autoCamoNational.selftest.mjs',
+    'src/vehicles/battleTheatreCamo.selftest.mjs',
     'src/vehicles/authoredPaintCatalog.selftest.mjs',
     'src/vehicles/customCamoCanvas.selftest.mjs',
     'src/vehicles/factoryCamo.selftest.mjs',
