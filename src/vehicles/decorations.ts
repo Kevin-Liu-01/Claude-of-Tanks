@@ -5829,7 +5829,8 @@ export function* attachTankDecorationsSteps(
                   if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
                 }
                 const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-                const load = list.filter((p) => p.role !== 'pad').map((p) => new THREE.Mesh(p.geo, solid));
+                // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
+                const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
                 list.push(...sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt));
               };
               carry(candidate, 1);
@@ -5881,7 +5882,54 @@ export function* attachTankDecorationsSteps(
           const lifts = pass === 0 ? [0, 0.14, 0.28] : [0, 0.14];
           return lifts.flatMap((dy) => base.map(([z, yf]) => [z, Math.min(0.9, yf + dy)]));
         };
+        // The smoke counts are pinned (vehicle-controls-inventory): a side whose bank the old fan could not seat keeps
+        // no bank, wherever a wall seat might have taken one. legacySeats replays the old fan's stations, its
+        // soft-cover fallback and the field upgrades' forward steps against the commit's own guards (turret width and
+        // reach, keep-clear, the field volumes, overlap) on the bank's plain bracket, without committing.
+        const legacyGuards = (pos: THREE.Vector3, rot: THREE.Euler): 'ok' | 'field' | 'no' => {
+          const bb = placedBox(parts, pos, rot);
+          let rMax = 0;
+          for (const x of [bb.min.x, bb.max.x]) for (const z of [bb.min.z, bb.max.z]) rMax = Math.max(rMax, Math.hypot(x, z));
+          if (Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) > W / 2 + 0.048 || rMax > sweepR + 0.55) return 'no';
+          if (keepClearHit(bb, 'turret')) return 'no';
+          if (fieldEquipment.turret.some((box) => box.intersectsBox(bb))) return 'field';
+          return overlaps(bb, placedTurret) ? 'no' : 'ok';
+        };
+        const legacySeats = (s: number): boolean => {
+          let field = false;
+          for (const [z, yf] of stations) {
+            const y = Math.max(0.24, pivotTopY() * yf);
+            const h = turP.side(y, z, s, W / 2 + 1);
+            if (!h) continue;
+            const r = legacyGuards(V(h.p.x + s * 0.03, y, z), E(0, s * 0.55, 0));
+            if (r === 'ok') return true;
+            field ||= r === 'field';
+          }
+          const solid = solidTurretProber();
+          for (const [z, yf] of stations) {
+            const y = Math.max(0.24, pivotTopY() * yf);
+            const h = solid.side(y, z, s, W / 2 + 1);
+            if (!h) continue;
+            const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, s * 0.55, 0);
+            const bb = placedBox(parts, pos, rot);
+            const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+            if (over > 0.003) continue;
+            if (over > 0) pos.x -= s * (over + 0.0005);
+            const r = legacyGuards(pos, rot);
+            if (r === 'ok') return true;
+            field ||= r === 'field';
+          }
+          if (field) {
+            const y = Math.max(0.24, pivotTopY() * 0.5);
+            for (let z = 0.42; z <= 1.6; z += 0.06) {
+              const h = solid.side(y, z, s, W / 2 + 1);
+              if (h && legacyGuards(V(h.p.x + s * 0.03, y, z), E(0, s * 0.55, 0)) === 'ok') return true;
+            }
+          }
+          return false;
+        };
         for (const s of [-1, 1]) {
+          if (!legacySeats(s)) continue;
           const cl = clonePartList(parts);
           let done = false;
           // whether a station passed every guard and was turned away by a field upgrade's volume alone (below)
@@ -5893,10 +5941,17 @@ export function* attachTankDecorationsSteps(
           };
           let skewed = 0;
           const skewTo = (angle: number): void => { skewTubes(cl, angle - skewed); skewed = angle; };
+          // the old fan's own bracket (pass 2 replays it exactly, so a bank it seated seats again)
+          const plainBracket = (): void => {
+            const k = cl.findIndex((p) => p.bracket), k0 = parts.findIndex((p) => p.bracket);
+            if (k < 0 || k0 < 0) return;
+            resources.releaseGeometry(cl[k].geo);
+            cl[k].geo = parts[k0].geo.clone();
+          };
           const seat = (h: { p: THREE.Vector3; n: THREE.Vector3 }, y: number, z: number, pass: 0 | 1 | 2):
             { pos: THREE.Vector3; rot: THREE.Euler } | null => {
             const alpha = Math.atan2(Math.abs(h.n.x), h.n.z);
-            if (pass === 2) { skewTo(0); return { pos: V(h.p.x + s * 0.03, y, z), rot: E(0, s * 0.55, 0) }; }
+            if (pass === 2) { skewTo(0); plainBracket(); return { pos: V(h.p.x + s * 0.03, y, z), rot: E(0, s * 0.55, 0) }; }
             if (Math.abs(h.n.y) > 0.7) return null;
             if (pass === 0 ? alpha > CHEEK_MAX_ALPHA : alpha <= CHEEK_MAX_ALPHA || alpha > SIDE_MAX_ALPHA) return null;
             // a side facing aft of square out turns the row further off it, so the cant still brings the tubes forward
@@ -5934,7 +5989,7 @@ export function* attachTankDecorationsSteps(
               const at = seat(h, y, z, pass);
               if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
               const { pos, rot } = at;
-              wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+              if (pass < 2) wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
               if (tryCommit(pos, rot)) { done = true; break; }
             }
             if (done) break;
@@ -5954,7 +6009,7 @@ export function* attachTankDecorationsSteps(
                 const at = seat(h, y, z, pass);
                 if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
                 const { pos, rot } = at;
-                wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+                if (pass < 2) wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
                 const bb = placedBox(cl, pos, rot);
                 const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
                 if (over > 0.003) continue;
@@ -5978,7 +6033,7 @@ export function* attachTankDecorationsSteps(
                 if (!h) continue;
                 const at = seat(h, y, z, pass);
                 if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
-                wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
+                if (pass < 2) wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
                 done = tryCommit(at.pos, at.rot);
               }
               if (done) break;
