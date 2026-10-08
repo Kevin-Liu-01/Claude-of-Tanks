@@ -400,8 +400,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // the room behind a breach (b5: the kits write it in the world's 'dark' bucket, whose glossy window material showed
   // the sky's reflection through the hole as a slate-blue disc): matte, in the builder's own interior tint, no
   // reflection, falling and folding with its building like every standing run
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true,
-    envMapIntensity: 0 });
+  // (wave 277: a breach read as "a black blot") the room behind a hole is dim, not black: daylight falls in through the
+  // hole and the windows and bounces off its floor and far wall — its interior tint lifted, a little light of its own
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(3.2, 3.2, 3.2), roughness: 1, metalness: 0,
+    vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
 
