@@ -5,7 +5,8 @@
 //   node tools/world-collider-audit.mjs --maps=redrock,titan_gorge --families=rocks --out=<file.json>
 //   node tools/world-collider-audit.mjs                       # every map, every family
 //
-// Families: rocks (boulders, talus blocks, outcrops, crushable small rocks, the scenery's rock masses).
+// Families: rocks (boulders, talus blocks, outcrops, crushable small rocks, the scenery's rock masses); records (every
+// other record: walls, fences, props, wrecks, structures, the kindless solids; --per-kind=<n> samples each kind); all.
 import { writeFileSync } from 'node:fs';
 import { MAP_IDS } from '../src/world/maps/catalog.ts';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
@@ -22,6 +23,8 @@ for (const id of mapIds) if (!MAP_IDS.includes(id)) throw new Error(`unknown map
 const families = (option('families', 'rocks') || 'rocks').split(',');
 const out = option('out');
 const rays = !args.includes('--no-rays');
+/** At most this many records of one kind a map (the general audit samples a city's thousands of fence rails). */
+const recordLimit = Number(option('per-kind', 'Infinity'));
 
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, fleet, models] = await Promise.all([
@@ -41,7 +44,7 @@ for (const mapId of mapIds) {
   const flora = vegetation.createVegetation(field, engine, 2001, config);
   const dressing = props.createProps(field, engine, 2002, config, flora);
   const built = performance.now();
-  const audit = auditMapWorld({ mapId, field, flora, dressing, families, rays, createObstacleGrid });
+  const audit = auditMapWorld({ mapId, field, flora, dressing, families, rays, createObstacleGrid, recordLimit });
   results[mapId] = audit;
   const summary = summariseAudit(audit);
   console.log(`${mapId}: built ${((built - started) / 1000).toFixed(1)} s, audited ${((performance.now() - built) / 1000).toFixed(1)} s`);

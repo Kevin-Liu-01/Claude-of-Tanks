@@ -61,7 +61,7 @@ const BOOLEANS = new Set(['force']);
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
   capture  --out=<dir> [--root=<checkout>] [--set=core|border|border2] [--maps=a,b] [--views=a,b|none] [--serve=dist|dev]
-           [--pose=name:cx,cy,cz:ax,ay,az[+name:…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
+           [--pose=[map/]name:cx,cy,cz:ax,ay,az[+…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
            [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>] [--overlay=colliders[:<radius m>]]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
            and merge each map into <out>/census.json. --set=border shoots the border set instead (the eye-height and
@@ -100,13 +100,15 @@ export function parseCensusPoses(raw) {
   }
   return raw.split('+').map((spec) => {
     const parts = spec.split(':');
-    const name = parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
+    // (the hitbox lane, 2026-10-07) `map/name:…` binds a view to one map of a several-map run
+    const bound = /^([a-z][a-z0-9_]*)\/(.+)$/.exec(parts[0]);
+    const name = bound ? bound[2] : parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
     if (parts.length !== 3 || !/^[a-z][a-z0-9-]*$/.test(name) || cam.length !== 3 || at.length !== 3
       || ![...cam, ...at].every(Number.isFinite)) {
-      throw new Error(`--pose needs name:cx,cy,cz:ax,ay,az (got "${spec}")`);
+      throw new Error(`--pose needs [map/]name:cx,cy,cz:ax,ay,az (got "${spec}")`);
     }
     return Object.freeze({ name, kind: 'table', label: `${name} (authored pose)`, cam: Object.freeze(cam),
-      at: Object.freeze(at), fov: CENSUS_FOV, authored: true });
+      at: Object.freeze(at), fov: CENSUS_FOV, authored: true, ...(bound ? { map: bound[1] } : {}) });
   });
 }
 
@@ -169,8 +171,12 @@ export function parseCensusArgs(argv) {
     const none = values.views?.length === 1 && values.views[0] === 'none';
     if (none && !poses.length) throw new Error('--views=none needs at least one --pose');
     const views = [...(none ? [] : selectCensusViews(values.views, set)), ...poses];
-    const names = views.map((view) => view.name);
-    if (new Set(names).size !== names.length) throw new Error(`Duplicate census view name in ${names.join(', ')}`);
+    // (a view bound to a map shares its name space with that map's other views only)
+    const names = views.map((view) => (view.map ? `${view.map}/${view.name}` : view.name));
+    const globals = new Set(views.filter((view) => !view.map).map((view) => view.name));
+    if (new Set(names).size !== names.length || views.some((view) => view.map && globals.has(view.name))) {
+      throw new Error(`Duplicate census view name in ${names.join(', ')}`);
+    }
     Object.assign(options, {
       root: path.resolve(values.root ?? process.cwd()), set, maps: values.maps ?? null, views,
       serve, port, batch: values.batch ?? null, budgetMin: values['budget-min'] ?? null,

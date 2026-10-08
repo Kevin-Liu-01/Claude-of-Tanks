@@ -125,7 +125,8 @@ export function addMeshTriangles(soup, mesh, family, sourceInfo = {}) {
   const instances = mesh.isInstancedMesh ? mesh.count : 1;
   const world = new Float32Array(position.count * 3);
   const ids = [];
-  mesh.updateWorldMatrix(true, false);
+  // (forced: three r185 refreshes a matrixWorld only when it is flagged stale, and a mesh with matrixAutoUpdate off never is)
+  mesh.updateWorldMatrix(true, false, true);
   for (let instance = 0; instance < instances; instance++) {
     if (mesh.isInstancedMesh) { mesh.getMatrixAt(instance, _mi); _m.multiplyMatrices(mesh.matrixWorld, _mi); } else _m.copy(mesh.matrixWorld);
     for (let v = 0; v < position.count; v++) {
@@ -180,11 +181,13 @@ export function sectionRaster(region, ground, band, soup, triangles, out = null)
   }
   const yStart = Math.max(gMin + band[0], tMin), yEnd = Math.min(gMax + band[1], tMax);
   if (!(yEnd >= yStart)) return occupied;
-  const slices = Math.max(1, Math.ceil((yEnd - yStart) / SLICE_STEP_M) + 1);
+  // slices every SLICE_STEP_M at most, the first and the last a hair inside the range (a solid's top or the band's edge
+  // is sampled, not missed by a step)
+  const steps = Math.max(1, Math.ceil((yEnd - yStart) / SLICE_STEP_M));
   const rows = Array.from({ length: nz }, () => []);
-  for (let k = 0; k < slices; k++) {
+  for (let k = 0; k <= steps; k++) {
     // (an irrational offset keeps the plane off the vertices' heights)
-    const Y = Math.min(yEnd, yStart + k * SLICE_STEP_M) + 1.234567e-5;
+    const Y = Math.min(yEnd - 1.234567e-5, Math.max(yStart + 1.234567e-5, yStart + ((yEnd - yStart) * k) / steps));
     for (const row of rows) row.length = 0;
     let any = false;
     for (const t of triangles) {
@@ -486,7 +489,7 @@ function regionBox(boxes, margin) {
 function recordBox(record) { return [record.min[0], record.min[2], record.max[0], record.max[2]]; }
 
 /** The movement and shell measures of one object: its own triangles, its records, everything solid around it. */
-function measureObject({ soup, field, ownTris, box, obstacle, collider, nearObstacles, nearColliders, solidAccept, rays }) {
+function measureObject({ soup, field, ownTris, box, obstacle, collider, colliders = null, nearObstacles, nearColliders, solidAccept, rays }) {
   const extent = Math.max(box[2] - box[0], box[3] - box[1]);
   const h = Math.min(0.25, Math.max(0.04, extent / 120));
   const region = makeRegion(box[0], box[1], box[2], box[3], h);
@@ -535,7 +538,7 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, nearObst
     if (len <= 0) return;
     const s = cut(oy);
     const own = raySegments2(s.own, ox, oz, dx, dz, len);
-    const c = collider ? rayRecords([collider], ox, oy, oz, dx, 0, dz, len) : -1;
+    const c = colliders ? rayRecords(colliders, ox, oy, oz, dx, 0, dz, len) : collider ? rayRecords([collider], ox, oy, oz, dx, 0, dz, len) : -1;
     if (own < 0 && c < 0) return;
     hits++;
     if (c >= 0) {
@@ -572,9 +575,8 @@ function rockRecordAt(grid, claimed, x, y, z, box) {
 }
 
 /** Every rock: the boulder instances (with or without a collider) and the scenery's rock masses. */
-function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept }) {
+function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed = new Set() }) {
   const rows = [];
-  const claimed = new Set();
   // the stones in order of their seat height's match first (the legacy records), so a refitted record finds its own
   const stones = soup.sources.filter((source) => source.family === 'boulder' && source.tris);
   for (const source of stones) {
@@ -631,8 +633,68 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
   return rows;
 }
 
+/** The audit kind of a record: its own kind, else what it is (a solid without a kind, a crushable one). */
+function recordKind(record) {
+  return record.kind ?? (record.crushable ? 'crushable' : record.shape2 ? `solid-${record.shape2.kind}` : 'solid-box');
+}
+
+/**
+ * Every other record (walls, fences, props, wrecks, structures, the kindless solids): its own mesh is its destructible
+ * instance when it has one, else the solid triangles of its families inside its box (the merged buckets a structure, a
+ * rubble heap or a well is drawn in; the wreck cast). A record whose shell twin is a separate record (a structure's
+ * bands) is judged on rays against every shell record of its kind round it.
+ */
+function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, kinds = null, limit = Infinity }) {
+  const rows = [];
+  const sourceOf = new Map();
+  soup.sources.forEach((source, index) => sourceOf.set(`${source.mesh}#${source.instance}`, index));
+  const destructibleOf = new Map();
+  for (const d of dressing.destructibles ?? []) if (d.ob) destructibleOf.set(d.ob, d);
+  const family = (name) => soup.familyIndex.get(name);
+  const wrecks = family('tank-wreck'), buckets = family('bucket'), poles = family('baked-pole-full');
+  const counts = new Map();
+  for (const obstacle of dressing.obstacles) {
+    if (claimed.has(obstacle) || obstacle.treeIdx != null) continue;
+    const kind = recordKind(obstacle);
+    if (kinds && !kinds.has(kind)) continue;
+    const seen = counts.get(kind) ?? 0;
+    if (seen >= limit) continue;
+    counts.set(kind, seen + 1);
+    const d = destructibleOf.get(obstacle);
+    let ownTris = null, collider = d?.col ?? null, colliders = null;
+    const rec = recordBox(obstacle);
+    if (d && d.slot >= 0) {
+      const index = sourceOf.get(`destructible-${d.kind}#${d.slot}`);
+      if (index !== undefined) {
+        const source = soup.sources[index];
+        ownTris = [];
+        for (let t = source.first; t < source.first + source.tris; t++) ownTris.push(t);
+      }
+    }
+    if (!ownTris) {
+      const accept = kind === 'tank-wreck' ? (t) => soup.family[t] === wrecks
+        : (t) => soup.family[t] === buckets || soup.family[t] === poles;
+      ownTris = soup.query(rec[0] - 0.3, rec[1] - 0.3, rec[2] + 0.3, rec[3] + 0.3, accept);
+    }
+    const box = regionBox([rec], 1.0);
+    const nearObstacles = obstacleGrid(box[0], box[1], box[2], box[3], []);
+    const nearColliders = colliderGrid(box[0], box[1], box[2], box[3], []);
+    if (!collider) {
+      // its shell twin: a clone (the same box), else every shell record of its kind round it (a structure's bands)
+      collider = nearColliders.find((r) => r !== obstacle && r.kind === obstacle.kind && r.min[0] === obstacle.min[0]
+        && r.min[2] === obstacle.min[2] && r.max[0] === obstacle.max[0] && r.max[2] === obstacle.max[2]) ?? null;
+      if (!collider && obstacle.kind !== undefined) colliders = nearColliders.filter((r) => r.kind === obstacle.kind && r.treeIdx == null);
+    }
+    const row = measureObject({ soup, field, ownTris, box, obstacle, collider, colliders, nearObstacles, nearColliders, solidAccept, rays });
+    row.kind = kind;
+    row.crushable = !!obstacle.crushable;
+    rows.push(row);
+  }
+  return rows;
+}
+
 /** Build the soup and audit one map's world; returns { rows } with one row per measured object. */
-export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid }) {
+export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity }) {
   const soup = new TriangleSoup(4);
   dressing.group.updateMatrixWorld(true);
   dressing.group.traverse((mesh) => {
@@ -644,8 +706,13 @@ export function auditMapWorld({ mapId, field, flora, dressing, families = ['rock
   const obstacleGrid = createObstacleGrid([...dressing.obstacles, ...flora.treeObstacles]);
   const colliderGrid = createObstacleGrid([...dressing.colliders, ...flora.treeObstacles]);
   const rows = [];
-  if (families.includes('rocks') || families.includes('all')) {
-    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept }));
+  const claimed = new Set();
+  const all = families.includes('all');
+  if (all || families.includes('rocks')) {
+    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed }));
+  }
+  if (all || families.includes('records')) {
+    rows.push(...auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, limit: recordLimit }));
   }
   return { mapId, triangles: soup.count, rows };
 }

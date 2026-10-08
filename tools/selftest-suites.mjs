@@ -1171,6 +1171,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/collisionManifestDrift.selftest.mjs',
     'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
+    'tools/worldColliderAudit.selftest.mjs', // 2026-10-07 the hitbox lane: the world collider audit's measures
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
@@ -1261,6 +1262,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
