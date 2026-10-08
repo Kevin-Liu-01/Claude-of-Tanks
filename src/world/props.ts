@@ -18,7 +18,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
+import { paintLimeRender, paintLimewash } from './regionalSurfaces.ts'; // a kit's render painters (makePlaster; the facades lane)
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
@@ -937,6 +937,10 @@ const _col = new THREE.Color();
 /** (the time-to-battle lane, 2026-10-08) the untoned render a props build's noise paints: every render family paints the
  * same one (plaster, plaster2 and plaster3 differ only in tone), so it is painted once per build and copied */
 const plasterBases = new WeakMap<SimplexNoise, { px: Uint8ClampedArray; hgt: Float32Array }>();
+/** (the facades lane, 2026-10-08) and a kit painter's untoned canvas, by painter and seed: plaster2 and plaster3 share one */
+const paintedRenders = new WeakMap<SimplexNoise, Map<string, { px: Uint8ClampedArray; hgt: Float32Array }>>();
+/** The relief and surface of a painted render: lime-wash (brush ridges) a little deeper than a floated lime render. */
+const RENDER_RELIEF = { limewash: 0.8, limeRender: 0.6 } as const;
 
 function makePlaster(
   noi: SimplexNoise,
@@ -946,14 +950,20 @@ function makePlaster(
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
-  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash
-  const paint = (tone as { paint?: { kind: 'limewash'; seed: number } } | null)?.paint;
-  if (paint?.kind === 'limewash') {
-    const lime = paintLimewash(s, paint.seed);
+  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash; (2026-10-08) a town's
+  // lime render (paintLimeRender; Steinburg's stucco read "speckled": this canvas's 6 cm bumps shade as dots from the street)
+  const paint = (tone as { paint?: { kind: 'limewash' | 'limeRender'; seed: number } } | null)?.paint;
+  if (paint) {
+    let byPaint = paintedRenders.get(noi);
+    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
+    const key = `${paint.kind}:${paint.seed}`;
+    let base = byPaint.get(key);
+    if (!base) byPaint.set(key, base = paint.kind === 'limeRender' ? paintLimeRender(s, paint.seed) : paintLimewash(s, paint.seed));
+    const lime = { px: base.px.slice(), hgt: base.hgt };
     applyTone(lime.px, tone);
     return {
       albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
-      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, RENDER_RELIEF[paint.kind], anisotropy),
       surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
     };
   }
@@ -3400,6 +3410,20 @@ function* propsBuildSteps(
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
+  // the facades lane (2026-10-08): a kit's render painter (surfaces.render) paints each render family the map tones, under
+  // that tone — the primary on its seed, plaster2 and plaster3 on the next (plaster3 borrows plaster2's relief below)
+  const kitRender = regionalArchitecture?.surfaces.render;
+  if (kitRender && P.tones) {
+    const tones: Record<string, ToneFunction | null | undefined> = { ...P.tones };
+    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
+      const own = tones[key] as (ToneFunction & { base?: ToneFunction }) | null | undefined;
+      if (!own) continue;
+      const base = own.base ?? own;
+      tones[key] = Object.assign((h: number, s: number, l: number) => base(h, s, l),
+        { base, paint: { kind: kitRender.kind, seed: kitRender.seed + (key === 'plaster' ? 0 : 1) } });
+    }
+    P.tones = tones;
+  }
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
   yield { fine: true };

@@ -209,11 +209,13 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
     stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
-    sourced: { plaster: true, wood: true },
-    // (round 7, the media critics on Steinburg: "coarse lumpy 'cork' bump noise", "coarse noisy stucco") a smooth lime
-    // render: the photographed plaster's trowel lumps at half their relief, its cavities shallower; the tile's scale
-    // and every UV as they were
-    relief: { plasterUv: 1, normal: 0.5, ao: 0.6 },
+    // (the facades lane, 2026-10-08; the media lane's critics on Steinburg: the stucco "speckled", dots rather than render;
+    // round 7 had halved the photo render's relief) the walls are a hand-floated lime render, broadly mottled, painted
+    // for the street (regionalSurfaces.ts paintLimeRender), its three families under the map's tones; the photo render
+    // set is off here (its 2.4 m tile repeated a lichen motif down every wall), so is round 7's relief (the painter's own
+    // relief is the float's slow undulation)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x5e1b },
   },
   builders: FRANCONIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds

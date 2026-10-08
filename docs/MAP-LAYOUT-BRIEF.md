@@ -675,6 +675,26 @@ stucco", "an aliasing roof-tile pattern"):
   where it is minified, the course lines are softer, so a 19-texel course at 40–80 m no longer crawls along the
   screen's Nyquist. Desktop anisotropy is 8 already.
 
+Round eight (the media lane's blind critics on Steinburg, October 8: the stucco "speckled", high-frequency noise reading
+as dots, not render):
+- Measured at street distance (a 1600 x 900, 50-degree view at 10, 20 and 40 m; the albedo, normal and occlusion
+  minified to the screen pixel, then lit by sun and sky): the two procedural render families (plaster2 ochre and
+  plaster3 grey-green) put 6.1 % of their contrast into 1–3 px dots and 4.4 % into 3–10 px grain, against 2.5 % in the
+  mottling. The cause was the canvas's 6 cm noise, read through a normal map at 1.2. The photo render held its contrast
+  at about 1.4 % in each band, but its 2.4 m tile repeated a lichen motif down every wall.
+- The Franconian walls are now a hand-floated lime render, painted for the street (`regionalSurfaces.ts
+  paintLimeRender`, `franconian.ts surfaces.render`), across all three families under the map's tones:
+  - broad mottling 0.3–1.2 m across, from three fractal fields with their lattices turned 0, 45 and 27 degrees and
+    warped, so no cloud lines up with the tile;
+  - drifts where the last wash coat wore through, soft-edged and a shade warmer;
+  - the lime's own small clouds in tone only;
+  - as relief, only the float's slow undulation.
+- Dots now measure 0.2 % at 10 m and 0.6 % at 40 m; grain 0.5–1.1 %; mottling 1.2–1.4 %. The stains under the sills and
+  eaves remain the house kernel's, per vertex.
+- Each family keeps its mean colour: ochre lightness 0.385, grey-green 0.367, and the primary at the photo's cream
+  (lightness 0.58, Steinburg's `tones.plaster`). The photo render set is off for this kit. Round seven's relief is
+  retired.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with

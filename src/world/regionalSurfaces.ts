@@ -58,10 +58,13 @@ function pnoise2(x: number, y: number, size: number, cx: number, cy: number, see
  * A precomputed periodic fractal field sampled bilinearly: low-frequency noise (weathering, lichen, bedding) costs
  * a few reads per pixel instead of a dozen lattice hashes.
  */
-function field(size: number, res: number, cells: number, octaves: number, seed: number): (x: number, y: number) => number {
+function field(size: number, res: number, cells: number, octaves: number, seed: number,
+  shear: readonly [number, number, number, number] = [1, 0, 0, 1]): (x: number, y: number) => number {
   const g = new Float32Array(res * res);
+  // (an integer shear maps the tile onto itself, so a sheared field stays seamless: its lattice turned off the axes)
+  const [sa, sb, sc, sd] = shear;
   for (let j = 0; j < res; j++) for (let i = 0; i < res; i++) {
-    const x = i / res * size, y = j / res * size;
+    const x0 = i / res * size, y0 = j / res * size, x = sa * x0 + sb * y0, y = sc * x0 + sd * y0;
     let v = 0, amp = 1, c = cells, total = 0;
     for (let o = 0; o < octaves; o++) { v += pnoise(x, y, size, c, seed + o * 11) * amp; total += amp; amp *= 0.55; c *= 2; }
     g[j * res + i] = v / total;
@@ -154,6 +157,69 @@ export function paintLimewash(s: number, seed: number): { px: Uint8ClampedArray;
     _lime.setHSL(0.085 - thin * 0.01, 0.1 + thin * 0.45, l);
     px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
     hgt[i] = clamp(0.5 + (b - 0.5) * 0.6 + clamp(ridge[i], 0, 0.6) * 0.25 - thin * 0.05);
+  }
+  return { px, hgt };
+}
+
+/**
+ * Lime render on a town front (the facades lane, 2026-10-08; the media lane's blind critics on Steinburg: the stucco
+ * "speckled", high-frequency noise reading as dots, not render). Measured at street distance (fs/stucco/analyze.py),
+ * the old render canvas put its contrast in 6 cm bumps that shade as dots from 10 to 40 m and almost none in the broad
+ * mottling a lime render shows. This one paints a hand-floated lime render as it weathers, at the scale the street
+ * sees it:
+ *   - broad mottling: the clouds of the lime's carbonation and its old wash coats, 0.3–1.2 m across;
+ *   - thin coats: where the last wash wore through, the warmer render under it shows in soft drifts;
+ *   - patched areas: repairs trowelled in over the years, 0.3–0.8 m, each a shade fresher or greyer than the wall round
+ *     it, its edge a soft step in tone and a faint lip;
+ *   - the float's finish: a faint grain in tone only; the relief is the float's slow undulation (a bump a few texels
+ *     wide shades as a dot from the street).
+ * The stains under the sills and the eaves are the house kernel's (house.ts holedFace, per vertex, never tiled). Seamless
+ * (periodic lattice noise; the patches wrapped). In the props plaster convention (props.ts makePlaster): a warm,
+ * low-saturation mid-grey whose mean is the old render canvas's (a map's tones keep their colours), and the height its
+ * normal and surface maps are drawn from.
+ */
+export function paintLimeRender(s: number, seed: number): { px: Uint8ClampedArray; hgt: Float32Array } {
+  const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const k = s / 256, n = s * s;
+  // the mottling: three fractal fields whose lattices lie at 0, 45 and 27 degrees (an integer shear keeps a field
+  // seamless), averaged so no cloud lines up with the tile's axes, and warped through two more
+  const mA = field(s, 128, 3, 4, seed + 3);
+  const mB = field(s, 128, 2, 4, seed + 4, [1, 1, -1, 1]);
+  const mC = field(s, 128, 2, 3, seed + 7, [2, 1, -1, 2]);
+  const warpU = field(s, 64, 2, 3, seed + 5, [1, 1, -1, 1]), warpV = field(s, 64, 2, 3, seed + 6, [2, 1, -1, 2]);
+  // the wash coats: where the last coat wore through, drifts with a soft but definite edge
+  const coatF = field(s, 64, 2, 4, seed + 9, [1, -1, 1, 1]);
+  // the float's slow undulation (the relief), and the lime's own small clouds 4-15 cm across (tone only, a lattice
+  // turned off the axes so no grid shows at any distance)
+  const wave = field(s, 32, 2, 2, seed + 13, [1, 1, -1, 1]);
+  const fineF = field(s, s, 12, 3, seed + 21, [2, 1, -1, 2]);
+  const M = new Float32Array(n), C = new Float32Array(n), W = new Float32Array(n), G = new Float32Array(n);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const i = y * s + x;
+    const wx = x + (warpU(x, y) - 0.5) * 56 * k, wy = y + (warpV(x, y) - 0.5) * 56 * k;
+    M[i] = mA(wx, wy) + mB(wx, wy) + mC(wx, wy);
+    C[i] = coatF(wx, wy);
+    W[i] = wave(x, y);
+    G[i] = fineF(x, y);
+  }
+  // each field as standard scores over the tile (a lattice of a few cells has its own mean and spread: the tone and the
+  // contrast are set here, not by the draw)
+  const norm = (a: Float32Array) => {
+    let m = 0, q = 0;
+    for (let i = 0; i < n; i++) m += a[i];
+    m /= n;
+    for (let i = 0; i < n; i++) q += (a[i] - m) * (a[i] - m);
+    const sd = Math.sqrt(q / n) || 1;
+    for (let i = 0; i < n; i++) a[i] = (a[i] - m) / sd;
+  };
+  norm(M); norm(C); norm(W); norm(G);
+  for (let i = 0; i < n; i++) {
+    const j = i * 4;
+    const thin = smooth(0.95, 1.15, C[i]) * 0.55 + smooth(1.15, 2, C[i]) * 0.45;
+    const l = 0.46 + M[i] * 0.024 + G[i] * 0.008 - thin * 0.02;
+    _lime.setHSL(0.085 + thin * 0.006, 0.1 + thin * 0.04, clamp(l));
+    px[j] = _lime.r * 255; px[j + 1] = _lime.g * 255; px[j + 2] = _lime.b * 255; px[j + 3] = 255;
+    hgt[i] = clamp(0.5 + W[i] * 0.12 - thin * 0.04);
   }
   return { px, hgt };
 }
