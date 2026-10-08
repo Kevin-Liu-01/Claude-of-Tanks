@@ -215,9 +215,10 @@ export function setVehicleFieldSoil(mapId: string | null | undefined): void {
 // garnish, wire grids) take none (an alpha-cut cord near the ground lit almost white under round 4's coat: "the hem
 // read as white lace").
 const ROLE_PAINT = Object.freeze(new THREE.Vector4(1, 1, 1, 1));
-/** The gun's paint: the paint's wear, and the muzzle's carbon instead of the exhaust's. */
-const ROLE_BARREL = Object.freeze(new THREE.Vector4(1, 1, 1, 1));
-const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.9, 0.6, 1, 0.6));
+/** The gun's paint: the coat and the film, and the muzzle's carbon instead of the exhaust's (no plate streaks along a tube). */
+const ROLE_BARREL = Object.freeze(new THREE.Vector4(1, 1, 0, 1));
+// (no plate use-wear on the wheels: a streak or chip in a wheel's own frame would turn with it like a painted stripe)
+const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.9, 0.6, 0, 0.6));
 const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0.5, 0, 0.6));
 const ROLE_IRON = Object.freeze(new THREE.Vector4(0.9, 0.6, 2, 0.6));
 const ROLE_STEEL = Object.freeze(new THREE.Vector4(0.9, 0.8, 3, 1));
@@ -591,9 +592,10 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 		float polish = isIron * smoothstep( 0.45, 0.85, wearUp ) * ( 1.0 - smoothstep( 1.15, 1.4, wearH ) )
 			* ( 0.4 + 0.6 * smoothstep( 0.35, 0.65, n2 ) );
 		polish = max( polish, isSteel * smoothstep( 0.58, 0.72, n2 * 0.6 + n1 * 0.4 ) * 0.8 ) * useW * wearNear;
-		wearAlbedo = mix( wearAlbedo, vec3( 0.34, 0.33, 0.31 ), polish * 0.7 );
-		wearRough = mix( wearRough, 0.36, polish * 0.85 );
-		wearMetal = mix( wearMetal, 0.8, polish * 0.85 );
+		// dark bare steel (a fifth reflectance): a gleam where the light rakes it, never the pale planks of wave 269
+		wearAlbedo = mix( wearAlbedo, vec3( 0.22, 0.215, 0.205 ), polish * 0.6 );
+		wearRough = mix( wearRough, 0.42, polish * 0.8 );
+		wearMetal = mix( wearMetal, 0.7, polish * 0.8 );
 		float chip = isPaint * smoothstep( 0.35, 0.75, wearRelief ) * smoothstep( 0.6, 0.67, n2 + ( n1 - 0.5 ) * 0.25 ) * wearNear * useW;
 		float framed = step( 0.05, wearHull.z );
 		// where crews climb and walk: the front fenders and the glacis top, and the rear deck's edge

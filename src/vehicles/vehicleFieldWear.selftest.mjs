@@ -182,11 +182,12 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
 // chips along the plate's relief only, boots' rubbing on the walkways near the bow, streaks down the vertical plates
 {
   const iron = run({ wearRole: IRON, wearUp: 1, wearH: 0.9, wearN2: 0.8, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
-  assert.ok(iron.wearMetal > 0.5 && iron.wearRough < 0.55 && luma(iron.wearAlbedo) > 0.1, 'polished track iron on its up-facing faces');
+  assert.ok(iron.wearMetal > 0.45 && iron.wearRough < 0.6 && luma(iron.wearAlbedo) > 0.07 && luma(iron.wearAlbedo) < 0.2,
+    'polished track iron on its up-facing faces: dark bare steel, not a pale plank');
   const ironSide = run({ wearRole: IRON, wearUp: 0, wearH: 0.9, wearN2: 0.8, wearAlbedo: [0.03, 0.03, 0.03], wearRough: 0.75, wearMetal: 0.2 });
   assert.ok(ironSide.wearMetal < 0.25, 'not on its sides');
   let worn = 0;
-  for (let i = 0; i <= 10; i++) if (run({ wearRole: STEEL, wearH: 2, wearN1: i / 10, wearN2: i / 10, wearMetal: 0.4 }).wearMetal > 0.6) worn++;
+  for (let i = 0; i <= 10; i++) if (run({ wearRole: STEEL, wearH: 2, wearN1: i / 10, wearN2: i / 10, wearMetal: 0.4 }).wearMetal > 0.5) worn++;
   assert.ok(worn > 0 && worn < 8, 'bare steel is polished in spots, not all over');
   const chipped = run({ wearH: 1.6, wearUp: 0.5, wearRelief: 0.9, wearN2: 0.9 });
   const smooth = run({ wearH: 1.6, wearUp: 0.5, wearRelief: 0, wearN2: 0.9 });
