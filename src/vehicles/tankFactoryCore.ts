@@ -2863,6 +2863,46 @@ function appendTrackShoePins(
   }
 }
 
+// Fleet lane round 1 (2026-10-07; media wave m1 and the owner's X-standard track ask: "track runs drawn as smooth grey
+// slabs with no links"): one shoe colour per link made the run one tone, so links only separated where a shadow fell.
+// Each shoe now carries a worn-steel read in its own vertex colours, multiplied with the per-link palette: the link
+// ends that face the next shoe across the gap fall dark, the inner web and guide stay in shadow tone, and the outward
+// contact face is road-polished on all-steel shoes (bright crests) or dark rubber on padded ones (steel shoulders
+// brighter). Geometry and the instance palette are unchanged; the shoe material reads the colours (vertexColors).
+const RUBBER_PAD_SURFACES = new Set(['paired-pad', 'rubber-block', 'split-chevron', 'fine-rib', 'staggered-rib']);
+function bakeTrackShoeWear(geometry: THREE.BufferGeometry, pattern: { surface?: string }): void {
+  if (geometry.getAttribute('color')) return;
+  if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+  const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal');
+  if (!position || !normal) return;
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return;
+  const y0 = box.min.y, span = Math.max(box.max.y - y0, 1e-6);
+  const halfW = Math.max(box.max.x, -box.min.x, 1e-6);
+  const rubber = RUBBER_PAD_SURFACES.has(String(pattern.surface || ''));
+  const colors = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    const h = (position.getY(i) - y0) / span; // 0 at the guide tips (inward), 1 at the crests (outward)
+    const ny = normal.getY(i), nx = Math.abs(normal.getX(i)), nz = Math.abs(normal.getZ(i));
+    const outer = Math.abs(position.getX(i)) / halfW;
+    let k = 0.62 + 0.38 * h;
+    let warm = 0;
+    if (ny > 0.55) {
+      const crest = Math.min(1, Math.max(0, (h - 0.55) / 0.45));
+      if (!rubber) { k *= 1 + 0.7 * crest * crest; warm = crest; }
+      else if (outer > 0.82) { k *= 1 + 0.35 * crest; warm = 0.5 * crest; }
+      else k *= 1 - 0.18 * crest;
+    }
+    if (nz > 0.55) k *= 0.58;
+    else if (nx > 0.55) k *= rubber && outer > 0.82 ? 1.08 : 0.86;
+    colors[i * 3] = k * (1 + 0.05 * warm);
+    colors[i * 3 + 1] = k;
+    colors[i * 3 + 2] = k * (1 - 0.06 * warm);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
+
 function trackShoeGeometry(
   trackW: number,
   pitch: number,
@@ -4572,6 +4612,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
     cfg.trackLinkCrossSection, pinCapOuter,
   );
+  bakeTrackShoeWear(integratedShoe, trackPattern);
+  bakeTrackShoeWear(simplifiedShoe, trackPattern);
   const buildRunningGearAssemblyStage15 = (): void => {
     if (cfg.trackShoeBuilder) {
       validateNativeGearSolid(integratedShoe, 'Native near shoe');
@@ -4595,10 +4637,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);
   const buildRunningGearReceiptStage10 = (): void => {
     padMat.color=new THREE.Color(0xffffff);
-    // Shoes use instanceColor, which Three enables independently. Neither
-    // shoe geometry has a vertex-color attribute; enabling vertexColors would
-    // multiply the palette by the missing attribute's black default.
-    padMat.vertexColors = false;
+    // Shoes use instanceColor, which Three enables independently, multiplied by the worn-steel vertex colours both
+    // shoe streams carry (bakeTrackShoeWear, fleet lane round 1).
+    padMat.vertexColors = true;
     padMat.roughness=0.97;
     padMat.metalness=0.08;
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
