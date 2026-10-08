@@ -765,6 +765,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioEntry.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
+    // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
+    'src/game/studioOrphanEffect.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/startupIntent.selftest.mjs',
     'src/game/selectedVehicleSelection.selftest.mjs',
