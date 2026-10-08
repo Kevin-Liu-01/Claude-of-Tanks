@@ -209,10 +209,8 @@ assert.match(shotInfo, /const damaging = group\.damage > 0;[\s\S]{0,600}toast\.c
 assert.match(hud,
   /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killLeft\.replaceChildren\(\)[\s\S]*killRight\.replaceChildren\(\)/,
   'phase changes must clear every transient combat-feedback surface together');
-assert.match(hud, /t\('hud\.aimWarning\.muzzleBlocked', \{ dist: Math\.round\(view\.blockedDistM\) \}\)[\s\S]*t\('hud\.gunTravelLimit'\)/,
-  'aim warnings must distinguish a physical bore obstruction from a gun travel limit');
-assert.match(hud, /state\.visible = !!view\.blockedLabel/,
-  'blocked-path copy must honor the stable dwell gate instead of flickering with every terrain graze');
+assert.doesNotMatch(hud, /t\('hud\.aimWarning\.muzzleBlocked'/,
+  'bore obstructions must not add a muzzle-block overlay');
 assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
 assert.match(hud, /t\('hud\.sixth\.label'\)[\s\S]*t\('hud\.sixth\.sub'\)/,
@@ -268,8 +266,9 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] \.cot-si-diag\{display:none\}/,
   'phone combat cards must remove side diagrams to preserve the battlefield and controls');
+// 2026-10-06: main's fab8d4a9c anchors the report above the minimap through REPORT_MAP_GAP (12 px) instead of a literal 8.
 assert.match(await readFile(new URL('./battleHudLayout.ts', import.meta.url), 'utf8'),
-  /map\.top - 8[\s\S]*read\('\.cot-ear\.r'\)/,
+  /export const REPORT_MAP_GAP = \d+;[\s\S]*map\.top - REPORT_MAP_GAP[\s\S]*read\('\.cot-ear\.r'\)/,
   'ballistic reports and logs must share the live lane between the enemy roster and minimap');
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');
@@ -282,8 +281,9 @@ assert.match(shotInfo,
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
   'touch battles must remove desktop ballistic analysis surfaces from the battlefield');
+// (main's 395305d45 folds the log view's early return into the same guard: `if (isTouchBattleLayout() || logOpen) return;`)
 assert.match(shotInfo,
-  /if \(isTouchBattleLayout\(\)\) return;[\s\S]*const card = buildCard/,
+  /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
   /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,

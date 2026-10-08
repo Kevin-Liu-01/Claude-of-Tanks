@@ -88,7 +88,7 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-interface Vert { p: [number, number, number]; n: [number, number, number]; uv: [number, number]; s: number }
+interface Vert { p: [number, number, number]; n: [number, number, number]; uv: [number, number]; s: number; t: [number, number, number] }
 
 function lerpVert(a: Vert, b: Vert, y: number): Vert {
   // canonical edge direction: both triangles sharing the edge compute the identical point
@@ -100,6 +100,7 @@ function lerpVert(a: Vert, b: Vert, y: number): Vert {
     n: [s.n[0] + (e.n[0] - s.n[0]) * t, s.n[1] + (e.n[1] - s.n[1]) * t, s.n[2] + (e.n[2] - s.n[2]) * t],
     uv: [s.uv[0] + (e.uv[0] - s.uv[0]) * t, s.uv[1] + (e.uv[1] - s.uv[1]) * t],
     s: s.s + (e.s - s.s) * t,
+    t: [s.t[0] + (e.t[0] - s.t[0]) * t, s.t[1] + (e.t[1] - s.t[1]) * t, s.t[2] + (e.t[2] - s.t[2]) * t],
   };
 }
 
@@ -121,14 +122,14 @@ function splitAt(poly: Vert[], h: number): [Vert[], Vert[]] {
 /** Read a non-indexed regional geometry's triangles. */
 function readTriangles(geometry: THREE.BufferGeometry): Vert[][] {
   const pos = geometry.getAttribute('position'), nor = geometry.getAttribute('normal'), uv = geometry.getAttribute('uv');
-  const shade = geometry.getAttribute('shade');
+  const shade = geometry.getAttribute('shade'), tint = geometry.getAttribute('tint');
   const out: Vert[][] = [];
   for (let i = 0; i + 2 < pos.count; i += 3) {
     const tri: Vert[] = [];
     for (let k = 0; k < 3; k++) {
       const j = i + k;
       tri.push({ p: [pos.getX(j), pos.getY(j), pos.getZ(j)], n: [nor.getX(j), nor.getY(j), nor.getZ(j)],
-        uv: [uv.getX(j), uv.getY(j)], s: shade ? shade.getX(j) : 1 });
+        uv: [uv.getX(j), uv.getY(j)], s: shade ? shade.getX(j) : 1, t: tint ? [tint.getX(j), tint.getY(j), tint.getZ(j)] : [1, 1, 1] });
     }
     out.push(tri);
   }
@@ -183,7 +184,8 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
         else if (ny < -0.6) k = 0.62;
         else k = 1 - (1 - dampK(v.p[1])) * damp;
         k *= v.s;
-        col.push(Math.min(1.2, c[0] * k), Math.min(1.2, c[1] * k), Math.min(1.2, c[2] * k));
+        // paint (geometry.ts EmitOptions.tint) under the same tint, damp and occlusion as the wall it lies on
+        col.push(Math.min(1.2, c[0] * k * v.t[0]), Math.min(1.2, c[1] * k * v.t[1]), Math.min(1.2, c[2] * k * v.t[2]));
       };
       for (const tri of readTriangles(geometry)) {
         let pieces: Vert[][] = [tri];
@@ -214,7 +216,10 @@ export function weatherRegionalParts(parts: RegionalParts, tints: WeatherTints, 
     }
     parts[source] = [];
   }
-  // a shade attribute left on any other bucket (a kit that dressed a non-weathered bucket) never reaches the merge
-  for (const list of Object.values(parts)) for (const geometry of list) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+  // a shade or paint attribute left on any other bucket (a kit that dressed a non-weathered bucket) never reaches the merge
+  for (const list of Object.values(parts)) for (const geometry of list) {
+    if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+    if (geometry.getAttribute('tint')) geometry.deleteAttribute('tint');
+  }
   return parts;
 }

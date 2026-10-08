@@ -1,3 +1,6 @@
+import { weaponHitKind } from '../game/weaponHitKind.ts';
+import { appendMachineGunBurst, keepMissileDirectHit, MissileBlastLedger, type MachineGunBurst } from './shotReadoutPolicy.ts';
+import { BattleKillLedger, FiredRoundLedger } from '../game/battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/shotInfo.ts — combat-intelligence panels (WoT damage-log/armor-info
 // mod class). Everything rendered here traces 1:1 to RESOLVED sim events on
@@ -50,6 +53,7 @@ import {
 import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
+import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -64,6 +68,7 @@ interface ModuleHit {
 }
 
 interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
+  readonly shellId?: number;
   readonly kind: string;
   readonly attackerId?: EntityId | null;
   readonly attackerName?: string | null;
@@ -91,6 +96,7 @@ interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
 }
 
 interface ShellFiredEvent {
+  readonly shellId?: number;
   readonly isPlayer?: boolean;
   readonly shooterId?: EntityId | null;
   readonly shellType?: string;
@@ -242,6 +248,7 @@ export function appendIncomingHit(
 interface EndInfo {
   readonly timeS?: number;
   readonly map: string | null;
+  readonly mapId?: string | null;
   readonly reason: string | null;
   readonly campaign: CampaignDebrief | null;
   readonly hordeWave: number | null;
@@ -268,6 +275,7 @@ export interface ShotInfoRuntime {
   warmSchematics(specIds: readonly string[]): void;
   toggleLog(): void;
   setPlayer(id: EntityId | null): void;
+  setTeamResolver(resolve: (id: EntityId) => string | undefined): void;
   hideStats(): void;
   reset(): void;
 }
@@ -345,6 +353,13 @@ const SI_CSS = `
   box-shadow:0 12px 34px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
   padding:0 0 4px;transition:opacity .8s ease;}
 .cot-si-card.out{opacity:0;}
+.cot-si-mg-burst{flex:0 0 auto;min-width:0;padding:6px 9px!important;display:grid;gap:3px;
+  border-top:1px solid rgba(174,192,205,.2);font-size:10px;line-height:1.3;color:#aebfcd;}
+.cot-si-mg-burst b{display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e9a346;}
+.cot-si-mg-burst svg{flex:none;}
+.cot-si-mg-burst span{overflow-wrap:anywhere;}
+.cot-si-card .cot-si-mg-burst{height:54px;overflow:hidden;}
+.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:10px;color:#ffd166;overflow:hidden;line-height:1.3;}
 .cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;
   padding:4px 9px 3px;border-bottom:1px solid rgba(146,164,180,.2);}
 .cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
@@ -697,6 +712,7 @@ function setShotCardTrace(
   ev: ShotHitEvent,
   cls: HitOutcomePresentation,
 ): void {
+  card.dataset.weapon = weaponHitKind(ev);
   card.dataset.kind = ev.kind;
   card.dataset.damage = String(Math.round(ev.damage || 0));
   card.dataset.dmgroll = String(Math.round(ev.dmgRoll || 0));
@@ -718,7 +734,8 @@ function appendShotCardHeader(
   const header = el('div', 'cot-si-hd', card);
   const state = el('div', 'cot-si-state', header);
   const kicker = el('span', 'cot-si-kicker', state);
-  kicker.innerHTML = `${GLYPH.ballistic}<span>${t('killcam.ballisticAnalysis')}</span>`;
+  const missile = weaponHitKind(ev) === 'missile';
+  kicker.innerHTML = `${missile ? uiIconSVG('missileRack', 12) : GLYPH.ballistic}<span>${t(missile ? 'shotInfo.missileImpact' : 'killcam.ballisticAnalysis')}</span>`;
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
@@ -987,11 +1004,21 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (schematicWarmFrame !== null) cancelAnimationFrame(schematicWarmFrame);
     schematicWarmFrame = null;
   };
+  const missileBlasts = new MissileBlastLedger();
+  let currentPrimary: ShotHitEvent | null = null;
+  let latestBurst: MachineGunBurst<ShotHitEvent> | null = null;
+  const burstLog: MachineGunBurst<ShotHitEvent>[] = [];
+  let burstTimer: TimerHandle | undefined;
+  let primaryFadeTimer: TimerHandle | undefined;
+  let primaryRemoveTimer: TimerHandle | undefined;
   const shotLog: ShotEntry[] = [];      // last 6 outgoing summaries {ev, cls}
   const allShots: ShotEntry[] = [];     // EVERY outgoing hit this battle {ev, cls} — the
                            // report's expandable per-enemy exchange ledger (r4)
   const receivedLog: ReceivedEntry[] = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
+  const firedRounds = new FiredRoundLedger();
+  const killLedger = new BattleKillLedger();
+  let teamOf: (id: EntityId) => string | undefined = () => undefined;
   let endInfo: EndInfo | null = null;      // battle:ended report header
   // battle endings (2026-09-25): the final blow — the last lethal shell:hit on any pair and the last
   // tank:destroyed — resolved into the report's hero line by finalBlow.ts, never recomputed
@@ -1063,6 +1090,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   /** Record that a and b fought — therefore sit on opposing teams. */
   function linkOpposed(a: EntityId | null | undefined, b: EntityId | null | undefined): void {
     if (a == null || b == null || a === b) return;
+    if (teamOf(a) != null && teamOf(a) === teamOf(b)) return;
     const fa = tgFind(a);
     const fb = tgFind(b);
     if (fa.root === fb.root) return;
@@ -1076,6 +1104,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function sideOf(id: EntityId): TeamSide {
     if (playerId == null) return null;
     if (id === playerId) return 'ally';
+    const playerTeam = teamOf(playerId), entityTeam = teamOf(id);
+    if (playerTeam != null && entityTeam != null) return playerTeam === entityTeam ? 'ally' : 'enemy';
     if (!tg.has(id)) return null;
     const fp = tgFind(playerId);
     const fi = tgFind(id);
@@ -1213,11 +1243,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       r.innerHTML = `<span class="cot-si-k">${GLYPH[k.toLowerCase()] || ''}<span>${k}</span></span><b>${v}</b>`;
       return r;
     };
-    kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
-    kv('Armor', armorPresentation(ev), 'w armor');
+    const missileSplash = weaponHitKind(ev) === 'missile' && ev.kind === 'he_splash';
+    if (!missileSplash) kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
+    if (!missileSplash) kv('Armor', armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
-    {
+    if (weaponHitKind(ev) === 'missile') kv(t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
+    if (!missileSplash) {
       const r = kv('Pen', penetration.html + (penetration.qualifier
         ? `<span class="q" style="color:${penetration.qualifier === 'ERA' ? COL.yellow : '#9fb0bf'}">${penetration.qualifier}</span>`
         : ''), 'w pen');
@@ -1232,17 +1264,64 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     return card;
   }
 
+  function clearCardTimers(): void {
+    clearTimeout(primaryFadeTimer); clearTimeout(primaryRemoveTimer);
+  }
+  function burstText(burst: MachineGunBurst<ShotHitEvent>): string {
+    return t('shotInfo.machineGunSummary', { hits: burst.count, pens: burst.penetrations,
+      blocked: burst.blocked, damage: Math.round(burst.damage) });
+  }
+  function showMachineGunBurst(burst: MachineGunBurst<ShotHitEvent>): void {
+    if (isTouchBattleLayout() || logOpen) return;
+    let card = cardHost.querySelector<HTMLDivElement>('.cot-si-card');
+    if (!card) { card = el('div', 'cot-si-card', cardHost); card.dataset.weapon = 'machineGun'; }
+    let strip = card.querySelector<HTMLDivElement>('.cot-si-mg-burst');
+    if (!strip) strip = el('div', 'cot-si-mg-burst', card);
+    card.style.setProperty('--cot-si-burst-space', '54px');
+    strip.textContent = '';
+    const heading = el('b', '', strip);
+    heading.innerHTML = uiIconSVG('roofGun', 12);
+    heading.append(document.createTextNode(`${t('shotInfo.machineGun')} · ${burst.latest.targetName || burst.latest.targetId}`));
+    el('span', '', strip).textContent = burstText(burst);
+    clearTimeout(burstTimer);
+    const owner = card;
+    burstTimer = setTimeout(() => {
+      owner.querySelector('.cot-si-mg-burst')?.remove();
+      owner.style.removeProperty('--cot-si-burst-space');
+      if (owner.dataset.weapon === 'machineGun') owner.remove();
+    }, 2600);
+  }
+  function showMissileBlast(card: HTMLDivElement, ev: ShotHitEvent): void {
+    const group = missileBlasts.get(ev); if (!group) return;
+    let line = card.querySelector<HTMLDivElement>('.cot-si-missile-blast');
+    if (!line) line = el('div', 'cot-si-missile-blast', card);
+    line.textContent = t('shotInfo.missileBlast', { targets: group.targets, damage: Math.round(group.damage) });
+    card.style.setProperty('--cot-si-blast-space', '30px');
+  }
   function showCard(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
-    // Mobile already has the resolved damage number and reticle confirmation.
-    // Do not build diagrams or start image bakes for a surface CSS will hide.
-    if (isTouchBattleLayout()) return;
-    if (logOpen) return; // the log view replaces floating cards
+    // MG feedback has its own compact slot and never builds schematic images.
+    if (weaponHitKind(ev) === 'machineGun') {
+      if (latestBurst) showMachineGunBurst(latestBurst);
+      return;
+    }
+    missileBlasts.record(ev);
+    if (isTouchBattleLayout() || logOpen) return;
+    if (keepMissileDirectHit(currentPrimary, ev)) {
+      const card = cardHost.querySelector<HTMLDivElement>('.cot-si-card');
+      if (card) showMissileBlast(card, ev);
+      return;
+    }
+    currentPrimary = ev;
+    clearCardTimers();
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
     cardHost.appendChild(card);
-    // battleHudLayout owns this lane, including subsequent viewport/map resizes.
-    const fade = setTimeout(() => card.classList.add('out'), 6200);
-    setTimeout(() => { clearTimeout(fade); if (card.parentNode) card.remove(); }, 7200);
+    showMissileBlast(card, ev);
+    // The existing battle layout still owns this single, bounded panel.
+    primaryFadeTimer = setTimeout(() => card.classList.add('out'), 6200);
+    primaryRemoveTimer = setTimeout(() => {
+      card.remove(); currentPrimary = null;
+    }, 7200);
   }
 
   // ---------- 2. collapsible log ----------
@@ -1258,6 +1337,11 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
         `<span class="n">${it.ev.targetName || it.ev.targetId || ''}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
+    }
+    for (const burst of burstLog) {
+      const row = el('div', 'cot-si-mg-burst', logPanel);
+      el('b', '', row).textContent = `${t('shotInfo.machineGun')} · ${burst.latest.targetName || burst.latest.targetId}`;
+      el('span', '', row).textContent = burstText(burst);
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
@@ -1404,7 +1488,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function summaryKills(): Array<{ id: string; name: string; specId: string; dmg: number }> {
     const kills: Array<{ id: string; name: string; specId: string; dmg: number }> = [];
     for (const [id, target] of stats.perTarget) {
-      if (!target.killed) continue;
+      if (!target.killed || sideOf(id) === 'ally') continue;
       kills.push({
         id,
         name: target.name || id,
@@ -1459,8 +1543,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       playerSpecId: me?.specId || null,
       playerDead: !!me?.dead,
       playerDeaths: me?.deaths ?? 0,
+      playerKills: playerId ? killLedger.count(playerId) : 0,
       revives,
       map: summaryMapName(),
+      mapId: endInfo?.mapId || endInfo?.map || null,
       timeS: summaryTime(),
       stats: {
         dealt: stats.dealt,
@@ -1491,6 +1577,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         (id) => combatants.get(id)?.name ?? null),
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
+      awards: getLastBattleAwards(),
     };
   }
 
@@ -1531,12 +1618,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function recordOutgoingHit(ev: ShotHitEvent): void {
     if (ev.attackerId !== playerId || !ev.targetId || ev.targetId === playerId) return;
     const outcome = hitOutcomeFor(ev);
-    stats.hits += 1;
-    if (outcome.penetrated) stats.pens += 1;
+    const round = firedRounds.hit(ev.shellId, outcome.penetrated);
+    if (round.hit) stats.hits += 1;
+    if (round.pen) stats.pens += 1;
     stats.dealt += ev.damage || 0;
     const shell = perShell(ev.shellType || '—');
-    shell.hits += 1;
-    if (outcome.penetrated) shell.pens += 1;
+    if (round.hit) shell.hits += 1;
+    if (round.pen) shell.pens += 1;
     shell.dmg += ev.damage || 0;
     if (ev.damage > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
     stats.modulesDestroyed += (ev.modulesHit || [])
@@ -1553,8 +1641,17 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       target.killed = true;
       target.hpLeft = 0;
     }
-    shotLog.unshift({ ev, cls: outcome });
-    if (shotLog.length > 6) shotLog.pop();
+    if (weaponHitKind(ev) === 'machineGun') {
+      const burst = appendMachineGunBurst(latestBurst, ev, performance.now(), outcome.penetrated, outcome.blocked);
+      if (burst !== latestBurst) { burstLog.unshift(burst); if (burstLog.length > 3) burstLog.pop(); }
+      latestBurst = burst;
+    } else {
+      latestBurst = null;
+      if (!keepMissileDirectHit(shotLog[0]?.ev || null, ev)) {
+        shotLog.unshift({ ev, cls: outcome });
+        if (shotLog.length > 6) shotLog.pop();
+      }
+    }
     allShots.push({ ev, cls: outcome });
     showCard(ev, outcome);
     if (logOpen) renderLog();
@@ -1594,6 +1691,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // docs/GUNNERY-CAMERA-SPEC.md); this latch covers sim-tick-driven
     // replays that never render at all.
     if (p.shooterId != null) playerId = p.shooterId;
+    firedRounds.fire(p.shellId);
     stats.fired += 1;
     perShell(p.shellType || '—').fired += 1;
   });
@@ -1635,11 +1733,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('tank:destroyed', (payload) => {
     latestToast = null; // A kill notification ends the previous incoming run.
     const p = eventPayload<TankDestroyedEvent>(payload);
+    if (!killLedger.record(p.id, p.killerId, teamOf(p.id), p.killerId ? teamOf(p.killerId) : undefined)) return;
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
     lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
-      combatant(p.killerId).kills += 1;
+      combatant(p.killerId).kills = killLedger.count(p.killerId);
       linkOpposed(p.killerId, p.id);
     }
     if (playerId == null || p.killerId !== playerId || p.id === playerId) return;
@@ -1663,6 +1762,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const p = eventPayload<{ id?: EntityId | null } | null>(payload);
     if (!p || p.id == null) return;
     revives = true;
+    killLedger.respawn(p.id);
     recordCombatantRevived(combatant(p.id));
   });
 
@@ -1751,7 +1851,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
     endInfo = p ? {
-      timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p),
+      timeS: p.timeS, map: p.map || p.mapId || null, mapId: p.mapId || p.map || null, reason: p.reason || null, campaign: campaignDebrief(p),
       hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
       brains: p.brains && typeof p.brains === 'object'
         ? { enemy: String(p.brains.enemy || 'classic'), allies: String(p.brains.allies || 'classic') } : null,
@@ -1792,6 +1892,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     /** Latch the player entity id (hud.ts forwards it each frame). */
     setPlayer(id: EntityId | null): void { playerId = id; },
+    setTeamResolver(resolve: (id: EntityId) => string | undefined): void { teamOf = resolve; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {
@@ -1808,6 +1909,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       clearReportBuffer();
       while (cardHost.firstChild) cardHost.firstChild.remove();
       clearToasts();
+      clearCardTimers(); clearTimeout(burstTimer); currentPrimary = null; latestBurst = null; burstLog.length = 0; missileBlasts.clear();
       shotLog.length = 0;
       allShots.length = 0;
       receivedLog.length = 0;
@@ -1822,6 +1924,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       spottedSet.clear();
       spotAttributed = false;
       Object.assign(stats, newStats());
+      firedRounds.clear();
+      killLedger.clear();
       stats.perTarget = new Map();
       logOpen = false;
       logPanel.classList.remove('open');

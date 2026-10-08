@@ -12,13 +12,14 @@ import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, placedStructureClearances } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
-import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
+import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
 import { treeBiomeArid, treeBiomeDenseStands, treeBiomeOpen, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
+import airfield from './maps/airfield.ts';
 
 // Exercise the ACTUAL seeded placement stage, with its real matrix/interaction
 // records and real terrain. Skip unrelated canvas texture and grass work, not
@@ -39,7 +40,9 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
   treeBiomeSnagValue,
   // the trees lane (2026-10-06): a place's closed stands (Verdant's light version: its stands filled)
-  treeBiomeDenseStands };
+  treeBiomeDenseStands,
+  // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
+  insideClearPolygon, plannedSiteClearances };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   // trees round 5: the field law's constants (vegetation.ts module scope), read from the source
@@ -248,6 +251,70 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
   assert.deepEqual(after.trees.map(tree => tree.mat.elements), replay.trees.map(tree => tree.mat.elements), 'reset preserves the relocated upright pose');
   console.log(JSON.stringify({ map: config.id, seed, actualTrees: after.trees.length,
     actualTrunks: after.treeObstacles.length, onePoolBytes: allocate(after.trees), moved, features: receipts }));
+}
+// Trees lane (2026-10-05, Kestrel's dispersal stands; vegetation.ts authoredInSettlement): a map that opts in stands its
+// authored stands inside its settlement rect — on Kestrel the whole plateau — clear of its planned sites and of the
+// polygons it names, every other site rule holding and the rest of the planting exact; unset, the rect refuses them.
+{
+  const hf = createHeightField(1337, airfield), v = hf._layout.village;
+  const inRect = (x, z) => x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24;
+  const stands = [
+    // the south-east dispersal quarter, between the revetment rows and south of them
+    { id: 'quarter-pines', species: 'pine', count: 12, path: [[150, -168], [310, -168]], width: 2 },
+    { id: 'quarter-birches', species: 'birch', count: 10, path: [[160, -244], [310, -244]], width: 2 },
+    // across the cargo hangar's plot (x -253..-197, z -230..-194)
+    { id: 'over-the-hangar', species: 'pine', count: 6, path: [[-245, -212], [-205, -212]] },
+  ];
+  for (const feature of stands) for (const point of authoredTreeStations(feature)) assert.ok(inRect(point.x, point.z));
+  const yard = [[150, -256], [320, -256], [320, -232], [150, -232]];
+  const veg = (extra) => ({ ...airfield, vegetation: { ...airfield.vegetation, authoredTrees: stands, ...extra } });
+  const before = build(hf, { ...airfield, vegetation: { ...airfield.vegetation, authoredTrees: undefined } });
+  const off = build(hf, veg({ authoredInSettlement: undefined }));
+  const on = build(hf, veg({ authoredInSettlement: {} })), replay = build(hf, veg({ authoredInSettlement: {} }));
+  const fenced = build(hf, veg({ authoredInSettlement: { clear: [yard] } }));
+  const row = (result, id) => result.group.userData.authoredTrees.find((r) => r.id === id);
+  for (const id of ['quarter-pines', 'quarter-birches', 'over-the-hangar']) {
+    assert.equal(row(off, id).accepted, 0, `${id}: unset, the settlement rect refuses every station`);
+    assert.equal(row(off, id).unsafe, row(off, id).attempted);
+  }
+  assert.deepEqual(off.trees.map((t) => t.mat.elements), before.trees.map((t) => t.mat.elements), 'unset: the planting is exact');
+  for (const id of ['quarter-pines', 'quarter-birches']) {
+    const r = row(on, id);
+    assert.ok(r.accepted >= r.attempted * 0.75, `${id}: the stand stands inside the rect (${JSON.stringify(r)})`);
+  }
+  assert.equal(row(on, 'over-the-hangar').accepted, 0, 'a planned site\'s plot keeps the stands off it');
+  const unplanned = build(hf, { ...veg({ authoredInSettlement: {} }), props: { ...airfield.props, plannedSites: [] } });
+  assert.ok(row(unplanned, 'over-the-hangar').accepted >= 4, 'the plot alone refused them (its ground admits a stand)');
+  assert.equal(row(fenced, 'quarter-birches').accepted, 0, 'a clear polygon the map names keeps the stands off it');
+  assert.deepEqual(row(fenced, 'quarter-pines'), row(on, 'quarter-pines'), 'a polygon touches only the stations inside it');
+  assert.deepEqual(on.trees.map((t) => t.mat.elements), replay.trees.map((t) => t.mat.elements));
+  const planned = plannedSiteClearances(airfield.props.plannedSites);
+  const structures = createStructureClearances(airfield.props.tacticalBeats, DESTRUCTIBLE_BUILDING_TYPES);
+  for (const result of [on, fenced]) {
+    assert.equal(result.nextRoll, before.nextRoll, 'no placement RNG changes');
+    assert.equal(result.trees.length, before.trees.length);
+    assert.equal(result.treeObstacles.length, before.treeObstacles.length);
+    let moved = 0, settledIn = 0;
+    for (let i = 0; i < before.trees.length; i++) {
+      const a = before.trees[i], b = result.trees[i];
+      if (a.x === b.x && a.z === b.z) { assert.deepEqual(b.mat.elements, a.mat.elements); continue; }
+      moved++;
+      if (inRect(b.x, b.z)) settledIn++;
+      const envelope = b.cr + Math.sin(TREE_ARCHETYPES[b.species].leanMaxRad) * b.fallH;
+      assert.equal(overlapsStructureClearance(planned, b.x, b.z, envelope), false, 'clear of every planned site');
+      assert.equal(overlapsStructureClearance(structures, b.x, b.z, envelope), false, 'clear of every beat');
+      assert.equal(insideClearPolygon(result === fenced ? [yard] : [], b.x, b.z), false);
+      assert.equal(hf._noVeg(b.x, b.z), false); assert.equal(hf.getWaterMaskAt(b.x, b.z), 0);
+      assert.ok(hf._roadDist(b.x, b.z) >= 9); assert.ok(hf.getNormalAt(b.x, b.z).y > 0.82);
+      assert.notEqual(hf.getGroundType(b.x, b.z), 'soft');
+      assert.ok(!airfield.vegetation.avoid.some((d) => Math.hypot(b.x - d.x, b.z - d.z) < d.r), 'clear of the runway strip');
+      assert.ok(isClearOfSpawns(b.x, b.z, [hf._layout.spawns.player, ...hf._layout.spawns.enemies], 26));
+    }
+    const rows = result.group.userData.authoredTrees;
+    assert.equal(rows.reduce((n, r) => n + r.accepted + (r.displaced ?? 0), 0), moved);
+    assert.ok(settledIn >= rows.reduce((n, r) => n + r.accepted, 0), 'the accepted stations stand inside the rect');
+    console.log(JSON.stringify({ map: 'airfield', clear: result === fenced ? 1 : 0, moved, settledIn, features: rows }));
+  }
 }
 assert.throws(() => authoredTreeStations({ count: 10000, path: [[0, 0], [1, 1]] }));
 assert.deepEqual(redistributeAuthoredTrees([], [], [], new Set(),

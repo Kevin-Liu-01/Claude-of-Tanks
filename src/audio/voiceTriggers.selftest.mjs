@@ -335,6 +335,51 @@ moment('last_enemy', () => { foes[2].combat.destroyed = true; bus.emit('tank:des
 await startBattle();
 moment('outnumbered', () => { for (const a of allies) a.combat.destroyed = true; frame(); }, { heard: false });
 
+// The reasoning exchange: a Chain of Thought (the Service Record's medal, announced inside the kill's own dispatch)
+// has the commander think step by step once the kill call is done, and the gunner answer with the drill; once a battle.
+const exchangeLines = ['target_destroyed', 'double_kill', 'think_step_by_step', 'step_by_step_reply'];
+await startBattle();
+{
+  settle(6);
+  const ordinary = +ctx.currentTime.toFixed(3);
+  bus.emit('service:medal', { id: 'first_blood' });
+  settle(10);
+  assert.ok(!asked('think_step_by_step', ordinary), 'an ordinary medal does not start the exchange');
+  const since = +ctx.currentTime.toFixed(3);
+  foes[0].combat.destroyed = true;
+  bus.emit('service:medal', { id: 'chain_of_thought' });
+  bus.emit('tank:destroyed', { id: 'f1', killerId: 'me', pos: [0, 0, 200], cause: 'shot' });
+  settle(12);
+  const heard = probe.voiceLog.filter((e) => e.t >= since && exchangeLines.includes(e.id)).map((e) => e.id);
+  assert.deepEqual(heard.slice(1), ['think_step_by_step', 'step_by_step_reply'],
+    `the kill call, then the exchange in order (heard ${heard}; asked ${JSON.stringify(probe.sayLog.filter((e) => e.t >= since))})`);
+  covered.add('think_step_by_step');
+  covered.add('step_by_step_reply');
+  const again = +ctx.currentTime.toFixed(3);
+  bus.emit('service:medal', { id: 'step_by_step' });
+  settle(10);
+  assert.ok(!asked('think_step_by_step', again), 'the exchange is once a battle');
+}
+// It never costs a real call: a hit that leaves us on low hit points cuts the commander off, is heard, and the
+// gunner's answer is dropped rather than spoken after it.
+await startBattle();
+{
+  // The lines also keep a ten-minute cooldown on the net, so back-to-back battles do not repeat the joke.
+  ctx.advance(601);
+  settle(6);
+  bus.emit('service:medal', { id: 'step_by_step' });
+  for (let i = 0; i < 8 && !spoken('think_step_by_step', +ctx.currentTime.toFixed(3) - 2); i++) frame(0.25);
+  const since = +ctx.currentTime.toFixed(3) - 2;
+  assert.ok(spoken('think_step_by_step', since), 'the commander starts thinking on the quiet net');
+  frame(0.25);
+  me.combat.hp = 180;
+  theirHit({ damage: 620, targetHpAfter: 180, targetMaxHp: 1000 });
+  settle(10);
+  assert.ok(spoken('low_hp', since), `the low hit points call is heard (${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
+  assert.ok(!spoken('step_by_step_reply', since), 'no punchline after an interruption');
+  me.combat.hp = 1000;
+}
+
 // The AC-130: the gunner names the weapon, not a tank loader's round.
 await startBattle('ac130');
 me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 90 };
@@ -349,6 +394,14 @@ moment('gunship_missile', () => bus.emit('ui:shellSelectionChanged', { slot: 2 }
   bus.emit('ui:shellSelectionChanged', { slot: 1 });
   settle(3);
   assert.ok(!['load_kinetic', 'load_he', 'load_heat', 'load_missile'].some((id) => asked(id, since)), 'no tank loader\'s line standing in for the gunship crew');
+  // Its missile leaves the pylon on its own recording, never the ground ATGM's launch (the owner's "popping sound").
+  for (let shot = 0; shot < 4; shot++) {
+    settle(8);
+    const sfxSince = probe.sfxLog.at(-1)?.seq ?? 0;
+    bus.emit('shell:fired', { shellId: 9300 + shot, shooterId: 'me', isPlayer: true, muzzlePos: [0, 238, 90], dir: [0, -0.8, -0.6], caliberMm: 180, shellType: 'HE', weaponSound: 'gunship-missile', velocityMps: 400 });
+    const names = probe.sfxLog.filter((e) => e.seq > sfxSince).map((e) => e.n);
+    assert.ok(names.includes('gunship_missile_own') && !names.includes('atgm_launch') && !names.some((n) => n.startsWith('blast_punch')), `the gunship's missile launch, shot ${shot + 1} (${names})`);
+  }
 }
 
 // A round into a prop sounds of what it struck, not a coin toss between wood and concrete.

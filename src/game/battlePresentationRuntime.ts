@@ -2,7 +2,7 @@ import { applyJuggernautScale } from '../sim/juggernautScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
-import { syncMissionAttachment } from './missionAttachmentVisual.ts';
+import type { syncMissionAttachment as SyncMissionAttachment } from './missionAttachmentVisual.ts';
 import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import {
@@ -16,6 +16,18 @@ import {
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
+
+// The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
+// (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
+// (boot-static-closure, the bundle budget). It loads with the battle's FX graph — the FX gate in main.ts awaits
+// loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
+let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
+let missionAttachmentVisualLoad: Promise<void> | null = null;
+export function loadMissionAttachmentVisual(): Promise<void> {
+  return missionAttachmentVisualLoad ??= import('./missionAttachmentVisual.ts').then((module) => {
+    syncMissionAttachment = module.syncMissionAttachment;
+  });
+}
 
 interface TankState {
   pos: Vector3;
@@ -101,6 +113,7 @@ type PosePorts = Pick<BattleClientAccess,
 >;
 
 interface BattlePresentationRuntime {
+  prepareModeVisuals(): void;
   resetSoloPoses(): void;
   primeDeploymentTerrainTiles(): void;
   captureSoloPoses(): void;
@@ -226,6 +239,33 @@ export function createBattlePresentationRuntime({
       && Math.abs(detailScreenPosition.y) <= 1.45;
   };
 
+  const syncModeVisual = (entity: TankEntity, dtFrame: number | undefined, active: boolean): void => {
+    const state = entity.state as TankState;
+    const visual = entity.visual as TankVisual;
+    if(active){
+      if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
+      const mode = game.matchModeState as MatchModePresentationState | null;
+      let style: TankEnergyStyle = TANK_ENERGY.juggernaut;
+      let modeAura = false;
+      if (mode?.id === 'capture_the_flag') {
+        for (const flag of mode.flags) if (flag.status === 'carried' && flag.carrierId === entity.id) {
+          style = flag.team === mode.perspectiveTeam ? TANK_ENERGY.flagOwn : TANK_ENERGY.flagEnemy;
+          modeAura = true; break;
+        }
+      } else if (mode?.id === 'infected') {
+        for (const faction of mode.factions ?? []) if (faction.id === entity.id && faction.team === 'bravo') {
+          style = TANK_ENERGY.infected; modeAura = true; break;
+        }
+      }
+      syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
+        entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
+    } else clearJuggernautVisual(visual.root);
+    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    else if (entity.aerial) void loadMissionAttachmentVisual();
+    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
+    else hideGunshipVisual(visual.root);
+  };
+
   const syncTankVisual = (
     entity: TankEntity,
     presented: PresentedTankState,
@@ -272,27 +312,11 @@ export function createBattlePresentationRuntime({
         detailVisible,
       );
     }
-    if(game.phase==='battle'){
-      if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
-      const mode = game.matchModeState as MatchModePresentationState | null;
-      let style: TankEnergyStyle = TANK_ENERGY.juggernaut;
-      let modeAura = false;
-      if (mode?.id === 'capture_the_flag') {
-        for (const flag of mode.flags) if (flag.status === 'carried' && flag.carrierId === entity.id) {
-          style = flag.team === mode.perspectiveTeam ? TANK_ENERGY.flagOwn : TANK_ENERGY.flagEnemy;
-          modeAura = true; break;
-        }
-      } else if (mode?.id === 'infected') {
-        for (const faction of mode.factions ?? []) if (faction.id === entity.id && faction.team === 'bravo') {
-          style = TANK_ENERGY.infected; modeAura = true; break;
-        }
-      }
-      syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
-        entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
-    } else clearJuggernautVisual(visual.root);
-    syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
-    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
-    else hideGunshipVisual(visual.root);
+    // A retained player can be the Garage hero; its preview owner already
+    // updated this frame. Battle cleanup must not dispose that live effect.
+    if (game.phase !== 'garage' || visual !== pedestalVisual) {
+      syncModeVisual(entity, dtFrame, game.phase === 'battle');
+    }
     return viewDistanceM;
   };
 
@@ -447,6 +471,12 @@ export function createBattlePresentationRuntime({
         if (position) points.push({ x: position.x, z: position.z, radiusM: 0 });
       }
       for (const _tile of warmer.call(heightField, points)) { /* drain */ }
+    },
+
+    // Covered entry can prepare equipment before phase activation. It does not
+    // advance simulation, interpolation, visibility, dust or camera state.
+    prepareModeVisuals() {
+      for (const entity of tanks()) if (entity.state && entity.visual) syncModeVisual(entity, 0, true);
     },
 
     captureSoloPoses() {

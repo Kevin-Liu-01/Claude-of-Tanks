@@ -2,10 +2,10 @@
 
 The battle HUD now assigns bounded left/right lanes between the visible team
 rosters (or touch minimap) and the bottom controls. Incoming alerts occupy
-the left lane; outgoing reports and the combat log share the right lane.
+the left lane; outgoing reports and the combat log share a stable lower-right dock.
 The lanes update through ResizeObserver and viewport/panel events, not the
 render loop. Resizing a window or enlarging the minimap recalculates an already
-open report. Reports scroll within their lane; alert density reduces when
+open report. The full combat log scrolls within its lane; alert density reduces when
 space is tight. The results footer has its own layout row.
 
 Primary owners: `src/ui/battleHudLayout.ts`, `src/ui/battleHudLayout.css`.
@@ -401,3 +401,247 @@ indices to their authored owners. They additionally verify that every clutter
 binding addresses the original position/normal bytes or instance transform,
 so material batching and waterworks donor replacement cannot conceal a bad
 destruction target.
+
+## AC-130 fire-control rack
+
+`node tools/gunship-hud.browser.mjs` renders the production HUD and touch
+controls with the actual gunship loadout. It covers 1280×800 and 800×600 desktop,
+568×320 and 480×270 landscape, 320×568 and 390×844 portrait, and Chinese landscape.
+The matrix checks all three weapon selections, independent reload progress,
+sensor cycling, ready/cooling supply commands, keyboard activation, flight exit,
+minimum touch targets, and clearance from the scope, objective, minimap and
+mobile controls. Desktop cases also enlarge the minimap. Screenshots and the
+measurement report are written to `.qa-dev/gunship-hud/`.
+
+The gunship uses an open rack with six angled controls. Ammunition channels keep
+independent reload bars; the central sight follows the selected weapon, with
+magnification and target distance beside it. The header reads the actual escort
+and rescue counts. The shared HUD layout owns minimap clearance. Short landscape
+omits the repeated designation/sight label, while portrait raises the rack above
+fire and zoom. Drone instruments keep their existing layout.
+
+
+## HUD editor and minimal display
+
+Settings → Gameplay → Interface → **Edit HUD layout** opens a still battlefield
+with draggable HUD panels. It uses a UI-free game capture rather than another
+running scene. The editor prepares an isolated, static instance of the production
+HUD at the selected viewport size, then preserves its actual frames, canvases and
+responsive positions. It does not instantiate a renderer or a second simulation.
+The 1920×1080 Verdant Fields capture replaces the low-resolution reel thumbnail.
+The inspector uses the shared game icons and can select hidden elements and
+restore them. Selecting aircraft, awards, incoming damage or battle alerts prepares
+that real component in its relevant battle state. Other absent panels are listed
+with an explanation;
+their visibility remains editable without inventing placeholder boxes.
+Drag, arrow keys (Shift for larger steps), or the directional buttons position
+panels. Zoom preview helps on small screens. Save applies the layout; Cancel
+discards it. Reset layout restores the selected profile's responsive defaults.
+
+Desktop, phone portrait, and phone landscape have independent saved layouts.
+Positions remain within the viewport after resizing. Tank labels and floating
+damage numbers can be hidden, but stay attached to their world targets. The
+reticle stays attached to the real aiming point.
+
+**Minimal battle HUD** replaces the former hide-all setting, preserving existing
+preferences. It retains the actual aiming canvas, ammunition/reload, distance,
+zoom, and scope vision switching. Mobile driving and firing controls remain
+available. F10 toggles it; Esc opens Settings; a three-finger tap restores the
+full HUD on touch screens. Aircraft retain sight, weapons and return controls.
+
+`node src/ui/hudPreferences.selftest.mjs` checks profile selection, persistence,
+invalid data, storage failure and full-panel viewport bounds.
+`node tools/hud-editor.browser.mjs` checks the actual Settings entry point,
+production-default position parity, dragging, keyboard movement, hiding/restoring,
+saving, canceling, reset, reload persistence, profile changes, Escape ownership
+and minimal HUD visibility. Run it through `tools/capture-command.mjs` at nice 19
+to respect the shared browser capture queue. The DOM-only matrix
+uses production HUD components at 1440×900, 390×844, 667×375 and 568×256. It does
+not claim native-device touch or rendered ballistic-scene validation.
+
+
+## Service Record and battle debrief
+
+Garage → Service Record uses the shared modal, with keyboard tabs for Overview,
+Medals, Achievements and History. Medals have larger ribbons, engraved symbols,
+laurels and recognizable tier finishes. Hover, keyboard focus or tap reveals
+the actual award requirements. Tooltips sit above scrolling content, stay in
+the viewport and dismiss before the modal on Escape. Locked awards remain
+inspectable. First-earned dates and counts come from the saved record.
+
+Victory, defeat and draw use a common after-action report: personal damage,
+kills and accuracy, followed by named awards and the best shot. Expand combat
+details for penetration, blocked/received damage, deaths and the kill ledger.
+The Battle Outcome tab includes every team member. Garage/Battle Again remain
+accessible while report content scrolls. Multiplayer readiness lives inside
+the report, so short screens can reach both readiness and the footer.
+
+`node tools/service-record.browser.mjs` runs the production Garage entry and
+four record tabs at desktop, 390×844, 320×568, 667×375, 568×256 and Chinese
+landscape. `node tools/end-screen-presentation.browser.mjs` runs victory,
+defeat, draw, empty awards and multiplayer readiness, with 21-member teams.
+Both tools are DOM-only regressions: they verify layout, interaction and
+keyboard focus without claiming rendered battle or native mobile performance.
+
+## Objective and award banner spacing
+
+Objective event notices and earned-medal cards use six-sided outlines. Cards
+start at least 16 CSS pixels below the measured scoreboard/objective bottom,
+then clear visible detection and combat notices by 12 pixels. Their entrance
+fades in place so it cannot cross that gap. The layout observes content and
+viewport changes instead of doing work in the render loop.
+
+When a short phone has no clear lane above its controls, an award stays queued.
+Its display timer runs only while it is visible; resizing or a notice clearing
+retries placement. Combat objective alerts remain visible in their own lane.
+
+Run `node tools/objective-banner.browser.mjs` (with the same optional
+`--playwright-module` argument) for desktop, portrait, 480×270 and 568×256
+landscape, Chinese text, four objective states, rotation, and deferred awards.
+It starts and closes its own Vite server and writes receipts under `.qa-dev/`.
+The shared HUD burst fixture alternates attackers to exercise eight separate
+notifications; consecutive hits by one attacker intentionally combine.
+
+## Stable penetration readout
+
+The default mouse HUD seats the ballistic-analysis card 12 CSS pixels above
+its bottom-right minimap, aligned to the map's right edge. Its height budget
+comes from viewport, controls and roster density, never the number of kill
+notifications. The newest card rests at the dock's bottom; kill arrivals,
+expiry and Tab expansion cannot recenter it. Notifications fit the remaining
+space above it. Enlarging the map moves the dock together with the map.
+Drone and AC-130 consoles reserve clearance when they extend into this column;
+on those layouts the report sits above whichever control is higher.
+
+Short displays use the compact header and contained tank diagrams; surplus
+detail rows yield before the images are clipped. Narrow mouse layouts with a
+top-left map keep the report above their bottom controls in the opposite
+column. Touch retains its existing impact feedback rather than opening the
+desktop analysis card. Explicit HUD-editor positions still take precedence.
+
+`node tools/penetration-dock.browser.mjs` runs the production HUD across mouse,
+touch, short landscape, Chinese text, 1/7/14/21/41-per-side rosters, all three
+map sizes and multiplayer connection states. It compares actual report bounds
+before/after kill bursts, Tab and the real notification expiry timers, with a
+detection notice also active. Drone and AC-130 weapon/support controls also
+receive overlap checks on mouse layouts. The regular HUD matrix additionally checks
+countdown, sniper, spectator, settings, log, resized and expanded-map states.
+
+## Vehicle condition boxes
+
+The closed-eye concealment chip is now part of the damage panel's condition
+strip. At most four boxes are visible (including overflow); narrow touch
+panels use two or three 44px targets. Fire and disabled tracks take priority,
+then disabled modules and wounded crew, followed by damaged modules and
+concealment. A `+N` box exposes the remaining conditions by hover, keyboard
+focus or tap. The strip never grows into another row.
+
+A red module's translucent bottom-up fill reads its simulation `repairT`
+against the shared `REPAIR_S` target. Equipment speeds are already reflected
+in that accumulator. A combined track box follows the slower disabled track.
+Automatic recovery turns the icon amber and removes the progress fill; full
+repair removes the box. Realistic mode has no automatic repair fill. The
+current multiplayer snapshot carries module states without repair timers,
+so its boxes deliberately omit progress instead of presenting a false 0%.
+
+The strip follows its damage panel through HUD editing and clears for death,
+aerial control and leaving battle. The shared layout reserves space above it
+for feeds and moves it above intersecting driving/system controls. Stable
+frames do not rewrite its DOM. `vehicleStatusPolicy.selftest.mjs` covers the
+state policy and real repair accumulation; `tools/vehicle-status.browser.mjs`
+covers repair changes, overflow, tooltip access, viewport clearance, lifecycle,
+Chinese labels and unchanged-frame mutations across desktop and small phones.
+
+HUD editor refresh (2026-10-06): typecheck, production build, preference, localization,
+layout, settings, stylesheet ownership and damage-panel marker checks passed. The
+updated browser matrix could not start before its shared capture-queue timeout;
+no new rendered/editor matrix pass is claimed.
+
+## Combat reports and Service Record
+
+Live rosters show a nonzero kill tally on their inner edge, mirrored for the
+opposing team and retained in icon-grid mode. The event ledger counts enemy
+destructions once per life; respawns preserve accumulated kills, while a new
+battle clears them. Friendly fire and self-destruction remain visible in the
+feed but do not earn enemy-kill credit. Feed glyphs identify projectile kills,
+drone strikes, ramming, fire, collisions, falls, player involvement and friendly
+fire. Ammo-rack kills carry an explicit label, a highlighted ammunition glyph,
+and a matching killcam heading and detonation banner.
+
+After-action reports use the battle's canonical map image, contained vehicle
+art, visible combat metrics, and allied/enemy comparisons for damage, kills and
+survivors. Medals keep their focus/touch tooltips. The Service Record's Battle
+Log uses map-backed deployment cards, vehicle art and expandable kill traces;
+older records without a recognized map retain a plain readable background.
+Accuracy counts distinct fired rounds that connected, not damage events. Splash
+contacts cannot push it beyond 100%; un-fired drone impacts, fire and ramming
+cannot manufacture successful rounds. Damage still sums all resolved contacts.
+
+Focused event, classification, report and record checks run in `npm test`.
+The additional browser regression uses the real production components at
+1440×900, 390×844, 667×375 and 568×256 and captures victory, defeat, draw,
+Battle Log and medals. Run it through the shared capture queue:
+
+```sh
+node --input-type=module -e "import {runCapturedCommand} from './tools/capture-command.mjs'; await runCapturedCommand('nice',['-n','19','node','tools/battle-reports.browser.mjs']);"
+```
+
+Pass `--playwright-module=/absolute/path/to/playwright/index.mjs` to the browser
+tool when using an external runtime. Captures go to `.qa-dev/battle-reports/`.
+A queue timeout is not a visual pass: the latest implementation has passed
+focused Node checks, type checking and the public build, but its first browser
+attempt timed out before acquiring the shared capture lease.
+
+
+### Compact Service Record statistics and medal layouts
+
+Win rate is a normal outcome statistic beside victories, defeats and draws,
+with a slightly larger value. The heading uses the shared amber accent without
+the commander-profile eyebrow. Career, reasoning, deployment and Battle Log
+statistics use semantic vector glyphs from the shared icon library.
+
+Overview medal columns follow the width of their card, not just the viewport.
+Artwork stays contained above wrapping labels; new-award badges reserve their
+own space. Phone outcomes and career metrics use two columns, and short
+landscape headers leave room for scrolling content and full-size controls.
+
+`tools/service-record-layout.browser.mjs` exercises empty and populated records
+across all four tabs at 1440×900, 320×568, 390×844, 667×375 and 568×256, plus
+Chinese at 390×844. It checks artwork/text/badge separation, horizontal overflow,
+stat icons, header/footer reachability, touch requirements and rotation. Run it
+through `tools/capture-command.mjs` at nice 19, as above; optional external
+Playwright module argument is supported. Screenshots and geometric receipts go
+to `.qa-dev/service-record-layout/`. A queued run is not a visual pass.
+
+Validation: record, localization and stylesheet selftests, TypeScript, the
+changed-module quality gate and the production build passed. The first layout
+run timed out after ten minutes waiting for the shared capture lease; no
+mobile screenshot or geometry pass is claimed for this refresh yet.
+
+## Weapon-specific impact readouts
+
+Machine-gun impacts (calibres below 20 mm) use a compact sequential burst summary
+with hits, penetrations, blocks, and accumulated damage. A target or weapon change,
+a main-gun impact, or a pause over 1.2 seconds starts a new burst. This feedback
+never replaces the cannon/missile card and never pushes entries out of its six-shot
+history. Up to three MG burst summaries are retained separately. Raw resolved hits
+still feed complete damage and battle statistics. Primary IFV autocannons remain
+normal cannon readouts.
+
+Guided-hit identity travels with the shared simulation event, including multiplayer.
+Missiles have an impact heading, range, and separate blast totals. Splash-only
+contacts omit misleading plate-angle/armor/penetration rows. Splash from the same
+missile updates its blast summary without replacing a direct-hit card. Secondary
+summaries consume part of the existing diagram height budget, preserving the dock
+above the minimap. Touch retains its existing compact impact feedback.
+
+Steel Wall excludes machine-gun hits; its localized requirement now says so.
+`serviceRecord.selftest.mjs`, `shotReadoutPolicy.selftest.mjs`, and the combat suite
+cover weapon identity, MG exclusion, adjacent burst grouping, bounded blast receipts,
+and direct-hit priority. `tools/weapon-readout.browser.mjs` exercises the production
+HUD and diagram containment; run it under the shared capture lease.
+
+October 7 verification: focused medal/readout/layout/locale tests, 543 combat
+assertions, authoritative-match tests, type checking, and the production build
+passed. The rendered weapon-readout test timed out waiting for the shared browser
+lease; its desktop/mobile visual checks are still unverified.

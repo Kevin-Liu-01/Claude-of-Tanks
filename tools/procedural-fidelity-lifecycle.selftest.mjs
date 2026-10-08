@@ -14,7 +14,7 @@ const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer
   'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
   source.replace(/^import .+;\n/gm, ''));
 
-async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x']) {
+async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x'], referenceAvailable = true) {
   const events = [], logs = [], writes = [];
   const primary = new Error(`injected ${failAt}`);
   const cleanup = new Map(cleanupFailures.map(stage => [stage, new Error(`injected ${stage}`)]));
@@ -35,7 +35,7 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
       assert.deepEqual(options, { recursive:true, force:true });
       step('cache:close');
     },
-    existsSync() { return true; },
+    existsSync() { return referenceAvailable; },
     mkdirSync() {},
     writeFileSync(target, content) { writes.push({ target, content }); },
   };
@@ -58,6 +58,7 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
     async waitForFunction() { step('page:wait'); },
     async evaluate(expression) {
       if (expression === 'window.__REFERENCE_IDS') return ['fixture_x'];
+      if (expression === 'window.__FIDELITY_SOURCE_PATH') return '/reference.glb';
       if (expression === 'window.__FIDELITY_REPORT') return {
         id:'fixture_x', name:'Fixture', score:96, gatePassed,
         scores:{ overall:96, hull:96, turret:96, gun:96, tracks:96 },
@@ -92,7 +93,7 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   let failure;
   try {
     await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
-      { fixture_x:'fixture', ztz100_prototype:'modern2', object695_x:'modern2', type100:'modern2' },
+      { fixture_x:'fixture', unregistered_tank:'fixture', ztz100_prototype:'modern2', object695_x:'modern2', type100:'modern2' },
       validateSelectedIds, partitionConceptIds, readConceptDesign);
   }
   catch (error) { failure = error; }
@@ -173,4 +174,31 @@ for (const ids of [['unknown_tank'], ['fixture_x', 'fixture_x']]) {
   assert.equal(result.writes.length, 0, 'invalid selection never publishes a report');
 }
 
-console.log('procedural-fidelity-lifecycle: startup, cleanup, primary-error, scoring and explicit concept routing pass');
+// Exercise actual entrypoint routing: absence of registration is N/A, never
+// a source pass. Absence of a registered file is still a hard release failure.
+for (const ids of [['unregistered_tank'], ['fixture_x','unregistered_tank']]) {
+  const result = await scenario(null, [], true, ids);
+  assert.equal(result.failure, undefined);
+  const report = JSON.parse(result.writes[0].content);
+  assert.equal(report.summary.passed, ids.includes('fixture_x') ? 1 : 0);
+  assert.equal(report.summary.notApplicable, 1);
+  assert.equal(report.summary.unavailable, 0);
+  assert.equal(result.process.exitCode, undefined);
+  const row = report.rows.find(row => row.id === 'unregistered_tank');
+  assert.equal(row.comparisonPurpose, 'first-party-unregistered');
+  assert.equal(row.score, null);
+  assert.equal(row.gatePassed, null);
+  assert.equal(row.comparisonApplicable, false);
+}
+for (const ids of [['fixture_x'], ['fixture_x','unregistered_tank']]) {
+  const result = await scenario(null, [], true, ids, false);
+  assert.equal(result.failure, undefined);
+  const report = JSON.parse(result.writes[0].content);
+  assert.equal(report.summary.passed, 0);
+  assert.equal(report.summary.unavailable, 1);
+  assert.equal(report.summary.notApplicable, ids.includes('unregistered_tank') ? 1 : 0);
+  assert.equal(result.process.exitCode, 1, 'registration still requires the actual reference file');
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), allCleanup);
+}
+
+console.log('procedural-fidelity-lifecycle: startup, cleanup, primary-error, scoring and registration-aware routing pass');

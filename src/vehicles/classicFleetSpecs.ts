@@ -128,6 +128,14 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];
 
+// The independently authored prototype rig is already in final dimensions.
+// Restore its datums after make() fits copied donor armor to the smaller hull;
+// that fit must not lower the installed trunnion or lengthen its visible tube.
+const leopardPrototype = SPECS.find(spec => spec.id === 'leopard2_proto')!;
+leopardPrototype.armor.turretPivot = [0, 1.72, 0.55];
+leopardPrototype.armor.gunPivot = [0, 0.26, 1.00];
+leopardPrototype.armor.gunBarrel = { lengthM: 5.26, radiusM: 0.064 };
+
 // Register only first-party procedural gameplay rows. Historical source assets
 // remain offline comparison inputs and have no runtime registration path.
 for (const spec of SPECS) {

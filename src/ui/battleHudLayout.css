@@ -7,11 +7,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
-  top:var(--hud-right-top);right:12px;bottom:auto;width:var(--hud-side-width);
+  top:var(--hud-right-top);right:var(--hud-report-right,12px);bottom:auto;width:var(--hud-side-width);
   max-height:var(--hud-right-height);min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:safe center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:8px;flex-wrap:wrap}
@@ -183,7 +183,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'] .cot-prebattle{top:var(--hud-portrait-countdown-top,255px)}
 
 /* Detection shares the score's central lane; narrow layouts clear team feeds. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth{top:var(--hud-notice-top)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth{top:var(--hud-notice-top);max-width:var(--hud-center-notice-width,248px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert,
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-alert{top:var(--hud-alert-top);bottom:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height='short'] .cot-alert{max-width:180px;white-space:normal}
@@ -205,18 +205,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{--roster-row-height:30px;width:min(320px,calc(50vw - 184px))}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-rows{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-rows{display:none}
 /* Clip diagrams inside the card, not its outer shadow at the lane edges.
    Card sizing below still keeps its contents inside the measured HUD budget. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:visible}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-height:100%;min-height:0;display:flex;flex-direction:column;flex-shrink:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
-  box-sizing:border-box;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
-  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px),90px);
+  box-sizing:border-box;margin:0;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
+  --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-burst-space,0px) - var(--cot-si-blast-space,0px)),90px);
   min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1;overflow:visible;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px),90px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px - var(--cot-si-burst-space,0px) - var(--cot-si-blast-space,0px)),90px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box{width:min(100%,var(--diagram-size))!important;height:auto!important;aspect-ratio:1;min-width:0;min-height:0;justify-self:center}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box:nth-child(2){width:min(100%,calc(var(--diagram-size) * 2))!important;aspect-ratio:2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil){background-size:contain;mask-size:contain;object-fit:contain}
@@ -224,8 +224,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.o
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{container:roster-row / size}
 @container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:9px;line-height:1.1}}
 
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-kicker{display:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-hd{min-height:26px;padding-block:3px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-kicker{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-hd{min-height:26px;padding-block:3px}
 
 /* Short landscape is a height budget, not a miniature desktop. Leave the
    center notices clear of the second fire button and the bottom system strip. */
@@ -325,3 +325,20 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth{min-height:32px;padding-block:4px;font-size:10px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth .sub{display:none}
 }
+
+/* A narrow mouse window has no center lane beside the ballistic report.
+   Reserve notices in the left column, above the driving/status instruments. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-sixth,.cot-alert){
+  left:12px;transform:none;animation:none;width:calc(50vw - 36px);max-width:248px;white-space:normal;
+}
+
+/* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
+.cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:#ffd18a;font-weight:800;font-variant-numeric:tabular-nums;font-size:11px;line-height:1}
+.cot-hud .cot-er .kills[hidden]{display:none}
+.cot-hud .cot-ear.icon-grid .cot-er .kills{position:absolute;bottom:2px;right:3px;min-width:10px;padding:1px 2px;font-size:9px;background:#0a121cdd}
+.cot-hud .cot-ear.icon-grid.r .cot-er .kills{right:auto;left:3px}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:4px;color:#c8d6df}
+.cot-kf .relation{display:inline-flex;align-items:center;justify-content:center;align-self:center;line-height:1;flex:none;color:#ffcc75}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:#291717eb;border:1px solid #d79568}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}

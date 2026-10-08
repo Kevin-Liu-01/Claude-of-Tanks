@@ -78,6 +78,13 @@ let maxColdTransactionMs = 0;
 for (const variant of GARAGE_VARIANTS) {
   if (variant.id !== 'verdant_motor_pool') {
     const terraces = getGarageFacilityTerraces(variant);
+    // 2026-10-05: every fleet exhibit stands on a pad at the datum. The Abrams welding bay moved beside the camera
+    // onto raw terrain (sunk up to 3.2 m at Steinburg, 1.5 m clear at Sirocco) and the K2 cradle stood up to 2.8 m
+    // clear; the Abrams pad is the wider one (the tank, skirts, dolly and carts spread over about 11 m).
+    const pads = terraces.filter((terrace) => terrace.label.startsWith('fleet-service-'));
+    assert.equal(pads.length, 4, `${variant.id}: the Burlak, Abrams, T-90M and K2 exhibits each stand on a pad`);
+    assert.equal(pads.filter((pad) => pad.radiusSide === 7.6 && pad.radiusDepth === 6.6).length, 1,
+      `${variant.id}: the Abrams welding bay's pad covers its spread`);
     for (let left = 0; left < terraces.length; left += 1) {
       for (let right = left + 1; right < terraces.length; right += 1) {
         const a = terraces[left];
