@@ -87,6 +87,13 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(epoch(glass.mesh) > e0 && epoch(wall.mesh) > 0, 'its casters are touched once');
   assert.equal(stages.stats().flattened, glass.ranges.length);
   assert.ok(debris.stats().pieces > 0, 'the damaged builder threw its spalls and shards through the writers');
+  // its spalled patches: shallow cuts through the render only (outside 0.01 m: what stands proud of the wall survives)
+  assert.equal(data[o + 7], 2, 'two spalled patches cut');
+  for (let h = 0; h < 2; h++) {
+    const n = o + 8 + h * 8 + 4;
+    assert.ok(Math.abs(data[n + 3] - 0.01) < 1e-4 && data[n + 2] < 0.2, `spall ${h}: through the render, not the wall`);
+  }
+  assert.ok(debris.stats().meshes > 0, 'the patches\' units and lips in the wall\'s own buckets');
 }
 
 // ---- breached: the hole the blow opens on the face nearest it, cut into the mask in world space
@@ -94,9 +101,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const seam = fresh();
   const [fx, , fz] = toWorld(1, 0, 4.3); // a burst at the foot of the front wall
   stages.stage({ ...base, stage: 'breached', previous: 'damaged', x: fx, y: 2.2, z: fz, dirX: -s, dirZ: -c }, seam);
-  assert.equal(data[o + 7], 1, 'one hole');
-  const hx = data[o + 8], hy = data[o + 9], hz = data[o + 10], hr = data[o + 11];
-  const nx = data[o + 12], nz = data[o + 13];
+  assert.equal(data[o + 7], 3, 'the breach beside the two spalls');
+  const H = o + 8 + 2 * 8;
+  const hx = data[H], hy = data[H + 1], hz = data[H + 2], hr = data[H + 3];
+  const nx = data[H + 4], nz = data[H + 5];
   // the front face's outward normal is body +z: world (sin yaw, cos yaw)
   assert.ok(Math.abs(nx - s) < 1e-3 && Math.abs(nz - c) < 1e-3, `the cut faces out of the front wall (${nx}, ${nz})`);
   assert.ok(Math.abs(hr - 1.3) < 1e-3, 'an HE shell\'s hole: 1.3 m');
@@ -104,7 +112,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // on the front plane: the centre's body z is the face's (4)
   const bz = (hx - placement.x) * s + (hz - placement.z) * c;
   assert.ok(Math.abs(bz - 4) < 0.35, `on the front wall (body z ${bz.toFixed(3)})`);
-  assert.ok(data[o + 14] > 0.1, 'it cuts into the wall');
+  assert.ok(data[H + 6] > 0.1 && Math.abs(data[H + 7] - 0.3) < 1e-4, 'it cuts through the wall (0.3 m outside)');
 }
 
 // ---- collapsed: the fall, the pile, the touches (every frame it moves, and the frame it is discarded)
@@ -146,8 +154,8 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const [fx, , fz] = toWorld(-3, 0, 4.3);
   stages.stage({ ...base, stage: 'breached', previous: 'intact', x: fx, y: 3, z: fz, dirX: -s, dirZ: -c, munition: 'howitzer' }, seam);
   assert.equal(stages.stats().flattened, glass.ranges.length, 'the skipped damaged stage hid the glass');
-  assert.equal(data[o + 7], 1);
-  assert.ok(Math.abs(data[o + 11] - 2.1) < 1e-3, 'a howitzer shell\'s hole');
+  assert.equal(data[o + 7], 3, 'its spalls and the hole');
+  assert.ok(Math.abs(data[o + 8 + 2 * 8 + 3] - 2.1) < 1e-3, 'a howitzer shell\'s hole');
   const e0 = epoch(wall.mesh);
   const piecesBefore = debris.stats().pieces;
   stages.stage({ ...base, stage: 'collapsed', previous: 'intact', x: 40, y: 4, z: -30, dirX: 0, dirZ: 1, settled: true }, seam);
