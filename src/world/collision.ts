@@ -222,6 +222,15 @@ export interface CollisionRecord {
   propIdx?: number;
   crushed?: boolean;
   dead?: boolean;
+  /**
+   * The structure group (destruction, docs/DESTRUCTION.md §3.1): every record of one building placement — its contact
+   * record in the obstacles, its shell bands in the colliders, a set piece's movement records — carries the placement's
+   * id, in build order. Packed in the collision shards as `g`.
+   */
+  structureIdx?: number;
+  /** The group's role: absent for a building; 'setpiece' a landmark (breach-only); 'fixed' never damaged (a set piece
+   * with a deck or a bridge). Packed as `gr` (1 setpiece, 2 fixed). */
+  structureRole?: 'setpiece' | 'fixed';
 }
 
 function isDenseCrushableCover(kind: string | undefined): boolean {

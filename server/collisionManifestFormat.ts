@@ -65,7 +65,10 @@ export function isPackedCollisionMetadata(
   if (value.q !== undefined && typeof value.q !== 'boolean' && value.q !== 0 && value.q !== 1) return false;
   return isNullableNumber(value.m) && isNullableNumber(value.e) &&
     (value.k == null || typeof value.k === 'string') &&
-    isNullableNumber(value.t) && isNullableNumber(value.p);
+    isNullableNumber(value.t) && isNullableNumber(value.p) &&
+    // destruction (2026-10-07): the structure group, a non-negative integer, and its role 1 or 2
+    (value.g == null || (Number.isSafeInteger(value.g) && (value.g as number) >= 0)) &&
+    (value.gr == null || value.gr === 1 || value.gr === 2);
 }
 
 function isPackedCollisionRecord(value: RuntimeValue): value is PackedCollisionRecord {
