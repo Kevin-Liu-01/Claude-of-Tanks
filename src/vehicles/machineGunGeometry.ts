@@ -542,6 +542,12 @@ function roundDims(cls: MgClassDefinition, s: number): { r: number; len: number;
   return cls.caliber > 10 ? { r: 0.0102 * k, len: 0.138 * k, pitch: 0.025 * k } : { r: 0.006 * k, len: 0.071 * k, pitch: 0.0135 * k };
 }
 
+/** How far outboard of the tray (`p3x`) the belt's descending control point may sit, for a belt rising from a mouth at
+ * `p0x` on the feed side `f`: at most `reach`, and never past half the mouth-to-tray gap, so the arch stays convex. */
+function beltArchReach(p0x: number, p3x: number, f: number, reach: number): number {
+  return Math.max(0, Math.min(reach, 0.5 * f * (p0x - p3x)));
+}
+
 /**
  * The belt (round 4): a continuous run of rounds in their links along one cubic from p0 (inside the can's open mouth)
  * through p1, p2 to p3 (on the feed tray at the feedway), placed at the link pitch from the tray end back, each round
@@ -577,8 +583,17 @@ function addBelt(context: PintleLayout, p0: readonly number[], p1: readonly numb
   }
   const count = Math.max(2, Math.min(maxRounds, Math.floor(total / round.pitch) + 1));
   const seg = round.r > 0.008 * s ? 6 : 5;
-  for (let index = 0; index < count; index++) {
-    const { p, roll } = at(Math.max(0, total - index * round.pitch));
+  // fleet lane 2026-10-08 (circular-cap audit): the rounds stay parallel to the bore, so two rounds closer than a case's
+  // width in the belt's plane stand inside one another. Along a straight run the pitch always clears them; where the belt
+  // bends tighter than its links can follow, the next round steps on along the curve until it clears every round already
+  // laid (the links fan open round the bend). A belt with no tight bend lays exactly as before.
+  const clear = round.r * 2.08;
+  const laid: number[][] = [];
+  for (let d = total; laid.length < count && d > -round.pitch + 1e-9;) {
+    const { p, roll } = at(Math.max(0, d));
+    if (laid.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < clear)) { d -= round.pitch * 0.125; continue; }
+    laid.push(p);
+    d -= round.pitch;
     // the link square to the belt's tangent in the belt's own plane (the rounds stay parallel to the bore)
     // round 5: the link wraps the case's middle as a dark band across the round, so the belt reads as a striped run
     // of rounds in links rather than a row of beads in the can's paint
@@ -675,7 +690,11 @@ export function addPintleFeed(context: PintleLayout, p0: readonly number[], apex
   const p3 = [f * (bodyW / 2 + 0.006 * s), trayY + 0.003 * s + round.r, trayZ];
   const apex = Math.max(apexOver, p3[1]) + rise;
   const p1 = [p0[0], apex, p0[2]];
-  const p2 = [p3[0] + f * 0.05 * s, p3[1] + (apex - p3[1]) * 0.7, trayZ];
+  // fleet lane 2026-10-08 (circular-cap audit, 200 findings on 61 hulls): the descending control point sat 5 cm outboard
+  // of the tray, past the can mouth the belt rises from (2.9 cm on a heavy gun's can), so the curve folded back through
+  // itself at the top and its rounds stood inside one another; it keeps to the inboard half of the gap, so the arch is
+  // convex and the two runs keep the mouth-to-tray spacing
+  const p2 = [p3[0] + f * beltArchReach(p0[0], p3[0], f, 0.05 * s), p3[1] + (apex - p3[1]) * 0.7, trayZ];
   addBelt(context, p0, p1, p2, p3, round, maxRounds);
 }
 
@@ -891,7 +910,7 @@ function addNsvtAmmo(context: PintleLayout): void {
   // machine gun looks as though it could not be fed"): the belt arcs higher out of the box, so it reads over the lid
   const apex = Math.max(top, feedY) + 0.075 * s;
   const p1 = [mouthX, apex, beltZ];
-  const p2 = [p3[0] + f * 0.045 * s, feedY + (apex - feedY) * 0.7, beltZ];
+  const p2 = [p3[0] + f * beltArchReach(p0[0], p3[0], f, 0.045 * s), feedY + (apex - feedY) * 0.7, beltZ];
   addBelt(context, p0, p1, p2, p3, round, 9);
   // the feed guide outside the opening (the belt's last round rests on it)
   parts.add(weaponSlot, block(0.03 * s, 0.006 * s, round.len * 0.7), f * (bodyW / 2 + 0.02 * s), feedY - round.r - 0.004 * s, beltZ + round.len * 0.08);
