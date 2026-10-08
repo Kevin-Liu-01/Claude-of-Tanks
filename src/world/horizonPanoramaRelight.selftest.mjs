@@ -338,6 +338,7 @@ assert.ok(septemberNightFails >= Math.ceil(maps.length * 0.8), `the fifth-dimmed
   assert.match(runtime, /restoreHorizon\(\);\s*const relit = relightHorizonPanoramas\(root, options\.getRenderer\?\.\(\) \?\? null\);\s*if \(next\?\.timeOfDay === 'night'\) dimHorizon\(root, horizonColors, relit\);/,
     'the battle atmosphere relights the far panorama right after it applies the light, inside its covered prepare, and dims only what it could not relight');
   assert.ok(runtime.includes('if (!mesh.isMesh || relit.has(mesh)) return;'), 'a relit shell keeps its colour');
+  assert.match(runtime, /noteHorizonDaySky\(root\);\s*options\.applyPreset\(/, 'the far panoramas note the day sky before a time of day is applied');
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   assert.ok(/getRenderer: \(\) => renderer,/.test(main), 'main hands the battle atmosphere its renderer');
   const horizon = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');

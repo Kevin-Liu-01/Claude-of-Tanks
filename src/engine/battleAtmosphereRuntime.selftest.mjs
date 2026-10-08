@@ -221,11 +221,12 @@ try {
 // keeps the fifth-dim, and without a renderer nothing is asked.
 {
   const root = new THREE.Group(), geometry = new THREE.BoxGeometry();
-  const calls = [], applied = [];
+  const calls = [], applied = [], noted = [];
   const shell = (ok, tag) => {
     const ring = new THREE.Object3D(), mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0xffffff }));
     ring.name = 'horizon-ring'; mesh.name = 'horizon-far-range'; mesh.userData.horizonPanorama = true;
-    ring.userData.horizonPanorama = { mesh, relight: (r) => { calls.push([tag, r, applied.length]); return ok; } };
+    ring.userData.horizonPanorama = { mesh, relight: (r) => { calls.push([tag, r, applied.length]); return ok; },
+      noteDaySky: () => { noted.push([tag, applied.length]); return true; } };
     ring.add(mesh); root.add(ring);
     return mesh;
   };
@@ -235,6 +236,7 @@ try {
     applyPreset: (p) => applied.push(p), getRenderer: () => renderer });
   try {
     owner.prepare(5, 'winter', ['night']);
+    assert.deepEqual(noted, [['relit', 0], ['stale', 0]], 'each far panorama notes the day sky before the night is applied');
     assert.deepEqual(calls.map((c) => c[0]).sort(), ['relit', 'stale'], 'every far panorama under the root is asked to relight');
     assert.ok(calls.every((c) => c[1] === renderer && c[2] === applied.length && applied.length > 0),
       'on the owner\'s renderer, after the preset is applied');

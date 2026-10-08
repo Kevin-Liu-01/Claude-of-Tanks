@@ -103,6 +103,17 @@ function relightHorizonPanoramas(root: THREE.Object3D | null, renderer: unknown)
   return relit;
 }
 
+/** Before a time of day is applied: each far panorama keeps the sky still showing as its day reference when it is the
+ * map's authored day (world activation applies the map's sky after the warm-up, so a map entered straight into a night
+ * may not have baked under its day yet; horizonPanorama.ts noteDaySky). */
+function noteHorizonDaySky(root: THREE.Object3D | null): void {
+  root?.traverse((object) => {
+    const handle = (object.userData as { horizonPanorama?: unknown }).horizonPanorama as { noteDaySky?(): boolean } | true | undefined;
+    if (!handle || handle === true || typeof handle.noteDaySky !== 'function') return;
+    try { handle.noteDaySky(); } catch { /* the relight then keeps the bake as it is */ }
+  });
+}
+
 /** Named unlit horizons only. A material shared with any other world mesh
  * cannot be dimmed without affecting that mesh, so leave that alias alone.
  * A far panorama re-baked under the applied light (relightHorizonPanoramas) already carries the night and is left alone.
@@ -161,6 +172,8 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
       return;
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
+    // (the nightsky lane) the far panoramas keep the map's day sky, while it still shows, as their relight's reference
+    noteHorizonDaySky(root);
     options.applyPreset(mapId === 'moon' ? nextAuthored : mars ? { ...MARS_SKY_PRESET } : weatherPreset(nextAuthored, next));
     // 2026-09-14: night .34 (was .24, night readability lifted with the moon); 2026-10-01: × the light's own share
     const light = options.getLightReadability?.() ?? 1;

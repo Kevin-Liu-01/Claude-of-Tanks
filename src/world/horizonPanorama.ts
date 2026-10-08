@@ -1744,6 +1744,13 @@ export interface HorizonPanoramaHandle {
    * day reference): the bake stands as it was.
    */
   relight(renderer: HorizonPanoramaRenderer | null | undefined): boolean;
+  /**
+   * Keep the sky the battlefield publishes as the day reference relight() measures against, when it is this map's
+   * authored day sky (the battle atmosphere calls it before it applies a time of day: world activation applies the map's
+   * sky after the warm-up, so a map entered straight into a night may not have baked under it). True when a reference
+   * is held after the call.
+   */
+  noteDaySky(): boolean;
   dispose(): void;
   /** the last bake's duration (ms) and count, for the probes; `tone`: whether the battlefield's own ground and rock
    * means coloured the bake ('ground') or the authored palette did ('authored') */
@@ -2200,6 +2207,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       stats.relights++;
       stats.relightMs = Math.round(performance.now() - started);
       return baked;
+    },
+    noteDaySky() {
+      takeDayReference(publishedSky().atmosphere);
+      return !!dayReference;
     },
     dispose() {
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }

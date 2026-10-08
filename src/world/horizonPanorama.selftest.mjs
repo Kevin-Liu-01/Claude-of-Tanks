@@ -580,7 +580,21 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   scene.add(bare.mesh);
   publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
   assert.equal(bare.relight(renderer), false, 'no authored preset: no day to measure against');
-  handle.dispose(); bare.dispose();
+  // a map entered straight into the night (the Studio's map switch at night: world activation applies the map's sky
+  // after the warm-up, so nothing baked under the day): the battle atmosphere notes the day sky before it applies the
+  // night, and the relight then bakes once, under the night
+  const late = createHorizonPanorama({ ...options, sun: daySun, lightPreset }, null);
+  scene.add(late.mesh);
+  publish(lightPreset, [0.3, 0.36, 0.45], [0.55, 0.62, 0.7], [0.8, 0.75, 0.62]);
+  assert.equal(late.noteDaySky(), true, 'the day sky noted while it shows');
+  assert.equal(late.stats.bakes, 0, 'without a bake');
+  publish(nightPreset, [0.024, 0.029, 0.036], [0.044, 0.05, 0.056], [0.06, 0.06, 0.05]);
+  assert.equal(late.noteDaySky(), true, 'a later sky never replaces the reference');
+  assert.equal(late.relight(renderer), true, 'relit');
+  assert.equal(late.stats.bakes, 1, 'one bake, under the night');
+  assert.ok(late.stats.light && seen.at(-1).sunScale.every((v, i) => Math.abs(v - night.sunScale[i]) < 1e-12),
+    'the same night light as the handle that baked the day first');
+  handle.dispose(); bare.dispose(); late.dispose();
 }
 
 // --- 2026-10-05 (Part 1, the skies lane: the distant hills' cloud shadows) --------------------------------------------
