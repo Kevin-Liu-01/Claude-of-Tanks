@@ -54,6 +54,7 @@ import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, rin
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
 import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
+import { installHorizonRing } from '../horizonRingHook.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -4074,3 +4075,6 @@ export function buildHorizonRing(
   while (!step.done) step = steps.next();
   return step.value;
 }
+
+// terrain.ts builds its meshes with this ring without importing it (horizonRingHook.ts).
+installHorizonRing({ HORIZON_SEGMENTS, buildHorizonRingSteps });
