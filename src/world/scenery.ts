@@ -318,9 +318,12 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       if (hard) { skip(feature, `solid ${hard}`); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
       if (soft.length) feature.overlaps = soft;
     }
-    const built = buildRockFormation(spec, ground, noise, mulberry32(job.stream), { mobile: ctx.mobile });
-    if (!built.geometry) { skip(feature, 'empty'); continue; }
-    rockPieces.push(built.geometry);
+    // (a phone's masses from the desktop's stones: sceneryRocks.ts RockBuildOptions massRng, the formation's own seed)
+    const built = buildRockFormation(spec, ground, noise, mulberry32(job.stream),
+      { mobile: ctx.mobile, massRng: ctx.mobile ? mulberry32(job.stream) : undefined });
+    // (whether it stands is the desktop's stone set's on every tier: a phone draws what it lays, nothing more)
+    if (!built.laid) { skip(feature, 'empty'); continue; }
+    if (built.geometry) rockPieces.push(built.geometry);
     for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
     if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
     feature.triangles = built.triangles;
@@ -394,9 +397,10 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       // keep their seats.
       if (talus !== null && !restsOnTalus(ground, x, z, reach, talus)) continue;
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
-        ground, noise, mulberry32(stream), { mobile: ctx.mobile });
-      if (!built.geometry) continue;
-      rockPieces.push(built.geometry);
+        ground, noise, mulberry32(stream), { mobile: ctx.mobile, massRng: ctx.mobile ? mulberry32(stream) : undefined });
+      // (a formation the desktop lays stands on every tier, so the field's later candidates are the same on a phone)
+      if (!built.laid) continue;
+      if (built.geometry) rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
       if (!standing) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
       standingSites.push({ x, z, r: reach });

@@ -100,6 +100,21 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
     }
     a.geometry.dispose(); b.geometry.dispose();
   }
+  // (the layout identity, 2026-10-08: a phone places what the desktop places) on a phone with its second stream on the
+  // formation's seed, the masses are the desktop's to the bit, and the formation stands where the desktop's does; the
+  // phone still draws its fewer, coarser stones
+  {
+    const spec = { form, geology, x: 30, z: -20, radius, height, yawDeg: 25 };
+    const desk = buildRockFormation(spec, slope, noise, mulberry32(77));
+    const phone = buildRockFormation(spec, slope, noise, mulberry32(77), { mobile: true, massRng: mulberry32(77) });
+    const bare = buildRockFormation(spec, slope, noise, mulberry32(77), { mobile: true });
+    assert.deepEqual(phone.masses, desk.masses, `${geology} ${form}: a phone's masses are the desktop's`);
+    assert.equal(phone.laid, desk.laid, `${geology} ${form}: it stands on a phone where it stands on the desktop`);
+    assert.deepEqual(Array.from(phone.geometry.attributes.position.array), Array.from(bare.geometry.attributes.position.array),
+      `${geology} ${form}: the phone draws what it drew (the second stream never touches its stones)`);
+    assert.ok(phone.triangles <= desk.triangles, `${geology} ${form}: a phone draws no more than the desktop`);
+    for (const built of [desk, phone, bare]) built.geometry?.dispose();
+  }
 }
 // a tor reaches its authored height within a fifth; a pavement's clints stay under a hull's step
 {
