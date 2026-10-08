@@ -19,6 +19,9 @@ const CLASSES = Object.freeze({
   kord: Object.freeze({ name: 'Kord-pattern HMG', caliberMm: 12.7 }),
   mag: Object.freeze({ name: 'Browning-derived GPMG', caliberMm: 7.62 }),
   mag58: Object.freeze({ name: 'MAG 58 GPMG', caliberMm: 7.62 }),
+  // 2026-10-08 (round 5, the coordinator: the right gun per nation): the German MG3 and the Chinese QJC-88
+  mg3: Object.freeze({ name: 'MG3 GPMG', caliberMm: 7.62 }),
+  qjc88: Object.freeze({ name: 'QJC-88 HMG', caliberMm: 12.7 }),
 });
 
 function triangleCount(root) {

@@ -114,7 +114,9 @@ function verifySeats(tank,id){
  for(const mg of mgs){
   assert.ok(mg.parent===rig,'roof weapons yaw with their receiving stock');
   // 2026-10-07 (round 3): the Trophy commander's remote MAG is drawn at true scale (1.0, was 1.48: a 115 % GPMG)
-  const scale=id==='merkava4_trophy'?1.0:mg.position.x<0?.96:.8667;
+  // 2026-10-08 (round 5): crew guns draw at no less than 95 % of their class's true scale (machineGunGeometry.ts
+  // MG_CREW_TRUE_SHARE), so the probe reads the drawn scale off the fitting instead of the authored one.
+  const scale=mg.userData.weaponScale/.78;
   barrelContinuous(mg,scale);footSeated(mg,[turret,detail]);
   const seatedY=mg.position.y;mg.position.y+=.10;mg.updateMatrixWorld(true);
   try{assert.throws(()=>footSeated(mg,[turret,detail]),/MG base seated/,'raised real fitting must lose its seat');}
