@@ -98,7 +98,7 @@ export const SETS = [
       { id: 't34-runway-pan', durMs: 3000, speed: 14, pinMs: 1500, effects: [], formation: [[0, 0], [1.5, -22], [-1, -44]], count: 3,
         cam: RIG.pan({ side: 85, along: 0, lift: 1.6, fov: 10, look: [0, -6, 1.6] }) },
     ] },
-  { id: 'sirocco-noon-village', map: 'desert', time: 'day', seed: 406, anchor: [6, -40], heading: 0, formation: 'wedge', picture: { exposure: -0.4, contrast: 1.12 },
+  { id: 'sirocco-noon-village', map: 'desert', time: 'day', seed: 406, anchor: [10, -70], heading: 351.9, formation: 'wedge', picture: { exposure: -0.4, contrast: 1.12 }, // PR #9 push 4: was [6, -40] at 0°, the hero starting in a checkpoint hut and b26's lens blocked at its still
     lineup: [CAST.leclerc, CAST.merkava, CAST.sepv3], camo: 'factory', count: 3,
     enemies: { along: 95, lat: -6, count: 2, formation: 'pair', lineup: [CAST.t90m, CAST.t72b3m], states: ['burning', 'intact'] },
     still: { fxTime: 2460, effects: [burn('foe0', 0), smoke('foe0', 0), fire('hero', 2420), dust('hero', 2000, 12, 1), fire('ally1', 1600), mg('ally2', 2350, 9)], cameras: [C.hero34, C.worm] },
@@ -108,7 +108,7 @@ export const SETS = [
       { id: 't10-wadi-kill', durMs: 1250, speed: 1.5, effects: [burn('foe0', 0), smoke('foe0', 0), fire('hero', 300), dust('hero', 200, 12, 1)],
         cam: [{ tMs: 0, side: 9, along: 13, lift: 1.3, fov: 40 }, { tMs: 1250, side: 8.6, along: 12.4, lift: 1.35, fov: 39 }] },
     ] },
-  { id: 'redrock-golden-canyon', map: 'badlands', time: 'golden', seed: 407, anchor: [-150, 60], heading: 160, formation: 'wedge',
+  { id: 'redrock-golden-canyon', map: 'badlands', time: 'golden', seed: 407, anchor: [-183.1, 139.7], heading: 177.6, formation: 'wedge', // PR #9 push 4: was [-150, 60] at 160°, the reshaped relief putting an ally on a 0.41 slope at the start
     lineup: [CAST.leclerc, CAST.leclerc, CAST.sepv3, CAST.leclerc, CAST.sepv3], camo: 'factory',
     still: { fxTime: 1000, effects: ['hero', 'ally1', 'ally2', 'ally3', 'ally4'].map((a, i) => dust(a, 600 + i * 30, 16, 1.2)), cameras: [{ name: 'front-low', side: 6, along: 22, lift: 0.8, fov: 36 }, { name: 'flank', side: 30, along: 4, lift: 2, fov: 30, lookHero: [0, -10, 1.5] }] },
     films: [
@@ -123,14 +123,14 @@ export const SETS = [
       { id: 't12-mine-fire', durMs: 1250, speed: 0, effects: [burn('foe0', 0), fire('hero', 250)], cam: [{ tMs: 0, side: 4.5, along: 9.5, lift: 0.45, fov: 38 }, { tMs: 1250, side: 4.4, along: 9.2, lift: 0.46, fov: 37 }] },
       { id: 't33-mine-noon', time: 'day', durMs: 1250, speed: 0, effects: [burn('foe0', 0), fire('hero', 500)], cam: [{ tMs: 0, side: 9, along: 13, lift: 1.4, fov: 40 }, { tMs: 1250, side: 8.7, along: 12.6, lift: 1.42, fov: 39 }] },
     ] },
-  { id: 'amberford-golden-ford', map: 'autumn', time: 'golden', seed: 409, anchor: [-188, 142], heading: 88, formation: 'pair',
+  { id: 'amberford-golden-ford', map: 'autumn', time: 'golden', seed: 409, anchor: [-127.7, 162.1], heading: 344.1, formation: 'pair', // PR #9 push 4: was [-188, 142] at 88°, an ally starting in a stone wall (the nearest clear road turns the view 104°)
     lineup: [CAST.k2, CAST.type10], camo: 'factory',
     enemies: { along: 110, lat: 20, count: 2, formation: 'pair', lineup: [CAST.t90m, CAST.t72b3m], states: ['burning', 'intact'] },
     still: { fxTime: 2470, effects: [burn('foe0', 0), fire('hero', 2400), fire('foe1', 1500), dust('hero', 2300, 10, 1)], cameras: [{ name: 'riverbank', side: 12, along: 14, lift: 1.2, fov: 38 }, C.worm] },
     films: [
       { id: 't13-ford-fight', durMs: 2500, speed: 3, effects: [burn('foe0', 0), fire('foe1', 300), fire('hero', 1500)], cam: RIG.follow({ side: [12, 11], along: [14, 11], lift: 1.1, fov: 38, look: [0, 2, 1.8] }) },
     ] },
-  { id: 'saltmere-sunset-lighthouse', map: 'coastal', time: 'sunset', seed: 410, anchor: [206, 92], heading: 92, formation: 'column',
+  { id: 'saltmere-sunset-lighthouse', map: 'coastal', time: 'sunset', seed: 410, anchor: [208, 94.4], heading: 90.9, formation: 'column', // PR #9 push 4: was [206, 92] at 92°, an ally starting in a fence rail
     lineup: [CAST.sepv3, CAST.griffin, CAST.sepv3, CAST.griffin], camo: 'factory', count: 4,
     still: { fxTime: 900, effects: [dust('hero', 400, 10, 0.8), dust('ally1', 420, 10, 0.8)], cameras: [{ name: 'worm', side: 5, along: 9, lift: 0.5, fov: 38 }, { name: 'lighthouse-side', side: 24, along: -14, lift: 2, fov: 36, lookHero: [0, -10, 4] }] },
     films: [
@@ -169,7 +169,7 @@ export const SETS = [
       { id: 't18-village-chase', durMs: 2800, speed: 5, effects: [flare([-80, -40], 0, { heightM: 105, burnS: 40, driftMps: 1.2 }), burn('foe0', 0), fire('hero', 1900)],
         cam: RIG.chase({ side: -3.5, along: [-17, -13], lift: 2.2, fov: 42, look: [0, 30, 2] }) },
     ] },
-  { id: 'ruinspires-dusk-avenue', map: 'ruinspires', time: 'dusk', seed: 415, anchor: [-152, -120], heading: 0,
+  { id: 'ruinspires-dusk-avenue', map: 'ruinspires', time: 'dusk', seed: 415, anchor: [-200, -116], heading: 0, // PR #9 push 4: was [-152, -120], allies starting in a bunker and a ruin
     formation: [[0, 0], [-3, -18], [3, -36]], lineup: [CAST.t14, CAST.t90m, CAST.t14], camo: 'factory',
     enemies: { along: 140, lat: 0, count: 2, formation: 'column', spread: 0.5, lineup: ['leo2a6_x', 'm1a2_x'], states: ['burning', 'intact'] },
     still: { fxTime: 2480, effects: [burn('foe0', 0), smoke('foe0', 0), fire('hero', 2440), fire('foe1', 1400)], cameras: [{ name: 'avenue-mid', side: 3.5, along: -12, lift: 1.4, fov: 42, lookHero: [0, 50, 6] }, C.rear, C.front] },
@@ -208,7 +208,7 @@ export const SETS = [
     films: [
       { id: 't32-towers-follow', durMs: 2800, speed: 6, effects: [burn('foe0', 0), fire('hero', 1800)], cam: RIG.follow({ side: [7, 6.5], along: [7, 4], lift: 0.6, fov: 54, look: [-1, 3, 3.2] }) },
     ] },
-  { id: 'saltwind-day-harbor', map: 'saltwind', time: 'day', seed: 421, anchor: [-188, 20], heading: 0, formation: 'column',
+  { id: 'saltwind-day-harbor', map: 'saltwind', time: 'day', seed: 421, anchor: [-182, 27.9], heading: 5.1, formation: 'column', // PR #9 push 4: was [-188, 20] at 0°, an ally starting in a market stall
     lineup: [CAST.ariete, CAST.leclerc, CAST.ariete, CAST.leclerc], camo: 'factory', count: 4,
     still: { fxTime: 800, effects: [dust('hero', 400, 8, 0.7)], cameras: [C.hero34, { name: 'sea-side', side: 24, along: 10, lift: 2, fov: 38, lookHero: [0, -10, 2] }] },
     films: [
