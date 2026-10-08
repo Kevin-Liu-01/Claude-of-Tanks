@@ -3505,12 +3505,16 @@ function* createFxSteps(
       emitDestructionDebrisShower(pos, gy, cy, rack, burn, birthOffset);
       emitDestructionLargeChunks(pos, gy, cy, rack, burn, birthOffset);
       if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
-      flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
-        EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
-      // the column takes hold out of the fireball's soot over the first second (round 2 backdated it, so a column stood
-      // over the hull in the kill's first frame)
+      // (wave 266: a flat orange disc flooded the ground round the hull, five times the sun under the light) the fireball
+      // is what glows; the light it throws on the ground is a warm pool that dies with it
+      flashLight(lightStates[1], _sv.set(pos.x, cy + 4.2, pos.z),
+        EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset));
+      // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
+      // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;
-      for (let i = 0; i < 6; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset + 0.25 + i * 0.2);
+      for (let i = 0; i < 3; i++) {
+        mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset + 0.7 + i * 0.45 + rng() * 0.3);
+      }
       columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
       capColumns();
       finalizeDestroyedVisual(visual, rack, birthOffset);
@@ -3599,7 +3603,12 @@ function* createFxSteps(
     if (blast) {
       // destruction-fx lane: one big rolling smoke body about every 0.3 s (each tick draws its share), and the
       // additive flame licks on the deck
-      if (rng() < COLUMN_TICK_S / 0.16) mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk, birthOffset);
+      // a far column (the distance boost past ~90 m) feeds fewer, bigger bodies: the same silhouette for a fraction of
+      // the overdraw and the sort (six burning hulls would otherwise hold ~560 live puffs)
+      const lod = dk > 1.4 ? 0.5 : dk > 1.15 ? 0.72 : 1;
+      if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
+        mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
+      }
       if (rng() < 0.70 + 0.30 * stage) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
@@ -3843,12 +3852,14 @@ function* createFxSteps(
     const explosionState = lightStates[1];
     if (lightAge(explosionState) >= explosionState.dur && columns.length) {
       const col = columns[columns.length - 1];
-      explosionLight.position.set(col.pos[0], col.pos[1] + 2.6, col.pos[2]);
+      // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
+      // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
+      explosionLight.position.set(col.pos[0], col.pos[1] + 3.4, col.pos[2]);
       explosionLight.distance = 12;
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale;
+      ) * col.scale * (blast ? 0.45 : 1);
       return;
     }
     if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== 13) {
