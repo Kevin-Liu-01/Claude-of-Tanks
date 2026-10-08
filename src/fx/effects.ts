@@ -1734,6 +1734,8 @@ function* createFxSteps(
     flash: (o) => particles.emit('flash', o),
     fire: (o) => particles.emit('fire', o),
     sparks: (o) => particles.emit('sparks', o),
+    jet: (o) => particles.emit('jet', o),
+    shockRing: (x: number, z: number, scaleK: number, alphaK: number, ageS: number) => spawnShockRing(x, z, ageS, scaleK, alphaK),
     lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number) => {
       if (replaySuppressed) return;
       if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS); return; }
@@ -1747,6 +1749,8 @@ function* createFxSteps(
       col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
     ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1,
       seed: 0, birthOffset: 0 },
+    lj: { pos: [0, 0, 0], axis: [0, 1, 0], life: 0.1, width: 0.5, len0: 0.5, len1: 3, seed: 0, col: [1, 1, 1], alpha: 1,
+      birthOffset: 0 },
   } : null;
   const _strikeDir = new THREE.Vector3();
   const _crater = { radiusM: 0, depthM: 0, rimM: 0 };
@@ -1767,7 +1771,8 @@ function* createFxSteps(
         ? (heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z) ?? groundY(pos.x, pos.z))
         : pos.y;
       if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
-      else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+      else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset,
+        ...(dir ? { dx: dir.x, dy: dir.y, dz: dir.z } : {}) });
       if (!water && craters && !craterEventsSeen) {
         craterFor(info.chargeKg, info.munition, 1, _crater);
         if (_crater.radiusM > 0.25) {

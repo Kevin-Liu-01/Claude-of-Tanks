@@ -43,6 +43,11 @@ interface LightStreak {
   pos: [number, number, number]; vel: [number, number, number]; life: number; width: number; stretch: number;
   grav: number; col: [number, number, number]; alpha: number; seed: number; birthOffset: number;
 }
+/** An axis-oriented additive cone (particles.ts 'jet'): a shaped charge's jet, a backblast. */
+interface LightJet {
+  pos: [number, number, number]; axis: [number, number, number]; life: number; width: number; len0: number;
+  len1: number; seed: number; col: [number, number, number]; alpha: number; birthOffset: number;
+}
 
 export interface BlastContext {
   /** the shared seeded fx stream */
@@ -53,6 +58,9 @@ export interface BlastContext {
   flash(o: LightPuff): void;
   fire(o: LightPuff): void;
   sparks(o: LightStreak): void;
+  jet(o: LightJet): void;
+  /** the pressure ring racing out over the ground (scale x the battle ring) */
+  shockRing(x: number, z: number, scaleK: number, alphaK: number, ageS: number): void;
   /** pulse the pooled explosion light (peak x the battle's explosion peak) after delayS */
   lightPulse(x: number, y: number, z: number, peakK: number, delayS: number): void;
   /** camera-distance size boost (1 inside ~90 m) so far blasts still read */
@@ -63,6 +71,7 @@ export interface BlastContext {
   readonly k: ChunkPiece;
   readonly lp: LightPuff;
   readonly ls: LightStreak;
+  readonly lj: LightJet;
 }
 
 const FLASH_WHITE: Rgb = [1, 0.96, 0.86];
@@ -167,6 +176,8 @@ interface GroundBurstInput {
   chargeKg: number;
   surface: SurfaceKind;
   birthOffset?: number;
+  /** the round's travel direction (unit) when known: a shaped charge's jet flashes back along it */
+  dx?: number; dy?: number; dz?: number;
 }
 
 /**
@@ -184,10 +195,26 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const gy = C.groundY(I.x, I.z);
   const by = Math.max(I.y, gy);
   const dk = C.distBoost(I.x, by, I.z);
-  // gunship / heavy rounds throw a taller column; shaped charges (HEAT, ATGM, FPV) dig less and burn more
+  // gunship / heavy rounds throw a taller column; shaped charges (HEAT, ATGM, FPV) dig less and burn more; the
+  // rocket battery's rounds are thermobaric (a long, rolling fireball); a drone's warhead throws fragments
   const shaped = I.munition === 'heat' || I.munition === 'atgm' || I.munition === 'drone_fpv';
   const heavy = I.munition === 'howitzer' || I.munition === 'missile' || I.munition === 'rocket';
+  const thermobaric = I.munition === 'rocket';
   const dustK = L.dustK * (shaped ? 0.7 : 1);
+  if (heavy || s >= 1.7) C.shockRing(I.x, I.z, 0.45 + 0.3 * s, Math.min(1.2, 0.5 + 0.25 * s), Math.max(0, -bo));
+  if (shaped && I.dx !== undefined) {
+    // the jet flashes back out of the hole it drilled, along the line the round came in
+    const j = C.lj;
+    j.pos[0] = I.x; j.pos[1] = by + 0.2; j.pos[2] = I.z;
+    const jl = Math.hypot(I.dx ?? 0, I.dy ?? 0, I.dz ?? 0) || 1;
+    j.axis[0] = -(I.dx ?? 0) / jl; j.axis[1] = Math.abs((I.dy ?? 0) / jl) * 0.6 + 0.4; j.axis[2] = -(I.dz ?? 0) / jl;
+    const al = Math.hypot(j.axis[0], j.axis[1], j.axis[2]) || 1;
+    j.axis[0] /= al; j.axis[1] /= al; j.axis[2] /= al;
+    j.life = 0.09; j.width = 0.5 * s * dk; j.len0 = 0.6; j.len1 = 4.5 * s * dk; j.seed = R();
+    j.col[0] = 1; j.col[1] = 0.9; j.col[2] = 0.65; j.alpha = 0.95; j.birthOffset = bo;
+    C.jet(j);
+  }
+  if (I.munition === 'drone_fpv') sparkSpray(C, I.x, by + 0.4, I.z, 0, 1, 0, 22, 24, 1.3, 0.35, 0.022, bo);
 
   // 1. flash and fireball
   lightPuff(C, 'flash', I.x, by + 0.6 * s, I.z, 0, 0.5, 0, 0.07, 1.6 * s * dk, 4.2 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
@@ -200,15 +227,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       1.0 * s * dk, (2.2 + R()) * s * dk, FIRE_HOT, FIRE_DEEP, 0.9, 1.5, bo);
   }
   // the fireball's body inside the media: a hot billow that cools to residue in half a second
-  const ballN = shaped ? 3 : 2;
+  const ballN = thermobaric ? 5 : shaped ? 3 : 2;
   for (let i = 0; i < ballN; i++) {
     const a = R() * TAU;
     place(m, I.x + Math.cos(a) * 0.4 * s, by + (0.6 + R() * 0.6) * s, I.z + Math.sin(a) * 0.4 * s, bo - 0.02);
-    move(m, Math.cos(a) * 2.5 * s, (3 + R() * 3) * s, Math.sin(a) * 2.5 * s, 2.2, 1.2, 0.5, 0);
-    shape(m, 1.6 + R() * 0.6, 1.4 * s * dk, (4.2 + R()) * s * dk, 2.6, R);
-    look(m, BLAST_RESIDUE, BLAST_RESIDUE, 0.92, 0.0, 0.45);
-    book(m, 'billow', R, 2.2 + R() * 0.6);
-    heat(m, 1.4, 4.5);
+    move(m, Math.cos(a) * (thermobaric ? 4 : 2.5) * s, (3 + R() * 3) * s, Math.sin(a) * (thermobaric ? 4 : 2.5) * s, 2.2,
+      thermobaric ? 2.2 : 1.2, 0.5, 0);
+    shape(m, (thermobaric ? 3.2 : 1.6) + R() * 0.6, 1.4 * s * dk, (thermobaric ? 5.5 : 4.2 + R()) * s * dk, 2.6, R);
+    look(m, thermobaric ? SOOT : BLAST_RESIDUE, BLAST_RESIDUE, 0.92, 0.0, 0.45);
+    book(m, 'billow', R, thermobaric ? 3.4 : 2.2 + R() * 0.6);
+    heat(m, thermobaric ? 1.7 : 1.4, thermobaric ? 1.3 : 4.5);
     C.media(m);
   }
   C.lightPulse(I.x, by + 2.2 * s, I.z, Math.min(1.6, 0.45 + 0.35 * s), 0);

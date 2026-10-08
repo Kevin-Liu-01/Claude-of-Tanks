@@ -5,6 +5,7 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { MUNITION_PROFILES, type MunitionClass } from '../sim/destructionEvents.ts';
 /**
  * studio.ts — SCENE STUDIO: an in-game staging rig for composing shots.
  *
@@ -251,6 +252,9 @@ type ActorRef = StudioActor | StudioPanelActor | string | number | null | undefi
 interface StudioEffectParams {
   ageS?: number;
   caliberMm?: number;
+  /** explosion: a munition class (sim/destructionEvents.ts) and its charge, kg TNT (default: the class's nominal) */
+  munition?: string;
+  chargeKg?: number;
   cause?: string;
   count?: number;
   dirDeg?: number;
@@ -1512,6 +1516,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function fireExplosion({ position, params }: StudioEffectExecution): boolean {
     const size = params.size || 'large';
+    // destruction-fx lane: a burst of a named munition class (the gunship's howitzer, an ATGM, a drone, a 30 mm HE
+    // round ...) at its nominal charge or params.chargeKg, as the battle's shells end on the ground
+    if (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES) {
+      const munition = params.munition as MunitionClass;
+      const chargeKg = Number.isFinite(params.chargeKg) ? Number(params.chargeKg) : MUNITION_PROFILES[munition].nominalChargeKg;
+      fxBus.emit('shell:expired', {
+        shellId: -1,
+        hitTerrain: true,
+        pos: [position.x, position.y, position.z],
+        munition,
+        chargeKg,
+        caliberMm: params.caliberMm || 120,
+      });
+      return true;
+    }
     if (size === 'small') {
       fxBus.emit('shell:expired', {
         shellId: -1,

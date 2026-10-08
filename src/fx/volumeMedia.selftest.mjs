@@ -132,10 +132,12 @@ function captureContext(seed) {
       media: (p) => log.media.push({ ...p }),
       chunk: (k) => log.chunk.push({ ...k }),
       flash: () => { log.flash++; }, fire: () => { log.fire++; }, sparks: () => { log.sparks++; },
+      jet: () => { log.jets = (log.jets || 0) + 1; }, shockRing: () => { log.rings = (log.rings || 0) + 1; },
       lightPulse: () => { log.pulses++; }, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: makeChunkPiece(),
       lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1], col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
       ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 },
+      lj: { pos: [0, 0, 0], axis: [0, 1, 0], life: 0.1, width: 0.5, len0: 0.5, len1: 3, seed: 0, col: [1, 1, 1], alpha: 1, birthOffset: 0 },
     },
   };
 }
@@ -148,6 +150,16 @@ function captureContext(seed) {
   const a = he(5, 'he', 3.5, 'soil'), b = he(5, 'he', 3.5, 'soil');
   assert.deepEqual(a, b, 'same seed, same burst (Studio resetSeed and frozen captures stay exact)');
   const big = he(5, 'howitzer', 20, 'soil');
+  assert.ok((big.rings || 0) > 0, 'the gunship howitzer sends a pressure ring over the ground');
+  const atgm = captureContext(6);
+  groundBurst(atgm.ctx, { x: 0, y: 0, z: 0, munition: 'atgm', chargeKg: 3.4, surface: 'soil', dx: 1, dy: -0.3, dz: 0 });
+  assert.ok((atgm.log.jets || 0) > 0, "an ATGM's jet flashes back along its line");
+  const fpv = captureContext(6);
+  groundBurst(fpv.ctx, { x: 0, y: 0, z: 0, munition: 'drone_fpv', chargeKg: 1.2, surface: 'soil' });
+  assert.ok(fpv.log.sparks > 15, "a drone's warhead throws fragments");
+  const tos = captureContext(6);
+  groundBurst(tos.ctx, { x: 0, y: 0, z: 0, munition: 'rocket', chargeKg: 8, surface: 'soil' });
+  assert.ok(tos.log.media.filter((m) => m.heat > 1.5).length >= 5, 'a thermobaric rocket rolls a long fireball');
   const maxSize = (log) => Math.max(...log.media.map((m) => m.size1));
   assert.ok(maxSize(big) > maxSize(a) * 1.4, 'the gunship howitzer throws a far bigger cloud than tank HE');
   assert.ok(a.flash > 0 && a.fire > 0 && a.pulses > 0, 'an explosive burst flashes, burns and lights the ground');

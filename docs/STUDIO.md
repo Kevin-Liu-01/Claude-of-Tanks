@@ -244,7 +244,7 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 | `tracer` | `from:[x,y,z]`, `to:[x,y,z]` | `shellType` (AP/APCR/APFSDS/HEAT/HE), `speedMps`, `caliberMm` | Projectile entity traveling between two points; `fxTime` can freeze it in flight. |
 | `impact` | point/actor | `kind` (pen/nonpen/ricochet/he_pen/he_splash/era/spaced_absorb/terrain), `caliberMm`, `normal:[x,y,z]` | Armor or terrain impact effect. |
 | `sparks` | point/actor | `caliberMm` | ricochet spark fan (alias of impact ricochet) |
-| `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause` | standalone explosion |
+| `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause`; or `munition` (a class of `src/sim/destructionEvents.ts`: `howitzer`, `missile`, `atgm`, `drone_fpv`, `rocket`, `autocannon_he`, `kinetic`, `small_arms` ...) with optional `chargeKg` (default the class's nominal) | standalone explosion; with `munition`, the burst that class makes on the ground or water (sized by its charge, coloured by the surface) |
 | `tank_kill` | actor | `cause` (ammorack/shot/fire), `pop` (default true) | Destruction sequence with a fireball, debris, smoke column, wreck transition, and optional turret detachment. |
 | `dust` | point/actor | `count`, `intensity`, `dirDeg` | Dust burst using the track-dust effect. |
 | `engine_smoke` | actor | `off` | Additive continuous smoke from the engine deck, including on wreck meshes. |
