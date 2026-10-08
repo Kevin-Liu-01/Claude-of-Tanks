@@ -396,6 +396,9 @@ export interface StructureDamageKit {
   /** A section falls (P2): a roof drops its covering (slab sections missing, a broken ridge, hanging rafters), an
    *  upper storey pancakes, a wall panel topples outward. */
   sectionDown?(anatomy: StructureDamageAnatomy, section: number, seed: number, out: DamageWriters): DamageStageResult;
+  /** A storey drops after its faces (P2: the fall that completes it, StructureBreachEvent.storeyDown): its floor slab
+   *  and what stood on it falling into the storey below. */
+  storeyDown?(anatomy: StructureDamageAnatomy, storey: number, seed: number, out: DamageWriters): DamageStageResult;
   /** The collapse: remnants, the pile on the mound in the building's own buckets, and the falling debris. */
   collapse?(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult;
 }
