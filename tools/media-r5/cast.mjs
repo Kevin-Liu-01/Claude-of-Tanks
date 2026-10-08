@@ -23,6 +23,8 @@ export const CAST = {
   burlak: 't90a_burlak_x', husarz: 'pl_t80u_modern', pl01: 'pl01_105', hetman2: 'ua_t72b3m_hetman_ii', leo2a6UA: 'leo2a6_ua',
   challenger2UA: 'ua_challenger2', challenger3: 'challenger_3', challenger2e: 'challenger2e', tos1a: 'tos1a_tagil', m551: 'm551a1_tts',
   m1a3: 'm1a3', vt4a1: 'vt4a1', type96_72m: 'type96_72m_lei',
+  // the M6 Linebacker from the same list, in the fleet since the 2026-10-07 merge (it was not on 2026-10-06)
+  m6: 'm6_linebacker',
 };
 /** Public names for callouts (from the fleet specs) and nations. */
 export const CAST_NAMES = {
@@ -42,7 +44,7 @@ export const CAST_NAMES = {
   chieftain_mk10_x: ['Chieftain Mk 10', 'UK'], chieftain5_x: ['Chieftain Mk 5', 'UK'], challenger1_x: ['Challenger 1', 'UK'], type90_x: ['Type 90', 'Japan'],
   type89_x: ['Type 89', 'Japan'], m1a2_x: ['M1A2 Abrams', 'USA'], m1a2_tusk_x: ['M1A2 Abrams TUSK', 'USA'], m1a2_sepv2_x: ['M1A2 Abrams SEPv2', 'USA'],
   ua_m1a1_x: ['M1A2 Abrams (Ukraine)', 'Ukraine'], spz_puma_s1_x: ['Puma S1', 'Germany'],
-  t90a_burlak_x: ['T-90A Burlak', 'Russia'], pl_t80u_modern: ['T-80U Husarz', 'Poland'], pl01_105: ['PL-01 105', 'Poland'],
+  m6_linebacker: ['M6 Linebacker', 'USA'], t90a_burlak_x: ['T-90A Burlak', 'Russia'], pl_t80u_modern: ['T-80U Husarz', 'Poland'], pl01_105: ['PL-01 105', 'Poland'],
   ua_t72b3m_hetman_ii: ['T-72B3M Hetman II', 'Ukraine'], leo2a6_ua: ['Leopard 2A6 UA', 'Ukraine'], ua_challenger2: ['Challenger 2 UA', 'Ukraine'],
   challenger_3: ['Challenger 3 Prototype', 'UK'], challenger2e: ['Challenger 2E', 'UK'], tos1a_tagil: ['TOS-1A Tagil', 'Russia'],
   m551a1_tts: ['M551A1 TTS', 'USA'], m1a3: ['M1A3 Abrams', 'USA'], vt4a1: ['VT-4A1', 'China'], type96_72m_lei: ['Type 96-72M Léi', 'China'],

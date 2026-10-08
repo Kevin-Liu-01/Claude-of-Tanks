@@ -176,7 +176,7 @@ export const SHOTS = [
     { speed: 3.6, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...hitNear(6, -8, 1400), ...hitNear(-3, -18, 3000), fire('hero', 4500), huge(H(14, -36), 4700), exhaust('hero', 100)],
       cam: RIG.lead({ side: -6.5, along: [13, 9.5], lift: 1.6, fov: 36, look: [0.8, 0, 1.6] }) },
     { tMs: 3060, exposureMs: 25 }],
-  [8, 'market-push', 'tank', 'An M1A2 Abrams column pushes through the market street of Sunscar Oasis', S.oMarket,
+  [8, 'market-push', 'tank', 'An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis', S.oMarket,
     // a low lead looking up at the hull: the street facades and the sky behind it, the oasis floor (whose dark contour
     // bands marbled the sand in every frame, r4c) only a grazing strip under the tracks
     { count: 3, speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 4.5, -11, 1800), fire('hero', 3600), dust('hero', 700, 12, 1)],
@@ -384,7 +384,7 @@ export const SHOTS = [
 export const PAINT = Object.freeze({
   1: ['flecktarn', 'sig_t90a'], 2: ['berlin', 'service_soviet_coldwar'], 3: ['urbanblock', 'sig_t90'],
   4: ['sig_t90', 'service_leo2a6m'], 5: ['sig_object695_x', 'merdc'], 6: ['splinter', 'sig_t90a_vladimir'],
-  7: ['winterbands', 'service_soviet_coldwar'], 8: ['chocchip', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
+  7: ['winterbands', 'service_soviet_coldwar'], 8: ['paint_m6_linebacker', 'sig_t90ms'], 9: ['sig_leo2a4_otco', 'sig_t90a'],
   10: ['sig_type100', 'rasputitsa'], 11: ['desert', 'paint_ru_t80u_modern'], 12: ['sig_t90ms', 'summer'],
   13: ['sig_k2b', null], 14: ['winter', 'merdcwinter'], 15: ['autumn', 'service_soviet_coldwar'],
   16: ['dazzle', 'sig_t90a'], 17: ['sig_challenger_3x', 'sig_t72m1_jaguar'], 18: ['digitaldesert', 'service_soviet_coldwar'],
@@ -421,9 +421,11 @@ const OWN_MOTION = ['speed', 'curveDegS', 'foeSpeed', 'pinMs', 'cam', 'turrets',
 // Owner 2026-10-06 ("id like to see … as well!"): every vehicle on the list leads a take. A hero that led several takes
 // (the Stridsvagn 122 five, the T-14 four, the Leopard 2A6 and the T-90SM three, six more two) keeps its first; the
 // others go to the list, each on a battlefield and among allies of its own nation and kind, against an opposing
-// force (`foes`, where the take's own enemies were the hero's side).
+// force (`foes`, where the take's own enemies were the hero's side). The M6 Linebacker on the list joined the fleet with
+// the 2026-10-07 merge: it leads the Abrams column through Sunscar's market street (s08) in its three-tone desert.
 const RU_FOES = [CAST.t72b3, CAST.t90a, CAST.t80u];
 const RECAST = {
+  8: { lineup: [CAST.m6, CAST.m1a2, CAST.tusk] },
   16: { lineup: [CAST.griffin, CAST.sepv2] },
   17: { lineup: [CAST.challenger3, CAST.challenger2e, CAST.warrior] },
   19: { lineup: [CAST.pl01, CAST.husarz, CAST.leo2a5] },

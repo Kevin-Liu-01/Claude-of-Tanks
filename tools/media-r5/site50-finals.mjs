@@ -164,8 +164,9 @@ async function renderJobs(label, all, file) {
 }
 for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
-  // (masters on disk only: without them a chunk renders as soon as the lock allows)
-  if (flags['film-master'] !== 'none' && k >= 2 && encoders[k - 2]) await encoders[k - 2];
+  // (the wait bounds the masters on disk when the encodes drop them; kept masters, or none, need no wait, and a starved
+  // encode under a loaded machine must not hold the GPU work back: 2026-10-07, load average 450)
+  if (flags['film-master'] !== 'none' && !('keep-film-masters' in flags) && k >= 2 && encoders[k - 2]) await encoders[k - 2];
   if (freeGb() < minFreeGb) {
     await Promise.all(encoders);
     throw new Error(`${freeGb().toFixed(1)} GB free, under --min-free-gb=${minFreeGb}: stopped before chunk ${k + 1} of ${Math.ceil(ids.length / chunk)}`);
