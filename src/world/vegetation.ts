@@ -43,7 +43,7 @@ import {
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
-import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { landWeedShare, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
@@ -4226,9 +4226,12 @@ function* vegetationBuildSteps(
           else if (f.crop !== 0) {
             // (wave 71: "… and green among straw") a sown field carries its weeds — an eighth of its tufts the sward's
             // own, most of them along its edge, where the crop thins into the margin over three metres instead of
-            // stopping on a line
-            const weedP = 0.12 + 0.73 * (1 - smoothstepJs(0, 3.0, f.edgeM - f.marginM));
-            if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= weedP) crop = f.crop;
+            // stopping on a line, and (wave 237) in patches on a map that asks (landUse.ts landWeedShare: the tall
+            // grass's own law)
+            if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= landWeedShare(f, x, z)) crop = f.crop;
+            // (wave 237, Frontier's stubble: "evenly spaced hair-plug grass tufts") a stubble's weeds are the regrowth
+            // after the combine — ankle-high, not the meadow's tussocks
+            else if (f.weedPatches && f.crop === 5 /* LAND_CROP.stubble */) sy *= 0.7;
           } else {
             // (wave 69, Verdant's establishing view: "near-circular blotches … rather than the rectilinear plots") a
             // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw

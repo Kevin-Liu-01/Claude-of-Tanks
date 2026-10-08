@@ -67,6 +67,12 @@ export interface LandUseProfile {
    * the profile's region.
    */
   zones?: readonly LandZone[];
+  /**
+   * 2026-10-07 (wave 237, Frontier's front-lit stubble: "a bleached straw plane sprinkled with evenly spaced hair-plug
+   * grass tufts"): a sown field's weeds gather in patches (landWeedShare) instead of an even sprinkle. Opt-in by map —
+   * without it the tiers' weeds are the even share every other map was judged with.
+   */
+  weedPatches?: boolean;
 }
 
 /** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
@@ -273,6 +279,7 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   frontier: {
     strength: 1, heading: 0.95, blockU: 180, blockV: 120, maxSplit: 3, marginM: 2.0, trackShare: 0.45, hedgeShare: 0.4,
     warpM: 22, region: 'temperate', salt: 41,
+    weedPatches: true, // wave 237: the stubble's weeds in patches, not an even sprinkle of hair plugs
   },
   // 2026-10-03, the rebuilt maps' regions (the maps lane through the coordinator). Each heading follows the map's own
   // roads (the length-weighted dominant road direction inside the square), so the fields line up with the lanes.
@@ -503,6 +510,9 @@ export interface LandFieldSample {
   cropKeep: number;
   /** 1 when the field's sward is its weeds (cured grass tones, not the crop's albedo). */
   weed: number;
+  /** 1 on an active field of a profile whose weeds gather in patches (LandUseProfile.weedPatches; landWeedShare);
+   * optional, so a record built without it reads as the even share. */
+  weedPatches?: number;
   /** 1 on an urban land use (LandUseProfile.urban): its fields lie inside the village too. */
   urban: number;
   /**
@@ -668,6 +678,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const dShort = alongU ? Math.min(edgeU, Math.min(lu, blockU - lu)) : Math.min(lu, blockU - lu);
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
   out.active = 1;
+  out.weedPatches = profile.weedPatches ? 1 : 0;
   out.urban = urban;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
@@ -711,6 +722,32 @@ export function trackLaneCentre(u: number, side: number): number {
 export function trackLaneHalfWidth(u: number, side: number): number {
   return 0.24 * (1 + 0.32 * Math.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * Math.sin(u * 1.13 + side * 1.3 + 2.0));
 }
+
+/** A smooth value noise on a `cell`-metre lattice of the field hash (0..1). */
+function luNoise(x: number, z: number, cell: number, salt: number): number {
+  const fx = x / cell, fz = z / cell, ix = Math.floor(fx), iz = Math.floor(fz);
+  let tx = fx - ix, tz = fz - iz;
+  tx = tx * tx * (3 - 2 * tx); tz = tz * tz * (3 - 2 * tz);
+  const a = luRand(ix, iz, salt), b = luRand(ix + 1, iz, salt), c = luRand(ix, iz + 1, salt), d = luRand(ix + 1, iz + 1, salt);
+  return a + (b - a) * tx + (c - a + (a - b - c + d) * tx) * tz;
+}
+
+/**
+ * A sown field's weeds: the share of the tiers' blades and tufts that stand as the sward's own instead of the crop
+ * (tallGrass.ts admit, vegetation.ts makeTuft — one law). An eighth of the field, and toward its edge, where the crop
+ * thins into the margin over three metres, up to 0.85 (wave 71: "hard-edged colour patches … green among straw").
+ * (2026-10-07, wave 237, Frontier's front-lit stubble: "a bleached straw plane sprinkled with evenly spaced hair-plug
+ * grass tufts") on a profile with `weedPatches` they gather where weeds grow — the field's wet and poorly drilled patches
+ * and the combine's dropped grain coming up green, ragged patches of 4–14 m: over a third of the blades in a patch,
+ * one in seventy between them, still an eighth of the field on the mean.
+ */
+export function landWeedShare(s: LandFieldSample, x: number, z: number): number {
+  const edge = 0.73 * (1 - smooth(0, 3.0, s.edgeM - s.marginM));
+  if (!s.weedPatches) return 0.12 + edge;
+  const n = 0.62 * luNoise(x, z, 11.0, 0x77e1) + 0.38 * luNoise(x, z, 4.3, 0x5a1d);
+  return Math.min(0.85, WEED_FLOOR + WEED_PATCH * smooth(WEED_LO, WEED_HI, n) + edge);
+}
+const WEED_FLOOR = 0.015, WEED_PATCH = 0.365, WEED_LO = 0.50, WEED_HI = 0.68;
 
 function smooth(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));

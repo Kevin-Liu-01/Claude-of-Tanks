@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
-import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
+import { createLandFieldSample, LAND_CROP, landWeedShare, type LandFieldSample } from './landUse.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -640,8 +640,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           else if (crop !== LAND_CROP.pasture) {
             // (wave 71: "hard-edged colour patches … green among straw") a sown field carries its weeds — an eighth of
             // its blades the sward's own, most of them along its edge, where the crop thins into the margin over three
-            // metres instead of stopping on a line (vegetation.ts makeTuft: the same law for the tufts)
-            const weedP = 0.12 + 0.73 * (1 - smoothstep(0, 3.0, _field.edgeM - _field.marginM));
+            // metres instead of stopping on a line, and (wave 237) in patches on a map that asks (landUse.ts
+            // landWeedShare; vegetation.ts makeTuft: the same law for the tufts)
+            const weedP = landWeedShare(_field, x, z);
             if (((tintR * 7.31 + hR * 3.17) % 1) >= weedP) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
           } else {
             // (wave 69: "near-circular blotches … rather than the rectilinear plots") a pasture's straw is its own, by
