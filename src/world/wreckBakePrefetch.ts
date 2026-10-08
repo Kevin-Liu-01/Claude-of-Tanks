@@ -9,11 +9,14 @@
  * planned bake when it asks for it (the same donor, seed and pop through the same worker code: the same wreck); a
  * request the plan does not hold is baked on demand as before, so a stale plan costs time, never a different wreck.
  *
- * Desktop tier, the standard terrain and the plan's seeds only (a phone places two wrecks, an assault variant carves
- * other ground and another terrain seed lays other roads, so their requests differ from the plan), where a Worker exists.
+ * The plan holds every map's desktop requests on the standard terrain, and the phone tier's and the assault terrain's
+ * where they differ (a phone places two wrecks and dresses less; the assault variant carves trenches the wreck pass
+ * steers round): `${mapId}@mobile`, `${mapId}@assault`, `${mapId}@assault-mobile`, resolved by resolveWreckBakeRows.
+ * The plan's seed only (another terrain seed lays other roads), where a Worker exists. tools/wreck-bake-plan.mjs --check
+ * (src/world/wreckBakePlanDrift.selftest.mjs) holds the plan to the tree.
  */
 import { getDeviceTier } from '../engine/quality.ts';
-import { WRECK_BAKE_PLAN } from './maps/wreckBakePlan.ts';
+import { WRECK_BAKE_PLAN, WRECK_BAKE_PLAN_VARIANTS } from './maps/wreckBakePlan.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBake, WreckOptions } from './wrecks.ts';
 
@@ -100,9 +103,30 @@ export function startWreckBakePrefetch(
   };
 }
 
-/** The world build's prefetch for a map, or null where the plan does not apply (see the module note). */
+type WreckBakeRows = ReadonlyArray<WreckBakePlanRow>;
+type WreckBakeVariant = 'mobile' | 'assault' | 'assault-mobile';
+
+/**
+ * A map's planned bakes for a tier and terrain: the variant's own rows where the plan holds them, else what it falls
+ * back to — the assault phone to the phone, the phone and the assault terrain to the desktop plan. The plan tool keeps a
+ * variant's rows only where they differ from that fallback, so this resolution is the whole plan.
+ */
+export function resolveWreckBakeRows(
+  tables: { plan: Readonly<Record<string, WreckBakeRows>>; variants: Readonly<Record<string, WreckBakeRows>> },
+  mapId: string, { mobile, assault }: { mobile: boolean; assault: boolean },
+): WreckBakeRows | null {
+  const own = (variant: WreckBakeVariant): WreckBakeRows | undefined => tables.variants[`${mapId}@${variant}`];
+  const desktop = tables.plan[mapId] ?? null;
+  if (assault && mobile) return own('assault-mobile') ?? own('mobile') ?? desktop;
+  if (assault) return own('assault') ?? desktop;
+  if (mobile) return own('mobile') ?? desktop;
+  return desktop;
+}
+
+/** The world build's prefetch for a map, or null where the plan holds nothing (see the module note). */
 export function startPlannedWreckBakes(mapId: string, terrainVariant: string | null | undefined): WreckBakePrefetch | null {
-  if (typeof Worker === 'undefined' || terrainVariant || getDeviceTier() === 'mobile') return null;
-  const rows = WRECK_BAKE_PLAN[mapId];
+  if (typeof Worker === 'undefined') return null;
+  const rows = resolveWreckBakeRows({ plan: WRECK_BAKE_PLAN, variants: WRECK_BAKE_PLAN_VARIANTS }, mapId,
+    { mobile: getDeviceTier() === 'mobile', assault: terrainVariant === 'assault-trenches' });
   return rows?.length ? startWreckBakePrefetch(rows) : null;
 }

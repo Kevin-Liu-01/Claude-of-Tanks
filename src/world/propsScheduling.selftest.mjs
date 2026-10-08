@@ -243,6 +243,22 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   assert.deepEqual(f.events.map(([event]) => event), ['work', 'closed']);
   assert.equal(f.args[0][6].signal.aborted, true, 'failed worker await cancels this build source consumer');
 }
+{
+  // (the time-to-battle lane, 2026-10-08) the map's planned bakes already run in the prefetch's own worker: this build's
+  // worker is not started up front; a planned request is the prefetch's, a request the plan lacks starts the worker
+  const calls = [];
+  const client = { prepare() { calls.push('prepare'); }, async bake(id) { calls.push(['bake', id]); return { id }; },
+    dispose() { calls.push('disposed'); } };
+  const planned = { specId: 'm60a2', options: { seed: 2002, pop: true }, result: null };
+  const unplanned = { specId: 'k2', options: { seed: 2133, pop: false }, result: null };
+  const prefetch = { take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
+  const f = fixture([{ fine: true, progress: false, wreckBake: planned }, { fine: true, progress: false, wreckBake: unplanned }],
+    undefined, undefined, client);
+  await f.run({}, {}, 2002, null, null, true, null, prefetch);
+  assert.deepEqual(planned.result, { id: 'planned' }, 'the planned bake is the prefetch\'s');
+  assert.deepEqual(unplanned.result, { id: 'k2' });
+  assert.deepEqual(calls, [['bake', 'k2'], 'disposed'], 'no eager start: only the miss starts this build\'s worker');
+}
 for (const props of [{ wrecks: 0 }, { tankWrecks: { count: 0 } }]) {
   const client = { prepare() { assert.fail('empty wreck cast must not start a worker'); },
     dispose() { assert.fail('no worker owner was admitted'); } };

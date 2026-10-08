@@ -2,7 +2,10 @@
 // at once, in plan order and one at a time; the props build takes each planned bake once and bakes anything else on
 // demand; a failed planned bake surfaces where it is taken; disposal releases every bake nobody took and the worker.
 import assert from 'node:assert/strict';
-import { startWreckBakePrefetch, wreckBakeKey } from './wreckBakePrefetch.ts';
+import { resolveWreckBakeRows, startWreckBakePrefetch, wreckBakeKey } from './wreckBakePrefetch.ts';
+import { WRECK_BAKE_PLAN, WRECK_BAKE_PLAN_VARIANTS } from './maps/wreckBakePlan.ts';
+import { MAP_IDS } from './maps/mapIds.ts';
+import { WRECK_PLAN_VARIANTS, planTables, resolvePlanRows } from '../../tools/wreck-bake-plan.mjs';
 
 function fakeClient() {
   const log = [], gates = [];
@@ -62,6 +65,35 @@ const tick = () => new Promise((r) => setImmediate(r));
   await tick(); await tick();
   assert.deepEqual(f.log.filter((l) => l.startsWith('bake')), ['bake a 1 0'], 'nothing starts after disposal');
 }
+{
+  // the plan by tier and terrain (2026-10-08): a variant's own rows where the plan keeps them, else its fallback — the
+  // assault phone to the phone, the phone and the assault terrain to the desktop rows; the tool keeps a variant only
+  // where it differs from that fallback, so its tables and the runtime's resolution give back every recorded key
+  const desktop = [['a', 2002, 1], ['b', 2133, 0], ['c', 2264, 1]], phone = [['a', 2002, 1], ['b', 2133, 0]];
+  const trench = [['a', 2002, 1], ['d', 2133, 1]];
+  const recorded = {
+    flat: { desktop, mobile: desktop, assault: desktop, 'assault-mobile': desktop },
+    small: { desktop, mobile: phone, assault: desktop, 'assault-mobile': phone },
+    dug: { desktop, mobile: phone, assault: trench, 'assault-mobile': [['a', 2002, 1]] },
+  };
+  const tables = planTables(recorded);
+  assert.deepEqual(Object.keys(tables.variants).sort(), ['dug@assault', 'dug@assault-mobile', 'dug@mobile', 'small@mobile'],
+    'a variant equal to its fallback is not kept');
+  for (const [mapId, keys] of Object.entries(recorded)) {
+    for (const variant of WRECK_PLAN_VARIANTS) {
+      const runtime = resolveWreckBakeRows(tables, mapId, { mobile: variant.endsWith('mobile'), assault: variant.startsWith('assault') });
+      assert.deepEqual(runtime, keys[variant], `${mapId}@${variant}: the runtime resolves the recorded rows`);
+      assert.deepEqual(resolvePlanRows(tables, mapId, variant), runtime, `${mapId}@${variant}: the tool resolves as the runtime does`);
+    }
+  }
+  assert.equal(resolveWreckBakeRows(tables, 'nowhere', { mobile: true, assault: true }), null);
+  // the committed plan: every canonical map planned, its variants named for planned maps only
+  assert.deepEqual(Object.keys(WRECK_BAKE_PLAN).sort(), [...MAP_IDS].sort(), 'every canonical map has desktop rows');
+  for (const key of Object.keys(WRECK_BAKE_PLAN_VARIANTS)) {
+    const [mapId, variant] = key.split('@');
+    assert.ok(MAP_IDS.includes(mapId) && ['mobile', 'assault', 'assault-mobile'].includes(variant), `${key} names a map and a variant`);
+  }
+}
 assert.equal(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, 1));
 assert.notEqual(wreckBakeKey('m1a2', 2002, true), wreckBakeKey('m1a2', 2002, false));
-console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken, disposal releases PASS');
+console.log('wreckBakePrefetch: planned bakes at once in plan order, one at a time, taken once, misses on demand, failures where taken, disposal releases; the plan by tier and terrain resolves every recorded key PASS');

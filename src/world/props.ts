@@ -3019,9 +3019,10 @@ export interface WreckBakeRequestRecord { specId: string; seed: number; pop: boo
 
 /**
  * The wreck bakes a map's props build requests of the worker, in order (the time-to-battle lane, 2026-10-07): the
- * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes).
- * tools/wreck-bake-plan.mjs records them per map so the browser can start those bakes when the world build starts,
- * beside the terrain and vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
+ * worker-wreck build drained with each request answered by `bake` (the worker's own bake, run where the caller likes),
+ * up to the end of the wreck pass ('wrecks-finalized': nothing after it asks for a bake). tools/wreck-bake-plan.mjs
+ * records them per map so the browser can start those bakes when the world build starts, beside the terrain and
+ * vegetation, instead of one by one inside the props build (src/world/wreckBakePrefetch.ts).
  */
 export async function recordWreckBakeRequests(
   heightField: HeightField,
@@ -3041,6 +3042,7 @@ export async function recordWreckBakeRequests(
         requests.push({ specId: request.specId, seed: request.options.seed, pop: request.options.pop });
         request.result = await bake(request.specId, request.options);
       }
+      if (r.value?.stage === 'wrecks-finalized') break;
       r = g.next();
     }
   } finally {
@@ -3109,7 +3111,10 @@ export async function createPropsAsync(
   };
   try {
     r = g.next();
-    wreckWorker?.prepare();
+    // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
+    // build's worker starts only for a request the plan does not hold (bake() starts it), not a second copy of the donor
+    // builders up front
+    if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
