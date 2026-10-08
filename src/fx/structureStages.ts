@@ -20,7 +20,8 @@
  * A stage that jumps (a breach out of an intact building) lays the one it skipped. P1's breach stage names a blow, not
  * a hole: the seam's holeAt picks the face nearest the blow's point (breachBlowFor sizes it). Settled stages (a late
  * joiner, a migration) lay their final state at once and throw nothing. A kit that throws costs its look, never the
- * match. Event time only: nothing here runs per frame but the touches of a fall.
+ * match. Event time only: nothing here runs per frame but the touches of a fall and a storey's drop in flight (the P2
+ * cascade's storeys come down over gravity's time, sqrt(2 h / g), not in one frame).
  */
 import * as THREE from 'three';
 import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
@@ -30,7 +31,7 @@ import {
 } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -44,8 +45,8 @@ export interface StructureStages {
   shiftTime(delta: number): void;
   /** Stand every building up again: the mask is the caller's to reset; the flattened parts come back here. */
   reset(): void;
-  /** receipts: buildings falling, part ranges flattened, spans whose original positions are kept */
-  stats(): { falling: number; flattened: number; kept: number };
+  /** receipts: buildings falling, part ranges flattened, spans whose original positions are kept, storeys dropping */
+  stats(): { falling: number; flattened: number; kept: number; dropping: number };
 }
 
 export interface StructureStagesOptions {
@@ -308,9 +309,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   }
   /** Structures that have had a real P2 hole: a P1 'breached' stage cuts them no synthetic one. */
   const realHoles = new Set<number>();
+  /** The kit sections that have fallen, per structure: a section falls once (facades 2026-10-08: two of the sim's
+   *  3.2 m bands on a wall that is one part from foot to eave map to one kit section; the second event lays nothing). */
+  const fallenSections = new Map<number, Set<number>>();
+  const fallOnce = (structureId: number, section: number): boolean => {
+    let set = fallenSections.get(structureId);
+    if (!set) { set = new Set(); fallenSections.set(structureId, set); }
+    if (set.has(section)) return false;
+    set.add(section);
+    return true;
+  };
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
-  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined): void {
+  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number): void {
     if (!result) return;
     let changed = false;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
@@ -319,7 +330,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // world = R(yaw) body + placement (world/structureDamageSeam.ts holeOnAnatomy's frame)
       const wx = px + cut.x * c + cut.z * s, wz = pz - cut.x * s + cut.z * c;
       const wnx = cut.nx * c + cut.nz * s, wnz = -cut.nx * s + cut.nz * c;
-      mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3);
+      // a breach's cuts follow the outline the kit's rim does (its own seed's phase)
+      mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3,
+        holeSeed !== undefined ? holeOutlinePhase01(holeSeed) : undefined);
       // a hole goes through the wall's layers; a spall or the render ring only through its render
       o.scars?.add(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM >= 0.2,
         (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
@@ -420,7 +433,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
@@ -433,7 +446,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result);
+    apply(seam, result, holeSeed);
   }
 
   // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
@@ -515,8 +528,155 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   const falling: { seam: StructureDamageSeam; until: number }[] = [];
 
+  /** A storey's drop at once: the band down to its floor line, what stood on it lowered by its height, its own runs gone
+   *  and its neighbours settled, then the kit's heap on the floor line (laid last: it stands); `holes`: its holes and
+   *  scars too (a fall in flight has moved them itself). */
+  function dropStorey(structureId: number, seam: StructureDamageSeam, storey: DamageStorey, settled: boolean, holes: boolean): boolean {
+    const a = seam.anatomy;
+    let changed = clampStorey(seam, storey);
+    const [reachX, reachZ] = storeyReach(seam, storey);
+    const dropM = storey.y1 - storey.y0;
+    changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
+      && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
+    changed = settleRuns(seam, storey, reachX, reachZ) || changed;
+    if (holes) {
+      mask.moveHoles(seam.structureIdx, a.placement.y + storey.y0 + 0.02, a.placement.y + storey.y1 + SLAB_EPS, dropM);
+      o.scars?.clearWhere(structureId, (_x, y) => y > a.placement.y + storey.y0 + 0.02);
+    }
+    const storeyDown = (seam as StructureDamageSeam & { storeyDown?(storey: number, seed: number, out: DamageWriters): DamageStageResult })
+      .storeyDown;
+    if (typeof storeyDown === 'function') {
+      run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out), true,
+        { section: -1, storey: storey.index });
+    }
+    return changed;
+  }
+
+  /** A storey's drop in flight: what it moves and where it all stood when it began (spans in their own frame, runs'
+   *  world heights), how far it has come down (d), and its clock. */
+  interface FallSpan { span: StructureSpan; obj: Float32Array; ride: boolean }
+  interface FallRun { mesh: THREE.Mesh; pos: THREE.BufferAttribute; y: Float32Array }
+  interface StoreyFall {
+    structureId: number; seam: StructureDamageSeam; storey: DamageStorey; settled: boolean;
+    t0: number; T: number; dropM: number; d: number;
+    px: number; py: number; pz: number; c: number; s: number; reachX: number; reachZ: number;
+    spans: FallSpan[]; runs: FallRun[];
+  }
+  const G = 9.81;
+  const storeyFalls: StoreyFall[] = [];
+  /** The clamp's law at depth d (body frame): over the footprint, the band toward its floor line, above it down by d. */
+  function fallTo(f: StoreyFall, bx: number, by: number, bz: number, d: number): number {
+    if (Math.abs(bx) > f.reachX || Math.abs(bz) > f.reachZ || !(by > f.storey.y0 + 0.02)) return by;
+    return by <= f.storey.y1 + SLAB_EPS ? Math.max(f.storey.y0, by - d) : by - d;
+  }
+  function startStoreyFall(structureId: number, seam: StructureDamageSeam, storey: DamageStorey, settled: boolean): void {
+    const a = seam.anatomy;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const [reachX, reachZ] = storeyReach(seam, storey);
+    const dropM = storey.y1 - storey.y0;
+    const f: StoreyFall = { structureId, seam, storey, settled, t0: o.now(), T: Math.sqrt(2 * Math.max(0.1, dropM) / G), dropM, d: 0,
+      px, py, pz, c, s, reachX, reachZ, spans: [], runs: [] };
+    // the band's holes are crushed with it at once, and the phone's scars above the floor line go
+    mask.moveHoles(seam.structureIdx, py + storey.y0 + 0.02, py + storey.y1 + SLAB_EPS, 0);
+    o.scars?.clearWhere(structureId, (_x, y) => y > py + storey.y0 + 0.02);
+    for (const span of seam.spans) {
+      if (span.count <= 0 || flattenedSpans.has(span)) continue;
+      const ride = span.partClass === 'roof' && spanTop(seam, span) > storey.y1 + SLAB_EPS;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      let moves = ride;
+      for (let i = span.first, end = span.first + span.count; !moves && i < end; i++) {
+        _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        const wx = _p.x - px, wz = _p.z - pz, by = _p.y - py;
+        moves = fallTo(f, wx * c - wz * s, by, wx * s + wz * c, dropM) !== by;
+      }
+      if (!moves) continue;
+      keep(span);
+      f.spans.push({ span, obj: arr.slice(span.first * 3, (span.first + span.count) * 3), ride });
+    }
+    for (const mesh of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+      const pos = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const y = new Float32Array(pos.count);
+      let moves = false;
+      for (let i = 0; i < pos.count; i++) {
+        y[i] = pos.getY(i);
+        if (!moves) {
+          const wx = pos.getX(i) - px, wz = pos.getZ(i) - pz, by = y[i] - py;
+          moves = fallTo(f, wx * c - wz * s, by, wx * s + wz * c, dropM) !== by;
+        }
+      }
+      if (moves) f.runs.push({ mesh, pos, y });
+    }
+    storeyFalls.push(f);
+    falling.push({ seam, until: f.t0 + f.T });
+  }
+  /** The fall at depth d: every vertex it moves from where it stood, the holes above the band down with them. */
+  function applyFall(f: StoreyFall, d: number): void {
+    for (const fs of f.spans) {
+      const { span } = fs;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      for (let k = 0; k < span.count; k++) {
+        const i = span.first + k, j = k * 3;
+        _p.set(fs.obj[j], fs.obj[j + 1], fs.obj[j + 2]).applyMatrix4(_m);
+        const wx = _p.x - f.px, wz = _p.z - f.pz, by = _p.y - f.py;
+        const to = fs.ride ? by - d : fallTo(f, wx * f.c - wz * f.s, by, wx * f.s + wz * f.c, d);
+        if (to === by) { arr[i * 3] = fs.obj[j]; arr[i * 3 + 1] = fs.obj[j + 1]; arr[i * 3 + 2] = fs.obj[j + 2]; continue; }
+        _p.y = to + f.py;
+        _p.applyMatrix4(_mi);
+        arr[i * 3] = _p.x; arr[i * 3 + 1] = _p.y; arr[i * 3 + 2] = _p.z;
+      }
+      span.position.addUpdateRange(span.first * 3, span.count * 3);
+      span.position.needsUpdate = true;
+    }
+    for (const r of f.runs) {
+      for (let i = 0; i < r.pos.count; i++) {
+        const wx = r.pos.getX(i) - f.px, wz = r.pos.getZ(i) - f.pz, by = r.y[i] - f.py;
+        r.pos.setY(i, fallTo(f, wx * f.c - wz * f.s, by, wx * f.s + wz * f.c, d) + f.py);
+      }
+      r.pos.needsUpdate = true;
+      r.mesh.geometry.computeBoundingSphere();
+    }
+    if (d > f.d) {
+      mask.moveHoles(f.seam.structureIdx, f.py + f.storey.y0 + 0.02, f.py + f.storey.y1 + SLAB_EPS - f.d, d - f.d);
+      f.d = d;
+    }
+    f.seam.touchShadows();
+  }
+  /** The fall's end: everything back where it stood, then the instant drop's own path lays the exact end. */
+  function finishFall(f: StoreyFall): void {
+    for (const fs of f.spans) {
+      (fs.span.position.array as Float32Array).set(fs.obj, fs.span.first * 3);
+      fs.span.position.addUpdateRange(fs.span.first * 3, fs.span.count * 3);
+      fs.span.position.needsUpdate = true;
+    }
+    for (const r of f.runs) {
+      for (let i = 0; i < r.pos.count; i++) r.pos.setY(i, r.y[i]);
+      r.pos.needsUpdate = true;
+      r.mesh.geometry.computeBoundingSphere();
+    }
+    if (f.d < f.dropM) {
+      mask.moveHoles(f.seam.structureIdx, f.py + f.storey.y0 + 0.02, f.py + f.storey.y1 + SLAB_EPS - f.d, f.dropM - f.d);
+      f.d = f.dropM;
+    }
+    dropStorey(f.structureId, f.seam, f.storey, f.settled, false);
+    f.seam.touchShadows();
+  }
+  /** A new event on a structure lands on its finished drops (the cascade's next storey, its collapse, a hole). */
+  function finishFalls(structureId: number): void {
+    if (!storeyFalls.length) return;
+    let k = 0;
+    for (const f of storeyFalls) {
+      if (f.structureId === structureId) finishFall(f);
+      else storeyFalls[k++] = f;
+    }
+    storeyFalls.length = k;
+  }
+
   return {
     stage(e, seam) {
+      finishFalls(e.structureId);
       const settled = e.settled === true;
       if (e.stage === 'collapsed') {
         // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
@@ -545,7 +705,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.stage === 'breached' && !sections) {
         const blow = breachBlowFor(e);
         const spec = seam.holeAt(blow.x, blow.y, blow.z, blow.radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey });
+        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
       }
       // a collapse's stubs and pile show under the walls as they come down; the walls' own pieces leave the front
       if (e.stage === 'collapsed') {
@@ -561,6 +721,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
     },
     breach(e, seam) {
+      finishFalls(e.structureId);
       if (!seam) return;
       const settled = e.settled === true;
       const cause = e.munition === 'kinetic' || e.munition === 'autocannon_ap' ? 'kinetic' : 'blast';
@@ -568,7 +729,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (!(e.radiusM > 0)) return;
         realHoles.add(e.structureId);
         const spec = seam.holeAt(e.x, e.y, e.z, e.radiusM, 0, 0, e.munition, cause, e.hole);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey });
+        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
         return;
       }
       // a section fell (hole 255, radius 0, standing at the section's centre on its face): the kit's section there
@@ -579,7 +740,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       let changed = false;
       if (e.sectionKind === 'roof') {
         const roof = a.roof;
-        if (roof) {
+        if (roof && fallOnce(e.structureId, roof.section)) {
           // the roof's own patches and eave bands from earlier blows go with it (first: the fall's own runs stand)
           const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
           changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
@@ -592,7 +753,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
         const storey = spec ? a.storeys[spec.storey] : null;
         const face = storey ? storey.faces.find((f) => f.name === spec!.face) ?? null : null;
-        if (spec && storey && face) {
+        if (spec && storey && face && fallOnce(e.structureId, spec.section)) {
           // the panel above its stub (a metre over the base; an upper storey's falls to its floor line)
           const y0 = e.y0 - a.placement.y, y1 = e.y1 - a.placement.y;
           const stubTop = Math.max(y0, baseY + 1 - a.placement.y, storey.y0), top = Math.max(y1, storey.y1);
@@ -618,26 +779,26 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
-          // the kit's heap on the floor line (laid last: it stands)
-          changed = clampStorey(seam, storey) || changed;
-          const [reachX, reachZ] = storeyReach(seam, storey);
-          const dropM = storey.y1 - storey.y0;
-          changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
-            && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
-          changed = settleRuns(seam, storey, reachX, reachZ) || changed;
-          mask.moveHoles(seam.structureIdx, a.placement.y + storey.y0 + 0.02, a.placement.y + storey.y1 + SLAB_EPS, dropM);
-          o.scars?.clearWhere(e.structureId, (_x, y) => y > a.placement.y + storey.y0 + 0.02);
-          const storeyDown = (seam as StructureDamageSeam & { storeyDown?(storey: number, seed: number, out: DamageWriters): DamageStageResult })
-            .storeyDown;
-          if (typeof storeyDown === 'function') {
-            run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out), true,
-              { section: -1, storey: storey.index });
-          }
+          // the kit's heap on the floor line (laid last: it stands); live, it comes down over gravity's time (the core
+          // 2026-10-08: the cascade's next storey follows sqrt(2 h / g) after), settled at once
+          if (settled) changed = dropStorey(e.structureId, seam, storey, settled, true) || changed;
+          else startStoreyFall(e.structureId, seam, storey, settled);
         }
       }
       if (changed) seam.touchShadows();
     },
     update() {
+      if (storeyFalls.length) {
+        const t = o.now();
+        let k = 0;
+        for (const f of storeyFalls) {
+          const age = t - f.t0;
+          if (age >= f.T) { finishFall(f); continue; }
+          applyFall(f, Math.min(f.dropM, 0.5 * G * Math.max(0, age) * Math.max(0, age)));
+          storeyFalls[k++] = f;
+        }
+        storeyFalls.length = k;
+      }
       if (!falling.length) return;
       const now = o.now();
       let k = 0;
@@ -647,8 +808,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     },
     shiftTime(delta) {
       for (const f of falling) f.until += delta;
+      for (const f of storeyFalls) f.t0 += delta;
     },
     reset() {
+      storeyFalls.length = 0;
       for (const [span, saved] of originals) {
         const pos = span.position;
         (pos.array as Float32Array).set(saved, span.first * 3);
@@ -657,11 +820,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
       originals.clear();
       realHoles.clear();
+      fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;
       o.scars?.reset();
     },
-    stats: () => ({ falling: falling.length, flattened: flattened.length, kept: originals.size }),
+    stats: () => ({ falling: falling.length, flattened: flattened.length, kept: originals.size, dropping: storeyFalls.length }),
   };
 }

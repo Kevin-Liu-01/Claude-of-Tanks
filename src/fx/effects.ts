@@ -36,7 +36,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  blastScale, columnPuff as mediaColumnPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
+  blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
   kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
   waterBurst,
   type BlastContext,
@@ -453,7 +453,7 @@ export interface FxRuntime {
     wreckOf?: string | null,
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
-  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean): void;
+  exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, vel?: THREE.Vector3 | null, fwd?: THREE.Vector3 | null): void;
   loosePropHit(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
@@ -593,6 +593,8 @@ const EXPLOSION_LIGHT_S = 1.9;
 // well inside the cutoff; the hue moves off amber toward orange so the
 // green channel stops lifting grass into the sickly band.
 const EXPLOSION_LIGHT_PEAK = 520;
+/** The explosion light's kill orange (effects r5: 0xff9a52 -> 0xff7f38); a burst's pulse may carry its own hue. */
+const EXPLOSION_LIGHT_HEX = 0xff7f38;
 // 40 (was 30) + a 35 s smolder tail (r7: "battlefield shows no lasting
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
@@ -1083,7 +1085,7 @@ function* createFxSteps(
   // warm pool, the wider grass field drops out of the mustard band.
   // effects r5: 24 -> 17 + hue 0xff9a52 -> 0xff7f38 (see EXPLOSION_LIGHT_PEAK)
   // effects r6: 17 -> 13 (the static-stain fix — see EXPLOSION_LIGHT_S)
-  const explosionLight = new THREE.PointLight(0xff7f38, 0, 13, 2);
+  const explosionLight = new THREE.PointLight(EXPLOSION_LIGHT_HEX, 0, 13, 2);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
@@ -1137,8 +1139,11 @@ function* createFxSteps(
     ageS = 0,
     durS?: number,
     pow?: number,
+    hex?: number,
   ): void {
     state.light.position.copy(pos);
+    // (fx round 7c) a burst's pulse carries its own hue; every other use of the explosion light keeps the kill orange
+    if (state.light === explosionLight) state.light.color.setHex(hex ?? EXPLOSION_LIGHT_HEX);
     state.bornAt = particles.getTime() - ageS;
     state.peak = peak;
     state.dur = durS && durS > 0 ? durS : state.baseDur;
@@ -1855,13 +1860,13 @@ function* createFxSteps(
     sparks: (o) => particles.emit('sparks', o),
     jet: (o) => particles.emit('jet', o),
     shockRing: (x: number, z: number, scaleK: number, alphaK: number, ageS: number) => spawnShockRing(x, z, ageS, scaleK, alphaK),
-    lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number, durS?: number) => {
+    lightPulse: (x: number, y: number, z: number, peakK: number, delayS: number, durS?: number, hex?: number) => {
       if (replaySuppressed) return;
       // (round 7, wave 276: the ground burst's light lay on the ground as a flat orange wash for 800 ms) a pulse may
-      // carry its own short decay; the kill light keeps the long one
+      // carry its own short decay; the kill light keeps the long one; (round 7c) and its own hue
       const pw = durS ? 2 : undefined;
-      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS, durS, pw); return; }
-      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0, durS, pw) });
+      if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, -delayS, durS, pw, hex); return; }
+      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * peakK, 0, durS, pw, hex) });
     },
     glow: (x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number) => {
       if (replaySuppressed) return;
@@ -3890,6 +3895,8 @@ function* createFxSteps(
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
       explosionLight.position.set(col.pos[0], col.pos[1] + 3.4, col.pos[2]);
       explosionLight.distance = 12;
+      // (fx round 7c) a burst's pulse may have left its own hue on the pooled light: the wreck's fire is the kill orange
+      explosionLight.color.setHex(EXPLOSION_LIGHT_HEX);
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
@@ -5846,7 +5853,19 @@ function* createFxSteps(
      * @param {number} intensity 0..1 engine load
      * @param {boolean} [sooty=false] dark diesel puffs instead of thin haze
      */
-    exhaust(pos: THREE.Vector3, intensity: number, sooty = false): void {
+    exhaust(pos: THREE.Vector3, intensity: number, sooty = false, vel: THREE.Vector3 | null = null,
+      fwd: THREE.Vector3 | null = null): void {
+      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: a puff at an engine's own
+      // rate (a diesel's 3-7 a second with load, a turbine's 2-4) with the hull's motion, which the wind bends and the
+      // media's shear and eddies break up; the cold start coughs a short stream
+      if (blast) {
+        const coldStartM = battleFreshS < 2.2;
+        const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
+        if (rng() > rate / 60) return;
+        exhaustPuff(blast, pos.x, pos.y, pos.z, vel ? vel.x : 0, vel ? vel.z : 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+          coldStartM ? Math.max(0.9, intensity) : intensity, sooty, 0);
+        return;
+      }
       // r1 "not a single exhaust puff anywhere": the old profile (alpha
       // 0.06-0.29, sub-meter cards, <1.2 s lives) was invisible from any
       // gameplay camera. Diesel puffs are now a clearly readable grey-brown

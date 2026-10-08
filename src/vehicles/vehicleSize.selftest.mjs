@@ -14,6 +14,8 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // These cover finished shell stock, pivots, muzzle and load-bearing contact.
 // Upiór's baseline is its complete 0857fff5c AFV builder before the 2026-09-30
 // enlargement, measured with the current shared factory and no size override.
+// 2026-10-08: c6b60311c (main) rebuilt the KF41 Lynx X turret front after these
+// measurements; its turret max z is re-measured as the current build / factor.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];

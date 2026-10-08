@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
-  trackSkirt } from './blastRecipes.ts';
+  trackSkirt, exhaustPuff } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike, sectionFallFx } from './structureFx.ts';
@@ -220,7 +220,10 @@ function captureContext(seed) {
   for (const [name, log, n, top] of [['125 mm', a, 20, 7.5], ['152 mm', big, 30, 16]]) {
     const f = fountain(log);
     assert.ok(f.length >= n && f.every((m) => m.aspect === 1 && m.density >= 0.95), `${name}: a dense fountain of ${f.length} round puffs`);
-    assert.ok(f.every((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.43) * m.vy + 1e-6), `${name}: in a cone`);
+    assert.ok(f.every((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.46) * m.vy + 1e-6), `${name}: in a cone`);
+    // (round 7b, b8: still separate balls) its core: big puffs in a tight cone that overlap into one jet
+    const core = f.filter((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.18) * m.vy + 1e-6 && m.size1 >= 2.4);
+    assert.ok(core.length >= 10, `${name}: a dense core of ${core.length} big puffs in a ~10° cone`);
     const tops = f.map(peak);
     assert.ok(Math.min(...tops) < 0.45 * Math.max(...tops), `${name}: the fountain fills from the ground to its top`);
     assert.ok(Math.max(...tops) > top, `${name}: the fountain stands past ${top} m (${Math.max(...tops).toFixed(1)})`);
@@ -256,10 +259,25 @@ function captureContext(seed) {
   assert.ok(a.pulseDur <= 0.35 && big.pulseDur <= 0.35 && atgmLog.pulseDur <= 0.35, `the ground light lasts ~0.2 s (${a.pulseDur})`);
   assert.ok(a.pulseK <= 0.7 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground light: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
   assert.ok(a.glows >= 1 && a.glowDur <= 0.45 && a.glowR > 5, 'the burst glows inside its own medium for a moment');
-  // no residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"); a hard ground keeps one
-  assert.ok(!a.media.some((m) => m.medium === 'billow' && m.heat === 0), 'no residue puff over soil');
+  // no pale residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"): its only cold smoke is
+  // the column's own soil standing up the column (round 7c); a hard ground keeps a little pale smoke over it
+  const lum0 = (m) => 0.2126 * m.r0 + 0.7152 * m.g0 + 0.0722 * m.b0;
+  const coldSmoke = (log) => log.media.filter((m) => m.medium === 'billow' && m.heat === 0);
+  assert.ok(coldSmoke(a).length >= 3 && coldSmoke(a).every((m) => m.y > 1.5 && lum0(m) < 0.12),
+    "no pale residue over soil: its cold smoke is the column's soil, standing up the column");
   const conc = he(5, 'he', 3.5, 'concrete');
-  assert.equal(conc.media.filter((m) => m.medium === 'billow' && m.heat === 0).length, 1, 'concrete keeps a little pale smoke');
+  assert.equal(coldSmoke(conc).length, coldSmoke(a).length + 1, 'concrete keeps a little pale smoke');
+  // (round 7c, DVIDS 954922: the smoke climbs out of the fireball for seconds; b8a's stopped as a haystack on the ground)
+  // the explosive's smoke: dark at birth, out of the cooling fireball, buoyant, the upper puffs faster, long-lived
+  for (const [name, log, n] of [['125 mm', a, 6], ['152 mm', big, 9], ['ATGM', atgmLog, 4]]) {
+    const sm = log.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.rise >= 0.3 && m.life >= 5);
+    assert.ok(sm.length >= n, `${name}: ${sm.length} puffs of the explosive's lasting smoke`);
+    assert.ok(sm.every((m) => lum0(m) < 0.1 && m.vy > 1.5), `${name}: its smoke is dark and climbs`);
+    assert.ok(Math.max(...sm.map((m) => m.rise)) > 1.3 * Math.min(...sm.map((m) => m.rise)), `${name}: its upper puffs climb faster`);
+  }
+  // the footprint dust is a low wide haze, never a mound: wider than tall, at most ~0.6 dense, not lifting off
+  const haze = a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
+  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.62 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
   assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
@@ -281,6 +299,9 @@ function captureContext(seed) {
   kineticStrike(k.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: -0.1, dz: 0, caliberMm: 120, munition: 'kinetic', surface: 'soil' });
   assert.equal(k.log.flash + k.log.fire, 0, 'a kinetic strike neither flashes nor burns');
   assert.ok(k.log.media.length > 0 && k.log.chunk.length > 0, 'it throws soil and clods');
+  // (round 7, wave 276: stretched cards read as "capsule pods") its spurt is small round puffs, its soil lit clods
+  assert.ok(k.log.media.every((m) => m.aspect === 1), 'a kinetic spurt is round puffs, no stretched cards');
+  assert.ok(k.log.chunk.length >= 15, `a rod's strike throws its soil as clods (${k.log.chunk.length})`);
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');
@@ -309,6 +330,9 @@ function captureContext(seed) {
   assert.ok(kf.log.media.some((m) => m.heat > 1), 'the fireball burns inside its media');
   // wave 266: a fireball well past the hull's size, burnt out to soot fast; black soot rolling out after it; every
   // body churning for its whole life
+  // (round 7b, wave m2: "no debris") the hull's hot fragments fly out of the fire and lie round the wreck
+  const frags = kf.log.chunk.filter((k) => k.heat >= 0.85);
+  assert.ok(frags.length >= 14 && frags.every((k) => k.life >= 16 && k.vy > 2), `the fire throws ${frags.length} hot fragments`);
   const fire = kf.log.media.filter((m) => m.heat > 1);
   assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
   assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
@@ -317,6 +341,35 @@ function captureContext(seed) {
   assert.ok(soot.length >= 4, 'black soot rolls out of the fire after it');
   for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
     assert.ok(m.playSeconds >= m.life * 0.8, 'no kill or column body freezes on its last frame');
+  }
+  // (round 7b, wave m2: "engine smoke rising as straight chimney columns") an engine's exhaust: the hull's motion and the
+  // gas's exit back off the deck, then the wind takes it (it bends), and it swells and tears apart within a few seconds
+  {
+    const ex = captureContext(31);
+    exhaustPuff(ex.ctx, 0, 2, 0, 0, 8, 0, 1, 0.8, true, 0);
+    const [e] = ex.log.media;
+    assert.ok(e && e.medium === 'billow' && e.vz > 4 && e.vz < 8 && e.windK >= 1 && e.drag >= 1.4, 'it leaves with the hull, the wind takes it');
+    assert.ok(e.size1 > e.size0 * 4 && e.life >= 2.4 && e.density <= 0.62, 'it swells and thins');
+    const turb = captureContext(31);
+    exhaustPuff(turb.ctx, 0, 2, 0, 0, 0, 0, 1, 0.5, false, 0);
+    assert.ok(turb.log.media[0].density < 0.25 && turb.log.media[0].vz < 0, "a turbine's thin haze, blown back off the deck at rest");
+  }
+  // the media's own motion and silhouette: shear with height, eddies with age and size, a warped lookup (no clean round
+  // ball), a white-yellow core in a sooty shell
+  {
+    const softU = { uSceneDepth: { value: null }, uSoftViewport: { value: new THREE.Vector2(1, 1) },
+      uCameraNear: { value: 0.5 }, uCameraFar: { value: 4000 } };
+    const mat = createVolumeMedia({ soft: softU, now: () => 0, capacity: 16 }).group.children[0].material;
+    assert.match(mat.vertexShader, /center\.xz \+= uWind\.xz \* \( max\( 0\.0, center\.y - aPB\.y \) \* 0\.030 \* age \* aDY\.z \);/, 'the wind shears a column over as it climbs');
+    assert.match(mat.vertexShader, /\* \( 0\.050 \* size \* min\( age, 4\.0 \) \);/, 'eddies push a puff about by its size as it ages');
+    assert.match(mat.fragmentShader, /vec2 warp = wn \* tileSize \* uWarpK \* \( 0\.5 \+ 0\.8 \* vT \);/, 'the lookup is warped: no clean round ball');
+    assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
+    // the CPU twin carries the shear (the sort's depth)
+    const rec = new Float32Array(32);
+    rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;
+    const out = [0, 0, 0];
+    volumePositionAt(rec, 0, 2, 0, 5, out);
+    assert.ok(out[0] > 2 * 5 * 1.0, `a risen puff drifts farther than the wind alone (${out[0].toFixed(2)})`);
   }
   // (wave 265's weathering critics: no dust behind moving tanks) a moving hull's skirt: low, wide, left behind, heavy on
   // sand, light on grass
@@ -656,8 +709,19 @@ function captureContext(seed) {
   assert.ok(!/discard/.test(pshader.fragmentShader) && /inverse\( sw \)/.test(pshader.vertexShader), 'the phone falls, uncut');
   assert.ok(/else if \( p\.y > front \) \{[\s\S]*p\.y = front;/.test(pshader.vertexShader), 'the phone folds its walls onto the front');
   assert.notEqual(pm.customProgramCacheKey(), material.customProgramCacheKey(), 'its own program');
-  assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > hn\.w[\s\S]*discard/.test(shader.fragmentShader),
+  assert.ok(/vStructHoles > 0\.5[\s\S]*along < -hn\.z \|\| along > outside[\s\S]*discard/.test(shader.fragmentShader)
+    && /float th = atan\( lateral\.y, dot\( lateral\.xz, vec2\( hn\.y, -hn\.x \) \) \);/.test(shader.fragmentShader)
+    && /fxCrack = max\( fxCrack,/.test(shader.fragmentShader),
     'a fragment inside a hole\'s cylinder (outside..depth along the face normal) is discarded');
+  // the cracks darken the surface's own colour at the end of its program (where three dithers it; a depth program has none)
+  {
+    const lit = new THREE.MeshStandardMaterial();
+    mask.patch(lit);
+    const ls = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+      fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = vec4(1.0);\n#include <dithering_fragment>\n}' };
+    lit.onBeforeCompile(ls, null);
+    assert.ok(/gl_FragColor\.rgb \*= 1\.0 - 0\.8 \* fxCrack;\n#include <dithering_fragment>/.test(ls.fragmentShader), 'cracks darken the face');
+  }
   assert.ok(/flat varying float vStructSid;/.test(shader.vertexShader) && /flat varying float vStructSid;/.test(shader.fragmentShader),
     'the structure index reaches the fragment unblended');
   assert.ok(/fx-structure-mask/.test(material.customProgramCacheKey()), 'its own program cache key');

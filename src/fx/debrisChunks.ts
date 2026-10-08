@@ -135,7 +135,7 @@ void main() {
   // (wave 276: "flat unlit pure-black squares") a lump of earth in daylight is never black: its faces turned from the
   // sun still take the sky and the ground's bounce, and a little of the sun wraps round its rough edges
   float diff = ndl * 0.8 + 0.2 * ( nl * 0.5 + 0.5 );
-  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 ) * 1.25;
+  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 ) * 1.4;
   vec3 col = vAlbedo * ( uSunCol * diff + amb );
   // a hot piece glows in its crevices first, then cools to the material
   col += vec3( 1.4, 0.36, 0.06 ) * vHeat * ( 0.35 + 0.65 * ( 1.0 - ndl ) );

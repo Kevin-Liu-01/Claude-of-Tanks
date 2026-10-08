@@ -14,6 +14,8 @@ import {
   buildTerrainMeshesAsync,
   sampleSplatNoise,
 } from './terrain.ts';
+// The visual horizon installs the ring the terrain meshes are built with (horizonRingHook.ts).
+import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
