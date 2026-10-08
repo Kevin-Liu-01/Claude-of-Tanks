@@ -29,7 +29,7 @@ export function horizonRing(): HorizonRing {
  * build (map.ts) supplies it for its own build and withdraws it when the build ends; the terrain build takes it here,
  * so the hook is the one place the ring comes from — supplied, or built where it stands.
  */
-export interface HorizonRingSupply {
+interface HorizonRingSupply {
   readonly request: { readonly mapId: string; readonly terrainVariant: string | null; readonly vista: boolean; readonly debugColors: boolean };
   /** The worker has not answered yet. */
   readonly pending: boolean;

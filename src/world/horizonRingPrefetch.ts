@@ -32,7 +32,7 @@ export function forgetHorizonRing(): void {
 
 type RingWorkerPort = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror'>;
 
-export interface HorizonRingSource {
+interface HorizonRingSource {
   readonly request: HorizonRingRequest;
   /** The worker has not answered yet. */
   readonly pending: boolean;
@@ -43,7 +43,23 @@ export interface HorizonRingSource {
   /** Keep a pipeline the build made where it stood (no worker, or it failed) for a rematch. */
   remember(pipeline: HorizonRingPipeline): void;
   dispose(): void;
-  readonly stats: { source: 'kept' | 'worker' | 'inline'; failed: boolean; workerMs: number; doneMs: number };
+  /**
+   * Where the ring came from and when (ms from the start): the worker's own run (workerMs), its answer (doneMs), the
+   * moment the terrain build reached the ring while the worker was still at it (askedMs, -1 when it was done by then), how
+   * long the build waited (waitMs) and when it took the pipeline (takenMs, -1 until it does). The world build leaves this
+   * record on the terrain group (userData.horizonRingLoad) for the load probes.
+   */
+  readonly stats: HorizonRingStats;
+}
+
+interface HorizonRingStats {
+  source: 'kept' | 'worker' | 'inline';
+  failed: boolean;
+  workerMs: number;
+  doneMs: number;
+  askedMs: number;
+  waitMs: number;
+  takenMs: number;
 }
 
 export function startHorizonRingBuild(
@@ -54,13 +70,14 @@ export function startHorizonRingBuild(
 ): HorizonRingSource {
   const key = horizonRingKey(request);
   const startedAt = now();
-  const stats = { source: 'inline' as 'kept' | 'worker' | 'inline', failed: false, workerMs: 0, doneMs: 0 };
+  const stats: HorizonRingStats = { source: 'inline', failed: false, workerMs: 0, doneMs: 0, askedMs: -1, waitMs: 0, takenMs: -1 };
   let pipeline: HorizonRingPipeline | null = null;
   let worker: RingWorkerPort | null = null;
   let resolveSettled: () => void = () => {};
   const settledPromise = new Promise<void>((resolve) => { resolveSettled = resolve; });
   const finish = (): void => {
     stats.doneMs = Math.round(now() - startedAt);
+    if (stats.askedMs >= 0) stats.waitMs = Math.max(0, stats.doneMs - stats.askedMs);
     if (worker) { worker.onmessage = worker.onerror = null; worker.terminate(); worker = null; }
     resolveSettled();
   };
@@ -92,8 +109,12 @@ export function startHorizonRingBuild(
   return {
     request,
     get pending() { return worker !== null; },
-    settled: () => settledPromise,
+    settled: () => {
+      if (worker && stats.askedMs < 0) stats.askedMs = Math.round(now() - startedAt);
+      return settledPromise;
+    },
     take() {
+      if (stats.takenMs < 0) stats.takenMs = Math.round(now() - startedAt);
       const taken = pipeline;
       pipeline = null;
       return taken;

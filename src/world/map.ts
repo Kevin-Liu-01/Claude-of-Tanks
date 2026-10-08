@@ -319,6 +319,8 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
+    // the ring's source and its timing for the load probes, beside the terrain's streaming record
+    terrain.userData.horizonRingLoad = ringSource.stats;
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);

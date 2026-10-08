@@ -177,6 +177,27 @@ for (const mapId of ['verdant', 'badlands', 'coastal']) {
   assert.equal(ok.stats.source, 'worker');
   assert.equal(pipelineDigest(ok.take()), pipelineDigest(inline), 'the worker\'s answer is the ring');
   assert.equal(startHorizonRingBuild(request, null).stats.source, 'kept', 'the worker\'s ring is kept for a rematch');
+  // the record the world build leaves on the terrain group (map.ts: userData.horizonRingLoad): when the terrain build
+  // reached the ring while the worker was still at it, how long it waited, when it took the pipeline (ms from the start)
+  forgetHorizonRing();
+  let clock = 0;
+  const timed = startHorizonRingBuild(request, () => port((p, job) => {
+    p.onmessage?.({ data: { id: job.id, ok: true, wire: structuredClone(packHorizonRing(inline).wire), ms: 7 } });
+  }), () => clock);
+  clock = 100;
+  const waiting = timed.settled();
+  clock = 250;
+  await waiting;
+  clock = 300;
+  assert.ok(timed.take());
+  assert.deepEqual({ ...timed.stats }, { source: 'worker', failed: false, workerMs: 7, doneMs: 250, askedMs: 100, waitMs: 150, takenMs: 300 },
+    'the worker answered 150 ms after the terrain build reached the ring, which took it at 300 ms');
+  clock = 1000;
+  const rematch = startHorizonRingBuild(request, null, () => clock);
+  clock = 1040;
+  assert.ok(rematch.take());
+  assert.deepEqual({ ...rematch.stats }, { source: 'kept', failed: false, workerMs: 0, doneMs: 0, askedMs: -1, waitMs: 0, takenMs: 40 },
+    'a rematch takes the kept ring without waiting');
   forgetHorizonRing();
   const failed = startHorizonRingBuild(request, () => port((p, job) => p.onmessage?.({ data: { id: job.id, ok: false, message: 'boom' } })));
   await failed.settled();
