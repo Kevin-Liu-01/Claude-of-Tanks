@@ -496,6 +496,8 @@ export interface HeightField {
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
+  /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
+  getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
@@ -2736,7 +2738,8 @@ function* heightFieldBuildSteps(
     ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
     : outlandHeightAt;
   return {
-    getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
+    getHeightAt, getHeightAtFast, getContactHeightAt, getContactNormalAt: getContactHeightAt.normalAt, warmFastTilesAround, getNormalAt,
+    getGroundType, getDriveGroundType,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
