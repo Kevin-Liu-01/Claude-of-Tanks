@@ -5,7 +5,9 @@
  * (bounding boxes, sampled vertex colours: numbers only, cheap enough for a 400-building map); the stage builders write
  * the damage in the building's own buckets and tints, deterministically from their seeds, within the §16.3 caps:
  *
- * - damaged: spalled chips off the walls in the outer layer's bucket, the glass gone (shards);
+ * - damaged: two spalled patches on the ground storey's widest faces (the render knocked off a disc and the core's units
+ *   showing, a lip of render round them, a backing behind; on bare masonry the units' faces broken back), chips off the
+ *   walls in the outer layer's bucket, the glass gone (shards);
  * - breach: a ragged rim of the wall's own units (bricks, blocks, stones, plates) over the band 0.75 r – 1.25 r round the
  *   hole, where the presentation's blocky cut edge runs (0.8 r – 1.2 r), the render spalled back past it, the dark room
  *   behind it with the floor-slab edge where the hole crosses a storey line, debris thrown along the blow;
@@ -20,7 +22,7 @@ import {
   bodyMoundHeightAt, damageRng, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
   type DamageRoof, type DamageStageResult, type DamageStorey, type DamageWriters, type DebrisShape, type FaceName,
-  type FractureMaterial, type FractureSlot, type Rgb, type StructureDamageAnatomy, type StructureDamageKit,
+  type FractureMaterial, type FractureSlot, type Rgb, type StructureCut, type StructureDamageAnatomy, type StructureDamageKit,
   type StructureDescribeInput, type Vec3,
 } from './destructionKit.ts';
 
@@ -293,11 +295,83 @@ function faceOf(anatomy: StructureDamageAnatomy, storeyIndex: number, name: Face
 
 const thicknessOf = (face: DamageFace): number => face.layers.reduce((sum, slot) => sum + slot.thicknessM, 0) || 0.3;
 
+/**
+ * Units of `slot` laid in courses over the annulus `inner`–`outer` (inner 0: the disc) round (cx, cy, cz) on `face`, each
+ * course filling its chords with whole units, its ends stepped a little; set `fromM`–`toM` behind the face plane. Stops at
+ * the writer's cap; skips courses under the ground.
+ */
+function layCourses(mesh: DamageMeshWriter, face: DamageFace, slot: FractureSlot, rng: () => number, cx: number, cy: number,
+  cz: number, inner: number, outer: number, unitW: number, unitH: number, fromM: number, toM: number, shade: number): void {
+  const yaw = Math.atan2(face.out[0], face.out[2]);
+  const rows = Math.ceil((2 * outer) / unitH);
+  for (let row = 0; row < rows && roomFor(mesh, 1); row++) {
+    const ly = -outer + (row + 0.5) * unitH;
+    if (cy + ly - unitH * 0.5 < 0.02) continue;
+    const outerHalf = Math.sqrt(Math.max(0, outer * outer - ly * ly));
+    const innerHalf = Math.abs(ly) < inner ? Math.sqrt(inner * inner - ly * ly) : 0;
+    const chords: Array<[number, number]> = innerHalf > 0 ? [[-outerHalf, -innerHalf], [innerHalf, outerHalf]] : [[-outerHalf, outerHalf]];
+    for (const [from, to] of chords) {
+      const a = from - rng() * outer * 0.04, b = to + rng() * outer * 0.04;
+      const n = Math.max(1, Math.round((b - a) / unitW)), w = (b - a) / n;
+      for (let i = 0; i < n && roomFor(mesh, 1); i++) {
+        const lu = a + (i + 0.5) * w;
+        const along = -(fromM + (toM - fromM) * (0.5 + (rng() - 0.5) * 0.4));
+        writeBox(mesh, cx + face.u[0] * lu + face.out[0] * along, cy + ly, cz + face.u[2] * lu + face.out[2] * along,
+          w * 0.5 * (1 + rng() * 0.08), unitH * 0.5 * (0.96 + rng() * 0.08), Math.max(0.005, (toM - fromM) * 0.5),
+          yaw + (rng() - 0.5) * 0.08, slot.tint, shade * (0.8 + rng() * 0.2));
+      }
+    }
+  }
+}
+
+const SPALLING: ReadonlySet<FractureMaterial> = new Set(['plaster', 'brick', 'stone', 'rubble', 'concrete', 'adobe']);
+
 // ---- stages ------------------------------------------------------------------------------------------------------
 
 function damaged(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
   const rng = damageRng(seed);
   const pieces = out.pieces;
+  const mesh = out.mesh;
+  const cuts: StructureCut[] = [];
+  // spalled patches: the ground storey's two widest masonry faces, each a disc clear of its openings
+  const ground = anatomy.storeys[0];
+  const faces = ground ? [...ground.faces].filter((face) => face.width >= 2.5 && face.layers.length
+    && SPALLING.has(face.layers[0]!.material)).sort((a, b) => b.width - a.width).slice(0, 2) : [];
+  for (const face of faces) {
+    const skin = face.layers[0]!, core = face.layers[face.layers.length - 1]!;
+    const rendered = skin !== core;
+    const radius = 0.3 + rng() * 0.2;
+    let centre: [number, number] | null = null;
+    for (let attempt = 0; attempt < 6 && !centre; attempt++) {
+      const u = (rng() - 0.5) * Math.max(0, face.width - 2 * radius - 0.6);
+      const y = 0.45 + radius + rng() * Math.max(0, face.height - 2 * radius - 0.75);
+      const clear = face.openings.every((o) => Math.abs(u - o.u) > o.w / 2 + radius + 0.25
+        || y + radius + 0.25 < o.y0 || y - radius - 0.25 > o.y0 + o.h);
+      if (clear) centre = [u, y];
+    }
+    if (!centre) continue;
+    const cx = face.origin[0] + face.u[0] * centre[0], cz = face.origin[2] + face.u[2] * centre[0], cy = ground!.y0 + centre[1];
+    const unit = unitOf(core.material).size;
+    const unitW = Math.max(unit, radius * 0.7), unitH = unitW * 0.5;
+    const skinM = rendered ? skin.thicknessM : 0;
+    const yaw = Math.atan2(face.out[0], face.out[2]);
+    // the core's units showing (their faces broken back a little on bare masonry), a backing behind them, and the
+    // render's lip round the knocked-off disc
+    if (mesh.begin(core.bucket, 'rim')) {
+      layCourses(mesh, face, core, rng, cx, cy, cz, 0, radius, unitW, unitH, skinM + (rendered ? 0.005 : 0.025), skinM + 0.07, 0.85);
+      if (roomFor(mesh, 1)) {
+        writeBox(mesh, cx - face.out[0] * (skinM + 0.08), cy, cz - face.out[2] * (skinM + 0.08), radius * 1.1, radius * 1.1, 0.01,
+          yaw, core.tint, 0.45);
+      }
+      mesh.end();
+    }
+    if (rendered && mesh.begin(skin.bucket, 'rim')) {
+      layCourses(mesh, face, skin, rng, cx, cy, cz, radius * 0.95, radius * 1.12, Math.max(0.12, radius * 0.45), Math.max(0.06, radius * 0.22),
+        0.002, skinM, 1);
+      mesh.end();
+    }
+    cuts.push({ x: cx, y: cy, z: cz, nx: face.out[0], nz: face.out[2], radiusM: radius, depthM: skinM + 0.03, outsideM: 0.01 });
+  }
   // chips off the walls: a few spalls a face on the ground storey and the next
   for (const storey of anatomy.storeys.slice(0, 2)) {
     for (const face of storey.faces) {
@@ -319,7 +393,7 @@ function damaged(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrite
       }
     }
   }
-  return { cuts: [], hides: [{ section: null, partClass: 'glass' }] };
+  return { cuts, hides: [{ section: null, partClass: 'glass' }] };
 }
 
 function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWriters): DamageStageResult {
@@ -340,27 +414,7 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   const unitW = Math.max(unitOf(slot.material).size, radius * 0.3), unitH = unitW * 0.5;
   const inner = radius * 0.75, outer = radius * 1.25;
   if (mesh.begin(slot.bucket, 'rim')) {
-    const yaw = Math.atan2(face.out[0], face.out[2]);
-    const rows = Math.ceil((2 * outer) / unitH);
-    for (let row = 0; row < rows && roomFor(mesh, 1); row++) {
-      const ly = -outer + (row + 0.5) * unitH;
-      if (cy + ly - unitH * 0.5 < 0.02) continue;
-      const outerHalf = Math.sqrt(Math.max(0, outer * outer - ly * ly));
-      const innerHalf = Math.abs(ly) < inner ? Math.sqrt(inner * inner - ly * ly) : 0;
-      const chords: Array<[number, number]> = innerHalf > 0
-        ? [[-outerHalf, -innerHalf], [innerHalf, outerHalf]] : [[-outerHalf, outerHalf]];
-      for (const [from, to] of chords) {
-        const a = from - rng() * radius * 0.04, b = to + rng() * radius * 0.04;
-        const n = Math.max(1, Math.round((b - a) / unitW)), w = (b - a) / n;
-        for (let i = 0; i < n && roomFor(mesh, 1); i++) {
-          const lu = a + (i + 0.5) * w;
-          const along = -depth * (0.2 + rng() * 0.6);
-          const x = cx + face.u[0] * lu + face.out[0] * along, z = cz + face.u[2] * lu + face.out[2] * along;
-          writeBox(mesh, x, cy + ly, z, w * 0.5 * (1 + rng() * 0.08), unitH * 0.5 * (0.96 + rng() * 0.08), depth * 0.45,
-            yaw + (rng() - 0.5) * 0.08, slot.tint, 0.75 + rng() * 0.25);
-        }
-      }
-    }
+    layCourses(mesh, face, slot, rng, cx, cy, cz, inner, outer, unitW, unitH, depth * 0.1, depth * 0.9, 0.95);
     mesh.end();
   }
   // the render lip: the outer skin spalled back just past the cut's edge
