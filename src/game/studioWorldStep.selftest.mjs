@@ -13,12 +13,37 @@ import * as THREE from 'three';
 const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);
 const names = new Set(['stepFx', 'advanceFx']);
-const functions = [];
+const nodes = [];
 (function visit(node) {
-  if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
+  if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) nodes.push(node);
   ts.forEachChild(node, visit);
 })(source);
-assert.equal(functions.length, 2, 'the Studio\'s stepFx and advanceFx');
+assert.equal(nodes.length, 2, 'the Studio\'s stepFx and advanceFx');
+const functions = nodes.map((node) => node.getText(source));
+
+/** What the two functions read without declaring it (the Studio's state they close over, globals aside): the ports
+ * below stub what the step needs, and the rest reads as undefined, so a branch that adds its own Studio state to the
+ * step (its destruction, its strike rounds) runs this receipt unchanged where it merges this one. */
+const HARNESS = new Set(['clockMs']);
+const free = new Set();
+{
+  const declared = new Set();
+  const visit = (node) => {
+    if (ts.isTypeNode(node)) return;
+    if (ts.isIdentifier(node)) {
+      const parent = node.parent;
+      const declares = (ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isFunctionDeclaration(parent)
+        || ts.isFunctionExpression(parent) || ts.isBindingElement(parent)) && parent.name === node;
+      const key = (ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent))
+        && parent.name === node;
+      if (declares) declared.add(node.text);
+      else if (!key && !ts.isBindingElement(parent)) free.add(node.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  nodes.forEach(visit);
+  for (const name of [...free]) if (declared.has(name) || HARNESS.has(name) || name in globalThis) free.delete(name);
+}
 
 /** A world with one prop felled on a hinge (its angle advances with the props' clock while it falls) and a ground whose
  * drawn chunks follow its stamps when synced. */
@@ -44,6 +69,7 @@ function studioStep(world) {
     resolveFxSubject: noop, getWorld: () => world, FX_STEP_S: 1 / 60, applyStoryboardActors: noop, advanceWater: noop,
     applyStoryboardCamera: noop, invalidate: noop,
   };
+  for (const name of free) if (!(name in ports)) ports[name] = undefined;
   const code = stripTypeScriptTypes(`
     function makeStudioStep(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
