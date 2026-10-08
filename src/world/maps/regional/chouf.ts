@@ -412,10 +412,44 @@ const sabil: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The village church: a stone nave under a red tile roof, its arched door and windows, the open bell arch on the west
- * gable. The nave runs along the footprint's long side; on a wide lot its door opens in the long side to the street.
+ * The campanile (round 5, gauntlet wave 252: "the church silhouette and its campanile"): a square stone shaft on the
+ * nave's front corner on its +x side (inside the lot), string courses, the belfry's round-headed opening on each face
+ * under a cornice, a stone pyramid and its iron cross.
  */
-const church: RegionalBuilder = (ctx) => {
+function campanile(sink: PartSink, W: number, D: number, naveTop: number, look: () => number): void {
+  const T = Math.min(3.6, W * 0.42), x0 = W / 2 - T, x1 = W / 2, z0 = D / 2 - T, z1 = D / 2;
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const shaftTop = naveTop + 5.2 + look() * 1.4;
+  sink.span('stone', x0, 0, z0, x1, shaftTop, z1);
+  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
+  const faces: Face[] = [
+    { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: T },
+    { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: T },
+    { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: T },
+    { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: T },
+  ];
+  const ow = T * 0.42, oy = shaftTop - 3.2, oh = 1.9;
+  for (const f of faces) {
+    sink.quad('dark', facePoint(f, -ow / 2, oy, 0.02), facePoint(f, ow / 2, oy, 0.02), facePoint(f, ow / 2, oy + oh, 0.02), facePoint(f, -ow / 2, oy + oh, 0.02), { decor: true });
+    roundHead(sink, f, 0, oy + oh, ow, 'dark', 0.14);
+  }
+  sink.span('stone', x0 - 0.15, shaftTop, z0 - 0.15, x1 + 0.15, shaftTop + 0.3, z1 + 0.15, { decor: true });
+  const base = shaftTop + 0.3, apex: Vec3 = [cx, base + T * 0.95, cz];
+  const corners: Array<[number, number]> = [[x0 - 0.1, z0 - 0.1], [x1 + 0.1, z0 - 0.1], [x1 + 0.1, z1 + 0.1], [x0 - 0.1, z1 + 0.1]];
+  for (let k = 0; k < 4; k++) {
+    const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
+    sink.polygon('stone', [[ax, base, az], apex, [bx, base, bz]], { decor: true });
+  }
+  sink.span('structureMetal', cx - 0.04, apex[1] - 0.1, cz - 0.04, cx + 0.04, apex[1] + 1.2, cz + 0.04, { colour: IRON, decor: true });
+  sink.span('structureMetal', cx - 0.3, apex[1] + 0.75, cz - 0.035, cx + 0.3, apex[1] + 0.83, cz + 0.035, { colour: IRON, decor: true });
+}
+
+/**
+ * The village church: a stone nave under a red tile roof, its arched door and windows, the open bell arch on the west
+ * gable — or, on the summit church, the campanile on the nave's front corner. The nave runs along the footprint's long
+ * side; on a wide lot its door opens in the long side to the street.
+ */
+const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng;
   const fp = footprint(ctx);
@@ -433,6 +467,7 @@ const church: RegionalBuilder = (ctx) => {
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.35, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
     }, { ...dialect(st), window: (s, face, o, y0) => { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3); roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass'); } });
+    if (withCampanile) { campanile(sink, W, D, frame.eaveY, st.look); return; }
     // the bell arch over the front gable: two piers and their arch, the bell, the cross
     const top = frame.roof.ridgeY, z = D / 2 - 0.3;
     sink.span('stone', -1.1, top - 1.0, z - 0.3, -0.55, top + 2.0, z + 0.3);
@@ -543,13 +578,17 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
     const earth = ctx.rng() < EARTH_SHARE;
     return dar(ctx, { storeys: 1, roof: earth ? 'earth' : 'tile', stair: earth && Math.min(footprint(ctx).w, footprint(ctx).d) >= 6.2 });
   },
+  // (round 5, wave 252: "a dense village stacked on a terraced slope") the packed house of the terrace rows: one storey
+  // under the flat earth roof, its back to the terrace wall, sharing its walls with its neighbours (no stair)
+  adobe: (ctx) => dar(ctx, { storeys: 1, roof: 'earth' }),
   bathhouse: hammam,
   marketRow: souk,
   market: sabil,
-  tavern: church,
+  tavern: makeChurch(false),
   // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church
-  // is the Chouf's own, the open bell arch on its gable
-  church,
+  // is the Chouf's own, the open bell arch on its gable; (round 5, wave 252) the village's church on the summit with its
+  // campanile
+  church: makeChurch(true),
   granary: store,
   barn: stable,
   woodshed: arisha,
