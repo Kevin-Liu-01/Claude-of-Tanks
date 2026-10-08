@@ -2292,6 +2292,13 @@ const VEHICLE_FORM_LENS = 0.28;
 // eleven levels; textureLod clamps to the last one).
 const VEHICLE_PAINT_MEAN_LOD = 16;
 const VEHICLE_GROUND_DARK = 0.66;
+/**
+ * Fleet lane 2026-10-08 (the fleet audit: the T-90 X road wheels' lightening holes read as flat grey discs under the
+ * Garage key and fill): the share of an open face's direct and indirect light that reaches a wheel inset at the bottom
+ * of its hole or well (COT_GEAR_CAVITY, the insets' rubber).
+ */
+const GEAR_CAVITY_DIRECT = 0.45;
+const GEAR_CAVITY_INDIRECT = 0.3;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
@@ -2475,7 +2482,17 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );
 		reflectedLight.indirectDiffuse *= mix( ${VEHICLE_GROUND_DARK.toFixed(3)}, 1.0,
 			smoothstep( ${VEHICLE_GROUND_H0.toFixed(3)}, ${VEHICLE_GROUND_H1.toFixed(3)}, vehHeight ) );
-	}`,
+	}
+	#ifdef COT_GEAR_CAVITY
+	{
+		// fleet lane 2026-10-08: a wheel inset sits at the bottom of a lightening hole or hub well, whose walls take most
+		// of the light that reaches an open face (GEAR_CAVITY_*), after every lift above
+		reflectedLight.directDiffuse *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
+		reflectedLight.directSpecular *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
+		reflectedLight.indirectDiffuse *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
+		reflectedLight.indirectSpecular *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
+	}
+	#endif`,
   );
 }
 
@@ -2520,7 +2537,7 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY'] as const;
 
 /** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
 export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
@@ -2654,6 +2671,12 @@ export function createTankMaterials(
   const rubber = track(setup(new THREE.MeshStandardMaterial({
     color: 0x292a28, roughness: 0.96, metalness: 0.0,
   })));
+  // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
+  // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
+  const rubberCavity = track(setup(new THREE.MeshStandardMaterial({
+    color: 0x292a28, roughness: 0.98, metalness: 0.0, envMapIntensity: 0.15,
+  })));
+  rubberCavity.defines = { ...rubberCavity.defines, COT_GEAR_CAVITY: 1 };
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
   // r9 (camo white-deck major): the old 0.66-roughness/0.28-metalness combo
@@ -2924,6 +2947,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   tagVehicleMaterial(wheels, 'wheelPaint', 'wheel-paint');
   tagVehicleMaterial(wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed');
   tagVehicleMaterial(rubber, 'tireRubber', 'tire-rubber');
+  tagVehicleMaterial(rubberCavity, 'tireRubber', 'tire-rubber-cavity');
   tagVehicleMaterial(detail, 'fittingPaint', 'fitting-paint');
   tagVehicleMaterial(dark, 'gunmetal', 'gunmetal');
   tagVehicleMaterial(shadow, 'gearShadow', 'gear-shadow');
@@ -2957,7 +2981,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   }
 
   return {
-    hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
+    hull, wheels, wheelsRecessed, rubber, rubberCavity, detail, dark, shadow, trackLink, spareTrack, glass, barrel,
     canvasCloth, canvasPale, wood, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)

@@ -29,7 +29,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, boreCylinderUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -128,6 +128,7 @@ interface TankMaterials {
   wheels: THREE.MeshStandardMaterial;
   wheelsRecessed: THREE.MeshStandardMaterial;
   rubber: THREE.MeshStandardMaterial;
+  rubberCavity?: THREE.MeshStandardMaterial;
   detail: THREE.MeshStandardMaterial;
   dark: THREE.MeshStandardMaterial;
   shadow: THREE.MeshStandardMaterial;
@@ -1020,9 +1021,10 @@ function isolatedGearMaterial<M extends THREE.Material>(
  * paint carries the wheel-paint floor, so the insets read against it in every scheme. */
 function wheelInsetMaterialFor(
   _dishMaterial: THREE.Material,
-  mats: { rubber: THREE.Material; wheels: THREE.Material },
+  mats: { rubber: THREE.Material; rubberCavity?: THREE.Material; wheels: THREE.Material },
 ): THREE.Material {
-  return mats.rubber;
+  // fleet lane 2026-10-08: the rubber with a cavity's light (materials.ts COT_GEAR_CAVITY) where the set has it
+  return mats.rubberCavity ?? mats.rubber;
 }
 
 function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
@@ -7980,6 +7982,8 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // the gun tube wears its paint round the bore, not in four box swatches (factoryGeometry.ts boreCylinderUV)
+      if (bucket === 'gun') boreCylinderUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
       tintEraParts(merged, list);
