@@ -813,6 +813,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/oasisShoreline.selftest.mjs',
     'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
+    // trees perf (2026-10-07): the near pools culled to the main camera's view and their shadows' reach
+    'src/world/treeViewCull.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',

@@ -187,7 +187,7 @@ export function createMainFrameRuntime({
     world: MainWorld | null,
   ): void => {
     camera.getWorldDirection(forward);
-    world?.update(0, camera.position, forward, null);
+    world?.update(0, camera.position, forward, null, camera);
     sniperFill.update();
     fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
     updateNightLighting?.();

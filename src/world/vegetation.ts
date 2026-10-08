@@ -329,11 +329,14 @@ export interface VegetationRuntime {
   /** Checkpoint-only accounting; never force-drains unfinished visible grass. */
   getGrassWorkState(): VegetationGrassWorkState;
   setGroundCoverClearance(blocked: GroundCoverBlocked): void;
+  /** Trees perf (2026-10-07): `viewCamera` — the camera this frame's main pass renders with; its view culls the near
+   * pools (any other camera still draws them whole); none (the warm, the receipts): every near tree draws. */
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
     cameraForward?: THREE.Vector3 | null,
     focusPosition?: THREE.Vector3 | null,
+    viewCamera?: THREE.Camera | null,
   ): void;
   setWindTime(timeSeconds: number): void;
   setSniperFade(
@@ -372,6 +375,9 @@ export interface VegetationRuntime {
    * x, texel centres at -512 + (i + 0.5) × 4) — the terrain draws a forest floor under it and no field, the ground
    * tiers thin under it. Built once from the final tree records. */
   _woodsMask: Float32Array;
+  /** Trees perf (2026-10-07): the near pools' view cull — on (the main camera culls), its passes and swaps so far, and
+   * the near trees against those the pools draw this frame (the probes' and receipts' read). */
+  _nearCull(): { on: boolean; passes: number; moved: number; near: number; drawn: number };
 }
 
 interface GarageTreeKit {
@@ -7619,6 +7625,178 @@ function* vegetationBuildSteps(
     }
   }
   createPartitionSlots();
+  // Trees perf (2026-10-07, the coordinator's step 0 — "cull the near pools to the view"): a near pool is one
+  // InstancedMesh per species variant holding its trees all round the camera, never frustum-culled, so every near tree
+  // drew its trunk, fine and mid wood and cards, and cast its shadow, wherever the camera looked (the whole-PR census:
+  // +4 to +10 draws and +0.3 to +0.8 M triangles a view). Each pool now keeps its slots in two runs — first the trees
+  // the view can show, then the rest. A tree belongs to the first run when its bounding sphere, or its shadow (the
+  // sphere swept away from the light until it lands: height / sin(elevation), capped), reaches into the camera's view
+  // widened by the turn the next re-cull allows for (updateNearViewCull, before update()). The main camera draws the
+  // first run; any other camera (the minimap's top-down capture, a warm render) still draws the whole pool — every slot
+  // holds its tree's data whichever run it is in, so no render reads a stale slot. A tree crosses between the runs by a
+  // swap: two slots rewritten in place (the incremental partition's ranged uploads), never a buffer rebuild.
+  const nearVis = {} as Record<Species, number[]>;
+  /** The cull volume: six planes (inward normal x y z, constant), and each normal's dot with the light's direction. */
+  const nearCullPlanes = new Float64Array(24);
+  const nearCullPlaneL = new Float64Array(6);
+  /** The main camera draws the first runs; false (no camera given, `?treeCull=0`): every pool draws all its trees. */
+  let nearCullOn = false;
+  let nearCullCamera: THREE.Camera | null = null;
+  /** The runs no longer follow the volume (a full partition rebuild): the next update re-culls. */
+  let nearCullStale = true;
+  let nearCullPadM = 0, nearCullSinE = 1, nearCullReachM = 0;
+  /** Slope allowance, metres: a shadow may land this far below its tree's base before it ends. */
+  const NEAR_CULL_DROP_M = 8;
+  /** Per pool, its trees' local bounding sphere (x y z r): the union of its meshes' (the trunk, the cards, the proxy). */
+  const nearBounds = {} as Record<Species, (Float64Array | null)[]>;
+  function nearBoundsOf(sp: Species, v: number): Float64Array {
+    const cached = nearBounds[sp][v];
+    if (cached) return cached;
+    const sphere = new THREE.Sphere();
+    for (const m of nearMeshes[sp][v]) {
+      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+      const s = m.geometry.boundingSphere;
+      if (!s || !Number.isFinite(s.radius) || s.radius < 0) continue;
+      if (sphere.isEmpty()) sphere.copy(s); else sphere.union(s);
+    }
+    const bounds = new Float64Array([sphere.center.x, sphere.center.y, sphere.center.z, Math.max(0, sphere.radius)]);
+    nearBounds[sp][v] = bounds;
+    return bounds;
+  }
+  /** Tree t (its pool's local sphere b) or its shadow reaches into the cull volume; a felled tree always does. */
+  function nearTreeInVolume(t: TreeRecord, b: Float64Array): boolean {
+    if (t.crushed) return true;
+    const e = t.mat.elements;
+    const cx = e[0] * b[0] + e[4] * b[1] + e[8] * b[2] + e[12];
+    const cy = e[1] * b[0] + e[5] * b[1] + e[9] * b[2] + e[13];
+    const cz = e[2] * b[0] + e[6] * b[1] + e[10] * b[2] + e[14];
+    const scale = Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6],
+      e[8] * e[8] + e[9] * e[9] + e[10] * e[10]));
+    const r = b[3] * scale + nearCullPadM;
+    // the shadow: the sphere swept away from the light until its top has fallen past the base and the slope allowance
+    const sweep = Math.min(nearCullReachM, Math.max(0, cy + r - e[13] + NEAR_CULL_DROP_M) / nearCullSinE);
+    const P = nearCullPlanes;
+    for (let k = 0; k < 6; k++) {
+      const d = P[k * 4] * cx + P[k * 4 + 1] * cy + P[k * 4 + 2] * cz + P[k * 4 + 3];
+      if (d >= -r || d - sweep * nearCullPlaneL[k] >= -r) continue;
+      return false;
+    }
+    return true;
+  }
+  /** The first run takes tree t: always while the main camera does not cull. */
+  function nearTreeShown(t: TreeRecord): boolean {
+    return !nearCullOn || nearTreeInVolume(t, nearBoundsOf(t.species, t.variant));
+  }
+  /** Tree t's instance data into `slot` of every mesh of its pool, unflagged (a cull pass flags its span once). */
+  function writeNearSlotData(meshes: TreeMesh[], slot: number, t: TreeRecord): void {
+    for (const m of meshes) {
+      m.setMatrixAt(slot, t.mat);
+      m.setColorAt(slot, t.tint);
+      const fa = m.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
+      if (fa) fa.array[slot] = t.fade;
+      const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+      if (lf) lf.array[slot] = t.lodF || 0;
+    }
+  }
+  /** Pooled update ranges per stream: three holds the range objects it is handed until its upload clears the list, so
+   * the cull's marks reuse a stream's own objects once consumed — a turning camera allocates nothing. */
+  const _nearRangePools = new WeakMap<THREE.BufferAttribute, { ranges: { start: number; count: number }[]; used: number }>();
+  function addNearRange(attr: THREE.BufferAttribute, start: number, count: number): void {
+    let pool = _nearRangePools.get(attr);
+    if (!pool) { pool = { ranges: [], used: 0 }; _nearRangePools.set(attr, pool); }
+    if (attr.updateRanges.length === 0) pool.used = 0;
+    let range = pool.ranges[pool.used];
+    if (range) { range.start = start; range.count = count; } else { range = { start, count }; pool.ranges.push(range); }
+    pool.used++;
+    attr.updateRanges.push(range);
+    attr.needsUpdate = true;
+  }
+  /** Flag slots lo..hi of every mesh of a pool for one ranged upload per stream. */
+  function markNearSpanDirty(meshes: TreeMesh[], lo: number, hi: number): void {
+    const n = hi - lo + 1;
+    for (const m of meshes) {
+      addNearRange(m.instanceMatrix, lo * 16, n * 16);
+      if (m.instanceColor) addNearRange(m.instanceColor, lo * 3, n * 3);
+      const fa = m.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
+      if (fa) addNearRange(fa, lo, n);
+      const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
+      if (lf) addNearRange(lf, lo, n);
+    }
+  }
+  /** A pool's draw count: its first run while the main camera culls, every tree otherwise. */
+  function setNearCount(sp: Species, v: number): void {
+    const len = nearSlots[sp][v].length, n = nearCullOn ? nearVis[sp][v] : len;
+    for (const m of nearMeshes[sp][v]) { m.count = n; m.visible = len > 0; }
+  }
+  /** A pass's swapped slots in one pool: up to this many upload slot by slot (a turning camera moves a few trees a
+   * pool), past it the pool's span between the first and the last uploads once (the first pass, a flick). */
+  const NEAR_CULL_SLOT_CAP = 24;
+  const _nearCullSlots = new Int32Array(NEAR_CULL_SLOT_CAP);
+  /** Re-sort every pool's runs against the volume (each swap rewrites two slots in place). */
+  function cullNearPools(): number {
+    let moved = 0;
+    for (const sp of speciesList) {
+      const pools = nearSlots[sp], vis = nearVis[sp];
+      for (let v = 0; v < pools.length; v++) {
+        const slots = pools[v], meshes = nearMeshes[sp][v];
+        let n = Math.min(vis[v], slots.length), lo = slots.length, hi = -1, dirty = 0;
+        if (slots.length > 0) {
+          const b = nearBoundsOf(sp, v);
+          // the first run's trees the volume lost go to its end (the run shortens over them)
+          for (let i = 0; i < n;) {
+            if (nearTreeInVolume(slots[i], b)) { i++; continue; }
+            n--;
+            if (i === n) break;
+            const out = slots[i], last = slots[n];
+            slots[i] = last; last.slot = i;
+            slots[n] = out; out.slot = n;
+            writeNearSlotData(meshes, i, last);
+            writeNearSlotData(meshes, n, out);
+            lo = Math.min(lo, i); hi = Math.max(hi, n);
+            if (dirty + 2 <= NEAR_CULL_SLOT_CAP) { _nearCullSlots[dirty++] = i; _nearCullSlots[dirty++] = n; } else dirty = NEAR_CULL_SLOT_CAP + 1;
+            moved++;
+          }
+          // the rest's trees the volume reaches join the first run (the first culled slot's tree takes theirs)
+          for (let j = n; j < slots.length; j++) {
+            if (!nearTreeInVolume(slots[j], b)) continue;
+            if (j !== n) {
+              const shown = slots[j], culled = slots[n];
+              slots[n] = shown; shown.slot = n;
+              slots[j] = culled; culled.slot = j;
+              writeNearSlotData(meshes, n, shown);
+              writeNearSlotData(meshes, j, culled);
+              lo = Math.min(lo, n); hi = Math.max(hi, j);
+              if (dirty + 2 <= NEAR_CULL_SLOT_CAP) { _nearCullSlots[dirty++] = n; _nearCullSlots[dirty++] = j; } else dirty = NEAR_CULL_SLOT_CAP + 1;
+              moved++;
+            }
+            n++;
+          }
+        }
+        vis[v] = n;
+        if (dirty > NEAR_CULL_SLOT_CAP) markNearSpanDirty(meshes, lo, hi);
+        else for (let k = 0; k < dirty; k++) markNearSpanDirty(meshes, _nearCullSlots[k], _nearCullSlots[k]);
+        setNearCount(sp, v);
+      }
+    }
+    return moved;
+  }
+  /** The runs and their per-camera counts: a pool's main-pass meshes draw the first run for the culling camera only. */
+  function installNearViewCull(): void {
+    for (const sp of speciesList) {
+      nearVis[sp] = nearSlots[sp].map(() => 0);
+      nearBounds[sp] = nearSlots[sp].map(() => null);
+      nearSlots[sp].forEach((_slots, v) => {
+        for (const m of nearMeshes[sp][v] ?? []) {
+          // the shadow-only proxy draws in the cascade passes alone, at the frame's count (the main view's shadows)
+          if (m.userData.treeCanopyShadowProxy) continue;
+          m.onBeforeRender = (_renderer, _scene, camera) => {
+            m.count = nearCullOn && camera === nearCullCamera ? nearVis[sp][v] : nearSlots[sp][v].length;
+          };
+        }
+      });
+    }
+  }
+  installNearViewCull();
   /** Flag one instance slot's matrix/color/fade for a ranged GPU upload. */
   function markSlotDirty(m: TreeMesh, slot: number): void {
     m.instanceMatrix.addUpdateRange(slot * 16, 16);
@@ -7664,6 +7842,7 @@ function* vegetationBuildSteps(
     key: 'slot' | 'fslot',
     fade: boolean,
   ): void {
+    if (key === 'slot') { removeFromNearPool(meshes, slots, t); return; } // trees perf: the near pools keep their runs
     const i = t[key];
     const last = slots.pop();
     if (last && last !== t) {
@@ -7685,11 +7864,57 @@ function* vegetationBuildSteps(
     key: 'slot' | 'fslot',
     fade: boolean,
   ): void {
+    if (key === 'slot') { addToNearPool(meshes, slots, t); return; } // trees perf: the near pools keep their runs
     const i = slots.length;
     slots.push(t);
     t[key] = i;
     writeTreeSlot(meshes, i, t, fade ? t.fade : 0, fade ? (t.lodF || 0) : 0);
     for (const m of meshes) { m.count = slots.length; m.visible = true; }
+  }
+  /** A near tree leaves its pool: the first run's last tree takes its slot (when it stood in that run), the pool's
+   * last tree the slot left over. A near slot carries the tree's occlusion fade and its cross-fade share. */
+  function removeFromNearPool(meshes: TreeMesh[], slots: TreeRecord[], t: TreeRecord): void {
+    const vis = nearVis[t.species], v = t.variant;
+    let i = t.slot;
+    if (i < vis[v]) {
+      const j = --vis[v];
+      if (j !== i) {
+        const runEnd = slots[j];
+        slots[i] = runEnd; runEnd.slot = i;
+        slots[j] = t; t.slot = j;
+        writeTreeSlot(meshes, i, runEnd, runEnd.fade, runEnd.lodF || 0);
+        i = j;
+      }
+    }
+    const last = slots.pop();
+    if (last && last !== t) {
+      slots[i] = last;
+      last.slot = i;
+      writeTreeSlot(meshes, i, last, last.fade, last.lodF || 0);
+    }
+    t.slot = -1;
+    setNearCount(t.species, v);
+  }
+  /** A tree joins its near pool: into the first run when the volume reaches it (the first culled slot's tree moves
+   * to the pool's end), else at the end. */
+  function addToNearPool(meshes: TreeMesh[], slots: TreeRecord[], t: TreeRecord): void {
+    const vis = nearVis[t.species], v = t.variant;
+    let i = slots.length;
+    slots.push(t);
+    t.slot = i;
+    if (nearTreeShown(t)) {
+      const j = vis[v];
+      if (j !== i) {
+        const culled = slots[j];
+        slots[i] = culled; culled.slot = i;
+        slots[j] = t; t.slot = j;
+        writeTreeSlot(meshes, i, culled, culled.fade, culled.lodF || 0);
+        i = j;
+      }
+      vis[v] = j + 1;
+    }
+    writeTreeSlot(meshes, i, t, t.fade, t.lodF || 0);
+    setNearCount(t.species, v);
   }
   // aa-r1 LOD CROSS-FADE (task: "LOD cross-fades instead of pops where
   // cheap"): a tree crossing the 260/290 m hysteresis band used to swap
@@ -7811,6 +8036,9 @@ function* vegetationBuildSteps(
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
+    // trees perf: a rebuilt pool is all one run until the next update re-culls it
+    nearVis[species][variant] = nearSlots[species][variant].length;
+    nearCullStale = true;
     for (const mesh of nearMeshes[species][variant]) {
       mesh.count = nearSlots[species][variant].length;
       mesh.instanceMatrix.clearUpdateRanges();
@@ -8039,11 +8267,97 @@ function* vegetationBuildSteps(
     if (!carpetWork.complete) rebuildCarpet(camPos);
   }
 
+  // Trees perf (2026-10-07): the near pools' cull volume (the runs, above the partition): the main camera's view
+  // widened by NEAR_CULL_TURN_RAD on every side and its trees' spheres padded by NEAR_CULL_MOVE_M, re-culled only when
+  // the camera has turned or moved past those (or its lens, the light or a partition rebuild changed, and every
+  // NEAR_CULL_REFRESH_FRAMES updates) — a still or drifting camera pays a few comparisons a frame. `?treeCull=0` keeps
+  // every near tree drawn (the probes' same-build A/B), and so does `window.__TREE_DEBUG.noViewCull` while it is set
+  // (the frame-budget probe's `tree-cull` toggle, an A/B inside one page); a caller passing no camera (the battle warm,
+  // the Studio, the receipts) draws every near tree too.
+  const NEAR_VIEW_CULL = !(typeof location !== 'undefined' && /[?&]treeCull=0(&|$)/.test(location.search ?? ''));
+  const nearViewCullHeld = (): boolean => typeof window !== 'undefined'
+    && (window as unknown as { __TREE_DEBUG?: { noViewCull?: boolean } }).__TREE_DEBUG?.noViewCull === true;
+  const NEAR_CULL_TURN_RAD = 4 * Math.PI / 180;
+  const NEAR_CULL_MOVE_M = 4;
+  /** Wind sway and a crown's spread past its pool's bounds, metres. */
+  const NEAR_CULL_SWAY_M = 2;
+  const NEAR_CULL_REFRESH_FRAMES = 60;
+  /** Under this light elevation sine (~2°, the caster router's floor) a shadow's sweep runs to its cap. */
+  const NEAR_CULL_MIN_SINE = 0.035;
+  const _cullProj = new THREE.Matrix4();
+  const _cullView = new THREE.Matrix4();
+  const _cullFrustum = new THREE.Frustum();
+  const _cullPos = new THREE.Vector3(1e9, 0, 0);
+  const _cullFwd = new THREE.Vector3();
+  const _cullUp = new THREE.Vector3();
+  const _cullSun = new THREE.Vector3();
+  let nearCullTanV = 0, nearCullTanH = 0, nearCullFrames = 0, nearCullPasses = 0, nearCullMoved = 0;
+  function updateNearViewCull(viewCamera: THREE.Camera | null): void {
+    const cam = NEAR_VIEW_CULL && viewCamera && (viewCamera as THREE.PerspectiveCamera).isPerspectiveCamera && !nearViewCullHeld()
+      ? viewCamera as THREE.PerspectiveCamera : null;
+    if (!cam) {
+      if (!nearCullOn) return;
+      nearCullOn = false;
+      nearCullCamera = null;
+      for (const sp of speciesList) for (let v = 0; v < nearSlots[sp].length; v++) setNearCount(sp, v);
+      return;
+    }
+    const e = cam.matrixWorld.elements;
+    const fl = Math.hypot(e[8], e[9], e[10]) || 1, ul = Math.hypot(e[4], e[5], e[6]) || 1;
+    const fx = -e[8] / fl, fy = -e[9] / fl, fz = -e[10] / fl, ux = e[4] / ul, uy = e[5] / ul, uz = e[6] / ul;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov) * 0.5) / (cam.zoom || 1), tanH = tanV * cam.aspect;
+    // the light's direction (toward it): the sky's sun, which the cascades cast from (main.ts setSun)
+    const sun = engineCtx.scene?.userData.sunDirWorld as THREE.Vector3 | undefined;
+    const sl = sun ? Math.hypot(sun.x, sun.y, sun.z) || 1 : 1;
+    const lx = sun ? sun.x / sl : 0, ly = sun ? sun.y / sl : 1, lz = sun ? sun.z / sl : 0;
+    nearCullFrames++;
+    const turn = Math.cos(NEAR_CULL_TURN_RAD);
+    const dx = e[12] - _cullPos.x, dy = e[13] - _cullPos.y, dz = e[14] - _cullPos.z;
+    if (nearCullOn && cam === nearCullCamera && !nearCullStale && nearCullFrames < NEAR_CULL_REFRESH_FRAMES
+      && dx * dx + dy * dy + dz * dz <= NEAR_CULL_MOVE_M * NEAR_CULL_MOVE_M
+      && fx * _cullFwd.x + fy * _cullFwd.y + fz * _cullFwd.z >= turn
+      && ux * _cullUp.x + uy * _cullUp.y + uz * _cullUp.z >= turn
+      && Math.abs(tanV - nearCullTanV) <= nearCullTanV * 0.004 && Math.abs(tanH - nearCullTanH) <= nearCullTanH * 0.004
+      && lx * _cullSun.x + ly * _cullSun.y + lz * _cullSun.z >= 0.99996) return;
+    nearCullOn = true;
+    nearCullCamera = cam;
+    nearCullStale = false;
+    nearCullFrames = 0;
+    _cullPos.set(e[12], e[13], e[14]);
+    _cullFwd.set(fx, fy, fz);
+    _cullUp.set(ux, uy, uz);
+    _cullSun.set(lx, ly, lz);
+    nearCullTanV = tanV;
+    nearCullTanH = tanH;
+    const near = Math.max(0.05, cam.near), far = Math.max(near * 2, cam.far);
+    const wv = Math.tan(Math.min(1.5, Math.atan(tanV) + NEAR_CULL_TURN_RAD));
+    const wh = Math.tan(Math.min(1.5, Math.atan(tanH) + NEAR_CULL_TURN_RAD));
+    _cullProj.makePerspective(-near * wh, near * wh, near * wv, -near * wv, near, far);
+    _cullView.copy(cam.matrixWorld).invert();
+    _cullFrustum.setFromProjectionMatrix(_cullProj.multiply(_cullView));
+    for (let k = 0; k < 6; k++) {
+      const p = _cullFrustum.planes[k];
+      nearCullPlanes[k * 4] = p.normal.x;
+      nearCullPlanes[k * 4 + 1] = p.normal.y;
+      nearCullPlanes[k * 4 + 2] = p.normal.z;
+      nearCullPlanes[k * 4 + 3] = p.constant;
+      nearCullPlaneL[k] = p.normal.x * lx + p.normal.y * ly + p.normal.z * lz;
+    }
+    nearCullSinE = Math.max(NEAR_CULL_MIN_SINE, ly);
+    nearCullPadM = NEAR_CULL_MOVE_M + NEAR_CULL_SWAY_M;
+    // the cap: no near tree stands farther than the near tier's outer radius (the scope corridor's promotions stand
+    // in front of the camera), so a longer shadow than twice that reaches nothing more of the view
+    nearCullReachM = 2 * Math.max(treeNearOut, scopeZoomR);
+    nearCullPasses++;
+    nearCullMoved += cullNearPools();
+  }
+
   function update(
     dt: number,
     camPos: THREE.Vector3,
     camFwd: THREE.Vector3 | null = null,
     focusPos: THREE.Vector3 | null = null,
+    viewCamera: THREE.Camera | null = null,
   ): void {
     if (disposed) return;
     // Round 77b: the impostor atlas bakes here, before this frame's render and outside any render pass (the first
@@ -8055,7 +8369,6 @@ function* vegetationBuildSteps(
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
-    updateNearTierShadowReach(camPos);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
     // Do not spend the opening/countdown frames filling an invisible outer
@@ -8079,16 +8392,22 @@ function* vegetationBuildSteps(
     // the camera; the circular shader fade keeps this coarser recenter hidden.
     updatePartitionCaches(camPos);
     tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
+    updateNearViewCull(viewCamera); // trees perf: this frame's runs (after the partition moved trees between tiers)
+    updateNearTierShadowReach(camPos); // round 79, over the trees this frame draws
     updateOcclusionFade(dt, camPos, focusPos);
   }
 
-  /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */
+  /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one;
+   * trees perf: of the trees the pools draw (their first runs while the main camera culls). */
   function updateNearTierShadowReach(camPos: THREE.Vector3): void {
     let reach2 = 0, height = 0;
     for (const sp of speciesList) {
       const speciesHeight = speciesHeightM[sp] ?? 0;
-      for (const slots of nearSlots[sp]) {
-        for (const t of slots) {
+      const pools = nearSlots[sp], vis = nearVis[sp];
+      for (let v = 0; v < pools.length; v++) {
+        const slots = pools[v], drawn = nearCullOn ? vis[v] : slots.length;
+        for (let i = 0; i < drawn; i++) {
+          const t = slots[i];
           const dx = t.x - camPos.x, dz = t.z - camPos.z;
           const d2 = dx * dx + dz * dz;
           if (d2 > reach2) reach2 = d2;
@@ -8100,6 +8419,15 @@ function* vegetationBuildSteps(
     }
     nearTierShadowProfile.reachM = Math.sqrt(reach2);
     nearTierShadowProfile.heightM = height;
+  }
+
+  /** Trees perf: the view cull's state for the probes and receipts (allocates; never called per frame). */
+  function nearCullState(): { on: boolean; passes: number; moved: number; near: number; drawn: number } {
+    let near = 0, drawn = 0;
+    for (const sp of speciesList) {
+      nearSlots[sp].forEach((slots, v) => { near += slots.length; drawn += nearCullOn ? nearVis[sp][v] : slots.length; });
+    }
+    return { on: nearCullOn, passes: nearCullPasses, moved: nearCullMoved, near, drawn };
   }
 
   function setWindTime(t: number): void { uWindTime.value = t; }
@@ -8234,6 +8562,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
+    _nearCull: nearCullState,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
 }

@@ -18,9 +18,9 @@ const fades = [];
 const updates = [];
 const world = {
   setSniperFade(...args) { fades.push(args); },
-  update(dtSeconds, cameraPosition, forward, focus) {
+  update(dtSeconds, cameraPosition, forward, focus, viewCamera) {
     updates.push({ dtSeconds, cameraPosition, forward: forward.toArray(),
-      focus: focus?.toArray() ?? null });
+      focus: focus?.toArray() ?? null, viewCamera });
   },
 };
 const rig = { mode: 'ARCADE', aimDist: 260, externalActive: false };
@@ -39,6 +39,7 @@ assert.deepEqual(fades.at(-1), [0, false, 37, 260]);
 assert.deepEqual(updates.at(-1).cameraPosition, camera.position);
 assert.deepEqual(updates.at(-1).focus, [2, 6, 4], 'focus lifts to turret height');
 assert.ok(updates.at(-1).forward[2] > 0.999, 'world direction follows the camera');
+assert.equal(updates.at(-1).viewCamera, camera, 'the near tree pools cull to the rendering camera (trees perf)');
 
 rig.mode = 'SNIPER';
 runtime.update(1 / 60, true, false);

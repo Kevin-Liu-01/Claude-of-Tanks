@@ -141,6 +141,12 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'far-earth-null': Object.freeze({
     on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 1; n++; }); return { shells: n }; })()`,
     off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 0; n++; }); return { shells: n }; })()` }),
+  // the trees lane (2026-10-07, the coordinator's vegetation perf step 0): the near tree pools culled to the main
+  // camera's view and their shadows' reach (vegetation.ts updateNearViewCull); off draws every near tree, as before it.
+  // Each side reports the near pools' drawn instances (their trunks' counts once the switch has applied)
+  'tree-cull': Object.freeze({
+    on: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: false }); return { noViewCull: false }; })()`,
+    off: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: true }); return { noViewCull: true }; })()` }),
 });
 
 /**

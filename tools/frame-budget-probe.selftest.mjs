@@ -184,6 +184,8 @@ assert.equal(stats([]).med, null);
   assert.equal(o.port, 5395);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=AB']), /no root/);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--toggle=nope']), /toggle/);
+  // the trees lane's near-pool view cull (2026-10-07): a same-page switch like the others
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--toggle=tree-cull']).toggle, 'tree-cull');
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--sides=14']), /sides/);
   assert.deepEqual(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase,chase@7']).views, ['chase', 'chase@7'],
     'a moving view glides at <m/s>');
