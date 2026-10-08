@@ -24,6 +24,120 @@ function belongsTo(object, parent) {
   return false;
 }
 
+// Round 5 (2026-10-08, the lane lead: "make the new suits seat or hang from real support; no garnish or leaf pieces
+// should float clear of the net or the hull"): every garnish card (one connected piece of a leaves mesh) has a vertex
+// within 15 mm of its owner's net or armour, and every net piece rests on or hangs from the armour within 15 mm.
+const TOUCH_M = 0.015;
+function ownerTriangles(rig, skipRig, predicate) {
+  const tris = [];
+  const a = new THREE.Vector3();
+  rig.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position || !predicate(o)) return;
+    for (let p = o; p && p !== rig; p = p.parent) if (skipRig && p === skipRig) return;
+    for (let p = o; p; p = p.parent) if (p.parent?.isLOD && p.parent.levels.findIndex((l) => l.object === p) > 0) return;
+    const pos = o.geometry.attributes.position, index = o.geometry.index, n = index ? index.count : pos.count;
+    const w = [];
+    for (let k = 0; k < n; k++) w.push(a.fromBufferAttribute(pos, index ? index.getX(k) : k).applyMatrix4(o.matrixWorld).clone());
+    for (let k = 0; k + 2 < n; k += 3) tris.push([w[k], w[k + 1], w[k + 2]]);
+  });
+  const grid = new Map();
+  const cell = 0.1;
+  tris.forEach((t, i) => {
+    const box = new THREE.Box3().setFromPoints(t);
+    for (let x = Math.floor(box.min.x / cell); x <= Math.floor(box.max.x / cell); x++)
+      for (let y = Math.floor(box.min.y / cell); y <= Math.floor(box.max.y / cell); y++)
+        for (let z = Math.floor(box.min.z / cell); z <= Math.floor(box.max.z / cell); z++) {
+          const key = `${x},${y},${z}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(i);
+        }
+  });
+  const tri = new THREE.Triangle(), closest = new THREE.Vector3();
+  return (points) => {
+    let best = Infinity;
+    for (const v of points) {
+      // the point's cell and its neighbours: a triangle just across a cell boundary is still within reach
+      const cx = Math.floor(v.x / cell), cy = Math.floor(v.y / cell), cz = Math.floor(v.z / cell);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+        for (const i of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+          tri.set(...tris[i]); tri.closestPointToPoint(v, closest);
+          best = Math.min(best, v.distanceTo(closest));
+          if (best <= TOUCH_M) return best;
+        }
+      }
+    }
+    return best;
+  };
+}
+/** Distance from points to a net's triangles outside one of its pieces (a drape hangs from the roof net it rolls off). */
+function otherPieces(mesh, pieceList) {
+  const owner = new Map();
+  pieceList.forEach((piece, i) => { for (const v of piece) owner.set(`${v.x.toFixed(4)},${v.y.toFixed(4)},${v.z.toFixed(4)}`, i); });
+  const pos = mesh.geometry.attributes.position;
+  const tris = [];
+  for (let k = 0; k + 2 < pos.count; k += 3) {
+    const t = [0, 1, 2].map((j) => new THREE.Vector3().fromBufferAttribute(pos, k + j).applyMatrix4(mesh.matrixWorld));
+    tris.push({ t, piece: owner.get(`${t[0].x.toFixed(4)},${t[0].y.toFixed(4)},${t[0].z.toFixed(4)}`) });
+  }
+  const tri = new THREE.Triangle(), closest = new THREE.Vector3();
+  return (points, self) => {
+    let best = Infinity;
+    for (const v of points) for (const { t, piece } of tris) {
+      if (piece === self) continue;
+      tri.set(...t); tri.closestPointToPoint(v, closest);
+      best = Math.min(best, v.distanceTo(closest));
+      if (best <= TOUCH_M) return best;
+    }
+    return best;
+  };
+}
+/** Connected pieces of a non-indexed mesh, welded by position, as world-space vertex lists. */
+function pieces(mesh) {
+  const pos = mesh.geometry.attributes.position, n = pos.count;
+  const parent = Int32Array.from({ length: n }, (_, i) => i);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const welded = new Map();
+  for (let i = 0; i < n; i++) {
+    const key = `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
+    if (welded.has(key)) parent[find(i)] = find(welded.get(key)); else welded.set(key, i);
+  }
+  for (let t = 0; t + 2 < n; t += 3) { parent[find(t + 1)] = find(t); parent[find(t + 2)] = find(t); }
+  const out = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!out.has(r)) out.set(r, []);
+    out.get(r).push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld));
+  }
+  return [...out.values()];
+}
+function suitContact(tank, id) {
+  const report = [];
+  for (const owner of ['hull', 'turret', 'gun']) {
+    const rig = tank.root.getObjectByName(`rig_${owner}`);
+    const net = tank.root.getObjectByName(`${id}_ghillie_${owner}_net`);
+    const leaves = tank.root.getObjectByName(`${id}_ghillie_${owner}_leaves`);
+    if (!rig || !net) continue;
+    const skip = owner === 'hull' ? tank.root.getObjectByName('rig_turret') : owner === 'turret' ? tank.root.getObjectByName('rig_gun') : null;
+    const armour = ownerTriangles(rig, skip, (o) => !/_ghillie_|procShadow|InteriorFill/.test(o.name));
+    const netTris = ownerTriangles(rig, null, (o) => o === net);
+    const netPieces = pieces(net);
+    const hangsFrom = otherPieces(net, netPieces);
+    for (const [index, piece] of netPieces.entries()) {
+      // rests on the armour, or hangs from another piece of its net that does (a drape rolling off the roof net)
+      let gap = armour(piece);
+      if (gap > TOUCH_M) gap = Math.min(gap, hangsFrom(piece, index));
+      if (gap > TOUCH_M) {
+        const box = new THREE.Box3().setFromPoints(piece), f = (v) => v.toArray().map((x) => x.toFixed(2)).join(',');
+        report.push(`${owner} net piece of ${piece.length} vertices (${f(box.min)} .. ${f(box.max)}): nearest armour ${(gap * 100).toFixed(1)} cm`);
+      }
+    }
+    if (!leaves) continue;
+    for (const card of pieces(leaves)) {
+      const gap = Math.min(netTris(card), armour(card));
+      if (gap > TOUCH_M) report.push(`${owner} garnish card at ${card[0].toArray().map((v) => v.toFixed(2)).join(',')}: nearest ${(gap * 100).toFixed(1)} cm`);
+    }
+  }
+  return report;
+}
+
 for (const id of ids) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
@@ -57,6 +171,9 @@ for (const id of ids) {
       }
     }
   }
+
+  const floating = suitContact(tank, id);
+  assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
 
   const hullNet = tank.root.getObjectByName(`${id}_ghillie_hull_net`);
   const hullBounds = new THREE.Box3().setFromObject(hullNet);
@@ -121,6 +238,16 @@ for (const id of ids) {
       `${id} gun shroud stops behind the live muzzle anchor`);
   }
 
+  tank.dispose();
+}
+
+// the suits with their own receipts (the A4) or their own field configs (the Ukrainian T-72 rebuilds) are held to the
+// same contact rule
+for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern']) {
+  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+  tank.root.updateMatrixWorld(true);
+  const floating = suitContact(tank, id);
+  assert.deepEqual(floating, [], `${id} suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
   tank.dispose();
 }
 

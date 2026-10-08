@@ -172,6 +172,185 @@ function makeGarnishAtlas(kind: 'garnish-woodland' | 'garnish-arid'): THREE.Text
   return texture;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Ghillie garnish atlas (round 5, 2026-10-08; wave 253 on the Leopard 2A4's suit: "the bushy leaf bundles ... are
+// near-identical clones at regular spacing", "round leaf blotches stuck on like decals"; the coordinator: "burlap
+// garnish strips tied in irregular clusters, not decals or cloned bundles"). A crew garnishes its net with cut cloth
+// and burlap strips knotted in and with boughs cut on the spot. One atlas carries both, so the garnish stays one draw:
+// the top row is the species' first two spray tiles (the trees lane's atlas), the bottom row two bunches of cut burlap
+// strips fanning out of a knot at the tile's foot, painted in a light neutral hessian that each card's tint colours for
+// its theatre (woodland greens and browns, desert sand, snow white).
+// ---------------------------------------------------------------------------------------------------------------
+
+/** The atlas tiles of a ghillie garnish atlas: the species' boughs, and the strip bunches. */
+export const GARNISH_BOUGH_TILES = [0, 1] as const;
+export const GARNISH_STRIP_TILES = [2, 3] as const;
+/** The strip tiles' painted hessian, sRGB: a card's tint is the linear colour it should show over this one's. */
+export const GARNISH_STRIP_BASE_SRGB: readonly [number, number, number] = [200, 189, 160];
+
+const garnishAtlasCache = new Map<SprayKind, THREE.Texture | null>();
+
+/** Paint one tile of knotted burlap strips (stem seat at the tile's bottom centre, tips toward the top). */
+function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
+  const [br, bg, bb] = GARNISH_STRIP_BASE_SRGB;
+  const knotX = S * (0.46 + rng() * 0.08), knotY = S * 0.965;
+  const count = 7 + Math.floor(rng() * 5);
+  const strips: Array<() => void> = [];
+  for (let k = 0; k < count; k++) {
+    const share = k / (count - 1) - 0.5;
+    const ang = -Math.PI / 2 + share * (1.0 + rng() * 0.5) + (rng() - 0.5) * 0.3;
+    const len = S * (0.45 + rng() * 0.48), wid = S * (0.035 + rng() * 0.06);
+    const bend = (rng() - 0.5) * len * 0.6, twist = rng() * Math.PI, twists = 0.4 + rng() * 1.4;
+    const value = 0.74 + rng() * 0.34, warm = (rng() - 0.5) * 0.14;
+    const fray = rng();
+    const jag: number[] = [];
+    for (let t = 0; t <= 16; t++) jag.push(0.8 + rng() * 0.4);
+    strips.push(() => {
+      const cx = Math.cos(ang), cy = Math.sin(ang), nx = -cy, ny = cx;
+      const steps = 16, pts: Array<[number, number, number]> = [];
+      for (let t = 0; t <= steps; t++) {
+        const u = t / steps, tw = Math.abs(Math.cos(twist + u * twists * Math.PI));
+        const w = wid * (0.45 + 0.55 * Math.min(1, u * 3)) * (0.35 + 0.65 * tw) * jag[t];
+        // a strip hangs: it bends one way and sags back toward the vertical near its end
+        const off = bend * Math.sin(u * Math.PI * 0.8);
+        pts.push([knotX + cx * u * len + nx * off, knotY + cy * u * len + ny * off, w / 2]);
+      }
+      const edge = (t: number, sgn: number): [number, number] => {
+        const [x, y, hw] = pts[t], a = pts[Math.max(0, t - 1)], b = pts[Math.min(steps, t + 1)];
+        const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+        return [x - (dy / l) * hw * sgn, y + (dx / l) * hw * sgn];
+      };
+      const tone = [br * value * (1 + warm), bg * value, bb * value * (1 - warm)].map((c) => Math.min(255, c | 0));
+      ctx.beginPath();
+      for (let t = 0; t <= steps; t++) { const [x, y] = edge(t, 1); if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      // the cut end: frayed into a few short tails, or cut on the bias
+      const [ex, ey, ew] = pts[steps];
+      const tails = fray < 0.6 ? 3 + Math.floor(rng() * 3) : 1;
+      for (let q = 0; q < tails; q++) {
+        const o = tails > 1 ? (q / (tails - 1) - 0.5) * ew * 1.8 : 0;
+        ctx.lineTo(ex + nx * o + cx * wid * (0.25 + rng() * 0.9), ey + ny * o + cy * wid * (0.25 + rng() * 0.9));
+        ctx.lineTo(ex + nx * (o - ew * 0.3), ey + ny * (o - ew * 0.3));
+      }
+      for (let t = steps; t >= 0; t--) { const [x, y] = edge(t, -1); ctx.lineTo(x, y); }
+      ctx.closePath();
+      // shaded toward the knot where the bunch gathers, lighter toward the free end
+      const grad = ctx.createLinearGradient(knotX, knotY, ex, ey);
+      grad.addColorStop(0, `rgb(${(tone[0] * 0.62) | 0},${(tone[1] * 0.6) | 0},${(tone[2] * 0.56) | 0})`);
+      grad.addColorStop(0.35, `rgb(${tone[0]},${tone[1]},${tone[2]})`);
+      grad.addColorStop(1, `rgb(${Math.min(255, tone[0] * 1.08) | 0},${Math.min(255, tone[1] * 1.08) | 0},${Math.min(255, tone[2] * 1.06) | 0})`);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      // hessian fibre: a speckle of darker and lighter flecks inside the strip
+      ctx.save();
+      ctx.clip();
+      for (let f = 0; f < 70; f++) {
+        const u = rng(), [x, y, hw] = pts[Math.min(steps, Math.floor(u * steps))];
+        const o = (rng() - 0.5) * 2 * hw;
+        const dark = rng() < 0.6;
+        ctx.fillStyle = dark ? `rgba(${(tone[0] * 0.55) | 0},${(tone[1] * 0.52) | 0},${(tone[2] * 0.48) | 0},0.35)`
+          : `rgba(${Math.min(255, tone[0] * 1.2) | 0},${Math.min(255, tone[1] * 1.2) | 0},${Math.min(255, tone[2] * 1.15) | 0},0.3)`;
+        ctx.fillRect(x + nx * o, y + ny * o, 1 + rng() * 2.2, 1 + rng() * 1.2);
+      }
+      ctx.restore();
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = `rgba(${(tone[0] * 0.48) | 0},${(tone[1] * 0.46) | 0},${(tone[2] * 0.42) | 0},0.5)`;
+      ctx.stroke();
+    });
+  }
+  // the far strips first: the bunch overlaps toward the viewer's side
+  for (const draw of strips) draw();
+  // loose jute fibres frayed out of the bunch
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 5; k++) {
+    const ang = -Math.PI / 2 + (rng() - 0.5) * 1.6, len = S * (0.3 + rng() * 0.4);
+    ctx.strokeStyle = `rgba(${(br * 0.82) | 0},${(bg * 0.8) | 0},${(bb * 0.74) | 0},0.85)`;
+    ctx.lineWidth = 1.4 + rng() * 1.2;
+    ctx.beginPath(); ctx.moveTo(knotX, knotY);
+    ctx.quadraticCurveTo(knotX + Math.cos(ang) * len * 0.5 + (rng() - 0.5) * 18, knotY + Math.sin(ang) * len * 0.5,
+      knotX + Math.cos(ang) * len, knotY + Math.sin(ang) * len);
+    ctx.stroke();
+  }
+  // the knot
+  ctx.fillStyle = `rgb(${(br * 0.55) | 0},${(bg * 0.52) | 0},${(bb * 0.46) | 0})`;
+  ctx.beginPath(); ctx.ellipse(knotX, knotY - S * 0.012, S * 0.04, S * 0.026, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+/** The elliptical falloff and mean-tone flood of the given tiles (makeGarnishAtlas's rule): mips stay leafy, not boxed. */
+function finishGarnishTiles(d: Uint8ClampedArray, size: number, S: number, tiles: readonly number[]): void {
+  const T = FOLIAGE_ATLAS_TILES;
+  for (const tile of tiles) {
+    const tx = tile % T, ty = Math.floor(tile / T);
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = ((ty * S + y) * size + tx * S + x) * 4;
+      if (d[i + 3] > 160) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    }
+    const fr = n ? r / n : 150, fg = n ? g / n : 140, fb = n ? b / n : 118;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const i = ((ty * S + y) * size + tx * S + x) * 4;
+      const ex = (x + 0.5) / S * 2 - 1, ey = (y + 0.5) / S * 2 - 1;
+      const fall = Math.max(0, Math.min(1, (1 - Math.hypot(ex, ey * 0.98)) / 0.16));
+      // the stem seat at the tile's foot keeps its knot (a strip bunch hangs from it)
+      const foot = y > S * 0.9 && Math.abs(ex) < 0.12 ? 1 : fall;
+      d[i + 3] = Math.round(d[i + 3] * foot);
+      if (d[i + 3] < 24) { d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; }
+    }
+  }
+}
+
+/**
+ * The ghillie garnish atlas of a species: its boughs in tiles GARNISH_BOUGH_TILES, burlap strip bunches in
+ * GARNISH_STRIP_TILES, with coverage-preserving mips. Cached per species; null without a DOM (the geometry is the same).
+ */
+export function ghillieGarnishAtlas(species: SprayKind): THREE.Texture | null {
+  if (garnishAtlasCache.has(species)) return garnishAtlasCache.get(species)!;
+  let texture: THREE.Texture | null = null;
+  if (typeof document !== 'undefined') {
+    try {
+      const sprays = makeSprayAtlas(species, seeded(kindSeed(species)), ATLAS_SIZE, null, 0);
+      const source = sprays.image as unknown as MipImage;
+      const size = ATLAS_SIZE, T = FOLIAGE_ATLAS_TILES, S = size / T;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx || !source?.data || source.width !== size) throw new Error('vehicleFoliage: Canvas2D unavailable');
+      ctx.clearRect(0, 0, size, size);
+      const rng = seeded(kindSeed(`ghillie-strips:${species}`));
+      for (const tile of GARNISH_STRIP_TILES) {
+        const tx = tile % T, ty = Math.floor(tile / T);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(tx * S, ty * S, S, S); ctx.clip();
+        ctx.translate(tx * S, ty * S);
+        paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
+        ctx.restore();
+      }
+      // the spray tiles keep their straight-alpha bytes (a canvas round trip would premultiply their flood away); the
+      // strip tiles come from the canvas
+      const image = ctx.getImageData(0, 0, size, size);
+      const out = image.data, src = source.data;
+      for (const tile of GARNISH_BOUGH_TILES) {
+        const tx = tile % T, ty = Math.floor(tile / T);
+        for (let y = 0; y < S; y++) {
+          const at = ((ty * S + y) * size + tx * S) * 4;
+          out.set(src.subarray(at, at + S * 4), at);
+        }
+      }
+      finishGarnishTiles(out, size, S, GARNISH_STRIP_TILES);
+      texture = new THREE.Texture(image as unknown as HTMLImageElement);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
+      texture.needsUpdate = true;
+      texture.name = `vehicleFoliage:ghillie-garnish:${species}`;
+      attachCoverageMips(texture);
+      sprays.dispose();
+    } catch {
+      texture = null;
+    }
+  }
+  garnishAtlasCache.set(species, texture);
+  return texture;
+}
+
 /**
  * The shared atlas for one foliage kind: the trees lane's species spray atlas, or the painted multispectral garnish.
  * Null without a DOM (node receipts, the Garage workshop worker): the card geometry is identical either way.

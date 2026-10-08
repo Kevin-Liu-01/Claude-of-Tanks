@@ -64,6 +64,7 @@ import {
   canRack, canRackStyleFor, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
+import { drapeGhillieOverLoads } from './ghillieDrape.ts';
 import { block, moldedBox, place, roundBar, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
@@ -5336,6 +5337,10 @@ export function* attachTankDecorationsSteps(
       drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
       drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
+    // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
+    // them, never laid through them (ghillieDrape.ts)
+    drapeGhillieOverLoads(hullG, seatedLoads.hull);
+    drapeGhillieOverLoads(turretG, seatedLoads.turret);
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;
