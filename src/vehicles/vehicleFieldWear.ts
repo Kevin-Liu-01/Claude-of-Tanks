@@ -33,7 +33,7 @@ export const VEHICLE_FIELD_WEAR_GARAGE = 0.42;
 type Rgb = readonly [number, number, number];
 
 /** One battlefield's soil on the vehicle, in linear RGB. */
-export interface VehicleFieldSoil {
+interface VehicleFieldSoil {
   /** The packed coat on the running gear and the lowest plates (wet earth, oily dust grime, packed snow). */
   readonly deep: Rgb;
   /** How wet (glossy) the deep coat is, 0..1. */
@@ -129,7 +129,7 @@ const toLuma = (c: Rgb, lo: number, hi: number): Rgb => {
  * at about half the sand's value, so the tracks and wheels stay the darkest band under the pale hull. Snow: packed snow
  * and dirt in the running gear, dark slush thrown up the hull, fresh snow on the decks.
  */
-export function deriveVehicleFieldSoil({ dirt, ground: base, climate, wet }: FieldGround): VehicleFieldSoil {
+function deriveVehicleFieldSoil({ dirt, ground: base, climate, wet }: FieldGround): VehicleFieldSoil {
   if (climate === 'arid') {
     const settle = desat(lift(scale(base, 1.15), 0.08), 0.4);
     return Object.freeze({
@@ -231,13 +231,17 @@ const ROLE_WHEEL = Object.freeze(new THREE.Vector4(0.9, 0.6, 0, 0.6));
 // splash: a pale top run read as "a bright white outline traces both track runs" on wave 264's M60A1)
 const ROLE_RUBBER = Object.freeze(new THREE.Vector4(0.9, 0.5, 4, 0.6));
 const ROLE_IRON = Object.freeze(new THREE.Vector4(0.9, 0.6, 2, 0.6));
+// The scrolling track band: the iron's deep coat all round but no polish. Its texture runs while its mesh stands still,
+// so a polish pattern laid in the mesh's frame would stand still on a moving track (its own painted worn crests carry
+// the wear); the shoes and links, which ride with their instances, take the iron's polish.
+const ROLE_BAND = Object.freeze(new THREE.Vector4(0.9, 0.6, 4, 0.6));
 const ROLE_STEEL = Object.freeze(new THREE.Vector4(0.9, 0.8, 3, 1));
 const ROLE_SOFT = Object.freeze(new THREE.Vector4(0.85, 1, 0, 0.8));
 const ROLE_GLASS = Object.freeze(new THREE.Vector4(0.25, 0.35, 0, 0.5));
 const ROLE_NONE = Object.freeze(new THREE.Vector4(0, 0, 0, 0));
 const ROLES_BY_APPEARANCE: Readonly<Record<string, THREE.Vector4>> = Object.freeze({
   armorPaint: ROLE_PAINT, fittingPaint: ROLE_PAINT,
-  wheelPaint: ROLE_WHEEL, tireRubber: ROLE_RUBBER, trackSteel: ROLE_IRON, trackPad: ROLE_IRON, trackBand: ROLE_IRON,
+  wheelPaint: ROLE_WHEEL, tireRubber: ROLE_RUBBER, trackSteel: ROLE_IRON, trackPad: ROLE_IRON, trackBand: ROLE_BAND,
   gunmetal: ROLE_STEEL,
   canvas: ROLE_SOFT, canvasPale: ROLE_SOFT, wood: ROLE_SOFT,
   opticGlass: ROLE_GLASS,
@@ -279,7 +283,7 @@ export function vehicleFieldWearRole(material: THREE.Material): THREE.Vector4 {
  * A vehicle's hull frame in its root's own metres (origin at the ground contact, +Y up, +Z forward, +X its left): the
  * rear plate's and the bow's stations along +Z, the engine deck's height and the hull's half width.
  */
-export interface VehicleWearFrame {
+interface VehicleWearFrame {
   sternZ: number;
   bowZ: number;
   deckY: number;
@@ -302,7 +306,13 @@ interface VehicleWearState {
   hull: THREE.Vector4;
   exhaust: SootSource | null;
   muzzle: SootSource | null;
+  /** The render frame the root's own frame below was placed for (NaN: never; -1 calls place every time). */
   frame: number;
+  /** Placed once per frame: the ground contact (w the field-wear strength), the hull's up and forward axes. */
+  ground: THREE.Vector4;
+  up: THREE.Vector3;
+  fwd: THREE.Vector3;
+  garage: boolean;
 }
 // Held beside the root, never in its userData: three's Object3D.copy deep-copies userData through JSON (tank thumbnail
 // masks clone the root), and a soot source's owner is a live Object3D.
@@ -317,10 +327,10 @@ const LEFT_EXHAUST = /^(t54|t55|t62|t64|t72|t90|pt91|m84|bmpt)/;
  * Measure a vehicle's hull frame from its own camouflaged plates outside the turret (round 4's measurement, kept with
  * the redesign): the rear plate is the rearmost rear-facing plate in the hull's last third with at least two fifths of
  * the largest one's area (a rack's bars behind it are smaller, a step ahead of it does not win), the engine deck the
- * up-facing plate with the most area in the rear half of the hull's middle. Each mesh contributes at most about 4,000
- * sampled triangles. Null when the hull has no such plates.
+ * up-facing plate with the most area in the rear half of the hull's middle. About 24,000 sampled triangles in all (a mesh
+ * at most 4,000, never under 48), so a build pays a few milliseconds. Null when the hull has no such plates.
  */
-export function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null {
+function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame | null {
   root.updateMatrixWorld(true);
   const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
   const turret = root.getObjectByName('rig_turret');
@@ -330,12 +340,14 @@ export function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame 
   const rear: number[] = []; // [z, area] pairs of rear-facing plates
   const up: number[] = []; // [y, z, |x|, area] of up-facing plates
   let minZ = Infinity, maxZ = -Infinity, maxX = 0;
+  // the hull's camouflaged plates outside the turret, visible, on each LOD's finest level (the coarse levels repeat the
+  // same plates)
+  const plates: Array<{ mesh: THREE.Mesh; count: number }> = [];
   root.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh || (mesh as unknown as { isBatchedMesh?: boolean }).isBatchedMesh || !mesh.geometry || mesh.visible === false) return;
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     if (!materials.some((material) => material?.name === 'cot:armor-paint')) return;
-    // outside the turret, visible, and on each LOD's finest level (the coarse levels repeat the same plates)
     for (let child: THREE.Object3D = mesh, parent = mesh.parent; parent; child = parent, parent = parent.parent) {
       if (parent === turret || parent.visible === false) return;
       const lod = parent as THREE.LOD;
@@ -343,9 +355,16 @@ export function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame 
     }
     const position = mesh.geometry.getAttribute('position');
     if (!position) return;
+    const count = mesh.geometry.index ? mesh.geometry.index.count : position.count;
+    plates.push({ mesh, count });
+  });
+  // One budget for the whole hull: about 24,000 sampled triangles in all, a mesh never under 48 (a 12-triangle plate box
+  // stays whole), so a hull of many painted meshes costs what a hull of five does (the fleet's are five to nine: 0.3-1 ms)
+  const perMesh = Math.min(4000, Math.max(48, 24000 / Math.max(1, plates.length)));
+  for (const { mesh, count } of plates) {
+    const position = mesh.geometry.getAttribute('position');
     const index = mesh.geometry.index;
-    const count = index ? index.count : position.count;
-    const stride = Math.max(1, Math.ceil(count / 3 / 4000)) * 3;
+    const stride = Math.max(1, Math.ceil(count / 3 / perMesh)) * 3;
     local.multiplyMatrices(toRoot, mesh.matrixWorld);
     const vertex = (out: THREE.Vector3, at: number): THREE.Vector3 =>
       out.fromBufferAttribute(position, index ? index.getX(at) : at).applyMatrix4(local);
@@ -364,7 +383,7 @@ export function measureVehicleWearFrame(root: THREE.Object3D): VehicleWearFrame 
       if (normal.z < -0.75) rear.push(z, area);
       else if (normal.y > 0.85) up.push((a.y + b.y + c.y) / 3, z, Math.abs(a.x + b.x + c.x) / 3, area);
     }
-  });
+  }
   const length = maxZ - minZ;
   if (!(length > 1)) return null;
   const rearBins = new Map<number, number>();
@@ -413,7 +432,12 @@ export function installVehicleFieldWear(root: THREE.Object3D, specId: string): v
   const muzzleRig = root.getObjectByName('rig_muzzle');
   // the soot runs back along the tube from a hand-span ahead of the muzzle plane (a brake past it is sooted to its tip)
   const muzzle = muzzleRig ? source(muzzleRig, new THREE.Vector3(0, 0, 0.12), new THREE.Vector3(0, 0, -1), 0.22, 0.8) : null;
-  VEHICLE_WEAR.set(root, { hull, exhaust, muzzle, frame: NaN });
+  VEHICLE_WEAR.set(root, newWearState(hull, exhaust, muzzle));
+}
+
+function newWearState(hull: THREE.Vector4, exhaust: SootSource | null, muzzle: SootSource | null): VehicleWearState {
+  return { hull, exhaust, muzzle, frame: NaN, ground: new THREE.Vector4(), up: new THREE.Vector3(0, 1, 0),
+    fwd: new THREE.Vector3(0, 0, 1), garage: false };
 }
 
 const sootMouth = new THREE.Vector3();
@@ -425,51 +449,100 @@ function placeSoot(source: SootSource): void {
   source.worldAxis.set(sootAxis.x, sootAxis.y, sootAxis.z, source.length);
 }
 
-let lastRole: THREE.Vector4 | null = null;
-let lastHull: THREE.Vector4 | null = null;
-let lastSoot: THREE.Vector4 | null = null;
+/** Whether a drawn object belongs to the gun (under `rig_gun`: the tube, the brake, the mantlet): the per-draw hook asks
+ * once per object when it is installed (tankFactoryCore.ts installVehicleGroundReference). */
+export function isVehicleGunPart(object: THREE.Object3D): boolean {
+  for (let at: THREE.Object3D | null = object; at; at = at.parent) if (at.name === 'rig_gun') return true;
+  return false;
+}
+
 /**
- * Per draw (materials.ts setVehicleGroundFromRoot): the drawn material's role, the root's hull frame and soot source
- * and, for a Garage build, the neutral film. The sources are placed once per rendered frame (`frame` < 0: every time);
- * a draw writes only what changed since the last one: no allocation, reference compares.
+ * A vehicle root's frame for the current render frame (materials.ts setVehicleGroundFromRoot): its ground contact with
+ * the field-wear strength in w (`root.userData.fieldWear`: 1 in battle, VEHICLE_FIELD_WEAR_GARAGE on the Garage build,
+ * a root without it wears 1), its up and forward axes, its soot sources, all placed once per rendered frame (`frame` < 0:
+ * every call). A root built without use-wear (tooling) gets a frame of its own on first use.
+ */
+let lastRoot: THREE.Object3D | null = null;
+let lastRootState: VehicleWearState | null = null;
+export function vehicleWearFrameOf(root: THREE.Object3D, frame: number): VehicleWearState {
+  // the opaque list runs material by material, so a vehicle's draws arrive together: the last root answers most calls
+  if (root === lastRoot && lastRootState && frame >= 0 && lastRootState.frame === frame) return lastRootState;
+  let state = VEHICLE_WEAR.get(root);
+  if (!state) {
+    state = newWearState(NO_HULL, null, null);
+    VEHICLE_WEAR.set(root, state);
+  }
+  if (frame < 0 || state.frame !== frame) {
+    const e = root.matrixWorld.elements;
+    const wear = root.userData.fieldWear;
+    const strength = typeof wear === 'number' ? wear : 1;
+    state.ground.set(e[12], e[13], e[14], strength);
+    const n = Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]) || 1;
+    state.up.set(e[4] / n, e[5] / n, e[6] / n);
+    const f = Math.sqrt(e[8] * e[8] + e[9] * e[9] + e[10] * e[10]) || 1;
+    state.fwd.set(e[8] / f, e[9] / f, e[10] / f);
+    state.garage = strength < 1;
+    if (state.exhaust) placeSoot(state.exhaust);
+    if (state.muzzle) placeSoot(state.muzzle);
+    state.frame = frame;
+    if (state === lastState) lastState = null; // its vectors moved: rewrite
+  }
+  lastRoot = root;
+  lastRootState = state;
+  return state;
+}
+
+let lastState: VehicleWearState | null = null;
+let lastRole: THREE.Vector4 | null = null;
+let lastMaterial: THREE.Material | null = null;
+let lastSoot: SootSource | null | undefined;
+/**
+ * Per draw (materials.ts setVehicleGroundFromRoot, after vehicleWearFrameOf): the drawn material's role, the root's hull
+ * frame and forward axis, its soot source (the muzzle for the gun's own parts, the exhaust for everything else: the
+ * engine grilles' bare steel included) and, for a Garage build, the neutral film. Reference compares, and a copy only
+ * when something changed since the last draw: no allocation, no matrix work.
  */
 export function bindVehicleFieldWear(
-  garage: boolean,
+  state: VehicleWearState,
   material: THREE.Material | null | undefined,
-  root: THREE.Object3D | null = null,
-  frame = -1,
+  gun = false,
 ): void {
   const U = VEHICLE_FIELD_WEAR_UNIFORMS;
-  const source = garage ? GARAGE : BATTLE;
-  if (source !== soilSource) {
+  if (state !== lastState) {
+    U.uVehWearFwd.value.copy(state.fwd);
+    U.uVehWearHull.value.copy(state.hull);
+    const source = state.garage ? GARAGE : BATTLE;
+    if (source !== soilSource) {
+      U.uVehWearDeep.value.copy(source.deep);
+      U.uVehWearSplash.value.copy(source.splash);
+      U.uVehWearSettle.value.copy(source.settle);
+      soilSource = source;
+    }
+    lastState = state;
+    lastSoot = undefined;
+  } else if (soilSource === null) {
+    // the battle soil was repointed (setVehicleFieldSoil) between two draws of one root
+    const source = state.garage ? GARAGE : BATTLE;
     U.uVehWearDeep.value.copy(source.deep);
     U.uVehWearSplash.value.copy(source.splash);
     U.uVehWearSettle.value.copy(source.settle);
     soilSource = source;
   }
-  const role = material ? vehicleFieldWearRole(material) : ROLE_PAINT;
-  if (role !== lastRole) {
-    U.uVehWearRole.value.copy(role);
-    lastRole = role;
+  if (material !== lastMaterial) {
+    const role = material ? vehicleFieldWearRole(material) : ROLE_PAINT;
+    if (role !== lastRole) {
+      U.uVehWearRole.value.copy(role);
+      lastRole = role;
+    }
+    lastMaterial = material ?? null;
   }
-  const state = root ? VEHICLE_WEAR.get(root) : undefined;
-  const hull = state?.hull ?? NO_HULL;
-  if (hull !== lastHull) {
-    U.uVehWearHull.value.copy(hull);
-    lastHull = hull;
-  }
-  const soot = role === ROLE_BARREL || role === ROLE_STEEL ? state?.muzzle : state?.exhaust;
-  if (soot && (frame < 0 || state!.frame !== frame)) {
-    if (state!.exhaust) placeSoot(state!.exhaust);
-    if (state!.muzzle) placeSoot(state!.muzzle);
-    state!.frame = frame;
-    lastSoot = null; // the placed vectors moved: rewrite
-  }
-  const sootWorld = soot ? soot.world : NO_SOOT;
-  if (sootWorld !== lastSoot) {
-    U.uVehWearSoot.value.copy(sootWorld);
-    if (soot) U.uVehWearSootAxis.value.copy(soot.worldAxis);
-    lastSoot = sootWorld;
+  const soot = gun ? state.muzzle : state.exhaust;
+  if (soot !== lastSoot) {
+    if (soot) {
+      U.uVehWearSoot.value.copy(soot.world);
+      U.uVehWearSootAxis.value.copy(soot.worldAxis);
+    } else U.uVehWearSoot.value.copy(NO_SOOT);
+    lastSoot = soot;
   }
 }
 

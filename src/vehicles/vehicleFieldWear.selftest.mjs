@@ -18,7 +18,8 @@ import { getMapConfig, MAP_IDS } from '../world/maps/index.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import {
   VEHICLE_FIELD_GROUNDS, VEHICLE_FIELD_WEAR_GARAGE, VEHICLE_FIELD_WEAR_UNIFORMS, FIELD_WEAR_CORE_GLSL, FIELD_WEAR_FRAGMENT,
-  FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, bindVehicleFieldWear, installVehicleFieldWear, vehicleFieldSoil, vehicleFieldWearRole,
+  FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_NOISE_GLSL, FIELD_WEAR_VERTEX, installVehicleFieldWear, isVehicleGunPart, vehicleFieldSoil,
+  vehicleFieldWearRole,
 } from './vehicleFieldWear.ts';
 import { setCamoBiome, setVehicleGroundFromRoot, resetVehicleGround, vehicleAmbientFloorHook } from './materials.ts';
 
@@ -272,6 +273,7 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   const role = (m) => vehicleFieldWearRole(m).toArray();
   assert.deepEqual(role(mat('armorPaint')), [1, 1, 1, 1]);
   assert.equal(role(mat('trackPad'))[2], 2, 'track shoes polish like track iron');
+  assert.equal(role(mat('trackBand'))[2], 4, 'the scrolling band keeps the deep coat but no polish (it would stand still on a moving track)');
   assert.equal(role(mat('gunmetal'))[2], 3, 'bare steel wears bright where it is handled');
   assert.equal(role(mat('gearShadow'))[0] + role(mat('gearShadow'))[1], 0, 'the wheel-bay recess panels stay clean dark');
   assert.equal(role(mat('burnt'))[0], 0, 'wrecks keep their char');
@@ -284,36 +286,45 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   const U = VEHICLE_FIELD_WEAR_UNIFORMS;
   const u4 = (u) => u.value.toArray().map((v) => Number(v.toFixed(5)));
   const s4 = (c, a) => [...c, a].map((v) => Number(v.toFixed(5)));
+  // a battle root and a Garage root (draws per frame: frame numbers advance as the render's counter would)
+  const battleRoot = new THREE.Object3D(); battleRoot.userData.fieldWear = 1; battleRoot.updateMatrixWorld(true);
+  const garageRoot = new THREE.Object3D(); garageRoot.userData.fieldWear = VEHICLE_FIELD_WEAR_GARAGE; garageRoot.updateMatrixWorld(true);
+  let frameNo = 100;
   setCamoBiome('desert');
-  bindVehicleFieldWear(false, mat('armorPaint'));
+  setVehicleGroundFromRoot(battleRoot, mat('armorPaint'), ++frameNo);
   const desert = vehicleFieldSoil('desert');
   assert.deepEqual(u4(U.uVehWearSettle), s4(desert.settle, desert.settleAmount), 'setCamoBiome points battle builds at the map soil');
-  bindVehicleFieldWear(true, mat('armorPaint'));
+  setVehicleGroundFromRoot(garageRoot, mat('armorPaint'), frameNo);
   assert.notDeepEqual(u4(U.uVehWearSettle), s4(desert.settle, desert.settleAmount), 'the Garage keeps its neutral film');
   // the showroom's tyres stay dark: its packed coat (worn all round by the running gear) is a dark grime near the rubber
   const garageTyre = runGlsl(core, { ...BASE, wearH: 0.3, wearRole: [0.9, 0.5, 4, 0.6], wearStrength: VEHICLE_FIELD_WEAR_GARAGE,
     soilDeep: u4(U.uVehWearDeep), soilSplash: u4(U.uVehWearSplash), soilSettle: u4(U.uVehWearSettle),
     wearAlbedo: [0.0116, 0.0123, 0.0116], wearNear: 1, wearSootIn: false }, fns, new Set());
   assert.ok(luma(garageTyre.wearAlbedo) < 0.03, `the Garage film keeps the tyres dark (${luma(garageTyre.wearAlbedo).toFixed(4)})`);
+  setVehicleGroundFromRoot(battleRoot, mat('armorPaint'), frameNo);
   setCamoBiome('verdant');
-  bindVehicleFieldWear(false, mat('gearShadow'));
+  setVehicleGroundFromRoot(battleRoot, mat('gearShadow'), frameNo);
   const farm = vehicleFieldSoil('verdant');
-  assert.deepEqual(u4(U.uVehWearDeep), s4(farm.deep, farm.wet), 'a map switch rebinds the battle soil');
+  assert.deepEqual(u4(U.uVehWearDeep), s4(farm.deep, farm.wet), 'a map switch rebinds the battle soil, even between two draws of one root');
   assert.deepEqual(u4(U.uVehWearRole), [0, 0, 0, 0], 'the drawn material sets the role');
   // the per-root strength rides the ground reference's w
   const root = new THREE.Object3D(); root.position.set(3, 1, -2); root.updateMatrixWorld(true);
   const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.physical.vertexShader, fragmentShader: THREE.ShaderLib.physical.fragmentShader };
   const before = { ...shader };
   vehicleAmbientFloorHook(shader);
-  setVehicleGroundFromRoot(root, mat('armorPaint'));
+  setVehicleGroundFromRoot(root, mat('armorPaint'), ++frameNo);
   assert.deepEqual(shader.uniforms.uVehGround.value.toArray(), [3, 1, -2, 1], 'a root without fieldWear wears it in full');
   root.userData.fieldWear = VEHICLE_FIELD_WEAR_GARAGE;
-  setVehicleGroundFromRoot(root, mat('armorPaint'));
+  setVehicleGroundFromRoot(root, mat('armorPaint'), frameNo);
+  assert.equal(shader.uniforms.uVehGround.value.w, 1, 'a root is placed once per frame (the switch lands on the next frame)');
+  setVehicleGroundFromRoot(root, mat('armorPaint'), ++frameNo);
   assert.equal(shader.uniforms.uVehGround.value.w, VEHICLE_FIELD_WEAR_GARAGE, 'the showroom strength reaches the shader');
   resetVehicleGround();
   assert.equal(shader.uniforms.uVehGround.value.w, 0, 'drawn without a vehicle root: no wear');
+  setVehicleGroundFromRoot(root, mat('armorPaint'), frameNo);
+  assert.equal(shader.uniforms.uVehGround.value.w, VEHICLE_FIELD_WEAR_GARAGE, 'a later draw of the same frame restores it after the reset');
   root.rotation.y = Math.PI / 2; root.updateMatrixWorld(true);
-  setVehicleGroundFromRoot(root, mat('armorPaint'));
+  setVehicleGroundFromRoot(root, mat('armorPaint'), -1);
   const fwd = shader.uniforms.uVehWearFwd.value;
   assert.ok(Math.abs(fwd.x - 1) < 1e-9 && Math.abs(fwd.z) < 1e-9, 'the forward axis follows the root (+Z turned to +X)');
   for (const name of ['uVehWearRole', 'uVehWearFwd', 'uVehWearHull', 'uVehWearSoot', 'uVehWearSootAxis', 'uVehWearDeep', 'uVehWearSplash', 'uVehWearSettle']) {
@@ -339,19 +350,30 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
     return r;
   };
   const leo = tank('leo2a6'), t72 = tank('t72b3m');
-  bindVehicleFieldWear(false, paint, leo, 1);
+  setVehicleGroundFromRoot(leo, paint, ++frameNo);
   const hull = U.uVehWearHull.value;
   assert.ok(Math.abs(hull.x - -3.3) < 0.06 && Math.abs(hull.y - 3.5) < 0.06 && Math.abs(hull.z - 1.5) < 0.06 && Math.abs(hull.w - 1.7) < 0.06,
     `the hull frame is measured from the plates outside the turret (${hull.toArray().map((v) => v.toFixed(2))})`);
   const rearSoot = U.uVehWearSoot.value.clone(), rearAxis = U.uVehWearSootAxis.value.clone();
   assert.ok(rearSoot.w > 0.5 && Math.abs(rearSoot.x) < 1e-6 && rearSoot.z < -2.5 && rearAxis.z < -0.9, 'a rear exhaust fans over the deck and the rear plate');
-  bindVehicleFieldWear(false, paint, t72, 1);
+  setVehicleGroundFromRoot(t72, paint, frameNo);
   assert.ok(U.uVehWearSoot.value.x > 1 && U.uVehWearSootAxis.value.x > 0.4, 'the T-72 lineage soots its left flank');
-  bindVehicleFieldWear(false, barrel, leo, 2);
+  setVehicleGroundFromRoot(leo, barrel, frameNo, true);
   const muzzleAt = U.uVehWearSoot.value;
   assert.ok(Math.abs(muzzleAt.z - 5.72) < 1e-6 && Math.abs(muzzleAt.y - 1.7) < 1e-6 && U.uVehWearSootAxis.value.z < -0.99,
     'the gun reads the muzzle, sooting back along the tube');
-  bindVehicleFieldWear(false, paint, new THREE.Object3D(), 3);
+  // by the drawn object: the gun's own parts (under rig_gun) read the muzzle, the hull's bare steel (engine grilles) the
+  // exhaust
+  const gunG = new THREE.Group(); gunG.name = 'rig_gun'; leo.getObjectByName('rig_turret').add(gunG);
+  const brake = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.3), mat('gunmetal')); gunG.add(brake);
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 1), mat('gunmetal')); leo.add(grille);
+  leo.updateMatrixWorld(true);
+  assert.ok(isVehicleGunPart(brake) && !isVehicleGunPart(grille), 'the hook asks once whether a part sits under rig_gun');
+  setVehicleGroundFromRoot(leo, brake.material, frameNo, isVehicleGunPart(brake));
+  assert.ok(Math.abs(U.uVehWearSoot.value.z - 5.72) < 1e-6, 'a muzzle brake (under rig_gun) reads the muzzle');
+  setVehicleGroundFromRoot(leo, grille.material, frameNo, isVehicleGunPart(grille));
+  assert.ok(U.uVehWearSoot.value.z < -2.5, 'an engine grille\'s bare steel reads the exhaust');
+  setVehicleGroundFromRoot(new THREE.Object3D(), paint, frameNo);
   assert.equal(U.uVehWearSoot.value.w, 0, 'a root without use-wear binds no soot');
   assert.equal(U.uVehWearHull.value.z, 0, 'nor a hull frame');
 }

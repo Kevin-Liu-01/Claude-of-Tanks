@@ -37,7 +37,7 @@ export {
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
 import {
   FIELD_WEAR_FRAGMENT, FIELD_WEAR_FRAGMENT_PARS, FIELD_WEAR_VERTEX, FIELD_WEAR_VERTEX_PARS, VEHICLE_FIELD_WEAR_UNIFORMS,
-  bindVehicleFieldWear, setVehicleFieldSoil,
+  bindVehicleFieldWear, setVehicleFieldSoil, vehicleWearFrameOf,
 } from './vehicleFieldWear.ts';
 import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
 
@@ -2331,22 +2331,17 @@ const VEHICLE_GROUND = Object.freeze({
 });
 /**
  * Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis).
- * 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the reference's w carries the root's field-wear strength
- * (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on the Garage showroom
- * build with its neutral film; a root without it wears 1), and the drawn material (the per-draw hook passes it) selects
- * how much coat, film and use-wear its surface takes and which soot source it reads (the render's frame counter places
- * the sources once per frame; -1 places them every call).
+ * 2026-10-08 (round 5 field wear, vehicleFieldWear.ts): the root's frame is placed once per rendered frame
+ * (vehicleWearFrameOf: `frame` is the render's frame counter, -1 places it every call); its w carries the root's
+ * field-wear strength (`root.userData.fieldWear`: 1 in battle with the battlefield's soil, VEHICLE_FIELD_WEAR_GARAGE on
+ * the Garage showroom build with its neutral film; a root without it wears 1). The drawn material selects how much coat,
+ * film and use-wear its surface takes, and `gun` (the drawn object sits under rig_gun) which soot source it reads.
  */
-export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1): void {
-  const e = root.matrixWorld.elements;
-  const wear = root.userData.fieldWear;
-  const strength = typeof wear === 'number' ? wear : 1;
-  VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], strength);
-  const n = Math.hypot(e[4], e[5], e[6]) || 1;
-  VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
-  const f = Math.hypot(e[8], e[9], e[10]) || 1;
-  VEHICLE_FIELD_WEAR_UNIFORMS.uVehWearFwd.value.set(e[8] / f, e[9] / f, e[10] / f);
-  bindVehicleFieldWear(strength < 1, material, root, frame);
+export function setVehicleGroundFromRoot(root: THREE.Object3D, material?: THREE.Material | null, frame = -1, gun = false): void {
+  const state = vehicleWearFrameOf(root, frame);
+  VEHICLE_GROUND.uVehGround.value.copy(state.ground);
+  VEHICLE_GROUND.uVehUp.value.copy(state.up);
+  bindVehicleFieldWear(state, material, gun);
 }
 /** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening) and wears no field wear. */
 export function resetVehicleGround(): void {
