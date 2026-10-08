@@ -98,7 +98,11 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
       const level = lakeLevelAt(config.terrain.lakes, receipt.x, receipt.z);
       assert.equal(field.getWaterMaskAt(receipt.x, receipt.z), 0, `${mapId}/${seed}: driftwood on dry sand`);
       assert.ok(field.getHeightAt(receipt.x, receipt.z) - level <= 0.6, `${mapId}/${seed}: driftwood within the high-water mark's reach`);
-      assert.ok(receipt.relief <= 0.35 && receipt.baseClearance === -0.03);
+      // (b41, R135) a bleached drift log two fifths sunk in the sand: its axis DRIFT_LOG_SINK of its butt radius under
+      // the support (girth 0.16–0.28 m), not a plank resting 3 cm in; the log itself is one of the baked pieces audited
+      // above (every vertex dry, seated within 3 cm over and 30 cm under the sand)
+      assert.ok(receipt.relief <= 0.35 && receipt.baseClearance <= -0.064 && receipt.baseClearance >= -0.113,
+        `${mapId}/${seed}: driftwood half sunk (${receipt.baseClearance})`);
       logs++;
     }
     // the larger pieces gather beside the landings (the coastal jetties, Saltwind's two piers)

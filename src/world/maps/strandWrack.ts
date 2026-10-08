@@ -423,6 +423,174 @@ function ropeCoil(p: Placement, x: number, z: number, rng: Rng): boolean {
   return true;
 }
 
+// --- (b41) the coastal kit's driftwood ------------------------------------------------------------------------
+
+/** How deep a drift log lies in the sand, as a fraction of its butt radius: two fifths of its girth buried. */
+export const DRIFT_LOG_SINK = 0.8;
+
+/** A tube's rings in the log's own frame: each ring's centre and radius. */
+type Ring = readonly [x: number, y: number, z: number, r: number];
+
+/** Accumulates the tubes of one log into a single indexed geometry with the baked bucket's attributes. */
+class LogTubes {
+  readonly position: number[] = [];
+  readonly normal: number[] = [];
+  readonly uv: number[] = [];
+  readonly shade: number[] = []; // per-vertex multiplier on the log's tone
+  readonly index: number[] = [];
+
+  private vertex(px: number, py: number, pz: number, nx: number, ny: number, nz: number, u: number, v: number, shade: number): number {
+    this.position.push(px, py, pz);
+    this.normal.push(nx, ny, nz);
+    this.uv.push(u, v);
+    this.shade.push(shade);
+    return this.position.length / 3 - 1;
+  }
+
+  /**
+   * A tube through the rings, `sides` facets round, each vertex's radius roughened by `rough` (0..1) from `own`;
+   * a flat cap of end grain on a closed end (`shadeEnd` darker than the bark). A root's or a limb's tapered tip is
+   * left open: a centimetre across, its end grain is never seen.
+   */
+  add(rings: readonly Ring[], sides: number, own: Rng, rough: number, capStart: boolean, capEnd: boolean, shadeEnd = 0.82): void {
+    const t = new THREE.Vector3(), n = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+    const phase = own() * TAU;
+    const starts: number[] = [];
+    const frames: Array<[THREE.Vector3, THREE.Vector3, THREE.Vector3]> = [];
+    let along = 0;
+    for (let i = 0; i < rings.length; i++) {
+      const prev = rings[Math.max(0, i - 1)], next = rings[Math.min(rings.length - 1, i + 1)];
+      t.set(next[0] - prev[0], next[1] - prev[1], next[2] - prev[2]).normalize();
+      // the ring's frame: n as near world up as the tangent allows, b = t x n
+      n.set(0, 1, 0).addScaledVector(t, -t.y);
+      if (n.lengthSq() < 1e-6) n.set(0, 0, 1).addScaledVector(t, -t.z);
+      n.normalize();
+      b.crossVectors(t, n);
+      frames.push([t.clone(), n.clone(), b.clone()]);
+      if (i > 0) along += Math.hypot(rings[i][0] - rings[i - 1][0], rings[i][1] - rings[i - 1][1], rings[i][2] - rings[i - 1][2]);
+      const [cx, cy, cz, r] = rings[i];
+      starts.push(this.position.length / 3);
+      let first = 0;
+      for (let j = 0; j <= sides; j++) {
+        const phi = phase + (j % sides) * TAU / sides;
+        d.copy(n).multiplyScalar(Math.cos(phi)).addScaledVector(b, Math.sin(phi));
+        const k = j === sides ? first : 1 + (own() - 0.5) * 2 * rough;
+        if (j === 0) first = k;
+        this.vertex(cx + d.x * r * k, cy + d.y * r * k, cz + d.z * r * k, d.x, d.y, d.z, j / sides, along / 0.6,
+          0.9 + 0.2 * (hash32(this.position.length * 2654435761) / 4294967296));
+      }
+    }
+    for (let i = 0; i + 1 < rings.length; i++) {
+      for (let j = 0; j < sides; j++) {
+        const a = starts[i] + j, c = starts[i + 1] + j;
+        this.index.push(a, a + 1, c, a + 1, c + 1, c);
+      }
+    }
+    // a flat fan of end grain over a closed end (its own vertices, so the bark's normals stay round)
+    const cap = (i: number, outward: number) => {
+      const [tt] = frames[i];
+      const nx = tt.x * outward, ny = tt.y * outward, nz = tt.z * outward;
+      const ring: number[] = [];
+      for (let j = 0; j < sides; j++) {
+        const at = (starts[i] + j) * 3;
+        ring.push(this.vertex(this.position[at], this.position[at + 1], this.position[at + 2], nx, ny, nz,
+          0.5 + 0.5 * Math.cos(j * TAU / sides), 0.5 + 0.5 * Math.sin(j * TAU / sides), shadeEnd));
+      }
+      for (let j = 1; j + 1 < sides; j++) {
+        if (outward > 0) this.index.push(ring[0], ring[j], ring[j + 1]); else this.index.push(ring[0], ring[j + 1], ring[j]);
+      }
+    };
+    if (capStart) cap(0, -1);
+    if (capEnd) cap(rings.length - 1, 1);
+  }
+
+  /** The geometry, its tone graded by the per-vertex shade and darkened where it lies in the damp sand. */
+  build(rgb: readonly [number, number, number], dampBelow: number): THREE.BufferGeometry {
+    const geometry = new THREE.BufferGeometry();
+    const colors = new Float32Array(this.shade.length * 3);
+    for (let i = 0; i < this.shade.length; i++) {
+      const damp = this.position[i * 3 + 1] < dampBelow ? 0.74 : 1;
+      colors[i * 3] = rgb[0] * this.shade[i] * damp;
+      colors[i * 3 + 1] = rgb[1] * this.shade[i] * damp;
+      colors[i * 3 + 2] = rgb[2] * this.shade[i] * damp;
+    }
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.position, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(this.normal, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setIndex(this.index);
+    return geometry;
+  }
+}
+
+/**
+ * (b41, R135: the owner's "debris specks on the coastal apron from the bird view", 2026-09-23, taken up 2026-10-07) A
+ * log the sea has had, for the coastal kit's driftwood: bleached silver-grey and rounded, kinked where it bent in the
+ * surf and thinning to its broken tip, with a snapped limb on most and the root plate it was torn out with on two in
+ * five. The kit's old driftwood was a planed plank in the textured wood resting on the sand at its full height; from
+ * the bird view each read as a dash of dark debris on the pale strand. In the log's own frame: its chord along +X,
+ * centred, its axis at y = 0, the sand line DRIFT_LOG_SINK of its butt radius below it; every draw from `own`.
+ */
+export function bleachedDriftLog(own: Rng, length: number, girth: number): THREE.BufferGeometry {
+  const tubes = new LogTubes();
+  const butt = girth * 0.5, tip = butt * (0.5 + own() * 0.25);
+  const sand = -butt * DRIFT_LOG_SINK;
+  // the trunk: rings along a line kinked twice in the ground plane, its chord turned back onto +X below; a log torn out
+  // with its root plate flares at the butt
+  const plate = own() < 0.4;
+  const bends = [0, (own() - 0.5) * 0.36, (own() - 0.5) * 0.30];
+  const rings: Ring[] = [];
+  let x = 0, z = 0, heading = 0;
+  for (let k = 0; k <= 3; k++) {
+    rings.push([x, 0, z, butt + (tip - butt) * (k / 3)]);
+    if (k < 3) { heading += bends[k]; x += Math.cos(heading) * length / 3; z -= Math.sin(heading) * length / 3; }
+  }
+  if (plate) {
+    const [ax, , az] = rings[0], [bx2, , bz2] = rings[1];
+    rings[0] = [ax, 0, az, butt * 1.4];
+    rings.splice(1, 0, [ax + (bx2 - ax) * 0.16, 0, az + (bz2 - az) * 0.16, butt * 1.02]);
+  }
+  const last = rings.length - 1;
+  const chord = Math.atan2(-(rings[last][2] - rings[0][2]), rings[last][0] - rings[0][0]);
+  const cc = Math.cos(chord), cs = Math.sin(chord), mx = (rings[last][0] + rings[0][0]) / 2, mz = (rings[last][2] + rings[0][2]) / 2;
+  for (let k = 0; k < rings.length; k++) {
+    const [rx, ry, rz, rr] = rings[k], ox = rx - mx, oz = rz - mz;
+    rings[k] = [ox * cc - oz * cs, ry, ox * cs + oz * cc, rr]; // rotate the chord onto +X about the chord's middle
+  }
+  tubes.add(rings, 6, own, 0.12, !plate, true); // (a root plate hides the butt's end grain)
+  // the root plate: short stubby roots fanned round the flared butt, over its top and down into the sand, drooping
+  if (plate) {
+    const [bx, , bz] = rings[0], ax = rings[1][0] - bx, az = rings[1][2] - bz, al = Math.hypot(ax, az) || 1;
+    const fx = ax / al, fz = az / al, sx = -fz, sz = fx; // the trunk's heading at the butt and its side
+    const roots = 4 + Math.floor(own() * 3);
+    for (let k = 0; k < roots; k++) {
+      const theta = -0.2 + (k / (roots - 1)) * (Math.PI + 0.4) + (own() - 0.5) * 0.35;
+      const dy = Math.sin(theta), ds = Math.cos(theta), back = 0.15 + own() * 0.3;
+      let reach = (0.2 + own() * 0.24) * (girth / 0.22) + butt * 1.4;
+      if (dy < 0) reach = Math.min(reach, (butt * 1.4 + butt * 0.9 - sand) / -dy * 0.45); // a root reaching down ends in the sand
+      const ux = sx * ds - fx * back, uz = sz * ds - fz * back;
+      const ex = bx + ux * reach, ey = dy * reach - reach * 0.18, ez = bz + uz * reach;
+      tubes.add([[bx + fx * butt * 0.3, 0, bz + fz * butt * 0.3, butt * 0.62],
+        [bx + ux * reach * 0.55, dy * reach * 0.6, bz + uz * reach * 0.55, butt * 0.36],
+        [ex, ey, ez, butt * 0.26]], 3, own, 0.22, false, true, 0.86); // (a root snapped off: blunt)
+    }
+  }
+  // a snapped limb or two, lying out from the trunk a little above the sand
+  const limbs = own() < 0.25 ? 0 : own() < 0.7 ? 1 : 2;
+  for (let k = 0; k < limbs; k++) {
+    const at = 0.3 + own() * 0.5, seg = Math.min(2, Math.floor(at * 3)), f = at * 3 - seg;
+    const a = rings[seg], b = rings[seg + 1];
+    const px = a[0] + (b[0] - a[0]) * f, pz = a[2] + (b[2] - a[2]) * f, pr = a[3] + (b[3] - a[3]) * f;
+    const dirX = b[0] - a[0], dirZ = b[2] - a[2], dl = Math.hypot(dirX, dirZ) || 1;
+    const side = own() < 0.5 ? -1 : 1, swing = side * (0.6 + own() * 0.5);
+    const lx = (dirX * Math.cos(swing) + dirZ * Math.sin(swing)) / dl, lz = (dirZ * Math.cos(swing) - dirX * Math.sin(swing)) / dl;
+    const reach = 0.25 + own() * 0.45, rise = 0.12 + own() * 0.22;
+    tubes.add([[px, 0, pz, pr * 0.5], [px + lx * reach, rise * reach, pz + lz * reach, pr * 0.22]], 4, own, 0.15, false, false);
+  }
+  const rgb = tint(0.075 + own() * 0.035, 0.05 + own() * 0.08, 0.50 + own() * 0.14);
+  return tubes.build(rgb, sand + butt * 0.25);
+}
+
 // --- the pass ---------------------------------------------------------------------------------------------------
 
 interface BandTable {

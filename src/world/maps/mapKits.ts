@@ -36,7 +36,7 @@ import {
   cloneCollisionRecord, convexHull2, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape,
 } from '../collision.ts';
 import {
-  dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
+  DRIFT_LOG_SINK, bleachedDriftLog, dressStrandWrack, stationStream, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
 import {
@@ -163,7 +163,6 @@ type FocusedDressingContext = Pick<
 > & { shore?: ShoreLedger };
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
-const _groundRight = new THREE.Vector3(1, 0, 0);
 const _groundNormal = new THREE.Vector3();
 const _groundQuat = new THREE.Quaternion();
 
@@ -1271,6 +1270,9 @@ function addCoastalBoats(
   }
 }
 
+/** (b41) Three in five of the drawn logs are laid: a strand reads as driftwood, not as a scatter of debris. */
+const DRIFT_LOG_KEEP = 0.6;
+
 function addCoastalDriftwood(
   lake: LayoutDisc,
   heightField: DressingHeightField,
@@ -1284,6 +1286,10 @@ function addCoastalDriftwood(
   // instead of on the plain 1.03–1.12 R circle, which put them on the meadow behind Saltmere's crescent and up the
   // fjord's rock ridges (seed 1337: median 7.7 m above the water, nine in the water). The draws and the original
   // clearance gate are unchanged, so the buoys and the jetty keep their positions; a log the strand refuses is not built.
+  // (b41, R135) Each log is a bleached drift log (strandWrack.ts bleachedDriftLog) two fifths sunk in the sand, in the
+  // baked bucket, where the plank stood on the sand in the textured wood. The plank's two thickness draws are its girth
+  // and its four UV draws seed the log's own stream, so the map's stream spends what it always spent; three in five of
+  // the drawn logs are laid, and a log whose ends or limbs would reach the water, float or bury is left out.
   const onStrand = strand !== null && lake.shelfM !== undefined && Number.isFinite(lake.level);
   for (let i = 0; i < driftCount; i++) {
     const angle = Math.PI + (rng() - 0.5) * 2.2;
@@ -1294,29 +1300,43 @@ function addCoastalDriftwood(
     if (!isDressingPointClear(heightField, x, z, 470, 6)) continue;
     const length = 1.6 + rng() * 2.6;
     const yaw = angle + Math.PI / 2 + (rng() - 0.5) * 0.8;
-    const log = box(length, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
-    jitterUV(log, rng);
+    const girth = 0.16 + (rng() + rng()) * 0.06;
+    const own = stationStream(Math.floor(rng() * 4294967296) ^ Math.floor(rng() * 65536),
+      Math.floor(rng() * 65536) * 65536 + Math.floor(rng() * 65536));
+    if (own() >= DRIFT_LOG_KEEP) continue;
     if (onStrand) {
       const band = strandBandAt(heightField, lake, angle);
-      if (!band) { log.dispose(); continue; }
+      if (!band) continue;
       const [start, end] = wrackBand(band);
       const r = start + (end - start) * (0.25 + spread * 0.75);
       x = lake.x + Math.cos(angle) * r;
       z = lake.z + Math.sin(angle) * r;
-      if (!strandAdmits(strand, lake as LayoutDisc & { level: number }, x, z, length * 0.5 + 0.1)) { log.dispose(); continue; }
+      if (!strandAdmits(strand, lake as LayoutDisc & { level: number }, x, z, length * 0.5 + 0.1)) continue;
     }
+    const butt = girth * 0.5;
     const pose = planGroundedSegment(
-      heightField, x, z, Math.cos(yaw), -Math.sin(yaw), length, 0.12, 0.03,
+      heightField, x, z, Math.cos(yaw), -Math.sin(yaw), length, butt, butt * DRIFT_LOG_SINK,
     );
-    if (onStrand && pose.relief > 0.35) { log.dispose(); continue; }
-    _groundNormal.set(pose.axisX, pose.axisY, pose.axisZ);
-    _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
-    log.applyQuaternion(_groundQuat);
+    if (onStrand && pose.relief > 0.35) continue;
+    const log = bleachedDriftLog(own, length, girth);
+    // the chord's heading and the slope's pitch (no roll: the root plate stays standing)
+    log.rotateZ(Math.asin(Math.max(-1, Math.min(1, pose.axisY))));
+    log.rotateY(yaw);
     log.translate(x, pose.y, z);
-    buckets.wood.push(log);
+    // every vertex on dry ground, none floating and none deeper than the strand's audit allows
+    const position = log.attributes.position;
+    let lowest = Infinity, wet = false;
+    for (let v = 0; v < position.count; v++) {
+      const vx = position.getX(v), vz = position.getZ(v);
+      if (heightField.getWaterMaskAt(vx, vz) !== 0) { wet = true; break; }
+      lowest = Math.min(lowest, position.getY(v) - heightField.getHeightAt(vx, vz));
+    }
+    if (wet || lowest > 0.02 || lowest < -0.28) { log.dispose(); continue; }
+    if (buckets.baked) buckets.baked.push(log);
+    else { log.deleteAttribute('color'); buckets.wood.push(log); }
     groundingReceipts?.push({
       kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
-      baseClearance: -0.03, start: pose.start, end: pose.end,
+      baseClearance: -butt * DRIFT_LOG_SINK, start: pose.start, end: pose.end,
     });
   }
 }
