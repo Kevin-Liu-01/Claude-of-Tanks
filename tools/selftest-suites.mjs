@@ -1063,6 +1063,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.underFire.selftest.mjs',
     // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
     'src/game/ai.colliderStop.selftest.mjs',
+    // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
+    'src/game/ai.lastRun.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
