@@ -7880,6 +7880,37 @@ function* createTankOwnedSteps(
     }
     return ranges;
   };
+  // Fleet lane round 1 (2026-10-07; accessories wave 254 on the T-84 Oplot-M: "rows of identical reactive-armour
+  // bricks ... the armour reads as a flat mosaic"): every reactive brick takes its own small, deterministic tone shift
+  // over the shared vehicle-scale camouflage (paint batches, sun fade and replaced modules differ brick to brick on a
+  // fielded tank), so a bank reads as separate modules. Geometry, UVs and the camouflage projection are unchanged.
+  let eraPartSet: Set<THREE.BufferGeometry> | null = null;
+  let eraTintIndex = 0;
+  let eraTintSeed = 0;
+  const tintEraParts = (merged: THREE.BufferGeometry, list: readonly THREE.BufferGeometry[]): void => {
+    if (!eraPartSet) {
+      eraPartSet = new Set([...destructibleEraParts.map((entry) => entry.part), ...visualEraParts.map((entry) => entry.part)]);
+      for (const ch of specId) eraTintSeed = (eraTintSeed * 31 + ch.charCodeAt(0)) >>> 0;
+    }
+    if (!eraPartSet.size) return;
+    const color = merged.getAttribute('color');
+    if (!color) return;
+    let vertexOffset = 0;
+    for (const part of list) {
+      const vertexCount = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      if (eraPartSet.has(part) && vertexCount > 0) {
+        let h = (eraTintSeed ^ Math.imul(++eraTintIndex, 0x9e3779b1)) >>> 0;
+        h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
+        const a = (h & 0xffff) / 0xffff, b = (h >>> 16) / 0xffff;
+        const k = 0.9 + 0.18 * a, warm = (b - 0.5) * 0.05;
+        for (let i = vertexOffset; i < vertexOffset + vertexCount; i++) {
+          color.setXYZ(i, color.getX(i) * k * (1 + warm), color.getY(i) * k, color.getZ(i) * k * (1 - warm));
+        }
+      }
+      vertexOffset += vertexCount;
+    }
+    color.needsUpdate = true;
+  };
   const recordAuthoredRanges = (
     merged: THREE.BufferGeometry,
     authoredRanges: AuthoredRange[],
@@ -7951,6 +7982,7 @@ function* createTankOwnedSteps(
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+      tintEraParts(merged, list);
     }
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);
