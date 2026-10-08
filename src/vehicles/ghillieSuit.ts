@@ -1481,8 +1481,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         { x0: -1.03, x1: 1.03, z0: -1.58, z1: 0.54, nx: 24, nz: 22,
           yAt: leo2A6UAMidRoofY,
           outline: [[-0.86, -1.58], [0.86, -1.58], [1.03, -0.94], [1.00, 0.54], [-1.00, 0.54], [-1.03, -0.94]],
+          // round 4 (2026-10-07, fleetPassDefault vehicleMarkings): a window at the left roof edge over the turret's
+          // tactical-number station; round 4's fuller drape and garnish had covered the number (3 of 9 clear samples)
           holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.98, -0.08),
-            rect(0.32, 0.96, 0.02, 0.52)],
+            rect(0.32, 0.96, 0.02, 0.52), rect(0.74, 1.10, -1.56, -1.04)],
           seatGapM: 0.026, seat: 'main-roof', seed: 303 },
         ...[-1, 1].map<TopPanel>((side) => ({
           x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
