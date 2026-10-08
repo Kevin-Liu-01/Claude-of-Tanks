@@ -672,7 +672,7 @@ function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid,
   const destructibleOf = new Map();
   for (const d of dressing.destructibles ?? []) if (d.ob) destructibleOf.set(d.ob, d);
   const family = (name) => soup.familyIndex.get(name);
-  const wrecks = family('tank-wreck'), buckets = family('bucket'), poles = family('baked-pole-full');
+  const wrecks = family('tank-wrecks'), buckets = family('bucket'), poles = family('baked-pole-full');
   const counts = new Map();
   for (const obstacle of dressing.obstacles) {
     if (claimed.has(obstacle) || obstacle.treeIdx != null) continue;
