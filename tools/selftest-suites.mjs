@@ -563,6 +563,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    'tools/pr-census.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
