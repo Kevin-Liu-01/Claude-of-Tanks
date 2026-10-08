@@ -131,8 +131,8 @@ import type {
 } from './matchModes.ts';
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
-import type { StructureStageEvent } from './destructionEvents.ts';
-import { PROP_FELL_PER_BLAST, propFellRadiusM } from './munitionBlast.ts';
+import type { DestructionLogEntry, StructureStageEvent } from './destructionEvents.ts';
+import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from './munitionBlast.ts';
 import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
 import { fellConcealersAt } from './spotting.ts';
 
@@ -367,6 +367,12 @@ export interface AuthoritativeMatch {
   captureModeCheckpoint(): NewModeCheckpoint | null;
   restoreModeCheckpoint(checkpoint: NewModeCheckpoint): void;
   restoreDestroyedObstacles(indices: readonly number[], revision: number): { restored: number; unknown: number };
+  /**
+   * A resumed match (destruction, docs/DESTRUCTION.md §8.3): the previous authority's destruction log laid down without
+   * events — stages and collapses (records, heaps, the route grid), later breaches and craters — and kept as this
+   * match's log, so every peer's settled reading converges. Returns the entries this world applied.
+   */
+  restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
 }
 
 interface SharedTerrain {
@@ -1394,9 +1400,9 @@ export function createAuthoritativeMatch({
   /** Destruction: a blast fells the light props within its reach (trees, fences, crates, huts), nearest first. */
   const blastCandidates: AuthoritativeObstacle[] = [];
   const blastFelled: AuthoritativeObstacle[] = [];
-  function fellPropsByBlast(x: number, y: number, z: number, chargeKg: number): void {
+  function fellPropsByBlast(x: number, y: number, z: number, chargeKg: number, budget: number): number {
     const radius = propFellRadiusM(chargeKg);
-    if (!(radius > 0) || !worldCollision || typeof worldCollision.queryObstacles !== 'function') return;
+    if (!(radius > 0) || budget <= 0 || !worldCollision || typeof worldCollision.queryObstacles !== 'function') return 0;
     worldCollision.queryObstacles(x - radius, z - radius, x + radius, z + radius, blastCandidates);
     blastFelled.length = 0;
     for (const obstacle of blastCandidates) {
@@ -1410,7 +1416,8 @@ export function createAuthoritativeMatch({
       const db = Math.hypot((b.min[0] + b.max[0]) * 0.5 - x, (b.min[2] + b.max[2]) * 0.5 - z);
       return da - db || (obstacleIndex.get(a) ?? 0) - (obstacleIndex.get(b) ?? 0);
     });
-    for (let i = 0; i < blastFelled.length && i < PROP_FELL_PER_BLAST; i++) {
+    const fell = Math.min(blastFelled.length, PROP_FELL_PER_BLAST, budget);
+    for (let i = 0; i < fell; i++) {
       const obstacle = blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
       const length = Math.hypot(dx, dz) || 1;
@@ -1418,6 +1425,7 @@ export function createAuthoritativeMatch({
     }
     blastCandidates.length = 0;
     blastFelled.length = 0;
+    return fell;
   }
 
   function resolvePendingCrushes(): void {
@@ -2356,8 +2364,9 @@ export function createAuthoritativeMatch({
   function advanceDestruction(): void {
     if (!destruction.enabled) return;
     // the tick's blasts fell their light props, in report order (the solo step's stepDestruction alike)
-    for (let b = 0; b < pendingBlasts.length; b += 4) {
-      fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3]);
+    let budget = PROP_FELL_PER_TICK;
+    for (let b = 0; b < pendingBlasts.length && budget > 0; b += 4) {
+      budget -= fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3], budget);
     }
     pendingBlasts.length = 0;
     destruction.step();
@@ -2488,6 +2497,8 @@ export function createAuthoritativeMatch({
           resultReason,
           destructibleRevision,
           destroyedObstacleIndices: destroyedObstacleIndices.slice(),
+          // the destruction log (append-only; the host actor copies it when it grows)
+          destructionLog: destruction.log,
           ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
           ...(normalizedGameMode === 'standard' ? {} : {
             gameMode: normalizedGameMode,
@@ -2518,6 +2529,9 @@ export function createAuthoritativeMatch({
       for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
     },
     restoreDestroyedObstacles,
+    restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
+      return { applied: destruction.restore(entries) };
+    },
   };
   updateVisibility();
   return simulation;

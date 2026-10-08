@@ -929,6 +929,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
+    // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
+    'src/mp/presentation/destructionMirror.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1027,6 +1029,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionParity.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
+    'src/sim/destructionShard.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.

@@ -45,6 +45,7 @@ import { createObstacleGrid } from '../src/world/collision.ts';
 import { PHASE, TICK_HZ } from '../src/mp/wire/constants.ts';
 import { createHash } from 'node:crypto';
 import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '../src/mp/host/migrationState.ts';
+import { createStructureDamage } from '../src/sim/structureDamage.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs) => {
@@ -55,10 +56,12 @@ const until = async (predicate, label, timeoutMs) => {
   }
 };
 const now = () => performance.now();
-const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted']);
-const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired'];
+const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted', 'structure:stage']);
+// destruction (2026-10-07): a structure's stage is world state like a prop's fall: keyed by what it names, not by its host
+const HOST_KINDS = ['world_prop_destroyed', 'shell_impact', 'shell_hit', 'tank_destroyed', 'tank_ram', 'tank_impact', 'tank_fire', 'shell_fired', 'structure_stage'];
+const WORLD_KINDS = new Set(['world_prop_destroyed', 'structure_stage']);
 /** host event kind → the bus kind the presentation emits for it */
-const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired' };
+const BUS_FOR = { world_prop_destroyed: 'prop:crushed', shell_impact: 'shell:expired', shell_hit: 'shell:hit', tank_destroyed: 'tank:destroyed', tank_ram: 'tank:ram', tank_impact: 'tank:impact', tank_fire: 'tank:fire', shell_fired: 'shell:fired', structure_stage: 'structure:stage' };
 const MAP_ID = 'verdant';
 const SNAPSHOT_TICKS = 3; // 20 Hz
 /** A send this close to a view's end (its leave, the host's close, the run's end) cannot have been presented by it. */
@@ -74,6 +77,7 @@ function keyOf(type, payload) {
     case 'tank_impact': return `crash:${payload.id}`;
     case 'tank_fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell_fired': return `fired:${payload.shellId}`;
+    case 'structure_stage': return `stage:${payload.structureId}:${payload.stage}`;
     default: return `${type}`;
   }
 }
@@ -87,6 +91,7 @@ function busKeyOf(type, payload) {
     case 'tank:impact': return `crash:${payload.id}`;
     case 'tank:fire': return `fire:${payload.id}:${payload.burning ? 1 : 0}`;
     case 'shell:fired': return `fired:${payload.shellId}`;
+    case 'structure:stage': return `stage:${payload.structureId}:${payload.stage}`;
     default: return null;
   }
 }
@@ -130,7 +135,24 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const [x, , z] = obstaclePos(index);
       if (Math.hypot(x, z) < best) { best = Math.hypot(x, z); tree = { index, center: obstaclePos(index) }; }
     });
-    return { hedgehog, tree };
+    // destruction (2026-10-07): a house a bot can ram at speed — the approach across its long side clear for 14 m
+    let ram = null;
+    const structureTable = createStructureDamage(referenceObstacles, reference.getColliders());
+    for (const structure of structureTable.structures) {
+      if (!structure.collapsible || ram) continue;
+      for (const side of [1, -1]) {
+        const rx = Math.cos(structure.yaw) * side, rz = -Math.sin(structure.yaw) * side;
+        const startX = structure.cx + rx * (structure.hw + 12), startZ = structure.cz + rz * (structure.hw + 12);
+        const blocked = referenceObstacles.some((o) => !o.crushable && o.structureIdx !== structure.id && [0.25, 0.5, 0.75, 1].some((t) => {
+          const x = startX + (structure.cx - startX) * t * (12 / (structure.hw + 12)), z = startZ + (structure.cz - startZ) * t * (12 / (structure.hw + 12));
+          return x > o.min[0] - 3 && x < o.max[0] + 3 && z > o.min[2] - 3 && z < o.max[2] + 3;
+        }));
+        if (blocked) continue;
+        ram = { structureId: structure.id, start: [startX, startZ], yaw: Math.atan2(-rx, -rz) };
+        break;
+      }
+    }
+    return { hedgehog, tree, ram };
   })();
   const hostLog = [];          // every event as sent to each viewer
   const hostCores = [];        // { id, core, hooked, generation }
@@ -168,7 +190,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         else if (typeof payload.x === 'number') pos = [payload.x, payload.y, payload.z];
         else if (Array.isArray(payload.pos)) pos = [...payload.pos];
         else if (typeof payload.id === 'string') { const e = authority.entityById.get(payload.id); if (e) pos = [e.state.pos.x, e.state.pos.y, e.state.pos.z]; }
-        const key = type === 'world_prop_destroyed' ? keyOf(type, payload) : `${entry.id}/${keyOf(type, payload)}`;
+        const key = WORLD_KINDS.has(type) ? keyOf(type, payload) : `${entry.id}/${keyOf(type, payload)}`;
         hostLog.push({ host: entry.id, generation: entry.generation, tick, wallMs, viewerId, type, key, pos,
           index: type === 'world_prop_destroyed' ? Number(payload.obstacleIndex) : null, cause: payload.cause ?? null, shooterId: typeof payload.shooterId === 'string' ? payload.shooterId : null,
           dir: type === 'world_prop_destroyed' ? [Number(payload.directionX) || 0, Number(payload.directionZ) || 0] : null, speed: typeof payload.speedMps === 'number' ? payload.speedMps : null });
@@ -189,11 +211,16 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); },
     stripEra() {}, resetEra() {}, setDestroyed() {}, resetDestroyed() {},
   });
-  const cloneObstacles = () => referenceObstacles.map((o) => ({ min: o.min, max: o.max, crushable: o.crushable === true, crushMin: o.crushMin, kind: o.kind, treeIdx: o.treeIdx, propIdx: o.propIdx, crushed: false, shape2: null }));
+  // a structure's records keep their group and footprint: the presentation's destruction mirror derives its table from them
+  const cloneObstacles = () => referenceObstacles.map((o) => ({ min: o.min, max: o.max, crushable: o.crushable === true, crushMin: o.crushMin, kind: o.kind, treeIdx: o.treeIdx, propIdx: o.propIdx, crushed: false,
+    shape2: o.structureIdx !== undefined ? o.shape2 : null, ...(o.structureIdx !== undefined ? { structureIdx: o.structureIdx, structureRole: o.structureRole } : {}) }));
+  const referenceStructureColliders = reference.getColliders().filter((o) => o.structureIdx !== undefined);
+  const cloneStructureColliders = () => referenceStructureColliders.map((o) => ({ min: o.min, max: o.max, kind: o.kind, shape2: o.shape2, structureIdx: o.structureIdx, structureRole: o.structureRole, crushed: false, dead: false }));
   function auditPresentation(peer, round) {
     const roundIndex = peer.rounds.length;
     const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: MAP_ID };
     const obstacles = cloneObstacles();
+    const colliders = cloneStructureColliders();
     // the presentation's own records (their `crushed` flags are this view's), queried as the browser world's grid is
     const queryClones = createObstacleGrid(obstacles);
     const record = { roundIndex, welcomeTick: null, welcomeAtMs: null, endedAtMs: null, welcomes: 0, frames: 0, applied: [], hostIdAtWelcome: null, actors: 0, rosterError: null };
@@ -205,6 +232,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const worldCollision = {
       heightField: reference.heightField,
       getObstacles: () => obstacles,
+      getColliders: () => colliders,
       queryObstacles: (minX, minZ, maxX, maxZ, target) => queryClones(minX, minZ, maxX, maxZ, target),
       crushObstacle(obstacle, dx, dz, speed, _cause, options) {
         const index = obstacles.indexOf(obstacle);
@@ -218,8 +246,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const propIndex = type === 'prop:crushed' ? (payload.obstacleIndex ?? obstacleIndexAt(pos)) : null;
         const hostId = peer.session.p2p?.hostId ?? peer.id;
         const busKey = busKeyOf(type, payload);
-        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : (busKey ? `${hostId}/${busKey}` : null), hostId, pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
-          index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null });
+        const stagePos = type === 'structure:stage' ? [payload.x, payload.y, payload.z] : null;
+        record.applied.push({ kind: type, key: type === 'prop:crushed' ? (propIndex !== null ? `prop:${propIndex}` : null) : type === 'structure:stage' ? busKey : (busKey ? `${hostId}/${busKey}` : null), hostId, pos: stagePos ?? pos, path, presentedTick, frameGap, newestTick: newestTick(), wallMs: now(),
+          index: propIndex, shooterId: payload.shooterId ?? null, feedbackPredicted: payload.feedbackPredicted ?? null, fireIntentSeq: payload.fireIntentSeq ?? null,
+          settled: payload.settled === true });
       },
     };
     const presentation = createBattlePresentation({
@@ -353,6 +383,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         bots[1].combat.hp = 1;
         report.steps.scripted.fall = { botId: bots[1].id, tree: scriptedSites.tree.index };
       }
+      if (scriptedSites.ram && bots[2]) {
+        const [x, z] = scriptedSites.ram.start;
+        bots[2].state.pos.set(x, groundAt(x, z) + 0.05, z);
+        bots[2].state.yaw = scriptedSites.ram.yaw;
+        bots[2].state.speed = 14;
+        report.steps.scripted.ram = { botId: bots[2].id, structureId: scriptedSites.ram.structureId };
+      }
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
     }
     await sleep(playMs);
@@ -448,6 +485,11 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     marks.migrationPlayEnd = now();
     const recrushed = hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2' && oldSet.has(e.index));
     report.steps.migration.recrushEvents = uniqueBy(recrushed, (e) => e.key);
+    // destruction: a stage the old host sent never comes again from the new one (it resumed from the log)
+    const oldStages = new Set(hostLog.filter((e) => e.type === 'structure_stage' && e.host === 'p1').map((e) => e.key));
+    report.steps.migration.oldStages = oldStages.size;
+    report.steps.migration.restagedEvents = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'structure_stage')
+      .filter((e) => e.host === 'p2' && oldStages.has(e.key)), (e) => e.key);
     report.steps.migration.newCrushEventsAfter = uniqueBy(hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2'), (e) => e.key);
     const ghostFx = (peer) => peer.rounds.at(-1).applied.filter((e) => e.kind === 'prop:crushed' && e.wallMs >= marks.newHostLiveAt && e.wallMs < marks.migrationPlayEnd && recrushed.some((h) => h.key === e.key && h.viewerId === peer.id));
     report.steps.migration.ghostFxP2 = ghostFx(p2).length;
@@ -490,6 +532,11 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     scriptedCases.hedgehog.events = events.length;
     scriptedCases.hedgehog.eventIndices = [...new Set(sends.map((e) => e.index))];
     scriptedCases.hedgehog.eventSharesCenter = sends.some((e) => scriptedCases.hedgehog.sharedCenter.includes(e.index));
+  }
+  if (scriptedCases?.ram) {
+    const stages = hostLog.filter((e) => e.type === 'structure_stage' && e.key.startsWith(`stage:${scriptedCases.ram.structureId}:`));
+    scriptedCases.ram.stages = [...new Set(stages.map((e) => e.key.split(':')[2]))];
+    scriptedCases.ram.collapsed = scriptedCases.ram.stages.includes('collapsed');
   }
   if (scriptedCases?.fall) {
     const deaths = hostLog.filter((e) => e.type === 'tank_destroyed' && e.key.endsWith(`/dead:${scriptedCases.fall.botId}`));
@@ -592,7 +639,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       // an effect that names no obstacle cannot be judged: counted on its own, never read back from a shared box centre
       const unattributedFx = applied.filter((a) => a.kind === 'prop:crushed' && a.index === null);
       const ghostFx = applied.filter((a, i) => a.kind === 'prop:crushed' && a.index !== null && !used.has(i) && !everSent(a));
-      perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
+      // destruction: a stage this presentation applied that no judged send explains — a late joiner's settled log entry
+      // (expected, settled) or an animation of older state (a finding)
+      const stageSentBefore = (a) => hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key && e.wallMs < round.welcomeAtMs);
+      const olderStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && stageSentBefore(a));
+      const ghostStages = applied.filter((a, i) => a.kind === 'structure:stage' && !used.has(i) && !hostLog.some((e) => e.type === 'structure_stage' && e.key === a.key));
+      perPeer[`${peer.label}#${round.roundIndex}`] = { welcomeTick: round.welcomeTick, welcomes: round.welcomes, actors: round.actors, rosterError: round.rosterError, frames: round.frames, ghostFx: ghostFx.length,
+        stagesOlderSettled: olderStages.filter((a) => a.settled).length, stagesOlderAnimated: olderStages.filter((a) => !a.settled).length, ghostStages: ghostStages.length, unattributedFx: unattributedFx.length, unmatchedCrushes: unmatchedCrushes.length, replaysOfOlderState: predating.length, replaysAnimated: predating.filter((a) => !a.settled).length, replaysSettled: predating.filter((a) => a.settled).length,
         ownShotFlashes: applied.filter((a) => a.kind === 'weapon:predicted').length, ownShellFiredUnpredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === false).length, ownShellFiredPredicted: applied.filter((a) => a.kind === 'shell:fired' && a.shooterId === peer.id && a.feedbackPredicted === true).length };
     }
   }

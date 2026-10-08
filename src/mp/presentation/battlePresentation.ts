@@ -42,6 +42,7 @@ import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
+import { createDestructionMirror } from './destructionMirror.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
 import { createAuthorityObstacles } from './authorityObstacles.ts';
 import type { ObstacleIdentity } from './authorityObstacles.ts';
@@ -277,6 +278,8 @@ export function createBattlePresentation({
   let appliedDestroyedLength = -1;
   // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
   const authorityObstacles = createAuthorityObstacles(worldCollision);
+  // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
+  const destruction = createDestructionMirror(worldCollision as Parameters<typeof createDestructionMirror>[0], bus);
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -745,6 +748,8 @@ export function createBattlePresentation({
     game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
+    // the destruction log is settled state, as the destroyed list is: what this seat did not see happen lands at its end
+    destruction.applyLog(frame.destruction ?? [], typeof frame.destructionPending === 'function' ? frame.destructionPending : null);
     const predicted = frame.viewer.predictedShot;
     if (predicted && predicted.fireSeq !== lastPredictedFireSeq && own) {
       lastPredictedFireSeq = predicted.fireSeq;
@@ -859,6 +864,10 @@ export function createBattlePresentation({
         bus.emit('shell:hit', hit);
         return;
       }
+      case 'structure_stage':
+        // the authority's stage on this world's own structure (destructionMirror.ts), animated: it emits structure:stage
+        destruction.applyStageEvent(payload as Record<string, unknown>);
+        return;
       case 'shell_impact':
         bus.emit('shell:expired', {
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,
@@ -894,7 +903,8 @@ export function createBattlePresentation({
         if (obstacle.crushed) return;
         worldCollision?.crushObstacle?.(
           obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0,
-          payload.cause === 'shell' ? 'shell' : 'ram',
+          // a blast fells a prop as a shell does (destruction, 2026-10-07: the solo step crushes it with 'shell' too)
+          payload.cause === 'shell' || payload.cause === 'blast' ? 'shell' : 'ram',
         );
         obstacle.crushed = true;
         bus.emit('prop:crushed', {
@@ -1022,7 +1032,10 @@ export function createBattlePresentation({
     if (predictionWorldCache && predictionWorldSpec === own.spec) return predictionWorldCache;
     predictionWorldSpec = own.spec;
     predictionWorldCache = createPredictionWorld({
-      worldCollision,
+      // the prediction rides this round's heaps too (the mirror's ground over the world's field)
+      worldCollision: destruction.groundField
+        ? Object.create(worldCollision, { heightField: { value: destruction.groundField } }) as typeof worldCollision
+        : worldCollision,
       ownSpec: own.spec,
       ownState: () => own.state,
       others: () => collidableActors(own),

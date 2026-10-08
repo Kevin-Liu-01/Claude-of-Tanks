@@ -127,7 +127,7 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent } from '../sim/destructionEvents.ts';
-import { PROP_FELL_PER_BLAST, propFellRadiusM } from '../sim/munitionBlast.ts';
+import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM } from '../sim/munitionBlast.ts';
 import {
   createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor, type TerrainDeformation,
 } from '../sim/terrainDeformation.ts';
@@ -3042,7 +3042,8 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
   if (!blasts?.length) return;
   if (!world?.queryObstacles || !world.crushObstacle) { blasts.length = 0; return; }
   const obstacles = world.getObstacles();
-  for (let b = 0; b < blasts.length; b += 4) {
+  let budget = PROP_FELL_PER_TICK;
+  for (let b = 0; b < blasts.length && budget > 0; b += 4) {
     const x = blasts[b], y = blasts[b + 1], z = blasts[b + 2], radius = propFellRadiusM(blasts[b + 3]);
     if (!(radius > 0)) continue;
     world.queryObstacles(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
@@ -3057,7 +3058,9 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
       const dc = Math.hypot((c.min[0] + c.max[0]) * 0.5 - x, (c.min[2] + c.max[2]) * 0.5 - z);
       return da - dc || obstacles.indexOf(a) - obstacles.indexOf(c);
     });
-    for (let i = 0; i < _blastFelled.length && i < PROP_FELL_PER_BLAST; i++) {
+    const fell = Math.min(_blastFelled.length, PROP_FELL_PER_BLAST, budget);
+    budget -= fell;
+    for (let i = 0; i < fell; i++) {
       const obstacle = _blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
       const length = Math.hypot(dx, dz) || 1;

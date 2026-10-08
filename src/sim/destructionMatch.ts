@@ -161,7 +161,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       stepEvents.length = 0;
       structures.drainEvents(stepEvents);
       for (const event of stepEvents) {
-        log.push({ kind: 'stage', structureId: event.structureId, stage: event.stage });
+        log.push({ kind: 'stage', structureId: event.structureId, stage: event.stage, cx: event.cx, cz: event.cz });
         outbox.push(event);
       }
     },

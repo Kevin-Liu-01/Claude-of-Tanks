@@ -101,8 +101,10 @@ the records alone, identically in the solo world (the rendered build) and on the
 | hit points | `HP = 0.72·V^0.72` structure points (SP), floor 10: shed 60 m³ → 13.7, house 600 m³ → 72, warehouse 7,200 m³ → 431, landmark 50,000 m³ → 1,742 (tuned to the feel targets in §5) |
 | records | indices of its contact/movement records (obstacles) and shell bands (colliders) |
 
-Measured on the 33 shards (AABB × height, an over-estimate): p10 237 m³, median 1,103, p90 4,149, p99 44,409; by the
-thresholds about 150 sheds, 986 houses, 241 large and 33 landmarks.
+Measured on the 33 recaptured shards (the table built from their records, 2026-10-07): 1,410 structures — 933 houses
+(hit points p10 37, median 80, p90 167), 358 sheds (10 / 16 / 27), 97 large (207 / 247 / 630) and 22 landmarks
+(median 1,004); Ruinspires 392 (330 houses, 31 large, 10 landmarks), Blackglass 147, Steinburg 138 (96 houses, 42
+sheds), Cliffbridge 107, Verdant 9, the Moon none.
 
 **Landmarks are breach-only.** A landmark (a cathedral, a fortress gate, a dam house, an airfield hangar set piece)
 reaches `breached` and stops there: its integrity floors at 5 %, it never collapses, its collision never swaps in P1.
@@ -319,18 +321,28 @@ state; its event carries the blow's point and push direction but never the shoot
 ### 8.2 Settled state
 
 The destruction log (`DestructionLogEntry`: stage, breach, crater) only grows within a match, so it travels like the
-destroyed-prop list: a snapshot carries it whole in a keyframe and the entries after its baseline's revision in a
-delta (`writeDestructionLog`, a varint count and compact binary entries: stage 4 B, crater 13 B, breach 16 B); the
-meta carries its revision. A client lays down every entry its presentation has not seen live as `settled` (no
-animation, no sound), except an entry whose event it still owes (the `destroyedPending` rule).
+destroyed-prop list: a snapshot carries it whole in a keyframe and the entries after its baseline's length in a delta
+(wire 4: `SNAPSHOT_FLAGS.HAS_DESTRUCTION`, then the base length and the entries, `src/mp/wire/destructionLog.ts`; a
+stage entry 11–13 B with its footprint centre, a breach 20 B, a crater 19 B; a delta whose base disagrees with the
+client's baseline is refused). The host actor copies the authority's log (quantized as the wire carries it) into every
+frame when it grows. The client keeps the newest frame's log and the stages its event queue still owes
+(`ReliableEventQueue.isStructurePending`, as `isObstaclePending` does for prop falls).
+
+On the peer, `src/mp/presentation/destructionMirror.ts` lays the authority's stages on the peer's own world: a live
+`structure_stage` animates (`structure:stage` on the bus, this world's structure id), the log lays down settled
+(`settled: true`) every stage the seat did not see happen except one whose event is still owed; a collapse flips this
+world's records (the predicted hull stops meeting them, the seat's rays pass) and raises the heap on the prediction's
+ground (a wrapped height field under `createPredictionWorld`). A world laid out otherwise finds the structure by its
+footprint centre (5 cm, the same class) — every stage entry and event carries it — and never another in its stead.
 
 ### 8.3 Host migration
 
-The sealed migration keyframe's frame carries the log. `RetainedMigrationState` keeps every destruction event the
-seat received (as `fallen` keeps prop falls), and `resumeStateFromRetained` merges them. `applyResumeState` calls
-`authority.restoreDestruction(log)`: stages and collision swaps, craters and mounds applied without events. Hit points
-are not on the wire: a damaged structure resumes at its stage's upper bound (70 % or 35 %), a small gift to the
-building, documented and bounded.
+The sealed migration keyframe's frame carries the log. `RetainedMigrationState.destruction` keeps every stage event the
+seat received (as `fallen` keeps prop falls; a link reset clears the queue, never this), and `resumeStateFromRetained`
+takes the longer log of the keyframe and the newest frame and merges them in. `applyResumeState` calls
+`authority.restoreDestruction(log)`: the log is kept verbatim (its order and length continue), stages and collapses
+(records, heaps, the route grid) applied without events. Hit points are not on the wire: a damaged structure resumes at
+its stage's upper bound (70 % or 35 %), a small gift to the building, documented and bounded.
 
 ### 8.4 Identity across layouts
 
@@ -349,9 +361,13 @@ log (300 stage entries, 160 craters) is 3.3 KB in a keyframe.
 
 ### 8.6 Audits
 
-The world-events audit (`tools/mp-world-events-audit.mjs`) logs the new kinds and judges them like
-`world_prop_destroyed` (missing, duplicate, late, settled on rejoin, re-destroyed on migration). The determinism audit
-hashes structure hit points, stages and the overlay's stamps.
+The world-events audit (`tools/mp-world-events-audit.mjs`, its receipt in the core group) logs `structure_stage` like
+`world_prop_destroyed` (keyed by what it names, not by its host) and judges it the same way: missing, duplicate, late,
+wrong place, a stage older than the view animated, a stage the host never sent, and a stage the new host re-sends after
+the migration. A scripted bot rams a verdant house at 14 m/s at the start of live play. First run (2026-10-07): the house
+came down (damaged > breached > collapsed), 18 of 18 stage deliveries presented on 4 views, 0 re-sent by the new host;
+every earlier check unchanged. The determinism audit hashes the destruction log beside the destroyed list, and
+`src/sim/destructionShard.selftest` replays a ram on Steinburg's real shard bit for bit.
 
 ## 9. Per-mode rules
 
