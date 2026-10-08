@@ -473,13 +473,9 @@ const triCount = (geo: THREE.BufferGeometry) => ((geo.index ? geo.index.count : 
 
 // Per-piece baked shade: tone jitter + a soft downward-face AO so merged
 // families don't read as one flat injection-molded color (the same trick
-// tankFactory.bakeDirt plays on the camo shells). 2026-10-06 (round 2: the
-// critics found every piece factory-clean): a field-wear ramp in the piece's
-// seat frame (origin on the support, +Y up) — road dust settled on the faces
-// that look up, warm and pale, and mud caked over the lowest 10 cm where the
-// piece meets the hull, dark and brown.
-const DECOR_DUST_GAIN: readonly [number, number, number] = [0.42, 0.3, 0.06];
-const DECOR_MUD_LOSS: readonly [number, number, number] = [0.32, 0.38, 0.46];
+// tankFactory.bakeDirt plays on the camo shells, minus the dust ramp).
+// 2026-10-08: round 2's baked dust-and-mud ramp left with the field wear (blind waves 240 and 264 scored the wear flat
+// up close: "a gravity-blind overlay ... flat tan tints"); the wear redesign owns dirt.
 function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferGeometry {
   const pos = geo.attributes.position;
   if (!geo.attributes.normal) geo.computeVertexNormals();
@@ -488,9 +484,7 @@ function bakeShade(geo: THREE.BufferGeometry, tone = 1, ao = 0.3): THREE.BufferG
   for (let i = 0; i < pos.count; i++) {
     const nyv = nor.getY(i);
     const a = (1 - Math.max(0, -nyv) * ao) * (1 - Math.max(0, nyv) * ao * 0.25);
-    const dust = Math.pow(Math.max(0, nyv), 1.5) * 0.34;
-    const mud = Math.pow(THREE.MathUtils.clamp(1 - pos.getY(i) / 0.1, 0, 1), 1.5) * 0.42;
-    for (let k = 0; k < 3; k++) col[i * 3 + k] = tone * a * (1 + dust * DECOR_DUST_GAIN[k]) * (1 - mud * DECOR_MUD_LOSS[k]);
+    col[i * 3] = tone * a; col[i * 3 + 1] = tone * a; col[i * 3 + 2] = tone * a;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
@@ -1179,13 +1173,6 @@ function buildDecorMaterials(
       vertexColors: true, envMapIntensity: 0.1,
     }),
   };
-  // 2026-10-07 round 4 field wear (materials.ts VEHICLE_FIELD_WEAR_GARAGE; wave 240: "every item is spotless flat
-  // colour (drums, jerrycans, box, bag ...) with no dirt, rust, fuel stains or edge wear"): the kit wears the vehicle's
-  // dust, mud, soot and stains, the hard kit, steel and cans as painted bodywork (1), cloth, burlap, wood and rubber as
-  // soft goods (4). Nets, wire mesh, lenses and leaves stay as they are.
-  const fieldWear: Partial<Record<DecorMaterialKey, number>> = {
-    kit: 1, steel: 1, cans: 1, canvas: 4, burlap: 4, wood: 4, rubber: 4,
-  };
   return {
     get(key: DecorMaterialKey) {
       if (!made[key]) {
@@ -1194,8 +1181,6 @@ function buildDecorMaterials(
         const material = new THREE.MeshStandardMaterial(def);
         made[key] = material;
         setup(material);
-        const wear = fieldWear[key];
-        if (wear) material.defines = { ...material.defines, COT_FIELD_WEAR: wear };
         material.name = `Decor_${key}`;
         // round 5: the nets swap to the new theatre's when a garage pattern switch repaints the vehicle in place
         if (key === 'net' && canPaint) {
@@ -3335,6 +3320,96 @@ function collectKeepOut(group: THREE.Group): DecorKeepOut[] {
   return out;
 }
 
+/** How far a piece stays off a field-upgrade volume (m), and how close to a side's outermost lattice a screen bar is. */
+const FIELD_EQUIPMENT_CLEAR = 0.01;
+const FIELD_SCREEN_FACE_BAND = 0.04;
+
+/** The bounds of each connected piece of `mesh` (vertices welded on a 0.1 mm grid), in the frame `toFrame` maps into. */
+function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Box3[] {
+  const pos = mesh.geometry.getAttribute('position'), index = mesh.geometry.getIndex();
+  const n = pos.count, parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const local: THREE.Vector3[] = [];
+  const welded = new Map<string, number>();
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(toFrame);
+    local.push(p);
+    const key = `${Math.round(p.x * 1e4)},${Math.round(p.y * 1e4)},${Math.round(p.z * 1e4)}`;
+    const at = welded.get(key);
+    if (at === undefined) welded.set(key, i); else parent[find(i)] = find(at);
+  }
+  const corners = index ? index.count : n;
+  for (let t = 0; t < corners; t += 3) {
+    const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+    parent[find(b)] = find(a); parent[find(c)] = find(a);
+  }
+  const boxes = new Map<number, THREE.Box3>();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!boxes.has(r)) boxes.set(r, new THREE.Box3());
+    boxes.get(r)!.expandByPoint(local[i]);
+  }
+  return [...boxes.values()];
+}
+
+/**
+ * The volumes a profile's field upgrade owns, `group`-local (2026-10-08; main's 5f8eefaa4 "roof cannons and field
+ * protection upgrades", the coordinator: "they must not double up with your MGs, RWS or stowage -- two guns on one
+ * mount or packs clipping your racks. Decide one owner per mount point"). The upgrade owns every mount point it fits,
+ * and a decor piece whose placed box enters one takes its next route: the stern rack (rearFieldStowage: the shelf,
+ * cans, log, bags and the rods back to the stern plate), the roof cage wings (fieldRoofCage), the side screens (on a
+ * tank carrying oplotFieldUpgrade or leclercFieldProtection: per side, the band from the wall to the screen face that
+ * the outermost lattice bars and their standoffs span) and each piece of a remote roof station seated on a yaw support
+ * (sourceMachineGun with a datum: its base, cradle, gun, sight and ammunition box, each its own box, since one box round
+ * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
+ * and geometry; running gear and decor never.
+ */
+function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
+  const out: THREE.Box3[] = [];
+  const rack = group.userData.rearFieldStowage as
+    { anchors: [number, number, number][]; z: number; top: number; logY: number } | undefined;
+  if (frame === 'hull' && rack?.anchors?.length) {
+    const front = Math.max(...rack.anchors.map((a) => a[2])) + 0.03;
+    out.push(new THREE.Box3(new THREE.Vector3(-1.34, rack.logY - 0.09, rack.z - 0.17),
+      new THREE.Vector3(1.34, rack.top + 0.01, front)));
+  }
+  const cage = group.userData.fieldRoofCage as { feet: [number, number, number][]; corners: [number, number, number][] }[] | undefined;
+  if (frame === 'turret' && Array.isArray(cage)) {
+    for (const wing of cage) {
+      const b = new THREE.Box3();
+      for (const p of [...wing.feet, ...wing.corners]) b.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
+      b.max.y += 0.025;
+      out.push(b.expandByScalar(0.03));
+    }
+  }
+  group.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const toFrame = (mesh: THREE.Object3D): THREE.Matrix4 => new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
+  const lattice: THREE.Box3[] = [];
+  group.traverse((o) => {
+    if (o.userData?.remoteControlled && o.userData.auxiliaryPivot && o.getObjectByName('sourceMachineGun_yawSupport')) {
+      o.traverse((c) => {
+        if (!(c instanceof THREE.Mesh) || !c.geometry?.getAttribute('position')) return;
+        for (const b of connectedPieceBoxes(c, toFrame(c))) out.push(b.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+      });
+    }
+    if (screens && o instanceof THREE.Mesh && o.name === `${frame}OpenLattice`) lattice.push(...connectedPieceBoxes(o, toFrame(o)));
+  });
+  // per side, the screen: the lattice pieces reaching within FIELD_SCREEN_FACE_BAND of that side's outermost bar (the
+  // face bars and the standoffs out to them), one band box
+  for (const side of [-1, 1]) {
+    const own = lattice.filter((b) => Math.sign(b.min.x + b.max.x) === side);
+    if (!own.length) continue;
+    const outer = (b: THREE.Box3): number => (side > 0 ? b.max.x : -b.min.x);
+    const face = Math.max(...own.map(outer));
+    const band = new THREE.Box3();
+    for (const b of own) if (outer(b) >= face - FIELD_SCREEN_FACE_BAND) band.union(b);
+    out.push(band.expandByScalar(FIELD_EQUIPMENT_CLEAR));
+  }
+  return out;
+}
+
 /** The first keep-out disc the frame-local box's deck footprint reaches into, or null. */
 function keepOutDisc(bb: THREE.Box3, discs: readonly DecorKeepOut[]): DecorKeepOut | null {
   for (const disc of discs) {
@@ -3984,6 +4059,11 @@ export function* attachTankDecorationsSteps(
 
     // round 4: whip feet, roof-gun mounts, hatches and cupolas of each frame, and the decor equipment seated so far
     const keepOut: Record<DecorFrame, DecorKeepOut[]> = { hull: collectKeepOut(hullG), turret: collectKeepOut(turretG) };
+    // 2026-10-08: the volumes main's field upgrades own (collectFieldEquipment); the side screens ride the turret's record
+    const screens = !!(turretG.userData.oplotFieldUpgrade || turretG.userData.leclercFieldProtection);
+    const fieldEquipment: Record<DecorFrame, THREE.Box3[]> = {
+      hull: collectFieldEquipment(hullG, 'hull', screens), turret: collectFieldEquipment(turretG, 'turret', screens),
+    };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -4282,6 +4362,7 @@ export function* attachTankDecorationsSteps(
         : guardTurretCommit(name, parts, bb);
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
+      if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!allowOverlap && overlaps(bb, ledger)) {
@@ -5039,12 +5120,19 @@ export function* attachTankDecorationsSteps(
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
           let done = false;
+          // whether a station passed every guard and was turned away by a field upgrade's volume alone (below)
+          let fieldBlocked = false;
+          const tryCommit = (pos: THREE.Vector3, rot: THREE.Euler): boolean => {
+            if (commit(name, cl, 'turret', pos, rot, placedTurret)) return true;
+            if (summary.skipped[summary.skipped.length - 1]?.[1] === 'field-equipment') fieldBlocked = true;
+            return false;
+          };
           for (const [z, yf] of stations) {
             const y = Math.max(0.24, pivotTopY() * yf);
             const h = turP.side(y, z, s, W / 2 + 1);
             if (!h) continue;
             const yaw = s * 0.55; // forward fan, mirrored about local +Z
-            if (commit(name, cl, 'turret', V(h.p.x + s * 0.03, y, z), E(0, yaw, 0), placedTurret)) { done = true; break; }
+            if (tryCommit(V(h.p.x + s * 0.03, y, z), E(0, yaw, 0))) { done = true; break; }
           }
           // Round 3 (2026-10-07): a declared smoke bank is a gameplay fitting, and a change in the turret's dressing
           // alone must not drop it. When every station overhangs the width guard, the bank seats on the turret under
@@ -5062,7 +5150,20 @@ export function* attachTankDecorationsSteps(
               const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
               if (over > 0.003) continue;
               if (over > 0) pos.x -= s * (over + 0.0005);
-              if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+              if (tryCommit(pos, rot)) { done = true; break; }
+            }
+          }
+          // 2026-10-08: a field upgrade's screens or roof-cage legs own the cheek stations (main's 5f8eefaa4 on the
+          // Oplot-M and the Leclerc X); a bank one of them turned away keeps its launch sockets on the first station
+          // forward of them along the turret side, in 6 cm steps. A bank every station refused for its own reasons (the
+          // width guard, its overlap) stays off, as before, so no vehicle gains sockets it never had.
+          if (!done && fieldBlocked) {
+            const solid = solidTurretProber();
+            const y = Math.max(0.24, pivotTopY() * 0.5);
+            for (let z = 0.42; z <= 1.6 && !done; z += 0.06) {
+              const h = solid.side(y, z, s, W / 2 + 1);
+              if (!h) continue;
+              done = tryCommit(V(h.p.x + s * 0.03, y, z), E(0, s * 0.55, 0));
             }
           }
           if (!done) disposePartList(cl);

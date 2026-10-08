@@ -34,11 +34,13 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
-import { recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
+import { recessClosedTurret, recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
+import { addLeo2PrototypeMantlet, convexCrownedStock, leopardThermalSkin } from './leopardStructuralRepairs.ts';
 import { buildLeopardRevolutionPrototypeTurret } from './leopardRevolutionPrototypeTurret.ts';
 import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './leopardImprovedHull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -7649,7 +7651,7 @@ function addLeo2PrototypeSponsonRails(P: TankBuilderPort): void {
 // build rode the V1 hull as a playable fallback). Identity (PT 1972-74,
 // 105 mm-smoothbore turret): LOW slab welded turret WITHOUT wedge appliqué,
 // rounded-in-plan cheek front, stereoscopic rangefinder blisters on BOTH
-// cheeks, base ring bulge wider than the walls, ROUNDED cast gun mantlet,
+// cheeks, base ring bulge wider than the walls, owner-revised faceted mantlet,
 // bare slim 105 (no thermal sleeve), plain flat full-length prototype
 // skirts, production Leopard 2 hull with the early nose fit. Bergman
 // oracle is a certified melted tub (whole print tops y 2.14 — no turret,
@@ -7657,7 +7659,7 @@ function addLeo2PrototypeSponsonRails(P: TankBuilderPort): void {
 // dims + floaters MUST hold 100. The visual bar is the §B8 photo class.
 // ---------------------------------------------------------------------------
 function buildLeo2Proto(P: TankBuilderPort) {
-  const { box, cylY, cylZ, openRackGrid, sph, xform, periscope, liftEye,
+  const { box, cylY, openRackGrid, sph, xform, periscope, liftEye,
     smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -7771,18 +7773,18 @@ function buildLeo2Proto(P: TankBuilderPort) {
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -1.18],
     [1.10, -2.75], [-1.10, -2.75], [-1.18, -1.18], [-1.22, 0.16], [-0.94, 0.78],
   ];
-  P.add('turret', polyMultiLoft(PT_PLAN, [
+  P.add('turret', recessClosedTurret(polyMultiLoft(PT_PLAN, [
     { height: 0.015, inset: 1.00 },
     { height: 0.40, inset: 0.995 },
     { height: 0.65, inset: 0.92 },
-  ]));
-  P.add('turret', polyMultiLoft([                                             // buried fore apron: no ring/deck slit
+  ]), { halfWidthM: .43, backZM: .68 }));
+  P.add('turret', recessClosedTurret(polyMultiLoft([                          // buried fore apron with real gun clearance
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.22, 0.08],
     [-1.22, 0.08], [-1.22, 0.16], [-0.94, 0.78],
   ], [
     { height: -0.035, inset: 1.00 },
     { height: 0.11, inset: 0.985 },
-  ]));
+  ]), { halfWidthM: .43, backZM: .68 }));
   // weld seams down the cheek knuckle lines (on the facet joints; mirrored
   // with the corner-swap law — orientedSlab re-guards winding)
   P.add('turretDark', slab(
@@ -7791,23 +7793,20 @@ function buildLeo2Proto(P: TankBuilderPort) {
   P.add('turretDark', slab(
     [-0.915, 0.02, 0.6845], [-0.885, 0.02, 0.7055], [-0.885, 0.02, 0.6895], [-0.915, 0.02, 0.6685],
     [-0.915, 0.58, 0.6845], [-0.885, 0.58, 0.7055], [-0.885, 0.58, 0.6895], [-0.915, 0.58, 0.6685]));
-  // center front: mantlet slot bay (armored embrasure grammar, §B3).
-  // §SRCFIX-0808: bay widened (back wall 0.88, cheeks ±0.448) to seat the
-  // REAL wide rounded cast mantlet (the brief's "distinctive rounded/
-  // angular cast-look mantlet area" — the old 0.56 dome floated in an
-  // oversized slot and read as a pin head).
-  P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.96);                    // slot back wall (top 0.65 = the roof plane)
-  P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 1.06);                       // brow strip (flush to the roof line)
-  P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 1.06);                      // chin plate
-  for (const s of [-1, 1] as const) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 1.055);
+  // Closed side reveals carry the journals. The center stays open through
+  // the pitched shield's full swept volume instead of concealing a cube.
+  for (const side of [-1, 1])
+    P.add('turret', box(.09, .40, .36), side * .455, .26, 1.00);
   // roof = the wall solids' own top faces at 0.65 (2.37w one plane — a
   // rectangular cap plate overhung the tapered plan as ledge corners in
   // the top view); ring plinth (§B2 slit closure, yaws with the mass)
-  P.add('turret', cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35);
+  P.add('turret', recessClosedTurret(xform(cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35),
+    { halfWidthM: .43, backZM: .68 }));
   // base ring bulge — wider than the turret walls (the PT tell); bottom
   // 1.69w clears the 1.71 aft deck to a 1.4 cm extreme-arc dip (family
   // margin class).
-  P.add('turret', cylY(1.24, 1.30, 0.12, P.q ? 26 : 16, false), 0, 0.03, -0.28, 0, 0, 0, [1, 1, 1.18]);
+  P.add('turret', recessClosedTurret(xform(cylY(1.24, 1.30, 0.12, P.q ? 26 : 16, false), 0, 0.03, -0.28, 0, 0, 0, [1, 1, 1.18]),
+    { halfWidthM: .43, backZM: .68 }));
   // stereoscopic rangefinder housings on BOTH cheek shoulders — the
   // walkaround reads them as ARMOURED BLOCKS ("both ends of the range
   // finder are hidden behind the armoured blocks at the turret sides"):
@@ -7942,20 +7941,10 @@ function buildLeo2Proto(P: TankBuilderPort) {
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
     towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
 
-  // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
-  // domed collar shoulders + tapered boot, never a prism; bare slim tube
-  // (no thermal sleeve), mid-tube evacuator, muzzle bore. Axis y 1.98;
-  // muzzle world +6.81 = the spec 10.67 overall over the -3.86 tail.
-  // §SRCFIX-0808: the cast dome WIDENS to the real casting (x radius 0.41
-  // filling the 0.448 slot — the old 0.28 dome read as a pin head in an
-  // oversized bay); trunnion roll follows (0.70); evacuator slimmed
-  // 1.8x -> 1.45x tube (the fat mid-bulge read 20-pdr/Centurion, not the
-  // slim Rheinmetall prototype tube).
+  // Owner-directed replacement: a finite, clipped welded shield with a
+  // real recoil passage and split journals, seated in the original gun frame.
   P.gunG.position.set(0, 0.26, 1.00);
-  P.addGunExtra(KIT.cylX(0.23, 0.70, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
-  P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.90, 1.08, 1.15]), 0, 0, 0.14); // rounded cast mantlet
-  P.addGunExtra(cylZ(0.165, 0.30, P.q ? 16 : 12, 0.115), 0, 0, 0.36);          // tapered mantlet boot
-  P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.20, 0.055, 0.24);                  // coax port (right)
+  addLeo2PrototypeMantlet(P);
   KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
   muzzleBore(P, { len: 5.26, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
   P.topY = 1.24;
@@ -11497,7 +11486,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // the aft panels do not remain stranded at the widest cheek datum.
   const turretPanelWallXAt = (z: number): number => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
   const buildKF51OwnerExactMarkingsStage1 = (): void => {
-    P.add('turret', recessKF51BTurret(polyMultiLoft(turretPlan, [
+    const structuralShell = recessKF51BTurret(convexCrownedStock(polyMultiLoft(turretPlan, [
       { height: -0.01, inset: 0.93 },
       { height: 0.24, inset: 1.00 },
       {
@@ -11511,6 +11500,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
         centerHeight: turretRoofCenterHeightM,
       },
     ])));
+    structuralShell.userData.primaryStockRole = 'kf51u-recessed-shell';
+    P.add('turret', structuralShell);
     P.turretG.userData.kf51bGunRecess = { ...KF51B_GUN_RECESS, closedCheeks: true };
     P.turretG.userData.kf51bTurretRoofReceipt = Object.freeze({
       profile: 'convex-crowned-wedge',
@@ -11945,9 +11936,11 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // z=1.50 and exposed a second upper-glacis plane from y=.74..1.54. This
     // compact wedge ends at the shallow glacis' forward edge, sharing its
     // x=±.80, y=1.04, z=3.54 seam without duplicating the long outer skin.
-    P.add('hull', slab(
+    const lowerBow = convexSlab(
       [-0.78, 0.48, 3.24], [0.78, 0.48, 3.24], [0.78, 0.48, 2.92], [-0.78, 0.48, 2.92],
-      [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]));
+      [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]);
+    lowerBow.userData.primaryStockRole = 'leo1a5-lower-bow';
+    P.add('hull', lowerBow);
     P.add('hull', slab(
       [-1.05, 1.34, upperGlacisRearZ], [1.05, 1.34, upperGlacisRearZ],
       [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
@@ -12236,9 +12229,12 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       P.add('turret', sideSlab(s,
         [0.28, 0.10, 0.80], [1.18, 0.16, 0.35], [1.20, 0.44, 0.17], [0.30, 0.40, 0.62],
         [0.26, 0.42, 1.28], [0.98, 0.44, 0.68], [0.90, 0.62, 0.44], [0.27, 0.67, 1.04]));
-      P.add('turret', sideSlab(s,
+      const rearApplique = convexSlab(...([
         [1.02, 0.16, 0.24], [1.31, 0.20, -0.72], [1.22, 0.56, -0.86], [0.96, 0.45, 0.12],
-        [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27]));
+        [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27],
+      ] as const).map(p => mirror(s, p)));
+      rearApplique.userData.primaryStockRole = 'leo1a5-rear-applique';
+      P.add('turret', rearApplique);
       P.addEquipment('turret', box(0.025, 0.035, 0.64), s * 1.18, 0.52, -0.28, 0, 0, s * 0.24);
       liftEye(P, 'turretDetail', s * 0.72, 0.79, 0.20, s * 0.45);
       liftEye(P, 'turretDetail', s * 0.76, 0.78, -1.10, s * 2.65);
@@ -13291,9 +13287,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     for (const s of [-1, 1] as const) {
       // Upper thermal skin follows the inner arrow plane and overlaps the
       // helper-owned plate by 12 mm at its rear edge.
-      P.add('turret', slab(
-        [s * 0.37, 0.300, 2.47], [s * 0.91, 0.310, 2.02], [s * 0.91, 0.405, 1.73], [s * 0.40, 0.430, 2.18],
-        [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17]));
+      P.add('turret', leopardThermalSkin([
+        [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17],
+      ], [0, -0.018, 0.010]));
       // Outboard skin follows the falling crest and terminates before the
       // real 2A6 tip pad so the characteristic arrow point remains visible.
       P.add('turret', slab(
@@ -13788,6 +13784,7 @@ function buildLeopard2A6UA(P: TankBuilderPort) {
   // Roof basket rails give the net a believable stand-off support without
   // closing the hatch, sight or weapon-station service lanes.
   addLeopardUaRoofBasket(P);
+  addMissionAttachmentReceiver(P, 'leo2a6_ua');
 
   const remoteStations = [
     // Each min/max pair brackets the authored armor under the full pedestal,
