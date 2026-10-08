@@ -256,6 +256,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
+    'src/game/studioDestruction.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
