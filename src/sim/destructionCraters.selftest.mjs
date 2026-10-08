@@ -6,7 +6,7 @@
 // off in every mode's ruleset until the drawn terrain follows the overlay.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CRATERS_PER_TICK, craterSeed, createDestructionMatch } from './destructionMatch.ts';
+import { CRATERS_PER_TICK, craterSeed, createDestructionMatch, quantizeCrater } from './destructionMatch.ts';
 import { CRATER_DEFORM_MIN_RADIUS_M, craterFor, munitionChargeKg } from './munitionBlast.ts';
 import { createTerrainDeformation } from './terrainDeformation.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
@@ -37,6 +37,9 @@ const noWorld = { obstacles: [], colliders: [] };
     depthM: Math.round(shape.depthM * 1000) / 1000, rimM: Math.round(shape.rimM * 1000) / 1000, seed: craterSeed(10.123, -20.988),
     munition: 'he', deforms: true }, 'quantized as the wire carries it');
   assert.deepEqual(match.log.at(-1), quantizeDestructionEntry(match.log.at(-1)), 'the log entry is its own wire form');
+  // the one quantization every digger shares (the Studio's strips dig with it too)
+  const { craterId: _id, munition: _m, deforms: _d, ...dug } = event;
+  assert.deepEqual(quantizeCrater(10.12345, -20.98765, shape, {}), dug, 'quantizeCrater is the dig\'s own');
   assert.ok(ground.offsetAt(10.123, -20.988) < -0.5 * shape.depthM, `the bowl (${ground.offsetAt(10.123, -20.988).toFixed(3)} m)`);
   assert.equal(match.craters, 1);
   // a 105 mm round is a mark; a burst off the ground digs nothing; hard ground keeps its face
