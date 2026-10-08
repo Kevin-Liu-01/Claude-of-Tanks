@@ -36,7 +36,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
+  armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
   kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
   waterBurst,
   type BlastContext,
@@ -5580,6 +5580,11 @@ function* createFxSteps(
           col3(0xffffff, _puffO.col0); col3(0xfff2d0, _puffO.col1);
           _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = 0;
           particles.emit('flash', _puffO);
+          // destruction-fx lane (owner 2026-10-08: every effect on the media layer): on the media tiers the spall jet,
+          // the armour-dust ring and the chips are the recipe's (lit, turbulent, drifting; steel that falls and lies)
+          if (blast) {
+            armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'pen' });
+          }
           // dust ring puffing out radially in the armor plane (before the
           // sparkFans — they clobber the shared _v1/_v2 basis)
           basisFrom(normal, _v1, _v2);
@@ -5587,7 +5592,7 @@ function* createFxSteps(
           // the incidence normal"): pulverized paint/armor dust blasting out
           // of the hole in a tight fast cone — the dark directional mass
           // that sells a penetration against the pale dust ring.
-          for (let i = 0; i < 8; i++) {
+          for (let i = 0; !blast && i < 8; i++) {
             const a = rng() * Math.PI * 2;
             const tilt = rng() * 0.24;
             const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
@@ -5606,7 +5611,7 @@ function* createFxSteps(
           }
           // r7 directional debris cone: solid armor chips ejected along the
           // normal, gravity-arced (the critic's missing particulate mass)
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; !blast && i < 5; i++) {
             const a = rng() * Math.PI * 2;
             const tilt = rng() * 0.45;
             const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
@@ -5620,7 +5625,7 @@ function* createFxSteps(
             _debO.hot = i < 2 ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = 0;
             particles.emit('debris', _debO);
           }
-          for (let i = 0; i < 8; i++) {
+          for (let i = 0; !blast && i < 8; i++) {
             const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
             const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
             const ry = _v1.y * Math.cos(a) + _v2.y * Math.sin(a);
@@ -5651,7 +5656,7 @@ function* createFxSteps(
           // the distance boost too — a 0.03 m streak is sub-pixel at 340 m)
           sparkFan(pos, normal, 22, 26 * s, 0.45, 0xffd27e, 0.55, 0.032 * dk, 0.03, 0, 0.1);
           sparkFan(pos, normal, 14, 14 * s, 1.05, 0xffb860, 0.75, 0.024 * dk, 0.022, 0, 0.15);
-          impactSmoke(pos, normal, 5, 1.1 * s, 0x2e2c2a, 0x5a5854, 0.65);
+          if (!blast) impactSmoke(pos, normal, 5, 1.1 * s, 0x2e2c2a, 0x5a5854, 0.65);
           break;
         }
         case 'he_pen':
@@ -5661,7 +5666,8 @@ function* createFxSteps(
           break;
         case 'nonpen':
           sparkFan(pos, normal, 22, 20 * s, 0.9, 0xffd884, 0.55, 0.025 * dk, 0.022);
-          impactSmoke(pos, normal, 4, 0.8 * s, 0x8a867e, 0xa7a49c, 0.45);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'nonpen' });
+          else impactSmoke(pos, normal, 4, 0.8 * s, 0x8a867e, 0xa7a49c, 0.45);
           break;
         case 'ricochet': {
           // elongated deflection streaks skimming along the plate
@@ -5679,19 +5685,22 @@ function* createFxSteps(
             particles.emit('sparks', _strkO);
           }
           sparkFan(pos, normal, 8, 12 * s, 1.1, 0xffcf80, 0.4, 0.02, 0.02);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'ricochet' });
           break;
         }
         case 'spaced_absorb':
           hitFlash(pos, normal, s * 0.7, 0xffe9b0, 0xff9040);
           sparkFan(pos, normal, 10, 12 * s, 1.0, 0xffce7a, 0.45, 0.022, 0.02);
-          impactSmoke(pos, normal, 3, 0.7 * s, 0x77746e, 0x93908a, 0.4);
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'spaced' });
+          else impactSmoke(pos, normal, 3, 0.7 * s, 0x77746e, 0x93908a, 0.4);
           break;
         case 'era': {
           // reactive tile pop: sharp directed blast + brick fragments
           hitFlash(pos, normal, s * 1.4, 0xffffff, 0xff6a10);
           sparkFan(pos, normal, 26, 24 * s, 0.8, 0xffc860, 0.6, 0.03, 0.026);
-          impactSmoke(pos, normal, 6, 1.3 * s, 0x35322f, 0x605d58, 0.7);
-          for (let i = 0; i < 4; i++) {
+          if (blast) armorHit(blast, { x: pos.x, y: pos.y, z: pos.z, nx: normal.x, ny: normal.y, nz: normal.z, caliberMm, kind: 'era' });
+          else impactSmoke(pos, normal, 6, 1.3 * s, 0x35322f, 0x605d58, 0.7);
+          for (let i = 0; !blast && i < 4; i++) {
             _debO.pos[0] = pos.x; _debO.pos[1] = pos.y; _debO.pos[2] = pos.z;
             _debO.vel[0] = normal.x * (10 + rng() * 8) + (rng() - 0.5) * 6;
             _debO.vel[1] = normal.y * (10 + rng() * 8) + 4 + rng() * 4;
