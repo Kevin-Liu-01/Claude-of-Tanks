@@ -892,6 +892,32 @@ updates only identified wreck records in the server shards. It retains unrelated
 obstacles, shell colliders and concealment records. Its inert canvas is sufficient
 for collision generation; it is not evidence of native rendering quality.
 
+### World collider audit and the stones' colliders
+
+Every world collider is held to the geometry it stands for by `tools/world-collider-audit.mjs`
+(the measures in `tools/worldColliderAudit.mjs`, pinned by its selftest). It builds a map in Node
+with the shard builders' seeds and measures each collider against the solid meshes round it: the
+movement footprint against the mesh's horizontal section between 0.2 and 1.4 m over the local ground
+(phantom area: collider with no stone under it; leak area: stone with no collider), and horizontal
+rays from hull to turret height (stopped clear of the stone, or passing through it, by more than
+10 cm). `--families=rocks` measures every stone with and without a collider and the scenery's rock
+formations (on a tree whose stones carry their own colliders, each stone's legacy record survives as
+the ground cover's cosmetic twin and is measured beside it); `--families=records` the other records
+(`--per-kind=<n>` samples); `--write-shards` also writes the map's collision shard from the same
+build, its index entry printed as an `ENTRY` line.
+
+A stone's colliders come from its own mesh (`src/world/rockCollision.ts`, receipt
+`rockCollision.selftest.mjs`): the movement footprint is the stone between 0.2 and 3 m over its
+ground, to its real top; the shell and sight colliders are ranged slabs of the stone's sections
+('w' parts, no format change); a stone rising less than 0.45 m is driven over and has none, and the
+crushable small rocks stop shells like the other dense crushable cover. `props.ts` keeps the legacy
+records through every placement pass and refits them once all have run, so no prop moves.
+
+To see the colliders in the game, `window.__DEBUG.colliderOverlay({ x, z, radius })` draws every
+record round a point (orange movement, cyan shells and sight; `null` removes it), and
+`tools/visual-census.mjs capture --overlay=colliders[:<radius>]` shoots each view a second time
+with it (`<view>-colliders.png`); `--pose=<map>/<name>:...` binds an authored pose to one map.
+
 The garage allied-nation selector has a DOM regression fixture in
 `tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait
 and short-landscape fixtures in `tools/spectator-switcher.browser.mjs`. These
