@@ -1,4 +1,4 @@
-import { createDamageLab, type DamageLab, type DamageLabVisual } from './damageLab.ts';
+import type { DamageLab, DamageLabVisual } from './damageLab.ts';
 import { createDamageWorkbench } from './damageWorkbench.ts';
 import { createDamageBurst } from './damageBurst.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
@@ -286,6 +286,25 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
   },
   copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: selectedId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
 });
+// The damage lab is the gallery's heaviest graph — the sim's damage, movement and armour and the auxiliary weapons table,
+// about 495 kB raw in 9 requests (main 395305d45) — so it loads after the first tank is on screen (2026-10-07, push 3b:
+// the owner's load-time priority). The workbench shows a short loading state when the module takes more than 200 ms; a
+// failed load is retried by the next tank load.
+type DamageLabModule = typeof import('./damageLab.ts');
+let damageLabModule: Promise<DamageLabModule> | null = null;
+function loadDamageLab(): Promise<DamageLabModule> {
+  if (damageLabModule) return damageLabModule;
+  const pending = document.createElement('section');
+  pending.className = 'dossier-section damage-workbench';
+  pending.setAttribute('aria-busy', 'true');
+  pending.innerHTML = `<div class="section-label"><span>${t('gallery.damage.heading')}</span></div><p class="damage-help" role="status">…</p>`;
+  const slow = setTimeout(() => damageHost.append(pending), 200);
+  damageLabModule = import('./damageLab.ts').then(
+    (module) => { clearTimeout(slow); pending.remove(); return module; },
+    (error: unknown) => { clearTimeout(slow); pending.remove(); damageLabModule = null; throw error; },
+  );
+  return damageLabModule;
+}
 function inspectionTarget(object: THREE.Object3D): string {
   const data = object.userData.inspection;
   if (data?.plateName && damageLab?.targets.some(target => target.key === `plate:${data.plateName}`)) return `plate:${data.plateName}`;
@@ -724,8 +743,7 @@ async function loadTank(
   visual.root.updateMatrixWorld(true);
   surfaceMarkup.attachTank(visual.root, id);
   renderDossier(record);
-  damageLab = createDamageLab(getSpec(id), visual, GALLERY_FLOOR_Y_M);
-  damageWorkbench.attach(damageLab);
+  visual.setGroundSampler(() => GALLERY_FLOOR_Y_M); // the lab's floor from the first frame (the lab sets it again)
   for (const input of [$('#hullYaw'), $('#turretYaw'), $('#gunPitch')]) input.disabled = false;
   configureArticulation(spec);
   renderRoster();
@@ -734,6 +752,12 @@ async function loadTank(
   updateUrl();
   await nextFrame();
   loadingState.classList.add('hidden');
+  const { createDamageLab } = await loadDamageLab();
+  if (version !== loadVersion || !visual) return;
+  damageLab = createDamageLab(getSpec(id), visual, GALLERY_FLOOR_Y_M);
+  damageLab.syncPose();
+  damageWorkbench.attach(damageLab);
+  setMode(activeMode, false); // the overlays read the lab's armour from here on
   window.__TANK_GALLERY_READY = true;
 }
 
