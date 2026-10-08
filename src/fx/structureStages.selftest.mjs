@@ -456,6 +456,9 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     assert.deepEqual(Array.from(sWall.mesh.geometry.getAttribute('position').array), Array.from(wallBefore), 'the walls untouched by the roof\'s fall');
     const stubRuns = [];
     for (const n of ['front', 'right', 'back']) stubRuns.push(...newRuns(() => stages.breach(fall(1, n), seamC)));
+    // facades (2026-10-08): a section falls once — a second event on the same kit section lays nothing again
+    assert.equal(newRuns(() => stages.breach(fall(1, 'front'), seamC)).length, 0, 'the second event on a fallen section lays nothing');
+    assert.ok(stubRuns.every((m) => m.visible), 'and takes nothing of the first fall');
     assert.ok(stubRuns.filter((m) => m.name === 'fx-structure-remnant-regionalPlaster').length === 3, 'each panel before the last lays its stub');
     const last = newRuns(() => stages.breach(fall(1, 'left', { storeyDown: true }), seamC));
     assert.ok(last.length === 1 && /^fx-structure-rubble-/.test(last[0].name) && last[0].visible,

@@ -308,6 +308,16 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   }
   /** Structures that have had a real P2 hole: a P1 'breached' stage cuts them no synthetic one. */
   const realHoles = new Set<number>();
+  /** The kit sections that have fallen, per structure: a section falls once (facades 2026-10-08: two of the sim's
+   *  3.2 m bands on a wall that is one part from foot to eave map to one kit section; the second event lays nothing). */
+  const fallenSections = new Map<number, Set<number>>();
+  const fallOnce = (structureId: number, section: number): boolean => {
+    let set = fallenSections.get(structureId);
+    if (!set) { set = new Set(); fallenSections.set(structureId, set); }
+    if (set.has(section)) return false;
+    set.add(section);
+    return true;
+  };
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
   function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined): void {
@@ -579,7 +589,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       let changed = false;
       if (e.sectionKind === 'roof') {
         const roof = a.roof;
-        if (roof) {
+        if (roof && fallOnce(e.structureId, roof.section)) {
           // the roof's own patches and eave bands from earlier blows go with it (first: the fall's own runs stand)
           const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
           changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
@@ -592,7 +602,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
         const storey = spec ? a.storeys[spec.storey] : null;
         const face = storey ? storey.faces.find((f) => f.name === spec!.face) ?? null : null;
-        if (spec && storey && face) {
+        if (spec && storey && face && fallOnce(e.structureId, spec.section)) {
           // the panel above its stub (a metre over the base; an upper storey's falls to its floor line)
           const y0 = e.y0 - a.placement.y, y1 = e.y1 - a.placement.y;
           const stubTop = Math.max(y0, baseY + 1 - a.placement.y, storey.y0), top = Math.max(y1, storey.y1);
@@ -657,6 +667,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
       originals.clear();
       realHoles.clear();
+      fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;
