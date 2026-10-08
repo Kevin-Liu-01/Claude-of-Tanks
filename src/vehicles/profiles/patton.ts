@@ -1724,7 +1724,9 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
       // §B3 census fitting: stowed spare MG tucked inside the casting
       // silhouette (the measured m2Station stays the gate-driven roof gun)
       // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the casting it is tucked against (feed-side collision census).
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right' });
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel), not
+      // the crew guns' true-size floor, which grew it 12 % into the casting and the roof gun beside it.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right', sourceScale: true });
       mg.position.set(T.stowMG[0], yl(T.stowMG[1]), zl(T.stowMG[2]));
       P.turretG.add(mg);
     }
@@ -2478,7 +2480,9 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
     {
       // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right' });
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
+      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
       mg.position.set(0.30, ly(2.96), zl(-0.62));
       P.turretG.add(mg);
     }
