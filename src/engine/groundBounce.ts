@@ -18,8 +18,10 @@
  *                ground its own object shades; an underside sees half shaded ground under the object, half lit
  *                ground beside it)
  *   receiver     R(v)      = mix( 0.4, 1, v )        a face inside a cast shadow (a building's, a canopy's) stands
- *                                                    on shaded ground too — v is the CSM visibility the fragment
- *                                                    already carries (cotSunVis)
+ *                                                    on shaded ground too — v is the ambient dim's facing-corrected
+ *                                                    visibility (cotAmbVis, lighting.ts): a face turned from the sun
+ *                                                    shadows itself in the CSM, and S already counts that self-shade
+ *                                                    (2026-10-06: the raw visibility counted it twice — see below)
  *   ground       L         = sunColour · sunIntensity · max( sun.y, 0 ) · groundTone · gain
  *                                                    the irradiance sunlit flat ground reflects (flat-ground sun
  *                                                    irradiance × the ground's albedo tone — the hemisphere's own
@@ -218,7 +220,16 @@ uniform float uCotShadowDepth;
 
 /**
  * The term, inserted in lights_fragment_end before RE_IndirectDiffuse (inside its #if): `irradiance`,
- * `geometryNormal` (view space), `viewMatrix` and `cotSunVis` are in scope there.
+ * `geometryNormal` (view space), `viewMatrix`, `cotSunVis` and `cotAmbVis` are in scope there.
+ *
+ * 2026-10-06 (the skies lane; the scenery lane's wave-174 trace): the receiver read the raw CSM visibility. A face turned
+ * from the sun is in its own shadow (cotSunVis ≈ 0), so the bounce took the shadowed receiver's 0.4 on top of the
+ * self-shade cotSide already applies (1 − 0.6 · away · low): counted twice, and after the hemisphere's ground pole is
+ * taken off it often reached zero, leaving those faces only the sky's light — Verdant's chalk yard wall cream in the sun
+ * (B/R 0.84) and grey-blue in its shade (B/R 1.13) in front of sunlit grass, Saltwind's walls "slate blue" (wave 177).
+ * The receiver now reads the ambient dim's facing-corrected visibility (cotAmbVis): a face toward the sun keeps its cast
+ * shadows' dim, a face turned from it keeps its whole bounce. (The cost: a back face that also stands in another object's
+ * cast shadow takes a little too much bounce — the CSM cannot tell the two shadows apart there.)
  */
 export const GROUND_BOUNCE_GLSL_TERM = /* glsl */ `
 	iblIrradiance = mix( vec3( dot( iblIrradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), iblIrradiance, uCotSkyChroma ) * uCotSkyDiffuse;
@@ -227,7 +238,7 @@ export const GROUND_BOUNCE_GLSL_TERM = /* glsl */ `
 		vec2 cotSunH = uCotBounceSun.xz / max( length( uCotBounceSun.xz ), 1e-3 );
 		float cotSide = 1.0 - max( -dot( cotNw.xz, cotSunH ), 0.0 ) * clamp( 1.0 - uCotBounceSun.y, 0.0, 1.0 ) * ${f(GROUND_BOUNCE_SELF_SHADE)};
 		float cotGroundLit = mix( ${f(GROUND_BOUNCE_UNDERSIDE_LIT)}, cotSide, clamp( cotNw.y + 1.0, 0.0, 1.0 ) );
-		float cotRecv = mix( ${f(GROUND_BOUNCE_SHADOWED_RECEIVER)}, 1.0, clamp( cotSunVis, 0.0, 1.0 ) );
+		float cotRecv = mix( ${f(GROUND_BOUNCE_SHADOWED_RECEIVER)}, 1.0, clamp( cotAmbVis, 0.0, 1.0 ) );
 		float cotView = clamp( 0.5 - 0.5 * cotNw.y, 0.0, 1.0 );
 		irradiance += max( uCotBounceRad * ( cotGroundLit * cotRecv ) - uCotBounceHemi, vec3( 0.0 ) ) * cotView;
 	}

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { sceneWindOf } from './sceneWind.ts';
 import { minimapAssetUrl } from '../ui/minimapAssetUrl.ts';
 import {
   createWorldBuildCoordinator,
@@ -232,9 +233,11 @@ export function createWorldActivationRuntime<
     // 2026-10-01: the map's cloudscape rides with its sky block here too (main.ts getAuthoredPreset does it for the
     // battle) — the shots, the Studio staging and the census frames showed the legacy cloud layer derived from the sky
     // block alone (Titan Gorge's dense overcast as scattered cumulus, every authored regime lost)
-    const skyConfig = (world.config.clouds
-      ? { ...(world.config.sky ?? {}), cloudscape: world.config.clouds }
-      : world.config.sky ?? {}) as SkyConfig;
+    // (2026-10-05: and its scene wind — the clouds drift with the battlefield's surface wind, veered: world/sceneWind.ts)
+    const skyConfig = {
+      ...(world.config.sky ?? {}), ...(world.config.clouds ? { cloudscape: world.config.clouds } : {}),
+      ...sceneWindOf(world.config as { id?: string }),
+    } as SkyConfig;
     if (atmosphere === 'covered-battle') {
       // This authored daytime presentation is only intermediate. The covered
       // deployment/authority owner bakes the selected day/night IBL once.

@@ -12,6 +12,7 @@ import {
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
+import { balconette, facadeOn, facadeRng, trimRun } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -73,6 +74,35 @@ function eaveCourse(sink: PartSink, frame: HouseFrame): void {
   for (const side of [-1, 1]) {
     const x = side > 0 ? b.x1 : b.x0;
     sink.span('stone', Math.min(x, x + side * 0.2), y - 0.16, b.z0 - 0.06, Math.max(x, x + side * 0.2), y, b.z1 + 0.06);
+  }
+}
+
+/**
+ * A Dalmatian house's dressed stone (facade craft, desktop): a rendered house shows its corners in dressed limestone
+ * quoins; a house of three storeys carries a string course over its living floor round the street gable.
+ */
+function dressedStone(sink: PartSink, frame: HouseFrame, rendered: boolean): void {
+  const f = facadeRng();
+  const b = frame.bodies[0];
+  if (rendered) {
+    for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
+      const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
+      for (let y = 0.2, k = 0; y < frame.eaveY - 0.35; y += 0.36, k++) {
+        const long = (k + (f() < 0.5 ? 0 : 1)) % 2 === 0, lx = long ? 0.5 : 0.28, lz = long ? 0.28 : 0.5;
+        sink.quoin('stone', sx > 0 ? x - lx : x - 0.03, y, sz > 0 ? z - lz : z - 0.03, sx > 0 ? x + 0.03 : x + lx, y + 0.34, sz > 0 ? z + 0.03 : z + lz, sx, sz, { decor: true });
+      }
+    }
+  }
+  if (frame.floors.length >= 3) {
+    const face = frame.faces.front, half = face.width / 2;
+    trimRun(sink, 'stone', face, -half, half, frame.floors[2] - 0.14, [{ h: 0.08, out: 0.05 }, { h: 0.08, out: 0.09 }], { ret: 0.3 });
+  }
+  // a balconette on the living floor's street windows of half the houses: a stone slab on corbels, an iron railing
+  if (frame.floors.length >= 2 && f() < 0.5) {
+    const iron: Rgb = [0.06, 0.07, 0.07];
+    const upper = frame.spec.openings.filter((o) => o.face === 'front' && o.storey >= 1 && o.kind === 'window' && !o.state);
+    const pick = upper.length ? upper[Math.floor(f() * upper.length)] : null;
+    if (pick) balconette(sink, frame.faces.front, pick.u, frame.floors[pick.storey] + pick.y0, pick.w, 'stone', iron);
   }
 }
 
@@ -159,6 +189,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
     const frame = buildHouse(sink, spec, dialect(st));
     eaveCourse(sink, frame);
     if (stairSide) balatura(sink, frame.faces.right, D * 0.26, frame.floors[1], 1);
+    if (facadeOn()) dressedStone(sink, frame, rendered);
     if (!st.mobile) {
       if (aerial) tvAerial(sink, frame, aerialZ, rng);
       if (lantern) {

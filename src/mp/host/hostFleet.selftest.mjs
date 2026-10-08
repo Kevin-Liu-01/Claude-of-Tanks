@@ -45,9 +45,13 @@ for (const file of ['server/match/matchActor.ts', 'src/vehicles/authorityFleet.t
   assert.ok(closure.includes(file), `the host Worker registers the fleet through ${file}`);
 }
 const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, file)).size, 0);
-// 4.45 MB of source on 2026-10-01 (the simulation, the world's height field, the wire, the server actor, three's math,
-// the i18n catalogs); the eager fleet alone is 18.9 MB of static source plus every calibration group.
-assert.ok(sourceBytes < 6e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// The bound guards against eager fleet imports: the fleet alone is 18.9 MB of static source plus every calibration group,
+// so one stray import of a builder, a kit or a calibration literal fails it by a wide margin. What the Worker does carry
+// grows with the maps: the simulation, the world's height field, the wire, the server actor, three's math, the i18n
+// catalogs, and the regional architecture kits (the Worker derives each map's world collision from its kit geometry, so
+// the kits belong in its closure). 4.45 MB on 2026-10-01; 5.81 MB at PR head 5d2461283; 6.06 MB with the five map revival
+// lane 2 kits combined (2026-10-05).
+assert.ok(sourceBytes < 7e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');

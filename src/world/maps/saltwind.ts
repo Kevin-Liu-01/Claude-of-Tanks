@@ -130,6 +130,21 @@ export default {
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
     architecture: 'dalmatian',
+    // The landmarks lane (2026-10-05; src/world/landmarks/towers.ts campanile): the village's free-standing Venetian
+    // campanile, as Rab's, Hvar's and Korcula's stand apart from their churches — on the bay's axis between the village
+    // square and the market crossroads (the map's mirror line, so it stands for both halves), its door toward the square:
+    // the limestone shaft in string-coursed stages, its openings multiplying as it rises (slits, a monofora, a bifora),
+    // the open bell stage with a bifora on each face, the stone pyramid inside its balustrade and its cross, 34 m over
+    // the village.
+    landmarks: [
+      // round 2 (2026-10-06; gauntlet wave 158: "stands alone in an open red-earth field with no church, piazza, paving or
+      // houses at its foot"): the piazza's flagstones round its foot (authored first: a dressing piece, it refuses
+      // nothing; it lies in the zone's disc, which a dressing piece may), the campanile on its broad step, its stone
+      // streaked from each string course. The piazza is laid into the finished map (ground 'veto', an open surface): it
+      // reserves no ground, so every record the map placed round the campanile stands where it stood.
+      { kind: 'path', x: -81, z: 10, yawDeg: -90, ground: 'veto', name: "the campanile's piazza", params: { length: 18, width: 18, surface: 'stone' } },
+      { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
+    ],
     sourcedPalette: 'coastal',
     extraKits: ['river'],
     // Two low timber landings face the village and its northern coastal exit.

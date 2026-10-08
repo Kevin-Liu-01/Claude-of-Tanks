@@ -44,6 +44,42 @@ interface AuthoredTreeReceipt {
   displaced?: number;
 }
 
+/** A map's planned building site (props.ts `plannedSites`): its pose and, when it is authored at its size, its plot. */
+interface PlannedSite { x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }
+
+/** Half a side of a planned site without a plot: the kits' buildings measure up to 28 m (Kestrel's warehouses 27.3 m). */
+const PLANNED_SITE_HALF_M = 14;
+
+/**
+ * Trees lane (2026-10-05, Kestrel's dispersal stands): the settlement rect keeps every tree off a map's buildings. A map
+ * whose authored stands stand inside it (vegetation.ts `authoredInSettlement`) keeps them off its planned sites instead:
+ * each its plot, or a 28 m square on its yaw, with the beats' 0.75 m apron.
+ */
+export function plannedSiteClearances(sites: readonly PlannedSite[]): StructureClearance[] {
+  return sites.map((site) => {
+    const yaw = site.yawDeg * Math.PI / 180;
+    return {
+      x: site.x, z: site.z,
+      halfWidth: (site.plot ? site.plot.w / 2 : PLANNED_SITE_HALF_M) + 0.75,
+      halfLength: (site.plot ? site.plot.d / 2 : PLANNED_SITE_HALF_M) + 0.75,
+      cos: Math.cos(yaw), sin: Math.sin(yaw),
+    };
+  });
+}
+
+/** Whether (x, z) lies inside one of the polygons ([x, z] rings, even-odd): the clear ground a map names for its stands. */
+export function insideClearPolygon(polygons: readonly (readonly (readonly [number, number])[])[], x: number, z: number): boolean {
+  for (const polygon of polygons) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, zi] = polygon[i], [xj, zj] = polygon[j];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
 /** Equal arc-length stations keep bent bank ribbons and farm rows readable. */
 export function authoredTreeStations(feature: AuthoredTreeFeature): Array<{ x: number; z: number }> {
   if (!Number.isInteger(feature.count) || feature.count < 2 || feature.count > 80

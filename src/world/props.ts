@@ -17,6 +17,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
+import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
@@ -55,6 +56,8 @@ import {
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
+import type { LandmarkPlacement } from './landmarks/types.ts';
 import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.ts'; // b17: the walls stone by stone near the camera
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -164,7 +167,7 @@ import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitectu
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
-import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
+import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -367,7 +370,16 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** The landmarks lane (2026-10-05): a set piece (props.landmarks) stands on this site instead. The site keeps its plan
+     * draws, spacing and footprint (every later building, yard and clutter piece stays where it was); its geometry and
+     * collision are the piece's. */
+    vacated?: boolean;
+    /** map revival lane 2 (2026-10-05): a house in an authored street wall (Aegis Crossing's Ronda streets). It stands
+     * within a metre of its neighbours, inside the spacing disc every earlier building keeps, so that check passes it:
+     * its author holds the footprints apart. It draws from a stream of its own (its index in the plan), so every
+     * placement after it keeps its seat. Every other site keeps the check and the shared stream. */
+    terrace?: boolean }[];
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -383,6 +395,18 @@ interface PropsSettings {
    * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
+  /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
+   * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
+   * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
+   * the street-row pass draws nothing. */
+  townRowPlan?: readonly TownRowEntry[];
+  /**
+   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
+   * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
+   * packed for the carriageway post-pass (its new place dry, looked for out to 80 m), a street row or a light building
+   * is left out. Every other recorded building stands where it stood. Default off.
+   */
+  settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -472,6 +496,9 @@ interface PropsSettings {
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
+   * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
+  landmarks?: readonly LandmarkPlacement[];
 }
 
 /** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
@@ -482,6 +509,14 @@ export interface TownPlanEntry {
 
 /** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
 export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
+
+/** One street-row building as a recorded build seated it (PropsMapConfig.townRowPlan): its pose, its plot, whether it
+ * stood ruined, its wall, the props stream's state before its builder, and its rubble's seat, size and the street
+ * stream's state before it (absent when it spilled none). */
+export interface TownRowEntry {
+  x: number; z: number; rot: number; w: number; d: number; ruined: boolean; wall: string; rng: number;
+  rubbleX?: number; rubbleZ?: number; rubbleR?: number; rubbleRng?: number;
+}
 
 export interface PropsMapConfig {
   id: string;
@@ -496,6 +531,8 @@ interface PlacedBuilding {
   rot: number;
   /** Round 75: the plan id of a planned building (the yard dressing reads it); other placements carry none. */
   kind?: string;
+  /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
+  landmark?: string;
 }
 
 interface TacticalBeatFeature {
@@ -511,6 +548,8 @@ interface PlacedRadius {
   x: number;
   z: number;
   rr: number;
+  /** A set piece's reserved ground (the landmarks pass): kept clear by every later pass, never dressed as a yard. */
+  landmark?: true;
 }
 
 interface DecorationGroundingReceipt {
@@ -836,6 +875,18 @@ function makePlaster(
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
+  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash
+  const paint = (tone as { paint?: { kind: 'limewash'; seed: number } } | null)?.paint;
+  if (paint?.kind === 'limewash') {
+    const lime = paintLimewash(s, paint.seed);
+    applyTone(lime.px, tone);
+    return {
+      albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
+    };
+  }
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
     const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
@@ -3167,20 +3218,28 @@ function* propsBuildSteps(
       Math.max(0, Math.min(1, bs * ds)),
       Math.max(0, Math.min(1, bl * dl))];
   };
-  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  // the map-revival lane (2026-10-05, Skybridge round 2): a kit that pours its concrete paints plaster2 as that
+  // concrete (glencanyon: board-formed, its formwork's boards, lift lines and tie holes), toned as the render was
+  const plaster2Tone = T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90);
+  const pouredConcrete = regionalArchitecture?.surfaces.concrete;
+  const plaster2 = pouredConcrete
+    ? yield* makeRegionalConcrete(pouredConcrete, (px) => { applyTone(px, plaster2Tone); }, aniso)
+    : makePlaster(noi, aniso, plaster2Tone);
   yield { fine: true };
   // These two procedural variants differ only in albedo tone. Share their
   // immutable relief within this props owner; retained materials deduplicate
   // final disposal. Primary plaster stays exclusive for sourced image swaps.
+  // (a poured plaster2's relief is the formwork's: plaster3 keeps a render's own)
   const plaster3 = makePlaster(noi, aniso,
-    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
+    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), pouredConcrete ? null : plaster2);
   yield { fine: true };
   const roofT = regionalArchitecture
     ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
     : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
   const stone = regionalArchitecture
-    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso)
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
+      regionalArchitecture.surfaces.stone.dressed)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
@@ -3400,6 +3459,14 @@ function* propsBuildSteps(
     mats.burlap.envMapIntensity = 0.18;
     mats.structureMetal.envMapIntensity = 0.48;
     mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
+    // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
+    const relief = regionalArchitecture?.surfaces.relief;
+    if (relief) {
+      for (const key of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+        mats[key].normalScale.set(relief.normal, relief.normal);
+        mats[key].aoMapIntensity = relief.ao;
+      }
+    }
   }
   configureSurfaceMaterials();
   // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
@@ -3700,6 +3767,13 @@ ${snowCap ? `
     quaternion: _dq,
     euler: _de,
   };
+  // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
+  // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
+  // would stand on a piece's ground is left out here — its draws already taken, and no record, pool slot, body or
+  // contact made — so nothing else they place moves for the piece. The pieces' own furniture is exempt.
+  const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
+  const landmarkVetoed: Record<string, number> = {};
+  let landmarkFurniture = false;
   function addDestructible(
     kind: string,
     x: number,
@@ -3710,6 +3784,18 @@ ${snowCap ? `
     tiltX = 0,
     tiltZ = 0,
   ): DestructibleRecord {
+    if (landmarkVetoes.length && !landmarkFurniture) {
+      // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
+      // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
+      const meta = resolveDestructibleMeta(destructibleContext, kind), r = meta.r * sc, reach = Math.min(r, 0.5);
+      for (const v of landmarkVetoes) {
+        const dx = x - v.x, dz = z - v.z;
+        if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) {
+          landmarkVetoed[kind] = (landmarkVetoed[kind] ?? 0) + 1;
+          return { kind, cls: meta.cls, x, y, z, yaw, sc, r, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+        }
+      }
+    }
     return addDestructibleRecord(
       destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ,
     );
@@ -3970,6 +4056,17 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB: PlacedRadius[] = [];
+  // props.settlementOverWater (Suzhou Creek): whether a footprint (grown by a metre) reaches the course's water
+  const overWater = !!P.settlementOverWater;
+  const footprintWet = (x: number, z: number, w: number, d: number, rot: number): boolean => {
+    if (!overWater) return false;
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    for (const a of [-1, -0.5, 0, 0.5, 1]) for (const b of [-1, -0.5, 0, 0.5, 1]) {
+      const lx = a * (w / 2 + 1), lz = b * (d / 2 + 1);
+      if (heightField.getWaterMaskAt(x + lx * c + lz * sn, z - lx * sn + lz * c) > 0) return true;
+    }
+    return false;
+  };
   function collectTacticalReservations(): PlacedRadius[] {
     const result: PlacedRadius[] = [];
     for (const beat of [...(P.tacticalBeats || []), ...(P.orbitalSettlement || [])]) {
@@ -4021,8 +4118,8 @@ ${snowCap ? `
   const carriagewayPackets: CarriagewayPacket[] = [];
   /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
    * in a carriageway, else null. */
-  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
-    rot: number): { w: number; d: number } | null {
+  /** A building's whole footprint (its plot or its geometry's reach about the origin, whichever is larger). */
+  function footprintOf(tmp: PropsBuckets, info: { w: number; d: number }): { w: number; d: number } {
     let w = info.w, d = info.d;
     for (const geometry of Object.values(tmp).flat()) {
       if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -4031,12 +4128,17 @@ ${snowCap ? `
       w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
       d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
     }
+    return { w, d };
+  }
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    const { w, d } = footprintOf(tmp, info);
     return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -4045,14 +4147,14 @@ ${snowCap ? `
     attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
-    const wallBucket = pickWall(rng);
-    const info = builder(rng, tmp, wallBucket);
+    const wallBucket = pickWall(stream);
+    const info = builder(stream, tmp, wallBucket);
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
-    jitterBuildingUvs(tmp);
+    jitterBuildingUvs(tmp, stream);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
     // authored landmark/wharf/court owners never enter this branch.
@@ -4135,6 +4237,15 @@ ${snowCap ? `
         if (Number.isFinite(b.minX)) body = b;
       }
     }
+    if (vacated) {
+      // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
+      // geometry and collision are dropped
+      for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) geometry.dispose();
+      buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+      placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+      if (!explicitStructure) bi++;
+      return true;
+    }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
@@ -4211,7 +4322,9 @@ ${snowCap ? `
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
     // (the carriageway footprint is the base geometry's, as for a generated building)
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
+    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
+    const carriageway = (P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null)
+      ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
@@ -4245,10 +4358,12 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
-  for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
+  for (const [index, site] of (P.townPlan?.length ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
-    if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -4328,6 +4443,37 @@ ${snowCap ? `
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
   function* placeStreetRows(): Generator<PropsBuildSlice, void, void> {
     if (!P.streetRows) return;
+    // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
+    // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
+    if (P.townRowPlan) {
+      for (const entry of P.townRowPlan) {
+        const stream = mulberry32(entry.rng);
+        let tmp: PropsBuckets = {
+          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+        };
+        const info = entry.ruined ? makeRuin(stream, tmp)
+          : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
+        const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+        jitterBuildingUvs(tmp, stream);
+        if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
+        if (regionalArchitecture) {
+          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+            { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+        }
+        addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+        _quat.setFromAxisAngle(_upAxis, entry.rot);
+        _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+        mergeInto(buckets, tmp, _mat4);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+        if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
+          addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
+        }
+        yield { fine: true };
+      }
+      return;
+    }
     const srng = mulberry32(seed + 505);
     interface StreetBounds { x: number; z: number; hx: number; hz: number }
     type RoadPoint = [number, number, number, number];
@@ -4598,6 +4744,7 @@ ${snowCap ? `
       let target: { x: number; z: number } | null = null;
       const clearsAt = (x: number, z: number): boolean => {
         if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (footprintWet(x, z, w, d, source.rot)) return false;
         if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
         if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
         const footprint = { x, z, w, d, rot: source.rot };
@@ -4608,7 +4755,8 @@ ${snowCap ? `
       if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 60 && !target; step++) {
+      // (props.settlementOverWater: a building the course's water reaches looks out to 80 m for dry ground)
+      for (let step = 1; step <= (overWater ? 160 : 60) && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
@@ -4636,6 +4784,29 @@ ${snowCap ? `
     carriagewayPackets.length = 0;
   }
   moveBuildingsOffCarriageways();
+
+  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement, the
+  // strongpoints and the light buildings stand (so none of those moves for a piece: the composer refuses a piece on
+  // their solids) and before every scatter pass, which keeps off the ground each piece reserves. Built from streams of
+  // their own; a map without set pieces runs nothing there.
+  function* placeLandmarks(): Generator<PropsBuildSlice, void, void> {
+    if (!P.landmarks?.length) return;
+    const receipt = yield* composeLandmarks({
+      mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
+      tier: mobileProps ? 'mobile' : 'desktop',
+      merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
+      reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
+      veto: (x, z, yaw, hw, hd) => { landmarkVetoes.push({ x, z, c: Math.cos(yaw), s: Math.sin(yaw), hw, hd }); },
+      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
+      // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
+      // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
+      addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
+    });
+    group.userData.landmarks = receipt;
+  }
+  const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
@@ -4723,6 +4894,8 @@ ${snowCap ? `
         const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
         if (!meta) continue;
         const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        // (props.settlementOverWater: one the course's water reaches is left out)
+        if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
         addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
@@ -4779,6 +4952,8 @@ ${snowCap ? `
     }
   }
   yield* placeDestructibleBuildings();
+  // the set pieces (placeLandmarks above), on the ground the settlement, the strongpoints and the light buildings left
+  yield* placeLandmarks();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -4961,6 +5136,7 @@ ${snowCap ? `
       }
     };
     for (const building of placedB) {
+      if (building.landmark) continue; // a set piece keeps its own ground (the landmarks pass)
       placeYardFirewood(building);
       placeYardBarrels(building);
       placeYardTrough(building);
@@ -5340,8 +5516,11 @@ ${snowCap ? `
     const placeSoukObjects = (): void => {
       const potCount = richCount(inh.pots ?? 0);
       if (potCount <= 0) return;
+      // the buildings alone: a set piece's reserved ground (the landmarks pass) is no doorstep, and counting it among the
+      // buildings would turn every pick after it — a map's pots, then the rest of the dressing stream
+      const soukSites = placedB.some((b) => b.landmark) ? placedB.filter((b) => !b.landmark) : placedB;
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
-        const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
+        const pb = soukSites.length ? soukSites[(drng() * soukSites.length) | 0] : null;
         if (!pb) break;
         const a = drng() * Math.PI * 2, r = pb.rr + 0.8 + drng() * 2.6;
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
@@ -5602,6 +5781,7 @@ ${snowCap ? `
     const hayCrateSites = Math.max(0, Math.round(P.hayCrateSites ?? HAY_CRATE_SITES[mapId] ?? 5));
     for (let i = 0; P.hayCrates && i < Math.min(hayCrateSites, placedB.length); i++) {
       const pb = placedB[i];
+      if (pb.landmark) continue;
       const n = 1 + ((rng() * 3) | 0);
       for (let k = 0; k < n; k++) {
         const a = rng() * Math.PI * 2, r = pb.rr + 2 + rng() * 4;
@@ -6989,17 +7169,30 @@ ${snowCap ? `
     // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
     // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
     const landAt = heightField._landUseAt;
+    // the plot as it stands in its field: along its rows (fw) and across them (fd)
+    let fw = pw, fd = pd;
     if (landAt) {
       const f = landAt(cx, cz, cropLandSample);
-      if (!f.active || (f.crop !== 1 && f.crop !== 2) || f.edgeM - f.marginM < Math.max(pw, pd) * 0.5 + 2) supported = false;
-      else { dx = f.rowX; dz = f.rowZ; }
+      if (!f.active || (f.crop !== 1 && f.crop !== 2)) supported = false;
+      else {
+        // (mr4, 2026-10-06: a strip field 36 m across never held a plot of 34–60 × 26–48 m, so an openfield's or a Gewann's
+        // strips carried no standing grain at all — Amberford 8 plots → 0, Frontier's Gewann row 2 → 0) the plot fits its
+        // field instead of being refused by it: across its rows to the field's nearer edge, along them to the nearer row
+        // end, each 2 m inside the margin; a field that leaves less than 12 m across or 20 m along holds none. A plot that
+        // fitted before keeps its size (the fit only shortens what the edge would have refused), and the draws are the ones
+        // they were (the plots' own stream)
+        fd = Math.min(pd, 2 * (f.edgeM - f.marginM - 2));
+        fw = Math.min(pw, 2 * (f.endM - f.marginM - 2));
+        if (fd < 12 || fw < 20) supported = false;
+        else { dx = f.rowX; dz = f.rowZ; }
+      }
     }
     const px2 = -dz, pz2 = dx;
-    if (supported && !cropPlotCornersAreLevel(cx, cz, pw, pd, dx, dz, px2, pz2)) {
+    if (supported && !cropPlotCornersAreLevel(cx, cz, fw, fd, dx, dz, px2, pz2)) {
       supported = false;
     }
     if (!supported) return false;
-    appendCropRows(cropGeos, crng, cx, cz, pw, pd, dx, dz, px2, pz2);
+    appendCropRows(cropGeos, crng, cx, cz, fw, fd, dx, dz, px2, pz2);
     return true;
   }
 
@@ -7845,6 +8038,38 @@ ${snowCap ? `
     // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as
     // concrete-gray on every map.
     const kerbBucket = 'stone';
+    // mr1 (2026-10-05): the kerb is seated on the carriageway, not stacked on the terrain. The critics' "town behind a
+    // knee-high kerb" was the old seat: a level kerb 0.19 m over the terrain at its centre and a pavement pitched to the
+    // terrain 6.35 m out, which stood up to 0.5 m over the road where the ground rose behind it (0.9 m on Blackglass's
+    // banks). Now the kerb shows a KERB_FACE_M face over the carriageway beside it and follows the road's grade, the
+    // pavement's inner edge is flush with the kerb's top, its outer edge climbs toward rising ground by at most
+    // WALK_RISE_MAX_M, and both slabs reach down into lower ground instead of floating over it. A piece on a bridge
+    // deck's span is left to the bridge's parapets. The kerbs are render geometry only (no collision record), and the
+    // pieces skipped still draw their UV jitter, so every later draw of the dressing stream keeps its seat.
+    const KERB_OFFSET_M = 5.05, KERB_DEPTH_M = 0.34, KERB_FACE_M = 0.12, KERB_EMBED_M = 0.10;
+    const WALK_OFFSET_M = 6.35, WALK_DEPTH_M = 2.25, WALK_EMBED_M = 0.06, WALK_RISE_MAX_M = 0.25;
+    const decks = heightField.bridgeDecks ?? [];
+    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
+        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+    });
+    /**
+     * Seat a slab built along local x (its length) and z (across, +z = `outward` away from the road): each vertex takes
+     * its end's height (x < 0 the piece's start, x > 0 its end) — the top from `top(end, outer)`, the bottom from
+     * `foot(end)` — so the slab follows the grade along the road without a level step at its joints.
+     */
+    const seatSlab = (geometry: THREE.BufferGeometry, outward: number,
+      top: (end: 0 | 1, outer: boolean) => number, foot: (end: 0 | 1) => number): void => {
+      const position = geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const end = position.getX(i) > 0 ? 1 : 0;
+        const outer = position.getZ(i) * outward > 0;
+        position.setY(i, position.getY(i) > 0 ? top(end, outer) : foot(end));
+      }
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+    };
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -7861,27 +8086,38 @@ ${snowCap ? `
           const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub;
           const cx = ax + dx * tt, cz = az + dz * tt;
           for (const side of [-1, 1]) {
-            const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
+            const px = cx - tz * side * KERB_OFFSET_M, pz = cz + tx * side * KERB_OFFSET_M;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
-            const y = heightField.getHeightAt(px, pz);
-            const g = slabBox(segLen, 0.26, 0.34, 1.3);
+            // the ground at the piece's start (end 0) and end (end 1), `offset` metres off the centreline on this side
+            const ground = (end: 0 | 1, offset: number): number => {
+              const t = end ? tt1 : tt0;
+              return heightField.getHeightAt(ax + dx * t - tz * side * offset, az + dz * t + tx * side * offset);
+            };
+            // the carriageway at the kerb's face, the ground behind the kerb, and the pavement's two edges
+            const road = [ground(0, KERB_OFFSET_M - KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M - KERB_DEPTH_M / 2)];
+            const behind = [ground(0, KERB_OFFSET_M + KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M + KERB_DEPTH_M / 2)];
+            const inner = [ground(0, WALK_OFFSET_M - WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M - WALK_DEPTH_M / 2)];
+            const outer = [ground(0, WALK_OFFSET_M + WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M + WALK_DEPTH_M / 2)];
+            const kerbTop = [road[0] + KERB_FACE_M, road[1] + KERB_FACE_M];
+            const kerbFoot = [Math.min(road[0], behind[0]) - KERB_EMBED_M, Math.min(road[1], behind[1]) - KERB_EMBED_M];
+            const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
+            const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
+            const spanned = onDeckSpan(cx, cz);
+            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
             jitterUV(g, rng);
-            g.rotateY(yaw);
-            g.translate(px, y + 0.06, pz);
-            buckets[kerbBucket].push(g);
-            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
-            // flanking every street, pitched to the terrain per sub-segment.
-            // The critique's "town = boxes dropped on a lawn" came straight
-            // from streets with no built edge between asphalt and grass.
-            const sx0 = ax + dx * tt0 - tz * side * 6.35, sz0 = az + dz * tt0 + tx * side * 6.35;
-            const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
-            const h0 = heightField.getHeightAt(sx0, sz0);
-            const h1 = heightField.getHeightAt(sx1, sz1);
-            const walk = slabBox(segLen, 0.16, 2.25, 0.9); // r2: un-stretched paving
+            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
+            // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
+            const walk = slabBox(segLen, (kerbTop[0] + rise[0] / 2 - walkFoot[0] + kerbTop[1] + rise[1] / 2 - walkFoot[1]) / 2,
+              WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
-            walk.rotateZ(Math.atan2(h1 - h0, segLen));
+            if (spanned) { g.dispose(); walk.dispose(); continue; }
+            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
+            g.rotateY(yaw);
+            g.translate(px, 0, pz);
+            buckets[kerbBucket].push(g);
+            seatSlab(walk, side, (end, isOuter) => kerbTop[end] + (isOuter ? rise[end] : 0), (end) => walkFoot[end]);
             walk.rotateY(yaw);
-            walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
+            walk.translate(cx - tz * side * WALK_OFFSET_M, 0, cz + tx * side * WALK_OFFSET_M);
             buckets[kerbBucket].push(walk);
           }
         }
@@ -8136,6 +8372,7 @@ ${snowCap ? `
       strawDiscs: THREE.BufferGeometry[] = [],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
+        if (building.landmark) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
@@ -8626,6 +8863,12 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing,
   });
   yield { fine: true, stage: 'map-extras' };
+  // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  landmarkFurniture = true;
+  for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  landmarkFurniture = false;
+  // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
+  if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.
@@ -8897,12 +9140,16 @@ ${snowCap ? `
     // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
     // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
     // the same cells, at its own shorter distances.
-    // (the scenery lane, b30; mr2's Aegis census: a kit's fine ironwork — grilles, balusters, bars — drew at every
-    // distance in structureMetal's always-drawn receive-only mesh, 81 k triangles in the chase frame) the metalwork's fine
-    // pieces are celled with the timber's: drawn within the fine-detail distance; its frames, rails and posts stay drawn
-    const CELLED = new Set(['structureWood', 'regionalStone', 'structureMetal']);
+    // facades lane (2026-10-05): the facade craft's fine metalwork (gutter hangers, hopper heads, the downpipes) and its
+    // fine render work on the main render (paint, the dirt run off the sills, pilasters) cull by the same cells on a
+    // desktop build (maps/regional/facade.ts); the metal's batch takes the place of its always-drawn mesh, so it costs no
+    // draw, the render's one (the second and third renders' few fine pieces stay in their meshes). A phone builds none.
+    const CELLED = new Set(['structureWood', 'regionalStone']);
+    // (the scenery lane's b30 celled the same fine metalwork on every build, after mr2's Aegis census; merged here into
+    // the facades lane's desktop rule)
+    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
     const FINE_CELL_M = 120;
-    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
     type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
@@ -9486,6 +9733,8 @@ ${snowCap ? `
     if (!rec?.body || rec.looseIndex == null || rec.looseListed == null
       || !kickLooseProp(rec.body, dx, dz, speed, cause)) return false;
     ensureLooseActive(rec as LooseDestructibleRecord);
+    // audio seam (2026-10-06): a knocked drum, bucket or bin clangs (the body's own kick cooldown spaces the reports)
+    emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause, loose: true });
     return true;
   }
 
@@ -9622,6 +9871,8 @@ ${snowCap ? `
       ax: _cax.x, az: _cax.z, t: 0, placement: null,
       maxAng: settledToppleAngle(heightField, c.x, c.y, c.z, dx, dz, c.h, 0.12),
     });
+    // audio seam (2026-10-06): the pole's foot cracks, its wires whip, it lands — every pole carries the line's wires
+    emitDestroyed({ kind: 'utility_pole', pos: [c.x, c.y, c.z], cause: 'ram' });
     return true;
   }
 

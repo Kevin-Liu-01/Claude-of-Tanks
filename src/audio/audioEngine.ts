@@ -36,8 +36,9 @@ import { createAssetLibrary, type AssetLibrary } from './assetLibrary.ts';
 import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
-import { createAmbienceDirector, sceneAssets, type AmbienceDirector } from './ambienceDirector.ts';
-import { GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
+import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
+import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
+import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
@@ -68,8 +69,21 @@ interface AudioMixerOptions {
   /** Our side in objective terms ('alpha' | 'bravo'): a network seat's own team reads 'player' whichever side it is. */
   getObjectiveTeam?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
+  /**
+   * The battlefield's placed buildings and set pieces (world.getMinimapFeatures().buildings): a planned building's
+   * plan id in `kind`, a set piece's kind in `landmark`. The bells ring from its churches, belfries and campanile.
+   */
+  getLandmarks?(): readonly AudioLandmark[] | null;
   initialPhase?: string;
   tier?: DeviceTier;
+}
+
+/** One placed building or set piece, as the world's feature list carries it (fields beyond x/z are untyped there). */
+export interface AudioLandmark {
+  readonly x: number;
+  readonly z: number;
+  readonly kind?: unknown;
+  readonly landmark?: unknown;
 }
 
 export interface AudioMixer {
@@ -212,7 +226,8 @@ interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; 
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number }
 interface TankRamEvent { aId?: string; bId?: string; aIsPlayer?: boolean; bIsPlayer?: boolean; pos: Vec3; closingMps?: number; dmgA?: number; dmgB?: number }
-interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number }
+/** `loose`: a loose prop (a drum, a bucket) knocked about rather than destroyed (props.ts kickLooseRecord). */
+interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number; loose?: boolean }
 interface ReloadEvent { total?: number; kind?: string; caliberMm?: number; t?: number; progress?: number; done?: boolean }
 interface VolumeEvent { master?: number; engine?: number; combat?: number; ambience?: number; ui?: number; voice?: number; alarmHeartbeat?: boolean; crewVoice?: string; concussion?: boolean }
 interface SmokeScreen { born?: number; x?: number; y?: number; z?: number; source?: readonly unknown[] }
@@ -339,6 +354,7 @@ export function createAudio({
   getGameMode,
   getObjectiveTeam,
   getTerrain,
+  getLandmarks,
   initialPhase = 'garage',
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
@@ -1082,24 +1098,6 @@ export function createAudio({
 
   // ------------------------------------------------------ props/collisions ---
 
-  function propAsset(kind: string, height = 0): { id: string; follow?: string } {
-    const k = kind.toLowerCase();
-    if (/tree|sapling|stump|trunk|palm|pine|bush|shrub/.test(k)) return { id: 'tree_snap', ...(height > 4 ? { follow: 'tree_fall' } : {}) };
-    if (/chain|wire|barbed/.test(k)) return { id: 'wire_snag' };
-    if (/fence|rail|gate|post/.test(k)) return { id: /metal|steel|iron|chain/.test(k) ? 'fence_metal' : 'fence_wood' };
-    if (/car|truck|van|bus|jeep|vehicle|tractor/.test(k)) return { id: 'car_crush' };
-    if (/container/.test(k)) return { id: 'container_crush' };
-    if (/barrel|drum|tank|cylinder/.test(k)) return { id: 'container_crush' };
-    if (/hedgehog|obstacle|tetra/.test(k)) return { id: 'hedgehog_clang' };
-    if (/sandbag|bag/.test(k)) return { id: 'sandbag_thump' };
-    if (/rubble|rock|stone|debris|brick/.test(k)) return { id: 'rubble_crunch' };
-    if (/glass|window|greenhouse/.test(k)) return { id: 'glass_shatter' };
-    if (/wall|pillar|column/.test(k)) return { id: 'wall_brick' };
-    if (/house|building|hut|shed|barn|tower|kiosk|shack|silo/.test(k)) return { id: 'building_collapse' };
-    if (/aagun|gun/.test(k)) return { id: 'he_armor', follow: 'debris_metal' };
-    return { id: 'crate_break' };
-  }
-
   /**
    * A round striking a prop sounds of what it struck (the hit's record kind): steel clangs, timber splinters, earthworks
    * thump, stone and masonry crack, never a coin toss between wood and concrete.
@@ -1113,13 +1111,58 @@ export function createAudio({
     return 'ground_concrete';
   }
 
+  /**
+   * A prop crushed, broken, toppled or knocked about sounds of what it is (propSounds.ts names every world kind): its
+   * recipe's layers at the prop, a topple's landing when it lands. The obstacle crush and the world's own report of
+   * the same prop arrive in one tick; the props' 0.05 s cooldown keeps it to one sound.
+   */
   function onProp(event: PropEvent, destroyed: boolean): void {
     if (!event?.pos) return;
     const [x, y, z] = event.pos;
-    const { id, follow } = propAsset(String(event.kind || 'tree'), event.h ?? 0);
-    play(id, { x, y, z, gainDb: destroyed ? 0 : -1 });
-    if (follow) play(follow, { x, y, z, delayS: 0.45 + random() * 0.3, gainDb: -2 });
-    logSound(destroyed ? 'prop:destroyed' : 'prop:crushed', { kind: event.kind, id });
+    const kind = String(event.kind || 'tree');
+    const layers = propSoundRecipe(kind, event.h ?? 0);
+    const trimDb = destroyed ? 0 : -1;
+    for (const layer of layers) {
+      play(layer.id, { x, y, z, gainDb: layer.gainDb + trimDb, delayS: layer.jitterS ? layer.delayS + random() * layer.jitterS : layer.delayS });
+    }
+    logSound(event.loose ? 'prop:knocked' : destroyed ? 'prop:destroyed' : 'prop:crushed', { kind: event.kind, id: layers[0]?.id ?? null });
+  }
+
+  /**
+   * The front's aircraft sound of its era (2026-10-06): the Second World War maps fly piston fighters and twin-engine
+   * bombers, the later ones jets. An event naming its type plays that type's sound; otherwise the scene's list.
+   */
+  function flyoverAsset(aircraft?: string): string {
+    const named = aircraft && Object.hasOwn(FLYOVER_BY_AIRCRAFT, aircraft) ? FLYOVER_BY_AIRCRAFT[aircraft] : undefined;
+    if (named) return named;
+    const list = scene.flyovers;
+    let total = 0;
+    for (const [, w] of list) total += w;
+    let roll = random() * total;
+    for (const [id, w] of list) { if (roll < w) return id; roll -= w; }
+    return list[0]?.[0] ?? 'jet_flyover';
+  }
+
+  /**
+   * The bell towers of the battle's world, read once per scene from its buildings and set pieces when the first toll
+   * falls due (the scene change clears them); until a world answers, the next toll asks again.
+   */
+  let bellTowers: BellTower[] | null = null;
+  function currentBellTowers(): readonly BellTower[] {
+    if (bellTowers) return bellTowers;
+    const landmarks = getLandmarks?.() ?? null;
+    if (!landmarks) return [];
+    const terrain = getTerrain?.() ?? null;
+    const towers: BellTower[] = [];
+    for (const feature of landmarks) {
+      const kind = typeof feature.landmark === 'string' ? feature.landmark : typeof feature.kind === 'string' ? feature.kind : '';
+      const spec = Object.hasOwn(BELL_TOWERS, kind) ? BELL_TOWERS[kind] : null;
+      if (!spec || !Number.isFinite(feature.x) || !Number.isFinite(feature.z)) continue;
+      const ground = terrain ? terrain.getHeightAt(feature.x, feature.z) : 0;
+      towers.push({ x: feature.x, y: (Number.isFinite(ground) ? ground : 0) + spec.heightM, z: feature.z, rate: spec.rate, gainDb: spec.gainDb, kind });
+    }
+    bellTowers = towers;
+    return towers;
   }
 
   function onTankImpact(event: TankImpactEvent): void {
@@ -1821,6 +1864,7 @@ export function createAudio({
 
   function applyScene(): void {
     if (!ambience || !mixer || !pool) return;
+    bellTowers = null;
     if (phase === 'battle') {
       const mapId = getMapId?.() || 'verdant';
       scene = sceneForMap(mapId);
@@ -1852,7 +1896,8 @@ export function createAudio({
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
     radio = createCrewRadio({ mixer, library, random });
-    ambience = createAmbienceDirector({ mixer, library, pool, random });
+    // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
+    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut });
     library.pin([...UI_SET, ...RADIO_SET]);
     void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
@@ -2044,10 +2089,10 @@ export function createAudio({
     on<{ pos?: Vec3; size?: number }>('atmosphere:artillery', (e) => { if (e?.pos) play('distant_artillery', { ...at(e.pos), gainDb: gainToDb(clamp(e.size ?? 0.6, 0.3, 1.4)) }); });
     on<{ pos?: Vec3; delayS?: number }>('atmosphere:flak', (e) => { if (e?.pos) play('distant_flak', { ...at(e.pos), delayS: Math.max(0, e.delayS ?? 0) }); });
     on<{ pos?: Vec3; shots?: number; gapS?: number }>('atmosphere:aa', (e) => { if (e?.pos) play('distant_mg', at(e.pos)); });
-    on<{ p0?: Vec3; v?: Vec3; durationS?: number }>('atmosphere:flyover', (e) => {
+    on<{ p0?: Vec3; v?: Vec3; durationS?: number; aircraft?: string }>('atmosphere:flyover', (e) => {
       if (!e?.p0 || !e.v) return;
       const half = clamp(e.durationS ?? 20, 4, 60) / 2;
-      play('jet_flyover', { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
+      play(flyoverAsset(e.aircraft), { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
     });
     on<ReloadEvent>('player:reload', onReload);
     on<{ phase?: string }>('phase:change', (e) => {
@@ -2268,6 +2313,8 @@ export function createAudio({
     for (const id of MODE_SET) ids.add(id);
     // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
     for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
+    // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
+    for (const id of propSoundAssets()) ids.add(id);
     const mapId = getMapId?.() || 'verdant';
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     for (const specId of roster || []) {

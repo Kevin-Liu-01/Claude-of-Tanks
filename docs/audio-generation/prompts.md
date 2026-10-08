@@ -136,7 +136,25 @@ alone worked.
 "Continuous at an even level from start to end" removed the level steps at the
 loop seam, and four takes per bed let the scorer reject hiss-only takes. Avoid
 sirens, songbirds and sudden events inside a bed: put them in positional spot
-sounds that the environment director scatters.
+sounds that the environment director scatters. Cicadas too (2026-10-06): asked
+for in a Mediterranean bed, even "far off … faint, soft", every take came back
+as one steady 6–8 kHz shrill holding 99 % of its energy over 4 kHz; the bed that
+shipped asks for the waves and the breeze with "no insects", and the cicadas
+are spots.
+
+### Bells
+
+> One-shot of a single large bronze church bell tolled once, recorded outdoors
+> in the churchyard below the tower: the dull strike of the clapper, then a
+> deep solemn tone ringing on and fading away slowly over five seconds. One
+> strike only, no other bells. No music, no voices.
+
+"One strike only" returned one strike in all eight takes; the engine sequences
+a toll and pitches the stroke by the tower. Record it near (the churchyard),
+not "a few hundred metres away": the engine adds the distance, and a far take
+placed far is doubly muffled. An Orthodox tower's rhythm of small bells over the
+great bell's hum came back in half the takes as a separate burst after the hum
+had died; pick the take that overlaps.
 
 ### Alarms, cabin sounds and the radio
 
