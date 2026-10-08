@@ -265,6 +265,8 @@ interface StudioEffectParams {
   stage?: string;
   /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
   wall?: boolean;
+  /** explosion with a munition: only its crater, laid down settled (a late joiner's view: no blast) */
+  settled?: boolean;
   hitH?: number;
   chargeKg?: number;
   cause?: string;
@@ -1556,6 +1558,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           caliberMm: params.caliberMm || 120,
           surfaceKind: 'structure',
         });
+        return true;
+      }
+      // params.settled: the crater as a late joiner lays it down (crater-render-spec §D/§F): dug, drawn at its final
+      // state, no blast, no burst, no ejecta
+      if (params.settled) {
+        const dug = studioDig(munition, chargeKg, position.x, position.z);
+        if (dug) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, { ...dug, settled: true });
         return true;
       }
       // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
