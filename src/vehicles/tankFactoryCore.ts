@@ -7300,20 +7300,22 @@ function* createTankOwnedSteps(
   const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
-  // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket and keep the
-  // pane's module, so the module's hit receipt still covers the whole authored box; each remembers the pane's own bucket.
+  // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket; each
+  // remembers the pane's own bucket, and the pane remembers its bars, so the pane's combat receipt still covers the whole
+  // authored box (one part, its module's) while the bars stay plain fittings.
   const addGlassFrames = (bucket: string, pane: THREE.BufferGeometry, frames: readonly THREE.BufferGeometry[],
     x: number, y: number, z: number, rx: number, ry: number, rz: number, s: GeometryScale): void => {
     const frameBucket = GLASS_SURROUND_BUCKET[bucket];
-    if (!frameBucket) return;
-    const module = moduleVisualParts.get(pane);
+    if (!frameBucket || !frames.length) return;
+    const placed: THREE.BufferGeometry[] = [];
     for (const surround of frames) {
       const frame = xform(surround, x, y, z, rx, ry, rz, s);
       frame.userData.glassSurround = bucket;
-      if (module) moduleVisualParts.set(frame, module);
       (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
       partCensus?.(frameBucket, frame, 'add');
+      placed.push(frame);
     }
+    pane.userData.glassFrames = placed;
   };
   const eraClusters = new Map<string, EraClusterRange>();
   const eraPlacements: EraPlacementRecord[] = [];
@@ -7896,9 +7898,20 @@ function* createTankOwnedSteps(
             indices: part.index ? Array.from(part.index.array)
               : Array.from({ length: position.count }, (_, i) => i) });
         }
+        // a sight pane cut into a window and frame bars reports its whole authored box, its bars nothing of their own
+        // (armouredGlassSurround)
+        if (part.userData.glassSurround) continue;
         if (!part.boundingBox) part.computeBoundingBox();
-        const box = part.boundingBox;
+        let box = part.boundingBox;
         if (!box || box.isEmpty()) continue;
+        const glassFrames = part.userData.glassFrames as THREE.BufferGeometry[] | undefined;
+        if (glassFrames?.length) {
+          box = box.clone();
+          for (const frame of glassFrames) {
+            if (!frame.boundingBox) frame.computeBoundingBox();
+            if (frame.boundingBox) box.union(frame.boundingBox);
+          }
+        }
         root.userData.combatGeometryParts.push({
           bucket,
           parent: def[0],
