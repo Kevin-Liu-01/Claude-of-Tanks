@@ -148,6 +148,18 @@ function run(seed) {
   joiner.applyCraterEvent({ ...c });
   joiner.applyLog(a.log, null, () => false);
   assert.equal(late.filter((e) => e.payload.craterId === c.craterId && !e.payload.settled).length, 1, 'and animates when it comes');
+  // the drawn ground follows a crater dug mid-clip in the Studio's offline export too (wave 273: an export step and a
+  // capture ran no world update, so the bowl and its cleared cover never reached the picture)
+  {
+    const { readFileSync } = await import('node:fs');
+    const studio = readFileSync(new URL('../game/studio.ts', import.meta.url), 'utf8');
+    const map = readFileSync(new URL('../world/map.ts', import.meta.url), 'utf8');
+    assert.match(studio, /advanceTimeline\(ms\);[\s\S]{0,400}getWorld\(\)\?\.syncGround\?\.\(\);/, 'an export step syncs the ground');
+    assert.match(studio, /lighting\.update\(true\);[^\n]*\n\s*getWorld\(\)\?\.syncGround\?\.\(\);/, 'and a capture');
+    assert.match(map, /function followGroundCover\(\): void \{\s*\(terrain\.userData\.syncGroundOverlay[^\n]*\n\s*groundCoverCraters\.sync\(boundGroundOverlay\);/,
+      'the world syncs the terrain, then the cover');
+    assert.match(map, /syncGround: followGroundCover,/, 'as syncGround');
+  }
   console.log(`destructionCraters: dig law, marks, hard ground, ${CRATERS_PER_TICK} a tick and the match cap, quantized log `
     + `and restore; both sims alike; a real HE round dug crater ${c.craterId} (r ${c.radiusM} m, ${c.depthM} m deep) on Verdant, `
     + 'stamped once on a peer (event or log), replayed bit for bit; off in every mode until the terrain follows PASS');

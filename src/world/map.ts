@@ -215,6 +215,13 @@ export interface WorldRuntime {
   bindGroundOverlay(overlay: TerrainDeformation | null): void;
   /** The bound overlay, or null: what decals and dressing drape on (base + `offsetAt`). */
   groundOverlay(): TerrainDeformation | null;
+  /**
+   * The drawn ground and its cover follow the bound overlay now (crater-render-spec §B, §C): the terrain chunks take its
+   * new stamps, the cover in their reach clears or re-seats. `update` does it every frame; a frame rendered without one
+   * (the Studio's offline export steps and captures) calls this, or a crater dug mid-clip never reaches the drawn ground.
+   * O(1) when nothing changed.
+   */
+  syncGround(): void;
   spawnPoints: {
     player: { pos: [number, number, number]; yaw?: number };
     enemies: Array<{ pos: [number, number, number]; yaw?: number }>;
@@ -629,6 +636,15 @@ function assembleWorld(
   installTerrainCraterMesh(terrain);
   // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
   const groundCoverCraters = createGroundCoverCraters();
+  /** The terrain, then the cover in its reach, take the bound overlay's new stamps (`update`'s first steps, without the
+   * LOD walk): what a frame rendered without an update (the Studio's export steps and captures) needs. */
+  function followGroundCover(): void {
+    (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
+    groundCoverCraters.sync(boundGroundOverlay);
+    vegetation.followCraters?.(groundCoverCraters);
+    tallGrass.followCraters?.(groundCoverCraters);
+    litter.followCraters?.(groundCoverCraters);
+  }
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
@@ -689,6 +705,7 @@ function assembleWorld(
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    syncGround: followGroundCover,
     groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (

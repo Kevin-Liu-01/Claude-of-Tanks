@@ -247,7 +247,8 @@ for (const name of ['near', 'far']) {
   for (const line of ['terrain.userData.updateLOD(cameraPos);', 'groundCoverCraters.sync(boundGroundOverlay);',
     'vegetation.followCraters?.(groundCoverCraters);', 'tallGrass.followCraters?.(groundCoverCraters);',
     'litter.followCraters?.(groundCoverCraters);']) assert.ok(map.includes(line), `map.ts: ${line}`);
-  assert.ok(map.indexOf('terrain.userData.updateLOD(cameraPos);') < map.indexOf('groundCoverCraters.sync(boundGroundOverlay);'),
+  // (the update's own sync: the Studio's export steps run the same pair through world.syncGround, defined earlier)
+  assert.ok(map.indexOf('groundCoverCraters.sync(boundGroundOverlay);', map.indexOf('terrain.userData.updateLOD(cameraPos);')) > 0,
     'the cover follows after the terrain took the stamps');
   const veg = compact(readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8'));
   assert.ok(veg.includes('reseat: (x, z) => (craterLaw?.active ? (craterLaw.holeAt(x, z) ? NaN : craterLaw.liftAt(x, z)) : 0),'), 'the carpet writes by the law');
