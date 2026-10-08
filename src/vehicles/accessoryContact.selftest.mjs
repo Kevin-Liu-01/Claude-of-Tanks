@@ -47,12 +47,12 @@ const IDS = Object.freeze([
 // bar). What remains is decor, tow cables, racks, jerrycans, light guards and the Oplot-M's own roof station.
 // 2026-10-08, round 5's stowage batches 2a and 2b over 3b and the guns helper's head 863dd3711 (side loads clear the
 // turret, banks seated to their wall, decor kept off the guns' bodies; tow-cable eyes, lamp guards, the can strap and
-// the rack crate): measured in the next lines.
-const KNOWN_FLOATING = Object.freeze({
-  type99a: 1, fv510_milan: 1,
-});
+// the rack crate): floating 0, clipping 4 (23 tanks, 8,178 pieces), measured on the merged tree.
+const KNOWN_FLOATING = Object.freeze({});
 const KNOWN_CLIPPING = Object.freeze({
-  ua_t84_oplot_m: 8, m60a1: 1, t72b3m: 6, m1a2_tusk: 1, abramsx: 1, m46_patton: 4, bmp3m_dragun125_x: 1,
+  // main's own Oplot-M roof station (muzzle sleeve, trunnions, ammunition-box lid) and the T-72B3M's left-side (+X) smoke
+  // bank, which no cheek or side station backs (the old fan, kept so its sockets hold)
+  ua_t84_oplot_m: 3, t72b3m: 1,
 });
 
 function accessoryKind(object) {
