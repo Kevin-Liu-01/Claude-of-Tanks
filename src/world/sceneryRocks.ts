@@ -29,7 +29,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 
 import type { RockForm, RockGeology } from './sceneryPlan.ts';
-import { formationCollisionProfile, type FormationCollisionProfile } from './rockCollision.ts';
+import { formationCollisionProfile, rockGroundAt, type FormationCollisionProfile } from './rockCollision.ts';
 import { convexHull2 } from './collision.ts';
 
 type Rng = () => number;
@@ -38,6 +38,8 @@ interface RockGround {
   getHeightAt(x: number, z: number): number;
   /** The baked 1 m height grid, when the field has one: per-vertex ground reads use it. */
   getHeightAtFast?(x: number, z: number): number;
+  /** The rendered triangles a hull's tracks meet (terrainContactSurface.ts), when the field has them. */
+  getContactHeightAt?(x: number, z: number): number;
 }
 
 /** One authored rock formation. */
@@ -286,12 +288,15 @@ function downhill(ground: RockGround, x: number, z: number, step: number): [numb
 /**
  * The standing pieces' collision mass (the hitbox lane, 2026-10-07): the one projected hull from the ground to the top
  * filled a tor's open joints, a ledge's recesses and the air round a hoodoo's waist (40 % of Redrock's formation
- * colliders stood in empty air, 81 % of the worst tenth's). Now each band of the standing stone keeps its own outlines,
- * the blocks that touch merged, and the movement footprint is the stone between a hull's track tops and its roof.
+ * colliders stood in empty air, 81 % of the worst tenth's). Now each block of the standing stone keeps its own outline,
+ * and the movement footprint is the stone between a hull's track tops and its roof (rockCollision.ts
+ * FORMATION_CONTACT_FLOOR_M). The loose pieces (fallen blocks, talus, scree) carry none: a phone builds fewer of them,
+ * and every tier must lay the same colliders (the authority's shard is one).
  */
 function massOf(pieces: Piece[], ground: RockGround, floor: number): RockMass | null {
-  const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
-  const profile = formationCollisionProfile(pieces.filter((piece) => piece.standing).map((piece) => piece.geometry), groundAt);
+  // (2026-10-08) the stone's rise over the ground a hull meets and the eye sees: the rendered triangles, which part from
+  // the 1 m grid by metres at a cliff's foot (rockCollision.ts rockGroundAt)
+  const profile = formationCollisionProfile(pieces.filter((piece) => piece.standing).map((piece) => piece.geometry), rockGroundAt(ground));
   if (!profile) return null;
   const corners: Array<[number, number]> = [];
   for (const outline of profile.contact) for (let i = 0; i < outline.length; i += 2) corners.push([outline[i], outline[i + 1]]);

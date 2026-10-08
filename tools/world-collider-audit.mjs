@@ -5,8 +5,9 @@
 //   node tools/world-collider-audit.mjs --maps=redrock,titan_gorge --families=rocks --out=<file.json>
 //   node tools/world-collider-audit.mjs                       # every map, every family
 //
-// Families: rocks (boulders, talus blocks, outcrops, crushable small rocks, the scenery's rock masses); records (every
-// other record: walls, fences, props, wrecks, structures, the kindless solids; --per-kind=<n> samples each kind); all.
+// Families: rocks (boulders, talus blocks, outcrops, crushable small rocks, the scenery's rock masses); formations (the
+// rock masses alone); records (every other record: walls, fences, props, wrecks, structures, the kindless solids;
+// --per-kind=<n> samples each kind); all.
 import { writeFileSync } from 'node:fs';
 import { MAP_IDS } from '../src/world/maps/catalog.ts';
 import { installWorldBuildFixture, packWorldCollision } from './headlessWorldCollision.mjs';

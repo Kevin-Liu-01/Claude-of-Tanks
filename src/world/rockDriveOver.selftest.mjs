@@ -12,7 +12,7 @@ import { Vector3 } from 'three';
 import { installWorldBuildFixture } from '../../tools/headlessWorldCollision.mjs';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { rayCollisionRecord } from './collision.ts';
-import { rockCollisionProfile, rockFormOf } from './rockCollision.ts';
+import { rockCollisionProfile, rockFormOf, rockGroundAt } from './rockCollision.ts';
 
 installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models] = await Promise.all([
@@ -29,7 +29,7 @@ const authority = createDedicatedWorldCollision(MAP);
 
 // the drive-over stones, by the settle's own rule
 const stones = [];
-const groundFast = (x, z) => field.getHeightAtFast(x, z);
+const groundFast = rockGroundAt(field);
 dressing.group.updateMatrixWorld(true);
 dressing.group.traverse((mesh) => {
   if (!/^rock-variant-\d$/.test(mesh.name)) return;

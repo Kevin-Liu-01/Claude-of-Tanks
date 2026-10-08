@@ -10,8 +10,8 @@
 //      on the same stones is measured beside them, so the receipt also records what was fixed;
 //   3. deterministic: the same stone, matrix and ground give the same records, and the form's section table equals cutting
 //      the stone (an upright placement reads the table, a tilted one cuts);
-//   4. a formation's blocks keep their own outlines (parted blocks two parts, touching ones one), and the records pack to
-//      the shards' part forms ('v', 'w', 'm') the dedicated hosts read back unchanged.
+//   4. a formation's blocks keep their own outlines (parted or touching blocks two parts, a block inside another one),
+//      and the records pack to the shards' part forms ('v', 'w', 'm') the dedicated hosts read back unchanged.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -170,7 +170,9 @@ assert.equal(rockStaysCrushable(2.4, false), false, 'a big stone is cover');
   const parted = formationCollisionProfile([block(0, 0, 2, 3, 2), block(3, 0, 2, 2.4, 2)], flat);
   assert.equal(parted.contact.length, 2, 'parted blocks keep their own outlines');
   const touching = formationCollisionProfile([block(0, 0, 2, 3, 2), block(2.02, 0, 2, 3, 2)], flat);
-  assert.equal(touching.contact.length, 1, 'touching blocks merge');
+  assert.equal(touching.contact.length, 2, 'touching blocks keep their own outlines (the gap between them is no stone)');
+  const nested = formationCollisionProfile([block(0, 0, 3, 3, 3), block(0.2, 0.1, 1.2, 2.4, 1.2)], flat);
+  assert.equal(nested.contact.length, 1, 'a block inside another adds no outline');
   assert.ok(Math.abs(parted.top - 2.7) < 0.011 && parted.low < 0.011, 'the formation spans its exposed stone');
   assert.equal(formationCollisionProfile([block(0, 0, 3, 0.6, 3)], flat), null, 'a slab under the drive-over line publishes nothing');
   const obstacle = { min: [0, 0, 0], max: [0, 0, 0] }, collider = { min: [0, 0, 0], max: [0, 0, 0] };

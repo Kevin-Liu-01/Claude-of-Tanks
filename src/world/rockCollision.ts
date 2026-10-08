@@ -29,6 +29,13 @@ export const ROCK_DRIVE_OVER_M = 0.45;
 export const ROCK_CONTACT_FLOOR_M = 0.2;
 /** ...and this one (the tallest hull's roof: a hoodoo's cap above it is a shell's business, not a hull's). */
 export const ROCK_CONTACT_TOP_M = 3;
+/**
+ * A formation's movement footprint starts higher (the hitbox lane, 2026-10-08): its pieces flare at their feet (a
+ * ledge's toe, a slab's buried edge, a hoodoo's skirt) and the hull of the band from the stone's floor spans the ground
+ * between the toes. From here, still under the drive-over line, the outlines follow the stone: the formations' empty
+ * ground plus uncovered stone fell on every formation map (tools/world-collider-audit.mjs --families=formations).
+ */
+const FORMATION_CONTACT_FLOOR_M = 0.35;
 /** The tallest a shell slab grows (m). (The audit's sweep on Titan's and Saltwind's stones: 0.6 m slabs of six corners
  * stop the same share of shells on the stone as 0.4 m slabs of eight, 2.3 % of the rays 10+ cm clear, in 30 % fewer
  * shard bytes.) */
@@ -44,6 +51,9 @@ export const ROCK_SHELL_CROWN_M2 = 0.8;
 const SHELL_STEP_M = 0.05;
 /** At most this many corners a movement footprint, and a shell slab's outline (the least-area corners go first). */
 export const ROCK_HULL_POINTS = 12;
+/** An outline holding under 10 cm2 (a few centimetres across) is no part (m2; just under 0.001, since an outline on the
+ * centimetre grid holds a multiple of 0.5 cm2, so one of exactly 10 cm2 is kept whatever the sum's rounding). */
+const ROCK_MIN_PART_M2 = 0.00099;
 export const ROCK_SHELL_POINTS = 6;
 /** The crushable small rocks (crushableClutter.ts isLooseSurfaceRock's class): every stone up to this scale that keeps a
  * collider and is not an authored tactical outcrop — the small and the deep-set stones that newly take one too. */
@@ -51,6 +61,22 @@ export const ROCK_CRUSHABLE_MAX_SCALE = 1.8;
 
 export function rockStaysCrushable(scale: number, tactical: boolean): boolean {
   return !tactical && scale <= ROCK_CRUSHABLE_MAX_SCALE;
+}
+
+/**
+ * The ground a stone's rise is read over (the hitbox lane, 2026-10-08): the rendered triangles a hull's tracks meet
+ * (terrainContactSurface.ts, the movement's own surface), else the baked 1 m grid, else the analytic height. The grid
+ * parts from the rendered surface by metres at a cliff's foot (5.4 m under one of Titan's stones), where it made a
+ * stone the eye sees 0.65 m tall a drive-over one, or one the eye sees buried a wall.
+ */
+export function rockGroundAt(field: {
+  getHeightAt(x: number, z: number): number;
+  getHeightAtFast?(x: number, z: number): number;
+  getContactHeightAt?(x: number, z: number): number;
+}): (x: number, z: number) => number {
+  if (field.getContactHeightAt) return (x, z) => field.getContactHeightAt!(x, z);
+  if (field.getHeightAtFast) return (x, z) => field.getHeightAtFast!(x, z);
+  return (x, z) => field.getHeightAt(x, z);
 }
 
 /** A stone's form for collision: its local vertices, its unique edges and the areas of its sections' hulls at local
@@ -98,6 +124,12 @@ export interface RockBandOptions {
 
 /** The local vertices and unique edges of a stone's (indexed) form geometry. */
 export function rockFormOf(geometry: BufferGeometry): RockForm {
+  const { positions, edges } = surfaceOf(geometry);
+  return rockFormFrom(positions, edges);
+}
+
+/** A geometry's vertices and unique edges (a formation's pieces need no section table). */
+function surfaceOf(geometry: BufferGeometry): { positions: Float64Array; edges: Uint32Array } {
   const p = geometry.getAttribute('position');
   const positions = new Float64Array(p.count * 3);
   for (let i = 0; i < p.count; i++) {
@@ -116,7 +148,7 @@ export function rockFormOf(geometry: BufferGeometry): RockForm {
       edges.push(lo, hi);
     }
   }
-  return rockFormFrom(positions, Uint32Array.from(edges));
+  return { positions, edges: Uint32Array.from(edges) };
 }
 
 /** A form from its local vertices and unique edges, with its section table. */
@@ -229,24 +261,69 @@ export function convexRounded(points: readonly number[]): number[] {
 const cross = (o: number, a: number, b: number): number =>
   (scratchX[a] - scratchX[o]) * (scratchZ[b] - scratchZ[o]) - (scratchZ[a] - scratchZ[o]) * (scratchX[b] - scratchX[o]);
 
+const _octagon = new Int32Array(8);
+/** Fill scratchOrder with the scratch points that may be hull corners: all but those strictly inside the octagon of the
+ * points extreme in x, z, x + z and x - z (counter-clockwise); returns their count. */
+function hullCandidates(n: number): number {
+  const order = scratchOrder;
+  let maxX = 0, maxS = 0, maxZ = 0, minD = 0, minX = 0, minS = 0, minZ = 0, maxD = 0;
+  for (let i = 1; i < n; i++) {
+    const x = scratchX[i], z = scratchZ[i];
+    if (x > scratchX[maxX]) maxX = i;
+    if (x < scratchX[minX]) minX = i;
+    if (z > scratchZ[maxZ]) maxZ = i;
+    if (z < scratchZ[minZ]) minZ = i;
+    if (x + z > scratchX[maxS] + scratchZ[maxS]) maxS = i;
+    if (x + z < scratchX[minS] + scratchZ[minS]) minS = i;
+    if (x - z > scratchX[maxD] - scratchZ[maxD]) maxD = i;
+    if (x - z < scratchX[minD] - scratchZ[minD]) minD = i;
+  }
+  // counter-clockwise by direction: +x, +x+z, +z, -x+z, -x, -x-z, -z, +x-z
+  const ring = _octagon;
+  ring[0] = maxX; ring[1] = maxS; ring[2] = maxZ; ring[3] = minD; ring[4] = minX; ring[5] = minS; ring[6] = minZ; ring[7] = maxD;
+  let corners = 0;
+  for (let c = 0; c < 8; c++) {
+    const p = ring[c];
+    if (corners && scratchX[ring[corners - 1]] === scratchX[p] && scratchZ[ring[corners - 1]] === scratchZ[p]) continue;
+    ring[corners++] = p;
+  }
+  while (corners > 1 && scratchX[ring[0]] === scratchX[ring[corners - 1]] && scratchZ[ring[0]] === scratchZ[ring[corners - 1]]) corners--;
+  if (corners < 3) {
+    for (let i = 0; i < n; i++) order[i] = i;
+    return n;
+  }
+  let m = 0;
+  for (let i = 0; i < n; i++) {
+    let inside = true;
+    for (let c = 0; c < corners && inside; c++) {
+      const a = ring[c], b = ring[(c + 1) % corners];
+      if ((scratchX[b] - scratchX[a]) * (scratchZ[i] - scratchZ[a]) - (scratchZ[b] - scratchZ[a]) * (scratchX[i] - scratchX[a]) <= 1e-9) inside = false;
+    }
+    if (!inside) order[m++] = i;
+  }
+  return m;
+}
+
 /** The convex hull (monotone chain, counter-clockwise, collision.ts convexHull2's law) of the scratch points, simplified
  * to `limit` corners; null when they span no area. Empties the scratch. */
 function scratchHullOf(limit: number, round = true): number[] | null {
   const n = scratchCount;
   scratchCount = 0;
   if (n < 3) return null;
-  const order = scratchOrder.subarray(0, n);
-  for (let i = 0; i < n; i++) order[i] = i;
+  // (the hitbox lane, 2026-10-08: the points strictly inside the octagon of the eight extreme points are no hull's corner;
+  // dropped before the sort, which was a quarter of a stone's settle — the hull is the same)
+  const m = hullCandidates(n);
+  const order = scratchOrder.subarray(0, m);
   order.sort((a, b) => scratchX[a] - scratchX[b] || scratchZ[a] - scratchZ[b]);
   const h = scratchHull;
   let k = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < m; i++) {
     const p = order[i];
     while (k >= 2 && cross(h[k - 2], h[k - 1], p) <= 0) k--;
     h[k++] = p;
   }
   const lower = k + 1;
-  for (let i = n - 2; i >= 0; i--) {
+  for (let i = m - 2; i >= 0; i--) {
     const p = order[i];
     while (k >= lower && cross(h[k - 2], h[k - 1], p) <= 0) k--;
     h[k++] = p;
@@ -256,7 +333,12 @@ function scratchHullOf(limit: number, round = true): number[] | null {
   const flat: number[] = [];
   for (let i = 0; i < k; i++) flat.push(scratchX[h[i]], scratchZ[h[i]]);
   if (polygonArea(flat) < 1e-6) return null;
-  return round ? simplifyConvex(flat, limit) : flat;
+  if (!round) return flat;
+  // (the hitbox lane, 2026-10-08: a hull a few centimetres across — a stone's tip at a slab's edge — rounds to a sliver
+  // or a point, which holds nothing, can still meet a hull or a shell as a segment, and wound clockwise fails the census's
+  // winding law: no part)
+  const outline = simplifyConvex(flat, limit);
+  return outline.length >= 6 && polygonArea(outline) >= ROCK_MIN_PART_M2 ? outline : null;
 }
 
 function polygonArea(points: readonly number[]): number {
@@ -385,7 +467,12 @@ function binEdges(s: PlacedSurface, low: number, top: number): EdgeBins {
   return { low, step, count, offsets, items };
 }
 
-function sectionOutline(s: PlacedSurface, bins: EdgeBins, y: number, limit: number): number[] | null {
+function sectionOutline(s: PlacedSurface, bins: EdgeBins | null, y: number, limit: number): number[] | null {
+  if (!bins) {
+    // (a stone whose levels the form's table gives cuts a handful of sections: every edge once each, no bins to build)
+    gatherSectionAll(s, y);
+    return scratchHullOf(limit);
+  }
   const i = Math.min(bins.count - 1, Math.max(0, Math.floor((y - bins.low) / bins.step)));
   gatherSection(s, y, bins.items, bins.offsets[i], bins.offsets[i + 1]);
   // (a section exactly on an interval's floor also crosses the edges that end there, in the interval below)
@@ -393,9 +480,31 @@ function sectionOutline(s: PlacedSurface, bins: EdgeBins, y: number, limit: numb
   return scratchHullOf(limit);
 }
 
+/** gatherSection over every edge of the surface. */
+function gatherSectionAll(s: PlacedSurface, y: number): void {
+  const { wx, wy, wz, rise, edges } = s;
+  for (let k = 0; k < edges.length; k += 2) {
+    const a = edges[k], b = edges[k + 1];
+    const ya = wy[a], yb = wy[b];
+    if ((ya - y) * (yb - y) > 0 || ya === yb) continue;
+    const t = (y - ya) / (yb - ya);
+    if (rise[a] + (rise[b] - rise[a]) * t < 0) continue;
+    pushPoint(wx[a] + (wx[b] - wx[a]) * t, wz[a] + (wz[b] - wz[a]) * t);
+  }
+}
+
 /** The slabs' heights from `low` to `top`: adaptive (thinning where the section shrinks fast) or uniform. */
+/** The SHELL_STEP_M levels from `low` to `top` the slabs are cut at. */
+interface LevelGrid { low: number; step: number; count: number }
+
+function levelGrid(low: number, top: number): LevelGrid {
+  const count = Math.max(1, Math.ceil((top - low) / SHELL_STEP_M - 1e-9));
+  return { low, step: (top - low) / count, count };
+}
+
 function slabHeights(
-  s: PlacedSurface, bins: EdgeBins, options: RockBandOptions, limit: number, areaAt: ((y: number) => number) | null,
+  s: PlacedSurface, bins: EdgeBins | null, grid: LevelGrid, options: RockBandOptions, limit: number,
+  areaAt: ((y: number) => number) | null,
 ): Array<[number, number]> {
   const band = options.band ?? ROCK_SHELL_BAND_M;
   const out: Array<[number, number]> = [];
@@ -405,7 +514,7 @@ function slabHeights(
     return out;
   }
   const keep = options.keep ?? ROCK_SHELL_KEEP, crown = options.crownM2 ?? ROCK_SHELL_CROWN_M2;
-  const levels = bins.count + 1, level = (i: number): number => (i === bins.count ? s.top : bins.low + i * bins.step);
+  const levels = grid.count + 1, level = (i: number): number => (i === grid.count ? s.top : grid.low + i * grid.step);
   const areas = new Float64Array(levels);
   for (let i = 0; i < levels; i++) {
     if (areaAt) { areas[i] = areaAt(level(i)); continue; }
@@ -427,9 +536,10 @@ function slabHeights(
 
 function shellBands(s: PlacedSurface, options: RockBandOptions, areaAt: ((y: number) => number) | null): RockBand[] {
   const limit = options.points ?? ROCK_SHELL_POINTS, at = options.at ?? ROCK_SHELL_SECTION_AT;
-  const bins = binEdges(s, s.low, s.top);
+  // (bins only when every level is cut: a stone the form's table reads cuts one section a slab)
+  const bins = areaAt ? null : binEdges(s, s.low, s.top);
   const bands: RockBand[] = [];
-  for (const [y0, y1] of slabHeights(s, bins, options, limit, areaAt)) {
+  for (const [y0, y1] of slabHeights(s, bins, levelGrid(s.low, s.top), options, limit, areaAt)) {
     let points = options.hull === 'max' ? null : sectionOutline(s, bins, y0 + (y1 - y0) * at, limit);
     // (a slab whose section there is empty — a stone's last centimetres — takes all the stone inside it)
     if (!points) { gatherSlab(s, y0, y1); points = scratchHullOf(limit); }
@@ -492,10 +602,14 @@ export function applyRockCollisionProfile(
 
 /** A formation's records may hold at most this many parts (the shards' compound limit). */
 export const FORMATION_MAX_PARTS = 64;
-/** Two neighbouring blocks' outlines merge while their joint hull adds no more than this much empty ground (m2), or this
- * share of the two outlines' area: a tor's columns parted by an open joint stay apart, a bed's touching blocks join. */
-const MERGE_WASTE_M2 = 0.3;
-const MERGE_WASTE_SHARE = 0.12;
+/** Two neighbouring blocks' outlines merge only when their joint hull adds no area to the two (one inside the other,
+ * or overlapping so far that the hull is no larger than both): each block keeps its own outline. (The hitbox lane,
+ * 2026-10-08: merging while the hull wasted up to 0.3 m2 or 12 % joined a bed's touching blocks into fewer parts, but on
+ * Saltwind's 27 formations it stood 17.5 % of their movement collider on empty ground against 13.4 % for the blocks'
+ * own outlines, with the stone left uncovered the same 8.4 %: 144 m2 of error against 117. The records' 64-part limit
+ * still forces the least wasteful merges.) */
+const MERGE_WASTE_M2 = 0;
+const MERGE_WASTE_SHARE = 0;
 /** Outlines farther apart than this are never merged (m). */
 const MERGE_REACH_M = 0.6;
 
@@ -552,15 +666,14 @@ export interface FormationCollisionProfile {
 /**
  * The colliders of a formation's standing pieces (world-space geometries): the contact band and equal shell slabs, in
  * each every piece's own outline (in a slab a piece that spans it takes its section ROCK_SHELL_SECTION_AT of the way up,
- * the stone's law; a piece that starts or ends inside it, all of it there), neighbouring outlines merged while their
- * joint hull wastes little (the blocks of a bed join; a tor's columns and a hoodoo's cap over its waist keep their own).
- * Null when nothing rises past the drive-over line.
+ * the stone's law; a piece that starts or ends inside it, all of it there), each block keeping its own outline (one
+ * inside another adds none; MERGE_WASTE_M2). Null when nothing rises past the drive-over line.
  */
 export function formationCollisionProfile(
   pieces: readonly BufferGeometry[], groundAt: (x: number, z: number) => number,
 ): FormationCollisionProfile | null {
   const surfaces = pieces.map((geometry) => {
-    const form = rockFormOf(geometry);
+    const form = surfaceOf(geometry);
     return placeSurface(form.positions, form.edges, null, groundAt);
   }).filter((s) => s.exposed > 0 && Number.isFinite(s.low) && s.top > s.low);
   if (!surfaces.length || !(Math.max(...surfaces.map((s) => s.exposed)) >= ROCK_DRIVE_OVER_M)) return null;
@@ -569,7 +682,7 @@ export function formationCollisionProfile(
   if (!(top > low)) return null;
   const contactOutlines: Outline[] = [];
   for (const s of surfaces) {
-    gatherRiseBand(s, ROCK_CONTACT_FLOOR_M, ROCK_CONTACT_TOP_M);
+    gatherRiseBand(s, FORMATION_CONTACT_FLOOR_M, ROCK_CONTACT_TOP_M);
     const points = scratchHullOf(ROCK_HULL_POINTS);
     if (points) contactOutlines.push(outlineOf(points));
   }

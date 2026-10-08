@@ -16,6 +16,14 @@
 import * as THREE from 'three';
 import { pointInsideCollisionRecord, rayCollisionRecord } from '../src/world/collision.ts';
 
+/** The ground a stone's rise is read over, as the settle reads it (rockCollision.ts rockGroundAt; inlined so the audit
+ * also measures a tree from before the stones' own colliders): the rendered triangles a hull meets, else the 1 m grid. */
+function rockGroundAt(field) {
+  if (field.getContactHeightAt) return (x, z) => field.getContactHeightAt(x, z);
+  if (field.getHeightAtFast) return (x, z) => field.getHeightAtFast(x, z);
+  return (x, z) => field.getHeightAt(x, z);
+}
+
 /** The tank-contact band, metres above the local ground (the hull's sides between its track tops and its deck). */
 export const CONTACT_BAND = Object.freeze([0.2, 1.4]);
 /** Slice spacing through the band (m). */
@@ -494,7 +502,8 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, collider
   // (cells of about a sixtieth of the object, 5-25 cm: the shares average over hundreds of objects a map)
   const h = Math.min(0.25, Math.max(0.05, extent / 60));
   const region = makeRegion(box[0], box[1], box[2], box[3], h);
-  const groundAt = (x, z) => field.getHeightAt(x, z);
+  // (the ground a hull meets and the eye sees, as the settle reads it: rockCollision.ts rockGroundAt)
+  const groundAt = rockGroundAt(field);
   const ground = regionGround(region, groundAt);
   const allTris = soup.query(box[0], box[1], box[2], box[3], solidAccept);
   const meshAll = sectionRaster(region, ground, CONTACT_BAND, soup, allTris);
@@ -561,19 +570,30 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, collider
 }
 
 /** The rock record a stone's instance carries: the nearest unclaimed kindless or small-rock record whose box holds the
- * stone's centre (the legacy records sat at the stone's seat height; refitted ones keep the seat or the ground line). */
-function rockRecordAt(grid, claimed, x, y, z, box) {
-  let best = null, bestScore = Infinity;
+ * stone's centre (the legacy records sat at the stone's seat height; refitted ones keep the seat or the ground line).
+ * A stone half buried on a slope stands its exposed stone, and so its record, off its centre (2026-10-08: some of the
+ * first audit's 95 "tall stones without a collider" had one): failing the centre, the record over the stone's box
+ * that keeps its seat or its top (the stone's own, to the centimetre), or the one nearest `near` (the movement
+ * record's centre, for its shell twin). */
+function rockRecordAt(grid, claimed, x, y, z, box, near = null, top = null) {
   const cx = (box[0] + box[2]) / 2, cz = (box[1] + box[3]) / 2;
-  for (const record of grid(x - 0.01, z - 0.01, x + 0.01, z + 0.01, [])) {
-    if (claimed.has(record) || (record.kind !== undefined && record.kind !== 'small-rock') || record.treeIdx != null) continue;
-    const shape = record.shape2?.kind;
-    if (shape !== 'convex' && shape !== 'compound') continue;
-    const seat = Math.abs(record.min[1] - y) < 2e-3 ? 0 : 1;
-    const score = seat + Math.hypot((record.min[0] + record.max[0]) / 2 - cx, (record.min[2] + record.max[2]) / 2 - cz);
-    if (score < bestScore) { bestScore = score; best = record; }
-  }
-  return bestScore < 3 ? best : null;
+  const pick = (candidates, strict) => {
+    let best = null, bestScore = Infinity;
+    for (const record of candidates) {
+      if (claimed.has(record) || (record.kind !== undefined && record.kind !== 'small-rock') || record.treeIdx != null) continue;
+      const shape = record.shape2?.kind;
+      if (shape !== 'convex' && shape !== 'compound') continue;
+      const seat = Math.abs(record.min[1] - y) < 2e-3 ? 0 : 1;
+      const rx = (record.min[0] + record.max[0]) / 2, rz = (record.min[2] + record.max[2]) / 2;
+      const away = near ? Math.hypot(rx - near[0], rz - near[1]) : Math.hypot(rx - cx, rz - cz);
+      const ownTop = top !== null && Math.abs(record.max[1] - top) < 0.011;
+      if (strict && (near ? away > 1 : seat && !ownTop)) continue;
+      const score = seat + away;
+      if (score < bestScore) { bestScore = score; best = record; }
+    }
+    return bestScore < 3 ? best : null;
+  };
+  return pick(grid(x - 0.01, z - 0.01, x + 0.01, z + 0.01, []), false) ?? pick(grid(box[0], box[1], box[2], box[3], []), true);
 }
 
 /**
@@ -582,7 +602,7 @@ function rockRecordAt(grid, claimed, x, y, z, box) {
  * cosmetic twin (group.userData.rockGroundCover): it is measured on the same stone as a 'legacy-' row, so one build
  * gives the before and the after of every stone.
  */
-function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed = new Set(), createObstacleGrid = null }) {
+function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed = new Set(), createObstacleGrid = null, stones: measureStones = true }) {
   const rows = [];
   const twins = dressing.group?.userData?.rockGroundCover ?? [];
   const legacyGrid = twins.length && createObstacleGrid ? createObstacleGrid(twins) : null;
@@ -593,10 +613,13 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
     const e = source.matrix.elements;
     const x = e[12], y = e[13], z = e[14];
     const meshBox = [source.min[0], source.min[2], source.max[0], source.max[2]];
-    const obstacle = rockRecordAt(obstacleGrid, claimed, x, y, z, meshBox);
+    const obstacle = rockRecordAt(obstacleGrid, claimed, x, y, z, meshBox, null, source.max[1]);
     if (obstacle) claimed.add(obstacle);
-    const collider = rockRecordAt(colliderGrid, claimed, x, y, z, meshBox);
+    const collider = rockRecordAt(colliderGrid, claimed, x, y, z, meshBox,
+      obstacle ? [(obstacle.min[0] + obstacle.max[0]) / 2, (obstacle.min[2] + obstacle.max[2]) / 2] : null);
     if (collider) claimed.add(collider);
+    // (the formations alone: the stones' records are claimed, so a boulder by a formation is not read as its mass)
+    if (!measureStones) continue;
     const ownTris = [];
     for (let t = source.first; t < source.first + source.tris; t++) ownTris.push(t);
     const box = regionBox([meshBox, obstacle ? recordBox(obstacle) : null, collider ? recordBox(collider) : null], 0.6);
@@ -629,6 +652,7 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
     const masses = (list) => list.filter((record) => !claimed.has(record) && record.kind === undefined && !record.crushable
       && record.treeIdx == null && (record.shape2?.kind === 'convex' || record.shape2?.kind === 'compound'));
     const freeColliders = masses(dressing.colliders);
+    const massRecords = [];
     for (const obstacle of masses(dressing.obstacles)) {
       const box = regionBox([recordBox(obstacle)], 1.0);
       const ownTris = soup.query(box[0], box[1], box[2], box[3], (t) => soup.family[t] === sceneryFamily);
@@ -650,9 +674,64 @@ function auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, s
       const row = measureObject({ soup, field, ownTris, box: full, obstacle, collider, nearObstacles, nearColliders, solidAccept, rays });
       row.kind = 'scenery-mass';
       rows.push(row);
+      massRecords.push(obstacle);
     }
+    if (massRecords.length) rows.push(formationUnion({ soup, field, sceneryFamily, solidAccept, obstacleGrid, massRecords }));
   }
   return rows;
+}
+
+/**
+ * The formations' movement colliders against their stone over the whole map, each cell counted once (2026-10-08): the
+ * rows measure each record over its own region, and neighbouring records' regions (a formation's loose blocks, which
+ * carry their own records) count the stone between them more than once. 8 m tiles over all the scenery rock and every
+ * formation record (the same ground on any tree, whatever its records); in each the scenery rock's band section, the
+ * formation records' footprints and every movement record's.
+ */
+function formationUnion({ soup, field, sceneryFamily, solidAccept, obstacleGrid, massRecords }) {
+  const TILE = 8, H = 0.1;
+  const groundAt = rockGroundAt(field);
+  const tiles = new Map();
+  const cover = (x0, z0, x1, z1) => {
+    for (let i = Math.floor(x0 / TILE); i <= Math.floor(x1 / TILE); i++) {
+      for (let j = Math.floor(z0 / TILE); j <= Math.floor(z1 / TILE); j++) {
+        const key = `${i},${j}`;
+        if (!tiles.has(key)) tiles.set(key, [i, j, []]);
+      }
+    }
+  };
+  // (every scenery rock triangle's tile: the formations' meshes are merged, so a source spans the map)
+  const d = soup.xyz;
+  for (let t = 0; t < soup.count; t++) {
+    if (soup.family[t] !== sceneryFamily) continue;
+    const o = t * 9;
+    cover(Math.min(d[o], d[o + 3], d[o + 6]), Math.min(d[o + 2], d[o + 5], d[o + 8]), Math.max(d[o], d[o + 3], d[o + 6]), Math.max(d[o + 2], d[o + 5], d[o + 8]));
+  }
+  for (const r of massRecords) cover(r.min[0] - 1, r.min[2] - 1, r.max[0] + 1, r.max[2] + 1);
+  for (const r of massRecords) {
+    for (let i = Math.floor((r.min[0] - 1) / TILE); i <= Math.floor((r.max[0] + 1) / TILE); i++) {
+      for (let j = Math.floor((r.min[2] - 1) / TILE); j <= Math.floor((r.max[2] + 1) / TILE); j++) tiles.get(`${i},${j}`)[2].push(r);
+    }
+  }
+  const out = { kind: 'scenery-union', x: 0, z: 0, n: massRecords.length, colliderM2: 0, meshM2: 0, phantomM2: 0, leakM2: 0 };
+  for (const [i, j, mine] of tiles.values()) {
+    const x0 = i * TILE, z0 = j * TILE;
+    const region = makeRegion(x0, z0, x0 + TILE, z0 + TILE, H);
+    const ground = regionGround(region, groundAt);
+    const rock = soup.query(x0, z0, x0 + TILE, z0 + TILE, (t) => soup.family[t] === sceneryFamily);
+    const solid = soup.query(x0, z0, x0 + TILE, z0 + TILE, solidAccept);
+    const meshRock = sectionRaster(region, ground, CONTACT_BAND, soup, rock);
+    const meshAll = sectionRaster(region, ground, CONTACT_BAND, soup, solid);
+    const own = new Uint8Array(region.nx * region.nz), any = new Uint8Array(region.nx * region.nz);
+    for (const r of mine) colliderRaster(region, ground, CONTACT_BAND, r, own);
+    for (const r of obstacleGrid(x0, z0, x0 + TILE, z0 + TILE, [])) if (!r.dead) colliderRaster(region, ground, CONTACT_BAND, r, any);
+    for (let k = 0; k < own.length; k++) {
+      if (own[k]) { out.colliderM2 += H * H; if (!meshAll[k]) out.phantomM2 += H * H; }
+      if (meshRock[k]) { out.meshM2 += H * H; if (!any[k]) out.leakM2 += H * H; }
+    }
+  }
+  for (const key of ['colliderM2', 'meshM2', 'phantomM2', 'leakM2']) out[key] = +out[key].toFixed(2);
+  return out;
 }
 
 /** Whether triangle `t` lies inside the record's box grown by `margin` (m) every way. */
@@ -744,8 +823,10 @@ export function auditMapWorld({ mapId, field, flora, dressing, families = ['rock
   const rows = [];
   const claimed = new Set();
   const all = families.includes('all');
-  if (all || families.includes('rocks')) {
-    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, createObstacleGrid }));
+  if (all || families.includes('rocks') || families.includes('formations')) {
+    // ('formations': the scenery's rock masses alone, without the stones)
+    rows.push(...auditRocks({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, createObstacleGrid,
+      stones: all || families.includes('rocks') }));
   }
   if (all || families.includes('records')) {
     rows.push(...auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid, solidAccept, claimed, limit: recordLimit, kinds: recordKinds }));

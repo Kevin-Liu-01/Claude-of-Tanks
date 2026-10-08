@@ -121,7 +121,8 @@ import {
   type SimpleCollisionShape,
 } from './collision.ts';
 import {
-  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockStaysCrushable,
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
+  rockStaysCrushable,
   type RockCollisionProfile, type RockForm,
 } from './rockCollision.ts'; // the hitbox lane, 2026-10-07
 /** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
@@ -6291,11 +6292,11 @@ ${snowCap ? `
   // the crushable class follows the stones that keep a collider: a stone a hull drives over drops its clutter, and a
   // stone that rises past the drive-over line with no collider (a small or a deep-set one) becomes a crushable rock.
   function* settleRockColliders(): Generator<PropsBuildSlice, void, void> {
-    const groundAt = (gx: number, gz: number): number => heightField.getHeightAtFast(gx, gz);
+    const groundAt = rockGroundAt(heightField);
     let settled = 0;
     for (const seat of rockSeats) {
-      // (about a tenth of a millisecond a stone: a loading frame carries 96 of them at most)
-      if (++settled % 96 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
+      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
       if (!seat.profile) {
         if (seat.clutter) {
