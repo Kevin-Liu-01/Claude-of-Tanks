@@ -623,6 +623,34 @@ Round five (wave 199's remaining "wallpaper" reads, October 7), texture only:
   print's palette. At the merge they leave the straw bucket for a mesh of their own (`buckets.thatch`) under the
   straw's program key. The bales, stooks and stacks keep their own prints.
 
+Round six (wave 241, October 7: the facade items an eye at the street reads on Steinburg, Frontier and Verdant):
+- The Fachwerk is jointed (`house.ts H.strut`, `H.beside`, `H.panel`; `hessian.ts joinery`). A brace is cut to its
+  panel, its ends flush against the posts, sill and rails it is tenoned into, never lapped over them. An Andreaskreuz is
+  one brace whole with the other halved into it. The corner posts are the stouter, and every rail stops at their face.
+  The gable stands on a sill of its own; its side posts rise to the collar, which is tenoned into the king post. The
+  gable's braces stand in their own panels, beside its windows, which are framed by breast and head rails like the
+  wall's. With the craft each timber takes a shade of its own, and the rails' and braces' tenons show their oak pegs,
+  near the camera only and below 4.2 m (`PEG_TOP`).
+- The structure wood is hewn oak: 256 px over the same 1.82 m tile (`regionalSurfaces.ts paintTimberGrain`), with
+  latewood lines every 2.5 mm, figure streaks, drying checks and silvered grain. Its knots sit on the boards only. A
+  framing member's uv never reaches them, nor the old tile's plank seams. Steinburg's oxbloods are a fifth darker and
+  less orange.
+- The windows:
+  - an old pane leans its own degree or two, so each window reflects a different sky;
+  - in a reveal the frame is shaded darkest under the soffit;
+  - a sill lays its shadow on a rendered or masonry wall (`openings.ts sillShadow`);
+  - a town's two-light upper casements take their transom.
+- The masonry:
+  - ashlar is tooled (Scharrierung) inside a smooth margin, with its joints run true, an arris broken here and there
+    and a joint's mortar lost;
+  - brick keeps its 24 x 7 cm scale with a nearly flat face, a few clinkers and spalled corners;
+  - the brick's and the sandstone's normal relief is a third shallower.
+- The roofs:
+  - every roof has an age (`weather.ts roofAge`): an old roof is darker and browner;
+  - its moss grows along the eaves, thicker on the slope turned from the map's sun (`RegionalBuildContext.sunAzimuthDeg`);
+  - the ridge and hip caps, bedded in mortar, are darker and lichened;
+  - the plain tiles carry the odd replaced or sooted tile, lichen rosettes and moss under the tails.
+
 **The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
 tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
 Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
