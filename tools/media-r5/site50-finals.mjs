@@ -120,10 +120,17 @@ const encodeLoops = part => {
     console.log(`[finals] loops for ${[...part][0]}… (background)`);
     const child = spawn('nice', ['-n', '10', 'node', join(TOOL, 'site-loops.mjs'), renders, deliver, [...part].join(','),
       ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
-    child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
+    // a take whose formats fail is logged, not fatal: the run goes on and a re-run of site-loops redoes it
+    child.on('exit', code => { if (code !== 0) console.log(`[finals] loops for ${[...part][0]}… exited ${code}; the run goes on`); done(); });
+    child.on('error', fail);
   }));
   encoders.push(encodeChain);
 };
+// A job that fails waits for the retry pass at the end, alone in a fresh browser (2026-10-07: a still wedged the GPU
+// process for 30 minutes and every later job of that batch would have waited on it); the rest of its chunk goes on.
+const failed = new Map();
+const errorsOf = job => receiptOf(job)?.errors ?? [];
+const nameOf = job => job.out.split('/').slice(-2).join('/');
 for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
   // (masters on disk only: without them a chunk renders as soon as the lock allows)
@@ -138,8 +145,9 @@ for (let i = 0; i < ids.length; i += chunk) {
   const file = join(renders, `jobs-chunk-${String(i / chunk).padStart(2, '0')}.json`);
   for (let leaseNo = 1; ; leaseNo++) {
     // each lease takes the chunk's pending jobs only (an early end or an earlier run rendered the rest)
-    const jobs = all.filter(j => !done(j)).map(j => ({ ...j, resume: 'true' }));
+    const jobs = all.filter(j => !done(j) && !failed.has(j.out)).map(j => ({ ...j, resume: 'true' }));
     if (!jobs.length) { if (leaseNo === 1) console.log(`[finals] chunk ${k + 1} (${[...part][0]}…): rendered in an earlier run`); break; }
+    if (leaseNo > 8) throw new Error(`chunk ${k + 1}: still pending after 8 leases`);
     writeFileSync(file, JSON.stringify(jobs, null, 1));
     if (keepPlace && existsSync(leaseMark)) await yieldGpu();
     const code = await cinema(`chunk ${k + 1} (${[...part][0]}…, ${jobs.length} jobs)${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
@@ -147,10 +155,29 @@ for (let i = 0; i < ids.length; i += chunk) {
     writeFileSync(leaseMark, new Date().toISOString());
     if (stopping) throw new Error(`stopped by a signal in chunk ${k + 1}`);
     if (code === 75 && keepPlace) continue; // lease over: the chunk's remaining takes rejoin the queue at the stamp
-    if (code !== 0) throw new Error(`chunk ${k + 1} failed (${code})`);
-    break;
+    if (code === 0) continue; // every job rendered: the next pass finds nothing pending
+    const newly = jobs.filter(j => !done(j) && errorsOf(j).length);
+    if (!newly.length) throw new Error(`chunk ${k + 1} failed (${code})`);
+    for (const j of newly) {
+      failed.set(j.out, String(errorsOf(j).at(-1)?.error ?? '').split('\n')[0].slice(0, 160));
+      console.log(`[finals] ${nameOf(j)} failed (${failed.get(j.out)}); it retries at the end, alone`);
+    }
   }
   if (!('skip-loops' in flags)) encodeLoops(part);
 }
+// The retry pass: each failed job once more, by itself, in a fresh browser; its take's formats follow if it renders.
+for (const job of [...films, ...stills].filter(j => failed.has(j.out))) {
+  const file = join(renders, `jobs-retry-${idOf(job)}-${job.film === 'false' ? 'stills' : 'film'}.json`);
+  writeFileSync(file, JSON.stringify([{ ...job, resume: 'true' }], null, 1));
+  if (keepPlace && existsSync(leaseMark)) await yieldGpu();
+  const code = await cinema(`retry ${nameOf(job)}`, ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
+  writeFileSync(leaseMark, new Date().toISOString());
+  if (stopping) throw new Error(`stopped by a signal in the retry of ${nameOf(job)}`);
+  if (done(job)) {
+    failed.delete(job.out);
+    console.log(`[finals] retry ${nameOf(job)}: rendered`);
+    if (!('skip-loops' in flags)) encodeLoops(new Set([idOf(job)]));
+  } else console.log(`[finals] retry ${nameOf(job)}: failed again (${code}); left for a look`);
+}
 await Promise.all(encoders);
-console.log('[finals] done');
+console.log(`[finals] done${failed.size ? `; ${failed.size} job(s) failed twice: ${[...failed.keys()].map(out => out.split('/').slice(-2).join('/')).join(', ')}` : ''}`);

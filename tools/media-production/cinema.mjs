@@ -177,6 +177,10 @@ let server, browser, interrupted = false;
 await lock.acquire(6 * 60 * 60 * 1000, { ticket });
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
 let leaseOver = false;
+// A call that times out leaves the browser wedged (2026-10-07: a still spun the GPU process for 30 minutes under memory
+// pressure): the batch ends there, its error recorded, and the caller starts the rest in a fresh browser.
+let wedged = false;
+const timedOut = (error) => /timed out/i.test(String(error?.message ?? error));
 const stop = () => { interrupted = true; void browser?.close().catch(() => {}); };
 process.once('SIGINT', stop); process.once('SIGTERM', stop);
 const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
@@ -186,9 +190,12 @@ try {
     ...(args['cache-dir'] ? { cacheDir: resolve(args['cache-dir']) } : {}),
     server: { host: '127.0.0.1', port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } } });
   await server.listen();
+  // Vite's own SIGTERM handler exits the process (code 143) before the finally below can release the capture lock: the
+  // stop above owns SIGTERM, so a stopped batch always ends its lease.
+  for (const listener of process.listeners('SIGTERM')) if (listener !== stop) process.off('SIGTERM', listener);
   const origin = server.resolvedUrls?.local?.[0]?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
   browser = await puppeteer.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
-    protocolTimeout: 1800000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
+    protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
   const page = await browser.newPage(), errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()); });
@@ -226,12 +233,12 @@ try {
   };
 
   jobLoop: for (const job of jobs) {
-    if (interrupted) break;
+    if (interrupted || wedged) break;
     const { receipt, save, film, scene } = job;
     receipt.renderer = rendererInfo;
     save();
     for (const format of job.renderFilms ? job.formats : []) {
-      if (interrupted) break;
+      if (interrupted || wedged) break;
       const { width, height } = filmOutputSize(format, job.resolution);
       // Named by the short side, so a portrait 1080x1920 film reads 1080p like its landscape sibling.
       const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p${film.fps}-n${film.samples}`;
@@ -362,12 +369,13 @@ try {
         frameDir = null;
         await page.evaluate(() => window.__STUDIO.endFilm()).catch(() => {});
         row.error = String(error.stack ?? error); receipt.errors.push({ film: stem, error: row.error }); save();
+        if (timedOut(error)) wedged = true;
         console.error(`[cinema] ${stem} FAILED: ${error.message}`);
       }
     }
 
     for (const format of job.formats) for (const ms of job.stills) {
-      if (interrupted) break;
+      if (interrupted || wedged) break;
       const { width, height } = filmOutputSize(format, job.resolution);
       const exposed = job.stillExposureMs > 0 ? `-e${job.stillExposureMs}ms` : '';
       const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p-still-${Math.round(ms)}ms${exposed}`;
@@ -394,6 +402,7 @@ try {
         console.log(`[cinema] still ${stem}`);
       } catch (error) {
         row.error = String(error.stack ?? error); receipt.errors.push({ still: stem, error: row.error }); save();
+        if (timedOut(error)) wedged = true;
         console.error(`[cinema] ${stem} FAILED: ${error.message}`);
       }
     }
@@ -404,6 +413,7 @@ try {
   const changed = sourceDigest() !== fingerprint;
   for (const job of jobs) {
     if (interrupted) job.receipt.errors.push({ error: 'Capture interrupted; this batch is incomplete' });
+    if (wedged) console.error(`[cinema] the browser stopped answering; ended the batch so the rest renders in a fresh one`);
     if (changed) job.receipt.errors.push({ error: 'Rendering inputs changed during capture; discard this batch' });
     job.receipt.finished = new Date().toISOString(); job.save();
   }

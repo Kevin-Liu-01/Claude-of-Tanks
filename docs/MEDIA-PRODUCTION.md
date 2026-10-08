@@ -116,7 +116,11 @@ exits 75, and a `--resume=true` re-run renders the rest; `--ticket-stamp=<ms>` j
 queue at that place, so every lease of the batch rejoins at its first ticket's place, behind the
 holds it yielded to (`tools/media-r5/site50-finals.mjs --keep-place --yield-holds=2`: after each
 lease two other holds take and release the lock first, the coordinator's share for the finals of
-2026-10-07). The synchronous encodes renew the lock before each step.
+2026-10-07). The synchronous encodes renew the lock before each step. A browser call that times out
+(10 minutes) ends the batch with its error recorded, because the browser is wedged; the finals runner
+sets that job aside, renders the rest, and retries it at the end alone in a fresh browser. cinema
+owns SIGTERM once its dev server is up (Vite's own handler would exit 143 before the lock is
+released), so a stopped batch always ends its lease.
 
 Throughput, measured 2026-10-01 on the lane machine (Apple silicon GPU through headless Chrome and
 ANGLE/Metal) with the two-tank desert duel (fast rail moves, firing, a kill), in seconds per output
