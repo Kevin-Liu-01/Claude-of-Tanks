@@ -284,8 +284,12 @@ export interface StructureDebris {
    */
   begin(placement: BodyPlacement, materialFor: (bucket: string, role?: DamageRole) => THREE.Material | null, delayS?: number,
     settled?: boolean, options?: StageRunOptions): DamageWriters;
-  /** Build the stage's static runs and start its pieces. */
-  commit(): void;
+  /** Build the stage's static runs and start its pieces; the runs it laid. */
+  commit(): readonly THREE.Mesh[];
+  /** A structure's standing runs (those tagged STAGE_RUN_TAG + its index + 1: a breach's rim and room, a roof's patch). */
+  standingRuns(tag: number): readonly THREE.Mesh[];
+  /** A standing run goes with the section it stood in: hidden, and never shown (a delayed stage's run included). */
+  dropRun(mesh: THREE.Mesh): void;
   update(): void;
   shiftTime(delta: number): void;
   reset(): void;
@@ -485,6 +489,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       return writers;
     },
     commit() {
+      const made: THREE.Mesh[] = [];
       for (const run of runs) {
         if (!run.idx.length) continue;
         const material = resolveMaterial(run.bucket, run.role);
@@ -495,6 +500,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(run.uv, 2));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(run.col, 3));
         if (stageTag > 0) geo.setAttribute('aDamage', new THREE.BufferAttribute(new Uint16Array(run.pos.length / 3).fill(stageTag), 1));
+        geo.userData.stageTag = stageTag;
         geo.setIndex(run.idx);
         geo.computeBoundingSphere();
         const mesh = new THREE.Mesh(geo, material);
@@ -508,6 +514,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         mesh.visible = stageDelay <= 0;
         group.add(mesh);
         staticMeshes.push(mesh);
+        made.push(mesh);
         totalVertices += run.pos.length / 3;
         if (stageDelay > 0) showAt.push({ mesh, at: stageBirth });
       }
@@ -521,13 +528,14 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         }
         p.dirtyLo = p.dirtyHi = -1;
       }
+      return made;
     },
     update() {
       const now = o.now();
       uTime.value = now;
       if (showAt.length) {
         let k = 0;
-        for (const s of showAt) { if (now >= s.at) s.mesh.visible = true; else showAt[k++] = s; }
+        for (const s of showAt) { if (now >= s.at) s.mesh.visible = s.mesh.userData.dropped !== true; else showAt[k++] = s; }
         showAt.length = k;
       }
       let any = false;
@@ -576,6 +584,13 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         p.mesh.geometry.instanceCount = 0;
         p.mesh.visible = false;
       }
+    },
+    standingRuns(tag) {
+      return staticMeshes.filter((m) => m.geometry.userData.stageTag === tag && m.userData.dropped !== true);
+    },
+    dropRun(mesh) {
+      mesh.userData.dropped = true;
+      mesh.visible = false;
     },
     stats() {
       let pieces = 0;

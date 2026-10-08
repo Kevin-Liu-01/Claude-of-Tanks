@@ -230,8 +230,25 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
       y0: placement.y + k * 3, y1: placement.y + k * 3 + 3, ...extra };
   };
   const e0 = epoch(sWall.mesh);
+  // 0. real holes first: a fallen section takes its standing runs with it (facades, 2026-10-08: the room behind an
+  // upper hole stood on after its storey dropped). A hole in a panel that falls, or in a storey that drops, hides its
+  // rim and room; a hole in a wall that stands keeps them
+  const tagged = () => debris.group.children.filter((m) => m.isMesh && m.geometry.getAttribute('aDamage')?.array[0] === 32768 + 10);
+  const holeRuns = (k, n, hole) => {
+    const before = new Set(tagged());
+    const [bx, bz, nx, nz] = { front: [1.5, 4, s, c], right: [5, -1.5, c, -s] }[n];
+    const [wx, wy, wz] = toWorld(bx, k * 3 + 1.8, bz);
+    stages.breach({ ...sBase, section: k * 4 + names.indexOf(n), sectionKind: 'wall', hole, radiusM: 0.6, sectionDown: false,
+      x: wx, y: wy, z: wz, nx, ny: 0, nz, y0: placement.y + k * 3, y1: placement.y + k * 3 + 3 }, seam);
+    const runs = tagged().filter((m) => !before.has(m));
+    assert.ok(runs.length > 0 && runs.every((m) => m.visible), `the ${k}/${n} hole lays its rim and room`);
+    return runs;
+  };
+  const groundFront = holeRuns(0, 'front', 0), groundRight = holeRuns(0, 'right', 1), upperFront = holeRuns(1, 'front', 2);
   // 1. the ground storey's front panel: down to its stub, a metre over the base; nothing else moves
   stages.breach(fall(0, 'front'), seam);
+  assert.ok(groundFront.every((m) => !m.visible), 'the fallen panel\'s hole goes with it: its rim and room');
+  assert.ok(groundRight.every((m) => m.visible) && upperFront.every((m) => m.visible), 'the standing walls keep their holes');
   let w = sWall.mesh.geometry.getAttribute('position').array;
   const [f0, c0] = rangeOf(0, 'front');
   for (let i = f0; i < f0 + c0; i++) assert.ok(bodyY(w, i) <= 1 + 1e-4, 'the fallen panel stands no higher than its 1 m stub');
@@ -256,6 +273,12 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   }
   const [fr, cr] = rangeOf(0, 'right');
   assert.ok([...Array(cr).keys()].some((j) => Math.abs(bodyY(w, fr + j) - 3) < 1e-4), 'the ground storey\'s walls keep their height');
+  assert.ok(upperFront.every((m) => !m.visible), 'the dropped storey takes its holes\' rims and room');
+  assert.ok(groundRight.every((m) => m.visible), 'the ground storey\'s hole stands with its wall');
+  // a dropped run stays down when the debris shows its delayed runs
+  now += 5;
+  debris.update();
+  assert.ok(groundFront.every((m) => !m.visible) && upperFront.every((m) => !m.visible), 'a dropped run is never shown again');
   // 4. a real hole: a P1 'breached' stage cuts no synthetic one on that structure, nor with sections on
   const slot = 9 * T;
   const holesBefore = data[slot + 7];
