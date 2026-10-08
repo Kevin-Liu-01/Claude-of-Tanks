@@ -41,17 +41,21 @@ const GALV = material('steel', [0.30, 0.31, 0.31], 0.42, 0.72, 0, 0.8);
 const ALU = material('chrome', [0.52, 0.53, 0.54], 0.3, 0.9, 0, 0.3);
 const GOLD_FOIL = material('chrome', [0.55, 0.36, 0.08], 0.28, 0.9, 0, 0.2);
 const BLACK_PLASTIC = material('trim', [0.03, 0.03, 0.031], 0.55, 0, 0, 0.6);
-const HAY_A = material('cargo', linearHex(0xa69a68), 0.97, 0, 0, 0.5);
-const HAY_B = material('cargo', linearHex(0x9a8e5c), 0.97, 0, 0, 0.5);
-const HAY_C = material('cargo', linearHex(0x908c5a), 0.97, 0, 0, 0.5);
+// round 4 (wave 260: the Glacier Pass hay "a blotchy green-and-tan pattern that reads as a camouflage tarpaulin"): the
+// straw a warm tan, never olive, and the heap's three shades close (its texture is the straw laid over it, not patches)
+const HAY_A = material('cargo', linearHex(0xb39a62), 0.97, 0, 0, 0.5);
+const HAY_B = material('cargo', linearHex(0xab925a), 0.97, 0, 0, 0.5);
+const HAY_C = material('cargo', linearHex(0xa48b55), 0.97, 0, 0, 0.5);
 // (wave 211: "a smooth yellow lozenge with faint streaks") the hay sledge's load in five shades, the pale sunlit straw
 // and the dark of the heap's folds among the three (only the sledge takes them: every other hay load stands)
-const HAY_PALE = material('cargo', linearHex(0xbaa974), 0.95, 0, 0, 0.5);
-const HAY_DARK = material('cargo', linearHex(0x82774a), 0.97, 0, 0, 0.5);
+const HAY_PALE = material('cargo', linearHex(0xcbb581), 0.95, 0, 0, 0.5);
+const HAY_DARK = material('cargo', linearHex(0x7d6941), 0.97, 0, 0, 0.5);
 // round 3 (wave 234: the wrack as "a smooth, glossy black dome… a tarp-wrapped boulder or a whale"): olive-brown and
 // matte, its fronds a little wetter
-const SEAWEED_A = material('cargo', linearHex(0x4c4528), 0.86, 0, 0, 0.4);
-const SEAWEED_B = material('cargo', linearHex(0x574d2c), 0.84, 0, 0, 0.4);
+// round 4 (wave 260: the Breton cart's wrack "one rounded olive sack"): wet wrack is near-black brown, its fronds a
+// little olive where the light catches them
+const SEAWEED_A = material('cargo', linearHex(0x3a2f1c), 0.82, 0, 0, 0.4);
+const SEAWEED_B = material('cargo', linearHex(0x47391f), 0.8, 0, 0, 0.4);
 const BURLAP = material('canvas', linearHex(0x8a7c62), 0.96, 0, 0, 1);
 const BURLAP_DARK = material('canvas', linearHex(0x6f624b), 0.96, 0, 0, 1);
 const WOVEN_PP = material('canvas', linearHex(0xcfcabb), 0.85, 0, 0, 1);
@@ -71,8 +75,8 @@ const CRATE_PINE_GREY = material('wood', linearHex(0x857d6a), 0.9, 0, 0.3, 1);
 const CRATE_STENCIL = material('paint', linearHex(0x1e1b16), 0.8, 0, 0, 0.6);
 const CRATE_GRIME = material('paint', linearHex(0x3a2f24), 0.92, 0, 0, 0.4);
 const STRAP = material('cargo', linearHex(0x2c2b27), 0.7, 0, 0, 0.6);
-const KELP_A = material('cargo', linearHex(0x5a5628), 0.68, 0, 0, 0.4);
-const KELP_B = material('cargo', linearHex(0x3e3a1e), 0.7, 0, 0, 0.4);
+const KELP_A = material('cargo', linearHex(0x4a3a20), 0.66, 0, 0, 0.4);
+const KELP_B = material('cargo', linearHex(0x2a2312), 0.7, 0, 0, 0.4);
 const BARK = material('wood', linearHex(0x5a4a3a), 0.95, 0, 0, 1);
 const LOG_END = material('wood', linearHex(0xb08a5e), 0.9, 0, 0, 1);
 const UHMW = material('trim', linearHex(0xdedbd2), 0.5, 0, 0, 0.6);
@@ -120,6 +124,14 @@ function face4(mesh: VehicleMesh, p: Vec3[], n: Vec3, m: Mat): void {
   const v = p.map((q) => mesh.vert(q[0], q[1], q[2], n[0], n[1], n[2], m));
   mesh.tri(v[0], v[1], v[2]);
   mesh.tri(v[0], v[2], v[3]);
+}
+
+/** A flat triangle facing `n` (its winding follows the normal): a blade's one side. */
+function face3(mesh: VehicleMesh, a: Vec3, b: Vec3, d: Vec3, n: Vec3, m: Mat): void {
+  const va = mesh.vert(a[0], a[1], a[2], n[0], n[1], n[2], m), vb = mesh.vert(b[0], b[1], b[2], n[0], n[1], n[2], m);
+  const vd = mesh.vert(d[0], d[1], d[2], n[0], n[1], n[2], m);
+  if (dot(cross(sub(b, a), sub(d, a)), n) < 0) mesh.tri(va, vd, vb);
+  else mesh.tri(va, vb, vd);
 }
 
 /**
@@ -279,7 +291,17 @@ function castWheel(c: Ctx, r: number, w: number, spokes: number, m: Mat = IRON_W
  * width and length on the bed, `h` its height, `belly` how far it bulges out over its base, lumpy with noise; two or
  * three shades in streaks. Open underneath (it sits on the bed or the ground).
  */
-interface LoafOptions { belly?: number; lump?: number; ends?: number; seed?: number; low?: boolean; folds?: number }
+interface LoafOptions {
+  belly?: number; lump?: number; ends?: number; seed?: number; low?: boolean; folds?: number;
+  /** Round 4: how fine the shades break across the surface (1: broad patches, the cloth's; 4: a straw's speckle). */
+  grain?: number;
+  /**
+   * Round 4 (wave 260: the wrack "resting on the bed like a beanbag"): a load held in a box, its sides `hw` either side
+   * of the heap's axis and its ends at z0 and z1: under the boards' top `y` the heap is drawn in within them, over it
+   * the heap swells out to its own width (the load heaped over the boards).
+   */
+  waist?: { readonly y: number; readonly hw: number; readonly z0: number; readonly z1: number };
+}
 
 /**
  * The heap surface `loaf` lays, as a function: its point at zn (-1..1 along its length) and th (0..pi round from its
@@ -299,6 +321,13 @@ function loafShape(c: Ctx, x: number, y0: number, z: number, hw: number, hl: num
     let n = 1 + lump * (2 * valueNoise(px * 3.1, py * 3.1, pz * 3.1, seed) - 1) + lump * 0.5 * (2 * valueNoise(px * 9, py * 9, pz * 9, seed + 5) - 1);
     if (folds) n += 0.05 * Math.pow(Math.abs(Math.sin((zn + 1) * folds * Math.PI * 0.5 + 0.7 * valueNoise(th * 2.0, zn, 0.3, seed + 13))), 3) * sy;
     out[0] = x + (px - x) * n; out[1] = y0 + (py - y0) * (0.96 + 0.08 * (n - 1) / Math.max(1e-6, lump) * lump); out[2] = z + (pz - z) * (0.97 + 0.03 * n);
+    const w = o.waist;
+    if (w) {
+      const u = Math.min(1, Math.max(0, (out[1] - (w.y - 0.1)) / 0.18)), t = u * u * (3 - 2 * u);
+      const dx = out[0] - x, held = Math.sign(dx) * Math.min(Math.abs(dx), w.hw);
+      out[0] = x + held + (dx - held) * t;
+      out[2] = Math.min(w.z1, Math.max(w.z0, out[2])) + (out[2] - Math.min(w.z1, Math.max(w.z0, out[2]))) * t;
+    }
     return out;
   };
 }
@@ -312,7 +341,7 @@ function loaf(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, 
   const seed = c.seed + (o.seed ?? 0);
   const at = loafShape(c, x, y0, z, hw, hl, h, o);
   c.mesh.grid(nu, nv, (i, j, out) => { at(-1 + (2 * i) / nu, (j / nv) * Math.PI, out as Vec3); },
-    (i, j) => mats[Math.floor(Math.min(0.999, valueNoise(i * 0.22, j * 0.75, 0.5, seed + 9) * 1.15) * mats.length)], { flip: true });
+    (i, j) => mats[Math.floor(Math.min(0.999, valueNoise(i * 0.22 * (o.grain ?? 1), j * 0.75 * (o.grain ?? 1), 0.5, seed + 9) * 1.15) * mats.length)], { flip: true });
 }
 
 /**
@@ -323,9 +352,11 @@ function loaf(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, 
  * collision and the footprint). The texture the vertex colours alone cannot give, from geometry.
  */
 function strawCoat(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, hl: number, count: number,
-  mats: readonly Mat[], salt: number, o: { segs?: number; len?: [number, number]; width?: [number, number]; spread?: number } = {}): void {
+  mats: readonly Mat[], salt: number, o: { segs?: number; len?: [number, number]; width?: [number, number]; spread?: number; thMin?: number } = {}): void {
   if (c.coarse) return;
   const segs = o.segs ?? 2, [l0, l1] = o.len ?? [0.22, 0.55], [w0, w1] = o.width ?? [0.022, 0.045], spread = o.spread ?? 0.22;
+  // round 4: a held load's coat starts over its boards (`thMin`: where its surface rises past them)
+  const th0 = o.thMin ?? 0.14;
   const S: Vec3 = [0, 0, 0], A0: Vec3 = [0, 0, 0], A1: Vec3 = [0, 0, 0], B0: Vec3 = [0, 0, 0], B1: Vec3 = [0, 0, 0];
   const e = 0.01;
   // outboard: drawn, but out of the body box the fit reads and out of the collision solid (the cart's fit and footprint
@@ -334,12 +365,13 @@ function strawCoat(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, hl: 
     for (let k = 0; k < count; k++) {
       const r1 = hash01(k, salt), r2 = hash01(k, salt + 1), r3 = hash01(k, salt + 2), r4 = hash01(k, salt + 3);
       // round the heap: the crown and the flanks (a cosine-weighted spread off the feet)
-      const th = 0.14 + (Math.PI - 0.28) * (0.5 - 0.5 * Math.cos(Math.PI * r1));
+      const th = th0 + (Math.PI - 2 * th0) * (0.5 - 0.5 * Math.cos(Math.PI * r1));
       const zn0 = -0.92 + 1.84 * r2, len = l0 + (l1 - l0) * r3, dzn = len / hl, dth = (r4 - 0.5) * spread;
       const w = w0 + (w1 - w0) * hash01(k, salt + 4), m = mats[(k * 7 + Math.floor(r3 * 13)) % mats.length];
       const pts: { p: Vec3; a: Vec3; n: Vec3 }[] = [];
       for (let s = 0; s <= segs; s++) {
-        const t = s / segs, zn = Math.max(-0.97, Math.min(0.97, zn0 + dzn * (t - 0.5))), tt = Math.max(0.05, Math.min(Math.PI - 0.05, th + dth * (t - 0.5)));
+        const lo = o.thMin ?? 0.05;
+        const t = s / segs, zn = Math.max(-0.97, Math.min(0.97, zn0 + dzn * (t - 0.5))), tt = Math.max(lo, Math.min(Math.PI - lo, th + dth * (t - 0.5)));
         at(zn, tt, S); at(zn + e, tt, A0); at(zn - e, tt, A1); at(zn, tt + e, B0); at(zn, tt - e, B1);
         const along = sub(A0, A1), round = sub(B0, B1);
         let nrm = unit(cross(along, round));
@@ -364,8 +396,14 @@ function strawCoat(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, hl: 
 /** A load of loose hay: forkfuls heaped over the bed, straw hanging in wisps round its foot. */
 function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: number, h: number, mats: readonly Mat[], belly = 0.18,
   lump = 0.11, strands = 0, ends = 3, strandOptions: { segs?: number } = {}): void {
-  loaf(c, x, y0, z, hw, hl, h, mats, { belly, lump, ends });
+  // round 4 (wave 260: "a blotchy… camouflage" pattern): the heap itself in three close shades, the straw over it
+  // carrying the contrast
+  loaf(c, x, y0, z, hw, hl, h, [HAY_A, HAY_B, HAY_C], { belly, lump, ends, grain: 2 });
   if (c.coarse) return;
+  // round 4 (wave 260: "its outline is still a smooth dome"): short tufts pulled up out of the heap along its crown
+  // and shoulders, so its outline breaks
+  heapTufts(c, loafShape(c, x, y0, z, hw, hl, h, { belly, lump, ends }), Math.max(12, Math.round((hw + hl) * 13)), mats,
+    c.seed + 4093, Math.max(0.08, Math.min(0.17, h * 0.14)));
   // wisps: thin straw tongues hanging from the heap's skirt (two-sided)
   const n = Math.max(14, Math.round((hw + hl) * 26));
   for (let k = 0; k < n; k++) {
@@ -390,6 +428,91 @@ function hayLoad(c: Ctx, x: number, y0: number, z: number, hw: number, hl: numbe
   if (!strands) return;
   // round 3 (wave 234): the heap's straw itself, strands combed along the load over the crown and the flanks
   strawCoat(c, loafShape(c, x, y0, z, hw, hl, h, { belly, lump, ends }), hl, strands, mats, c.seed + 4021, strandOptions);
+}
+
+/**
+ * Tufts pulled up out of a heap (round 4, wave 260): `count` little sheaves of three blades standing out of its
+ * surface along the crown and the shoulders (th within 0.35..2.8), each leaning out along the surface's own normal and
+ * splayed, `len` long: the heap's outline breaks against the sky (dressing, two-sided blades).
+ */
+function heapTufts(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, count: number, mats: readonly Mat[], salt: number,
+  len: number): void {
+  if (c.coarse) return;
+  const P: Vec3 = [0, 0, 0], A: Vec3 = [0, 0, 0], B: Vec3 = [0, 0, 0];
+  c.mesh.dressing(() => {
+    for (let k = 0; k < count; k++) {
+      const zn = -0.88 + 1.76 * hash01(k, salt), th = 0.35 + 2.45 * hash01(k, salt + 3);
+      at(zn, th, P); at(zn, th + 0.05, A); at(zn + 0.05, th, B);
+      const nrm = unit(cross(sub(A, P), sub(B, P)));
+      const n = nrm[1] < 0 ? [-nrm[0], -nrm[1], -nrm[2]] as Vec3 : nrm;
+      for (let b = 0; b < 3; b++) {
+        const l = len * (0.55 + 0.6 * hash01(k * 3 + b, salt + 7)), w = 0.012 + 0.012 * hash01(k * 3 + b, salt + 9);
+        const sx = (hash01(k * 3 + b, salt + 11) - 0.5) * 0.9, sz = (hash01(k * 3 + b, salt + 13) - 0.5) * 0.9;
+        const dir = unit([n[0] + sx, n[1] + 0.25, n[2] + sz]);
+        const tip: Vec3 = [P[0] + dir[0] * l, P[1] + dir[1] * l, P[2] + dir[2] * l];
+        const side = unit(cross(dir, [0, 1, 0.001]));
+        const a0: Vec3 = [P[0] - side[0] * w, P[1] - side[1] * w, P[2] - side[2] * w], a1: Vec3 = [P[0] + side[0] * w, P[1] + side[1] * w, P[2] + side[2] * w];
+        // both faces shaded as the heap's own surface there (a blade lit edge-on reads as a black thorn)
+        const m = mats[(k + b) % mats.length];
+        const v0 = c.mesh.vert(a0[0], a0[1], a0[2], n[0], n[1], n[2], m), v1 = c.mesh.vert(a1[0], a1[1], a1[2], n[0], n[1], n[2], m);
+        const v2 = c.mesh.vert(tip[0], tip[1], tip[2], n[0], n[1], n[2], m);
+        c.mesh.tri(v0, v1, v2);
+        c.mesh.tri(v0, v2, v1);
+      }
+    }
+  });
+}
+
+/**
+ * A load's spill on the ground about a cart (round 4, wave 260: "no ropes, stakes or spill"): `wisps` loose strands
+ * lying flat (two pieces bent at the middle, tapering, one face up) in `tangles` dropped forkfuls, in a band round the
+ * rectangle x0..x1, z0..z1 out to `reach`; at `groundY`, the ground's height in the cart's level frame (a wheeled cart
+ * stands 3 cm into it, a sled 8). Outboard and desktop only: it neither fits, collides nor casts.
+ */
+interface SpillSpec {
+  readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number; readonly reach: number; readonly groundY: number;
+  readonly wisps: number; readonly len: readonly [number, number]; readonly width: readonly [number, number];
+  /** The tangles the wisps lie in (each wisp within `spread` of one), so they read as dropped forkfuls. */
+  readonly tangles: number; readonly spread: number;
+  readonly mats: readonly Mat[]; readonly salt: number;
+}
+
+function groundSpill(c: Ctx, o: SpillSpec): void {
+  if (c.coarse) return;
+  const w = o.x1 - o.x0, l = o.z1 - o.z0, perimeter = 2 * (w + l);
+  // a point of the band: round the rectangle's sides, its ends and its corners, out from it by up to `reach`
+  const place = (k: number, salt: number): [number, number] => {
+    let u = hash01(k, salt) * perimeter;
+    const out = 0.04 + o.reach * Math.pow(hash01(k, salt + 1), 1.5), along = (hash01(k, salt + 2) - 0.5) * 0.3;
+    if (u < l) return [o.x1 + out, o.z0 + u];
+    u -= l;
+    if (u < l) return [o.x0 - out, o.z0 + u];
+    u -= l;
+    if (u < w) return [o.x0 + u + along, o.z0 - out];
+    u -= w;
+    return [o.x0 + u + along, o.z1 + out];
+  };
+  const up: Vec3 = [0, 1, 0];
+  c.mesh.outboard(() => {
+    for (let k = 0; k < o.wisps; k++) {
+      const [cx, cz] = place(k % o.tangles, o.salt), ra = hash01(k, o.salt + 1) * Math.PI * 2, rr = o.spread * Math.sqrt(hash01(k, o.salt + 2));
+      const px = cx + Math.cos(ra) * rr, pz = cz + Math.sin(ra) * rr;
+      const ang = hash01(k, o.salt + 3) * Math.PI * 2, bend = (hash01(k, o.salt + 5) - 0.5) * 1.1;
+      const len = o.len[0] + (o.len[1] - o.len[0]) * hash01(k, o.salt + 7), wd = o.width[0] + (o.width[1] - o.width[0]) * hash01(k, o.salt + 9);
+      const y = o.groundY + 0.005 + 0.004 * hash01(k, o.salt + 11), m = o.mats[k % o.mats.length];
+      // its three stations: the middle, and the two ends turned by half the bend either way
+      const a0 = ang - bend / 2, a2 = ang + bend / 2, h = len / 2;
+      const P: Vec3[] = [[px - Math.cos(a0) * h, y, pz - Math.sin(a0) * h], [px, y + 0.003, pz], [px + Math.cos(a2) * h, y, pz + Math.sin(a2) * h]];
+      const dirs = [a0, ang, a2], half = [wd * 0.3, wd * 0.5, wd * 0.2];
+      const L: Vec3[] = [], R: Vec3[] = [];
+      for (let s = 0; s < 3; s++) {
+        const nx = -Math.sin(dirs[s]) * half[s], nz = Math.cos(dirs[s]) * half[s];
+        L.push([P[s][0] + nx, P[s][1], P[s][2] + nz]); R.push([P[s][0] - nx, P[s][1], P[s][2] - nz]);
+      }
+      face4(c.mesh, [L[0], R[0], R[1], L[1]], up, m);
+      face4(c.mesh, [L[1], R[1], R[2], L[2]], up, m);
+    }
+  });
 }
 
 /** A filled sack lying on its side, its length along z: a slumped pillow. */
@@ -550,6 +673,8 @@ interface Assembly {
   readonly rest?: { readonly y: number; readonly z: number; readonly pitch: number };
   /** Loose boards the wreck scatters (their size). */
   readonly debris?: { readonly w: number; readonly l: number };
+  /** Round 4: what lies on the ground about it (the load's spill), in the level frame, intact or wrecked (desktop). */
+  readonly ground?: () => void;
 }
 
 /** The pitch (+ nose down) that brings `tip` (in the level frame) to the ground, turning about the axle (y, z). */
@@ -584,6 +709,7 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
     a.body();
     a.load?.();
     mesh.pop();
+    a.ground?.();
     return;
   }
   const lefts = a.wheels.filter((w) => w.side < 0);
@@ -624,6 +750,7 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
     board(c, 0, 0, 0, d.w, 0.024, Math.min(d.l, 0.9), woodOf(c, 50 + k));
     mesh.pop();
   }
+  a.ground?.();
 }
 
 // ---------------------------------------------------------------------------------------------------- the families
@@ -1577,29 +1704,75 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
     const y = floorY + 0.015;
     if (s.load === 'hay' || s.load === 'seaweed') {
       const over = s.sides === 'ladder' ? 0.3 : 0.12;
-      if (s.load === 'hay') hayLoad(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.75, [HAY_A, HAY_B, HAY_C], 0.16);
+      // round 4 (wave 260): the straw laid over the heap carries its texture (five shades, combed along the load)
+      if (s.load === 'hay') hayLoad(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.75, [HAY_A, HAY_B, HAY_C, HAY_PALE, HAY_DARK], 0.16, 0.11, 360);
       else {
-        // (round 2, wave 153: "a single smooth untextured dark-grey ellipsoid") wrack heaped wet, its fronds over the sides
-        loaf(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.35, [SEAWEED_A, SEAWEED_B, KELP_A], { belly: 0.05, lump: 0.18, ends: 3 });
-        // its fronds: broad, short and every which way over the heap (round 3)
-        strawCoat(c, loafShape(c, 0, y, -0.04, hw + over, hl + 0.1, s.sideH + 0.35, { belly: 0.05, lump: 0.18, ends: 3 }), hl + 0.1, 170,
-          [KELP_A, KELP_B, SEAWEED_B], c.seed + 4051, { len: [0.18, 0.42], width: [0.04, 0.085], spread: 1.6 });
-        if (!c.coarse) c.mesh.dressing(() => {
-          const n = 22;
-          for (let k = 0; k < n; k++) {
-            const side = k % 2 ? 1 : -1, z = -hl + 0.15 + ((k >> 1) / Math.ceil(n / 2)) * (hl * 2 - 0.3) + (hash01(k, c.seed + 61) - 0.5) * 0.12;
-            const w = 0.05 + 0.06 * hash01(k, c.seed + 63), drop = 0.18 + 0.3 * hash01(k, c.seed + 65), m = k % 3 ? KELP_A : KELP_B;
-            // from the heap's flank out over its bulge and down the outside of the side boards
-            const rim = y + s.sideH;
-            const p: Vec3[] = [[side * (hw + over * 0.55), rim + 0.16, z], [side * (hw + over + 0.025), rim + 0.02, z + 0.02],
-              [side * (hw + over * 0.6 + 0.05), rim - drop * 0.55, z + 0.04], [side * (hw + 0.07), rim - drop, z + 0.05]];
-            for (let i = 0; i + 1 < p.length; i++) {
-              const a = p[i], b = p[i + 1], n0: Vec3 = [side, 0.6, 0];
-              face4(c.mesh, [[a[0], a[1], a[2] - w / 2], [a[0], a[1], a[2] + w / 2], [b[0], b[1], b[2] + w * 0.4], [b[0], b[1], b[2] - w * 0.4]], n0, m);
-              face4(c.mesh, [[a[0], a[1], a[2] - w / 2], [b[0], b[1], b[2] - w * 0.4], [b[0], b[1], b[2] + w * 0.4], [a[0], a[1], a[2] + w / 2]], [-n0[0], -n0[1], 0], m);
+        // (round 2, wave 153: "a single smooth untextured dark-grey ellipsoid") wrack heaped wet, its fronds over the
+        // sides; round 4 (wave 260: "one rounded olive sack with no ropes, stakes or spill, resting on the bed like a
+        // beanbag"): the wrack fills the box and heaps over its boards, held by stakes standing up out of them with a
+        // rail along their heads and two ropes over it; fronds and kelp stalks hang over every side, and what fell as
+        // it was forked up lies on the ground about the wheels (`ground`)
+        const top = y + s.sideH, hwW = hw + 0.05, hlW = hl + 0.1, wh = s.sideH + 0.5;
+        const shape: LoafOptions = { belly: 0.08, lump: 0.2, ends: 3, waist: { y: top, hw: hw - 0.045, z0: -hl + 0.045, z1: hl - 0.045 } };
+        const heap = loafShape(c, 0, y, -0.04, hwW, hlW, wh, shape);
+        loaf(c, 0, y, -0.04, hwW, hlW, wh, [SEAWEED_A, SEAWEED_B, KELP_A], { ...shape, grain: 2.5 });
+        // where the heap's flank rises clear of the boards (its coat and its ropes start there)
+        const P: Vec3 = [0, 0, 0];
+        let lo = 0, hi = Math.PI / 2;
+        for (let k = 0; k < 24; k++) { const mid = (lo + hi) / 2; if (heap(0, mid, P)[1] < top + 0.03) lo = mid; else hi = mid; }
+        const thTop = hi;
+        strawCoat(c, heap, hlW, 260, [KELP_A, KELP_B, SEAWEED_B], c.seed + 4051, { len: [0.22, 0.62], width: [0.04, 0.09], spread: 1.6, thMin: thTop });
+        for (const zn of [-0.42, 0.4]) ropeOver(c, heap, zn, top - 0.07, 0.011, thTop);
+        if (!c.coarse) {
+          // the stakes up out of the side boards, leaning out a little, a rail along their heads (outboard: the fit
+          // and the footprint stand as the box gives them)
+          const zs = [-hl + 0.06, -hl / 3, hl / 3, hl - 0.06], headY = top + 0.24;
+          c.mesh.outboard(() => {
+            for (const sx of [-1, 1]) {
+              for (const z of zs) beam(c.mesh, [sx * (hw + 0.015), top + 0.01, z], [sx * (hw + 0.04), headY, z], 0.042, 0.042, woodOf(c, 20));
+              rod(c, [sx * (hw + 0.045), headY - 0.035, zs[0] - 0.04], [sx * (hw + 0.045), headY - 0.035, zs[3] + 0.04], 0.022, woodOf(c, 21), true, 5);
             }
-          }
-        });
+          });
+          c.mesh.dressing(() => {
+            // fronds over the boards: from the heap's flank out over the top and down the outside, round all four sides
+            const n = 36;
+            for (let k = 0; k < n; k++) {
+              const drop = 0.22 + 0.5 * Math.pow(hash01(k, c.seed + 65), 0.8), w = 0.05 + 0.07 * hash01(k, c.seed + 63), m = k % 3 ? KELP_A : KELP_B;
+              let p: Vec3[], across: Vec3, out: Vec3;
+              if (k < 28) {
+                const side = k % 2 ? 1 : -1, z = -hl + 0.12 + ((k >> 1) / 14) * (2 * hl - 0.24) + (hash01(k, c.seed + 61) - 0.5) * 0.1;
+                p = [[side * (hw - 0.02), top + 0.14, z], [side * (hw + 0.07), top + 0.03, z + 0.02], [side * (hw + 0.085), top - drop * 0.5, z + 0.04],
+                  [side * (hw + 0.065), top - drop, z + 0.05]];
+                across = [0, 0, 1]; out = [side, 0.5, 0];
+              } else {
+                const end = k % 2 ? 1 : -1, x = (hash01(k, c.seed + 67) - 0.5) * (2 * hw - 0.24);
+                p = [[x, top + 0.14, end * (hl - 0.02)], [x + 0.02, top + 0.03, end * (hl + 0.065)], [x + 0.04, top - drop * 0.5, end * (hl + 0.08)],
+                  [x + 0.05, top - drop, end * (hl + 0.06)]];
+                across = [1, 0, 0]; out = [0, 0.5, end];
+              }
+              for (let i = 0; i + 1 < p.length; i++) {
+                const a = p[i], b = p[i + 1], wa = w * (1 - 0.2 * i) / 2, wb = w * (0.8 - 0.2 * i) / 2;
+                const q: Vec3[] = [[a[0] - across[0] * wa, a[1], a[2] - across[2] * wa], [a[0] + across[0] * wa, a[1], a[2] + across[2] * wa],
+                  [b[0] + across[0] * wb, b[1], b[2] + across[2] * wb], [b[0] - across[0] * wb, b[1], b[2] - across[2] * wb]];
+                face4(c.mesh, q, out, m);
+                face4(c.mesh, [q[0], q[3], q[2], q[1]], [-out[0], -out[1], -out[2]], m);
+              }
+            }
+            // kelp stalks thrown over the heap: from its crown down its flank, over the boards and hanging
+            for (let k = 0; k < 10; k++) {
+              const sx = k % 2 ? 1 : -1, zn = -0.75 + 1.5 * hash01(k, c.seed + 71), drop = 0.3 + 0.45 * hash01(k, c.seed + 73);
+              const t0 = 1.15 + 0.45 * hash01(k, c.seed + 75), t1 = thTop + 0.08, path: Vec3[] = [];
+              for (let s2 = 0; s2 <= 3; s2++) {
+                const tt = t0 + (t1 - t0) * (s2 / 3), th = sx > 0 ? tt : Math.PI - tt;
+                heap(zn, th, P);
+                path.push([P[0] + Math.cos(th) * 0.016, P[1] + Math.sin(th) * 0.016, P[2]]);
+              }
+              const ze = path[3][2];
+              path.push([sx * (hw + 0.075), top + 0.025, ze + 0.02], [sx * (hw + 0.095), top - drop, ze + 0.05]);
+              c.mesh.tube(path, 0.011, 4, SEAWEED_B, { caps: false });
+            }
+          });
+        }
       }
     } else if (s.load === 'sacks') {
       for (let k = 0; k < 6; k++) sack(c, (k % 2 ? 1 : -1) * hw * 0.48, y + (k > 3 ? 0.26 : 0), -hl * 0.55 + Math.floor((k % 4) / 2) * hl * 0.9 + (k > 3 ? hl * 0.2 : 0),
@@ -1612,7 +1785,15 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
     }
   };
   const rest = s.rest === 'shafts' ? { y: R, z: axleZ, pitch: restPitch(R, axleZ, [s.pole ? tipY - 0.25 : tipY - 0.035, tipZ]) } : undefined;
-  return { wheels, body, load, rest, debris: { w: 0.18, l: s.bedL * 0.7 } };
+  // round 4 (wave 260: "no ropes, stakes or spill"): what fell as the load was forked up, on the ground about the wheels
+  const wrack = s.load === 'seaweed';
+  const ground = wrack || s.load === 'hay' ? () => groundSpill(c, {
+    x0: -wx - 0.12, x1: wx + 0.12, z0: -hl - 0.05, z1: hl, reach: 0.65, groundY: 0.03,
+    wisps: wrack ? 30 : 18, len: wrack ? [0.25, 0.6] : [0.12, 0.32], width: wrack ? [0.035, 0.07] : [0.012, 0.026],
+    tangles: wrack ? 5 : 4, spread: wrack ? 0.2 : 0.16,
+    mats: wrack ? [KELP_B, SEAWEED_A, KELP_A] : [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5003,
+  }) : undefined;
+  return { wheels, body, load, rest, debris: { w: 0.18, l: s.bedL * 0.7 }, ground };
 }
 
 /**
@@ -1739,7 +1920,7 @@ function wagon4(c: Ctx, s: Wagon4Spec): Assembly {
   const load = s.load === 'empty' ? undefined : () => {
     const y = floorY + 0.015;
     if (s.load === 'hay') {
-      hayLoad(c, 0, y, 0, hw + s.flare + 0.14, hl + 0.28, s.sideH + 0.85, [HAY_A, HAY_B, HAY_C], 0.2);
+      hayLoad(c, 0, y, 0, hw + s.flare + 0.14, hl + 0.28, s.sideH + 0.85, [HAY_A, HAY_B, HAY_C, HAY_PALE, HAY_DARK], 0.2, 0.11, 420);
     } else if (s.load === 'sacks') {
       for (let k = 0; k < 8; k++) sack(c, (k % 2 ? 1 : -1) * hw * 0.48, y + (k > 5 ? 0.27 : 0), -hl * 0.7 + Math.floor((k % 6) / 2) * hl * 0.65, hw * 0.86, 0.27, 0.68, 0.05 * k,
         k % 2 ? BURLAP : BURLAP_DARK);
@@ -1830,22 +2011,34 @@ function runnerGrooves(c: Ctx, xs: readonly number[], z0: number, z1: number, wi
   c.runners?.push({ xs: [...xs], z0, z1, width });
 }
 
+/** How far a sled's runners lie sunk in the snow they stand in (props.ts seats a runner cart this much deeper, m). */
+export const RUNNER_SNOW_SINK_M = 0.05;
+/** Snow pressed up beside a runner: a shade off the fresh snow (compacted, in its own shadow). */
+const SNOW_COMPACT = material('cargo', linearHex(0xc8d2dc), 0.94, 0, 0, 0.7);
+
 /**
- * The snow drifted against a sled's windward runner (round 3): banked up against its outer face and running out to
- * nothing away from it, tapering at both ends, lumpy (a wedge, not a loaf: the wind piles it against anything standing
- * in the snow). Its foot sinks under the snow surface (dressing; snowbound maps, desktop).
+ * The snow a sunk runner pushed up along both its faces (round 4, wave 260: "a pale flat disc… no runner sink,
+ * compaction or drift lip"; it replaces the windward drift that read as a pasted ellipse): a low lumpy lip each side,
+ * tucked against the runner under the snow's surface, cresting 2-4 cm over it a few centimetres out and running out
+ * under it 13 cm out, tapering at both ends of the runner's run. The sled stands RUNNER_SNOW_SINK_M deeper than a
+ * cart's 3 cm (props.ts), so the snow's surface lies at y = 0.08 in its frame (dressing; snowbound maps, desktop).
  */
-function windDrift(c: Ctx, x: number, z0: number, z1: number, side: 1 | -1): void {
+function runnerLips(c: Ctx, xs: readonly number[], halfThick: number, z0: number, z1: number): void {
   if (!c.snow || c.coarse) return;
-  const nu = 10, nv = 5, seed = 977 + Math.round(x * 100), reach = 0.42, crest = 0.14;
-  // i runs along z, j outward from the runner: i x j points up on the +x side, down on the -x side
-  c.mesh.dressing(() => c.mesh.grid(nu, nv, (i, j, out) => {
-    const u = i / nu, v = j / nv, along = Math.pow(Math.sin(Math.PI * u), 0.6);
-    const lump = 1 + 0.35 * (valueNoise(u * 3.3, v * 2.1, 0.5, seed) - 0.5);
-    out[0] = x + side * (0.02 + v * reach * (0.55 + 0.45 * along));
-    out[1] = -0.025 + (crest * along * lump + 0.025) * Math.pow(1 - v, 1.5);
-    out[2] = z0 + (z1 - z0) * u;
-  }, () => SNOW_LYING, { flip: side < 0 }));
+  const ground = 0.03 + RUNNER_SNOW_SINK_M, nu = 10;
+  const across: ReadonlyArray<readonly [number, number]> = [[0.004, -0.012], [0.03, 0.03], [0.07, 0.022], [0.13, -0.014]];
+  for (const x of xs) for (const side of [-1, 1] as const) {
+    const seed = 1301 + Math.round(x * 100) + side * 7;
+    // i runs along z, j outward: i x j points up on the +x side, down on the -x side
+    c.mesh.dressing(() => c.mesh.grid(nu, across.length - 1, (i, j, out) => {
+      const u = i / nu, taper = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), 0.5);
+      const [off, rise] = across[j];
+      const lump = 0.7 + 0.6 * valueNoise(u * 5.1, j * 1.3, 0.5, seed);
+      out[0] = x + side * (halfThick + off);
+      out[1] = ground + (rise > 0 ? rise * lump * taper : rise);
+      out[2] = z0 + (z1 - z0) * u;
+    }, () => SNOW_COMPACT, { flip: side < 0 }));
+  }
 }
 
 /** Snow settled on a surface: a few uneven drifts lying on it, lumpy and thin, never one smooth lid (dressing). */
@@ -1863,11 +2056,11 @@ function snowCover(c: Ctx, x: number, y: number, z: number, hw: number, hl: numb
  * A rope over a heap at zn (round 3: "ropes over the load"): over its surface 1.5 cm proud from foot to foot, its ends
  * down to the frame at `footY` (dressing).
  */
-function ropeOver(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, zn: number, footY: number, r = 0.012): void {
+function ropeOver(c: Ctx, at: (zn: number, th: number, out: Vec3) => Vec3, zn: number, footY: number, r = 0.012, th0 = 0.04): void {
   if (c.coarse) return;
   const path: Vec3[] = [], P: Vec3 = [0, 0, 0], Q: Vec3 = [0, 0, 0];
   for (let k = 0; k <= 12; k++) {
-    const th = 0.04 + (k / 12) * (Math.PI - 0.08);
+    const th = th0 + (k / 12) * (Math.PI - 2 * th0);
     at(zn, th, P); at(zn, th + 0.02, Q);
     // outward from the heap's axis by the rope's radius and a little more
     const ox = Math.cos(th), oy = Math.sin(th);
@@ -1942,8 +2135,9 @@ function sledge(c: Ctx, s: SledgeSpec): Assembly {
         { belly: 0, lump: 0.14, ends: q, seed: 211 }));
     } else firewood(c, 0, bedY + 0.04, -hl * 0.1, s.bedW * 0.95, s.bedL * 0.8, 4);
   };
-  runnerGrooves(c, [-rw, rw], -hl - 2.4, hl + 0.2, 0.09);
-  windDrift(c, rw, -hl, hl * 0.5, 1);
+  // (wave 260: "two ruler-straight hairlines") the troughs a hand wide, out 5 m behind it (the props bend them)
+  runnerGrooves(c, [-rw, rw], -hl - 5.0, hl + 0.2, 0.14);
+  runnerLips(c, [-rw, rw], 0.04, -hl, hl * 0.75);
   return { wheels: [], body, load, debris: { w: 0.16, l: 1.4 } };
 }
 
@@ -2014,9 +2208,14 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     // snow lodged on the open slats ahead of the load and behind it
     snowCover(c, 0, deckY + 0.03, hl * 0.33, rw * 0.85, hl * 0.12, 0.04);
     snowCover(c, 0, deckY + 0.03, -hl * 0.85, rw * 0.85, hl * 0.1, 0.035);
-    runnerGrooves(c, [-rw, rw], -hl - 2.2, hl * 0.6, 0.06);
-    windDrift(c, rw, -hl, hl * 0.3, 1);
-    return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 } };
+    runnerGrooves(c, [-rw, rw], -hl - 4.6, hl * 0.6, 0.12);
+    runnerLips(c, [-rw, rw], 0.028, -hl, hl * 0.4);
+    // round 4 (wave 260): straw dropped about it and along its track, clear of the snow its runners pushed up
+    const ground = s.load === 'hay' ? () => groundSpill(c, {
+      x0: -rw - 0.15, x1: rw + 0.15, z0: -hl, z1: hl * 0.5, reach: 0.5, groundY: 0.03 + RUNNER_SNOW_SINK_M,
+      wisps: 16, len: [0.12, 0.3], width: [0.012, 0.024], tangles: 4, spread: 0.14, mats: [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5011,
+    }) : undefined;
+    return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 }, ground };
   }
   // the komatik: plank runners on edge with turned-up noses, plastic shoes, cross slats lashed on, a handle frame
   const top = 0.19;
@@ -2096,8 +2295,8 @@ function sled(c: Ctx, s: SledSpec): Assembly {
       snowCover(c, 0, top + 0.37, -hl * 0.4, s.width * 0.3, 0.2, 0.04);
     } else firewood(c, 0, top + 0.025, 0, s.width * 0.9, s.len * 0.7, 2);
   };
-  runnerGrooves(c, [-rw, rw], -hl - 2.6, hl + 0.3, 0.07);
-  windDrift(c, rw, -hl, hl * 0.4, 1);
+  runnerGrooves(c, [-rw, rw], -hl - 5.0, hl + 0.3, 0.13);
+  runnerLips(c, [-rw, rw], 0.022, -hl, hl * 0.78);
   return { wheels: [], body, load, debris: { w: 0.07, l: 0.8 } };
 }
 
@@ -2111,6 +2310,7 @@ function wreckSled(c: Ctx, a: Assembly, halfWidth: number, spill = 1.9): void {
     a.load();
     c.mesh.pop();
   }
+  a.ground?.();
 }
 
 // ---------------------------------------------------------------------------------------------------- dispatch

@@ -94,9 +94,12 @@ function auditBoat(boat, field) {
     if (p.getY(i) <= low + 0.16) minGap = Math.min(minGap, gap);
     maxGap = Math.max(maxGap, gap);
   }
-  assert.ok(minGap >= -.039 - 1e-9, `the keel and bilge seat shallowly, never buried: ${minGap}`);
+  // round 4 (the map-vehicles lane, wave 260: the Mangrove hull "placed rather than beached… no sink"): a river
+  // landing's hauled-out hull (its receipt carries `mud`) lies sunk 9 cm in its mud; a beach's boat seats as before
+  const sink = receipt.mud ? .09 : .035;
+  assert.ok(minGap >= -sink - .004 - 1e-9, `the keel and bilge seat shallowly, never buried: ${minGap}`);
   assert.ok(maxGap > .25, 'the upper strakes and gunwales stand clear of the beach');
-  assert.ok(Math.abs(receipt.baseClearance + .035) < 1e-12);
+  assert.ok(Math.abs(receipt.baseClearance + sink) < 1e-12);
   return { minGap, maxGap };
 }
 

@@ -39,7 +39,13 @@ const ROOF_GREY = material('paint', linearHex(0x5c5a56), 0.82, 0, 0, 1);
 const TANK_BLACK = material('paint', [0.03, 0.03, 0.03], 0.5, 0.2, 0, 1);
 const V60_RED = material('paint', linearHex(0x7a1c22), 0.5, 0.05, 0, 1);
 // (round 3, wave 234: "coupling rods") the rods and crank pins worn bright, so they read against the black frame
-const V60_ROD = material('steel', linearHex(0x77726a), 0.42, 0.7, 0, 1);
+// (round 4, wave 260: "no coupling rods, jackshaft…": the stock's baked material reads colours alone, so worn steel is
+// a pale grey, the rods bright against the frame and the wheels)
+const V60_ROD = material('steel', linearHex(0xa29d93), 0.42, 0.7, 0, 1);
+/** Round 4 (wave 260: "no… handrails"): the handrails a light galvanised grey that reads on the red and the black. */
+const HANDRAIL = material('steel', linearHex(0xc4c2ba), 0.5, 0.4, 0, 0.8);
+/** Round 4: the buffer heads' greased faces, worn bright. */
+const BUFFER_FACE = material('steel', linearHex(0x8e8a82), 0.4, 0.6, 0, 0.6);
 const GLASS = material('glass', [0.02, 0.024, 0.028], 0.06, 0, 0, 0.2);
 const WARN_YELLOW = material('paint', linearHex(0xd0a020), 0.6, 0, 0, 1);
 const COAL = material('cargo', [0.016, 0.0155, 0.015], 0.62, 0, 0, 0.3);
@@ -66,6 +72,13 @@ const RAIL_GREY = material('steel', linearHex(0x6a6862), 0.55, 0.35, 0, 0.8);
 const STRAP_GREY = material('steel', linearHex(0x48463f), 0.6, 0.3, 0, 0.8);
 const OIL_STAIN = material('paint', linearHex(0x241a12), 0.28, 0, 0, 0.3);
 const ROAD_DUST = material('paint', linearHex(0x3c352d), 0.92, 0, 0, 0.4);
+// round 4 (wave 260: the tank wagons "smooth black cylinders with a uniform gradient and no ladders, catwalks, riveted
+// bands, drips or rust"; the baked material reads colours alone, so a black barrel's detail has to be told in shades):
+// the riveted seams a lighter black, the product dried down the barrel a tan residue, the rust under the bands orange
+const TANK_BAND = material('paint', [0.075, 0.07, 0.064], 0.6, 0.2, 0, 1);
+const PRODUCT_STAIN = material('paint', linearHex(0x6b5a3e), 0.6, 0, 0, 0.4);
+const RUST_STREAK = material('paint', linearHex(0x7a4626), 0.85, 0, 0, 0.5);
+const GRATING = material('steel', linearHex(0x7c7a72), 0.6, 0.3, 0, 0.8);
 
 // ---------------------------------------------------------------------------------------------------- helpers
 
@@ -225,9 +238,18 @@ function tankWeathering(mesh: VehicleMesh, coarse: boolean, axisY: number, R: nu
       const z = (hash2(k, seed + (side > 0 ? 1 : 2)) - 0.5) * domeR * 2.2, w = 0.06 + 0.1 * hash2(k, seed + 3);
       const run = 0.45 + 0.75 * hash2(k, seed + 4);
       const a0 = side > 0 ? Math.PI / 2 - 0.12 : Math.PI / 2 + 0.12, a1 = side > 0 ? a0 - run : a0 + run;
-      barrelPatch(mesh, axisY, R, z - w / 2, z + w / 2, a0, a1, 0.005, OIL_STAIN, 4);
+      // round 4: the product dried where it ran, a tan residue on the black (a dark stain never showed on it)
+      barrelPatch(mesh, axisY, R, z - w / 2, z + w / 2, a0, a1, 0.005, PRODUCT_STAIN, 4);
+    }
+    // round 4 (wave 260: "no… rust"): rust bleeding from the seams and the straps down the upper flank
+    for (let k = 0; k < 3; k++) {
+      const z = (hash2(k, seed + (side > 0 ? 11 : 12)) - 0.5) * half * 1.7, w = 0.04 + 0.06 * hash2(k, seed + 13);
+      const a0 = side > 0 ? 0.55 : Math.PI - 0.55, run = 0.5 + 0.5 * hash2(k, seed + 14), a1 = side > 0 ? a0 - run : a0 + run;
+      barrelPatch(mesh, axisY, R, z - w / 2, z + w / 2, a0, a1, 0.006, RUST_STREAK, 3);
     }
   }
+  // the coal dust settled on the crown, end to end
+  barrelPatch(mesh, axisY, R, -half, half, Math.PI / 2 - 0.55, Math.PI / 2 + 0.55, 0.003, ROAD_DUST, 4);
 }
 
 /** Handrails along a walkway from z0 to z1 at x (both sides of it), posts every metre or so. Dressing. */
@@ -371,7 +393,8 @@ function underframe(mesh: VehicleMesh, frameHalf: number, width: number, y: numb
     for (const side of [1, -1]) {
       mesh.push().translate(side * 0.875, 1.06, z).rotateY(end > 0 ? -Math.PI / 2 : Math.PI / 2);
       mesh.lathe([[0.12, 0.0], [0.11, reach * 0.55], [0.08, reach * 0.55], [0.08, reach - 0.04]], 8, () => FRAME_BLACK);
-      mesh.lathe([[0.0001, reach - 0.05], [0.2, reach - 0.05], [0.21, reach - 0.02], [0.19, reach], [0.0001, reach + 0.005]], 10, () => WHEEL_STEEL);
+      mesh.lathe([[0.0001, reach - 0.05], [0.2, reach - 0.05], [0.21, reach - 0.02], [0.19, reach], [0.0001, reach + 0.005]], 10,
+        (k) => (k >= 2 ? BUFFER_FACE : WHEEL_STEEL));
       mesh.pop();
     }
     // the coupling hook and its screw link hanging
@@ -710,89 +733,159 @@ function tank(mesh: VehicleMesh, coarse: boolean): void {
     mesh.box(0, floorY + 0.12, z, W - 0.3, 0.24, 0.3, FRAME_BLACK, 0.01);
     if (!coarse) mesh.dressing(() => {
       const strap: Vec3[] = [];
-      for (let k = 0; k <= 10; k++) { const a = Math.PI * (k / 10); strap.push([Math.cos(a) * (R + 0.012), axisY + Math.sin(a) * (R + 0.012), z]); }
-      mesh.tube(strap, 0.012, 4, STRAP_GREY, { caps: true });
+      for (let k = 0; k <= 10; k++) { const a = Math.PI * (k / 10); strap.push([Math.cos(a) * (R + 0.018), axisY + Math.sin(a) * (R + 0.018), z]); }
+      mesh.tube(strap, 0.02, 4, RAIL_GREY, { caps: true });
     });
   }
-  // the dome and its manhole, the walkway along the top with its rails, a ladder up one side (round 3: the dome upright
-  // and outward; it lay on its side, inside out, the lathe turning about x)
+  // (round 4, wave 260: "no… riveted bands") the barrel's riveted seams, raised rings a shade lighter than the black
+  if (!coarse) {
+    for (const z of [-3.3, -1.5, 1.5, 3.3]) {
+      mesh.push().translate(0, axisY, z).rotateY(Math.PI / 2);
+      mesh.lathe([[R + 0.002, -0.04], [R + 0.016, -0.022], [R + 0.016, 0.022], [R + 0.002, 0.04]], 12, () => TANK_BAND);
+      mesh.pop();
+    }
+  }
+  // the dome and its manhole (round 3: the dome upright and outward; it lay on its side, inside out, the lathe turning
+  // about x); (round 4, wave 260: "no ladders, catwalks") the railed platform round the dome, and a ladder up each side
+  // from the solebar to it, bent over the barrel's shoulder
   mesh.push().translate(0, axisY + R - 0.05, 0).rotateZ(Math.PI / 2);
   mesh.lathe([[0.36, 0], [0.36, 0.38], [0.3, 0.44], [0.0001, 0.46]], coarse ? 10 : 16, () => TANK_BLACK);
   mesh.pop();
-  mesh.box(0, axisY + R + 0.02, 1.4, 0.5, 0.04, 2.0, RAIL_GREY, 0);
-  for (const side of [1, -1]) beam(mesh, [side * 0.2, axisY + R + 0.04, 0.6], [side * 0.2, axisY + R + 0.4, 0.6], 0.03, 0.03, RAIL_GREY);
-  // (the rails stay inside the wagon's loading-gauge record: a low guard rail round the dome platform)
-  walkwayRails(mesh, coarse, [-0.26, 0.26], axisY + R + 0.04, 0.45, 2.35, 0.42, RAIL_GREY);
-  for (const side of [1, -1]) beam(mesh, [side * 0.22, floorY + 0.25, half + 0.15], [side * 0.22, axisY + R, half - 0.25], 0.04, 0.03, RAIL_GREY);
-  for (let k = 1; k <= 5; k++) {
-    const t = k / 6;
-    mesh.box(0, floorY + 0.25 + t * (axisY + R - floorY - 0.25), half + 0.15 - t * 0.4, 0.44, 0.025, 0.03, RAIL_GREY, 0);
+  const deck = axisY + R + 0.03, P = 0.7;
+  mesh.box(0, deck, 0, P * 2, 0.04, P * 2, GRATING, 0);
+  for (const end of [1, -1]) for (const sx of [1, -1]) beam(mesh, [sx * 0.55, axisY + R * 0.82, end * 0.55], [sx * 0.55, deck - 0.02, end * 0.55], 0.04, 0.04, FRAME_BLACK);
+  if (!coarse) mesh.dressing(() => {
+    const top = deck + 0.42, rail = (a: Vec3, b: Vec3) => mesh.tube([a, b], 0.018, 4, HANDRAIL, { caps: true });
+    for (const end of [1, -1]) rail([-P, top, end * P], [P, top, end * P]);
+    // the sides' rails stop short of the ladders' heads (at z 0.15-0.55)
+    for (const sx of [1, -1]) rail([sx * P, top, -P], [sx * P, top, 0.1]);
+    for (const sx of [1, -1]) for (const end of [1, -1]) mesh.box(sx * P, deck + 0.21, end * P, 0.03, 0.42, 0.03, HANDRAIL, 0);
+    for (const sx of [1, -1]) mesh.box(sx * P, deck + 0.21, 0.1, 0.03, 0.42, 0.03, HANDRAIL, 0);
+  });
+  for (const sx of [1, -1]) {
+    const lad = (dz: number): Vec3[] => [[sx * 1.2, floorY + 0.12, 0.35 + dz], [sx * 1.2, axisY + 0.25, 0.35 + dz],
+      [sx * 1.02, axisY + 0.78, 0.35 + dz], [sx * (P + 0.06), deck + 0.02, 0.35 + dz]];
+    for (const dz of [-0.2, 0.2]) mesh.tube(lad(dz), 0.018, 4, HANDRAIL, { caps: !coarse });
+    for (let k = 0; k < 6; k++) {
+      const y = floorY + 0.35 + k * 0.33;
+      if (y > axisY + 0.25) break;
+      mesh.box(sx * 1.2, y, 0.35, 0.03, 0.03, 0.4, HANDRAIL, 0);
+    }
   }
   tankWeathering(mesh, coarse, axisY, R, half, 0.36, 5);
   tankFittings(mesh, coarse, axisY, R, half, 0.36, axisY + R - 0.05 + 0.46);
+}
+
+/**
+ * A hood (or a cab) with its roof's edges rounded (round 4, wave 260: the V60 "a flat-shaded red box"): its section
+ * swept along z from z0 to z1 and both ends closed, `rc` the roof edges' radius; it stands on y0, h tall, w wide.
+ */
+function roundedHood(mesh: VehicleMesh, coarse: boolean, z0: number, z1: number, y0: number, h: number, w: number, rc: number, m: Mat): void {
+  const n = coarse ? 2 : 4, section: [number, number][] = [[w / 2, 0]];
+  for (let k = 0; k <= n; k++) { const a = (k / n) * (Math.PI / 2); section.push([w / 2 - rc + Math.cos(a) * rc, h - rc + Math.sin(a) * rc]); }
+  for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + (k / n) * (Math.PI / 2); section.push([-w / 2 + rc + Math.cos(a) * rc, h - rc + Math.sin(a) * rc]); }
+  section.push([-w / 2, 0]);
+  mesh.sweep([[0, y0, z0], [0, y0, z1]], section, () => m);
+  for (const [z, s] of [[z1, 1], [z0, -1]] as const) {
+    const pts = section.map(([x, y]) => [x, y0 + y, z] as Vec3);
+    mesh.polygon(s > 0 ? pts : [...pts].reverse(), m);
+  }
 }
 
 function v60(mesh: VehicleMesh, coarse: boolean): void {
   const L = ROLLING_STOCK_LENGTH.v60, W = ROLLING_STOCK_BODY.v60.w, frameHalf = 4.6, frameTop = 1.42;
   const r = 0.625;
   // three coupled axles on plain disc wheels, the jackshaft behind the last, the coupling rods outside
+  // (round 4, wave 260: "three bare wheels… no coupling rods, jackshaft": the solebars hung 0.62 m deep and an outside
+  // plate frame over the wheels hid the rods and the upper wheels; the frame now stands over the running gear as the
+  // locomotive's does, its plates inside the wheels, so the wheels, the cranks and the rods show whole)
   for (const z of [-2.2, 0, 2.2]) wheelset(mesh, z, r, false);
-  underframe(mesh, frameHalf, W, frameTop, 0.62, L);
+  underframe(mesh, frameHalf, W, frameTop, 0.25, L);
+  const pin = r + 0.22, xCrank = 0.85, xPin = 0.9, xRod = 0.94;
   for (const side of [1, -1]) {
-    const x = side * 1.12;
-    // the plate frame's side over the wheels (the axle boxes inside it), the crank pins and the rod
-    mesh.box(side * 1.0, frameTop - 0.4, 0, 0.05, 0.8, frameHalf * 2 - 0.3, FRAME_BLACK, 0);
+    // the inner frame plates, the jackshaft's gear case between them
+    mesh.box(side * 0.55, frameTop - 0.45, 0, 0.05, 0.6, frameHalf * 2 - 0.6, FRAME_BLACK, 0);
+    // a crank on each axle end and on the jackshaft, its pin at the top, the rod over the pins with its bosses
     for (const z of [-2.2, 0, 2.2, -3.5]) {
-      mesh.push().translate(x, r, z);
-      mesh.lathe([[0.0001, -0.06], [0.11, -0.06], [0.11, 0.06], [0.0001, 0.06]], 8, () => V60_ROD);
+      const jack = z === -3.5;
+      if (jack) {
+        // the jackshaft's crank disc, its counterweight opposite the pin
+        mesh.push().translate(side * (xCrank - 0.02), r, z).scale(side, 1, 1);
+        mesh.lathe([[0.36, -0.03], [0.36, 0.03], [0.0001, 0.03]], coarse ? 10 : 14, () => FRAME_BLACK);
+        mesh.pop();
+        mesh.box(side * (xCrank + 0.02), r - 0.2, z, 0.04, 0.16, 0.42, GEAR_STEEL, 0);
+      }
+      // the crank's web from the axle's boss up to the pin (the pin itself under the rod's boss); the bosses face out
+      // (their backs against the wheel and the rod never show)
+      beam(mesh, [side * xCrank, r - 0.06, z], [side * (xPin + 0.02), pin + 0.06, z], 0.05, 0.15, GEAR_STEEL);
+      mesh.push().translate(side * xCrank, r, z).scale(side, 1, 1);
+      mesh.lathe([[0.11, -0.04], [0.11, 0.04], [0.0001, 0.04]], 8, () => GEAR_STEEL);
+      mesh.pop();
+      mesh.push().translate(side * (xRod + 0.03), pin, z).scale(side, 1, 1);
+      mesh.lathe([[0.1, -0.02], [0.1, 0.02], [0.0001, 0.02]], coarse ? 6 : 10, () => V60_ROD);
       mesh.pop();
     }
-    beam(mesh, [x + side * 0.05, r + 0.22, -3.5], [x + side * 0.05, r + 0.22, 2.2], 0.05, 0.12, V60_ROD);
-    // (round 3, wave 234: "steps") the end steps: two treads, worn bright, between their hangers at each corner
+    beam(mesh, [side * xRod, pin, -3.5], [side * xRod, pin, 2.2], 0.05, 0.17, V60_ROD);
+    // the jackshaft's gear case behind the frame, between the plates
+    if (side > 0) mesh.box(0, r + 0.15, -3.5, 1.05, 0.7, 0.62, FRAME_BLACK, coarse ? 0 : 0.03);
+    // (round 3, wave 234: "steps") the end steps: two treads, worn bright, between their hangers at each corner; (round
+    // 4, wave 260: "no handrails") a handrail up beside each, turning in over the walkway
     for (const end of [1, -1]) {
       const xs = side * (W / 2 - 0.15), zs = end * (frameHalf - 0.35);
       for (const y of [0.42, 0.88]) mesh.box(xs, y, zs, 0.3, 0.04, 0.38, GEAR_STEEL, 0);
       for (const s2 of [-1, 1]) mesh.box(xs, (0.38 + frameTop) / 2, zs + s2 * 0.2, 0.3, frameTop - 0.38, 0.025, FRAME_BLACK, 0);
+      if (!coarse) mesh.dressing(() => {
+        const x = side * (W / 2 - 0.04), z = zs - end * 0.24;
+        mesh.tube([[x, 0.62, z], [x, frameTop + 0.95, z], [x - side * 0.3, frameTop + 0.95, z]], 0.02, 5, HANDRAIL, { caps: true });
+      });
     }
+    // the deeper buffer beams at the ends (the buffers stand on them)
+    for (const end of [1, -1]) if (side > 0) mesh.box(0, (0.86 + frameTop) / 2, end * (frameHalf - 0.06), W - 0.1, frameTop - 0.86, 0.12, FRAME_BLACK, 0.01);
   }
   // the walkway plate over the frame, the long hood ahead, the cab, the short hood astern
   mesh.box(0, frameTop + 0.02, 0, W, 0.05, frameHalf * 2, FRAME_BLACK, 0.01);
+  const RC = 0.3;
   const hood = (z0: number, z1: number, h: number, w: number) => {
-    mesh.box(0, frameTop + h / 2, (z0 + z1) / 2, w, h, z1 - z0, V60_RED, coarse ? 0 : 0.06);
+    roundedHood(mesh, coarse, z0, z1, frameTop, h, w, RC, V60_RED);
     // its louvres and doors
     if (!coarse) mesh.dressing(() => {
       for (const side of [1, -1]) for (let k = 0; k < Math.floor((z1 - z0) / 0.7); k++) {
-        mesh.box(side * (w / 2 + 0.004), frameTop + h * 0.55, z0 + 0.35 + k * 0.7, 0.008, h * 0.5, 0.5, linearMat(0x5a1418), 0);
+        mesh.box(side * (w / 2 + 0.004), frameTop + h * 0.5, z0 + 0.35 + k * 0.7, 0.008, h * 0.42, 0.5, linearMat(0x5a1418), 0);
       }
     });
     // (round 2, wave 152: "a toy", "no handrails… or grime") the grab rail along each side on its brackets, the
-    // working grime low on the hood and streaks down from its roof
+    // working grime low on the hood and streaks down from its roof's edge
     for (const side of [1, -1]) {
-      weatherPanel(mesh, coarse, side, w / 2 + 0.009, frameTop + 0.05, frameTop + h, z0 + 0.05, z1 - 0.05, (side > 0 ? 51 : 53) + Math.round(z0), linearMat(0x4a1c18));
+      weatherPanel(mesh, coarse, side, w / 2 + 0.009, frameTop + 0.05, frameTop + h - RC, z0 + 0.05, z1 - 0.05, (side > 0 ? 51 : 53) + Math.round(z0), linearMat(0x4a1c18));
       if (!coarse) mesh.dressing(() => {
-        const x = side * (w / 2 + 0.07), y = frameTop + h * 0.32;
-        mesh.tube([[x, y, z0 + 0.25], [x, y, z1 - 0.25]], 0.016, 5, RAIL_GREY, { caps: true });
+        const x = side * (w / 2 + 0.08), y = frameTop + h * 0.32;
+        mesh.tube([[x, y, z0 + 0.25], [x, y, z1 - 0.25]], 0.022, 5, HANDRAIL, { caps: true });
         const n = Math.max(2, Math.round((z1 - z0) / 1.2) + 1);
         for (let k = 0; k < n; k++) {
           const z = z0 + 0.25 + ((z1 - z0 - 0.5) * k) / (n - 1);
-          mesh.box(side * (w / 2 + 0.035), y, z, 0.07, 0.025, 0.025, RAIL_GREY, 0);
+          mesh.box(side * (w / 2 + 0.04), y, z, 0.08, 0.03, 0.03, HANDRAIL, 0);
         }
       });
     }
   };
   hood(0.55, 4.45, 2.0, 1.85);
   hood(-4.4, -2.0, 1.65, 1.85);
-  // the radiator grille at the long hood's nose, the exhaust stack and the headlamps
+  // the radiator grille at the long hood's nose; (round 4, wave 260: "no… exhaust") the exhaust stack, a flared pipe
+  // standing proud of the hood's roof, sooted
   mesh.box(0, frameTop + 1.0, 4.46, 1.5, 1.4, 0.03, FRAME_BLACK, 0);
-  mesh.push().translate(0, frameTop + 2.0, 2.4).rotateZ(Math.PI / 2);
-  mesh.lathe([[0.0001, 0], [0.09, 0], [0.09, 0.32], [0.0001, 0.32]], 8, () => FRAME_BLACK);
+  mesh.push().translate(0, frameTop + 1.98, 2.4).rotateZ(Math.PI / 2);
+  mesh.lathe([[0.16, 0], [0.13, 0.06], [0.12, 0.34], [0.15, 0.42], [0.0001, 0.42]], coarse ? 8 : 12, () => SOOT);
   mesh.pop();
-  // the cab: sides with windows, the roof's crown, the end windows over the hoods
+  // the cab: its section rounded as the hoods', windows in its sides and ends, the roof sheet on its crown
   const cz0 = -2.0, cz1 = 0.55, cabTop = 4.0;
-  mesh.box(0, frameTop + (cabTop - frameTop) / 2, (cz0 + cz1) / 2, W - 0.1, cabTop - frameTop, cz1 - cz0, V60_RED, coarse ? 0 : 0.05);
-  mesh.box(0, cabTop + 0.08, (cz0 + cz1) / 2, W - 0.02, 0.16, cz1 - cz0 + 0.2, FRAME_BLACK, coarse ? 0 : 0.06);
+  roundedHood(mesh, coarse, cz0, cz1, frameTop, cabTop - frameTop, W - 0.1, 0.32, V60_RED);
+  mesh.box(0, cabTop + 0.015, (cz0 + cz1) / 2, W - 0.8, 0.03, cz1 - cz0 + 0.12, FRAME_BLACK, 0);
   for (const side of [1, -1]) {
     for (const z of [-1.35, -0.3]) mesh.box(side * ((W - 0.1) / 2 + 0.006), cabTop - 0.75, z, 0.012, 0.75, 0.75, GLASS, 0);
+    // the cab door's grab handles either side of it
+    if (!coarse) mesh.dressing(() => {
+      for (const z of [cz0 + 0.12, cz1 - 0.12]) mesh.tube([[side * ((W - 0.1) / 2 + 0.06), frameTop + 0.4, z], [side * ((W - 0.1) / 2 + 0.06), frameTop + 1.7, z]], 0.018, 5, HANDRAIL, { caps: true });
+    });
   }
   for (const end of [1, -1]) {
     for (const x of [-0.85, 0.85]) mesh.box(x, cabTop - 0.7, end > 0 ? cz1 + 0.006 : cz0 - 0.006, 0.6, 0.65, 0.012, GLASS, 0);
@@ -800,13 +893,18 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
   // the buffer beams' warning stripes
   if (!coarse) mesh.dressing(() => {
     for (const end of [1, -1]) for (let k = 0; k < 6; k++) {
-      mesh.box(-1.25 + k * 0.5, frameTop - 0.3, end * (frameHalf + 0.065), 0.24, 0.5, 0.01, WARN_YELLOW, 0);
+      mesh.box(-1.25 + k * 0.5, frameTop - 0.28, end * (frameHalf + 0.005), 0.24, 0.5, 0.01, WARN_YELLOW, 0);
     }
   });
-  for (const end of [1, -1]) for (const x of [-0.75, 0.75]) {
-    mesh.push().translate(x, frameTop + (end > 0 ? 1.7 : 1.45), end > 0 ? 4.46 : -4.41).rotateY(end > 0 ? -Math.PI / 2 : Math.PI / 2);
-    mesh.lathe([[0.12, 0], [0.12, 0.08], [0.0001, 0.1]], 8, () => linearMat(0xd8d2b8));
-    mesh.pop();
+  // (round 4, wave 260: "no… lamps") the DB's three: two low at the hood end's corners under the grille, one high in
+  // the middle of it, each in its black housing
+  for (const end of [1, -1]) {
+    const zEnd = end > 0 ? 4.46 : -4.41, hEnd = end > 0 ? 2.0 : 1.65;
+    for (const [x, y] of [[-0.72, frameTop + 0.2], [0.72, frameTop + 0.2], [0, frameTop + hEnd - 0.32]] as const) {
+      mesh.push().translate(x, y, zEnd).rotateY(end > 0 ? -Math.PI / 2 : Math.PI / 2);
+      mesh.lathe([[0.14, -0.04], [0.14, 0.08], [0.0001, 0.1]], 8, (k) => (k >= 1 ? linearMat(0xe6dfc4) : FRAME_BLACK));
+      mesh.pop();
+    }
   }
   // (round 3, wave 234: "a horn") the two-tone horns on the cab roof, one each way
   for (const end of [1, -1]) {
@@ -827,14 +925,22 @@ function v60(mesh: VehicleMesh, coarse: boolean): void {
     // the exhaust's soot on the long hood's top, drawn out astern
     const yTop = frameTop + 2.0 + 0.004, up: Vec3 = [0, 1, 0], ring: Vec3[] = [];
     for (let k = 0; k < 7; k++) {
-      const t = (k / 7) * Math.PI * 2, rr = 0.3 + 0.14 * hash2(k, 61), back = Math.sin(t) < 0 ? 2.4 : 1.0;
-      ring.push([Math.cos(t) * rr, yTop, 2.4 + Math.sin(t) * rr * back]);
+      const t = (k / 7) * Math.PI * 2, rr = 0.34 + 0.16 * hash2(k, 61), back = Math.sin(t) < 0 ? 2.6 : 1.0;
+      ring.push([Math.cos(t) * Math.min(rr, 0.6), yTop, 2.4 + Math.sin(t) * rr * back]);
     }
     for (let k = 0; k < 7; k++) {
       const a: Vec3 = [0, yTop, 2.4], b = ring[k], c = ring[(k + 1) % 7];
       const flip = dotV(crossV(sub(b, a), sub(c, a)), up) < 0;
       const va = mesh.vert(a[0], a[1], a[2], 0, 1, 0, SOOT), vb = mesh.vert(b[0], b[1], b[2], 0, 1, 0, SOOT), vc = mesh.vert(c[0], c[1], c[2], 0, 1, 0, SOOT);
       if (flip) mesh.tri(va, vc, vb); else mesh.tri(va, vb, vc);
+    }
+    // (round 4, wave 260: "no… grime") oil weeping down the hood sides from the louvres, and the fuel filler's spill
+    for (const side of [1, -1]) {
+      for (let k = 0; k < 5; k++) {
+        const z = 0.9 + k * 0.72 + 0.2 * hash2(k, side > 0 ? 81 : 83), w = 0.05 + 0.05 * hash2(k, 85), top = frameTop + 2.0 * 0.29;
+        const len = 0.25 + 0.3 * hash2(k, 87), x = side * (1.85 / 2 + 0.013);
+        face4(mesh, [[x, top, z - w / 2], [x, top, z + w / 2], [x, top - len, z + w * 0.15], [x, top - len, z - w * 0.15]], [side, 0, 0], OIL_STAIN);
+      }
     }
   });
 }

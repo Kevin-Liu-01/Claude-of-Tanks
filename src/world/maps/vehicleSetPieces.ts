@@ -49,6 +49,16 @@ const DARK = material('trim', [0.03, 0.03, 0.032], 0.55, 0, 0, 0.6);
 const GLASS = material('glass', [0.02, 0.024, 0.028], 0.06, 0, 0, 0.2);
 const BLACK_STEEL = material('steel', [0.035, 0.033, 0.031], 0.6, 0.4, 0, 1);
 const RUSTY = material('steel', [0.09, 0.06, 0.04], 0.75, 0.25, 0, 1);
+// round 4 (wave 260: the LRV "a crude assembly of boxes and plates with a dark flat dish, plate seats and solid dark
+// wheel discs, with no wire-mesh wheels, gold foil, hand controller or dust coating"; the painted bucket reads colours
+// alone, so the materials tell it in shades): the zinc-coated piano wire bright, the weave's gaps dark; the titanium
+// chevrons brighter still; the Kapton foil in two golds as it crinkles; the umbrella dish's silvered mesh pale
+const WIRE_BRIGHT = material('steel', [0.52, 0.525, 0.53], 0.5, 0.8, 0, 0.5);
+const WIRE_GAP = material('trim', [0.24, 0.24, 0.245], 0.8, 0, 0, 0.6);
+const TITANIUM_BRIGHT = material('chrome', [0.62, 0.62, 0.6], 0.3, 0.9, 0, 0.4);
+const GOLD_DIM = material('chrome', [0.36, 0.22, 0.045], 0.35, 0.9, 0, 0.2);
+const DISH_MESH = material('paint', linearHex(0xd8d8d2), 0.5, 0.2, 0, 0.5);
+const SEAT_WEB_DARK = material('canvas', linearHex(0x8c8c86), 0.85, 0, 0, 0.5);
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const crossV = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -86,6 +96,63 @@ function tubeRod(mesh: VehicleMesh, a: Vec3, b: Vec3, r: number, m: Mat, segs = 
   mesh.tube([a, b], r, segs, m, { caps: true });
 }
 
+function hashSP(a: number, b: number): number {
+  let h = Math.imul(a | 0, 0x9e3779b1) ^ Math.imul(b | 0, 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 13), 0x297a2d39);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * A box wrapped in Kapton foil (round 4, wave 260: "no… gold foil"): its five open faces (the sixth lies on what it
+ * stands on) each a 3 x 3 grid of facets, every vertex pushed in or out along the face a few millimetres, the facets
+ * flat-shaded in two golds as the crinkled foil catches the sun.
+ */
+function foilBox(mesh: VehicleMesh, x: number, y: number, z: number, w: number, h: number, d: number, seed: number): void {
+  const half: Vec3 = [w / 2, h / 2, d / 2], N = 3;
+  const faces: [number, number][] = [[0, 1], [0, -1], [1, 1], [2, 1], [2, -1]];
+  for (const [axis, sign] of faces) {
+    const ua = (axis + 1) % 3, va = (axis + 2) % 3;
+    const at = (i: number, j: number): Vec3 => {
+      const p: Vec3 = [x, y, z];
+      p[axis] += sign * half[axis];
+      p[ua] += (-1 + (2 * i) / N) * half[ua];
+      p[va] += (-1 + (2 * j) / N) * half[va];
+      const edge = i === 0 || j === 0 || i === N || j === N;
+      if (!edge) p[axis] += sign * (hashSP(i * 7 + j, seed + axis * 13 + sign) - 0.45) * 0.014;
+      return p;
+    };
+    const n: Vec3 = [0, 0, 0];
+    n[axis] = sign;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const q = [at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)];
+      const fn = unit(crossV(sub(q[1], q[0]), sub(q[3], q[0])));
+      const out: Vec3 = dotV(fn, n) < 0 ? [-fn[0], -fn[1], -fn[2]] : fn;
+      face4(mesh, q, out, hashSP(i * 5 + j, seed + axis * 31 + sign * 3) < 0.55 ? GOLD : GOLD_DIM);
+    }
+  }
+}
+
+/**
+ * Nylon webbing slung on a seat's tube frame (round 4, wave 260: "plate seats"): `straps` straps across the panel
+ * o + u du + v dv (u, v in 0..1), each sagging by `sag` at its middle, in two shades, both faces drawn.
+ */
+function webbing(mesh: VehicleMesh, o: Vec3, du: Vec3, dv: Vec3, sag: Vec3, straps: number): void {
+  for (let k = 0; k < straps; k++) {
+    const v0 = (k + 0.08) / straps, v1 = (k + 0.92) / straps, m = k % 2 ? SEAT_WEB : SEAT_WEB_DARK;
+    const P = (u: number, v: number): Vec3 => {
+      const s = Math.sin(Math.PI * u);
+      return [o[0] + du[0] * u + dv[0] * v + sag[0] * s, o[1] + du[1] * u + dv[1] * v + sag[1] * s, o[2] + du[2] * u + dv[2] * v + sag[2] * s];
+    };
+    for (const [ua, ub] of [[0, 0.5], [0.5, 1]] as const) {
+      const q = [P(ua, v0), P(ub, v0), P(ub, v1), P(ua, v1)];
+      const n = unit(crossV(sub(q[1], q[0]), sub(q[3], q[0])));
+      face4(mesh, q, n, m);
+      face4(mesh, [q[0], q[3], q[2], q[1]], [-n[0], -n[1], -n[2]], m);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------- the LRV
 
 /**
@@ -99,20 +166,28 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
   // the wheels: the mesh tyre, its chevrons, the hub drive inside
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
     mesh.push().translate(sx * wheelX, R, sz * wheelZ).scale(sx, 1, 1);
-    mesh.lathe([[R - 0.05, -0.115], [R - 0.01, -0.115], [R, -0.08], [R, 0.08], [R - 0.01, 0.115], [R - 0.05, 0.115]], coarse ? 14 : 22,
-      () => WIRE_MESH, { creases: [1, 4] });
+    // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
+    // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
+    // mobile); the hub a small spun disc inside it
+    const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
+      [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
+    const tyreSegs = coarse ? 14 : 44;
+    mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
+      const a = (j / tyreSegs) * Math.PI * 2;
+      out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
+    }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
     if (!coarse) {
       for (let k = 0; k < 18; k++) {
         mesh.push().rotateX((k / 18) * Math.PI * 2);
         mesh.dressing(() => {
-          mesh.box(0.04, R + 0.004, 0, 0.11, 0.008, 0.035, TITANIUM, 0);
-          mesh.box(-0.04, R + 0.004, 0.02, 0.11, 0.008, 0.035, TITANIUM, 0);
+          mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
+          mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
         });
         mesh.pop();
       }
     }
     // the spoke ring and the hub drive
-    mesh.lathe([[0.0001, 0.06], [R * 0.82, 0.04], [R * 0.82, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU_DULL, { flip: true });
+    mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
     mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
     mesh.pop();
     // the double wishbone up to the chassis
@@ -134,34 +209,49 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
     mesh.box(sx * 0.27, frameY + 0.12, 1.15, 0.48, 0.22, 0.6, WHITE_PAINT, coarse ? 0 : 0.02);
     mesh.box(sx * 0.27, frameY + 0.235, 1.15, 0.42, 0.01, 0.5, ALU, 0);
   }
-  // the seats: tube frames, webbing pans and backs, a little reclined
+  // the seats: tube frames, webbing pans and backs, a little reclined (round 4, wave 260: "plate seats": the straps
+  // slung between the frame's rails, sagging; the frames' rails round them)
   for (const sx of [1, -1]) {
     const x = sx * 0.33;
-    mesh.box(x, frameY + 0.2, 0.1, 0.46, 0.03, 0.46, SEAT_WEB, 0);
-    mesh.push().translate(x, frameY + 0.42, -0.14).rotateX(-0.28);
-    mesh.box(0, 0, 0, 0.46, 0.45, 0.03, SEAT_WEB, 0);
-    mesh.pop();
-    for (const dx of [-0.22, 0.22]) {
+    webbing(mesh, [x - 0.23, frameY + 0.2, 0.33], [0.46, 0, 0], [0, 0, -0.46], [0, -0.035, 0], coarse ? 2 : 5);
+    webbing(mesh, [x - 0.23, frameY + 0.21, -0.13], [0.46, 0, 0], [0, 0.42, -0.13], [0, 0.01, -0.03], coarse ? 2 : 5);
+    for (const dx of [-0.23, 0.23]) {
       tubeRod(mesh, [x + dx, frameY, 0.32], [x + dx, frameY + 0.2, 0.32], 0.012, ALU);
+      tubeRod(mesh, [x + dx, frameY + 0.2, 0.33], [x + dx, frameY + 0.2, -0.13], 0.012, ALU);
       tubeRod(mesh, [x + dx, frameY + 0.2, -0.13], [x + dx, frameY + 0.64, -0.26], 0.012, ALU);
     }
+    tubeRod(mesh, [x - 0.23, frameY + 0.64, -0.26], [x + 0.23, frameY + 0.64, -0.26], 0.012, ALU);
   }
   // the console on its post between the seats' fronts, the T-handle controller
   tubeRod(mesh, [0, frameY, 0.6], [0, frameY + 0.42, 0.6], 0.02, ALU);
   mesh.box(0, frameY + 0.52, 0.58, 0.36, 0.26, 0.1, DARK, coarse ? 0 : 0.01);
   mesh.box(0, frameY + 0.52, 0.525, 0.3, 0.18, 0.01, GOLD, 0);
-  tubeRod(mesh, [0, frameY + 0.08, 0.32], [0, frameY + 0.42, 0.32], 0.015, DARK);
-  tubeRod(mesh, [-0.07, frameY + 0.42, 0.32], [0.07, frameY + 0.42, 0.32], 0.012, DARK);
+  // (round 4, wave 260: "no… hand controller") the T-handle hand controller on its pedestal between the seats: the
+  // armrest pedestal, the boot at its root, the grip and its crossbar
+  mesh.box(0, frameY + 0.15, 0.32, 0.1, 0.3, 0.16, ALU_DULL, coarse ? 0 : 0.01);
+  mesh.box(0, frameY + 0.32, 0.32, 0.08, 0.05, 0.08, DARK, coarse ? 0 : 0.01);
+  tubeRod(mesh, [0, frameY + 0.34, 0.32], [0, frameY + 0.52, 0.34], 0.022, DARK);
+  tubeRod(mesh, [-0.08, frameY + 0.53, 0.345], [0.08, frameY + 0.53, 0.345], 0.018, DARK);
+  // the communications relay unit forward of the console, under the camera's mast, in its gold foil blanket
+  foilBox(mesh, 0, frameY + 0.17, 1.27, 0.4, 0.3, 0.3, 17);
   // the TV camera on its mast at the front, the high-gain dish and the low-gain helix either side
   tubeRod(mesh, [0, frameY, 1.45], [0, frameY + 0.72, 1.45], 0.02, ALU);
   mesh.box(0, frameY + 0.8, 1.45, 0.16, 0.14, 0.26, WHITE_PAINT, coarse ? 0 : 0.015);
   tubeRod(mesh, [-0.35, frameY, 1.38], [-0.35, frameY + 0.95, 1.38], 0.018, ALU);
   mesh.push().translate(-0.35, frameY + 1.0, 1.4).rotateX(-0.6);
   const dish: [number, number][] = [];
-  for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.16 * (r / 0.45) ** 2]); }
+  // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
+  for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
   mesh.push().rotateZ(Math.PI / 2);
-  mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => ALU);
-  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => ALU, { flip: true });
+  mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
+  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => ALU_DULL, { flip: true });
+  if (!coarse) mesh.dressing(() => {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
+      for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
+      mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+    }
+  });
   mesh.pop();
   mesh.pop();
   tubeRod(mesh, [0.35, frameY, 1.38], [0.35, frameY + 0.85, 1.38], 0.03, ALU_DULL, 8);
@@ -429,8 +519,10 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
   const lunar = kind === 'lrv';
   const g = mesh.build(vehicleWeathering({
-    dirtRgb: linearHex(lunar ? 0x5a5a58 : 0x3a3228), dirt: lunar ? 0.55 : 0.6, dirtTop: lunar ? 0.7 : 0.9,
-    dustRgb: linearHex(lunar ? 0x6e6e6a : 0x6a5e50), dust: lunar ? 0.45 : 0.15, rust: lunar ? 0 : 0.5,
+    // (round 4, wave 260: "no… dust coating") the regolith thrown up by the wheels lies grey over all of it below the
+    // seats, thickest low
+    dirtRgb: linearHex(lunar ? 0x5c5b58 : 0x3a3228), dirt: lunar ? 0.62 : 0.6, dirtTop: lunar ? 0.95 : 0.9,
+    dustRgb: linearHex(lunar ? 0x8a8884 : 0x6a5e50), dust: lunar ? 0.72 : 0.15, rust: lunar ? 0 : 0.5,
     burnt: !!opts.wrecked, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
   }));
   g.deleteAttribute('surf');

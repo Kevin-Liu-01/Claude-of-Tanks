@@ -1296,7 +1296,9 @@ function beachedBoat(
   // Seat the rigid hull on its own keel and bilge AFTER the heel and the ground alignment: the opposite gunwale is
   // higher, as a beached boat lies; nothing deforms into the beach.
   const supportY = hullSupportY(hull, heightField, x, z);
-  const boatY = supportY - 0.035;
+  // (wave 260: the Mangrove hull "placed rather than beached… no sink, push-up") a landing's hull lies sunk in its mud
+  // (props.ts pushes the mud up round it with the patch)
+  const boatY = supportY - (landing ? LANDING_SINK_M : 0.035);
   hull.translate(x, boatY, z);
   pushBoat(buckets, hull);
   groundingReceipts?.push({
@@ -1306,6 +1308,9 @@ function beachedBoat(
   });
   return { hull, halfLength };
 }
+
+/** How far a hauled-out hull lies sunk in its landing's mud (m). */
+const LANDING_SINK_M = 0.09;
 
 /** A landing boat's waterline over its keel (m): it floated light, a little under a moored hull's draft. */
 const LANDING_WATERLINE_M = MOORED_BOAT_DRAFT_M * 0.8;
