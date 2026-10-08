@@ -7852,6 +7852,29 @@ Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establi
   the shade every 4, each on its own phase: 0.66 a frame against about 2), the far cascade read only where it counts, the
   clear prefix of a run skipped by the pre-test (to 28 km). The march's light budget is exposed as QA knobs (93dc3157a) for
   the hardware to price before any becomes the law.
+- *Round 9 (409c3c780), priced on the hardware.* O1a (nice 0): the main thread passes on Monsoon (+0.12 / +0.30 / −0.16
+  ms), the GPU does not. A front's towers solid (core 0.74: wave 235's blue holes through them), its lanes aloft shed (the
+  smear over the sun and the confetti), the light on every third lit step, the march out at 0.05, the high tier's stride
+  growth 0.0125. O2 (1080p): chase +1.05, establishing +2.10, sky-w +2.12 ms of the GPU, the CPU under the line.
+- *The storm exception* (the coordinator's ruling, 2026-10-07; `$SP/cost-rule-20261006.md`): on the high tier the clouds'
+  increment at most +1.0 ms on the chase view and +2.0 ms on the sky views, the CPU under 0.38 at 8 cycles at load 150 or
+  below, the medium tier under the normal line, phones unchanged (the layer and its noise bakes never start on the mobile
+  tier), the non-storm stagings under the normal rule.
+- *Round 10 (096844ea9).* Exact: the detail's remap saturates every lane at d >= 0.5 for any modifier, so where no lane
+  lies strictly between 0 and 0.5 the step stands in for it and the detail volume is not read. The march's other cost
+  knobs (step cap, entry refinement, far-cascade bilinear read, the streets' share) are QA knobs for the screen. The
+  unwarped clear-air pre-test was dropped before it was built: the warp moves Monsoon's weather by up to 0.41
+  (`.qa-dev/warp-margin.mjs`), so a conservative margin would admit nearly every tap. P1: Monsoon medium −0.73 / +0.05 /
+  +0.15 ms GPU, CPU +0.13 / −0.08 / +0.13 (4 cycles, load under 150).
+
+**Lessons (the cost work).**
+- A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
+  knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
+- A QA knob read when the preset is packed (the cumulus core, the lanes aloft) does not take effect when a variant only
+  changes `__LIGHT_TUNE`: the preset's key is unchanged. Knobs for a screen must be read every frame.
+- A shader-compile check needs no game boot: build the layer's materials in Node and compile them in a blank page with
+  three's renderer on SwiftShader (`.qa-dev/glsl-check.mjs`); three checks a program's status on its first use, so touch
+  each program's uniforms after `compile()`, and prove the checker on a deliberately broken program.
 
 ## Acceptance is visual and measured
 
