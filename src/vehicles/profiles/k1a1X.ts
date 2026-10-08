@@ -43,7 +43,11 @@ function hullSection(z: number, half: number, top: number, bottom: number): Soli
   const keel = Math.min(1.012, half - .014);
   const edge = Math.min(.012, (top - bottom) * .20);
   const nativeRearWrap=1.322+.054*Math.max(0,1-Math.abs(z+2.8851)/.72);
-  const shoulder = Math.min(top - edge - .004, Math.max(bottom + .005, nativeRearWrap));
+  // The final bow section is only 1 mm tall. Keep both shoulder clearances
+  // proportional there; fixed 4/5 mm offsets inverted its contour below the keel.
+  const shoulderClearance = Math.min(.004, (top - bottom) * .20);
+  const shoulder = Math.min(top - edge - shoulderClearance,
+    Math.max(bottom + Math.min(.005, (top - bottom) * .20), nativeRearWrap));
   return { z, ring: [[-keel,bottom],[keel,bottom],[keel,shoulder],
     [half,shoulder],[half,top-edge],[half-edge,top],[-half+edge,top],
     [-half,top-edge],[-half,shoulder],[-keel,shoulder]] };
@@ -223,7 +227,7 @@ function turretBody(P: TankBuilderPort): void {
     turretSection(-.10,1.60,1.58,1.506,2.15476,2.15626,1.20),
     turretSection(.48,1.6152,1.5977,1.521,2.113,2.15626,.92),
     turretSection(1.05,1.58,1.565,1.53,2.043,2.053,.77),
-  ]));
+  ],{sideQuadDiagonal:'convex'}));
   P.add('turret',cylY(1.348,.038,64),0,-.005,0,0,0,0,[1.0094,1,1]);
   turretPart(P,'turret',sectionSolid([[-.22,2.152,2.20756],[1.425,1.94,2.20756],
     [1.548,1.94,2.1089]].map(([z,low,top])=>({z,ring:[[-.3656,low],[.3325,low],
