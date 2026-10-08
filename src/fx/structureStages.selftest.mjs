@@ -101,8 +101,12 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const seam = fresh();
   const [fx, , fz] = toWorld(1, 0, 4.3); // a burst at the foot of the front wall
   stages.stage({ ...base, stage: 'breached', previous: 'damaged', x: fx, y: 2.2, z: fz, dirX: -s, dirZ: -c }, seam);
-  assert.equal(data[o + 7], 3, 'the breach beside the two spalls');
-  const H = o + 8 + 2 * 8;
+  // a rendered wall's breach: a shallow ring through the render (the render broken back round the hole), then the
+  // hole itself, newest; with the two spalls the ring of four is full
+  assert.equal(data[o + 7], 4, 'the spalls, the render ring and the hole');
+  const R = o + 8 + 2 * 8, H = o + 8 + 3 * 8;
+  assert.ok(Math.abs(data[R + 7] - 0.01) < 1e-4 && data[R + 6] < 0.2 && data[R + 3] > data[H + 3],
+    'the ring: wider than the hole, through the render only');
   const hx = data[H], hy = data[H + 1], hz = data[H + 2], hr = data[H + 3];
   const nx = data[H + 4], nz = data[H + 5];
   // the front face's outward normal is body +z: world (sin yaw, cos yaw)
@@ -154,8 +158,8 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const [fx, , fz] = toWorld(-3, 0, 4.3);
   stages.stage({ ...base, stage: 'breached', previous: 'intact', x: fx, y: 3, z: fz, dirX: -s, dirZ: -c, munition: 'howitzer' }, seam);
   assert.equal(stages.stats().flattened, glass.ranges.length, 'the skipped damaged stage hid the glass');
-  assert.equal(data[o + 7], 3, 'its spalls and the hole');
-  assert.ok(Math.abs(data[o + 8 + 2 * 8 + 3] - 2.1) < 1e-3, 'a howitzer shell\'s hole');
+  assert.equal(data[o + 7], 4, 'its spalls, the render ring and the hole');
+  assert.ok(Math.abs(data[o + 8 + 3 * 8 + 3] - 2.1) < 1e-3, 'a howitzer shell\'s hole');
   const e0 = epoch(wall.mesh);
   const piecesBefore = debris.stats().pieces;
   stages.stage({ ...base, stage: 'collapsed', previous: 'intact', x: 40, y: 4, z: -30, dirX: 0, dirZ: 1, settled: true }, seam);
