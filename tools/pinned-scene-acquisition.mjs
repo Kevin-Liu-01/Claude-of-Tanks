@@ -3,18 +3,21 @@
 import { readFileSync } from 'node:fs';
 
 /**
- * The battlefields' camouflage pools, read from the game's own table (src/vehicles/materials.ts BIOME_PATTERN, the
- * pools the bots' AUTO paint draws from on each map) with the per-tank selection key (CAMO_LS_PREFIX). Null when the
- * source cannot be read (a copied tools directory): the pin is then a no-op and the tank wears its stored selection.
+ * The battlefields' camouflage pools, read from the game's own table (src/vehicles/camoPolicy.ts AUTO_CAMO_BIOMES, the
+ * pools the bots' AUTO paint draws from on each map; it moved there from materials.ts BIOME_PATTERN in the
+ * tank-accessories lane's national-camouflage round, 2995eaac6) with the per-tank selection key (materials.ts
+ * CAMO_LS_PREFIX). Null when the source cannot be read (a copied tools directory): the pin is then a no-op and the tank
+ * wears its stored selection.
  */
-export function readMapCamoPools(source = new URL('../src/vehicles/materials.ts', import.meta.url)) {
-  let text;
-  try { text = readFileSync(source, 'utf8'); } catch { return null; }
-  const table = /const BIOME_PATTERN[^=]*=\s*\{([\s\S]*?)\n\};/.exec(text);
-  const prefix = /const CAMO_LS_PREFIX = '([^']+)';/.exec(text);
+export function readMapCamoPools(policySource = new URL('../src/vehicles/camoPolicy.ts', import.meta.url),
+  materialsSource = new URL('../src/vehicles/materials.ts', import.meta.url)) {
+  let policy, materials;
+  try { policy = readFileSync(policySource, 'utf8'); materials = readFileSync(materialsSource, 'utf8'); } catch { return null; }
+  const table = /export const AUTO_CAMO_BIOMES[^=]*=\s*Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(policy);
+  const prefix = /const CAMO_LS_PREFIX = '([^']+)';/.exec(materials);
   if (!table || !prefix) return null;
   const pools = {};
-  for (const row of table[1].matchAll(/(\w+):\s*\[([^\]]*)\]/g)) {
+  for (const row of table[1].matchAll(/(\w+):\s*autoBiome\([^,]*,\s*\[([^\]]*)\]\)/g)) {
     const schemes = [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
     if (schemes.length) pools[row[1]] = Object.freeze(schemes);
   }
