@@ -195,6 +195,12 @@ interface VegetationConfig {
    */
   palmSites?: readonly VegetationDisc[];
   palmFallback?: Species;
+  /**
+   * The Redrock lane (2026-10-07, owner: "redrock is really rough"; a tree stood on an inselberg's sheer-walled cap and
+   * trees on the jebels' tops): no tree grows on ground higher than this (m, absolute): the wadi's trees keep to its floor.
+   * Absent = no ceiling (every other map).
+   */
+  treeCeilingY?: number;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
   /**
@@ -5614,9 +5620,13 @@ function* vegetationBuildSteps(
     });
   }
   /** `settled`: an opted-in map's authored station, admitted inside the settlement rect (`authoredInSettlement`). */
+  /** The Redrock lane: ground above the map's tree ceiling (veg.treeCeilingY) grows no tree. */
+  function overTreeCeiling(x: number, z: number): boolean {
+    return veg.treeCeilingY !== undefined && heightField.getHeightAt(x, z) > veg.treeCeilingY;
+  }
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z)) return false;
+    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -6388,7 +6398,7 @@ function* vegetationBuildSteps(
         // cleared the whole forest the reference build (1049e4e) had around the
         // Fjord and Alpine spawns; 20 m still clears the tank and the camera
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
-        if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
+        if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
         // (a hyper-arid border's trees are field trees in its hollows, not a forest ring's giants: round 3)
         pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false);
         placed++;
@@ -6410,7 +6420,7 @@ function* vegetationBuildSteps(
       const z = Math.sin(a) * rad + (rng() - 0.5) * 18;
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
-      if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
+      if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
       pushTree(x, z, pickSpecies(veg.rimMix, rng()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false);
       if (dropRimTreeOutsideWoods(x, z)) continue;
       trees[trees.length - 1].wood = true;

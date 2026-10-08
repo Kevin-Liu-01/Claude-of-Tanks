@@ -248,6 +248,10 @@ interface LandformConfig {
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
+  /** The Redrock lane (2026-10-07, owner: "redrock is really rough"): landforms marked `union` stand as one rock — the
+   * terrain takes the greatest of their heights at a point, not their sum (a massif and the lobe against its flank summed
+   * into a horn where the lobe's cap met the massif's wall). Every other landform still adds; absent on every other map. */
+  union?: boolean;
   /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
    * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
    * a narrow band is a sheer wall. Absent = the trough exactly as before. */
@@ -383,6 +387,10 @@ interface SplatConfig {
    * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
    * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
   ringCaprockM?: number;
+  /** The Redrock lane (2026-10-07, owner: "redrock is really rough"; the inselbergs' level caps took the sand and read as
+   * cakes with frosting): inside the square too, ground above this absolute height band [from, to] (m) is caprock — the
+   * rock layer whatever its slope, a little sand in its hollows. Absent = off (every other map). */
+  caprockY?: readonly [number, number];
   /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
    * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
    * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
@@ -1456,6 +1464,7 @@ function* heightFieldBuildSteps(
       h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
         * corridorProtect * (1 - settlementWeight) * (1 - marshWeight) * spawnClear;
     }
+    let unionTop = 0;
     for (let li = 0; li < T.landforms.length; li++) {
       const form = T.landforms[li];
       const corridorScale = form.corridorScale ?? 0.62;
@@ -1464,9 +1473,11 @@ function* heightFieldBuildSteps(
       const protect = (1 - corridorWeight * (1 - corridorScale))
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      const add = sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      // (the Redrock lane: a union's members stand as one rock, the greatest of them; unionTop stays 0 on every other map)
+      if (form.union) { if (add > unionTop) unionTop = add; } else h += add;
     }
-    return h;
+    return h + unionTop;
   }
 
   function applyHeightConstraints(
@@ -3785,6 +3796,7 @@ uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
 uniform vec2 uRingCap;         // ground lane (wave 65): the height band over which the ring's ground becomes caprock (x > 1e8: off)
+uniform vec2 uCaprockY;        // the Redrock lane: the height band over which the square's ground becomes caprock (x > 1e8: off)
 uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural bedded sandstone tile (no sourced R)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
@@ -4411,6 +4423,9 @@ void splatCompute() {
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
   // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
   fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
+  // the Redrock lane: the square's own caprock (splat.caprockY) — the jebels' and domes' tops are bare rock, not sand
+  if (uCaprockY.x < 1e8) fR = max(fR, smoothstep(uCaprockY.x, uCaprockY.y, wp.y) * rockGate * (1.0 - roadCore) * (1.0 - outsideW)
+    * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -5606,8 +5621,11 @@ void splatCompute() {
     if (uFormation.x > -1e8 && max(fR, steep) > 0.0) {
       float fy = bedY - uFormation.x + (nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y;
       float upper = smoothstep(-1.2, 1.2, fy);
-      vec3 formCol = mix(a.rgb * vec3(1.0 + uFormation.z, 1.0 + uFormation.z * 0.9, 1.0 + uFormation.z * 0.75),
-                         a.rgb * vec3(1.0 + uFormation.w * 0.4, 1.0 - uFormation.w * 0.35, 1.0 - uFormation.w * 0.55), upper);
+      // (the Redrock lane, 2026-10-07: Wadi Rum's Disi is a pale buff, not a lighter red — the lower formation turns its
+      // luminance toward buff as it pales; the Umm Ishrin above deepens to red-orange. Redrock is the one map with a formation)
+      float formL = dot(a.rgb, vec3(0.30, 0.59, 0.11));
+      vec3 disiCol = mix(a.rgb, formL * vec3(1.40, 1.14, 0.82), min(1.0, uFormation.z * 2.0)) * (1.0 + uFormation.z * 0.9);
+      vec3 formCol = mix(disiCol, a.rgb * vec3(1.0 + uFormation.w * 0.5, 1.0 - uFormation.w * 0.22, 1.0 - uFormation.w * 0.5), upper);
       a.rgb = mix(a.rgb, formCol, max(fR, steep));
     }
     if (steep > 0.0) {
@@ -6906,6 +6924,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground
+    shader.uniforms.uCaprockY = { value: new THREE.Vector2(...(S.caprockY ?? [1e9, 1e9 + 1])) }; // the Redrock lane
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane

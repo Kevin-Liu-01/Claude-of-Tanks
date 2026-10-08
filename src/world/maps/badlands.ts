@@ -71,15 +71,19 @@ export default {
       ] as [number, number, number, number, number, number, number, number, number, number | null][])
         .flatMap(([x, z, rx, rz, height, lx, lz, lrx, lrz, rampDeg]) => {
         const ramp = (rampDeg ?? 0) * Math.PI / 180, reach = Math.max(rx, rz) * 0.55 + 34;
+        // (the Redrock lane, 2026-10-07, owner: "redrock is really rough"; the domes read as cakes with spikes) the massif
+        // and its lobe stand as one rock (`union`: their heights' maximum — their sum stood a horn where the lobe's cap met
+        // the massif's wall), the cap breaks into beehive domes (more, taller bosses) where the knobbly relief (rough 1.3)
+        // read as lumps, and the fans spread a short apron where 2.6 m spokes radiated from every rill
         return [
-          ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1, geology: { profile: 'inselberg' as const,
-            outline: 0.18, foot: 0.66, footVary: 0.14, apron: 0.18, rim: 0.86, bosses: { count: 5, heightM: 5 },
-            flutes: { count: 18, depth: 0.5 }, rough: 1.3, boulders: 24,
-            gullies: { count: 10, depthM: 7, width: 0.35 }, fans: { reach: 0.35, heightM: 2.6 } } }),
-          ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1,
+          ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1, union: true, geology: { profile: 'inselberg' as const,
+            outline: 0.18, foot: 0.66, footVary: 0.14, apron: 0.18, rim: 0.86, bosses: { count: 7, heightM: 7 },
+            flutes: { count: 18, depth: 0.5 }, rough: 0.45, boulders: 24,
+            gullies: { count: 10, depthM: 4.5, width: 0.35 }, fans: { reach: 0.22, heightM: 1.1 } } }),
+          ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1, union: true,
             geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.62, footVary: 0.16, apron: 0.2, rim: 0.84,
-              bosses: { count: 3, heightM: 3 }, flutes: { count: 12, depth: 0.5 }, rough: 1.1, boulders: 12,
-              gullies: { count: 6, depthM: 5, width: 0.35 }, fans: { reach: 0.35, heightM: 1.8 } } }),
+              bosses: { count: 4, heightM: 4.5 }, flutes: { count: 12, depth: 0.5 }, rough: 0.4, boulders: 12,
+              gullies: { count: 6, depthM: 3, width: 0.35 }, fans: { reach: 0.22, heightM: 0.8 } } }),
           // the sand ramp: wind-blown sand banked against the wall, falling away from it
           ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + Math.cos(ramp) * reach, z: z + Math.sin(ramp) * reach,
             length: 72, width: 26, height: 7, yawDeg: rampDeg, geology: { outline: 0.22, taper: 0.92, rough: 0.25 } })),
@@ -104,16 +108,25 @@ export default {
     grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
     dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
     // Broad weathered beds, not high-contrast repeated marker stripes.
-    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
+    // (the Redrock lane, 2026-10-07, owner: "redrock is really rough"; the walls, domes and far jebels read mauve, the
+    // sandstone tile desaturated to a fifth) Wadi Rum's sandstone is red-orange: the tile keeps its saturation and more
+    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.042, clamp01(s * 1.2), clamp01(0.40 + (l - 0.45) * 0.45)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     // (ground lane, wave 62: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
     // sandstone" — the squiggles were the tile's marker beds and partings, repeating every 6.45 m up each wall) the
     // bedding is the material's, at the wall's scale: a few thick beds of unequal tone, rust beds 2–5 m thick, joint
     // blocks stepping their weathering along the face and varnish under the ledges (strata 0.12: six tenths of the
     // joints, as Copper Mesa's), and the tile keeps its grain and broad beds without the stamped lines
-    roadTint: [0.78, 0.61, 0.51], strata: 0.12, sandstoneMarkers: 0, sandMacro: 0.9,
-    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
-    formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
+    // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show; Titan
+    // and Skybridge run 0.22 and 0.18)
+    roadTint: [0.78, 0.61, 0.51], strata: 0.16, sandstoneMarkers: 0, sandMacro: 0.9,
+    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi. (The Redrock lane,
+    // 2026-10-07: the boundary at the walls' Disi bench, 16 m over the floor — y 20.5 of the field's 0.19-109 m — the Disi
+    // a pale buff, the Umm Ishrin a deeper red)
+    formation: { atFrac: 0.187, wobbleM: 2.5, pale: 0.30, red: 0.20 },
+    // (the Redrock lane: the domes' caps and the jebels' tops are bare rock — the floor, the ramps and the dunes lie below
+    // 15 m, the walls' Disi bench at 20 m, the domes' caps at 26-38 m)
+    caprockY: [17, 21],
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
     rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
   },
@@ -128,6 +141,9 @@ export default {
     // the palms grow at the springs under the lane inselbergs' west and east feet only (the pair turns about the
     // outpost); a palm drawn anywhere else grows as an acacia
     palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
+    // (the Redrock lane, 2026-10-07: no tree on a dome's cap or a jebel's top — the floor, the ramps and the dunes lie
+    // under 15 m, the domes' caps over 22 m)
+    treeCeilingY: 16,
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
     // are cured straw, as Sirocco's are. Trees round 4 (2026-10-04, the gauntlet's wave 50: "olive reed tufts", "flat,
     // uniformly saturated billboards"): Wadi Rum's tussocks are sun-bleached — a pale buff, a third of the straw's
