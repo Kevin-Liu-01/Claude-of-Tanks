@@ -562,17 +562,31 @@ const penstockRun: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   // the run fills the old gantry's reach (its bounds, which stand off the plot's centre)
-  const R = reach(ctx), L = Math.max(8, R.W - 0.4), r = Math.max(0.8, Math.min(2.0, R.D / 2 - 0.5)), y = r + 1.0;
+  // (Skybridge round 7, gauntlet wave 259: "a huge featureless grey panelled cube ... about a quarter of the frame" — a
+  // 4 m pipe on a 5.8 m block, beside the road: the steel pipe now 2.4-2.6 m across, up on its saddles so it reads as a
+  // pipe, its stiffener rings and the expansion sleeve dark against the paint; the anchor block it comes out of battered
+  // and no taller than the pipe's crown and a step, its footing the width the plot needs)
+  const R = reach(ctx), L = Math.max(8, R.W - 0.4), r = Math.max(0.8, Math.min(1.3, R.D / 2 - 1.0)), y = r + 1.2;
   const paint = pick(rng, PENSTOCK);
   sink.placed(0, R.cx, 0, R.cz, () => {
-  pipe(sink, 'structureMetal', [-L / 2 + 3.6, y, 0], [L / 2, y, 0], r, 20, { colour: paint });
-  for (let x = -L / 2 + 5.0; x < L / 2 - 1; x += 4.6) {
-    sink.span(CONCRETE, x - 0.7, -0.4, -r * 0.85, x + 0.7, y - r * 0.55, r * 0.85);
-    pipe(sink, 'structureMetal', [x - 0.12, y, 0], [x + 0.12, y, 0], r + 0.1, 20, { colour: shade(paint, 0.82), decor: true });
+  const x0 = -L / 2 + 3.4;
+  pipe(sink, 'structureMetal', [x0, y, 0], [L / 2, y, 0], r, 20, { colour: paint });
+  // the saddles: a pier under the pipe every 4.6 m, its cradle up to the pipe's waist
+  for (let x = x0 + 1.6; x < L / 2 - 1; x += 4.6) {
+    sink.span(CONCRETE, x - 0.55, -0.4, -r * 0.9, x + 0.55, y - r * 0.35, r * 0.9);
+    sink.span(CONCRETE, x - 0.75, -0.4, -r * 1.05, x + 0.75, 0.25, r * 1.05);
   }
-  // the anchor block the run comes out of, the manway on top, the catwalk along the side
-  sink.span(CONCRETE, -L / 2, -0.4, -r - 0.6, -L / 2 + 3.6, y + r + 0.8, r + 0.6);
+  // the stiffener rings, between the saddles, and the expansion sleeve past the anchor
+  for (let x = x0 + 3.9; x < L / 2 - 0.5; x += 4.6) pipe(sink, 'structureMetal', [x - 0.09, y, 0], [x + 0.09, y, 0], r + 0.09, 20, { colour: shade(paint, 0.72), decor: true });
+  pipe(sink, 'structureMetal', [x0 + 0.5, y, 0], [x0 + 1.1, y, 0], r + 0.14, 20, { colour: shade(paint, 0.62), decor: true });
+  // the anchor block: battered, its section a trapezoid from its footing to a cap over the pipe's crown, the footing as
+  // wide as the plot asks (a solid reach, so no lane opens beside it)
+  const hw = Math.max(r + 0.9, Math.min(R.D / 2 - 0.4, 2.4)), top = y + r + 0.35, cap = Math.max(r + 0.4, hw - 0.7);
+  sink.prism(CONCRETE, [[-L / 2, top, -cap], [-L / 2, top, cap], [-L / 2, -0.4, hw], [-L / 2, -0.4, -hw]], [1, 0, 0], 3.4);
+  sink.span(CONCRETE, -L / 2 - 0.1, top - 0.05, -cap - 0.12, -L / 2 + 3.5, top + 0.22, cap + 0.12, { decor: true });
+  // the manway on the pipe and its access ladder
   sink.cylinder('structureMetal', [L * 0.15, y + r - 0.1, 0], 'y', 0.5, 0.45, 10, { colour: shade(paint, 0.9), decor: true });
+  for (const z of [r + 0.25, r + 0.65]) sink.member('structureMetal', [L * 0.15 - 0.4, 0, z], [L * 0.15 - 0.4, y + r, z], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
   if (look() < 0.7) {
     for (let x = -L / 2 + 4.2; x < L / 2; x += 3.0) sink.cylinder('structureMetal', [x, 0, r + 0.4], 'y', y + 1.0, 0.04, 5, { colour: IRON, decor: true });
     sink.member('structureMetal', [-L / 2 + 4.2, y + 1.0, r + 0.4], [L / 2 - 0.2, y + 1.0, r + 0.4], 0.04, 0.04, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
@@ -749,23 +763,39 @@ const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   // the ruin fills the old ruin's reach (its bounds)
+  // (Skybridge round 7, gauntlet wave 259: "white toy-brick ruins", "clean white rubble blocks that look like foam"): a
+  // burnt-out house of block — its walls broken low, a few stubs to the sill, the charred tops dark, the chimney stack
+  // standing with its soot, the roof's rusted sheets and its burnt timbers down inside it, a scorch over the slab
   const R = reach(ctx), W = Math.max(5, R.W - 0.6), D = Math.max(6, R.D - 0.6), t = 0.22;
   sink.placed(0, R.cx, 0, R.cz, () => {
   sink.span(CONCRETE, -W / 2 - 0.05, -0.5, -D / 2 - 0.05, W / 2 + 0.05, 0.3, D / 2 + 0.05);
+  sink.cylinder('dark', [0, 0.31, 0], 'y', 0.01, Math.min(W, D) * 0.34, 9, { decor: true }, Math.min(W, D) * 0.34, true, look());
   for (const [x0, z0, x1, z1, axis] of [[-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
     [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t, 'z'], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t, 'z']] as const) {
     const len = axis === 'x' ? x1 - x0 : z1 - z0, pieces = Math.max(3, Math.round(len / 1.6));
     for (let k = 0; k < pieces; k++) {
       if (rng() < 0.22) continue;
-      const a = k / pieces, b = (k + 1) / pieces, top = 0.5 + rng() * 2.2;
-      if (axis === 'x') sink.span(BLOCK, x0 + len * a, 0.3, z0, x0 + len * b, top, z1);
-      else sink.span(BLOCK, x0, 0.3, z0 + len * a, x1, top, z0 + len * b);
+      const a = k / pieces, b = (k + 1) / pieces, top = 0.45 + rng() * rng() * 1.5;
+      if (axis === 'x') {
+        sink.span(BLOCK, x0 + len * a, 0.3, z0, x0 + len * b, top, z1);
+        if (rng() < 0.5) sink.span('dark', x0 + len * a, top, z0 - 0.01, x0 + len * b, top + 0.03, z1 + 0.01, { decor: true });
+      } else {
+        sink.span(BLOCK, x0, 0.3, z0 + len * a, x1, top, z0 + len * b);
+        if (rng() < 0.5) sink.span('dark', x0 - 0.01, top, z0 + len * a, x1 + 0.01, top + 0.03, z0 + len * b, { decor: true });
+      }
     }
   }
-  sink.span(BLOCK, W * 0.2, 0.3, -D * 0.2, W * 0.2 + 0.6, 4.2, -D * 0.2 + 0.6);
+  // the chimney stack and its soot
+  sink.span(BLOCK, W * 0.2, 0.3, -D * 0.2, W * 0.2 + 0.9, 3.4, -D * 0.2 + 0.9);
+  sink.span('dark', W * 0.2 - 0.01, 2.6, -D * 0.2 - 0.01, W * 0.2 + 0.91, 3.41, -D * 0.2 + 0.91, { decor: true });
   for (let k = 0; k < 4; k++) {
     const a: Vec3 = [(rng() - 0.5) * W * 0.7, 0.4, (rng() - 0.5) * D * 0.7], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.4 + rng() * 0.8, a[2] + (rng() - 0.5) * 3];
     sink.member('structureWood', a, b, 0.14, 0.2, [0, 1, 0], { colour: rgb(0x2e2925), decor: true, exposed: true }, 0);
+  }
+  // the roof's sheets, down and rusted
+  for (let k = 0; k < 3; k++) {
+    const cx = (rng() - 0.5) * W * 0.6, cz = (rng() - 0.5) * D * 0.6, w = 1.6 + rng() * 1.4, d = 0.9 + rng() * 0.8;
+    sink.span('structureMetal', cx - w / 2, 0.32, cz - d / 2, cx + w / 2, 0.36 + rng() * 0.25, cz + d / 2, { colour: shade(rgb(0x7a4a2e), 0.8 + look() * 0.4), decor: true });
   }
   sink.cylinder(CONCRETE, [0, 0.2, 0], 'y', 0.5, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());
   });
@@ -797,7 +827,9 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // the town's shingled gables; the Bureau's and the town's concrete block
     roof: { kind: 'shingle', tint: [0.46, 0.43, 0.40] },
-    stone: { kind: 'block', tint: [0.76, 0.73, 0.68] },
+    // (Skybridge round 7, gauntlet wave 259: the block walls and ruins read "white toy-brick", "foam": the block taken to a
+    // dust-stained buff, as the town's painted and weathered block stands in the canyon country's dust)
+    stone: { kind: 'block', tint: [0.72, 0.66, 0.58] },
     sourced: { plaster: false, wood: true },
     tones: {
       // stucco in the town's pale colours, poured concrete a warm grey, painted concrete and block an off-white
@@ -814,7 +846,7 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
-    stone: [[1, 1, 1], [0.95, 0.94, 0.92], [1.03, 1.0, 0.96]],
+    stone: [[1, 1, 1], [0.93, 0.9, 0.86], [1.02, 0.97, 0.9], [0.88, 0.84, 0.78]],
     roof: [[1, 1, 1], [0.86, 0.84, 0.82], [1.06, 1.0, 0.94], [0.9, 0.86, 0.8]],
     damp: 0.2, moss: 0.02,
   },
