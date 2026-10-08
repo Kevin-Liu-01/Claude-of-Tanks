@@ -3520,7 +3520,7 @@ ${snowCap ? `
   // the dusty maps' sun-bleached
   const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
   // the ground lane (wave 234): the track bed's crushed stone, its four-foot's oil and cinder, the rails' rust
-  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader); };
+  const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the

@@ -60,9 +60,10 @@ function mustReplace(source: string, anchor: string, replacement: string): strin
 /**
  * The ballast material's hook, applied after the props grime hook (it anchors on that hook's declarations, its world
  * position and normal varyings and its grime texture). `stones` false keeps the zones' grime and drops the stone
- * pattern and its normals (a cheaper variant; the phones keep the bed on the baked material instead).
+ * pattern and its normals (a cheaper variant; the phones keep the bed on the baked material instead); `weeds` false
+ * (a map whose props carry the snow load) grows none on the shoulders.
  */
-export function applyRailBallastHook(shader: BallastShader, stones = true): void {
+export function applyRailBallastHook(shader: BallastShader, stones = true, weeds = true): void {
   shader.vertexShader = mustReplace(shader.vertexShader, 'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;',
     'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nvarying vec2 vBallastUv;');
   shader.vertexShader = mustReplace(shader.vertexShader, '  vGrimeN = normalize(mat3(modelMatrix) * gn);\n}',
@@ -70,8 +71,11 @@ export function applyRailBallastHook(shader: BallastShader, stones = true): void
   shader.fragmentShader = mustReplace(shader.fragmentShader, 'uniform sampler2D uGrime;', /* glsl */`uniform sampler2D uGrime;
 varying vec2 vBallastUv;
 ${stones ? '#define COT_BALLAST_STONES' : ''}
+${weeds ? '#define COT_BALLAST_WEEDS' : ''}
 vec2 cotBallastTilt = vec2(0.0);
 float cotBallastGloss = 0.0;
+float cotBallastWeed = 0.0;
+vec3 cotBallastWeedCol = vec3(0.0);
 // an integer cell hash: exact at any distance from the origin (a sine hash's bits run out a few hundred metres out)
 vec2 cotBallastHash(vec2 c) {
   uvec2 q = uvec2(ivec2(c) + ivec2(1 << 20));
@@ -137,7 +141,28 @@ vec2 cotBallastHash(vec2 c) {
   bal = mix(bal, bal * vec3(1.06, 0.98, 0.86), balFoot * 0.6); // the foot soil-stained
   diffuseColor.rgb *= bal;
   cotBallastGloss = oil;
+  // (2026-10-08, the coordinator on wave 260's yards: "shoulders with weeds") weeds come up in clumps on the
+  // shoulders, thicker toward their soil-stained foot, and a few in the cess — never in the four-foot the trains keep
+  // clear: ~3 m clumps of tufts a third of a metre across, green and straw by the patch, matte, the stones' facets lost
+  // under them
+  #ifdef COT_BALLAST_WEEDS
+  // (the lab's third frames: ~1 m clumps over a fifth of the shoulder read as a faint tint on a few stones) clumps of
+  // 1.5–2 m over about half the shoulder's foot, each broken into its tufts
+  float weedClump = texture2D(uGrime, vGrimeW.xz * 0.17 + vec2(0.13, 0.57)).g;
+  float weedTuft = texture2D(uGrime, vGrimeW.xz * 1.10 + vec2(0.61, 0.07)).r;
+  float weed = smoothstep(0.42, 0.58, weedClump) * smoothstep(0.30, 0.55, weedTuft)
+    * min(1.0, balShoulder * (0.55 + 0.45 * balFoot) + cess * 0.50);
+  // a summer sward's green and a dry patch's straw, each tuft its own shade — an albedo of their own, laid after the
+  // bed's vertex tones below (the lab's second frames: mixed in here, the bed's grey multiplied them to dark stains)
+  cotBallastWeedCol = mix(vec3(0.072, 0.120, 0.034), vec3(0.150, 0.125, 0.064), smoothstep(0.38, 0.72, balPatch))
+    * (0.80 + 0.40 * weedTuft);
+  cotBallastWeed = weed;
+  cotBallastTilt *= 1.0 - weed;
+  cotBallastGloss *= 1.0 - weed;
+  #endif
 }`);
+  shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`#include <color_fragment>
+diffuseColor.rgb = mix(diffuseColor.rgb, cotBallastWeedCol, cotBallastWeed); // the weeds' own albedo, over the bed's tone`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <roughnessmap_fragment>', /* glsl */`#include <roughnessmap_fragment>
 roughnessFactor *= 1.0 - 0.28 * cotBallastGloss;`);
   if (stones) {

@@ -118,10 +118,15 @@ assert.ok(full.fragmentShader.includes('normal = normalize(normal + (viewMatrix 
 const map = full.fragmentShader.indexOf('#include <map_fragment>'), color = full.fragmentShader.indexOf('#include <color_fragment>');
 assert.ok(map > 0 && full.fragmentShader.indexOf('diffuseColor.rgb *= bal;') > map && full.fragmentShader.indexOf('diffuseColor.rgb *= bal;') < color,
   'the stone multiplies the material ahead of the baked vertex tones');
+const weedLay = full.fragmentShader.indexOf('diffuseColor.rgb = mix(diffuseColor.rgb, cotBallastWeedCol, cotBallastWeed);');
+assert.ok(weedLay > color && full.fragmentShader.includes('#define COT_BALLAST_WEEDS'), 'the weeds\' own albedo laid after the vertex tones');
+const snowy = grimed(); applyRailBallastHook(snowy, true, false);
+assert.ok(!snowy.fragmentShader.includes('#define COT_BALLAST_WEEDS') && snowy.fragmentShader.includes('#ifdef COT_BALLAST_WEEDS'), 'no weeds under a snow load');
 
 // 4. the props wiring
 assert.ok(/ballast: new THREE\.MeshStandardMaterial\(\{ vertexColors: true, roughness: 0\.94, metalness: 0 \}\),/.test(props), 'the bucket\'s own material');
-assert.ok(props.includes("const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader); };"), 'its hook over the grime hook');
+assert.ok(props.includes("const ballastHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRailBallastHook(shader, true, !snowCap); };"),
+  'its hook over the grime hook (no weeds under the snow load)');
 assert.ok(props.includes(": materialKind === 'ballast' ? ballastHook"), 'installed through the cascade setup with every surface material');
 assert.ok(props.includes('...(mobileProps ? {} : { ballast: [] }),'), 'the phones keep the bed on the baked material');
 console.log(`railBallast: UV tags, ${beds} beds and ${shoulders} shoulders on Ironworks, Caldera and Steppe in the ballast bucket (the baked one without it, the same geometry and seeded stream), the hook's integer-hashed stones faded by the footprint, the four-foot's oil, its cheap variant and the props wiring PASS; no GPU/art claim`);

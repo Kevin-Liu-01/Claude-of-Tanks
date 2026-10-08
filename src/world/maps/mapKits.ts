@@ -2210,9 +2210,22 @@ function layRailSpan(
   }
   // sleepers every ~1.4 m, seeded; ground lane: an infill sleeper midway before each seeded one (a hashed jitter, no
   // draw), so the track lies on sleepers every ~0.7 m
+  // (2026-10-08, the coordinator on wave 260's yards: "clean evenly spaced sleepers") each sleeper its own: skewed up to
+  // ±1.6° off square, 2 % longer or shorter, its grain and tone its own patch of the wood (a UV jitter), and an infill
+  // sleeper bedded up to 3 cm deeper in the stone — all by a hash of its place, so every seeded draw is unchanged and
+  // the seeded sleepers keep their seats (the grade receipts read those)
+  const weather = (sl: THREE.BufferGeometry, wx: number, wz: number, infill: boolean): void => {
+    let h = (Math.imul(Math.round(wx * 100) ^ Math.imul(Math.round(wz * 100), 0x27d4eb2d), 0x165667b1) ^ 0x5bd1e995) >>> 0;
+    const next = (): number => { h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0; h = (h ^ (h >>> 12)) >>> 0; return (h >>> 8) / 16777216; };
+    jitterUV(sl, next);
+    sl.scale(1 + (next() - 0.5) * 0.04, 1, 1);
+    sl.rotateY((next() - 0.5) * 0.056);
+    if (infill) sl.translate(0, -0.03 * next(), 0);
+  };
   for (let sI = 0; sI < nS; sI++) {
     const t = (sI + 0.5) / nS;
     const sl = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
+    weather(sl, ax + dx * t, az + dz * t, false);
     const jitter = (rng() - 0.5) * 0.05;
     if (lay.conform === 'full') {
       place(sl, jitter, 0.17, (t - 0.5) * len);
@@ -2225,6 +2238,7 @@ function layRailSpan(
     const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
     const infill = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
     infill.userData.railInfill = true;
+    weather(infill, ax + dx * ti, az + dz * ti, true);
     const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
     if (lay.conform === 'full') {
       place(infill, hashJ, 0.17, (ti - 0.5) * len);
