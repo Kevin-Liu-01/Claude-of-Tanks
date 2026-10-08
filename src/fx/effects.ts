@@ -70,6 +70,8 @@ interface FxEngineContext {
 
 interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
+  /** The contact surface on the 1.333 m lattice the drawn LOD0 shares (terrainContactSurface.ts). */
+  getContactHeightAt?(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -85,7 +87,7 @@ export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
   readonly mapId?: string;
 }
 
@@ -1756,10 +1758,16 @@ function* createFxSteps(
   function groundY(x: number, z: number): number {
     return heightField && heightField.getHeightAt ? heightField.getHeightAt(x, z) : 0;
   }
-  /** The ground as the battle has dug it: the base plus the bound overlay (craters, rubble heaps). */
+  /**
+   * The ground as the battle has dug it, as it is drawn: the base contact surface plus the bound overlay (craters,
+   * rubble heaps) on the same 1.333 m lattice and triangle split the drawn LOD0 follows (world/terrainCraterMesh.ts), so
+   * a crater's surface lies on the mesh rather than on the analytic bowl between its vertices.
+   */
   function deformedGroundY(x: number, z: number): number {
     const overlay = world?.()?.groundOverlay?.() ?? null;
-    return groundY(x, z) + (overlay ? overlay.offsetAt(x, z) : 0);
+    const base = heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z);
+    if (!overlay) return base;
+    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z) : overlay.offsetAt(x, z));
   }
   /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
   function groundClimate(): CraterClimate {
