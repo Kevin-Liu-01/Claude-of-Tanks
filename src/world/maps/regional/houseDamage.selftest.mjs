@@ -218,15 +218,34 @@ for (const [styleId, id, wall] of SAMPLE) {
       // a chunk is kept only where the heap stands, and reaches at most 1.6 m past its centre (a long timber's half)
       assert.ok((x / (rx + 1.7)) ** 2 + (z / (rz + 1.7)) ** 2 <= 1.0001, `${styleId}/${id}: rubble on the mound's footprint (${x.toFixed(2)}, ${z.toFixed(2)})`);
       const m = mound(x + cx, z + cz);
-      assert.ok(y >= m - 1.2 && y <= m + 1.6, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
+      // (the pile stands a hand and more over the sim's mound, which raises the terrain itself; its timbers lean on it)
+      assert.ok(y >= m - 1.2 && y <= m + 2.0, `${styleId}/${id}: rubble on the mound (${y.toFixed(2)} at ${m.toFixed(2)})`);
     } else if (run.role === 'remnant') {
       assert.ok(Math.abs(x) <= a.w / 2 + 1 && Math.abs(z) <= a.d / 2 + 1, `${styleId}/${id}: the remnant inside the footprint`);
       assert.ok(y <= Math.max(a.storeys[0].y1 + 0.5, ...a.chimneys.map((c) => c.y1)) + 0.05, `${styleId}/${id}: the remnant no taller than its storey or a stack`);
     }
   }
+  // (wave 277: "a thin blue-black band with no brick-red, no wall stubs and no roof timbers") the pile is no band in the
+  // ground: its skin stands over the mound where the mound is high, the walls' stubs rise over the heap banked against
+  // them, and the roof's timbers lie in it
+  const skin = one.runs.filter((r) => r.role === 'rubble')[0];
+  let crownOver = Infinity;
+  for (let i = 0; i < skin.pos.length; i += 3) {
+    const m = mound(skin.pos[i], skin.pos[i + 2]);
+    if (m >= 0.8) crownOver = Math.min(crownOver, skin.pos[i + 1] - m);
+  }
+  assert.ok(crownOver >= 0.15, `${styleId}/${id}: the pile's skin stands over the mound where it is high (${crownOver.toFixed(2)})`);
+  let stubOver = 0;
+  for (const run of one.runs) if (run.role === 'remnant') for (let i = 0; i < run.pos.length; i += 3) {
+    stubOver = Math.max(stubOver, run.pos[i + 1] - mound(run.pos[i], run.pos[i + 2]));
+  }
+  assert.ok(stubOver >= 0.5, `${styleId}/${id}: wall stubs stand over the heap against them (${stubOver.toFixed(2)})`);
+  if (a.roof && (a.roof.structure.material === 'timber' || a.roof.structure.material === 'metal')) {
+    assert.ok(one.runs.some((r) => r.role === 'rubble' && r.bucket === a.roof.structure.bucket && r.pos.length >= 48), `${styleId}/${id}: the roof's timbers in the pile`);
+  }
   falls++; fv += one.mesh.vertices;
 }
-console.log(`house damage: ${falls} collapses deterministic, within a house's caps (mean ${(fv / falls).toFixed(0)} vertices), the structure hidden, remnants in the footprint, heaps on the mound`);
+console.log(`house damage: ${falls} collapses deterministic, within a house's caps (mean ${(fv / falls).toFixed(0)} vertices), the structure hidden, remnants in the footprint, heaps over the mound with stubs over them and the roof's timbers in them`);
 
 // 5. the debris pieces: every shape and variant a small closed mesh inside the unit cube, the same twice
 import { damageRng } from '../../destructionKit.ts';
