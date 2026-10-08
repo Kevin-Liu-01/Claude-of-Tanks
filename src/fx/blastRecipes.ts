@@ -272,7 +272,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
   // cloud stretches into a lobed column, each glowing a moment at its heart
   const smokeN = thermobaric || heavy ? 9 : shaped ? 4 : 6;
-  const smokeC0: Rgb = shaped || thermobaric ? SOOT : mix3b(SOOT, L.ejecta, 0.35);
+  // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
+  const smokeC0: Rgb = shaped || thermobaric ? SOOT : mix3b(SOOT, I.surface === 'snow' ? UNDER_SNOW_SOIL : L.ejecta, 0.35);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.25 * D;
@@ -418,7 +419,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const life = (6 + R() * 2.5) * L.hang * (heavy ? 1.2 : 1);
       const size1 = (2.2 + 0.8 * R()) * s * dk * (heavy ? 1.3 : 1);
       shape(m, life, size1 * 0.45, size1, 1.8, R);
-      look(m, mix3(L.ejecta, SMOKE_AGED, 0.35), mix3b(L.dust, SMOKE_AGED, 0.35), 0.75, 0.12, 0.5);
+      const soil = I.surface === 'snow' && i % 2 === 0 ? UNDER_SNOW_SOIL : L.ejecta;
+      look(m, mix3(soil, SMOKE_AGED, 0.35), mix3b(L.dust, SMOKE_AGED, 0.35), 0.75, 0.12, 0.5);
       book(m, 'billow', R, life);
       heat(m, 0, 1);
       C.media(m);
