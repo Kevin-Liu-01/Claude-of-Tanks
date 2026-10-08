@@ -291,7 +291,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
     move(m, Math.cos(a) * 1.8 * sq, (1.6 + h * 1.0) * sq, Math.sin(a) * 1.8 * sq, 1.6, 0.16 + R() * 0.15, 0.85, 0);
     const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk;
-    shape(m, (7 + R() * 3) * Math.min(1.6, sq), size1 * 0.42, size1, 2.6, R);
+    shape(m, (7 + R() * 3) * Math.min(1.6, sq) * L.hang, size1 * 0.42, size1, 2.6, R);
     look(m, dustDark, L.dust, Math.min(0.92, 0.7 * dustK + 0.12), 0.05, 0.42);
     book(m, 'burst', R, 4.2 * Math.min(1.8, sq));
     card(m, 1.0 + R() * 0.35, R, 0.3);
@@ -309,7 +309,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * 0.7 * s, by + 0.3 * sq, I.z + Math.sin(a) * 0.7 * s, bo + R() * 0.06);
     move(m, Math.cos(a) * v, 0.25 + R() * 0.25, Math.sin(a) * v, 2.4, 0.06, 0.9, 0);
     const size1 = (2.6 + R() * 1.2) * s * Math.sqrt(dustK) * dk;
-    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), size1 * 0.4, size1, 2.2, R);
+    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq) * L.hang, size1 * 0.4, size1, 2.2, R);
     look(m, dustDark, L.dust, Math.min(0.75, 0.45 * dustK + 0.12), 0.05, 0.4);
     book(m, 'burst', R, 3.6 * Math.min(1.6, sq), 1);
     card(m, 2.0 + R() * 0.8, R, 0.06);

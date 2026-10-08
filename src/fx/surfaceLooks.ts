@@ -48,27 +48,29 @@ interface SurfaceLook {
   readonly sparks: number;
   /** a muzzle blast lifts this much dust off this ground (0..1.5) */
   readonly blastDust: number;
+  /** how long its dust hangs in the air (1 soil; powder snow and spray fall out fast, fine sand hangs) */
+  readonly hang: number;
 }
 
 export const SURFACE_LOOKS: Readonly<Record<SurfaceKind, SurfaceLook>> = Object.freeze({
   soil: Object.freeze({ ejecta: linearHex(0x3a2d21), dust: linearHex(0xa8977e), chunk: linearHex(0x33281e),
-    dustK: 1, chunkK: 1, heightK: 1, chunkScale: 1, sparks: 0, blastDust: 1 }),
+    dustK: 1, chunkK: 1, heightK: 1, chunkScale: 1, sparks: 0, blastDust: 1, hang: 1 }),
   sand: Object.freeze({ ejecta: linearHex(0x9a825e), dust: linearHex(0xd6c4a0), chunk: linearHex(0xa08a66),
-    dustK: 1.45, chunkK: 0.25, heightK: 0.95, chunkScale: 0.6, sparks: 0, blastDust: 1.5 }),
-  snow: Object.freeze({ ejecta: linearHex(0xcfd8de), dust: linearHex(0xf2f5f8), chunk: linearHex(0xe2e8ee),
-    dustK: 1.3, chunkK: 0.7, heightK: 1.05, chunkScale: 0.9, sparks: 0, blastDust: 1.3 }),
+    dustK: 1.45, chunkK: 0.25, heightK: 0.95, chunkScale: 0.6, sparks: 0, blastDust: 1.5, hang: 1.15 }),
+  snow: Object.freeze({ ejecta: linearHex(0xcfd8de), dust: linearHex(0xe4e9ee), chunk: linearHex(0xe2e8ee),
+    dustK: 0.85, chunkK: 0.7, heightK: 1.05, chunkScale: 0.9, sparks: 0, blastDust: 1.3, hang: 0.5 }),
   mud: Object.freeze({ ejecta: linearHex(0x231c15), dust: linearHex(0x7a6d5d), chunk: linearHex(0x211a13),
-    dustK: 0.45, chunkK: 1.35, heightK: 0.85, chunkScale: 1.2, sparks: 0, blastDust: 0.35 }),
+    dustK: 0.45, chunkK: 1.35, heightK: 0.85, chunkScale: 1.2, sparks: 0, blastDust: 0.35, hang: 0.6 }),
   rock: Object.freeze({ ejecta: linearHex(0x5a554e), dust: linearHex(0xb5afa5), chunk: linearHex(0x6e6a63),
-    dustK: 0.8, chunkK: 1.1, heightK: 0.8, chunkScale: 0.8, sparks: 1, blastDust: 0.7 }),
+    dustK: 0.8, chunkK: 1.1, heightK: 0.8, chunkScale: 0.8, sparks: 1, blastDust: 0.7, hang: 0.8 }),
   concrete: Object.freeze({ ejecta: linearHex(0x7c7a76), dust: linearHex(0xc9c6bf), chunk: linearHex(0x8f8c86),
-    dustK: 0.9, chunkK: 1.0, heightK: 0.75, chunkScale: 0.8, sparks: 0.6, blastDust: 0.6 }),
+    dustK: 0.9, chunkK: 1.0, heightK: 0.75, chunkScale: 0.8, sparks: 0.6, blastDust: 0.6, hang: 0.9 }),
   water: Object.freeze({ ejecta: linearHex(0xc5d3d7), dust: linearHex(0xeef3f4), chunk: linearHex(0xc8d6da),
-    dustK: 1, chunkK: 0, heightK: 1.3, chunkScale: 0, sparks: 0, blastDust: 0.25 }),
+    dustK: 1, chunkK: 0, heightK: 1.3, chunkScale: 0, sparks: 0, blastDust: 0.25, hang: 0.45 }),
   wood: Object.freeze({ ejecta: linearHex(0x5b4632), dust: linearHex(0xa89478), chunk: linearHex(0x7a5a3c),
-    dustK: 0.5, chunkK: 1.2, heightK: 0.7, chunkScale: 0.9, sparks: 0, blastDust: 0.4 }),
+    dustK: 0.5, chunkK: 1.2, heightK: 0.7, chunkScale: 0.9, sparks: 0, blastDust: 0.4, hang: 0.8 }),
   metal: Object.freeze({ ejecta: linearHex(0x3e3b37), dust: linearHex(0x8f8a82), chunk: linearHex(0x4a4743),
-    dustK: 0.35, chunkK: 0.8, heightK: 0.6, chunkScale: 0.6, sparks: 1.6, blastDust: 0.3 }),
+    dustK: 0.35, chunkK: 0.8, heightK: 0.6, chunkScale: 0.6, sparks: 1.6, blastDust: 0.3, hang: 0.8 }),
 });
 
 /** Soil an explosive burst throws through snow powder. */
