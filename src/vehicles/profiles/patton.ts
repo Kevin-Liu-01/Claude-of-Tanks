@@ -4667,9 +4667,9 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
         const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm), gx = side * 0.40, bw = 0.56;
         P.add('hullDark', box(bw, 0.006, gd), gx, gy + 0.003, gm);
-        P.add('hull', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz0 + FRAME / 2);
-        P.add('hull', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz1 - FRAME / 2);
-        for (const dx of [-1, 1]) P.add('hull', box(FRAME, FRAME_H, gd), gx + dx * (bw / 2 + FRAME / 2), gy + FRAME_H / 2, gm);
+        P.add('hullDetail', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz0 + FRAME / 2);
+        P.add('hullDetail', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz1 - FRAME / 2);
+        for (const dx of [-1, 1]) P.add('hullDetail', box(FRAME, FRAME_H, gd), gx + dx * (bw / 2 + FRAME / 2), gy + FRAME_H / 2, gm);
         const pitch = gd / VANES;
         for (let i = 0; i < VANES; i++) {
           const z = gz0 - (i + 0.5) * pitch;
@@ -4726,11 +4726,12 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       // Fleet lane round 1 (2026-10-08; accessories wave 255: "brick-like black mudflaps", "featureless black slabs
       // with no rubber flap, bolts, wear or readable function"): the same measured volumes, read as what they are on
       // the vehicle. The fender end and the mudguard bracket behind it are painted sheet steel; the rubber flap hangs
-      // from the bracket's rear face under a bolted clamp strip and ends in the thin tail tip.
-      P.add('hull', slab(
+      // from the bracket's rear face under a bolted clamp strip and ends in the thin tail tip. Fender end and bracket ride
+      // the painted detail bucket: they are sheet-steel fittings, not the armour envelope the combat anatomy measures.
+      P.add('hullDetail', slab(
         [side * 1.02, 0.775, -3.30], [side * 1.78, 0.775, -3.30], [side * 1.78, 0.775, -3.40], [side * 1.02, 0.775, -3.40],
         [side * 1.02, 1.79, -3.30], [side * 1.78, 1.79, -3.30], [side * 1.78, 1.455, -3.40], [side * 1.02, 1.455, -3.40]));
-      P.add('hull', box(0.76, 0.675, 0.072), side * 1.40, 1.1125, -3.436);
+      P.add('hullDetail', box(0.76, 0.675, 0.072), side * 1.40, 1.1125, -3.436);
       P.add('hullRubber', box(0.76, 0.675, 0.018), side * 1.40, 1.1125, -3.481);
       P.add('hullRubber', box(0.76, 0.37, 0.06), side * 1.40, 1.145, -3.52);
       P.add('hullDetail', box(0.72, 0.042, 0.010), side * 1.40, 1.405, -3.495);
@@ -4832,10 +4833,10 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
         const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2, bw = bx1 - bx0;
         P.add('hullDark', box(bw, y1 - y0, 0.004), bxc, yc, PLATE - 0.002);
         for (const fy of [y0 - FRAME_W / 2, y1 + FRAME_W / 2]) {
-          P.add('hull', box(bw + 2 * FRAME_W, FRAME_W, FRAME_D), bxc, fy, PLATE - FRAME_D / 2);
+          P.add('hullDetail', box(bw + 2 * FRAME_W, FRAME_W, FRAME_D), bxc, fy, PLATE - FRAME_D / 2);
         }
         for (const fx of [bx0 - FRAME_W / 2, bx1 + FRAME_W / 2]) {
-          P.add('hull', box(FRAME_W, y1 - y0, FRAME_D), side * fx, yc, PLATE - FRAME_D / 2);
+          P.add('hullDetail', box(FRAME_W, y1 - y0, FRAME_D), side * fx, yc, PLATE - FRAME_D / 2);
         }
         // slat long axis: rising toward the centre spine on both banks
         const th = side > 0 ? -aSlat : aSlat;
