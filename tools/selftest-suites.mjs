@@ -1053,6 +1053,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',
+    // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
+    'src/sim/collapseCascade.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
