@@ -1,8 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Camera paths">
-  <rect x="7" y="10" width="25" height="18" rx="3" fill="none" stroke="#edf3f7" stroke-width="3"/>
-  <path d="m32 16 10-5v16l-10-5Z" fill="#f0a030"/>
-  <circle cx="19.5" cy="19" r="4.5" fill="#45c7ff"/>
-  <path d="M10 51c6-16 17-10 24-18 8-8 14-5 20 3" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 5"/>
-  <circle cx="10" cy="51" r="4" fill="#ff4d62"/><circle cx="34" cy="33" r="4" fill="#45c7ff"/><circle cx="54" cy="36" r="4" fill="#f0a030"/>
-  <path d="m50 31 7 5-7 5" fill="none" stroke="#edf3f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Directed camera paths">
+<defs>
+ <linearGradient id="steel" x2=".3" y2="1"><stop stop-color="#4d687b"/><stop offset=".5" stop-color="#263e50"/><stop offset="1" stop-color="#12202d"/></linearGradient>
+ <linearGradient id="cyan" x2=".3" y2="1"><stop stop-color="#99e7ff"/><stop offset="1" stop-color="#2385b3"/></linearGradient>
+ <linearGradient id="amber" x2=".2" y2="1"><stop stop-color="#ffda88"/><stop offset="1" stop-color="#dc881c"/></linearGradient>
+ <linearGradient id="red" x2=".3" y2="1"><stop stop-color="#ff9eaa"/><stop offset="1" stop-color="#c9304c"/></linearGradient>
+</defs>
+<g stroke-linecap="round" stroke-linejoin="round"><path d="M12 48C-1 22 54 11 52 34S31 58 26 44" fill="none" stroke="#45c7ff" stroke-width="2"/><path d="M15 48 10 51 9 44" fill="none" stroke="#45c7ff" stroke-width="2"/><path d="M22 23H38V36H22Z" fill="url(#steel)" stroke="#edf3f7" stroke-width="2"/><path d="M38 27 47 22V37L38 32Z" fill="url(#amber)" stroke="#edf3f7" stroke-width="2"/><circle cx="26" cy="19" r="4" fill="#0b131c" stroke="#edf3f7" stroke-width="1.7"/><circle cx="35" cy="18" r="5" fill="#0b131c" stroke="#edf3f7" stroke-width="1.7"/><circle cx="13" cy="30" r="3" fill="url(#red)" stroke="none" stroke-width="1.5"/><circle cx="45" cy="48" r="3" fill="url(#amber)" stroke="none" stroke-width="1.5"/></g>
 </svg>

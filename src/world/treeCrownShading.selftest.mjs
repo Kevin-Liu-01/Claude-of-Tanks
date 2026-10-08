@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeIsOpen, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, uplandBandOf, uplandZoneAllows } from './treeBiomes.ts';
 import { BARE_SPRAY_KINDS, bareFormPalette, grownFormSprayKind, grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -308,8 +308,9 @@ for (const [mapId, biome] of Object.entries(TREE_BIOMES)) {
   }
   if (biome.shrub) assert.ok(TREE_GROWTH_PROFILES[biome.shrub], `${mapId}: its shrub form exists`);
 }
+// (2026-10-05, the map-revival lane: Caldera is the Aso caldera — sugi, Japanese red pine, the grassland's low scrub)
 assert.equal(treeBiomeShrub('caldera'), 'broom');
-assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'canaryPine');
+assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'sugi');
 assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alone grows as itself');
 {
   // the palette a form grows with (wave 6: Cinder Junction's sooty-gold twig tint painted its leafy birches orange-brown)
@@ -352,20 +353,29 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.ok(kept.cardHue === 0.3 && kept.cardSat === 0.4 && kept.texTone === named.texTone, 'a named colour wins');
   assert.equal(treeBiomeColour('verdant'), null, 'a temperate place keeps the green defaults');
   assert.equal(treeBiomeShrub('badlands'), 'broom', 'Wadi Rum\'s scrub is white broom');
-  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'canaryPine', 'no umbrella acacia on Teide');
-  // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
-  assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
-    'open groves on the caldera and the arid places only');
-  // the Arizona uplands (wave 28): juniper and pinyon for the cedar and pine slots, the mesquite in the acacia slot's own
-  // form, creosote as the broom's switches, zoned by height in open groves under a dusty place colour
-  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'juniper');
-  assert.equal(treeBiomeSlot('copper_mesa', 'pine')?.form, 'pinyon');
-  assert.equal(treeBiomeSlot('copper_mesa', 'acacia'), null, 'the mesquite grows in the acacia slot\'s own bipinnate form');
-  assert.ok(treeBiomeUpland('copper_mesa') && treeBiomeOpen('copper_mesa') && !treeBiomeUpland('caldera'), 'Copper Mesa zoned by height');
-  assert.equal(treeBiomeShrub('copper_mesa'), 'broom');
-  const sonoran = treeBiomeColour('copper_mesa');
-  assert.ok(sonoran && sonoran.cardSat < 0.12 && sonoran.texTone(0.36, 0.2, 0.2)[0] === 0.36, 'a dusty colour that keeps each form\'s hue');
+  assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'redPine', 'no umbrella acacia in Aso: the red pine');
+  // (Caldera round 2: Aso's sugi stand in closed plantation blocks — Las Cañadas' open groves are gone)
+  assert.ok(!treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
+    'open groves on the arid places only');
+  // Copper Mesa is Queenstown under Mount Lyell (the map-revival lane, merged in batch 4, 2026-10-06; the trees lane's
+  // Arizona uplands row of wave 28 went with the old identity): eucalypt regrowth in the acacia and cedar slots, the
+  // tea-tree scrub in the holm oak's leaf, no zoning by height; the juniper and pinyon forms stay grown conifers
+  assert.equal(treeBiomeSlot('copper_mesa', 'acacia')?.form, 'eucalyptus');
+  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'eucalyptus');
+  assert.equal(treeBiomeShrub('copper_mesa'), 'holmOak');
+  assert.ok(!treeBiomeUpland('copper_mesa') && !treeBiomeUpland('caldera'), 'Queenstown and Aso are not zoned by height');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeUpland(id)), [], 'no map sets the upland hook');
   for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
+  // the hooks no map sets now, on synthetic fixtures: the upland zones (the square's height quantiles at two and three
+  // fifths; conifer forms high, broadleaf forms low, nothing between) and the open-grove flag
+  const band = uplandBandOf([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(band, [4, 6], 'the upland band: the quantiles at two and three fifths');
+  assert.ok(uplandZoneAllows(band, true, 6) && !uplandZoneAllows(band, true, 5.9), 'a conifer form on the high ground only');
+  assert.ok(uplandZoneAllows(band, false, 4) && !uplandZoneAllows(band, false, 4.1), 'a broadleaf form in the low ground only');
+  assert.ok(!uplandZoneAllows(band, true, 5) && !uplandZoneAllows(band, false, 5), 'nothing on the slopes between');
+  assert.ok(uplandZoneAllows(null, true, -50) && uplandZoneAllows(null, false, 50), 'no band: a form stands anywhere');
+  assert.ok(treeBiomeIsOpen({ open: true }) && treeBiomeIsOpen({ arid: true }) && !treeBiomeIsOpen({}) && !treeBiomeIsOpen(null),
+    'open groves: a place\'s own flag or an arid place');
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
@@ -411,24 +421,26 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 }
 
 // trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
-// the Las Cañadas broom takes the place's shrub colour over the bush slot's palette — an ash-dulled grey-green, its
-// sprays' saturation cut to three tenths, the hue turned to olive, a little paler — and no other place has one
+// a place's shrub colour (TreeBiome.shrubColour) wins over the bush slot's palette. Las Cañadas named the only one, the
+// Teide broom's ash-dulled grey-green; Caldera is now the Aso caldera (the map-revival lane, merged in batch 4,
+// 2026-10-06), whose grassland scrub keeps the slot's green, so no place names one and the precedence is pinned on the
+// receipt's own copy of that colour (its sprays' saturation cut to three tenths, the hue turned to olive, a little paler)
 {
-  const ash = treeBiomeShrubColour('caldera');
-  assert.ok(ash && ash.texTone && ash.cardSat <= 0.06, 'Las Cañadas has its own shrub colour');
-  const [h, sat, l] = ash.texTone(0.36, 0.6, 0.45);
-  assert.ok(h >= 0.18 && h <= 0.26 && sat <= 0.2 && l >= 0.45, `the broom's tone ash-dulled olive (${h}, ${sat}, ${l})`);
+  const ash = Object.freeze({
+    cardHue: 0.23, cardSat: 0.05, texTone: (_h, s, l) => [0.22, Math.min(1, s * 0.3), Math.min(1, l * 1.07)],
+  });
   const slot = { cardHue: 0.3, cardSat: 0.4, texTone: (hh, ss, ll) => [hh, ss, ll] };
   const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
-  // a place names a shrub colour only for a shrub form of its own (Las Cañadas' broom; the trees lane, 2026-10-06:
-  // Saltwind's maquis, the evergreen oak's shrubs)
+  assert.equal(treeBiomeShrubColour('caldera'), null, 'Aso\'s grassland scrub keeps the slot\'s green');
+  // a place names a shrub colour only for a shrub form of its own (the trees lane, 2026-10-06: Saltwind's maquis, the
+  // evergreen oak's shrubs)
   for (const id of MAP_IDS.filter((mapId) => treeBiomeShrubColour(mapId))) {
     assert.ok(treeBiomeShrub(id), `${id}: its shrub colour paints its own shrub form`);
   }
-  assert.ok(treeBiomeShrubColour('saltwind') && treeBiomeShrub('saltwind') === 'holmOak', 'Saltwind names its maquis');
-  report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['saltwind'], 'Saltwind alone names a shrub colour');
+  assert.ok(treeBiomeShrub('saltwind') === 'holmOak', 'Saltwind names its maquis for its holm oak shrubs');
 }
 
 // trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life

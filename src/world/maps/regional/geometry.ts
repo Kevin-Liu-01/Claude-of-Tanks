@@ -61,6 +61,8 @@ interface Accumulator {
   mask: number[] | null;
   /** occlusion factor per vertex (weathered buckets only; 1 = open wall) */
   shade: number[] | null;
+  /** paint multiplier per vertex, rgb (weathered buckets only; 1 = the surface's own colour) */
+  tint: number[] | null;
 }
 
 export interface EmitOptions {
@@ -94,6 +96,13 @@ export interface EmitOptions {
   shadeAt?: (p: Vec3) => number;
   /** per-corner colour in a coloured bucket (a painted sheet weathering down its slope), emitting frame; wins over `colour` */
   colourAt?: (p: Vec3) => Rgb;
+  /**
+   * paint on a weathered surface (a limewash band, a painted dado, clay showing through): an rgb multiplier the
+   * weathering pass folds into the building's tint (weather.ts), so the paint takes the wall's damp and grime as well
+   */
+  tint?: Rgb;
+  /** per-corner paint (emitting frame); wins over `tint` */
+  tintAt?: (p: Vec3) => Rgb;
 }
 
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3(), tmpD = new THREE.Vector3();
@@ -133,7 +142,7 @@ export class PartSink {
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
-        shade: SHADED.has(bucket) ? [] : null };
+        shade: SHADED.has(bucket) ? [] : null, tint: SHADED.has(bucket) ? [] : null };
       this.groups.set(key, group);
     }
     return group;
@@ -179,6 +188,10 @@ export class PartSink {
         }
         if (g.mask) g.mask.push(glow);
         if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
+        if (g.tint) {
+          const t = opts.tintAt ? opts.tintAt(p) : opts.tint;
+          if (t) g.tint.push(t[0], t[1], t[2]); else g.tint.push(1, 1, 1);
+        }
       }
       this.triangles++;
     }
@@ -348,6 +361,7 @@ export class PartSink {
       if (g.mask) geometry.setAttribute(NIGHT_EMISSION_ATTRIBUTE, new THREE.BufferAttribute(Uint8Array.from(g.mask), 1));
       // the weathering pass consumes (and removes) the occlusion record; an all-open part carries none
       if (g.shade && g.shade.some((v) => v !== 1)) geometry.setAttribute('shade', new THREE.Float32BufferAttribute(g.shade, 1));
+      if (g.tint && g.tint.some((v) => v !== 1)) geometry.setAttribute('tint', new THREE.Float32BufferAttribute(g.tint, 3));
       if (role !== 's') geometry.userData.noCollision = true;
       if (role === 'c') geometry.userData.castsShadow = true;
       if (role === 'f') geometry.userData.fine = true;

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
+import { collectWreckSolids } from './wreckCollision.ts';
 
 // Explicit 5a13dadb0 pipeline control: paint every expanded corner, then run
 // the unchanged generic all-attribute compactor. The original source was
@@ -28,11 +29,12 @@ function pipeline(control, counts) {
   const painterAnchor = '  const panel = hash3(';
   assert.equal(body.split(painterAnchor).length, 2);
   body = body.replace(painterAnchor, '  observePaint();\n' + painterAnchor);
+  // collectWreckSolids: main's f6be3a54d bakes the wreck's hull/turret collision solids alongside the paint.
   return new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
-    'compactWreckGeometrySteps', 'createTank', 'observePaint',
+    'compactWreckGeometrySteps', 'createTank', 'observePaint', 'collectWreckSolids',
     stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
     THREE, mergeGeometries, compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
-    createTank, () => { counts.painted++; });
+    createTank, () => { counts.painted++; }, collectWreckSolids);
 }
 
 function arrayIdentity(array) {

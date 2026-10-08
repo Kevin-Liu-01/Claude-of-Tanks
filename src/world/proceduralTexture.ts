@@ -47,7 +47,10 @@ export function normalTextureFromHeight(
       - (sample(x - 1, y - 1) + 2 * sample(x - 1, y) + sample(x - 1, y + 1));
     const dy = (sample(x - 1, y + 1) + 2 * sample(x, y + 1) + sample(x + 1, y + 1))
       - (sample(x - 1, y - 1) + 2 * sample(x, y - 1) + sample(x + 1, y - 1));
-    normal.set(-dx * strength, -dy * strength, 1).normalize();
+    // ground lane (2026-10-05, the texture-upload audit): the canvas uploads flipped (its top row at v = 1), so a row
+    // further down the canvas is a smaller v — the green that three's tangent frame and the splat's world-aligned
+    // normals read as +v must be −∂h/∂v = +∂h/∂row (it stored −∂h/∂row: every procedural bump lit backwards along v)
+    normal.set(-dx * strength, dy * strength, 1).normalize();
     const offset = (y * size + x) * 4;
     pixels[offset] = normal.x * 127.5 + 127.5;
     pixels[offset + 1] = normal.y * 127.5 + 127.5;
