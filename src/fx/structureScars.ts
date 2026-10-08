@@ -24,7 +24,9 @@ varying vec3 vNormal;
 #endif
 void main() {
   vec3 n = normalize( vec3( aN.x, 0.0, aN.y ) );
-  vec3 right = vec3( -n.z, 0.0, n.x );
+  // right x up = n: the quad's front face looks out of the wall (b5: with right = (-n.z, 0, n.x) it faced into the
+  // wall and the phone tier culled every scar)
+  vec3 right = vec3( n.z, 0.0, -n.x );
   vec3 up = vec3( 0.0, 1.0, 0.0 );
   // the quad reaches past the breach to carry its soot halo
   float reach = aC.w * ( aN.z > 0.5 ? 1.45 : 1.15 );
@@ -129,7 +131,7 @@ export function createStructureScars(): StructureScars {
   const material = new THREE.ShaderMaterial({
     vertexShader: VERT, fragmentShader: FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), { uSunDir, uSunCol, uSkyCol }),
-    transparent: true, depthWrite: false, fog: true,
+    transparent: true, depthWrite: false, fog: true, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
   const mesh = new THREE.Mesh(geo, material);

@@ -2,7 +2,7 @@ import { applyJuggernautScale } from '../sim/juggernautScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
-import { syncMissionAttachment } from './missionAttachmentVisual.ts';
+import type { syncMissionAttachment as SyncMissionAttachment } from './missionAttachmentVisual.ts';
 import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import {
@@ -16,6 +16,18 @@ import {
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
+
+// The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
+// (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
+// (boot-static-closure, the bundle budget). It loads with the battle's FX graph — the FX gate in main.ts awaits
+// loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
+let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
+let missionAttachmentVisualLoad: Promise<void> | null = null;
+export function loadMissionAttachmentVisual(): Promise<void> {
+  return missionAttachmentVisualLoad ??= import('./missionAttachmentVisual.ts').then((module) => {
+    syncMissionAttachment = module.syncMissionAttachment;
+  });
+}
 
 interface TankState {
   pos: Vector3;
@@ -248,7 +260,8 @@ export function createBattlePresentationRuntime({
       syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
         entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
     } else clearJuggernautVisual(visual.root);
-    syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    else if (entity.aerial) void loadMissionAttachmentVisual();
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);
   };

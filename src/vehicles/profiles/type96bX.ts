@@ -1,3 +1,4 @@
+import {addRearFieldStowage} from './rearFieldStowage.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
@@ -302,6 +303,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     buildType96Gear(P);
     buildType96Turret(P);
     preserveSourceStudyGunMountAppearance(P);
+    addRearFieldStowage(P);
     P.topY = 3.016 - frame.turret[1];
     P.hullG.userData.xRebuild = { candidate: 'type96b_x', independent: true, sourceLocalOnly: true };
 }

@@ -122,6 +122,19 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const rims = debris.group.children.filter((m) => m.isMesh && /^fx-structure-(rim|room)/.test(m.name));
   assert.ok(rims.length > 0 && rims.every((m) => m.geometry.getAttribute('aDamage')?.array[0] === 32768 + 8),
     'the breach\'s rim and room fall with the building');
+  // (b5: the room drew in the world's glossy 'dark' window material: the sky's reflection filled the hole) the room is
+  // matte, in the builder's own interior tint, and folds with its building (the mask's patch)
+  const rooms = debris.group.children.filter((m) => m.isMesh && /^fx-structure-room/.test(m.name));
+  assert.ok(rooms.length > 0, 'a breach lays its room');
+  for (const room of rooms) {
+    const mat = room.material;
+    assert.ok(mat.name === 'fx-structure-room' && mat.vertexColors === true && mat.roughness === 1 && mat.metalness === 0
+      && mat.envMapIntensity === 0, 'the room is matte and takes its interior tint');
+    assert.ok(typeof mat.customProgramCacheKey === 'function' && /struct/i.test(mat.customProgramCacheKey()),
+      'the room material carries the mask patch (it falls and folds with the building)');
+    const col = room.geometry.getAttribute('color');
+    assert.ok(col && col.array[0] < 0.2 && col.array[1] < 0.2 && col.array[2] < 0.2, 'the room is dark');
+  }
 }
 
 // ---- collapsed: the fall, the pile, the touches (every frame it moves, and the frame it is discarded)
@@ -180,6 +193,89 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   stages.reset();
 }
 
+// ---- P2 section falls (DESTRUCTION.md §3.4): a house built storey by storey and face by face, as the regional kits
+// build it; a wall panel down to its 1 m stub, the roof, the upper storey once its faces are down; the clamp restored
+{
+  const T0 = 0.43;
+  const faceBox = (name, k) => {
+    const y = k * 3;
+    if (name === 'front') return part('regionalPlaster', 10, 3, T0, 0, y, 4 - T0 / 2);
+    if (name === 'back') return part('regionalPlaster', 10, 3, T0, 0, y, -4 + T0 / 2);
+    if (name === 'right') return part('regionalPlaster', T0, 3, 8, 5 - T0 / 2, y, 0);
+    return part('regionalPlaster', T0, 3, 8, -5 + T0 / 2, y, 0);
+  };
+  const names = ['front', 'right', 'back', 'left'];
+  const boxes = [0, 1].flatMap((k) => names.map((n) => ({ k, n, g: faceBox(n, k) })));
+  const roofG = part('regionalRoof', 10.6, 2.4, 8.6, 0, 6, 0);
+  const sParts = { regionalPlaster: boxes.map((b) => b.g), regionalRoof: [roofG] };
+  const sAnatomy = describeDefault({ structureIdx: 9, mapId: 'verdant', builder: 'cottage', style: null, parts: sParts, w: 10, d: 8,
+    h: 8.4, placement, massClass: 'house', seed: damageSeed(2, 4000, -3000) });
+  const sWall = merged('regionalPlaster', boxes.map((b) => b.g)), sRoof = merged('regionalRoof', [roofG]);
+  const sSpans = [
+    ...sWall.ranges.map(([first, count]) => ({ mesh: sWall.mesh, geometryId: null, instanceId: null,
+      position: sWall.mesh.geometry.getAttribute('position'), bucket: 'regionalPlaster', partClass: 'wall', first, count })),
+    ...sRoof.ranges.map(([first, count]) => ({ mesh: sRoof.mesh, geometryId: null, instanceId: null,
+      position: sRoof.mesh.geometry.getAttribute('position'), bucket: 'regionalRoof', partClass: 'roof', first, count })),
+  ];
+  const seam = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
+  const wallBefore = Float32Array.from(sWall.mesh.geometry.getAttribute('position').array);
+  const roofBefore = Float32Array.from(sRoof.mesh.geometry.getAttribute('position').array);
+  const bodyY = (arr, i) => arr[i * 3 + 1] - placement.y;
+  const rangeOf = (k, n) => sWall.ranges[boxes.findIndex((b) => b.k === k && b.n === n)];
+  const sBase = { ...base, structureId: 9, hole: 255, radiusM: 0, sectionDown: true, munition: 'he', nx: 0, ny: 0, nz: 1 };
+  const fall = (k, n, extra = {}) => {
+    const at = { front: [0, 4], right: [5, 0], back: [0, -4], left: [-5, 0] }[n];
+    const [wx, wy, wz] = toWorld(at[0], k * 3 + 1.5, at[1]);
+    return { ...sBase, section: k * 4 + names.indexOf(n), sectionKind: 'wall', x: wx, y: wy, z: wz,
+      y0: placement.y + k * 3, y1: placement.y + k * 3 + 3, ...extra };
+  };
+  const e0 = epoch(sWall.mesh);
+  // 1. the ground storey's front panel: down to its stub, a metre over the base; nothing else moves
+  stages.breach(fall(0, 'front'), seam);
+  let w = sWall.mesh.geometry.getAttribute('position').array;
+  const [f0, c0] = rangeOf(0, 'front');
+  for (let i = f0; i < f0 + c0; i++) assert.ok(bodyY(w, i) <= 1 + 1e-4, 'the fallen panel stands no higher than its 1 m stub');
+  assert.ok([...Array(c0).keys()].some((j) => Math.abs(bodyY(w, f0 + j) - 1) < 1e-4), 'its top is the stub\'s');
+  for (const [k, n] of [[0, 'right'], [0, 'back'], [1, 'front'], [1, 'left']]) {
+    const [f, cnt] = rangeOf(k, n);
+    for (let i = f * 3; i < (f + cnt) * 3; i++) assert.equal(w[i], wallBefore[i], `${k}/${n} stands`);
+  }
+  assert.ok(epoch(sWall.mesh) > e0, 'the fall touches the casters');
+  // 2. the roof: the kit's hide (its covering's pieces thrown)
+  stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 7, z: placement.z,
+    y0: placement.y + 6, y1: placement.y + 8.4 }, seam);
+  const r = sRoof.mesh.geometry.getAttribute('position').array;
+  for (let i = 0; i < r.length; i += 3) assert.deepEqual([r[i], r[i + 1], r[i + 2]], [r[0], r[1], r[2]], 'the roof is gone');
+  // 3. the upper storey's last face falls with storeyDown: the whole band down to its floor line; the ground storey stands
+  for (const n of ['front', 'right', 'back']) stages.breach(fall(1, n), seam);
+  stages.breach(fall(1, 'left', { storeyDown: true }), seam);
+  w = sWall.mesh.geometry.getAttribute('position').array;
+  for (const n of names) {
+    const [f, cnt] = rangeOf(1, n);
+    for (let i = f; i < f + cnt; i++) assert.ok(bodyY(w, i) <= 3 + 1e-4, `the upper storey's ${n} is down to its floor line`);
+  }
+  const [fr, cr] = rangeOf(0, 'right');
+  assert.ok([...Array(cr).keys()].some((j) => Math.abs(bodyY(w, fr + j) - 3) < 1e-4), 'the ground storey\'s walls keep their height');
+  // 4. a real hole: a P1 'breached' stage cuts no synthetic one on that structure, nor with sections on
+  const slot = 9 * T;
+  const holesBefore = data[slot + 7];
+  stages.stage({ ...base, structureId: 9, stage: 'breached', previous: 'damaged', x: placement.x, y: 4, z: placement.z + 4,
+    dirX: 0, dirZ: -1 }, seam);
+  assert.equal(data[slot + 7], holesBefore, 'a structure with real holes gets no synthetic one');
+  // 5. reset stands it all up again, bit for bit
+  stages.reset();
+  assert.deepEqual(Array.from(sWall.mesh.geometry.getAttribute('position').array), Array.from(wallBefore), 'the walls come back whole');
+  assert.deepEqual(Array.from(sRoof.mesh.geometry.getAttribute('position').array), Array.from(roofBefore), 'the roof comes back');
+  // with sections on, a fresh structure's 'breached' stage cuts no synthetic hole either
+  const seamB = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
+  mask.reset();
+  stages.stage({ ...base, structureId: 9, stage: 'breached', previous: 'damaged', sections: true, x: placement.x, y: 4,
+    z: placement.z + 4, dirX: 0, dirZ: -1 }, seamB);
+  assert.equal(data[slot + 7], 0, 'sections on: the section holes are the breach');
+  stages.reset();
+  mask.reset();
+}
+
 // ---- the phone tier: no hole is cut; each cut is drawn on its wall (a breach still reads as damage), and goes with
 // the building when it falls
 {
@@ -194,6 +290,11 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.equal(N[3 * 4 + 2], 1, 'the hole reads as a breach (deep)');
   assert.equal(N[0 * 4 + 2], 0, 'a spall reads as a patch of the core');
   assert.ok(Math.abs(N[3 * 4] - s) < 1e-3 && Math.abs(N[3 * 4 + 1] - c) < 1e-3, 'facing out of the front wall');
+  // (b5: the scar quads faced into the wall and the phone culled them all) the quad's front looks out of the wall, and
+  // the material draws both sides
+  assert.equal(scars.mesh.material.side, THREE.DoubleSide, 'a scar is drawn whichever way its quad winds');
+  assert.match(scars.mesh.material.vertexShader, /vec3 right = vec3\( n\.z, 0\.0, -n\.x \);/,
+    'right x up = n: the quad faces out of the wall');
   phone.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 0, dirZ: 1 }, seam);
   assert.ok([0, 1, 2, 3].every((i) => C[i * 4 + 3] === 0), 'a collapse takes its scars with it');
   phone.reset();
