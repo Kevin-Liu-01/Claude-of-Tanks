@@ -133,6 +133,35 @@ const encodeLoops = part => {
 const failed = new Map();
 const errorsOf = job => receiptOf(job)?.errors ?? [];
 const nameOf = job => job.out.split('/').slice(-2).join('/');
+// Takes held back while their scene is re-planned (renders/defer: one id prefix a line, read at every chunk, so a
+// running pass picks up a change): they render after the main pass from jobs rebuilt then, because the re-planned
+// scene's resolve and still moments differ from the ones staged at launch.
+const deferFile = join(renders, 'defer');
+const isDeferred = id => (existsSync(deferFile) ? readFileSync(deferFile, 'utf8').split('\n').map(s => s.trim()).filter(Boolean) : [])
+  .some(prefix => id.startsWith(prefix));
+const held = new Set();
+// one chunk of jobs, lease by lease: pending jobs only, a failed job set aside for the retry pass
+async function renderJobs(label, all, file) {
+  for (let leaseNo = 1; ; leaseNo++) {
+    const jobs = all.filter(j => !done(j) && !failed.has(j.out)).map(j => ({ ...j, resume: 'true' }));
+    if (!jobs.length) { if (leaseNo === 1) console.log(`[finals] ${label}: rendered in an earlier run`); return; }
+    if (leaseNo > 8) throw new Error(`${label}: still pending after 8 leases`);
+    writeFileSync(file, JSON.stringify(jobs, null, 1));
+    if (keepPlace && existsSync(leaseMark)) await yieldGpu();
+    const code = await cinema(`${label}, ${jobs.length} jobs${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
+      ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
+    writeFileSync(leaseMark, new Date().toISOString());
+    if (stopping) throw new Error(`stopped by a signal in ${label}`);
+    if (code === 75 && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
+    if (code === 0) continue; // every job rendered: the next pass finds nothing pending
+    const newly = jobs.filter(j => !done(j) && errorsOf(j).length);
+    if (!newly.length) throw new Error(`${label} failed (${code})`);
+    for (const j of newly) {
+      failed.set(j.out, String(errorsOf(j).at(-1)?.error ?? '').split('\n')[0].slice(0, 160));
+      console.log(`[finals] ${nameOf(j)} failed (${failed.get(j.out)}); it retries at the end, alone`);
+    }
+  }
+}
 for (let i = 0; i < ids.length; i += chunk) {
   const k = i / chunk;
   // (masters on disk only: without them a chunk renders as soon as the lock allows)
@@ -141,31 +170,29 @@ for (let i = 0; i < ids.length; i += chunk) {
     await Promise.all(encoders);
     throw new Error(`${freeGb().toFixed(1)} GB free, under --min-free-gb=${minFreeGb}: stopped before chunk ${k + 1} of ${Math.ceil(ids.length / chunk)}`);
   }
-  const part = new Set(ids.slice(i, i + chunk));
+  const part = new Set(ids.slice(i, i + chunk).filter(id => { if (!isDeferred(id)) return true; held.add(id); console.log(`[finals] ${id}: deferred`); return false; }));
+  if (!part.size) continue;
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
   const all = [...part].flatMap(id => [...films.filter(j => idOf(j) === id), ...stills.filter(j => idOf(j) === id)]);
-  const file = join(renders, `jobs-chunk-${String(i / chunk).padStart(2, '0')}.json`);
-  for (let leaseNo = 1; ; leaseNo++) {
-    // each lease takes the chunk's pending jobs only (an early end or an earlier run rendered the rest)
-    const jobs = all.filter(j => !done(j) && !failed.has(j.out)).map(j => ({ ...j, resume: 'true' }));
-    if (!jobs.length) { if (leaseNo === 1) console.log(`[finals] chunk ${k + 1} (${[...part][0]}…): rendered in an earlier run`); break; }
-    if (leaseNo > 8) throw new Error(`chunk ${k + 1}: still pending after 8 leases`);
-    writeFileSync(file, JSON.stringify(jobs, null, 1));
-    if (keepPlace && existsSync(leaseMark)) await yieldGpu();
-    const code = await cinema(`chunk ${k + 1} (${[...part][0]}…, ${jobs.length} jobs)${leaseNo > 1 ? `, lease ${leaseNo}` : ''}`,
-      ['tools/media-production/cinema.mjs', `--jobs=${file}`, `--cache-dir=${cacheDir}`, '--resume=true', ...lease]);
-    writeFileSync(leaseMark, new Date().toISOString());
-    if (stopping) throw new Error(`stopped by a signal in chunk ${k + 1}`);
-    if (code === 75 && keepPlace) continue; // lease over: the chunk's remaining takes rejoin the queue at the stamp
-    if (code === 0) continue; // every job rendered: the next pass finds nothing pending
-    const newly = jobs.filter(j => !done(j) && errorsOf(j).length);
-    if (!newly.length) throw new Error(`chunk ${k + 1} failed (${code})`);
-    for (const j of newly) {
-      failed.set(j.out, String(errorsOf(j).at(-1)?.error ?? '').split('\n')[0].slice(0, 160));
-      console.log(`[finals] ${nameOf(j)} failed (${failed.get(j.out)}); it retries at the end, alone`);
-    }
-  }
+  await renderJobs(`chunk ${k + 1} (${[...part][0]}…)`, all, join(renders, `jobs-chunk-${String(k).padStart(2, '0')}.json`));
   if (!('skip-loops' in flags)) encodeLoops(part);
+}
+// The deferred pass: a held take renders once it is off the defer list, from its scene as staged and resolved now.
+for (const id of [...held]) {
+  if (isDeferred(id)) { console.log(`[finals] ${id}: still deferred; re-run the finals once its scene is resolved`); continue; }
+  copyFileSync(join(scenes, `${id}.json`), join(resolved, `${id}.scene.json`));
+  const filmFile = join(renders, `jobs-films-${id}.json`), stillFile = join(renders, `jobs-stills-${id}.json`);
+  run(`film job ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'films', resolved, join(renders, 'films'), filmFile, `--resolution=${flags['film-resolution'] ?? 2160}`,
+    `--master=${flags['film-master'] ?? 'prores'}`, ...(flags['film-proxy'] === 'false' ? ['--proxy=false'] : []), `--only=${id}`]);
+  run(`still jobs ${id}`, 'node', [join(TOOL, 'cinema-jobs.mjs'), 'blur', resolved, join(renders, 'stills'), stillFile, '--resolution=2160',
+    `--supersample=${flags['still-supersample'] ?? 1.5}`, `--only=${id}`]);
+  const jobsNow = [...JSON.parse(readFileSync(filmFile, 'utf8')), ...JSON.parse(readFileSync(stillFile, 'utf8'))];
+  // the re-planned take replaces this run's entries for it, so the retry pass retries the rebuilt jobs
+  for (const list of [films, stills]) for (let j = list.length - 1; j >= 0; j--) if (idOf(list[j]) === id) list.splice(j, 1);
+  for (const job of jobsNow) (job.film === 'false' ? stills : films).push(job);
+  await renderJobs(`deferred ${id}`, jobsNow, join(renders, `jobs-deferred-${id}.json`));
+  held.delete(id);
+  if (!('skip-loops' in flags)) encodeLoops(new Set([id]));
 }
 // The retry pass: each failed job once more, by itself, in a fresh browser; its take's formats follow if it renders.
 for (const job of [...films, ...stills].filter(j => failed.has(j.out))) {
