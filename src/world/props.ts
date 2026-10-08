@@ -872,6 +872,9 @@ function surfaceFromHeight(h: Float32Array, s: number, anisotropy: number, {
 }
 
 const _col = new THREE.Color();
+/** (the time-to-battle lane, 2026-10-08) the untoned render a props build's noise paints: every render family paints the
+ * same one (plaster, plaster2 and plaster3 differ only in tone), so it is painted once per build and copied */
+const plasterBases = new WeakMap<SimplexNoise, { px: Uint8ClampedArray; hgt: Float32Array }>();
 
 function makePlaster(
   noi: SimplexNoise,
@@ -892,17 +895,24 @@ function makePlaster(
       surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
     };
   }
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
-    const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
-    const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
-    const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
-    // weathered plaster: mid albedo so full sun never blows it to white
-    const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
-    _col.setHSL(0.085, 0.13 - stain * 0.05, l);
-    px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = n1 * 0.5 + n2 * 0.5;
+  const painted = plasterBases.get(noi);
+  if (painted) {
+    px.set(painted.px);
+    hgt.set(painted.hgt);
+  } else {
+    for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
+      const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
+      const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
+      const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
+      // weathered plaster: mid albedo so full sun never blows it to white
+      const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
+      _col.setHSL(0.085, 0.13 - stain * 0.05, l);
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
+      hgt[i] = n1 * 0.5 + n2 * 0.5;
+    }
+    plasterBases.set(noi, { px: px.slice(), hgt: hgt.slice() });
   }
   applyTone(px, tone);
   return {
