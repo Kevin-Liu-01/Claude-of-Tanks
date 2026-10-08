@@ -173,6 +173,9 @@ export interface StructureMask {
    */
   addHole(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
     depthM: number, outsideM?: number): number;
+  /** A storey dropped (world y): the holes centred in its band [y0, y1] go with it, those above come down by `dropM`
+   *  with the walls they were cut in. */
+  moveHoles(structureId: number, y0: number, y1: number, dropM: number): void;
   /** The fx clock (patched shaders animate from it); while a building falls, its buckets' shadows follow. */
   setClock(seconds: number): void;
   /** Shift every collapse start with the fx clock's rebase. */
@@ -267,6 +270,18 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
         touch(id * STRIDE + 1, 1);
       }
       return s;
+    },
+    moveHoles(id, y0, y1, dropM) {
+      if (!inRange(id)) return;
+      for (let k = 0; k < holeCount[id]; k++) {
+        const t = id * STRIDE + 2 + k * 2, o = t * 4;
+        if (!(data[o + 3] > 0)) continue;
+        const y = data[o + 1];
+        if (y >= y0 && y <= y1) data[o + 3] = 0;
+        else if (y > y1 && dropM > 0) data[o + 1] = y - dropM;
+        else continue;
+        touch(t, 1);
+      }
     },
     setClock(seconds) { uniforms.uStructClock.value = seconds; },
     shiftTime(delta) {

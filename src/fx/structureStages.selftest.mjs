@@ -194,7 +194,9 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
 }
 
 // ---- P2 section falls (DESTRUCTION.md §3.4): a house built storey by storey and face by face, as the regional kits
-// build it; a wall panel down to its 1 m stub, the roof, the upper storey once its faces are down; the clamp restored
+// build it; a wall panel down to its 1 m stub with the dressing proud of it, the upper storey once its faces are down
+// (its band down to the floor line, what stood on it lowered, the roof riding down whole), then the roof; the clamp
+// restored
 {
   const T0 = 0.43;
   const faceBox = (name, k) => {
@@ -207,21 +209,57 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const names = ['front', 'right', 'back', 'left'];
   const boxes = [0, 1].flatMap((k) => names.map((n) => ({ k, n, g: faceBox(n, k) })));
   const roofG = part('regionalRoof', 10.6, 2.4, 8.6, 0, 6, 0);
-  const sParts = { regionalPlaster: boxes.map((b) => b.g), regionalRoof: [roofG] };
+  // the dressing (facades 2026-10-08): a door canopy and a window box proud of the ground front, a door jamb from the
+  // ground up, the storey above's sill beam proud at the band's top; a ceiling under the upper storey's top, a buttress
+  // up both storeys in one part, a chimney through the roof
+  const dress = {
+    canopy: part('regionalTrim', 1.6, 0.25, 0.5, 1.5, 2.2, 4.25),
+    windowBox: part('regionalTrim', 1.0, 0.3, 0.3, -2, 1.3, 4.15),
+    jamb: part('regionalTrim', 0.25, 2.2, 0.15, 0.6, 0, 4.075),
+    sill: part('regionalTrim', 10.4, 0.2, 0.4, 0, 2.95, 4.2),
+    ceiling: part('regionalTrim', 9.0, 0.1, 7.0, 0, 5.8, 0),
+    buttress: part('regionalTrim', 0.5, 6, 1.2, -5.25, 0, -2),
+    chimney: part('regionalTrim', 0.6, 9.5, 0.6, 3, 0, -2),
+  };
+  const dressNames = Object.keys(dress);
+  const sParts = { regionalPlaster: boxes.map((b) => b.g), regionalRoof: [roofG], regionalTrim: dressNames.map((n) => dress[n]) };
   const sAnatomy = describeDefault({ structureIdx: 9, mapId: 'verdant', builder: 'cottage', style: null, parts: sParts, w: 10, d: 8,
     h: 8.4, placement, massClass: 'house', seed: damageSeed(2, 4000, -3000) });
   const sWall = merged('regionalPlaster', boxes.map((b) => b.g)), sRoof = merged('regionalRoof', [roofG]);
+  const sTrim = merged('regionalTrim', dressNames.map((n) => dress[n]));
   const sSpans = [
     ...sWall.ranges.map(([first, count]) => ({ mesh: sWall.mesh, geometryId: null, instanceId: null,
       position: sWall.mesh.geometry.getAttribute('position'), bucket: 'regionalPlaster', partClass: 'wall', first, count })),
     ...sRoof.ranges.map(([first, count]) => ({ mesh: sRoof.mesh, geometryId: null, instanceId: null,
       position: sRoof.mesh.geometry.getAttribute('position'), bucket: 'regionalRoof', partClass: 'roof', first, count })),
+    ...sTrim.ranges.map(([first, count]) => ({ mesh: sTrim.mesh, geometryId: null, instanceId: null,
+      position: sTrim.mesh.geometry.getAttribute('position'), bucket: 'regionalTrim', partClass: 'trim', first, count })),
   ];
   const seam = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
+  // the kit's storeyDown (facades' heap on the floor line), stood in for: one mound in the band, laid as the fall's run
+  let heapRuns = [];
+  seam.storeyDown = (storeyIdx, seed, out) => {
+    const m = out.mesh, y0 = sAnatomy.storeys[storeyIdx].y0;
+    if (m.begin('regionalPlaster', 'rubble')) {
+      const ring = [[-4, -3], [4, -3], [4, 3], [-4, 3]].map(([x, z]) => m.vertex(x, y0 + 0.05, z, 0, 1, 0, 0, 0, 0.6, 0.55, 0.5));
+      const apex = m.vertex(0, y0 + 1.2, 0, 0, 1, 0, 0.5, 0.5, 0.6, 0.55, 0.5);
+      for (let i = 0; i < 4; i++) m.triangle(ring[i], ring[(i + 1) % 4], apex);
+      m.end();
+    }
+    return { cuts: [], hides: [] };
+  };
   const wallBefore = Float32Array.from(sWall.mesh.geometry.getAttribute('position').array);
   const roofBefore = Float32Array.from(sRoof.mesh.geometry.getAttribute('position').array);
+  const trimBefore = Float32Array.from(sTrim.mesh.geometry.getAttribute('position').array);
   const bodyY = (arr, i) => arr[i * 3 + 1] - placement.y;
   const rangeOf = (k, n) => sWall.ranges[boxes.findIndex((b) => b.k === k && b.n === n)];
+  const trimRange = (n) => sTrim.ranges[dressNames.indexOf(n)];
+  const trimYs = (n) => { const [f, cnt] = trimRange(n); const t = sTrim.mesh.geometry.getAttribute('position').array;
+    return [...Array(cnt).keys()].map((j) => bodyY(t, f + j)); };
+  const trimFlat = (n) => { const [f, cnt] = trimRange(n); const t = sTrim.mesh.geometry.getAttribute('position').array;
+    return [...Array(cnt).keys()].every((j) => t[(f + j) * 3] === t[f * 3] && t[(f + j) * 3 + 1] === t[f * 3 + 1] && t[(f + j) * 3 + 2] === t[f * 3 + 2]); };
+  const trimStands = (n) => { const [f, cnt] = trimRange(n); const t = sTrim.mesh.geometry.getAttribute('position').array;
+    for (let i = f * 3; i < (f + cnt) * 3; i++) if (t[i] !== trimBefore[i]) return false; return true; };
   const sBase = { ...base, structureId: 9, hole: 255, radiusM: 0, sectionDown: true, munition: 'he', nx: 0, ny: 0, nz: 1 };
   const fall = (k, n, extra = {}) => {
     const at = { front: [0, 4], right: [5, 0], back: [0, -4], left: [-5, 0] }[n];
@@ -245,10 +283,11 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     return runs;
   };
   const groundFront = holeRuns(0, 'front', 0), groundRight = holeRuns(0, 'right', 1), upperFront = holeRuns(1, 'front', 2);
-  // 1. the ground storey's front panel: down to its stub, a metre over the base; nothing else moves
+  const slot = 9 * T;
+  const holeR = () => [0, 1, 2, 3].map((k) => data[slot + 8 + k * 8 + 3]);
+  const holeY = () => [0, 1, 2, 3].map((k) => data[slot + 8 + k * 8 + 1]);
+  // 1. the ground storey's front panel: down to its stub, a metre over the base; nothing else of the walls moves
   stages.breach(fall(0, 'front'), seam);
-  assert.ok(groundFront.every((m) => !m.visible), 'the fallen panel\'s hole goes with it: its rim and room');
-  assert.ok(groundRight.every((m) => m.visible) && upperFront.every((m) => m.visible), 'the standing walls keep their holes');
   let w = sWall.mesh.geometry.getAttribute('position').array;
   const [f0, c0] = rangeOf(0, 'front');
   for (let i = f0; i < f0 + c0; i++) assert.ok(bodyY(w, i) <= 1 + 1e-4, 'the fallen panel stands no higher than its 1 m stub');
@@ -258,14 +297,21 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     for (let i = f * 3; i < (f + cnt) * 3; i++) assert.equal(w[i], wallBefore[i], `${k}/${n} stands`);
   }
   assert.ok(epoch(sWall.mesh) > e0, 'the fall touches the casters');
-  // 2. the roof: the kit's hide (its covering's pieces thrown)
-  stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 7, z: placement.z,
-    y0: placement.y + 6, y1: placement.y + 8.4 }, seam);
-  const r = sRoof.mesh.geometry.getAttribute('position').array;
-  for (let i = 0; i < r.length; i += 3) assert.deepEqual([r[i], r[i + 1], r[i + 2]], [r[0], r[1], r[2]], 'the roof is gone');
-  // 3. the upper storey's last face falls with storeyDown: the whole band down to its floor line; the ground storey stands
+  // the dressing proud of it goes with it (facades: the canopy and window boxes stood in front of the stub): a part
+  // above the stub whole is flattened, the jamb comes down to the stub; the storey above's sill beam stands
+  assert.ok(trimFlat('canopy') && trimFlat('windowBox'), 'the canopy and the window box fall with their panel');
+  assert.ok(trimYs('jamb').every((y) => y <= 1 + 1e-4) && trimYs('jamb').some((y) => Math.abs(y - 1) < 1e-4), 'the jamb down to the stub');
+  assert.ok(trimStands('sill'), 'the jetty\'s sill beam over the panel stands');
+  assert.ok(groundFront.every((m) => !m.visible), 'the fallen panel\'s hole goes with it: its rim and room');
+  assert.ok(groundRight.every((m) => m.visible) && upperFront.every((m) => m.visible), 'the standing walls keep their holes');
+  // 2. the upper storey's last face falls with storeyDown, the roof still on it: every vertex of the band down to the
+  // floor line whatever its part (the buttress up both storeys in one part), a part wholly in the band flattened (no
+  // ceiling lid over the storey below), what stood on it lowered by the storey's height (the chimney's top), the roof
+  // riding down whole; the ground storey stands, the kit's heap on the floor line stands
   for (const n of ['front', 'right', 'back']) stages.breach(fall(1, n), seam);
+  const before = new Set(tagged());
   stages.breach(fall(1, 'left', { storeyDown: true }), seam);
+  heapRuns = tagged().filter((m) => !before.has(m));
   w = sWall.mesh.geometry.getAttribute('position').array;
   for (const n of names) {
     const [f, cnt] = rangeOf(1, n);
@@ -273,14 +319,38 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   }
   const [fr, cr] = rangeOf(0, 'right');
   assert.ok([...Array(cr).keys()].some((j) => Math.abs(bodyY(w, fr + j) - 3) < 1e-4), 'the ground storey\'s walls keep their height');
+  assert.ok(trimFlat('ceiling'), 'the storey\'s ceiling goes with it, no lid on the floor line');
+  const bY = trimYs('buttress');
+  assert.ok(Math.max(...bY) <= 3 + 1e-4 && Math.min(...bY) === 0, `the buttress up both storeys keeps its ground storey (${Math.min(...bY)}..${Math.max(...bY)})`);
+  const cY = trimYs('chimney');
+  assert.ok(Math.abs(Math.max(...cY) - 6.5) < 1e-4 && Math.min(...cY) === 0, `the chimney comes down by the storey's height (${Math.max(...cY)})`);
+  assert.ok(trimStands('sill') || trimYs('sill').every((y) => y <= 3.15 + 1e-4), 'the sill beam at the floor line stays on it');
+  let r = sRoof.mesh.geometry.getAttribute('position').array;
+  for (let i = 0; i < r.length; i += 3) {
+    assert.ok(Math.abs(r[i + 1] - (roofBefore[i + 1] - 3)) < 1e-4 && r[i] === roofBefore[i] && r[i + 2] === roofBefore[i + 2],
+      'the roof rides the dropped storey down whole');
+  }
   assert.ok(upperFront.every((m) => !m.visible), 'the dropped storey takes its holes\' rims and room');
   assert.ok(groundRight.every((m) => m.visible), 'the ground storey\'s hole stands with its wall');
+  assert.ok(heapRuns.length > 0 && heapRuns.every((m) => m.visible), 'the kit\'s heap on the floor line stands (laid after the drop)');
+  // (each rendered-wall hole is two cuts, the render's ring and the hole: the ring of four holds the ground right's
+  // and the upper front's)
+  const radii = holeR(), ys = holeY();
+  for (let k = 0; k < 4; k++) {
+    if (ys[k] > placement.y + 3) assert.equal(radii[k], 0, `the dropped storey's cut ${k} goes with it`);
+    else assert.ok(radii[k] > 0, `the ground storey's cut ${k} stays`);
+  }
+  assert.ok(radii.some((v) => v === 0) && radii.some((v) => v > 0), `both kinds in the ring (${radii})`);
   // a dropped run stays down when the debris shows its delayed runs
   now += 5;
   debris.update();
   assert.ok(groundFront.every((m) => !m.visible) && upperFront.every((m) => !m.visible), 'a dropped run is never shown again');
+  // 3. the roof falls: the kit's hide (its covering's pieces thrown)
+  stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 4, z: placement.z,
+    y0: placement.y + 3, y1: placement.y + 5.4 }, seam);
+  r = sRoof.mesh.geometry.getAttribute('position').array;
+  for (let i = 0; i < r.length; i += 3) assert.deepEqual([r[i], r[i + 1], r[i + 2]], [r[0], r[1], r[2]], 'the roof is gone');
   // 4. a real hole: a P1 'breached' stage cuts no synthetic one on that structure, nor with sections on
-  const slot = 9 * T;
   const holesBefore = data[slot + 7];
   stages.stage({ ...base, structureId: 9, stage: 'breached', previous: 'damaged', x: placement.x, y: 4, z: placement.z + 4,
     dirX: 0, dirZ: -1 }, seam);
@@ -289,6 +359,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   stages.reset();
   assert.deepEqual(Array.from(sWall.mesh.geometry.getAttribute('position').array), Array.from(wallBefore), 'the walls come back whole');
   assert.deepEqual(Array.from(sRoof.mesh.geometry.getAttribute('position').array), Array.from(roofBefore), 'the roof comes back');
+  assert.deepEqual(Array.from(sTrim.mesh.geometry.getAttribute('position').array), Array.from(trimBefore), 'the dressing comes back');
   // with sections on, a fresh structure's 'breached' stage cuts no synthetic hole either
   const seamB = createStructureDamageSeam(9, 'cottage', null, sAnatomy, sSpans);
   mask.reset();

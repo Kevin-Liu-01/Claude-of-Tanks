@@ -108,50 +108,110 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // buckets' own positions (any kit, every tier): every vertex of the structure inside the section's volume (body frame)
   // goes down to the line it falls to
   const _m = new THREE.Matrix4(), _mi = new THREE.Matrix4(), _inst = new THREE.Matrix4(), _p = new THREE.Vector3();
+  const _tgt: number[] = [];
+  interface ClampOptions {
+    /** A part moves only when this share of its vertices stands in the volume (0: every vertex in it, whatever its
+     *  part's share — a regional house draws one geometry per bucket and role for the whole building). */
+    minShare?: number;
+    /** The line the volume falls to: a part going down to it whole is flattened to a point instead (facades
+     *  2026-10-08: a storey's ceiling squashed onto its floor line made a lid over the storey below). */
+    line?: number;
+    /** Parts the caller moves itself (a dropped storey's roof rides down whole). */
+    skip?(span: StructureSpan): boolean;
+  }
+  /** A span's part matrix (its mesh, times its instance's) into _m, the inverse into _mi. */
+  function spanMatrices(span: StructureSpan): void {
+    const mesh = span.mesh as THREE.Object3D & { getMatrixAt?(index: number, target: THREE.Matrix4): THREE.Matrix4 };
+    _m.copy(mesh.matrixWorld);
+    if (span.instanceId !== null && typeof mesh.getMatrixAt === 'function') { mesh.getMatrixAt(span.instanceId, _inst); _m.multiply(_inst); }
+    _mi.copy(_m).invert();
+  }
   function clampStructure(seam: StructureDamageSeam, inside: (bx: number, by: number, bz: number) => boolean,
-    clampY: (bx: number, by: number, bz: number) => number | null): boolean {
+    clampY: (bx: number, by: number, bz: number) => number | null, opts: ClampOptions = {}): boolean {
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
+    const minShare = opts.minShare ?? 0.8, line = opts.line;
     let changed = false;
     for (const span of seam.spans) {
-      if (span.count <= 0) continue;
-      const mesh = span.mesh as THREE.Object3D & { getMatrixAt?(index: number, target: THREE.Matrix4): THREE.Matrix4 };
-      _m.copy(mesh.matrixWorld);
-      if (span.instanceId !== null && typeof mesh.getMatrixAt === 'function') { mesh.getMatrixAt(span.instanceId, _inst); _m.multiply(_inst); }
-      _mi.copy(_m).invert();
+      if (span.count <= 0 || flattenedSpans.has(span) || opts.skip?.(span)) continue;
+      spanMatrices(span);
       const arr = span.position.array as Float32Array;
-      // a part belongs to the section when most of it stands in the section's volume: a corner of the next face's wall
-      // (its end inside this face's slab) stays
-      let inN = 0;
-      for (let i = span.first, end = span.first + span.count; i < end; i++) {
-        _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
-        const wx = _p.x - px, wz = _p.z - pz;
-        if (inside(wx * c - wz * s, _p.y - py, wx * s + wz * c)) inN++;
+      if (minShare > 0) {
+        // a part belongs to the section when most of it stands in the section's volume: a corner of the next face's
+        // wall (its end inside this face's slab) stays
+        let inN = 0;
+        for (let i = span.first, end = span.first + span.count; i < end; i++) {
+          _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+          const wx = _p.x - px, wz = _p.z - pz;
+          if (inside(wx * c - wz * s, _p.y - py, wx * s + wz * c)) inN++;
+        }
+        if (inN < span.count * minShare) continue;
       }
-      if (inN < span.count * 0.8) continue;
-      let touched = false;
-      for (let i = span.first, end = span.first + span.count; i < end; i++) {
+      // the targets first: a part going down to the line whole is flattened, not squashed into a sheet on it
+      _tgt.length = span.count;
+      let moved = 0, toLine = 0;
+      for (let k = 0; k < span.count; k++) {
+        const i = span.first + k;
         _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
         // world = R(yaw) body + placement (three's rotateY), so body = R(-yaw)(world - placement)
-        const wx = _p.x - px, wz = _p.z - pz;
-        const by = _p.y - py;
+        const wx = _p.x - px, wz = _p.z - pz, by = _p.y - py;
         const to = clampY(wx * c - wz * s, by, wx * s + wz * c);
-        if (to === null || to >= by) continue;
-        if (!touched) { keep(span); touched = true; }
-        _p.y = to + py;
+        if (to === null || !(to < by)) { _tgt[k] = NaN; continue; }
+        _tgt[k] = to;
+        moved++;
+        if (line !== undefined && Math.abs(to - line) < 1e-6) toLine++;
+      }
+      if (!moved) continue;
+      if (line !== undefined && toLine === span.count) { flattenSpan(span); changed = true; continue; }
+      keep(span);
+      for (let k = 0; k < span.count; k++) {
+        if (Number.isNaN(_tgt[k])) continue;
+        const i = span.first + k;
+        _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _p.y = _tgt[k] + py;
         _p.applyMatrix4(_mi);
         arr[i * 3] = _p.x; arr[i * 3 + 1] = _p.y; arr[i * 3 + 2] = _p.z;
       }
-      if (touched) {
-        span.position.addUpdateRange(span.first * 3, span.count * 3);
-        span.position.needsUpdate = true;
-        changed = true;
-      }
+      span.position.addUpdateRange(span.first * 3, span.count * 3);
+      span.position.needsUpdate = true;
+      changed = true;
     }
     return changed;
   }
+  /** A part lowered whole by `dropM` (world y; the roof riding a dropped storey down). */
+  function lowerSpan(span: StructureSpan, dropM: number): boolean {
+    if (span.count <= 0 || flattenedSpans.has(span) || !(dropM > 0)) return false;
+    spanMatrices(span);
+    keep(span);
+    const arr = span.position.array as Float32Array;
+    for (let i = span.first, end = span.first + span.count; i < end; i++) {
+      _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+      _p.y -= dropM;
+      _p.applyMatrix4(_mi);
+      arr[i * 3] = _p.x; arr[i * 3 + 1] = _p.y; arr[i * 3 + 2] = _p.z;
+    }
+    span.position.addUpdateRange(span.first * 3, span.count * 3);
+    span.position.needsUpdate = true;
+    return true;
+  }
+  /** A span's highest point in the body frame. */
+  function spanTop(seam: StructureDamageSeam, span: StructureSpan): number {
+    spanMatrices(span);
+    const arr = span.position.array as Float32Array;
+    let top = -Infinity;
+    for (let i = span.first, end = span.first + span.count; i < end; i++) {
+      _p.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+      if (_p.y > top) top = _p.y;
+    }
+    return top - seam.anatomy.placement.y;
+  }
   const SLAB_EPS = 0.08;
-  /** A wall panel above its stub: the face's slab (its width, its wall's thickness) from the stub top up to the band's top. */
+  /** The dressing a house stands proud of a face falls with its panel (facades 2026-10-08: a door's surround and canopy,
+   *  window boxes, shutters, sills, balconies — up to 0.9 m out — stood in front of the stub); not in the band's top
+   *  JETTY_KEEP_M, where the storey above's sill beam, joists and jetty stand proud of the face below. */
+  const PROUD_M = 1.0, JETTY_KEEP_M = 0.12;
+  /** A wall panel above its stub: the face's slab (its width, its wall's thickness, the dressing proud of it) from the
+   *  stub top up to the band's top; a part above the stub whole (a canopy, a window box) is flattened. */
   function clampPanel(seam: StructureDamageSeam, face: DamageFace, stubTop: number, top: number): boolean {
     const t = Math.max(0.12, face.layers.reduce((sum, layer) => sum + (layer.thicknessM || 0), 0));
     const bottom = stubTop - Math.max(1, stubTop - face.origin[1]);
@@ -159,19 +219,32 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (by < bottom - SLAB_EPS || by > top + SLAB_EPS) return false;
       const ox = bx - face.origin[0], oz = bz - face.origin[2];
       const along = ox * face.out[0] + oz * face.out[2];
-      if (along > SLAB_EPS || along < -t - SLAB_EPS) return false;
+      if (along < -t - SLAB_EPS || along > (by <= top - JETTY_KEEP_M ? PROUD_M : SLAB_EPS)) return false;
       return Math.abs(ox * face.u[0] + oz * face.u[2]) <= face.width / 2 + SLAB_EPS;
     };
-    return clampStructure(seam, inSlab, (bx, by, bz) => (by > stubTop && inSlab(bx, by, bz) ? stubTop : null));
+    return clampStructure(seam, inSlab, (bx, by, bz) => (by > stubTop && inSlab(bx, by, bz) ? stubTop : null), { line: stubTop });
   }
-  /** A storey dropped: its whole band over the footprint down to its floor line (the storey below keeps its walls; the
-   *  kit's storeyDown throws the slab's pieces). */
+  /** A storey dropped: every vertex of its band over the footprint (the eaves and dressing past the walls too) down to
+   *  its floor line, whatever its part's share; a part going down whole is flattened (no lid over the storey below);
+   *  what stood on the storey (the storeys above, gables, chimney tops) comes down by the storey's height; a roof that
+   *  rises above the band rides down whole (its eaves dip into the band). The storey below keeps its top. */
+  function storeyReach(seam: StructureDamageSeam, storey: DamageStorey): [number, number] {
+    const a = seam.anatomy, jet = Math.max(0, ...storey.jetty);
+    return [a.w / 2 + jet + 1.5, a.d / 2 + jet + 1.5];
+  }
   function clampStorey(seam: StructureDamageSeam, storey: DamageStorey): boolean {
-    const a = seam.anatomy;
-    const reachX = a.w / 2 + Math.max(0, ...storey.jetty) + 0.3, reachZ = a.d / 2 + Math.max(0, ...storey.jetty) + 0.3;
-    const inBand = (bx: number, by: number, bz: number): boolean => by >= storey.y0 - SLAB_EPS && by <= storey.y1 + SLAB_EPS
-      && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ;
-    return clampStructure(seam, inBand, (bx, by, bz) => (by > storey.y0 + 0.02 && inBand(bx, by, bz) ? storey.y0 : null));
+    const [reachX, reachZ] = storeyReach(seam, storey);
+    const dropM = storey.y1 - storey.y0;
+    const rides = new Set<StructureSpan>();
+    for (const span of seam.spans) {
+      if (span.partClass === 'roof' && !flattenedSpans.has(span) && spanTop(seam, span) > storey.y1 + SLAB_EPS) rides.add(span);
+    }
+    let changed = clampStructure(seam, () => true, (bx, by, bz) => {
+      if (Math.abs(bx) > reachX || Math.abs(bz) > reachZ || !(by > storey.y0 + 0.02)) return null;
+      return by <= storey.y1 + SLAB_EPS ? storey.y0 : by - dropM;
+    }, { minShare: 0, line: storey.y0, skip: (span) => rides.has(span) });
+    for (const span of rides) changed = lowerSpan(span, dropM) || changed;
+    return changed;
   }
   /** A fallen section takes the structure's standing runs inside it with it (facades: a dropped storey left the room
    *  behind an upper hole and a fallen roof's eave bands standing): runs mostly inside the volume hide. */
@@ -198,6 +271,25 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (gone) { debris.dropRun(mesh); dropped = true; }
     }
     return dropped;
+  }
+  /** The structure's standing runs mostly above `aboveY` (body) come down by `dropM` with what they stood on. */
+  function lowerRuns(seam: StructureDamageSeam, aboveY: number, reachX: number, reachZ: number, dropM: number): boolean {
+    const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    let moved = false;
+    for (const mesh of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+      const pos = mesh.geometry.getAttribute('position');
+      let upN = 0;
+      for (let i = 0; i < pos.count; i++) {
+        const wx = pos.getX(i) - px, wz = pos.getZ(i) - pz;
+        const bx = wx * c - wz * s, bz = wx * s + wz * c;
+        if (pos.getY(i) - py > aboveY && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ) upN++;
+      }
+      if (!(pos.count > 0 && upN >= pos.count * 0.5)) continue;
+      mesh.geometry.translate(0, -dropM, 0);
+      moved = true;
+    }
+    return moved;
   }
   /** Structures that have had a real P2 hole: a P1 'breached' stage cuts them no synthetic one. */
   const realHoles = new Set<number>();
@@ -325,41 +417,54 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (e.sectionKind === 'roof') {
         const roof = a.roof;
         if (roof) {
-          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out));
-          // the roof's own patches and eave bands from earlier blows go with it
+          // the roof's own patches and eave bands from earlier blows go with it (first: the fall's own runs stand)
           const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
           changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
             (owner) => owner.section === roof.section) || changed;
+          o.scars?.clearWhere(e.structureId, (_x, y) => y >= a.placement.y + roof.eaveY - 0.25);
+          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out));
         }
       } else {
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
         const storey = spec ? a.storeys[spec.storey] : null;
         const face = storey ? storey.faces.find((f) => f.name === spec!.face) ?? null : null;
         if (spec && storey && face) {
-          run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out));
           // the panel above its stub (a metre over the base; an upper storey's falls to its floor line)
           const y0 = e.y0 - a.placement.y, y1 = e.y1 - a.placement.y;
           const stubTop = Math.max(y0, baseY + 1 - a.placement.y, storey.y0), top = Math.max(y1, storey.y1);
           changed = clampPanel(seam, face, stubTop, top) || changed;
-          // the panel's own rims and the room behind its holes go with it
+          // the panel's own rims and the room behind its holes go with it (before the kit's fall: its own runs stand)
           const t = Math.max(0.12, face.layers.reduce((sum, layer) => sum + (layer.thicknessM || 0), 0));
-          changed = dropRuns(seam, (bx, by, bz) => {
+          const onPanel = (bx: number, by: number, bz: number): boolean => {
             if (by <= stubTop || by > top + SLAB_EPS) return false;
             const ox = bx - face.origin[0], oz = bz - face.origin[2];
             const along = ox * face.out[0] + oz * face.out[2];
             return along <= SLAB_EPS + 0.1 && along >= -t - 1.2 && Math.abs(ox * face.u[0] + oz * face.u[2]) <= face.width / 2 + 0.3;
-          }, (owner) => owner.section === spec.section) || changed;
+          };
+          changed = dropRuns(seam, onPanel, (owner) => owner.section === spec.section) || changed;
+          o.scars?.clearWhere(e.structureId, (x, y, z) => {
+            const { x: px, y: py, z: pz, yaw } = a.placement;
+            const c = Math.cos(yaw), s = Math.sin(yaw), wx = x - px, wz = z - pz;
+            return onPanel(wx * c - wz * s, y - py, wx * s + wz * c);
+          });
+          run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out));
         }
         if (ev.storeyDown === true && storey) {
+          // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
+          // the kit's heap on the floor line (laid last: it stands)
+          changed = clampStorey(seam, storey) || changed;
+          const [reachX, reachZ] = storeyReach(seam, storey);
+          const dropM = storey.y1 - storey.y0;
+          changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
+            && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
+          changed = lowerRuns(seam, storey.y1 + SLAB_EPS, reachX, reachZ, dropM) || changed;
+          mask.moveHoles(seam.structureIdx, a.placement.y + storey.y0 + 0.02, a.placement.y + storey.y1 + SLAB_EPS, dropM);
+          o.scars?.clearWhere(e.structureId, (_x, y) => y > a.placement.y + storey.y0 + 0.02);
           const storeyDown = (seam as StructureDamageSeam & { storeyDown?(storey: number, seed: number, out: DamageWriters): DamageStageResult })
             .storeyDown;
           if (typeof storeyDown === 'function') {
             run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out));
           }
-          changed = clampStorey(seam, storey) || changed;
-          const reachX = a.w / 2 + Math.max(0, ...storey.jetty) + 0.3, reachZ = a.d / 2 + Math.max(0, ...storey.jetty) + 0.3;
-          changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
-            && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
         }
       }
       if (changed) seam.touchShadows();
