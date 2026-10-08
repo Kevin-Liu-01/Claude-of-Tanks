@@ -5920,6 +5920,49 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
 // ---------------------------------------------------------------------------
 // Small shared detail assemblies
 // ---------------------------------------------------------------------------
+// Fleet lane round 1 (2026-10-07; media wave m1 and the brief: sights read as "floating blue screen boxes" and
+// "desktop monitors"): a broad flat glass pane authored as a plain box sat proud on its housing like a screen. Every
+// such pane (window at least 8 x 7 cm, at most 35 mm thick, upright) now gets an armoured surround in the housing's
+// painted fitting bucket: a frame lip standing 15 mm proud of both faces, so the glass reads recessed whichever face
+// looks outward, and a hood over the top that reaches 45 mm past the pane. Source-measured panes (not BoxGeometry),
+// horizontal panes and small slits are untouched.
+const GLASS_FRAME_W = 0.016;
+const GLASS_FRAME_PROUD = 0.015;
+const GLASS_HOOD_REACH = 0.045;
+const GLASS_HOOD_T = 0.012;
+const GLASS_SURROUND_BUCKET: Readonly<Record<string, string>> = Object.freeze({
+  turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount',
+});
+function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
+  const target = GLASS_SURROUND_BUCKET[bucket];
+  const params = (geometry as THREE.BufferGeometry & { parameters?: { width: number; height: number; depth: number } }).parameters;
+  if (!target || geometry.type !== 'BoxGeometry' || !params) return [];
+  const dims = [params.width, params.height, params.depth];
+  const thin = Math.min(...dims);
+  const thinAxis = dims.indexOf(thin);
+  if (thinAxis === 1) return [];
+  const faceW = dims[thinAxis === 0 ? 2 : 0], faceH = dims[1];
+  if (thin > 0.035 || faceW < 0.08 || faceH < 0.07) return [];
+  // only a pane still in its own box frame (a caller may have moved or turned the box before adding it)
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb || Math.abs(bb.max.x + bb.min.x) > 1e-6 || Math.abs(bb.max.y + bb.min.y) > 1e-6
+    || Math.abs(bb.max.z + bb.min.z) > 1e-6 || Math.abs(bb.max.x - bb.min.x - params.width) > 1e-6
+    || Math.abs(bb.max.y - bb.min.y - params.height) > 1e-6 || Math.abs(bb.max.z - bb.min.z - params.depth) > 1e-6) return [];
+  const fw = GLASS_FRAME_W, lip = thin + 2 * GLASS_FRAME_PROUD;
+  // (u across the window, v up, n through the pane) in the pane's own box frame
+  const part = (du: number, dv: number, su: number, sv: number, sn: number): THREE.BufferGeometry => (thinAxis === 2
+    ? xform(new THREE.BoxGeometry(su, sv, sn), du, dv, 0)
+    : xform(new THREE.BoxGeometry(sn, sv, su), 0, dv, du));
+  return [
+    part(0, faceH / 2 + fw / 2, faceW + 2 * fw, fw, lip),
+    part(0, -(faceH / 2 + fw / 2), faceW + 2 * fw, fw, lip),
+    part(faceW / 2 + fw / 2, 0, fw, faceH, lip),
+    part(-(faceW / 2 + fw / 2), 0, fw, faceH, lip),
+    part(0, faceH / 2 + fw + GLASS_HOOD_T / 2, faceW + 2 * fw + 0.012, GLASS_HOOD_T, thin + 2 * GLASS_HOOD_REACH),
+  ];
+}
+
 function cupola(
   builder: object,
   bucket: string,
@@ -7178,6 +7221,7 @@ function* createTankOwnedSteps(
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
       // (body, inset lid and small face furniture) through the continuous
@@ -7228,6 +7272,12 @@ function* createTankOwnedSteps(
       // affine legacy box. Hull glass also owns headlight lenses, so fixed
       // hull periscopes are tagged explicitly by the shared helper below.
       if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
+      for (const surround of glassSurround) {
+        const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+        partCensus?.(frameBucket, frame, 'add');
+      }
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit
@@ -7283,10 +7333,17 @@ function* createTankOwnedSteps(
       rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
+      const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
+      for (const surround of glassSurround) {
+        const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+        partCensus?.(frameBucket, frame, 'add');
+      }
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
