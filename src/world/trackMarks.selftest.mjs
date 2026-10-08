@@ -170,6 +170,31 @@ for (let s = 0; s < st.written; s++) {
   m.dispose();
 }
 
+// 6b. A crater takes the marks inside it (the FX lane's ask: 0.9 R, as the ground cover): only those already laid,
+//     and hulls crossing the bowl afterwards lay new ones on it.
+{
+  const m = createTrackMarks(field, { segments: 256 });
+  m.update(0, { x: 0, y: 5, z: 0 });
+  const k = {};
+  for (let i = 0; i <= 240; i++) { m.update(1 / 60, { x: 0, y: 5, z: 0 }); m.stamp(k, 0, -16 + i * (8 / 60), 0, 1, 8, halfGauge, trackW); }
+  const laid = m.stats().written;
+  const geoC = m.mesh.geometry, posC = geoC.getAttribute('position'), mkC = geoC.getAttribute('aMark');
+  const mid = (s) => [0, 1, 2, 3].reduce((acc, j) => [acc[0] + posC.getX(s * 4 + j) / 4, acc[1] + posC.getZ(s * 4 + j) / 4], [0, 0]);
+  const inBowl = (x, z) => Math.hypot(x, z) < 0.9 * 6;
+  const want = Array.from({ length: laid }, (_, s) => s).filter((s) => inBowl(...mid(s))).length;
+  assert.ok(want > 4 && want < laid, 'the fixture lays marks in and out of the bowl');
+  const cleared = m.clearWhere(inBowl);
+  assert.equal(cleared, want, `every mark inside 0.9 R cleared (${cleared})`);
+  for (let s = 0; s < laid; s++) {
+    const dead = mkC.getZ(s * 4) === 1e9;
+    assert.equal(dead, inBowl(...mid(s)), 'inside cleared, outside kept');
+  }
+  assert.equal(m.clearWhere(inBowl), 0, 'nothing left to clear');
+  for (let i = 0; i <= 120; i++) { m.update(1 / 60, { x: 0, y: 5, z: 0 }); m.stamp(k, 2, -8 + i * (8 / 60), 0, 1, 8, halfGauge, trackW); }
+  assert.ok(m.stats().written > laid, 'a hull crossing the bowl afterwards lays new marks');
+  m.dispose();
+}
+
 // 7. The wiring.
 {
   const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');

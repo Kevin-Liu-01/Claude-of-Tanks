@@ -88,6 +88,12 @@ export interface TrackMarks {
   update(dt: number, camera: { x: number; y: number; z: number }): void;
   /** A clean ground (a new battle). */
   reset(): void;
+  /**
+   * Clear every mark already laid whose middle `inside(x, z)` holds — the FX lane's ask (2026-10-08): a deforming crater
+   * takes the marks inside 0.9 R with the ground cover (groundCoverCraters holeAt), its churned soil shows there, and
+   * hulls crossing the bowl afterwards lay new marks on it. Returns the segments cleared.
+   */
+  clearWhere(inside: (x: number, z: number) => boolean): number;
   stats(): TrackMarksStats;
   dispose(): void;
 }
@@ -362,6 +368,23 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
       cursor = 0; written = 0; time = 0; followed = 0; lastLaidMs = Number.NEGATIVE_INFINITY;
       // every followed track forgets its strip: the hull's next frame starts a new one
       hulls = new WeakMap();
+    },
+    clearWhere(inside) {
+      let cleared = 0, lo = segments, hi = -1;
+      for (let s = 0; s < segments; s++) {
+        if (!Number.isFinite(births[s])) continue;
+        const p = s * 12;
+        const mx = (positions[p] + positions[p + 3] + positions[p + 6] + positions[p + 9]) * 0.25;
+        const mz = (positions[p + 2] + positions[p + 5] + positions[p + 8] + positions[p + 11]) * 0.25;
+        if (!inside(mx, mz)) continue;
+        for (let k = 0; k < 4; k++) marks[s * 16 + k * 4 + 2] = 1e9; // unborn: dropped in the vertex stage
+        births[s] = Number.NEGATIVE_INFINITY;
+        cleared++;
+        if (s < lo) lo = s;
+        if (s > hi) hi = s;
+      }
+      if (cleared) { mark.addUpdateRange(lo * 16, (hi - lo + 1) * 16); mark.needsUpdate = true; }
+      return cleared;
     },
     stats() {
       let held = 0;
