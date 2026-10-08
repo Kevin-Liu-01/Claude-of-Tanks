@@ -5989,8 +5989,10 @@ export function* attachTankDecorationsSteps(
               const at = seat(h, y, z, pass);
               if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
               const { pos, rot } = at;
-              if (pass < 2) wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+              wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
               if (tryCommit(pos, rot)) { done = true; break; }
+              // the old fan with its wedge turned away: its own plain bracket at the same seat, as it always seated
+              if (pass === 2) { plainBracket(); if (tryCommit(pos, rot)) { done = true; break; } }
             }
             if (done) break;
           }
@@ -6009,12 +6011,17 @@ export function* attachTankDecorationsSteps(
                 const at = seat(h, y, z, pass);
                 if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
                 const { pos, rot } = at;
-                if (pass < 2) wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
-                const bb = placedBox(cl, pos, rot);
-                const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
-                if (over > 0.003) continue;
-                if (over > 0) pos.x -= s * (over + 0.0005);
-                if (tryCommit(pos, rot)) { done = true; break; }
+                const inboard = (): boolean => {
+                  const bb = placedBox(cl, pos, rot);
+                  const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+                  if (over > 0.003) return false;
+                  if (over > 0) pos.x -= s * (over + 0.0005);
+                  return true;
+                };
+                wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+                const x0 = pos.x;
+                if (inboard() && tryCommit(pos, rot)) { done = true; break; }
+                if (pass === 2) { pos.x = x0; plainBracket(); if (inboard() && tryCommit(pos, rot)) { done = true; break; } }
               }
               if (done) break;
             }
@@ -6033,8 +6040,9 @@ export function* attachTankDecorationsSteps(
                 if (!h) continue;
                 const at = seat(h, y, z, pass);
                 if (!at || (pass < 2 && !backed(at.pos, at.rot))) continue;
-                if (pass < 2) wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
+                wedgeBracket(cl, at.pos, at.rot, h.p, h.n, resources.releaseGeometry, cheekCaster(at.pos, at.rot));
                 done = tryCommit(at.pos, at.rot);
+                if (!done && pass === 2) { plainBracket(); done = tryCommit(at.pos, at.rot); }
               }
               if (done) break;
             }
