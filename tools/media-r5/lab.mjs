@@ -144,6 +144,8 @@ async function take(ms) {
   }
   leaseCount++;
   await lock.acquire(ms, STAMP ? { ticket: ticketAt(STAMP) } : {});
+  // (2026-10-08: the coordinator could not tell from the log when a lab held the shared lock)
+  console.log(`[lab] lease ${leaseCount} taken ${new Date().toTimeString().slice(0, 8)}`);
 }
 console.log(`[lab] waiting for capture lock${STAMP ? ` at ${STAMP}` : ''}`);
 await take(3 * 60 * 60 * 1000);
@@ -514,7 +516,7 @@ try {
         if (timedOut(error)) { wedged = true; console.error('[lab] the browser stopped answering; the run ends here, the rest for a fresh browser'); }
       } finally {
         if (PER_JOB) lock.release();
-        else if (BUDGET_MS && holding && Date.now() - heldSince >= BUDGET_MS) { lock.release(); holding = false; }
+        else if (BUDGET_MS && holding && Date.now() - heldSince >= BUDGET_MS) { lock.release(); holding = false; console.log(`[lab] lease released ${new Date().toTimeString().slice(0, 8)} (budget)`); }
       }
     }
     } finally { if (PER_MAP && holding && (!BUDGET_MS || Date.now() - heldSince >= BUDGET_MS)) { lock.release(); holding = false; } }

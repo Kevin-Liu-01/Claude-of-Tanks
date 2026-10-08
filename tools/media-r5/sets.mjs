@@ -96,7 +96,7 @@ export const SETS = [
       { id: 't09-runway-lead', durMs: 3000, speed: 14, effects: [smokeScreen('ally3', 0, { durationS: 20 }), smokeScreen('ally4', 300, { durationS: 20 })],
         cam: RIG.lead({ side: 1.0, along: [27, 19], lift: 0.7, fov: 26, look: [0, -4, 1.6] }) },
       { id: 't34-runway-pan', durMs: 3000, speed: 14, pinMs: 1500, effects: [], formation: [[0, 0], [1.5, -22], [-1, -44]], count: 3,
-        cam: RIG.pan({ side: 85, along: 0, lift: 1.6, fov: 10, look: [0, -6, 1.6] }) },
+        cam: RIG.pan({ side: 85, along: 0, lift: 3, fov: 10, look: [0, -6, 1.6] }) }, // PR #9 push 4: at 1.6 m the tele looked through the runway's tall grass
     ] },
   { id: 'sirocco-noon-village', map: 'desert', time: 'day', seed: 406, anchor: [10, -70], heading: 351.9, formation: 'wedge', picture: { exposure: -0.4, contrast: 1.12 }, // PR #9 push 4: was [6, -40] at 0°, the hero starting in a checkpoint hut and b26's lens blocked at its still
     lineup: [CAST.leclerc, CAST.merkava, CAST.sepv3], camo: 'factory', count: 3,
