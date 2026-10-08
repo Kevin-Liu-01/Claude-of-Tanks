@@ -100,7 +100,9 @@ for (const id of ['t90m_x', 'm1a2_sepv3_x', 'leo2a6_ua', 'challenger_3']) {
   const cavity = shader.fragmentShader.indexOf('#ifdef COT_GEAR_CAVITY');
   assert.ok(cavity > 0, 'the floor hook carries the cavity block');
   assert.ok(cavity > shader.fragmentShader.indexOf('vehHeight'), 'the cavity cut comes after the lifts and the ground occlusion');
-  assert.match(shader.fragmentShader.slice(cavity), /directDiffuse \*= 0\.4\d+;[\s\S]*indirectDiffuse \*= 0\.3\d*;/, 'direct and indirect shares');
+  // round 2: a hole's floor keeps at most a quarter of the direct light and a fifth of the sky (near-black behind its rim)
+  const shares = shader.fragmentShader.slice(cavity).match(/directDiffuse \*= ([0-9.]+);[\s\S]*?indirectDiffuse \*= ([0-9.]+);/);
+  assert.ok(shares && Number(shares[1]) <= 0.25 && Number(shares[2]) <= 0.2, `direct and indirect shares (${shares?.slice(1)})`);
 }
 
 // --- framed sight glass: every broad box window on these hulls stands in a frame (bars round its edges, flush with it)

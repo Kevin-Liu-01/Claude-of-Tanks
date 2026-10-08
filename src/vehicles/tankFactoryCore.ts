@@ -3017,8 +3017,8 @@ function appendTrackShoePins(
 // slabs with no links"): one shoe colour per link made the run one tone, so links only separated where a shadow fell.
 // Each shoe now carries a worn-steel read in its own vertex colours, multiplied with the per-link palette: the link
 // ends that face the next shoe across the gap fall dark, the inner web and guide stay in shadow tone, and the outward
-// contact face is road-polished on all-steel shoes (bright crests) or dark rubber on padded ones (steel shoulders
-// brighter). Geometry and the instance palette are unchanged; the shoe material reads the colours (vertexColors).
+// contact face is road-polished on all-steel shoes (crests a third brighter; round 2: the 1.7x crests read as pale
+// planks) or dark rubber on padded ones (steel shoulders brighter). Geometry and the instance palette are unchanged; the shoe material reads the colours (vertexColors).
 const RUBBER_PAD_SURFACES = new Set(['paired-pad', 'rubber-block', 'split-chevron', 'fine-rib', 'staggered-rib']);
 function bakeTrackShoeWear(geometry: THREE.BufferGeometry, pattern: { surface?: string }): void {
   if (geometry.getAttribute('color')) return;
@@ -3040,7 +3040,7 @@ function bakeTrackShoeWear(geometry: THREE.BufferGeometry, pattern: { surface?: 
     let warm = 0;
     if (ny > 0.55) {
       const crest = Math.min(1, Math.max(0, (h - 0.55) / 0.45));
-      if (!rubber) { k *= 1 + 0.7 * crest * crest; warm = crest; }
+      if (!rubber) { k *= 1 + 0.32 * crest * crest; warm = crest; }
       else if (outer > 0.82) { k *= 1 + 0.35 * crest; warm = 0.5 * crest; }
       else k *= 1 - 0.18 * crest;
     }

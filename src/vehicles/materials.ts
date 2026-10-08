@@ -2320,8 +2320,10 @@ const VEHICLE_GROUND_DARK = 0.66;
  * Garage key and fill): the share of an open face's direct and indirect light that reaches a wheel inset at the bottom
  * of its hole or well (COT_GEAR_CAVITY, the insets' rubber).
  */
-const GEAR_CAVITY_DIRECT = 0.45;
-const GEAR_CAVITY_INDIRECT = 0.3;
+// round 2 (2026-10-08; waves 264-269: "lightening holes are painted grey circles with no depth"): a hole's floor keeps a
+// fifth of the direct light and a sixth of the sky, so it reads near-black behind the lit rim of its wall
+const GEAR_CAVITY_DIRECT = 0.2;
+const GEAR_CAVITY_INDIRECT = 0.16;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
