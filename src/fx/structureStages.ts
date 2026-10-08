@@ -27,7 +27,7 @@ import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructi
 import { damageSeed, type DamageStageResult, type DamageWriters } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { COLLAPSE_S, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 
 export interface StructureStages {
@@ -121,10 +121,26 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     return m;
   }
 
-  function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult): void {
+  /** The world's patched shadow depth material of a bucket this structure draws in (its spans' meshes carry them). */
+  function depthMaterials(seam: StructureDamageSeam): Map<string, THREE.Material> {
+    const byBucket = new Map<string, THREE.Material>();
+    for (const span of seam.spans) {
+      const d = (span.mesh as THREE.Mesh).customDepthMaterial;
+      if (d && !byBucket.has(span.bucket)) byBucket.set(span.bucket, d);
+    }
+    return byBucket;
+  }
+
+  /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
+   *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
+  function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
+    standing = true): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string): THREE.Material => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
-    const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled);
+    const depths = standing ? depthMaterials(seam) : null;
+    const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
+      ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null }
+      : {});
     let result: DamageStageResult | null = null;
     try { result = build(out); } catch { result = null; }
     debris.commit();
@@ -156,7 +172,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out));
       }
       // a collapse's stubs and pile show under the dust, a little after the fall begins
-      if (e.stage === 'collapsed') run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out));
+      if (e.stage === 'collapsed') run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), out), false);
     },
     breach(e, seam) {
       if (!seam || !(e.radiusM > 0)) return;

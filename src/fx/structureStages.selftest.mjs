@@ -117,6 +117,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const bz = (hx - placement.x) * s + (hz - placement.z) * c;
   assert.ok(Math.abs(bz - 4) < 0.35, `on the front wall (body z ${bz.toFixed(3)})`);
   assert.ok(data[H + 6] > 0.1 && Math.abs(data[H + 7] - 0.3) < 1e-4, 'it cuts through the wall (0.3 m outside)');
+  // its rim and room belong to the standing building: they carry its run tag, so they fall with it
+  const rims = debris.group.children.filter((m) => m.isMesh && /^fx-structure-(rim|room)/.test(m.name));
+  assert.ok(rims.length > 0 && rims.every((m) => m.geometry.getAttribute('aDamage')?.array[0] === 32768 + 8),
+    'the breach\'s rim and room fall with the building');
 }
 
 // ---- collapsed: the fall, the pile, the touches (every frame it moves, and the frame it is discarded)
@@ -142,6 +146,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(runs.some((m) => m.material === worldStone), 'its stone core in the world\'s own stone material (not among its spans)');
   assert.ok(runs.some((m) => m.material === wall.mesh.material), 'its render in its own plaster bucket');
   assert.ok(runs.every((m) => !/fallback/.test(m.material.name) || m.material.vertexColors), 'a bucket the world lacks: tinted fallback');
+  assert.ok(runs.every((m) => !m.geometry.getAttribute('aDamage')), 'the stubs and the pile stay where they lie (untagged)');
 }
 
 // ---- reset: every building stands up again (the glass back where it was)

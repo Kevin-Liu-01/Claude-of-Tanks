@@ -3461,7 +3461,8 @@ function* createFxSteps(
       emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : 1, dk, birthOffset);
       killFireball(blast, pos.x, cy, pos.z, rack, birthOffset);
       emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);
-      dustSurge(blast, pos.x, gy, pos.z, burn ? 0.9 : Math.cbrt(cookOffChargeKg(55)), classifyTerrain(heightField, pos.x, pos.z),
+      // a hull's blast goes up more than out: a modest skirt (round 2's ring hid the hull for seconds)
+      dustSurge(blast, pos.x, gy, pos.z, burn ? 0.6 : 0.65 * Math.cbrt(cookOffChargeKg(55)), classifyTerrain(heightField, pos.x, pos.z),
         birthOffset);
       spawnScorch(pos.x, pos.z, (burn ? 3.6 : 5.4) + rng() * 1.4);
       if (!burn) spawnShockRing(pos.x, pos.z, Math.max(0, -birthOffset));
@@ -3471,9 +3472,10 @@ function* createFxSteps(
       if (rack) emitDestructionHatchSlab(pos, gy, cy, birthOffset);
       flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
         EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
-      // the column already standing: backdated column puffs so a far kill shows its smoke at once
+      // the column takes hold out of the fireball's soot over the first second (round 2 backdated it, so a column stood
+      // over the hull in the kill's first frame)
       const colScale = (burn ? 1.45 : 1.3) * dk;
-      for (let i = 0; i < 8; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset - 0.3 - i * 0.32);
+      for (let i = 0; i < 6; i++) mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset + 0.25 + i * 0.2);
       columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
       capColumns();
       finalizeDestroyedVisual(visual, rack, birthOffset);

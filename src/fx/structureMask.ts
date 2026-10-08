@@ -39,6 +39,8 @@ const STRIDE = 10;
 export const MAX_HOLES = 4;
 /** Seconds a collapse takes from the first crack to the last stone below the dust. */
 export const COLLAPSE_S = 2.4;
+/** Added to a structure's tag on a stage builder's own runs (they fall with the building; holes never cut them). */
+export const STAGE_RUN_TAG = 32768;
 /** The lean (rad) a falling building reaches toward the blow. */
 const LEAN_RAD = 0.2;
 
@@ -67,7 +69,11 @@ ${holes ? `vStructPos = vec3( 0.0 );
 vStructSid = -1.0;
 vStructHoles = 0.0;` : ''}
 {
-  int sid = int( floor( aDamage + 0.5 ) ) - 1;
+  // aDamage = structure index + 1; with 32768 added, a stage builder's own run (a breach's rim and room): it falls with
+  // its building but no hole cuts it
+  float tag = floor( aDamage + 0.5 );
+  bool stageRun = tag > 32767.5;
+  int sid = int( stageRun ? tag - 32768.0 : tag ) - 1;
   if ( sid >= 0 ) {
     mat4 sw = modelMatrix;
     #ifdef USE_BATCHING
@@ -82,7 +88,7 @@ vStructHoles = 0.0;` : ''}
     vec4 SB = texelFetch( uStructMask, ivec2( ( base + 1 ) % ${TEX_W}, ( base + 1 ) / ${TEX_W} ), 0 );
     ${holes ? `vStructPos = wp;
     vStructSid = float( sid );
-    vStructHoles = SB.w;` : ''}
+    vStructHoles = stageRun ? 0.0 : SB.w;` : ''}
     if ( SA.x > 0.0 ) {
       float t = uStructClock - SA.x;
       if ( t >= ${COLLAPSE_S.toFixed(2)} ) {

@@ -88,6 +88,8 @@ export interface VolumePuff {
   r1: number; g1: number; b1: number; fadeIn: number;
   /** flipbook: medium, variant (taken modulo the medium's variants), mirrored, sim seconds the life plays, start frame */
   medium: VolumeMediumId; variant: number; mirror: boolean; playSeconds: number; startFrame: number;
+  /** the card's width over its height (1 square; a base surge lies wide and flat, an ejecta jet stands tall) */
+  aspect: number;
   /** heat at birth (emission gain), cooling rate (1/s), fade-out start (life fraction), slow spin (rad/s) */
   heat: number; cool: number; fadeOut: number; spin: number;
 }
@@ -97,7 +99,7 @@ export function makeVolumePuff(): VolumePuff {
     x: 0, y: 0, z: 0, birthOffset: 0, vx: 0, vy: 0, vz: 0, life: 1,
     drag: 1, rise: 0, windK: 1, grav: 0, size0: 1, size1: 2, growExp: 2, rot: 0,
     r0: 0.5, g0: 0.5, b0: 0.5, density: 1, r1: 0.5, g1: 0.5, b1: 0.5, fadeIn: 0.05,
-    medium: 'burst', variant: 0, mirror: false, playSeconds: 4, startFrame: 0,
+    medium: 'burst', variant: 0, mirror: false, playSeconds: 4, startFrame: 0, aspect: 1,
     heat: 0, cool: 1, fadeOut: 0.5, spin: 0,
   };
 }
@@ -200,11 +202,14 @@ void main() {
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   vec3 camUp    = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
   vec3 camBack  = vec3( viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2] );
-  vec2 corner = vec2( position.x * ca - position.y * sa, position.x * sa + position.y * ca ) * size;
+  // aFB.y: the card's aspect (width / height), negative when the card is mirrored
+  float aspect = max( abs( aFB.y ), 0.25 );
+  float px = position.x * aspect;
+  vec2 corner = vec2( px * ca - position.y * sa, px * sa + position.y * ca ) * size;
   vec3 wpos = center + camRight * corner.x + camUp * corner.y;
   // --- flipbook: the sim's own clock (gamma-warped frame spacing), blended along the motion vectors
   float band = aFB.x;
-  float mirror = aFB.y > 0.5 ? -1.0 : 1.0;
+  float mirror = aFB.y < 0.0 ? -1.0 : 1.0;
   vMirror = mirror;
   float invGamma = uBandWarp[ int( band + 0.5 ) ].x;
   float frames = uAtlas.w;
@@ -551,7 +556,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     rec[o + 12] = p.size0; rec[o + 13] = p.size1; rec[o + 14] = p.growExp; rec[o + 15] = p.rot;
     rec[o + 16] = p.r0; rec[o + 17] = p.g0; rec[o + 18] = p.b0; rec[o + 19] = p.density;
     rec[o + 20] = p.r1; rec[o + 21] = p.g1; rec[o + 22] = p.b1; rec[o + 23] = p.fadeIn;
-    rec[o + 24] = bandOf(p); rec[o + 25] = p.mirror ? 1 : 0; rec[o + 26] = p.playSeconds; rec[o + 27] = p.startFrame;
+    rec[o + 24] = bandOf(p); rec[o + 25] = (p.mirror ? -1 : 1) * Math.min(4, Math.max(0.25, p.aspect > 0 ? p.aspect : 1)); rec[o + 26] = p.playSeconds; rec[o + 27] = p.startFrame;
     rec[o + 28] = p.heat; rec[o + 29] = p.cool; rec[o + 30] = p.fadeOut; rec[o + 31] = p.spin;
     if (birth + p.life > liveUntil) liveUntil = birth + p.life;
   }

@@ -255,6 +255,14 @@ interface PiecePool {
 /** A structure stage's body-frame placement in the world. */
 export interface BodyPlacement { x: number; y: number; z: number; yaw: number }
 
+/** How a stage's static runs join their building (structureStages.ts). */
+export interface StageRunOptions {
+  /** aDamage for every run vertex (0: none — a collapse's own stubs and pile stay where they lie). */
+  tag?: number;
+  /** A bucket's shadow depth material (the world's patched one), so a tagged run's shadow falls with it. */
+  depthFor?: (bucket: string) => THREE.Material | null;
+}
+
 export interface StructureDebrisOptions {
   now: () => number;
   scene?: THREE.Scene | null;
@@ -274,7 +282,7 @@ export interface StructureDebris {
    * delays the pieces and the static runs (a collapse shows its pile under the dust, not before the fall).
    */
   begin(placement: BodyPlacement, materialFor: (bucket: string) => THREE.Material | null, delayS?: number,
-    settled?: boolean): DamageWriters;
+    settled?: boolean, options?: StageRunOptions): DamageWriters;
   /** Build the stage's static runs and start its pieces. */
   commit(): void;
   update(): void;
@@ -366,6 +374,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageDelay = 0;
   let stageBirth = 0;
   let stageSettled = false;
+  let stageTag = 0;
+  let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
@@ -458,9 +468,11 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
 
   return {
     group,
-    begin(placement, materialFor, delayS = 0, settled = false) {
+    begin(placement, materialFor, delayS = 0, settled = false, options = {}) {
       place = placement;
       stageSettled = settled;
+      stageTag = options.tag && options.tag > 0 ? options.tag : 0;
+      stageDepth = options.depthFor ?? null;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;
@@ -481,6 +493,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(run.nrm, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(run.uv, 2));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(run.col, 3));
+        if (stageTag > 0) geo.setAttribute('aDamage', new THREE.BufferAttribute(new Uint16Array(run.pos.length / 3).fill(stageTag), 1));
         geo.setIndex(run.idx);
         geo.computeBoundingSphere();
         const mesh = new THREE.Mesh(geo, material);
@@ -488,6 +501,9 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         mesh.matrixAutoUpdate = false;
         mesh.castShadow = run.role !== 'debris';
         mesh.receiveShadow = true;
+        // a tagged run casts through its bucket's patched depth material: its shadow falls with the building
+        const depth = stageTag > 0 && stageDepth ? stageDepth(run.bucket) : null;
+        if (depth) mesh.customDepthMaterial = depth;
         mesh.visible = stageDelay <= 0;
         group.add(mesh);
         staticMeshes.push(mesh);

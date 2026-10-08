@@ -104,7 +104,11 @@ function look(m: VolumePuff, c0: Rgb, c1: Rgb, density: number, fadeIn: number, 
 }
 function book(m: VolumePuff, medium: 'billow' | 'burst', R: () => number, playSeconds: number, startFrame = 0): void {
   m.medium = medium; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = playSeconds;
-  m.startFrame = startFrame;
+  m.startFrame = startFrame; m.aspect = 1;
+}
+/** A card wider than tall (a skirt of dust lying on the ground) or taller than wide (a jet of soil), held near level. */
+function card(m: VolumePuff, aspect: number, R: () => number, tilt = 0.08): void {
+  m.aspect = aspect; m.rot = (R() - 0.5) * tilt * 2; m.spin = (R() - 0.5) * 0.02;
 }
 function heat(m: VolumePuff, h: number, cool: number): void { m.heat = h; m.cool = cool; }
 
@@ -216,14 +220,15 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   }
   if (I.munition === 'drone_fpv') sparkSpray(C, I.x, by + 0.4, I.z, 0, 1, 0, 22, 24, 1.3, 0.35, 0.022, bo);
 
-  // 1. flash and fireball
-  lightPuff(C, 'flash', I.x, by + 0.8 * s, I.z, 0, 0.6, 0, 0.09, 1.8 * s * dk, 4.6 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
-  const fireN = Math.round((shaped ? 4 : 3) + s);
+  // 1. flash and fireball: one flash, and a compact core of fire that bursts up through the soil (round 2's fire puffs
+  // flew apart sideways and read as a row of white bulbs in the first frame)
+  lightPuff(C, 'flash', I.x, by + 0.7 * s, I.z, 0, 0.6, 0, 0.07, 1.6 * s * dk, 4.0 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
+  const fireN = Math.round((shaped ? 3 : 2) + 0.5 * s);
   for (let i = 0; i < fireN; i++) {
-    const a = R() * TAU, up = 0.35 + R() * 0.65, v = (4 + R() * 6) * s;
-    lightPuff(C, 'fire', I.x + Math.cos(a) * 0.3 * s, by + 0.5 * s, I.z + Math.sin(a) * 0.3 * s,
-      Math.cos(a) * v * (1 - up), v * up + 1.5, Math.sin(a) * v * (1 - up), 0.14 + R() * 0.14,
-      1.0 * s * dk, (2.2 + R()) * s * dk, FIRE_HOT, FIRE_DEEP, 0.9, 1.5, bo);
+    const a = R() * TAU, up = 0.7 + R() * 0.3, v = (3 + R() * 4) * s;
+    lightPuff(C, 'fire', I.x + Math.cos(a) * 0.15 * s, by + 0.45 * s, I.z + Math.sin(a) * 0.15 * s,
+      Math.cos(a) * v * (1 - up), v * up + 1.2, Math.sin(a) * v * (1 - up), 0.12 + R() * 0.1,
+      1.1 * s * dk, (2.0 + R() * 0.6) * s * dk, mix3(FIRE_HOT, FIRE_DEEP, 0.35), FIRE_DEEP, 0.75, 1.5, bo + 0.01);
   }
   // the fireball's body inside the media: a hot billow that cools to residue in half a second
   const ballN = thermobaric ? 5 : shaped ? 3 : 2;
@@ -235,7 +240,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, (thermobaric ? 3.2 : 1.6) + R() * 0.6, 1.4 * s * dk, (thermobaric ? 5.5 : 4.2 + R()) * s * dk, 2.6, R);
     look(m, thermobaric ? SOOT : BLAST_RESIDUE, BLAST_RESIDUE, 0.92, 0.0, 0.45);
     book(m, 'billow', R, thermobaric ? 3.4 : 2.2 + R() * 0.6);
-    heat(m, thermobaric ? 1.7 : 1.4, thermobaric ? 1.3 : 4.5);
+    // orange, not white: an HE shell's fireball is brief and mostly hidden in its own soil
+    heat(m, thermobaric ? 1.7 : 1.05, thermobaric ? 1.3 : 5.5);
     C.media(m);
   }
   C.lightPulse(I.x, by + 2.2 * s, I.z, Math.min(1.6, 0.45 + 0.35 * s), 0);
@@ -254,6 +260,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta;
     look(m, c0, mix3(c0, L.dust, 0.5), 0.95, 0.0, 0.42);
     book(m, 'burst', R, 2.4 + R() * 0.8, 2);
+    // a jet of soil stands taller than it is wide, leaning with its throw
+    card(m, 0.5 + R() * 0.2, R, 0.12);
+
     heat(m, 0, 1);
     C.media(m);
   }
@@ -271,33 +280,39 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   }
 
   // 3. the dust cloud: one mass, born together over the footprint, swelling fast then slowly, drifting downwind
-  const cloudN = Math.round(3 + 1.5 * s);
+  // (round 2 stacked them evenly up the column and they read as a pile of balls: now they are born overlapping in the
+  // lower half, at random heights and sizes, so their union is one irregular mass)
+  const cloudN = Math.round(4 + 1.5 * s);
   const top = (shaped ? 1.8 : 2.6) * s * L.heightK * (heavy ? 1.6 : 1);
   const dustDark: Rgb = [L.dust[0] * 0.72, L.dust[1] * 0.7, L.dust[2] * 0.68];
   for (let i = 0; i < cloudN; i++) {
-    const a = R() * TAU, r = R() * 0.6 * s;
-    const h = (0.2 + 0.8 * (i / Math.max(1, cloudN - 1))) * top;
-    place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.06);
-    move(m, Math.cos(a) * 1.6 * sq, (2.2 + h * 1.1) * sq, Math.sin(a) * 1.6 * sq, 1.6, 0.18 + R() * 0.15, 0.85, 0);
-    const size1 = (5.6 + R() * 2.2) * s * Math.sqrt(dustK) * dk;
+    const a = R() * TAU, r = R() * 0.9 * s;
+    const h = (0.1 + 0.55 * R()) * top;
+    place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
+    move(m, Math.cos(a) * 1.8 * sq, (1.6 + h * 1.0) * sq, Math.sin(a) * 1.8 * sq, 1.6, 0.16 + R() * 0.15, 0.85, 0);
+    const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk;
     shape(m, (7 + R() * 3) * Math.min(1.6, sq), size1 * 0.42, size1, 2.6, R);
-    look(m, dustDark, L.dust, Math.min(1, 0.8 * dustK + 0.12), 0.05, 0.42);
+    look(m, dustDark, L.dust, Math.min(0.92, 0.7 * dustK + 0.12), 0.05, 0.42);
     book(m, 'burst', R, 4.2 * Math.min(1.8, sq));
+    card(m, 1.0 + R() * 0.35, R, 0.3);
     heat(m, 0, 1);
     C.media(m);
   }
 
   // 4. base surge: low dust driven out along the ground
-  const surgeN = Math.round((6 + 2 * s) * Math.sqrt(dustK));
+  // (round 2's ring of round puffs read as a row of balls from the side: now many wide, flat cards close to the ground
+  // overlap into one continuous skirt that rolls out and thins)
+  const surgeN = Math.round((9 + 3 * s) * Math.sqrt(dustK));
   for (let i = 0; i < surgeN; i++) {
-    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.5;
-    const v = (5 + R() * 4) * sq;
-    place(m, I.x + Math.cos(a) * 0.8 * s, by + 0.55 * sq, I.z + Math.sin(a) * 0.8 * s, bo + R() * 0.05);
-    move(m, Math.cos(a) * v, 0.5 + R() * 0.3, Math.sin(a) * v, 2.4, 0.1, 0.9, 0);
-    const size1 = (4.8 + R() * 1.6) * s * Math.sqrt(dustK) * dk;
-    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), size1 * 0.4, size1, 2.4, R);
-    look(m, dustDark, L.dust, Math.min(0.9, 0.6 * dustK + 0.12), 0.05, 0.4);
+    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.7;
+    const v = (4 + R() * 5) * sq;
+    place(m, I.x + Math.cos(a) * 0.7 * s, by + 0.3 * sq, I.z + Math.sin(a) * 0.7 * s, bo + R() * 0.06);
+    move(m, Math.cos(a) * v, 0.25 + R() * 0.25, Math.sin(a) * v, 2.4, 0.06, 0.9, 0);
+    const size1 = (2.6 + R() * 1.2) * s * Math.sqrt(dustK) * dk;
+    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), size1 * 0.4, size1, 2.2, R);
+    look(m, dustDark, L.dust, Math.min(0.75, 0.45 * dustK + 0.12), 0.05, 0.4);
     book(m, 'burst', R, 3.6 * Math.min(1.6, sq), 1);
+    card(m, 2.0 + R() * 0.8, R, 0.06);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -596,15 +611,17 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
   const m = C.m;
   const sq = Math.sqrt(s);
   const dk = C.distBoost(x, y, z);
-  const n = Math.round((5 + 2 * s) * Math.sqrt(L.dustK));
+  // a continuous skirt of wide, flat cards close to the ground (round 2's ring of round puffs read as a row of balls)
+  const n = Math.round((8 + 3 * s) * Math.sqrt(L.dustK));
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + (R() - 0.5) * 0.7;
-    const v = (6 + R() * 5) * sq;
-    place(m, x + Math.cos(a) * 1.4 * s, y + 0.55, z + Math.sin(a) * 1.4 * s, bo + R() * 0.05);
-    move(m, Math.cos(a) * v, 0.6 + R() * 0.5, Math.sin(a) * v, 2.6, 0.12, 0.9, 0);
-    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), 1.4 * s * dk, (4.8 + R() * 1.8) * s * Math.sqrt(L.dustK) * dk, 2.4, R);
-    look(m, mix3(L.ejecta, L.dust, 0.65), L.dust, Math.min(0.85, 0.5 * L.dustK + 0.12), 0.05, 0.4);
+    const v = (5 + R() * 5) * sq;
+    place(m, x + Math.cos(a) * 1.2 * s, y + 0.35, z + Math.sin(a) * 1.2 * s, bo + R() * 0.06);
+    move(m, Math.cos(a) * v, 0.3 + R() * 0.3, Math.sin(a) * v, 2.6, 0.08, 0.9, 0);
+    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq), 0.9 * s * dk, (2.6 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.65), L.dust, Math.min(0.7, 0.42 * L.dustK + 0.12), 0.05, 0.4);
     book(m, 'burst', R, 3.8, 1);
+    card(m, 2.0 + R() * 0.8, R, 0.06);
     heat(m, 0, 1);
     C.media(m);
   }

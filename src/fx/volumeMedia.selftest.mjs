@@ -350,12 +350,14 @@ function captureContext(seed) {
   material.onBeforeCompile(shader, null);
   assert.ok(priorRan, 'the world\'s own onBeforeCompile still runs');
   assert.ok(shader.uniforms.uStructMask && shader.uniforms.uStructClock, 'the mask uniforms join the program');
-  assert.ok(/attribute float aDamage;/.test(shader.vertexShader) && /aDamage \+ 0\.5 \) \) - 1/.test(shader.vertexShader),
-    'the vertex reads aDamage as structure index + 1 (0 untouched)');
-  assert.equal(shader.vertexShader.match(/int sid = int\( floor\( aDamage/g).length, 1, 'patched once');
+  assert.ok(/attribute float aDamage;/.test(shader.vertexShader) && /float tag = floor\( aDamage \+ 0\.5 \)/.test(shader.vertexShader)
+    && /int sid = int\( stageRun \? tag - 32768\.0 : tag \) - 1;/.test(shader.vertexShader),
+    'the vertex reads aDamage as structure index + 1 (0 untouched; +32768 a stage builder\'s own run)');
+  assert.ok(/vStructHoles = stageRun \? 0\.0 : SB\.w;/.test(shader.vertexShader), 'no hole cuts a stage builder\'s own run');
+  assert.equal(shader.vertexShader.match(/float tag = floor\( aDamage/g).length, 1, 'patched once');
   assert.ok(/USE_BATCHING[\s\S]*batchingMatrix[\s\S]*inverse\( mat3\( sw \) \)/.test(shader.vertexShader),
     'world space through the batching matrix, the displacement carried back');
-  assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('int sid = int'),
+  assert.ok(shader.vertexShader.indexOf('#include <batching_vertex>') < shader.vertexShader.indexOf('float tag = floor'),
     'the patch reads batchingMatrix after three defines it');
   assert.ok(/t >= 2\.40[\s\S]*transformed = \( inverse\( sw \) \* vec4\( SB\.xyz, 1\.0 \) \)\.xyz;/.test(shader.vertexShader),
     'a fallen structure folds onto its pivot (no discard for it)');
@@ -379,7 +381,7 @@ function captureContext(seed) {
   const dshader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {\n#include <batching_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}',
     fragmentShader: '#include <common>\nvoid main() {\n gl_FragColor = packDepthToRGBA( 0.5 );\n}' };
   depth.onBeforeCompile(dshader, null);
-  assert.ok(/int sid = int/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
+  assert.ok(/float tag = floor/.test(dshader.vertexShader) && /discard/.test(dshader.fragmentShader), 'the depth pass sinks and opens too');
   mask.reset();
   assert.equal(data[o], 0, 'reset stands every structure up');
 }
@@ -431,6 +433,19 @@ function captureContext(seed) {
   assert.equal(settled.pieces.count, 0, 'a settled stage drops no pieces');
   debris.reset();
   assert.equal(debris.stats().meshes, 0, 'reset removes the runs');
+  // a standing building's stage runs carry its tag (they fall with it) and cast through its bucket's depth material
+  const depthMat = new THREE.MeshDepthMaterial();
+  const tagged = debris.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => brick, 0, false, { tag: 32768 + 6, depthFor: () => depthMat });
+  tagged.mesh.begin('stone', 'rim');
+  const t0 = tagged.mesh.vertex(0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1), t1 = tagged.mesh.vertex(1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1);
+  const t2 = tagged.mesh.vertex(0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1);
+  tagged.mesh.triangle(t0, t1, t2);
+  tagged.mesh.end();
+  debris.commit();
+  const rim = debris.group.children.find((c) => c.isMesh && c.name === 'fx-structure-rim-stone');
+  assert.ok(rim && rim.geometry.getAttribute('aDamage').array.every((v) => v === 32774), 'the rim carries its building\'s run tag');
+  assert.equal(rim.customDepthMaterial, depthMat, 'its shadow falls with the building');
+  debris.reset();
   // the phone tier throws fewer pieces (its static runs are the same world state)
   const phone = createStructureDebris({ now: () => now, groundY: () => 0, poolCapacity: 24, pieceCap: 3 });
   const po = phone.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => brick, 0, false);
