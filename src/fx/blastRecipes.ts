@@ -247,37 +247,41 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   }
   C.lightPulse(I.x, by + 2.2 * s, I.z, Math.min(1.6, 0.45 + 0.35 * s), 0);
 
-  // 2. ejecta: dense dark soil thrown up a steep cone; it stalls and falls back as it thins
-  // (round 4: the gunship's 152 mm read as a small tan puff at 120 m) a heavy shell throws more soil, darker and longer
-  const ejN = Math.round((4 + 2 * s) * Math.min(1.2, L.chunkK + 0.4) * (heavy ? 1.5 : 1));
+  // 2. the soil column (wave 266: at 60-120 m the critics saw a small brown puff, no vertical jet): dense dark soil and
+  // smoke driven up a narrow cone fast, standing as a dark column well above the burst (its top ~3 m for a 30 mm round,
+  // ~12 m for 125 mm HE, ~28 m for the gunship's 152 mm), then stalling and falling back as it thins into the cloud
+  const ejN = Math.round((4 + 4 * s) * Math.min(1.2, L.chunkK + 0.4) * (heavy ? 1.4 : 1));
   for (let i = 0; i < ejN; i++) {
     const a = (i / ejN) * TAU + (R() - 0.5) * 0.9;
-    const tilt = Math.pow(R(), 1.4) * (shaped ? 0.25 : 0.42);
-    const v = (11 + R() * 7) * sq * L.heightK * (heavy ? 1.3 : 1);
+    const tilt = Math.pow(R(), 1.6) * (shaped ? 0.22 : 0.32);
+    const v = (16 + R() * 8) * Math.pow(s, 0.75) * L.heightK * (heavy ? 1.35 : 1);
     const st = Math.sin(tilt), ct = Math.cos(tilt);
-    place(m, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s, bo + R() * 0.03);
-    move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.7, 0, 0.25, -9);
-    shape(m, (1.6 + R() * 0.6) * (heavy ? 1.5 : 1), 1.0 * s * dk, (2.8 + R() * 1.2) * s * dk, 2.2, R);
+    place(m, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s, bo + R() * 0.04);
+    move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.7, 0, 0.3, -9);
+    const size1 = (3.0 + R() * 1.5) * s * dk;
+    const life = (2.0 + R() * 0.8) * (heavy ? 1.5 : 1);
+    shape(m, life, size1 * 0.4, size1, 1.8, R);
     const soil = I.surface === 'snow' && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta;
-    look(m, c0, mix3(c0, L.dust, 0.5), 0.95, 0.0, 0.42);
-    book(m, 'burst', R, 2.4 + R() * 0.8, 2);
-    // a jet of soil stands taller than it is wide, leaning with its throw
-    card(m, 0.5 + R() * 0.2, R, 0.12);
-
+    look(m, c0, mix3(c0, L.dust, 0.35), 1.0, 0.0, 0.5);
+    book(m, 'burst', R, life, 2);
+    // a jet of soil stands far taller than it is wide
+    card(m, 0.38 + R() * 0.14, R, 0.1);
     heat(m, 0, 1);
     C.media(m);
   }
   if (L.chunkK > 0) {
     const shapeId: ChunkShape = I.surface === 'rock' || I.surface === 'concrete' ? 'stone' : 'clod';
-    const chN = Math.round((12 + 8 * s) * L.chunkK);
+    // (wave 266: no clods visible at range) more clods, thrown higher, and sized up with the distance so a 120 m burst
+    // still shows its dark specks arcing out
+    const chN = Math.round((18 + 12 * s) * L.chunkK * (heavy ? 1.3 : 1));
     for (let i = 0; i < chN; i++) {
-      const a = R() * TAU, tilt = 0.1 + R() * 0.9, v = (6 + R() * 14) * Math.pow(s, 0.45) * L.heightK;
+      const a = R() * TAU, tilt = 0.1 + R() * 0.8, v = (8 + R() * 16) * Math.pow(s, 0.5) * L.heightK;
       const soil = I.surface === 'snow' && i % 3 === 0;
       chunk(C, shapeId, I.x + (R() - 0.5) * 0.4, by + 0.3, I.z + (R() - 0.5) * 0.4,
         Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v + 2, Math.sin(a) * Math.sin(tilt) * v,
-        (0.06 + Math.pow(R(), 2) * 0.22) * Math.sqrt(s) * L.chunkScale, soil ? UNDER_SNOW_SOIL : L.chunk,
-        2.6 + R() * 1.6, 0, bo);
+        (0.08 + Math.pow(R(), 2) * 0.3) * Math.sqrt(s) * L.chunkScale * dk * dk, soil ? UNDER_SNOW_SOIL : L.chunk,
+        2.8 + R() * 1.8, 0, bo);
     }
   }
 
@@ -291,12 +295,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const a = R() * TAU, r = R() * 0.9 * s;
     const h = (0.1 + 0.55 * R()) * top;
     place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
-    move(m, Math.cos(a) * 1.8 * sq, (1.6 + h * 1.0) * sq, Math.sin(a) * 1.8 * sq, 1.6, 0.16 + R() * 0.15, 0.85, 0);
-    const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk;
-    shape(m, (7 + R() * 3) * Math.min(1.6, sq) * L.hang, size1 * 0.42, size1, 2.6, R);
+    // (wave 266: a static tan mound or beehive) the cloud keeps moving: it spreads, climbs and drifts for its whole
+    // life, and its flipbook plays the whole life instead of holding its last frame
+    move(m, Math.cos(a) * 2.4 * sq, (1.6 + h * 1.0) * sq, Math.sin(a) * 2.4 * sq, 1.4, 0.35 + R() * 0.3, 1.0, 0);
+    const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
+    const life = (7 + R() * 3) * Math.min(1.6, sq) * L.hang;
+    shape(m, life, size1 * 0.42, size1, 2.2, R);
     look(m, dustDark, L.dust, Math.min(0.92, 0.7 * dustK + 0.12), 0.05, 0.42);
-    book(m, 'burst', R, 4.2 * Math.min(1.8, sq));
+    book(m, 'burst', R, life);
     card(m, 1.0 + R() * 0.35, R, 0.3);
+    m.spin = (R() - 0.5) * 0.12;
     heat(m, 0, 1);
     C.media(m);
   }
@@ -311,9 +319,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * 0.7 * s, by + 0.3 * sq, I.z + Math.sin(a) * 0.7 * s, bo + R() * 0.06);
     move(m, Math.cos(a) * v, 0.25 + R() * 0.25, Math.sin(a) * v, 2.4, 0.06, 0.9, 0);
     const size1 = (2.6 + R() * 1.2) * s * Math.sqrt(dustK) * dk;
-    shape(m, (4.5 + R() * 2) * Math.min(1.5, sq) * L.hang, size1 * 0.4, size1, 2.2, R);
+    const life = (4.5 + R() * 2) * Math.min(1.5, sq) * L.hang;
+    shape(m, life, size1 * 0.4, size1, 2.2, R);
     look(m, dustDark, L.dust, Math.min(0.75, 0.45 * dustK + 0.12), 0.05, 0.4);
-    book(m, 'burst', R, 3.6 * Math.min(1.6, sq), 1);
+    book(m, 'burst', R, life, 1);
     card(m, 2.0 + R() * 0.8, R, 0.06);
     heat(m, 0, 1);
     C.media(m);
@@ -325,9 +334,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const a = R() * TAU;
     place(m, I.x + Math.cos(a) * 0.5 * s, by + 1.0 * s, I.z + Math.sin(a) * 0.5 * s, bo + 0.15 + R() * 0.2);
     move(m, Math.cos(a) * 0.8, 1.6 + R(), Math.sin(a) * 0.8, 1.2, 0.8 + R() * 0.3, 1, 0);
-    shape(m, 6 + R() * 2, 1.6 * s * dk, (5.5 + R() * 2) * s * dk * (heavy ? 1.3 : 1), 1.8, R);
+    const life = 6 + R() * 2;
+    shape(m, life, 1.6 * s * dk, (5.5 + R() * 2) * s * dk * (heavy ? 1.3 : 1), 1.8, R);
     look(m, BLAST_RESIDUE, mix3(BLAST_RESIDUE, L.dust, 0.5), heavy ? 0.6 : 0.45, 0.4, 0.4);
-    book(m, 'billow', R, 5.5, 8);
+    book(m, 'billow', R, life, 8);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -648,41 +658,65 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
 export function killFireball(C: BlastContext, x: number, y: number, z: number, rack: boolean, bo: number): void {
   const R = C.rand;
   const m = C.m;
-  const S = rack ? 1.3 : 0.95;
+  // (wave 266: the fireball barely outgrew the hull, one smooth brown ball whose billows froze after ~2 s) a fireball
+  // well past the hull's size, rolling up and out in lobes of different sizes; it burns out within a second or so into
+  // black soot, which keeps churning (each flipbook plays its whole life) as it climbs into the column
+  const S = rack ? 1.75 : 1.3;
   const dk = C.distBoost(x, y, z);
+  // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s
   const n = rack ? 7 : 5;
   for (let i = 0; i < n; i++) {
-    const a = R() * TAU, b = R() * 1.2, v = (3 + R() * 5) * S;
-    place(m, x + (R() - 0.5) * 1.6, y + (R() - 0.3) * 1.2, z + (R() - 0.5) * 1.6, bo - R() * 0.03);
-    move(m, Math.cos(a) * Math.sin(b) * v, (3 + R() * 3) * S, Math.sin(a) * Math.sin(b) * v, 1.6, 2.4 * S, 0.45, 0);
-    const size1 = (7.5 + R() * 2.5) * S * dk;
-    shape(m, 3.8 + R() * 1.4, size1 * 0.4, size1, 2.4, R);
-    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.35), 0.97, 0.0, 0.55);
-    book(m, 'billow', R, 3.6);
-    // (round 4: white bulbs in the kill's first frame) orange-yellow at the heart, not white
-    heat(m, 1.6, rack ? 0.45 : 0.6);
+    const a = (i / n) * TAU + (R() - 0.5) * 1.2, b = 0.35 + R() * 0.9, v = (4 + R() * 6) * S;
+    place(m, x + (R() - 0.5) * 1.8, y + (R() - 0.2) * 1.4, z + (R() - 0.5) * 1.8, bo - R() * 0.03);
+    move(m, Math.cos(a) * Math.sin(b) * v, (3.5 + R() * 4) * S, Math.sin(a) * Math.sin(b) * v, 1.8, 2.6 * S, 0.45, 0);
+    // lobes of different sizes, so their union is lumpy rather than one smooth ball
+    const size1 = (5.5 + R() * 4.5) * S * dk;
+    const life = 3.4 + R() * 1.6;
+    shape(m, life, size1 * 0.5, size1, 4, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.6);
+    book(m, 'billow', R, life);
+    // orange-yellow at the heart (round 4: never white), and gone fast: a long dull glow read as brown smoke
+    heat(m, 1.9 + R() * 0.4, 1.5);
     C.media(m);
   }
-  C.lightPulse(x, y + 2.4, z, rack ? 1 : 0.6, 0);
+  // 2. the soot: black smoke rolling out of the top of the fire over the first second, climbing and spreading
+  const sn = rack ? 6 : 4;
+  for (let i = 0; i < sn; i++) {
+    const a = R() * TAU;
+    place(m, x + (R() - 0.5) * 2.0, y + 1.5 + R() * 2.0 * S, z + (R() - 0.5) * 2.0, bo + 0.2 + i * (0.6 / sn) + R() * 0.1);
+    move(m, Math.cos(a) * 1.5 * S, (4 + R() * 3) * S, Math.sin(a) * 1.5 * S, 1.2, 3.0 + R() * 1.2, 0.7, 0);
+    const size1 = (8 + R() * 6) * S * dk;
+    const life = 6 + R() * 3;
+    shape(m, life, size1 * 0.35, size1, 2.2, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.3), 0.9, 0.15, 0.55);
+    book(m, 'billow', R, life);
+    heat(m, 0.5, 3.0);
+    C.media(m);
+  }
 }
 
 /** One tick of a burning hull's column (stage 1 fresh .. 0 burnt out; scale = the column's own x distance boost). */
 export function columnPuff(C: BlastContext, x: number, y: number, z: number, stage: number, scale: number, bo: number): void {
   const R = C.rand;
   const m = C.m;
-  const a = R() * TAU, r = R() * 0.45 * scale;
-  place(m, x + Math.cos(a) * r, y + 1.0 + R() * 0.5, z + Math.sin(a) * r, bo);
-  move(m, Math.cos(a) * 0.5, 1.8 + R() * 0.6, Math.sin(a) * 0.5, 0.6, 2.2 + 1.2 * stage + R() * 0.3, 0.8 + R() * 0.3, 0);
-  // (round 3: round 2's column stood 15 m tall and stopped like a sausage: each puff now lives longer, keeps swelling
-  // as it climbs and thins from the middle of its life, so the column widens, greys and fades into the sky)
-  // (round 4: round 3's column climbed as a tube of one width) a puff keeps swelling nearly linearly as it climbs, so
-  // the column fans out with height, and thins a little later in its life
-  const size1 = (12 + R() * 6) * scale;
-  shape(m, 13 + R() * 4, Math.max(1.8 * scale, size1 * 0.18), size1, 1.1, R);
+  const a = R() * TAU, r = R() * 0.6 * scale;
+  place(m, x + Math.cos(a) * r, y + 1.0 + R() * 0.8, z + Math.sin(a) * r, bo);
+  // (round 3: round 2's column stood 15 m tall and stopped like a sausage) each puff lives long, keeps swelling as it
+  // climbs and thins from the middle of its life, so the column widens, greys and fades into the sky
+  // (wave 266: still a tube of one width, of same-sized puffs, ending at one height) each body's size, life, climb and
+  // wind pick-up vary, and now and then the fire gulps a bigger, denser one: the column swells and pinches, ends at a
+  // ragged height, and its bodies take the wind slowly (low drag), so it bends over downwind as it rises
+  const gulp = R() < 0.22;
+  move(m, Math.cos(a) * 0.6, 1.6 + R() * 1.2, Math.sin(a) * 0.6, 0.28 + R() * 0.12,
+    (1.8 + 1.3 * stage) * (0.75 + R() * 0.5), 0.7 + R() * 0.5, 0);
+  const size1 = (9 + R() * 9) * scale * (gulp ? 1.45 : 1);
+  const life = 10 + R() * 9;
+  shape(m, life, Math.max(1.6 * scale, size1 * 0.16), size1, 1.5, R);
   // fresh smoke is black; it greys as it rises, cools and thins (and the whole column greys as the fire burns out)
   const crown = mix3(SOOT, SMOKE_AGED, 0.55 + 0.35 * (1 - stage));
-  look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown, 0.6 + 0.25 * stage, 0.2, 0.5);
-  book(m, 'billow', R, 12 + R() * 3);
+  look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown,
+    Math.min(0.95, (0.5 + 0.3 * stage) * (gulp ? 1.2 : 0.85 + R() * 0.3)), 0.2, 0.35 + R() * 0.3);
+  book(m, 'billow', R, life * (0.85 + R() * 0.3));
   heat(m, 0.55 * stage, 2.4);
   C.media(m);
 }

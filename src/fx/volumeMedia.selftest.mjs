@@ -10,7 +10,7 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
-import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy } from './structureFx.ts';
+import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike } from './structureFx.ts';
 import { createCraterMarks, craterSoil } from './craterMarks.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
@@ -168,6 +168,27 @@ function captureContext(seed) {
   const maxSize = (log) => Math.max(...log.media.map((m) => m.size1));
   assert.ok(maxSize(big) > maxSize(a) * 1.4, 'the gunship howitzer throws a far bigger cloud than tank HE');
   assert.ok(a.flash > 0 && a.fire > 0 && a.pulses > 0, 'an explosive burst flashes, burns and lights the ground');
+  // wave 266: the soil column stands dark and tall at range: its jets are cards taller than wide; a 125 mm burst's
+  // reach ~9 m, the gunship's past 18 m, a 30 mm round's stay under 4 m
+  const peak = (m) => {
+    const kd = Math.max(m.drag, 1e-3);
+    let top = -Infinity;
+    for (let t = 0; t <= m.life; t += 0.02) {
+      top = Math.max(top, m.y + m.rise * t + (m.vy - m.rise) * (1 - Math.exp(-kd * t)) / kd + 0.5 * m.grav * t * t);
+    }
+    return top;
+  };
+  const jets = (log) => log.media.filter((m) => m.aspect < 0.6 && m.grav < 0);
+  const jetTop = (log) => Math.max(...jets(log).map(peak));
+  assert.ok(jets(a).length >= 8 && jets(a).every((m) => m.density >= 0.95), 'tank HE throws a dense column of soil jets');
+  assert.ok(jetTop(a) > 8, `tank HE's soil column stands ~9 m (${jetTop(a).toFixed(1)})`);
+  assert.ok(jetTop(big) > 18, `the gunship's stands past 18 m (${jetTop(big).toFixed(1)})`);
+  const ac = he(5, 'autocannon_he', 0.05, 'soil');
+  assert.ok(jetTop(ac) < 4, `a 30 mm round's stays low (${jetTop(ac).toFixed(1)})`);
+  // and its cloud keeps moving: no dust or residue flipbook holds its last frame for the rest of its life
+  for (const m of [...a.media, ...big.media]) {
+    if (m.heat === 0 && m.life > 3) assert.ok(m.playSeconds >= m.life * 0.8, 'a flipbook plays its whole life');
+  }
   const snow = he(5, 'he', 3.5, 'snow');
   const lum = (log) => log.media.reduce((s, m) => s + m.r1 + m.g1 + m.b1, 0) / log.media.length;
   assert.ok(lum(snow) > lum(a) * 1.5, 'snow throws white powder, soil tan dust');
@@ -205,6 +226,23 @@ function captureContext(seed) {
   columnPuff(kf.ctx, 0, 0, 0, 1, 1.3, 0);
   dustSurge(kf.ctx, 0, 0, 0, 2, 'soil', 0);
   assert.ok(kf.log.media.some((m) => m.heat > 1), 'the fireball burns inside its media');
+  // wave 266: a fireball well past the hull's size, burnt out to soot fast; black soot rolling out after it; every
+  // body churning for its whole life
+  const fire = kf.log.media.filter((m) => m.heat > 1);
+  assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
+  assert.ok(fire.every((m) => m.cool >= 1.2), 'its glow is gone within a second or two (a long dull glow read brown)');
+  const soot = kf.log.media.filter((m) => m.heat < 1 && m.birthOffset > 0.15 && m.r0 < 0.1);
+  assert.ok(soot.length >= 4, 'black soot rolls out of the fire after it');
+  for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
+    assert.ok(m.playSeconds >= m.life * 0.8, 'no kill or column body freezes on its last frame');
+  }
+  // the column swells and pinches, ends ragged, and bends downwind (low drag: its bodies take the wind slowly)
+  const colLog = captureContext(14);
+  for (let i = 0; i < 40; i++) columnPuff(colLog.ctx, 0, 0, 0, 1, 1.3, 0);
+  const cs = colLog.log.media.map((m) => m.size1), cl = colLog.log.media.map((m) => m.life);
+  assert.ok(Math.max(...cs) / Math.min(...cs) > 1.8, 'column bodies of many sizes');
+  assert.ok(Math.max(...cl) - Math.min(...cl) > 5, 'column bodies die at many heights');
+  assert.ok(colLog.log.media.every((m) => m.drag < 0.45), 'column bodies take the wind slowly');
 }
 
 // ---- 5. surfaces --------------------------------------------------------------------------------------------------
@@ -259,6 +297,26 @@ function captureContext(seed) {
   const mud = run('collapsed', {}, adobe);
   assert.ok(mud.chunk.every((k) => k.shape === 'brick' && k.r > k.b), 'an adobe house falls as its own mud bricks');
   assert.ok(collapsed.flash === 0 && collapsed.fire === 0, 'a collapse is not an explosion');
+  // wave 266: the fall is seen (no dense dust above the base before the mass lands), the hole shows within seconds
+  const early = collapsed.media.filter((m) => m.birthOffset < 1.4);
+  assert.ok(early.every((m) => m.density <= 0.45 || (m.y <= 1 && m.size1 <= 4)),
+    'before the mass lands only a low skirt and thin puffs veil the falling walls');
+  assert.ok(collapsed.media.some((m) => m.birthOffset >= 1.4 && m.vy > 1), 'the dust column rises off the landed pile');
+  const pall = collapsed.media.filter((m) => m.birthOffset >= 2.7 && m.life >= 12);
+  assert.ok(pall.length > 0 && pall.every((m) => m.density <= 0.35), 'the pall it leaves is thin');
+  assert.ok(breached.media.every((m) => m.life <= 6 && m.density <= 0.5), "a breach's powder thins within seconds");
+  // a shell bursting on a wall burns and smokes as a ground burst does; its dust thins within seconds; a kinetic strike
+  // only chips
+  const strike = (explosive) => {
+    const c = captureContext(13);
+    wallStrike(c.ctx, 12, 3, 20, -1, 0, 0, explosive, explosive ? 2.71 : 1, null);
+    return c.log;
+  };
+  const shellOnWall = strike(true), shotOnWall = strike(false);
+  assert.ok(shellOnWall.media.some((m) => m.heat > 1) && shellOnWall.media.some((m) => m.heat === 0 && m.medium === 'billow'),
+    'a shell on a wall throws its fireball and its residue smoke');
+  assert.ok(shellOnWall.media.filter((m) => m.medium === 'burst').every((m) => m.life <= 6), "the wall's dust thins within seconds");
+  assert.ok(shotOnWall.media.every((m) => m.heat === 0) && shotOnWall.flash === 0, 'a kinetic strike only chips');
   const fence = captureContext(12);
   propBreakFx(fence.ctx, 'wood', 'fenceplank', 0, 0, 0, 1, 0, 1.2);
   assert.ok(fence.log.chunk.length > 0 && fence.log.chunk.every((k) => k.shape === 'splinter'), 'a fence splinters');

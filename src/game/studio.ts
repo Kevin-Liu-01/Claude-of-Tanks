@@ -263,6 +263,9 @@ interface StudioEffectParams {
   munition?: string;
   /** structure: the stage the building nearest the effect point crosses ('damaged', 'breached', 'collapsed') */
   stage?: string;
+  /** explosion with a munition: the round ends on the nearest building's wall (along dirDeg), hitH m up it */
+  wall?: boolean;
+  hitH?: number;
   chargeKg?: number;
   cause?: string;
   count?: number;
@@ -423,6 +426,10 @@ interface StudioRuntime {
 }
 
 const DEG = Math.PI / 180;
+/** What the Studio reads of a building's anatomy (world/structureDamageSeam.ts): its footprint, height and placement. */
+interface StudioStructureAnatomy {
+  massClass: string; placement: { x: number; y: number; z: number; yaw: number }; w: number; d: number; h: number;
+}
 const FX_STEP_S = 1 / 60;      // fixed timeline step (load() and live advance)
 const SETTLE_STEPS = 48;       // updateTank steps to conform a placed actor
 const SETTLE_STEPS_DRAG = 6;   // cheap conform while dragging
@@ -1530,6 +1537,27 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES) {
       const munition = params.munition as MunitionClass;
       const chargeKg = Number.isFinite(params.chargeKg) ? Number(params.chargeKg) : MUNITION_PROFILES[munition].nominalChargeKg;
+      // params.wall: the round ends on the nearest building's wall instead, as a battle shell does (the burst names the
+      // building, the expiry carries the struck face's normal): along dirDeg from the point, params.hitH m up the wall
+      const wall = params.wall ? studioWallHit(position, (params.dirDeg ?? 0) * DEG, params.hitH) : null;
+      if (wall) {
+        fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+          munition, chargeKg, x: wall.x, y: wall.y, z: wall.z, nx: wall.nx, ny: 0, nz: wall.nz,
+          surface: 'structure', structureId: wall.structureId,
+        });
+        fxBus.emit('shell:expired', {
+          shellId: -1,
+          hitTerrain: false,
+          hitKind: 'prop',
+          pos: [wall.x, wall.y, wall.z],
+          normal: [wall.nx, 0, wall.nz],
+          munition,
+          chargeKg,
+          caliberMm: params.caliberMm || 120,
+          surfaceKind: 'structure',
+        });
+        return true;
+      }
       // the crater the battle would dig here, in the battle's order: the blast naming it, the burst, then the crater
       const crater = studioDig(munition, chargeKg, position.x, position.z);
       fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
@@ -1596,16 +1624,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * destruction-fx lane: the building nearest the point crosses a damage stage, as the core's sim announces one in
    * battle (sim/destructionEvents.ts StructureStageEvent, from the world seam's anatomy: footprint, height, blow), so
    * the Studio films a breach and a collapse in the building's own geometry. Presentation only: the Studio's world
-   * keeps its collision. params: stage, munition, cause ('blast' | 'kinetic' | 'ram'), dirDeg (the blow's heading).
+   * keeps its collision. params: stage, munition, cause ('blast' | 'kinetic' | 'ram'), dirDeg (the blow's heading), hitH
+   * (the blow's height up the wall).
    */
   const studioStages = new Map<number, StructureStage>();
-  function fireStructure({ position, params }: StudioEffectExecution): boolean {
+  /** The building whose footprint centre is nearest the point, with its anatomy (the world seam's), or null. */
+  function studioStructureNear(position: THREE.Vector3): { id: number; anatomy: StudioStructureAnatomy } | null {
     const w = getWorld() as unknown as {
       getObstacles?(): readonly { min: readonly number[]; max: readonly number[]; structureIdx?: number; structureRole?: string }[];
-      structureDamage?(id: number): { anatomy: { massClass: string; placement: { x: number; y: number; z: number; yaw: number };
-        w: number; d: number; h: number } } | null;
+      structureDamage?(id: number): { anatomy: StudioStructureAnatomy } | null;
     } | null;
-    if (!w?.getObstacles || !w.structureDamage) return false;
+    if (!w?.getObstacles || !w.structureDamage) return null;
     let best = -1, bestD = Infinity;
     for (const rec of w.getObstacles()) {
       if (typeof rec.structureIdx !== 'number' || rec.structureRole === 'fixed') continue;
@@ -1614,8 +1643,53 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (d < bestD) { bestD = d; best = rec.structureIdx; }
     }
     const seam = best >= 0 ? w.structureDamage(best) : null;
-    if (!seam) return false;
-    const a = seam.anatomy;
+    return seam ? { id: best, anatomy: seam.anatomy } : null;
+  }
+
+  /**
+   * Where a round heading `heading` from the point meets the nearest building's wall (its oriented footprint, the
+   * anatomy's body frame), `hitH` m above its base (default 1.8, kept under the eaves), with the struck face's outward
+   * normal; null when the line misses it.
+   */
+  function studioWallHit(position: THREE.Vector3, heading: number, hitH: unknown):
+    { structureId: number; x: number; y: number; z: number; nx: number; nz: number } | null {
+    const near = studioStructureNear(position);
+    if (!near) return null;
+    const a = near.anatomy;
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    // world = R(yaw) body + placement (three's rotateY); the inverse rotation into the body frame
+    const rx = position.x - px, rz = position.z - pz;
+    const bx = rx * c - rz * s, bz = rx * s + rz * c;
+    const dx = Math.sin(heading), dz = Math.cos(heading);
+    const bdx = dx * c - dz * s, bdz = dx * s + dz * c;
+    const hw = a.w / 2, hd = a.d / 2;
+    const slab = (o: number, d: number, h: number): [number, number] => {
+      if (Math.abs(d) < 1e-9) return Math.abs(o) <= h ? [-Infinity, Infinity] : [Infinity, -Infinity];
+      const t0 = (-h - o) / d, t1 = (h - o) / d;
+      return t0 < t1 ? [t0, t1] : [t1, t0];
+    };
+    const [x0, x1] = slab(bx, bdx, hw), [z0, z1] = slab(bz, bdz, hd);
+    const tIn = Math.max(x0, z0), tOut = Math.min(x1, z1);
+    if (!(tIn <= tOut) || tOut < 0) return null;
+    const t = Math.max(0, tIn);
+    // the face entered: the slab whose entry is the later one
+    const nbx = x0 >= z0 ? -Math.sign(bdx) : 0, nbz = x0 >= z0 ? 0 : -Math.sign(bdz);
+    const hx = bx + bdx * t, hz = bz + bdz * t;
+    const h = Number.isFinite(hitH) ? Number(hitH) : 1.8;
+    return {
+      structureId: near.id,
+      x: px + hx * c + hz * s, z: pz - hx * s + hz * c,
+      y: py + Math.min(Math.max(0.6, a.h - 0.8), Math.max(0.4, h)),
+      nx: nbx * c + nbz * s, nz: -nbx * s + nbz * c,
+    };
+  }
+
+  function fireStructure({ position, params }: StudioEffectExecution): boolean {
+    const near = studioStructureNear(position);
+    if (!near) return false;
+    const best = near.id;
+    const a = near.anatomy;
     const stage = (params.stage === 'damaged' || params.stage === 'breached' ? params.stage : 'collapsed') as StructureStage;
     const munition = (typeof params.munition === 'string' && params.munition in MUNITION_PROFILES ? params.munition : 'he') as MunitionClass;
     const cause = params.cause === 'ram' || params.cause === 'kinetic' ? params.cause : 'blast';
@@ -1625,7 +1699,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cx: a.placement.x, cz: a.placement.z, hw: a.w / 2, hd: a.d / 2, yaw: a.placement.yaw,
       baseY: a.placement.y, topY: a.placement.y + a.h,
       stage, previous: studioStages.get(best) ?? 'intact', cause, munition: cause === 'ram' ? null : munition,
-      x: position.x, y: position.y, z: position.z, dirX: Math.sin(heading), dirZ: Math.cos(heading),
+      // the blow's point: params.hitH m up the wall when given (where a wall strike burst), else the effect point
+      x: position.x, y: Number.isFinite(params.hitH) ? a.placement.y + Number(params.hitH) : position.y, z: position.z,
+      dirX: Math.sin(heading), dirZ: Math.cos(heading),
       points: 100, integrity: stage === 'collapsed' ? 0 : stage === 'breached' ? 0.35 : 0.7,
     };
     studioStages.set(best, stage);
