@@ -8,8 +8,8 @@ import { DRONE_WARHEAD, GUNSHIP_WEAPONS, GUN_GAME_WEAPONS } from './matchRuleset
 import { MUNITION_CLASSES, MUNITION_PROFILES } from './destructionEvents.ts';
 import {
   BLAST_POINTS_PER_KG, CRATER_DEFORM_MIN_RADIUS_M, CRATER_MAX_RADIUS_M, FUEL_CHARGE_KG, blastFalloff, blastReachM,
-  cookOffChargeKg, craterFor, kineticStructurePoints, munitionChargeKg, munitionClassForShell, penetratorHoleRadiusM,
-  structureBlastPoints,
+  cookOffChargeKg, craterFor, kineticStructurePoints, munitionBlastEventFor, munitionChargeKg, munitionClassForShell,
+  penetratorHoleRadiusM, structureBlastPoints,
 } from './munitionBlast.ts';
 
 const near = (actual, expected, eps, label) => assert.ok(Math.abs(actual - expected) <= eps,
@@ -140,5 +140,19 @@ assert.equal(crater.radiusM, 0, 'kinetic rounds dig nothing');
 craterFor(he125, 'he', 0, crater);
 assert.equal(crater.radiusM, 0, 'a mode without craters digs nothing');
 
+// ---- the blast event (§11): a detonating round's class, charge, point, normal, surface, and the structure it struck
+{
+  const event = munitionBlastEventFor({ type: 'HE', caliberMm: 125 }, 10, 2, -4, 0, 0, 1, 'structure', 17);
+  assert.deepEqual(event, { munition: 'he', chargeKg: munitionChargeKg({ type: 'HE', caliberMm: 125 }), x: 10, y: 2, z: -4,
+    nx: 0, ny: 0, nz: 1, surface: 'structure', structureId: 17 });
+  const ground = munitionBlastEventFor(gunshipHowitzer, 0, 0, 0, 0, 1, 0, 'terrain');
+  assert.equal(ground.munition, 'howitzer');
+  assert.equal('structureId' in ground, false, 'no structure: no id');
+  assert.equal(munitionBlastEventFor({ type: 'HE', caliberMm: 125 }, 0, 0, 0, 0, 1, 0, 'prop', null).structureId, undefined);
+  assert.equal(munitionBlastEventFor({ type: 'APFSDS', caliberMm: 120, pen100Mm: 600 }, 0, 0, 0, 0, 1, 0, 'terrain'), null,
+    'a penetrator does not detonate');
+  assert.equal(munitionBlastEventFor({ type: 'AP', caliberMm: 12.7, pen100Mm: 26 }, 0, 0, 0, 0, 1, 0, 'terrain'), null, 'nor small arms');
+}
+
 console.log(`munitionBlast: ${rounds} fleet rounds over ${census.size} classes (${[...census].map(([k, n]) => `${k} ${n}`).join(', ')}); `
-  + 'gunship, drone, roof guns, Gun Game; blast, penetrator and crater laws PASS');
+  + 'gunship, drone, roof guns, Gun Game; blast, penetrator and crater laws; the blast event PASS');

@@ -166,6 +166,28 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import {
+  bindStructureSpans, describeStructure, tagStructureVertices, type StructureMaterialEntry, type StructureSpan,
+} from './structureDamageSeam.ts';
+import { setDefaultKitStyleReader } from './destructionDefaultKit.ts';
+import type { StructureDamageAnatomy } from './destructionKit.ts';
+import { createStructureDamage } from '../sim/structureDamage.ts';
+import { EARTH_ARCHITECTURE_STYLES } from '../sim/structureMaterial.ts';
+
+// destruction (docs/DESTRUCTION.md §16): the default damage kit reads a style's surfaces through the regional registry;
+// which styles build in earth is the simulation's list (structureMaterial.ts), so a ram prices the walls the kit breaks
+setDefaultKitStyleReader((id) => {
+  const style = resolveRegionalArchitecture(id);
+  return style ? { stoneKind: style.surfaces.stone.kind, roofKind: style.surfaces.roof.kind,
+    concrete: !!style.surfaces.concrete, earth: EARTH_ARCHITECTURE_STYLES.has(style.id) } : null;
+});
+
+/** A structure as the world described it at build time (docs/DESTRUCTION.md §16): its kit's anatomy and its spans. */
+export interface WorldStructureDamage {
+  builder: string;
+  style: string | null;
+  anatomy: StructureDamageAnatomy;
+}
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
@@ -820,6 +842,12 @@ export interface PropsRuntime {
     /** World-space chimney tops of every placed building (hearth smoke anchors). */
     hearths: Array<[number, number, number]>;
   };
+  /** Destruction (docs/DESTRUCTION.md §16): every structure's damage anatomy by its group id, and where its parts
+   * landed in the merged buckets. */
+  structureDamage: Map<number, WorldStructureDamage>;
+  structureSpans: Map<number, StructureSpan[]>;
+  /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
+  structureMaterials: StructureMaterialEntry[];
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -3960,6 +3988,46 @@ ${snowCap ? `
   // destruction (docs/DESTRUCTION.md §3.1): every structure placement is one group, numbered in build order; its records
   // and its parts carry the number (the shards pack it; the presentation reads it off the merged geometry)
   let structureSerial = 0;
+  const structureDamage = new Map<number, WorldStructureDamage>();
+  const structureSpans = new Map<number, StructureSpan[]>();
+  const structureMaterials: StructureMaterialEntry[] = [];
+  /** One depth material per bucket that casts a structure's shadow (its map and side follow the bucket's material). */
+  const structureDepthMaterials = new Map<string, THREE.MeshDepthMaterial>();
+  const structureDepthMaterial = (key: string): THREE.MeshDepthMaterial => {
+    let depth = structureDepthMaterials.get(key);
+    if (!depth) {
+      depth = new THREE.MeshDepthMaterial({ name: 'props-structure-depth-' + key, depthPacking: THREE.RGBADepthPacking });
+      structureDepthMaterials.set(key, depth);
+      retainedSurfaceMaterials.push(depth);
+    }
+    return depth;
+  };
+  /** Where each structure's placement is read back after the passes that move buildings (the carriageway clearance,
+   * the service court, the wharf): its feature's x, z, yaw, and its contact record's base less the band's own. */
+  const structurePlacements = new Map<number, { feature: PlacedBuilding | null; contact: CollisionRecord; contactMinY: number }>();
+  /** Describe a structure through its kit chain (§16): parts in its body frame, before the merge places them. */
+  function describeStructureAt(structureIdx: number, builder: string, parts: PropsBuckets, x: number, y: number, z: number,
+    yaw: number, groupObstacles: CollisionRecord[], groupColliders: CollisionRecord[]): void {
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = 0;
+    for (const list of Object.values(parts)) for (const geometry of list as THREE.BufferGeometry[]) {
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const box = geometry.boundingBox;
+      if (!box || box.isEmpty()) continue;
+      minX = Math.min(minX, box.min.x); maxX = Math.max(maxX, box.max.x);
+      minZ = Math.min(minZ, box.min.z); maxZ = Math.max(maxZ, box.max.z);
+      maxY = Math.max(maxY, box.max.y);
+    }
+    if (!Number.isFinite(minX)) return;
+    const table = createStructureDamage(groupObstacles, groupColliders);
+    const state = table.structures[0];
+    if (!state) return;
+    const style = regionalArchitecture?.id ?? null;
+    const anatomy = describeStructure({
+      structureIdx, mapId, builder, style, parts: parts as Readonly<Record<string, readonly THREE.BufferGeometry[]>>,
+      w: maxX - minX, d: maxZ - minZ, h: maxY, placement: { x, y, z, yaw }, massClass: state.massClass,
+    });
+    structureDamage.set(structureIdx, { builder, style, anatomy });
+  }
   function addStructureCollision(
     id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
   ) {
@@ -3973,15 +4041,25 @@ ${snowCap ? `
     const contact = appendStructureCollisionBand(obstacles, profile.contact, x, baseY, z, yaw);
     contact.kind = 'structure';
     contact.structureIdx = structureIdx;
+    const shells: CollisionRecord[] = [];
     for (const band of profile.shell) {
       const shell = appendStructureCollisionBand(colliders, band, x, baseY, z, yaw);
       shell.kind = 'structure';
       shell.structureIdx = structureIdx;
+      shells.push(shell);
     }
     for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) {
       geometry.userData.structureIdx = structureIdx;
     }
+    structurePlacements.set(structureIdx, { feature: null, contact, contactMinY: profile.contact.minY });
+    describeStructureAt(structureIdx, id, tmp, x, baseY, z, yaw, [contact], shells);
     return profile;
+  }
+  /** The building just pushed onto the features is the structure just placed (its placement reads back from it). */
+  function linkStructureFeature(): void {
+    const entry = structurePlacements.get(structureSerial - 1);
+    const feature = buildingFeatures[buildingFeatures.length - 1];
+    if (entry && feature && !entry.feature) entry.feature = feature;
   }
 
   yield { stage: 'yard-clutter' };
@@ -4272,6 +4350,7 @@ ${snowCap ? `
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    linkStructureFeature();
     if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
       wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
@@ -4355,6 +4434,7 @@ ${snowCap ? `
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure });
+    linkStructureFeature();
     placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
       carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile,
@@ -4814,6 +4894,8 @@ ${snowCap ? `
       mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
       obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
       structureIndex: () => structureSerial++,
+      describeStructure: (structureIdx, kind, parts, x, y, z, yaw, groupObstacles, groupColliders) =>
+        describeStructureAt(structureIdx, kind, parts as unknown as PropsBuckets, x, y, z, yaw, groupObstacles, groupColliders),
       hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
@@ -9209,7 +9291,18 @@ ${snowCap ? `
         const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
         const merged = yield* mergePropsMaterialGeometrySteps(list, key);
         bindClutterBatch(list, merged);
+        // destruction (§16): the per-vertex structure tag, and where each structure's parts landed
+        const holdsStructure = tagStructureVertices(list, merged);
         const mesh = new THREE.Mesh(merged, mats[key]);
+        bindStructureSpans(list, merged.getAttribute('position') as THREE.BufferAttribute, mesh, key, structureSpans);
+        structureMaterials.push({ material: mats[key], bucket: key, role: 'surface', mesh, batched: false });
+        // a bucket that casts a structure's shadow casts it through its own depth material (the same RGBA-packed depth
+        // three's shared one is flipped to), so the presentation's structure patch moves the shadow with the building
+        if (holdsStructure && casts) {
+          const depth = structureDepthMaterial(key);
+          mesh.customDepthMaterial = depth;
+          structureMaterials.push({ material: depth, bucket: key, role: 'depth', mesh, batched: false });
+        }
         mesh.name = 'props-bucket-' + key + suffix; // round 75: the perf inventories attribute the merged buckets by name
         setShadowCasterProfile(mesh, profile);
         if (casts) routeCasterCascades(mesh, profile); // (b37: by its tallest part)
@@ -9226,6 +9319,12 @@ ${snowCap ? `
       const parts: THREE.BufferGeometry[] = [];
       if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
       for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
+      // destruction (§16): a batch's geometries share one attribute set: all of them tagged when any holds a structure
+      {
+        const sourceLists = [...(coarse.length ? [coarse] : []), ...cells.map((cell) => cell.list)];
+        const any = sourceLists.some((list) => list.some((g) => typeof g.userData.structureIdx === 'number'));
+        if (any) sourceLists.forEach((list, i) => tagStructureVertices(list, parts[i]!, true));
+      }
       const vertices = parts.reduce((n, g) => n + g.getAttribute('position').count, 0);
       const indices = parts.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
       // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
@@ -9244,7 +9343,16 @@ ${snowCap ? `
       batch.castShadow = false;
       batch.receiveShadow = true;
       batch.matrixAutoUpdate = false;
-      const ids = parts.map((g) => batch.addInstance(batch.addGeometry(g)));
+      const geometryIds = parts.map((g) => batch.addGeometry(g));
+      const ids = geometryIds.map((geometryId) => batch.addInstance(geometryId));
+      // destruction (§16): the batch holds every geometry in its own attributes: a span's range is absolute there
+      structureMaterials.push({ material: batchMaterial, bucket: key, role: 'surface', mesh: batch, batched: true });
+      {
+        const position = batch.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const sourceLists = [...(coarse.length ? [coarse] : []), ...cells.map((cell) => cell.list)];
+        sourceLists.forEach((list, i) => bindStructureSpans(list, position, batch, key, structureSpans, geometryIds[i]!,
+          !(coarse.length && i === 0), batch.getGeometryRangeAt(geometryIds[i]!)!.vertexStart, ids[i]!));
+      }
       for (const g of parts) g.dispose();
       fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
         box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ } })) });
@@ -10378,7 +10486,15 @@ ${snowCap ? `
     { material: mats.structureMetal, intensity: 1.2 },
     { material: mats.structureCanvas, intensity: 1.2 },
   ]);
-  return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
+  // destruction (§16): every structure's placement as the passes that move buildings left it
+  for (const [structureIdx, entry] of structurePlacements) {
+    const described = structureDamage.get(structureIdx);
+    if (!described) continue;
+    const placement = described.anatomy.placement;
+    if (entry.feature) { placement.x = entry.feature.x; placement.z = entry.feature.z; placement.yaw = entry.feature.rot; }
+    placement.y = entry.contact.min[1] - entry.contactMinY;
+  }
+  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles,

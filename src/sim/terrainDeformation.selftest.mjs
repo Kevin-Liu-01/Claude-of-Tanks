@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
-  STAMPS_PER_BUCKET, craterProfile, createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor,
+  STAMPS_PER_BUCKET, craterProfile, craterWobblePhases, createDeformedHeightField, createTerrainDeformation, stampBounds, rubbleFalloffM, rubbleHeightFor,
   rubbleProfile,
 } from './terrainDeformation.ts';
 import { createTerrainContactSampler } from '../world/terrainContactSurface.ts';
@@ -126,6 +126,34 @@ function makeBase() {
   assert.equal(Object.keys(base).includes('stamps'), false);
   const other = createDeformedHeightField(base, createTerrainDeformation());
   near(other.getHeightAt(12.3, -40.7), baseHeight(12.3, -40.7), 1e-12, 'another match on the same base sees no stamp');
+}
+
+// ---- the wobble the presentation's decal edge follows is the stamp's own
+{
+  const overlay = createTerrainDeformation();
+  overlay.addCrater(5, 5, 2.4, 0.8, 0.3, 40321);
+  const [stamp] = overlay.stamps;
+  assert.deepEqual(craterWobblePhases(40321), [stamp.p1, stamp.p2, stamp.p3]);
+}
+
+// ---- the bounds a renderer re-reads: nothing moves outside them
+{
+  const overlay = createTerrainDeformation();
+  overlay.addCrater(30, -40, 3.4, 1.2, 0.4, 777);
+  overlay.addRubble(-60, 25, 5, 7, 0.6, 2);
+  for (const stamp of overlay.stamps) {
+    const [x0, z0, x1, z1] = stampBounds(stamp, [0, 0, 0, 0]);
+    for (let k = 0; k < 400; k++) {
+      const a = k * 2.399963, r = 1 + (k % 40) * 0.6;
+      const x = (x0 + x1) / 2 + Math.cos(a) * r * (x1 - x0) / 2, z = (z0 + z1) / 2 + Math.sin(a) * r * (z1 - z0) / 2;
+      if (x < x0 || x > x1 || z < z0 || z > z1) {
+        const only = createTerrainDeformation();
+        if (stamp.kind === 'crater') only.addCrater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed);
+        else only.addRubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM);
+        assert.equal(only.offsetAt(x, z), 0, `${stamp.kind} moves nothing outside its bounds (${x.toFixed(1)}, ${z.toFixed(1)})`);
+      }
+    }
+  }
 }
 
 console.log('terrainDeformation: crater and rubble profiles (heaps every hull climbs), same stamps same bits, clamps and '

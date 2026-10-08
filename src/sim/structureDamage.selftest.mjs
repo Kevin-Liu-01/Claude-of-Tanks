@@ -4,13 +4,14 @@
 import assert from 'node:assert/strict';
 import { setCompoundShape, setObbShape, setCircleShape } from '../world/collision.ts';
 import {
-  COLLAPSES_PER_TICK, STAGE_EVENTS_PER_TICK, createStructureDamage, minimumAreaRectangle, ramStructurePoints,
+  COLLAPSES_PER_TICK, RAM_SCUFF_KJ, STAGE_EVENTS_PER_TICK, createStructureDamage, minimumAreaRectangle, ramStructurePoints,
   stageForIntegrity, structureHitPoints, structureMassClass,
 } from './structureDamage.ts';
 import { createDestructionMatch, resetStructureRecords } from './destructionMatch.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { cookOffChargeKg, structureBlastPoints } from './munitionBlast.ts';
+import { structureMaterialFor, wallMaterialForStyle } from './structureMaterial.ts';
 
 const near = (actual, expected, eps, label) => assert.ok(Math.abs(actual - expected) <= eps,
   `${label}: ${actual} is not within ${eps} of ${expected}`);
@@ -44,10 +45,25 @@ assert.equal(structureMassClass(9000, 'building'), 'large');
 assert.equal(structureMassClass(30000, 'building'), 'landmark');
 assert.equal(structureMassClass(150, 'setpiece'), 'landmark', 'a set piece is a landmark whatever its size');
 assert.deepEqual([1, 0.71, 0.7, 0.36, 0.35, 0.01, 0, -1].map(stageForIntegrity), [0, 0, 1, 1, 2, 2, 3, 3]);
-near(ramStructurePoints(60, 10), 61.6667, 1e-4, '60 t at 10 m/s');
-near(ramStructurePoints(60, 9), 49.7917, 1e-4, '60 t at 9 m/s');
-near(ramStructurePoints(40, 6), 14.1667, 1e-4, 'a 40 t medium at 6 m/s');
+// the ram law (§4.4, 2026-10-08): (½·m·v² − E₀(material)) / 40, E₀ the energy the wall's face absorbs crushing 2 cm over
+// a hull's 2 m² bow (σc · A · d): timber 30, mudbrick 60, masonry 300, concrete 1,100 kJ; masonry when unnamed
+near(ramStructurePoints(60, 10), (3000 - 300) / 40, 1e-9, '60 t at 10 m/s on masonry');
+near(ramStructurePoints(60, 9), (2430 - 300) / 40, 1e-9, '60 t at 9 m/s');
+near(ramStructurePoints(40, 6, 'timber'), (720 - 30) / 40, 1e-9, 'a 40 t medium at 6 m/s on a timber shed');
+assert.deepEqual(RAM_SCUFF_KJ, { timber: 30, adobe: 60, masonry: 300, concrete: 1100 });
+for (const [material, speed] of [['timber', 1.1], ['adobe', 1.55], ['masonry', 3.46], ['concrete', 6.63]]) {
+  assert.equal(ramStructurePoints(50, speed - 0.02, material), 0, `${material}: a 50 t hull under ${speed} m/s only scuffs it`);
+  assert.ok(ramStructurePoints(50, speed + 0.02, material) > 0, `${material}: above it, structure`);
+}
+assert.equal(ramStructurePoints(50, 1.3), 0, 'the coordinator\'s 1.3 m/s bump (42 kJ) scuffs masonry');
 assert.equal(ramStructurePoints(60, 1), 0, 'a nudge at 1 m/s');
+// the material from the map's style and the class: sheds timber, houses the map's walls, halls no softer than masonry
+assert.equal(wallMaterialForStyle('ksar'), 'adobe');
+assert.equal(wallMaterialForStyle('glencanyon'), 'concrete');
+assert.equal(wallMaterialForStyle('franconian'), 'masonry');
+assert.equal(wallMaterialForStyle(null), 'masonry');
+assert.deepEqual(['shed', 'house', 'large', 'landmark'].map((c) => structureMaterialFor(c, 'adobe')), ['timber', 'adobe', 'masonry', 'masonry']);
+assert.deepEqual(['shed', 'house', 'large', 'landmark'].map((c) => structureMaterialFor(c, 'concrete')), ['timber', 'concrete', 'concrete', 'concrete']);
 // the feel targets (coordinator 2026-10-07): a 600 m³ house, a 60 m³ shed, a 125 mm HE contact round
 {
   const house = structureHitPoints(600), shed = structureHitPoints(60), he = structureBlastPoints(3.52, 'he', 0);
@@ -57,10 +73,14 @@ assert.equal(ramStructurePoints(60, 1), 0, 'a nudge at 1 m/s');
   assert.ok(structureBlastPoints(20.04, 'howitzer', 0) < house && structureBlastPoints(20.04, 'howitzer', 0) + he > house,
     'one gunship howitzer shell and a little');
   assert.equal(Math.ceil(shed / he), 2, 'a shed falls to two HE rounds');
-  assert.ok(ramStructurePoints(40, 6) >= shed * 0.9, 'or nearly to a medium hull at 6 m/s');
-  assert.ok(ramStructurePoints(60, 9) >= house * 0.65 - 1e-9 && ramStructurePoints(60, 9) < house, 'a heavy hull at 9 m/s breaches a house');
-  assert.ok(ramStructurePoints(60, 12) >= house, 'at 12 m/s it brings it down');
-  assert.ok(ramStructurePoints(37.5, 8) >= house * 0.30 && ramStructurePoints(37.5, 8) < house * 0.65, 'a medium at 8 m/s damages it');
+  assert.ok(ramStructurePoints(40, 6, 'timber') >= shed * 0.9, 'or nearly to a medium hull at 6 m/s');
+  for (const material of ['masonry', 'adobe']) {
+    assert.ok(ramStructurePoints(60, 9, material) >= house * 0.65 - 1e-9 && ramStructurePoints(60, 9, material) < house,
+      `a heavy hull at 9 m/s breaches a ${material} house`);
+    assert.ok(ramStructurePoints(60, 12, material) >= house, `at 12 m/s it brings it down (${material})`);
+    assert.ok(ramStructurePoints(37.5, 8, material) >= house * 0.30, `a medium at 8 m/s damages it (${material})`);
+  }
+  assert.ok(ramStructurePoints(37.5, 8) < house * 0.65, 'without breaching masonry');
 }
 
 // ---- footprints: the minimum-area rectangle, canonical (forward along the longer side, yaw in [0, π))
@@ -183,16 +203,16 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   const damage = createStructureDamage(obstacles, colliders);
   for (const structure of damage.structures) damage.applyPoints(structure, 1e6, blowAt(structure.cx, 1, structure.cz));
   const ticks = [];
-  for (let tick = 0; tick < 4; tick++) {
+  for (let tick = 0; tick < 6; tick++) {
     damage.step();
     const events = [];
     damage.drainEvents(events);
     ticks.push(events.map((e) => `${e.structureId}:${e.stage}`));
   }
-  assert.equal(COLLAPSES_PER_TICK, 2);
+  assert.equal(COLLAPSES_PER_TICK, 1);
   assert.equal(STAGE_EVENTS_PER_TICK, 4);
   const collapsesPerTick = ticks.map((events) => events.filter((e) => e.endsWith('collapsed')).length);
-  assert.deepEqual(collapsesPerTick, [2, 2, 1, 0], 'two swaps a tick, the fifth in the third');
+  assert.deepEqual(collapsesPerTick, [1, 1, 1, 1, 1, 0], 'one swap a tick, the fifth in the fifth');
   assert.ok(collapsesPerTick.every((n) => n <= COLLAPSES_PER_TICK), `collapse swaps per tick ${collapsesPerTick}`);
   assert.equal(ticks.flat().filter((e) => e.endsWith('collapsed')).length, 5, 'every collapse arrives');
   const order = ticks.flat().filter((e) => e.endsWith('collapsed')).map((e) => Number(e.split(':')[0]));
@@ -207,7 +227,7 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   for (const mode of GAME_MODE_IDS) {
     const ruleset = matchRulesetFor(mode);
     assert.equal(ruleset.destruction.structures, mode !== 'turbo_ball', `${mode}: structures`);
-    assert.equal(ruleset.destruction.craters, mode !== 'turbo_ball', `${mode}: craters`);
+    assert.equal(ruleset.destruction.craters, false, `${mode}: craters off until the drawn terrain follows the overlay (P3)`);
   }
   assert.equal(matchRulesetFor('ac130').destruction.craterScale, 1.25);
   const make = () => world(building(0, 0, 0, 4, 5, 3), building(1, 20, 0, 10, 8, 7));

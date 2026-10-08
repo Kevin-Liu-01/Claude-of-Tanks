@@ -39,6 +39,7 @@
  */
 import type { BufferGeometry } from 'three';
 import type { DestructionCause, MunitionClass, StructureMassClass } from '../sim/destructionEvents.ts';
+import { rubbleMoundHeightAt, type RubbleMound } from '../sim/terrainDeformation.ts';
 
 export type Vec3 = readonly [number, number, number];
 export type Rgb = readonly [number, number, number];
@@ -239,6 +240,12 @@ export interface StructureDamageAnatomy {
   /** What a collapse leaves standing: wall stubs to this height, the corners, the chimneys. */
   remnant: { stubHeightM: number; corners: boolean; chimneys: boolean };
   /**
+   * The heap the simulation raises when the structure collapses (world frame: its collision footprint and height,
+   * sim/terrainDeformation.ts). A kit's `describe` leaves it out: the world seam fills it from the structure table after
+   * describe; `bodyMoundHeightAt` reads it in the body frame (0 while absent).
+   */
+  mound?: RubbleMound;
+  /**
    * The kit's own plan of the building, opaque to the core (house.ts HouseSpec and HouseFrame, a landmark's plan): a
    * kit's builders read it back to fracture exactly what it built. Absent for the default kit.
    */
@@ -314,7 +321,11 @@ export interface DamageWriters {
   pieces: DamagePieceWriter;
 }
 
-/** A hole to cut from the intact geometry: a cylinder along the face normal (the presentation's shader discard). */
+/**
+ * A hole to cut from the intact geometry: a cylinder along the face normal (the presentation's shader discard), from
+ * `outsideM` outside the face plane (sills, surrounds and shutters inside the hole go too; 0.3 m by default) to
+ * `depthM` inside it (the wall's layers plus a margin).
+ */
 export interface StructureCut {
   x: number;
   y: number;
@@ -324,12 +335,17 @@ export interface StructureCut {
   radiusM: number;
   /** Depth from the outer plane inward: the wall's layers plus a margin. */
   depthM: number;
+  /** How far outside the face plane the cut begins (absent: 0.3 m). */
+  outsideM?: number;
 }
 
 /** The per-vertex part class the build tags (§16.4): what a stage may hide. */
 export type DamagePartClass = 'wall' | 'roof' | 'glass' | 'trim' | 'interior';
 
-/** Intact parts to hide from a stage on: a whole section, a part class, or a class within a section. */
+/**
+ * Intact parts to hide from a stage on: a whole section, a part class, a class within a section — or, with both null,
+ * everything the structure has (a collapse).
+ */
 export interface DamageHide {
   section: number | null;
   partClass: DamagePartClass | null;
@@ -448,6 +464,35 @@ export function structureDamageKitChain(builder: string, style: string | null): 
 
 export function propDamageKitFor(kind: string): PropDamageKit | null {
   return propKits.get(kind) ?? propKits.get('default') ?? null;
+}
+
+// ---- The body frame's heap and the kit's plan ------------------------------------------------------------------
+
+/**
+ * The sim's heap at body-frame (x, z) — its height above the ground there (the presentation seats a piece on the
+ * terrain under it plus this). A kit's `collapse` places its pile with it: `(x, z) => bodyMoundHeightAt(anatomy, x, z)`.
+ */
+export function bodyMoundHeightAt(anatomy: StructureDamageAnatomy, x: number, z: number): number {
+  const { placement } = anatomy;
+  if (!anatomy.mound) return 0;
+  const c = Math.cos(placement.yaw), s = Math.sin(placement.yaw);
+  // body → world: rotateY(yaw) then translate (three's rotateY: x' = x c + z s, z' = −x s + z c)
+  return rubbleMoundHeightAt(anatomy.mound, placement.x + x * c + z * s, placement.z - x * s + z * c);
+}
+
+type KitPlanReader = (parts: Readonly<Record<string, readonly BufferGeometry[]>>, style: string | null) => unknown;
+let kitPlanReader: KitPlanReader | null = null;
+
+/**
+ * The regional kits' plan reader (the facades lane's `regionalKitPlanOf`): registered once by the kits' module, read by
+ * the world builder for `StructureDescribeInput.kitPlan` at every rebuild site, so the builder imports no kit.
+ */
+export function setKitPlanReader(reader: KitPlanReader | null): void {
+  kitPlanReader = reader;
+}
+
+export function kitPlanFor(parts: Readonly<Record<string, readonly BufferGeometry[]>>, style: string | null): unknown {
+  return kitPlanReader ? kitPlanReader(parts, style) : undefined;
 }
 
 // ---- Determinism -----------------------------------------------------------------------------------------------

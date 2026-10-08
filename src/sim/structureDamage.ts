@@ -15,6 +15,7 @@
  */
 import { convexHull2, type CollisionRecord, type SimpleCollisionShape } from '../world/collision.ts';
 import { impactEnergyKj } from './impact.ts';
+import { structureMaterialFor, type StructureMaterial } from './structureMaterial.ts';
 import type {
   DestructionCause, MunitionClass, StructureMassClass, StructureStage, StructureStageEvent,
 } from './destructionEvents.ts';
@@ -37,10 +38,23 @@ const HP_SCALE = 0.72;
 const HP_EXPONENT = 0.72;
 const HP_FLOOR = 10;
 /** Ram pricing (§4.4): energy under this does nothing; above it, one structure point per this many kJ. */
-const RAM_THRESHOLD_KJ = 40;
-const RAM_KJ_PER_POINT = 48;
-/** Collision swaps per fixed step (§5): a third collapse waits a tick. */
-export const COLLAPSES_PER_TICK = 2;
+/**
+ * Ram pricing (§4.4). A crash below a wall's scuff energy only scuffs it: the energy its face absorbs crushing over a
+ * hull's bow contact (≈ 2 m²: a glacis or nose block, 2 m × 1 m) to the 2 cm it can lose without losing section —
+ * E₀ = σc · A · d, with the face's crushing strength σc. Timber and sheet (≈ 0.75 MPa as the cladding and studs give):
+ * 30 kJ; mudbrick (≈ 1.5 MPa): 60 kJ; brick and stone masonry (≈ 7.5 MPa): 300 kJ; reinforced concrete (≈ 27.5 MPa):
+ * 1.1 MJ. For a 50 t hull those are closing speeds of 1.1, 1.5, 3.5 and 6.6 m/s: a 1.3 m/s bump (42 kJ) scuffs
+ * masonry, a deliberate ram at 8–12 m/s (1.6–3.6 MJ) breaks it.
+ */
+export const RAM_SCUFF_KJ: Readonly<Record<StructureMaterial, number>> = Object.freeze({
+  timber: 30, adobe: 60, masonry: 300, concrete: 1100,
+});
+/** One structure point per this much ram energy above the scuff (§5's feel on a masonry house: a 60 t hull at 9 m/s
+ * breaches it, at 12 m/s brings it down, a 37.5 t medium at 8 m/s damages it). */
+const RAM_KJ_PER_POINT = 40;
+/** Collision swaps per fixed step (§5, §10): a collapse's work (the swap, the heap, the route grid's refresh round it) is
+ * about 1–4 ms of CPU, so a second collapse in the same tick waits for the next (16.7 ms later). */
+export const COLLAPSES_PER_TICK = 1;
 /** Stage events per fixed step besides collapses (§8.5): the overflow is reported in the next tick. */
 export const STAGE_EVENTS_PER_TICK = 4;
 /** Blast query buckets (§10). */
@@ -53,6 +67,8 @@ export interface StructureState {
   readonly id: number;
   readonly role: 'building' | 'setpiece' | 'fixed';
   readonly massClass: StructureMassClass;
+  /** What its walls are (structureMaterial.ts): the ram's scuff energy (§4.4). */
+  readonly material: StructureMaterial;
   /** Takes damage at all (false for a fixed group). */
   readonly destructible: boolean;
   /** Collapses at zero (false for a landmark). */
@@ -91,6 +107,8 @@ export interface StructureBlow {
 export interface StructureDamageOptions {
   /** Multiplies every structure point dealt (the ruleset's structureDamageScale). */
   damageScale?: number;
+  /** The map's house walls (structureMaterial.ts wallMaterialForMap; masonry when absent). */
+  wallMaterial?: StructureMaterial;
   /** A collapse applied (records already flipped): raise the rubble, refresh the route grid. */
   onCollapse?(structure: StructureState): void;
 }
@@ -248,9 +266,9 @@ export function structureHitPoints(volumeM3: number): number {
   return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
 }
 
-/** Structure points of a ram (§4.4): (½·m·v² − 40 kJ) / 48, 0 below the threshold. */
-export function ramStructurePoints(massTons: number, closingMps: number): number {
-  return Math.max(0, impactEnergyKj(massTons, closingMps) - RAM_THRESHOLD_KJ) / RAM_KJ_PER_POINT;
+/** Structure points of a ram (§4.4): (½·m·v² − E₀(material)) / 40, 0 below the material's scuff energy. */
+export function ramStructurePoints(massTons: number, closingMps: number, material: StructureMaterial = 'masonry'): number {
+  return Math.max(0, impactEnergyKj(massTons, closingMps) - RAM_SCUFF_KJ[material]) / RAM_KJ_PER_POINT;
 }
 
 /** The stage an integrity (hp / maxHp) stands at. */
@@ -265,7 +283,7 @@ export function stageForIntegrity(integrity: number): number {
 
 interface Group { obstacles: CollisionRecord[]; colliders: CollisionRecord[] }
 
-function buildState(id: number, group: Group): StructureState | null {
+function buildState(id: number, group: Group, wallMaterial: StructureMaterial): StructureState | null {
   const role: StructureState['role'] = group.obstacles.concat(group.colliders)
     .some((record) => record.structureRole === 'fixed') ? 'fixed'
     : group.obstacles.concat(group.colliders).some((record) => record.structureRole === 'setpiece') ? 'setpiece'
@@ -288,7 +306,7 @@ function buildState(id: number, group: Group): StructureState | null {
   const massClass = structureMassClass(volume, role);
   const maxHp = structureHitPoints(volume);
   return {
-    id, role, massClass,
+    id, role, massClass, material: structureMaterialFor(massClass, wallMaterial),
     destructible: role !== 'fixed',
     collapsible: role !== 'fixed' && massClass !== 'landmark',
     cx: footprint.cx, cz: footprint.cz, hw: footprint.hw, hd: footprint.hd, yaw: footprint.yaw,
@@ -333,7 +351,7 @@ export function createStructureDamage(
   for (const record of colliders) take(record, 'colliders');
   const structures: StructureState[] = [];
   for (const id of [...groups.keys()].sort((a, b) => a - b)) {
-    const state = buildState(id, groups.get(id)!);
+    const state = buildState(id, groups.get(id)!, options.wallMaterial ?? 'masonry');
     if (state) structures.push(state);
   }
   const byIdMap = new Map<number, StructureState>(structures.map((structure) => [structure.id, structure]));
@@ -439,18 +457,19 @@ export function createStructureDamage(
       damage(structure, points, blow);
     },
     applyRam(structure, massTons, closingMps, priorClosingMps, blow) {
-      const points = ramStructurePoints(massTons, closingMps) - ramStructurePoints(massTons, Math.max(0, priorClosingMps));
+      const points = ramStructurePoints(massTons, closingMps, structure.material)
+        - ramStructurePoints(massTons, Math.max(0, priorClosingMps), structure.material);
       damage(structure, points, blow);
     },
     yieldTo(structure, massTons, closingMps, speedMps, blow) {
       if (!structure.collapsible) return null;
       if (structure.stage >= 3 || structure.collapsePending) return 1;
-      const points = ramStructurePoints(massTons, closingMps) * damageScale;
+      const points = ramStructurePoints(massTons, closingMps, structure.material) * damageScale;
       if (!(points > 0) || points < structure.hp) return null;
       // the energy it took to bring the rest of it down, out of the hull's kinetic energy
-      const absorbedKj = RAM_THRESHOLD_KJ + RAM_KJ_PER_POINT * (structure.hp / Math.max(damageScale, 1e-9));
+      const absorbedKj = RAM_SCUFF_KJ[structure.material] + RAM_KJ_PER_POINT * (structure.hp / Math.max(damageScale, 1e-9));
       const energyKj = impactEnergyKj(massTons, speedMps);
-      damage(structure, ramStructurePoints(massTons, closingMps), blow);
+      damage(structure, ramStructurePoints(massTons, closingMps, structure.material), blow);
       return energyKj > absorbedKj ? Math.sqrt(1 - absorbedKj / energyKj) : 0;
     },
     step() {

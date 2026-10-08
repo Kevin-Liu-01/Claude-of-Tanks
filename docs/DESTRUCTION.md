@@ -101,8 +101,10 @@ the records alone, identically in the solo world (the rendered build) and on the
 | hit points | `HP = 0.72·V^0.72` structure points (SP), floor 10: shed 60 m³ → 13.7, house 600 m³ → 72, warehouse 7,200 m³ → 431, landmark 50,000 m³ → 1,742 (tuned to the feel targets in §5) |
 | records | indices of its contact/movement records (obstacles) and shell bands (colliders) |
 
-Measured on the 33 shards (AABB × height, an over-estimate): p10 237 m³, median 1,103, p90 4,149, p99 44,409; by the
-thresholds about 150 sheds, 986 houses, 241 large and 33 landmarks.
+Measured on the 33 recaptured shards (the table built from their records, 2026-10-07): 1,410 structures — 933 houses
+(hit points p10 37, median 80, p90 167), 358 sheds (10 / 16 / 27), 97 large (207 / 247 / 630) and 22 landmarks
+(median 1,004); Ruinspires 392 (330 houses, 31 large, 10 landmarks), Blackglass 147, Steinburg 138 (96 houses, 42
+sheds), Cliffbridge 107, Verdant 9, the Moon none.
 
 **Landmarks are breach-only.** A landmark (a cathedral, a fortress gate, a dam house, an airfield hangar set piece)
 reaches `breached` and stops there: its integrity floors at 5 %, it never collapses, its collision never swaps in P1.
@@ -196,16 +198,33 @@ recorded per entity as the structure it pressed) is priced by the impact system'
 prices a crash on the accumulated closing speed `v`, the structure takes
 
 ```
-SP = max(0, E − 40 kJ) / 48,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
+SP = max(0, E − E₀(material)) / 40,   E = impactEnergyKj(massTons, v) = ½·tons·v²   (kJ)
 ```
 
-A 60 t heavy at 9 m/s → 50 SP (breaches a 600 m³ house); at 12 m/s → 89 (brings it down; so does a second 9 m/s ram);
-a 37.5 t medium at 8 m/s → 24 (damages it); a 40 t medium at 6 m/s → 14 (a shed comes down); a 1 m/s nudge → nothing.
+**Scuff energy, by material (2026-10-08, the coordinator's ruling: a deliberate ram breaks a wall, a scrape does
+not).** E₀ is the energy a wall's face absorbs crushing over a hull's bow before the wall loses section: a glacis or
+nose block on the wall is about A = 2 m² (2 m × 1 m), and the face can lose d = 2 cm (render, the faces of the units)
+without the wall losing strength, so E₀ = σc · A · d with the face's crushing strength σc:
+
+| Material | σc | E₀ | A 50 t hull scuffs up to | Which structures |
+|---|---|---|---|---|
+| timber and sheet | ≈ 0.75 MPa (cladding and studs give) | 30 kJ | 1.1 m/s | every shed |
+| mudbrick under render | ≈ 1.5 MPa | 60 kJ | 1.5 m/s | houses of the earth styles (wadirum, ksar, siwa, navajo, kolkhoz) |
+| brick and stone masonry | ≈ 7.5 MPa | 300 kJ | 3.5 m/s | houses of every other style, and every large building and landmark |
+| reinforced concrete | ≈ 27.5 MPa | 1.1 MJ | 6.6 m/s | the concrete style's houses, halls and landmarks (glencanyon) |
+
+A host has collision records only, so the material is the map's architecture style for its houses
+(`sim/structureMaterial.ts wallMaterialForStyle`, the earth list the default kit reads too), timber for sheds, and
+nothing softer than masonry for halls and landmarks (`structureMaterialFor`). The coordinator's 1.3 m/s bump (42 kJ)
+scuffs masonry; a manoeuvring hull that corners into a wall at 2–3 m/s scuffs it; a ram at speed breaks it. One point
+per 40 kJ above the scuff keeps §5's feel on a masonry house: a 60 t heavy at 9 m/s → 53 SP (breaches a 600 m³ house);
+at 12 m/s → 101 (brings it down; so does a second 9 m/s ram); a 37.5 t medium at 8 m/s → 23 (damages it); a 40 t
+medium at 6 m/s on a timber shed → 17 (it comes down).
 
 **A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
 along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets
 the hull through, the ram is priced and the collapse queued, and the hull keeps `√(1 − E_abs / E)` of its speed, where
-`E_abs = 40 kJ + 48 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
+`E_abs = E₀ + 40 kJ × remaining HP` is what the structure took and `E = ½·m·v²` the hull's energy; no crash is
 priced on the hull. A structure that holds is a hard surface: the hull takes the impact law's crash and the structure
 takes the ram. Measured (destructionParity, the authority on verdant): an M1A2 at 18.4 m/s through a 94 HP house
 brings it down, keeps most of its speed, takes no damage and drives on; the same hull into an intact large building
@@ -239,9 +258,10 @@ down), to be settled by the pacing and fairness runs (§12):
 | large (7,200 m³) | 431 | 302 | 151 | yes | seven gunship howitzer shells; a TOS-1A salvo on target |
 | landmark (50,000 m³) | 1,742 | 1,219 | 610 | **no** (floor 5 %) | — |
 
-Collapses are queued: at most two structures change collision per tick (FIFO in authority order); a third waits for
-the next tick. HP and the stage transition are decided at the blow's tick; only the collision swap and its event can
-lag by a tick.
+Collapses are queued: at most one structure changes collision per tick (FIFO in authority order); a second waits for
+the next tick (16.7 ms: a howitzer round that brings down three sheds swaps them over three ticks). HP and the stage
+transition are decided at the blow's tick; only the collision swap and its event can lag. One a tick because a
+collapse's work is 1–4 ms of CPU (§10), most of it the route grid's refresh round the footprint.
 
 ## 6. Collision, line of sight and navigation
 
@@ -291,6 +311,21 @@ no stamp leaks into the next battle or another match in the same process.
 **Bounds.** At most 160 craters per match deform the ground (`rules.maxCraters`); the rest, and any crater whose bucket
 is full, are marks. Rubble mounds are one per collapsed structure. The overlay never shrinks within a match.
 
+**Digging (P3, landed 2026-10-08; off in every mode until the render follows).** `destructionMatch.shellWorldHit` takes
+`groundBurst`: true when the round burst on the terrain itself (no record struck) and not on water (`shellHitsWater`,
+the same test in both simulations). The crater law (§4.5) sizes it; under `CRATER_DEFORM_MIN_RADIUS_M` (1.6 m: a
+125 mm HE round digs 1.6–1.7 m, a 105 mm one does not) it is a mark, and so is any burst on hard ground (roads, bridge
+decks, ice: `getGroundType`), the fifth and later deforming craters of a tick (`CRATERS_PER_TICK` 4) and those past
+`maxCraters`. A crater is quantized as the wire carries it (millimetre centre, centimetre radius, millimetre depth and
+rim, a 16-bit seed from its centre) before it is stamped, logged (`kind: 'crater'`) and handed back
+(`drainCraters` → solo `terrain:crater`, the authority's `terrain_crater`, public like a stage). A restored log stamps
+the same ground; a peer stamps each crater once, from its event or, settled, from the log (an owed event keeps the log
+from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
+sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
+
+Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
+simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
+
 **Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
 nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
 hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
@@ -319,39 +354,62 @@ state; its event carries the blow's point and push direction but never the shoot
 ### 8.2 Settled state
 
 The destruction log (`DestructionLogEntry`: stage, breach, crater) only grows within a match, so it travels like the
-destroyed-prop list: a snapshot carries it whole in a keyframe and the entries after its baseline's revision in a
-delta (`writeDestructionLog`, a varint count and compact binary entries: stage 4 B, crater 13 B, breach 16 B); the
-meta carries its revision. A client lays down every entry its presentation has not seen live as `settled` (no
-animation, no sound), except an entry whose event it still owes (the `destroyedPending` rule).
+destroyed-prop list: a snapshot carries it whole in a keyframe and the entries after its baseline's length in a delta
+(wire 4: `SNAPSHOT_FLAGS.HAS_DESTRUCTION`, then the base length and the entries, `src/mp/wire/destructionLog.ts`; a
+stage entry 11–13 B with its footprint centre, a breach 20 B, a crater 19 B; a delta whose base disagrees with the
+client's baseline is refused). The host actor copies the authority's log (quantized as the wire carries it) into every
+frame when it grows. The client keeps the newest frame's log and the stages its event queue still owes
+(`ReliableEventQueue.isStructurePending`, as `isObstaclePending` does for prop falls).
+
+On the peer, `src/mp/presentation/destructionMirror.ts` lays the authority's stages on the peer's own world: a live
+`structure_stage` animates (`structure:stage` on the bus, this world's structure id), the log lays down settled
+(`settled: true`) every stage the seat did not see happen except one whose event is still owed; a collapse flips this
+world's records (the predicted hull stops meeting them, the seat's rays pass) and raises the heap on the prediction's
+ground (a wrapped height field under `createPredictionWorld`). A world laid out otherwise finds the structure by its
+footprint centre (5 cm, the same class) — every stage entry and event carries it — and never another in its stead.
 
 ### 8.3 Host migration
 
-The sealed migration keyframe's frame carries the log. `RetainedMigrationState` keeps every destruction event the
-seat received (as `fallen` keeps prop falls), and `resumeStateFromRetained` merges them. `applyResumeState` calls
-`authority.restoreDestruction(log)`: stages and collision swaps, craters and mounds applied without events. Hit points
-are not on the wire: a damaged structure resumes at its stage's upper bound (70 % or 35 %), a small gift to the
-building, documented and bounded.
+The sealed migration keyframe's frame carries the log. `RetainedMigrationState.destruction` keeps every stage event the
+seat received (as `fallen` keeps prop falls; a link reset clears the queue, never this), and `resumeStateFromRetained`
+takes the longer log of the keyframe and the newest frame and merges them in. `applyResumeState` calls
+`authority.restoreDestruction(log)`: the log is kept verbatim (its order and length continue), stages and collapses
+(records, heaps, the route grid) applied without events. Hit points are not on the wire: a damaged structure resumes at
+its stage's upper bound (70 % or 35 %), a small gift to the building, documented and bounded.
 
 ### 8.4 Identity across layouts
 
 Every event carries the structure's footprint centre and class (`StructureIdentity`). The presentation resolves the
-id against its own world's structure table when the layouts match (desktop tier, base terrain), else by identity
-(centre within 5 cm, same class), else applies nothing (the host's world still decides). Craters are positions, valid
-in any layout.
+id against its own world's structure table when the layouts match (desktop tier, the mode's own battlefield), else by
+identity (centre within 5 cm, same class), else applies nothing (the host's world still decides). Craters are
+positions, valid in any layout.
+
+**The authority plays what the clients build (2026-10-08).** A mode's battlefield variant is a ruleset rule
+(`MatchRuleset.terrainVariant`, `terrainVariantFor(mode)`: Frontline Assault's `'assault-trenches'`). Every client
+already built it; the hosts built the base map — hulls on uncarved ground, none of the trench works' records (on
+Verdant the variant differs by 3,390 obstacle records each way: the carving moves every placement after it). Now the
+browser host (`loadCollisionWorld(…, { variant })`) and the dedicated actor (`createDedicatedWorldCollision(…,
+{ variant })`) load the variant's own shard over the variant's field, so a desktop client of either shares the
+authority's indices (`authorityObstacles`: only the mobile tier lays out otherwise, until its placement split).
+Receipt: `src/mp/host/frontlineVariant.selftest.mjs`.
 
 ### 8.5 Budget
 
 The wire sends one EVENT message per viewer per tick and drops the whole batch above 64 events
-(`MAX_EVENTS_PER_MESSAGE`). Destruction adds at most: 2 collapses + 4 other stage changes + 4 craters per tick (the
+(`MAX_EVENTS_PER_MESSAGE`). Destruction adds at most: 1 collapse + 4 other stage changes + 4 craters per tick (the
 overflow of stage changes waits a tick in the authority's FIFO; craters past four in a tick become marks). The
 reliable queue treats `structure_stage` (collapsed) and `terrain_crater` as heavy beats. Bandwidth: a full late-game
 log (300 stage entries, 160 craters) is 3.3 KB in a keyframe.
 
 ### 8.6 Audits
 
-The world-events audit (`tools/mp-world-events-audit.mjs`) logs the new kinds and judges them like
-`world_prop_destroyed` (missing, duplicate, late, settled on rejoin, re-destroyed on migration). The determinism audit
-hashes structure hit points, stages and the overlay's stamps.
+The world-events audit (`tools/mp-world-events-audit.mjs`, its receipt in the core group) logs `structure_stage` like
+`world_prop_destroyed` (keyed by what it names, not by its host) and judges it the same way: missing, duplicate, late,
+wrong place, a stage older than the view animated, a stage the host never sent, and a stage the new host re-sends after
+the migration. A scripted bot rams a verdant house at 14 m/s at the start of live play. First run (2026-10-07): the house
+came down (damaged > breached > collapsed), 18 of 18 stage deliveries presented on 4 views, 0 re-sent by the new host;
+every earlier check unchanged. The determinism audit hashes the destruction log beside the destroyed list, and
+`src/sim/destructionShard.selftest` replays a ram on Steinburg's real shard bit for bit.
 
 ## 9. Per-mode rules
 
@@ -366,6 +424,9 @@ readonly destruction: {
   readonly maxCraters: number;           // deforming craters per match
 };
 ```
+
+Craters are off in every mode for now (§7: until the drawn terrain follows the overlay); the column says what each mode
+takes once they ship.
 
 | Mode | structures | craters | scales | Why |
 |---|---|---|---|---|
@@ -382,13 +443,27 @@ readonly destruction: {
 |---|---|---|
 | Structure table at match start | ≤ 392 structures (ruinspires), O(records) | < 5 ms once |
 | A blast's structure query | 16 m buckets, footprints within `6·W^(1/3)` | < 0.02 ms |
-| A collapse (flags, mound stamp, nav refresh) | ≤ 2 per tick | < 0.5 ms each, measured worst frame |
-| Height query overhead | one bucket read | < 0.02 ms per frame at 4 k queries |
+| A collapse (flags, mound stamp, nav refresh) | ≤ 1 per tick | measured 1–4 ms CPU each (below) |
+| Height query overhead | one bucket read | measured 2.3 % of a 7 v 7 tick (below) |
 | Crater mesh update (P3) | lattice vertices in `1.6 R` on each LOD | < 0.3 ms per crater, no allocation |
 | Memory | 160 craters + 400 mounds × 48 B; 8 KB buckets | — |
 
 Measured with cost rule v3 (bots hidden, ABCCBA, nice 0, GPU < 0.6 ms and CPU < 0.38 ms means over 8 cycles) and a
 collapse-spike probe: the worst frame of a scripted collapse, against the same frame without it.
+
+**The simulation's side, measured in Node (2026-10-08, P1 head 0b866cff5, process CPU time; the machine at load
+120–160, so absolute numbers run high).** A 7 v 7 all-bot authority on Steinburg, Ruinspires and Verdant:
+
+- *The tick.* The destruction code proper (the match, the structure table: blasts, rams, the step) is 0.2 % of a tick's
+  CPU (a sampled minute on Steinburg: 0.21 % on, 0 off). The ground overlay's wrapper (§7: every height read adds the
+  overlay's bucket read) is 2.3 % on and off alike: it exists whatever the rules. Over the same 3,600 ticks the match
+  with destruction on used 7.64 s of CPU and the one with it off 7.79 s (the battles diverge: shells fell props).
+- *A collapse.* `restoreDestruction` applies a collapse as a live one does (records swapped, the heap stamped, the route
+  grid refreshed round the footprint): median 1.8 ms on Steinburg (12 structures, 1.0–5.8 ms), 1.8 ms on Ruinspires
+  (1.1–3.6), 2.4 ms on Verdant (1.0–10.9, its largest a loaded-machine outlier). A profile of 60 collapses: about 55 % the
+  route grid's refresh (`hullComponentLabels` alone a quarter: the whole grid's components relabelled), 20 % its obstacle
+  queries, 20 % its height samples, under 2 % the structure table and the heap. Hence one collapse a tick (§5); the
+  browser's worst frame is the collapse-spike probe's to measure.
 
 ## 11. The presentation contract
 
@@ -400,12 +475,25 @@ collapse-spike probe: the worst frame of a scripted collapse, against the same f
 - Animate only live events; lay `settled` ones down at their final pose, silently.
 - Draw rubble and craters on the sim's own profiles (`rubbleMoundHeightAt`, `craterOffsetAt` in
   `sim/terrainDeformation.ts`, which is pure and light) so tracks meet what the eye sees.
-- The world tags each structure's geometry at build time (P1): `userData.structureIdx` on every part, and per vertex
-  the structure index, its section and its part class (§16.4), so a stage can cut, hide or swap exactly that
+- The world tags each structure's geometry at build time (P1): `userData.structureIdx` on every part, `aDamage` per
+  vertex and the spans of every part in the merged buckets (§16.4), so a stage can cut, hide or swap exactly that
   building's pieces inside the merged buckets.
 - Every stage's look comes from the building's own kit through the kit seam (§16); the presentation renders what the
   kit generators write.
-- Explosion variety keys on `munition` and `chargeKg` (solo `munition:blast`; network: the shell events' new fields).
+- Explosion variety keys on `munition` and `chargeKg` of `munition:blast` (`MunitionBlastEvent`: class, charge, point,
+  normal, `surface` terrain | water | structure | prop | tank | air, and `structureId` when the struck record belongs to
+  a structure). One per detonation, raised before the event it belongs to, in both simulations:
+  - solo (`game/state.ts`): a round meeting the world (`resolveWorldShellImpact`, before `shell:expired`; water by the
+    map's mask), a round bursting on a hull (`resolveTankShellImpact`, surface tank, before its hits), a cook-off or a
+    fuel fire (`announceDestroyed`, 1 m above the hull, before `tank:destroyed`; `cookOffChargeKg(weight)`,
+    `FUEL_CHARGE_KG`). A penetrator, small arms and smoke raise none (`munitionBlastEventFor` returns null).
+  - a ground burst that dug a crater (§7) carries its `craterId` (solo `munition:blast`; network `shell_impact`), so
+    the presentation takes that burst's mark from the crater's own `terrain:crater` at the end of the tick.
+  - network: `shell_impact` carries `munition`, `chargeKg` and `structureId`; every `shell_hit` carries `munition` and
+    `chargeKg`, and the first one a round bursting on a hull makes (the direct hit's) carries `blast: [x, y, z, nx, ny,
+    nz]`, splash hits none; `tank_destroyed` names the cause. `mp/presentation/battlePresentation.ts` raises the same
+    `munition:blast` from them in the same order, the structure mapped to the peer's own world (the mirror's identity,
+    §8.4) and water read from the peer's own mask.
 
 ## 12. Balance
 
@@ -427,10 +515,15 @@ Cover that disappears changes the game. The gates, every phase:
 | `sim/terrainDeformation.selftest.mjs` | stamp determinism (same stamps → same bits), the lattice-consistent contact surface, bounds and clamps, wrapper isolation from the base |
 | `sim/destructionCollision.selftest.mjs` | collapse swaps movement, shells and sight lines on the real verdant and urban shards; rubble climbable |
 | `sim/destructionNavigation.selftest.mjs` | the route grid opens a collapsed block's cells, identically solo and authority |
+| `sim/destructionCraters.selftest.mjs` | the dig law, marks, hard ground, the tick and match caps, the quantized log and its restore, both sims alike, a real HE round's crater stamped once on a peer and replayed bit for bit |
 | `mp/wire` (extended) | the log round-trips, keyframe whole and delta additions |
 | `mp/host/migrationState` (extended) | restore of stages and craters; nothing collapses twice |
 | `tools/mp-world-events-audit` (extended) | the new kinds pass the audit's judgments |
 | `tools/sim-determinism-audit` (extended) | destruction in the hash |
+| `world/destructionKit.selftest.mjs` | the kit seam and the world's tags, spans, depth materials and shadow touch (§16.7) |
+| `sim/destructionParity.selftest.mjs` (extended) | the detonations raised alike in both sims; a real HE round's `shell_impact` names the house it struck |
+| `mp/presentation/battlePresentation.selftest.mjs` (extended) | a peer raises `munition:blast` from the authority's events in solo's order, structure mapped, water by its own mask |
+| `engine/shadowStaticCache.selftest.mjs` (extended) | the shadow epoch reaches the caster signature |
 
 ## 14. Phase plan
 
@@ -526,10 +619,22 @@ the pile carries the building's weather. Storeys come from `h` and the shell ban
 | Plaster over rubble | a render lip round a core of rubble stones |
 | Concrete | plates with rebar stubs at the break edge |
 | Adobe | rounded, crumbled edges and clods |
-| Breach | the dark backing behind every opening becomes a room: the floor plane, the floor-slab edge at the storey line, joist ends at the break's top; the rim in the wall's own layers; debris thrown along the blow |
+| Breach | the dark backing behind every opening becomes a room: the floor plane, the floor-slab edge at the storey line, joist ends at the break's top; the rim in the wall's own layers, its units laid in courses over the band 0.75 r – 1.25 r where the presentation's blocky cut edge runs (0.8 r – 1.2 r); on a rendered wall the render broken back further, a shallow ring cut of 1.45 r (returned before the hole's cut, so the hole is the newest) with the core's units in it behind the render's plane; nothing stands proud of the wall (a tier that cuts nothing shows none of it); debris thrown along the blow |
 | Damaged | spalled render patches, chipped arrises, cracked and missing glass (glass hidden, shards as debris), slipped tiles |
 | Roof (P2 `sectionDown`) | a stripped patch shows battens and rafters (`emitRoofPatch`); a fall adds missing slab sections, a broken ridge and hanging rafters; thatch chars and slumps; an earth roof slumps between its beams; sheet bends |
 | Collapse | remnants (wall stubs, corners, chimneys), a heap of chunk prisms in the building's own buckets with its weather tints plus timbers and roof tiles, seated on the sim's mound (`rubbleMoundHeightAt`), and the falling debris |
+
+**The heap.** `rubbleMoundHeightAt(mound, x, z)` (sim/terrainDeformation.ts; `mound` = `{ cx, cz, hw, hd, yaw, heightM }`,
+world frame) is the exact profile the simulation raises; in the body frame a kit calls
+`bodyMoundHeightAt(anatomy, x, z)` (destructionKit.ts), which reads `anatomy.mound` — the world seam fills it from the
+structure table after `describe` (0 while absent). A `collapse` seats its pile on it.
+
+**Cuts and hides.** A `StructureCut` discards from `outsideM` outside the face plane (default 0.3 m: sills, surrounds
+and shutters inside the hole go too) to `depthM` inside it. A `DamageHide` with `section` and `partClass` both null
+hides everything the structure has.
+
+**The kit's plan.** The world's describe call sites pass `kitPlan: kitPlanFor(parts, style)`; a kit module registers its
+reader once with `setKitPlanReader(...)` (the facades lane's `regionalKitPlanOf`), so the world builder imports no kit.
 
 **Writers.** A builder writes **triangles** into `DamageMeshWriter` runs (one bucket and role a run; vertex position,
 normal, UV, tint; indexed triangles) and **pooled debris** into `DamagePieceWriter` (bucket, shape — chunk, brick,
@@ -550,13 +655,41 @@ Damage batches are one dynamic mesh per bucket per world (its own material, its 
 adds at most one draw per bucket in use; pooled debris holds at most 1,024 live pieces per world. `collapse` may run
 when the structure is breached and keep its result, so the collapse frame only uploads.
 
-### 16.4 Tags in the intact geometry
+### 16.4 Tags in the intact geometry (landed P1, 2026-10-07)
 
-At build time (P1, core) every part of a structure carries `userData.structureIdx`, and the merge writes a per-vertex
-attribute `aDamage` = (structure index, section, part class: wall, roof, glass, trim, interior). The presentation's
-mask reads it: `damaged` hides glass, a fallen roof hides its section, a collapse hides the structure, a hole discards
-the wall inside its cut. A part's section is the storey and face it lies on (its centroid against the anatomy's face
-rects); a roof part's is the roof's.
+At build time every part of a structure carries `userData.structureIdx` (props.ts `addStructureCollision`, the
+landmarks' compose), and the world describes the structure through its kit chain before the merge places its parts
+(`describeStructure`, the parts object the kit returned, so a kit's plan reader finds it). Then the merge records:
+
+- **`aDamage`** (`Uint16`, item size 1, not normalised) = structureIdx + 1 on a structure's vertices, 0 elsewhere,
+  only in merged buckets that hold a structure part (a bucket without one is untouched). A fine-detail batch tags all
+  its geometries when any holds a structure: a `BatchedMesh` keeps one attribute set. A shader reads
+  `int(aDamage + 0.5) - 1`; −1 (or no attribute) is no structure.
+- **Spans** (`StructureSpan`: mesh, position attribute, first vertex, count, bucket, part class, and for a batch its
+  geometry id and the one instance drawing it): every part's vertex range in the mesh's position attribute, absolute in a batch's shared
+  attributes (its geometry's `vertexStart` included), whole triangles (merged geometry is non-indexed), so a range
+  flattens the same way in a mesh and a batch (crushableClutter's layout). The part class comes from the bucket:
+  glass (`glass`, `curtain`), roof (`roof`, `regionalRoof`, `straw`), trim (a batch cell's fine detail), else wall.
+  Sections are not tagged per vertex in P1: a span's centroid against the anatomy's faces gives its section (P2).
+- **World space**: every bucket mesh and batch stands at identity under the world root (receipted), so spans, the
+  anatomy's placement and a pivot are world points.
+- **Shadows**: a bucket mesh that casts a structure's shadow casts it through its own `MeshDepthMaterial` (RGBA packing,
+  `props-structure-depth-<bucket>`, the depth three's shared one is flipped to), so a vertex patch moves the shadow
+  with the building. The static shadow cache (`engine/shadowStaticCache.ts`) cannot see a shape the GPU changes:
+  `touchShadows()` bumps `userData.cotShadowEpoch` on the structure's casting meshes and `casterSignature` mixes it.
+  Called every frame the mask moves a structure (each frame of a collapse, once for a settled stage), the cache draws
+  those meshes with the dynamic casters while they change and returns them to the static layer a second after.
+
+The runtime API (`world/map.ts`):
+
+| Call | Gives |
+|---|---|
+| `world.structureDamage(id)` | the seam: `anatomy` (the sim's mound filled in), `spans`, `damaged` / `breach` / `sectionDown` / `collapse` resolved member by member through the chain (an anatomy keeps its own kit's builders), `holeAt(x, y, z, radiusM, dirX, dirZ, munition, cause, hole?)` (a world point and blow to the `BreachSpec` of the nearest anatomy face: storey, face, u, y, body-frame direction, seed), `touchShadows()`; null for an unknown id |
+| `world.patchStructureMaterials(fn)` | every props-bucket material once — the buckets' own, each batch's clone (`batched`), the structure depth materials (`role: 'depth'`) — with the meshes drawing it; returns the count. Call before the warm; chain `onBeforeCompile`, extend `customProgramCacheKey` |
+| `world.touchStructureShadows(id)` | the seam's `touchShadows()` by id |
+
+The presentation's mask reads `aDamage`: `damaged` hides glass, a fallen roof hides its section, a collapse hides the
+structure, a hole discards the wall inside its cut.
 
 ### 16.5 Props
 
@@ -579,7 +712,14 @@ type gains `fracture` slots, defaulted from its `mat` (wood → `plank`, straw �
 
 ### 16.7 Receipts
 
-`src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): each registered kit's builders
-run twice on the same anatomies and seeds and write identical bytes; every writer stays within its cap; rim triangles
-stay within 0.3 m of their hole's edge and inside the wall's layers; rubble lies within the mound's footprint and on
-its surface (±5 cm); the default describe of a sample of every kit's buildings names a material for every bucket.
+`src/world/destructionKit.selftest.mjs` (P1, extended by every kit lane for its kit): the default describe reads a
+two-storey house from its parts (storeys, faces, layers, openings by face, roof kind and covering, floors, rubble);
+every stage builder runs twice on the same anatomy and seeds and writes identical bytes within its cap; `damaged`
+spalls two patches on the ground storey's widest faces (a shallow cut with `outsideM` 0.01, the core's units and a
+backing in it, the render's lip round it, clear of the windows), so a damaged building keeps a mark after its glass
+and chips are gone; the rim stands
+round its hole inside the wall's thickness with the dark room behind it; the pile sits on the sim's heap
+(`bodyMoundHeightAt` = `rubbleMoundHeightAt`); the chain keeps a kit's anatomy with its own builders; `aDamage` tags a
+merge; and Verdant's real build describes every structure, finds its spans (plain and batched) where it stands, tags
+them, stands every bucket at identity, casts each structure bucket through a patchable depth material, and touches
+exactly a structure's casting meshes.

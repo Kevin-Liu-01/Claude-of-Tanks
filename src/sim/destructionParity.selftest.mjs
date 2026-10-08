@@ -34,6 +34,16 @@ for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'],
   assert.match(text, /tankDeath\((String\(payload\.cause\)|cause), (dead|ent)\.spec\.weightTons,/, `${name}: a hull's death bursts on the structures beside it`);
 }
 assert.match(authority, /advanceRepairs\(dt\);\s*advanceDestruction\(\);\s*updateVisibility\(\);/, 'the authority steps destruction before sight');
+// the detonations (§11): solo raises munition:blast where the round burst; the authority carries the same facts to the
+// peers (shell_impact: class, charge, struck structure; the direct shell_hit: the burst point), which raise it alike
+assert.match(solo, /const blast = munitionBlastEventFor\(shell\.spec, hit\.point\.x, hit\.point\.y, hit\.point\.z,[\s\S]{0,260}hit\.record\?\.structureIdx, craterId\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);\s*bus\.emit\('shell:expired'/,
+  'solo: a round meeting the world bursts before it expires, naming the structure it struck and the crater it dug');
+assert.match(solo, /munitionBlastEventFor\(shell\.spec, strike\.x, strike\.y, strike\.z,[^\n]*'tank'\);\s*if \(blast\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, blast\);/,
+  'solo: a round bursting on a hull');
+assert.match(solo, /bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, \{ munition: cookOff \? 'cook_off' : 'fuel',/, 'solo: a cook-off or a fuel fire');
+assert.match(authority, /emit\('shell_impact', \{\s*munition, chargeKg: munitionChargeKg\(shell\.spec, munition\),\s*\.\.\.\(typeof structureId === 'number' \? \{ structureId \} : \{\}\),/,
+  'authority: a world impact carries the class, the charge and the struck structure');
+assert.match(authority, /pendingTankBlast = \{ shellId: shell\.id, blast: \[strike\.x, strike\.y, strike\.z,/, 'authority: the burst on a hull rides the direct hit');
 assert.match(solo, /tickRepairs\(game, bus, SIM_DT\);\s*stepDestruction\(game, bus, world\);/, 'the solo step steps it at the same place');
 assert.match(solo, /resetStructureRecords\(world\.getObstacles\(\), worldColliders\);/, 'a reused solo world stands its buildings again');
 
@@ -132,6 +142,33 @@ function run(seed, steps, onTick = () => {}) {
   assert.ok(crossedAt > 0, 'the hull drove on through where the house stood');
   // the wall-crash receipt's hull stops dead against a wall; this one lost only the house's share of its speed
 }
+// ---- the authority's world impact names the structure a real round burst on (§11) ---------------------------------
+// The house in a headless collision world (the dedicated hosts' facade: shells trace its colliders), an M1A2 30 m short
+// of its south wall firing its HE round at it.
+{
+  const { createHeadlessCollisionWorld } = await import('../world/headlessCollisionWorld.ts');
+  const { packCollisionRecord } = await import('../../tools/headlessWorldCollision.mjs');
+  const world = createHeadlessCollisionWorld({ mapId: 'verdant', heightField: groundProbe.heightField,
+    manifest: { obstacles: [packCollisionRecord(houseContact)], colliders: [packCollisionRecord(houseShell)], concealers: [] } });
+  const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: world,
+    players: [
+      { id: 'ram-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -68, yaw: 0 } },
+      { id: 'ram-b', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+    ] });
+  match.onMatchReady();
+  const fire = new Map([['ram-a', { throttle: 0, steer: 0, brake: true, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 2 }]]);
+  let impact = null;
+  for (let i = 0; i < 900 && !impact; i++) {
+    match.step({ dt: 1 / 60, inputs: fire });
+    for (const event of match.eventsForViewer('ram-a')) if (event.type === 'shell_impact' && !impact) impact = event;
+    match.afterEventBroadcast();
+  }
+  assert.ok(impact, 'the M1A2\'s HE round met the house');
+  assert.equal(impact.munition, 'he');
+  assert.ok(Math.abs(impact.chargeKg - munitionChargeKg(getSpec('m1a2').gun.shells[2])) < 1e-9, 'its charge');
+  assert.equal(impact.structureId, 0, `the struck structure (${JSON.stringify(impact)})`);
+  assert.ok(impact.z > -38.5 && impact.z < -37, `on the house's south wall (z ${impact.z.toFixed(2)})`);
+}
 {
   const digest = ({ match, stages }) => [
     ...match.entities.map((entity) => [entity.id, entity.state.pos.x.toFixed(9), entity.state.pos.z.toFixed(9),
@@ -143,4 +180,4 @@ function run(seed, steps, onTick = () => {}) {
 
 console.log('destructionParity: one seam called alike by the solo step and the authority; real HE and APFSDS rounds priced '
   + 'by the catalog; an authoritative hull rams a house down (three stage events, collision swapped, driven through) and '
-  + 'replays bit for bit PASS');
+  + 'replays bit for bit; detonations raised alike, a real HE round\'s impact naming the house PASS');
