@@ -17,7 +17,7 @@ import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
-import { matchRulesetFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
+import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
@@ -342,7 +342,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   // ---- authority and world
   const collision: ActorWorldCollision | null = typeof world === 'object' && world !== null ? world
-    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true }) : null;
+    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true, variant: terrainVariantFor(mode) }) : null;
   const releaseWorld = () => { if (collision && typeof collision.release === 'function') collision.release(); };
   let authority: AuthoritativeMatch;
   let lagComp: LagCompensation;

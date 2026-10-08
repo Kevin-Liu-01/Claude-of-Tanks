@@ -19,6 +19,21 @@ interface CollisionManifestIndex {
   propsSeed: number;
   vegetationSeed: number;
   maps: Record<string, CollisionManifestEntry>;
+  /**
+   * A mode's battlefield variant per map (destruction core lane, 2026-10-08: Frontline Assault's 'assault-trenches'),
+   * each its own manifest `<map>@<variant>.json` built from the variant's config, so the authority plays exactly what
+   * the clients build. Absent in an index captured before the variants.
+   */
+  variants?: Record<string, Record<string, CollisionManifestEntry>>;
+}
+
+/** The battlefield variants a manifest index may carry (sim/matchRuleset.ts TERRAIN_VARIANTS). */
+const MANIFEST_VARIANTS: ReadonlySet<string> = new Set(['assault-trenches']);
+
+/** A map's manifest file name for a variant (null: the base map). IDs are whitelisted before forming it. */
+export function collisionManifestShardName(id: string, variant: string | null = null): string {
+  if (!isMapId(id) || (variant !== null && !MANIFEST_VARIANTS.has(variant))) throw new Error(`invalid collision manifest ${id}@${variant}`);
+  return variant ? `${id}@${variant}` : id;
 }
 
 const MAX_COLLISION_SHARD_BYTES = 16 * 1024 * 1024;
@@ -137,15 +152,30 @@ export function readCollisionManifestIndex(value: RuntimeValue): CollisionManife
     }
     maps[id] = entry;
   }
-  return { version: 2, terrainSeed: 1337, propsSeed: 2002, vegetationSeed: 2001, maps };
+  if (value.variants === undefined) return { version: 2, terrainSeed: 1337, propsSeed: 2002, vegetationSeed: 2001, maps };
+  const variants: Record<string, Record<string, CollisionManifestEntry>> = {};
+  {
+    if (!isRecord(value.variants)) throw new TypeError('world collision manifest index has invalid variants');
+    for (const [variant, list] of Object.entries(value.variants)) {
+      if (!MANIFEST_VARIANTS.has(variant) || !isRecord(list)) throw new TypeError('world collision manifest index has an invalid variant');
+      const entriesOf: Record<string, CollisionManifestEntry> = {};
+      for (const [id, entry] of Object.entries(list)) {
+        if (!isMapId(id) || !isIndexEntry(entry)) throw new TypeError('world collision manifest index contains an invalid variant map');
+        entriesOf[id] = entry;
+      }
+      variants[variant] = entriesOf;
+    }
+  }
+  return { version: 2, terrainSeed: 1337, propsSeed: 2002, vegetationSeed: 2001, maps, variants };
 }
 
-/** IDs are whitelisted before forming a path; never use getMapConfig's fallback. */
-export function collisionManifestEntry(index: CollisionManifestIndex, id: string): CollisionManifestEntry {
-  if (!isMapId(id) || !Object.hasOwn(index.maps, id)) {
-    throw new Error(`missing compatible collision manifest for ${id}`);
+/** IDs are whitelisted before forming a path; never use getMapConfig's fallback. A variant reads its own list. */
+export function collisionManifestEntry(index: CollisionManifestIndex, id: string, variant: string | null = null): CollisionManifestEntry {
+  const list = variant === null ? index.maps : index.variants?.[variant];
+  if (!isMapId(id) || !list || !Object.hasOwn(list, id)) {
+    throw new Error(`missing compatible collision manifest for ${variant ? `${id}@${variant}` : id}`);
   }
-  return index.maps[id];
+  return list[id];
 }
 
 export function validateCollisionManifestCounts(
