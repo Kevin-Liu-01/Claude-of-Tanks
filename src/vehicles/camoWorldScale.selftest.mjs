@@ -39,9 +39,24 @@ function measureUvDensity(mesh) {
   assert.ok(p && n && uv, `${mesh.name}: position, normal and uv`);
   const ratios = [];
   const ref = { x: null, y: null, z: null };
+  // the projection plane is the triangle's own (factoryGeometry.ts boxUV, fleet lane 2026-10-08: chosen per vertex from
+  // smoothed normals, a triangle across a roof edge smeared the tile into streaks); merged camo meshes are non-indexed
+  const faceAxis = (t) => {
+    const ax = p.getX(t), ay = p.getY(t), az = p.getZ(t);
+    const bx = p.getX(t + 1) - ax, by = p.getY(t + 1) - ay, bz = p.getZ(t + 1) - az;
+    const cx = p.getX(t + 2) - ax, cy = p.getY(t + 2) - ay, cz = p.getZ(t + 2) - az;
+    let nx = Math.abs(by * cz - bz * cy), ny = Math.abs(bz * cx - bx * cz), nz = Math.abs(bx * cy - by * cx);
+    if (nx + ny + nz < 1e-14) {
+      nx = Math.abs(n.getX(t) + n.getX(t + 1) + n.getX(t + 2));
+      ny = Math.abs(n.getY(t) + n.getY(t + 1) + n.getY(t + 2));
+      nz = Math.abs(n.getZ(t) + n.getZ(t + 1) + n.getZ(t + 2));
+    }
+    return ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
+  };
+  assert.ok(!mesh.geometry.index && p.count % 3 === 0, `${mesh.name}: non-indexed triangles`);
+  let axis = 'y';
   for (let i = 0; i < p.count; i++) {
-    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
-    const axis = ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
+    if (i % 3 === 0) axis = faceAxis(i);
     const [u, v] = AXIS[axis](p, i);
     // exact projection contract: uv = position * density along the box axes
     assert.equal(uv.getX(i), Math.fround(u * CAMO_UV_REPEATS_PER_M), `${mesh.name}: exact U at vertex ${i}`);

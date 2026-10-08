@@ -2,7 +2,7 @@
 // off-thread prebakes. No Three.js, fleet, DOM creation, or quality policy at import.
 import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
-import { createCatalogCamoPainter, type CatalogCamoArtId } from './catalogCamoPainter.ts';
+import { createCatalogCamoPainter, isPatchFieldArt, type CatalogCamoArtId } from './catalogCamoPainter.ts';
 import { camoPatchWorldScale } from './camoWorldScale.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
@@ -3117,11 +3117,14 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     paintVerticalLineBolts();
     paintRingBolts();
 
+    // fleet lane 2026-10-08 (wave 268: "a soft dark smear in place of a defined camo pattern", "a blurred texture"): over
+    // the v2 patch fields the grime clouds glaze at under half strength (same draws, so every later draw keeps its place)
+    const grimeCore = isPatchFieldArt(visual.catalogPattern) ? 0.05 : 0.13;
     const paintGrimeBlotches = (): void => {
       for (let i = 0; i < 16; i++) {
         const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
         const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, 'rgba(18,16,12,0.13)');
+        g.addColorStop(0, `rgba(18,16,12,${grimeCore})`);
         g.addColorStop(1, 'rgba(18,16,12,0)');
         ctx.fillStyle = g;
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
