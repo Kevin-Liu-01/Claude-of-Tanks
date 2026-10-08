@@ -43,11 +43,14 @@ try {
    assert.equal(await page.locator('.cot-si-card').getAttribute('data-damage'),'400');
    assert.match(await page.locator('.cot-si-kicker').textContent(),/Missile impact/);
    assert.match(await page.locator('.cot-si-missile-blast').textContent(),/2 vehicles.*150 damage/);
-   const fits=await page.locator('.cot-si-card').evaluate(card=>{
-    const b=card.getBoundingClientRect();return [...card.querySelectorAll('.cot-si-diag .box')].every(n=>{
-     const r=n.getBoundingClientRect();return r.bottom<=b.bottom+1&&r.top>=b.top-1;
-    });
-   });assert.ok(fits,`${name}: schematic fits reserved summary space`);
+   // A phone's summary hides its schematic (responsiveSurfaces.css, battleHudLayout.css); a hidden box measures
+   // 0,0,0,0, which no card contains, so only rendered boxes are measured and the phone asserts the hiding itself.
+   const layout=await page.locator('.cot-si-card').evaluate(card=>{
+    const b=card.getBoundingClientRect(),boxes=[...card.querySelectorAll('.cot-si-diag .box')].filter(n=>n.getClientRects().length);
+    return {shown:boxes.length,fits:boxes.every(n=>{const r=n.getBoundingClientRect();return r.bottom<=b.bottom+1&&r.top>=b.top-1;})};
+   });
+   if(name==='phone')assert.equal(layout.shown,0,'phone: the summary hides its schematic');
+   else assert.ok(layout.shown===2&&layout.fits,`${name}: schematic fits reserved summary space`);
    await page.screenshot({path:resolve(out,`${name}.png`)});
   }else assert.equal(await page.locator('.cot-si-card').count(),0,'touch does not build desktop cards');
   assert.deepEqual(errors,[]);await context.close();

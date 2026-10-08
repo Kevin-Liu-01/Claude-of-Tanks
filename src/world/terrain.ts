@@ -7462,9 +7462,10 @@ function* buildChunkGeometrySteps(
 // ---------------------------------------------------------------------------
 // Horizon mountain ring — per-map styled skylines with baked sun shading,
 // altitude-banded rock detail texture, snow caps and aerial perspective.
-// Lives in ./maps/horizon.ts (imported above); do NOT reintroduce the old
-// inline low-poly ring here — the map configs (cfg.horizon.style/snowline/
-// banding/treeline) target the styled builder.
+// Lives in ./maps/horizon.ts, which installs it through horizonRingHook.ts
+// (never imported here: the authority's height field must not carry it); do
+// NOT reintroduce the old inline low-poly ring here — the map configs
+// (cfg.horizon.style/snowline/banding/treeline) target the styled builder.
 // ---------------------------------------------------------------------------
 
 /**
