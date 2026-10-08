@@ -124,9 +124,9 @@ export function cloudShellCover(coverage: number, deck: boolean): number {
 // small puffs over the cumulus — the critics' "puffs at random heights", a scatter of bright chips around a low sun on
 // Glacier Pass; the cirrus above stays the sky's own)
 const ALOFT: Readonly<Partial<Record<string, { lift: number; thickness: number; coverage: number; density: number }>>> = Object.freeze({
-  // a front: the high cumulus and the spreading anvils' debris
-  'cumulonimbus-front': { lift: 400, thickness: 700, coverage: 0.16, density: 0.06 },
-  'storm-front': { lift: 300, thickness: 700, coverage: 0.2, density: 0.06 },
+  // (a front's high cumulus and anvil debris went with round 9, 2026-10-07: wave 235's critics read Monsoon's sunward as
+  // "a hazy translucent smear over the sun and confetti-like popcorn fragments" — the elements aloft — and every upward
+  // ray marched their band: 0.2 ms of the GPU on its sky-w)
   // a broken deck: a thin altostratus veil far over it
   'broken-stratocumulus': { lift: 2400, thickness: 350, coverage: 0.1, density: 0.03 },
 });
@@ -171,7 +171,10 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
   // whole cell now, its lumps and holes the deck's structure)
   // (round 8: a broken deck's core near the closed deck's — at 0.5 under the full erosion only about half its admitted
   // footprint survived as cloud, the critics' "pillow masses around a large blue gap")
-  const core = isDeck ? mixK(DECK_BROKEN.core, DECK_CORE, closing) : 0.46;
+  // (round 9, 2026-10-07: a tower is solid — wave 235's critics saw "blue sky showing through its upper body" and "a bright
+  // blue hole through the dense grey body of the main storm cloud"; at 0.46 the shape carved holes through its body. A
+  // front's towers take a core of 0.74 — rays end in them sooner too: 0.4 ms of the GPU on Monsoon's sky-w)
+  const core = isDeck ? mixK(DECK_BROKEN.core, DECK_CORE, closing) : 0.46 + 0.28 * clamp((preset.towers - 0.5) / 0.5, 0, 1);
   const thickness = preset.thicknessM * (1 + preset.towers * 0.6);
   lanes.push({
     baseM: preset.baseM,

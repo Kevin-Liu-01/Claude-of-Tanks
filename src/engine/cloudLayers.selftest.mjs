@@ -76,7 +76,11 @@ assert.ok(stacks.monsoon.lanes[0].cover < 0.6, 'a front\'s towers stand apart');
 assert.ok(cloudBsmSlices(stacks.monsoon) === 64 && cloudBsmSlices(stacks.winter) === 24, 'a front\'s towers take the most slices, a thin deck the least');
 assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves a stack (${Object.keys(stacks).length})`);
 assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
-assert.ok(stacks.monsoon.lanes.length === 2, 'a front carries its debris aloft');
+// (round 9, 2026-10-07: a front sheds its debris aloft — wave 235's "hazy translucent smear over the sun and confetti-like
+// popcorn fragments" — and its towers are solid, their core over the cumulus' 0.46)
+assert.ok(stacks.monsoon.lanes.length === 1, 'a front\'s towers alone, no debris aloft');
+assert.ok(Math.abs(stacks.monsoon.lanes[0].core - 0.74) < 1e-9 && stacks.verdant.lanes[0].core === 0.46, 'a front\'s towers solid, a fair-weather cumulus carved');
+assert.ok(stacks.fjord.lanes.length === 2, 'a broken deck keeps its thin veil aloft');
 assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
 // the closed decks closed (the skies lane, 2026-10-06): Whiteout's stratus — and every deck its map closes (coverage 0.95
 // and over) — admits every column at its own resolved coverage; a retune that reopens a hole fails here. (Titan Gorge's
@@ -151,13 +155,14 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
     'uLayerExp', 'uLayerStreets', 'uLayerEnvelope', 'uLayerCells', 'uLayerWisp', 'uLayerFlat', 'uLayerHang', 'uLayerAnvil', 'uLayerCore', 'uLayerLumps', 'uProfA', 'uProfB', 'uProfC', 'uProfD', 'uLayerDiffuse']) u[k] = { value: new THREE.Vector4() };
   u.uLayerChannels = { value: new THREE.Matrix4() };
   u.uHeightRange = { value: new THREE.Vector2() };
-  const stack = stacks.monsoon;
+  // (the packing over a stack of two lanes: the fjord's broken deck and its veil aloft)
+  const stack = stacks.fjord;
   packCloudStack(stack, u);
   assert.equal(u.uLayerBase.value.x, stack.lanes[0].baseM);
   assert.equal(u.uLayerTop.value.y, stack.lanes[1].topM);
   assert.equal(u.uLayerDensity.value.z, 0, 'an absent lane has no density');
   assert.equal(u.uLayerDensity.value.w, 0);
-  assert.equal(u.uLayerEnvelope.value.x, stack.lanes[0].envelope);
+  assert.equal(u.uLayerCells.value.x, stack.lanes[0].cells);
   assert.deepEqual([u.uHeightRange.value.x, u.uHeightRange.value.y], [stack.lowM, stack.highM]);
   // GLSL: (M * v)[lane] = sum over channels k of M[column k][row lane] * v[k]; three's elements are column-major
   const weather = new THREE.Vector4(0.1, 0.2, 0.3, 0.4);

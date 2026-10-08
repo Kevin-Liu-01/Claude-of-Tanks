@@ -694,10 +694,12 @@ assert.match(layerSource, /lightTune\('CLOUD_DECK_GROUND', 1\)\)\) \* this\.deck
 // flat to half, keeps its grey base); round 5's mottle dropped (no dead cost: it barely showed on the GPU)
 assert.ok(shadersSource.includes('* mix( 1.0, uDeckTune.z, smoothstep( 0.6, 1.0, flatK ) );'), 'the trace carries the closing deck\'s ground return');
 assert.ok(!/cl2Noise|mottle \*/.test(shadersSource), 'no mottle term left in the medium or the trace');
-// (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the shipped law: light every other
-// lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.02
-assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(2, 0\.15, defs\.sunSteps, 0\.02\) \}/);
-assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', 2\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', 0\.02\)\);/, 'the defaults the shipped law');
+// (2026-10-07, the cost lab) the march's light budget as uniforms whose defaults are the law: (round 9, priced on Monsoon's
+// towers) light every third lit step while the ray keeps 0.15 of its light, the tier's sun steps, the march out at 0.05
+assert.match(layerSource, /const CLOUD_LIGHT_EVERY = 3;/);
+assert.match(layerSource, /const CLOUD_MARCH_EXIT_T = 0\.05;/);
+assert.match(layerSource, /uLightBudget: \{ value: new THREE\.Vector4\(CLOUD_LIGHT_EVERY, 0\.15, defs\.sunSteps, CLOUD_MARCH_EXIT_T\) \}/);
+assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY\)\)\), lightTune\('CLOUD_LIGHT_T', 0\.15\),\s*lightTune\('CLOUD_SUN_STEPS', CLOUD_TIERS\[this\.traceTier\]\?\.sunSteps \?\? 2\), lightTune\('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T\)\);/, 'the defaults the law');
 // round 7 (2026-10-07, wave 221 on Monsoon: a rain shaft in front of a tower's dark core read as blue sky through it): the
 // rain under a storm takes the storm's grey light, darker under a heavy core, the sun's glow only through a thin column
 assert.ok(layerSource.includes('amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.7 ) * ( 1.0 - 0.7 * prec );')

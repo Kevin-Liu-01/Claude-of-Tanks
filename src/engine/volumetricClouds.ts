@@ -87,6 +87,14 @@ const CLOUD_CIRRUS_TILE_M = 30000;
 // subtler deck that shows the sun's direction, not more cloud contrast": the forward lobe through a deck at 0.45)
 export const CLOUD_DECK_SUN_LOBE = 0.45;
 /**
+ * The march's light budget (round 9, 2026-10-07, priced on the hardware by the cost lab's knob screen at Monsoon's sky-w,
+ * high: 11.45 ms a frame shipped): the light on every third lit step (−0.18 ms) and the march out at 0.05 of the light,
+ * the opaque cut renormalising the rest (−0.46 ms); together with one sun step −0.94 ms — the sun step kept (its own share
+ * −0.05, the towers' self-shadowing near the point).
+ */
+const CLOUD_LIGHT_EVERY = 3;
+const CLOUD_MARCH_EXIT_T = 0.05;
+/**
  * The ground's return on a closing deck's base, a multiple of the law's (2026-10-07, round 5): the cover's own light
  * raised from the snow or sand under it (round four's Whiteout deck sat at 163 of 255 over a snowfield near white).
  */
@@ -198,7 +206,8 @@ export const CLOUD_AERIAL = Object.freeze({
 export const CLOUD_TIERS: Readonly<Record<string, Cloud2TraceDefines & { stepMin: number; growth: number; marchMax: number; detailRange: number }>> = Object.freeze({
   low: { steps: 72, octaves: 4, sunSteps: 1, stepMin: 90, growth: 0.016, marchMax: 22000, detailRange: 2500 },
   medium: { steps: 96, octaves: 4, sunSteps: 1, stepMin: 70, growth: 0.013, marchMax: 28000, detailRange: 6000 },
-  high: { steps: 128, octaves: 8, sunSteps: 2, stepMin: 50, growth: 0.011, marchMax: CLOUD_MARCH_MAX_M, detailRange: 20000 },
+  // (round 9: the stride's growth 0.011 → 0.0125 — the cost lab's knob screen on Monsoon's towers: 0.26 ms at ×1.3)
+  high: { steps: 128, octaves: 8, sunSteps: 2, stepMin: 50, growth: 0.0125, marchMax: CLOUD_MARCH_MAX_M, detailRange: 20000 },
   ultra: { steps: 160, octaves: 8, sunSteps: 3, stepMin: 40, growth: 0.009, marchMax: 40000, detailRange: 30000 },
 });
 /** The noise uploads the layer needs from the worker, in its posting order (the volumes are baked on the GPU). */
@@ -823,7 +832,7 @@ export class VolumetricCloudLayer {
         uMarchMax: { value: defs.marchMax }, uStepMin: { value: defs.stepMin }, uStepGrowth: { value: defs.growth },
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
-        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(2, 0.15, defs.sunSteps, 0.02) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
+        uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(CLOUD_LIGHT_EVERY, 0.15, defs.sunSteps, CLOUD_MARCH_EXIT_T) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -1307,8 +1316,8 @@ export class VolumetricCloudLayer {
     m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the shipped law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
-    (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', 2))), lightTune('CLOUD_LIGHT_T', 0.15),
-      lightTune('CLOUD_SUN_STEPS', CLOUD_TIERS[this.traceTier]?.sunSteps ?? 2), lightTune('CLOUD_T_EXIT', 0.02));
+    (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', CLOUD_LIGHT_EVERY))), lightTune('CLOUD_LIGHT_T', 0.15),
+      lightTune('CLOUD_SUN_STEPS', CLOUD_TIERS[this.traceTier]?.sunSteps ?? 2), lightTune('CLOUD_T_EXIT', CLOUD_MARCH_EXIT_T));
     {
       const defs = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;
       t.uDetailRange.value = defs.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
