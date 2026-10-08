@@ -94,6 +94,11 @@ class Mesh {
   private open = false;
   /** this run redraws the intact wall's own skin: its vertices take the wall's sampled colour (FaceSurface.colour) */
   private sampled = false;
+  /**
+   * A blast's scorch round its hole, in face coordinates (u, y): every face vertex's colour × this (1 beyond it). A rim
+   * sets it for its own redraw and clears it, so the soot is gone where the redraw meets the intact wall.
+   */
+  soot: ((u: number, y: number) => number) | null = null;
   constructor(w: DamageMeshWriter) { this.w = w; }
   begin(bucket: string, role: DamageRole, sampled = false): boolean {
     this.end();
@@ -131,6 +136,7 @@ class Mesh {
   private vertex(pen: FacePen, bucket: string, p: readonly [number, number, number], n: Vec3, tint: Rgb, k: number, du: number, dv: number,
     uvOf?: (u: number, y: number, out: [number, number]) => void): number {
     if (uvOf) uvOf(p[0], p[1], UV); else pen.s.uv(bucket, p[0], p[1], UV);
+    if (this.soot) k *= this.soot(p[0], p[1]);
     if (this.sampled && pen.s.colour?.(bucket, p[1], COL)) {
       return this.w.vertex(pen.x(p[0], p[2]), pen.y(p[1]), pen.z(p[0], p[2]), n[0], n[1], n[2], UV[0] + du, UV[1] + dv, COL[0] * k, COL[1] * k, COL[2] * k);
     }
@@ -218,6 +224,14 @@ function rectInCircle(u0: number, y0: number, u1: number, y1: number, cu: number
 /** Whether a face point lies in one of the face's openings (a breach never redraws wall over a door or a window). */
 function inOpening(f: DamageFace, u: number, y: number): boolean {
   return f.openings.some((o) => Math.abs(u - o.u) < o.w / 2 && y > o.y0 && y < o.y0 + o.h);
+}
+
+/** A blast's soot: darkest at `inner` from the hole's middle, gone at `outer` (where the redraw meets the wall). */
+function sootField(cu: number, cy: number, inner: number, outer: number): (u: number, y: number) => number {
+  return (u, y) => {
+    const t = Math.min(1, Math.max(0, (Math.hypot(u - cu, y - cy) - inner) / Math.max(1e-3, outer - inner)));
+    return 1 - 0.5 * (1 - t * t * (3 - 2 * t));
+  };
 }
 
 type FacePt = readonly [number, number, number];
@@ -389,6 +403,8 @@ function masonryRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, m: Maso
   if (!blocks.some((b) => b.gone)) return false;
   const bucket = slot.bucket, tint = slot.tint;
   if (!mesh.begin(bucket, 'rim', true)) return true;
+  // a blast scorches the stones round the gap (gone where the redrawn blocks meet the wall)
+  mesh.soot = hole.cause === 'blast' ? sootField(cu, cy, r * 0.7, r) : null;
   // the blocks the cut clipped and the blow left: their faces, clipped to the circle
   for (const b of blocks) {
     if (b.gone) continue;
@@ -415,6 +431,7 @@ function masonryRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, m: Maso
       }
     }
   }
+  mesh.soot = null;
   mesh.end();
   // the fallen blocks: debris along the blow (a brick wall's bricks, a stone wall's blocks)
   const shape: DebrisShape = slot.material === 'brick' ? 'brick' : slot.material === 'rubble' ? 'stone' : 'block';
@@ -438,6 +455,8 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
   // the cut reaches past the hole so the skin can break back unevenly round it; inside the cut it is redrawn to its
   // ragged edge (a render spalls well past the core's hole, a single skin less)
   const R = r * (core ? 1.28 : 1.12);
+  // a blast scorches the skin round its hole, darkest at the break, gone where the redrawn ring meets the wall
+  mesh.soot = hole.cause === 'blast' ? sootField(cu, cy, r * (core ? 1.0 : 0.88), R) : null;
   const skinRag = raggedRadius(rng, r * (core ? 1.02 : 0.9), core ? 0.2 : 0.14);
   const skinEdge = (th: number) => Math.min(R - 0.02, skinRag(th));
   const coreEdge = raggedRadius(rng, r * 0.72, 0.22);
@@ -481,6 +500,7 @@ function raggedRim(mesh: Mesh, pieces: DamagePieceWriter, pen: FacePen, skin: Fr
       mesh.facePoly(pen, core.bucket, [[a[0], a[1], -t], [a[0], a[1], -depth], [b[0], b[1], -depth], [b[0], b[1], -t]], nIn, core.tint, 0.7, 0, 0.13);
     }
   }
+  mesh.soot = null;
   mesh.end();
   // poured concrete: the reinforcement left in the break. Two mats of bars at 20 cm each way near the wall's faces (one
   // mat in a thin wall); where a bar crosses the hole the blow stripped the concrete off it: a short span is left whole,
