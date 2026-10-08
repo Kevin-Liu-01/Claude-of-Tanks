@@ -112,6 +112,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    // 2026-10-08: deep interior needs exact body cover over a voxel's whole footprint (or a narrow slot)
+    'tools/tank-voxel-body.selftest.mjs',
     'tools/m1a1-fill-clearance.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks

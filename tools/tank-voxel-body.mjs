@@ -1,7 +1,7 @@
 // Shared voxel body core for the tank watertight tools (tank-watertight-check.mjs, gen-interior-fills.mjs):
 // conservative triangle voxelisation of the body (running gear, decals, shadow proxies, wires and soft goods
 // excluded), exterior flood fill, and the "deep interior" test (shell in all six axis directions AND inside the
-// hull's or turret's own vertical shell span at that column).
+// hull's or turret's own vertical shell span at that column AND roofed by real body geometry over its footprint).
 // 2026-09-15: ghillie meshes are named `<id>_ghillie_<carrier>_<layer>`, so `ghillie` must match anywhere — anchored,
 // the M1A1 SA (Ukraine)'s cage net sealed its drone cage and the generator filled the whole cage as turret interior
 // (the grey panels the owner saw covering the cage). Open-lattice buckets (drone cages, slat screens, basket
@@ -65,7 +65,10 @@ export function voxelise(tris, meshes, { voxel = 0.025, exclude = DEFAULT_EXCLUD
       }
     }
   }
-  return { shell, nx, ny, nz, origin, groups, bodyTris: body.length, voxel: VOXEL };
+  // coverTriangles: the body for deepInterior's exact cover-above test. Interior fill solids are never a roof: the
+  // generator measures each round without them, so the watertight gate, which voxelises the shipped fills, must too.
+  const coverTriangles = body.filter((t) => !/InteriorFill$/.test(meshes[t.mesh] || ''));
+  return { shell, nx, ny, nz, origin, groups, bodyTris: body.length, voxel: VOXEL, coverTriangles };
 }
 
 /** Exterior flood fill (6-connected) from the grid border through empty voxels. */
@@ -94,9 +97,11 @@ function componentOf(name) {
 
 /**
  * Deep interior: a body shell exists in every axis direction from the voxel AND the voxel lies inside the
- * vertical shell span of one body component (hull or turret) at its own column. The second test drops exterior
- * pockets that distant shells enclose in every direction — the slit under a turret bustle, the space between
- * sponson and belly — which are outside both bodies: water poured into a body never reaches them.
+ * vertical shell span of one body component (hull or turret) at its own column AND real body geometry roofs its
+ * whole footprint (coverAbove, below). The second test drops exterior pockets that distant shells enclose in every
+ * direction — the slit under a turret bustle, the space between sponson and belly — which are outside both bodies:
+ * water poured into a body never reaches them. The third drops open air that a thin rail or a plate's edge only
+ * grazes in voxel space.
  */
 export function deepInterior(grid) {
   const { shell, nx, ny, nz, groups } = grid; const N = shell.length;
@@ -123,13 +128,99 @@ export function deepInterior(grid) {
   for (let z = 0; z < nz; z++) for (let x = 0; x < nx; x++) ys.push(z * ny * nx + x);
   for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) zs.push(y * nx + x);
   scan(nx, 1, xs); scan(ny, nx, ys); scan(nz, nx * ny, zs);
+  const covered = grid.coverTriangles && (grid.coverRule ?? COVER_RULE) !== 'shell' ? coverAbove(grid, grid.coverRule ?? COVER_RULE) : null;
   for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
     const i = (z * ny + y) * nx + x; if (shell[i]) { deep[i] = 0; continue; } if (!deep[i]) continue;
     const k = z * nx + x;
     const inHull = minY[1][k] < y && y < maxY[1][k], inTurret = minY[2][k] < y && y < maxY[2][k];
-    if (!inHull && !inTurret) deep[i] = 0;
+    if (!inHull && !inTurret) { deep[i] = 0; continue; }
+    if (covered && !covered(x, y, z)) deep[i] = 0;
   }
   grid.spans = { comp, minY, maxY };
   return deep;
+}
+
+// Exact cover above (2026-10-08). The scan above takes ANY shell voxel overhead as a roof, so a 3 mm rail grazing a
+// 2.5 cm column made the open air under it "deep" and the fill generator filled it: on the M3A3's front deck fills
+// stood up to 19 cm above the glacis in the open. A deep voxel now needs real body geometry over its whole footprint.
+// Rules (grid.coverRule, for experiments; the generator and the watertight gate both use COVER_RULE):
+//   'slot'   every one of nine footprint samples (corners inset 0.5 mm, edge midpoints, centre) has a body triangle
+//            above it, or sits in a slot that body geometry above closes from both sides within COVER_SLOT_M along x
+//            or z: grille louvres, the ring between a hatch lid and its rim. A footprint only partly under a plate's
+//            edge is not covered, so no fill reaches past the edge of the geometry that roofs it.
+//   'all'    every sample has a body triangle above it (no slots).
+//   'centre' the centre sample, or three of the centre and the four quadrant centres.
+//   'shell'  the scan alone (the rule before 2026-10-08).
+const COVER_RULE = 'slot';
+const COVER_SLOT_M = 0.025;
+
+function coverAbove(grid, rule) {
+  const { nx, origin } = grid, V = grid.voxel ?? 0.025;
+  const top = grid.coverTop ??= highestCrossing(grid); // cached: the generator re-measures the same body every round
+  const h = V / 2 - 0.0005, q = V / 4;
+  const offsets = rule === 'centre'
+    ? [[0, 0], [-q, -q], [q, -q], [-q, q], [q, q]]
+    : [[0, 0], [-h, -h], [0, -h], [h, -h], [-h, 0], [h, 0], [-h, h], [0, h], [h, h]];
+  const reach = []; for (let d = q; d <= COVER_SLOT_M + 1e-9; d += q) reach.push(d);
+  const cache = new Map();
+  const column = (x, z) => {
+    const k = z * nx + x; let c = cache.get(k); if (c) return c;
+    const px = origin[0] + (x + 0.5) * V, pz = origin[2] + (z + 0.5) * V;
+    c = { px, pz, tops: offsets.map(([dx, dz]) => top(px + dx, pz + dz)), sides: [] };
+    cache.set(k, c); return c;
+  };
+  // the highest cover within COVER_SLOT_M of a sample on each side: -x, +x, -z, +z
+  const sides = (c, s) => {
+    let r = c.sides[s]; if (r) return r;
+    const sx = c.px + offsets[s][0], sz = c.pz + offsets[s][1];
+    r = [-Infinity, -Infinity, -Infinity, -Infinity];
+    for (const d of reach) {
+      r[0] = Math.max(r[0], top(sx - d, sz)); r[1] = Math.max(r[1], top(sx + d, sz));
+      r[2] = Math.max(r[2], top(sx, sz - d)); r[3] = Math.max(r[3], top(sx, sz + d));
+    }
+    return (c.sides[s] = r);
+  };
+  return (x, y, z) => {
+    const c = column(x, z), t = c.tops;
+    if (rule === 'centre') {
+      const yc = origin[1] + (y + 0.5) * V; if (t[0] > yc) return true;
+      let n = 0; for (const v of t) if (v > yc) n++; return n >= 3;
+    }
+    // measured at the voxel's top face (less 1 mm, so a plate lying on that lattice plane still roofs it): a fill box
+    // must lie wholly under the geometry that roofs or closes it
+    const yt = origin[1] + (y + 1) * V - 0.001;
+    for (let s = 0; s < t.length; s++) {
+      if (t[s] > yt) continue;
+      if (rule === 'all') return false;
+      const r = sides(c, s);
+      if (!((r[0] > yt && r[1] > yt) || (r[2] > yt && r[3] > yt))) return false;
+    }
+    return true;
+  };
+}
+
+/** The highest body-triangle crossing of the vertical line at (px, pz), or -Infinity; triangles bucketed by xz cell. */
+function highestCrossing(grid) {
+  const { nx, nz, origin, coverTriangles: tris } = grid, V = grid.voxel ?? 0.025;
+  const CELL = 4, cx = Math.ceil(nx / CELL), cz = Math.ceil(nz / CELL), buckets = Array.from({ length: cx * cz }, () => []);
+  for (const t of tris) {
+    const x0 = Math.floor((Math.min(t.ax, t.bx, t.cx) - origin[0]) / V / CELL), x1 = Math.floor((Math.max(t.ax, t.bx, t.cx) - origin[0]) / V / CELL);
+    const z0 = Math.floor((Math.min(t.az, t.bz, t.cz) - origin[2]) / V / CELL), z1 = Math.floor((Math.max(t.az, t.bz, t.cz) - origin[2]) / V / CELL);
+    for (let bz = Math.max(0, z0); bz <= Math.min(cz - 1, z1); bz++) for (let bx = Math.max(0, x0); bx <= Math.min(cx - 1, x1); bx++) buckets[bz * cx + bx].push(t);
+  }
+  return (px, pz) => {
+    const bx = Math.floor((px - origin[0]) / V / CELL), bz = Math.floor((pz - origin[2]) / V / CELL);
+    if (bx < 0 || bz < 0 || bx >= cx || bz >= cz) return -Infinity;
+    let best = -Infinity;
+    for (const t of buckets[bz * cx + bx]) {
+      // barycentric of (px, pz) in the triangle's xz projection; edges count as inside
+      const d = (t.bz - t.cz) * (t.ax - t.cx) + (t.cx - t.bx) * (t.az - t.cz); if (Math.abs(d) < 1e-14) continue;
+      const a = ((t.bz - t.cz) * (px - t.cx) + (t.cx - t.bx) * (pz - t.cz)) / d;
+      const b = ((t.cz - t.az) * (px - t.cx) + (t.ax - t.cx) * (pz - t.cz)) / d, c = 1 - a - b;
+      if (a < -1e-9 || b < -1e-9 || c < -1e-9) continue;
+      const y = a * t.ay + b * t.by + c * t.cy; if (y > best) best = y;
+    }
+    return best;
+  };
 }
 
