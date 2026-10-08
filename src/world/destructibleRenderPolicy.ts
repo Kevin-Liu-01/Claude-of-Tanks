@@ -29,15 +29,22 @@ export function destructibleCastsShadow(
 
 /**
  * (b37; the whole-PR census: moving-camera shadow casters +9 to +150 draws over main, from prop and vegetation casters)
- * The cascades a casting destructible family's shadow goes into, as a cascade bit mask (renderLayers.ts
- * setShadowCasterCascades): low dressing (under 2 m — fences, wall modules, sandbags, wire, bales, stooks) the near two,
- * where its shadow is more than a few texels; a man's height to a lorry's (under 4 m) the near three; a tall silhouette
- * (a stack, a pole, a hut) and a toppling actor every cascade (null). The far cascades redraw as the camera moves.
+ * The cascades a caster of a height takes, as a cascade bit mask (renderLayers.ts setShadowCasterCascades): low content
+ * (under 2 m — fences, wall modules, sandbags, wire, bales, stooks, low dressing) the near two, where its shadow is more
+ * than a few texels; a man's height to a lorry's (under 4 m) the near three; anything taller every cascade (null). The
+ * far cascades redraw as the camera moves. Every props caster takes it by its tallest part (props.ts): the destructible
+ * families, the merged material buckets (the regional kits' with the rest, no opt-in), the baked instances, the rock
+ * formations, the wreck shadows.
  */
+export function shadowCascadesForHeight(heightM: number | null | undefined): number | null {
+  const h = heightM ?? Infinity;
+  if (!(h < 4)) return null;
+  return h < 2 ? 0b0011 : 0b0111;
+}
+
+/** A casting destructible family's cascades: by its record's height; a toppling actor's every cascade (its shadow
+ * sweeps as it falls). */
 export function destructibleShadowCascades(metadata: DestructibleRenderMetadata): number | null {
   if (metadata.cls === 'topple') return null;
-  const h = metadata.h ?? 0;
-  if (h < 2) return 0b0011;
-  if (h < 4) return 0b0111;
-  return null;
+  return shadowCascadesForHeight(metadata.h ?? 0);
 }

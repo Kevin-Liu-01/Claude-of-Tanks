@@ -37,9 +37,9 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
-import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { destructibleCastsShadow, destructibleShadowCascades } from './destructibleRenderPolicy.ts';
+import { destructibleCastsShadow, destructibleShadowCascades, shadowCascadesForHeight } from './destructibleRenderPolicy.ts';
 import {
   applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
   type SourcedTextureApplicationOptions,
@@ -600,8 +600,8 @@ interface RockLodPools {
 }
 /** The rocks' desktop form draws through this distance (and its phone form past it plus the hysteresis, 10 m), metres. */
 const ROCK_FAR_M = 60;
-/** The near cascades (0 and 1) take the near and far pools; the far cascades (2 and 3) the shadow-only pool. */
-const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;
+/** The near cascades (0 and 1) take the near and far pools (b37: the far cascades' shadow-only pool trimmed). */
+const ROCK_NEAR_CASCADES = 0b0011;
 
 interface BakedInstanceGroup {
   geo: THREE.BufferGeometry;
@@ -2274,6 +2274,12 @@ function casterHeightM(geometry: THREE.BufferGeometry, matrices: readonly THREE.
   return (box.max.y - box.min.y) * scale;
 }
 /** The profile of a merged bucket: one world sphere per PROPS_SHADOW_CELL_M cell of piece centres, the tallest piece's height. */
+/** (b37) A caster's cascades by its profile's height (destructibleRenderPolicy.ts shadowCascadesForHeight): set unless
+ * the caster takes every cascade. */
+function routeCasterCascades(object: THREE.Object3D, profile: ShadowCasterProfile): void {
+  const cascades = shadowCascadesForHeight(profile.heightM);
+  if (cascades !== null) setShadowCasterCascades(object, cascades);
+}
 function bucketShadowProfile(pieces: readonly THREE.BufferGeometry[]): ShadowCasterProfile {
   const cells = new Map<number, THREE.Box3>();
   let height = 0;
@@ -6442,9 +6448,8 @@ ${snowCap ? `
       continue;
     }
     // the scenery lane (wave 74, the cascade trim: 672-triangle rocks drawn into every cascade): the desktop form near the
-    // camera, the phone form past ROCK_FAR_M (rockLod below), both into the near cascades only; the far cascades take the
-    // phone form of every rock from a shadow-only pool. The crushable rocks keep the first near slots for good (their
-    // clutter writes its slot), cast into the near cascades alone (small, and gone when crushed)
+    // camera, the phone form past ROCK_FAR_M (rockLod below), both into the near cascades only (b37: and none into the
+    // far ones). The crushable rocks keep the first near slots for good (their clutter writes its slot)
     const n = rockPlacements[vi].length;
     const pinned = rockPlacements[vi].filter((placement) => rockClutter.has(placement)).length;
     const near = pool(rockGeos[vi], 'rock-variant-' + vi, n);
@@ -6457,22 +6462,11 @@ ${snowCap ? `
     rockGeos[vi].setAttribute('aRockSlope', nearSlope);
     rockGeosFar[vi].setAttribute('aRockGround', farGround);
     rockGeosFar[vi].setAttribute('aRockSlope', farSlope);
-    const shadowGeo = new THREE.BufferGeometry();
-    for (const key of ['position', 'normal', 'color'] as const) shadowGeo.setAttribute(key, rockGeosFar[vi].getAttribute(key));
-    shadowGeo.setIndex(rockGeosFar[vi].index);
+    // (b37; the whole-PR census: the -far and -shadow pools +3 colour draws and +5 to +7 moving shadow draws on every
+    // map) the far cascades' shadow-only pool trimmed: a boulder (under 3 m) casts into the near cascades alone, where
+    // its shadow is more than a few texels; past them its contact patch and bed ground it
     const order: number[] = [], loose: number[] = [];
     for (let i = 0; i < n; i++) (rockClutter.has(rockPlacements[vi][i]) ? order : loose).push(i);
-    const shadowGround = new Float32Array(n - pinned), shadowSlope = new Float32Array((n - pinned) * 2);
-    const shadow = pool(shadowGeo, 'rock-variant-' + vi + '-shadow', n - pinned);
-    loose.forEach((i, k) => {
-      shadow.setMatrixAt(k, rockPlacements[vi][i]);
-      shadowGround[k] = ground[i]; shadowSlope[k * 2] = slope[i * 2]; shadowSlope[k * 2 + 1] = slope[i * 2 + 1];
-    });
-    shadowGeo.setAttribute('aRockGround', new THREE.InstancedBufferAttribute(shadowGround, 1));
-    shadowGeo.setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(shadowSlope, 2));
-    shadow.receiveShadow = false;
-    markShadowOnly(shadow);
-    setShadowCasterCascades(shadow, ROCK_FAR_CASCADES);
     setShadowCasterCascades(near, ROCK_NEAR_CASCADES);
     setShadowCasterCascades(far, ROCK_NEAR_CASCADES);
     for (const [k, i] of order.entries()) {
@@ -6487,7 +6481,7 @@ ${snowCap ? `
     };
     writeRockLod(lod);
     rockLod.push(lod);
-    for (const mesh of [near, far, shadow]) {
+    for (const mesh of [near, far]) {
       setShadowCasterProfile(mesh, { heightM, instanced: true });
       group.add(mesh);
     }
@@ -7807,6 +7801,7 @@ ${snowCap ? `
           const sm = new THREE.Mesh(mergeGeometries(wreckShadowGeos, false), shadowMat);
           sm.name = 'tank-wrecks-shadow';
           setShadowCasterProfile(sm, partsShadowProfile(wreckShadowGeos)); // round 79: one sphere per wreck
+          routeCasterCascades(sm, shadowCasterProfileOf(sm)!); // (b37: by its tallest wreck)
           sm.castShadow = true;
           sm.receiveShadow = false;
           sm.matrixAutoUpdate = false;
@@ -8800,6 +8795,7 @@ ${snowCap ? `
     im.computeBoundingSphere();
     im.name = `baked-${name}`;
     setShadowCasterProfile(im, { heightM: casterHeightM(e.geo, e.list), instanced: true }); // round 79
+    routeCasterCascades(im, shadowCasterProfileOf(im)!); // (b37: by its tallest instance)
     group.add(im);
   }
   }
@@ -8946,6 +8942,7 @@ ${snowCap ? `
       mesh.matrixAutoUpdate = false;
       // (a block at most this proud casts a shadow the far cascades cannot resolve: the footprint law hides it there)
       setShadowCasterProfile(mesh, { heightM: KARST_BOSS_PROUD[1] });
+      routeCasterCascades(mesh, { heightM: KARST_BOSS_PROUD[1] }); // (b37)
       group.add(mesh);
     }
     group.userData.karstRelief = relief.counts;
@@ -9111,6 +9108,7 @@ ${snowCap ? `
       const mesh = new THREE.Mesh(merged, mats.rock);
       mesh.name = 'props-scenery-rock';
       setShadowCasterProfile(mesh, profile);
+      routeCasterCascades(mesh, profile); // (b37: by its tallest formation)
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
@@ -9200,6 +9198,7 @@ ${snowCap ? `
         const mesh = new THREE.Mesh(merged, mats[key]);
         mesh.name = 'props-bucket-' + key + suffix; // round 75: the perf inventories attribute the merged buckets by name
         setShadowCasterProfile(mesh, profile);
+        if (casts) routeCasterCascades(mesh, profile); // (b37: by its tallest part)
         mesh.castShadow = casts;
         mesh.receiveShadow = true;
         mesh.matrixAutoUpdate = false;
