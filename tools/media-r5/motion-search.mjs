@@ -19,7 +19,7 @@ import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { FORE_SHARE, lensReport } from './lens-check.mjs';
+import { framingScore, lensReport } from './lens-check.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { sampleActorTrack } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -144,6 +144,28 @@ const lowMoves = (kind) => [1, -1].flatMap((s) => [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 38, radius: 32, lift: 3.2, fov: 16, lookHero: [0, 0.5, 1.4] },
     { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 28, radius: 20, lift: 2.4, fov: 25, lookHero: [0, 0.5, 1.4] },
     { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 18, radius: 11, lift: 1.8, fov: 38, lookHero: [0, 0.5, 1.5] }]],
+  // composition wave c2 (2026-10-08): bigger and lower in the frame, three-quarter, with lead room. The lens aims 2.4-2.5 m
+  // up so the hull sits low; a 45 %-tall hull wants about 11 m at 36°, or a longer lens further out
+  [`track34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 38, radius: 12.5, lift: 2, fov: 36, lookHero: [0, 1.2, 2.5] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 55, radius: 10, lift: 1.7, fov: 38, lookHero: [0, 1, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 42, radius: 13, lift: 2.2, fov: 36, lookHero: [0, 1.2, 2.5] }]],
+  [`orbit34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 20, radius: 11, lift: 1.7, fov: 38, lookHero: [0, 1, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 50, radius: 10, lift: 2, fov: 38, lookHero: [0, 1, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 75, radius: 12, lift: 2.4, fov: 38, lookHero: [0, 1, 2.4] }]],
+  [`dollyZoom34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 28, radius: 9, lift: 1.8, fov: 40, lookHero: [0, 0.5, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 32, radius: 17, lift: 2.2, fov: 21.8, lookHero: [0, 0.5, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 36, radius: 28, lift: 2.8, fov: 13.4, lookHero: [0, 0.5, 2.4] }]],
+  [`pushZoom34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 28, lift: 2.8, fov: 13.4, lookHero: [0, 0.5, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 34, radius: 17, lift: 2.2, fov: 21.8, lookHero: [0, 0.5, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 28, radius: 9, lift: 1.8, fov: 40, lookHero: [0, 0.5, 2.4] }]],
+  [`lead34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 18, radius: 10, lift: 1.8, fov: 38, lookHero: [0, 0.5, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 30, radius: 13, lift: 2.2, fov: 31, lookHero: [0, 0.5, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 16, lift: 2.6, fov: 26, lookHero: [0, 0.5, 2.4] }]],
   ...(kind === 'scene' || kind === 'battle' ? [[`teleTrack${s > 0 ? 'R' : 'L'}`, [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', orbit: s * 40, radius: 30, lift: 6, fov: 26, lookHero: [0, 2, 1.2] },
     { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', orbit: s * 58, radius: 25, lift: 7.5, fov: 27, lookHero: [0, 1.5, 1.2] },
@@ -173,6 +195,17 @@ const ROUTE_LEADS = [1, -1].flatMap((s) => [
   [`roofLead${s > 0 ? 'R' : 'L'}`, [
     { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 30, side: 1.2 * s, along: 0, lift: 8, fov: 24, lookHero: [0, 0, 1.3] },
     { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 22, side: 1.2 * s, along: 0, lift: 7, fov: 28, lookHero: [0, 0, 1.3] }]],
+  // composition wave c2 (2026-10-08): dead ground under a mid-frame hull and dead-centre head-ons. The lens aims 2.4 m
+  // up so the hull sits low in the frame, rides further to the side so it turns three-quarter, and the zoom holds the
+  // hull's size as a true dolly zoom
+  [`routeLead34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 11, side: 2.2 * s, along: 0, lift: 1.8, fov: 36, lookHero: [0, 0, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 10, side: 2.4 * s, along: 0, lift: 2.2, fov: 37, lookHero: [0, 0, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 9, side: 2.6 * s, along: 0, lift: 2.6, fov: 38, lookHero: [0, 0, 2.4] }]],
+  [`routeZoom34${s > 0 ? 'R' : 'L'}`, [
+    { tMs: 0, frame: 'travel', lookFrame: 'travel', aheadM: 8, side: 1.6 * s, along: 0, lift: 1.8, fov: 40, lookHero: [0, 0, 2.4] },
+    { tMs: Math.round(DUR * 0.5), frame: 'travel', lookFrame: 'travel', aheadM: 13, side: 1.8 * s, along: 0, lift: 2.3, fov: 25.2, lookHero: [0, 0, 2.4] },
+    { tMs: 'end', frame: 'travel', lookFrame: 'travel', aheadM: 21, side: 2 * s, along: 0, lift: 2.8, fov: 15.8, lookHero: [0, 0, 2.4] }]],
 ]);
 
 /** Lens moves by kind: [name, keys]. */
@@ -198,21 +231,9 @@ function lensMoves(kind, town = false) {
   ])];
 }
 
-/**
- * The take's framing by the blind critics' measure (composition wave c1, 2026-10-07, calibrate-composition.mjs over 147
- * frames): sweet, the share of the take with the lens at most 6 m up and looking down no more than 15°, the hull 30-62 %
- * of the frame's height, whole, its centre in the middle 30 % either side, nothing nearer the lens over FORE_SHARE of the
- * frame; bad, the share where the critics mark it (a look-down past 18°: BAD_ANGLE in 91 % of frames; the lens over
- * 13 m; the hull under 20 % of the height; cut while under 58 %; its centre past half way to an edge; a foreground thing
- * over 6 % of the frame; out of frame).
- */
-function framing(report) {
-  const ps = report.perSample, n = ps.length || 1;
-  const edge = (p) => (p.box ? Math.abs((p.box[0] + p.box[2]) / 2) : 2);
-  const sweet = ps.filter((p) => p.seen && p.heightM <= 6 && p.pitchDeg >= -15 && p.size >= 0.3 && p.size <= 0.62 && p.whole && edge(p) <= 0.3 && p.fore.share < FORE_SHARE).length / n;
-  const bad = ps.filter((p) => !p.seen || p.pitchDeg < -18 || p.heightM > 13 || p.size < 0.2 || (!p.whole && p.size < 0.58) || edge(p) > 0.5 || p.fore.share >= 0.06).length / n;
-  return { sweet, bad };
-}
+// the framing measure lives in lens-check.mjs (framingScore); FRAMING_V=1 scores as composition wave c1's re-plan did
+const FRAMING_V = Number(process.env.FRAMING_V ?? 2);
+const framing = (report) => framingScore(report, { version: FRAMING_V });
 
 const featuresOf = (() => { const cache = new Map(); return (map) => { if (!cache.has(map)) { const f = join(SHOTS_DIR, 'features', `features-${map}.json`); cache.set(map, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null); } return cache.get(map); }; })();
 

@@ -568,6 +568,10 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   if (set.autoPlace === false || film.routes) scene.autoPlace = false;
   const burstWorld = film.routes ? modelOf(set.map) : null;
   if (burstWorld) clearBursts(scene, burstWorld);
+  // effects on a tank the take does not stage (2026-10-08: S38's re-plan dropped its ally to fit the route, and the ally's
+  // two rounds left in its effects spun the Studio's page at 100 % CPU in two engine-review runs)
+  const staged = new Set(scene.actors.map((a) => a.name));
+  scene.effects = scene.effects.filter((e) => !e.actor || staged.has(e.actor));
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };

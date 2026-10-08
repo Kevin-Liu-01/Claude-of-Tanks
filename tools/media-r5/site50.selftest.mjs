@@ -78,6 +78,7 @@ for (const shot of SHOTS) {
   const types = new Set(scene.effects.map(e => e.type));
   const burningFoe = scene.actors.some(a => a.name.startsWith('foe') && /burn/.test(a.state ?? ''));
   assert.ok([...types].some(t => COMBAT.has(t)), `${id}: something fires, hits or explodes`);
+  for (const fx of scene.effects.filter(e => e.actor)) assert.ok(scene.actors.some(a => a.name === fx.actor), `${id}: ${fx.type} at ${fx.tMs} ms belongs to ${fx.actor}, a tank the take stages`);
   assert.ok(burningFoe || [...types].some(t => BURNING.has(t)), `${id}: something burns`);
   // a shell hit is a shot blast: the ammo-rack blast's turret-ring fire floats in mid-air with no tank under it
   for (const fx of scene.effects.filter(e => e.type === 'explosion')) assert.equal(fx.params?.cause, 'shot', `${id}: the ${fx.params?.size} blast at ${fx.tMs} ms is a shot, not an ammo-rack kill`);

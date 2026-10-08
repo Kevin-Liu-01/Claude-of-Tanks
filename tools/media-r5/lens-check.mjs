@@ -74,7 +74,8 @@ export function absoluteShots(scene, model) {
  * the frame), size (its half height), fore ({ share, kind, zone, zoneKind }: the largest thing nearer the lens than the
  * hull, as a share of the frame, and the largest inside the foreground zone, FORE_ZONE), at (the hull's [x, z]), eye
  * (the lens), pitchDeg (the lens's look up or down; composition wave c1, 2026-10-07: a 40-60° look-down makes the tanks
- * roof plans) and heightM (the lens over the ground under it) }.
+ * roof plans), heightM (the lens over the ground under it) and facing (the nose's screen x less the tail's: + the hull
+ * faces right) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
@@ -152,6 +153,10 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
     }
     const box = ahead ? [x0, y0, x1, y1].map((v) => +v.toFixed(3)) : null;
+    // which way the hull faces on screen (composition wave c2, 2026-10-08: guns and blasts ran into the frame's edge,
+    // the hull centred with no lead room): the nose's screen x less the tail's, in the frame's units (+ faces right)
+    const sx = (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2]; return depth > 0.5 ? (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth / tx : null; };
+    const noseX = sx(points[1]), tailX = sx(points[2]), facing = noseX != null && tailX != null ? +(noseX - tailX).toFixed(3) : 0;
     const whole = !!box && box[0] > -0.92 && box[2] < 0.92 && box[1] > -0.92 && box[3] < 0.92;
     const distM = Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z);
     // the foreground (media wave m1, 2026-10-07: a burnt truck's cargo box filled the bottom of S04 at 2 s, clear of every
@@ -185,7 +190,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind },
-      at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)],
+      at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
       pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
   }
   // inside: the share of samples with the lens inside a record (2026-10-08: the dolly zooms ran S12, S15 and S49's lenses
@@ -235,6 +240,35 @@ export function framingFaults(scene, report) {
     buried: share((p) => p.seen && buried(p)),
     steep: share((p) => p.pitchDeg < -STEEP_DEG),
   };
+}
+
+/**
+ * The take's framing by the blind critics' measure, as a share of its samples: sweet, in their sweet spot; bad, what they
+ * mark. v1 (composition wave c1, 2026-10-07): the lens at most 6 m up looking down no more than 15°, the hull 30-62 % of
+ * the frame's height, whole, centred. v2 (wave c2, 2026-10-08: the takes were low and level, and the critics' faults
+ * turned to dead ground under a mid-frame hull, 126 of 292 scores, and guns run into the frame's edge; held against the
+ * lens record of c2's 146 frames, composition rose with the hull's bottom edge low in the frame (rank -0.36), its size
+ * (+0.35), a level, low lens (-0.31, -0.32), and their GOOD frames sat at size 0.43, bottom edge -0.58, the lens 2.3 m
+ * up and 13 m out, three-quarter rather than head-on): sweet wants the hull 40-68 % of the frame's height with its
+ * bottom edge in the frame's lowest quarter, the lens at most 3 m up and looking down no more than 6°, the hull turned
+ * at least a little (|facing| 0.15), whole, its centre in the middle 35 % either side; bad adds a hull under 30 % of
+ * the height or with its bottom edge above the lowest 35 % (dead ground under it). v2 drops v1's foreground share: on
+ * c2's frames it did not predict the critics' FOREGROUND flag (thin poles and trees across the hull), and it rose with
+ * composition (+0.24: houses framing a street).
+ */
+export function framingScore(report, { version = 2 } = {}) {
+  const ps = report.perSample, n = ps.length || 1;
+  const edge = (p) => (p.box ? Math.abs((p.box[0] + p.box[2]) / 2) : 2);
+  if (version === 1) {
+    const sweet = ps.filter((p) => p.seen && p.heightM <= 6 && p.pitchDeg >= -15 && p.size >= 0.3 && p.size <= 0.62 && p.whole && edge(p) <= 0.3 && p.fore.share < FORE_SHARE).length / n;
+    const bad = ps.filter((p) => !p.seen || p.pitchDeg < -18 || p.heightM > 13 || p.size < 0.2 || (!p.whole && p.size < 0.58) || edge(p) > 0.5 || p.fore.share >= 0.06).length / n;
+    return { sweet, bad };
+  }
+  const sweet = ps.filter((p) => p.seen && p.whole && p.heightM <= 3 && p.pitchDeg >= -6 && p.size >= 0.4 && p.size <= 0.68
+    && p.box && p.box[1] <= -0.5 && edge(p) <= 0.35 && Math.abs(p.facing ?? 0) >= 0.15).length / n;
+  const bad = ps.filter((p) => !p.seen || p.pitchDeg < -15 || p.heightM > 8 || p.size < 0.3 || (!p.whole && p.size < 0.58)
+    || edge(p) > 0.5 || (p.box && p.box[1] > -0.3)).length / n;
+  return { sweet, bad };
 }
 
 /**
