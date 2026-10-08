@@ -373,7 +373,31 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // ceiling lid over the storey below), what stood on it lowered by the storey's height (the chimney's top), the roof
   // riding down whole; the ground storey stands, the kit's heap on the floor line stands
   for (const n of ['front', 'right', 'back']) stages.breach(fall(1, n), seam);
+  const rubbleN = () => debris.group.children.filter((m) => m.isMesh && /^fx-structure-rubble-/.test(m.name)).length;
+  const rubbleBefore = rubbleN();
   stages.breach(fall(1, 'left', { storeyDown: true }), seam);
+  // (the core 2026-10-08: the cascade's storeys come down on gravity's clock, the next sqrt(2 h / g) after) the drop
+  // falls over that time instead of in one frame: at its start nothing has moved; half way, what stood on the band has
+  // come down g t^2 / 2 — a quarter of the storey's height — the roof whole and the chimney's top with it, and the heap
+  // is not laid yet; at its end, the instant drop's exact state (below)
+  const dropT = Math.sqrt(2 * 3 / 9.81);
+  assert.equal(stages.stats().dropping, 1, 'the storey is in flight');
+  let rMid = sRoof.mesh.geometry.getAttribute('position').array;
+  for (let i = 0; i < rMid.length; i += 3) assert.ok(Math.abs(rMid[i + 1] - roofBefore[i + 1]) < 1e-6, 'at its start the roof stands');
+  now += dropT / 2;
+  stages.update();
+  rMid = sRoof.mesh.geometry.getAttribute('position').array;
+  for (let i = 0; i < rMid.length; i += 3) {
+    assert.ok(Math.abs(rMid[i + 1] - (roofBefore[i + 1] - 0.75)) < 1e-3 && Math.abs(rMid[i] - roofBefore[i]) < 1e-4,
+      `half way the roof has come down a quarter of the storey whole (${(roofBefore[i + 1] - rMid[i + 1]).toFixed(3)} m)`);
+  }
+  assert.ok(Math.abs(Math.max(...trimYs('chimney')) - (9.5 - 0.75)) < 1e-3, `the chimney's top with it (${Math.max(...trimYs('chimney')).toFixed(3)})`);
+  assert.ok(Math.min(...trimYs('chimney')) === 0, 'the chimney\'s foot stands');
+  assert.equal(rubbleN(), rubbleBefore, 'the heap is laid when the storey lands');
+  assert.equal(stages.stats().dropping, 1, 'still in flight half way');
+  now += dropT / 2 + 0.01;
+  stages.update();
+  assert.equal(stages.stats().dropping, 0, 'landed');
   const heapRuns = tagged().filter((m) => !heapBefore.has(m));
   w = sWall.mesh.geometry.getAttribute('position').array;
   for (const n of names) {
@@ -464,7 +488,14 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     assert.equal(newRuns(() => stages.breach(fall(1, 'front'), seamC)).length, 0, 'the second event on a fallen section lays nothing');
     assert.ok(stubRuns.every((m) => m.visible), 'and takes nothing of the first fall');
     assert.ok(stubRuns.filter((m) => m.name === 'fx-structure-remnant-regionalPlaster').length === 3, 'each panel before the last lays its stub');
-    const last = newRuns(() => stages.breach(fall(1, 'left', { storeyDown: true }), seamC));
+    // (a new event on the structure lands the drop in flight first: here a blow that opens nothing)
+    const last = newRuns(() => {
+      stages.breach(fall(1, 'left', { storeyDown: true }), seamC);
+      assert.equal(stages.stats().dropping, 1, 'the top storey in flight');
+      stages.breach({ ...sBase, sectionDown: false, radiusM: 0, hole: 0, section: 0, sectionKind: 'wall', x: placement.x,
+        y: placement.y + 1, z: placement.z, y0: placement.y, y1: placement.y + 3 }, seamC);
+      assert.equal(stages.stats().dropping, 0, 'a new event on the structure lands it');
+    });
     assert.ok(last.length === 1 && /^fx-structure-rubble-/.test(last[0].name) && last[0].visible,
       `the panel falling with its storey lays no runs (pieces only); the storey's heap stands (${last.map((m) => m.name)})`);
     assert.ok(stubRuns.every((m) => !m.visible), 'the storey takes its panels\' stubs');
