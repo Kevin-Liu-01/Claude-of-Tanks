@@ -225,7 +225,9 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
 }
 // the glue runs whole: the screen derivatives stand in as fixed steps, the normal-map relief block is preprocessor-only
 {
-  const glue = parseGlsl(FIELD_WEAR_FRAGMENT.replace(/#ifdef[\s\S]*?#endif/g, ''));
+  // (as a DOUBLE_SIDED material compiles it: that block's body kept, the other preprocessor blocks dropped)
+  const glue = parseGlsl(FIELD_WEAR_FRAGMENT.replace(/#ifdef DOUBLE_SIDED([\s\S]*?)#endif/g, '$1').replace(/#ifdef[\s\S]*?#endif/g, ''));
+  const singleSided = parseGlsl(FIELD_WEAR_FRAGMENT.replace(/#ifdef[\s\S]*?#endif/g, ''));
   const stub = {
     ...fns,
     dFdx: (v) => [0.002, 0, 0.0005].slice(0, v.length), dFdy: (v) => [0, 0.002, 0].slice(0, v.length),
@@ -245,6 +247,8 @@ assert.ok(coatAt(1.0, 1, 'verdant', darkGreen) > coatAt(2.6, 1, 'verdant', darkG
   const roof = runGlsl(glue, vars(2.4, 1), stub, new Set()), under = runGlsl(glue, vars(2.4, 1, -1), stub, new Set());
   assert.notDeepEqual(roof.diffuseColor, [0.1, 0.12, 0.06, 1], 'a roof takes the film');
   assert.deepEqual(under.diffuseColor, [0.1, 0.12, 0.06, 1], 'the back face of double-sided cloth turns the frame over');
+  const backSide = runGlsl(singleSided, vars(2.4, 1, -1), stub, new Set());
+  assert.notDeepEqual(backSide.diffuseColor, [0.1, 0.12, 0.06, 1], 'a single-sided material keeps its (vertex-flipped) frame');
   const none = runGlsl(glue, vars(0.3, 0, 1, [0, 0, 0, 0]), stub, new Set());
   assert.deepEqual(none.diffuseColor, [0.1, 0.12, 0.06, 1], 'a role of none skips the whole wear');
   assert.ok(FIELD_WEAR_FRAGMENT.indexOf('dFdx') < FIELD_WEAR_FRAGMENT.indexOf('if ( wearH < 1.75'),

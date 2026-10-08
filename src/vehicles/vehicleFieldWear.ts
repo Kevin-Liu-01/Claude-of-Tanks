@@ -513,7 +513,9 @@ export const FIELD_WEAR_VERTEX = /* glsl */ `
 /** The value noise (inside the receipts' GLSL subset: vehicleFieldWear.selftest.mjs runs these bodies). */
 export const FIELD_WEAR_NOISE_GLSL = /* glsl */ `
 float cotWearHash( vec2 p ) {
-	return fract( sin( dot( p, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+	// small coefficients: on the wrapped lattice the sine's argument stays under about 110 rad, where every GPU's sine
+	// keeps its precision (past 10^4 rad some lose it and the hash turns into stripes)
+	return fract( sin( dot( p, vec2( 0.1271, 0.3117 ) ) ) * 43758.5453 );
 }
 float cotWearNoise( vec2 x ) {
 	// the lattice wraps every 256 cells, keeping the hash's argument small; the 128-cell shift puts the wrap's seam half a
@@ -645,15 +647,19 @@ export const FIELD_WEAR_CORE_GLSL = /* glsl */ `
 
 /**
  * Fragment glue (after the normal maps, before any light reads the surface): the vehicle and soot frames from the vertex
- * stage (a back face of double-sided cloth turns them over), the footprint and the projection plane in uniform control
- * flow, the two noise octaves (the fine one only up close, stretched down the plate so spatter runs and streaks hang),
- * then the core.
+ * stage (the back face of a double-sided card turns them over, as three's own normal does; a back-side material's normal
+ * is already flipped in the vertex stage), the footprint and the projection plane in uniform control flow, the two noise
+ * octaves (the fine one only up close), then the core.
  */
 export const FIELD_WEAR_FRAGMENT = /* glsl */ `
 	if ( uVehGround.w > 0.0 && uVehWearRole.x + uVehWearRole.y + uVehWearRole.w > 0.0 ) {
+		float wearSide = 1.0;
+		#ifdef DOUBLE_SIDED
+			wearSide = faceDirection;
+		#endif
 		float wearH = vCotWearPos.w;
-		float wearUp = vCotWearFrame.x * faceDirection;
-		float wearBack = clamp( - vCotWearFrame.y * faceDirection, 0.0, 1.0 );
+		float wearUp = vCotWearFrame.x * wearSide;
+		float wearBack = clamp( - vCotWearFrame.y * wearSide, 0.0, 1.0 );
 		float wearAlong = vCotWearFrame.z;
 		float wearSootAlong = vCotWearFrame.w;
 		float wearSootOff = vCotWearSootOff;
