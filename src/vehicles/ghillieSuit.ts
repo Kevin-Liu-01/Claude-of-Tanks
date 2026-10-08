@@ -111,6 +111,8 @@ export interface GhillieConfig {
   maxHalfWidth?: number;
   /** The lowest a hull drape's hem may hang, metres (default NET_HEM_FLOOR_M, the running-gear corridor). */
   hemFloorM?: number;
+  /** The share of the garnish's bunches that are cut boughs rather than strips (default: the theatre palette's). */
+  boughShare?: number;
   /**
    * The garnish tucked into the net: a species spray atlas of the trees lane (src/world/treeSprayAtlas.ts) for
    * leafy suits, or a painted multispectral cut garnish. Defaults by style (leafy: oak; ulcans / nakidka: woodland).
@@ -569,6 +571,8 @@ interface OwnerSupport {
   readonly fitted: boolean;
   /** No turret owner in the suit (a casemate hull: its deck is its roof). */
   readonly turretless: boolean;
+  /** Where the crew may push a stick under the net (clear of a drone dock and its launch column); default anywhere. */
+  tentOk?(x: number, z: number): boolean;
 }
 
 /** A point and its outward normal on a cloth, for seating garnish. */
@@ -789,6 +793,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         const tz = THREE.MathUtils.lerp(z0 + 0.15, z1 - 0.15, hash01(s, k, 0x33));
         if (outline && (!insidePoly(tx, tz, outline) || boundaryDistance(tx, tz, outline) < 0.18)) continue;
         if (holes.some((hole) => insidePoly(tx, tz, hole) || boundaryDistance(tx, tz, hole) < 0.24)) continue;
+        if (support.tentOk && !support.tentOk(tx, tz)) continue;
         if (tents.some((t) => Math.hypot(t.x - tx, t.z - tz) < 0.55)) continue;
         tents.push({ x: tx, z: tz, h: 0.07 + hash01(s, k, 0x35) * 0.08, r: 0.09 + hash01(s, k, 0x37) * 0.07 });
       }
@@ -1606,7 +1611,7 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
   const fitted = cfg.style !== 'leafy';
   for (const clump of clumps) {
     // a fitted cover's tufts are its own cut flaps lying on it (wave 253: "dark leaf shards stick straight out")
-    const bough = fitted ? false : clump.tent ? true : rng() < pal.boughs;
+    const bough = fitted ? false : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
     if (!surface.sample(clump.u, clump.v)) continue;
     // the tuft's own colour: a strip bunch shares one cut cloth, a bough one cutting
     const tone = pickStripTone(pal, rng);
@@ -1872,22 +1877,10 @@ const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
-// Leopard 2A6 UA fitted camouflage carrier. The original blanket used a
-// single y=.98 roof and z=2.72 face, leaving visible daylight over the 2A6M
-// wedge. These profiles follow the authored roof tiers and the ruled cheek
-// surface used by the UA ERA package. Values are turret-local metres.
-const leo2A6UAFrontLowerZ = (x: number): number => profileY([
-  [0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
-], Math.abs(x));
-const leo2A6UAFrontUpperZ = (x: number): number => profileY([
-  [0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16],
-], Math.abs(x));
-const leo2A6UAFrontArmorZ = (x: number, y: number): number => THREE.MathUtils.lerp(
-  leo2A6UAFrontLowerZ(x),
-  leo2A6UAFrontUpperZ(x),
-  THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1),
-);
-const leo2A6UAFrontNetZ = (x: number, y: number): number => leo2A6UAFrontArmorZ(x, y) + 0.065;
+// Leopard 2A6 UA roof carriers. The original blanket used a single y=.98
+// roof, leaving visible daylight over the 2A6M wedge; these profiles follow the
+// authored roof tiers (round 5: the cheek nets are gone, so their ruled-face
+// profile went with them). Values are turret-local metres.
 const leo2A6UAFrontRoofY = (x: number, z: number): number => {
   const armorY = profileY([
     [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
@@ -2254,75 +2247,84 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   leo2a6_ua: {
-    id: 'leo2a6_ua', seed: 2606, style: 'leafy', density: 0.99, leafScale: 1.04,
+    // Round 5 (2026-10-08; the coordinator after wave 269, fleet B2, 2/10 on the hero, gear and mantlet views: "a
+    // box-shaped shell of bristling leaf shards encloses the turret and runs down the full gun barrel, like a hedgehog /
+    // hedge sculpture", "flat, unshaded, single-sided leaf polygons floating in the air, cutting through the cage bars",
+    // "fish scales" on the hull flanks; the ruling: replace the approach, not tune it). One net thrown over the turret
+    // roof out to the basket rails, sagging off them and falling 30-40 cm over the flank and bustle cages with a ragged
+    // hem; the cheeks, the front cage and the lower flanks bare. The engine deck and glacis nets fall over the hull's
+    // corners as short swags tied along the skirt cage's top rail; the skirts and running gear bare between them. Two
+    // short bound wraps on the barrel (the sleeve root and one band), the bore and muzzle clear. The garnish is bunches
+    // tied at points along the hems, low, with few boughs; the drone dock and both weapon stations keep their columns.
+    id: 'leo2a6_ua', seed: 2606, style: 'leafy', density: 0.42, leafScale: 0.9, boughShare: 0.1,
     light: 0x747b50, dark: 0x34452f, netColor: 'rgba(38,53,32,0.86)',
     hull: {
       top: [
         { x0: -1.86, x1: 1.86, z0: -3.54, z1: -1.28, nx: 30, nz: 24,
           yAt: (x, z) => 1.91 + Math.cos(x * 1.7 + z) * 0.016,
           outline: [[-1.42, -3.54], [1.42, -3.54], [1.86, -3.12], [1.86, -1.28], [-1.86, -1.28], [-1.86, -3.12]],
-          holes: [rect(-1.18, -0.35, -3.18, -2.08), rect(0.35, 1.18, -3.18, -2.08)], seed: 271 },
+          holes: [rect(-1.18, -0.35, -3.18, -2.08), rect(0.35, 1.18, -3.18, -2.08)], seed: 271, tents: [], garnishRiseM: 0.09 },
         { x0: -1.88, x1: 1.88, z0: 1.24, z1: 3.18, nx: 30, nz: 22,
           yAt: (x, z) => 1.77 - Math.max(0, z - 2.08) * 0.30 + Math.cos(x * 2.0) * 0.012,
           outline: [[-1.88, 1.24], [1.88, 1.24], [1.84, 2.66], [1.18, 3.18], [-1.18, 3.18], [-1.84, 2.66]],
-          holes: [rect(0.35, 0.92, 1.25, 1.75)], seed: 277 },
+          holes: [rect(0.35, 0.92, 1.25, 1.75)], seed: 277, tents: [], garnishRiseM: 0.07, garnishDensity: 0.6 },
       ],
-      side: [-1, 1].map((side) => ({ side, z0: -3.34, z1: 3.28, nz: 50, ny: 11,
-        topAt: (z) => z > 2.08 ? 1.76 - (z - 2.08) * 0.28 : 1.78,
-        bottomAt: (z) => 0.69 + Math.sin(z * 3.1) * 0.034,
-        outAt: (_z, t) => 2.25 + (1 - t) * 0.055, seed: 283 + side })),
-      face: [{ z: 3.16, x0: -0.90, x1: 0.90, y0: 0.82, y1: 1.40, nx: 14, ny: 8,
-        outline: [[-0.76, 0.82], [0.76, 0.82], [0.90, 1.00], [0.72, 1.40], [-0.72, 1.40], [-0.90, 1.00]],
-        holes: [], seed: 291 }],
+      // the deck nets' corners: short swags over the skirt cage's top rail, the bays between them bare
+      side: [-1, 1].flatMap((side) => [
+        { side, z0: -3.30, z1: -1.70, topAt: () => 1.78, bottomAt: (z: number) => 1.30 + Math.sin(z * 3.1) * 0.035,
+          outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 283 + side },
+        { side, z0: 1.42, z1: 2.92, topAt: (z: number) => z > 2.08 ? 1.76 - (z - 2.08) * 0.28 : 1.78,
+          bottomAt: (z: number) => 1.32 + Math.sin(z * 2.7) * 0.035, outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 287 + side },
+      ]),
     },
     turret: {
       top: [
-        { x0: -1.34, x1: 1.34, z0: -3.34, z1: -1.54, nx: 26, nz: 18,
+        // the bustle, out to the basket rails
+        { x0: -1.62, x1: 1.62, z0: -3.40, z1: -1.54, nx: 30, nz: 18,
           yAt: leo2A6UARearRoofY,
-          outline: [[-1.02, -3.34], [1.02, -3.34], [1.34, -3.00], [1.30, -1.54], [-1.30, -1.54], [-1.34, -3.00]],
-          holes: [rect(-1.17, -0.46, -2.24, -1.30)],
-          seatGapM: 0.026, seat: 'bustle-roof', seed: 299 },
-        { x0: -1.03, x1: 1.03, z0: -1.58, z1: 0.54, nx: 24, nz: 22,
+          outline: [[-1.10, -3.40], [1.10, -3.40], [1.62, -2.96], [1.62, -1.54], [-1.62, -1.54], [-1.62, -2.96]],
+          holes: [rect(-1.17, -0.46, -2.24, -1.30)], seed: 299, tents: [], garnishRiseM: 0.1 },
+        // the main roof between the hatches, sights and the forward station, out to the basket rails; the drone dock
+        // on the right rail stays open
+        { x0: -1.62, x1: 1.62, z0: -1.58, z1: 0.66, nx: 30, nz: 22,
           yAt: leo2A6UAMidRoofY,
-          outline: [[-0.86, -1.58], [0.86, -1.58], [1.03, -0.94], [1.00, 0.54], [-1.00, 0.54], [-1.03, -0.94]],
-          // round 4 (2026-10-07, fleetPassDefault vehicleMarkings): a window at the left roof edge over the turret's
-          // tactical-number station; round 4's fuller drape and garnish had covered the number (3 of 9 clear samples)
+          outline: [[-1.62, -1.58], [1.62, -1.58], [1.62, 0.66], [-1.62, 0.66]],
           holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.98, -0.08),
-            rect(0.32, 0.96, 0.02, 0.52), rect(0.74, 1.10, -1.56, -1.04)],
-          seatGapM: 0.026, seat: 'main-roof', seed: 303 },
+            rect(0.32, 0.96, 0.02, 0.52), rect(0.74, 1.10, -1.56, -1.04), rect(-1.70, -1.20, 0.24, 0.70)],
+          seed: 303, tents: [], garnishRiseM: 0.1 },
+        // the crowns over the cheeks: a lip of net, no garnish standing on the front of the arrowhead
         ...[-1, 1].map<TopPanel>((side) => ({
           x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
-          z0: 0.46, z1: 2.18, nx: 13, nz: 20,
+          z0: 0.46, z1: 1.30, nx: 13, nz: 10,
           yAt: leo2A6UAFrontRoofY,
           outline: side < 0
-            ? [[-1.02, 0.46], [-0.28, 0.46], [-0.22, 2.18], [-0.54, 2.18], [-1.30, 1.42]]
-            : [[0.28, 0.46], [1.02, 0.46], [1.30, 1.42], [0.54, 2.18], [0.22, 2.18]],
+            ? [[-1.02, 0.46], [-0.28, 0.46], [-0.24, 1.30], [-1.18, 1.30]]
+            : [[0.28, 0.46], [1.02, 0.46], [1.18, 1.30], [0.24, 1.30]],
           holes: side > 0 ? [rect(0.36, 0.96, 0.46, 0.82)] : [],
-          seatGapM: 0.026, seat: 'front-crown', seed: 311 + side,
+          seed: 311 + side, tents: [], garnishRiseM: 0.06, garnishDensity: 0.5,
         })),
       ],
-      side: [-1, 1].map((side) => ({ side, z0: -3.44, z1: 2.28, nz: 44, ny: 11,
-        topAt: (z) => 0.96 - Math.max(0, z - 1.15) * 0.11,
-        bottomAt: (z) => 0.02 + Math.sin(z * 3.4) * 0.030,
-        outAt: (_z, t) => 1.89 + (1 - t) * 0.045, seed: 307 + side })),
-      face: [-1, 1].map<FacePanel>((side) => ({
-        z: 0, zAt: leo2A6UAFrontNetZ,
-        x0: side < 0 ? -1.32 : 0.34, x1: side < 0 ? -0.34 : 1.32,
-        y0: 0.16, y1: 0.62, nx: 14, ny: 8,
-        outline: side < 0
-          ? [[-1.30, 0.16], [-0.36, 0.16], [-0.34, 0.62], [-1.24, 0.62]]
-          : [[0.36, 0.16], [1.30, 0.16], [1.24, 0.62], [0.34, 0.62]],
-        holes: [], seatGapM: 0.065, seat: 'cheek-era-face', seed: 317 + side,
-      })),
+      // over the basket rails and the flank cage's top rail, 30-40 cm down its outside; the right flank stops short of
+      // the drone dock
+      side: [-1, 1].map((side) => ({ side, z0: -3.30, z1: side < 0 ? 0.20 : 1.05,
+        topAt: () => 0.93, bottomAt: (z: number) => 0.50 + Math.sin(z * 3.4) * 0.035,
+        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side })),
+      // over the bustle's rear cage
+      face: [{ z: -3.62, x0: -1.50, x1: 1.50, y0: 0.52, y1: 0.95, nx: 20, ny: 5, seed: 317,
+        outline: [[-1.50, 0.52], [1.50, 0.52], [1.50, 0.95], [-1.50, 0.95]] }],
     },
+    // two short bound wraps on the tube (radius about 0.10 m): over the sleeve root behind the mantlet and one band
     gun: {
-      top: [{ x0: -0.22, x1: 0.22, z0: 0.48, z1: 5.72, nx: 8, nz: 46,
-        yAt: (x, z) => 0.17 + Math.cos(z * 3.0 + x) * 0.012,
-        outline: [[-0.18, 0.48], [0.18, 0.48], [0.22, 1.55], [0.15, 5.72], [-0.15, 5.72], [-0.22, 1.55]], seed: 331 }],
-      side: [-1, 1].map((side) => ({ side, z0: 0.50, z1: 5.72, nz: 44, ny: 5,
-        topAt: () => 0.16, bottomAt: () => -0.16,
-        outAt: (z, t) => (z < 2.30 ? 0.22 : 0.16) + (1 - t) * 0.018,
-        seed: 337 + side })),
+      top: [
+        { x0: -0.13, x1: 0.13, z0: 0.62, z1: 1.30, nx: 6, nz: 9, yAt: () => 0.115, seed: 331, tents: [],
+          garnishRiseM: 0.05, garnishDensity: 4 },
+        { x0: -0.13, x1: 0.13, z0: 2.70, z1: 3.06, nx: 6, nz: 5, yAt: () => 0.12, seed: 333, tents: [],
+          garnishRiseM: 0.04, garnishDensity: 4 },
+      ],
+      side: [-1, 1].flatMap((side) => [
+        { side, z0: 0.64, z1: 1.28, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 337 + side },
+        { side, z0: 2.72, z1: 3.04, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 341 + side },
+      ]),
     },
   },
 } satisfies Readonly<Record<string, GhillieConfig>>);
@@ -2467,6 +2469,19 @@ class CageWing implements SurfaceProbe {
 }
 
 /** The roof cage recorded on a turret (fieldRoofCage.ts), wing by wing; none when absent or malformed. */
+/**
+ * A turret's drone dock (missionAttachmentReceiver.ts) as a turret-space box, or null. Round 5 (2026-10-08;
+ * missionAttachmentReceiver.selftest on ua_m1a1: the dock's crossarms "clear stock"): its arms reach over the roof cloth,
+ * so the cloth never rests on them, no stick humps it within half a metre and no garnish stands in its column.
+ */
+function missionDockOf(turret: THREE.Object3D): THREE.Box3 | null {
+  const dock = turret.getObjectByName('turretMissionReceiver');
+  if (!dock) return null;
+  turret.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(dock);
+  return box.isEmpty() ? null : box.applyMatrix4(new THREE.Matrix4().copy(turret.matrixWorld).invert());
+}
+
 function cageWingsOf(turret: THREE.Object3D): CageWing[] {
   const record: unknown = turret.userData?.fieldRoofCage;
   if (!Array.isArray(record)) return [];
@@ -2544,7 +2559,11 @@ function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x:
       if ((t !== null && t > wing.y - 0.025) || gunFloor(s * a, z) < wing.y + WING_GUN_CLEAR_M) blocked.push([s * a, z]);
     }
   }
-  // each cluster of blocked cells, opened with a hand's margin round it
+  return openingsRound(blocked, step);
+}
+
+/** Each cluster of blocked cells on a `step` raster, opened with a hand's margin round it. */
+function openingsRound(blocked: ReadonlyArray<readonly [number, number]>, step: number): Point2[][] {
   const holes: Point2[][] = [];
   const taken = new Uint8Array(blocked.length);
   for (let i = 0; i < blocked.length; i++) {
@@ -2563,6 +2582,25 @@ function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x:
     holes.push(rect(x0 - 0.05, x1 + 0.05, z0 - 0.05, z1 + 0.05));
   }
   return holes;
+}
+
+/**
+ * Openings a turret roof net is cut round under a roof gun: where the net, its rolled edges and its garnish cannot pass
+ * under the gun's swept floor (round 5, 2026-10-08: the Leopard 2A6 UA's draped roof net ran over the aft station's
+ * pedestal, 13 cm into its traverse at full depression).
+ */
+function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
+  const step = 0.04;
+  const blocked: Array<[number, number]> = [];
+  for (let x = panel.x0; x <= panel.x1 + 1e-9; x += step) {
+    for (let z = panel.z0; z <= panel.z1 + 1e-9; z += step) {
+      const floor = gunFloor(x, z);
+      if (!Number.isFinite(floor)) continue;
+      const under = Math.max(probe?.top(x, z) ?? -Infinity, panel.yAt(x, z));
+      if (floor < under + WING_GUN_CLEAR_M) blocked.push([x, z]);
+    }
+  }
+  return openingsRound(blocked, step);
 }
 
 /**
@@ -2637,7 +2675,8 @@ function ownerProbe(parent: THREE.Object3D, others: readonly THREE.Object3D[], c
   const skip = (o: THREE.Object3D): boolean => {
     if (others.includes(o)) return true;
     const name = o.name || '';
-    if (/_ghillie_|^rig_decor|procShadow|InteriorFill|vehicleMarking/.test(name)) return true;
+    // the drone dock's arms reach over the cloth round the cage's edge (missionAttachmentReceiver.ts): they hold none
+    if (/_ghillie_|^rig_decor|procShadow|InteriorFill|vehicleMarking|^turretMissionReceiver$/.test(name)) return true;
     if (/antenna|whip|MachineGun|Rws|rws|crows/i.test(name)) return true;
     const fitting = o.userData?.fittingRoot ? String(o.userData.fitting || '') : '';
     return /pintleMG|Rws|americanM2|antenna|whip/i.test(fitting);
@@ -2685,6 +2724,7 @@ function addGhillieOwner(
   const hull = owner === 'hull';
   // the roofs first: every drape starts on the net already laid over the edge above it
   const tops: TopCloth[] = [];
+  const dock = owner === 'turret' ? missionDockOf(parent) : null;
   const support: OwnerSupport = {
     probe, hull, owner, fitted: !leafy, turretless: !cfg.turret,
     hemFloor: hull ? cfg.hemFloorM ?? NET_HEM_FLOOR_M : -Infinity,
@@ -2692,14 +2732,25 @@ function addGhillieOwner(
       for (const t of tops) if (t.covers(x, z)) return t.heightAt(x, z);
       return null;
     },
+    tentOk: dock ? (x, z) => x < dock.min.x - 0.5 || x > dock.max.x + 0.5 || z < dock.min.z - 0.5 || z > dock.max.z + 0.5 : undefined,
   };
-  for (const panel of panels.top ?? []) tops.push(topCloth(panel, cfg, support, uvk));
+  // a roof gun's traverse: the roof net is cut open under its swept floor and no garnish stands up into it
+  const gunFloor = owner === 'turret' ? roofWeaponFloor(parent, P.spec.id) : null;
+  for (const panel of panels.top ?? []) {
+    const opened = gunFloor ? weaponOpenings(panel, probe, gunFloor) : [];
+    tops.push(topCloth(opened.length ? { ...panel, holes: [...(panel.holes ?? []), ...opened] } : panel, cfg, support, uvk));
+  }
   const surfaces: ClothSurface[] = [...tops];
   for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk));
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
-  if (leafy && cage.length) {
-    const gunFloor = roofWeaponFloor(parent, P.spec.id);
-    cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor)));
+  if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor)));
+  if (gunFloor || dock) {
+    const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
+      && p[0] > dock.min.x - 0.12 && p[0] < dock.max.x + 0.12 && p[2] > dock.min.z - 0.12 && p[2] < dock.max.z + 0.12;
+    surfaces.forEach((surface, k) => {
+      surfaces[k] = { ...surface,
+        cardOk: (p) => surface.cardOk(p) && (!gunFloor || p[1] < gunFloor(p[0], p[2]) - 0.02) && !inColumn(p) };
+    });
   }
   const foliage = new FoliageCardBuffer();
   let topCards = 0;
