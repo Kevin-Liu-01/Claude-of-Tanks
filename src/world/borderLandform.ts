@@ -139,6 +139,12 @@ export interface BorderLandformSettings {
    */
   glades?: number;
   /**
+   * The borders lane (round 4): the woods' floor under the ring's woods, as a multiple of the ground's luminance (a
+   * crop's law). Default a dark olive litter; a snow country's floor is the snow's own, darkened and greyed under the
+   * trees (Frosthollow, Glacier Pass).
+   */
+  woodsFloor?: readonly [number, number, number];
+  /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
    * their predecessor and current fields with it. Not a map setting.
@@ -162,7 +168,7 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12 },
   desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
-  winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
+  winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter', woodsFloor: [0.62, 0.62, 0.62] },
   urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
   coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5, farms: 9 },
   autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8, farms: 12 },
@@ -172,7 +178,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
   delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical', erosion: 0 },
   monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical' },
-  alpine: { forest: 0.32, fields: 0.05 },
+  alpine: { forest: 0.32, fields: 0.05, woodsFloor: [0.62, 0.62, 0.62] },
   caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0, farms: 1, farmBuildings: false },
   foundry: { forest: 0.2, hedgerows: 0.55, fields: 0.55, farms: 8 },
   ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 3, farmBuildings: false },
@@ -688,7 +694,8 @@ export function createBorderLandform(
       const floorW = wood > 0.25 ? WOODS_FLOOR_W * smoothstep(0.25, 0.75, wood) * smoothstep(10, 50, edgeOut)
         * (1 - smoothstep(720, 900, Math.hypot(x, z))) : 0;
       if (floorW > 0) {
-        out[0] = WOODS_FLOOR[0] * floorW; out[1] = WOODS_FLOOR[1] * floorW; out[2] = WOODS_FLOOR[2] * floorW; out[3] = 1 - floorW;
+        const floor = settings.woodsFloor ?? WOODS_FLOOR;
+        out[0] = floor[0] * floorW; out[1] = floor[1] * floorW; out[2] = floor[2] * floorW; out[3] = 1 - floorW;
       }
       if (settings.fields <= 0) return out;
       const fade = smoothstep(0, 40, edgeOut);
