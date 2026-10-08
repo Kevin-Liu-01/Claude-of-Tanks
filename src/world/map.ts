@@ -209,6 +209,20 @@ export interface WorldRuntime {
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
+  /**
+   * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
+   * stepped without an update — the Studio's export steps, and its playback, whose update runs at dt 0 — calls this every
+   * fixed step, or a prop felled in a clip never animates its fall (fix/studio-world-step, 2026-10-08).
+   */
+  updateProps(deltaSeconds: number, cameraPosition: THREE.Vector3): void;
+  /**
+   * The drawn ground follows what it is bound to now (fix/studio-world-step, 2026-10-08): the terrain's
+   * `syncGroundOverlay` hook (a deformed ground's chunks, when a module installs one) and its `followGroundOverlay` hook
+   * (the ground cover over them). `update` reaches the same through its LOD walk; a frame rendered without an update (the
+   * Studio's export steps and captures) calls this, or a crater dug mid-clip never reaches the picture. O(1) when nothing
+   * is new; a no-op on a world with no such hooks.
+   */
+  syncGround(): void;
   /** Water pass 6/7: the vehicles in the water this frame (footprint, heading, speed -> wake). No-op on maps without water. */
   setWaterDisturbances(sources: readonly WaterDisturbance[]): void;
   resetWater(): void;
@@ -756,6 +770,11 @@ function assembleWorld(
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
+    updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },
+    syncGround() {
+      (terrain.userData.syncGroundOverlay as (() => void) | undefined)?.();
+      (terrain.userData.followGroundOverlay as (() => void) | undefined)?.();
+    },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
     resetWater() { terrain.userData.resetWater?.(); },
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
