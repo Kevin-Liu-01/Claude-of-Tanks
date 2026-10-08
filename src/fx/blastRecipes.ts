@@ -280,9 +280,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     place(m, I.x + Math.cos(a) * r, by + (0.25 + 0.45 * u) * D, I.z + Math.sin(a) * r, bo + 0.06 + 0.12 * u);
     const lift = (2.2 + 2.8 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
     move(m, Math.cos(a) * (0.5 + R()) * sq, lift, Math.sin(a) * (0.5 + R()) * sq, 1.1, (0.3 + 0.45 * u) * Math.sqrt(sq), 1.0, 0);
-    const life = (7 + 3 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    // (DVIDS 954922: still a thin grey cloud drifting high at +7 s) it thins out over ten seconds or so
+    const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
     shape(m, life, 0.4 * D * dk, (1.0 + 0.6 * u + 0.3 * R()) * D * dk, 1.7, R);
-    look(m, smokeC0, mix3(SMOKE_AGED, L.dust, 0.45), 0.92, 0.0, 0.5);
+    look(m, smokeC0, mix3(SMOKE_AGED, L.dust, 0.45), 0.92, 0.0, 0.55);
     book(m, 'billow', R, life);
     heat(m, 0.32, 4.5);
     C.media(m);
