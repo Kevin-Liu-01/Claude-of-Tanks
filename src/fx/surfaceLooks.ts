@@ -53,7 +53,8 @@ interface SurfaceLook {
 }
 
 export const SURFACE_LOOKS: Readonly<Record<SurfaceKind, SurfaceLook>> = Object.freeze({
-  soil: Object.freeze({ ejecta: linearHex(0x3a2d21), dust: linearHex(0xa8977e), chunk: linearHex(0x33281e),
+  // dust 0xa8977e -> 0x968a78 (wave 273: sand-beige dust over green loam)
+  soil: Object.freeze({ ejecta: linearHex(0x3a2d21), dust: linearHex(0x968a78), chunk: linearHex(0x33281e),
     dustK: 1, chunkK: 1, heightK: 1, chunkScale: 1, sparks: 0, blastDust: 1, hang: 1 }),
   sand: Object.freeze({ ejecta: linearHex(0x9a825e), dust: linearHex(0xd6c4a0), chunk: linearHex(0xa08a66),
     dustK: 1.45, chunkK: 0.25, heightK: 0.95, chunkScale: 0.6, sparks: 0, blastDust: 1.5, hang: 1.15 }),
