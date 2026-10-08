@@ -18,6 +18,7 @@ import { streamFrom } from './geometry.ts';
 import { describeStructure, createStructureDamageSeam } from '../../structureDamageSeam.ts';
 import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
+import { shaftOf } from './shaft.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -115,13 +116,15 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0;
-const shellIds = new Set(), defaultIds = new Set();
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0;
+const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set();
 function exercise(label, a, seam) {
   // (the body's own middle: a shell's walls need not centre on its parts' origin)
   const fo = a.storeys[0].faces.map((f) => f.origin);
   const mx = fo.reduce((s, o) => s + o[0], 0) / fo.length, mz = fo.reduce((s, o) => s + o[2], 0) / fo.length;
-  const reach = Math.max(a.w, a.d) / 2 + 6;
+  // (a shaft topples: its drums lie along the ground as far as it stood tall)
+  const shaftH = shaftOf(a) ? a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0 : 0;
+  const reach = Math.max(a.w, a.d) / 2 + 6 + shaftH * 1.15;
   const check = (name, run, cap) => {
     const one = writers(...cap), two = writers(...cap);
     const res = run(one), again = run(two);
@@ -188,6 +191,19 @@ function describeAndRun(label, builder, styleId, parts) {
   validate(label, a, styleId);
   const seam = createStructureDamageSeam(2, builder, styleId, a, []);
   exercise(label, a, seam);
+  if (shaftOf(a)) {
+    shaftShells++; shaftIds.add(label.split(' ')[0]);
+    const shaftH = a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0;
+    // the topple: a stump over the heap at the foot, drums along the ground beyond it
+    const out = writers(...CAPS.collapse);
+    seam.collapse(9, out);
+    const far = out.runs.filter((r) => r.role === 'rubble').reduce((m, r) => {
+      for (let i = 0; i < r.pos.length; i += 3) m = Math.max(m, Math.hypot(r.pos[i] - a.storeys[0].faces[0].origin[0], r.pos[i + 2] - a.storeys[0].faces[1].origin[2]));
+      return m;
+    }, 0);
+    assert.ok(far > shaftH * 0.6, `${label}: the shaft lies along the ground (${far.toFixed(1)} m out of ${shaftH.toFixed(1)})`);
+    assert.ok(out.runs.some((r) => r.role === 'remnant' && r.pos.length), `${label}: a stump stands`);
+  }
   if (isSheetBody(a)) {
     sheetShells++;
     // a blast through a sheet wall: torn sheet round it (both sides), the frame's members across the gap, no masonry
@@ -248,8 +264,11 @@ for (const id of ['polder/barn', 'siwa/adobe', 'shanghai/rowhouse']) assert.ok(s
 // the sheet-clad halls read as shells and break by the sheet kit (sheet.ts: their sheet torn, their frame standing)
 for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse']) assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`);
 assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetShells})`);
-for (const id of ['saar/stack', 'saar/gantry', 'ksar/caravanserai']) {
-  assert.ok(!shellIds.has(id), `${id}: left to the default (a shaft, an open frame, a courtyard)`);
+// the shafts read as shafts and topple (shaft.ts)
+for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
+assert.ok(shaftShells >= 6, `shafts the kit topples (${shaftShells})`);
+for (const id of ['saar/gantry', 'ksar/caravanserai']) {
+  assert.ok(!shellIds.has(id), `${id}: left to the default (an open frame, a courtyard)`);
 }
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks (${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}; ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);

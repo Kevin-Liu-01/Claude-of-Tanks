@@ -25,7 +25,8 @@ import type { ArchitectureStyle } from './types.ts';
 import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
 import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, storeyDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
 import { debrisPiece } from './debris.ts';
-import { readShell } from './shell.ts';
+import { readShaft, readShell } from './shell.ts';
+import { collapseShaft, shaftOf } from './shaft.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
@@ -562,6 +563,85 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   };
 }
 
+/** Builders a shaft reading leaves to others (open frames and stalls, ruins, the city's own towers with their skyline
+ *  damage, cranes and tents). */
+const NOT_SHAFTS = /gantry|market|ramada|container|ruin|crane|tent|arcology|needle|megatower|terrace|broadcast/i;
+
+/**
+ * The anatomy of a tall narrow body (a stack, a water tower, a minaret, a tower), read off its parts (shell.ts
+ * readShaft): the sim's bands up its walls, each band's faces on the section the walls stand on there (a tapering stack
+ * narrows band by band), in their own layers, texture and colour; no roof, no floors (a breach looks into its dark
+ * flue or stair); its crown (a tank, a lantern) for its fall. Its stages are a house's but the collapse: it topples
+ * (shaft.ts).
+ */
+function describeShaft(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
+  if (NOT_SHAFTS.test(input.builder)) return null;
+  const r = readShaft(input.parts);
+  if (!r) return null;
+  const has = (b: string): boolean => !!input.parts[b]?.length;
+  const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
+  const surfaces = new Map<number, FaceSurface>();
+  const damp = style.weather?.damp ?? 0.8, relief = style.surfaces.relief?.plasterUv ?? 1;
+  const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
+    { name: 'front', u: [1, 0, 0], out: [0, 0, 1] }, { name: 'right', u: [0, 0, -1], out: [1, 0, 0] },
+    { name: 'back', u: [-1, 0, 0], out: [0, 0, -1] }, { name: 'left', u: [0, 0, 1], out: [-1, 0, 0] },
+  ];
+  const storeys: DamageStorey[] = r.bands.map((b, i) => {
+    const height = b.y1 - b.y0;
+    const faces: DamageFace[] = SIDE.map((side, f) => {
+      const origin: Vec3 = side.name === 'front' ? [(b.x0 + b.x1) / 2, b.y0, b.z1] : side.name === 'right' ? [b.x1, b.y0, (b.z0 + b.z1) / 2]
+        : side.name === 'back' ? [(b.x0 + b.x1) / 2, b.y0, b.z0] : [b.x0, b.y0, (b.z0 + b.z1) / 2];
+      const width = Math.abs(side.out[2]) > 0.5 ? b.x1 - b.x0 : b.z1 - b.z0;
+      const layers = shellLayers(style, b.bucket, b.tint, coreBucket || b.bucket, null);
+      const fit = b.uv[f], axis = Math.abs(side.out[2]) > 0.5 ? 0 : 2, dStone = BUCKET_UV_DENSITY.stone;
+      const regional = b.bucket.startsWith('regional');
+      surfaces.set(i * 4 + f, {
+        colour: (() => {
+          const profile = wallProfile(input.parts, b.bucket, origin, side.u, side.out, width, height);
+          return profile ? (bucket: string, y: number, out: [number, number, number]) => profile.at(bucket, y, out) : undefined;
+        })(),
+        uv(bucket, u, y, out) {
+          if (fit && bucket === fit.bucket) { out[0] = fit.au * u + fit.bu; out[1] = fit.av * (b.y0 + y) + fit.bv; return; }
+          const plaster = bucket.startsWith('regionalPlaster') || bucket.startsWith('plaster');
+          const dn = plaster ? BUCKET_UV_DENSITY.plaster : bucket === 'regionalStone' || bucket === 'stone' ? BUCKET_UV_DENSITY.stone : BUCKET_UV_DENSITY.wood;
+          const k = plaster ? relief : 1;
+          out[0] = (origin[axis] + side.u[axis] * u) * dn * k;
+          out[1] = (b.y0 + y) * dn * k;
+        },
+        weather: (bucket, y) => (regional && bucket.startsWith('regional') && bucket !== 'regionalRoof' ? wallWeather(b.y0 + y, damp) : 1),
+      });
+      const masonry = b.bucket === 'regionalStone' && fit && Math.abs(fit.au - side.u[axis] * dStone) < 0.01 && Math.abs(fit.av - dStone) < 0.01
+        ? masonryOn(style, { origin: [origin[0], 0, origin[2]], u: side.u, out: side.out, width }, b.y0, height, [fit.bu - origin[axis] * dStone, fit.bv])
+        : unitMasonry(layers[0].material, height, width, b.y0, (uu, yy, o) => {
+          if (fit) { o[0] = fit.au * uu + fit.bu; o[1] = fit.av * yy + fit.bv; return; }
+          o[0] = (origin[axis] + side.u[axis] * uu) * dStone; o[1] = yy * dStone;
+        });
+      return { name: side.name, section: i * 4 + f, origin, u: side.u, out: side.out, width, height, bucket: layers[0].bucket,
+        layers: layers.map((l) => ({ ...l })), openings: [], members: [], masonry };
+    });
+    return { index: i, y0: b.y0, y1: b.y1, jetty: [0, 0, 0, 0], framed: false, faces, floor: null };
+  });
+  const pile = new Map<string, FractureSlot>();
+  const add = (slot: FractureSlot, volume: number) => {
+    const key = `${slot.material}|${slot.bucket}`;
+    const had = pile.get(key);
+    if (had) had.share += volume; else pile.set(key, { ...slot, share: volume });
+  };
+  for (const st of storeys) for (const f of st.faces) for (const l of f.layers) add(l, f.width * f.height * l.thicknessM);
+  if (r.crown) add({ material: 'metal', bucket: r.crown.bucket, tint: r.crown.tint, thicknessM: 0.02, share: 0 },
+    (r.crown.x1 - r.crown.x0) * (r.crown.z1 - r.crown.z0) * 0.05);
+  const total = [...pile.values()].reduce((a, sl) => a + sl.share, 0) || 1;
+  const rubble = [...pile.values()].map((sl) => ({ ...sl, share: sl.share / total })).sort((a, b) => b.share - a.share);
+  const b0 = r.bands[0];
+  return {
+    structureIdx: input.structureIdx, kit: style.id, seed: input.seed, massClass: input.massClass, placement: input.placement,
+    w: b0.x1 - b0.x0, d: b0.z1 - b0.z0, h: r.top, plinth: null, storeys, roof: null, chimneys: [],
+    interior: { color: ROOM, open: true }, rubble,
+    remnant: { stubHeightM: 1.2, corners: true, chimneys: false },
+    kitPlan: { damage: { kind: 'house-damage', surfaces, shaft: { crown: r.crown } } },
+  };
+}
+
 /**
  * A face's intact wall colour up its height (the weathering pass's tint, damp, rain shadow and foot grime, which vary
  * up a wall far more than along it): sampled from the built parts at nine heights, a few places along the face, so a
@@ -645,7 +725,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
     const kit: StructureDamageKit = {
       id: style.id,
       // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
-      describe: (input) => describeHouse(style, input) ?? describeShell(style, input),
+      describe: (input) => describeHouse(style, input) ?? describeShell(style, input) ?? describeShaft(style, input),
       // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
       breach: (anatomy, hole, out) => (isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
         ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
@@ -655,7 +735,8 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       // where none is given (an offline preview, a receipt)
       collapse: (anatomy, seed, out) => {
         const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
-        return isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound) : collapseHouse(anatomy, seed, out, mound);
+        return shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound) : isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound)
+          : collapseHouse(anatomy, seed, out, mound);
       },
       sectionDown: (anatomy, section, seed, out) => {
         if (anatomy.roof && section === anatomy.roof.section) {

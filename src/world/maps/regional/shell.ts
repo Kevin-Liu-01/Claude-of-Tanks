@@ -434,3 +434,97 @@ export function readShell(parts: ShellParts): ShellReading | null {
   }
   return { x0, x1, z0, z1, base, eave, faces, plinth, roof, chimneys };
 }
+
+// ---------------------------------------------------------------------------------------------------- a shaft
+
+/** One band of a shaft: its height and its cross-section there (the walls' box), the bucket and colour it is built in,
+ *  and how that bucket's texture lies on each side (front, right, back, left; null where no fit reads). */
+interface ShaftBand {
+  y0: number;
+  y1: number;
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  bucket: string;
+  tint: Rgb;
+  uv: Array<ShellUvFit | null>;
+}
+
+/** A tall narrow body (a stack, a water tower, a minaret, a tower) read off its parts: the sim's bands up its walls, each
+ *  with the section the walls stand on there, and the crown above them (a water tower's tank, a lantern, a cap). */
+interface ShaftReading {
+  base: number;
+  top: number;
+  bands: ShaftBand[];
+  crown: { y0: number; y1: number; x0: number; x1: number; z0: number; z1: number; bucket: string; tint: Rgb } | null;
+}
+
+/**
+ * A shaft from its parts, or null when the body is not one (its walls not at least twice as tall as they are wide). The
+ * walls are cut into the sim's 3.2 m bands (at most six); each band's section is the box of the vertical wall faces that
+ * cross its middle, so a tapering stack's bands narrow as it does.
+ */
+export function readShaft(parts: ShellParts): ShaftReading | null {
+  const tris = trianglesOf(parts);
+  const walls = tris.filter((t) => WALL_BUCKETS.has(t.bucket) && Math.abs(t.n[1]) < 0.35);
+  if (!walls.length) return null;
+  let base = Infinity, wallTop = -Infinity, mnx = Infinity, mxx = -Infinity, mnz = Infinity, mxz = -Infinity;
+  for (const t of walls) for (const p of [t.a, t.b, t.c]) {
+    base = Math.min(base, p[1]); wallTop = Math.max(wallTop, p[1]);
+    mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mnz = Math.min(mnz, p[2]); mxz = Math.max(mxz, p[2]);
+  }
+  const H = wallTop - base;
+  // (a shaft is narrow as well as tall: a parking deck or a tower block two and a half times as tall as it is wide still
+  // comes down as a building)
+  if (!(H > 2 * Math.max(mxx - mnx, mxz - mnz)) || H < 5 || Math.max(mxx - mnx, mxz - mnz) > 8) return null;
+  // the crown: parts standing wholly over the walls' upper fifth that are wider than the shaft there (a tank, a lantern)
+  let crown: ShaftReading['crown'] = null;
+  {
+    const byPart = new Map<number, Tri[]>();
+    for (const t of tris) { const l = byPart.get(t.part) ?? []; l.push(t); byPart.set(t.part, l); }
+    for (const list of byPart.values()) {
+      let lo = Infinity, hi = -Infinity, a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const t of list) for (const p of [t.a, t.b, t.c]) {
+        lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); a0 = Math.min(a0, p[0]); a1 = Math.max(a1, p[0]); b0 = Math.min(b0, p[2]); b1 = Math.max(b1, p[2]);
+      }
+      if (lo < base + H * 0.6 || hi - lo < 1) continue;
+      const area = list.reduce((s, t) => s + t.area, 0);
+      if (!crown || area > (crown.x1 - crown.x0) * (crown.z1 - crown.z0)) {
+        crown = { y0: lo, y1: hi, x0: a0, x1: a1, z0: b0, z1: b1, bucket: list[0].bucket, tint: meanColour(list) };
+      }
+    }
+  }
+  const shaftTop = crown && crown.y0 > base + 2 ? Math.min(wallTop, crown.y0) : wallTop;
+  const count = Math.max(1, Math.min(6, Math.round((shaftTop - base) / 3.2)));
+  const step = (shaftTop - base) / count;
+  const bands: ShaftBand[] = [];
+  for (let k = 0; k < count; k++) {
+    const y0 = base + k * step, y1 = y0 + step, ym = (y0 + y1) / 2;
+    const cross = walls.filter((t) => Math.min(t.a[1], t.b[1], t.c[1]) <= ym + 0.25 && Math.max(t.a[1], t.b[1], t.c[1]) >= ym - 0.25);
+    if (!cross.length) { if (bands.length) bands.push({ ...bands[bands.length - 1], y0, y1 }); continue; }
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    const byBucket = new Map<string, number>();
+    for (const t of cross) {
+      byBucket.set(t.bucket, (byBucket.get(t.bucket) ?? 0) + t.area);
+      // the section at the band's middle: each triangle's edges cut there (a tapering face's own width at that height)
+      for (const [p, q] of [[t.a, t.b], [t.b, t.c], [t.c, t.a]] as const) {
+        if ((p[1] - ym) * (q[1] - ym) > 0 || p[1] === q[1]) continue;
+        const s = (ym - p[1]) / (q[1] - p[1]), x = p[0] + (q[0] - p[0]) * s, z = p[2] + (q[2] - p[2]) * s;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+      }
+    }
+    if (!(x1 - x0 > 0.3 && z1 - z0 > 0.3)) { if (bands.length) bands.push({ ...bands[bands.length - 1], y0, y1 }); continue; }
+    let bucket = '', most = 0;
+    for (const [b, a] of byBucket) if (a > most) { most = a; bucket = b; }
+    const uv = SIDES.map((side) => {
+      const facing = cross.filter((t) => t.bucket === bucket && t.n[side.axis] * side.sign >= 0.7);
+      const origin: Vec3 = side.axis === 2 ? [(x0 + x1) / 2, y0, side.sign > 0 ? z1 : z0] : [side.sign > 0 ? x1 : x0, y0, (z0 + z1) / 2];
+      const u: Vec3 = side.axis === 2 ? [side.sign, 0, 0] : [0, 0, -side.sign];
+      return facing.length ? fitUv(facing, bucket, origin, u) : null;
+    });
+    bands.push({ y0, y1, x0, x1, z0, z1, bucket, tint: meanColour(cross.filter((t) => t.bucket === bucket)), uv });
+  }
+  if (!bands.length) return null;
+  return { base, top: Math.max(wallTop, crown?.y1 ?? wallTop), bands, crown };
+}
