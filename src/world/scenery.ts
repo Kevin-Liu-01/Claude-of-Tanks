@@ -35,7 +35,8 @@ import { createMatchPlacement, matchPlacementAnchors, type MatchPlacement, type 
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
-import { cloneCollisionRecord, createObstacleGrid, setCircleShape, setConvexShape, type CollisionRecord } from './collision.ts';
+import { cloneCollisionRecord, createObstacleGrid, setCircleShape, type CollisionRecord } from './collision.ts';
+import { applyFormationCollision, type FormationCollisionProfile } from './rockCollision.ts';
 
 type Rng = () => number;
 
@@ -188,14 +189,7 @@ function admission(ctx: SceneryBuildContext, x: number, z: number, r: number, ro
   return null;
 }
 
-function staticMass(points: number[], y0: number, y1: number): CollisionRecord {
-  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-  for (let i = 0; i < points.length; i += 2) {
-    x0 = Math.min(x0, points[i]); x1 = Math.max(x1, points[i]);
-    z0 = Math.min(z0, points[i + 1]); z1 = Math.max(z1, points[i + 1]);
-  }
-  return setConvexShape({ min: [x0, y0, z0], max: [x1, y1, z1] } as CollisionRecord, points);
-}
+
 
 /** The modes whose objective discs the match placement searches for, and how it reads each one's discs. */
 const PLACED_DISCS: ReadonlyArray<readonly [string, (placement: MatchPlacement) => Array<[number, number, number]>]> = [
@@ -285,10 +279,13 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
   const skip = (feature: SceneryFeatureReceipt, reason: string) => {
     feature.status = 'skipped'; feature.reason = reason; receipt.skipped++; receipt.features.push(feature);
   };
-  const addMass = (points: number[], y0: number, y1: number) => {
-    const rec = staticMass(points, y0, y1);
+  // a standing formation's records (the hitbox lane, 2026-10-07): the movement footprint and the shell bands of the stone
+  // itself (sceneryRocks.ts massOf, rockCollision.ts)
+  const addMass = (mass: { y0: number; profile: FormationCollisionProfile }) => {
+    const rec: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] }, col: CollisionRecord = { min: [0, 0, 0], max: [0, 0, 0] };
+    applyFormationCollision(rec, col, mass.profile, mass.y0);
     ctx.obstacles.push(rec);
-    ctx.colliders.push(cloneCollisionRecord(rec));
+    ctx.colliders.push(col);
     receipt.colliders++;
   };
 
@@ -321,7 +318,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const built = buildRockFormation(spec, ground, noise, mulberry32(job.stream), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'empty'); continue; }
     rockPieces.push(built.geometry);
-    for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+    for (const mass of built.masses) addMass(mass);
     if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
@@ -397,7 +394,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         ground, noise, mulberry32(stream), { mobile: ctx.mobile });
       if (!built.geometry) continue;
       rockPieces.push(built.geometry);
-      for (const mass of built.masses) addMass(mass.points, mass.y0, mass.y1);
+      for (const mass of built.masses) addMass(mass);
       if (!standing) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
       standingSites.push({ x, z, r: reach });
       feature.triangles! += built.triangles;

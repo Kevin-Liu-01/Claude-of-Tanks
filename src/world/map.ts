@@ -439,7 +439,11 @@ function assembleWorld(
     // the regional-buildings lane (2026-10-03): nor through a kit house's yard (props.ts placeRegionalYards)
     ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
   ];
-  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
+  // the hitbox lane (2026-10-07): the stones' colliders are their own now (props.ts refitRockColliders); the ground cover
+  // keeps the footprints it was sealed against through their cosmetic twins, so no tuft, stone or shrub moves with them
+  const rockGroundCover = (props.group.userData.rockGroundCover as CollisionRecord[] | undefined) ?? [];
+  const queryGroundCover = rockGroundCover.length ? createObstacleGrid([...obstacles, ...rockGroundCover]) : queryObstacles;
+  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryGroundCover), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
   const groundCoverSealStarted = performance.now();

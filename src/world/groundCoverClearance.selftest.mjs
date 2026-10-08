@@ -239,7 +239,11 @@ assert.match(vegetation, /carpetCache\.clear\(\)/, 'no previously cached grass r
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 // 2026-10-03 (the scenery lane): the world's ground cover is the sealed movement-solid grid plus the scenery's holes
 // (a pavement's clints, a scree fan), composed once in map.ts and handed to the grass, the litter and the tall grass
-assert.match(map, /const groundCoverClearance = \(\) => withGroundCoverHoles\(createGroundCoverClearance\(queryObstacles\), groundCoverHoles\)/,
+// 2026-10-07 (the hitbox lane): the stones' colliders became their own (props.ts refitRockColliders), so the ground cover
+// reads the movement solids plus the cosmetic twins of the stones' legacy records — the footprints it was sealed against
+assert.match(map, /const queryGroundCover = rockGroundCover\.length \? createObstacleGrid\(\[\.\.\.obstacles, \.\.\.rockGroundCover\]\) : queryObstacles;/,
+  'the movement-solid grid, plus the stones\' cosmetic twins');
+assert.match(map, /const groundCoverClearance = \(\) => withGroundCoverHoles\(createGroundCoverClearance\(queryGroundCover\), groundCoverHoles\)/,
   'share actual accepted movement-solid grid, including crates absent from shell colliders');
 assert.match(map, /setGroundCoverClearance\(groundCoverClearance\(\)\)/, 'the grass carpet takes the composed admission');
 const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
