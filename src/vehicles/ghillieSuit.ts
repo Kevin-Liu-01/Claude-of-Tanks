@@ -380,8 +380,11 @@ interface ProbeGrid {
   readonly start: Int32Array; readonly items: Int32Array; readonly broad: Int32Array;
 }
 const PROBE_CELL_M = 0.05;
-/** A triangle spanning more cells than this is tested by every query (a big flat plate). */
-const PROBE_BROAD_CELLS = 600;
+/**
+ * A triangle spanning more cells than this is tested by every query instead (a ground plane); a big plate is indexed
+ * into each cell it covers, so the thousands of queries a suit makes never test it from far away.
+ */
+const PROBE_BROAD_CELLS = 60000;
 
 function probeGrid(tri: Float32Array, a0: number, a1: number): ProbeGrid {
   const count = tri.length / 9;
