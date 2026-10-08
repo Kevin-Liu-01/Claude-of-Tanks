@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
-  STAMPS_PER_BUCKET, craterProfile, createDeformedHeightField, createTerrainDeformation, stampBounds, rubbleFalloffM, rubbleHeightFor,
+  STAMPS_PER_BUCKET, craterProfile, craterWobblePhases, createDeformedHeightField, createTerrainDeformation, stampBounds, rubbleFalloffM, rubbleHeightFor,
   rubbleProfile,
 } from './terrainDeformation.ts';
 import { createTerrainContactSampler } from '../world/terrainContactSurface.ts';
@@ -126,6 +126,14 @@ function makeBase() {
   assert.equal(Object.keys(base).includes('stamps'), false);
   const other = createDeformedHeightField(base, createTerrainDeformation());
   near(other.getHeightAt(12.3, -40.7), baseHeight(12.3, -40.7), 1e-12, 'another match on the same base sees no stamp');
+}
+
+// ---- the wobble the presentation's decal edge follows is the stamp's own
+{
+  const overlay = createTerrainDeformation();
+  overlay.addCrater(5, 5, 2.4, 0.8, 0.3, 40321);
+  const [stamp] = overlay.stamps;
+  assert.deepEqual(craterWobblePhases(40321), [stamp.p1, stamp.p2, stamp.p3]);
 }
 
 // ---- the bounds a renderer re-reads: nothing moves outside them

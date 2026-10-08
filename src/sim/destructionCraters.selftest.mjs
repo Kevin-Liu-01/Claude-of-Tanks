@@ -81,6 +81,11 @@ const noWorld = { obstacles: [], colliders: [] };
   assert.match(solo, /destruction\.drainCraters\(craters\);\s*for \(const crater of craters\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.crater, crater\);/, 'solo: terrain:crater');
   assert.match(authority, /destruction\.drainCraters\(craterEvents\);\s*for \(const event of craterEvents\) emit\('terrain_crater', \{ \.\.\.event \}\);/, 'authority: terrain_crater');
   for (const text of [solo, authority]) assert.match(text, /groundTypeAt: \(x, z\) => /, 'no crater on hard ground, alike');
+  // the drawn ground and the decals follow the battle's overlay: bound per battle, a round's mirror on a network seat
+  assert.match(solo, /ground\.overlay\.reset\(\);\s*world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
+  const presentation = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
+  assert.match(presentation, /bindGroundOverlay\?\.\(destruction\.ground\);/, 'a network seat binds its mirror\'s ground');
+  assert.match(presentation, /function dispose\(\): void \{\s*disposed = true;\s*\(worldCollision[^\n]*bindGroundOverlay\?\.\(null\);/, 'and unbinds it');
 }
 
 // ---- the authority, run for real: an HE round on open ground digs, every peer stamps it once, the run replays

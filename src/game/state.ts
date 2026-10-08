@@ -392,6 +392,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   crushObstacle?(
     obstacle: SoloObstacle,
     dirX: number,
@@ -1223,6 +1225,7 @@ export function setupBattle(
   resetStructureRecords(world.getObstacles(), worldColliders);
   const ground = groundFor(world);
   ground.overlay.reset();
+  world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
