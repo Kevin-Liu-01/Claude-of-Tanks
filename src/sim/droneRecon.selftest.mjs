@@ -42,7 +42,11 @@ for(const spec of Object.values(TANK_SPECS)){
  // Buried-payload rejection is verified against actual filled render stock by
  // the native generator and visual fixture. Armor reference proxies can sit
  // below a vehicle's real roof, so they cannot certify native-seat contact.
- for(const dx of[-seat.footX,seat.footX])for(const dz of[-seat.footZ,seat.footZ]){const height=missionAttachmentFootHeight(spec,seat,(dx<0?0:2)+(dz<0?0:1));assert.ok(Number.isFinite(height)&&seat.y-height>=.044&&seat.y-height<=.226,`${spec.id}: every foot seats on its owner`);}
+ // A foot sits at most the cradle rise plus the .10 m support spread below the dock: .125 m for a standard cradle,
+ // .35 m for an authored braced stand (tools/mission-attachment-seat-trials.mjs; the BMPT's is certified with its
+ // diagonal braces by missionAttachmentMechanical.selftest).
+ const maxFootGap=(seat.braced?.35:.125)+.101;
+ for(const dx of[-seat.footX,seat.footX])for(const dz of[-seat.footZ,seat.footZ]){const height=missionAttachmentFootHeight(spec,seat,(dx<0?0:2)+(dz<0?0:1));assert.ok(Number.isFinite(height)&&seat.y-height>=.044&&seat.y-height<=maxFootGap,`${spec.id}: every foot seats on its owner`);}
  for(const turretYaw of [0,Math.PI/2,-2.1]){
  const e={id:spec.id,team:'alpha',spec,state:{pos:new Vector3(10,0,20),yaw:.6,turretYaw,visualPitch:.12,visualRoll:-.08,speed:0},combat:{destroyed:false},input:{auxiliaryBits:PLAYER_ACTION_BITS.DRONE,throttle:0,steer:0,fire:false,brake:false,aimPoint:new Vector3()}};
  initializeAerial(e,matchRulesetFor('drone'));let shell;
@@ -73,7 +77,10 @@ for(const spec of Object.values(TANK_SPECS)){
     const transform=new Matrix4().copy(seatFrame).invert().multiply(gun.owner==='turret'?turretFrame:new Matrix4()).multiply(mount)
      .multiply(new Matrix4().makeTranslation(...gun.pivot)).multiply(new Matrix4().makeRotationX(-pitch));
     for(const part of gun.collisionParts){
-     const actual=new OBB().fromBox3(new Box3(new Vector3(...part.min),new Vector3(...part.max))).applyMatrix4(transform);
+     // OBB.applyMatrix4 only adds the matrix translation to the centre; it never rotates it. Build the box about the
+     // origin and carry its centre in the matrix, or an off-centre barrel is mirrored when the mount turns.
+     const box=new Box3(new Vector3(...part.min),new Vector3(...part.max)),center=box.getCenter(new Vector3());
+     const actual=new OBB(new Vector3(),box.getSize(new Vector3()).multiplyScalar(.5)).applyMatrix4(transform.clone().multiply(new Matrix4().makeTranslation(center.x,center.y,center.z)));
      assert.ok(docks.every(dock=>!actual.intersectsBox3(dock)),`${spec.id}: roof weapon stock clears drone at turret ${turretYaw}, roof yaw ${yaw}, elevation ${pitch}`);
     }
     weaponPoses++;
@@ -84,6 +91,16 @@ for(const spec of Object.values(TANK_SPECS)){
 // Adversarial fixture: a low gun can cross a roof seat between its cardinal yaw
 // poses. A complete swept-volume policy must reject that otherwise supported seat.
 const armed=TANK_SPECS.m1a2,gun=auxiliaryCapabilities(armed).guns[0];
+{
+ // The replay places each part where its turned mount carries it (the 2026-10-08 OBB-centre defect mirrored a
+ // rear-facing barrel forward through T-72B3M's dock): the turned centre is exact and a dock on it is hit.
+ const part=gun.collisionParts[0],box=new Box3(new Vector3(...part.min),new Vector3(...part.max)),center=box.getCenter(new Vector3());
+ const transform=new Matrix4().compose(new Vector3(...gun.position),new Quaternion(...gun.rotation).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),Math.PI*.9)),new Vector3(...gun.scale)).multiply(new Matrix4().makeTranslation(...gun.pivot));
+ const placed=new OBB(new Vector3(),box.getSize(new Vector3()).multiplyScalar(.5)).applyMatrix4(transform.clone().multiply(new Matrix4().makeTranslation(center.x,center.y,center.z)));
+ const truth=center.clone().applyMatrix4(transform);
+ assert.ok(center.length()>.05&&placed.center.distanceTo(truth)<1e-9,'replayed roof-weapon stock sits where its turned mount carries it');
+ assert.ok(placed.intersectsBox3(new Box3().setFromCenterAndSize(truth,new Vector3(.02,.02,.02))),'replay hits a dock placed on the turned barrel');
+}
 const unsafe={...missionAttachmentFor(armed),frame:gun.owner,x:gun.position[0],z:gun.position[2]+.5,y:gun.position[1]+gun.pivot[1]*gun.scale[1]-.10};
 assert.equal(missionAttachmentClear(armed,unsafe),false,'gun sweep rejects a deliberately obstructing supported-height seat');
 console.log(`droneRecon: ${weaponPoses} independent roof-weapon poses clear dock volumes`);
