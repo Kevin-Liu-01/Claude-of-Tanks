@@ -9,7 +9,10 @@
 //      and baked light structures, shafts and open frames stay with the default;
 //   3. every stage on every shell (a breach on each face, the damaged stage, each ground face's fall, the roof's fall,
 //      each upper storey's drop, the collapse) writes the same bytes twice, within the seam's caps, its vertices finite
-//      and inside the body's reach, every triangle facing its normal.
+//      and inside the body's reach, every triangle facing its normal;
+//   4. the compounds (cluster.ts): their cells read off the merged walls, each with its deck under its parapet; a blow on
+//      the cluster's face opens the cell it reaches, on that cell's face, its room under the cell's deck; a face's fall
+//      opens a gap down to the floor in every cell on that side, the earth banked at its foot.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { readShell } from './shell.ts';
@@ -19,6 +22,7 @@ import { describeStructure, createStructureDamageSeam } from '../../structureDam
 import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
+import { cellsOf } from './cluster.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { STRUCTURE_BUILDERS } from '../structureKit.ts';
@@ -116,8 +120,8 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0;
-const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set();
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0;
+const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set(), clusterIds = new Set();
 function exercise(label, a, seam) {
   // (the body's own middle: a shell's walls need not centre on its parts' origin)
   const fo = a.storeys[0].faces.map((f) => f.origin);
@@ -204,6 +208,34 @@ function describeAndRun(label, builder, styleId, parts) {
     assert.ok(far > shaftH * 0.6, `${label}: the shaft lies along the ground (${far.toFixed(1)} m out of ${shaftH.toFixed(1)})`);
     assert.ok(out.runs.some((r) => r.role === 'remnant' && r.pos.length), `${label}: a stump stands`);
   }
+  const cells = cellsOf(a);
+  if (cells) {
+    clusterShells++; clusterIds.add(label.split(' ')[0]);
+    for (const c of cells) {
+      assert.ok(c.x1 > c.x0 && c.y1 > c.y0 && c.z1 > c.z0, `${label}: a cell's box`);
+      assert.ok(c.deck === undefined || (c.deck > c.y0 + 1 && c.deck <= c.y1 + 1e-6), `${label}: a cell's deck inside its box (${c.deck} in ${c.y0}..${c.y1})`);
+    }
+    const onFace = (cut) => cells.some((c) => cut.y >= c.y0 - 0.05 && cut.y <= c.y1 + 0.05 && (Math.abs(cut.nz) > 0.5
+      ? Math.abs(cut.z - (cut.nz > 0 ? c.z1 : c.z0)) < 0.05 && cut.x >= c.x0 - 0.05 && cut.x <= c.x1 + 0.05
+      : Math.abs(cut.x - (cut.nx > 0 ? c.x1 : c.x0)) < 0.05 && cut.z >= c.z0 - 0.05 && cut.z <= c.z1 + 0.05));
+    const topDeck = Math.max(...cells.map((c) => c.deck ?? c.y1));
+    for (const f of a.storeys[0].faces) {
+      const out = writers(...CAPS.breach);
+      const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: 0, y: 1.5, radiusM: 0.9, dirX: -f.out[0], dirZ: -f.out[2],
+        munition: 'he', cause: 'blast', seed: 3 + f.section }, out);
+      for (const cut of res.cuts) assert.ok(onFace(cut), `${label}: the ${f.name} breach on a cell's face (${JSON.stringify(cut)})`);
+      for (const r of out.runs.filter((x) => x.role === 'room')) for (let i = 1; i < r.pos.length; i += 3) {
+        assert.ok(r.pos[i] <= topDeck + 0.05, `${label}: the room behind the ${f.name} hole under the decks (${r.pos[i].toFixed(2)} vs ${topDeck.toFixed(2)})`);
+      }
+      const fell = writers(...CAPS.sectionDown);
+      const down = seam.sectionDown(f.section, 9 + f.section, fell);
+      for (const cut of down.cuts) {
+        assert.ok(onFace(cut), `${label}: the ${f.name} fall's gap on a cell's face`);
+        assert.ok(cut.y - cut.radiusM < a.storeys[0].y0 + 0.6, `${label}: the ${f.name} fall's gap reaches the floor (${(cut.y - cut.radiusM).toFixed(2)})`);
+      }
+      if (down.cuts.length) assert.ok(fell.runs.some((r) => r.role === 'rubble' && r.pos.length), `${label}: the earth at the ${f.name} gap's foot`);
+    }
+  }
   if (isSheetBody(a)) {
     sheetShells++;
     // a blast through a sheet wall: torn sheet round it (both sides), the frame's members across the gap, no masonry
@@ -267,8 +299,9 @@ assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetS
 // the shafts read as shafts and topple (shaft.ts)
 for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
 assert.ok(shaftShells >= 6, `shafts the kit topples (${shaftShells})`);
-for (const id of ['saar/gantry', 'ksar/caravanserai']) {
-  assert.ok(!shellIds.has(id), `${id}: left to the default (an open frame, a courtyard)`);
-}
+assert.ok(!shellIds.has('saar/gantry'), 'saar/gantry: left to the default (an open frame)');
+// the compounds read as clusters of cells, broken cell by cell (cluster.ts); a courtyard that is one body stays the default's
+assert.ok(!shellIds.has('ksar/caravanserai') || clusterIds.has('ksar/caravanserai'), 'ksar/caravanserai: a cluster of cells or the default');
+assert.ok(clusterShells >= 2, `compounds the cluster kit breaks (${clusterShells}: ${[...clusterIds].join(', ')})`);
 assert.ok(shells >= 50, `the shells the kits now draw (${shells})`);
-console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}; ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);
+console.log(`shell damage: ${shells} builds read as shells in their kit's materials, ${sheetShells} of them sheet-clad halls the sheet kit breaks, ${shaftShells} shafts it topples (${[...shaftIds].join(', ')}), ${clusterShells} compounds broken cell by cell (${[...clusterIds].join(', ')}; ${baseShells.length} of the base set's buildings: ${baseShells.map((x) => x.slice(5)).join(', ')}), ${defaults} left to the default; ${stages} stages deterministic, within the caps, inside the body's reach, every triangle facing its normal`);

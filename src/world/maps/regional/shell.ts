@@ -528,3 +528,68 @@ export function readShaft(parts: ShellParts): ShaftReading | null {
   if (!bands.length) return null;
   return { base, top: Math.max(wallTop, crown?.y1 ?? wallTop), bands, crown };
 }
+
+// ---------------------------------------------------------------------------------------------------- a cluster
+
+/** A cell of a compound read off its parts: the box of one closed body among the merged walls, and its bucket. */
+interface CellReading {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+  bucket: string;
+  tint: Rgb;
+  /** the level of its roof slab's top (a parapet stands above it): the highest level its up-facing faces cover a third of
+   *  its footprint at; its box's top when none does */
+  deck: number;
+}
+
+/**
+ * The cells of a compound (a Siwan or Wadi Rum compound, a caravanserai, a souk), read off its merged parts: the wall
+ * buckets' solid triangles joined where they share a corner (welded at a centimetre) into closed bodies, each a cell (at
+ * least 1.5 m every way, its surface most of its box's: a cubic room, not a parapet or a stair). Null below three cells
+ * (a body of one or two closed boxes is a house or a shell).
+ */
+export function readCells(parts: ShellParts): CellReading[] | null {
+  const tris = trianglesOf(parts).filter((t) => WALL_BUCKETS.has(t.bucket) && !t.geometry.userData?.noCollision);
+  if (tris.length < 24) return null;
+  const parent = tris.map((_, i) => i);
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const byKey = new Map<string, number>();
+  tris.forEach((t, i) => {
+    for (const v of [t.a, t.b, t.c]) {
+      const key = `${Math.round(v[0] * 100)},${Math.round(v[1] * 100)},${Math.round(v[2] * 100)}`;
+      const j = byKey.get(key);
+      if (j === undefined) byKey.set(key, i); else { const a = find(i), b = find(j); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); }
+    }
+  });
+  const comps = new Map<number, { tris: Tri[]; area: number; lo: [number, number, number]; hi: [number, number, number] }>();
+  tris.forEach((t, i) => {
+    const r = find(i);
+    const c = comps.get(r) ?? { tris: [], area: 0, lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
+    c.tris.push(t); c.area += t.area;
+    for (const v of [t.a, t.b, t.c]) for (let k = 0; k < 3; k++) { c.lo[k] = Math.min(c.lo[k], v[k]); c.hi[k] = Math.max(c.hi[k], v[k]); }
+    comps.set(r, c);
+  });
+  const cells: CellReading[] = [];
+  for (const [, c] of [...comps].sort((p, q) => p[0] - q[0])) {
+    const sx = c.hi[0] - c.lo[0], sy = c.hi[1] - c.lo[1], sz = c.hi[2] - c.lo[2];
+    if (sx < 1.5 || sy < 1.5 || sz < 1.5) continue;
+    if (c.area < 0.6 * 2 * (sx * sy + sy * sz + sz * sx)) continue;
+    const byBucket = new Map<string, number>();
+    for (const t of c.tris) byBucket.set(t.bucket, (byBucket.get(t.bucket) ?? 0) + t.area);
+    let bucket = '', most = 0;
+    for (const [b, a] of byBucket) if (a > most) { most = a; bucket = b; }
+    // the deck: up-facing area by level (5 cm), the highest level that covers a third of the footprint
+    const levels = new Map<number, number>();
+    for (const t of c.tris) if (t.n[1] > 0.9) { const y = Math.round((t.a[1] + t.b[1] + t.c[1]) / 3 * 20); levels.set(y, (levels.get(y) ?? 0) + t.area); }
+    let deck = c.hi[1];
+    const decks = [...levels].filter(([, a]) => a >= sx * sz / 3).map(([y]) => y / 20);
+    if (decks.length) deck = Math.max(...decks);
+    cells.push({ x0: c.lo[0], x1: c.hi[0], y0: c.lo[1], y1: c.hi[1], z0: c.lo[2], z1: c.hi[2], bucket, deck,
+      tint: meanColour(c.tris.filter((t) => t.bucket === bucket)) });
+  }
+  return cells.length >= 3 ? cells : null;
+}
