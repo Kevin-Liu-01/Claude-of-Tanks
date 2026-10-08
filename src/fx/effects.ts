@@ -70,6 +70,8 @@ interface FxEngineContext {
 
 interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
+  /** the contact lattice's surface (terrainContactSurface.ts: the drawn LOD0's vertices and their triangles) */
+  getContactHeightAt?(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -85,7 +87,7 @@ export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
   readonly mapId?: string;
 }
 
@@ -1756,9 +1758,18 @@ function* createFxSteps(
   function groundY(x: number, z: number): number {
     return heightField && heightField.getHeightAt ? heightField.getHeightAt(x, z) : 0;
   }
-  /** The ground as the battle has dug it: the base plus the bound overlay (craters, rubble heaps). */
+  /**
+   * The ground as the battle has dug it, where the terrain draws it: the contact lattice (1.333 m) plus the overlay's
+   * offsets at its vertices, interpolated on the same triangles (terrainDeformation.ts contactOffsetAt; the ground
+   * lane's receipt pins it to the patched LOD0 within 0.004 mm). The analytic bowl between lattice points sits
+   * centimetres off the drawn surface inside a 125 mm crater (0.56 m deep over 1.6 m): a z-fight or a float for the
+   * crater's surface. The analytic sum stays the fallback for a field or an overlay without the contact law.
+   */
   function deformedGroundY(x: number, z: number): number {
     const overlay = world?.()?.groundOverlay?.() ?? null;
+    if (overlay?.contactOffsetAt && heightField?.getContactHeightAt) {
+      return heightField.getContactHeightAt(x, z) + overlay.contactOffsetAt(x, z);
+    }
     return groundY(x, z) + (overlay ? overlay.offsetAt(x, z) : 0);
   }
   /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
