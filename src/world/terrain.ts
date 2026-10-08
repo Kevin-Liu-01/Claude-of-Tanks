@@ -4648,8 +4648,14 @@ void splatCompute() {
     float jd = min(min(bf.x, 0.30 - bf.x), min(bf.y, bw - bf.y));
     float stoneVis = tileVis(0.45);
     float joint = (1.0 - smoothstep(0.018, 0.034 + 0.5 * gFootM, jd)) * stoneVis;
-    vec3 stone = uMeanR.rgb * (0.80 + 0.40 * bh.x) * vec3(1.0 + 0.06 * (bh.y - 0.5), 1.0, 1.0 - 0.08 * (bh.y - 0.5));
-    vec3 dry = mix(mix(uMeanR.rgb * 0.96, stone, stoneVis) * (0.92 + 0.16 * smoothstep(0.30, 0.70, n1h)), uMeanR.rgb * 0.32, joint);
+    // (2026-10-07, wave 252's Orchard bird on mr4's r4: "the terraced knoll shows its risers as bright sandy contour
+    // stripes", "rounded pale-cream rock patches that read as golf-course sand bunkers") an old wall is weathered grey
+    // limestone, not the cream of a fresh face (its tone 30 % toward its own luminance), and its far tone is the near
+    // coursing's mean — the blocks' with their joints' (a quarter of the face at 0.32) — not the bright face alone: the
+    // coursing faded to 0.96 of the stone, ~15 % over the walls it stood for
+    vec3 wallGrey = mix(uMeanR.rgb, vec3(dot(uMeanR.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.30);
+    vec3 stone = wallGrey * (0.80 + 0.40 * bh.x) * vec3(1.0 + 0.06 * (bh.y - 0.5), 1.0, 1.0 - 0.08 * (bh.y - 0.5));
+    vec3 dry = mix(mix(wallGrey * 0.83, stone, stoneVis) * (0.92 + 0.16 * smoothstep(0.30, 0.70, n1h)), wallGrey * 0.32, joint);
     a.rgb = mix(a.rgb, dry, gRiserW);
     if (nrmOn) n = mix(n, NRM_MEAN, gRiserW * 0.6);
   }
