@@ -45,7 +45,8 @@ assert.equal(count('skirt-cassette-stud'), 32);
 // cage rework (owner 2026-09-15, evening): posts on bolted base plates, a bent frame, welded lattice,
 // mesh walls on the flanks and the rear, struts to the rack
 assert.equal(count('cage-post'), 8); assert.equal(count('cage-foot'), 8); assert.equal(count('cage-bolt'), 32);
-assert.equal(count('cage-arm'), 8); assert.equal(count('cage-brace'), 8); assert.equal(count('cage-frame'), 8);
+// fleet lane 2026-10-08: the two posts on the bend line are tied by the bend cross tube itself (their arms lay inside it)
+assert.equal(count('cage-arm'), 6); assert.equal(count('cage-brace'), 8); assert.equal(count('cage-frame'), 8);
 assert.equal(count('cage-rod'), 34 + 22, 'bent longitudinal rods and transverse rods over the whole roof');
 assert.equal(count('cage-mesh'), 22 * 2 + 17, 'flank and rear mesh rods'); assert.equal(count('cage-rail'), 5);
 assert.equal(count('cage-strut'), 2, 'struts tie the cage to the rack');

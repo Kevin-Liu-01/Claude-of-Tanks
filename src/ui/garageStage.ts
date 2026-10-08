@@ -861,24 +861,32 @@ export function createGarageStage(
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
       side: THREE.DoubleSide,
       uniforms: { uColor: { value: new THREE.Color(1.0, 0.925, 0.784) } },
+      // Fleet lane 2026-10-08 (the fleet audit: every close, high Garage view of a vehicle sat INSIDE this cone, whose
+      // walls then faced the lens all round and laid a pale wash over the whole tank): the beam is a volume seen from
+      // outside; with the camera inside it (or within half a metre of its wall) it fades out.
       vertexShader: /* glsl */ `
-        varying float vV; varying vec3 vN; varying vec3 vE;
+        varying float vV; varying vec3 vN; varying vec3 vE; varying float vOutside;
         void main() {
           vV = uv.y;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           vN = normalMatrix * normal;
           vE = -mv.xyz;
+          // the camera in the cone's own frame: open tube, radius 5.6 at y -3.45 to 0.68 at y +3.45
+          vec3 cam = (inverse(modelMatrix) * vec4(cameraPosition, 1.0)).xyz;
+          float wall = mix(5.6, 0.68, clamp((cam.y + 3.45) / 6.9, 0.0, 1.0));
+          float beyond = max(length(cam.xz) - wall, max(cam.y - 3.45, -3.45 - cam.y));
+          vOutside = smoothstep(-0.5, 0.5, beyond);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: /* glsl */ `
-        uniform vec3 uColor; varying float vV; varying vec3 vN; varying vec3 vE;
+        uniform vec3 uColor; varying float vV; varying vec3 vN; varying vec3 vE; varying float vOutside;
         void main() {
           // silhouette feather: surface normal ⟂ view at the tube's edge
           float fres = abs(dot(normalize(vE), normalize(vN)));
           float edge = pow(fres, 1.8);
           // dense at the fixture (uv.y 1), fully dissolved toward the floor
           float grad = pow(clamp(vV, 0.0, 1.0), 1.7);
-          gl_FragColor = vec4(uColor, edge * grad * 0.22);
+          gl_FragColor = vec4(uColor, edge * grad * 0.22 * vOutside);
         }`,
     }));
     const cone = new THREE.Mesh(

@@ -451,6 +451,44 @@ export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.Buffe
   return geometry;
 }
 
+/**
+ * Fleet lane (2026-10-08; blind critics on the T-90M: the camouflage "floats across ... the gun barrel"): boxUV paints a
+ * round tube as four flat swatches that switch at the 45-degree lines, so the pattern bands and jumps along the barrel.
+ * Every triangle whose three vertices lie within `maxRadius` of the bore axis (the local +Z axis through the origin) and
+ * whose normals face away from it takes a cylindrical projection instead: u runs round the tube in arc metres at the
+ * vertex's own radius (the seam underneath, at +-180 degrees from the top), v along the bore, both at `scale` repeats per
+ * metre. End faces, collars' flat rings and off-axis fittings keep the box projection. Non-indexed geometry only (a
+ * merged bucket).
+ */
+export function boreCylinderUV(geometry: THREE.BufferGeometry, scale: number, maxRadius = 0.32): number {
+  if (geometry.index) throw new Error('boreCylinderUV expects non-indexed geometry');
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const uv = geometry.getAttribute('uv');
+  if (!position || !normal || !uv) throw new Error('boreCylinderUV requires position, normal and uv attributes');
+  const theta = [0, 0, 0], radius = [0, 0, 0];
+  let wrapped = 0;
+  for (let t = 0; t + 2 < position.count; t += 3) {
+    let tube = true;
+    for (let k = 0; k < 3 && tube; k++) {
+      const i = t + k, x = position.getX(i), y = position.getY(i), r = Math.hypot(x, y);
+      if (r > maxRadius || r < 0.004) { tube = false; break; }
+      if ((normal.getX(i) * x + normal.getY(i) * y) / r < 0.6) { tube = false; break; }
+      theta[k] = Math.atan2(x, y);
+      radius[k] = r;
+    }
+    if (!tube) continue;
+    // a triangle across the seam underneath unwraps onto one side
+    if (Math.max(theta[0], theta[1], theta[2]) - Math.min(theta[0], theta[1], theta[2]) > Math.PI) {
+      for (let k = 0; k < 3; k++) if (theta[k] < 0) theta[k] += Math.PI * 2;
+    }
+    for (let k = 0; k < 3; k++) uv.setXY(t + k, theta[k] * radius[k] * scale, position.getZ(t + k) * scale);
+    wrapped++;
+  }
+  uv.needsUpdate = true;
+  return wrapped;
+}
+
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   const flat = geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry);
   const merged = mergeGeometries(flat, false);

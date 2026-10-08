@@ -28,7 +28,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, boreCylinderUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -137,6 +137,7 @@ interface TankMaterials {
   wheels: THREE.MeshStandardMaterial;
   wheelsRecessed: THREE.MeshStandardMaterial;
   rubber: THREE.MeshStandardMaterial;
+  rubberCavity?: THREE.MeshStandardMaterial;
   detail: THREE.MeshStandardMaterial;
   dark: THREE.MeshStandardMaterial;
   shadow: THREE.MeshStandardMaterial;
@@ -313,6 +314,8 @@ interface SuspensionEntry {
   anchorY: number;
   anchorZ: number;
   x: number;
+  /** A paired bogie's second arm: its hull pivot is an earlier entry's, which already draws the boss. */
+  sharedAnchor?: boolean;
 }
 
 interface WheelSpinner {
@@ -1029,9 +1032,10 @@ function isolatedGearMaterial<M extends THREE.Material>(
  * paint carries the wheel-paint floor, so the insets read against it in every scheme. */
 function wheelInsetMaterialFor(
   _dishMaterial: THREE.Material,
-  mats: { rubber: THREE.Material; wheels: THREE.Material },
+  mats: { rubber: THREE.Material; rubberCavity?: THREE.Material; wheels: THREE.Material },
 ): THREE.Material {
-  return mats.rubber;
+  // fleet lane 2026-10-08: the rubber with a cavity's light (materials.ts COT_GEAR_CAVITY) where the set has it
+  return mats.rubberCavity ?? mats.rubber;
 }
 
 function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
@@ -2745,7 +2749,13 @@ function idlerGeo(
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
     const a = (k / boltCount) * Math.PI * 2 + 0.2;
-    dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
+    // Fleet lane round 1 (2026-10-07): the heads stand 6 mm proud of the hub drum's end face. Ending in its plane,
+    // each overlapped the drum's cap disc (r 0.26·r vs heads at 0.30·r ± 22 mm): two coplanar filled caps that fought
+    // in depth on every idler (the inherited fleetPass circularCapOverlap red, 157 hulls at LOW).
+    // and on a small idler (or a many-bolt pattern) the heads keep a gap: neighbours at 0.30·r used to overlap
+    // edge to edge in one plane (Leopard 2A6 UA's front idler).
+    const headR = Math.min(0.022, (Math.PI * 2 * r * 0.30 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w + hD * 1.6 + 0.012, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
   return { body: mergeAll(body), dark: mergeAll(dark) };
@@ -2886,7 +2896,9 @@ function sprocketGeo(
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < (stock ? 0 : boltCount); k++) {     // dark bolt ring on the hub boss
     const a = (k / boltCount) * Math.PI * 2;
-    dark.push(xform(cylX(0.02, w * 1.06, 6),
+    // fleet lane round 1: neighbouring heads never overlap in their shared end plane (see idlerGeo)
+    const headR = Math.min(0.02, (Math.PI * 2 * r * 0.44 / boltCount) * 0.42);
+    dark.push(xform(cylX(headR, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
   const mergedBody = mergeAll(body), mergedDark = mergeAll(dark);
@@ -2999,6 +3011,46 @@ function appendTrackShoePins(
       ));
     }
   }
+}
+
+// Fleet lane round 1 (2026-10-07; media wave m1 and the owner's X-standard track ask: "track runs drawn as smooth grey
+// slabs with no links"): one shoe colour per link made the run one tone, so links only separated where a shadow fell.
+// Each shoe now carries a worn-steel read in its own vertex colours, multiplied with the per-link palette: the link
+// ends that face the next shoe across the gap fall dark, the inner web and guide stay in shadow tone, and the outward
+// contact face is road-polished on all-steel shoes (bright crests) or dark rubber on padded ones (steel shoulders
+// brighter). Geometry and the instance palette are unchanged; the shoe material reads the colours (vertexColors).
+const RUBBER_PAD_SURFACES = new Set(['paired-pad', 'rubber-block', 'split-chevron', 'fine-rib', 'staggered-rib']);
+function bakeTrackShoeWear(geometry: THREE.BufferGeometry, pattern: { surface?: string }): void {
+  if (geometry.getAttribute('color')) return;
+  if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+  const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal');
+  if (!position || !normal) return;
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return;
+  const y0 = box.min.y, span = Math.max(box.max.y - y0, 1e-6);
+  const halfW = Math.max(box.max.x, -box.min.x, 1e-6);
+  const rubber = RUBBER_PAD_SURFACES.has(String(pattern.surface || ''));
+  const colors = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    const h = (position.getY(i) - y0) / span; // 0 at the guide tips (inward), 1 at the crests (outward)
+    const ny = normal.getY(i), nx = Math.abs(normal.getX(i)), nz = Math.abs(normal.getZ(i));
+    const outer = Math.abs(position.getX(i)) / halfW;
+    let k = 0.62 + 0.38 * h;
+    let warm = 0;
+    if (ny > 0.55) {
+      const crest = Math.min(1, Math.max(0, (h - 0.55) / 0.45));
+      if (!rubber) { k *= 1 + 0.7 * crest * crest; warm = crest; }
+      else if (outer > 0.82) { k *= 1 + 0.35 * crest; warm = 0.5 * crest; }
+      else k *= 1 - 0.18 * crest;
+    }
+    if (nz > 0.55) k *= 0.58;
+    else if (nx > 0.55) k *= rubber && outer > 0.82 ? 1.08 : 0.86;
+    colors[i * 3] = k * (1 + 0.05 * warm);
+    colors[i * 3 + 1] = k;
+    colors[i * 3 + 2] = k * (1 - 0.06 * warm);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
 function trackShoeGeometry(
@@ -4186,6 +4238,20 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   const buildRunningGearRunningGearStage14 = (): void => {
     buildRunningGearAssemblyStage7();
+    // Fleet lane round 1 (2026-10-07): paired bogies (Horstmann, Chieftain) hang two arms from one hull pivot. Each
+    // arm used to draw its own pivot boss at the same spot, two coincident forgings whose end caps fought in depth
+    // (the circularCapOverlap finding on chieftain5 / chieftain_mk10). The second arm's pivot boss now collapses.
+    for (let i = 0; i < suspensionEntries.length; i++) {
+      const link = suspensionEntries[i];
+      for (let j = 0; j < i; j++) {
+        const earlier = suspensionEntries[j];
+        if (earlier.side === link.side && !earlier.sharedAnchor && Math.abs(earlier.x - link.x) < 1e-3
+          && Math.abs(earlier.anchorY - link.anchorY) < 1e-3 && Math.abs(earlier.anchorZ - link.anchorZ) < 1e-3) {
+          link.sharedAnchor = true;
+          break;
+        }
+      }
+    }
   };
   buildRunningGearRunningGearStage14();
   // Local +Z points from the hull pivot to the wheel axle. A slightly wider
@@ -4277,6 +4343,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       _s.set(width, radius, radius);
       _v.x = link.side * center;
     }
+    if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
     _m.compose(_v, _q, _s);
     suspensionJointIM.setMatrixAt(index, _m);
   }
@@ -4710,6 +4777,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
     cfg.trackLinkCrossSection, pinCapOuter,
   );
+  bakeTrackShoeWear(integratedShoe, trackPattern);
+  bakeTrackShoeWear(simplifiedShoe, trackPattern);
   const buildRunningGearAssemblyStage15 = (): void => {
     if (cfg.trackShoeBuilder) {
       validateNativeGearSolid(integratedShoe, 'Native near shoe');
@@ -4733,10 +4802,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);
   const buildRunningGearReceiptStage10 = (): void => {
     padMat.color=new THREE.Color(0xffffff);
-    // Shoes use instanceColor, which Three enables independently. Neither
-    // shoe geometry has a vertex-color attribute; enabling vertexColors would
-    // multiply the palette by the missing attribute's black default.
-    padMat.vertexColors = false;
+    // Shoes use instanceColor, which Three enables independently, multiplied by the worn-steel vertex colours both
+    // shoe streams carry (bakeTrackShoeWear, fleet lane round 1).
+    padMat.vertexColors = true;
     padMat.roughness=0.97;
     padMat.metalness=0.08;
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
@@ -6009,6 +6077,49 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
 // ---------------------------------------------------------------------------
 // Small shared detail assemblies
 // ---------------------------------------------------------------------------
+// Fleet lane round 1 (2026-10-07; media wave m1 and the brief: sights read as "floating blue screen boxes" and
+// "desktop monitors"): a broad flat glass pane authored as a plain box sat proud on its housing like a screen. Every
+// such pane (window at least 8 x 7 cm, at most 35 mm thick, upright) now gets an armoured surround in the housing's
+// painted fitting bucket: a frame lip standing 15 mm proud of both faces, so the glass reads recessed whichever face
+// looks outward, and a hood over the top that reaches 45 mm past the pane. Source-measured panes (not BoxGeometry),
+// horizontal panes and small slits are untouched.
+const GLASS_FRAME_W = 0.016;
+const GLASS_FRAME_PROUD = 0.015;
+const GLASS_HOOD_REACH = 0.045;
+const GLASS_HOOD_T = 0.012;
+const GLASS_SURROUND_BUCKET: Readonly<Record<string, string>> = Object.freeze({
+  turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount',
+});
+function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
+  const target = GLASS_SURROUND_BUCKET[bucket];
+  const params = (geometry as THREE.BufferGeometry & { parameters?: { width: number; height: number; depth: number } }).parameters;
+  if (!target || geometry.type !== 'BoxGeometry' || !params) return [];
+  const dims = [params.width, params.height, params.depth];
+  const thin = Math.min(...dims);
+  const thinAxis = dims.indexOf(thin);
+  if (thinAxis === 1) return [];
+  const faceW = dims[thinAxis === 0 ? 2 : 0], faceH = dims[1];
+  if (thin > 0.035 || faceW < 0.08 || faceH < 0.07) return [];
+  // only a pane still in its own box frame (a caller may have moved or turned the box before adding it)
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb || Math.abs(bb.max.x + bb.min.x) > 1e-6 || Math.abs(bb.max.y + bb.min.y) > 1e-6
+    || Math.abs(bb.max.z + bb.min.z) > 1e-6 || Math.abs(bb.max.x - bb.min.x - params.width) > 1e-6
+    || Math.abs(bb.max.y - bb.min.y - params.height) > 1e-6 || Math.abs(bb.max.z - bb.min.z - params.depth) > 1e-6) return [];
+  const fw = GLASS_FRAME_W, lip = thin + 2 * GLASS_FRAME_PROUD;
+  // (u across the window, v up, n through the pane) in the pane's own box frame
+  const part = (du: number, dv: number, su: number, sv: number, sn: number): THREE.BufferGeometry => (thinAxis === 2
+    ? xform(new THREE.BoxGeometry(su, sv, sn), du, dv, 0)
+    : xform(new THREE.BoxGeometry(sn, sv, su), 0, dv, du));
+  return [
+    part(0, faceH / 2 + fw / 2, faceW + 2 * fw, fw, lip),
+    part(0, -(faceH / 2 + fw / 2), faceW + 2 * fw, fw, lip),
+    part(faceW / 2 + fw / 2, 0, fw, faceH, lip),
+    part(-(faceW / 2 + fw / 2), 0, fw, faceH, lip),
+    part(0, faceH / 2 + fw + GLASS_HOOD_T / 2, faceW + 2 * fw + 0.012, GLASS_HOOD_T, thin + 2 * GLASS_HOOD_REACH),
+  ];
+}
+
 function cupola(
   builder: object,
   bucket: string,
@@ -7230,6 +7341,7 @@ function* createTankOwnedSteps(
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
       // (body, inset lid and small face furniture) through the continuous
@@ -7287,6 +7399,12 @@ function* createTankOwnedSteps(
       // affine legacy box. Hull glass also owns headlight lenses, so fixed
       // hull periscopes are tagged explicitly by the shared helper below.
       if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
+      for (const surround of glassSurround) {
+        const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+        partCensus?.(frameBucket, frame, 'add');
+      }
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit
@@ -7342,10 +7460,17 @@ function* createTankOwnedSteps(
       rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
+      const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
+      for (const surround of glassSurround) {
+        const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+        partCensus?.(frameBucket, frame, 'add');
+      }
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
@@ -7948,6 +8073,8 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // the gun tube wears its paint round the bore, not in four box swatches (factoryGeometry.ts boreCylinderUV)
+      if (bucket === 'gun') boreCylinderUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
       // 2026-10-07 (round 4, wave 214: "a flat sticker across every surface, including the gun barrel wrap and
