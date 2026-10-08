@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { damageSeed } from '../world/destructionKit.ts';
 import { describeDefault } from '../world/destructionDefaultKit.ts';
 import { createStructureDamageSeam } from '../world/structureDamageSeam.ts';
-import { createStructureMask, COLLAPSE_S, MAX_HOLES } from './structureMask.ts';
+import { createStructureMask, COLLAPSE_S, MAX_HOLES, STRUCT_STRIDE, FRONT_T0, FRONT_T, collapseFront, collapseFrontTime } from './structureMask.ts';
 import { createStructureDebris } from './structureDebris.ts';
 import { createStructureStages } from './structureStages.ts';
 import { createStructureScars } from './structureScars.ts';
@@ -67,7 +67,7 @@ const debris = createStructureDebris({ now: () => now, groundY: () => 2 });
 const worldStone = new THREE.MeshStandardMaterial({ name: 'stone' });
 const stages = createStructureStages({ mask, debris, now: () => now, materialFor: (bucket) => (bucket === 'stone' ? worldStone : null) });
 const data = mask.texture.image.data;
-const T = 10 * 4, o = 7 * T;
+const T = STRUCT_STRIDE * 4, o = 7 * T;
 const base = { structureId: 7, massClass: 'house', cx: 40, cz: -30, hw: 5, hd: 4, yaw: 0.6, baseY: 2, topY: 10.4, cause: 'blast',
   munition: 'he', points: 30, integrity: 0.5 };
 const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position').array);
@@ -141,8 +141,51 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
 {
   const seam = fresh();
   const before = epoch(wall.mesh);
+  const piecesBefore = debris.stats().pieces;
   stages.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 1, dirZ: 0 }, seam);
   assert.equal(data[o], now, 'the fall starts now');
+  // round 7 (wave 277): the mask has the fall's footprint (the roof drops from the eaves and rides the front), and the
+  // walls' own pieces leave the crumble front band by band (the kit's own collapse pieces besides)
+  const F = o + 10 * 4;
+  assert.ok(Math.abs(data[F] - (placement.y + anatomy.roof.eaveY - base.baseY)) < 1e-4 && data[F + 1] === anatomy.w / 2
+    && data[F + 2] === anatomy.d / 2 && Math.abs(data[F + 3] - placement.yaw) < 1e-6, 'the fall\'s eaves and footprint');
+  const thrown = debris.stats().pieces - piecesBefore;
+  // the kit's own collapse pieces alone (crumble off), and the phone's few
+  const piecesWith = (share) => {
+    const d = createStructureDebris({ now: () => now, groundY: () => 2 });
+    const st = createStructureStages({ mask: createStructureMask(64, { holes: share >= 1 }), debris: d, now: () => now,
+      materialFor: (bucket) => (bucket === 'stone' ? worldStone : null), crumble: share });
+    st.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 1, dirZ: 0 }, fresh());
+    const n = d.stats().pieces;
+    st.reset();
+    return n;
+  };
+  const kitOnly = piecesWith(0);
+  const crumbled = thrown - kitOnly;
+  assert.ok(crumbled >= 60, `the walls' pieces leave the front (${crumbled}, the kit's own ${kitOnly})`);
+  const phoneCrumble = piecesWith(0.15) - kitOnly;
+  assert.ok(phoneCrumble > 0 && phoneCrumble <= crumbled * 0.25, `the phone throws a few (${phoneCrumble} of ${crumbled})`);
+  // facades (2026-10-08): the pile and the stubs are seated per vertex on the undeformed ground (a slope's uphill side
+  // no longer buries them); a standing stage's runs are not
+  {
+    const pile = (baseGroundY) => {
+      const d = createStructureDebris({ now: () => now, groundY: () => 2, baseGroundY });
+      const st = createStructureStages({ mask: createStructureMask(64), debris: d, now: () => now,
+        materialFor: (bucket) => (bucket === 'stone' ? worldStone : null), crumble: 0 });
+      st.stage({ ...base, stage: 'collapsed', previous: 'breached', x: 40, y: 4, z: -30, dirX: 1, dirZ: 0 }, fresh());
+      const runs = d.group.children.filter((m) => m.isMesh && /^fx-structure-(remnant|rubble)/.test(m.name));
+      const ys = runs.flatMap((m) => Array.from(m.geometry.getAttribute('position').array));
+      st.reset();
+      return ys;
+    };
+    const slope = (x, z) => 2 + 0.1 * (x - 40) - 0.05 * (z + 30);
+    const flatPile = pile(undefined), seatedPile = pile(slope);
+    assert.ok(flatPile.length > 0 && seatedPile.length === flatPile.length, 'the same pile');
+    for (let i = 0; i < flatPile.length; i += 3) {
+      assert.ok(Math.abs(seatedPile[i + 1] - (flatPile[i + 1] - placement.y + slope(flatPile[i], flatPile[i + 2]))) < 1e-4,
+        'each vertex over the ground under it');
+    }
+  }
   assert.equal(stages.stats().falling, 1);
   const frames = Math.ceil(COLLAPSE_S * 60) + 3;
   let touches = 0;

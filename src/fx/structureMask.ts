@@ -12,15 +12,19 @@
  *    structure inside one is discarded, with a blocky ragged edge (brick-sized cells of the wall break out between 0.8
  *    and 1.2 of the radius, under the builder's rim, which covers 0.75 to 1.25) — the broken rim in the wall's own
  *    courses and the dark room behind it come through the debris writers;
- *  - collapse: from its start time the building comes down into its own dust plume over COLLAPSE_S — the storeys
- *    crumble apart (cells of the walls drift and drop, the upper ones most), the whole leans a few degrees toward the
- *    blow about its base and sinks gravity-eased — and at the end its vertices fold onto the pivot (the core's rubble
- *    heap is the ground then; no fragment discard for it); a settled collapse (a late joiner, a migration) is gone at
- *    once.
+ *  - collapse (round 7, wave 277: "the building is never seen to come down... the dust rises afterwards instead of
+ *    coming out of a falling structure"): from its start the roof drops into the building, sagging in its middle,
+ *    and the walls come down from the top along a ragged crumble front the eye can follow (FRONT_T0 to FRONT_T0 +
+ *    FRONT_T, gravity-eased) — the desktop tiers cut them above the front (the patch's one discard, beside the
+ *    holes), the phone folds them onto it — while the stage builders throw the walls' own pieces off the front (they
+ *    fall with weight and lie in the building's materials) and its dust bursts out of the base as they land; the roof
+ *    rides the front down; at the end the vertices fold onto the pivot (the kit's stubs and pile are the building
+ *    then); a settled collapse (a late joiner, a migration) is gone at once.
  *
- * Ten texels per structure: A = (collapse start on the fx clock or 0, height m, blow dir x, blow dir z),
+ * Eleven texels per structure: A = (collapse start on the fx clock or 0, height m, blow dir x, blow dir z),
  * B = (base pivot x, y, z, hole count), then per hole C = (centre x, y, z, radius m) and N = (outward normal x, z,
- * depth m, outside m). No per-frame CPU but the clock uniform: a stage or breach event writes texels and one upload
+ * depth m, outside m), and last F = (eave height over the base m, footprint half width, half depth, yaw) for the
+ * fall. No per-frame CPU but the clock uniform: a stage or breach event writes texels and one upload
  * range. (The static shadow cache cannot see a shape the GPU changes: the presentation touches the structure's
  * casters through the world seam on every frame the mask moves it.)
  *
@@ -33,16 +37,30 @@
 import * as THREE from 'three';
 
 const TEX_W = 512;
-/** Texels per structure: A, B and two per hole. */
-const STRIDE = 10;
+/** Texels per structure: A, B, two per hole, and F (the fall's footprint). */
+export const STRUCT_STRIDE = 11;
+const STRIDE = STRUCT_STRIDE;
+/** The fall's footprint texel (after the holes). */
+const F_TEXEL = 10;
 /** Holes a structure keeps (a ring: a fifth replaces the first). */
 export const MAX_HOLES = 4;
-/** Seconds a collapse takes from the first crack to the last stone below the dust. */
-export const COLLAPSE_S = 2.4;
+/** Seconds a collapse takes from the blow to the fold (round 7: slow enough to watch it come down, ~3.5 s). */
+export const COLLAPSE_S = 4.2;
+/** The crumble front leaves the top at FRONT_T0 and reaches the base FRONT_T later, gravity-eased (h = H (1 - u^1.5)). */
+export const FRONT_T0 = 0.3;
+export const FRONT_T = 3.4;
+/** Where the front stands (m over the base) `t` s into a collapse of a building `heightM` tall. */
+export function collapseFront(t: number, heightM: number): number {
+  const u = Math.min(1, Math.max(0, (t - FRONT_T0) / FRONT_T));
+  return heightM * (1 - Math.pow(u, 1.5));
+}
+/** When the front passes `h` m over the base (the inverse of collapseFront). */
+export function collapseFrontTime(h: number, heightM: number): number {
+  const k = Math.min(1, Math.max(0, 1 - h / Math.max(0.5, heightM)));
+  return FRONT_T0 + FRONT_T * Math.pow(k, 1 / 1.5);
+}
 /** Added to a structure's tag on a stage builder's own runs (they fall with the building; holes never cut them). */
 export const STAGE_RUN_TAG = 32768;
-/** The lean (rad) a falling building reaches toward the blow. */
-const LEAN_RAD = 0.2;
 
 const HASH = /* glsl */ `
 vec3 fxStructHash3( vec3 c ) {
@@ -60,14 +78,18 @@ uniform highp sampler2D uStructMask;
 uniform float uStructClock;
 ${holes ? `varying vec3 vStructPos;
 flat varying float vStructSid;
-flat varying float vStructHoles;` : ''}
+flat varying float vStructHoles;
+flat varying float vStructFront;
+varying float vStructRoof;` : ''}
 ${HASH}
 `;
 
 const vertBody = (holes: boolean): string => /* glsl */ `
 ${holes ? `vStructPos = vec3( 0.0 );
 vStructSid = -1.0;
-vStructHoles = 0.0;` : ''}
+vStructHoles = 0.0;
+vStructFront = 1e9;
+vStructRoof = 0.0;` : ''}
 {
   // aDamage = structure index + 1; with 32768 added, a stage builder's own run (a breach's rim and room): it falls with
   // its building but no hole cuts it
@@ -95,28 +117,32 @@ vStructHoles = 0.0;` : ''}
         // down: every vertex onto the pivot (the stubs and the pile are the stage builder's own meshes)
         transformed = ( inverse( sw ) * vec4( SB.xyz, 1.0 ) ).xyz;
       } else if ( t > 0.0 ) {
-        float k = clamp( t / ${COLLAPSE_S.toFixed(2)}, 0.0, 1.0 );
-        float fall = k * k;
+        int fi = base + ${F_TEXEL};
+        vec4 SF = texelFetch( uStructMask, ivec2( fi % ${TEX_W}, fi / ${TEX_W} ), 0 );
         float H = SA.y;
         vec3 piv = SB.xyz;
         vec3 p = wp - piv;
-        float hf = clamp( p.y / H, 0.0, 1.0 );
-        // crumble: cells of the walls drift apart and drop as it goes down, the upper storeys most (a function of the
-        // position only, so faces that share a corner keep it shared)
-        vec3 n = fxStructHash3( floor( wp * 1.3 ) ) - 0.5;
-        p.xz += n.xz * k * ( 0.3 + 0.9 * hf );
-        p.y -= abs( n.y ) * fall * hf * 1.6;
-        // lean toward the blow about the base: rotate in the plane of (blow direction, up) through the pivot
-        vec2 d = SA.zw;
-        float along = dot( p.xz, d );
-        float ang = ${LEAN_RAD.toFixed(3)} * fall;
-        float ca = cos( ang ), sa = sin( ang );
-        float na = along * ca + p.y * sa;
-        float ny = -along * sa + p.y * ca;
-        p.xz += d * ( na - along );
-        p.y = ny;
-        // sink into the plume (the dust hides where it meets the ground)
-        p.y -= fall * H * 0.96;
+        float eave = SF.x > 0.0 ? SF.x : 0.8 * H;
+        // the crumble front (m over the base): it leaves the top at FRONT_T0, gravity-eased down to the base
+        float u = clamp( ( t - ${FRONT_T0.toFixed(2)} ) / ${FRONT_T.toFixed(2)}, 0.0, 1.0 );
+        float front = H * ( 1.0 - pow( u, 1.5 ) );
+        float roof = step( eave - 0.05, p.y );
+        if ( roof > 0.5 ) {
+          // the roof drops into the building as the blow lands, its middle first (the farther from the eaves line, the
+          // deeper it sags), and rests on what still stands: it rides the front down, its pitch flattening
+          float ca = cos( SF.w ), sa = sin( SF.w );
+          float bx = p.x * ca - p.z * sa, bz = p.x * sa + p.z * ca;
+          float mid = 1.0 - clamp( max( abs( bx ) / max( SF.y, 0.5 ), abs( bz ) / max( SF.z, 0.5 ) ), 0.0, 1.0 );
+          float tr = max( 0.0, t - 0.2 );
+          float drop = 4.9 * tr * tr + 1.4 * mid * smoothstep( 0.0, 0.5, tr );
+          p.y = max( p.y - drop, front + ( p.y - eave ) * 0.3 );
+        }${holes ? '' : `
+        else if ( p.y > front ) {
+          // the phone tier cuts nothing: the wall above the front folds down onto it
+          p.y = front;
+        }`}
+        ${holes ? `vStructFront = piv.y + front;
+        vStructRoof = roof;` : ''}
         transformed += inverse( mat3( sw ) ) * ( piv + p - wp );
       }
     }
@@ -131,9 +157,18 @@ uniform highp sampler2D uStructMask;
 varying vec3 vStructPos;
 flat varying float vStructSid;
 flat varying float vStructHoles;
+flat varying float vStructFront;
+varying float vStructRoof;
 ${HASH}
 `;
 const FRAG_BODY = /* glsl */ `
+if ( vStructFront < 1e8 && vStructRoof < 0.5 ) {
+  // the crumble front, ragged: columns of the wall ~2.4 m wide stand at different heights, and block-sized cells break
+  // away above and below the line (the pieces the stage throws leave from here)
+  float col = fxStructHash3( floor( vec3( vStructPos.x, 0.0, vStructPos.z ) * 0.42 ) ).x - 0.5;
+  float cell = fxStructHash3( floor( vStructPos * 1.7 ) ).y - 0.5;
+  if ( vStructPos.y > vStructFront + 1.1 * col + 0.45 * cell ) discard;
+}
 if ( vStructHoles > 0.5 ) {
   int hb = int( vStructSid + 0.5 ) * ${STRIDE} + 2;
   // brick-sized cells of the wall break out at different radii: a blocky, ragged hole
@@ -163,9 +198,12 @@ export interface StructureMask {
   readonly texture: THREE.DataTexture;
   /** The uniforms every patched material shares. */
   readonly uniforms: { uStructMask: { value: THREE.Texture }; uStructClock: { value: number } };
-  /** A structure starts coming down at `startS` (fx clock); `settled`: it is gone already. */
+  /** A structure starts coming down at `startS` (fx clock); `settled`: it is gone already. `fall`: its eave height over
+   *  the base (m: the roof above it drops and rides the front), footprint half width and depth, yaw (default: the
+   *  eaves at 0.8 of the height, the roof's sag even). */
   collapse(structureId: number, startS: number, heightM: number, dirX: number, dirZ: number,
-    pivotX: number, baseY: number, pivotZ: number, settled?: boolean): void;
+    pivotX: number, baseY: number, pivotZ: number, settled?: boolean,
+    fall?: { eaveM: number; halfW: number; halfD: number; yaw: number }): void;
   /**
    * A hole through the structure: the builder's cut in the world (centre, radius m, the face's outward normal, depth m
    * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: a fifth hole replaces the first).
@@ -241,7 +279,7 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
     texture,
     uniforms,
     capacity,
-    collapse(id, startS, heightM, dirX, dirZ, pivotX, baseY, pivotZ, settled = false) {
+    collapse(id, startS, heightM, dirX, dirZ, pivotX, baseY, pivotZ, settled = false, fall) {
       if (!inRange(id)) return;
       const t = id * STRIDE, o = t * 4;
       const dl = Math.hypot(dirX, dirZ);
@@ -252,6 +290,12 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       data[o + 3] = dl > 1e-6 ? dirZ / dl : 0;
       data[o + 4] = pivotX; data[o + 5] = baseY; data[o + 6] = pivotZ;
       touch(t, 2);
+      const f = (t + F_TEXEL) * 4;
+      data[f] = fall && fall.eaveM > 0 ? Math.min(fall.eaveM, Math.max(0.5, heightM)) : 0;
+      data[f + 1] = fall ? Math.max(0.5, fall.halfW) : 0;
+      data[f + 2] = fall ? Math.max(0.5, fall.halfD) : 0;
+      data[f + 3] = fall ? fall.yaw : 0;
+      touch(t + F_TEXEL, 1);
     },
     addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3) {
       if (!inRange(id) || !(radiusM > 0)) return -1;
