@@ -231,6 +231,9 @@ export default {
     rockTone: (h: number, s: number, l: number) => [0.036, 0.40, clamp01(0.33 + (l - 0.3) * 0.8)],
     // (the Redrock lane, 2026-10-07: a pillbox stood in the west spring's palms, three trunks through its roof)
     pillboxClearOfTrees: true,
+    // (round 9, the gauntlet's wave 261: "smooth red egg-shaped boulders on stamped red sand blotches" — the boulders lie
+    // on the wadi's sand, so their skirt is the sand's tone, a shade darker where it banks against the stone)
+    rockSoilTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.15 + l * 0.74)],
     tankWrecks: { era: 'modern', count: 7, debris: true,
       ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
     inhabit: {

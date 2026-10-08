@@ -1933,6 +1933,8 @@ const REGIONAL_PAL = {
   // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
   kershef: [0x9a8a74, 0xb3a58d, 0x5e5243],
   concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
+  // Wadi Rum's rendered block (the Redrock lane): the warm sand render, its paler lime coping, the palm and steel timber
+  rumRender: [0xa88a6c, 0xc4ab8c, 0x5a4a3a],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2228,6 +2230,39 @@ function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('checkpointhut', out);
 }
 
+/**
+ * The Desert Patrol's barrack block at Rum (the Redrock lane, round 9; the gauntlet's wave 261: "a Quonset hut, tin
+ * sheds ... a generic military camp"): the Quonset hut's footprint and height as one storey of rendered block under a
+ * flat roof behind a parapet, a stone footing, a row of doors and small barred windows down its long side, a palm-rib
+ * shade over the middle door on two posts, and a black water tank on the roof.
+ */
+function makeWadiRumBarracks(rng: Rng): THREE.BufferGeometry {
+  // (inside the hut's 3.49 x 5.86 m half extents and 4 m height, the shade included)
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.rumRender, w = 4.6, d = 11.0, h = 3.1;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng, 0.07);
+  // the stone footing, a hand proud and knee-high, and the parapet round the roof
+  colored(out, box(w + 0.2, 0.55, d + 0.2).translate(0, 0.275, 0), 0x8a6a52, rng, 0.06);
+  for (const side of [-1, 1]) {
+    colored(out, box(0.22, 0.45, d).translate(side * (w / 2 - 0.11), h + 0.225, 0), p[1], rng, 0.05);
+    colored(out, box(w - 0.44, 0.45, 0.22).translate(0, h + 0.225, side * (d / 2 - 0.11)), p[1], rng, 0.05);
+  }
+  // the doors and windows down the +x side: dark openings, a timber lintel over each
+  for (const [z, door] of [[-3.8, true], [-2.1, false], [0, true], [2.1, false], [3.8, true]] as const) {
+    if (door) colored(out, box(0.06, 2.0, 0.95).translate(w / 2 + 0.02, 1.0, z), 0x2e261e, rng, 0.04);
+    else colored(out, box(0.06, 0.6, 0.7).translate(w / 2 + 0.02, 1.75, z), 0x2a241e, rng, 0.04);
+    colored(out, box(0.14, 0.12, door ? 1.25 : 1.0).translate(w / 2 + 0.06, door ? 2.08 : 2.12, z), p[2], rng, 0.1);
+  }
+  // small windows high in the back wall
+  for (const z of [-3, 0, 3]) colored(out, box(0.06, 0.45, 0.55).translate(-w / 2 - 0.02, 2.2, z), 0x2a241e, rng, 0.04);
+  // the shade over the middle door: two posts, a beam and the palm-rib mat
+  for (const z of [-1.3, 1.3]) colored(out, box(0.16, 2.5, 0.16).translate(w / 2 + 0.95, 1.25, z), p[2], rng, 0.08);
+  colored(out, box(0.16, 0.14, 3.0).translate(w / 2 + 0.95, 2.52, 0), p[2], rng, 0.08);
+  colored(out, slab(1.1, 0.06, 3.1).translate(w / 2 + 0.55, 2.6, 0), 0xa8956f, rng, 0.12);
+  // the roof's black water tank
+  colored(out, box(1.1, 0.8, 1.1).translate(-0.9, h + 0.4, -3.0), 0x262626, rng, 0.04);
+  return mergeConnectedStructure('quonsethut', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2263,6 +2298,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     // Siwa (Sunscar Oasis): the checkpoint hut stands as a kershef guard post
     siwa: Object.freeze({
       checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
+    }),
+    // Wadi Rum (Redrock): the steel Quonset hut is the Desert Patrol's rendered barrack block
+    wadirum: Object.freeze({
+      quonsethut: variant('quonsethut', REGIONAL_PAL.rumRender, makeWadiRumBarracks),
     }),
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
     savoyard: Object.freeze({

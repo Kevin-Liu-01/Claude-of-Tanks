@@ -211,7 +211,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
-  badlands: { ...ARID, grass: null },
+  // (the Redrock lane, round 9, the gauntlet's wave 261: the walls meet the sand "with no talus, sand ramps or contact
+  // shadow" — the folds at the walls' feet and in the ravines take more of the sky's occlusion, as Copper Mesa's do)
+  badlands: { ...ARID, grass: null, foldAO: 0.68 },
   monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
     grass: meadow(0.9, 1.0, { base: [0.042, 0.090, 0.022], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
