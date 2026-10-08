@@ -155,6 +155,14 @@ export default {
       { kind: 'waysidecross', x: -318, z: -36, yawDeg: 90, name: 'the cross on the western spur' },
       { kind: 'cairn', x: 318, z: 40, name: 'the cairn on the eastern crest' },
     ],
+    // The hitbox lane (2026-10-08; round 2): the stones' own colliders opened the valley's middle where the boulders' old
+    // prisms had stood, and alpha, deploying south, fell from 51.2 to 40.0 % of the swap-balanced games (batch 5's
+    // fairness at 80): its tanks died more 40-80 m south of the valley's middle (f17's death census). Fields of the
+    // hills' own limestone there, size-graded and half sunk, give alpha's line the cover the prisms had faked.
+    rocks: [
+      { form: 'blocks', geology: 'limestone', x: -82, z: -74, radius: 6, height: 2.5, yawDeg: 70, name: 'the limestone blocks south-west of the square' },
+      { form: 'blocks', geology: 'limestone', x: 8, z: -80, radius: 5.5, height: 2.4, yawDeg: 20, name: 'the limestone blocks south of the square' },
+    ],
   },
 
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the valley's
