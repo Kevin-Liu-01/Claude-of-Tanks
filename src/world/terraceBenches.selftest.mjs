@@ -58,8 +58,10 @@ const inside = (poly, x, z) => {
   }
   return c;
 };
-// the zones' cores (their feather and 12 m more in from every side), off the roads' corridors and inside the square
-const core = (x, z) => config.terrain.terraces.some((zone) => {
+// the zones' cores (their feather and 12 m more in from every side), off the roads' corridors and inside the square;
+// the open-country zones (a zone kept in the settlement, below, lies where the near-field relief stands down)
+const open = config.terrain.terraces.filter((zone) => !zone.settlement);
+const core = (x, z) => open.some((zone) => {
   const pad = (zone.feather ?? 24) + 12;
   return inside(zone.polygon, x, z) && [[pad, 0], [-pad, 0], [0, pad], [0, -pad]].every(([dx, dz]) => inside(zone.polygon, x + dx, z + dz));
 });
@@ -84,4 +86,23 @@ assert.ok(levelNow > samples * 0.3, `now: the benches lie at their levels (${lev
 // off the terraces the ground is unchanged; the edge band's outland composition samples the square's edge (the terraces'
 // heights among them), so a few points there move by float noise
 assert.ok(off > 20000 && offSame > off * 0.99 && offMax < 1e-3, `off the terraces the ground is unchanged (${offSame} of ${off} to the bit, the rest within ${offMax.toExponential(1)} m)`);
-console.log(`terraceBenches.selftest: Orchard's benches at their levels ${levelNow} of ${samples} core samples (before ${levelWas}); off the terraces ${offSame} of ${off} samples unchanged to the bit, the rest within ${offMax.toExponential(1)} m; no other map has terrace zones PASS`);
+// ---- (3) a zone kept in the settlement (TerraceZoneConfig.settlement, Orchard round 5: the village on its terraced hill)
+// steps its ground inside the village's levelled ground; the same zone without the opt-in lies level there, as every
+// settlement did before it
+const kept = config.terrain.terraces.filter((zone) => zone.settlement);
+assert.ok(kept.length === 1 && kept[0].settlement === 1, 'Orchard keeps one terrace zone in its settlement, the village hill');
+const flat = createHeightField(1337, { ...config, terrain: { ...config.terrain,
+  terraces: config.terrain.terraces.map((zone) => zone.settlement ? { ...zone, settlement: undefined } : zone) } });
+const v = config.terrain.village;
+let inVillage = 0, keptLevel = 0, flatLevel = 0;
+for (let z = -440; z <= 440; z += 2.3) for (let x = -440; x <= 440; x += 2.3) {
+  if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || now._roadDist(x, z) < 20) continue;
+  const zone = kept[0], pad = zone.feather + 8;
+  if (![[0, 0], [pad, 0], [-pad, 0], [0, pad], [0, -pad]].every(([dx, dz]) => inside(zone.polygon, x + dx, z + dz))) continue;
+  inVillage++;
+  if (onLevel(now.getHeightAt(x, z))) keptLevel++;
+  if (onLevel(flat.getHeightAt(x, z))) flatLevel++;
+}
+assert.ok(inVillage > 500, `samples of the village hill's zone inside the settlement (${inVillage})`);
+assert.ok(keptLevel > inVillage * 0.3 && flatLevel < inVillage * 0.02, `kept in the settlement the hill's benches lie at their levels (${keptLevel} of ${inVillage}; without the opt-in ${flatLevel})`);
+console.log(`terraceBenches.selftest: Orchard's benches at their levels ${levelNow} of ${samples} core samples (before ${levelWas}); off the terraces ${offSame} of ${off} samples unchanged to the bit, the rest within ${offMax.toExponential(1)} m; the village hill's zone kept in the settlement ${keptLevel} of ${inVillage} on a level (${flatLevel} without the opt-in); no other map has terrace zones PASS`);

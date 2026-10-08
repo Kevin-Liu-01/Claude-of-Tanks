@@ -239,6 +239,9 @@ export interface TerraceZoneConfig {
    * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
   minGrade?: number;
   fullGrade?: number;
+  /** (the map-revival lane, 2026-10-07, Orchard round 5: the village stacked on its terraced hill) the share of the steps
+   * kept inside the settlement (0..1). Absent: 0 — a settlement lies on its own levelled ground, as before. */
+  settlement?: number;
 }
 
 interface LandformConfig {
@@ -662,7 +665,7 @@ const MAP_SIZE = 1024;
 interface TerraceZone {
   xs: Float64Array; zs: Float64Array;
   minX: number; maxX: number; minZ: number; maxZ: number;
-  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number;
+  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number; settlement: number;
 }
 interface TerraceZoneHit { zone: TerraceZone; weight: number }
 
@@ -673,6 +676,7 @@ function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): T
       xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
       feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
       minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
+      settlement: clamp(z.settlement ?? 0, 0, 1),
     };
   });
 }
@@ -2099,7 +2103,7 @@ function* heightFieldBuildSteps(
    */
   function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
     const zone = tz.zone;
-    const protect = (1 - cw * 0.85) * (1 - vm) * (1 - marshW);
+    const protect = (1 - cw * 0.85) * (1 - vm * (1 - zone.settlement)) * (1 - marshW);
     if (protect <= 0.001) return h;
     const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
     const h0 = smooth(x, z);
