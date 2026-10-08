@@ -15,7 +15,7 @@
  * Draws only through the blast context (volume media, thrown chunks, additive light): seeded, pooled, no allocation.
  * A settled event (a late joiner, a reconnect) draws nothing: its stage is laid down by the world, silently.
  */
-import type { StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import type { ChunkShape } from './debrisChunks.ts';
 import { linearHex } from './surfaceLooks.ts';
@@ -68,6 +68,41 @@ export function lookForStruckKind(kind: string | null | undefined): StructureLoo
   if (/stone|rock|rubble|wall|pillbox|bunker/.test(k)) return STONE_LOOK;
   if (/tree|stump|trunk|fence|gate|post|crate|wood|timber|log|pallet|hut|shed|barn|shack|kiosk/.test(k)) return WOOD_LOOK;
   return null;
+}
+
+/**
+ * The P1 breach stage names a blow, not a hole: the hole it opens where the blow met the building — the point carried
+ * to the nearest face of its footprint, at least most of a radius off the ground and under the eaves, facing out of
+ * that face — as big as the blow (a rammed wall the hull's height, a howitzer shell two metres, a kinetic round a shot
+ * hole), never wider than the building can hold.
+ */
+export function breachHoleForStage(e: StructureStageEvent): StructureBreachEvent {
+  const c = Math.cos(e.yaw), sn = Math.sin(e.yaw);
+  // body frame (x across = hw, z along = hd): world = (cx + bx c + bz s, cz - bx s + bz c)
+  const dx = e.x - e.cx, dz = e.z - e.cz;
+  let bx = dx * c - dz * sn, bz = dx * sn + dz * c;
+  const hw = Math.max(0.5, e.hw), hd = Math.max(0.5, e.hd);
+  // the nearest face, by the share of its half extent the point stands out
+  let nbx = 0, nbz = 0;
+  if (Math.abs(bx) / hw >= Math.abs(bz) / hd) { nbx = bx < 0 ? -1 : 1; bx = nbx * hw; bz = Math.max(-hd, Math.min(hd, bz)); }
+  else { nbz = bz < 0 ? -1 : 1; bz = nbz * hd; bx = Math.max(-hw, Math.min(hw, bx)); }
+  const m = e.munition;
+  const r = e.cause === 'ram' ? 1.5
+    : m === 'howitzer' || m === 'missile' ? 2.1
+      : m === 'rocket' || m === 'hesh' || m === 'cook_off' ? 1.7
+        : m === 'he' ? 1.3
+          : m === 'atgm' || m === 'heat' || m === 'drone_fpv' ? 0.8
+            : m === 'autocannon_he' ? 0.55
+              : 0.45;
+  const h = Math.max(1, e.topY - e.baseY);
+  const radiusM = Math.min(r, 0.45 * Math.min(h, 2 * Math.min(hw, hd)));
+  const y = Math.min(e.baseY + h - radiusM * 0.6, Math.max(e.baseY + radiusM * 0.85, e.cause === 'ram' ? e.baseY + 1.2 : e.y));
+  return {
+    structureId: e.structureId, section: -1, sectionKind: 'wall', y0: e.baseY, y1: e.topY, hole: 0,
+    x: e.cx + bx * c + bz * sn, y, z: e.cz - bx * sn + bz * c,
+    nx: nbx * c + nbz * sn, ny: 0, nz: -nbx * sn + nbz * c,
+    radiusM, munition: e.munition, sectionDown: false, settled: e.settled === true,
+  };
 }
 
 /** The piece shape a fracture material breaks into. */
