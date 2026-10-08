@@ -122,10 +122,10 @@ export default {
     roadTint: [0.78, 0.61, 0.51], strata: 0.16, sandstoneMarkers: 0, sandMacro: 0.9,
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
-    // (The Redrock lane, 2026-10-07: the contact at y 80 — the east wall's domes and the canyon heads' upper storeys pale,
-    // the lower west wall and the floor's inselbergs red throughout; the ground lane's first pass had the order inverted,
-    // a pale band at every foot that read as concrete)
-    formation: { atFrac: 0.73, atY: 80, wobbleM: 4, lowerTint: [1.42, 0.97, 0.74, 0.12], upperTint: [1.85, 1.62, 1.22, 0.85],
+    // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper
+    // storeys a warm cream, the walls and the floor's inselbergs red-brown below it; the ground lane's first pass had the
+    // order inverted, a pale band at every foot that read as concrete)
+    formation: { atFrac: 0.9, atY: 98, wobbleM: 4, lowerTint: [1.42, 0.97, 0.74, 0.12], upperTint: [1.95, 1.60, 1.08, 0.8],
       edgeM: 3 },
     // (the Redrock lane: the domes' caps, the walls' benches and the jebels' tops are bare rock — the floor, the dunes and
     // the ramps lie below 13 m, the Disi bench at 10-16 m, the domes' caps at 20-38 m)
@@ -204,6 +204,9 @@ export default {
     // hanging on its face" in all four of its Redrock frames; 278 of the map's 931 boulders hung on a wall, a ledge's lip
     // or a narrow bench. The law is every map's default since 2026-10-04: rockTalusDeg names another angle)
     hedgehogs: 22, sandbagLines: 24,
+    // (the Redrock lane, 2026-10-07: the fallen blocks are the walls' red-brown sandstone, where the lithology's base drew a
+    // grey-pink — "pillows" against the red cliffs)
+    rockTone: (h: number, s: number, l: number) => [0.036, 0.40, clamp01(0.33 + (l - 0.3) * 0.8)],
     // (the Redrock lane, 2026-10-07: a pillbox stood in the west spring's palms, three trunks through its roof)
     pillboxClearOfTrees: true,
     tankWrecks: { era: 'modern', count: 7, debris: true,
