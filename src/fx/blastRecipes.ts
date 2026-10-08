@@ -62,8 +62,8 @@ export interface BlastContext {
   /** the pressure ring racing out over the ground (scale x the battle ring) */
   shockRing(x: number, z: number, scaleK: number, alphaK: number, ageS: number): void;
   /** pulse the pooled explosion light (peak x the battle's explosion peak) after delayS, over durS (default: the kill
-   *  light's long decay) */
-  lightPulse(x: number, y: number, z: number, peakK: number, delayS: number, durS?: number): void;
+   *  light's long decay), in its own hue (default: the kill light's orange) */
+  lightPulse(x: number, y: number, z: number, peakK: number, delayS: number, durS?: number, hex?: number): void;
   /** the burst's light inside the media round it (volumeMedia glow sources): centre, radius m, peak, duration s */
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
   /** camera-distance size boost (1 inside ~90 m) so far blasts still read */
@@ -82,6 +82,8 @@ const FLASH_ORANGE: Rgb = [1, 0.55, 0.16];
 const FIRE_HOT: Rgb = [1, 0.84, 0.5];
 const FIRE_DEEP: Rgb = [0.95, 0.32, 0.06];
 const SPARK: Rgb = [1, 0.78, 0.45];
+/** (round 7c: the ground under a burst lay red) a detonation's light is hotter than a burning hull's */
+const BURST_LIGHT_HEX = 0xff9a52;
 const _c: [number, number, number] = [0, 0, 0];
 
 function mix3(a: Rgb, b: Rgb, t: number): Rgb {
@@ -233,12 +235,14 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
 
   // 1. the flash (it lasts long enough to land on a 10 fps frame) and the fireball: the charge's width, swelling out of
   // one core in a tenth of a second, cooling to dark smoke and soil inside a quarter
-  lightPuff(C, 'flash', I.x, by + 0.35 * D, I.z, 0, 0.8, 0, 0.11, 0.55 * D * dk, 1.15 * D * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
+  // (round 7c, DVIDS 954922: the charge's dome is white-hot on the event frame and full and saturated a frame later;
+  // ours had cooled away by +0.1 s) the dome holds ~0.15 s
+  lightPuff(C, 'flash', I.x, by + 0.3 * D, I.z, 0, 0.8, 0, 0.15, 0.7 * D * dk, 1.25 * D * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
   const fireN = shaped ? 2 : heavy ? 5 : 3;
   for (let i = 0; i < fireN; i++) {
     const a = R() * TAU, v = (2 + R() * 3) * sq;
     lightPuff(C, 'fire', I.x + Math.cos(a) * 0.08 * D, by + 0.25 * D, I.z + Math.sin(a) * 0.08 * D,
-      Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.16 + R() * 0.1, 0.3 * D * dk, (0.6 + R() * 0.15) * D * dk,
+      Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.2 + R() * 0.1, 0.3 * D * dk, (0.6 + R() * 0.15) * D * dk,
       mix3(FIRE_HOT, FIRE_DEEP, 0.3), FIRE_DEEP, 0.8, 1.5, bo + 0.005);
   }
   const ballN = thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
@@ -253,14 +257,35 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     look(m, ballC0, mix3(ballC0, SMOKE_AGED, 0.35), 0.95, 0.0, 0.5);
     book(m, 'billow', R, life);
     // white-orange for the shaped charge's sharp flash, orange for HE (mostly hidden in its own soil), rolling for the
-    // thermobaric rocket
-    heat(m, thermobaric ? 1.45 : shaped ? 1.3 : 1.12, thermobaric ? 1.6 : shaped ? 11 : heavy ? 6.5 : 9);
+    // thermobaric rocket; (round 7c) still glowing orange inside its smoke at +0.3 s, as the real charges do
+    heat(m, thermobaric ? 1.45 : shaped ? 1.3 : 1.12, thermobaric ? 1.6 : shaped ? 9 : heavy ? 5 : 6);
     C.media(m);
   }
   // the light: on the ground for ~0.2 s (a bright ground takes far less of it), and inside the burst's own medium
   const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : hard ? 0.6 : 1;
-  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.75, 0.25 + 0.14 * s) * albedoK, 0, heavy ? 0.32 : shaped ? 0.16 : 0.22);
+  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.75, 0.25 + 0.14 * s) * albedoK, 0, heavy ? 0.32 : shaped ? 0.16 : 0.22,
+    BURST_LIGHT_HEX);
   C.glow(I.x, by + 0.4 * D, I.z, 1.3 * D, heavy ? 1.1 : shaped ? 0.7 : 0.9, heavy ? 0.42 : shaped ? 0.22 : 0.3, bo);
+
+  // 1b. (round 7c, DVIDS 954922: by +0.3 s the fireball is inside its own smoke, a lobed grey-brown cloud that keeps
+  // climbing on its heat for seconds, leaning downwind and thinning; b8a's stopped as a tan haystack on the ground) the
+  // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
+  // cloud stretches into a lobed column, each glowing a moment at its heart
+  const smokeN = thermobaric || heavy ? 9 : shaped ? 4 : 6;
+  const smokeC0: Rgb = shaped || thermobaric ? SOOT : mix3b(SOOT, L.ejecta, 0.35);
+  for (let i = 0; i < smokeN; i++) {
+    const u = (i + R()) / smokeN;
+    const a = R() * TAU, r = R() * 0.25 * D;
+    place(m, I.x + Math.cos(a) * r, by + (0.25 + 0.45 * u) * D, I.z + Math.sin(a) * r, bo + 0.06 + 0.12 * u);
+    const lift = (2.2 + 2.8 * u) * sq * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    move(m, Math.cos(a) * (0.5 + R()) * sq, lift, Math.sin(a) * (0.5 + R()) * sq, 1.1, (0.3 + 0.45 * u) * Math.sqrt(sq), 1.0, 0);
+    const life = (7 + 3 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    shape(m, life, 0.4 * D * dk, (1.0 + 0.6 * u + 0.3 * R()) * D * dk, 1.7, R);
+    look(m, smokeC0, mix3(SMOKE_AGED, L.dust, 0.45), 0.92, 0.0, 0.5);
+    book(m, 'billow', R, life);
+    heat(m, 0.32, 4.5);
+    C.media(m);
+  }
 
   // 2a. a shaped charge's spike: the jet flashes out of the hole it drilled (back along the round's line; straight up when
   // the line is unknown), and dark smoke and fine soil are driven up that line in a tight cone — many small puffs
@@ -289,7 +314,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
     const wx = ay * uz - az * uy, wy = az * ux - ax * uz, wz = ax * uy - ay * ux;
     // (b8: a chain of separate grey balls) bigger puffs, launched closer in speed, overlap from the ground to the top
-    const spikeN = fpv ? 9 : 13;
+    // (round 7c, b8a: still a string of beads) twice as many, larger: their dark hearts merge into one jet
+    const spikeN = fpv ? 14 : 20;
     const vMax = (fpv ? 22 : 30) * sq * L.heightK;
     for (let i = 0; i < spikeN; i++) {
       const u = (i + R()) / spikeN;
@@ -300,8 +326,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       const v = vMax * (0.45 + 0.55 * u);
       place(m, I.x + (R() - 0.5) * 0.3, by + 0.25, I.z + (R() - 0.5) * 0.3, bo + R() * 0.03);
       move(m, dxs * v, dys * v, dzs * v, 2.8, 0.25, 0.6, -2.5);
-      const life = 2.4 + R() * 1.0;
-      const size1 = (1.3 + 0.9 * u + R() * 0.4) * s * dk;
+      const life = 3.4 + R() * 1.4;
+      const size1 = (1.5 + 1.0 * u + R() * 0.45) * s * dk;
       shape(m, life, size1 * 0.45, size1, 3.0, R);
       // dense enough that no sky shows through (b8: thin puffs read blue-grey)
       look(m, mix3b(SOOT, L.ejecta, 0.3 + 0.3 * R()), mix3(SOOT, SMOKE_AGED, 0.45), 1.0, 0.0, 0.55);
@@ -375,10 +401,25 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
       place(m, I.x + (R() - 0.5) * 0.6 * s, by + h, I.z + (R() - 0.5) * 0.6 * s, bo + 0.15 + R() * 0.15);
       move(m, (R() - 0.5) * 0.6, 0.6 + R() * 0.6, (R() - 0.5) * 0.6, 1.4, 0.12, 0.9, 0);
       const life = (5 + R() * 2) * L.hang;
-      const size1 = (2.4 + R()) * s * dk * (heavy ? 1.3 : 1);
+      const size1 = (1.7 + 0.7 * R()) * s * dk * (heavy ? 1.3 : 1);
       shape(m, life, size1 * 0.5, size1, 2.2, R);
-      look(m, mix3(L.ejecta, L.dust, 0.4), L.dust, Math.min(0.85, 0.55 * dustK + 0.2), 0.15, 0.4);
+      look(m, mix3(L.ejecta, L.dust, 0.4), L.dust, Math.min(0.65, 0.42 * dustK + 0.15), 0.15, 0.4);
       book(m, 'burst', R, life, 3);
+      heat(m, 0, 1);
+      C.media(m);
+    }
+    // (round 7c, b8a: the column was gone at 2 s and a haystack stayed) when its earth falls back the column leaves its
+    // fine soil standing along its height: grey-brown smoke that drifts off downwind and thins
+    const colSmokeN = heavy ? 4 : 3;
+    for (let i = 0; i < colSmokeN; i++) {
+      const h = (0.35 + 0.5 * (i + R() * 0.6) / colSmokeN) * colTop;
+      place(m, I.x + (R() - 0.5) * 0.8 * s, by + h, I.z + (R() - 0.5) * 0.8 * s, bo + 0.3 + R() * 0.25);
+      move(m, (R() - 0.5) * 0.8, 0.4 + R() * 0.5, (R() - 0.5) * 0.8, 1.2, 0.2 + 0.15 * R(), 1.0, 0);
+      const life = (6 + R() * 2.5) * L.hang * (heavy ? 1.2 : 1);
+      const size1 = (2.2 + 0.8 * R()) * s * dk * (heavy ? 1.3 : 1);
+      shape(m, life, size1 * 0.45, size1, 1.8, R);
+      look(m, mix3(L.ejecta, SMOKE_AGED, 0.35), mix3b(L.dust, SMOKE_AGED, 0.35), 0.75, 0.12, 0.5);
+      book(m, 'billow', R, life);
       heat(m, 0, 1);
       C.media(m);
     }
@@ -394,8 +435,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     for (let i = 0; i < n; i++) {
       const a = R() * TAU, tilt = coneC * Math.pow(R(), 0.7);
       const v = vC * (0.25 + 0.75 * Math.pow(R(), 2.2));
-      const big = R() < 0.06;
-      const sc = (big ? 0.22 + R() * 0.2 : 0.04 + Math.pow(R(), 2.2) * 0.16) * sq * L.chunkScale * dk;
+      const big = R() < 0.04;
+      const sc = (big ? 0.16 + R() * 0.14 : 0.04 + Math.pow(R(), 2.2) * 0.16) * sq * L.chunkScale * dk;
       const soil = I.surface === 'snow' && i % 3 === 0;
       chunk(C, shapeId, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s,
         Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v + 1, Math.sin(a) * Math.sin(tilt) * v,
@@ -403,23 +444,24 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     }
   }
 
-  // 3. the dust cloud: one mass, born together over the footprint, swelling fast then slowly, drifting downwind (wave
-  // 276: the dust that ages and drifts reads; it is kept as it was)
-  const cloudN = Math.round(4 + 1.5 * s);
+  // 3. the dust the blast raised over its footprint: low and wide, out past the fireball, drifting downwind and thinning
+  // (wave 276: the dust that ages and drifts reads) — never a mound (round 7c: b8a's dense dome of tan puffs sat on the
+  // ground for eight seconds, a haystack; DVIDS 954922's dust is a thin grey-brown sheet under the climbing smoke)
+  const cloudN = Math.round(5 + 2 * s);
   const top = (shaped ? 1.8 : 2.6) * s * L.heightK * (heavy ? 1.6 : 1);
-  const dustDark: Rgb = [L.dust[0] * 0.72, L.dust[1] * 0.7, L.dust[2] * 0.68];
+  const hazeC1 = mix3b(L.dust, SMOKE_AGED, 0.25);
   for (let i = 0; i < cloudN; i++) {
-    const a = R() * TAU, r = R() * 0.9 * s;
-    const h = (0.1 + 0.55 * R()) * top;
-    place(m, I.x + Math.cos(a) * r, by + 0.5 + h * 0.4, I.z + Math.sin(a) * r, bo + 0.02 + R() * 0.08);
-    move(m, Math.cos(a) * 2.4 * sq, (1.0 + h * 0.6) * sq, Math.sin(a) * 2.4 * sq, 1.4, 0.1 + R() * 0.15, 1.0, 0);
-    const size1 = (4.2 + R() * 3.0) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
-    const life = (7 + R() * 3) * Math.min(1.6, sq) * L.hang;
-    shape(m, life, size1 * 0.42, size1, 2.2, R);
-    look(m, dustDark, L.dust, Math.min(0.92, 0.7 * dustK + 0.12), 0.05, 0.42);
+    const a = R() * TAU, r = (0.3 + 0.9 * R()) * s;
+    const h = (0.1 + 0.4 * R()) * top;
+    place(m, I.x + Math.cos(a) * r, by + 0.3 + h * 0.25, I.z + Math.sin(a) * r, bo + 0.04 + R() * 0.1);
+    move(m, Math.cos(a) * 3.2 * sq, (0.5 + h * 0.3) * sq, Math.sin(a) * 3.2 * sq, 1.5, 0.04 + R() * 0.08, 1.0, 0);
+    const size1 = (3.2 + R() * 2.4) * s * Math.sqrt(dustK) * dk * (heavy ? 1.25 : 1);
+    const life = (6 + R() * 3) * Math.min(1.6, sq) * L.hang;
+    shape(m, life, size1 * 0.35, size1, 2.0, R);
+    look(m, mix3(L.dust, L.ejecta, 0.3), hazeC1, Math.min(0.62, 0.42 * dustK + 0.12), 0.05, 0.38);
     book(m, 'burst', R, life);
-    card(m, 1.0 + R() * 0.35, R, 0.3);
-    m.spin = (R() - 0.5) * 0.12;
+    card(m, 1.35 + R() * 0.4, R, 0.2);
+    m.spin = (R() - 0.5) * 0.1;
     heat(m, 0, 1);
     C.media(m);
   }
@@ -427,13 +469,14 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // 4. the ring: the blast wave throws the surface dust out along the ground as one thin ring that races out, stalls a
   // few metres out and thins away in two seconds — many low, wide, overlapping cards, never a row of mounds
   const ringN = Math.round((shaped ? 14 : 18 + 4 * s) * Math.sqrt(L.dustK));
-  const ringV = (shaped ? 13 : 10) * sq;
+  const ringV = (shaped ? 13 : 11.5) * sq;
   for (let i = 0; i < ringN; i++) {
     const a = (i / ringN) * TAU + (R() - 0.5) * (TAU / ringN);
     const v = ringV * (0.8 + R() * 0.4);
     place(m, I.x + Math.cos(a) * 0.5 * s, by + 0.2 * sq, I.z + Math.sin(a) * 0.5 * s, bo + 0.01 + R() * 0.03);
     move(m, Math.cos(a) * v, 0.3 + R() * 0.2, Math.sin(a) * v, 3.2, 0.05, 0.8, 0);
-    const life = (1.6 + R() * 0.8) * (shaped ? 0.85 : 1) * Math.max(0.7, L.hang);
+    // (round 7c, DVIDS 954922: the sheet still lies along the ground at +2 s) it hangs ~2-3 s
+    const life = (2.2 + R() * 1.0) * (shaped ? 0.85 : 1) * Math.max(0.7, L.hang);
     const size1 = (1.6 + R() * 0.8) * s * Math.sqrt(L.dustK) * dk * (shaped ? 0.75 : 1);
     shape(m, life, size1 * 0.3, size1, 1.8, R);
     look(m, mix3(L.ejecta, L.dust, 0.7), L.dust, Math.min(0.5, 0.3 * L.dustK + 0.1) * (shaped ? 0.8 : 1), 0.0, 0.35);

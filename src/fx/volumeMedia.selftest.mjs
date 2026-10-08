@@ -259,10 +259,25 @@ function captureContext(seed) {
   assert.ok(a.pulseDur <= 0.35 && big.pulseDur <= 0.35 && atgmLog.pulseDur <= 0.35, `the ground light lasts ~0.2 s (${a.pulseDur})`);
   assert.ok(a.pulseK <= 0.7 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground light: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
   assert.ok(a.glows >= 1 && a.glowDur <= 0.45 && a.glowR > 5, 'the burst glows inside its own medium for a moment');
-  // no residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"); a hard ground keeps one
-  assert.ok(!a.media.some((m) => m.medium === 'billow' && m.heat === 0), 'no residue puff over soil');
+  // no pale residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"): its only cold smoke is
+  // the column's own soil standing up the column (round 7c); a hard ground keeps a little pale smoke over it
+  const lum0 = (m) => 0.2126 * m.r0 + 0.7152 * m.g0 + 0.0722 * m.b0;
+  const coldSmoke = (log) => log.media.filter((m) => m.medium === 'billow' && m.heat === 0);
+  assert.ok(coldSmoke(a).length >= 3 && coldSmoke(a).every((m) => m.y > 1.5 && lum0(m) < 0.12),
+    "no pale residue over soil: its cold smoke is the column's soil, standing up the column");
   const conc = he(5, 'he', 3.5, 'concrete');
-  assert.equal(conc.media.filter((m) => m.medium === 'billow' && m.heat === 0).length, 1, 'concrete keeps a little pale smoke');
+  assert.equal(coldSmoke(conc).length, coldSmoke(a).length + 1, 'concrete keeps a little pale smoke');
+  // (round 7c, DVIDS 954922: the smoke climbs out of the fireball for seconds; b8a's stopped as a haystack on the ground)
+  // the explosive's smoke: dark at birth, out of the cooling fireball, buoyant, the upper puffs faster, long-lived
+  for (const [name, log, n] of [['125 mm', a, 6], ['152 mm', big, 9], ['ATGM', atgmLog, 4]]) {
+    const sm = log.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.rise >= 0.3 && m.life >= 5);
+    assert.ok(sm.length >= n, `${name}: ${sm.length} puffs of the explosive's lasting smoke`);
+    assert.ok(sm.every((m) => lum0(m) < 0.1 && m.vy > 1.5), `${name}: its smoke is dark and climbs`);
+    assert.ok(Math.max(...sm.map((m) => m.rise)) > 1.3 * Math.min(...sm.map((m) => m.rise)), `${name}: its upper puffs climb faster`);
+  }
+  // the footprint dust is a low wide haze, never a mound: wider than tall, at most ~0.6 dense, not lifting off
+  const haze = a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
+  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.62 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
   assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
