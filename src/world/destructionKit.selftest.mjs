@@ -130,10 +130,10 @@ assert.deepEqual(results.damaged.result.hides, [{ section: null, partClass: 'gla
 // wall's thickness, the render lip just past it; the room is dark; one cut
 const breachRuns = results.breach.writers.mesh.runs;
 const rimRuns = breachRuns.filter((r) => r.role === 'rim');
-assert.deepEqual(rimRuns.map((r) => r.bucket), ['stone', 'regionalPlaster'], 'the core\'s units, then the render lip');
+assert.deepEqual(rimRuns.map((r) => r.bucket), ['stone', 'stone'], 'the core\'s units round the hole, then in the render\'s broken-back ring');
 const holeX = 1, holeY = 2, depth = front.layers.reduce((s, l) => s + l.thicknessM, 0);
 for (const v of rimRuns.flatMap((r) => r.v)) {
-  assert.ok(v[2] <= 4 + 0.35 && v[2] >= 4 - depth - 0.35, `inside the wall (z ${v[2].toFixed(2)})`);
+  assert.ok(v[2] <= 4 + 1e-9 && v[2] >= 4 - depth - 0.35, `inside the wall, nothing proud of it (z ${v[2].toFixed(3)})`);
 }
 const boxes = [];
 for (let i = 0; i < rimRuns[0].v.length; i += 24) {
@@ -150,8 +150,25 @@ for (let k = 0; k < 72; k++) for (const ring of [0.8, 1, 1.2]) {
 }
 assert.ok(covered / probes > 0.9, `the rim covers the cut's edge band (${covered}/${probes})`);
 assert.ok(breachRuns.some((r) => r.role === 'room' && r.bucket === 'dark'), 'the room behind it');
-assert.equal(results.breach.result.cuts.length, 1);
-assert.equal(results.breach.result.cuts[0].outsideM, 0.3);
+{
+  const [ring, cut] = results.breach.result.cuts;
+  assert.equal(results.breach.result.cuts.length, 2, 'the render\'s ring, then the hole (the newest last)');
+  assert.ok(Math.abs(ring.radiusM - 0.9 * 1.45) < 1e-9 && ring.outsideM === 0.01 && ring.depthM < 0.1, 'a shallow ring through the render');
+  assert.ok(cut.radiusM === 0.9 && cut.outsideM === 0.3 && cut.depthM > depth, 'the hole through the wall');
+  // the ring's units cover its blocky edge (1.16 r – 1.74 r)
+  const ringBoxes = [];
+  for (let i = 0; i < rimRuns[1].v.length; i += 24) {
+    const box = rimRuns[1].v.slice(i, i + 24);
+    ringBoxes.push([Math.min(...box.map((v) => v[0])), Math.max(...box.map((v) => v[0])), Math.min(...box.map((v) => v[1])), Math.max(...box.map((v) => v[1]))]);
+  }
+  let inRing = 0, probes = 0;
+  for (let k = 0; k < 72; k++) for (const reach of [1.2, 1.45, 1.7]) {
+    const px = holeX + Math.cos(k * Math.PI / 36) * 0.9 * reach, py = holeY + Math.sin(k * Math.PI / 36) * 0.9 * reach;
+    probes++;
+    if (ringBoxes.some((b) => px >= b[0] && px <= b[1] && py >= b[2] && py <= b[3])) inRing++;
+  }
+  assert.ok(inRing / probes > 0.9, `the ring's units cover its edge band (${inRing}/${probes})`);
+}
 assert.ok(results.breach.writers.pieces.list.every((p) => p[18] <= 0.5), 'debris thrown along the blow (−Z, into the room)');
 // sectionDown: the tiles fall, the roof hidden
 assert.ok(results.sectionDown.writers.pieces.list.every((p) => p[1] === 'tile'));
