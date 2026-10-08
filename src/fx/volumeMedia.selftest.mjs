@@ -125,6 +125,19 @@ assert.ok(gpuMB <= 16, `the media atlases stay within the 16 MB desktop budget (
   media.reset();
   media.update(camera);
   assert.equal(media.stats().drawn, 0, 'reset empties the pool');
+  // round 7: a burst's light inside the medium: a ring of four slots on the fx clock, shifted with it, cleared on reset
+  const gu = media.group.children[0].material.uniforms;
+  assert.ok(gu.uGlowP.value.length === 4 && gu.uGlowK.value.length === 4, 'four glow slots');
+  for (let i = 0; i < 5; i++) media.glow(i, 1, 2, 6, 0.9, 0.3, 0.05);
+  assert.deepEqual(gu.uGlowP.value[0].toArray(), [4, 1, 2, now + 0.05], 'the fifth replaces the oldest, born on the fx clock');
+  assert.deepEqual(gu.uGlowK.value[1].toArray(), [6, 0.9, 0.3, 0], 'radius, peak, duration');
+  media.shiftTime(2);
+  assert.equal(gu.uGlowP.value[0].w, now + 2.05, 'a glow shifts with the clock');
+  media.glow(0, 0, 0, 0, 1, 1);
+  assert.equal(gu.uGlowP.value[1].x, 1, 'a zero radius lights nothing');
+  media.reset();
+  assert.ok(gu.uGlowK.value.every((k) => k.y === 0) && gu.uGlowP.value.every((q) => q.w < -1e8), 'reset puts every glow out');
+  assert.match(media.group.children[0].material.vertexShader, /uniform vec4 uGlowP\[ 4 \]/, 'the shader reads the slots');
 }
 
 // ---- 4. recipes: seeded, keyed on munition and surface ------------------------------------------------------------
@@ -139,7 +152,9 @@ function captureContext(seed) {
       chunk: (k) => log.chunk.push({ ...k }),
       flash: () => { log.flash++; }, fire: () => { log.fire++; }, sparks: () => { log.sparks++; },
       jet: () => { log.jets = (log.jets || 0) + 1; }, shockRing: () => { log.rings = (log.rings || 0) + 1; },
-      lightPulse: (x, y, z, k) => { log.pulses++; log.pulseK = k; }, distBoost: () => 1, tier: 1,
+      lightPulse: (x, y, z, k, delay, dur) => { log.pulses++; log.pulseK = k; log.pulseDur = dur; },
+      glow: (x, y, z, r, peak, dur) => { log.glows = (log.glows || 0) + 1; log.glowR = r; log.glowDur = dur; },
+      distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: makeChunkPiece(),
       lp: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 1, rot: 0, rotVel: 0, col0: [1, 1, 1], col1: [1, 1, 1], alpha: 1, grav: 0, birthOffset: 0 },
       ls: { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.03, grav: -18, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 },
@@ -169,8 +184,9 @@ function captureContext(seed) {
   const maxSize = (log) => Math.max(...log.media.map((m) => m.size1));
   assert.ok(maxSize(big) > maxSize(a) * 1.4, 'the gunship howitzer throws a far bigger cloud than tank HE');
   assert.ok(a.flash > 0 && a.fire > 0 && a.pulses > 0, 'an explosive burst flashes, burns and lights the ground');
-  // wave 266: the soil column stands dark and tall at range: its jets are cards taller than wide; a 125 mm burst's
-  // reach ~9 m, the gunship's past 18 m, a 30 mm round's stay under 4 m
+  // round 7 (wave 276: "the 1.2 kg FPV, the 3.4 kg ATGM and the 125 mm HE look nearly identical", thrown soil "a
+  // vertical chain of separate brown balls", debris "flat unlit black squares", "a ring of haystack puffs", "a flat
+  // orange glow wash for 800 ms"): each class its own birth, sized by its charge
   const peak = (m) => {
     const kd = Math.max(m.drag, 1e-3);
     let top = -Infinity;
@@ -179,29 +195,77 @@ function captureContext(seed) {
     }
     return top;
   };
-  const jets = (log) => log.media.filter((m) => m.aspect < 0.6 && m.grav < 0);
-  const jetTop = (log) => Math.max(...jets(log).map(peak));
-  assert.ok(jets(a).length >= 8 && jets(a).every((m) => m.density >= 0.85), 'tank HE throws a dense column of soil jets');
-  // (b5: the gunship's jets all topped out together, a cluster of drops in the sky) their tops fill the column from low
-  // to high, and fine dust stands in it
-  for (const log of [a, big]) {
-    const tops = jets(log).map(peak);
-    assert.ok(Math.min(...tops) < 0.45 * Math.max(...tops), 'the jets fill the column from the ground to its top');
-    assert.ok(log.media.some((m) => m.grav === 0 && m.aspect < 0.85 && m.y > 1), 'a pillar of fine dust stands in it');
+  const fpvLog = fpv.log, atgmLog = atgm.log;
+  const atgmUp = captureContext(6);
+  groundBurst(atgmUp.ctx, { x: 0, y: 0, z: 0, munition: 'atgm', chargeKg: 3.4, surface: 'soil' });
+  assert.ok((atgmUp.log.jets || 0) > 0 && (fpvLog.jets || 0) > 0, 'a shaped charge always draws its jet (the Studio passes no line)');
+  // the fireball: the charge's width (~3.9 kg^0.32 m), smaller for a shaped charge
+  const ball = (log) => Math.max(...log.media.filter((m) => m.medium === 'billow' && m.heat > 1).map((m) => m.size1));
+  assert.ok(ball(fpvLog) < ball(atgmLog) && ball(atgmLog) < ball(a) && ball(big) > 1.6 * ball(a),
+    `fireballs by charge: FPV ${ball(fpvLog).toFixed(1)} < ATGM ${ball(atgmLog).toFixed(1)} < HE ${ball(a).toFixed(1)} << 152 ${ball(big).toFixed(1)}`);
+  assert.ok(ball(a) > 5 && ball(a) < 7.5 && ball(big) > 9.5, 'a 125 mm fireball ~6 m across, the 152 mm\'s ~10 m');
+  // the flash lands on a 10 fps frame
+  // the shaped charge's spike: many small unstretched puffs driven up a tight cone, standing well up; no earth fountain
+  const spike = (log) => log.media.filter((m) => m.medium === 'burst' && m.grav < 0 && m.grav > -5);
+  const fountain = (log) => log.media.filter((m) => m.medium === 'burst' && m.grav <= -9);
+  for (const [name, log, n, top] of [['ATGM', atgmUp.log, 10, 8], ['FPV', fpvLog, 6, 5]]) {
+    const sp = spike(log);
+    assert.ok(sp.length >= n && sp.every((m) => m.aspect === 1), `${name}: a spike of ${sp.length} round puffs (no stretched cards)`);
+    assert.ok(sp.every((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.1) * m.vy + 1e-6), `${name}: the spike is narrow`);
+    assert.ok(Math.max(...sp.map(peak)) > top, `${name}: the spike stands past ${top} m (${Math.max(...sp.map(peak)).toFixed(1)})`);
+    assert.equal(fountain(log).length, 0, `${name}: a shaped charge throws no earth fountain`);
   }
-  assert.ok(jetTop(a) > 8, `tank HE's soil column stands ~9 m (${jetTop(a).toFixed(1)})`);
-  assert.ok(jetTop(big) > 18, `the gunship's stands past 18 m (${jetTop(big).toFixed(1)})`);
+  // HE: a dense dark earth fountain in a cone, filled from the ground to its top by many small round puffs that arc
+  // over and fall back; the heavy rounds' far taller and fuller
+  for (const [name, log, n, top] of [['125 mm', a, 20, 7.5], ['152 mm', big, 30, 16]]) {
+    const f = fountain(log);
+    assert.ok(f.length >= n && f.every((m) => m.aspect === 1 && m.density >= 0.95), `${name}: a dense fountain of ${f.length} round puffs`);
+    assert.ok(f.every((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.43) * m.vy + 1e-6), `${name}: in a cone`);
+    const tops = f.map(peak);
+    assert.ok(Math.min(...tops) < 0.45 * Math.max(...tops), `${name}: the fountain fills from the ground to its top`);
+    assert.ok(Math.max(...tops) > top, `${name}: the fountain stands past ${top} m (${Math.max(...tops).toFixed(1)})`);
+    assert.ok(f.every((m) => m.life <= 3), `${name}: its soil falls back into the cloud within ~2-3 s`);
+    assert.ok(log.media.some((m) => m.grav === 0 && m.medium === 'burst' && m.aspect === 1 && m.y > 1 && m.life > 4),
+      `${name}: fine dust stands in the column`);
+  }
+  assert.ok(fountain(big).length >= 1.4 * fountain(a).length, 'the 152 mm throws far more earth');
+  assert.ok((big.rings || 0) > 0, 'and sends its shock ring over the ground');
   const ac = he(5, 'autocannon_he', 0.05, 'soil');
-  assert.ok(jetTop(ac) < 4, `a 30 mm round's stays low (${jetTop(ac).toFixed(1)})`);
-  // (wave 273) a burst's light on the ground is brief and weak, far weaker on snow; its cloud spreads without lifting off;
-  // a shaped charge throws few soil jets and is born in its own dark smoke
+  assert.ok(Math.max(...fountain(ac).map(peak)) < 4, 'a 30 mm round\'s earth stays low');
+  // the clods: many lumps of the ground, lit and in its colour (not coal), most back down within ~2 s, lying ~20 s
+  const flight = (k) => 2 * Math.max(0, k.vy) / 9.8;
+  for (const [name, log, n] of [['125 mm', a, 100], ['152 mm', big, 160], ['ATGM', atgmLog, 30]]) {
+    const cl = log.chunk;
+    assert.ok(cl.length >= n, `${name}: ${cl.length} clods`);
+    assert.ok(cl.every((k) => k.life >= 14), `${name}: its clods lie where they land`);
+    const lumC = cl.reduce((acc, k) => acc + 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b, 0) / cl.length;
+    assert.ok(lumC > 0.05, `${name}: clods in the soil's lit colour (mean luminance ${lumC.toFixed(3)}), not coal`);
+    const fl = cl.map(flight).sort((p, q) => p - q);
+    assert.ok(fl[Math.floor(fl.length / 2)] < 2.2, `${name}: most fall back within ~2 s (median ${fl[Math.floor(fl.length / 2)].toFixed(2)} s)`);
+  }
+  // the ring: many low wide cards racing out, stalling and thinning within ~2-3 s (no old surge of mounds)
+  for (const [name, log, n] of [['125 mm', a, 16], ['ATGM', atgmLog, 10]]) {
+    const ring = log.media.filter((m) => m.aspect >= 2.8 && m.grav === 0);
+    assert.ok(ring.length >= n, `${name}: a ring of ${ring.length} cards`);
+    assert.ok(ring.every((m) => Math.hypot(m.vx, m.vz) >= 7 && m.drag >= 3 && m.density <= 0.5 && m.life <= 3.5),
+      `${name}: it races out, stalls, and thins within ~3 s`);
+    assert.ok(!log.media.some((m) => m.aspect >= 1.9 && m.aspect < 2.8 && m.life > 4), `${name}: no surge of mounds`);
+  }
+  // the light: on the ground ~0.2 s, far weaker on snow; inside the medium for a moment
   const snowGlow = he(5, 'he', 3.5, 'snow');
-  assert.ok(a.pulseK <= 0.6 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground glow: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
+  assert.ok(a.pulseDur <= 0.35 && big.pulseDur <= 0.35 && atgmLog.pulseDur <= 0.35, `the ground light lasts ~0.2 s (${a.pulseDur})`);
+  assert.ok(a.pulseK <= 0.7 && snowGlow.pulseK < 0.35 * a.pulseK, `the ground light: soil ${a.pulseK}, snow ${snowGlow.pulseK}`);
+  assert.ok(a.glows >= 1 && a.glowDur <= 0.45 && a.glowR > 5, 'the burst glows inside its own medium for a moment');
+  // no residue puff floating out of a soil burst (wave 276's "translucent blue-grey sphere"); a hard ground keeps one
+  assert.ok(!a.media.some((m) => m.medium === 'billow' && m.heat === 0), 'no residue puff over soil');
+  const conc = he(5, 'he', 3.5, 'concrete');
+  assert.equal(conc.media.filter((m) => m.medium === 'billow' && m.heat === 0).length, 1, 'concrete keeps a little pale smoke');
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
-  const atgmJets = jets(atgm.log);
-  assert.ok(atgmJets.length <= 3 && atgm.log.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1),
-    'a shaped charge: few jets, its own dark smoke');
+  assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
+  // the three signatures differ in kind, not only in size
+  const sig = (log) => [spike(log).length > 0, fountain(log).length > 0, (log.rings || 0) > 0].join();
+  assert.ok(new Set([sig(fpvLog), sig(a), sig(big)]).size === 3, `three signatures: FPV ${sig(fpvLog)}, HE ${sig(a)}, 152 ${sig(big)}`);
   // and its cloud keeps moving: no dust or residue flipbook holds its last frame for the rest of its life
   for (const m of [...a.media, ...big.media]) {
     if (m.heat === 0 && m.life > 3) assert.ok(m.playSeconds >= m.life * 0.8, 'a flipbook plays its whole life');
@@ -453,7 +517,10 @@ function captureContext(seed) {
     assert.ok(Math.abs(k.groundY - dug(lx, lz)) < 1e-6, 'and rests on the ground where it lands');
     void s;
   }
-  assert.ok(ej.log.media.length >= 8 && ej.log.media.every((m) => m.aspect > 1.5), 'a thin ring of dust rolls off the rim');
+  // (round 7, wave 276: its rim ring of dust cards read as "haystack puffs") the burst's own ring is the one ring; the
+  // clods lie where they land ~20 s and settle in
+  assert.equal(ej.log.media.length, 0, 'no second ring of dust off the rim');
+  assert.ok(ej.log.chunk.every((k) => k.life >= 16), 'the clods lie on the apron');
 }
 
 // ---- 8. buildings coming down in their own geometry (the mask the world's bucket materials read) ---------------

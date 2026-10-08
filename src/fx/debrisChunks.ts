@@ -75,14 +75,27 @@ void main() {
   float rest = aSG.y + aSG.x * 0.32;
   float grounded = step( center.y, rest );
   center.y = max( center.y, rest );
+  // (wave 276: pieces "lie on the grass at 3 s and then simply vanish") a piece that has landed lies where it fell for
+  // most of its life, then settles into the ground over the last third of it; only the last few percent shrink
+  float tl = age / life;
+  center.y -= grounded * aSG.x * 1.15 * smoothstep( 0.66, 1.0, tl );
   // the tumble damps out once the piece lies on the ground (it slides a little, then stops)
   float spin = aAR.w * ( grounded > 0.5 ? min( age, 0.25 + 0.25 * fract( aSG.w * 7.3 ) ) : age );
   mat3 rot = axisAngle( normalize( aAR.xyz + vec3( 1e-4 ) ), spin );
   // per-piece proportions so no two read alike
   float h1 = fract( aSG.w * 37.719 ), h2 = fract( aSG.w * 61.113 ), h3 = fract( aSG.w * 91.537 );
   vec3 lp = position * vec3( 0.8 + h1 * 0.4, 0.8 + h2 * 0.4, 0.8 + h3 * 0.4 );
-  float fade = 1.0 - smoothstep( 0.86, 1.0, age / life );
-  vec3 wpos = center + rot * ( lp * aSG.x * fade );
+  float fade = 1.0 - smoothstep( 0.95, 1.0, tl );
+  vec3 p = rot * ( lp * aSG.x * fade );
+  // the shutter's smear: in flight a piece draws drawn out along its velocity by a 1/45 s exposure, the way a camera
+  // films thrown earth (wave 276: still clods read as "black squares"); a resting piece is its own shape
+  vec3 vel = aVL.xyz * exp( -k * age ) + vec3( 0.0, -9.8 * age, 0.0 );
+  float speed = length( vel ) * ( 1.0 - grounded );
+  if ( speed > 0.5 ) {
+    vec3 vd = vel / speed;
+    p += vd * dot( p, vd ) * min( speed * 0.022 / max( aSG.x, 0.02 ), 3.0 );
+  }
+  vec3 wpos = center + p;
   vNormalW = rot * normal;
   vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 );
   vHeat = aCH.w * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 );
@@ -117,9 +130,13 @@ varying vec3 vWorldPos;
 void main() {
   vec3 n = normalize( vNormalW );
   if ( !gl_FrontFacing ) n = -n;
-  float ndl = max( dot( n, uSunDir ), 0.0 );
-  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 );
-  vec3 col = vAlbedo * ( uSunCol * ndl + amb );
+  float nl = dot( n, uSunDir );
+  float ndl = max( nl, 0.0 );
+  // (wave 276: "flat unlit pure-black squares") a lump of earth in daylight is never black: its faces turned from the
+  // sun still take the sky and the ground's bounce, and a little of the sun wraps round its rough edges
+  float diff = ndl * 0.8 + 0.2 * ( nl * 0.5 + 0.5 );
+  vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 ) * 1.25;
+  vec3 col = vAlbedo * ( uSunCol * diff + amb );
   // a hot piece glows in its crevices first, then cools to the material
   col += vec3( 1.4, 0.36, 0.06 ) * vHeat * ( 0.35 + 0.65 * ( 1.0 - ndl ) );
   #ifdef USE_FOG
@@ -152,7 +169,8 @@ function roughen(geo: THREE.BufferGeometry, rand: () => number, lo: number, hi: 
 
 function shapeGeometry(shape: ChunkShape, rand: () => number): THREE.BufferGeometry {
   switch (shape) {
-    case 'clod': return roughen(new THREE.IcosahedronGeometry(0.5, 0), rand, 0.6, 1.15);
+    // a torn lump of earth: flattened a little and broken unevenly (round 7: the round icosahedra read as pellets)
+    case 'clod': return roughen(new THREE.IcosahedronGeometry(0.5, 0), rand, 0.5, 1.25).scale(1, 0.78, 0.92);
     case 'stone': return roughen(new THREE.OctahedronGeometry(0.5, 0), rand, 0.55, 1.2).scale(1, 0.75, 0.85);
     case 'brick': {
       // a brick with a broken end: a box, one end's corners pulled in
@@ -312,9 +330,9 @@ export interface DebrisChunks {
   stats(): Record<ChunkShape, number>;
 }
 
-/** Capacities per shape (desktop); the phone tier halves them. */
+/** Capacities per shape (desktop); the phone tier halves them. (Round 7: a burst throws 100-300 clods that lie ~20 s.) */
 const CAPACITY: Readonly<Record<ChunkShape, number>> = Object.freeze({
-  clod: 384, stone: 256, brick: 256, splinter: 192, shard: 192, sheet: 96,
+  clod: 1536, stone: 512, brick: 256, splinter: 192, shard: 192, sheet: 96,
 });
 
 export function createDebrisChunks(o: { seed: number; now: () => number; scene?: THREE.Scene | null; tier?: 'mobile' | 'desktop' }): DebrisChunks {

@@ -54,13 +54,13 @@ interface SurfaceLook {
 
 export const SURFACE_LOOKS: Readonly<Record<SurfaceKind, SurfaceLook>> = Object.freeze({
   // dust 0xa8977e -> 0x968a78 (wave 273: sand-beige dust over green loam)
-  soil: Object.freeze({ ejecta: linearHex(0x3a2d21), dust: linearHex(0x968a78), chunk: linearHex(0x33281e),
+  soil: Object.freeze({ ejecta: linearHex(0x3a2d21), dust: linearHex(0x968a78), chunk: linearHex(0x5e4a37),
     dustK: 1, chunkK: 1, heightK: 1, chunkScale: 1, sparks: 0, blastDust: 1, hang: 1 }),
   sand: Object.freeze({ ejecta: linearHex(0x9a825e), dust: linearHex(0xd6c4a0), chunk: linearHex(0xa08a66),
     dustK: 1.45, chunkK: 0.25, heightK: 0.95, chunkScale: 0.6, sparks: 0, blastDust: 1.5, hang: 1.15 }),
   snow: Object.freeze({ ejecta: linearHex(0xcfd8de), dust: linearHex(0xe4e9ee), chunk: linearHex(0xe2e8ee),
     dustK: 0.85, chunkK: 0.7, heightK: 1.05, chunkScale: 0.9, sparks: 0, blastDust: 1.3, hang: 0.5 }),
-  mud: Object.freeze({ ejecta: linearHex(0x231c15), dust: linearHex(0x7a6d5d), chunk: linearHex(0x211a13),
+  mud: Object.freeze({ ejecta: linearHex(0x231c15), dust: linearHex(0x7a6d5d), chunk: linearHex(0x3e3125),
     dustK: 0.45, chunkK: 1.35, heightK: 0.85, chunkScale: 1.2, sparks: 0, blastDust: 0.35, hang: 0.6 }),
   rock: Object.freeze({ ejecta: linearHex(0x5a554e), dust: linearHex(0xb5afa5), chunk: linearHex(0x6e6a63),
     dustK: 0.8, chunkK: 1.1, heightK: 0.8, chunkScale: 0.8, sparks: 1, blastDust: 0.7, hang: 0.8 }),
