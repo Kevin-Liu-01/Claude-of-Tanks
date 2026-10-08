@@ -40,7 +40,10 @@ import {
   muzzleBlast as mediaMuzzleBlast, smolderPuff as mediaSmolderPuff, waterBurst, type BlastContext,
 } from './blastRecipes.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
-import { munitionChargeKg, munitionClassForShell, cookOffChargeKg } from '../sim/munitionBlast.ts';
+import { createCraterMarks, type CraterMarks } from './craterMarks.ts';
+import { structureStageFx, type StructureLook } from './structureFx.ts';
+import { DESTRUCTION_BUS_EVENTS, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
+import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 
@@ -70,6 +73,8 @@ interface FxHeightField {
 }
 
 interface FxOptions {
+  /** destruction-fx lane: a structure's look (its rubble materials and colours) when the world publishes its anatomy */
+  structureLook?(structureId: number): StructureLook | null;
   auxiliaryEntities?(): Iterable<AuxiliaryVisualEntity>;
   auxiliaryTime?(): number;
   auxiliaryVisible?(entity:AuxiliaryVisualEntity):boolean;
@@ -903,7 +908,7 @@ export async function createFxChunked(
 function* createFxSteps(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
-  { seed = 5000, resolveEntity, auxiliaryEntities, auxiliaryTime, auxiliaryReport, auxiliaryVisible }: FxOptions = {},
+  { seed = 5000, resolveEntity, auxiliaryEntities, auxiliaryTime, auxiliaryReport, auxiliaryVisible, structureLook }: FxOptions = {},
 ): Generator<void, FxRuntime, void> {
   // Atlas RNG is independent. Prepare it before particles/clock providers so
   // no consumer can observe a half-created runtime across a painted frame.
@@ -958,8 +963,10 @@ function* createFxSteps(
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
+  const craters: CraterMarks | null = mediaTier ? createCraterMarks() : null;
   if (vol) group.add(vol.group);
   if (chunks) group.add(chunks.group);
+  if (craters) group.add(craters.mesh);
 
   let rng = mulberry32(seed);
   let frozen = false;
@@ -1742,6 +1749,9 @@ function* createFxSteps(
       seed: 0, birthOffset: 0 },
   } : null;
   const _strikeDir = new THREE.Vector3();
+  const _crater = { radiusM: 0, depthM: 0, rimM: 0 };
+  /** The core lane's terrain:crater events own the marks once any arrives (DESTRUCTION.md §7); until then the burst does. */
+  let craterEventsSeen = false;
 
   /**
    * A shell ending on the ground or the water, by its munition class: explosives burst (flash, fireball, ejecta, the
@@ -1758,9 +1768,20 @@ function* createFxSteps(
         : pos.y;
       if (water) waterBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
       else groundBurst(blast, { x: pos.x, y, z: pos.z, munition: info.munition, chargeKg: info.chargeKg, surface, birthOffset });
+      if (!water && craters && !craterEventsSeen) {
+        craterFor(info.chargeKg, info.munition, 1, _crater);
+        if (_crater.radiusM > 0.25) {
+          craters.stamp(pos.x, pos.z, _crater.radiusM, surface, true, rng(), particles.getTime() + birthOffset, groundY);
+        }
+      }
     } else {
       kineticStrike(blast, { x: pos.x, y: pos.y, z: pos.z, dx: dir ? dir.x : 0, dy: dir ? dir.y : -1, dz: dir ? dir.z : 0,
         caliberMm: info.caliberMm, munition: info.munition, surface, birthOffset });
+      // a rod or an AP shot leaves a gouge, a bullet nothing worth a mark
+      if (!water && craters && info.munition !== 'small_arms' && info.caliberMm >= 20) {
+        craters.stamp(pos.x, pos.z, 0.16 + 0.22 * Math.min(1.4, info.caliberMm / 120), surface, false, rng(),
+          particles.getTime() + birthOffset, groundY);
+      }
     }
     if (water) {
       const s = calScale(info.caliberMm);
@@ -4271,6 +4292,7 @@ function* createFxSteps(
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
     chunks?.shiftTime(delta);
+    craters?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -4832,6 +4854,7 @@ function* createFxSteps(
       particles.update(dt);
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
+      craters?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
@@ -4856,6 +4879,20 @@ function* createFxSteps(
      */
     bindBus(bus: FxEventBus): void {
       bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens); });
+      // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
+      bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
+        const e = payload as StructureStageEvent;
+        if (!blast || e.settled) return;
+        structureStageFx(blast, e, structureLook ? structureLook(e.structureId) : null);
+      });
+      bus.on(DESTRUCTION_BUS_EVENTS.crater, (payload) => {
+        const e = payload as TerrainCraterEvent;
+        if (!craters) return;
+        craterEventsSeen = true;
+        if (!(e.radiusM > 0.2)) return;
+        craters.stamp(e.x, e.z, e.radiusM, classifyTerrain(heightField, e.x, e.z), true, (e.seed % 65536) / 65536,
+          e.settled ? particles.getTime() - 10 : particles.getTime(), groundY);
+      });
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
@@ -5664,6 +5701,8 @@ function* createFxSteps(
       particles.resetAll();
       vol?.reset();
       chunks?.reset();
+      craters?.reset();
+      craterEventsSeen = false;
       shellMunitions.clear();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst

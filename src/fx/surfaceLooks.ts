@@ -31,7 +31,7 @@ export function linearHex(hex: number): Rgb {
   return Object.freeze([f((hex >> 16) & 255), f((hex >> 8) & 255), f(hex & 255)] as const);
 }
 
-export interface SurfaceLook {
+interface SurfaceLook {
   /** the dense early ejecta (dark, wet, clumped) and the drying dust it becomes */
   readonly ejecta: Rgb;
   /** the fine airborne dust of the pall and the surge */
@@ -81,7 +81,7 @@ export const SOOT: Rgb = linearHex(0x161412);
 export const PROPELLANT: Rgb = linearHex(0x9d988e);
 
 /** The height-field queries the classifier reads (world/terrain + water, all optional). */
-export interface SurfaceField {
+interface SurfaceField {
   getWaterMaskAt?(x: number, z: number): number;
   getTrackSurfaceAt?(x: number, z: number): unknown;
   getGroundType?(x: number, z: number): string;

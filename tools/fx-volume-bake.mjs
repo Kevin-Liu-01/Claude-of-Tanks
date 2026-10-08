@@ -505,7 +505,7 @@ function renderTile(N, F, spec, box, framing, next, dtau, tile, outA, outB) {
 // PNG (RGBA8, Sub filter)
 // ---------------------------------------------------------------------------------------------------------------
 
-export function encodePng(width, height, rgba) {
+function encodePng(width, height, rgba) {
   const raw = Buffer.alloc((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
     const ro = y * (width * 4 + 1);
@@ -598,7 +598,7 @@ export function bakeBand(spec, variant, { res = 96, frames = spec.frames, tile =
 // Preview: lit composites (the runtime's lighting law, simplified) for eyeballing a bake
 // ---------------------------------------------------------------------------------------------------------------
 
-export function previewLit(W, H, A, B, sun, bg, albedo, emission) {
+function previewLit(W, H, A, B, sun, bg, albedo, emission) {
   const out = new Uint8Array(W * H * 4);
   const dec = (x) => (x / 255) ** 2;
   const [sx, sy, sz] = sun;

@@ -34,12 +34,12 @@ type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
 
 /** The battle pools a recipe may add light with (particles.ts emit options, structurally). */
-export interface LightPuff {
+interface LightPuff {
   pos: [number, number, number]; vel: [number, number, number]; life: number; size0: number; size1: number;
   rot: number; rotVel: number; col0: [number, number, number]; col1: [number, number, number]; alpha: number;
   grav: number; birthOffset: number;
 }
-export interface LightStreak {
+interface LightStreak {
   pos: [number, number, number]; vel: [number, number, number]; life: number; width: number; stretch: number;
   grav: number; col: [number, number, number]; alpha: number; seed: number; birthOffset: number;
 }
@@ -161,7 +161,7 @@ export function isExplosive(munition: MunitionClass): boolean {
 // A burst on the ground
 // ---------------------------------------------------------------------------------------------------------------
 
-export interface GroundBurstInput {
+interface GroundBurstInput {
   x: number; y: number; z: number;
   munition: MunitionClass;
   chargeKg: number;
@@ -291,7 +291,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
 // A kinetic strike on the ground (AP, APFSDS, autocannon AP, small arms)
 // ---------------------------------------------------------------------------------------------------------------
 
-export interface StrikeInput {
+interface StrikeInput {
   x: number; y: number; z: number;
   /** the shell's travel direction (unit), when known; the spurt kicks forward along it */
   dx: number; dy: number; dz: number;
@@ -423,7 +423,7 @@ export function waterBurst(C: BlastContext, I: GroundBurstInput): void {
 // The muzzle: propellant smoke and the dust the blast lifts off the ground
 // ---------------------------------------------------------------------------------------------------------------
 
-export interface MuzzleInput {
+interface MuzzleInput {
   x: number; y: number; z: number;
   dx: number; dy: number; dz: number;
   caliberMm: number;

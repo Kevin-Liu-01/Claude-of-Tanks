@@ -10,6 +10,8 @@ import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks
 import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
+import { structureStageFx } from './structureFx.ts';
+import { createCraterMarks } from './craterMarks.ts';
 import { MUNITION_CLASSES } from '../sim/destructionEvents.ts';
 import { bakeBand, VOLUME_MEDIA, MEDIA_ORDER, ATLAS_COLUMNS, FLOW_SCALE } from '../../tools/fx-volume-bake.mjs';
 
@@ -220,4 +222,36 @@ function captureContext(seed) {
   assert.ok(chunks.group.children.every((m) => !m.visible), 'reset hides every shape');
 }
 
-console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks — ok');
+// ---- 7. structures and craters -------------------------------------------------------------------------------
+{
+  const base = { structureId: 3, massClass: 'house', cx: 10, cz: 20, hw: 5, hd: 4, yaw: 0.3, baseY: 0, topY: 7,
+    previous: 'intact', cause: 'blast', munition: 'he', x: 12, y: 3, z: 20, dirX: 1, dirZ: 0, points: 12, integrity: 0.6 };
+  const run = (stage, extra = {}, look = null) => {
+    const c = captureContext(11);
+    structureStageFx(c.ctx, { ...base, stage, ...extra }, look);
+    return c.log;
+  };
+  const damaged = run('damaged'), breached = run('breached'), collapsed = run('collapsed');
+  assert.ok(damaged.media.length > 0 && damaged.chunk.length > 0, 'a damaged face throws dust and chips');
+  assert.ok(breached.chunk.length > damaged.chunk.length, 'a breach throws more than a crack');
+  assert.ok(collapsed.chunk.length > breached.chunk.length && collapsed.media.length > breached.media.length,
+    'a collapse brings the walls down in dust');
+  assert.equal(run('collapsed', { settled: true }).media.length, 0, 'a settled stage draws nothing (laid down silently)');
+  assert.deepEqual(run('collapsed'), collapsed, 'seeded: the same collapse twice is the same collapse');
+  const adobe = { rubble: [{ material: 'adobe', color: [0.45, 0.33, 0.22], share: 1 }], interior: [0.02, 0.02, 0.02] };
+  const mud = run('collapsed', {}, adobe);
+  assert.ok(mud.chunk.every((k) => k.shape === 'brick' && k.r > k.b), 'an adobe house falls as its own mud bricks');
+  assert.ok(collapsed.flash === 0 && collapsed.fire === 0, 'a collapse is not an explosion');
+}
+{
+  const craters = createCraterMarks();
+  assert.equal(craters.count, 0);
+  for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);
+  assert.equal(craters.count, 96, 'the crater ring keeps the latest 96');
+  assert.ok(craters.mesh.geometry.drawRange.count > 0, 'craters draw');
+  craters.reset();
+  assert.equal(craters.count, 0);
+  assert.equal(craters.mesh.geometry.drawRange.count, 0, 'reset clears the marks');
+}
+
+console.log('volumeMedia selftest: atlases, ledger, layout, bake determinism, pool sort and bounds, recipes, surfaces, chunks, structures, craters — ok');

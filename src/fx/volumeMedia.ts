@@ -38,9 +38,9 @@ import { LATE_FX_LAYER } from './layers.ts';
 // ---------------------------------------------------------------------------------------------------------------
 
 /** Media in the shared atlas, in band order (each medium owns `variants` consecutive bands). */
-export type VolumeMediumId = 'billow' | 'burst';
+type VolumeMediumId = 'billow' | 'burst';
 
-export interface VolumeAtlasLayout {
+interface VolumeAtlasLayout {
   readonly columns: number;
   readonly rowsPerBand: number;
   readonly frames: number;
@@ -143,7 +143,7 @@ const FOG_PARS_F = `
 #endif
 `;
 
-export const VOLUME_VERT = /* glsl */ `
+const VOLUME_VERT = /* glsl */ `
 attribute vec4 aPB;
 attribute vec4 aVL;
 attribute vec4 aDY;
@@ -241,7 +241,7 @@ void main() {
 }
 `;
 
-export const VOLUME_FRAG = /* glsl */ `
+const VOLUME_FRAG = /* glsl */ `
 uniform sampler2D uMapA;
 uniform sampler2D uMapB;
 uniform vec4 uAtlas;
@@ -364,7 +364,7 @@ function groundWindFromAloft(speedAloft: number): number {
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
 const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.35, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55 });
 
-export interface VolumeMediaOptions {
+interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
   now: () => number;
   scene?: THREE.Scene | null;
