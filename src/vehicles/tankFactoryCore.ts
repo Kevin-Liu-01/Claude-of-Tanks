@@ -7401,6 +7401,7 @@ function* createTankOwnedSteps(
       if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
       for (const surround of glassSurround) {
         const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        frame.userData.glassSurround = true;
         const frameBucket = GLASS_SURROUND_BUCKET[bucket];
         (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
         partCensus?.(frameBucket, frame, 'add');
@@ -7467,6 +7468,7 @@ function* createTankOwnedSteps(
       partCensus?.(visualBucket, part, 'moduleVisual');
       for (const surround of glassSurround) {
         const frame = xform(surround, x, y, z, rx, ry, rz, s);
+        frame.userData.glassSurround = true;
         const frameBucket = GLASS_SURROUND_BUCKET[bucket];
         (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
         partCensus?.(frameBucket, frame, 'add');
@@ -8127,7 +8129,12 @@ function* createTankOwnedSteps(
       const key=station?station.name+':'+station.stage:'';
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
-    for(const group of groups.values())mergeBucket(bucket,group);
+    // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
+    // own (a remote station without painted detail) are left out rather than cost a draw call (fleet lane round 1)
+    for(const group of groups.values()){
+      if(group.every((part)=>part.userData.glassSurround))continue;
+      mergeBucket(bucket,group);
+    }
   }
   const coreBindMergeFinishedAt = performance.now();
 
