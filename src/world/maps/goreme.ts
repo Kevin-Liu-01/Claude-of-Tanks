@@ -49,6 +49,13 @@ const castleGeology = () => ({
 /** The plateau's two benches along the valley sides, each the other's rotation (a ridge at yaw 90 runs along z). */
 const BENCHES = [{ x: -350, z: -14, length: 470, width: 70, yawDeg: 90 }, { x: 350, z: 14, length: 470, width: 70, yawDeg: 90 }] as const;
 
+/** The track down each valley side through its chimney fields (round 3c, the layout brief's lanes 3 -> 2 on push 3's
+ * merged tree, where the merged rock and tree placement stood chimneys on the west field's run): the chimneys keep off
+ * a strip along the axis at the bench's foot, so each side's lane runs between the bench and the field (the west strip
+ * and its rotation). */
+const TRACK_WEST: ReadonlyArray<readonly [number, number, number]> = Array.from({ length: 15 }, (_, i) => [-279, -210 + i * 30, 24] as const);
+const TRACK_EAST: ReadonlyArray<readonly [number, number, number]> = TRACK_WEST.map(([x, z, r]) => [-x, -z, r] as const);
+
 /** The castle rocks over the valley sides beside the middle, each the other's rotation. */
 const CASTLE_ROCKS = [{ x: -150, z: 80, rx: 26, rz: 23, height: 30 }, { x: 150, z: -80, rx: 26, rz: 23, height: 30 }] as const;
 /** The gate rocks at the valley heads, screening each deployment down the axis. */
@@ -244,13 +251,13 @@ export default {
     caprock: BENCHES.map((b, i) => ({ ...b, name: i ? 'the east bench\'s caprock' : 'the west bench\'s caprock' })),
     rockFields: [
       { geology: 'tuff' as const, x: -206, z: -118, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
-        avoid: [[-214, 12, 40], [-150, 80, 34]] as const, name: 'the west chimney field (south)' },
+        avoid: [[-214, 12, 40], [-150, 80, 34], ...TRACK_WEST] as const, name: 'the west chimney field (south)' },
       { geology: 'tuff' as const, x: -206, z: 122, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
-        avoid: [[-214, 12, 40], [-150, 80, 34]] as const, name: 'the west chimney field (north)' },
+        avoid: [[-214, 12, 40], [-150, 80, 34], ...TRACK_WEST] as const, name: 'the west chimney field (north)' },
       { geology: 'tuff' as const, x: 206, z: 118, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
-        avoid: [[214, -12, 40], [150, -80, 34]] as const, name: 'the east chimney field (north)' },
+        avoid: [[214, -12, 40], [150, -80, 34], ...TRACK_EAST] as const, name: 'the east chimney field (north)' },
       { geology: 'tuff' as const, x: 206, z: -122, radius: 86, count: 22, size: [2.0, 6.8] as const, slopeBias: 0.45, talusDeg: 32,
-        avoid: [[214, -12, 40], [150, -80, 34]] as const, name: 'the east chimney field (south)' },
+        avoid: [[214, -12, 40], [150, -80, 34], ...TRACK_EAST] as const, name: 'the east chimney field (south)' },
       { geology: 'tuff' as const, x: 74, z: -268, radius: 40, count: 8, size: [2.0, 5.4] as const, slopeBias: 0.35, talusDeg: 32, name: 'the south gate chimneys' },
       { geology: 'tuff' as const, x: -74, z: 268, radius: 40, count: 8, size: [2.0, 5.4] as const, slopeBias: 0.35, talusDeg: 32, name: 'the north gate chimneys' },
     ],
