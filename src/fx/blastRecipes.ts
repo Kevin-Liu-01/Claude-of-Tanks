@@ -686,3 +686,57 @@ export function smolderPuff(C: BlastContext, x: number, y: number, z: number, k:
   heat(m, 0, 1);
   C.media(m);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// A crater's own ejecta (crater-render-spec §D: live events only)
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The clods a dug crater throws out of its bowl, landing on its rim and blanket between R and 1.6 R (each one aimed
+ * so it comes to rest on the deformed ground where it lands: `heightAt` is base + the overlay), and a short ring of dust
+ * rolling off the rim. The burst itself (its flash, its cloud, its surge) is the munition's own, drawn from the same
+ * tick's blast; this is the ground's part. Never for a settled crater.
+ */
+export function craterEjecta(C: BlastContext, x: number, z: number, radiusM: number, surface: SurfaceKind,
+  heightAt: (x: number, z: number) => number, bo: number): void {
+  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const R = C.rand;
+  const k = C.k;
+  const y0 = heightAt(x, z) + 0.2;
+  const n = Math.round((10 + 6 * radiusM) * Math.max(0.4, L.chunkK));
+  const shapeId: ChunkShape = surface === 'rock' || surface === 'concrete' ? 'stone' : 'clod';
+  const drag = 0.25;
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU;
+    const d = radiusM * (1 + 0.6 * Math.sqrt(R()));
+    const lx = x + Math.cos(a) * d, lz = z + Math.sin(a) * d;
+    const land = heightAt(lx, lz);
+    const T = 0.55 + R() * 0.55 + 0.08 * radiusM;
+    const s = (1 - Math.exp(-drag * T)) / drag;
+    const soil = surface === 'snow' && i % 3 === 0;
+    k.shape = shapeId; k.x = x + Math.cos(a) * 0.3 * radiusM; k.y = y0; k.z = z + Math.sin(a) * 0.3 * radiusM; k.birthOffset = bo + R() * 0.05;
+    k.vx = (lx - k.x) / s; k.vz = (lz - k.z) / s; k.vy = (land - y0 + 4.9 * T * T) / s; k.life = T + 2.5 + R() * 2;
+    k.ax = R() - 0.5; k.ay = R() - 0.5; k.az = R() - 0.5; k.spin = 5 + R() * 10;
+    k.scale = (0.08 + Math.pow(R(), 2) * 0.28) * Math.sqrt(radiusM / 1.6) * L.chunkScale; k.groundY = land; k.drag = drag;
+    const col = soil ? UNDER_SNOW_SOIL : L.chunk;
+    const tint = 0.8 + R() * 0.4;
+    k.r = col[0] * tint; k.g = col[1] * tint; k.b = col[2] * tint; k.heat = 0; k.seed = R();
+    C.chunk(k);
+  }
+  // the dust rolling off the rim as the clods land: a thin ring of flat cards
+  const m = C.m;
+  const dk = C.distBoost(x, y0, z);
+  const ring = Math.round(8 + 2 * radiusM);
+  for (let i = 0; i < ring; i++) {
+    const a = (i / ring) * TAU + (R() - 0.5) * 0.5;
+    const px = x + Math.cos(a) * radiusM, pz = z + Math.sin(a) * radiusM;
+    place(m, px, heightAt(px, pz) + 0.3, pz, bo + 0.35 + R() * 0.25);
+    move(m, Math.cos(a) * (1.2 + R() * 1.5), 0.2 + R() * 0.2, Math.sin(a) * (1.2 + R() * 1.5), 1.6, 0.05, 0.9, 0);
+    shape(m, (2.4 + R() * 1.2) * L.hang, 0.6, (1.4 + R() * 0.8) * Math.sqrt(radiusM / 1.6) * dk, 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, Math.min(0.5, 0.25 + 0.2 * L.dustK), 0.08, 0.4);
+    book(m, 'burst', R, 3, 3);
+    card(m, 2.2 + R() * 0.6, R, 0.06);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+}
