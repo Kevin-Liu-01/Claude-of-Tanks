@@ -7,6 +7,7 @@ import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
 import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees } from './groundCoverCraters.ts';
+import { landWeedShare } from './landUse.ts';
 import longleaf from './maps/longleaf.ts';
 import verdant from './maps/verdant.ts';
 
@@ -31,7 +32,7 @@ function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
-    'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', `return (${stripTypeScriptTypes(`
+    'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', 'landWeedShare', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       const lightDesk = false; // (Ultra Low, 2026-10-13) the light-world vegetation is a desktop preset's; the default here
       ${section('const HALF = 512;', 'function treePositionNoise(')}
@@ -57,7 +58,7 @@ function compile(legacy) {
     }
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
     advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork,
-    createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees);
+    createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, landWeedShare);
 }
 const build = compile(false), buildLegacy = compile(true);
 
