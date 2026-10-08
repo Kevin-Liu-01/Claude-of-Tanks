@@ -302,8 +302,10 @@ function turretStowage(P: TankBuilderPort): void {
 }
 
 function loaderHatches(P: TankBuilderPort): void {
-  for (const [hx, hz] of [[.5115, -.34477], [.455, -.0582]]) P.addHatch('turretDetail',
-    cylY(.263, .263, .048, 28), hx, 2.499 - D.turretPivot[1], hz - D.turretPivot[2]);
+  // Fleet lane round 1 (2026-10-08, circular-cap audit): the two lids overlap in plan, and with equal tops their
+  // overlap was one z-fighting coplanar lens; the rear lid seats 3 mm lower, so the pair reads as a stepped double lid.
+  for (const [hx, hz, dy] of [[.5115, -.34477, 0], [.455, -.0582, -.003]]) P.addHatch('turretDetail',
+    cylY(.263, .263, .048, 28), hx, 2.499 + dy - D.turretPivot[1], hz - D.turretPivot[2]);
 }
 
 function roofFittings(P: TankBuilderPort): void {
