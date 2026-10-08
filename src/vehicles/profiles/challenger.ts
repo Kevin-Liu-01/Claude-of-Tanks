@@ -4867,7 +4867,11 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.645, 0.67, -1.575, 0, 0, s * 0.53); // panel ribs
       P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.695, 0.585, -1.575, 0, 0, s * 0.53);
       P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.575, 0.58, -0.22, 0, s * 0.35, 0);   // fwd radar
-      P.add('turretGlass', box(0.012, 0.14, 0.14), s * 1.60, 0.58, -0.21, 0, s * 0.35, 0);
+      // the radar's aperture keeps its whole face: its 18 cm housing is already its frame (tankFactoryCore.ts
+      // armouredGlassSurround leaves an aperture panel alone)
+      const aperture = box(0.012, 0.14, 0.14);
+      aperture.userData.apertureFrame = 'housing';
+      P.add('turretGlass', aperture, s * 1.60, 0.58, -0.21, 0, s * 0.35, 0);
       P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.53, 0.57, -2.78, 0, -s * 0.35, 0);   // rear radar
     }
     // RWS (PROTECTOR-class, §H.4 UK grammar: M2 12.7 on the remote mount)

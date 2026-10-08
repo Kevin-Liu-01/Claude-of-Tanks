@@ -6079,21 +6079,24 @@ function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
 // ---------------------------------------------------------------------------
 // Fleet lane round 1 (2026-10-07; media wave m1 and the brief: sights read as "floating blue screen boxes" and
 // "desktop monitors"): a broad flat glass pane authored as a plain box sat proud on its housing like a screen. Every
-// such pane (window at least 8 x 7 cm, at most 35 mm thick, upright) now gets an armoured surround in the housing's
-// painted fitting bucket: a frame lip standing 15 mm proud of both faces, so the glass reads recessed whichever face
-// looks outward, and a hood over the top that reaches 45 mm past the pane. Source-measured panes (not BoxGeometry),
-// horizontal panes and small slits are untouched.
+// such pane (window at least 8 x 7 cm, at most 35 mm thick, upright) is cut into an armoured frame and a window: four
+// painted bars in the housing's fitting bucket take the outer ring of the pane's own box, flush with both faces, and the
+// glass keeps the inner window. The frame is cut from the authored box rather than added round it (2026-10-08, the
+// watertight census: a lip standing proud of the glass or a hood over it formed exterior pockets the census reads as
+// leaks on 55 hulls, and a hood reaching past a hull side moved the census lattice under every generated interior
+// fill), so the vehicle's shell, silhouette and envelopes are exactly the authored box. Source-measured panes (not
+// BoxGeometry), horizontal panes and small slits are untouched.
 const GLASS_FRAME_W = 0.016;
-const GLASS_FRAME_PROUD = 0.015;
-const GLASS_HOOD_REACH = 0.045;
-const GLASS_HOOD_T = 0.012;
 const GLASS_SURROUND_BUCKET: Readonly<Record<string, string>> = Object.freeze({
   turretGlass: 'turretDetail', hullGlass: 'hullDetail', gunMountGlass: 'gunMount',
 });
+/** Insets a broad box pane (in place, before its placement transform) and returns the frame bars that take its outer
+ * ring in the pane's own box frame, or nothing for a pane that keeps its whole face. */
 function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry[] {
   const target = GLASS_SURROUND_BUCKET[bucket];
   const params = (geometry as THREE.BufferGeometry & { parameters?: { width: number; height: number; depth: number } }).parameters;
-  if (!target || geometry.type !== 'BoxGeometry' || !params) return [];
+  // an aperture whose authored housing already frames it (a radar panel in its box) keeps its whole face
+  if (!target || geometry.type !== 'BoxGeometry' || !params || geometry.userData.apertureFrame === 'housing') return [];
   const dims = [params.width, params.height, params.depth];
   const thin = Math.min(...dims);
   const thinAxis = dims.indexOf(thin);
@@ -6106,18 +6109,24 @@ function armouredGlassSurround(bucket: string, geometry: THREE.BufferGeometry): 
   if (!bb || Math.abs(bb.max.x + bb.min.x) > 1e-6 || Math.abs(bb.max.y + bb.min.y) > 1e-6
     || Math.abs(bb.max.z + bb.min.z) > 1e-6 || Math.abs(bb.max.x - bb.min.x - params.width) > 1e-6
     || Math.abs(bb.max.y - bb.min.y - params.height) > 1e-6 || Math.abs(bb.max.z - bb.min.z - params.depth) > 1e-6) return [];
-  const fw = GLASS_FRAME_W, lip = thin + 2 * GLASS_FRAME_PROUD;
+  const fw = Math.min(GLASS_FRAME_W, 0.18 * Math.min(faceW, faceH));
+  const innerW = faceW - 2 * fw, innerH = faceH - 2 * fw;
   // (u across the window, v up, n through the pane) in the pane's own box frame
-  const part = (du: number, dv: number, su: number, sv: number, sn: number): THREE.BufferGeometry => (thinAxis === 2
-    ? xform(new THREE.BoxGeometry(su, sv, sn), du, dv, 0)
-    : xform(new THREE.BoxGeometry(sn, sv, su), 0, dv, du));
-  return [
-    part(0, faceH / 2 + fw / 2, faceW + 2 * fw, fw, lip),
-    part(0, -(faceH / 2 + fw / 2), faceW + 2 * fw, fw, lip),
-    part(faceW / 2 + fw / 2, 0, fw, faceH, lip),
-    part(-(faceW / 2 + fw / 2), 0, fw, faceH, lip),
-    part(0, faceH / 2 + fw + GLASS_HOOD_T / 2, faceW + 2 * fw + 0.012, GLASS_HOOD_T, thin + 2 * GLASS_HOOD_REACH),
+  const part = (du: number, dv: number, su: number, sv: number): THREE.BufferGeometry => (thinAxis === 2
+    ? xform(new THREE.BoxGeometry(su, sv, thin), du, dv, 0)
+    : xform(new THREE.BoxGeometry(thin, sv, su), 0, dv, du));
+  const frames = [
+    part(0, faceH / 2 - fw / 2, faceW, fw),
+    part(0, -(faceH / 2 - fw / 2), faceW, fw),
+    part(faceW / 2 - fw / 2, 0, fw, innerH),
+    part(-(faceW / 2 - fw / 2), 0, fw, innerH),
   ];
+  // the glass keeps the inner window (its parameters follow, so a rebuild from them stays inside the frame)
+  const scale: [number, number, number] = thinAxis === 2 ? [innerW / faceW, innerH / faceH, 1] : [1, innerH / faceH, innerW / faceW];
+  geometry.scale(...scale);
+  Object.assign(params, { width: params.width * scale[0], height: params.height * scale[1], depth: params.depth * scale[2] });
+  geometry.computeBoundingBox();
+  return frames;
 }
 
 function cupola(
@@ -7291,6 +7300,21 @@ function* createTankOwnedSteps(
   const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
+  // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket and keep the
+  // pane's module, so the module's hit receipt still covers the whole authored box; each remembers the pane's own bucket.
+  const addGlassFrames = (bucket: string, pane: THREE.BufferGeometry, frames: readonly THREE.BufferGeometry[],
+    x: number, y: number, z: number, rx: number, ry: number, rz: number, s: GeometryScale): void => {
+    const frameBucket = GLASS_SURROUND_BUCKET[bucket];
+    if (!frameBucket) return;
+    const module = moduleVisualParts.get(pane);
+    for (const surround of frames) {
+      const frame = xform(surround, x, y, z, rx, ry, rz, s);
+      frame.userData.glassSurround = bucket;
+      if (module) moduleVisualParts.set(frame, module);
+      (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
+      partCensus?.(frameBucket, frame, 'add');
+    }
+  };
   const eraClusters = new Map<string, EraClusterRange>();
   const eraPlacements: EraPlacementRecord[] = [];
   // Most historical ERA uses one shared instanced brick. Native fleet
@@ -7341,8 +7365,6 @@ function* createTankOwnedSteps(
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
-      const glassSurround = armouredGlassSurround(bucket, geo);
-      const part = xform(geo, x, y, z, rx, ry, rz, s);
       // Destructible clusters are gameplay ERA. Route every authored layer
       // (body, inset lid and small face furniture) through the continuous
       // vehicle-scale camouflage projection instead of allowing a profile to
@@ -7352,6 +7374,9 @@ function* createTankOwnedSteps(
         ?? (activeDestructibleCluster
           ? (bucket.startsWith('turret') ? 'turret' : 'hull')
           : null);
+      // a sight pane's armoured frame is cut from its own box (never inside an armour cluster)
+      const glassSurround = eraOwner ? [] : armouredGlassSurround(bucket, geo);
+      const part = xform(geo, x, y, z, rx, ry, rz, s);
       // 2026-10-07 (tank-accessories round 4; wave 217 on the Merkava 4: "the smoke-grenade tubes render as bright
       // polished chrome pipes"): a discharger tube authored into a camouflaged paint-only bucket takes the scheme's
       // solid matte fitting paint (the camo bucket's clearcoat and 1.3 normal scale on a 4 cm tube read as chrome);
@@ -7399,13 +7424,7 @@ function* createTankOwnedSteps(
       // affine legacy box. Hull glass also owns headlight lenses, so fixed
       // hull periscopes are tagged explicitly by the shared helper below.
       if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
-      for (const surround of glassSurround) {
-        const frame = xform(surround, x, y, z, rx, ry, rz, s);
-        frame.userData.glassSurround = true;
-        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
-        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
-        partCensus?.(frameBucket, frame, 'add');
-      }
+      addGlassFrames(bucket, part, glassSurround, x, y, z, rx, ry, rz, s);
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit
@@ -7466,13 +7485,7 @@ function* createTankOwnedSteps(
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
-      for (const surround of glassSurround) {
-        const frame = xform(surround, x, y, z, rx, ry, rz, s);
-        frame.userData.glassSurround = true;
-        const frameBucket = GLASS_SURROUND_BUCKET[bucket];
-        (buckets[frameBucket] || (buckets[frameBucket] = [])).push(frame);
-        partCensus?.(frameBucket, frame, 'add');
-      }
+      addGlassFrames(bucket, part, glassSurround, x, y, z, rx, ry, rz, s);
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
@@ -8122,19 +8135,30 @@ function* createTankOwnedSteps(
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   };
+  const stationKey=(part:THREE.BufferGeometry):string=>{
+    const station=part.userData.auxiliaryStation;
+    return station?station.name+':'+station.stage:'';
+  };
+  // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
+  // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
+  // that pane keeps its whole authored face (fleet lane round 1)
+  for (const [bucket, list] of Object.entries(buckets)) {
+    const painted=new Set(list.filter((part)=>!part.userData.glassSurround).map(stationKey));
+    const kept=list.filter((part)=>{
+      const paneBucket=part.userData.glassSurround as string|undefined;
+      if(!paneBucket||painted.has(stationKey(part)))return true;
+      (buckets[paneBucket]||(buckets[paneBucket]=[])).push(part);
+      return false;
+    });
+    if(kept.length!==list.length)buckets[bucket]=kept;
+  }
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const station=part.userData.auxiliaryStation;
-      const key=station?station.name+':'+station.stage:'';
+      const key=stationKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
-    // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
-    // own (a remote station without painted detail) are left out rather than cost a draw call (fleet lane round 1)
-    for(const group of groups.values()){
-      if(group.every((part)=>part.userData.glassSurround))continue;
-      mergeBucket(bucket,group);
-    }
+    for(const group of groups.values())mergeBucket(bucket,group);
   }
   const coreBindMergeFinishedAt = performance.now();
 
