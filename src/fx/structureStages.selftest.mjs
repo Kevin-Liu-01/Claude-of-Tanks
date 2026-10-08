@@ -122,6 +122,19 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   const rims = debris.group.children.filter((m) => m.isMesh && /^fx-structure-(rim|room)/.test(m.name));
   assert.ok(rims.length > 0 && rims.every((m) => m.geometry.getAttribute('aDamage')?.array[0] === 32768 + 8),
     'the breach\'s rim and room fall with the building');
+  // (b5: the room drew in the world's glossy 'dark' window material: the sky's reflection filled the hole) the room is
+  // matte, in the builder's own interior tint, and folds with its building (the mask's patch)
+  const rooms = debris.group.children.filter((m) => m.isMesh && /^fx-structure-room/.test(m.name));
+  assert.ok(rooms.length > 0, 'a breach lays its room');
+  for (const room of rooms) {
+    const mat = room.material;
+    assert.ok(mat.name === 'fx-structure-room' && mat.vertexColors === true && mat.roughness === 1 && mat.metalness === 0
+      && mat.envMapIntensity === 0, 'the room is matte and takes its interior tint');
+    assert.ok(typeof mat.customProgramCacheKey === 'function' && /struct/i.test(mat.customProgramCacheKey()),
+      'the room material carries the mask patch (it falls and folds with the building)');
+    const col = room.geometry.getAttribute('color');
+    assert.ok(col && col.array[0] < 0.2 && col.array[1] < 0.2 && col.array[2] < 0.2, 'the room is dark');
+  }
 }
 
 // ---- collapsed: the fall, the pile, the touches (every frame it moves, and the frame it is discarded)

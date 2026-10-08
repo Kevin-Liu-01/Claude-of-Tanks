@@ -278,10 +278,11 @@ export interface StructureDebrisOptions {
 export interface StructureDebris {
   readonly group: THREE.Group;
   /**
-   * Writers for one stage of one structure; `materialFor` resolves a bucket's material (the seam's spans). `delayS`
-   * delays the pieces and the static runs (a collapse shows its pile under the dust, not before the fall).
+   * Writers for one stage of one structure; `materialFor` resolves a bucket's material (the seam's spans) for a run of
+   * that role (a pieces pool asks without one). `delayS` delays the pieces and the static runs (a collapse shows its
+   * pile under the dust, not before the fall).
    */
-  begin(placement: BodyPlacement, materialFor: (bucket: string) => THREE.Material | null, delayS?: number,
+  begin(placement: BodyPlacement, materialFor: (bucket: string, role?: DamageRole) => THREE.Material | null, delayS?: number,
     settled?: boolean, options?: StageRunOptions): DamageWriters;
   /** Build the stage's static runs and start its pieces. */
   commit(): void;
@@ -370,7 +371,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   // ---- the stage being written ------------------------------------------------------------------------------
   let place: BodyPlacement = { x: 0, y: 0, z: 0, yaw: 0 };
   let cosY = 1, sinY = 0;
-  let resolveMaterial: (bucket: string) => THREE.Material | null = () => null;
+  let resolveMaterial: (bucket: string, role?: DamageRole) => THREE.Material | null = () => null;
   let stageDelay = 0;
   let stageBirth = 0;
   let stageSettled = false;
@@ -486,7 +487,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     commit() {
       for (const run of runs) {
         if (!run.idx.length) continue;
-        const material = resolveMaterial(run.bucket);
+        const material = resolveMaterial(run.bucket, run.role);
         if (!material) continue;
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(run.pos, 3));

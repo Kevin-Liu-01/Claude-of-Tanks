@@ -24,7 +24,7 @@
  */
 import * as THREE from 'three';
 import type { StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
-import { damageSeed, type DamageStageResult, type DamageWriters } from '../world/destructionKit.ts';
+import { damageSeed, type DamageRole, type DamageStageResult, type DamageWriters } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
 import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
@@ -123,10 +123,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     if (!m) {
       m = new THREE.MeshStandardMaterial({ color: 0x8a8276, roughness: 0.95, metalness: 0, vertexColors: true });
       m.name = `fx-structure-fallback-${bucket}`;
+      // a standing run in it still falls and folds with its building
+      mask.patch(m);
       fallbacks.set(bucket, m);
     }
     return m;
   }
+  // the room behind a breach (b5: the kits write it in the world's 'dark' bucket, whose glossy window material showed
+  // the sky's reflection through the hole as a slate-blue disc): matte, in the builder's own interior tint, no
+  // reflection, falling and folding with its building like every standing run
+  const roomMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, vertexColors: true,
+    envMapIntensity: 0 });
+  roomMaterial.name = 'fx-structure-room';
+  mask.patch(roomMaterial);
 
   /** The world's patched shadow depth material of a bucket this structure draws in (its spans' meshes carry them). */
   function depthMaterials(seam: StructureDamageSeam): Map<string, THREE.Material> {
@@ -143,7 +152,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
     standing = true): void {
     const byBucket = spanMaterials(seam);
-    const resolve = (bucket: string): THREE.Material => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
+    const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
+      : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
     const depths = standing ? depthMaterials(seam) : null;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
       ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null }

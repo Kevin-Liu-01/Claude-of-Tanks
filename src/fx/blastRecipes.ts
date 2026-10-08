@@ -249,24 +249,44 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
 
   // 2. the soil column (wave 266: at 60-120 m the critics saw a small brown puff, no vertical jet): dense dark soil and
   // smoke driven up a narrow cone fast, standing as a dark column well above the burst (its top ~3 m for a 30 mm round,
-  // ~12 m for 125 mm HE, ~28 m for the gunship's 152 mm), then stalling and falling back as it thins into the cloud
+  // ~12 m for 125 mm HE, ~28 m for the gunship's 152 mm), then stalling and falling back as it thins into the cloud.
+  // (b5: the gunship's jets all reached one height and hung there as a cluster of brown drops) three tiers of launch
+  // speed fill the column from the ground to its top: the slow soil stays low and dense, the fast thins out above it
   const ejN = Math.round((4 + 4 * s) * Math.min(1.2, L.chunkK + 0.4) * (heavy ? 1.4 : 1));
+  const vTop = 20 * Math.pow(s, 0.75) * L.heightK * (heavy ? 1.35 : 1);
   for (let i = 0; i < ejN; i++) {
     const a = (i / ejN) * TAU + (R() - 0.5) * 0.9;
-    const tilt = Math.pow(R(), 1.6) * (shaped ? 0.22 : 0.32);
-    const v = (16 + R() * 8) * Math.pow(s, 0.75) * L.heightK * (heavy ? 1.35 : 1);
+    const tier = (i % 3) / 2;
+    const tilt = Math.pow(R(), 1.6) * (shaped ? 0.22 : 0.3) * (0.6 + 0.4 * tier);
+    const v = vTop * (0.35 + 0.65 * tier) * (0.85 + R() * 0.3);
     const st = Math.sin(tilt), ct = Math.cos(tilt);
     place(m, I.x + (R() - 0.5) * 0.5 * s, by + 0.3, I.z + (R() - 0.5) * 0.5 * s, bo + R() * 0.04);
     move(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 1.7, 0, 0.3, -9);
-    const size1 = (3.0 + R() * 1.5) * s * dk;
+    const size1 = (3.0 + R() * 1.5) * s * dk * (1.25 - 0.35 * tier);
     const life = (2.0 + R() * 0.8) * (heavy ? 1.5 : 1);
     shape(m, life, size1 * 0.4, size1, 1.8, R);
     const soil = I.surface === 'snow' && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta;
-    look(m, c0, mix3(c0, L.dust, 0.35), 1.0, 0.0, 0.5);
+    look(m, c0, mix3(c0, L.dust, 0.35), 1.0 - 0.15 * tier, 0.0, 0.5);
     book(m, 'burst', R, life, 2);
     // a jet of soil stands far taller than it is wide
     card(m, 0.38 + R() * 0.14, R, 0.1);
+    heat(m, 0, 1);
+    C.media(m);
+  }
+  // the column's fine dust left standing where the jets passed: the pillar they rise out of and fall back into
+  const colTop = 0.36 * vTop;
+  const pillarN = heavy ? 3 : s > 0.8 ? 2 : 1;
+  for (let i = 0; i < pillarN; i++) {
+    const h = (0.2 + 0.55 * (i + R() * 0.5) / pillarN) * colTop;
+    place(m, I.x + (R() - 0.5) * 0.6 * s, by + h, I.z + (R() - 0.5) * 0.6 * s, bo + 0.15 + R() * 0.15);
+    move(m, (R() - 0.5) * 0.6, 1.2 + R(), (R() - 0.5) * 0.6, 1.2, 0.35, 0.9, 0);
+    const life = (5 + R() * 2) * L.hang;
+    const size1 = (2.4 + R()) * s * dk * (heavy ? 1.3 : 1);
+    shape(m, life, size1 * 0.5, size1, 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.4), L.dust, Math.min(0.85, 0.55 * dustK + 0.2), 0.15, 0.4);
+    book(m, 'burst', R, life, 3);
+    card(m, 0.6 + R() * 0.2, R, 0.1);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -675,8 +695,9 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, r
     shape(m, life, size1 * 0.5, size1, 4, R);
     look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.6);
     book(m, 'billow', R, life);
-    // orange-yellow at the heart (round 4: never white), and gone fast: a long dull glow read as brown smoke
-    heat(m, 1.9 + R() * 0.4, 1.5);
+    // orange-yellow at the heart (round 4 and b5: never white — at heat ~2 the blackbody ramp saturates), and gone
+    // fast: a long dull glow read as brown smoke
+    heat(m, 1.15 + R() * 0.15, 1.0);
     C.media(m);
   }
   // 2. the soot: black smoke rolling out of the top of the fire over the first second, climbing and spreading

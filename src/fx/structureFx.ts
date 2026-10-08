@@ -146,8 +146,9 @@ function dustOf(look: StructureLook, out: [number, number, number]): Rgb {
     // powder is paler than the solid: mineral dust scatters most of the light it meets
     const k = s.material === 'timber' || s.material === 'plank' || s.material === 'thatch' ? 0.55 : 1;
     // (round 2 lifted plaster to near white: a breach's cloud read as a cotton ball)
-    r += (s.color[0] * 0.6 + 0.16) * s.share * k; g += (s.color[1] * 0.6 + 0.15) * s.share * k;
-    b += (s.color[2] * 0.6 + 0.135) * s.share * k; w += s.share * k;
+    // (b5: a brick house's strike still threw a cream ball in full sun) a smaller lift keeps the wall's own hue
+    r += (s.color[0] * 0.62 + 0.12) * s.share * k; g += (s.color[1] * 0.62 + 0.112) * s.share * k;
+    b += (s.color[2] * 0.62 + 0.1) * s.share * k; w += s.share * k;
   }
   if (w <= 0) { out[0] = 0.55; out[1] = 0.52; out[2] = 0.47; return out; }
   out[0] = r / w; out[1] = g / w; out[2] = b / w;

@@ -137,7 +137,7 @@ const FRAG_BODY = /* glsl */ `
 if ( vStructHoles > 0.5 ) {
   int hb = int( vStructSid + 0.5 ) * ${STRIDE} + 2;
   // brick-sized cells of the wall break out at different radii: a blocky, ragged hole
-  float rk = 0.8 + 0.4 * fxStructHash3( floor( vStructPos * 2.6 ) ).x;
+  float rk = 0.85 + 0.3 * fxStructHash3( floor( vStructPos * 2.6 ) ).x;
   for ( int i = 0; i < ${MAX_HOLES}; i++ ) {
     if ( float( i ) >= vStructHoles ) break;
     int at = hb + i * 2;
@@ -148,7 +148,12 @@ if ( vStructHoles > 0.5 ) {
     float along = dot( dd.xz, hn.xy );
     if ( along < -hn.z || along > hn.w ) continue;
     vec3 lateral = dd - vec3( hn.x, 0.0, hn.y ) * along;
-    float r = hc.w * rk;
+    // (b5: from 28 m a breach read as a clean O) the outline lobes round the hole, two harmonics phased by the hole's
+    // place: an irregular breach, its blocky cells on top
+    float th = atan( lateral.y, dot( lateral.xz, vec2( -hn.y, hn.x ) ) );
+    float ph = fxStructHash3( floor( hc.xyz * 3.1 ) ).y * 6.2832;
+    float lobe = 0.8 + 0.2 * sin( 3.0 * th + ph ) + 0.12 * sin( 5.0 * th + 2.0 * ph );
+    float r = hc.w * rk * lobe;
     if ( dot( lateral, lateral ) < r * r ) discard;
   }
 }
