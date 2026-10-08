@@ -127,10 +127,20 @@ interface DecorPart {
   station?: number;
   /** A lashing's deck ring (round 5): commit keeps a lashing only where both its rings have support under them. */
   anchor?: boolean;
+  /**
+   * Which end of its lashing a deck ring anchors (0 the near flank, 1 the far), and whether it is the inner ring of
+   * that end (round 5): every end carries a ring just outside the load's foot and one just inside it, under the load's
+   * edge; commit draws the outer ring where the deck reaches it and the inner one where the load's foot is the deck's
+   * edge (a case on a narrow bustle plate, a roof's rim), so the lashing keeps its hold either way.
+   */
+  end?: 0 | 1;
+  inner?: boolean;
   /** The lashing a part belongs to, or the lashing that replaces a cinch strap (round 5; per piece). */
   tie?: number;
   /** A smoke bank's mounting bracket (round 5): turretCheekPair rebuilds it as a wedge flush with the cheek. */
   bracket?: boolean;
+  /** A smoke tube's (or its cap's) pivot on the bracket face (round 5): a side mount cants the tubes about it. */
+  pivot?: readonly [number, number, number];
 }
 
 /** Where a bag's cinch strap crosses it (round 5): a point on the bag's axis and the strap's crossing direction. */
@@ -727,8 +737,8 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   // each tie is one lashing (tie id 1000 + k); its deck rings are anchors commit checks for support
   let tieId = 1000;
   const strap = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', role: 'lash', tie: tieId, geo: bakeTint(geo, tie[0], tie[1], tie[2], 0.25) });
-  const ring = (geo: THREE.BufferGeometry, anchor = true) => parts.push({ mat: 'steel', role: 'lash', tie: tieId, anchor,
-    geo: bakeShade(geo, 0.5) });
+  const ring = (geo: THREE.BufferGeometry, anchor = true, end?: 0 | 1, inner = false) => parts.push({ mat: 'steel',
+    role: 'lash', tie: tieId, anchor, ...(end !== undefined ? { end } : {}), ...(inner ? { inner } : {}), geo: bakeShade(geo, 0.5) });
   // Round 4 (2026-10-07, wave 216 on the PT-91: "the straps are flat dark bars that neither wrap nor compress their
   // loads"): each tie follows the load's own surfaces (tiePath: down onto its lid, in onto both faces), round its
   // edges and over whatever stands on its top, from a deck ring to a deck ring, with a cam buckle on its near face.
@@ -758,8 +768,11 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
       // round 5: the deck rings are low steel ridges (deckRing: six triangles where a block took twelve)
       const deck = (a: number) => (alongX ? place(deckRing(band + 0.014, 0.03, 0.014), lateral, 0, a)
         : place(deckRing(band + 0.014, 0.03, 0.014), a, 0, lateral, 0, Math.PI / 2, 0));
-      ring(deck(path[0].a - 0.006));
-      ring(deck(path[path.length - 1].a + 0.006));
+      // each end's ring just outside the foot, and its alternative just inside the face, under the load's edge
+      ring(deck(path[0].a - 0.006), true, 0);
+      ring(deck(path[1].a + 0.012), true, 0, true);
+      ring(deck(path[path.length - 1].a + 0.006), true, 1);
+      ring(deck(path[path.length - 2].a - 0.012), true, 1, true);
       // the cam buckle on the near face, a hand's width up (round 4 follow-up: on the first tie only; the budget)
       if (k === 0 && detail) {
         const b0 = path[1], b1 = path[2];
@@ -940,10 +953,13 @@ function lashLoad(parts: DecorPartList, detail: 0 | 1, tie: RGB): void {
     const band = 0.034;
     lashParts.push({ mat: 'cans', role: 'lash', geo: bakeTint(withBoxUV(ribbonBand(path, map, band)), tie[0], tie[1], tie[2], 0.25) });
     const yaw = Math.atan2(dx, dz);
-    for (const [end, dir] of [[path[0], -1], [path[path.length - 1], 1]] as const) {
-      // the deck ring: a low steel bar on its anchor plate, square to the webbing
-      const [x, , z] = map(end.a + dir * 0.004, 0, 0);
-      lashParts.push({ mat: 'steel', role: 'lash', anchor: true, geo: bakeShade(place(deckRing(band + 0.014, 0.03, 0.014), x, 0, z, 0, yaw, 0), 0.5) });
+    for (const [end, dir, k] of [[path[0], -1, 0], [path[path.length - 1], 1, 1]] as const) {
+      // the deck ring: a low steel bar on its anchor plate, square to the webbing; its alternative under the load's edge
+      for (const inner of [false, true]) {
+        const [x, , z] = map(end.a + dir * (inner ? -0.022 : 0.004), 0, 0);
+        lashParts.push({ mat: 'steel', role: 'lash', anchor: true, end: k, ...(inner ? { inner } : {}),
+          geo: bakeShade(place(deckRing(band + 0.014, 0.03, 0.014), x, 0, z, 0, yaw, 0), 0.5) });
+      }
     }
     if (detail) {
       // the cam buckle on the first flank, a hand's width up from the ring
@@ -969,19 +985,30 @@ function lashLoad(parts: DecorPartList, detail: 0 | 1, tie: RGB): void {
  * a lashing whose deck ring finds no support gives way to the strap it would replace. Commit counts the kept parts and
  * prunes the others only once the piece is placed (a slot may try one list at several seats).
  */
-function tieKept(part: DecorPart, lashed: boolean, unsupported: ReadonlySet<number>): boolean {
+interface TieRings {
+  /** Lashings with an end whose rings both lack support: the strap they replace is drawn instead. */
+  readonly unsupported: ReadonlySet<number>;
+  /** `${tie}:${end}` for each lashing end anchored by its inner ring (the outer one had no deck under it). */
+  readonly inner: ReadonlySet<string>;
+}
+const NO_TIE_RINGS: TieRings = { unsupported: new Set(), inner: new Set() };
+
+function tieKept(part: DecorPart, lashed: boolean, rings: TieRings): boolean {
   if (part.role !== 'lash' && part.role !== 'cinch') return true;
-  const keepLash = lashed && !(part.tie !== undefined && unsupported.has(part.tie));
-  return part.role === (keepLash ? 'lash' : 'cinch');
+  const keepLash = lashed && !(part.tie !== undefined && rings.unsupported.has(part.tie));
+  if (part.role !== (keepLash ? 'lash' : 'cinch')) return false;
+  // one deck ring per lashing end: the outer one, or the inner one where the outer has no deck under it
+  if (part.anchor && part.end !== undefined) return rings.inner.has(`${part.tie}:${part.end}`) === !!part.inner;
+  return true;
 }
 
-function pruneTies(list: DecorPartList | undefined, lashed: boolean, unsupported: ReadonlySet<number>,
+function pruneTies(list: DecorPartList | undefined, lashed: boolean, rings: TieRings,
   release: (geometry: THREE.BufferGeometry) => void): void {
   if (!list) return;
   // released through the attach's owner: a slot may commit a list a guard already turned away (seatLoad's keep-out
   // step), whose geometries the owner has released once
   for (let i = list.length - 1; i >= 0; i--) {
-    if (!tieKept(list[i], lashed, unsupported)) { release(list[i].geo); list.splice(i, 1); }
+    if (!tieKept(list[i], lashed, rings)) { release(list[i].geo); list.splice(i, 1); }
   }
 }
 
@@ -1817,9 +1844,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const cap = xform(cylZ(0.0335, 0.014, tubeSeg), 0, 0, 0.185);
       xform(g, 0, 0, 0, -34 * D2R, cant, 0);        // elevated + fanned
       xform(cap, 0, 0, 0, -34 * D2R, cant, 0);
-      parts.push({ mat: 'kit', geo: bakeShade(xform(g, x, y, 0.02), tone * (0.94 + rng() * 0.1)) });
+      parts.push({ mat: 'kit', pivot: [x, y, 0.02], geo: bakeShade(xform(g, x, y, 0.02), tone * (0.94 + rng() * 0.1)) });
       // the dark muzzle cap shares the bank's kit draw (one resident draw per bank family)
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cap, x, y, 0.02), 0.32) });
+      parts.push({ mat: 'kit', pivot: [x, y, 0.02], geo: bakeShade(xform(cap, x, y, 0.02), 0.32) });
     }
     return parts;
   },
@@ -3579,6 +3606,10 @@ function rearRackBrace(bb: THREE.Box3): number {
 }
 /** A rear rack's lowest point below its load's foot: the strut's foot plate (round 4). */
 const REAR_RACK_FOOT = 0.045;
+/** A turret-side load's back clears the surface behind it by this (m; round 5, sideClearance)... */
+const SIDE_CLEAR_M = 0.008;
+/** ...and a ledge reaches at most this far past the probed wall to give it that (m). */
+const SIDE_PUSH_MAX_M = 0.32;
 
 /**
  * Turret-side carriage for a hung load (round 3, 2026-10-07), built in the piece's frame, where the turret wall lies
@@ -3592,27 +3623,34 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
   const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
-  const reach = Math.max(0.06, bb.max.z + 0.02 - wallZ);
   const len = bb.max.x - bb.min.x;
   const arms = len > 0.5 ? [bb.min.x + len * 0.2, bb.max.x - len * 0.2] : [(bb.min.x + bb.max.x) / 2];
   const top = bb.max.y;
   for (const x of arms) {
-    steel(angleStock(reach, 'z', x, wallZ + reach / 2, 1, 0.03));                     // arm under the load
-    steel(place(block(0.03, 0.05, 0.008), x, 0.025, wallZ + reach - 0.004));          // upturned tip
     // round 5: the wall foot lies on the wall where the slot finds it behind the arm (a leaning or curved turret side
-    // tilts and moves it), not on a plane at wallZ
-    // (below the arm's flange: the load rests against the wall above it)
+    // tilts and moves it, a bin or a cloth cover stands it out), not on a plane at wallZ, below the arm's flange (the
+    // load rests against the wall above it); the arm runs from that foot out under the load
     const wall = wallAt?.(x, -0.045) ?? null;
-    steel(footPlate(x, -0.045, wall ? wall.p.z : wallZ, 0.06, 0.08, detail, wall?.n ?? null)); // wall foot plate, bolted
-    if (detail) steel(roundBar([x, -0.075, wallZ + 0.008], [x, -0.012, wallZ + reach * 0.7], 0.009, 6)); // gusset strut
+    const z0 = wall ? wall.p.z : wallZ;
+    const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
+    steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
+    steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
+    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
+    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
     const band = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
-    const path = load.length ? tiePath(load, 'z', x, Math.max(wallZ, bb.min.z), bb.max.z, top) : null;
-    if (path) band(withBoxUV(tieBand(path, 'z', x, 0.035)));
-    else {
-      band(place(block(0.035, 0.006, reach), x, top + 0.003, wallZ + reach / 2));       // over the top
-      band(place(block(0.035, top, 0.006), x, top / 2, wallZ + reach + 0.003));          // down the outer face
+    const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
+    // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over
+    const cleatY = (path ? path[2].y : top) + 0.012;
+    const cleatWall = wallAt?.(x, cleatY) ?? null;
+    const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
+    if (path) {
+      if (path[2].a - cleatZ > 0.03) path.splice(0, 2, { a: cleatZ + 0.008, y: cleatY, na: 0, ny: 1 });
+      band(withBoxUV(tieBand(path, 'z', x, 0.035)));
+    } else {
+      band(place(block(0.035, 0.006, bb.max.z - cleatZ), x, top + 0.003, (cleatZ + bb.max.z) / 2));   // over the top
+      band(place(block(0.035, top, 0.006), x, top / 2, bb.max.z + 0.003));                           // down the outer face
     }
-    steel(place(block(0.05, 0.03, 0.02), x, (path ? path[2].y : top) + 0.012, wallZ + 0.01)); // wall cleat
+    steel(place(block(0.05, 0.03, 0.02), x, cleatY, cleatZ));                           // wall cleat
   }
   return parts;
 }
@@ -3849,6 +3887,34 @@ function wedgeBracket(list: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler,
   release(old);   // a station's guard may already have released the list it re-seats
 }
 
+/**
+ * Cant every smoke tube (and its cap) of a bank about its pivot on the bracket face by `angle` about +Y (round 5): a
+ * bank laid along a side wall points its tubes forward on the bracket. The sockets ride the geometry (markSmokeTube).
+ */
+function skewTubes(list: DecorPartList, angle: number): void {
+  if (Math.abs(angle) > 1e-6) {
+    const turn = new THREE.Matrix4().makeRotationY(angle), m = new THREE.Matrix4();
+    for (const part of list) {
+      if (!part.pivot) continue;
+      const [x, y, z] = part.pivot;
+      m.makeTranslation(x, y, z).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(-x, -y, -z));
+      part.geo.applyMatrix4(m);
+    }
+  }
+  if (list.coarse) skewTubes(list.coarse, angle);
+}
+/** A smoke bank's cheek faces at most this far off the bow (rad; round 5): its row lies flush along it. */
+const CHEEK_MAX_ALPHA = 0.85;
+/** A side wall facing further round than this (rad, just past square out) takes a bank only as the last resort. */
+const SIDE_MAX_ALPHA = 1.6;
+/** A bank laid along a side wall turns this far off it toward the bow (rad; round 5)... */
+const SIDE_TOE = 0.1;
+/** ...and its tubes point at most this far off the bow (rad), canted forward on the bracket where the wall faces
+ * further out, by at most SIDE_CANT_MAX (45 degrees: tube clears tube), so the outer tube of a six-tube fan stays
+ * inside the 60-degree forward cone (smokeLauncherFleet). */
+const SIDE_AIM = 0.7;
+const SIDE_CANT_MAX = Math.PI / 4;
+
 /** How dark a load's foot is baked where it meets its support, and over what height the darkening fades (round 4). */
 const CONTACT_AO = 0.6;
 const CONTACT_BAND_M = 0.06;
@@ -3995,7 +4061,9 @@ function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Eu
 function clonePartList(parts: DecorPartList): DecorPartList {
   const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone(), ...(p.role ? { role: p.role } : {}),
     ...(p.station !== undefined ? { station: p.station } : {}), ...(p.anchor ? { anchor: true } : {}),
-    ...(p.tie !== undefined ? { tie: p.tie } : {}), ...(p.bracket ? { bracket: true } : {}) })) as DecorPartList;
+    ...(p.tie !== undefined ? { tie: p.tie } : {}), ...(p.bracket ? { bracket: true } : {}),
+    ...(p.end !== undefined ? { end: p.end } : {}), ...(p.inner ? { inner: true } : {}),
+    ...(p.pivot ? { pivot: p.pivot } : {}) })) as DecorPartList;
   if (parts.meta) clone.meta = { ...parts.meta };
   if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
   if (parts.lashAt) clone.lashAt = parts.lashAt.map((st) => ({ ...st }));
@@ -4768,26 +4836,45 @@ export function* attachTankDecorationsSteps(
     }
 
     /**
-     * Round 5: the lashings of a load whose deck rings lack support: a ring needs the frame's surface within
-     * FOOT_REACH_M of its foot, probed straight down (a ring past a deck's edge or over a grille well has none).
+     * Round 5: which deck ring anchors each lashing end, and the lashings that have none: a ring needs the frame's
+     * surface within RING_REACH_M of its foot, probed straight down (a ring past a deck's edge or over a grille well
+     * has none). An end takes its outer ring where it has support, else the inner one under the load's edge; a
+     * lashing with an end that has neither gives way to the strap it would replace.
      */
-    function unsupportedTies(parts: DecorPartList, frame: DecorFrame, pos: THREE.Vector3, rot: THREE.Euler): Set<number> {
-      const out = new Set<number>();
-      const rings = parts.filter((p) => p.anchor && p.tie !== undefined);
-      if (!rings.length) return out;
+    function tieRings(parts: DecorPartList, frame: DecorFrame, pos: THREE.Vector3, rot: THREE.Euler): TieRings {
+      const unsupported = new Set<number>(), inner = new Set<string>();
+      const byTie = new Map<number, DecorPart[]>();
+      for (const p of parts) {
+        if (!p.anchor || p.tie === undefined) continue;
+        if (!byTie.has(p.tie)) byTie.set(p.tie, []);
+        byTie.get(p.tie)!.push(p);
+      }
+      if (!byTie.size) return { unsupported, inner };
       const prober = frame === 'hull' ? solidHullProber() : solidTurretProber();
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
       const c = new THREE.Vector3();
-      for (const ring of rings) {
-        if (out.has(ring.tie!)) continue;
+      const held = (ring: DecorPart): boolean => {
         ring.geo.computeBoundingBox();
         ring.geo.boundingBox!.getCenter(c);
         c.y = 0;
         c.applyMatrix4(m);
         const hit = prober.top(c.x, c.z, c.y + 0.12);
-        if (!hit || Math.abs(hit.p.y - c.y) > RING_REACH_M) out.add(ring.tie!);
+        return !!hit && Math.abs(hit.p.y - c.y) <= RING_REACH_M;
+      };
+      for (const [tie, rings] of byTie) {
+        if (rings.some((r) => r.end === undefined)) {          // a box tie's rings: every one must hold
+          if (!rings.every(held)) unsupported.add(tie);
+          continue;
+        }
+        for (const end of [0, 1] as const) {
+          const outer = rings.filter((r) => r.end === end && !r.inner), alt = rings.filter((r) => r.end === end && r.inner);
+          if (outer.length && outer.every(held)) continue;
+          if (alt.length && alt.every(held)) { inner.add(`${tie}:${end}`); continue; }
+          unsupported.add(tie);
+          break;
+        }
       }
-      return out;
+      return { unsupported, inner };
     }
 
     /** Commit one built kit at pos/rot under hull|turret. */
@@ -4803,9 +4890,9 @@ export function* attachTankDecorationsSteps(
       keepOutMiss = null;
       // round 5: a load on a deck or rack keeps its lashings, anywhere else the straps they replace; on a deck, each
       // lashing only where both its deck rings have the deck under them (a ring past a roof's edge would hang in air)
-      const unsupported = secure === 'deck' ? unsupportedTies(parts, frame, pos, rot) : new Set<number>();
+      const rings = secure === 'deck' ? tieRings(parts, frame, pos, rot) : NO_TIE_RINGS;
       let tris = 0;
-      for (const p of parts) if (tieKept(p, !!secure, unsupported)) tris += triCount(p.geo);
+      for (const p of parts) if (tieKept(p, !!secure, rings)) tris += triCount(p.geo);
       if (budget.tris + tris > budget.max) return rejectCommit(name, parts, 'budget');
       if (parts.meta?.drape) {
         conformDrape(parts, frame, pos, rot);
@@ -4825,8 +4912,8 @@ export function* attachTankDecorationsSteps(
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
       }
-      pruneTies(parts, !!secure, unsupported, resources.releaseGeometry);
-      pruneTies(parts.coarse, !!secure, unsupported, resources.releaseGeometry);
+      pruneTies(parts, !!secure, rings, resources.releaseGeometry);
+      pruneTies(parts.coarse, !!secure, rings, resources.releaseGeometry);
       const receipt = attachment ? attachmentReceipt(parts, pos, rot, attachment) : null;
       ledger.push(bb);
       budget.tris += tris;
@@ -4948,6 +5035,32 @@ export function* attachTankDecorationsSteps(
         const hit = ray.intersectObjects(turretTargets, false)[0];
         return hit ? hit.point.clone().applyMatrix4(fromWorld).sub(pos).applyQuaternion(qi) : null;
       };
+    }
+
+    /**
+     * Round 5 (2026-10-08; the contact receipt: a side-hung water-can rack cut 21 cm into the Leclerc's side bins, and a
+     * census found every turret-side load's back 15-30 cm inside the turret's outer surface, the ledge built from a
+     * wall plane at the probe's height): how far a turret-side load at pos/rot (its local +z out of the wall, toward
+     * `side`) must move out so its back clears the turret's outermost solid surface behind it (armour, a bin, an ERA
+     * brick, a cloth cover; not a suit's net), probed straight in from the side over its back face; null past
+     * SIDE_PUSH_MAX_M, where something stands out further than a ledge reaches past.
+     */
+    function sideClearance(bb: THREE.Box3, pos: THREE.Vector3, rot: THREE.Euler, side: number): number | null {
+      const prober = solidTurretProber();
+      const q = new THREE.Quaternion().setFromEuler(rot), qi = q.clone().invert();
+      const p = new THREE.Vector3();
+      let need = 0;
+      for (let i = 0; i < 5; i++) {
+        for (const fy of [0.1, 0.5, 0.9]) {
+          p.set(bb.min.x + 0.03 + (bb.max.x - bb.min.x - 0.06) * (i / 4), bb.min.y + (bb.max.y - bb.min.y) * fy, bb.min.z)
+            .applyQuaternion(q).add(pos);
+          const hit = prober.side(p.y, p.z, side, W / 2 + 1);
+          if (!hit) continue;
+          const z = hit.p.clone().sub(pos).applyQuaternion(qi).z;
+          need = Math.max(need, z - bb.min.z + SIDE_CLEAR_M);
+        }
+      }
+      return need > SIDE_PUSH_MAX_M ? null : need;
     }
 
     const placeHullRearDeck: SlotPlacer = (_args, parts, name) => {
@@ -5580,7 +5693,11 @@ export function* attachTankDecorationsSteps(
             const pos = V(h.p.x + side * out * 0.3, y - 0.06, z);
             const rot = E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1);
             if (hung) {
-              const wallZ = -out * 0.3;
+              // round 5: out until its back clears the turret's outermost surface behind it (sideClearance)
+              const push = sideClearance(bb, pos, rot, side);
+              if (push === null) { disposePartList(candidate); continue; }
+              pos.x += side * push;
+              const wallZ = -out * 0.3 - push;
               // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
               const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
               const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
@@ -5588,7 +5705,8 @@ export function* attachTankDecorationsSteps(
                 const hit = turP.side(f.y, f.z, side, W / 2 + 1);
                 if (!hit || Math.abs(hit.n.x) < 0.3) return null;
                 const p = hit.p.clone().sub(pos).applyQuaternion(qi);
-                return Math.abs(p.z - wallZ) < 0.12 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
+                // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
+                return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
               };
               const carry = (list: DecorPartList, detail: 0 | 1) => {
                 for (let i = list.length - 1; i >= 0; i--) {
@@ -5630,17 +5748,47 @@ export function* attachTankDecorationsSteps(
       turretCheekPair(_args, parts, name) {
         let ok = false;
         const stations = [[0.3, 0.5], [0.2, 0.42], [0.36, 0.6]];
+        // Round 5 (2026-10-08; the contact receipt and a fleet census: the forward-fan yaw laid a bank's row along a
+        // cheek facing about 31 degrees off the bow, so on the flat sides of the Abrams, Griffin and T-80 and the round
+        // T-72 and T-62 turrets the row stood out of the wall with its inner half inside the turret): a bank seats to
+        // the wall it meets. Its row lies along the wall (a side wall: SIDE_TOE off it toward the bow), its bracket's back
+        // clear of it and the wedge filling the rest, its tubes along the wall's normal or, where that faces further out
+        // than SIDE_AIM, canted forward on the bracket about their pivots. Cheeks are tried first, the stations and
+        // three more forward along the cheek; then a side facing square out; a wall facing aft, or a roof or an
+        // overhang, takes the old fan only where nothing else does, so no bank is dropped (the smoke counts are pinned).
+        const forward = [[0.45, 0.5], [0.6, 0.48], [0.75, 0.46]];
         for (const s of [-1, 1]) {
           const cl = clonePartList(parts);
           let done = false;
-          for (const [z, yf] of stations) {
-            const y = Math.max(0.24, pivotTopY() * yf);
-            const h = turP.side(y, z, s, W / 2 + 1);
-            if (!h) continue;
-            const yaw = s * 0.55; // forward fan, mirrored about local +Z
-            const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, yaw, 0);
-            wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
-            if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+          let skewed = 0;
+          const skewTo = (angle: number): void => { skewTubes(cl, angle - skewed); skewed = angle; };
+          const seat = (h: { p: THREE.Vector3; n: THREE.Vector3 }, y: number, z: number, pass: 0 | 1 | 2):
+            { pos: THREE.Vector3; rot: THREE.Euler } | null => {
+            const alpha = Math.atan2(Math.abs(h.n.x), h.n.z);
+            if (pass === 2) { skewTo(0); return { pos: V(h.p.x + s * 0.03, y, z), rot: E(0, s * 0.55, 0) }; }
+            if (Math.abs(h.n.y) > 0.7) return null;
+            if (pass === 0 ? alpha > CHEEK_MAX_ALPHA : alpha <= CHEEK_MAX_ALPHA || alpha > SIDE_MAX_ALPHA) return null;
+            const toe = pass === 0 ? 0 : SIDE_TOE, along = alpha - toe;
+            skewTo(s * Math.max(-SIDE_CANT_MAX, Math.min(0, SIDE_AIM - along)));
+            const k = cl.findIndex((p) => p.bracket);
+            const bb = k >= 0 ? (cl[k].geo.computeBoundingBox(), cl[k].geo.boundingBox!) : null;
+            const half = bb ? (bb.max.x - bb.min.x) / 2 : 0.2, back = bb ? Math.max(0.04, -bb.min.z) : 0.04;
+            const off = 0.005 + half * Math.sin(toe) + back * Math.cos(toe);
+            const nh = new THREE.Vector3(h.n.x, 0, h.n.z).normalize();
+            return { pos: V(h.p.x + nh.x * off, y, h.p.z + nh.z * off), rot: E(0, s * along, 0) };
+          };
+          for (const pass of [0, 1, 2] as const) {
+            for (const [z, yf] of pass === 0 ? [...stations, ...forward] : stations) {
+              const y = Math.max(0.24, pivotTopY() * yf);
+              const h = turP.side(y, z, s, W / 2 + 1);
+              if (!h) continue;
+              const at = seat(h, y, z, pass);
+              if (!at) continue;
+              const { pos, rot } = at;
+              wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+              if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+            }
+            if (done) break;
           }
           // Round 3 (2026-10-07): a declared smoke bank is a gameplay fitting, and a change in the turret's dressing
           // alone must not drop it. When every station overhangs the width guard, the bank seats on the turret under
@@ -5649,17 +5797,22 @@ export function* attachTankDecorationsSteps(
           // a station never reaches this; one that overhangs by more stays off, as before.
           if (!done) {
             const solid = solidTurretProber();
-            for (const [z, yf] of stations) {
-              const y = Math.max(0.24, pivotTopY() * yf);
-              const h = solid.side(y, z, s, W / 2 + 1);
-              if (!h) continue;
-              const pos = V(h.p.x + s * 0.03, y, z), rot = E(0, s * 0.55, 0);
-              wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
-              const bb = placedBox(cl, pos, rot);
-              const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
-              if (over > 0.003) continue;
-              if (over > 0) pos.x -= s * (over + 0.0005);
-              if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+            for (const pass of [0, 1, 2] as const) {
+              for (const [z, yf] of pass === 0 ? [...stations, ...forward] : stations) {
+                const y = Math.max(0.24, pivotTopY() * yf);
+                const h = solid.side(y, z, s, W / 2 + 1);
+                if (!h) continue;
+                const at = seat(h, y, z, pass);
+                if (!at) continue;
+                const { pos, rot } = at;
+                wedgeBracket(cl, pos, rot, h.p, h.n, resources.releaseGeometry, cheekCaster(pos, rot));
+                const bb = placedBox(cl, pos, rot);
+                const over = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x)) - (W / 2 + 0.048);
+                if (over > 0.003) continue;
+                if (over > 0) pos.x -= s * (over + 0.0005);
+                if (commit(name, cl, 'turret', pos, rot, placedTurret)) { done = true; break; }
+              }
+              if (done) break;
             }
           }
           if (!done) disposePartList(cl);
