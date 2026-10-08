@@ -262,11 +262,16 @@ Every explosive burst on terrain stamps a crater:
 
 ```
 R = 1.1 · W^(1/3) · craterFactor · rules.craterScale   (rim radius, m, clamped to 6)
-depth = 0.35·R,  rim = 0.12·R,  seed = the authority RNG's next u16
+depth, rim = (0.35, 0.24)·R for HE; howitzer (0.40, 0.26), missile (0.38, 0.25), rocket (0.30, 0.22), cook-off
+(0.25, 0.16), 30–40 mm HE (0.30, 0.18);  seed = the authority RNG's next u16
 ```
 
-125 mm HE: R 1.65 m, 0.58 m deep. 152 mm howitzer shell: 2.4 m. Gunship howitzer: 3.4 m, 1.2 m deep. Gunship missile: 2.5 m.
-TOS rocket: 2.0 m. Kinetic and small-arms rounds dig nothing. A crater with `R < 1.6 m` (less than 1.2 terrain lattice
+125 mm HE: R 1.67 m, 0.58 m deep, a 0.40 m rim. 152 mm howitzer shell: R 2.4 m, 0.96 m deep, a 0.62 m rim. Gunship
+howitzer: R 3.4 m, 1.37 m deep, a 0.89 m rim. Gunship missile: 2.5 m. TOS rocket: 2.0 m. (Crater round 3, 2026-10-08:
+wave 276 found no rim from the player's eye height — a bowl alone never reads from 1.5–3 m — so the rim doubled from
+0.12 R and varies by munition; the critics' low cameras read the rim, the cleared cover and the FX lane's apron, not the
+bowl.) A shaped charge (HEAT, an ATGM, an FPV drone's warhead) stays under the 1.6 m dig radius even at the gunship's
+1.25 scale: it leaves the FX lane's scorched scar, never a bowl. Kinetic and small-arms rounds dig nothing. A crater with `R < 1.6 m` (less than 1.2 terrain lattice
 cells) is a presentation-only mark (`deforms: false`); on hard road ground the depth halves; on water or a bridge deck
 nothing deforms.
 
@@ -317,12 +322,23 @@ collapse's work is 1–4 ms of CPU (§10), most of it the route grid's refresh r
 
 `sim/terrainDeformation.ts` holds a per-match overlay of stamps:
 
-- **crater**: a bowl `−depth·(1 − (r/R)²)²` inside `0.8 R` blending into a rim `+rim·exp(−((r − R)/0.35R)²)`, ragged by
-  `seed` (a three-harmonic angular wobble of ±8 %), influence radius `1.6 R`;
+- **crater**: a bowl `−depth·(1 − (r/R)²)²` inside `R` under a rim crest at the bowl's edge, steep inside and broad
+  outside — `+rim·b(θ)·exp(−((r − R)/w)²)` with `w = 0.3 R` inside and `0.55 R` outside (the 1.333 m lattice the ground
+  is drawn and driven on carries a 125 mm crater's rim at 0.45 m, where the old 0.35 R flank kept 0.19 m), its height
+  broken round the crater by the seed, `b(θ) = 1 + 0.45·(0.5 sin(2θ + p2) + 0.3 sin(4θ + p3) + 0.2 sin(6θ + p1))`
+  (0.55–1.45: thrown earth, not a torus) — ragged by `seed` (a three-harmonic angular wobble of ±8 % on R), influence
+  radius `2 R` (the flank fading from `1.6 R`); the ray-march ceiling counts its highest crest;
 - **rubble**: a mound over the structure's footprint rectangle, height `clamp(0.18·(topY − baseY), 0.6, 2.6)` m on the
   inner 70 %, a cosine skirt `max(3, 2.2·h)` m wide beyond the footprint edge (grade under 25 %: every hull climbs it).
 
 Stamps are bucketed on a 16 m grid (64 × 64 heads, ≤ 8 stamps per bucket). The sum is clamped to [−2.5, +3] m.
+
+**The cover** (`world/groundCoverCraters.ts`, the ground lane's law, crater round 3): a dug crater clears every cover tier
+to `1.15 R` (the bowl and the crest its thrown earth buries) and lays the tall grass low round that, 0.42 of its height
+at the cleared edge rising to whole by `1.84 R` (as round the FX lane's presentation holes, `world.clearCoverAt`); the
+rest of its reach re-seats on the deformed ground. It follows the overlay's stamps, so every peer and a late joiner
+clear the same. A settled crater may carry its age (`TerrainCraterEvent.ageS`, the Studio's settled fields) so the
+presentation weathers a field's craters by age.
 
 **Sampling.** The match's height field is wrapped once (`createDeformedHeightField(base, overlay)`; the authority keeps
 exposing the supplied base as `match.heightField`, the wrapper is its internal ground; the solo step keeps one wrapper
