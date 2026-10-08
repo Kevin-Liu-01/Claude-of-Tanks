@@ -36,7 +36,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  blastScale, columnPuff as mediaColumnPuff, dustSurge, fragmentStrike, groundBurst, isExplosive, kineticStrike,
+  blastScale, columnPuff as mediaColumnPuff, dustSurge, fragmentStrike, groundBurst, isExplosive, kineticStrike, trackSkirt,
   killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
@@ -4258,6 +4258,27 @@ function* createFxSteps(
     particles.emit('sparks', _strkO);
   }
 
+  // destruction-fx: the media tier's track skirt — about one body per ~4 m of a track's travel (dust() runs every
+  // ~0.55 m of it), none past ~260 m, and at most SKIRT_BUDGET bodies alive at once (each lives ~4-6 s) so a column of
+  // moving hulls never crowds the media pool the bursts draw from
+  const SKIRT_BUDGET = 240;
+  const skirtBirths = new Float64Array(SKIRT_BUDGET);
+  let skirtHead = 0, skirtCount = 0;
+  function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
+    surface: number, gy: number): void {
+    if (!blast) return;
+    const k = surface === 2 ? 1.6 : groundType === 'hard' ? 0.7 : 0.55;
+    if (rng() > 0.15 * Math.min(1.3, k)) return;
+    const cam = engineCtx && engineCtx.camera;
+    if (cam && cam.position.distanceToSquared(_camV.set(pos.x, gy, pos.z)) > 260 * 260) return;
+    const now = particles.getTime();
+    while (skirtCount > 0 && now - skirtBirths[skirtHead] > 6) { skirtHead = (skirtHead + 1) % SKIRT_BUDGET; skirtCount--; }
+    if (skirtCount >= SKIRT_BUDGET) return;
+    skirtBirths[(skirtHead + skirtCount) % SKIRT_BUDGET] = now;
+    skirtCount++;
+    trackSkirt(blast, pos.x, gy, pos.z, dir.x, dir.z, intensity, surface === 2 ? 'sand' : groundType === 'hard' ? 'concrete' : 'soil', k, 0);
+  }
+
   function drySurfaceMultiplier(groundType: string): number {
     if (groundType === 'hard') return 1.5;
     if (groundType === 'soft') return 1.2;
@@ -5718,6 +5739,11 @@ function* createFxSteps(
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
+      // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
+      // a moving hull trails a low skirt of its ground's own dust — heavy on sand, light on grass, none on wet ground or
+      // snow (their spray and powder stay the battle's); it replaces the dry wake's sprites
+      const skirt = !!blast && groundType !== 'soft' && surface !== 3;
+      if (skirt && !frozen) mediaTrackSkirt(pos, dir, intensity, groundType, surface, gy);
       if (surface !== 0) {
         if (!frozen) emitTrackPowder(pos, dir, intensity, gy, surface);
         return;
@@ -5726,6 +5752,7 @@ function* createFxSteps(
       const sizeVariation = 0.6 + rng() * 0.8;
       const alphaVariation = 0.55 + rng() * 0.65;
       emitTrackKick(pos, dir, intensity, groundType, gy);
+      if (skirt) return;
       emitDryTrackWake(
         pos, dir, intensity, groundType, gy, surfaceMultiplier, sizeVariation, alphaVariation,
       );
@@ -5997,6 +6024,7 @@ function* createFxSteps(
       structMask?.reset();
       structDebris?.reset();
       stages?.reset();
+      skirtHead = 0; skirtCount = 0;
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;
       pendingHeCount = 0;

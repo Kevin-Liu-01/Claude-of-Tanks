@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
-import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale } from './blastRecipes.ts';
+import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, trackSkirt } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
 import { structureStageFx, propBreakFx, lookForStruckKind, breachBlowFor, lookFromAnatomy, wallStrike } from './structureFx.ts';
@@ -243,6 +243,20 @@ function captureContext(seed) {
   for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
     assert.ok(m.playSeconds >= m.life * 0.8, 'no kill or column body freezes on its last frame');
   }
+  // (wave 265's weathering critics: no dust behind moving tanks) a moving hull's skirt: low, wide, left behind, heavy on
+  // sand, light on grass
+  const skirt = (surface, k, intensity) => {
+    const c = captureContext(21);
+    for (let i = 0; i < 12; i++) trackSkirt(c.ctx, 0, 0, 0, 1, 0, intensity, surface, k, 0);
+    return c.log.media;
+  };
+  const sand = skirt('sand', 1.6, 1), grass = skirt('soil', 0.55, 1), slow = skirt('soil', 0.55, 0.2);
+  const mean = (list, f) => list.reduce((acc, m) => acc + f(m), 0) / list.length;
+  assert.ok(sand.every((m) => m.aspect >= 1.8 && m.y < 0.7 && m.heat === 0 && m.vx <= 0.4), 'a skirt lies low and wide, left behind');
+  assert.ok(mean(sand, (m) => m.density) > 1.8 * mean(grass, (m) => m.density) && mean(sand, (m) => m.size1) > mean(grass, (m) => m.size1),
+    'sand throws a far heavier skirt than grass');
+  assert.ok(mean(slow, (m) => m.size1) < mean(grass, (m) => m.size1) && mean(slow, (m) => m.life) < mean(grass, (m) => m.life),
+    'a crawl raises less than a dash');
   // the column swells and pinches, ends ragged, and bends downwind (low drag: its bodies take the wind slowly)
   const colLog = captureContext(14);
   for (let i = 0; i < 40; i++) columnPuff(colLog.ctx, 0, 0, 0, 1, 1.3, 0);

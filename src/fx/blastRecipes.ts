@@ -646,6 +646,35 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
   }
 }
 
+/**
+ * A moving hull's trailing dust skirt (one body; the caller rate-limits by travel): low, wide cards of the ground's own
+ * dust left behind the track, rolling out and up a little and drifting off with the wind, scaled by the speed
+ * (`intensity` 0..1) and the ground (`k`: heavy on sand, light on grass). Wet ground and snow take none (their spray and
+ * powder are the battle's).
+ */
+export function trackSkirt(C: BlastContext, x: number, gy: number, z: number, dx: number, dz: number, intensity: number,
+  surface: SurfaceKind, k: number, bo: number): void {
+  const L = SURFACE_LOOKS[surface];
+  const R = C.rand;
+  const m = C.m;
+  const dk = C.distBoost(x, gy, z);
+  const dl = Math.hypot(dx, dz) || 1;
+  const fx = dx / dl, fz = dz / dl;
+  const back = 0.6 + R() * 1.0;
+  place(m, x - fx * 0.4 + (R() - 0.5) * 0.6, gy + 0.35 + R() * 0.25, z - fz * 0.4 + (R() - 0.5) * 0.6, bo);
+  // left behind: no forward speed, a slow roll back, out and up, then the wind
+  move(m, -fx * back + (R() - 0.5) * 0.8, 0.25 + R() * 0.35, -fz * back + (R() - 0.5) * 0.8, 1.5, 0.06 + R() * 0.08, 1.0, 0);
+  const life = (3.5 + R() * 2.5) * (0.7 + 0.5 * intensity) * L.hang;
+  const size1 = (1.8 + R() * 1.4) * (0.7 + 0.6 * intensity) * Math.sqrt(k) * dk;
+  shape(m, life, size1 * 0.35, size1, 2.0, R);
+  look(m, mix3(L.ejecta, L.dust, 0.65), L.dust, Math.min(0.55, (0.16 + 0.22 * intensity) * k), 0.15, 0.4);
+  book(m, 'burst', R, life, 4);
+  // a skirt lies wide and low
+  card(m, 1.8 + R() * 0.8, R, 0.05);
+  heat(m, 0, 1);
+  C.media(m);
+}
+
 /** A low dust surge driven out along the ground from under a blast (a hull cooking off, a wall coming down). */
 export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: number, surface: SurfaceKind,
   bo: number): void {
