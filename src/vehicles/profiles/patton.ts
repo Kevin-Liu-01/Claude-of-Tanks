@@ -46,7 +46,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -950,7 +950,11 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
         [-nw, toeY, toeZ], [nw, toeY, toeZ], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
     }
     // lower glacis wedge + rounded cast transmission nose (between the tracks)
-    P.add('hull', slab(
+    // The M48 terminal roof lies below its toe floor. Bound that one inverted
+    // wedge by the retained corners; leave every valid slab and the casting
+    // itself on their existing construction paths.
+    const lowerGlacis = toeY - 0.02 < toeBot ? convexSlab : slab;
+    P.add('hull', lowerGlacis(
       [-iw, belly, H.bellyFrontZ], [iw, belly, H.bellyFrontZ], [iw * 0.98, toeBot, toeZ - 0.02], [-iw * 0.98, toeBot, toeZ - 0.02],
       [-iw, spons + 0.05, H.bellyFrontZ], [iw, spons + 0.05, H.bellyFrontZ], [iw * 0.98, toeY - 0.02, toeZ - 0.02], [-iw * 0.98, toeY - 0.02, toeZ - 0.02]));
     P.add('hull', cylX(0.21, iw * 2, P.q ? 20 : 12), 0, toeBot - 0.01, toeZ - 0.30);
