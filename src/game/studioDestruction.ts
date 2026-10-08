@@ -19,6 +19,7 @@ import { DESTRUCTION_BUS_EVENTS, type DestructionRules, type StructureBreachEven
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import type { MunitionShellLike } from '../sim/munitionBlast.ts';
 import type { StructureMaterial } from '../sim/structureMaterial.ts';
+import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
 
 interface StudioWorld {
   getObstacles(): CollisionRecord[];
@@ -51,6 +52,9 @@ export interface StudioDestructionOptions {
   rules: DestructionRules;
   /** The map's walls (structureMaterial.ts): a ram's and a hole's material. */
   wallMaterial?: StructureMaterial;
+  /** The ground overlay a collapse raises its rubble mound on, as a battle's does (the Studio's own, bound to its world
+   * so the drawn terrain and the kit's pile follow it; the caller resets it with the scene). */
+  ground?: TerrainDeformation | null;
 }
 
 export function createStudioDestruction(world: StudioWorld, bus: StudioBus, options: StudioDestructionOptions): StudioDestruction {
@@ -61,7 +65,7 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
   const breaches: StructureBreachEvent[] = [];
   const build = (): DestructionMatch => {
     resetStructureRecords(obstacles, colliders);
-    return createDestructionMatch({ rules, obstacles, colliders, wallMaterial: options.wallMaterial });
+    return createDestructionMatch({ rules, obstacles, colliders, wallMaterial: options.wallMaterial, ground: options.ground ?? null });
   };
   let match = build();
   return {

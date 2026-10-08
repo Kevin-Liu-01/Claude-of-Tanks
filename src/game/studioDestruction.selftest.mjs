@@ -8,6 +8,7 @@ import { createStudioDestruction } from './studioDestruction.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { setCompoundShape, setObbShape } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
+import { createTerrainDeformation } from '../sim/terrainDeformation.ts';
 import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
 
 // a flat field and a 24 × 6 m house on it (its south wall at z = −38, its north wall at z = −32)
@@ -22,7 +23,8 @@ const world = createHeadlessCollisionWorld({ mapId: 'verdant', heightField: fiel
 const raised = [];
 const bus = { emit: (event, payload) => raised.push({ event, payload }) };
 assert.equal(matchRulesetFor('standard').destruction.sections, false, 'the battle switch is off');
-const studio = createStudioDestruction(world, bus, { rules: matchRulesetFor('standard').destruction });
+const ground = createTerrainDeformation();
+const studio = createStudioDestruction(world, bus, { rules: matchRulesetFor('standard').destruction, ground });
 
 const origin = new Vector3(0, 2, -68), north = new Vector3(0, 0, 1);
 const he = { type: 'HE', caliberMm: 120 }, ap = { type: 'APFSDS', caliberMm: 120, pen100Mm: 700 };
@@ -62,9 +64,13 @@ assert.equal(world.raycast(origin, north, 200)?.record ?? null, null, 'both hole
   const collapsed = raised.filter((entry) => entry.event === 'structure:stage' && entry.payload.stage === 'collapsed');
   assert.ok(falls.length >= 3 && collapsed.length === 1 && collapsed[0].payload.cause === 'ram',
     `the cascade then the collapse, by the ram (${falls.length} falls, ${collapsed.length} collapse)`);
+  // its rubble mound on the Studio's ground, as a battle's (the kit's pile stands on it)
+  const heap = ground.stamps.find((stamp) => stamp.kind === 'rubble');
+  assert.ok(heap && ground.offsetAt(0, -35) > 0.5, `the collapse raised its heap (${ground.offsetAt(0, -35).toFixed(2)} m at the centre)`);
 }
 
 studio.reset();
+ground.reset(); // the Studio resets its ground with the scene (studio.ts resetStudioGround)
 hit = world.raycast(origin, north, 200);
 assert.ok(hit && Math.abs(hit.point.z + 38) < 1e-6, 'a reset stands the house up again');
 assert.equal(studio.match.log.length, 0, 'with a fresh log');

@@ -1933,9 +1933,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         if (studioSimLog.length > 512) studioSimLog.shift();
         fxBus.emit(event, payload);
       } };
+      // a collapse raises the sim's rubble mound on the Studio's ground overlay, bound to the world as a battle's is, so
+      // the drawn terrain and the kit's pile stand on it (the s1t strips' piles lay flat on undeformed ground)
+      if (!studioGround) studioGround = createTerrainDeformation();
+      if (w.groundOverlay() !== studioGround) w.bindGroundOverlay(studioGround);
       studioSim = createStudioDestruction(w as unknown as Parameters<typeof createStudioDestruction>[0], loggingBus, {
         rules: matchRulesetFor('standard').destruction,
         wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(w.mapId))),
+        ground: studioGround,
       });
       studioSimWorld = w;
     }
