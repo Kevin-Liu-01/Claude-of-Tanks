@@ -766,27 +766,70 @@ export function buildTarpRoll(P: AccessoryPainter, len: number, radius: number, 
 }
 
 /**
- * Rolled camouflage net: a lumpy, gathered bundle pinched under three ties (ROLL_PINCH), the net's own skin laid over
- * it. 2026-10-07 (tank-accessories round 4; wave 213: decor nets "sit proud of the hull with dead-straight hems"; wave
- * 215 on the M60A1: "the bundled net ... reads as a speckled green caterpillar"): the skin is no longer a rigid
- * half-cylinder standing off the roll but follows the roll's pinches and swells a few millimetres off it, tucked under
- * each tie, its hem ragged — every station drops it to its own depth down each flank. Seeded per roll.
+ * Rolled camouflage net. 2026-10-07 (tank-accessories round 4; wave 213: decor nets "sit proud of the hull with
+ * dead-straight hems"; wave 215 on the M60A1: "the bundled net ... reads as a speckled green caterpillar"): the skin
+ * follows the roll's pinches and swells a few millimetres off it, tucked under each tie, its hem ragged.
+ * Round 5 (2026-10-08; wave 255 on the M60A1: "the leaf-print 'sausage' on the turret, uncut and untied" — "either a
+ * properly rolled, strapped net, or nothing"): the roll is the net itself, rolled. Its outer turn is the garnished net
+ * (the decor's net material, in the vehicle's theatre: sand on a desert hull) wrapped all round a dense core of inner
+ * turns, so the cut garnish shows depth, never daylight; both ends show the rolled layers as a dark spiral; three
+ * webbing straps pinch it hard (a quarter of its girth) in the darker issue webbing; garnish tails hang out of the roll
+ * between them. Seeded per roll.
  */
 export function buildNetRoll(P: AccessoryPainter, len: number, tone: number, seed = 83): void {
   const R = 0.13;
   const h = bagNoise(seed, 0x4e1);
   const cinch = [-len * (0.3 + 0.05 * h(0)), (h(1) - 0.5) * 0.1 * len, len * (0.3 + 0.05 * h(2))];
   const spec: FabricSpec = { len, hw: R * 1.05, hh: R, exponent: 2.1, endScale: 0.62, endLength: 0.12, flatten: 0.2,
-    wrinkle: 0.14, seg: near(P) ? 10 : ROLL_SEG_COARSE, stations: 2, cinch, cinchDepth: 0.2 + 0.06 * h(3), bulge: 0.06,
-    ...ROLL_PINCH, seed };
-  const { lift } = bag(P, spec, [0, 0, 0], 0, tone, [0.92, 1.02, 0.84], 0.45);
-  const tucked = (z: number): number => (cinch.some((c) => Math.abs(z - c) < 0.02) ? 0.002 : 0.007);
+    wrinkle: 0.14, seg: near(P) ? 10 : ROLL_SEG_COARSE, stations: 2, cinch, cinchDepth: 0.26 + 0.06 * h(3), bulge: 0.07,
+    ...ROLL_PINCH, seed, detail: P.detail };
+  // the rolled net's body, seated on its measured lowest point (bag()'s rule), and its three straps
+  const body = place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0);
+  body.computeBoundingBox();
+  const lift = -body.boundingBox!.min.y;
+  // the inner turns, packed dense: they read through the outer turn's garnish as shadowed depth, never as daylight
+  P.cloth(place(body, 0, lift, 0), tone * 0.55, [0.92, 0.95, 0.84]);
+  for (const z of cinch) webbing(P, place(place(fabricStrap(spec, z), 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0), 0.38);
+  // the outer turn, tucked under each strap, its hem ragged down both flanks
+  const tucked = (z: number): number => (cinch.some((c) => Math.abs(z - c) < 0.02) ? 0.002 : 0.008);
   const hem = (z: number): readonly [number, number] => {
     const k = Math.round(z * 97);
-    return [-0.4 - 0.4 * hash01(seed, 11, k), Math.PI + 0.4 + 0.4 * hash01(seed, 13, k)];
+    return [-0.55 - 0.45 * hash01(seed, 11, k), Math.PI + 0.55 + 0.45 * hash01(seed, 13, k)];
   };
-  const skin = fabricSleeve({ ...spec, detail: P.detail }, hem, tucked, near(P) ? 7 : 4);
-  P.net(place(place(skin, 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0), 0.95);
+  const skin = fabricSleeve(spec, hem, tucked, near(P) ? 7 : 4);
+  P.net(place(place(skin, 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0), tone);
+  if (!near(P)) return;
+  // the rolled layers seen end-on, a dark spiral on each end
+  for (const end of [-1, 1] as const) {
+    const spiral = place(rolledEndSpiral(R * 0.62, end * len / 2, end, 16), 0, 0, 0, 0, Math.PI / 2, h(4) * Math.PI * 2);
+    P.cloth(place(spiral, 0, lift, 0), tone * 0.42, [0.9, 1.0, 0.82]);
+  }
+  // garnish tails hanging out of the roll between the straps, down its flanks
+  for (let k = 0; k < 4; k++) {
+    const x = (hash01(seed, 21, k) - 0.5) * len * 0.78;
+    if (cinch.some((c) => Math.abs(x - c) < 0.06)) continue;
+    const side = k % 2 ? 1 : -1, drop = 0.08 + hash01(seed, 23, k) * 0.1, w = 0.035 + hash01(seed, 25, k) * 0.03;
+    const y0 = lift + R * 0.25, z0 = side * R * 1.04;
+    const path: Array<[number, number, number]> = [[x, y0, z0], [x + 0.012, y0 - drop * 0.5, side * (R * 1.08)],
+      [x + 0.02, y0 - drop, side * (R * 1.06)]];
+    P.net(garnishTail(path, w), tone * 0.9);
+  }
+}
+
+/** A flat cloth tail along a short path (a garnish strip hanging out of a rolled net), its face turned outward. */
+function garnishTail(path: ReadonlyArray<readonly [number, number, number]>, width: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  for (let k = 0; k < path.length - 1; k++) {
+    const a = path[k], b = path[k + 1];
+    const wa = width * (1 - 0.25 * (k / (path.length - 1))) / 2, wb = width * (1 - 0.25 * ((k + 1) / (path.length - 1))) / 2;
+    // the strip spans along the roll (x) and hangs down its flank
+    const p = [[a[0] - wa, a[1], a[2]], [a[0] + wa, a[1], a[2]], [b[0] + wb, b[1], b[2]], [b[0] - wb, b[1], b[2]]];
+    positions.push(...p[0], ...p[1], ...p[2], ...p[0], ...p[2], ...p[3]);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 /**
