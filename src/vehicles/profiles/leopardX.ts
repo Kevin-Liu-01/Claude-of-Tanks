@@ -1,3 +1,4 @@
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
 // builder, source loader, external topology, or texture is used here.
@@ -331,7 +332,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   lengthScale = 1, heightScale = 1): void {
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76,
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${P.spec.id}RoofMachineGun`;
   weapon.scale.set(1,heightScale,lengthScale);
@@ -1000,7 +1001,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // Full, unscaled-height pintle seats directly on the hatch flank. The
   // source rail remains alongside the barrel, not pierced by it; there is
   // no added tall pedestal above the already complete pintle assembly.
-  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,
+  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
     tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);
@@ -1240,6 +1241,7 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.75,1.50);
   hullDeckEdges(P,d);
   mainGun(P,d,.079,false);
+  addFieldRoofWeapon(P,[-.65,.762144,.5],30,'Leopard 2A5M remote 30 mm cannon');
 }
 
 // A5: separately laid out basic armor tub and arrowhead modules, restrained
@@ -1315,6 +1317,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
+  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.24);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
-import { vehicleAmbientFloorHook, VEHICLE_FIELD_WEAR_GARAGE, vehicleSootSources, vehicleWearFrame } from './materials.ts';
+import { vehicleAmbientFloorHook } from './materials.ts';
 import {
   setVehicleReadabilityScale, getVehicleReadabilityScale,
 } from './vehicleReadability.ts';
@@ -66,27 +66,6 @@ assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch'
 const unbound = before.uniforms;
 assert.equal(unbound.uVehGround.value.y, -1e5, 'tooling paths with no vehicle root keep a far-below origin (no darkening)');
 assert.deepEqual(unbound.uVehUp.value.toArray(), [0, 1, 0]);
-// 2026-10-07 field wear (tank-accessories lane round 3; materials.ts VEHICLE_FIELD_WEAR_GARAGE): the dust, mud and soot
-// are one switched block that colours the paint after the normal and before any light reads it, the pattern rides each
-// mesh's own vertex frame, and the strength rides the ground reference's w (0 without a vehicle root).
-// Re-pinned 2026-10-07 (round 4; wave 240 scored the round-3 wear flat): five soot slots (the muzzle's carbon leads, then
-// up to four discharger banks) and the hull frame the exhaust soot, engine-deck oil and climbing wear read.
-once('#ifdef COT_FIELD_WEAR\nuniform vec4 uVehSoot[ 10 ];\nuniform vec4 uVehFwd;\nuniform vec4 uVehHull;\n',
-  'the wear header is declared once, behind its switch');
-// every octave is band-limited by the mesh frame's screen derivative, taken before any per-fragment branch
-once('float wearPx = max( length( dFdx( vCotWearPos ) ), length( dFdy( vCotWearPos ) ) );', 'one footprint for every octave');
-once('if ( uVehGround.w > 0.0 ) {', 'one wear block, gated by the reference strength');
-{
-  const at = frag.indexOf('if ( uVehGround.w > 0.0 ) {');
-  assert.ok(frag.indexOf('#include <normal_fragment_maps>') < at && at < frag.indexOf('#include <lights_physical_fragment>'),
-    'the wear colours the paint after the normal and before any light reads it');
-  assert.equal(before.vertexShader.split('vCotWearPos = transformed;').length, 2, 'the wear pattern rides the mesh frame');
-  assert.match(before.vertexShader, /#ifdef COT_FIELD_WEAR\n\tvCotWearPos = transformed;\n#endif/, 'behind the same switch');
-  // re-pinned 2026-10-07 (round 4): 8 -> 10, the muzzle's slot beside four banks
-  assert.equal(unbound.uVehSoot.value.length, 10, 'five soot sources, two vectors each');
-  assert.equal(unbound.uVehHull.value.x, 0, 'no hull frame without a vehicle root (no exhaust, oil or climbing wear)');
-  assert.equal(unbound.uVehGround.value.w, 0, 'no field wear without a vehicle root');
-}
 
 try {
   const materialVersion = material.version;
@@ -225,59 +204,6 @@ try {
     probe.object.onAfterRender(null, null, null, probe.object.geometry, probe.object.material, null);
     assert.equal(g.y, -1e5, `${id}: after the draw the reference idles far below (nothing else darkens)`);
   }
-  // field wear on the real fleet: the switch per role, battle and Garage strength on the per-draw reference, and the
-  // smoke-discharger banks' soot placed with the draw
-  {
-    const modeOf = new Map();
-    for (const item of bound) {
-      const role = item.material.userData.appearanceRole;
-      if (!modeOf.has(role)) modeOf.set(role, new Set());
-      modeOf.get(role).add(item.material.defines?.COT_FIELD_WEAR ?? 0);
-    }
-    assert.deepEqual([...modeOf.get('armorPaint')], [1], 'camouflaged armour wears the bodywork dust and mud');
-    assert.ok(modeOf.get('wheelPaint').has(2) && modeOf.get('tireRubber').has(2), 'wheels and tyres wear the running-gear wear');
-    // round 4 (2026-10-07): cloth and wood wear the soft goods' mode, without bare-steel chips or slick oil
-    for (const role of ['canvas', 'canvasPale', 'wood']) {
-      if (modeOf.has(role)) assert.ok(modeOf.get(role).has(4), `${role} wears the soft goods' wear`);
-    }
-    const visual = vehicles[0], probe = groundProbe.get('m1a1');
-    const g = probe.shader.uniforms.uVehGround.value, soot = probe.shader.uniforms.uVehSoot.value;
-    const draw = () => probe.object.onBeforeRender({ info: { render: { frame: 7 } } }, null, null, probe.object.geometry, probe.object.material, null);
-    const done = () => probe.object.onAfterRender(null, null, null, probe.object.geometry, probe.object.material, null);
-    draw();
-    assert.equal(g.w, 1, 'a battle build wears the full field wear');
-    const sources = vehicleSootSources(visual.root);
-    assert.ok(sources.length >= 2 && sources.every((source) => source.owner !== visual.root),
-      `m1a1: its discharger banks publish soot (${sources.length})`);
-    // three's Object3D.copy deep-copies userData through JSON (the thumbnail masks clone the root): the live sources stay
-    // out of it, only the strength number rides there
-    assert.ok(Object.values(visual.root.userData).every((value) => !value?.isObject3D && !value?.sources),
-      'the soot sources live beside the root, not in its userData');
-    // round 4 (2026-10-07): the muzzle leads, riding the gun's elevation and recoil
-    assert.equal(sources[0].owner.name, 'rig_muzzle', 'm1a1: the muzzle\'s carbon is the first soot source');
-    const mouth = sources[0].mouth.clone().applyMatrix4(sources[0].owner.matrixWorld);
-    assert.ok(Math.hypot(soot[0].x - mouth.x, soot[0].y - mouth.y, soot[0].z - mouth.z) < 1e-4 && soot[0].w > 0,
-      'the first source is placed at its mouth in the world');
-    // the hull frame, measured off the hull's own plates and carried into the world per draw
-    const frame = vehicleWearFrame(visual.root);
-    assert.ok(frame && frame.sternZ < 0 && frame.bowZ > 0 && frame.deckY > 0.8 && frame.deckY < 2.2 && frame.halfWidth > 1,
-      `m1a1: the hull frame is published (${JSON.stringify(frame)})`);
-    const fwd = probe.shader.uniforms.uVehFwd.value, hullFrame = probe.shader.uniforms.uVehHull.value;
-    const e = visual.root.matrixWorld.elements, fl = Math.hypot(e[8], e[9], e[10]);
-    assert.ok(Math.abs(fwd.x - e[8] / fl) < 1e-6 && Math.abs(fwd.z - e[10] / fl) < 1e-6 && Math.abs(fwd.w - frame.sternZ * fl) < 1e-6,
-      'the draw carries the hull\'s forward axis and the stern along it');
-    assert.ok(Math.abs(hullFrame.x - frame.deckY * Math.hypot(e[4], e[5], e[6])) < 1e-6, 'and the deck height');
-    done();
-    visual.resetForGaragePresentation();
-    draw();
-    assert.equal(g.w, VEHICLE_FIELD_WEAR_GARAGE, 'the Garage showroom wears it lighter');
-    done();
-    visual.prepareForSimulation();
-    draw();
-    assert.equal(g.w, 1, 'and a showroom visual lent to battle wears it in full');
-    done();
-    assert.equal(g.w, 0, 'after the draw nothing else wears it');
-  }
   assert.ok(csmCallbacks >= 6, 'shadow-hook material path exercised as well as direct tooling path');
   for (const role of ['armorPaint', 'tireRubber', 'wheelPaint', 'trackPad']) {
     assert.ok(roles.has(role), `${role}: real material callback covered`);
@@ -296,4 +222,4 @@ try {
   restoreCanvas();
 }
 assert.equal(getVehicleReadabilityScale(), 1);
-console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, field wear (switch per role, battle/Garage strength, muzzle and discharger soot, hull frame), kept safeguards, shared current/future/gear uniforms, per-draw ground reference, strict input and exact reset PASS');
+console.log('vehicleReadability.selftest: form-fill floors, ground occlusion, kept safeguards, shared current/future/gear uniforms, per-draw ground reference, strict input and exact reset PASS');

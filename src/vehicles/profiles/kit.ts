@@ -14,10 +14,10 @@ import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
-  createPintleLayout, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, type PintleLayout,
+  createPintleLayout, isMgClass, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES, type PintleLayout,
 } from '../machineGunGeometry.ts';
 import {
-  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, roundBar, sweptTube, type FabricSpec,
+  barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, sweptTube, type FabricSpec,
 } from '../accessoryPrimitives.ts';
 import { jerrycanParts, whipAntennaParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
@@ -238,6 +238,13 @@ interface FittingOptions {
    * and is never counted as a roof gun.
    */
   remoteWeapon?: boolean;
+  /**
+   * Round 5 (machineGunGeometry.ts PintleOptions): true draws the class's station-datum barrel, false the true crew
+   * length; default: the datum on remote stations and crewless copies.
+   */
+  datumBarrel?: boolean;
+  /** Round 5: a source-measured station keeps its authored gun scale (machineGunGeometry.ts PintleOptions). */
+  sourceScale?: boolean;
   barrelLength?: number;
   machineGunFinish?: string;
   installationVariant?: string;
@@ -1424,7 +1431,9 @@ type PintleMgBuildContext = Omit<PintleLayout, 'parts'> & { readonly parts: Fitt
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
   const parts = fitParts();
-  return { ...createPintleLayout({ ...opts, remote: Boolean(opts.remoteControlled || opts.remoteWeapon) }, parts), parts, opts };
+  // FittingOptions.barrelLength is the American M2's legacy length in units of its scale, never the shared layout's metres
+  return { ...createPintleLayout({ ...opts, barrelLength: undefined, remote: Boolean(opts.remoteControlled || opts.remoteWeapon) }, parts),
+    parts, opts };
 }
 
 function addPintleMgMount(context: PintleMgBuildContext): void { addPintleMount(context); }
@@ -1487,11 +1496,19 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
 }
 
 /**
- * Detailed US M2HB installation shared by the Sheridan, Patton and M60
- * families. The generic `pintleMG({ cls: 'm2' })` is the compact fleet
- * standard; this version is the American hero-prop installation with the
- * receiver, feed path, ammunition chest, cradle and perforated jacket all
- * reading as separate connected members.
+ * Detailed US M2HB installation shared by the Sheridan, Patton, M60 and Abrams families.
+ *
+ * 2026-10-08 (tank-accessories round 5; wave 255 on the M60A1: "a plain dark block with a bare tube barrel and a bulb
+ * tip, with no visible cooling-jacket perforations, feed tray, ammunition box, spade grips or sight"; wave 253 on the
+ * SEPv3 loader's gun: "two dark-grey boxes and a rod barrel with no feed tray, belt, ammo can, charging handle or
+ * sights, so its type cannot be identified and it reads as a toy"): the American hero mount was its own older
+ * construction (a 0.155 m box receiver, a ringed tube jacket, a gunmetal chest that merged with the receiver) drawn at
+ * 0.58-0.72 of an M2HB. It is now the fleet's one Browning construction (machineGunGeometry.ts) at true scale: the
+ * pintle, cradle and fork, the M2HB's true receiver section with its feed cover, trunnion lugs, retracting slide
+ * handle, back plate, spade grips and butterfly trigger, the leaf and post sights, the perforated barrel support and
+ * the true-length heavy barrel with its flash hider, and the can on its tray with the belt rising into the feed tray
+ * (the can in the solid fitting paint, so it reads against the gun). The American installation keeps its shields and
+ * ring, carried on the shared datum.
  *
  * Origin: mounting foot on the roof. +Z is the firing direction.
  */
@@ -1505,122 +1522,6 @@ interface AmericanM2BuildContext {
   readonly trunZ: number;
   readonly shieldVariant: FittingOptions['shield'];
   readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
-}
-
-function createAmericanM2BuildContext(opts: FittingOptions): AmericanM2BuildContext {
-  const s = opts.scale || 1;
-  const ammoSide = Math.sign(opts.ammoSide || -1);
-  const parts = fitParts();
-  const aim = placeMachineGunBarrelGeometry;
-  const recY = 0.345 * s;
-  const recZ = 0.195 * s;
-  const trunZ = recZ + 0.250 * s;
-  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
-
-  return { opts, s, ammoSide, parts, recY, recZ, trunZ, shieldVariant, aim };
-}
-
-function addAmericanM2Mount(context: AmericanM2BuildContext): void {
-  const { box, cylX, cylY } = KIT;
-  const { parts, s } = context;
-  // Roof bearing -> spindle -> fork -> trunnion: one unbroken load path.
-  parts.add('dark', cylY(0.070 * s, 0.082 * s, 0.026 * s, 16), 0, 0.013 * s, 0);
-  parts.add('dark', cylY(0.032 * s, 0.045 * s, 0.180 * s, 14), 0, 0.116 * s, 0);
-  parts.add('dark', box(0.190 * s, 0.055 * s, 0.155 * s), 0, 0.220 * s, 0.035 * s);
-  for (const side of [-1, 1]) {
-    parts.add('dark', box(0.032 * s, 0.120 * s, 0.130 * s),
-      side * 0.073 * s, 0.278 * s, 0.070 * s, side * 0.08, 0, 0);
-  }
-  parts.add('dark', cylX(0.046 * s, 0.205 * s, 14), 0, 0.330 * s, 0.105 * s);
-}
-
-function addAmericanM2Receiver(context: AmericanM2BuildContext): void {
-  const { box } = KIT;
-  const { parts, recY, recZ, s } = context;
-  // M2 receiver and recognizable top-cover/charging-handle grammar.
-  parts.add('dark', box(0.155 * s, 0.145 * s, 0.500 * s), 0, recY, recZ);
-  parts.add('dark', box(0.145 * s, 0.022 * s, 0.445 * s),
-    0, recY + 0.083 * s, recZ + 0.005 * s);
-  parts.add('dark', box(0.052 * s, 0.035 * s, 0.120 * s),
-    -0.105 * s, recY + 0.025 * s, recZ - 0.015 * s);
-  parts.add('dark', box(0.090 * s, 0.036 * s, 0.046 * s),
-    0, recY - 0.015 * s, recZ - 0.280 * s);
-  // 2026-10-07 (tank-accessories round 4, wave 215 on the M60A1: "a featureless box receiver with no feed cover, ammo
-  // can, spade grips, charging handle or sight"): the M2's own furniture on the unchanged receiver block. Looped spade
-  // grips with the butterfly trigger replace the two grip bars; the feed cover carries its hinge knuckle and rear
-  // latch, the feed tray stands out on the can side, the retracting slide's handle takes its knob, and the folding
-  // rear leaf and the trunnion block's front post stand on the cover.
-  const coverTop = recY + 0.094 * s;
-  for (const side of [-1, 1]) {
-    parts.add('dark', sweptTube([
-      [side * 0.045 * s, recY + 0.02 * s, recZ - 0.255 * s], [side * 0.06 * s, recY + 0.01 * s, recZ - 0.33 * s],
-      [side * 0.06 * s, recY - 0.04 * s, recZ - 0.345 * s], [side * 0.045 * s, recY - 0.045 * s, recZ - 0.265 * s],
-    ], 0.011 * s, 5, 6));
-  }
-  parts.add('dark', block(0.04 * s, 0.03 * s, 0.014 * s), 0, recY - 0.012 * s, recZ - 0.31 * s);
-  parts.add('dark', roundBar([-0.068 * s, coverTop - 0.006 * s, recZ + 0.205 * s], [0.068 * s, coverTop - 0.006 * s, recZ + 0.205 * s], 0.008 * s, 6));
-  parts.add('dark', block(0.05 * s, 0.018 * s, 0.016 * s), 0, coverTop + 0.002 * s, recZ - 0.21 * s);
-  parts.add('dark', block(0.03 * s, 0.008 * s, 0.11 * s), context.ammoSide * 0.092 * s, recY + 0.045 * s, recZ + 0.12 * s);
-  parts.add('dark', place(latheY([[0.0005, 0], [0.014 * s, 0], [0.015 * s, 0.03 * s], [0.0005, 0.036 * s]], 6), 0, 0, 0, 0, 0, Math.PI / 2),
-    -0.131 * s, recY + 0.025 * s, recZ + 0.02 * s);
-  const leafZ = recZ - 0.15 * s;
-  parts.add('dark', block(0.034 * s, 0.008 * s, 0.026 * s), 0, coverTop + 0.004 * s, leafZ);
-  for (const side of [-1, 1]) parts.add('dark', block(0.005 * s, 0.04 * s, 0.005 * s), side * 0.012 * s, coverTop + 0.028 * s, leafZ);
-  parts.add('dark', block(0.029 * s, 0.005 * s, 0.005 * s), 0, coverTop + 0.046 * s, leafZ);
-  parts.add('dark', block(0.014 * s, 0.01 * s, 0.008 * s), 0, coverTop + 0.03 * s, leafZ);
-  const postZ = recZ + 0.225 * s;
-  parts.add('dark', block(0.03 * s, 0.01 * s, 0.02 * s), 0, coverTop + 0.005 * s, postZ);
-  for (const side of [-1, 1]) parts.add('dark', block(0.005 * s, 0.03 * s, 0.014 * s), side * 0.011 * s, coverTop + 0.025 * s, postZ);
-  parts.add('dark', block(0.004 * s, 0.026 * s, 0.005 * s), 0, coverTop + 0.023 * s, postZ);
-}
-
-function addAmericanM2Ammo(context: AmericanM2BuildContext): void {
-  const { box } = KIT;
-  const { ammoSide, opts, parts, recY, recZ, s } = context;
-  // Closed ammunition chest, proud lid, retaining rack and receiver bridge.
-  // This is part of the weapon installation rather than vehicle armor, so it
-  // stays in neutral gunmetal and never inherits the host camouflage.
-  if (opts.ammo !== false) {
-    const ax = ammoSide * 0.245 * s;
-    parts.add('gunmetalAmmo', box(0.270 * s, 0.205 * s, 0.260 * s),
-      ax, recY - 0.020 * s, recZ - 0.015 * s);
-    parts.add('gunmetalAmmo', box(0.286 * s, 0.020 * s, 0.276 * s),
-      ax, recY + 0.092 * s, recZ - 0.015 * s);
-    for (const side of [-1, 1]) {
-      parts.add('dark', box(0.020 * s, 0.230 * s, 0.295 * s),
-        ax + side * 0.152 * s, recY - 0.015 * s, recZ - 0.015 * s);
-    }
-    parts.add('dark', box(0.115 * s, 0.070 * s, 0.125 * s),
-      ammoSide * 0.115 * s, recY + 0.035 * s, recZ + 0.155 * s,
-      0, -ammoSide * 0.18, 0);
-    for (let index = 0; index < 7; index++) {
-      const t = index / 6;
-      parts.add(index % 2 ? 'shadow' : 'dark', box(0.030 * s, 0.040 * s, 0.027 * s),
-        ammoSide * (0.168 - t * 0.155) * s,
-        recY + (0.052 + t * 0.015) * s,
-        recZ + (0.120 + t * 0.095) * s,
-        0, 0, ammoSide * (0.10 - t * 0.16));
-      }
-  }
-}
-
-function addAmericanM2Barrel(context: AmericanM2BuildContext): void {
-  const { cylZ, torus } = KIT;
-  const { aim, opts, parts, recY, s, trunZ } = context;
-  // Jacket, barrel and flash hider share one straight receiver axis.
-  parts.add('dark', aim(cylZ(0.043 * s, 0.220 * s, 16), 0.110 * s),
-    0, recY, trunZ);
-  for (let index = 0; index < 5; index++) {
-    parts.add('dark', aim(torus(0.044 * s, 0.006 * s, 14), (0.035 + index * 0.039) * s),
-      0, recY, trunZ);
-  }
-  const barrelLength = (opts.barrelLength ?? 0.68) * s;
-  parts.add('dark', aim(cylZ(0.019 * s, barrelLength, 12),
-    0.220 * s + barrelLength / 2), 0, recY, trunZ);
-  parts.add('dark', aim(cylZ(0.038 * s, 0.105 * s, 14),
-    0.220 * s + barrelLength + 0.0525 * s), 0, recY, trunZ);
-  parts.add('dark', aim(cylZ(0.014 * s, 0.018 * s, 10),
-    0.220 * s + barrelLength + 0.114 * s), 0, recY, trunZ);
 }
 
 function addAmericanM2Ring(context: AmericanM2BuildContext): void {
@@ -1730,24 +1631,30 @@ function addAmericanM2Shield(context: AmericanM2BuildContext): void {
   addAmericanM2ShieldDetails(context);
 }
 
-function assembleAmericanM2(context: AmericanM2BuildContext): THREE.Group {
+function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayout): THREE.Group {
   const { ammoSide, opts, parts, shieldVariant } = context;
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = 'fitting_americanM2HB';
-  const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === 'gunmetalAmmo');
+  // The named stock stays the rigid fitting stock it is (battleGeometrySharing reads `fitting_` names): the can folds
+  // with its belt's rounds into one draw as every shared gun's does.
+  const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === MG_AMMO_CAN_SLOT);
   if (ammoMesh) {
     ammoMesh.name = 'sheridanCommanderM2AmmoBox';
     ammoMesh.userData.appearanceRole = 'ammoBox';
+    ammoMesh.userData.staticMergeShareable = true;
   }
   const bodyMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (bodyMesh) {
     bodyMesh.name = 'americanM2HBBody';
     bodyMesh.userData.appearanceRole = 'machineGun';
+    bodyMesh.userData.staticMergeShareable = true;
   }
   fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v2';
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
+  fitting.userData.weaponClass = layout.classKey;
   fitting.userData.weaponName = 'Browning M2HB';
   fitting.userData.caliberMm = 12.7;
+  fitting.userData.weaponScale = layout.s;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
   fitting.userData.foldedShieldEdges = shieldVariant ? 3 : 0;
@@ -1759,18 +1666,34 @@ function assembleAmericanM2(context: AmericanM2BuildContext): THREE.Group {
   fitting.userData.firingAxis = '+Z';
   fitting.userData.barrelAxisLocal = [0, 0, 1];
   fitting.userData.barrelElevationRad = 0;
+  // the shared datum, so hosts publish receipts measured on the built gun: the pintle's top, the receiver's
+  // underside, the receiver datum centre and the bore height above the mounting foot
+  fitting.userData.mountDatum = Object.freeze({
+    pintleTopY: layout.colTop, receiverBottomY: layout.bodyBottom, receiverY: layout.recY, boreY: layout.trunY,
+  });
   return fitting;
 }
 
 function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
-  const context = createAmericanM2BuildContext(opts);
-  addAmericanM2Mount(context);
-  addAmericanM2Receiver(context);
-  addAmericanM2Ammo(context);
-  addAmericanM2Barrel(context);
+  const ammoSide = Math.sign(opts.ammoSide || -1);
+  const parts = fitParts();
+  // the callers' 0.58-0.72 scales draw at the crew guns' true-scale floor (machineGunGeometry.ts MG_CREW_TRUE_SHARE)
+  const layout = createPintleLayout({
+    cls: 'm2', scale: opts.scale || 1, tone: opts.tone || 'dark', ammo: opts.ammo !== false,
+    // the can and belt on the ammo side (+1: the gunner's left, +X)
+    feed: ammoSide > 0 ? 'left' : 'right',
+  }, parts);
+  addPintleMount(layout);
+  addPintleReceiver(layout);
+  addPintleBarrel(layout);
+  addPintleAmmo(layout);
+  const context: AmericanM2BuildContext = {
+    opts, s: layout.s, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
+    shieldVariant: opts.shield === true ? 'standard' : opts.shield, aim: placeMachineGunBarrelGeometry,
+  };
   addAmericanM2Ring(context);
   addAmericanM2Shield(context);
-  return assembleAmericanM2(context);
+  return assembleAmericanM2(context, layout);
 }
 
 /**
@@ -1919,7 +1842,8 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
   const serviceY = recY + 0.105 * s;
   parts.add(body, box(0.175 * s, 0.205 * s, 0.165 * s),
     0.205 * s, serviceY, -0.065 * s);
-  parts.add('dark', box(0.195 * s, 0.022 * s, 0.185 * s),
+  // round 5 (contact receipt): the cap overhangs the tower's rounded top, so it carries stations over the flat
+  parts.add('dark', new THREE.BoxGeometry(0.195 * s, 0.022 * s, 0.185 * s, 3, 1, 3),
     0.205 * s, serviceY + 0.113 * s, -0.065 * s);
   parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
@@ -1940,8 +1864,10 @@ function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
     // Baseline M1A2 station: open service cheeks and a narrow sensor brow.
     // It keeps the TTS-derived gun/head anatomy while remaining visibly
     // lighter than the TUSK compact and SEP armored installations.
-    parts.add(body, box(headW + 0.09 * s, 0.025 * s, headD + 0.05 * s),
-      0, headY + headH / 2 + 0.060 * s, 0.04 * s);
+    // round 5 (contact receipt): the brow rests on the head's top cover (it hovered 3 cm over it) and carries
+    // stations where it bears on the cover
+    parts.add(body, new THREE.BoxGeometry(headW + 0.09 * s, 0.025 * s, headD + 0.05 * s, 3, 1, 3),
+      0, headY + headH / 2 + 0.0385 * s, 0.04 * s);
     for (const side of [-1, 1]) {
       parts.add('dark', box(0.025 * s, headH * 0.68, headD + 0.03 * s),
         side * (headW / 2 + 0.030 * s), headY - 0.02 * s, 0.04 * s,
@@ -2081,15 +2007,6 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   };
 }
 
-function aimOpenYokeGeometry(
-  _context: OpenYokeBuildContext,
-  geometry: THREE.BufferGeometry,
-  dz: number,
-  dy = 0,
-): THREE.BufferGeometry {
-  return placeMachineGunBarrelGeometry(geometry, dz, dy);
-}
-
 function addOpenYokeBase(context: OpenYokeBuildContext): void {
   const {box,cylX,cylY,torus}=KIT;
   const {body,parts,s,yokeCenterY}=context;
@@ -2114,44 +2031,60 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
 
 function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
   if (!context.hasWeapon) return;
-  const {box,cylZ,torus}=KIT;
+  const {box}=KIT;
   const {ammoSide,body,parts,receiverY,receiverZ,s,yokeCenterY}=context;
-  // M2/K6-class receiver and long, true forward run.
-  parts.add('dark',box(0.170 * s,0.135 * s,0.43 * s),0,receiverY,receiverZ);
-  parts.add('dark',box(0.145 * s,0.020 * s,0.37 * s),
-    0,receiverY + 0.078 * s,receiverZ - 0.005 * s);
-  parts.add('dark',box(0.075 * s,0.045 * s,0.070 * s),
-    0,receiverY - 0.018 * s,receiverZ - 0.250 * s);
-  const trunnionZ=receiverZ + 0.215 * s;
-  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.033 * s,0.18 * s,14),0.09 * s),
-    0,receiverY,trunnionZ);
-  for (let index=0;index<4;index++) {
-    parts.add('dark',aimOpenYokeGeometry(context,torus(0.034 * s,0.0045 * s,12),
-      (0.025 + index * 0.042) * s),0,receiverY,trunnionZ);
-  }
-  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.0155 * s,0.62 * s,10),0.49 * s),
-    0,receiverY,trunnionZ);
-  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.028 * s,0.085 * s,12),0.8425 * s),
-    0,receiverY,trunnionZ);
-  parts.add('dark',aimOpenYokeGeometry(context,cylZ(0.010 * s,0.015 * s,10),0.895 * s),
-    0,receiverY,trunnionZ);
+  // 2026-10-08 (tank-accessories round 5; wave 253 on the SEPv3 station: "a shoebox with a gun stuck on its face,
+  // with no sensor window detail, feed chute, cable run or flash hider, so it reads as a simplified toy"): the M2 in
+  // the cradle is the fleet's Browning construction in its remote form (the M2HB's true receiver section, feed cover
+  // and feedway, retracting slide, solenoid housing at the back plate, perforated barrel support, heavy barrel and
+  // conical flash hider) instead of two boxes and a tube. Its receiver keeps the yoke's datum: the bore on
+  // receiverY, the receiver's 0.43 s length ending at the trunnion, and the barrel run out to the published muzzle.
+  // the station's weapon class (default the M2HB; the VT-4A1's station carries the QJC-88)
+  const clsKey=isMgClass(context.opts.cls) ? context.opts.cls : 'm2', cls=MG_CLASSES[clsKey];
+  const sigma=0.43 * s / cls.rec[2];
+  const flash=cls.flashL * sigma;
+  const gun=createPintleLayout({cls:clsKey,scale:sigma / cls.s,remote:true,ammo:false,mount:'external-cradle',
+    feed:ammoSide > 0 ? 'left' : 'right',
+    barrelLength:1.295 * s - (receiverZ + 0.215 * s) - 0.10 * sigma - flash - 0.011},{
+    add(slot,geometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+      parts.add(slot === 'shadow' ? 'shadow' : 'dark',geometry,x,y,z,rx,ry,rz);
+    },
+  });
+  const dy=receiverY - gun.trunY, dz=receiverZ - gun.recZ;
+  const shifted={...gun,parts:{add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+    gun.parts.add(slot,KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+  }}};
+  addPintleReceiver(shifted);
+  addPintleBarrel(shifted);
+  // the cradle saddle under the receiver, on the recoil rails
+  parts.add('dark',box(0.150 * s,0.030 * s,0.36 * s),0,receiverY - gun.trunY + gun.bodyBottom - 0.015 * s,receiverZ);
 
-  // Asymmetric ammunition coffin and feed bridge. Individual alternating
-  // links remain legible in the gallery without creating per-link meshes.
+  // Asymmetric ammunition coffin and its lid on the ammo side.
   const ammoX=ammoSide * 0.305 * s;
   parts.add(body,box(0.245 * s,0.255 * s,0.31 * s),
     ammoX,yokeCenterY - 0.055 * s,0.015 * s);
-  parts.add('detail',box(0.265 * s,0.023 * s,0.33 * s),
+  // the lid on the coffin's flat top (the coffin's edges are rounded; an overhanging lid's corners touched nothing)
+  parts.add('detail',box(0.245 * s - 0.05,0.023 * s,0.31 * s - 0.05),
     ammoX,yokeCenterY + 0.084 * s,0.015 * s);
   parts.add('dark',box(0.022 * s,0.22 * s,0.27 * s),
     ammoX + ammoSide * 0.133 * s,yokeCenterY - 0.055 * s,0.015 * s);
-  for (let index=0;index<8;index++) {
-    const t=index / 7;
-    const x=ammoX * (1 - t) + ammoSide * 0.075 * s * t;
-    const y=yokeCenterY + (0.055 + 0.018 * t) * s;
-    const z=(0.13 + 0.085 * t) * s;
-    parts.add(index % 2 ? 'shadow' : 'dark',box(0.032 * s,0.041 * s,0.026 * s),
-      x,y,z,0,0,-ammoSide * (0.10 + t * 0.12));
+  // The feed chute: a flexible channel of hinged links from the coffin's lid rising over the cradle into the receiver's
+  // feedway (it was a stair of loose blocks), its open floor dark where the belt runs.
+  const lidTop=yokeCenterY + 0.0955 * s;
+  const feedX=ammoSide * (gun.bodyW / 2 + 0.012 * sigma), feedY=receiverY + gun.bodyH * 0.12;
+  const p0=[ammoX - ammoSide * 0.03 * s,lidTop - 0.01 * s,0.06 * s], p3=[feedX,feedY,receiverZ - 0.02 * s];
+  const apex=Math.max(lidTop,feedY) + 0.075 * s;
+  const at=(t:number):number[]=>{
+    const u=1 - t, p1=[p0[0],apex,p0[2]], p2=[p3[0] + ammoSide * 0.06 * s,apex,p3[2]];
+    return [0,1,2].map((k)=>u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
+  };
+  const links=9;
+  for (let index=0;index<links;index++) {
+    const a=at(index / links), b=at((index + 1) / links);
+    const mid=[0,1,2].map((k)=>(a[k] + b[k]) / 2), len=Math.hypot(b[0] - a[0],b[1] - a[1]) + 0.012 * s;
+    const roll=Math.atan2(b[1] - a[1],b[0] - a[0]);
+    parts.add('dark',box(len,0.016 * s,0.085 * s),mid[0],mid[1],mid[2],0,0,roll);
+    parts.add('shadow',box(len * 0.92,0.008 * s,0.06 * s),mid[0],mid[1] + 0.012 * s * Math.cos(roll),mid[2] - 0.0,0,0,roll);
   }
 }
 
@@ -2185,16 +2118,43 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
   }
   parts.add('glass',cylZ(0.026 * s,0.014 * s,10),
     sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,0.171 * s);
+  // Round 5 (wave 253: "no sensor window detail"): each aperture sits in a dark bezel proud of the face (the day/thermal
+  // window, the laser rangefinder's port beside the small lens), under a sun hood, and the head's power and video
+  // cable runs from its underside down the fork to the slew drum.
+  const faceZ=0.055 * s + 0.1075 * s;
+  for (const dx of opticXs) {
+    const w=(twinOptics ? 0.065 : 0.125) * s, h=(twinOptics ? 0.075 : 0.105) * s;
+    parts.add('dark',box(w + 0.022 * s,h + 0.022 * s,0.010 * s),sensorX + dx * s,sensorY + 0.018 * s,faceZ + 0.003 * s);
+  }
+  parts.add('dark',cylZ(0.036 * s,0.016 * s,12),sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.006 * s);
+  parts.add('dark',cylZ(0.022 * s,0.02 * s,10),sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.008 * s);
+  parts.add('glass',cylZ(0.014 * s,0.008 * s,10),sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.016 * s);
+  // the sun hood rests on the head's lid and runs out over the window
+  parts.add(body,box(0.19 * s,0.014 * s,0.07 * s),sensorX,sensorY + (twinOptics ? 0.124 : 0.144) * s + 0.007 * s,
+    faceZ - 0.02 * s,-0.12,0,0);
+  if (!roofSensor) {
+    parts.add('dark',sweptTube([[sensorX - sensorSide * 0.06 * s,sensorY - 0.11 * s,-0.02 * s],
+      [sensorX - sensorSide * 0.13 * s,sensorY - 0.17 * s,-0.06 * s],[sensorSide * 0.17 * s,0.24 * s,-0.09 * s],
+      [sensorSide * 0.15 * s,0.14 * s,-0.10 * s]],0.011 * s,6,10));
+  }
 }
 
 function addOpenYokeSepv3Armor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,parts,s,yokeCenterY}=context;
-  parts.add(body,box(0.70 * s,0.035 * s,0.35 * s),0,yokeCenterY + 0.175 * s,0.035 * s);
-  for (const side of [-1,1]) {
-    parts.add(body,box(0.035 * s,0.24 * s,0.29 * s),
-      side * 0.355 * s,yokeCenterY + 0.035 * s,0.035 * s,0,0,side * 0.07);
+  const {box,cylX}=KIT;
+  const {body,parts,s,sensorSide,sensorX,sensorY,yokeCenterY}=context;
+  // 2026-10-08 (tank-accessories round 5; wave 253: "a shoebox with a gun stuck on its face"): the M1A2C's CROWS-LP
+  // carries its sensors and rangefinder beside the gun, not under it, and the gun runs in the open. The full-width
+  // roof plate and the two tall cheeks that boxed the cradle in are gone; the sensor head takes its armour (a
+  // sloped top plate over the head and an outboard cheek, both bolted to the fork), and a low splash guard runs along
+  // the cradle's ammunition side.
+  const sx=sensorX, headTop=sensorY + 0.132 * s + 0.012 * s;
+  parts.add(body,box(0.27 * s,0.03 * s,0.27 * s),sx,headTop + 0.015 * s,0.055 * s,-0.10,0,0);
+  parts.add(body,box(0.03 * s,0.30 * s,0.25 * s),sx + sensorSide * 0.124 * s,sensorY + 0.01 * s,0.055 * s,0,0,sensorSide * 0.06);
+  for (const dz of [-0.08,0.08]) {
+    parts.add('dark',cylX(0.009 * s,0.012 * s,6),sx + sensorSide * 0.141 * s,sensorY + 0.09 * s,0.055 * s + dz * s);
+    parts.add('dark',cylX(0.009 * s,0.012 * s,6),sx + sensorSide * 0.141 * s,sensorY - 0.07 * s,0.055 * s + dz * s);
   }
+  parts.add(body,box(0.03 * s,0.08 * s,0.36 * s),-sensorSide * 0.205 * s,yokeCenterY - 0.07 * s,0.12 * s);
 }
 
 function addOpenYokeTuskArmor(context: OpenYokeBuildContext): void {
@@ -2267,11 +2227,11 @@ function addOpenYokeLightTigerArmor(context: OpenYokeBuildContext): void {
 }
 
 function addOpenYokeKoreanArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
   const {parts,s,yokeCenterY}=context;
   for (const side of [-1,1]) {
-    parts.add('detail',box(0.028 * s,0.16 * s,0.27 * s),
-      side * 0.255 * s,yokeCenterY - 0.04 * s,0.045 * s,
+    // round 5 (contact receipt): the plates are bolted to the fork arms (they stood 3 cm off them)
+    parts.add('detail',new THREE.BoxGeometry(0.028 * s,0.16 * s,0.27 * s,1,2,4),
+      side * 0.215 * s,yokeCenterY - 0.04 * s,0.045 * s,
       0,0,side * 0.12);
   }
 }
@@ -2513,14 +2473,15 @@ const RACK_ROLL_SEG = 16;
 
 /** A fabric part along +Z turned to lie along X, its pressed base on `floor`; straps on its cinch stations. */
 function addRackFabric(parts: FittingParts, slot: string, spec: FabricSpec, x: number, floor: number, z: number,
-  yaw: number): { lift: number; top: number } {
-  const body = place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0);
+  yaw: number, lean = 0): { lift: number; top: number } {
+  // round 5: a load may lean over on its own axis (X) toward the fence or the turret; it is seated after the lean
+  const body = place(place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0, 0, lean, 0, 0);
   body.computeBoundingBox();
   const lift = floor - body.boundingBox!.min.y;
   const top = lift + body.boundingBox!.max.y;
   parts.add(slot, body, x, lift, z, 0, yaw, 0);
   for (const station of spec.cinch ?? []) {
-    parts.add('dark', place(fabricStrap(spec, station), 0, 0, 0, 0, Math.PI / 2, 0), x, lift, z, 0, yaw, 0);
+    parts.add('dark', place(place(fabricStrap(spec, station), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0, 0, lean, 0, 0), x, lift, z, 0, yaw, 0);
   }
   return { lift, top };
 }
@@ -2529,11 +2490,19 @@ function addRackFabric(parts: FittingParts, slot: string, spec: FabricSpec, x: n
  * A tie from a load's top over to the rack's outer top rail: a webbing run (a thin ribbon) with its hook block on the
  * rail. Round 4 (2026-10-07, wave 216 on the Strv 103A's tail rack: loads "sit loose, unstrapped").
  */
-function addRackTie(parts: FittingParts, x: number, yTop: number, zTop: number, railY: number, railZ: number, yaw: number): void {
-  const dy = railY - yTop, dz = railZ - zTop, len = Math.hypot(dy, dz);
-  if (len < 0.02) return;
-  const strap = place(block(0.03, 0.004, len), 0, 0, 0, Math.atan2(-dy, dz), 0, 0);
-  parts.add('dark', strap, x, (yTop + railY) / 2, (zTop + railZ) / 2, 0, yaw, 0);
+function addRackTie(parts: FittingParts, x: number, yTop: number, zTop: number, railY: number, railZ: number, yaw: number,
+  zEdge?: number, yEdge = yTop - 0.012): void {
+  // round 5: a tie that runs down to a rail below the load's top first runs over the top to the load's front edge
+  // (`zEdge`, `yEdge`: where the strap leaves the load), then down to the rail, rather than straight through the load
+  const run = (y0: number, z0: number, y1: number, z1: number): void => {
+    const dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dy, dz);
+    if (len < 0.02) return;
+    parts.add('dark', place(block(0.03, 0.004, len), 0, 0, 0, Math.atan2(-dy, dz), 0, 0), x, (y0 + y1) / 2, (z0 + z1) / 2, 0, yaw, 0);
+  };
+  if (zEdge !== undefined && zEdge > zTop + 0.02 && railY < yEdge - 0.02) {
+    run(yTop, zTop, yEdge, zEdge);
+    run(yEdge, zEdge, railY, railZ);
+  } else run(yTop, zTop, railY, railZ);
   parts.add('dark', block(0.036, 0.02, 0.018), x, railY - 0.006, railZ - 0.004, 0, yaw, 0);   // hook on the rail
 }
 
@@ -2552,50 +2521,79 @@ function addStowageRackBundle(
   h: number,
   index: number,
   count: number,
+  rod = 0.024,
+  railYs: readonly number[] = [h * 0.95],
 ): { soft: boolean; top: number } {
-  const x=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
+  // Round 5 (2026-10-08; wave 255 on the Type 99A: "the cage load is tidy and symmetrical: tilt it, let it sag, and lash
+  // it"; the coordinator: "canvas tan, faded olive, black rubber"): every load turns further on the floor and sits
+  // forward or back in the bay, the crate tips onto one edge, the soft loads lean over and slump by their own amounts,
+  // every fourth is a black rubberized bag in place of a fourth olive one, and the crate is lashed to the rail too. The
+  // loads keep clear of the end returns' braces (the contact receipt: a crate stood through one on the M60A1).
+  const x0=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
     + (rng() - 0.5) * 0.03;
-  const slots=['canvasCloth','wood','canvasCloth','canvasCloth'];
+  const slots=['canvasCloth','wood','canvasCloth','dark'];
   const slot=slots[index % slots.length];
-  const yaw=(rng() - 0.5) * 0.16;
-  const z=d * 0.04;
-  const railY=h * 0.95, railZ=d / 2 - 0.01;
+  const yaw=(rng() - 0.5) * 0.36;
+  const z=d * 0.04 + (rng() - 0.5) * d * 0.14;
+  const railZ=d / 2 - 0.01;
+  // round 5 (wave 256 on the Strv 103A: "rigid flat bars that stick up past the top of the bundle without wrapping it
+  // or reaching a deck anchor"): a tie runs from the load's top down to the highest fence rail below it, or the floor
+  const railFor=(top: number): number => Math.max(0.03, ...railYs.filter((ry) => ry <= top - 0.04));
+  // the load's centre may come no nearer the end returns than its own half-width (turned) and the brace's tube
+  const clampX=(halfW: number, halfD: number): number => {
+    const reach=halfW * Math.abs(Math.cos(yaw)) + halfD * Math.abs(Math.sin(yaw));
+    const room=Math.max(0, w / 2 - rod * 1.6 - reach);
+    return THREE.MathUtils.clamp(x0, -room, room);
+  };
   if (slot === 'wood') {
     const bw=0.24 + rng() * 0.06;
     const bh=0.16 + rng() * 0.05;
     const bd=d * 0.62;
+    const tilt=(rng() - 0.5) * 0.18;                       // tipped onto one edge (about Z)
+    const x=clampX(bw / 2, bd / 2);
+    const cy=bh / 2 + 0.02 + Math.abs(Math.sin(tilt)) * bw / 2;
     // a nailed crate with two steel bands girdling it, 3 mm proud
-    parts.add('wood',moldedBox(bw,bh,bd,0.008,1,0.006),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    parts.add('wood',place(moldedBox(bw,bh,bd,0.008,1,0.006),0,0,0,0,0,tilt),x,cy,d * 0.02,0,yaw,0);
+    // (round 5: a millimetre off the crate's faces, so no band face lies in a crate face; the contact receipt read the
+    // shared faces as the crate cut by its own bands)
     for (const band of [-0.3,0.3]) {
-      const bx=band * bw, t=0.003, wb=0.018;
-      for (const [sx,sy,sz,py,pz] of [[wb,t,bd + 2 * t,bh / 2 + t / 2,0],[wb,t,bd + 2 * t,-bh / 2 - t / 2,0],
-        [wb,bh,t,0,bd / 2 + t / 2],[wb,bh,t,0,-bd / 2 - t / 2]] as const) {
-        parts.add('dark',place(block(sx,sy,sz),bx,py,pz),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+      const bx=band * bw, t=0.003, wb=0.018, g=0.001;
+      for (const [sx,sy,sz,py,pz] of [[wb,t,bd + 2 * (t + g),bh / 2 + g + t / 2,0],[wb,t,bd + 2 * (t + g),-bh / 2 - g - t / 2,0],
+        [wb,bh + 2 * g,t,0,bd / 2 + g + t / 2],[wb,bh + 2 * g,t,0,-bd / 2 - g - t / 2]] as const) {
+        parts.add('dark',place(place(block(sx,sy,sz),bx,py,pz),0,0,0,0,0,tilt),x,cy,d * 0.02,0,yaw,0);
       }
     }
-    return { soft: false, top: bh + 0.02 };
+    const top=cy + bh / 2 + Math.abs(Math.sin(tilt)) * bw / 2;
+    const lid=cy + bh / 2 + 0.003;                          // the lid at the tie, the strap's thickness over it
+    addRackTie(parts,x,lid,d * 0.02 + bd * 0.3,railFor(top),railZ,yaw,d * 0.02 + bd / 2 + 0.006,lid);
+    return { soft: false, top };
   }
   if (index % 3 === 0) {
     const r=0.10 + rng() * 0.035;
     const len=0.22 + rng() * 0.10;
+    const sag=0.22 + rng() * 0.2, lean=(rng() - 0.5) * 0.5;
+    const x=clampX(len / 2 + 0.02, r);
     // a rolled bedroll settled on the floor bars: two straps pinch it, its rolled layers showing at the ends
     // 2026-10-07 (round 3: "rolls with eight visible facets"): sixteen sides and a wound spiral at each end
-    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.3,
+    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: sag,
       wrinkle: 0.05, seg: RACK_ROLL_SEG, stations: 5, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.2, seed: 31 + index };
-    const { lift, top }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
+    const { lift, top }=addRackFabric(parts,slot,roll,x,0.02,z,yaw,lean);
     for (const end of [-1,1] as const) {
-      parts.add('dark',place(rolledEndSpiral(r * 0.88,end * len / 2,end,16),0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
+      parts.add('dark',place(place(rolledEndSpiral(r * 0.88,end * len / 2,end,16),0,0,0,0,Math.PI / 2,0),0,0,0,lean,0,0),
+        x,lift,z,0,yaw,0);
     }
-    addRackTie(parts,x,top - 0.004,z + r * 0.35,railY,railZ,yaw);
+    addRackTie(parts,x,top - 0.004,z + r * 0.35,railFor(top),railZ,yaw,z + r * 0.7,top - r * 0.286 + 0.002);
     return { soft: true, top };
   }
   const bw=0.22 + rng() * 0.08;
   const bh=0.16 + rng() * 0.06;
   const bd=d * (0.46 + rng() * 0.16);
-  // a sewn duffel lying across the rack, slumped onto the floor: cinched by two straps, a lid flap over its top, a pocket
-  // on its face, tied over to the outer rail
+  const slump=0.3 + rng() * 0.25, crease=0.05 + rng() * 0.04;
+  const x=clampX(bw / 2 + 0.02, bd / 2);
+  // a sewn duffel lying across the rack, slumped onto the floor by its own amount: cinched by two straps, a lid flap over
+  // its top, a pocket on its face, tied over to the outer rail
   const duffel: FabricSpec = { len: bw, hw: bd / 2 / 1.05, hh: bh / (2 + 0.05 - 0.82 * 0.32), exponent: 3,
-    endScale: 0.62, endLength: 0.14, flatten: 0.4, wrinkle: 0.06, seg: 10, stations: 5,
+    endScale: 0.62, endLength: 0.14, flatten: slump, wrinkle: crease, seg: 10, stations: 5,
     cinch: [-bw * 0.24, bw * 0.24], cinchDepth: 0.18, seed: 47 + index };
   const { top }=addRackFabric(parts,slot,duffel,x,0.02,z,yaw);
   const flap: FabricSpec = { len: bw * 0.62, hw: bd * 0.27, hh: 0.018, exponent: 3, endScale: 0.8, endLength: 0.1,
@@ -2605,7 +2603,7 @@ function addStowageRackBundle(
     flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: 59 + index };
   const pocketGeometry=place(fabricBody(pocket),0,0,0,0,Math.PI / 2,0).translate(0,0.02 + bh * 0.42,bd * 0.47);
   parts.add(slot,pocketGeometry,x,0,z,0,yaw,0);
-  addRackTie(parts,x,top - 0.006,z + bd * 0.3,railY,railZ,yaw);
+  addRackTie(parts,x,top - 0.006,z + bd * 0.3,railFor(top),railZ,yaw,z + bd * 0.46,top - bh * 0.3);
   return { soft: true, top };
 }
 
@@ -2616,13 +2614,15 @@ function addStowageRackFill(
   d: number,
   h: number,
   rng: () => number,
+  rod = 0.024,
+  railYs: readonly number[] = [h * 0.95],
 ): number {
   const fill=opts.fill ?? 0.75;
   if (fill <= 0) return 0;
   const count=Math.max(1,Math.round(fill * w / 0.26));
   let softBundleCount=0, loadTop=0;
   for (let index=0;index<count;index++) {
-    const load=addStowageRackBundle(parts,rng,w,d,h,index,count);
+    const load=addStowageRackBundle(parts,rng,w,d,h,index,count,rod,railYs);
     if (load.soft) softBundleCount++;
     loadTop=Math.max(loadTop,load.top);
   }
@@ -2636,7 +2636,8 @@ function addStowageRackFill(
     parts.add('canvasCloth',alongX(fabricBody(tarp)),0,axisY,d * 0.02);
     for (const station of tarp.cinch ?? []) {
       parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
-      addRackTie(parts,station,axisY + r * 0.8,d * 0.02 + r * 0.3,h * 0.95,d / 2 - 0.01,0);
+      addRackTie(parts,station,axisY + r * 0.8,d * 0.02 + r * 0.3,
+        Math.max(0.03,...railYs.filter((ry) => ry <= axisY + r * 0.8 - 0.04)),d / 2 - 0.01,0);
     }
     for (const end of [-1,1] as const) parts.add('dark',alongX(rolledEndSpiral(r * 0.88,end * len / 2,end,18)),0,axisY,d * 0.02);
   }
@@ -2651,7 +2652,8 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   // round 4: bar stock capped at 2.4 cm (was 3.2 cm square, "thick square bar like a roof rack")
   const rod = Math.max(0.016, Math.min(0.024, Math.min(w, d, h) * 0.07));
   const {floorCross,floorStrings,nPosts}=addStowageRackFrame(parts,opts,w,d,h,rails,rod);
-  const softBundleCount=addStowageRackFill(parts,opts,w,d,h,rng);
+  const softBundleCount=addStowageRackFill(parts,opts,w,d,h,rng,rod,
+    rails === 1 ? [h * 0.95] : rails === 2 ? [h * 0.95,h * 0.45] : [h * 0.95,h * 0.70,h * 0.45]);
   const fitting = fitAssemble('stowageRack', parts, opts);
   fitting.userData.designFamily = 'cot-open-lattice-bustle-v2';
   fitting.userData.openLattice = true;
@@ -2677,23 +2679,59 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
 function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
   const pts = opts.pts;
   if (!pts || pts.length < 2) throw new Error('KIT.fittings.towCable: opts.pts (>= 2 local [x,y,z]) required');
-  const { box, xform } = KIT;
   const r = opts.r || 0.020;
   const slot = opts.tone === 'pale' ? 'detail' : 'dark';
   const parts = fitParts();
   const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-  parts.add(slot, new THREE.TubeGeometry(curve, opts.seg || 20, r, 6, false));
+  // Round 5 (2026-10-08; wave 255 on the T-90M: "the tow-cable eye reads as a rubbery ring, not braided steel"): the
+  // rope is laid wire (strandRope: its section swells on alternate sides and turns a sixth each span, so three strands
+  // wind along the lay), and each end is a spliced eye: the rope itself turned back in a teardrop to a pressed steel
+  // ferrule round both legs, in place of a fat torus and a block.
+  const seg = opts.seg || 20;
+  parts.add(slot, strandRope(new THREE.TubeGeometry(curve, seg, r, 6, false), curve, seg));
   if (opts.eyes !== false) {
+    const up = new THREE.Vector3(0, 1, 0);
     for (const t of [0, 1]) {
       const p = curve.getPointAt(t);
-      const tan = curve.getTangentAt(t).multiplyScalar(t === 0 ? -1 : 1);
-      const yaw = Math.atan2(tan.x, tan.z);
-      const eye = xform(new THREE.TorusGeometry(r * 2.6, r * 0.75, 6, 12), 0, 0, r * 3.4);
-      parts.add(slot, xform(eye, 0, 0, 0, 0, yaw, 0), p.x, p.y, p.z);
-      parts.add(slot, xform(box(r * 2.6, r * 2.4, r * 3.2), 0, 0, r * 1.2, 0, yaw, 0), p.x, p.y, p.z);
+      const out = curve.getTangentAt(t).multiplyScalar(t === 0 ? -1 : 1);
+      // the eye lies in the plane of the rope and the level square to it: flat on a deck, flat along a plate's band
+      const side = new THREE.Vector3().crossVectors(out, up);
+      if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+      side.normalize();
+      const at = (u: number, v: number): THREE.Vector3 => p.clone().addScaledVector(out, u).addScaledVector(side, v);
+      const L = r * 7.5, W = r * 2.7;
+      const loop = new THREE.CatmullRomCurve3([at(r * 0.4, r * 1.0), at(L * 0.42, W * 0.92), at(L * 0.84, W * 0.78), at(L, 0),
+        at(L * 0.84, -W * 0.78), at(L * 0.42, -W * 0.92), at(r * 0.4, -r * 1.0)], false, 'centripetal');
+      parts.add(slot, strandRope(new THREE.TubeGeometry(loop, 14, r * 0.92, 6, false), loop, 14));
+      // the ferrule: a pressed sleeve round the throat, both legs and the rope's end inside it, in the rope's own draw
+      // (a second slot cost every cable fitting a mesh and a draw)
+      const ferrule = new THREE.CylinderGeometry(r * 2.2, r * 2.2, r * 3.6, 8, 1, false)
+        .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, out))
+        .translate(p.x + out.x * r * 0.9, p.y + out.y * r * 0.9, p.z + out.z * r * 0.9);
+      parts.add(slot, ferrule);
     }
   }
   return fitAssemble('towCable', parts, opts);
+}
+
+/**
+ * Laid wire rope from a six-sided TubeGeometry along `curve` with `seg` spans (round 5): each ring's section swells on
+ * alternate sides and turns a sixth from span to span, so three strands wind along the rope's lay and catch the light
+ * as rope, not as a smooth hose. Same vertices and triangles.
+ */
+function strandRope(tube: THREE.TubeGeometry, curve: THREE.Curve<THREE.Vector3>, seg: number): THREE.BufferGeometry {
+  const position = tube.getAttribute('position');
+  const c = new THREE.Vector3(), v = new THREE.Vector3();
+  for (let i = 0; i <= seg; i++) {
+    curve.getPointAt(i / seg, c);
+    for (let j = 0; j <= 6; j++) {
+      const k = i * 7 + j;
+      v.fromBufferAttribute(position, k).sub(c).multiplyScalar(1 + 0.14 * Math.cos(Math.PI * j + 1.05 * i)).add(c);
+      position.setXYZ(k, v.x, v.y, v.z);
+    }
+  }
+  tube.computeVertexNormals();
+  return tube;
 }
 
 /**
@@ -2726,12 +2764,17 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
     for (const rail of [-0.11, 0.11]) parts.add('dark', place(block(0.15, 0.018, 0.04), 0, 0.009, rail), x, 0, 0, 0, yaw, 0);
   }
   if (opts.strap !== false) {
+    // round 5 (2026-10-08; the contact receipt: the strap ran 3 mm into the cans' ends and stood free past the row):
+    // the strap girdles the row a millimetre clear of the cans (their welded end seams at z 0.1765, the end cans' sides
+    // at canOuter) and is held at its corners by the two uprights, its buckle on its front run
     const w = count * pitchX + 0.02;
-    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, 0.1795);
-    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, -0.1795);
+    const canOuter = ((count - 1) / 2) * pitchX + 0.0825, run = 2 * (canOuter + 0.004);
+    parts.add('dark', block(run, 0.028, 0.012), 0, 0.30, 0.1835);
+    parts.add('dark', block(run, 0.028, 0.012), 0, 0.30, -0.1835);
+    for (const sx of [-1, 1]) parts.add('dark', block(0.006, 0.028, 0.379), sx * (canOuter + 0.0075), 0.30, 0);
     parts.add('dark', block(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
     parts.add('dark', block(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
-    parts.add('detail', block(0.055, 0.045, 0.024), 0, 0.30, 0.1975);
+    parts.add('detail', block(0.055, 0.045, 0.024), 0, 0.30, 0.1995);
   }
   const fitting = fitAssemble('jerryCans', parts, opts);
   fitting.userData.designFamily = 'cot-jerry-can-rack-v3';
@@ -2830,10 +2873,16 @@ function fittingLightCluster(opts: FittingOptions = {}): THREE.Group {
     if (opts.nightKind) markVehicleNightLens(lens, opts.nightKind, { tint: opts.nightTint });
     parts.add(lensSlot, xform(xform(lens, 0, 0, r * 0.72), 0, 0, 0, rake, 0, 0), x, 0, 0);
     if (opts.guard !== false) {
-      for (const sx of [-1, 1]) {
-        parts.add('dark', xform(xform(box(0.016, r * 2.5, 0.016), sx * r * 0.62, 0, r * 0.55), 0, 0, 0, rake, 0, 0), x, 0, 0);
+      // Round 5 (2026-10-08; the contact receipt: the guard bars ran straight through the lamp housing): a brush
+      // guard in front of the lens, two uprights and two cross bars a centimetre clear of its face, tied back over
+      // the housing's crown and under its belly by a strap each, all welded bar
+      const zf = r * 0.72 + 0.022, t = 0.016;
+      const guard = (g: THREE.BufferGeometry): void => parts.add('dark', xform(g, 0, 0, 0, rake, 0, 0), x, 0, 0);
+      for (const sx of [-1, 1]) guard(xform(box(t, 2 * r + 2 * t, t), sx * r * 0.45, 0, zf));
+      for (const sy of [-1, 1]) {
+        guard(xform(box(r * 0.9 + 2 * t, t, t), 0, sy * (r + t / 2), zf));
+        guard(xform(box(t, t, zf), 0, sy * (r + t / 2), zf / 2));
       }
-      parts.add('dark', xform(xform(box(r * 1.9, 0.016, 0.016), 0, r * 0.85, r * 0.55), 0, 0, 0, rake, 0, 0), x, 0, 0);
     }
   }
   return fitAssemble('lightCluster', parts, opts);

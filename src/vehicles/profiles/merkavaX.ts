@@ -645,19 +645,40 @@ function merkava4Basket(P: TankBuilderPort): void {
 }
 
 function merkava4CoaxMount(P: TankBuilderPort): void {
-  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMount',g,x,y-1.9934619,z-1.93);
+  // 2026-10-08 (round 5, wave 257 on the Merkava 4: the over-gun M2 "perched on a stack of rounded camo-painted blocks
+  // instead of a cradle"; "standing on two stacked rounded slabs instead of a real pintle"): the mount is machined
+  // gunmetal with square edges (the gun mount's dark stock), and the gun lies in a cradle: the saddle, a floor plate
+  // under the receiver's forward half, a cheek either side with its bolt heads, and the trunnion pin through both. The
+  // cheeks stop under the feed tray, so the belt from the can on the gun's left runs over them into the feedway. Every
+  // block keeps its round-3 seat, and the dark stock keeps the painted blocks' place in the gun's shadow.
+  const put=(g:THREE.BufferGeometry,x:number,y:number,z:number)=>P.addEquipment('gunMountDark',g,x,y-1.9934619,z-1.93);
+  const block=(w:number,h:number,d:number,sz=1)=>new THREE.BoxGeometry(w,h,d,1,1,sz);
   // Source coax has a long receiver stock and an offset two-post cradle.
   // These parts move with the pitching mount, not with cannon recoil.
   // (round 3: the long receiver stock and the twin tubes over the rear block read as a second gun beside the M2,
   // which now lies in this cradle itself; the cradle's rear block, posts and rails stay, and a saddle carries the
   // receiver from the rail top (2.445) to its underside (2.539).)
-  put(box(.14716,.12013,.16549),.02212,2.59413,.94149);
-  put(box(.10,.10,.36),.02212,2.492,1.32);
-  put(box(.27459,.13384,.07214),.02212,2.32365,1.37610);
+  put(block(.14716,.12013,.16549),.02212,2.59413,.94149);
+  put(block(.10,.10,.36,3),.02212,2.492,1.32);
+  put(block(.27459,.13384,.07214),.02212,2.32365,1.37610);
   put(cylY(.0226,.11067,14),.02212,2.36305,1.07010);
-  put(box(.13742,.05403,.43933),.02212,2.41759,1.19975);
+  put(block(.13742,.05403,.43933,4),.02212,2.41759,1.19975);
   put(cylY(.02061,.10961,14),.02212,2.46520,1.58029);
-  put(box(.16092,.09972,.26879),.06785,2.47435,1.44589);
+  put(block(.16092,.09972,.26879,2),.06785,2.47435,1.44589);
+  const cx=.02212, cheekX=.059+.004+.006;
+  put(block(.150,.014,.20,2),cx,2.532,1.44);
+  for(const side of[-1,1]){
+    put(block(.012,.09,.16,2),cx+side*cheekX,2.545,1.48);
+    for(const [dy,dz] of[[-.025,-.05],[-.025,.05],[.025,-.05],[.025,.05]])
+      put(cylX(.0065,.008,8),cx+side*(cheekX+.008),2.545+dy,1.48+dz);
+  }
+  put(cylX(.014,.168,12),cx,2.565,1.50);
+  const previous=P.postAssemble;
+  P.postAssemble=rig=>{
+    previous?.(rig);
+    const dark=rig.gunG.getObjectByName('gunMountDark');
+    if(dark)dark.userData.preserveRecoilShadowSource=true;
+  };
 }
 
 type TrophyConfiguration = 'mk4'|'barak'|'namer';
@@ -1112,7 +1133,10 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // pintle" over the mantlet: the M2's own pintle column stood on the mantlet in front of the source cradle's long
     // receiver stock and its twin cradle tubes. The over-gun M2 is one weapon in the source cradle: no second pintle,
     // its receiver laid where the stock was (underside y 2.539, centre z 1.318 world), true scale.
-    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.0,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false,
+    // 2026-10-08 (round 5; wave 257 on the Merkava 4 Trophy: "a plain dark-grey box receiver and smooth tube with no
+    // ammunition box, feed chute, cocking handle or barrel-jacket holes, perched on a stack of rounded camo-painted
+    // blocks instead of a cradle"): the M2 carries its can and belt on its left, and its cradle is machined gunmetal.
+    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.0,seed:445,tone:'two-tone',ammo:true,shield:false,ring:false,
       mount:'external-cradle'});
     coax.name='merkava4OverGunM2';
     coax.position.set(.0221,2.539-1.9934619,1.318-.06-1.93);P.gunG.add(coax);

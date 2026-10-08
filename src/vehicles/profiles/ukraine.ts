@@ -1,3 +1,5 @@
+import {resizeAuthoredVehicle} from './vehicleSize.ts';
+import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
@@ -28,6 +30,7 @@ import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import {
   loftHull,
   buildT80CastTurret,
@@ -60,10 +63,12 @@ interface DisposableResource {
 }
 
 interface UkraineBuilderPort {
+  postAssemble: TankBuilderPort['postAssemble'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material> & {
+  readonly mats: {
+    readonly hull: THREE.Material;
     readonly canvasCloth: THREE.MeshStandardMaterial;
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
@@ -90,7 +95,7 @@ interface UkraineBuilderPort {
     ...orientation: number[]
   ): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
-  offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  offsetBuckets: TankBuilderPort['offsetBuckets'];
 }
 
 interface CassetteOptions {
@@ -1152,7 +1157,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
 // rear anti-thermal cover roll on the bustle; Varta dazzler pair flanking
 // the gun; 6x rubber-rim gear with the Ukrainian skirt line.
 // ---------------------------------------------------------------------------
-function buildUAOplotM(P: UkraineBuilderPort): void {
+function buildUAOplotM(P: TankBuilderPort): void {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const eraReceipt = {
@@ -1404,6 +1409,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   widthAnchor(P, 1.8875, 0.80, -2.60);
   };
   buildOplotHullSides();
+  resizeAuthoredVehicle(P,1.10);
 
   const buildOplotTurretShell = (): void => {
   // ---- KMDB WELDED TURRET — measured from the WARPED (published-scale)
@@ -1414,7 +1420,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   // published 2.285, PNK-6 tower at world -1.34 (the ref's own spike
   // column), and the real interior basket the print carries (its turret
   // mask bottoms at 0.61 inside the hull).
-  P.turretG.position.set(0, 1.42, -0.30);
+  P.turretG.position.set(0, 1.562, -0.33);
   // SHELL PRISM: the flat-roof welded body only (world -1.88..+0.25).
   // §5.272 fix (5): the roof plate drops to 0.795 local (world 2.215) so
   // the hatch rings / periscopes / stowed kit STAND PROUD and read — the
@@ -1519,21 +1525,9 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   }
   P.add('turret', cylY(0.225, 0.24, 0.055, 16), -0.54, 0.81, -0.38);
   P.add('turretDark', cylY(0.195, 0.195, 0.02, 16), -0.54, 0.842, -0.38);
-  {
-    // 2026-10-07 (tank-accessories round 3): "the commander's mount shows no gun". The Oplot-M's commander fights a
-    // 12.7 mm KT-12.7 (an NSVT derivative) from his station; it stands on its own pintle on the commander's hatch ring
-    // (top 0.845) in the ring's outboard-rear quadrant, true scale, barrel forward over the vision blocks (bore 0.30
-    // above the ring) and inside the 2.80 m MG band (top ~2.69 m world).
-    // 2026-10-07 (round 4, wave 214: "the Oplot's 12.7 reads as an M2; it should be the Soviet-pattern KT/NSVT with
-    // its box"): the nsvt class is now the NSVT's own construction (machineGunGeometry.ts). The KT's box hangs on the
-    // outboard side (the NSV feeds from either side; outboard keeps the box off the commander's hatch), and the
-    // mount's collimator stands on its arm on the inboard side, where the commander sights from the hatch.
-    const kt = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.0, ammo: true, shield: false, seed: 8420,
-      feed: 'left', reflexSight: true });
-    kt.name = 'uaOplotMCommanderKt127';
-    kt.position.set(0.74, 0.841, -0.46);
-    P.turretG.add(kt);
-  }
+  // 2026-10-08: the Oplot-M carries one 12.7 mm heavy machine gun, and main's field upgrade (5f8eefaa4,
+  // upgradeOplotFieldEquipment) fits it as a working remote station with its own ammunition; the accessories lane's
+  // decorative KT-12.7 on the commander's hatch ring (rounds 3-4) would have been a second one, so the ring is bare.
   {
     // NSVT stowed on the low bustle deck (UA wartime fit) — exact-group
     // census; the PNK-6 keeps the single p95 spike window.
@@ -1808,6 +1802,7 @@ function buildUAOplotM(P: UkraineBuilderPort): void {
   addVehicleGhillieSuit(P);
   };
   buildOplotWeapon();
+  upgradeOplotFieldEquipment(P);
   P.topY = 1.42;
 }
 
@@ -2081,12 +2076,13 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
   }
   addAbramsDroneCage(P);
   addVehicleGhillieSuit(P);
+  addMissionAttachmentReceiver(P, 'ua_m1a1');
 }
 
 export const UKRAINE_PROFILES = {
   ua_t64bv: { build: (P: TankBuilderPort) => buildT64Modern(P, true) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
   ua_t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
-  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as UkraineBuilderPort) },
+  ua_t84_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },
   ua_m1a1: { build: (builder: ProfileBuilderPort) => buildUAM1A1(builder as UkraineBuilderPort) },
 } satisfies VehicleProfileRecord;

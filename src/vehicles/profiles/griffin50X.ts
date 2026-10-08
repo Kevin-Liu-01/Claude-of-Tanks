@@ -1,10 +1,11 @@
+import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 // Authored Griffin 50 mm study: native solids, mechanisms and material roles.
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
-import { KIT, FITTINGS } from './kit.ts';
+import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
@@ -395,7 +396,6 @@ function turretOpticalReceivers(P: TankBuilderPort, add: EquipmentAdder): void {
 }
 
 function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
-  const p=P.turretG.position;
   // Source roof service plates follow its sloped rear roof instead of discs.
   for(const side of [-1,1]) {
     add('turretDetail',deckPlate(.476,.433,.016),side*.931,3.021,-.276);
@@ -405,15 +405,7 @@ function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
       for(const dx of [-.17,.17])add('turretDetail',cylY(.079,.079,.035,P.q?18:10),side*.375+dx,y+.07,z);
     }
   }
-  // Elevated weapon cradle retains the real open fork and the shared M2 rig.
-  add('turretDetail',box(.198,.090,.203),0,3.042,-.239);
-  add('turretDetail',box(.445,.153,.240),0,3.163,-.239);
-  for(const x of [-.165,.162])add('turretDetail',box(.104,.40,.240),x,3.437,-.239);
-  for(const x of [-.238,.236])add('turretDetail',box(.045,.428,.488),x,3.493,-.034);
-  add('turretDetail',box(.330,.207,.123),0,3.476,-.056);
-  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.28,tone:'two-tone',ammo:false,seed:5017});
-  roofGun.position.set(-p.x,3.32-p.y,-.37-p.z);
-  P.turretG.add(roofGun);
+  // The former static M2 cradle is replaced by the articulated roof cannon.
   for(const [x,top] of [[-.696,4.702],[.696,4.399]]) {
     add('turretDetail',cylY(.084,.111,.397,P.q?18:10),x,2.938,-1.698);
     add('turretDetail',cylY(.010,.017,top-3.1365,8),x,(top+3.1365)/2,-1.698);
@@ -455,5 +447,7 @@ export function buildGriffin50X(P:TankBuilderPort):void {
   buildGriffin50Chassis(P);turret(P);P.topY=3.01-2.07;
   preserveSourceStudyGunMountAppearance(P);
   reduceGriffinTurret(P);
+  // The fleet's final 0.9 vehicle scale puts this foot on the 0.76238 m roof.
+  addFieldRoofWeapon(P,[0,.847088,0],30,'Griffin 50 mm remote 30 mm cannon',.2);
   P.hullG.userData.xRebuild={candidate:'griffin50_x',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

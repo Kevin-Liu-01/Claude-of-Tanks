@@ -47,7 +47,7 @@ import { markCamoPanel } from '../camoPanels.ts';
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -951,7 +951,11 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
         [-nw, toeY, toeZ], [nw, toeY, toeZ], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
     }
     // lower glacis wedge + rounded cast transmission nose (between the tracks)
-    P.add('hull', slab(
+    // The M48 terminal roof lies below its toe floor. Bound that one inverted
+    // wedge by the retained corners; leave every valid slab and the casting
+    // itself on their existing construction paths.
+    const lowerGlacis = toeY - 0.02 < toeBot ? convexSlab : slab;
+    P.add('hull', lowerGlacis(
       [-iw, belly, H.bellyFrontZ], [iw, belly, H.bellyFrontZ], [iw * 0.98, toeBot, toeZ - 0.02], [-iw * 0.98, toeBot, toeZ - 0.02],
       [-iw, spons + 0.05, H.bellyFrontZ], [iw, spons + 0.05, H.bellyFrontZ], [iw * 0.98, toeY - 0.02, toeZ - 0.02], [-iw * 0.98, toeY - 0.02, toeZ - 0.02]));
     P.add('hull', cylX(0.21, iw * 2, P.q ? 20 : 12), 0, toeBot - 0.01, toeZ - 0.30);
@@ -1725,7 +1729,9 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
       // §B3 census fitting: stowed spare MG tucked inside the casting
       // silhouette (the measured m2Station stays the gate-driven roof gun)
       // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the casting it is tucked against (feed-side collision census).
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right' });
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel), not
+      // the crew guns' true-size floor, which grew it 12 % into the casting and the roof gun beside it.
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right', sourceScale: true });
       mg.position.set(T.stowMG[0], yl(T.stowMG[1]), zl(T.stowMG[2]));
       P.turretG.add(mg);
     }
@@ -2479,8 +2485,13 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
     {
       // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right' });
-      mg.position.set(0.30, ly(2.96), zl(-0.62));
+      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
+      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring. It is stowed pointing aft on its
+      // pintle 16 cm further back, so its stock stops 5 cm short of the ring and its barrel lies over the dome's rear
+      // instead of alongside the M2 (was (0.30, ly 2.96, zl -0.62) facing forward).
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
+      mg.position.set(0.30, ly(2.96), zl(-0.78));
+      mg.rotation.y = Math.PI;
       P.turretG.add(mg);
     }
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
@@ -4496,10 +4507,13 @@ function finishM60VariantFireControl(P: PattonBuilderPort, a3: boolean): void {
 function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   // Sheridan-derived M2HB is now the common visible American roof weapon.
   // A3 gets the later armored shield; A1 retains the open Vietnam-era plant.
+  // 2026-10-08 (round 5; wave 255 on the M60A1: "the thin ring around the cupola pedestal hangs with no visible
+  // support. Attach it or remove it"): the M2 stands on its pintle on the cupola roof without an AA ring (the M19
+  // cupola has none); the shared Browning construction draws it at true scale.
   const m2 = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ammoSide: 1, shield: a3, ring: { r: 0.23, stubs: 4 },
+    ammoSide: 1, shield: a3, ring: false,
     rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
   m2.position.set(-0.58, 1.34, 0.20);

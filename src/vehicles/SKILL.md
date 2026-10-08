@@ -394,26 +394,12 @@ Weathering marks in the plate painter (`materialPainter.ts`) are stains, so they
 camo bands as "an unresolved texture seam", repeating with the 2 m tile (wave 165, Challenger 1). Never paint a bright,
 narrow, saturated mark over the paint. A new weathering mark multiplies (or darkens), keeps a core of at least 2.5 mm,
 and falls off softly at its sides.
-Field wear (2026-10-07) is split by what knows the geometry. Worn, chipped plate seams and hatch rings sit in the albedo
-tile (`paintEdgeWear`). Dust, mud and soot are a shader term (materials.ts `VEHICLE_FIELD_WEAR_GARAGE`) on the
-materials that set `COT_FIELD_WEAR`: 1 for bodywork, 2 for running gear, 3 for the scrolling band. Height comes from the
-per-draw ground reference. The break-up pattern comes from each mesh's own vertex frame, so it rides turrets, wheels and
-links instead of swimming. Strength is the reference's w: 1 in battle, 0.45 on the Garage showroom build (switched by
-`prepareForSimulation` / `resetForGaragePresentation`), 0 without a vehicle root. A new vehicle material that should
-weather sets the define; `cloneVehicleMaterial` keeps it. Soot sources are the registered smoke sockets
-(`setVehicleSootSources`) and are kept beside the root: never put live objects in `root.userData`, because three's
-clone JSON-copies it (the thumbnail masks clone roots).
-Round 4 (2026-10-07; blind wave 240 scored round 3 flat: "a pale uniform haze over the upper surfaces or a flat dark
-band over the running gear"). Wear that a critic can see at the 20 m chase is structured, not a veil: dust lightens the
-dark running gear instead of darkening it, the lower hull carries a heavy ochre-brown coat up to about the skirts'
-mid-height under a ragged streaky edge, a thin film above it and only a light film on the decks and turret (the upper
-camouflage stays crisp: a veil there reads as haze), and the discrete marks (wet spatter, oil pools, dark bare-steel
-chips, exhaust soot, muzzle carbon) are thresholded shapes, never washes. Mode 4 is cloth and wood (no chips, slick oil or seam grime); the decor
-kit opts in by key (`decorations.ts` hard kit 1, soft goods 4; nets, mesh, lenses and leaves stay clean). The exhaust
-soot, engine-deck oil and climbing wear read a hull frame measured at build end from the hull's own plates
-(`setVehicleWearFrame`: rear plate, engine deck, bow, half width; null skips them). The muzzle (`rig_muzzle`) leads
-the five soot slots. Every noise octave fades to its mean as a cycle shrinks under about five pixels (the mesh frame's
-screen derivative), so the wear never sparkles at range.
+Field wear (2026-10-07/08): the round 2-4 wear (a height-graded dust, mud and soot shader term behind `COT_FIELD_WEAR`,
+baked edge chips in the plate painter, a decor dust ramp) was stripped before batch 5: blind waves 240 and 264 scored
+it flat up close ("a gravity-blind overlay"), although wave 265 found it helped at battle distance. The redesign
+(per-material surfaces, dust and wet earth graded up from the running gear in the map's soil colour, wear where use puts
+it, contact occlusion, readable at 15-60 m, priced under cost rule v3) lands on its own wave; the stripped code is at
+95afc36d6 for reference.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
